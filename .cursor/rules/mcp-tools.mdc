@@ -1,0 +1,41 @@
+---
+description: MCP phase rosters, essential vs on-demand tools, and the ~40-tool activation protocol for the Saha Textile project
+alwaysApply: true
+---
+
+# MCP tool awareness & activation protocol
+
+Cursor enforces a **~40 active-tool ceiling across all MCP servers** (a context limit, NOT raised by the Pro plan). When exceeded, tools are silently dropped. Stay under it by keeping only the essential set active and enabling the long tail on demand.
+
+## Active phase
+The active phase is whichever single block is uncommented in `.env.mcp` (`LOCAL`, `TEST-E2E`, or `PROD-E2E`). Servers without credentials in the active block are inert — do not attempt to use them.
+
+| Phase | Live servers |
+|---|---|
+| LOCAL | context7, shadcn, mongodb (test M0, read-write), postman (localhost) |
+| TEST-E2E | + github (actions+repos), digitalocean (droplets,spaces,apps) |
+| PROD-E2E | same as TEST-E2E, but mongodb is **read-only** and github is read-oriented |
+
+If a requested action needs a server not live in the current phase, tell the human which phase to switch to (uncomment its block in `.env.mcp` + restart Cursor) instead of trying to use it.
+
+## Essential (always-on) tools per server
+- **context7** — `resolve-library-id`, then `query-docs`. Always resolve first. Use it (append "use context7" implicitly) for any library/API/config question across React 19.2, Next.js 16, NestJS 11, Fastify 5, Zustand 5, TanStack Query 5, Tailwind 4. Pin the version in the query.
+- **mongodb** — `find`, `aggregate`, `count`, `list-databases`, `list-collections`, `collection-schema`, plus `insert-many`/`update-many` (LOCAL/TEST only). Cluster-management and `drop-*` tools are **disabled by default**.
+- **postman** — the `--minimal` set (run/get/create collection, environments). Heavier collaboration tools require the `full` config.
+- **github** (E2E) — `actions` + `repos` toolsets only.
+- **digitalocean** (E2E) — `droplets`, `spaces`, `apps` services only.
+- **shadcn** — component search/install. **Disable during pure infra/deploy E2E sessions** (UI isn't in play then) to reclaim budget.
+
+## On-demand activation protocol
+When a task genuinely needs a tool that is disabled (e.g. a MongoDB index/`drop` tool, a Postman monitor tool, a DigitalOcean service outside the default three, or a broader GitHub toolset):
+1. **State exactly which tool/toolset/service is needed and why.**
+2. **Ask the human to enable it** in Cursor → Settings → Tools & MCP (or by widening the relevant flag/env), and to confirm the active tool count stays under ~40 — disabling something else first if needed.
+3. Perform the task.
+4. **Ask the human to disable it again** once the scenario is resolved, to return to the lean essential set.
+
+Never silently assume a disabled tool is available. Never enable destructive tools without explicit human confirmation.
+
+## Safety
+- Keep tool approval ON. Treat as irreversible (confirm first): droplet/app deletion, DB drop/delete-many, Postman collection/monitor deletion, force-push, branch deletion.
+- In PROD-E2E, MongoDB writes must fail (read-only). If a write is requested in PROD-E2E, refuse and explain.
+- After E2E testing, remind the human to destroy the short-lived droplet and Spaces bucket.

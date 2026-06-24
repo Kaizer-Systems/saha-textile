@@ -1,0 +1,14 @@
+{
+	"recommendations": [
+		"esbenp.prettier-vscode",
+		"dbaeumer.vscode-eslint",
+		"bradlc.vscode-tailwindcss",
+		"editorconfig.editorconfig",
+		"sonarsource.sonarlint-vscode",
+		"mikestead.dotenv",
+		"yoavbls.pretty-ts-errors",
+		"mongodb.mongodb-vscode",
+		"ms-azuretools.vscode-docker",
+		"github.vscode-github-actions"
+	]
+}

@@ -1,0 +1,67 @@
+{
+	"mcpServers": {
+		"context7": {
+			"command": "npx",
+			"args": ["-y", "@upstash/context7-mcp"],
+			"env": {
+				"CONTEXT7_API_KEY": "${env:CONTEXT7_API_KEY}"
+			}
+		},
+
+		"shadcn": {
+			"command": "npx",
+			"args": ["-y", "shadcn@latest", "mcp"]
+		},
+
+		"mongodb": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"mongodb-mcp-server@latest",
+				"--disabledTools",
+				"atlas-create-cluster,atlas-delete-cluster,atlas-create-project,atlas-create-access-list,atlas-create-db-user,atlas-streams-manage,atlas-streams-teardown,drop-database,drop-collection"
+			],
+			"env": {
+				"MDB_MCP_CONNECTION_STRING": "${env:MDB_MCP_CONNECTION_STRING}",
+				"MDB_MCP_READ_ONLY": "${env:MDB_MCP_READ_ONLY}"
+			}
+		},
+
+		"postman": {
+			"command": "npx",
+			"args": ["-y", "@postman/postman-mcp-server", "--minimal"],
+			"env": {
+				"POSTMAN_API_KEY": "${env:POSTMAN_API_KEY}"
+			}
+		},
+
+		"github": {
+			"command": "docker",
+			"args": [
+				"run",
+				"-i",
+				"--rm",
+				"-e",
+				"GITHUB_PERSONAL_ACCESS_TOKEN",
+				"-e",
+				"GITHUB_TOOLSETS",
+				"-e",
+				"GITHUB_READ_ONLY",
+				"ghcr.io/github/github-mcp-server"
+			],
+			"env": {
+				"GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_PERSONAL_ACCESS_TOKEN}",
+				"GITHUB_TOOLSETS": "${env:GITHUB_TOOLSETS}",
+				"GITHUB_READ_ONLY": "${env:GITHUB_READ_ONLY}"
+			}
+		},
+
+		"digitalocean": {
+			"command": "npx",
+			"args": ["-y", "@digitalocean/mcp", "--services", "droplets,spaces,apps"],
+			"env": {
+				"DIGITALOCEAN_API_TOKEN": "${env:DIGITALOCEAN_API_TOKEN}"
+			}
+		}
+	}
+}

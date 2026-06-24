@@ -1,0 +1,89 @@
+{
+	// ---- Cursor / VS Code chat ----
+	"chat.checkpoints.showFileChanges": true,
+
+	// ---- TypeScript: use the workspace's TS version (important in a monorepo) ----
+	"typescript.tsdk": "node_modules/typescript/lib",
+	"typescript.enablePromptUseWorkspaceTsdk": true,
+
+	// ---- Indentation: tabs, width 4 (matches .prettierrc) ----
+	"editor.detectIndentation": false,
+	"editor.insertSpaces": false,
+	"editor.tabSize": 4,
+	"files.eol": "\n",
+
+	// ---- Formatting (Prettier) ----
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"editor.formatOnSave": true,
+	"editor.formatOnPaste": true,
+	// Prettier does not drive on-type formatting; leaving it off avoids cursor jumps.
+	"editor.formatOnType": false,
+	"prettier.enable": true,
+	// requireConfig keeps Prettier from formatting files with no resolvable config.
+	"prettier.requireConfig": true,
+	// NOTE: prettier.configPath was intentionally removed so Prettier resolves the
+	// NEAREST config — this lets per-app .prettierrc overrides work in the monorepo.
+
+	// ---- Lint fixes on save (ESLint 9 flat config) ----
+	"eslint.useFlatConfig": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.eslint": "explicit"
+	},
+
+	// ---- Tailwind CSS IntelliSense (v4 + shadcn cn()/cva() helpers) ----
+	"editor.quickSuggestions": { "strings": "on" },
+	"tailwindCSS.experimental.classRegex": [
+		["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+		["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
+	],
+
+	// ---- Per-language default formatter ----
+	"[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+	"[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+	"[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+	"[javascriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+	"[html]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+	"[scss]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+	"[css]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+	"[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+	"[jsonc]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+	"[markdown]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+
+	// ---- YAML & GitHub Actions MUST use spaces (tabs are invalid in YAML) ----
+	"[yaml]": {
+		"editor.insertSpaces": true,
+		"editor.tabSize": 2,
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"[github-actions-workflow]": {
+		"editor.insertSpaces": true,
+		"editor.tabSize": 2,
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+
+	// ---- Monorepo performance: keep search & file-watching out of build output ----
+	"search.exclude": {
+		"**/node_modules": true,
+		"**/dist": true,
+		"**/.next": true,
+		"**/.turbo": true,
+		"**/coverage": true,
+		"**/pnpm-lock.yaml": true
+	},
+	"files.watcherExclude": {
+		"**/node_modules/**": true,
+		"**/dist/**": true,
+		"**/.next/**": true,
+		"**/.turbo/**": true
+	}
+
+	// ---- (REMOVED) SonarLint "NIQ Sonarqube" server bindings ----
+	// The original file bound SonarLint to your client's private NIQ SonarQube
+	// server, which does not apply to Saha Textile. Once the SonarLint extension is
+	// installed it runs in STANDALONE mode (free, local rules, no server needed).
+	// If you later stand up SonarQube/SonarCloud for THIS repo, add a binding like:
+	//   "sonarlint.connectionMode.project": {
+	//     "connectionId": "<your-connection-id>",
+	//     "projectKey": "<your-project-key>"
+	//   }
+}

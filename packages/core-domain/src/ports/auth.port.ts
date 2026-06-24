@@ -10,5 +10,8 @@ export interface AuthPort {
 	verifyPassword(plain: string, hash: string): Promise<boolean>;
 	signAccessToken(claims: TokenClaims): Promise<string>;
 	signRefreshToken(claims: TokenClaims): Promise<string>;
+	/** Verify an access token (signed with the access secret). */
 	verifyToken(token: string): Promise<TokenClaims>;
+	/** Verify a refresh token (signed with the separate refresh secret). */
+	verifyRefreshToken(token: string): Promise<TokenClaims>;
 }

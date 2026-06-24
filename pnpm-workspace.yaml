@@ -5,6 +5,7 @@ packages:
 # Packages with native/postinstall build steps that pnpm is allowed to build.
 # (pnpm blocks lifecycle scripts unless explicitly approved here.)
 allowBuilds:
+  '@scarf/scarf': false
   '@tailwindcss/oxide': true
   argon2: true
   esbuild: true

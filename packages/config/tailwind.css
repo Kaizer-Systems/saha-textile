@@ -1,0 +1,19 @@
+/*
+ * Shared Tailwind v4 theme tokens for Saha Textile.
+ * Apps import this after `@import "tailwindcss"`:
+ *
+ *   @import "tailwindcss";
+ *   @import "@saha/config/tailwind.css";
+ *
+ * Brand palette is provisional until the purchased themes arrive.
+ */
+@theme {
+	--color-brand-50: #fdf2f4;
+	--color-brand-100: #fbe3e8;
+	--color-brand-500: #b3123c;
+	--color-brand-600: #8f0e30;
+	--color-brand-700: #6b0b24;
+
+	--font-sans: ui-sans-serif, system-ui, sans-serif;
+	--font-serif: ui-serif, Georgia, serif;
+}

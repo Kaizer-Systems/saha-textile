@@ -1,0 +1,22 @@
+{
+  "name": "@saha/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./eslint": "./eslint.base.mjs",
+    "./tailwind.css": "./tailwind.css"
+  },
+  "files": [
+    "eslint.base.mjs",
+    "tailwind.css"
+  ],
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@eslint/js": "10.0.1",
+    "globals": "17.7.0",
+    "typescript-eslint": "8.62.0"
+  }
+}

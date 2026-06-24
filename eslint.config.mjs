@@ -1,39 +1,38 @@
-import js from '@eslint/js';
-import globals from 'globals';
-import tseslint from 'typescript-eslint';
+import base from '@saha/config/eslint';
 
 /**
- * Repo-wide ESLint flat config (baseline).
- *
- * Framework-specific configs (eslint-config-next for the storefront/admin,
- * NestJS rules for the API) are layered on per-app once the real UI/feature
- * work lands. This baseline keeps lint green across packages and app shells.
+ * Root ESLint flat config. Extends the shared baseline (@saha/config/eslint)
+ * and adds the hexagonal architecture boundary: packages/core-domain must not
+ * import any infrastructure/adapter/framework code.
  */
-export default tseslint.config(
+export default [
+	...base,
 	{
-		ignores: [
-			'**/node_modules/**',
-			'**/dist/**',
-			'**/.next/**',
-			'**/.turbo/**',
-			'**/coverage/**',
-			'**/*.config.{js,cjs,mjs}',
-		],
-	},
-	js.configs.recommended,
-	...tseslint.configs.recommended,
-	{
-		languageOptions: {
-			globals: {
-				...globals.node,
-				...globals.browser,
-			},
-		},
+		files: ['packages/core-domain/**/*.ts'],
 		rules: {
-			// TypeScript already reports undefined identifiers; the core rule
-			// produces false positives on types/globals in .ts(x) files.
-			'no-undef': 'off',
-			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+			'no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{
+							group: [
+								'mongoose',
+								'@saha/adapters-*',
+								'fastify',
+								'@nestjs/*',
+								'next',
+								'react',
+								'react-dom',
+								'axios',
+								'ioredis',
+								'@aws-sdk/*',
+							],
+							message:
+								'core-domain must not import infrastructure/adapters/frameworks (hexagonal dependency rule). Depend on ports + contracts only.',
+						},
+					],
+				},
+			],
 		},
 	},
-);
+];

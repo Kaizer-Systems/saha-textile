@@ -1,0 +1,34 @@
+{
+  "name": "@saha/adapters-db-mongo",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests",
+    "seed": "tsx scripts/seed.ts"
+  },
+  "dependencies": {
+    "@saha/contracts": "workspace:*",
+    "@saha/core-domain": "workspace:*",
+    "mongoose": "9.7.2",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "tsx": "4.22.4",
+    "typescript": "6.0.3",
+    "vitest": "4.1.9"
+  }
+}

@@ -13,6 +13,9 @@
 # otherwise `.env.*` would re-ignore these committed templates.
 !.env.mcp.example
 
+# ---- Next.js (generated; recreated by `next typegen` / `next build`) ----
+next-env.d.ts
+
 # ---- Node / monorepo ----
 node_modules/
 .pnpm-store/

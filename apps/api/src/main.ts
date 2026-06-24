@@ -1,17 +1,39 @@
 import 'reflect-metadata';
 
+import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import { AppModule } from './app.module';
+import { loadConfig } from './config/app-config';
 
 async function bootstrap(): Promise<void> {
+	const config = loadConfig();
+	const logger = new Logger('Bootstrap');
+
 	const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
 
-	const port = Number(process.env.PORT ?? 4000);
-	await app.listen({ port, host: '0.0.0.0' });
+	// Security headers (CSP disabled so the Swagger UI can load its assets).
+	await app.register(helmet, { contentSecurityPolicy: false });
+	await app.register(rateLimit, { max: config.rateLimitMax, timeWindow: config.rateLimitWindow });
 
-	console.log(`[api] listening on http://localhost:${port}`);
+	app.enableCors({ origin: config.corsAllowedOrigins, credentials: true });
+	app.enableShutdownHooks();
+
+	const swaggerConfig = new DocumentBuilder()
+		.setTitle('Saha Textile API')
+		.setDescription('Storefront + admin API (catalog, cart, orders, currency, promotions, auth)')
+		.setVersion('0.1.0')
+		.addBearerAuth()
+		.build();
+	const document = SwaggerModule.createDocument(app, swaggerConfig);
+	SwaggerModule.setup('docs', app, document, { jsonDocumentUrl: 'openapi.json' });
+
+	await app.listen({ port: config.port, host: '0.0.0.0' });
+	logger.log(`API listening on http://localhost:${config.port} (docs at /docs, spec at /openapi.json)`);
 }
 
 void bootstrap();

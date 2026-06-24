@@ -1,0 +1,23 @@
+root = true
+
+[*]
+charset = utf-8
+indent_style = tab
+indent_size = 4
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# YAML cannot use tabs
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# pnpm/npm normalize package.json to 2 spaces
+[package.json]
+indent_style = space
+indent_size = 2
+
+# Markdown: trailing spaces are meaningful (hard line breaks)
+[*.md]
+trim_trailing_whitespace = false

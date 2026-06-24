@@ -1,0 +1,23 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Packages with native/postinstall build steps that pnpm is allowed to build.
+# (pnpm blocks lifecycle scripts unless explicitly approved here.)
+allowBuilds:
+  '@tailwindcss/oxide': true
+  argon2: true
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
+
+# Auto-managed by pnpm: packages exempted from the global minimumReleaseAge gate
+# so freshly pinned versions can be installed.
+minimumReleaseAgeExclude:
+  - '@turbo/darwin-64@2.10.0'
+  - '@turbo/darwin-arm64@2.10.0'
+  - '@turbo/linux-64@2.10.0'
+  - '@turbo/linux-arm64@2.10.0'
+  - '@turbo/windows-64@2.10.0'
+  - '@turbo/windows-arm64@2.10.0'
+  - turbo@2.10.0

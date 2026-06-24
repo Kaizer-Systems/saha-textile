@@ -1,0 +1,16 @@
+{
+	"plugins": {
+		"context7-plugin": {
+			"enabled": true
+		},
+		"postman": {
+			"enabled": true
+		},
+		"mongodb": {
+			"enabled": true
+		},
+		"shadcn": {
+			"enabled": true
+		}
+	}
+}

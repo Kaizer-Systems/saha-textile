@@ -1,0 +1,29 @@
+# ---- MCP credential files (NEVER COMMIT) ----
+.env.mcp
+.env.mcp.local
+.env.mcp.*.local
+# Keep the template tracked:
+!.env.mcp.example
+
+# ---- Standard secrets / env ----
+.env
+.env.*
+!.env.example
+# Re-assert template re-inclusion AFTER the broad `.env.*` rule above,
+# otherwise `.env.*` would re-ignore these committed templates.
+!.env.mcp.example
+
+# ---- Node / monorepo ----
+node_modules/
+.pnpm-store/
+dist/
+build/
+.next/
+.turbo/
+coverage/
+*.log
+*.tsbuildinfo
+
+# ---- OS / editor noise ----
+.DS_Store
+Thumbs.db

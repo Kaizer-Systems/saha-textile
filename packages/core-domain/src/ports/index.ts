@@ -3,6 +3,8 @@ export * from './catalog.repository';
 export * from './order.repository';
 export * from './cart.repository';
 export * from './user.repository';
+export * from './currency.repository';
+export * from './promotion.repository';
 export * from './storage.port';
 export * from './payment-gateway.port';
 export * from './shipping.port';

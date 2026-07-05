@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-- Rebuild the WooCommerce store as a PNPM/Turborepo monorepo with 3 apps (Next.js storefront, Next.js admin, **NestJS-on-Fastify** API) using hexagonal/ports-and-adapters architecture so a MongoDB→Postgres (or any provider) swap touches only one adapter; MongoDB Atlas M0 and DigitalOcean Spaces ($5/mo) are confirmed viable for a ~40-product boutique.
+- Rebuild the WooCommerce store as a PNPM/Turborepo monorepo with 3 apps (Next.js storefront, Next.js admin, **NestJS-on-Fastify** API) using hexagonal/ports-and-adapters architecture so a MongoDB→Postgres (or any provider) swap touches only one adapter; DigitalOcean Spaces ($5/mo) is confirmed viable. **Catalog-scale correction:** MongoDB Atlas M0 (free) is for LOCAL/DEV only — the real store runs **~500–1,000 active products at any time, plus 2,000+ archived/discontinued products (retained but not displayed) and growing**, so production needs a paid tier (**M10+**). Still a single-operator boutique (no marketplace/multi-vendor), but a small-to-mid catalog — not a 40-item shop.
 - The site's real product pattern is WooCommerce **variable products** where one attribute ("Blouse Designs"/"Salwaar Designs") carries a **"No Stitching"/"No Blouse" base option** plus "Design 1/2/3" priced variations, optionally crossed with **Color**, plus custom tailoring **measurement fields** (Shoulder/Waist/Sleeve/Chest); model this as JSONB-flexible products with multi-category membership and discounts applicable at category/product/variation/**color** level.
 - Infra cost claims mostly hold: GitHub private repos are free, GHCR is free for private images, Actions gives 2,000 free Linux min/mo for private repos; the $24/mo 4 GB droplet is the correct call; use **CCAvenue (not BillDesk)** for INR + **PayPal** for foreign currency, **ExchangeRate-API** for FX, **Shiprocket** for domestic + international shipping.
 
@@ -43,11 +43,13 @@ This is the exact "No Design / Material Only" + "Design 1/2/3 at different price
 
 ## 00 — Project Overview
 
-**Business:** Saha Textile (sahatextile.com) — a Kolkata/West Bengal saree & textile retailer specializing in Bengali weaves (Jamdani, Banarasi, Muslin), plus dress materials/salwaar. ~30–40 SKUs, boutique scale.
+**Business:** Saha Textile (sahatextile.com) — a Kolkata/West Bengal saree & textile retailer specializing in Bengali weaves (Jamdani, Banarasi, Muslin), plus dress materials/salwaar. Single-operator boutique.
+
+**Catalog scale (corrected — do not design for "40 products"):** The live demo shows ~30–40 SKUs, but the production store will hold, at steady state (6–8 months post-launch), **~500–1,000 _active_ products at any given time**, plus **2,000+ _archived/disabled_ products that grow continuously**. "Archived/disabled" = discontinued items that **do not display on the storefront** but are **retained in the database** (needed for historical order integrity, analytics, and possible re-listing); a bulk-purge policy is deferred to after launch. This means: design every storefront query, search index, sitemap, and pagination path to filter on product `status` from day one, and size the DB/search/infra for low-thousands of documents — not for 40.
 
 **Goal:** Replace the WooCommerce/WordPress stack with a fully custom, modern, fast, SEO-rich, multi-currency, multi-language, PWA storefront + custom admin + API, preserving the existing taxonomy and the design/stitching variation pattern, and making discounts/offers applicable at any level.
 
-**Scope discipline:** This is a ~40-product boutique. Build a clean, complete feature set (cart, wishlist, search, filtering, reviews, orders, offers) but deliberately avoid Amazon/Flipkart-scale complexity (no marketplace, no multi-vendor, no warehouse management, no recommendation ML). Favor simplicity and maintainability.
+**Scope discipline:** This is a single-operator boutique with a **small-to-mid catalog (hundreds–low-thousands of active SKUs, thousands more archived)**. Build a clean, complete feature set (cart, wishlist, search, filtering, reviews, orders, offers) but deliberately avoid Amazon/Flipkart-scale complexity (no marketplace, no multi-vendor, no warehouse management, no recommendation ML). Favor simplicity and maintainability — but **do not under-build search, pagination, indexing, or DB sizing on a "40 products" assumption**; those must hold for low-thousands of documents.
 
 **Three deployable apps:** (1) Storefront (Next.js, public, PWA); (2) Admin panel (Next.js, private); (3) API (NestJS-on-Fastify).
 
@@ -75,7 +77,7 @@ This is the exact "No Design / Material Only" + "Design 1/2/3 at different price
 You asked whether to use plain Fastify or NestJS-on-Fastify for a "modular, layered, swappable architecture." **Use NestJS with `@nestjs/platform-fastify`.** Rationale:
 
 - Your #1 architectural requirement is strict modular, layered, swappable design. NestJS is built around exactly this: modules, dependency injection (DI), and adapters. Plain Fastify imposes no architecture — you'd hand-build DI and module boundaries, which is precisely the toil NestJS removes.
-- The Fastify adapter gives you NestJS's structure with Fastify's throughput. Per Pravir Raghu (Medium, "Express vs Fastify vs Nest — what to go with and when"): "a simple benchmark showed that a NestJS app using the Fastify adapter achieved about 50k requests/sec at 200 concurrent connections, compared to only ~17k requests/sec using the default Express adapter… That's nearly a 3× improvement just by switching the HTTP engine." For a 40-product boutique this raw number is irrelevant, but it means you pay no meaningful performance penalty for the structure.
+- The Fastify adapter gives you NestJS's structure with Fastify's throughput. Per Pravir Raghu (Medium, "Express vs Fastify vs Nest — what to go with and when"): "a simple benchmark showed that a NestJS app using the Fastify adapter achieved about 50k requests/sec at 200 concurrent connections, compared to only ~17k requests/sec using the default Express adapter… That's nearly a 3× improvement just by switching the HTTP engine." For a catalog of this size this raw number is not a bottleneck, but it means you pay no meaningful performance penalty for the structure.
 - NestJS's DI container is the cleanest way to implement the ports-and-adapters/repository pattern you require for DB-swappability. Swapping Mongo→Postgres becomes "bind a different provider to the same interface token."
 - Plain Fastify is the better pick only when you want a minimal single-purpose service and will assemble structure yourself — which contradicts your stated goals.
 - **Caveat:** As confirmed by the DEV Community 2026 backend comparison, "NestJS v11 ships with Express v5 as its default adapter. You can swap to the Fastify adapter using `@nestjs/platform-fastify`…" — so you must explicitly install/configure the Fastify adapter and audit that any middleware you add has Fastify equivalents.
@@ -216,7 +218,8 @@ Adjacency-list with materialized path for fast subtree queries and breadcrumbs:
 	"upsellIds": [],
 	"seo": { "title": {}, "description": {}, "jsonLd": "auto" },
 	"ratingsSummary": { "avg": 0, "count": 0 },
-	"status": "published",
+	"status": "published", // published | draft | archived | disabled | discontinued — see lifecycle note
+	"archivedAt": null, // set when status flips to archived/discontinued; used by purge policy later
 	"createdAt": "...",
 	"updatedAt": "...",
 }
@@ -227,6 +230,7 @@ Key decisions:
 - **Canonical price is always INR.** All other currencies are derived at request time (section 06). Never store per-currency prices except the INR source of truth.
 - The "No Stitching"/"No Blouse" base is a term flagged `isBase: true` — the storefront renders it first/selected by default as "Material Only."
 - Measurement fields are `addons`, captured per cart-line, NOT variations (otherwise the combination matrix explodes).
+- **Product lifecycle / archival (catalog runs to low-thousands of docs).** `status` drives visibility: `published` = live on storefront; `draft` = admin-only WIP; `archived`/`disabled`/`discontinued` = **removed from all storefront surfaces (listing, search index, sitemap, related/cross-sell) but retained in the DB**. Why retain: historical orders snapshot the product but still reference its id for re-display, returns, and analytics; an item may also be re-listed seasonally. Indexing: keep a compound index on `{ status, categoryIds }` and `{ status, updatedAt }` so the ~500–1,000 active set is queried without scanning the 2,000+ archived rows. **A discontinued product's old URL should return HTTP 410 Gone (or 301-redirect to its category)** — not a soft 404 — for SEO hygiene. A bulk-purge/cold-archive policy for very old disabled products is **deferred to post-launch** (e.g., move to a `products_archive` collection or cold storage once order-retention windows expire).
 
 ### Discounts / offers (applicable at ANY level)
 
@@ -270,7 +274,7 @@ A single polymorphic `promotions` collection with a `scope` discriminator:
 **Mandatory changes vs the theme:**
 
 - URL structure: clean, localized, SEO-driven routes — `/{locale}/product/{slug}`, `/{locale}/c/{category-path}`. Real breadcrumbs from the materialized path.
-- **Remove Algolia.** For ~40 products use **MongoDB Atlas Search** (full-text index) or `$text`/indexed regex served by the API; add a typeahead endpoint. This scales to thousands of SKUs before needing a dedicated engine. Keep search behind a `SearchPort` so you can later swap to Meilisearch/Typesense/Algolia by writing one adapter. Need rigorous fuzzy search with predictions, spelling mistakes, commonly searched, most searched, placeholder searches, on-the-go typing search, tranlatory and transliteral searches across languages. Try to use as much as free possible. Cannot afford to go for any paid tier plan on search tools.
+- **Remove Algolia.** **Catalog-scale + requirements correction:** with **~500–1,000 active SKUs** (not 40) and a hard requirement for rigorous fuzzy search — predictions, spelling-mistake tolerance, commonly/most-searched, placeholder searches, on-the-go typing (typeahead), and **translatory + transliteral search across English/Bengali** — plain `$text`/regex is no longer adequate, and Algolia/paid tiers are off the table (zero search budget). **Recommended primary: a self-hosted open-source engine — Meilisearch _or_ Typesense — on the droplet (both free, both excel at typo-tolerance + instant typeahead + multilingual/transliteration).** Keep it behind a `SearchPort` so the engine is swappable. **MongoDB Atlas Search** remains a viable zero-extra-infra fallback (its `$search` supports fuzzy + autocomplete) and a fine starting point, but the demanding transliteration/typo UX is more directly served by Meilisearch/Typesense — plan for them. Note: self-hosting search adds RAM pressure on the droplet (see infra sizing). Index **only `status: published`** products; reindex on product create/update/status-change.
 - Add multi-language (next-intl) and multi-currency (section 06).
 - Add GDPR/UK/EU + global cookie consent (sections 06/08).
 
@@ -317,7 +321,7 @@ A single polymorphic `promotions` collection with a `scope` discriminator:
 
 ### SEO (2026 best practices for Next.js e-commerce)
 
-- **Rendering strategy:** Use SSG/ISR for product and category pages (they change rarely) via `generateStaticParams` + revalidation; SSR for cart/account/search. ISR gives static speed + freshness for ~40 products trivially, maximizing Core Web Vitals.
+- **Rendering strategy:** Use SSG/ISR for product and category pages (they change rarely) via `generateStaticParams` + revalidation; SSR for cart/account/search. With **~500–1,000 active product pages** (archived products get no page), `generateStaticParams` should enumerate only `status: published` slugs; ISR's on-demand revalidation (`revalidatePath`/tag) refreshes a single edited product without a full rebuild — this is exactly the scale where ISR earns its keep, maximizing Core Web Vitals while keeping freshness.
 - **Metadata:** Next.js Metadata API + `generateMetadata` per route for titles/descriptions/OG/Twitter, localized.
 - **Structured data (JSON-LD):** Emit `Product` + `Offer` (price, priceCurrency, availability), `BreadcrumbList`, `Organization`, and `FAQPage`. Note: Google added the FAQ-rich-result deprecation notice on **May 7, 2026** (Search Engine Land: "Google will no longer support FAQ rich results as of May 7, 2026… dropping the FAQ search appearance, rich result report, and support in the Rich Results Test in June 2026… support in the Search Console API removed in August 2026"). Keep FAQPage schema anyway — it still aids AI Overviews/AEO and costs nothing — but don't expect the legacy snippet.
 - **hreflang + canonical:** For each localized route emit `<link rel="alternate" hreflang="...">` for every locale + `x-default`, plus a self-referencing canonical. Use `localePrefix: 'always'` for clean, unambiguous URLs (best for SEO).
@@ -375,7 +379,7 @@ You weren't sure whether the client has BillDesk or CCAvenue. **Recommendation: 
 - **CCAvenue (Infibeam Avenues):** redirect/hosted billing page, iFrame, or seamless API. Security = **AES-CBC encryption** of the request string with a **Working Key**, plus **Merchant ID + Access Code** (16-byte key → AES-128-CBC, 32-byte → AES-256-CBC). Test endpoint `test.ccavenue.com`, prod `secure.ccavenue.com`. Community npm package **`node-ccavenue`** (encrypt/decrypt helpers) exists; encryption is also reproducible with Node's native `crypto`. Onboarding is self-serve, PAN-based, ~24–48 h after approval; documents: PAN, GSTIN, bank proof/cancelled cheque, business registration, website evaluation.
 - **CCAvenue fees (per Techjockey, CCAvenue Pricing & Reviews 2026):** "The Startup Pro plan has no setup fee, while the Privilege plan requires a INR 30,000 setup fee. Transaction fees range from 2.00% for domestic cards to 4.99% for international cards." Per CCAvenue's own press release, the Startup Pro setup fee is zero and the "ASUC (Annual Software Upgradation Charge) amounting to Rs 1,200/- p.a. has been waived off for the 1st year" — i.e., a recurring **₹1,200/yr from year two** (corroborated by Sprintzeal 2026). UPI typically carries nil MDR.
 - **BillDesk:** current docs (docs.billdesk.io) use **JWS-HMAC (HS256)** signing with clientid + secretkey; offers Neo (redirect), Ace (SDK), CX+ Deep API (S2S). Onboarding is **RM-mediated (not self-serve), days-to-weeks**, pricing is opaque/quote-based and enterprise-oriented, **requires static public IP whitelisting** (problematic for serverless), and the only Node package (`billdeskjs`) targets the legacy checksum API, not the current JWS API.
-- **Why CCAvenue wins for a 40-product boutique on custom Node:** zero setup cost, transparent 2% pricing, fast PAN onboarding, a maintained npm helper, simple AES (no cert exchange), URL (not static-IP) whitelisting. BillDesk is over-engineered (enterprise/BFSI/bill-pay focus).
+- **Why CCAvenue wins for a boutique of this scale on custom Node:** zero setup cost, transparent 2% pricing, fast PAN onboarding, a maintained npm helper, simple AES (no cert exchange), URL (not static-IP) whitelisting. BillDesk is over-engineered (enterprise/BFSI/bill-pay focus).
 - **Implementation:** Do all encryption/signing and redirect-response handling in server-side API routes behind a `PaymentGatewayPort`. Never expose the Working Key client-side. Whitelist your redirect/cancel URLs (incl. localhost:port for testing).
 
 ### Foreign gateway: PayPal
@@ -465,13 +469,14 @@ You have Nginx experience, but for this exact use case (3 long-running container
 ### Single DigitalOcean Droplet via Docker Compose
 
 - All three containers + Caddy on one droplet, joined by a Docker network. MongoDB Atlas + Spaces are external (not on the droplet).
-- **Droplet sizing — your $24/mo choice is VALIDATED.** Per Better Stack's DigitalOcean Review 2026, a Basic Droplet of "2 vCPU / 4 GB RAM / 80 GB SSD" costs **$24/month**, and per Fluence 2026 this tier "includes 4,000 GiB of outbound transfer." Three Node SSR/API containers + Caddy genuinely need the RAM headroom; the $18/mo (2 GiB) option risks OOM during traffic spikes or memory creep, and since builds happen in Actions (the droplet only pulls + runs), 2 vCPU is sufficient. Recommendation confirmed.
+- **Droplet sizing — the $24/mo 4 GB tier holds for the 3 app containers + Caddy, but self-hosted search changes the math.** Per Better Stack's DigitalOcean Review 2026, a Basic Droplet of "2 vCPU / 4 GB RAM / 80 GB SSD" costs **$24/month** (per Fluence 2026, ~4,000 GiB outbound). Three Node SSR/API containers + Caddy fit in 4 GiB. **But** if you run **self-hosted Meilisearch/Typesense on the same droplet** (the recommended search path for ~1,000 SKUs, §04), it wants ~0.3–1 GiB more RAM than the 4 GiB budget below leaves free. Options: **(a) upgrade to the 8 GB / 4 vCPU droplet (~$48/mo)** — cleanest; **(b)** run search on a **separate small droplet**; or **(c)** use **Atlas Search** (no extra droplet RAM, at the cost of the richer typo/transliteration UX). Pick (a) unless budget forbids.
 - **Suggested resource limits across 4 GiB** (leave headroom for OS + Docker + Caddy):
     - storefront (Next SSR): ~1.2 GiB
     - admin (Next SSR, low traffic): ~0.6 GiB
     - api (NestJS/Fastify): ~1.0 GiB
     - Caddy: ~128 MiB
     - Reserve ~1 GiB for OS/overhead/burst. Set `deploy.resources.limits`/`mem_limit` accordingly; let the OOM killer act per-container.
+    - **If self-hosting search on this droplet, move to 8 GiB and add `search (Meilisearch/Typesense): ~0.5–1.0 GiB`.**
 
 ### Secrets handling
 
@@ -489,9 +494,9 @@ You have Nginx experience, but for this exact use case (3 long-running container
 - **(b) GitHub Actions for private repos: 2,000 free Linux minutes/month + 500 MB artifact storage** on the Free plan; beyond that billed (~$0.006/Linux min after the Jan 2026 rate cut). Your 3-app build-and-deploy fits comfortably within 2,000 min with caching (Turbo remote cache + Docker layer cache). Public repos = unlimited free.
 - **(c) GHCR storage for PRIVATE images: currently FREE.** GitHub explicitly states "container image storage and bandwidth for the Container registry is currently free" — it does NOT fall under the GitHub Packages tiered storage billing. Unlimited private image repos. Gotcha: this is a "currently free / soft-billing" status; GitHub has promised 30-day notice before charging — keep a Plan B (mirror to another registry) for the long term.
 - **(d) Pulling images to the droplet: FREE.** GHCR imposes no Docker-Hub-style pull rate limits on your private images tied to your account. (Pulls via Actions are guaranteed free.)
-- **Other monthly costs:** Droplet $24, Spaces $5 (250 GiB storage + 1 TiB egress + built-in CDN; overage $0.02/GiB storage, $0.01/GiB transfer), MongoDB Atlas M0 free, ExchangeRate-API free, Brevo free, domain/registrar separate. Approx fixed infra ≈ **$29/mo** + payment/shipping per-transaction fees.
+- **Other monthly costs (revised for real catalog size):** Droplet $24 (**or $48 if self-hosting search on an 8 GB droplet**), Spaces $5 (250 GiB storage + 1 TiB egress + built-in CDN; overage $0.02/GiB storage, $0.01/GiB transfer), **MongoDB Atlas paid tier for prod — ~$9–$25/mo (M2/M5 shared) bridging to ~$57/mo (M10 dedicated)** (M0 free only for dev/test), ExchangeRate-API free, Brevo free, self-hosted Meilisearch/Typesense $0 (runs on the droplet), domain/registrar separate. **Approx fixed infra ≈ $38–$45/mo early (shared Mongo, 4 GB droplet) rising to ~$110/mo at M10 + 8 GB droplet** + payment/shipping per-transaction fees. (The old "$29/mo" figure assumed M0 + 40 products and no longer holds.)
 
-**MongoDB Atlas M0 caveat:** M0 is free but limited (512 MB storage, shared CPU, no SLA, connection limits, and Atlas Search availability varies by region). For ~40 products + modest orders it's fine to start, but plan to move to a paid tier (M10+) before meaningful traffic/order volume, and confirm Atlas Search availability on your chosen free cluster (otherwise fall back to `$text`/regex search behind the `SearchPort`).
+**MongoDB Atlas tier (corrected for real catalog size):** M0 is free but limited (512 MB storage, shared CPU, no SLA, connection limits, and Atlas Search availability varies by region). At the real catalog size — **~500–1,000 active + 2,000+ archived rich product docs (i18n objects, attribute/variation/addon arrays, SEO blocks) plus orders, carts, reviews, FX history, analytics** — 512 MB will be exhausted, so **M0 is for LOCAL/DEV and TEST-E2E only**. **Production should launch on a paid tier — M10 dedicated (≈$57/mo on-demand, less reserved) is the safe target**; an M2/M5 shared cluster (~$9–$25/mo) is an acceptable short bridge but watch storage/connection limits. Provision the paid tier from launch, not "later." If you rely on Atlas Search, confirm it's available on the chosen tier/region; otherwise the self-hosted Meilisearch/Typesense path (§04) behind `SearchPort` is the primary plan anyway.
 
 ---
 
@@ -525,8 +530,8 @@ Add to the docs repo: a root `README.md` (quickstart), `CONTRIBUTING.md`, an `ad
 
 **Thresholds that change recommendations:**
 
-- Catalog >~1,000 SKUs or slow search → add Meilisearch/Typesense behind `SearchPort`.
-- Orders/traffic growth → migrate Atlas M0 → M10+ (this is when the repository-pattern investment pays off; even a switch to Postgres+JSONB is a one-adapter change).
+- ~~Catalog >~1,000 SKUs or slow search~~ **Already true at launch (≈500–1,000 active SKUs + heavy fuzzy/multilingual/transliteration UX)** → ship Meilisearch/Typesense behind `SearchPort` from the start, not as a later threshold.
+- ~~Orders/traffic growth → migrate Atlas M0 → M10+~~ **Provision a paid Atlas tier (M2/M5 → M10) at launch** — the catalog already exceeds what M0's 512 MB comfortably holds (this is when the repository-pattern investment pays off; even a switch to Postgres+JSONB is a one-adapter change).
 - SMS phone-OTP conversion matters and budget allows → add an SMS gateway (only paid auth method).
 - GHCR begins charging (30-day notice) → mirror images to an alternate registry.
 - PayPal FX-markup erodes margins → reconsider grossing-up the 3–4% conversion markup or switch foreign settlement to cheaper rails (Wise/Skydo) than PayPal's 5–8% all-in.
@@ -536,6 +541,6 @@ Add to the docs repo: a root `README.md` (quickstart), `CONTRIBUTING.md`, an `ad
 - All cost/free-tier facts are current as of June 2026 and several (GHCR free status, X API pricing, PayPal fees, Actions minutes, CCAvenue Privilege setup fee) are subject to vendor change; GHCR's free private-image status is explicitly "currently free" with a promised 30-day notice before billing.
 - The live site currently shows DEMO products and prices in USD; treat the scraped taxonomy and variation structures as authoritative for modeling, but verify final category parentage and exact attribute/term names with the client (the live tree has some inconsistent parent paths).
 - BillDesk's pricing is unpublished/quote-based; any specific BillDesk % would be speculation. The community `billdeskjs` npm package targets BillDesk's legacy checksum API, not the current JWS-HMAC API — verify which API version your account is provisioned on before using it.
-- MongoDB Atlas M0 free-tier limits (512 MB, shared, no SLA) mean it is a starter only; production order volume needs a paid tier.
+- MongoDB Atlas M0 free-tier limits (512 MB, shared, no SLA) mean it is a **dev/test-only** cluster; the production catalog (~500–1,000 active + 2,000+ archived docs) needs a paid tier **from launch** (M2/M5 shared → M10 dedicated).
 - PayPal India's effective cost (5–8% all-in including FX markup + GST) is higher than the headline 4.4% + fixed fee used in the gross-up formula; decide policy on absorbing vs grossing-up the FX-conversion markup.
 - Google's FAQ rich results are being deprecated (notice May 7, 2026; dropped from search appearance June 2026); keep FAQPage schema for AEO/AI-Overview value but don't expect the legacy rich snippet.

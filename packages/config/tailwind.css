@@ -3,7 +3,7 @@
  * Apps import this after `@import "tailwindcss"`:
  *
  *   @import "tailwindcss";
- *   @import "@saha/config/tailwind.css";
+ *   @import "@saha-textile/config/tailwind.css";
  *
  * Brand palette is provisional until the purchased themes arrive.
  */

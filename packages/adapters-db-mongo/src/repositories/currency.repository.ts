@@ -1,5 +1,5 @@
-import type { Currency } from '@saha/contracts';
-import type { CurrencyRepository } from '@saha/core-domain';
+import type { Currency } from '@saha-textile/contracts';
+import type { CurrencyRepository } from '@saha-textile/core-domain';
 
 import { toCurrency } from '../mappers';
 import { type CurrencyDoc, CurrencyModel } from '../models/index';

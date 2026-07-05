@@ -6,7 +6,7 @@ import {
 	type OrderLine,
 	type OrderStatus,
 	Order as OrderSchema,
-} from '@saha/contracts';
+} from '@saha-textile/contracts';
 import {
 	type CartRepository,
 	type CurrencyRepository,
@@ -19,7 +19,7 @@ import {
 	convertFromINR,
 	discountAmountINR,
 	roundMoney,
-} from '@saha/core-domain';
+} from '@saha-textile/core-domain';
 
 import {
 	CART_REPOSITORY,

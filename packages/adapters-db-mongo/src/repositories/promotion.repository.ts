@@ -1,5 +1,5 @@
-import type { Promotion } from '@saha/contracts';
-import type { PromotionRepository } from '@saha/core-domain';
+import type { Promotion } from '@saha-textile/contracts';
+import type { PromotionRepository } from '@saha-textile/core-domain';
 
 import { toPromotion } from '../mappers';
 import { type PromotionDoc, PromotionModel } from '../models/index';

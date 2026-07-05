@@ -1,4 +1,4 @@
-import type { Promotion } from '@saha/contracts';
+import type { Promotion } from '@saha-textile/contracts';
 
 /**
  * Compute the INR discount for a single price under a promotion's type/value.

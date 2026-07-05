@@ -1,4 +1,4 @@
-import type { Cart } from '@saha/contracts';
+import type { Cart } from '@saha-textile/contracts';
 
 export interface CartRepository {
 	findById(id: string): Promise<Cart | null>;

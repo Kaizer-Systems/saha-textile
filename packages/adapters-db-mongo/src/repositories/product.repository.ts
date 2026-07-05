@@ -1,5 +1,5 @@
-import type { Product } from '@saha/contracts';
-import type { Paginated, ProductFilter, ProductRepository } from '@saha/core-domain';
+import type { Product } from '@saha-textile/contracts';
+import type { Paginated, ProductFilter, ProductRepository } from '@saha-textile/core-domain';
 
 import { toProduct } from '../mappers';
 import { type ProductDoc, ProductModel } from '../models/index';

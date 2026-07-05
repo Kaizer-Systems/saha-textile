@@ -1,5 +1,5 @@
-import type { Cart } from '@saha/contracts';
-import type { CartRepository } from '@saha/core-domain';
+import type { Cart } from '@saha-textile/contracts';
+import type { CartRepository } from '@saha-textile/core-domain';
 
 import { toCart } from '../mappers';
 import { type CartDoc, CartModel } from '../models/index';

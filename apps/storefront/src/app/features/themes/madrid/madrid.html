@@ -1,0 +1,293 @@
+<!-- Home Section Start -->
+@if (data()?.content?.home_banner) {
+<section class="home-section-2 home-section-bg pt-0 overflow-hidden">
+  <app-theme-home-banner [theme]="'madrid'" [data]="data()?.content?.home_banner" />
+</section>
+}
+<!-- Home Section End -->
+
+<!-- Banner Section Start -->
+@if (data()?.content?.featured_banners?.status && data()?.content?.featured_banners?.banners?.length
+|| 0 >= 4 ) {
+<section class="banner-section ratio_60">
+  <app-theme-banner [style]="'horizontal'" [banners]="data()?.content?.featured_banners?.banners" />
+</section>
+}
+<!-- Banner Section End -->
+
+<!-- Category Section Start -->
+@if (data()?.content?.categories_image_list?.status) {
+<section class="category-section-3">
+  <div class="container-fluid-lg">
+    <app-title [title]="data()?.content?.categories_image_list?.title" [style]="'simple'" />
+    <app-theme-categorie
+      [style]="'horizontal'"
+      [theme]="'madrid'"
+      [sliderOption]="categorySlider"
+      [categoryIds]="data()?.content?.categories_image_list?.category_ids || []"
+      [image]="data()?.content?.categories_image_list?.image_url"
+    />
+  </div>
+</section>
+}
+<!-- Category Section End -->
+
+<!-- Product Section Start -->
+@if (data()?.content?.products_list_1?.product_ids?.length || 0 >= 6 &&
+data()?.content?.products_list_1?.status) {
+<section class="product-section-3">
+  <div class="container-fluid-lg">
+    <app-title [title]="data()?.content?.products_list_1?.title" [style]="'simple'" />
+    <app-theme-product
+      [productIds]="data()?.content?.products_list_1?.product_ids || []"
+      [style]="'horizontal'"
+      [slider]="true"
+      [productStyle]="'product-standard theme-plus'"
+      [boxClass]="'product-box-bg'"
+      [sliderOption]="productSlider6ItemMargin"
+    />
+  </div>
+</section>
+}
+<!-- Product Section End -->
+
+<!-- Banner Section Start -->
+@if (data()?.content?.bank_wallet_offers?.status) {
+<section class="bank-section overflow-hidden">
+  <div class="container-fluid-lg">
+    <app-title [title]="data()?.content?.bank_wallet_offers?.title" [style]="'simple'" />
+    <app-wallet-offer [offers]="data()?.content?.bank_wallet_offers?.offers || []" />
+  </div>
+</section>
+}
+<!-- Banner Section End -->
+
+<!-- Deal Section Start -->
+@if (data()?.content?.product_with_deals?.status) {
+<section class="product-section product-section-3">
+  <div class="container-fluid-lg">
+    <app-title [title]="data()?.content?.product_with_deals?.title" [style]="'simple'" />
+    <div class="row g-sm-4 g-3">
+      @if (data()?.content?.product_with_deals?.deal_of_days?.status) {
+      <div class="col-xxl-4 order-lg-2 d-xxl-block d-none">
+        <app-deal [data]="data()?.content?.product_with_deals?.deal_of_days!" />
+      </div>
+      }
+      <div
+        class="col-xxl-8 col-lg-12 order-lg-1"
+        [class]="data()?.content?.product_with_deals?.deal_of_days?.status &&
+            data()?.content?.product_with_deals?.deal_of_days?.deals?.length || 0
+            ? 'col-xxl-8 col-lg-12 order-lg-1'
+            : 'col-xxl-12 col-lg-12 order-lg-1'"
+      >
+        <app-theme-product
+          [productIds]="data()?.content?.product_with_deals?.products_list?.product_ids || []"
+          [style]="'horizontal'"
+          [productStyle]="'product-standard theme-plus'"
+          [boxClass]="'product-box-bg'"
+          [showItem]=" data()?.content?.product_with_deals?.deal_of_days?.status &&
+          data()?.content?.product_with_deals?.deal_of_days?.deals?.length || 0 ? 4 : 6"
+          [slider]="false"
+        />
+      </div>
+    </div>
+  </div>
+</section>
+}
+<!-- Deal Section End -->
+
+<!-- Offer Section Start -->
+@if (data()?.content?.full_width_banner?.status) {
+<section class="offer-section sale-banner">
+  <div class="container-fluid-lg">
+    <div class="row">
+      <div class="col-12">
+        <app-image-link
+          [image]="data()?.content?.full_width_banner"
+          [bgImage]="false"
+          [class]="'offer-box hover-effect'"
+        />
+      </div>
+    </div>
+  </div>
+</section>
+}
+<!-- Offer Section End -->
+
+<!-- Product Section Start -->
+@if (data()?.content?.products_list_2?.product_ids?.length || 0 >= 6 &&
+data()?.content?.products_list_2?.status) {
+<section class="product-section">
+  <div class="container-fluid-lg">
+    <app-title [title]="data()?.content?.products_list_2?.title" [style]="'simple'" />
+    <app-theme-product
+      [productIds]="data()?.content?.products_list_2?.product_ids || []"
+      [style]="'horizontal'"
+      [slider]="true"
+      [productStyle]="'product-standard theme-plus'"
+      [boxClass]="'product-box-bg'"
+      [sliderOption]="productSlider6ItemMargin"
+    />
+  </div>
+</section>
+}
+<!-- Product Section End -->
+
+<!-- Product Section Start -->
+@if (data()?.content?.products_list_3?.product_ids?.length || 0 >= 6 &&
+data()?.content?.products_list_3?.status) {
+<section class="product-section">
+  <div class="container-fluid-lg">
+    <app-title [title]="data()?.content?.products_list_3?.title" [style]="'simple'" />
+    <app-theme-product
+      [productIds]="data()?.content?.products_list_3?.product_ids || []"
+      [style]="'horizontal'"
+      [slider]="true"
+      [productStyle]="'product-standard theme-plus'"
+      [boxClass]="'product-box-bg'"
+      [sliderOption]="productSlider6ItemMargin"
+    />
+  </div>
+</section>
+}
+<!-- Product Section End -->
+
+<!-- Banner Section Start -->
+@if (data()?.content?.two_column_banners?.status) {
+<section class="banner-section">
+  <div class="container-fluid-lg">
+    <div class="row gy-lg-0 gy-3">
+      <div class="col-lg-6">
+        <app-image-link
+          [image]="data()?.content?.two_column_banners?.banner_1"
+          [bgImage]="false"
+          [class]="'banner-contain-3 hover-effect'"
+        />
+      </div>
+      <div class="col-lg-6">
+        <app-image-link
+          [image]="data()?.content?.two_column_banners?.banner_2"
+          [bgImage]="false"
+          [class]="'banner-contain-3 hover-effect'"
+        />
+      </div>
+    </div>
+  </div>
+</section>
+}
+<!-- Banner Section End -->
+
+<!-- Product Section Start -->
+@if (data()?.content?.products_list_4?.product_ids?.length || 0 >= 6 &&
+data()?.content?.products_list_4?.status) {
+<section class="product-section">
+  <div class="container-fluid-lg">
+    <app-title [title]="data()?.content?.products_list_4?.title" [style]="'simple'" />
+    <app-theme-product
+      [productIds]="data()?.content?.products_list_4?.product_ids || []"
+      [style]="'horizontal'"
+      [slider]="true"
+      [productStyle]="'product-standard theme-plus'"
+      [boxClass]="'product-box-bg'"
+      [sliderOption]="productSlider6ItemMargin"
+    />
+  </div>
+</section>
+}
+<!-- Product Section End -->
+
+<!-- Product Section Start -->
+@if (data()?.content?.products_list_5?.product_ids?.length || 0 >= 6 &&
+data()?.content?.products_list_5?.status) {
+<section class="product-section">
+  <div class="container-fluid-lg">
+    <app-title [title]="data()?.content?.products_list_5?.title" [style]="'simple'" />
+    <app-theme-product
+      [productIds]="data()?.content?.products_list_5?.product_ids || []"
+      [style]="'horizontal'"
+      [slider]="true"
+      [productStyle]="'product-standard theme-plus'"
+      [boxClass]="'product-box-bg'"
+      [sliderOption]="productSlider6ItemMargin"
+    />
+  </div>
+</section>
+}
+<!-- Product Section End -->
+
+<!-- Banner Section Start -->
+@if (data()?.content?.delivery_banners?.status) {
+<section class="banner-section">
+  <div class="container-fluid-lg">
+    <div class="row gy-lg-0 gy-3">
+      <div class="col-lg-8">
+        <app-image-link
+          [image]="data()?.content?.delivery_banners?.banner_1"
+          [bgImage]="false"
+          [class]="'banner-contain-3 h-100 pt-sm-5 hover-effect'"
+        />
+      </div>
+      <div class="col-lg-4">
+        <app-image-link
+          [image]="data()?.content?.delivery_banners?.banner_2"
+          [bgImage]="false"
+          [class]="'banner-contain-3 pt-lg-4 h-100 hover-effect'"
+        />
+      </div>
+    </div>
+  </div>
+</section>
+}
+<!-- Banner Section End -->
+
+<!-- Product Section Start -->
+@if (data()?.content?.products_list_6?.product_ids?.length &&
+data()?.content?.products_list_6?.status) {
+<section class="product-section">
+  <div class="container-fluid-lg">
+    <app-title [title]="data()?.content?.products_list_6?.title" [style]="'simple'" />
+    <app-theme-product
+      [productIds]="data()?.content?.products_list_6?.product_ids || []"
+      [style]="'horizontal'"
+      [slider]="true"
+      [productStyle]="'product-standard theme-plus'"
+      [boxClass]="'product-box-bg'"
+      [sliderOption]="productSlider6ItemMargin"
+    />
+  </div>
+</section>
+}
+
+<!-- Product Section Start -->
+@if (data()?.content?.products_list_7?.product_ids?.length || 0 >= 6 &&
+data()?.content?.products_list_7?.status) {
+<section class="product-section">
+  <div class="container-fluid-lg">
+    <app-title [title]="data()?.content?.products_list_7?.title" [style]="'simple'" />
+    <app-theme-product
+      [productIds]="data()?.content?.products_list_7?.product_ids || []"
+      [style]="'horizontal'"
+      [slider]="true"
+      [productStyle]="'product-standard theme-plus'"
+      [boxClass]="'product-box-bg'"
+      [sliderOption]="productSlider6ItemMargin"
+    />
+  </div>
+</section>
+}
+<!-- Product Section End -->
+
+<!-- Blog Section Start -->
+@if (data()?.content?.featured_blogs?.blog_ids?.length || 0 >= 3 &&
+data()?.content?.featured_blogs?.status) {
+<section class="section-b-space">
+  <div class="container-fluid-lg">
+    <app-title [title]="data()?.content?.featured_blogs?.title" [style]="'simple'" />
+    <app-blog
+      [blogIds]="data()?.content?.featured_blogs?.blog_ids || []"
+      [sliderOption]="customOptionsItem4"
+    />
+  </div>
+</section>
+}
+<!-- Banner Section End -->

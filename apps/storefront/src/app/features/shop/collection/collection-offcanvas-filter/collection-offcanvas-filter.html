@@ -1,0 +1,19 @@
+<section class="section-b-space shop-section filter-offcanvas">
+  <div class="container-fluid-lg">
+    <div class="row">
+      <div class="col-12">
+        <div
+          class="overlay"
+          [class.show]="attributeService.offCanvasMenu"
+          (click)="closeCanvasMenu()"
+        ></div>
+        <div class="left-box top-filter" [class.show]="attributeService.offCanvasMenu">
+          <app-collection-sidebar [filter]="filter" />
+        </div>
+      </div>
+      <div class="col-12">
+        <app-collection-products [filter]="filter()" />
+      </div>
+    </div>
+  </div>
+</section>

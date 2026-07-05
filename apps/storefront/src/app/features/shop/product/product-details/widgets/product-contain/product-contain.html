@@ -1,0 +1,137 @@
+@if ((option?.product?.encourage_order && product.encourage_order) ||
+(option?.product?.encourage_view && product.encourage_view)) {
+<div class="product-count">
+  <ul>
+    @if (option?.product?.encourage_order && product.encourage_order) {
+    <li>
+      <i class="ri-flashlight-line"></i>
+      <h6 class="lang">{{ ordersCount }} {{ 'customers_ordered' | translate }}</h6>
+    </li>
+    } @if (option?.product?.encourage_view && product.encourage_view) {
+    <li>
+      <i class="ri-eye-line"></i>
+      <h6 class="lang">{{ viewsCount }} {{ 'active_view_in_this_item' | translate }}</h6>
+    </li>
+    }
+  </ul>
+</div>
+}
+<h2 class="name">{{ selectedVariation ? selectedVariation.name : product.name }}</h2>
+<div class="price-rating">
+  <h3 class="theme-color price">
+    {{ (selectedVariation ? selectedVariation.sale_price : product.sale_price) | currencySymbol }}
+    @if (selectedVariation ? selectedVariation.discount : product.discount) {
+    <del class="text-content">
+      {{ (selectedVariation ? selectedVariation.price : product.price) | currencySymbol }}
+    </del>
+    } @if (selectedVariation ? selectedVariation.discount : product.discount) {
+    <span class="offer-top">
+      {{ (selectedVariation ? selectedVariation.discount : product.discount) }}% {{ 'off' |
+      translate }}
+    </span>
+    }
+  </h3>
+  <div class="product-rating custom-rate">
+    <ngb-rating [rate]="product.rating_count" />
+    <span class="review">{{ product.reviews_count }} {{ 'review' | translate }}</span>
+  </div>
+</div>
+@if (product.short_description) {
+<div class="product-contain">
+  <p [innerHTML]="product.short_description"></p>
+</div>
+}
+<div class="product-package">
+  @if(isBrowser) {
+  <app-variant-attributes
+    [product]="product"
+    [attributes]="product.attributes || []"
+    (selectVariation)="selectVariation($event!)"
+    [owlCar]="owlCar()"
+  />
+  }
+</div>
+@if (product.sale_starts_at && product.sale_expired_at) {
+<app-sale-timer [startDate]="product.sale_starts_at" [endDate]="product.sale_expired_at" />
+}
+<div class="note-box product-package">
+  <div class="cart_qty qty-box product-qty">
+    <div class="input-group">
+      <app-button
+        [class]="'btn qty-left-minus'"
+        [id]="'add-to-cart'+product.id"
+        [spinner]="false"
+        (click)="updateQuantity(-1)"
+      >
+        <i class="ri-subtract-fill"></i>
+      </app-button>
+      <input
+        class="form-control input-number qty-input"
+        type="text"
+        name="quantity"
+        value="{{productQty}}"
+        readonly
+      />
+      <app-button
+        [class]="'btn qty-left-minus'"
+        [id]="'qty-left-minus'+product.id"
+        [spinner]="false"
+        (click)="updateQuantity(1)"
+      >
+        <i class="ri-add-line"></i>
+      </app-button>
+    </div>
+  </div>
+  <div class="wishlist-btn-group">
+    <app-button
+      [class]="'wishlist-button btn'"
+      [id]="'wishlist_btn'"
+      [spinner]="false"
+      (click)="addToWishlist(product.id)"
+    >
+      <i class="ri-heart-line"></i>
+    </app-button>
+    <app-button
+      [class]="'wishlist-button btn'"
+      [id]="'compare_btn'"
+      [spinner]="false"
+      (click)="addToCompare(product.id)"
+    >
+      <i class="ri-refresh-line"></i>
+    </app-button>
+  </div>
+</div>
+<div class="dynamic-checkout">
+  <app-button
+    [class]="'btn btn-md bg-theme'"
+    [id]="'buynowbtn'+product.id"
+    [disabled]="(selectedVariation && selectedVariation.stock_status === 'in_stock' || product.stock_status === 'in_stock'
+      && product.type === 'simple') ? false : true"
+    (click)="(selectedVariation && selectedVariation.stock_status === 'in_stock' || product.stock_status === 'in_stock'
+      && product.type === 'simple') && buyNow(product)"
+  >
+    {{ 'buy_now' | translate }}
+  </app-button>
+  @if ((selectedVariation && selectedVariation.stock_status === 'in_stock' || product.stock_status
+  === 'in_stock' && product.type === 'simple')) {
+  <app-button
+    [id]="'addcartbtnVariation'+product.id"
+    [class]="'btn btn-md border-theme-color scroll-button'"
+    (click)="addToCart(product)"
+  >
+    <i class="ri-shopping-cart-line me-1"></i> {{ 'add_to_cart' | translate }}
+  </app-button>
+  } @else {
+  <app-button
+    [class]="'btn btn-md border-theme-color scroll-button disabled'"
+    [id]="'soldoutbtnproductcontain'"
+    [spinner]="false"
+    [disabled]="true"
+  >
+    @if (selectedVariation && selectedVariation.stock_status === 'in_stock') {
+    <i class="ri-shopping-cart-line me-1"></i>
+    } {{ ((selectedVariation && selectedVariation.stock_status === 'out_of_stock' ||
+    product.stock_status === 'out_of_stock' ) ? 'sold_out' : 'add_to_cart') | translate }}
+  </app-button>
+  }
+</div>

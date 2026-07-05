@@ -1,0 +1,18 @@
+<div class="footer-logo-contain">
+  @if (data()?.footer?.footer_about) {
+  <p>{{ data()?.footer?.footer_about }}</p>
+  }
+  <ul class="address">
+    @if (data()?.footer?.about_address) {
+    <li>
+      <i class="ri-home-line"></i>
+      <a href="https://www.google.com/maps" target="_blank">{{ data()?.footer?.about_address }}</a>
+    </li>
+    } @if (data()?.footer?.about_email) {
+    <li>
+      <i class="ri-mail-line"></i>
+      <a href="mailto:{{ data()?.footer?.about_email }}">{{ data()?.footer?.about_email }}</a>
+    </li>
+    }
+  </ul>
+</div>

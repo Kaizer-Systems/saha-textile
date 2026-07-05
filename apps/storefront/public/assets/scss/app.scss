@@ -1,0 +1,19 @@
+// @import './vendors/bootstrap/bootstrap.scss';
+@import 'node_modules/bootstrap/dist/css/bootstrap.min.css';
+@import 'node_modules/ngx-toastr/toastr.css';
+@import 'ngx-owl-carousel-o/lib/styles/scss/owl.carousel';
+@import 'ngx-owl-carousel-o/lib/styles/scss/owl.theme.default';
+
+@import 'node_modules/swiper/swiper.css';
+
+@import 'utils/variables';
+@import 'style';
+
+// swiper
+@import 'swiper/swiper.scss';
+@import 'swiper/swiper-bundle.css';
+
+.dark {
+  @import 'utils/dark_variables';
+  @import 'style';
+}

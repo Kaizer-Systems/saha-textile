@@ -1,0 +1,11 @@
+<div class="theme-logo">
+  <a [routerLink]="['/']">
+    @if (footer() && footer()?.footer_logo) {
+    <img [src]="footer()?.footer_logo" class="img-fluid" alt="logo" />
+    } @else { @if (data() && data()?.general) {
+    <h2 class="f-w-600">{{ data()?.general!.site_title.split(' ')[0] }}</h2>
+    } @else {
+    <h2 class="f-w-600">{{ 'Logo Here' }}</h2>
+    } }
+  </a>
+</div>

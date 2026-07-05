@@ -1,0 +1,22 @@
+<app-collection-sort
+  [filter]="filter()"
+  [gridCol]="gridCol()"
+  (setGridClass)="setGridClass($event)"
+/>
+<div [class]="gridClass">
+  @if (productService.skeletonLoader) { @for (item of skeletonItems; track item) {
+  <app-skeleton-product-box />
+  } } @else { @for (product of (product$ | async)?.data; track product) {
+  <app-product-box [product]="product" [class]="'product-box-3'" [style]="'horizontal'" />
+  } }
+</div>
+@if (!(product$ | async)?.data?.length && !productService.skeletonLoader) {
+<app-no-data
+  [class]="'no-data-added collection-no-data'"
+  [image]="'assets/svg/no-product.svg'"
+  [text]="'Sorry! Couldn\'t find the products you were looking For!'"
+  [description]="'Please check if you have misspelt something or try searching with other way.'"
+/>
+} @if ((product$ | async)?.data?.length && !productService.skeletonLoader) {
+<app-collection-paginate [filter]="filter()" />
+}

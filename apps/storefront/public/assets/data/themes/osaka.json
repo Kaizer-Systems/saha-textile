@@ -1,0 +1,215 @@
+{
+    "id": 3,
+    "content": {
+      "home_banner": {
+        "status": true,
+        "main_banner": {
+          "image_url": "assets/images/data/themes/osaka/1.jpg",
+          "redirect_link": {
+            "link": "vegetables-fruits",
+            "link_type": "collection"
+          }
+        },
+        "sub_banner_1": {
+          "image_url": "assets/images/data/themes/osaka/2.jpg",
+          "redirect_link": {
+            "link": "vegetables-fruits",
+            "link_type": "collection",
+            "product_ids": "collection"
+          }
+        }
+      },
+      "categories_icon_list": {
+        "title": "Browse By Categories",
+        "description": "Top Categories Of The Week",
+        "image_url": "assets/images/data/themes/osaka/3.png",
+        "category_ids": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          10
+        ],
+        "status": true
+      },
+      "coupons": {
+        "image_url": "assets/images/data/themes/osaka/4.jpg",
+        "redirect_link": {
+          "link": "vegetables-fruits",
+          "link_type": "collection"
+        },
+        "status": true
+      },
+      "products_list_1": {
+        "title": "Fruits and Vegetables",
+        "description": "Farm-Fresh Goodness: A Variety of Fruits and Vegetables Awaits",
+        "status": true,
+        "product_ids": [
+          19,
+          15,
+          8,
+          5,
+          6,
+          7
+        ]
+      },
+      "offer_banner": {
+        "image_url": "assets/images/data/themes/osaka/5.jpg",
+        "redirect_link": {
+          "link": "vegetables-fruits",
+          "link_type": "collection"
+        },
+        "status": true
+      },
+      "products_list_2": {
+        "title": "Breakfast and Dairy",
+        "description": "Morning Delights: Breakfast and Dairy Choices to Start Your Day",
+        "status": true,
+        "product_ids": [
+          45,
+          30,
+          21,
+          19,
+          8,
+          44,
+          41,
+          38,
+          36
+        ]
+      },
+      "product_bundles": {
+        "status": true,
+        "bundles": [
+          {
+            "title": "Hot Deals on New Items",
+            "sub_title": "Daily Essentials Eggs & Dairy",
+            "image_url": "assets/images/data/themes/osaka/6.jpg",
+            "redirect_link": {
+              "link": "http://localhost:4200/theme/osaka",
+              "link_type": "external_url",
+              "product_ids": null
+            },
+            "status": true
+          },
+          {
+            "title": "Organic Meat Prepared",
+            "sub_title": "Delivered to Your Home",
+            "image_url": "assets/images/data/themes/osaka/6.jpg",
+            "redirect_link": {
+              "link": null,
+              "link_type": null,
+              "product_ids": null
+            },
+            "status": true
+          },
+          {
+            "title": "Buy More & Save More",
+            "sub_title": "Fresh Vegetables & Fruits",
+            "image_url": "assets/images/data/themes/osaka/6.jpg",
+            "redirect_link": {
+              "link": null,
+              "link_type": null,
+              "product_ids": null
+            },
+            "status": true
+          },
+          {
+            "title": "Fresh Fruits on Go",
+            "sub_title": "Fresh Vegetables & Fruits",
+            "image_url": "assets/images/data/themes/osaka/6.jpg",
+            "redirect_link": {
+              "link": null,
+              "link_type": null,
+              "product_ids": null
+            },
+            "status": true
+          }
+        ]
+      },
+      "slider_products": {
+        "status": true,
+        "product_slider_1": {
+          "title": "Top Selling",
+          "status": true,
+          "product_ids": [
+            36,
+            35,
+            34
+          ]
+        },
+        "product_slider_2": {
+          "title": "Trending Products",
+          "status": true,
+          "product_ids": [
+            32,
+            33,
+            38
+          ]
+        },
+        "product_slider_3": {
+          "title": "Recently added",
+          "status": true,
+          "product_ids": [
+            44,
+            43,
+            42
+          ]
+        },
+        "product_slider_4": {
+          "title": "Top Rated",
+          "status": true,
+          "product_ids": [
+            30,
+            21,
+            45
+          ]
+        }
+      },
+      "featured_blogs": {
+        "title": "Featured Blog",
+        "description": "Uncover Intriguing Highlights in Our Featured Blog",
+        "status": true,
+        "blog_ids": [
+          24,
+          23,
+          22,
+          21,
+          20,
+          19
+        ]
+      },
+      "news_letter": {
+        "title": "Join Our Newsletter And Get...",
+        "sub_title": "$20 discount for your first order",
+        "image_url": "assets/images/data/newsletter.jpg",
+        "status": true
+      },
+      "products_ids": [
+        "collection",
+        19,
+        15,
+        8,
+        5,
+        6,
+        7,
+        45,
+        30,
+        21,
+        44,
+        41,
+        38,
+        36,
+        35,
+        34,
+        32,
+        33,
+        43,
+        42
+      ]
+    },
+    "slug": "osaka"
+  }

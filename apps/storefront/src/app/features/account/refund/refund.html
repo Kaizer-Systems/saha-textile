@@ -1,0 +1,50 @@
+<div class="title-header">
+  <div class="d-flex align-items-center">
+    <h5>{{ 'refund' | translate }}</h5>
+  </div>
+</div>
+@if ((refund$ | async)?.data?.length) {
+<div class="total-box mt-0">
+  <div class="wallet-table mt-0 refund-table">
+    <table>
+      <tbody>
+        <tr>
+          <th>{{ 'no' | translate }}</th>
+          <th>{{ 'order' | translate }}</th>
+          <th>{{ 'status' | translate }}</th>
+          <th>{{ 'reason' | translate }}</th>
+          <th>{{ 'created_at' | translate }}</th>
+        </tr>
+        @for (refund of (refund$ | async)?.data ; track refund ; let i = $index) {
+        <tr>
+          <td>{{ i + 1 }}</td>
+          <td><span class="fw-bolder">#{{ refund?.order?.order_number }}</span></td>
+          <td>
+            <div class="status-{{refund.status}}"><span>{{ refund.status | titleCase }}</span></div>
+          </td>
+          <td>{{ refund?.reason }}</td>
+          <td>{{ refund?.created_at | date: 'dd MMM yyyy' }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  @if ((refund$ | async)?.data?.length) {
+  <nav class="custome-pagination">
+    <app-pagination
+      [total]="(refund$ | async)?.total || 0"
+      [currentPage]="filter['page']"
+      [pageSize]="filter['paginate']"
+      (setPage)="setPaginate($event)"
+    />
+  </nav>
+  }
+</div>
+} @if (!(refund$ | async)?.data?.length) {
+<app-no-data
+  [class]="'no-data-added'"
+  [image]="'assets/svg/empty-items.svg'"
+  [text]="'No Refunds Found'"
+  [description]="'You have no refunds processed yet'"
+/>
+}

@@ -1,0 +1,1082 @@
+[
+	{
+		"id": 1,
+		"name": "users",
+		"sequence": "1",
+		"created_at": "2023-08-24T00:16:00.000000Z",
+		"updated_at": "2023-08-24T00:16:00.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 1,
+				"name": "index",
+				"module_id": "1",
+				"permission_id": "1",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 2,
+				"name": "create",
+				"module_id": "1",
+				"permission_id": "2",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 3,
+				"name": "edit",
+				"module_id": "1",
+				"permission_id": "3",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 4,
+				"name": "destroy",
+				"module_id": "1",
+				"permission_id": "4",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 2,
+		"name": "roles",
+		"sequence": "2",
+		"created_at": "2023-08-24T00:16:00.000000Z",
+		"updated_at": "2023-08-24T00:16:00.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 5,
+				"name": "index",
+				"module_id": "2",
+				"permission_id": "5",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 6,
+				"name": "create",
+				"module_id": "2",
+				"permission_id": "6",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 7,
+				"name": "edit",
+				"module_id": "2",
+				"permission_id": "7",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 8,
+				"name": "destroy",
+				"module_id": "2",
+				"permission_id": "8",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 3,
+		"name": "products",
+		"sequence": "3",
+		"created_at": "2023-08-24T00:16:00.000000Z",
+		"updated_at": "2023-08-24T00:16:00.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 9,
+				"name": "index",
+				"module_id": "3",
+				"permission_id": "9",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 10,
+				"name": "create",
+				"module_id": "3",
+				"permission_id": "10",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 11,
+				"name": "edit",
+				"module_id": "3",
+				"permission_id": "11",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 12,
+				"name": "destroy",
+				"module_id": "3",
+				"permission_id": "12",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 4,
+		"name": "attributes",
+		"sequence": "4",
+		"created_at": "2023-08-24T00:16:00.000000Z",
+		"updated_at": "2023-08-24T00:16:00.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 13,
+				"name": "index",
+				"module_id": "4",
+				"permission_id": "13",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 14,
+				"name": "create",
+				"module_id": "4",
+				"permission_id": "14",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 15,
+				"name": "edit",
+				"module_id": "4",
+				"permission_id": "15",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 16,
+				"name": "destroy",
+				"module_id": "4",
+				"permission_id": "16",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 5,
+		"name": "categories",
+		"sequence": "5",
+		"created_at": "2023-08-24T00:16:00.000000Z",
+		"updated_at": "2023-08-24T00:16:00.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 17,
+				"name": "index",
+				"module_id": "5",
+				"permission_id": "17",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 18,
+				"name": "create",
+				"module_id": "5",
+				"permission_id": "18",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 19,
+				"name": "edit",
+				"module_id": "5",
+				"permission_id": "19",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 20,
+				"name": "destroy",
+				"module_id": "5",
+				"permission_id": "20",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 6,
+		"name": "tags",
+		"sequence": "6",
+		"created_at": "2023-08-24T00:16:00.000000Z",
+		"updated_at": "2023-08-24T00:16:00.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 21,
+				"name": "index",
+				"module_id": "6",
+				"permission_id": "21",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 22,
+				"name": "create",
+				"module_id": "6",
+				"permission_id": "22",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 23,
+				"name": "edit",
+				"module_id": "6",
+				"permission_id": "23",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 24,
+				"name": "destroy",
+				"module_id": "6",
+				"permission_id": "24",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 7,
+		"name": "stores",
+		"sequence": "7",
+		"created_at": "2023-08-24T00:16:00.000000Z",
+		"updated_at": "2023-08-24T00:16:00.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 25,
+				"name": "index",
+				"module_id": "7",
+				"permission_id": "25",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 26,
+				"name": "create",
+				"module_id": "7",
+				"permission_id": "26",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 27,
+				"name": "edit",
+				"module_id": "7",
+				"permission_id": "27",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 28,
+				"name": "destroy",
+				"module_id": "7",
+				"permission_id": "28",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 8,
+		"name": "vendor_wallets",
+		"sequence": "8",
+		"created_at": "2023-08-24T00:16:00.000000Z",
+		"updated_at": "2023-08-24T00:16:00.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 29,
+				"name": "index",
+				"module_id": "8",
+				"permission_id": "29",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 30,
+				"name": "credit",
+				"module_id": "8",
+				"permission_id": "30",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 31,
+				"name": "debit",
+				"module_id": "8",
+				"permission_id": "31",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 9,
+		"name": "commission_histories",
+		"sequence": "9",
+		"created_at": "2023-08-24T00:16:00.000000Z",
+		"updated_at": "2023-08-24T00:16:00.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 32,
+				"name": "index",
+				"module_id": "9",
+				"permission_id": "32",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 10,
+		"name": "withdraw_requests",
+		"sequence": "10",
+		"created_at": "2023-08-24T00:16:00.000000Z",
+		"updated_at": "2023-08-24T00:16:00.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 33,
+				"name": "index",
+				"module_id": "10",
+				"permission_id": "33",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 34,
+				"name": "create",
+				"module_id": "10",
+				"permission_id": "34",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 35,
+				"name": "action",
+				"module_id": "10",
+				"permission_id": "35",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 11,
+		"name": "orders",
+		"sequence": "11",
+		"created_at": "2023-08-24T00:16:00.000000Z",
+		"updated_at": "2023-08-24T00:16:00.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 36,
+				"name": "index",
+				"module_id": "11",
+				"permission_id": "36",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 37,
+				"name": "create",
+				"module_id": "11",
+				"permission_id": "37",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 38,
+				"name": "edit",
+				"module_id": "11",
+				"permission_id": "38",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 12,
+		"name": "attachments",
+		"sequence": "12",
+		"created_at": "2023-08-24T00:16:00.000000Z",
+		"updated_at": "2023-08-24T00:16:00.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 39,
+				"name": "index",
+				"module_id": "12",
+				"permission_id": "39",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 40,
+				"name": "create",
+				"module_id": "12",
+				"permission_id": "40",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 41,
+				"name": "destroy",
+				"module_id": "12",
+				"permission_id": "41",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 13,
+		"name": "blogs",
+		"sequence": "13",
+		"created_at": "2023-08-24T00:16:00.000000Z",
+		"updated_at": "2023-08-24T00:16:00.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 42,
+				"name": "index",
+				"module_id": "13",
+				"permission_id": "42",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 43,
+				"name": "create",
+				"module_id": "13",
+				"permission_id": "43",
+				"created_at": "2023-08-24T00:16:00.000000Z",
+				"updated_at": "2023-08-24T00:16:00.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 44,
+				"name": "edit",
+				"module_id": "13",
+				"permission_id": "44",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 45,
+				"name": "destroy",
+				"module_id": "13",
+				"permission_id": "45",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 14,
+		"name": "pages",
+		"sequence": "14",
+		"created_at": "2023-08-24T00:16:01.000000Z",
+		"updated_at": "2023-08-24T00:16:01.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 46,
+				"name": "index",
+				"module_id": "14",
+				"permission_id": "46",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 47,
+				"name": "create",
+				"module_id": "14",
+				"permission_id": "47",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 48,
+				"name": "edit",
+				"module_id": "14",
+				"permission_id": "48",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 49,
+				"name": "destroy",
+				"module_id": "14",
+				"permission_id": "49",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 15,
+		"name": "taxes",
+		"sequence": "15",
+		"created_at": "2023-08-24T00:16:01.000000Z",
+		"updated_at": "2023-08-24T00:16:01.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 50,
+				"name": "index",
+				"module_id": "15",
+				"permission_id": "50",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 51,
+				"name": "create",
+				"module_id": "15",
+				"permission_id": "51",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 52,
+				"name": "edit",
+				"module_id": "15",
+				"permission_id": "52",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 53,
+				"name": "destroy",
+				"module_id": "15",
+				"permission_id": "53",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 16,
+		"name": "shippings",
+		"sequence": "16",
+		"created_at": "2023-08-24T00:16:01.000000Z",
+		"updated_at": "2023-08-24T00:16:01.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 54,
+				"name": "index",
+				"module_id": "16",
+				"permission_id": "54",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 55,
+				"name": "create",
+				"module_id": "16",
+				"permission_id": "55",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 56,
+				"name": "edit",
+				"module_id": "16",
+				"permission_id": "56",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 57,
+				"name": "destroy",
+				"module_id": "16",
+				"permission_id": "57",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 17,
+		"name": "coupons",
+		"sequence": "17",
+		"created_at": "2023-08-24T00:16:01.000000Z",
+		"updated_at": "2023-08-24T00:16:01.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 58,
+				"name": "index",
+				"module_id": "17",
+				"permission_id": "58",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 59,
+				"name": "create",
+				"module_id": "17",
+				"permission_id": "59",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 60,
+				"name": "edit",
+				"module_id": "17",
+				"permission_id": "60",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 61,
+				"name": "destroy",
+				"module_id": "17",
+				"permission_id": "61",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 18,
+		"name": "currencies",
+		"sequence": "18",
+		"created_at": "2023-08-24T00:16:01.000000Z",
+		"updated_at": "2023-08-24T00:16:01.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 62,
+				"name": "index",
+				"module_id": "18",
+				"permission_id": "62",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 63,
+				"name": "create",
+				"module_id": "18",
+				"permission_id": "63",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 64,
+				"name": "edit",
+				"module_id": "18",
+				"permission_id": "64",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 65,
+				"name": "destroy",
+				"module_id": "18",
+				"permission_id": "65",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 19,
+		"name": "points",
+		"sequence": "19",
+		"created_at": "2023-08-24T00:16:01.000000Z",
+		"updated_at": "2023-08-24T00:16:01.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 66,
+				"name": "index",
+				"module_id": "19",
+				"permission_id": "66",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 67,
+				"name": "credit",
+				"module_id": "19",
+				"permission_id": "67",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 68,
+				"name": "debit",
+				"module_id": "19",
+				"permission_id": "68",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 20,
+		"name": "wallets",
+		"sequence": "20",
+		"created_at": "2023-08-24T00:16:01.000000Z",
+		"updated_at": "2023-08-24T00:16:01.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 69,
+				"name": "index",
+				"module_id": "20",
+				"permission_id": "69",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 70,
+				"name": "credit",
+				"module_id": "20",
+				"permission_id": "70",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 71,
+				"name": "debit",
+				"module_id": "20",
+				"permission_id": "71",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 21,
+		"name": "refunds",
+		"sequence": "21",
+		"created_at": "2023-08-24T00:16:01.000000Z",
+		"updated_at": "2023-08-24T00:16:01.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 72,
+				"name": "index",
+				"module_id": "21",
+				"permission_id": "72",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 73,
+				"name": "create",
+				"module_id": "21",
+				"permission_id": "73",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 74,
+				"name": "action",
+				"module_id": "21",
+				"permission_id": "74",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 22,
+		"name": "reviews",
+		"sequence": "22",
+		"created_at": "2023-08-24T00:16:01.000000Z",
+		"updated_at": "2023-08-24T00:16:01.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 75,
+				"name": "index",
+				"module_id": "22",
+				"permission_id": "75",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 76,
+				"name": "create",
+				"module_id": "22",
+				"permission_id": "76",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 23,
+		"name": "faqs",
+		"sequence": "23",
+		"created_at": "2023-08-24T00:16:01.000000Z",
+		"updated_at": "2023-08-24T00:16:01.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 77,
+				"name": "index",
+				"module_id": "23",
+				"permission_id": "77",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 78,
+				"name": "create",
+				"module_id": "23",
+				"permission_id": "78",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 79,
+				"name": "edit",
+				"module_id": "23",
+				"permission_id": "79",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 80,
+				"name": "destroy",
+				"module_id": "23",
+				"permission_id": "80",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 24,
+		"name": "themes",
+		"sequence": "24",
+		"created_at": "2023-08-24T00:16:01.000000Z",
+		"updated_at": "2023-08-24T00:16:01.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 81,
+				"name": "index",
+				"module_id": "24",
+				"permission_id": "81",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 82,
+				"name": "edit",
+				"module_id": "24",
+				"permission_id": "82",
+				"created_at": "2023-08-24T00:16:02.000000Z",
+				"updated_at": "2023-08-24T00:16:02.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 25,
+		"name": "theme_options",
+		"sequence": "25",
+		"created_at": "2023-08-24T00:16:02.000000Z",
+		"updated_at": "2023-08-24T00:16:02.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 83,
+				"name": "index",
+				"module_id": "25",
+				"permission_id": "83",
+				"created_at": "2023-08-24T00:16:02.000000Z",
+				"updated_at": "2023-08-24T00:16:02.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 84,
+				"name": "edit",
+				"module_id": "25",
+				"permission_id": "84",
+				"created_at": "2023-08-24T00:16:02.000000Z",
+				"updated_at": "2023-08-24T00:16:02.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 26,
+		"name": "settings",
+		"sequence": "26",
+		"created_at": "2023-08-24T00:16:02.000000Z",
+		"updated_at": "2023-08-24T00:16:02.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 85,
+				"name": "index",
+				"module_id": "26",
+				"permission_id": "85",
+				"created_at": "2023-08-24T00:16:02.000000Z",
+				"updated_at": "2023-08-24T00:16:02.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 86,
+				"name": "edit",
+				"module_id": "26",
+				"permission_id": "86",
+				"created_at": "2023-08-24T00:16:02.000000Z",
+				"updated_at": "2023-08-24T00:16:02.000000Z",
+				"deleted_at": null
+			}
+		]
+	},
+	{
+		"id": 27,
+		"name": "Question_Answer",
+		"sequence": "27",
+		"created_at": "2023-08-24T00:16:02.000000Z",
+		"updated_at": "2023-08-24T00:16:02.000000Z",
+		"deleted_at": null,
+		"module_permissions": [
+			{
+				"id": 87,
+				"name": "index",
+				"module_id": "27",
+				"permission_id": "87",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 88,
+				"name": "create",
+				"module_id": "27",
+				"permission_id": "88",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 89,
+				"name": "edit",
+				"module_id": "27",
+				"permission_id": "89",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			},
+			{
+				"id": 90,
+				"name": "destroy",
+				"module_id": "27",
+				"permission_id": "90",
+				"created_at": "2023-08-24T00:16:01.000000Z",
+				"updated_at": "2023-08-24T00:16:01.000000Z",
+				"deleted_at": null
+			}
+		]
+	}
+]

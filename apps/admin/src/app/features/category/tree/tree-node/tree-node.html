@@ -1,0 +1,51 @@
+<li
+	class="cursor-pointer"
+	[class.inside-ul]="node()[recursionKey()] && node()[recursionKey()].length"
+>
+	<div>
+		<i
+			class="tree-icon file-icon"
+			role="presentation"
+			(click)="showChildrenNode = !showChildrenNode"
+		></i>
+		<span
+			[class]="node().id === id ? 'active' : ''"
+			[class.disabled]="node().status !== '1'"
+		>
+			{{ node()[displayKey()] || node()?.name}}
+		</span>
+		<div class="tree-options">
+			<a
+				href="javascript:void(0)"
+				*hasPermission="'category.edit'"
+				[routerLink]="[node().type === 'post' ? '/blog/category/edit' : '/category/edit', node()?.id]"
+			>
+				<i class="ri-pencil-line text-success"></i>
+			</a>
+			<a
+				href="javascript:void(0)"
+				*hasPermission="'category.destroy'"
+				(click)="DeleteModal().openModal('delete', node())"
+			>
+				<i class="ri-delete-bin-7-line text-danger"></i>
+			</a>
+		</div>
+	</div>
+	@if (node()[recursionKey()] && node()[recursionKey()].length && showChildrenNode) {
+	<ul>
+		@for (node of node()[recursionKey()]; track node.id) {
+		<app-tree-node
+			[node]="node"
+			[displayKey]="displayKey()"
+			[recursionKey]="recursionKey()"
+		/>
+		}
+	</ul>
+	}
+</li>
+
+<!-- Delete Modal -->
+<app-delete-modal
+	#deleteModal
+	(deleteItem)="delete($event.actionToPerform,$event.data)"
+/>

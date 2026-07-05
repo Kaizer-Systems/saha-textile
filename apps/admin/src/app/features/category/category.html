@@ -1,0 +1,37 @@
+<div class="row m-0">
+	<div class="col-xl-4 p-0">
+		<app-page-wrapper
+			[gridClass]="'col-sm-12'"
+			[title]="'categories'"
+		>
+			<div
+				button
+				*hasPermission="'category.create'"
+			>
+				@if (type() === 'edit') {
+				<a
+					[routerLink]="[categoryType() === 'post' ? '/blog/category' :'/category']"
+					class="align-items-center btn btn-theme d-flex"
+				>
+					<i class="ri-add-line"></i>
+					{{ 'create' | translate }}
+				</a>
+				}
+			</div>
+			<app-tree
+				[data]="(category$ | async)?.data"
+				[recursionKey]="'subcategories'"
+				[type]="type()"
+				[categoryType]="categoryType()"
+			/>
+		</app-page-wrapper>
+	</div>
+	<div class="col-xl-8 p-0">
+		<app-form-category
+			[categories]="(category$ | async)?.data"
+			[type]="type()"
+			[categoryType]="categoryType()"
+			*hasPermission="'category.'+type()"
+		/>
+	</div>
+</div>

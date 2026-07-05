@@ -1,0 +1,92 @@
+<form
+	class="theme-form theme-form-2 mega-form"
+	[formGroup]="form"
+	(ngSubmit)="submit()"
+>
+	<app-form-fields
+		[label]="'title'"
+		[for]="'title'"
+		[required]="true"
+	>
+		<input
+			class="form-control"
+			type="text"
+			placeholder="{{ 'enter_title' | translate }}"
+			name="title"
+			formControlName="title"
+		/>
+		@if (form.controls['title'].touched && form.controls['title'].errors?.['required']) {
+		<div class="invalid-feedback">{{ 'title_is_required' | translate }}</div>
+		}
+	</app-form-fields>
+	<app-form-fields
+		[label]="'content'"
+		[for]="'content'"
+		[required]="false"
+	>
+		<div class="custom-editor">
+			@if(isBrowser) {
+			<ngx-editor-menu [editor]="editor" />
+			<ngx-editor
+				[editor]="editor"
+				[ngModel]="html"
+				[disabled]="false"
+				[placeholder]="'Type here...'"
+				formControlName="content"
+			/>
+			}
+		</div>
+	</app-form-fields>
+	<app-form-fields
+		[label]="'meta_title'"
+		[for]="'metatitle'"
+		[required]="false"
+	>
+		<input
+			class="form-control"
+			type="text"
+			placeholder="{{'enter_meta_title' | translate }}"
+			formControlName="meta_title"
+		/>
+	</app-form-fields>
+	<app-form-fields
+		[label]="'meta_description'"
+		[for]="'desc'"
+		[required]="false"
+	>
+		<textarea
+			class="form-control"
+			placeholder="{{ 'enter_meta_description' | translate }}"
+			formControlName="meta_description"
+			rows="3"
+		></textarea>
+	</app-form-fields>
+	<app-form-fields
+		[label]="'meta_image'"
+		[for]="'meta_image'"
+		[required]="false"
+	>
+		<app-image-upload
+			[multipleImage]="false"
+			[image]="page?.page_meta_image"
+			(selectedFiles)="selectMetaImage($event)"
+		/>
+	</app-form-fields>
+	<app-form-fields
+		[label]="'Status'"
+		[for]="'status'"
+		[required]="false"
+	>
+		<div class="form-check form-switch ps-0">
+			<label class="switch">
+				<input
+					type="checkbox"
+					id="status"
+					formControlName="status"
+				/>
+				<span class="switch-state"></span>
+			</label>
+		</div>
+	</app-form-fields>
+	<app-button [id]="'page_btn'">{{ (type() === 'create' ? 'save_page' : 'update_page') | translate }}</app-button>
+</form>

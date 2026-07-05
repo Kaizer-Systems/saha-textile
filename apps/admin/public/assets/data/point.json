@@ -1,0 +1,33 @@
+{
+	"id": 7,
+	"consumer_id": 23,
+	"balance": 114.96,
+	"transactions": {
+		"current_page": 1,
+		"data": [
+			{
+				"id": 19,
+				"wallet_id": null,
+				"order_id": null,
+				"point_id": 7,
+				"amount": 14.96,
+				"type": "credit",
+				"detail": "Reward Points for placing an order.",
+				"from": 23,
+				"created_at": "2023-09-29T11:59:16.000000Z"
+			},
+			{
+				"id": 5,
+				"wallet_id": null,
+				"order_id": null,
+				"point_id": 7,
+				"amount": 100,
+				"type": "credit",
+				"detail": "Welcome! Bonus credited.",
+				"from": 1,
+				"created_at": "2023-09-29T06:15:30.000000Z"
+			}
+		],
+		"total": 2
+	}
+}

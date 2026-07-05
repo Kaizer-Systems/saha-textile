@@ -1,0 +1,34 @@
+<app-breadcrumb [breadcrumb]="breadcrumb" />
+<section class="wishlist-section section-b-space">
+  <div class="container-fluid-lg">
+    @if (wishlistService.skeletonLoader) {
+    <div class="row g-sm-3 g-2">
+      @for (item of skeletonItems; track item) {
+      <div class="col-xxl-2 col-lg-3 col-md-4 col-6 product-box-contain">
+        <app-skeleton-product-box />
+      </div>
+      }
+    </div>
+    } @else {
+    <div class="row g-sm-3 g-2">
+      @for (product of (wishlistItems$ | async)?.data; track product) {
+      <div class="col-xxl-2 col-lg-3 col-md-4 col-6 product-box-contain">
+        <app-product-box
+          [product]="product"
+          [close]="true"
+          [class]="'product-box-3'"
+          [style]="'horizontal'"
+        />
+      </div>
+      }
+    </div>
+    } @if (!(wishlistItems$ | async)?.data?.length && !wishlistService.skeletonLoader) {
+    <app-no-data
+      [class]="'no-data-added'"
+      [image]="'assets/svg/empty-items.svg'"
+      [text]="'No Items Added'"
+      [description]="'It appears that nothing has been added to your wishlist. Explore categories if you want to.'"
+    />
+    }
+  </div>
+</section>

@@ -1,0 +1,34 @@
+@if (product()?.social_share && option()?.product?.social_share) {
+<div class="share-option">
+  <div class="product-title mt-0">
+    <h4>{{ 'share_it' | translate }}</h4>
+  </div>
+  <ul class="product-social">
+    <li>
+      <a href="javascript:void(0)" (click)="shareOnFacebook(product()!.slug)"
+        ><i class="ri-facebook-fill"></i
+      ></a>
+    </li>
+    <li>
+      <a href="javascript:void(0)" (click)="shareOnTwitter(product()!.slug)"
+        ><i class="ri-twitter-fill"></i
+      ></a>
+    </li>
+    <li>
+      <a href="javascript:void(0)" (click)="shareOnLinkedIn(product()!.slug)"
+        ><i class="ri-linkedin-fill"></i
+      ></a>
+    </li>
+    <li>
+      <a href="javascript:void(0)" (click)="shareOnWhatsApp(product()!.slug)"
+        ><i class="ri-whatsapp-fill"></i
+      ></a>
+    </li>
+    <li>
+      <a href="javascript:void(0)" (click)="shareViaEmail(product()!.slug)"
+        ><i class="ri-mail-fill"></i
+      ></a>
+    </li>
+  </ul>
+</div>
+}

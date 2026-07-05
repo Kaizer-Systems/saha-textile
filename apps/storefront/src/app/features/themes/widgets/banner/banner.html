@@ -1,0 +1,36 @@
+<!-- Banner Horizontal Style-->
+@if (banners().length && style() === 'horizontal') {
+<div class="container-fluid-lg">
+  <div class="banner-slider">
+    <owl-carousel-o [options]="bannerSlider">
+      @for (banner of banners(); track banner) {
+      <ng-container carouselSlide>
+        @if (banner?.status) {
+        <ng-template carouselSlide>
+          <a href="#">
+            <div class="banner-contain hover-effect">
+              <app-image-link [class]="'banner-contain'" [image]="banner" [bgImage]="false" />
+            </div>
+          </a>
+        </ng-template>
+        }
+      </ng-container>
+      }
+    </owl-carousel-o>
+  </div>
+</div>
+}
+<!-- Banner Vertical Style-->
+@if (banners()?.image_url && style() === 'vertical') {
+<div [class]="class()">
+  <div class="home-contain hover-effect">
+    <app-image-link [class]="'banner-contain'" [image]="banners()" [bgImage]="false" />
+  </div>
+</div>
+}
+<!-- Banner Full Width Style-->
+@if (banners()?.image_url && style() === 'full_width') {
+<div>
+  <app-image-link [class]="'banner-contain'" [image]="banners()" [bgImage]="false" />
+</div>
+}

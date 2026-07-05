@@ -1,0 +1,24 @@
+@if (attribute()?.attribute_values?.length) {
+<ul class="category-list custom-padding custom-height">
+  @for (attribute_value of attribute()?.attribute_values; track attribute_value) {
+  <li>
+    <div class="form-check ps-0 m-0 category-list-box">
+      <input
+        class="checkbox_animated"
+        type="checkbox"
+        id="attribute-{{attribute_value.id}}"
+        [value]="attribute_value.slug"
+        [checked]="checked(attribute_value.slug!)"
+        (change)="applyFilter($event)"
+      />
+      <label class="form-check-label color-label-box" for="attribute-{{attribute_value.id}}">
+        @if (attribute()?.style === 'color') {
+        <div class="color-box" [style.background-color]="attribute_value.hex_color"></div>
+        }
+        <span class="name">{{ attribute_value.value }}</span>
+      </label>
+    </div>
+  </li>
+  }
+</ul>
+}

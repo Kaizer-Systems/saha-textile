@@ -1,4 +1,4 @@
-import { Category, Currency, Product, Promotion } from '@saha/contracts';
+import { Category, Currency, Product, Promotion } from '@saha-textile/contracts';
 
 /**
  * Seed data validated through the zod contracts (so defaults are applied and the

@@ -1,4 +1,4 @@
-import type { Currency } from '@saha/contracts';
+import type { Currency } from '@saha-textile/contracts';
 
 export interface CurrencyRepository {
 	findByCode(code: string): Promise<Currency | null>;

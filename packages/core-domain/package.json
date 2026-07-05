@@ -1,5 +1,5 @@
 {
-  "name": "@saha/core-domain",
+  "name": "@saha-textile/core-domain",
   "version": "0.0.0",
   "private": true,
   "main": "./dist/index.js",
@@ -20,7 +20,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@saha/contracts": "workspace:*"
+    "@saha-textile/contracts": "workspace:*"
   },
   "devDependencies": {
     "typescript": "6.0.3",

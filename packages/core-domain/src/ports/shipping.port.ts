@@ -1,4 +1,4 @@
-import type { ShippingQuote } from '@saha/contracts';
+import type { ShippingQuote } from '@saha-textile/contracts';
 
 export interface ShippingQuoteRequest {
 	destinationCountry: string;

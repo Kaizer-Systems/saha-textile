@@ -1,7 +1,7 @@
 import { type CanActivate, type ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { UserRole } from '@saha/contracts';
-import type { TokenClaims } from '@saha/core-domain';
+import type { UserRole } from '@saha-textile/contracts';
+import type { TokenClaims } from '@saha-textile/core-domain';
 
 import { ROLES_KEY } from './roles.decorator';
 

@@ -1,4 +1,4 @@
-import type { Cart, Category, Currency, Order, Product, Promotion, User } from '@saha/contracts';
+import type { Cart, Category, Currency, Order, Product, Promotion, User } from '@saha-textile/contracts';
 
 import type { CartDoc, CategoryDoc, CurrencyDoc, OrderDoc, ProductDoc, PromotionDoc, UserDoc } from './models/index';
 

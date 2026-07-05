@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { Category, Product } from '@saha/contracts';
-import type { CategoryRepository, Paginated, ProductFilter, ProductRepository } from '@saha/core-domain';
+import type { Category, Product } from '@saha-textile/contracts';
+import type { CategoryRepository, Paginated, ProductFilter, ProductRepository } from '@saha-textile/core-domain';
 
 import { CATEGORY_REPOSITORY, PRODUCT_REPOSITORY } from '../infra/tokens';
 

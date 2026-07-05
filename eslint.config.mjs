@@ -1,7 +1,7 @@
-import base from '@saha/config/eslint';
+import base from '@saha-textile/config/eslint';
 
 /**
- * Root ESLint flat config. Extends the shared baseline (@saha/config/eslint)
+ * Root ESLint flat config. Extends the shared baseline (@saha-textile/config/eslint)
  * and adds the hexagonal architecture boundary: packages/core-domain must not
  * import any infrastructure/adapter/framework code.
  */
@@ -17,7 +17,7 @@ export default [
 						{
 							group: [
 								'mongoose',
-								'@saha/adapters-*',
+								'@saha-textile/adapters-*',
 								'fastify',
 								'@nestjs/*',
 								'next',

@@ -5,10 +5,13 @@ packages:
 # Packages with native/postinstall build steps that pnpm is allowed to build.
 # (pnpm blocks lifecycle scripts unless explicitly approved here.)
 allowBuilds:
+  '@parcel/watcher': true
   '@scarf/scarf': false
-  '@tailwindcss/oxide': true
   argon2: true
+  core-js: false
   esbuild: true
+  lmdb: true
+  msgpackr-extract: true
   sharp: true
   unrs-resolver: true
 

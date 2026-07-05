@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { ProductStatus } from '@saha/contracts';
-import type { ProductFilter } from '@saha/core-domain';
+import { ProductStatus } from '@saha-textile/contracts';
+import type { ProductFilter } from '@saha-textile/core-domain';
 
 import { CatalogService } from './catalog.service';
 

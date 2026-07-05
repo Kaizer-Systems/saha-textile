@@ -1,7 +1,7 @@
 import { ConflictException, Inject, Injectable, NotImplementedException, UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { type User, User as UserSchema } from '@saha/contracts';
-import type { AuthPort, UserRepository } from '@saha/core-domain';
+import { type User, User as UserSchema } from '@saha-textile/contracts';
+import type { AuthPort, UserRepository } from '@saha-textile/core-domain';
 
 import { AUTH_PORT, USER_REPOSITORY } from '../infra/tokens';
 

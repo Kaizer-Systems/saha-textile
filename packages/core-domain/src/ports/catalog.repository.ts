@@ -1,4 +1,4 @@
-import type { Category, Product, ProductStatus } from '@saha/contracts';
+import type { Category, Product, ProductStatus } from '@saha-textile/contracts';
 
 import type { PageQuery, Paginated } from './pagination';
 

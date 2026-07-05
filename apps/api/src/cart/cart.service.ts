@@ -1,7 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { type Cart, type CartLine, Cart as CartSchema } from '@saha/contracts';
-import type { CartRepository } from '@saha/core-domain';
+import { type Cart, type CartLine, Cart as CartSchema } from '@saha-textile/contracts';
+import type { CartRepository } from '@saha-textile/core-domain';
 
 import { CART_REPOSITORY } from '../infra/tokens';
 

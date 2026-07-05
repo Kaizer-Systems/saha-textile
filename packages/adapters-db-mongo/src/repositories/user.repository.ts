@@ -1,5 +1,5 @@
-import type { User } from '@saha/contracts';
-import type { UserCredential, UserRepository } from '@saha/core-domain';
+import type { User } from '@saha-textile/contracts';
+import type { UserCredential, UserRepository } from '@saha-textile/core-domain';
 
 import { toUser } from '../mappers';
 import { type UserDoc, UserModel } from '../models/index';

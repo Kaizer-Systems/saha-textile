@@ -1,5 +1,5 @@
 import { type CanActivate, type ExecutionContext, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import type { AuthPort, TokenClaims } from '@saha/core-domain';
+import type { AuthPort, TokenClaims } from '@saha-textile/core-domain';
 
 import { AUTH_PORT } from '../infra/tokens';
 

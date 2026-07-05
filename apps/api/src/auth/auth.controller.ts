@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { TokenClaims } from '@saha/core-domain';
+import type { TokenClaims } from '@saha-textile/core-domain';
 import { z } from 'zod';
 
 import { ZodValidationPipe } from '../common/zod-validation.pipe';

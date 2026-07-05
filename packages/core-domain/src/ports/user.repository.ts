@@ -1,4 +1,4 @@
-import type { User } from '@saha/contracts';
+import type { User } from '@saha-textile/contracts';
 
 /** Credential bundle kept inside the infra boundary (hash never leaves it lightly). */
 export interface UserCredential {

@@ -1,5 +1,5 @@
 import * as argon2 from 'argon2';
-import type { AuthPort, TokenClaims } from '@saha/core-domain';
+import type { AuthPort, TokenClaims } from '@saha-textile/core-domain';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 
 import type { AppConfig } from '../config/app-config';

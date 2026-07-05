@@ -1,5 +1,5 @@
 import { Global, Logger, Module, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
-import { connectMongo, disconnectMongo } from '@saha/adapters-db-mongo';
+import { connectMongo, disconnectMongo } from '@saha-textile/adapters-db-mongo';
 import {
 	MongoCartRepository,
 	MongoCategoryRepository,
@@ -8,7 +8,7 @@ import {
 	MongoProductRepository,
 	MongoPromotionRepository,
 	MongoUserRepository,
-} from '@saha/adapters-db-mongo';
+} from '@saha-textile/adapters-db-mongo';
 
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { Argon2JwtAuth } from './argon2-jwt.auth';

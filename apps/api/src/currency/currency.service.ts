@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { Currency } from '@saha/contracts';
-import { type CurrencyRepository, convertFromINR, roundMoney } from '@saha/core-domain';
+import type { Currency } from '@saha-textile/contracts';
+import { type CurrencyRepository, convertFromINR, roundMoney } from '@saha-textile/core-domain';
 
 import { CURRENCY_REPOSITORY } from '../infra/tokens';
 

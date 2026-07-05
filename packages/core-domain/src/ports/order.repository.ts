@@ -1,4 +1,4 @@
-import type { Order, OrderStatus } from '@saha/contracts';
+import type { Order, OrderStatus } from '@saha-textile/contracts';
 
 import type { PageQuery, Paginated } from './pagination';
 

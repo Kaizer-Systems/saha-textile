@@ -1,5 +1,5 @@
-import type { Order, OrderStatus } from '@saha/contracts';
-import type { OrderRepository, PageQuery, Paginated } from '@saha/core-domain';
+import type { Order, OrderStatus } from '@saha-textile/contracts';
+import type { OrderRepository, PageQuery, Paginated } from '@saha-textile/core-domain';
 
 import { toOrder } from '../mappers';
 import { type OrderDoc, OrderModel } from '../models/index';

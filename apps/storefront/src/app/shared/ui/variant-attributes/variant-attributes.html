@@ -1,0 +1,88 @@
+@for (attribute of attributes; track attribute; let i = $index) { @if (!isAllVariantStyleDropdown())
+{
+<div class="product-title">
+  <h4>{{ attribute?.name }} : {{ attribute?.selected_value }}</h4>
+</div>
+} @if (attribute?.style === 'dropdown' || isAllVariantStyleDropdown()) {
+<select
+  id="input-state-{{i}}"
+  class="form-control form-select"
+  #selectedValue
+  (change)="setVariant(product.variations, attribute.attribute_values[$any($event.target).value])"
+>
+  <option selected disabled>{{ 'choose' | translate }} {{ attribute?.name }}</option>
+  @for (value of attribute.attribute_values; track value; let indexx = $index) { @if
+  (attributeValues.includes(value.id)) {
+  <option
+    [selected]="variantIds.includes(value.id) && !soldOutAttributesIds.includes(value.id)"
+    [value]="indexx"
+    [disabled]="soldOutAttributesIds.includes(value.id)"
+  >
+    {{ value?.value }}
+  </option>
+  } }
+</select>
+} @else { @if (attribute?.style === 'radio') {
+<div class="d-flex">
+  @for (value of attribute.attribute_values; track value; let indexx = $index) { @if
+  (attributeValues.includes(value.id)) {
+  <div class="form-check">
+    <input
+      type="radio"
+      class="form-check-input"
+      [id]="'radio-' + i + '-' + indexx"
+      [name]="'radio-group-' + i"
+      [value]="indexx"
+      [checked]="variantIds.includes(value.id) && !soldOutAttributesIds.includes(value.id)"
+      [disabled]="soldOutAttributesIds.includes(value.id)"
+      [class.disabled]="soldOutAttributesIds.includes(value.id)"
+      (change)="setVariant(product.variations, attribute.attribute_values[$any($event.target).value])"
+    />
+    <label [for]="'radio-' + i + '-' + indexx" class="form-check-label">{{ value?.value }}</label>
+  </div>
+  } }
+</div>
+} @else { @if (attribute?.style === 'color') {
+<ul class="circle select-package {{attribute?.style}}">
+  @for (value of attribute.attribute_values; track value) { @if (attributeValues.includes(value.id))
+  {
+  <li
+    [class.active]="variantIds.includes(value.id) && !soldOutAttributesIds.includes(value.id)"
+    [class.disabled]="soldOutAttributesIds.includes(value.id)"
+    placement="top"
+    ngbTooltip="{{value?.value}}"
+  >
+    <button
+      (click)="setVariant(product.variations, value)"
+      [style.background-color]="value.hex_color"
+    ></button>
+  </li>
+  } }
+</ul>
+} @else {
+<ul class="select-package {{attribute?.style}}">
+  @for (value of attribute.attribute_values; track value) { @if (attributeValues.includes(value.id))
+  {
+  <li
+    [class.active]="variantIds.includes(value.id) && !soldOutAttributesIds.includes(value.id)"
+    [class.disabled]="soldOutAttributesIds.includes(value.id)"
+  >
+    @if (attribute?.style === 'image') {
+    <img
+      [src]="value?.variation_image ? value?.variation_image?.original_url : 'assets/images/product.png'"
+      (click)="setVariant(product.variations, value)" alt="img"
+    />
+    } @else {
+    <app-button
+      [id]="'value_btn'"
+      [type]="'button'"
+      [spinner]="false"
+      (click)="setVariant(product.variations, value)"
+    >
+      {{ value?.value }}
+    </app-button>
+    }
+  </li>
+  } }
+</ul>
+} } } }

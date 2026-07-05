@@ -1,0 +1,10 @@
+@if (style === 'basic_header') {
+<app-basic-header [data]="(themeOption$ | async)" [logo]="logo()" [sticky]="sticky" />
+} @if (style === 'classic_header') {
+<app-classic-header [data]="(themeOption$ | async)" [logo]="logo()" [sticky]="sticky" />
+} @if (style === 'standard_header') {
+<app-standard-header [data]="(themeOption$ | async)" [logo]="logo()" [sticky]="sticky" />
+} @if (style === 'minimal_header') {
+<app-minimal-header [data]="(themeOption$ | async)" [logo]="logo()" [sticky]="sticky" />
+}
+<app-mobile-menu />

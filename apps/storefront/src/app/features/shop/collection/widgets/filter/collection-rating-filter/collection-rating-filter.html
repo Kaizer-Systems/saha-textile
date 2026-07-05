@@ -1,0 +1,22 @@
+<ul class="category-list custom-padding">
+  @for (number of numbers; track number) {
+  <li>
+    <div class="form-check ps-0 m-0 category-list-box">
+      <input
+        class="checkbox_animated"
+        type="checkbox"
+        id="rating-{{number}}"
+        [value]="number"
+        [checked]="checked(number.toString())"
+        (change)="applyFilter($event)"
+      />
+      <div class="form-check-label">
+        <div class="product-rating">
+          <ngb-rating [rate]="number" />
+        </div>
+        <span class="text-content">({{number}} {{ 'star' | translate }})</span>
+      </div>
+    </div>
+  </li>
+  }
+</ul>

@@ -1,0 +1,27 @@
+<ng-template #exitModal let-modal>
+  <div class="modal-header p-0">
+    <app-button
+      [class]="'btn btn-close'"
+      [spinner]="false"
+      [id]="'profile_modal_close_btn'"
+      (click)="modal.dismiss('Cross click')"
+    >
+      <i class="ri-close-line"></i>
+    </app-button>
+  </div>
+  <div class="modal-box">
+    <div class="modal-image">
+      <img src="assets/images/newsletter/3.jpg" class="img-fluid" alt="newsletter" />
+    </div>
+    <div class="modal-content">
+      <div>
+        <img src="assets/images/logo/1.png" class="modal-logo" alt="logo" />
+        <h2 class="text-title">{{ 'wait' | translate }}<span class="theme-color">!</span></h2>
+        <h5>{{ 'im_sorry_to_see_you_go' | translate }}</h5>
+        <p>
+          {{ 'in_order_to_earn_10_off_your_first_purchase_provide_your_email_address' | translate }}
+        </p>
+      </div>
+    </div>
+  </div>
+</ng-template>

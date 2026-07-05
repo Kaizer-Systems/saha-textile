@@ -1,5 +1,5 @@
 import { isPlatformBrowser, AsyncPipe } from '@angular/common';
-import { Component, DOCUMENT, inject, input, PLATFORM_ID, Renderer2, viewChild } from '@angular/core';
+import { Component, DOCUMENT, computed, inject, input, PLATFORM_ID, Renderer2, signal, viewChild } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -18,7 +18,6 @@ import {
 	NgbNavOutlet,
 } from '@ng-bootstrap/ng-bootstrap';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { computed, signal } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { Select2, Select2Data, Select2Module, Select2SearchEvent } from 'ng-select2-component';
 import { Observable, of, Subject } from 'rxjs';

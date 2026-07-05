@@ -1,9 +1,8 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, PLATFORM_ID, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, input, output } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 
 import { toObservable } from '@angular/core/rxjs-interop';
-import { computed } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { Select2, Select2Data, Select2Module, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable, Subject, debounceTime } from 'rxjs';

@@ -51,9 +51,9 @@
 **Build:**
 
 - `packages/adapters-db-mongo`: models + repository implementations of the core ports; map docs ↔ entities (DTOs, no leakage).
-- Atlas connection module (reads `MDB_MCP_CONNECTION_STRING`-style env). Indexes: `slug`, `categoryIds`, `sku`, taxonomy `path`/`ancestors`.
-- Seed script: load the real taxonomy tree + a few representative variable products including the **"No Stitching" base → Design 1-3 + Color** pattern with per-variation prices.
-  **Definition of Done:** repositories pass integration tests against the test M0 cluster; seed populates taxonomy + sample products; the adapter is swap-isolated (a hypothetical Postgres adapter would need no core changes).
+- Atlas connection module (reads `MDB_MCP_CONNECTION_STRING`-style env). Indexes: `slug`, `categoryIds`, `sku`, taxonomy `path`/`ancestors`, **plus compound `{ status, categoryIds }` and `{ status, updatedAt }`** so storefront queries hit only `published` rows and never scan the 2,000+ archived docs (see KB §data-model lifecycle note).
+- Seed script: load the real taxonomy tree + a few representative variable products including the **"No Stitching" base → Design 1-3 + Color** pattern with per-variation prices. **Also provide a `--bulk N` mode that generates a few hundred–1,000 synthetic published products + a batch of `archived` ones**, so search, pagination, and listing performance are exercised at realistic catalog size (~500–1,000 active + 2,000+ archived), not just a handful.
+  **Definition of Done:** repositories pass integration tests against the test M0 cluster; seed populates taxonomy + sample products **and bulk/archived fixtures**; status-filtered queries return only active products; the adapter is swap-isolated (a hypothetical Postgres adapter would need no core changes). **(M0 is the dev/test cluster only; production runs a paid Atlas tier — see KB §infrastructure & Phase 8.)**
 
 ## Phase 3 — API (NestJS on Fastify)
 
@@ -61,7 +61,7 @@
 **Build:**
 
 - `apps/api`: NestJS with `@nestjs/platform-fastify`; wire adapters → ports via DI in a composition module.
-- Modules: catalog (products/categories/search), cart, orders, currency/fx, promotions, auth. Controllers validate with `contracts` (zod).
+- Modules: catalog (products/categories/search), cart, orders, currency/fx, promotions, auth. Controllers validate with `contracts` (zod). **Search lives behind a `SearchPort`; at ~500–1,000 active SKUs with heavy fuzzy/multilingual/transliteration needs, implement a self-hosted Meilisearch/Typesense adapter (Atlas Search as the zero-extra-infra fallback) — see KB §04. Index only `status: published`; reindex on product create/update/status-change.**
 - OpenAPI generation (`@nestjs/swagger`); health-check endpoint; `@fastify/rate-limit`; CORS allowlist; security headers.
 - Auth: email+password (argon2id), email-OTP (Brevo free tier), JWT access + rotating refresh; Google/Facebook OAuth stubs. (Phone-OTP/SMS deferred — only paid method.)
   **Definition of Done:** API boots; catalog CRUD + search return seeded data; OpenAPI served; invalid input rejected; health-check green; unit/integration tests pass.

@@ -1,0 +1,69 @@
+@if(product()) {
+<div class="container-fluid-lg">
+  <div class="row">
+    <div class="col-12">
+      <div class="row g-4">
+        <div class="col-xl-6">
+          <div class="product-left-box">
+            <div class="product-label-group">
+              @if (product()?.is_sale_enable) {
+              <div class="product-label-tag"><span>{{ 'sale' | translate }}</span></div>
+              } @else { @if (product()?.is_featured) {
+              <div class="product-label-tag warning-label-tag">
+                <span>{{ 'featured' | translate }}</span>
+              </div>
+              } }
+              <ng-template #featured>
+                @if (product()?.is_featured) {
+                <div class="product-label-tag warning-label-tag">
+                  <span>{{ 'featured' | translate }}</span>
+                </div>
+                }
+              </ng-template>
+            </div>
+            <div class="row g-sm-4 g-2">
+              @for (image of product()?.product_galleries; track image; let i = $index) {
+              <div class="col-6 col-grid-box">
+                <div class="slider-image">
+                  <img
+                    [src]="image ? image.original_url : 'assets/images/product.png'"
+                    class="img-fluid" alt="img"
+                  />
+                </div>
+              </div>
+              } @if (!product()?.product_galleries?.length) {
+              <div class="col-6 col-grid-box">
+                <div class="slider-image">
+                  <img
+                    [src]="product()?.product_thumbnail ? product()?.product_thumbnail?.original_url : 'assets/images/product.png'"
+                    class="img-fluid" alt="img"
+                  />
+                </div>
+              </div>
+              }
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-6">
+          <div class="right-box-contain">
+            <app-product-contain [product]="product()!" [option]="option()!" />
+            <app-product-action [product]="product()" />
+            <app-product-information [product]="product()" />
+            <app-product-delivery-information [product]="product()" />
+            <app-payment-option [product]="product()" [option]="option()!" />
+            <app-product-social-share [product]="product()" [option]="option()" />
+          </div>
+        </div>
+        @if (product()?.cross_sell_products && product()?.cross_sell_products?.length) {
+        <div class="col-12 related-product-2">
+          <app-product-bundle [product]="product()" />
+        </div>
+        }
+        <div class="col-12">
+          <app-product-details-tabs [product]="product()" />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+}

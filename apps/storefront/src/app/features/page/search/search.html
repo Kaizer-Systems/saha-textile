@@ -1,0 +1,58 @@
+<app-breadcrumb [breadcrumb]="breadcrumb" />
+<section class="search-section">
+  <div class="container-fluid-lg">
+    <div class="row">
+      <div class="col-xxl-6 col-xl-8 mx-auto">
+        <div class="title d-block text-center">
+          <h2>{{ 'search_for_products' | translate }}</h2>
+          <span class="title-leaf">
+            <svg class="icon-width">
+              <use xlink:href="assets/svg/leaf.svg#leaf"></use>
+            </svg>
+          </span>
+        </div>
+
+        <div class="search-box">
+          <div class="input-group">
+            <input type="text" class="form-control" [formControl]="search" />
+            <app-button
+              [class]="'btn theme-bg-color text-white m-0'"
+              [type]="'button'"
+              [id]="'search-btn'"
+              [spinner]="false"
+              (click)="searchProduct()"
+            >
+              {{ 'search' | translate }}
+            </app-button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-b-space">
+  <div class="container-fluid-lg">
+    <div [class]="gridClass">
+      @if (productService.skeletonLoader) { @for (item of skeletonItems; track item) {
+      <app-skeleton-product-box />
+      } } @else { @for (product of products; track product) {
+      <div class="col">
+        <div class="search-product product-wrapper">
+          <div>
+            <app-product-box [product]="product" [class]="'product-box-3'" [style]="'horizontal'" />
+          </div>
+        </div>
+      </div>
+      } }
+    </div>
+    @if (products && !products.length && !productService.skeletonLoader) {
+    <app-no-data
+      [class]="'no-data-added collection-no-data'"
+      [image]="'assets/svg/no-product.svg'"
+      [text]="'Sorry! Couldn\'t find the products you were looking For!'"
+      [description]="'Please check if you have misspelt something or try searching with other way.'"
+    />
+    }
+  </div>
+</section>

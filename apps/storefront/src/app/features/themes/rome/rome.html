@@ -1,0 +1,171 @@
+<div class="bg-effect">
+  <!-- Home section start -->
+  @if (data()?.content?.home_banner) {
+  <section
+    class="home-section-2 home-section-small section-b-space"
+    [style.background-image]="'url(' + data()?.content?.home_banner?.bg_image_url+ ')'"
+  >
+    <app-theme-home-banner [theme]="'rome'" [data]="data()?.content?.home_banner" />
+  </section>
+  }
+  <!-- Home Section End -->
+
+  <!-- Category Section Start -->
+  @if (data()?.content?.categories_image_list?.status) {
+  <section class="category-section-2">
+    <div class="container-fluid-lg">
+      <app-title [title]="data()?.content?.categories_image_list?.title" [style]="'simple'" />
+      <div class="row">
+        <div class="col-12">
+          <app-theme-categorie
+            [style]="'horizontal'"
+            [theme]="'rome'"
+            [categoryIds]="data()?.content?.categories_image_list?.category_ids || []"
+            [sliderOption]="categorySlider"
+          />
+        </div>
+      </div>
+    </div>
+  </section>
+  }
+  <!-- Category Section End -->
+
+  <!-- Value Section Start -->
+  @if (data()?.content?.value_banners?.status) {
+  <section class="overflow-hidden">
+    <app-title
+      [title]="data()?.content?.value_banners?.title"
+      [class]="'container-fluid-lg'"
+      [style]="'simple'"
+    />
+    <div class="row">
+      <div class="col-12">
+        <app-theme-banner
+          [style]="'horizontal'"
+          [banners]="data()?.content?.value_banners?.banners"
+        />
+      </div>
+    </div>
+  </section>
+  }
+  <!-- Value Section End -->
+
+  <!-- Product Section Start -->
+  @if (data()?.content?.categories_products?.status &&
+  data()?.content?.categories_products?.category_ids?.length) {
+  <section class="product-section">
+    <app-title
+      [title]="data()?.content?.categories_products?.title"
+      [class]="'container-fluid-lg'"
+      [style]="'simple'"
+    >
+      <app-theme-categorie
+        [categoryIds]="data()?.content?.categories_products?.category_ids || []"
+        [sliderOption]="categorySlider"
+        [style]="'filter'"
+        [selectedCategoryId]="selectedCategoryId"
+        (selectedCategory)="selectCategory($event)"
+      />
+    </app-title>
+    <div class="container-fluid-lg">
+      <app-theme-product
+        [style]="'horizontal'"
+        [productIds]="productFilterIds || []"
+        [slider]="false"
+        [productStyle]="'product-standard'"
+        [sliderOption]="productSlider6ItemMargin"
+        [showItem]="5"
+        [boxClass]="'product-box-bg'"
+      />
+    </div>
+  </section>
+  }
+  <!-- Product Section End -->
+
+  <!-- Banner Section Start -->
+  @if (data()?.content?.two_column_banners?.status) {
+  <section class="banner-section">
+    <div class="container-fluid-lg">
+      <div class="row gy-xl-0 gy-3">
+        <div class="col-lg-6">
+          <app-image-link
+            [image]="data()?.content?.two_column_banners?.banner_1"
+            [class]="'banner-contain-3 hover-effect'"
+            [bgImage]="false"
+          />
+        </div>
+        <div class="col-lg-6">
+          <app-image-link
+            [image]="data()?.content?.two_column_banners?.banner_2"
+            [class]="'banner-contain-3 hover-effect'"
+            [bgImage]="false"
+          />
+        </div>
+      </div>
+    </div>
+  </section>
+  }
+  <!-- Banner Section End -->
+
+  @if (data()?.content?.slider_products?.status) {
+  <section class="top-selling-section border-box section-b-space">
+    <div class="container-fluid-lg">
+      <app-four-column-product [data]="data()?.content?.slider_products" />
+    </div>
+  </section>
+  }
+
+  <!-- Banner Section Start -->
+  @if (data()?.content?.full_width_banner?.status) {
+  <div class="container-fluid-lg">
+    @if (data()?.content?.full_width_banner?.status) {
+    <div class="ratio_12">
+      <app-theme-banner [banners]="data()?.content?.full_width_banner" [style]="'full_width'" />
+    </div>
+    }
+  </div>
+  }
+  <!-- Banner Section End -->
+
+  <!-- Product Section Start -->
+  @if (data()?.content?.products_list_1?.status &&
+  data()?.content?.products_list_1?.product_ids?.length || 0 >= 6) {
+  <section class="product-section">
+    <div class="container-fluid-lg">
+      <app-title [title]="data()?.content?.products_list_1?.title" [style]="'simple'" />
+      <app-theme-product
+        [productIds]="data()?.content?.products_list_1?.product_ids || []"
+        [style]="'horizontal'"
+        [slider]="true"
+        [productStyle]="'product-standard'"
+        [boxClass]="'product-box-bg'"
+        [sliderOption]="productSlider6ItemMargin"
+      />
+    </div>
+  </section>
+  }
+  <!-- Product Section End -->
+
+  <!-- Blog Section Start -->
+  @if (data()?.content?.featured_blogs?.status && data()?.content?.featured_blogs?.blog_ids?.length
+  || 0 >= 3) {
+  <section>
+    <div class="container-fluid-lg">
+      <app-title [title]="data()?.content?.featured_blogs?.title" [style]="'simple'" />
+      <app-blog
+        [sliderOption]="customOptionsItem4"
+        [blogIds]="data()?.content?.featured_blogs?.blog_ids || []"
+      />
+    </div>
+  </section>
+  }
+  <!-- Blog Section End -->
+
+  <!-- Newsletter Section Start -->
+  @if (data()?.content?.news_letter?.status) {
+  <section class="newsletter-section-2 section-b-space">
+    <app-newsletter [data]="data()?.content?.news_letter!" [style]="'classic'" />
+  </section>
+  }
+  <!-- Newsletter Section End -->
+</div>

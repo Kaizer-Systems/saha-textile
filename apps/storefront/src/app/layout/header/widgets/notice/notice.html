@@ -1,0 +1,13 @@
+<div #swiperContainer class="swiper notification-slider">
+  <div class="swiper-wrapper">
+    @for (item of content(); track item.id; let i = $index) { 
+    <div class="swiper-slide">
+      <div class="d-flex justify-content-xxl-center">
+        <div class="timer-notification">
+          <h6 [innerHTML]="item.content"></h6>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+</div>

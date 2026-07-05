@@ -1,0 +1,190 @@
+<!-- Home Section Start -->
+<section class="home-section home-section-ratio pt-md-2 pt-4">
+  <app-theme-home-banner [theme]="'tokyo'" [data]="data()?.content?.home_banner" />
+</section>
+<!-- Home Section End -->
+
+<!-- Category Section Start -->
+@if (data()?.content?.categories_icon_list?.status) {
+<section>
+  <div class="container-fluid-lg">
+    <app-theme-categorie
+      [style]="'horizontal'"
+      [theme]="'paris'"
+      [sliderOption]="categorySlider"
+      [image]="data()?.content?.categories_icon_list?.image_url!"
+      [categoryIds]="data()?.content?.categories_icon_list?.category_ids!"
+    />
+  </div>
+</section>
+}
+<!-- Category Section End -->
+
+<!-- Discount Section Start -->
+@if (data()?.content?.coupons?.status) {
+<section>
+  <div class="container-fluid-lg">
+    <div class="row">
+      <div class="col-12 sale-banner">
+        <app-theme-banner
+          [banners]="data()?.content?.coupons"
+          [class]="'banner-contain hover-effect'"
+          [style]="'full_width'"
+        />
+      </div>
+    </div>
+  </div>
+</section>
+}
+<!-- Discount Section End -->
+
+<!-- Banner Section Start -->
+@if (data()?.content?.featured_banners?.status) {
+<section class="banner-section ratio_60 wow fadeInUp">
+  <app-theme-banner [style]="'horizontal'" [banners]="data()?.content?.featured_banners?.banners" />
+</section>
+}
+<!-- Banner Section End -->
+
+<!-- Product Section Start -->
+<section>
+  <div class="container-fluid-lg">
+    <div class="row g-3">
+      <div
+        [class]="data()?.content?.main_content?.sidebar?.status ? 'col-xxl-9 col-xl-8' : 'col-xxl-12 col-xl-12'"
+      >
+        <!-- Product Box Horizontal Style-->
+        @if (data()?.content?.main_content?.section1_products?.status &&
+        data()?.content?.main_content?.section1_products?.product_ids?.length! >= 5) {
+        <div>
+          <app-title
+            [title]="data()?.content?.main_content?.section1_products?.title!"
+            [description]="data()?.content?.main_content?.section1_products?.description!"
+            [svg]="'cake'"
+          />
+          <app-theme-product
+            [productIds]="data()?.content?.main_content?.section1_products?.product_ids!"
+            [style]="'horizontal'"
+            [slider]="true"
+            [sliderOption]="productSlider"
+            [productStyle]="'product-standard'"
+            [boxClass]="'product-box-bg'"
+          />
+        </div>
+        }
+
+        <!-- Product Box Classic Style-->
+        @if (data()?.content?.main_content?.section2_slider_products?.status &&
+        data()?.content?.main_content?.section2_slider_products?.product_ids?.length! >= 5) {
+        <div class="section-t-space">
+          <app-title
+            [title]="data()?.content?.main_content?.section2_slider_products?.title!"
+            [description]="data()?.content?.main_content?.section2_slider_products?.description!"
+            [svg]="'cake'"
+          />
+          <app-theme-product
+            [productIds]="data()?.content?.main_content?.section2_slider_products?.product_ids!"
+            [style]="'classic'"
+            [boxClass]="'product-box-bg'"
+          />
+        </div>
+        }
+
+        <!-- Product Box Horizontal Style-->
+        @if (data()?.content?.main_content?.section3_products?.status &&
+        data()?.content?.main_content?.section3_products?.product_ids?.length! >= 5) {
+        <div class="section-t-space">
+          <app-title
+            [title]="data()?.content?.main_content?.section3_products?.title!"
+            [description]="data()?.content?.main_content?.section3_products?.description!"
+            [svg]="'cake'"
+          />
+          <app-theme-product
+            [productIds]="data()?.content?.main_content?.section3_products?.product_ids!"
+            [style]="'horizontal'"
+            [slider]="true"
+            [sliderOption]="productSlider"
+            [productStyle]="'product-standard'"
+            [boxClass]="'product-box-bg'"
+          />
+        </div>
+        }
+
+        <!-- Product Box Horizontal Style-->
+        @if (data()?.content?.main_content?.section4_products?.status &&
+        data()?.content?.main_content?.section4_products?.product_ids?.length! >= 5) {
+        <div class="section-t-space">
+          <app-title
+            [title]="data()?.content?.main_content?.section4_products?.title"
+            [description]="data()?.content?.main_content?.section4_products?.description"
+            [svg]="'cake'"
+          />
+          <app-theme-product
+            [productIds]="data()?.content?.main_content?.section4_products?.product_ids || []"
+            [style]="'horizontal'"
+            [slider]="true"
+            [sliderOption]="productSlider"
+            [productStyle]="'product-standard'"
+            [boxClass]="'product-box-bg'"
+          />
+        </div>
+        }
+      </div>
+
+      <!-- Theme Banner-->
+      @if (data()?.content?.main_content?.sidebar?.status) {
+      <div class="col-xxl-3 col-xl-4 d-none d-xl-block">
+        <div class="position-sticky top-0">
+          <app-theme-banner
+            [class]="'ratio_209 rounded'"
+            [style]="'vertical'"
+            [banners]="data()?.content?.main_content?.sidebar?.right_side_banners?.banner_1"
+          />
+          <app-theme-banner
+            [class]="'ratio_125 section-t-space'"
+            [style]="'vertical'"
+            [banners]="data()?.content?.main_content?.sidebar?.right_side_banners?.banner_2"
+          />
+        </div>
+      </div>
+      }
+    </div>
+  </div>
+</section>
+<!-- Product Section End -->
+
+<!-- Banner Section Start -->
+@if (data()?.content?.full_width_banner?.status) {
+<section>
+  <div class="container-fluid-lg">
+    <div class="row">
+      <div class="col-12">
+        <app-image-link
+          [class]="'home-contain hover-effect'"
+          [image]="data()?.content?.full_width_banner"
+          [bgImage]="false"
+        />
+      </div>
+    </div>
+  </div>
+</section>
+}
+<!-- Banner Section End -->
+
+<!-- Four-column Start -->
+@if (data()?.content?.slider_products?.status) {
+<section class="top-selling-section">
+  <div class="container-fluid-lg">
+    <app-four-column-product [data]="data()?.content?.slider_products" />
+  </div>
+</section>
+}
+<!-- Four-column End -->
+
+<!-- Newsletter Section Start -->
+@if (data()?.content?.news_letter?.status) {
+<section class="newsletter-section section-b-space">
+  <app-newsletter [data]="data()?.content?.news_letter!" />
+</section>
+}
+<!-- Newsletter Section End -->

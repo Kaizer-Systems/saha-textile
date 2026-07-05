@@ -1,0 +1,13 @@
+<div class="mobile-menu d-md-none d-block mobile-cart">
+  <ul>
+    @for (menu of menuItem; track menu) {
+    <li [class.active]="menu.active">
+      <a href="javascript:void(0)" [routerLink]="menu.path" (click)="activeMenu(menu)">
+        <i class="{{ menu.icon }}-line deactivated"></i>
+        <i class="{{ menu.icon }}-fill activated"></i>
+        <span>{{ menu.title }}</span>
+      </a>
+    </li>
+    }
+  </ul>
+</div>

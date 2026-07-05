@@ -1,0 +1,66 @@
+<app-breadcrumb [breadcrumb]="breadcrumb" />
+
+@if (couponService.skeletonLoader) {
+<div class="section-b-space section-t-space offer-section skeleton-offer">
+  <div class="container-fluid-lg">
+    <div class="row g-md-4 g-3">
+      @for (item of skeletonItems; track item) {
+      <div class="col-xxl-3 col-lg-4 col-sm-6">
+        <div class="coupon-box">
+          <div class="coupon-name">
+            <div class="card-name">
+              <div>
+                <h5 class="fw-semibold dark-text"></h5>
+              </div>
+            </div>
+          </div>
+          <div class="coupon-content">
+            <p></p>
+            <p class="long"></p>
+            <p class="long long-s"></p>
+          </div>
+        </div>
+      </div>
+      }
+    </div>
+  </div>
+</div>
+} @else {
+<div class="section-b-space section-t-space offer-section">
+  <div class="container-fluid-lg">
+    <div class="row g-md-4 g-3">
+      @for (coupon of (coupon$ |async)?.data; track coupon) {
+      <div class="col-xxl-3 col-lg-4 col-sm-6">
+        <div class="coupon-box">
+          <div class="coupon-name">
+            <div class="card-name">
+              <div>
+                <h5 class="fw-semibold dark-text">{{ coupon.title }}</h5>
+              </div>
+            </div>
+          </div>
+          <div class="coupon-content">
+            <p>{{ coupon.description }}</p>
+            <div class="coupon-apply">
+              <h6 class="coupon-code success-color">#{{ coupon.code }}</h6>
+              <a
+                href="javascript:void(0)"
+                class="btn theme-btn border-btn copy-btn mt-0"
+                (click)="copyFunction(coupon.code)"
+                >{{ 'copy_code' | translate }}</a
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+      } @if (!(coupon$ |async)?.data?.length && !couponService.skeletonLoader) {
+      <app-no-data
+        [class]="'no-data-added collection-no-data'"
+        [image]="'assets/svg/no-product.svg'"
+        [text]="'I regret to inform you that the offer is currently unavailable.'"
+      />
+      }
+    </div>
+  </div>
+</div>
+}

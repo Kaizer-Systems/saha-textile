@@ -1,0 +1,253 @@
+<!-- Paris Theme-->
+@if (theme() === 'paris') {
+<div class="container-fluid-lg">
+  <div class="row g-4">
+    @if (data()?.main_banner?.image_url) {
+    <div class="col-xl-8 ratio_65">
+      <div class="home-contain h-100 skeleton-banner-xl">
+        <div class="skeleton-text-wrap">
+          <span class="placeholder col-7"></span>
+          <span class="placeholder col-5"></span>
+          <span class="placeholder col-4"></span>
+          <span class="placeholder col-6"></span>
+        </div>
+        <app-image-link class="b-cl" [image]="data()?.main_banner" [bgImage]="true" />
+      </div>
+    </div>
+    } @if (data()?.sub_banner_1?.image_url && data()?.sub_banner_2?.image_url) {
+    <div class="col-xl-4 ratio_65">
+      <div class="row g-4">
+        @if (data()?.sub_banner_1?.image_url) {
+        <div class="col-xl-12 col-md-6 skeleton-banner-sm">
+          <div class="home-contain">
+            <div class="skeleton-text-wrap">
+              <span class="placeholder col-7"></span>
+              <span class="placeholder col-5"></span>
+              <span class="placeholder col-4"></span>
+              <span class="placeholder col-6"></span>
+            </div>
+            <app-image-link class="b-cl" [image]="data()?.sub_banner_1" [bgImage]="true" />
+          </div>
+        </div>
+        } @if (data()?.sub_banner_2?.image_url) {
+        <div class="col-xl-12 col-md-6 skeleton-banner-sm">
+          <div class="home-contain">
+            <div class="skeleton-text-wrap">
+              <span class="placeholder col-7"></span>
+              <span class="placeholder col-5"></span>
+              <span class="placeholder col-4"></span>
+              <span class="placeholder col-6"></span>
+            </div>
+            <app-image-link class="b-cl" [image]="data()?.sub_banner_2" [bgImage]="true" />
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+    }
+  </div>
+</div>
+}
+
+<!-- Tokyo Theme-->
+@if (theme() === 'tokyo') {
+<div class="container-fluid-lg">
+  <div class="row g-4">
+    <div class="col-xxl-3 col-lg-4 col-sm-6 ratio_180 d-sm-block d-none">
+      <div class="home-contain rounded skeleton-banner-vertical">
+        <div class="skeleton-text-wrap">
+          <span class="placeholder col-7"></span>
+          <span class="placeholder col-5"></span>
+          <span class="placeholder col-4"></span>
+          <span class="placeholder col-6"></span>
+        </div>
+        <div class="h-100">
+          <app-image-link [image]="data()?.sub_banner_1" [bgImage]="true" />
+        </div>
+      </div>
+    </div>
+    <div class="col-xxl-6 col-lg-8 order-xxl-0 ratio_87">
+      <div class="home-contain rounded skeleton-banner-xl">
+        <div class="skeleton-text-wrap">
+          <span class="placeholder col-7"></span>
+          <span class="placeholder col-5"></span>
+          <span class="placeholder col-4"></span>
+          <span class="placeholder col-6"></span>
+        </div>
+        <div class="h-100">
+          <app-image-link [image]="data()?.main_banner" [bgImage]="true" />
+        </div>
+      </div>
+    </div>
+    <div
+      class="col-xxl-3 col-xl-4 col-sm-6 ratio_180 custom-ratio d-xxl-block d-lg-none d-sm-block d-none"
+    >
+      <div class="home-contain rounded skeleton-banner-vertical">
+        <div class="skeleton-text-wrap">
+          <span class="placeholder col-7"></span>
+          <span class="placeholder col-5"></span>
+          <span class="placeholder col-4"></span>
+          <span class="placeholder col-6"></span>
+        </div>
+        <app-image-link [image]="data()?.sub_banner_2" [bgImage]="true" />
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Osaka Theme-->
+@if (theme() === 'osaka') {
+<div class="container-fluid-lg">
+  <div class="row g-4">
+    <div class="col-xl-9 col-lg-8">
+      <div class="home-contain h-100 skeleton-banner-xl ratio_60">
+        <div class="skeleton-text-wrap">
+          <span class="placeholder col-7"></span>
+          <span class="placeholder col-5"></span>
+          <span class="placeholder col-4"></span>
+          <span class="placeholder col-6"></span>
+        </div>
+        <app-image-link [image]="data()?.main_banner" [bgImage]="true" />
+      </div>
+    </div>
+    <div class="col-xl-3 col-lg-4 d-lg-inline-block d-none ratio_156">
+      <div class="home-contain h-100 skeleton-banner-vertical">
+        <div class="skeleton-text-wrap">
+          <span class="placeholder col-7"></span>
+          <span class="placeholder col-5"></span>
+          <span class="placeholder col-4"></span>
+          <span class="placeholder col-6"></span>
+        </div>
+        <app-image-link [image]="data()?.sub_banner_1" [bgImage]="true" />
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Rome Theme-->
+@if (theme() === 'rome') {
+<div class="container-fluid-lg">
+  <div class="row g-4">
+    <div class="col-xxl-6 col-md-8">
+      <div class="home-contain ratio_65 h-100 skeleton-banner-xl">
+        <div class="skeleton-text-wrap">
+          <span class="placeholder col-7"></span>
+          <span class="placeholder col-5"></span>
+          <span class="placeholder col-4"></span>
+          <span class="placeholder col-6"></span>
+        </div>
+        <app-image-link [image]="data()?.main_banner" [bgImage]="true" />
+      </div>
+    </div>
+    <div class="col-xxl-3 col-md-4 ratio_medium d-md-block d-none">
+      <div class="home-contain home-small h-100 skeleton-banner-vertical">
+        <div class="h-100">
+          <div class="skeleton-text-wrap">
+            <span class="placeholder col-7"></span>
+            <span class="placeholder col-5"></span>
+            <span class="placeholder col-4"></span>
+            <span class="placeholder col-6"></span>
+          </div>
+          <app-image-link [image]="data()?.sub_banner_1" [bgImage]="true" />
+        </div>
+      </div>
+    </div>
+    <div class="col-xxl-3 ratio_65 d-xxl-block d-none">
+      <div class="row g-3">
+        <div class="col-xxl-12 col-sm-6">
+          <div class="home-contain skeleton-banner-sm">
+            <div class="skeleton-text-wrap">
+              <span class="placeholder col-7"></span>
+              <span class="placeholder col-5"></span>
+              <span class="placeholder col-4"></span>
+              <span class="placeholder col-6"></span>
+            </div>
+            <app-image-link [image]="data()?.sub_banner_2" [bgImage]="true" />
+          </div>
+        </div>
+        <div class="col-xxl-12 col-sm-6">
+          <div class="home-contain skeleton-banner-sm">
+            <div class="skeleton-text-wrap">
+              <span class="placeholder col-7"></span>
+              <span class="placeholder col-5"></span>
+              <span class="placeholder col-4"></span>
+              <span class="placeholder col-6"></span>
+            </div>
+            <app-image-link [image]="data()?.sub_banner_3" [bgImage]="true" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Madrid Theme-->
+@if (theme() === 'madrid') {
+<div class="container-fluid p-0 ratio_30">
+  <div class="row">
+    <div class="col-12">
+      <div class="slider-animate skeleton-banner-xl">
+        <div>
+          <app-image-link [image]="data()?.main_banner" [bgImage]="true" />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Berlin Theme-->
+@if (theme() === 'berlin') {
+<div class="container-fluid-lg">
+  <div class="row g-4">
+    <div class="col-xl-9 col-lg-8 ratio_50_1 skeleton-banner-xl">
+      <div class="skeleton-text-wrap">
+        <span class="placeholder col-7"></span>
+        <span class="placeholder col-5"></span>
+        <span class="placeholder col-4"></span>
+        <span class="placeholder col-6"></span>
+      </div>
+      <app-image-link
+        [image]="data()?.main_banner"
+        [bgImage]="true"
+        [class]="'home-contain furniture-contain-2'"
+      />
+    </div>
+    <div class="col-xl-3 col-lg-4 d-lg-inline-block d-none skeleton-banner-vertical">
+      <div class="skeleton-text-wrap">
+        <span class="placeholder col-7"></span>
+        <span class="placeholder col-5"></span>
+        <span class="placeholder col-4"></span>
+        <span class="placeholder col-6"></span>
+      </div>
+      <app-image-link
+        [image]="data()?.sub_banner_1"
+        [bgImage]="true"
+        [class]="'home-contain h-100 home-furniture'"
+      />
+    </div>
+  </div>
+</div>
+}
+
+<!-- Denver Theme-->
+@if (theme() === 'denver') {
+<div class="container-fluid p-0 ratio_30">
+  <div class="row">
+    <div class="col-12">
+      <div class="slider-animate">
+        <div>
+          <app-image-link
+            [image]="data()?.main_banner"
+            [bgImage]="true"
+            [class]="'home-contain rounded-0 p-0'"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+}

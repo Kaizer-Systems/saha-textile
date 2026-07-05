@@ -1,0 +1,63 @@
+<footer class="section-t-space" [class]="footer()?.footer_class">
+  <div class="container-fluid-lg">
+    <div class="main-footer section-b-space">
+      <div class="row g-md-4 g-3">
+        <div class="col-xl-3 col-lg-4 col-sm-6">
+          <div class="footer-logo">
+            <app-footer-logo [data]="data()!" [footer]="footer()!" />
+            <app-footer-about [data]="data()" />
+          </div>
+        </div>
+        @if (data()?.footer?.footer_categories?.length) {
+        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6" (click)="toggle('categories')">
+          <div class="footer-title" [class.show]="active['categories']">
+            <h4>{{ 'categories' | translate }}</h4>
+          </div>
+          <div class="footer-contain">
+            <app-footer-categories [data]="data()" />
+          </div>
+        </div>
+        } @if (data()?.footer?.useful_link?.length) {
+        <div class="col-xl col-lg-2 col-sm-3" (click)="toggle('useful_link')">
+          <div class="footer-title" [class.show]="active['useful_link']">
+            <h4>{{ 'useful_links' | translate }}</h4>
+          </div>
+          <div class="footer-contain">
+            <app-footer-links [links]="data()?.footer?.useful_link || []" />
+          </div>
+        </div>
+        } @if (data()?.footer?.help_center?.length) {
+        <div class="col-xl-2 col-sm-3" (click)="toggle('help_center')">
+          <div class="footer-title" [class.show]="active['help_center']">
+            <h4>{{ 'Help Center' | translate }}</h4>
+          </div>
+          <div class="footer-contain">
+            <app-footer-links [links]="data()?.footer?.help_center || []" />
+          </div>
+        </div>
+        } @if (data()?.footer?.support_email || data()?.footer?.support_number ||
+        data()?.footer?.play_store_url || data()?.footer?.app_store_url) {
+        <div class="col-xl-3 col-lg-4 col-sm-6">
+          <div class="footer-title contact-title">
+            <h4>{{ 'contact_us' | translate }}</h4>
+          </div>
+          <app-footer-contact [data]="data()" />
+        </div>
+        }
+      </div>
+    </div>
+    <div class="sub-footer section-small-space">
+      @if (data()?.footer?.footer_copyright) {
+      <div class="reserve">
+        <app-footer-copyright [data]="data()" />
+      </div>
+      }
+      <div class="payment">
+        <app-footer-payment-options />
+      </div>
+      @if (data()?.footer?.social_media_enable) {
+      <app-footer-social-links [data]="data()" />
+      }
+    </div>
+  </div>
+</footer>

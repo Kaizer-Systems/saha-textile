@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { Promotion } from '@saha/contracts';
-import type { PromotionRepository } from '@saha/core-domain';
+import type { Promotion } from '@saha-textile/contracts';
+import type { PromotionRepository } from '@saha-textile/core-domain';
 
 import { PROMOTION_REPOSITORY } from '../infra/tokens';
 

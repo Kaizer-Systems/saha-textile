@@ -1,4 +1,4 @@
-import type { PaymentGateway } from '@saha/contracts';
+import type { PaymentGateway } from '@saha-textile/contracts';
 
 export interface PaymentIntent {
 	id: string;

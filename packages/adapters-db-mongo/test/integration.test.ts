@@ -9,7 +9,7 @@ import { seedDatabase } from '../src/seed/index';
  * Live integration tests against a real MongoDB (test M0). GATED: they only run
  * when RUN_DB_IT=1 and Mongo env vars are present, so normal `pnpm test` / CI
  * stays offline. Run locally with:
- *   RUN_DB_IT=1 pnpm --filter @saha/adapters-db-mongo test
+ *   RUN_DB_IT=1 pnpm --filter @saha-textile/adapters-db-mongo test
  */
 function hasMongoEnv(): boolean {
 	if (process.env.RUN_DB_IT !== '1') return false;

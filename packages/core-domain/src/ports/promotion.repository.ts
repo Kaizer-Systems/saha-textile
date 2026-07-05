@@ -1,4 +1,4 @@
-import type { Promotion } from '@saha/contracts';
+import type { Promotion } from '@saha-textile/contracts';
 
 export interface PromotionRepository {
 	findById(id: string): Promise<Promotion | null>;

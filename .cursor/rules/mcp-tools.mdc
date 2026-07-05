@@ -12,19 +12,18 @@ The active phase is whichever single block is uncommented in `.env.mcp` (`LOCAL`
 
 | Phase | Live servers |
 |---|---|
-| LOCAL | context7, shadcn, mongodb (test M0, read-write), postman (localhost) |
+| LOCAL | context7, mongodb (test M0, read-write), postman (localhost) |
 | TEST-E2E | + github (actions+repos), digitalocean (droplets,spaces,apps) |
 | PROD-E2E | same as TEST-E2E, but mongodb is **read-only** and github is read-oriented |
 
 If a requested action needs a server not live in the current phase, tell the human which phase to switch to (uncomment its block in `.env.mcp` + restart Cursor) instead of trying to use it.
 
 ## Essential (always-on) tools per server
-- **context7** — `resolve-library-id`, then `query-docs`. Always resolve first. Use it (append "use context7" implicitly) for any library/API/config question across React 19.2, Next.js 16, NestJS 11, Fastify 5, Zustand 5, TanStack Query 5, Tailwind 4. Pin the version in the query.
+- **context7** — `resolve-library-id`, then `query-docs`. Always resolve first. Use it (append "use context7" implicitly) for any library/API/config question across Angular 21, AnalogJS, Bootstrap 5 / ng-bootstrap, NgRx 21, TanStack Angular Query, Transloco, vite-plugin-pwa, NestJS 11, Fastify 5. Pin the version in the query.
 - **mongodb** — `find`, `aggregate`, `count`, `list-databases`, `list-collections`, `collection-schema`, plus `insert-many`/`update-many` (LOCAL/TEST only). Cluster-management and `drop-*` tools are **disabled by default**.
 - **postman** — the `--minimal` set (run/get/create collection, environments). Heavier collaboration tools require the `full` config.
 - **github** (E2E) — `actions` + `repos` toolsets only.
 - **digitalocean** (E2E) — `droplets`, `spaces`, `apps` services only.
-- **shadcn** — component search/install. **Disable during pure infra/deploy E2E sessions** (UI isn't in play then) to reclaim budget.
 
 ## On-demand activation protocol
 When a task genuinely needs a tool that is disabled (e.g. a MongoDB index/`drop` tool, a Postman monitor tool, a DigitalOcean service outside the default three, or a broader GitHub toolset):

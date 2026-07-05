@@ -8,11 +8,6 @@
 			}
 		},
 
-		"shadcn": {
-			"command": "npx",
-			"args": ["-y", "shadcn@latest", "mcp"]
-		},
-
 		"mongodb": {
 			"command": "npx",
 			"args": [

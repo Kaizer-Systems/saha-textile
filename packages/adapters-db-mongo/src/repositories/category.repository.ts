@@ -1,5 +1,5 @@
-import type { Category } from '@saha/contracts';
-import type { CategoryRepository } from '@saha/core-domain';
+import type { Category } from '@saha-textile/contracts';
+import type { CategoryRepository } from '@saha-textile/core-domain';
 
 import { toCategory } from '../mappers';
 import { type CategoryDoc, CategoryModel } from '../models/index';

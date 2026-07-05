@@ -1,0 +1,17 @@
+{
+	"version": "0.0.1",
+	"configurations": [
+		{
+			"name": "admin",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["--filter", "@saha-textile/admin", "dev"],
+			"port": 4300
+		},
+		{
+			"name": "storefront",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["--filter", "@saha-textile/storefront", "start"],
+			"port": 4200
+		}
+	]
+}

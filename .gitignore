@@ -23,6 +23,7 @@ dist/
 build/
 .next/
 .turbo/
+.angular/
 coverage/
 *.log
 *.tsbuildinfo
@@ -30,3 +31,6 @@ coverage/
 # ---- OS / editor noise ----
 .DS_Store
 Thumbs.db
+
+# ---- Vendor Theme Files ----
+vendor

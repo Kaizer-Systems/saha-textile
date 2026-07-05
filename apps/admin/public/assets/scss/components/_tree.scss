@@ -1,0 +1,147 @@
+/**=====================
+     Tree CSS Start
+==========================**/
+.theme-tree-box {
+	.tree-main-ul {
+		padding-top: 25px;
+
+		li {
+			padding-left: 15px;
+			color: $content-color;
+			position: relative;
+
+			[dir='rtl'] & {
+				padding-left: 0;
+				padding-right: 15px;
+			}
+
+			.tree-options {
+				display: flex;
+				align-items: center;
+				gap: 5px;
+				opacity: 0;
+				visibility: hidden;
+				transform: scale(0.8);
+				transition: all 0.5s ease;
+
+				@media (max-width: 991px) {
+					opacity: 1;
+					visibility: visible;
+					transform: scale(1);
+				}
+
+				a {
+					color: #707070;
+
+					&:hover {
+						color: rgba($primary-color, 1);
+					}
+				}
+			}
+
+			&:after {
+				content: '';
+				position: absolute;
+				background-image: url('/assets/images/32px.png');
+				background-position: -68px -4px;
+				width: 24px;
+				height: 24px;
+				line-height: 24px;
+				top: 0;
+				left: -7px;
+
+				[dir='rtl'] & {
+					left: unset;
+					transform: scaleX(-1);
+					right: -7px;
+				}
+			}
+
+			> div {
+				display: flex;
+				flex-wrap: wrap;
+				width: 100%;
+				gap: 8px;
+				align-items: center;
+				font-size: 16px;
+
+				&:hover {
+					.tree-options {
+						opacity: 1;
+						visibility: visible;
+						transform: scale(1);
+					}
+				}
+			}
+
+			ul {
+				padding-left: 9px;
+				padding-block: 10px 5px;
+				position: relative;
+
+				[dir='rtl'] & {
+					padding-left: 0;
+					padding-right: 9px;
+				}
+
+				&:after {
+					content: '';
+					position: absolute;
+					top: 0;
+					left: 2px;
+					background-image: url('/assets/images/32px.png');
+					width: 24px;
+					height: calc(100% - 2px);
+					background-position: -292px -4px;
+					background-repeat: repeat-y;
+
+					[dir='rtl'] & {
+						left: unset;
+						right: 2px;
+					}
+				}
+			}
+
+			+ li {
+				margin-top: 10px;
+			}
+		}
+
+		li.inside-ul {
+			&:after {
+				background-position: -132px -4px;
+			}
+		}
+
+		> li {
+			&:after {
+				content: '';
+				position: absolute;
+				background-image: url('/assets/images/32px.png');
+				background-position: -132px -4px;
+			}
+		}
+
+		.tree-icon {
+			background-image: url('/assets/images/32px.png');
+			width: 24px;
+			height: 24px;
+			line-height: 24px;
+			background-repeat: no-repeat;
+			display: inline-block;
+
+			&.folder-icon {
+				background-position: -260px -4px;
+			}
+
+			&.file-icon {
+				background-position: -100px -70px;
+			}
+		}
+	}
+
+	span.active {
+		color: $primary-color;
+		font-weight: bold;
+	}
+}

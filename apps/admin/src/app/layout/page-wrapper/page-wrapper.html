@@ -1,0 +1,23 @@
+@if (loader.status()) {
+<app-loader />
+}
+<div class="container-fluid">
+	<div class="row">
+		<div [class]="gridClass()">
+			<div class="card">
+				<div class="card-body">
+					@if (title()) {
+					<div class="title-header">
+						<div class="d-flex align-items-center">
+							<h5>{{ title() | translate }}</h5>
+							<ng-content select="[option]" />
+						</div>
+						<ng-content select="[button]" />
+					</div>
+					}
+					<ng-content />
+				</div>
+			</div>
+		</div>
+	</div>
+</div>

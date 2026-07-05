@@ -1,0 +1,891 @@
+{
+	"data": [
+		{
+			"id": 22,
+			"admin_commission": 7.6,
+			"vendor_commission": 118.58,
+			"order_id": 31,
+			"store_id": 3,
+			"created_at": "2023-10-07T00:00:05.000000Z",
+			"updated_at": "2023-10-07T00:00:05.000000Z",
+			"deleted_at": null,
+			"order": {
+				"id": 31,
+				"order_number": 1030,
+				"consumer_id": 19,
+				"tax_total": 9.12,
+				"shipping_total": 0,
+				"points_amount": 0,
+				"wallet_balance": 0,
+				"amount": 126.18,
+				"total": 135.3,
+				"coupon_total_discount": 0,
+				"payment_method": "cod",
+				"payment_status": "COMPLETED",
+				"store_id": 3,
+				"billing_address_id": 3,
+				"shipping_address_id": 1,
+				"delivery_description": "Standard Delivery | Approx 5 to 7 Days",
+				"delivery_interval": null,
+				"order_status_id": 6,
+				"coupon_id": null,
+				"parent_id": null,
+				"created_by_id": 1,
+				"invoice_url": "https://fastkart.webiots.co.in/order/invoice/1030",
+				"status": 1,
+				"created_at": "2023-09-30T08:56:51.000000Z",
+				"consumer": {
+					"id": 19,
+					"name": "John Doe",
+					"email": "john.customer@example.com",
+					"country_code": "1",
+					"phone": 5551855359,
+					"role": {
+						"id": 2,
+						"name": "consumer",
+						"guard_name": "web",
+						"system_reserve": "1",
+						"created_at": "2023-08-24T08:16:03.000000Z",
+						"updated_at": "2023-08-24T08:16:03.000000Z",
+						"pivot": {
+							"model_type": "App\\Models\\User",
+							"model_id": "19",
+							"role_id": "2"
+						}
+					}
+				},
+				"order_status": {
+					"id": 6,
+					"name": "delivered"
+				}
+			},
+			"store": {
+				"id": 3,
+				"store_name": "Natures Basket Mart",
+				"description": "Welcome to Nature's Basket Mart, We understand the importance of fresh, nourishing vegetables in your daily diet, and that's why we've curated a marketplace that celebrates the vibrancy, flavors, and vitality of farm-fresh produce",
+				"slug": "natures-basket-mart",
+				"store_logo_id": 1439,
+				"store_cover_id": null,
+				"country_id": 840,
+				"state_id": 3787,
+				"city": "Rochester",
+				"address": "2775 James Street",
+				"pincode": "14616",
+				"facebook": "https://www.facebook.com/",
+				"twitter": "https://twitter.com/",
+				"instagram": "https://www.instagram.com/",
+				"youtube": null,
+				"pinterest": null,
+				"hide_vendor_email": 0,
+				"hide_vendor_phone": 0,
+				"vendor_id": 4,
+				"created_by_id": "1",
+				"status": 1,
+				"is_approved": 1,
+				"created_at": "2023-08-24T09:37:50.000000Z",
+				"updated_at": "2023-09-29T13:35:05.000000Z",
+				"deleted_at": null,
+				"orders_count": 10,
+				"reviews_count": 23,
+				"products_count": 10,
+				"product_images": [
+					"https://fastkart.webiots.co.in/storage/77/Pumpkin_3.png",
+					"https://fastkart.webiots.co.in/storage/25/Durian_4.png",
+					"https://fastkart.webiots.co.in/storage/70/Pea_1.png"
+				],
+				"order_amount": 539.3,
+				"rating_count": 3.260869565217391,
+				"reviews": [
+					{
+						"id": 1,
+						"product_id": 18,
+						"consumer_id": 19,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 4,
+						"description": "Very impressed with this purchase. The item is of excellent quality, and it has exceeded my expectations.",
+						"created_at": "2023-09-29T11:52:57.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 19,
+							"name": "John Doe",
+							"email": "john.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "19",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 2,
+						"product_id": 12,
+						"consumer_id": 21,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 5,
+						"description": "I am genuinely delighted with this item. It's a total winner! The quality is superb, and it has added so much convenience to my daily routine. Highly satisfied customer!",
+						"created_at": "2023-09-29T12:27:04.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 21,
+							"name": "Sarah Davis",
+							"email": "sarah.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "21",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 3,
+						"product_id": 16,
+						"consumer_id": 21,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 5,
+						"description": "I am genuinely delighted with this item. It's a total winner! The quality is superb, and it has added so much convenience to my daily routine. Highly satisfied customer!",
+						"created_at": "2023-09-29T12:27:45.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 21,
+							"name": "Sarah Davis",
+							"email": "sarah.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "21",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 4,
+						"product_id": 15,
+						"consumer_id": 21,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 5,
+						"description": "I am genuinely delighted with this item. It's a total winner! The quality is superb, and it has added so much convenience to my daily routine. Highly satisfied customer!",
+						"created_at": "2023-09-29T12:27:54.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 21,
+							"name": "Sarah Davis",
+							"email": "sarah.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "21",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 5,
+						"product_id": 10,
+						"consumer_id": 21,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 5,
+						"description": "I am genuinely delighted with this item. It's a total winner! The quality is superb, and it has added so much convenience to my daily routine. Highly satisfied customer!",
+						"created_at": "2023-09-29T12:28:12.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 21,
+							"name": "Sarah Davis",
+							"email": "sarah.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "21",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 6,
+						"product_id": 19,
+						"consumer_id": 21,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 5,
+						"description": "I am genuinely delighted with this item. It's a total winner! The quality is superb, and it has added so much convenience to my daily routine. Highly satisfied customer!",
+						"created_at": "2023-09-29T12:28:25.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 21,
+							"name": "Sarah Davis",
+							"email": "sarah.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "21",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 7,
+						"product_id": 9,
+						"consumer_id": 21,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 5,
+						"description": "I am genuinely delighted with this item. It's a total winner! The quality is superb, and it has added so much convenience to my daily routine. Highly satisfied customer!",
+						"created_at": "2023-09-29T12:28:39.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 21,
+							"name": "Sarah Davis",
+							"email": "sarah.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "21",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 8,
+						"product_id": 18,
+						"consumer_id": 21,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 4,
+						"description": "I am genuinely delighted with this item. It's a total winner! The quality is superb, and it has added so much convenience to my daily routine. Highly satisfied customer!",
+						"created_at": "2023-09-29T12:28:59.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 21,
+							"name": "Sarah Davis",
+							"email": "sarah.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "21",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 9,
+						"product_id": 18,
+						"consumer_id": 20,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 5,
+						"description": "I am extremely satisfied with this purchase. The item arrived promptly, and the quality is exceptional. It's evident that the makers paid attention to detail. Overall, a fantastic buy!",
+						"created_at": "2023-09-29T12:48:03.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 20,
+							"name": "Rome Doe",
+							"email": "rome.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "20",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 10,
+						"product_id": 18,
+						"consumer_id": 22,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 1,
+						"description": "Honestly, I regret buying this item. The quality is subpar, and it feels like a waste of money. I wouldn't recommend it to anyone.",
+						"created_at": "2023-09-29T13:04:13.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 22,
+							"name": "Jessica Miller",
+							"email": "jessica.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "22",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 11,
+						"product_id": 17,
+						"consumer_id": 22,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 3,
+						"description": "Honestly, I regret buying this item. The quality is subpar, and it feels like a waste of money. I wouldn't recommend it to anyone.",
+						"created_at": "2023-09-29T13:04:48.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 22,
+							"name": "Jessica Miller",
+							"email": "jessica.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "22",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 12,
+						"product_id": 13,
+						"consumer_id": 22,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 2,
+						"description": "Honestly, I regret buying this item. The quality is subpar, and it feels like a waste of money. I wouldn't recommend it to anyone.",
+						"created_at": "2023-09-29T13:04:59.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 22,
+							"name": "Jessica Miller",
+							"email": "jessica.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "22",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 13,
+						"product_id": 11,
+						"consumer_id": 22,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 1,
+						"description": "Honestly, I regret buying this item. The quality is subpar, and it feels like a waste of money. I wouldn't recommend it to anyone.",
+						"created_at": "2023-09-29T13:05:09.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 22,
+							"name": "Jessica Miller",
+							"email": "jessica.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "22",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 14,
+						"product_id": 18,
+						"consumer_id": 18,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 2,
+						"description": "Avoid this product. The quality is terrible, and it started falling apart almost immediately. I wish I had read more reviews before buying. Lesson learned.",
+						"created_at": "2023-09-29T13:10:49.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 18,
+							"name": "Jack Doe",
+							"email": "jack.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "18",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 15,
+						"product_id": 17,
+						"consumer_id": 18,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 2,
+						"description": "Avoid this product. The quality is terrible, and it started falling apart almost immediately. I wish I had read more reviews before buying. Lesson learned.",
+						"created_at": "2023-09-29T13:12:23.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 18,
+							"name": "Jack Doe",
+							"email": "jack.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "18",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 16,
+						"product_id": 11,
+						"consumer_id": 18,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 3,
+						"description": "Avoid this product. The quality is terrible, and it started falling apart almost immediately. I wish I had read more reviews before buying. Lesson learned.",
+						"created_at": "2023-09-29T13:12:47.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 18,
+							"name": "Jack Doe",
+							"email": "jack.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "18",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 17,
+						"product_id": 13,
+						"consumer_id": 18,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 1,
+						"description": "Avoid this product. The quality is terrible, and it started falling apart almost immediately. I wish I had read more reviews before buying. Lesson learned.",
+						"created_at": "2023-09-29T13:13:00.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 18,
+							"name": "Jack Doe",
+							"email": "jack.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "18",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 18,
+						"product_id": 9,
+						"consumer_id": 20,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 3,
+						"description": "This is one of the worst purchases I've made. The item looks nothing like the pictures, and the functionality is a joke. I feel misled and dissatisfied.",
+						"created_at": "2023-09-29T13:30:02.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 20,
+							"name": "Rome Doe",
+							"email": "rome.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "20",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 19,
+						"product_id": 10,
+						"consumer_id": 20,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 2,
+						"description": "This is one of the worst purchases I've made. The item looks nothing like the pictures, and the functionality is a joke. I feel misled and dissatisfied.",
+						"created_at": "2023-09-29T13:30:26.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 20,
+							"name": "Rome Doe",
+							"email": "rome.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "20",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 20,
+						"product_id": 12,
+						"consumer_id": 20,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 2,
+						"description": "This is one of the worst purchases I've made. The item looks nothing like the pictures, and the functionality is a joke. I feel misled and dissatisfied.",
+						"created_at": "2023-09-29T13:30:54.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 20,
+							"name": "Rome Doe",
+							"email": "rome.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "20",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 21,
+						"product_id": 15,
+						"consumer_id": 20,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 1,
+						"description": "This is one of the worst purchases I've made. The item looks nothing like the pictures, and the functionality is a joke. I feel misled and dissatisfied.",
+						"created_at": "2023-09-29T13:31:13.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 20,
+							"name": "Rome Doe",
+							"email": "rome.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "20",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 22,
+						"product_id": 161,
+						"consumer_id": 19,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 5,
+						"description": "Nice Fitt",
+						"created_at": "2023-10-05T04:39:35.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 19,
+							"name": "John Doe",
+							"email": "john.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "19",
+									"role_id": "2"
+								}
+							}
+						}
+					},
+					{
+						"id": 23,
+						"product_id": 178,
+						"consumer_id": 19,
+						"store_id": 3,
+						"review_image_id": null,
+						"rating": 4,
+						"description": "Nice Fit",
+						"created_at": "2023-10-05T04:50:06.000000Z",
+						"review_image": null,
+						"consumer": {
+							"id": 19,
+							"name": "John Doe",
+							"email": "john.customer@example.com",
+							"profile_image_id": null,
+							"role": {
+								"id": 2,
+								"name": "consumer",
+								"guard_name": "web",
+								"system_reserve": "1",
+								"created_at": "2023-08-24T08:16:03.000000Z",
+								"updated_at": "2023-08-24T08:16:03.000000Z",
+								"pivot": {
+									"model_type": "App\\Models\\User",
+									"model_id": "19",
+									"role_id": "2"
+								}
+							}
+						}
+					}
+				]
+			}
+		},
+		{
+			"id": 13,
+			"admin_commission": 0.68,
+			"vendor_commission": 67.05,
+			"order_id": 17,
+			"store_id": 4,
+			"created_at": "2023-10-06T07:00:05.000000Z",
+			"updated_at": "2023-10-06T07:00:05.000000Z",
+			"deleted_at": null,
+			"order": {
+				"id": 17,
+				"order_number": 1016,
+				"consumer_id": 22,
+				"tax_total": 4.89,
+				"shipping_total": 0,
+				"points_amount": 0,
+				"wallet_balance": 0,
+				"amount": 67.73,
+				"total": 72.62,
+				"coupon_total_discount": 0,
+				"payment_method": "cod",
+				"payment_status": "COMPLETED",
+				"store_id": 4,
+				"billing_address_id": 9,
+				"shipping_address_id": 9,
+				"delivery_description": "Standard Delivery|Approx 5 to 7 Days",
+				"delivery_interval": null,
+				"order_status_id": 6,
+				"coupon_id": null,
+				"parent_id": "15",
+				"created_by_id": 1,
+				"status": 1,
+				"created_at": "2023-09-29T13:00:56.000000Z",
+				"consumer": {
+					"id": 22,
+					"name": "Jessica Miller",
+					"email": "jessica.customer@example.com",
+					"country_code": "1",
+					"phone": 5551895359,
+					"role": {
+						"id": 2,
+						"name": "consumer",
+						"guard_name": "web",
+						"system_reserve": "1",
+						"created_at": "2023-08-24T08:16:03.000000Z",
+						"updated_at": "2023-08-24T08:16:03.000000Z",
+						"pivot": {
+							"model_type": "App\\Models\\User",
+							"model_id": "22",
+							"role_id": "2"
+						}
+					}
+				},
+				"order_status": {
+					"id": 6,
+					"name": "delivered"
+				}
+			},
+			"store": {
+				"id": 4,
+				"store_name": "Fruits Market",
+				"description": "Welcome to Fruits Market, your gateway to a world of natural sweetness and vibrant flavors. At FruitE, we celebrate the beauty and goodness of fruits in their purest form",
+				"slug": "fruits-market",
+				"store_logo_id": 1441,
+				"store_cover_id": null,
+				"country_id": 840,
+				"state_id": 3757,
+				"city": "San Jose",
+				"address": "4105 Park Street",
+				"pincode": "95110",
+				"facebook": "https://www.facebook.com/",
+				"twitter": "https://twitter.com/",
+				"instagram": "https://www.instagram.com/",
+				"youtube": null,
+				"pinterest": null,
+				"hide_vendor_email": 0,
+				"hide_vendor_phone": 0,
+				"vendor_id": 5,
+				"created_by_id": "1",
+				"status": 1,
+				"is_approved": 1,
+				"created_at": "2023-08-24T09:40:33.000000Z",
+				"updated_at": "2023-09-20T09:38:35.000000Z",
+				"deleted_at": null,
+				"orders_count": 12,
+				"reviews_count": 0,
+				"products_count": 10,
+				"product_images": [
+					"https://fastkart.webiots.co.in/storage/90/Pomegranate_2.png",
+					"https://fastkart.webiots.co.in/storage/93/Strawberry_1.png",
+					"https://fastkart.webiots.co.in/storage/100/Watermelon_4.png"
+				],
+				"order_amount": 1463.93,
+				"rating_count": null,
+				"reviews": []
+			}
+		}
+	],
+	"total": 2
+}

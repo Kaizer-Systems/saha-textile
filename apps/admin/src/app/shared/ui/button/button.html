@@ -1,0 +1,14 @@
+<button
+	[class]="class()"
+	[id]="id()"
+	[type]="type()"
+	[class.disabled]="disabled() || (loader.buttonSpinner() && spinner() && buttonId === id())"
+	[disabled]="disabled() || (loader.buttonSpinner() && buttonId === id())"
+	(click)="onClick(id())"
+>
+	<div
+		[ngClass]="{ 'position-relative spinning' : spinner() && loader.buttonSpinner() && buttonId && buttonId === id() }"
+	>
+		<ng-content />
+	</div>
+</button>

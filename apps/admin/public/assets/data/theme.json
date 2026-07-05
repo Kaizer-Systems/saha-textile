@@ -1,0 +1,68 @@
+{
+	"data": [
+		{
+			"id": 1,
+			"name": "Paris",
+			"slug": "paris",
+			"image": "assets/images/theme/1.jpg",
+			"status": 1,
+			"created_at": "2023-08-24T08:16:03.000000Z",
+			"updated_at": "2023-08-24T08:16:03.000000Z"
+		},
+		{
+			"id": 2,
+			"name": "Tokyo",
+			"slug": "tokyo",
+			"image": "assets/images/theme/2.jpg",
+			"status": 0,
+			"created_at": "2023-08-24T08:16:03.000000Z",
+			"updated_at": "2023-08-24T08:16:03.000000Z"
+		},
+		{
+			"id": 3,
+			"name": "Osaka",
+			"slug": "osaka",
+			"image": "assets/images/theme/3.jpg",
+			"status": 0,
+			"created_at": "2023-08-24T08:16:03.000000Z",
+			"updated_at": "2023-08-24T08:16:03.000000Z"
+		},
+		{
+			"id": 4,
+			"name": "Rome",
+			"slug": "rome",
+			"image": "assets/images/theme/4.jpg",
+			"status": 0,
+			"created_at": "2023-08-24T08:16:03.000000Z",
+			"updated_at": "2023-08-24T08:16:03.000000Z"
+		},
+		{
+			"id": 5,
+			"name": "Madrid",
+			"slug": "madrid",
+			"image": "assets/images/theme/5.jpg",
+			"status": 0,
+			"created_at": "2023-08-24T08:16:03.000000Z",
+			"updated_at": "2023-08-24T08:16:03.000000Z"
+		},
+		{
+			"id": 6,
+			"name": "Berlin",
+			"slug": "berlin",
+			"image": "assets/images/theme/6.jpg",
+			"status": 0,
+			"created_at": "2023-08-24T08:16:03.000000Z",
+			"updated_at": "2023-08-24T08:16:03.000000Z"
+		},
+		{
+			"id": 7,
+			"name": "Denver",
+			"slug": "denver",
+			"image": "assets/images/theme/7.jpg",
+			"status": 0,
+			"created_at": "2023-08-24T08:16:03.000000Z",
+			"updated_at": "2023-08-24T08:16:03.000000Z"
+		}
+	],
+	"total": 7
+}

@@ -1,0 +1,511 @@
+{
+	"data": [
+		{
+			"id": 23,
+			"name": "Kevin Wilson",
+			"email": "kevin.customer@example.com",
+			"country_code": "1",
+			"phone": 5551905360,
+			"system_reserve": "0",
+			"status": 1,
+			"created_by_id": 1,
+			"email_verified_at": null,
+			"created_at": "2023-09-29T06:15:30.000000Z",
+			"updated_at": "2023-10-10T06:45:15.000000Z",
+			"deleted_at": null,
+			"orders_count": 3,
+			"role": {
+				"id": 2,
+				"name": "consumer",
+				"guard_name": "web",
+				"system_reserve": "1",
+				"created_at": "2023-08-24T08:16:03.000000Z",
+				"updated_at": "2023-08-24T08:16:03.000000Z",
+				"pivot": {
+					"model_id": "23",
+					"role_id": "2",
+					"model_type": "App\\Models\\User"
+				}
+			},
+			"point": {
+				"id": 7,
+				"consumer_id": 23,
+				"balance": 114.96
+			},
+			"wallet": {
+				"id": 5,
+				"consumer_id": 23,
+				"balance": 0
+			},
+			"address": [
+				{
+					"id": 5,
+					"title": "Home",
+					"user_id": "23",
+					"street": "26, Starts Hollow Colony",
+					"city": "Denver",
+					"pincode": "80014",
+					"is_default": 0,
+					"country_code": "1",
+					"phone": 6305875463,
+					"country_id": 840,
+					"state_id": 3759,
+					"country": {
+						"id": 840,
+						"name": "United States"
+					},
+					"state": {
+						"id": 3759,
+						"name": "Colorado",
+						"country_id": "840",
+						"created_at": "2023-08-24T08:16:43.000000Z",
+						"updated_at": "2023-08-24T08:16:43.000000Z"
+					}
+				}
+			],
+			"vendor_wallet": null,
+			"payment_account": null
+		},
+		{
+			"id": 22,
+			"name": "Jessica Miller",
+			"email": "jessica.customer@example.com",
+			"country_code": "1",
+			"phone": 5551895359,
+			"system_reserve": "0",
+			"status": 1,
+			"created_by_id": null,
+			"email_verified_at": null,
+			"created_at": "2023-09-29T06:14:19.000000Z",
+			"updated_at": "2023-09-29T06:14:19.000000Z",
+			"deleted_at": null,
+			"orders_count": 3,
+			"role": {
+				"id": 2,
+				"name": "consumer",
+				"guard_name": "web",
+				"system_reserve": "1",
+				"created_at": "2023-08-24T08:16:03.000000Z",
+				"updated_at": "2023-08-24T08:16:03.000000Z",
+				"pivot": {
+					"model_id": "22",
+					"role_id": "2",
+					"model_type": "App\\Models\\User"
+				}
+			},
+			"point": {
+				"id": 6,
+				"consumer_id": 22,
+				"balance": 100
+			},
+			"wallet": {
+				"id": 4,
+				"consumer_id": 22,
+				"balance": 0
+			},
+			"address": [
+				{
+					"id": 9,
+					"title": "Home",
+					"user_id": "22",
+					"street": "10 Hill Street",
+					"city": "Toledo",
+					"pincode": "43615",
+					"is_default": 0,
+					"country_code": "1",
+					"phone": 4197792517,
+					"country_id": 840,
+					"state_id": 3790,
+					"country": {
+						"id": 840,
+						"name": "United States"
+					},
+					"state": {
+						"id": 3790,
+						"name": "Ohio",
+						"country_id": "840",
+						"created_at": "2023-08-24T08:16:44.000000Z",
+						"updated_at": "2023-08-24T08:16:44.000000Z"
+					}
+				}
+			],
+			"vendor_wallet": null,
+			"payment_account": null
+		},
+		{
+			"id": 21,
+			"name": "Sarah Davis",
+			"email": "sarah.customer@example.com",
+			"country_code": "1",
+			"phone": 5551885359,
+			"system_reserve": "0",
+			"status": 1,
+			"created_by_id": null,
+			"email_verified_at": null,
+			"created_at": "2023-09-29T06:13:13.000000Z",
+			"updated_at": "2023-09-29T06:13:13.000000Z",
+			"deleted_at": null,
+			"orders_count": 7,
+			"role": {
+				"id": 2,
+				"name": "consumer",
+				"guard_name": "web",
+				"system_reserve": "1",
+				"created_at": "2023-08-24T08:16:03.000000Z",
+				"updated_at": "2023-08-24T08:16:03.000000Z",
+				"pivot": {
+					"model_id": "21",
+					"role_id": "2",
+					"model_type": "App\\Models\\User"
+				}
+			},
+			"point": {
+				"id": 5,
+				"consumer_id": 21,
+				"balance": 153.43
+			},
+			"wallet": {
+				"id": 3,
+				"consumer_id": 21,
+				"balance": 0
+			},
+			"address": [
+				{
+					"id": 6,
+					"title": "Home",
+					"user_id": "21",
+					"street": "4105 Park Street",
+					"city": "San Jose",
+					"pincode": "95110",
+					"is_default": 0,
+					"country_code": "1",
+					"phone": 4088023009,
+					"country_id": 840,
+					"state_id": 3757,
+					"country": {
+						"id": 840,
+						"name": "United States"
+					},
+					"state": {
+						"id": 3757,
+						"name": "California",
+						"country_id": "840",
+						"created_at": "2023-08-24T08:16:43.000000Z",
+						"updated_at": "2023-08-24T08:16:43.000000Z"
+					}
+				},
+				{
+					"id": 7,
+					"title": "Office",
+					"user_id": "21",
+					"street": "4106 Park Street",
+					"city": "San Jose",
+					"pincode": "95110",
+					"is_default": 0,
+					"country_code": "1",
+					"phone": 4088023009,
+					"country_id": 840,
+					"state_id": 3757,
+					"country": {
+						"id": 840,
+						"name": "United States"
+					},
+					"state": {
+						"id": 3757,
+						"name": "California",
+						"country_id": "840",
+						"created_at": "2023-08-24T08:16:43.000000Z",
+						"updated_at": "2023-08-24T08:16:43.000000Z"
+					}
+				}
+			],
+			"vendor_wallet": null,
+			"payment_account": null
+		},
+		{
+			"id": 20,
+			"name": "Rome Doe",
+			"email": "rome.customer@example.com",
+			"country_code": "1",
+			"phone": 5571875359,
+			"system_reserve": "0",
+			"status": 1,
+			"created_by_id": null,
+			"email_verified_at": null,
+			"created_at": "2023-09-29T06:08:29.000000Z",
+			"updated_at": "2023-09-29T06:08:29.000000Z",
+			"deleted_at": null,
+			"orders_count": 8,
+			"role": {
+				"id": 2,
+				"name": "consumer",
+				"guard_name": "web",
+				"system_reserve": "1",
+				"created_at": "2023-08-24T08:16:03.000000Z",
+				"updated_at": "2023-08-24T08:16:03.000000Z",
+				"pivot": {
+					"model_id": "20",
+					"role_id": "2",
+					"model_type": "App\\Models\\User"
+				}
+			},
+			"point": {
+				"id": 4,
+				"consumer_id": 20,
+				"balance": 111.58
+			},
+			"wallet": {
+				"id": 2,
+				"consumer_id": 20,
+				"balance": 0
+			},
+			"address": [
+				{
+					"id": 8,
+					"title": "Home",
+					"user_id": "20",
+					"street": "10 Hill Street",
+					"city": "Toledo",
+					"pincode": "43615",
+					"is_default": 0,
+					"country_code": "1",
+					"phone": 4197792517,
+					"country_id": 840,
+					"state_id": 3790,
+					"country": {
+						"id": 840,
+						"name": "United States"
+					},
+					"state": {
+						"id": 3790,
+						"name": "Ohio",
+						"country_id": "840",
+						"created_at": "2023-08-24T08:16:44.000000Z",
+						"updated_at": "2023-08-24T08:16:44.000000Z"
+					}
+				}
+			],
+			"vendor_wallet": null,
+			"payment_account": null
+		},
+		{
+			"id": 19,
+			"name": "John Doe",
+			"email": "john.customer@example.com",
+			"country_code": "1",
+			"phone": 5551855359,
+			"system_reserve": "0",
+			"status": 1,
+			"created_by_id": 1,
+			"email_verified_at": null,
+			"created_at": "2023-09-29T05:50:05.000000Z",
+			"updated_at": "2023-09-29T06:38:24.000000Z",
+			"deleted_at": null,
+			"orders_count": 8,
+			"role": {
+				"id": 2,
+				"name": "consumer",
+				"guard_name": "web",
+				"system_reserve": "1",
+				"created_at": "2023-08-24T08:16:03.000000Z",
+				"updated_at": "2023-08-24T08:16:03.000000Z",
+				"pivot": {
+					"model_id": "19",
+					"role_id": "2",
+					"model_type": "App\\Models\\User"
+				}
+			},
+			"point": {
+				"id": 3,
+				"consumer_id": 19,
+				"balance": 300
+			},
+			"wallet": {
+				"id": 1,
+				"consumer_id": 19,
+				"balance": 84.4
+			},
+			"address": [
+				{
+					"id": 1,
+					"title": "New Home",
+					"user_id": "19",
+					"street": "26, Starts Hollow Colony",
+					"city": "Denver",
+					"pincode": "80014",
+					"is_default": 0,
+					"country_code": "1",
+					"phone": 5551855359,
+					"country_id": 840,
+					"state_id": 3759,
+					"country": {
+						"id": 840,
+						"name": "United States"
+					},
+					"state": {
+						"id": 3759,
+						"name": "Colorado",
+						"country_id": "840",
+						"created_at": "2023-08-24T08:16:43.000000Z",
+						"updated_at": "2023-08-24T08:16:43.000000Z"
+					}
+				},
+				{
+					"id": 2,
+					"title": "Old Home",
+					"user_id": "19",
+					"street": "53B, Claire New Street",
+					"city": "San Jose",
+					"pincode": "94088",
+					"is_default": 0,
+					"country_code": "1",
+					"phone": 5551855359,
+					"country_id": 840,
+					"state_id": 3757,
+					"country": {
+						"id": 840,
+						"name": "United States"
+					},
+					"state": {
+						"id": 3757,
+						"name": "California",
+						"country_id": "840",
+						"created_at": "2023-08-24T08:16:43.000000Z",
+						"updated_at": "2023-08-24T08:16:43.000000Z"
+					}
+				},
+				{
+					"id": 3,
+					"title": "Office",
+					"user_id": "19",
+					"street": "21B, Row New Street",
+					"city": "San Jose",
+					"pincode": "94088",
+					"is_default": 0,
+					"country_code": "1",
+					"phone": 551865359,
+					"country_id": 840,
+					"state_id": 3757,
+					"country": {
+						"id": 840,
+						"name": "United States"
+					},
+					"state": {
+						"id": 3757,
+						"name": "California",
+						"country_id": "840",
+						"created_at": "2023-08-24T08:16:43.000000Z",
+						"updated_at": "2023-08-24T08:16:43.000000Z"
+					}
+				},
+				{
+					"id": 4,
+					"title": "IT Office",
+					"user_id": "19",
+					"street": "55B, Claire Cav Street",
+					"city": "San Jose",
+					"pincode": "94088",
+					"is_default": 0,
+					"country_code": "1",
+					"phone": 5551865359,
+					"country_id": 840,
+					"state_id": 3757,
+					"country": {
+						"id": 840,
+						"name": "United States"
+					},
+					"state": {
+						"id": 3757,
+						"name": "California",
+						"country_id": "840",
+						"created_at": "2023-08-24T08:16:43.000000Z",
+						"updated_at": "2023-08-24T08:16:43.000000Z"
+					}
+				}
+			],
+			"vendor_wallet": null,
+			"payment_account": {
+				"id": 1,
+				"user_id": "19",
+				"paypal_email": null,
+				"bank_name": null,
+				"bank_holder_name": null,
+				"bank_account_no": null,
+				"swift": null,
+				"ifsc": null,
+				"is_default": "0",
+				"status": 1,
+				"created_at": "2023-09-30T12:55:44.000000Z",
+				"updated_at": "2023-09-30T12:55:44.000000Z",
+				"deleted_at": null
+			}
+		},
+		{
+			"id": 18,
+			"name": "Jack Doe",
+			"email": "jack.customer@example.com",
+			"country_code": "1",
+			"phone": 156963090,
+			"system_reserve": "0",
+			"status": 1,
+			"created_by_id": 1,
+			"email_verified_at": null,
+			"created_at": "2023-09-23T05:25:19.000000Z",
+			"updated_at": "2023-09-29T06:42:11.000000Z",
+			"deleted_at": null,
+			"orders_count": 3,
+			"role": {
+				"id": 2,
+				"name": "consumer",
+				"guard_name": "web",
+				"system_reserve": "1",
+				"created_at": "2023-08-24T08:16:03.000000Z",
+				"updated_at": "2023-08-24T08:16:03.000000Z",
+				"pivot": {
+					"model_id": "18",
+					"role_id": "2",
+					"model_type": "App\\Models\\User"
+				}
+			},
+			"point": {
+				"id": 8,
+				"consumer_id": 18,
+				"balance": 0
+			},
+			"wallet": {
+				"id": 6,
+				"consumer_id": 18,
+				"balance": 0
+			},
+			"address": [
+				{
+					"id": 10,
+					"title": "Home",
+					"user_id": "18",
+					"street": "112 News Street",
+					"city": "Oslao",
+					"pincode": "85200",
+					"is_default": 0,
+					"country_code": "91",
+					"phone": 452361892,
+					"country_id": 840,
+					"state_id": 3781,
+					"country": {
+						"id": 840,
+						"name": "United States"
+					},
+					"state": {
+						"id": 3781,
+						"name": "Nebraska",
+						"country_id": "840",
+						"created_at": "2023-08-24T08:16:44.000000Z",
+						"updated_at": "2023-08-24T08:16:44.000000Z"
+					}
+				}
+			],
+			"vendor_wallet": null,
+			"payment_account": null
+		}
+	],
+	"total": 6
+}

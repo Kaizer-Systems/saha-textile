@@ -1,0 +1,40 @@
+<div
+	class="onhover-dropdown"
+	(click)="clickHeaderOnMobile()"
+>
+	<div class="notification-box">
+		<div>
+			<i class="ri-notification-line"></i>
+		</div>
+		@if (unreadNotificationCount()) {
+		<span class="badge rounded-pill badge-theme">{{ unreadNotificationCount() }}</span>
+		}
+	</div>
+	@if (notifications().length) {
+	<ul
+		class="notification-dropdown onhover-show-div"
+		[class.active]="active"
+	>
+		<li>
+			<i class="ri-notification-line"></i>
+			<h6 class="f-18 mb-0">{{ 'notifications' | translate }}</h6>
+		</li>
+		@for (notification of notifications() | slice:0:3; track notification.id) {
+		<li>
+			<p>
+				<i class="ri-record-circle-line txt-primary me-2"></i>
+				{{ notification.data.message | summary:30 }}
+			</p>
+		</li>
+		}
+		<li>
+			<a
+				[routerLink]="['/notification']"
+				class="btn btn-theme"
+			>
+				{{ 'check_all_notification' | translate }}
+			</a>
+		</li>
+	</ul>
+	}
+</div>

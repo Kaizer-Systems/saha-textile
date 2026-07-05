@@ -11,7 +11,7 @@ import globals from 'globals';
 
 export default [
 	{
-		ignores: ['.angular/**', 'dist/**', 'node_modules/**'],
+		ignores: ['.angular/**', 'dist/**', 'node_modules/**', 'server.ts'],
 	},
 	{
 		files: ['**/*.ts'],

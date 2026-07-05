@@ -1,9 +1,8 @@
 import { isPlatformBrowser, AsyncPipe } from '@angular/common';
-import { Component, inject, PLATFORM_ID, Renderer2, DOCUMENT, viewChild } from '@angular/core';
+import { Component, DOCUMENT, computed, inject, PLATFORM_ID, Renderer2, viewChild } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { toObservable } from '@angular/core/rxjs-interop';
-import { computed } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { Select2Data, Select2Module } from 'ng-select2-component';
 import { Observable } from 'rxjs';

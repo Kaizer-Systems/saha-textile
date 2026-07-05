@@ -1,5 +1,5 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, TemplateRef, inject, viewChild } from '@angular/core';
+import { Component, TemplateRef, computed, inject, viewChild } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -8,7 +8,6 @@ import { Select2Data, Select2Module } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
 import { toObservable } from '@angular/core/rxjs-interop';
-import { computed } from '@angular/core';
 import { injectCountriesQuery } from '@data-access/queries/country.queries';
 import { Button } from '@shared/ui/button/button';
 import { IShipping } from '@data-access/interfaces/shipping.interface';

@@ -1,0 +1,12 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'Q&A'"
+>
+	<app-table
+		[tableConfig]="tableConfig"
+		[hasCheckbox]="true"
+		(tableChanged)="onTableChange($event)"
+		(action)="onActionClicked($event)"
+	/>
+</app-page-wrapper>
+<app-answers-modal #answersModal />

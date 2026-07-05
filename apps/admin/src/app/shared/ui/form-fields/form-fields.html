@@ -1,0 +1,13 @@
+<div [class]="class()">
+	<label
+		[attr.for]="for()"
+		[class]="labelClass()"
+	>
+		{{ label() | translate }}@if (required()) {
+		<span class="theme-color required-dot ms-2">*</span>
+		}
+	</label>
+	<div [class]="gridClass()">
+		<ng-content />
+	</div>
+</div>

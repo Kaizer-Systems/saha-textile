@@ -1,0 +1,10 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'order_status'"
+>
+	<app-table
+		[tableConfig]="tableConfig"
+		[hasCheckbox]="true"
+		(tableChanged)="onTableChange($event)"
+	/>
+</app-page-wrapper>

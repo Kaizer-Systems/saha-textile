@@ -1,0 +1,67 @@
+<ng-template
+	#csvModal
+	let-modal
+>
+	<div class="modal-header">
+		<h2>{{ 'Import CSV' | translate }}</h2>
+		<app-button
+			[class]="'btn btn-close'"
+			[spinner]="false"
+			[id]="'media_close_btn'"
+			(click)="modal.dismiss('Cross click')"
+		>
+			<i class="ri-close-line"></i>
+		</app-button>
+	</div>
+	<div class="modal-body">
+		<ul
+			ngbNav
+			#nav="ngbNav"
+			[(activeId)]="active"
+			class="nav-tabs"
+		>
+			<li [ngbNavItem]="'upload'">
+				<a ngbNavLink>{{ 'Upload' }}</a>
+				<ng-template ngbNavContent>
+					<div
+						class="content-section drop-files-sec"
+						ngx-dropzone
+						[accept]="'.csv'"
+						[multiple]="false"
+						(change)="onSelect($event)"
+					>
+						<ngx-dropzone-label>
+							<div>
+								<h2>{{ 'drop_files_here' | translate }}</h2>
+							</div>
+						</ngx-dropzone-label>
+						@for (f of files; track f) {
+						<ngx-dropzone-preview
+							[removable]="true"
+							(removed)="onRemove(f)"
+						>
+							<ngx-dropzone-label>{{ f.name }} ({{ f.type }})</ngx-dropzone-label>
+						</ngx-dropzone-preview>
+						}
+					</div>
+				</ng-template>
+			</li>
+		</ul>
+		<div
+			[ngbNavOutlet]="nav"
+			class="mt-2"
+		></div>
+	</div>
+	<div class="modal-footer">
+		<div class="left-part"></div>
+		<div class="right-part">
+			<app-button
+				[class]="'align-items-center btn btn-theme d-flex'"
+				[id]="'upload_csv'"
+				(click)="upload()"
+			>
+				{{ 'upload' | translate }}
+			</app-button>
+		</div>
+	</div>
+</ng-template>

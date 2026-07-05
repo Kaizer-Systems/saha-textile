@@ -1,0 +1,351 @@
+<!-- tiles section -->
+<section class="dashboard-tiles">
+	<div class="container-fluid">
+		@if (( user$ | async )?.role?.name !== 'vendor') {
+		<div class="row g-3">
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles">
+					<div>
+						<h6>{{ 'total_revenue' | translate }}</h6>
+						<h3>{{ (statistics$ | async)?.total_revenue | currencySymbol }}</h3>
+					</div>
+					<div class="icon-box">
+						<i class="ri-wallet-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles">
+					<div>
+						<h6>{{ 'total_orders' | translate }}</h6>
+						<h3>{{ (statistics$ | async)?.total_orders }}</h3>
+					</div>
+					<div class="icon-box">
+						<i class="ri-file-text-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles">
+					<div>
+						<h6>{{ 'total_stores' | translate }}</h6>
+						<h3>{{ (statistics$ | async)?.total_stores }}</h3>
+					</div>
+					<div class="icon-box">
+						<i class="ri-box-3-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-3 col-sm-6">
+				<div class="card-tiles">
+					<div>
+						<h6>{{ 'total_user' | translate }}</h6>
+						<h3>{{ (statistics$ | async)?.total_users }}</h3>
+					</div>
+					<div class="icon-box">
+						<i class="ri-group-line"></i>
+					</div>
+				</div>
+			</div>
+		</div>
+		} @if (( user$ | async )?.role?.name === 'vendor') {
+		<div class="row">
+			<div class="col-3">
+				<div class="card-tiles">
+					<div>
+						<h6>{{ 'total_revenue' | translate }}</h6>
+						<h3>{{ (statistics$ | async)?.total_revenue | currencySymbol }}</h3>
+					</div>
+					<div class="icon-box">
+						<i class="ri-wallet-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-3">
+				<div class="card-tiles">
+					<div>
+						<h6>{{ 'total_orders' | translate }}</h6>
+						<h3>{{ (statistics$ | async)?.total_orders }}</h3>
+					</div>
+					<div class="icon-box">
+						<i class="ri-file-text-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-3">
+				<div class="card-tiles">
+					<div>
+						<h6>{{ 'total_product' | translate }}</h6>
+						<h3>{{ (product$ | async)?.total }}</h3>
+					</div>
+					<div class="icon-box">
+						<i class="ri-box-3-line"></i>
+					</div>
+				</div>
+			</div>
+			<div class="col-3">
+				<div class="card-tiles">
+					<div>
+						<h6>{{ 'total_balance' | translate }}</h6>
+						<h3>{{ ( user$ | async )?.vendor_wallet?.balance }}</h3>
+					</div>
+					<div class="icon-box">
+						<i class="ri-group-line"></i>
+					</div>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+</section>
+
+<!-- revenue & top vendor -->
+<section>
+	<div class="row m-0">
+		<div class="col-xl-8 col-md-6 p-0">
+			<app-page-wrapper
+				[gridClass]="'col-sm-12'"
+				[title]="'average_revenue'"
+			>
+				<div #chart></div>
+			</app-page-wrapper>
+		</div>
+		<div
+			class="col-xl-4 col-md-6 p-0"
+			*hasPermission="'store.index'"
+		>
+			<app-page-wrapper
+				[gridClass]="'col-sm-12'"
+				[title]="'top_stores'"
+			>
+				<div button>
+					@if (isBrowser) {
+					<select2
+						class="custom-select min-w-cls"
+						[data]="filter?.length ? filter : []"
+						[placeholder]="'filter_by' | translate"
+						(update)="filterSeller($event)"
+					/>
+					}
+				</div>
+				<app-table
+					[tableConfig]="sellerTableConfig"
+					(tableChanged)="onSellerTableChange($event)"
+					[pagination]="false"
+					[topbar]="false"
+					[loading]="topSellerLoader"
+					[hasCheckbox]="false"
+				/>
+			</app-page-wrapper>
+		</div>
+	</div>
+	<div class="row m-0">
+		<div
+			class="col-xl-5 col-md-6 p-0"
+			*hasPermission="'product.index'"
+		>
+			<app-page-wrapper
+				[gridClass]="'col-sm-12'"
+				[title]="'top_selling_products'"
+			>
+				<div button>
+					@if (isBrowser) {
+					<select2
+						class="custom-select min-w-cls"
+						[data]="filter?.length ? filter : []"
+						[placeholder]="'filter_by' | translate"
+						(update)="filterTopProduct($event)"
+					/>
+					}
+				</div>
+				<div class="top-selling-table datatable-wrapper table-responsive">
+					@if (topProductLoader) {
+					<div class="table-loader">
+						<span>{{ 'please_wait' | translate }}...</span>
+					</div>
+					}
+					<table>
+						@for (product of ((topProduct$ | async) | slice:0:4); track product) {
+						<tr>
+							<td>
+								<div class="img-info">
+									<img
+										[src]="product?.product_thumbnail ? product?.product_thumbnail.original_url : 'assets/images/product.png'"
+										class="img-fluid"
+										alt="product"
+									/>
+									<div>
+										<h6>{{ product?.created_at | date: 'dd MMM yyyy'}}</h6>
+										<h5>{{ product?.name }}</h5>
+									</div>
+								</div>
+							</td>
+							<td>
+								<h6>{{ 'price' | translate }}</h6>
+								<h5>{{ product?.sale_price | currencySymbol }}</h5>
+							</td>
+							<td>
+								<h6>{{ 'orders' | translate }}</h6>
+								<h5>{{ product?.orders_count }}</h5>
+							</td>
+							<td>
+								<h6>{{ 'stock' | translate }}</h6>
+								<h5>{{ product?.quantity }}</h5>
+							</td>
+							<td>
+								<h6>{{ 'amount' | translate }}</h6>
+								<h5>{{ +product?.order_amount | currencySymbol }}</h5>
+							</td>
+						</tr>
+						} @if (!(topProduct$ | async)?.length) {
+						<tr>
+							<td>
+								<div class="no-data-added">
+									<h4>{{ 'no_records_found' | translate }}</h4>
+								</div>
+							</td>
+						</tr>
+						}
+					</table>
+				</div>
+			</app-page-wrapper>
+		</div>
+		<div
+			class="col-xl-7 col-md-6 p-0"
+			*hasPermission="'order.index'"
+		>
+			<app-page-wrapper
+				[gridClass]="'col-sm-12'"
+				[title]="'recent_orders'"
+			>
+				<app-table
+					[tableConfig]="orderTableConfig"
+					(tableChanged)="onOrderTableChange($event)"
+					(rowClicked)="orderView($event)"
+					(action)="onOrderActionClicked($event)"
+					[loading]="false"
+					[pagination]="false"
+					[topbar]="false"
+					[hasCheckbox]="false"
+				/>
+			</app-page-wrapper>
+		</div>
+	</div>
+	<div class="row m-0">
+		<div
+			class="col-xl-7 col-md-6 p-0"
+			*hasPermission="'product.index'"
+		>
+			<app-page-wrapper
+				[gridClass]="'col-sm-12'"
+				[title]="'product_stock_report'"
+			>
+				<div button>
+					@if (isBrowser) {
+					<select2
+						class="custom-select min-w-cls"
+						[data]="(category$ | async)?.length ? (category$ | async) : []"
+						[placeholder]="'select_category' | translate"
+						(update)="filterProduct($event)"
+						resettable
+					/>
+					}
+				</div>
+				<app-table
+					[tableConfig]="productStockTableConfig"
+					[pagination]="false"
+					[topbar]="false"
+					[hasCheckbox]="false"
+					[loading]="productStockLoader"
+					(tableChanged)="onProductTableChange($event)"
+					(rowClicked)="productEdit($event)"
+					(action)="onProductActionClicked($event)"
+				/>
+			</app-page-wrapper>
+		</div>
+		<div class="col-xl-5 col-md-6 overflow-hidden p-0">
+			<app-page-wrapper
+				[gridClass]="'col-sm-12'"
+				[title]="'latest_reviews'"
+				*hasPermission="'review.index'"
+			>
+				<div button>
+					<a
+						[routerLink]="['/review']"
+						class="txt-primary"
+					>
+						{{ 'view_all' | translate }}
+					</a>
+				</div>
+				<div class="review-box table-responsive">
+					<table>
+						@for (review of ((review$ | async)?.data | slice:0:4); track review.id) {
+						<tr>
+							<td>
+								<div class="review-content">
+									<div class="img-box">
+										<img
+											[src]="review?.product?.product_thumbnail ? review?.product?.product_thumbnail?.original_url : 'assets/images/product.png'"
+											class="img-fluid"
+											[alt]="'review'"
+										/>
+									</div>
+									<span>{{ review?.product?.name }}</span>
+								</div>
+							</td>
+							<td>{{ review?.consumer?.name }}</td>
+							<td>
+								<ngb-rating
+									class="rating-sec"
+									[rate]="review?.rating"
+								/>
+							</td>
+						</tr>
+						}
+					</table>
+				</div>
+				@if (!(review$ | async)?.data?.length) {
+				<div class="no-data-added">
+					<h4>{{ 'no_records_found' | translate }}</h4>
+				</div>
+				}
+			</app-page-wrapper>
+			<app-page-wrapper
+				[gridClass]="'col-sm-12'"
+				[title]="'latest_blogs'"
+				*hasPermission="'blog.index'"
+			>
+				@if ((blog$ | async)?.data?.length) {
+				<div class="row g-3">
+					@for (blog of ((blog$ | async)?.data | slice:0:2); track blog.id) {
+					<div class="col-xxl-6">
+						<div class="blog-box">
+							<a
+								href="javascript:void(0)"
+								class="blog-img"
+							>
+								@if (blog?.blog_thumbnail) {
+								<img
+									[src]="blog?.blog_thumbnail ? blog?.blog_thumbnail?.original_url : 'assets/images/blog.png'"
+									class="img-fluid"
+									alt="blog"
+								/>
+								}
+							</a>
+							<div class="blog-content">
+								<a href="javascript:void(0)">{{ blog?.title }}</a>
+								<h6>{{ blog?.created_at | date: 'dd MMM yyyy hh:mm:a'}}</h6>
+							</div>
+						</div>
+					</div>
+					}
+				</div>
+				} @if (!(blog$ | async)?.data?.length) {
+				<div class="no-data-added">
+					<h4>{{ 'no_records_found' | translate }}</h4>
+				</div>
+				}
+			</app-page-wrapper>
+		</div>
+	</div>
+</section>

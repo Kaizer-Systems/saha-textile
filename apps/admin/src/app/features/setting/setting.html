@@ -1,0 +1,1535 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'settings'"
+>
+	<form
+		class="theme-form theme-form-2 mega-form"
+		[formGroup]="form"
+		(ngSubmit)="submit()"
+	>
+		<div class="vertical-tabs">
+			<div class="row">
+				<div class="col-xl-3 col-lg-4">
+					<ul
+						ngbNav
+						#nav="ngbNav"
+						[(activeId)]="active"
+						class="nav-pills"
+						orientation="vertical"
+					>
+						<li ngbNavItem="general">
+							<a ngbNavLink>
+								<i class="ri-settings-line"></i>
+								{{ 'general' | translate }}
+							</a>
+							<ng-template ngbNavContent>
+								<div formGroupName="general">
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'light_logo'"
+										[for]="'light_logo_image_id'"
+									>
+										<app-image-upload
+											[multipleImage]="false"
+											[helpText]="'*Upload image size 180x50px recommended'"
+											[image]="(setting$ | async)?.general?.light_logo_image"
+											(selectedFiles)="selectLightLogo($event)"
+										/>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'dark_logo'"
+										[for]="'dark_logo_image_id'"
+									>
+										<app-image-upload
+											[multipleImage]="false"
+											[helpText]="'*Upload image size 180x50px recommended'"
+											[image]="(setting$ | async)?.general?.dark_logo_image"
+											(selectedFiles)="selectDarkLogo($event)"
+										/>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'tiny_logo'"
+										[for]="'tiny_logo_image_id'"
+									>
+										<app-image-upload
+											[multipleImage]="false"
+											[helpText]="'*Upload image size 50x30px recommended'"
+											[image]="(setting$ | async)?.general?.tiny_logo_image"
+											(selectedFiles)="selectTinyLogo($event)"
+										/>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'favicon'"
+										[for]="'favicon_image_id'"
+									>
+										<app-image-upload
+											[multipleImage]="false"
+											[helpText]="'*Upload image size 16x16px recommended'"
+											[image]="(setting$ | async)?.general?.favicon_image"
+											(selectedFiles)="selectFavicon($event)"
+										/>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'site_title'"
+										[for]="'site_title'"
+										[required]="true"
+									>
+										<input
+											class="form-control"
+											id="site_title"
+											type="text"
+											placeholder="{{ 'enter_site_title' | translate }}"
+											formControlName="site_title"
+										/>
+										@if (form.get('general.site_title').touched &&
+										form.get('general.site_title').errors?.['required']) {
+										<div class="invalid-feedback">{{ 'site_title_is_required' | translate }}</div>
+										}
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'site_tagline'"
+										[for]="'site_tagline'"
+									>
+										<input
+											class="form-control"
+											id="site_tagline"
+											type="text"
+											placeholder="{{ 'enter_site_tagline' | translate }}"
+											formControlName="site_tagline"
+										/>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'timezone'"
+										[for]="'default_timezone'"
+									>
+										@if(isBrowser) {
+										<select2
+											class="custom-select"
+											[data]="time_zone?.length ? time_zone : []"
+											[placeholder]="'select_timezone' | translate "
+											noResultMessage="{{ 'no_data_found' | translate }}"
+											formControlName="default_timezone"
+										/>
+										} @if (form.get('general.default_timezone').touched &&
+										form.get('general.default_timezone').errors?.['required']) {
+										<div class="invalid-feedback">{{ 'timezone_is_required' | translate }}</div>
+										}
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'currency'"
+										[for]="'default_currency_id'"
+									>
+										@if(isBrowser) {
+										<select2
+											class="custom-select"
+											[data]="currencies().length ? currencies() : []"
+											[placeholder]="'select_currency' | translate "
+											noResultMessage="{{ 'no_data_found' | translate }}"
+											formControlName="default_currency_id"
+										/>
+										} @if (form.get('general.default_currency_id').touched &&
+										form.get('general.default_currency_id').errors?.['required']) {
+										<div class="invalid-feedback">{{ 'currency_is_required' | translate }}</div>
+										}
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'language_direction'"
+										[for]="'admin_site_language_direction'"
+									>
+										@if(isBrowser) {
+										<select2
+											class="custom-select"
+											[data]="language_direction?.length ? language_direction : []"
+											[placeholder]="'select_language_direction' | translate"
+											noResultMessage="{{ 'no_data_found' | translate }}"
+											formControlName="admin_site_language_direction"
+										/>
+										}
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'min_order_amount'"
+										[for]="'minimum_order'"
+									>
+										<div class="input-group">
+											<span class="input-group-text">
+												{{ (setting$ | async)?.general?.default_currency.symbol ? (setting$ |
+												async)?.general?.default_currency.symbol : '$' }}
+											</span>
+											<input
+												class="form-control"
+												id="minimum_order"
+												type="number"
+												placeholder="{{ 'enter_min_order_amount' | translate }}"
+												formControlName="min_order_amount"
+											/>
+										</div>
+										<p class="help-text">
+											{{ '*Please enter the minimum amount required for an order to be processed.'
+											}}
+										</p>
+										@if (form.get('general.min_order_amount').touched &&
+										form.get('general.min_order_amount').errors?.['required']) {
+										<div class="invalid-feedback">{{ 'amount_is_required' | translate }}</div>
+										}
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'min_order_free_shipping'"
+										[for]="'min_order_free_shipping'"
+									>
+										<div class="input-group">
+											<span class="input-group-text">
+												{{ (setting$ | async)?.general?.default_currency.symbol ? (setting$ |
+												async)?.general?.default_currency.symbol : '$' }}
+											</span>
+											<input
+												class="form-control"
+												id="minimum_order"
+												type="number"
+												placeholder="{{ 'enter_min_order_free_shipping' | translate }}"
+												formControlName="min_order_free_shipping"
+											/>
+										</div>
+										<p class="help-text">
+											{{ '*Please enter the minimum order amount for free shipping.' }}
+										</p>
+										@if (form.get('general.min_order_free_shipping').touched &&
+										form.get('general.min_order_free_shipping').errors?.['required']) {
+										<div class="invalid-feedback">
+											{{ 'min_order_free_shipping_is_required' | translate }}
+										</div>
+										}
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'store_prefix'"
+										[for]="'store_prefix'"
+									>
+										<input
+											class="form-control"
+											id="store_prefix"
+											type="text"
+											placeholder="{{ 'enter_store_prefix' | translate }}"
+											formControlName="product_sku_prefix"
+										/>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'mode'"
+										[for]="'mode'"
+									>
+										@if(isBrowser) {
+										<select2
+											class="custom-select"
+											[data]="mode?.length ? mode : []"
+											[placeholder]="'select_mode' | translate "
+											noResultMessage="{{ 'no_data_found' | translate }}"
+											formControlName="mode"
+										/>
+										} @if (form.get('general.mode').touched &&
+										form.get('general.mode').errors?.['required']) {
+										<div class="invalid-feedback">{{ 'mode_is_required' | translate }}</div>
+										}
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'copyright_text'"
+										[for]="'copyright'"
+									>
+										<input
+											class="form-control"
+											id="copyright"
+											type="text"
+											placeholder="{{ 'enter_copyright_text' | translate }}"
+											formControlName="copyright"
+										/>
+									</app-form-fields>
+								</div>
+							</ng-template>
+						</li>
+						<li ngbNavItem="activation">
+							<a ngbNavLink>
+								<i class="ri-radio-button-line"></i>
+								{{ 'activation' | translate }}
+							</a>
+							<ng-template ngbNavContent>
+								<div formGroupName="activation">
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'multivendor'"
+										[for]="'multivendor'"
+									>
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="multivendor"
+													formControlName="multivendor"
+												/>
+												<span class="switch-state"></span>
+											</label>
+											<p class="help-text">
+												{{ ' *Enable or disable external vendors access to our online store.' }}
+											</p>
+										</div>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'product_auto_approve'"
+										[for]="'product_auto_approve'"
+									>
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="product_auto_approve"
+													formControlName="product_auto_approve"
+												/>
+												<span class="switch-state"></span>
+											</label>
+											<p class="help-text">
+												{{ '*Enable automatic acceptance of vendor products without manual
+												review.' }}
+											</p>
+										</div>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'enable_wallet'"
+										[for]="'wallet_enable'"
+									>
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="wallet_enable"
+													formControlName="wallet_enable"
+												/>
+												<span class="switch-state"></span>
+											</label>
+											<p class="help-text">
+												{{ '*Enable the use of wallet balance for payment during checkout.' }}
+											</p>
+										</div>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'enable_point'"
+										[for]="'point_enable'"
+									>
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="point_enable"
+													formControlName="point_enable"
+												/>
+												<span class="switch-state"></span>
+											</label>
+											<p class="help-text">
+												{{ '*Enable the use of points for payment during checkout.' }}
+											</p>
+										</div>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'coupon_enable'"
+										[for]="'coupon_enable'"
+									>
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="coupon_enable"
+													formControlName="coupon_enable"
+												/>
+												<span class="switch-state"></span>
+											</label>
+											<p class="help-text">
+												{{ '*Allow customers to use coupons for payment at checkout.' }}
+											</p>
+										</div>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'store_auto_approve'"
+										[for]="'store_auto_approve'"
+									>
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="store_auto_approve"
+													formControlName="store_auto_approve"
+												/>
+												<span class="switch-state"></span>
+											</label>
+											<p class="help-text">
+												{{ '*Admin approval is necessary for new stores, similar to product
+												approval.' }}
+											</p>
+										</div>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'hide_stock_product'"
+										[for]="'hide_Stock_product'"
+									>
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="hide_Stock_product"
+													formControlName="stock_product_hide"
+												/>
+												<span class="switch-state"></span>
+											</label>
+											<p class="help-text">
+												{{ '*Decide whether to show product stock or not.' }}
+											</p>
+										</div>
+									</app-form-fields>
+								</div>
+							</ng-template>
+						</li>
+						<li ngbNavItem="wallet_points">
+							<a ngbNavLink>
+								<i class="ri-wallet-line"></i>
+								{{ 'wallet_points' | translate }}
+							</a>
+							<ng-template ngbNavContent>
+								<div formGroupName="wallet_points">
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'signup_points'"
+										[for]="'signup_points'"
+									>
+										<div class="input-group">
+											<span class="input-group-text"><i class="ri-copper-diamond-line"></i></span>
+											<input
+												class="form-control"
+												id="signup_points"
+												type="number"
+												placeholder="{{ 'enter_signup_points' | translate }}"
+												formControlName="signup_points"
+											/>
+										</div>
+										<p class="help-text">
+											{{ '*Provide points to new users as a signup incentive.' }}
+										</p>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'min_per_order_amount'"
+										[for]="'min_per_order_amount'"
+									>
+										<div class="input-group">
+											<span class="input-group-text">
+												{{(setting$ | async)?.general?.default_currency.symbol ? (setting$ |
+												async)?.general?.default_currency.symbol : '$'}}
+											</span>
+											<input
+												class="form-control"
+												id="min_per_order_amount"
+												type="number"
+												placeholder="{{ 'enter_min_per_order_amount' | translate }}"
+												formControlName="min_per_order_amount"
+											/>
+										</div>
+										<p class="help-text">
+											{{ '*Collect points when orders meet or exceed the minimum value.' }}
+										</p>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'point_currency_ratio'"
+										[for]="'point_currency_ratio'"
+									>
+										<input
+											class="form-control"
+											id="point_currency_ratio"
+											type="number"
+											placeholder="{{ 'enter_point_currency_ratio' | translate }}"
+											formControlName="point_currency_ratio"
+										/>
+										<p class="help-text">
+											{{ '*Determine the conversion factor from points to currency.' }}
+										</p>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'reward_per_order_point'"
+										[for]="'reward_per_order_amount'"
+									>
+										<input
+											class="form-control"
+											id="reward_per_order_amount"
+											type="number"
+											placeholder="{{ 'enter_reward_per_order_point' | translate }}"
+											formControlName="reward_per_order_amount"
+										/>
+										<p class="help-text">
+											*Earn reward points based on each orders value.
+											<br />
+											(Rewards Points = (Total Order Amount / Min Per Order Amount) * Reward Per
+											Order Point)
+										</p>
+									</app-form-fields>
+								</div>
+							</ng-template>
+						</li>
+						<li ngbNavItem="email_config">
+							<a ngbNavLink>
+								<i class="ri-mail-open-line"></i>
+								{{ 'email_configuration' | translate }}
+							</a>
+							<ng-template ngbNavContent>
+								<div formGroupName="email">
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'mailer'"
+										[for]="'mail_mailer'"
+									>
+										@if(isBrowser) {
+										<select2
+											class="custom-select"
+											[data]="mail_mailer?.length ? mail_mailer : []"
+											[placeholder]="'select_mailer' | translate "
+											noResultMessage="{{ 'no_data_found' | translate }}"
+											formControlName="mail_mailer"
+										/>
+										}
+									</app-form-fields>
+									@if (form.get('email.mail_mailer').value === 'smtp' ||
+									form.get('email.mail_mailer').value === 'sendmail') {
+									<div>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'Host'"
+											[for]="'mail_host'"
+										>
+											<input
+												class="form-control"
+												id="mail_host"
+												type="text"
+												placeholder="{{ 'enter_host' | translate }}"
+												formControlName="mail_host"
+											/>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'port'"
+											[for]="'mail_port'"
+										>
+											<input
+												class="form-control"
+												id="mail_port"
+												type="number"
+												placeholder="{{ 'enter_port' | translate }}"
+												formControlName="mail_port"
+											/>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'encryption'"
+											[for]="'mail_encryption'"
+										>
+											@if(isBrowser) {
+											<select2
+												class="custom-select"
+												[data]="encryption?.length ? encryption : []"
+												[placeholder]="'select_encryption' | translate"
+												noResultMessage="{{ 'no_data_found' | translate }}"
+												formControlName="mail_encryption"
+											/>
+											}
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'username'"
+											[for]="'mail_username'"
+										>
+											<input
+												class="form-control"
+												id="mail_username"
+												type="text"
+												placeholder="{{ 'enter_username' | translate }}"
+												formControlName="mail_username"
+											/>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'password'"
+											[for]="'mail_password'"
+										>
+											<input
+												class="form-control"
+												id="mail_password"
+												type="password"
+												placeholder="{{ 'enter_password' | translate }}"
+												formControlName="mail_password"
+											/>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'email_from_name'"
+											[for]="'mail_from_name'"
+										>
+											<input
+												class="form-control"
+												id="mail_from_name"
+												type="text"
+												placeholder="{{ 'enter_email_from_name' | translate }}"
+												formControlName="mail_from_name"
+											/>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'email_from_address'"
+											[for]="'mail_from_address'"
+										>
+											<input
+												class="form-control"
+												id="mail_from_address"
+												type="text"
+												placeholder="{{ 'enter_email_from_address' | translate }}"
+												formControlName="mail_from_address"
+											/>
+										</app-form-fields>
+									</div>
+									} @if (form.get('email.mail_mailer').value === 'mailgun') {
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'mailgun_domain'"
+										[for]="'mailgun_domain'"
+									>
+										<input
+											class="form-control"
+											id="mailgun_domain"
+											type="text"
+											placeholder="{{ 'enter_mailgun_domain' | translate }}"
+											formControlName="mailgun_domain"
+										/>
+									</app-form-fields>
+									} @if (form.get('email.mail_mailer').value === 'mailgun') {
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'mailgun_secret'"
+										[for]="'mailgun_secret'"
+									>
+										<input
+											class="form-control"
+											id="mailgun_secret"
+											type="text"
+											placeholder="{{ 'enter_mailgun_secret' | translate }}"
+											formControlName="mailgun_secret"
+										/>
+									</app-form-fields>
+									}
+								</div>
+							</ng-template>
+						</li>
+						<li ngbNavItem="vendor_commissions">
+							<a ngbNavLink>
+								<i class="ri-user-line"></i>
+								{{ 'vendor_commissions' | translate }}
+							</a>
+							<ng-template ngbNavContent>
+								<div formGroupName="vendor_commissions">
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'status'"
+										[for]="'commissions_status'"
+									>
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="commissions_status"
+													formControlName="status"
+												/>
+												<span class="switch-state"></span>
+											</label>
+										</div>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'min_withdraw_amount'"
+										[for]="'min_withdraw_amount'"
+									>
+										<div class="input-group">
+											<span class="input-group-text">
+												{{(setting$ | async)?.general?.default_currency.symbol ? (setting$ |
+												async)?.general?.default_currency.symbol : '$'}}
+											</span>
+											<input
+												class="form-control"
+												id="min_withdraw_amount"
+												type="number"
+												placeholder="{{ 'enter_min_withdraw_amount' | translate }}"
+												formControlName="min_withdraw_amount"
+											/>
+										</div>
+										<p class="help-text">
+											{{ '*Payout Minimum for Vendors: Specify the min amount vendors can request
+											for withdrawal.' }}
+										</p>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'commission_rate'"
+										[for]="'default_commission_rate'"
+									>
+										<div class="input-group">
+											<input
+												class="form-control"
+												id="default_commission_rate"
+												min="0"
+												max="100"
+												oninput="
+													if (value > 100) value = 100;
+													if (value < 0) value = 0;
+												"
+												type="number"
+												placeholder="{{ 'enter_default_commission_rate' | translate }}"
+												formControlName="default_commission_rate"
+											/>
+											<span class="input-group-text">%</span>
+										</div>
+										<p class="help-text">
+											{{ '*Set the rate at which admin receives a commission from vendor
+											earnings.' }}
+										</p>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'category_based_commission'"
+										[for]="'is_category_based_commission'"
+									>
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="is_category_based_commission"
+													formControlName="is_category_based_commission"
+												/>
+												<span class="switch-state"></span>
+											</label>
+										</div>
+										<p class="help-text">
+											{{ '*Enable the functionality to apply commissions based on product
+											categories. To configure, navigate to the Product Category module and set
+											the respective commission rates.' }}
+										</p>
+									</app-form-fields>
+								</div>
+							</ng-template>
+						</li>
+						<li ngbNavItem="refund">
+							<a ngbNavLink>
+								<i class="ri-exchange-dollar-line"></i>
+								{{ 'refund' | translate }}
+							</a>
+							<ng-template ngbNavContent>
+								<div formGroupName="refund">
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'Status'"
+										[for]="'refund_commissions_status'"
+									>
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="refund_commissions_status"
+													formControlName="status"
+												/>
+												<span class="switch-state"></span>
+											</label>
+										</div>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'refundable_days'"
+										[for]="'refundable_days'"
+									>
+										<input
+											class="form-control"
+											id="refundable_days"
+											type="number"
+											placeholder="{{ 'enter_refundable_days' | translate }}"
+											formControlName="refundable_days"
+										/>
+										<p class="help-text">
+											{{ '*Define the period within which users can initiate refund requests for
+											delivered items If left blank, this functionality will be disabled.' }}
+										</p>
+									</app-form-fields>
+								</div>
+							</ng-template>
+						</li>
+						<li ngbNavItem="newsletter">
+							<a ngbNavLink>
+								<i class="ri-mail-unread-line"></i>
+								{{ 'newsletter' | translate }}
+							</a>
+							<ng-template ngbNavContent>
+								<div formGroupName="newsletter">
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'mailchip_status'"
+										[for]="'newsletter_status'"
+									>
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="newsletter_status"
+													formControlName="status"
+												/>
+												<span class="switch-state"></span>
+											</label>
+										</div>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'mailchip_api_key'"
+										[for]="'mailchip_api_key'"
+									>
+										<input
+											class="form-control"
+											id="mailchip_api_key"
+											type="text"
+											placeholder="{{ 'enter_mailchip_api_key' | translate }}"
+											formControlName="mailchip_api_key"
+										/>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'mailchip_list_id'"
+										[for]="'mailchip_list_id'"
+									>
+										<input
+											class="form-control"
+											id="mailchip_list_id"
+											type="text"
+											placeholder="{{ 'enter_mailchip_list_id' | translate }}"
+											formControlName="mailchip_list_id"
+										/>
+									</app-form-fields>
+								</div>
+							</ng-template>
+						</li>
+						<li ngbNavItem="delivery">
+							<a ngbNavLink>
+								<i class="ri-truck-line"></i>
+								{{ 'delivery' | translate }}
+							</a>
+							<ng-template ngbNavContent>
+								<div formGroupName="delivery">
+									<div formGroupName="default">
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'title'"
+											[for]="'default_title'"
+										>
+											<input
+												class="form-control"
+												id="default_title"
+												type="text"
+												placeholder="{{ 'enter_title' | translate }}"
+												formControlName="title"
+											/>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'description' | translate"
+											[for]="'default_description'"
+										>
+											<input
+												class="form-control"
+												id="default_description"
+												type="text"
+												placeholder="{{ 'enter_description' | translate }}"
+												formControlName="description"
+											/>
+										</app-form-fields>
+									</div>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'same_day_delivery'"
+										[for]="'same_day_delivery'"
+									>
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="same_day_delivery"
+													formControlName="same_day_delivery"
+												/>
+												<span class="switch-state"></span>
+											</label>
+										</div>
+									</app-form-fields>
+									@if (form.get('delivery.same_day_delivery').value === true) {
+									<div formGroupName="same_day">
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'title'"
+											[for]="'same_day_title'"
+										>
+											<input
+												class="form-control"
+												id="same_day_title"
+												type="text"
+												placeholder="{{ 'enter_title' | translate }}"
+												formControlName="title"
+											/>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'description' | translate"
+											[for]="'same_day_description'"
+										>
+											<input
+												class="form-control"
+												id="same_day_description"
+												type="text"
+												placeholder="{{ 'enter_description' | translate }}"
+												formControlName="description"
+											/>
+										</app-form-fields>
+									</div>
+									} @if (form.get('delivery.same_day_delivery').value === true) {
+									<div>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'default_delivery'"
+											[for]="'same_day_intervals'"
+										>
+											<div formArrayName="same_day_intervals">
+												@for (val of sameDayIntervals.controls; track val; let index = $index) {
+												<div
+													class="mb-3"
+													formGroupName="{{index}}"
+												>
+													<div class="row">
+														<div class="col-sm-10 row justify-content-between">
+															<div class="col-6">
+																<input
+																	type="text"
+																	class="form-control mb-2"
+																	placeholder="{{ 'enter_title' | translate }}"
+																	formControlName="title"
+																/>
+															</div>
+															<div class="col-6">
+																<input
+																	type="text"
+																	class="form-control"
+																	placeholder="{{ 'enter_description' | translate }}"
+																	formControlName="description"
+																/>
+															</div>
+														</div>
+														<div class="col-sm-2">
+															<a
+																href="javascript:void(0)"
+																class="mt-custom d-block invalid-feedback cursor-pointer"
+																(click)="remove(index)"
+															>
+																{{ 'remove' | translate }}
+															</a>
+														</div>
+													</div>
+												</div>
+												}
+											</div>
+											<app-button
+												[class]="'btn btn-animation'"
+												[spinner]="false"
+												(click)="addDays($event)"
+											>
+												{{ 'add' | translate }}
+											</app-button>
+										</app-form-fields>
+									</div>
+									}
+								</div>
+							</ng-template>
+						</li>
+						<li ngbNavItem="payment_method">
+							<a ngbNavLink>
+								<i class="ri-bank-card-line"></i>
+								{{ 'payment_method' | translate }}
+							</a>
+							<ng-template ngbNavContent>
+								<div formGroupName="payment_methods">
+									<div class="inside-horizontal-tabs">
+										<ul
+											ngbNav
+											#nav="ngbNav"
+											[(activeId)]="active_payment"
+											class="nav-tabs"
+										>
+											<li [ngbNavItem]="1">
+												<a ngbNavLink>
+													<i class="ri-paypal-line"></i>
+													{{ 'paypal' | translate }}
+												</a>
+												<ng-template ngbNavContent>
+													<div formGroupName="paypal">
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'status'"
+															[for]="'paypal_status'"
+														>
+															<div class="form-check form-switch ps-0">
+																<label class="switch">
+																	<input
+																		type="checkbox"
+																		id="paypal_status"
+																		formControlName="status"
+																	/>
+																	<span class="switch-state"></span>
+																</label>
+															</div>
+														</app-form-fields>
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'sandbox_mode'"
+															[for]="'sandbox_status'"
+														>
+															<div class="form-check form-switch ps-0">
+																<label class="switch">
+																	<input
+																		type="checkbox"
+																		id="sandbox_status"
+																		formControlName="sandbox_mode"
+																	/>
+																	<span class="switch-state"></span>
+																</label>
+															</div>
+														</app-form-fields>
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'client_id'"
+															[for]="'client_id'"
+														>
+															<input
+																class="form-control"
+																id="client_id"
+																type="text"
+																placeholder="{{ 'enter_client_id' | translate }}"
+																formControlName="client_id"
+															/>
+														</app-form-fields>
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'secret'"
+															[for]="'client_secret'"
+														>
+															<input
+																class="form-control"
+																id="client_secret"
+																type="text"
+																placeholder="{{ 'enter_secret' | translate }}"
+																formControlName="client_secret"
+															/>
+														</app-form-fields>
+													</div>
+												</ng-template>
+											</li>
+											<li [ngbNavItem]="2">
+												<a ngbNavLink>
+													<i class="ri-creative-commons-nc-line"></i>
+													{{ 'stripe' | translate }}
+												</a>
+												<ng-template ngbNavContent>
+													<div formGroupName="stripe">
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'status'"
+															[for]="'stripe_status'"
+														>
+															<div class="form-check form-switch ps-0">
+																<label class="switch">
+																	<input
+																		type="checkbox"
+																		id="stripe_status"
+																		formControlName="status"
+																	/>
+																	<span class="switch-state"></span>
+																</label>
+															</div>
+														</app-form-fields>
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'key'"
+															[for]="'stripe_key'"
+														>
+															<input
+																class="form-control"
+																id="stripe_key"
+																type="text"
+																placeholder="{{ 'enter_key' | translate }}"
+																formControlName="key"
+															/>
+														</app-form-fields>
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'secret'"
+															[for]="'stripe_secret'"
+														>
+															<input
+																class="form-control"
+																id="stripe_secret"
+																type="text"
+																placeholder="{{ 'enter_secret' | translate }}"
+																formControlName="secret"
+															/>
+														</app-form-fields>
+													</div>
+												</ng-template>
+											</li>
+											<li [ngbNavItem]="3">
+												<a ngbNavLink>₹ {{ 'razorpay' | translate }}</a>
+												<ng-template ngbNavContent>
+													<div formGroupName="razorpay">
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'status'"
+															[for]="'razorpay_status'"
+														>
+															<div class="form-check form-switch ps-0">
+																<label class="switch">
+																	<input
+																		type="checkbox"
+																		id="razorpay_status"
+																		formControlName="status"
+																	/>
+																	<span class="switch-state"></span>
+																</label>
+															</div>
+														</app-form-fields>
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'key'"
+															[for]="'key'"
+														>
+															<input
+																class="form-control"
+																id="razorpay_key"
+																type="text"
+																placeholder="{{ 'enter_key' | translate }}"
+																formControlName="key"
+															/>
+														</app-form-fields>
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'secret'"
+															[for]="'razorpay_secret'"
+														>
+															<input
+																class="form-control"
+																id="razorpay_secret"
+																type="text"
+																placeholder="{{ 'enter_secret' | translate }}"
+																formControlName="secret"
+															/>
+														</app-form-fields>
+													</div>
+												</ng-template>
+											</li>
+											<li [ngbNavItem]="4">
+												<a ngbNavLink>
+													<i class="ri-money-euro-box-line"></i>
+													{{ 'mollie' | translate }}
+												</a>
+												<ng-template ngbNavContent>
+													<div formGroupName="mollie">
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'status'"
+															[for]="'mollie_status'"
+														>
+															<div class="form-check form-switch ps-0">
+																<label class="switch">
+																	<input
+																		type="checkbox"
+																		id="mollie_status"
+																		formControlName="status"
+																	/>
+																	<span class="switch-state"></span>
+																</label>
+															</div>
+														</app-form-fields>
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'secret'"
+															[for]="'secret_key'"
+														>
+															<input
+																class="form-control"
+																id="secret_key"
+																type="text"
+																placeholder="{{ 'enter_secret' | translate }}"
+																formControlName="secret_key"
+															/>
+														</app-form-fields>
+													</div>
+												</ng-template>
+											</li>
+											<li [ngbNavItem]="5">
+												<a ngbNavLink>
+													<i class="ri-secure-payment-line"></i>
+													{{ 'cod' | translate }}
+												</a>
+												<ng-template ngbNavContent>
+													<div formGroupName="cod">
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'status'"
+															[for]="'cod_status'"
+														>
+															<div class="form-check form-switch ps-0">
+																<label class="switch">
+																	<input
+																		type="checkbox"
+																		id="cod_status"
+																		formControlName="status"
+																	/>
+																	<span class="switch-state"></span>
+																</label>
+															</div>
+														</app-form-fields>
+													</div>
+												</ng-template>
+											</li>
+										</ul>
+										<div
+											[ngbNavOutlet]="nav"
+											class="mt-3"
+										></div>
+									</div>
+								</div>
+							</ng-template>
+						</li>
+						<li ngbNavItem="analytics">
+							<a ngbNavLink>
+								<i class="ri-line-chart-line"></i>
+								{{ 'analytics' | translate }}
+							</a>
+							<ng-template ngbNavContent>
+								<div formGroupName="analytics">
+									<div class="inside-horizontal-tabs">
+										<ul
+											ngbNav
+											#nav_analytics="ngbNav"
+											[(activeId)]="active_analytics"
+											class="nav-tabs"
+										>
+											<li ngbNavItem="facebook">
+												<a ngbNavLink>
+													<i class="ri-facebook-circle-line"></i>
+													{{ 'facebook_pixel' | translate }}
+												</a>
+												<ng-template ngbNavContent>
+													<div formGroupName="facebook_pixel">
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'status'"
+															[for]="'facebook_pixel_status'"
+														>
+															<div class="form-check form-switch ps-0">
+																<label class="switch">
+																	<input
+																		type="checkbox"
+																		id="facebook_pixel_status"
+																		formControlName="status"
+																	/>
+																	<span class="switch-state"></span>
+																</label>
+															</div>
+														</app-form-fields>
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'Pixel Id'"
+															[for]="'pixel_id'"
+														>
+															<input
+																class="form-control"
+																id="pixel_id"
+																type="text"
+																placeholder="{{'enter_pixel_id' | translate }}"
+																formControlName="pixel_id"
+															/>
+														</app-form-fields>
+													</div>
+												</ng-template>
+											</li>
+											<li ngbNavItem="google">
+												<a ngbNavLink>
+													<i class="ri-google-line"></i>
+													{{ 'google_analytics' | translate }}
+												</a>
+												<ng-template ngbNavContent>
+													<div formGroupName="google_analytics">
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'status'"
+															[for]="'google_analytics_status'"
+														>
+															<div class="form-check form-switch ps-0">
+																<label class="switch">
+																	<input
+																		type="checkbox"
+																		id="google_analytics_status"
+																		formControlName="status"
+																	/>
+																	<span class="switch-state"></span>
+																</label>
+															</div>
+														</app-form-fields>
+														<app-form-fields
+															[labelClass]="'form-label-title col-sm-3 mb-0'"
+															[gridClass]="'col-sm-9'"
+															[label]="'measurement_id'"
+															[for]="'measurement_id'"
+														>
+															<input
+																class="form-control"
+																id="measurement_id"
+																type="text"
+																placeholder="{{ 'enter_measurement_id' | translate }}"
+																formControlName="measurement_id"
+															/>
+														</app-form-fields>
+													</div>
+												</ng-template>
+											</li>
+										</ul>
+										<div
+											[ngbNavOutlet]="nav_analytics"
+											class="mt-3"
+										></div>
+									</div>
+								</div>
+							</ng-template>
+						</li>
+						<li ngbNavItem="recaptcha">
+							<a ngbNavLink>
+								<i class="ri-google-fill"></i>
+								{{ 're-captcha' | translate }}
+							</a>
+							<ng-template ngbNavContent>
+								<div formGroupName="google_reCaptcha">
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'status'"
+										[for]="'google_reCaptcha_status'"
+									>
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="google_reCaptcha_status"
+													formControlName="status"
+												/>
+												<span class="switch-state"></span>
+											</label>
+										</div>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'secret'"
+										[for]="'google_reCaptcha_secret'"
+									>
+										<input
+											class="form-control"
+											id="google_reCaptcha_secret"
+											type="text"
+											placeholder="{{ 'enter_secret_key' | translate }}"
+											formControlName="secret"
+										/>
+									</app-form-fields>
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'site_key'"
+										[for]="'google_reCaptcha_site_key'"
+									>
+										<input
+											class="form-control"
+											id="google_reCaptcha_site_key"
+											type="text"
+											placeholder="{{ 'enter_site_key' | translate }}"
+											formControlName="site_key"
+										/>
+									</app-form-fields>
+								</div>
+							</ng-template>
+						</li>
+						<li ngbNavItem="maintenance">
+							<a ngbNavLink>
+								<i class="ri-alert-line"></i>
+								{{ 'maintenance' | translate }}
+							</a>
+							<ng-template ngbNavContent>
+								<div formGroupName="maintenance">
+									<app-form-fields
+										[labelClass]="'form-label-title col-sm-3 mb-0'"
+										[gridClass]="'col-sm-9'"
+										[label]="'Maintenance Mode'"
+										[for]="'maintenance_mode'"
+									>
+										<div class="form-check form-switch ps-0">
+											<label class="switch">
+												<input
+													type="checkbox"
+													id="maintenance_mode"
+													formControlName="maintenance_mode"
+												/>
+												<span class="switch-state"></span>
+											</label>
+										</div>
+									</app-form-fields>
+									@if (form.get('maintenance.maintenance_mode')?.value) {
+									<div>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'title'"
+											[for]="'title'"
+										>
+											<input
+												class="form-control"
+												id="title"
+												type="text"
+												placeholder="{{ 'title' | translate }}"
+												formControlName="title"
+											/>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'description'"
+											[for]="'description'"
+										>
+											<input
+												class="form-control"
+												id="description"
+												type="text"
+												placeholder="{{ 'enter_description' | translate }}"
+												formControlName="description"
+											/>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'image'"
+											[for]="'maintenance_image_id'"
+										>
+											<app-image-upload
+												[multipleImage]="false"
+												[image]="(setting$ | async)?.maintenance?.maintenance_image!"
+												(selectedFiles)="selectMaintenance($event)"
+											/>
+										</app-form-fields>
+									</div>
+									}
+								</div>
+							</ng-template>
+						</li>
+					</ul>
+				</div>
+				<div class="col-xl-7 col-lg-8">
+					<div [ngbNavOutlet]="nav"></div>
+				</div>
+			</div>
+			<app-button
+				[id]="'setting_btn'"
+				*hasPermission="'setting.edit'"
+			>
+				{{ 'save' | translate }}
+			</app-button>
+		</div>
+	</form>
+</app-page-wrapper>

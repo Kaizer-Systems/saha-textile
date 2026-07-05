@@ -1,0 +1,101 @@
+<div class="select-top-panel">
+	<div>
+		<input
+			type="text"
+			class="form-control"
+			placeholder="{{ 'search_your_files' | translate }}"
+			[formControl]="term"
+		/>
+	</div>
+	<select
+		class="form-select"
+		(change)="onMediaChange($event)"
+	>
+		<option value="">{{ 'sort_by_desc' | translate }}</option>
+		<option value="newest">{{ 'sort_by_newest' | translate }}</option>
+		<option value="oldest">{{ 'sort_by_oldest' | translate }}</option>
+		<option value="smallest">{{ 'sort_by_smallest' | translate }}</option>
+		<option value="largest">{{ 'sort_by_largest' | translate }}</option>
+	</select>
+</div>
+<div class="content-section select-file-section ratio2_3 custom-box-loader py-0">
+	@if (loading) {
+	<div class="box-loader">
+		<app-loader [loaderClass]="'custom-loader-wrapper'" />
+	</div>
+	} @else { @if ((attachment$ | async)?.data?.length) {
+	<div
+		class="row row-cols-xxl-6 row-cols-xl-5 row-cols-lg-4 row-cols-sm-3 row-cols-2 g-sm-3 g-2 media-library-sec ratio_square"
+	>
+		@for (attachment of (attachment$ | async)?.data; track attachment.id; let i = $index) {
+		<div>
+			<div class="library-box">
+				<input
+					type="{{ !multiple() ? 'radio' : 'checkbox' }}"
+					name="attachment"
+					[value]="attachment?.id"
+					class="media-checkbox"
+					id="attachment-{{ attachment?.id }}"
+					(change)="selectImage($event, attachment, url())"
+				/>
+				<label for="attachment-{{ attachment?.id }}">
+					<div class="ratio ratio-1x1">
+						<img
+							[src]="attachment.original_url"
+							class="img-fluid"
+							alt="attachment"
+						/>
+					</div>
+				</label>
+				<ng-container *hasPermission="'attachment.destroy'">
+					@if (deleteAction()) {
+					<div
+						ngbDropdown
+						class="dropdown"
+					>
+						<a
+							href="javascript:void(0)"
+							ngbDropdownToggle
+						>
+							<i class="ri-more-fill"></i>
+						</a>
+						<ul
+							ngbDropdownMenu
+							class="dropdown-menu dropdown-menu-end"
+						>
+							<a
+								ngbDropdownItem
+								class="d-flex align-items-center"
+								(click)="DeleteModal().openModal('delete', attachment)"
+							>
+								<i class="ri-delete-bin-line me-2"></i>
+								{{ 'delete' | translate }}
+							</a>
+						</ul>
+					</div>
+					}
+				</ng-container>
+			</div>
+		</div>
+		}
+	</div>
+	} } @if ((attachment$ | async)?.data?.length) {
+	<nav class="custom-pagination">
+		<app-pagination
+			[total]="totalItems"
+			[currentPage]="filter['page']"
+			[pageSize]="filter['paginate']"
+			(setPage)="setPaginate($event)"
+		/>
+	</nav>
+	} @if (!(attachment$ | async)?.data?.length && !loading) {
+	<app-no-data
+		[image]="'assets/svg/no-media.svg'"
+		[text]="'No Media Found'"
+	/>
+	}
+</div>
+<app-delete-modal
+	#deleteModal
+	(deleteItem)="onActionClicked($event.actionToPerform,$event.data)"
+/>

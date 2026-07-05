@@ -1,0 +1,182 @@
+[
+	{
+		"id": 9,
+		"status": 1,
+		"country_id": 116,
+		"created_by_id": "1",
+		"created_at": "2023-08-24T11:40:30.000000Z",
+		"updated_at": "2023-08-24T11:40:30.000000Z",
+		"deleted_at": null,
+		"country": {
+			"id": 116,
+			"name": "Cambodia",
+			"currency": "riel",
+			"currency_symbol": "៛",
+			"iso_3166_2": "KH",
+			"iso_3166_3": "KHM",
+			"calling_code": "855",
+			"flag": "KH.png"
+		},
+		"shipping_rules": []
+	},
+	{
+		"id": 8,
+		"status": 1,
+		"country_id": 56,
+		"created_by_id": "1",
+		"created_at": "2023-08-24T11:40:08.000000Z",
+		"updated_at": "2023-08-24T11:40:08.000000Z",
+		"deleted_at": null,
+		"country": {
+			"id": 56,
+			"name": "Belgium",
+			"currency": "euro",
+			"currency_symbol": "€",
+			"iso_3166_2": "BE",
+			"iso_3166_3": "BEL",
+			"calling_code": "32",
+			"flag": "BE.png"
+		},
+		"shipping_rules": []
+	},
+	{
+		"id": 7,
+		"status": 1,
+		"country_id": 12,
+		"created_by_id": "1",
+		"created_at": "2023-08-24T11:39:53.000000Z",
+		"updated_at": "2023-08-24T11:39:53.000000Z",
+		"deleted_at": null,
+		"country": {
+			"id": 12,
+			"name": "Algeria",
+			"currency": "Algerian dinar",
+			"currency_symbol": "DZD",
+			"iso_3166_2": "DZ",
+			"iso_3166_3": "DZA",
+			"calling_code": "213",
+			"flag": "DZ.png"
+		},
+		"shipping_rules": []
+	},
+	{
+		"id": 6,
+		"status": 1,
+		"country_id": 376,
+		"created_by_id": "1",
+		"created_at": "2023-08-24T11:39:43.000000Z",
+		"updated_at": "2023-08-24T11:39:43.000000Z",
+		"deleted_at": null,
+		"country": {
+			"id": 376,
+			"name": "Israel",
+			"currency": "shekel",
+			"currency_symbol": "₪",
+			"iso_3166_2": "IL",
+			"iso_3166_3": "ISR",
+			"calling_code": "972",
+			"flag": "IL.png"
+		},
+		"shipping_rules": []
+	},
+	{
+		"id": 5,
+		"status": 1,
+		"country_id": 392,
+		"created_by_id": "1",
+		"created_at": "2023-08-24T11:39:37.000000Z",
+		"updated_at": "2023-08-24T11:39:37.000000Z",
+		"deleted_at": null,
+		"country": {
+			"id": 392,
+			"name": "Japan",
+			"currency": "yen (inv.)",
+			"currency_symbol": "¥",
+			"iso_3166_2": "JP",
+			"iso_3166_3": "JPN",
+			"calling_code": "81",
+			"flag": "JP.png"
+		},
+		"shipping_rules": []
+	},
+	{
+		"id": 4,
+		"status": 1,
+		"country_id": 124,
+		"created_by_id": "1",
+		"created_at": "2023-08-24T11:39:24.000000Z",
+		"updated_at": "2023-08-24T11:39:24.000000Z",
+		"deleted_at": null,
+		"country": {
+			"id": 124,
+			"name": "Canada",
+			"currency": "Canadian dollar",
+			"currency_symbol": "$",
+			"iso_3166_2": "CA",
+			"iso_3166_3": "CAN",
+			"calling_code": "1",
+			"flag": "CA.png"
+		},
+		"shipping_rules": []
+	},
+	{
+		"id": 3,
+		"status": 1,
+		"country_id": 36,
+		"created_by_id": "1",
+		"created_at": "2023-08-24T11:39:05.000000Z",
+		"updated_at": "2023-08-24T11:39:05.000000Z",
+		"deleted_at": null,
+		"country": {
+			"id": 36,
+			"name": "Australia",
+			"currency": "Australian dollar",
+			"currency_symbol": "$",
+			"iso_3166_2": "AU",
+			"iso_3166_3": "AUS",
+			"calling_code": "61",
+			"flag": "AU.png"
+		},
+		"shipping_rules": []
+	},
+	{
+		"id": 2,
+		"status": 1,
+		"country_id": 356,
+		"created_by_id": "1",
+		"created_at": "2023-08-24T11:38:57.000000Z",
+		"updated_at": "2023-08-24T11:38:57.000000Z",
+		"deleted_at": null,
+		"country": {
+			"id": 356,
+			"name": "India",
+			"currency": "Indian rupee",
+			"currency_symbol": "₹",
+			"iso_3166_2": "IN",
+			"iso_3166_3": "IND",
+			"calling_code": "91",
+			"flag": "IN.png"
+		},
+		"shipping_rules": []
+	},
+	{
+		"id": 1,
+		"status": 1,
+		"country_id": 840,
+		"created_by_id": "1",
+		"created_at": "2023-08-24T11:38:50.000000Z",
+		"updated_at": "2023-08-24T11:38:50.000000Z",
+		"deleted_at": null,
+		"country": {
+			"id": 840,
+			"name": "United States",
+			"currency": "US dollar",
+			"currency_symbol": "$",
+			"iso_3166_2": "US",
+			"iso_3166_3": "USA",
+			"calling_code": "1",
+			"flag": "US.png"
+		},
+		"shipping_rules": []
+	}
+]

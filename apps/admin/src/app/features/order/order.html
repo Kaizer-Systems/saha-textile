@@ -1,0 +1,24 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'orders'"
+>
+	<div
+		*hasPermission="'order.create'"
+		button
+	>
+		<a
+			[routerLink]="['/order/create']"
+			class="align-items-center btn btn-theme d-flex"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'add_order' | translate }}
+		</a>
+	</div>
+	<app-table
+		[tableConfig]="tableConfig"
+		[dateRange]="true"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="view($event)"
+		(action)="onActionClicked($event)"
+	/>
+</app-page-wrapper>

@@ -9,7 +9,7 @@ footer {
   &::after {
     @include pos;
     @include pseudowh($width: 30%, $height: 100%);
-    background-image: url(../../images/footer-shape.png);
+    background-image: url(/assets/images/footer-shape.png);
     top: 0;
     left: 0;
     background-repeat: no-repeat;
@@ -23,7 +23,7 @@ footer {
   &:before {
     @include pos;
     @include pseudowh($width: 30%, $height: 100%);
-    background-image: url(../../images/footer-shape-2.png);
+    background-image: url(/assets/images/footer-shape-2.png);
     bottom: 0;
     right: 0;
     background-repeat: no-repeat;

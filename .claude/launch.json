@@ -10,6 +10,12 @@
 		{
 			"name": "storefront",
 			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["--filter", "@saha-textile/storefront", "dev"],
+			"port": 4200
+		},
+		{
+			"name": "storefront-prod",
+			"runtimeExecutable": "pnpm",
 			"runtimeArgs": ["--filter", "@saha-textile/storefront", "start"],
 			"port": 4200
 		}

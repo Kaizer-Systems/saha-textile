@@ -6,17 +6,26 @@ import { NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
 import { Actions, ofActionDispatched, Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
+import { Layout } from '@layout/layout';
 import { LogoutAction } from '@data-access/actions/auth.action';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
 import { ThemeOptionState } from '@data-access/states/theme-option.state';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterModule],
+  imports: [RouterModule, Layout],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
 export class App {
+  // The global shell (header/footer/widgets + one-time data loads) lives in
+  // Layout, rendered here ABOVE the router — Analog's pathless-layout convention
+  // is a parens route group, which @analogjs/vite-plugin-angular fails to
+  // transform. Maintenance is the one full-page route that skips the shell.
+  protected get showLayout(): boolean {
+    return !this.router.url.startsWith('/maintenance');
+  }
+
   private actions = inject(Actions);
   private router = inject(Router);
   private titleService = inject(Title);

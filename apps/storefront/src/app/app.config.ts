@@ -9,8 +9,9 @@ import {
 import { ApplicationConfig, importProvidersFrom, provideZoneChangeDetection } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { provideRouter, withInMemoryScrolling } from '@angular/router';
+import { withInMemoryScrolling } from '@angular/router';
 
+import { provideFileRouter, withExtraRoutes } from '@analogjs/router';
 import { LoadingBarRouterModule } from '@ngx-loading-bar/router';
 import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
@@ -19,7 +20,6 @@ import { NgxsModule } from '@ngxs/store';
 import { provideToastr } from 'ngx-toastr';
 
 import { environment } from '../../public/environments/environment';
-import { routes } from './app.routes';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from './core/interceptors/loader.interceptor';
@@ -68,8 +68,12 @@ export const appConfig: ApplicationConfig = {
     CurrencyPipe,
     ErrorService,
     NotificationService,
-    provideRouter(
-      routes,
+    // Analog file-based routing (pages under src/app/pages). withExtraRoutes
+    // holds the root redirect (matched before file routes); the pathless
+    // (shell) group provides the global Layout. Replaces the old provideRouter
+    // + app.routes.ts / feature *.routes.ts config.
+    provideFileRouter(
+      withExtraRoutes([{ path: '', redirectTo: 'theme/paris', pathMatch: 'full' }]),
       withInMemoryScrolling({
         anchorScrolling: 'enabled',
         scrollPositionRestoration: 'enabled',

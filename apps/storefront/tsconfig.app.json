@@ -7,5 +7,11 @@
     "types": ["node"]
   },
   "files": ["src/main.ts", "src/main.server.ts"],
-  "include": ["src/**/*.d.ts"]
+  // Include the app sources (esp. src/app/pages/**) in the Angular program.
+  // File-based routing discovers pages via a build-time glob, not the static
+  // import graph from main.ts, so without this the SSR build leaves page
+  // components untransformed ("you need plugins to import files that are not
+  // JavaScript"). The default Analog template can rely on the import graph;
+  // file routing cannot.
+  "include": ["src/**/*.d.ts", "src/app/**/*.ts"]
 }

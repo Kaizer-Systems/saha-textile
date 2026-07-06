@@ -1781,7 +1781,7 @@
     @include pseudowh;
     top: 0;
     left: 0;
-    background-image: url('../../images/inner-page/log-in-bg.png');
+    background-image: url('/assets/images/inner-page/log-in-bg.png');
     background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
@@ -4855,7 +4855,7 @@
 
     &::after {
       @include pos;
-      background-image: url('../../images/arrow.svg');
+      background-image: url('/assets/images/arrow.svg');
       background-position: center;
       background-repeat: no-repeat;
       background-size: contain;

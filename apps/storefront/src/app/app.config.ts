@@ -18,6 +18,7 @@ import { NgxsStoragePluginModule } from '@ngxs/storage-plugin';
 import { NgxsModule } from '@ngxs/store';
 import { provideToastr } from 'ngx-toastr';
 
+import { environment } from '../../public/environments/environment';
 import { routes } from './app.routes';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-handler.interceptor';
@@ -54,7 +55,12 @@ import { WalletState } from '@data-access/states/wallet.state';
 import { WishlistState } from '@data-access/states/wishlist.state';
 
 export function HttpLoaderFactory(http: HttpClient) {
-  return new TranslateHttpLoader(http, './assets/i18n/', '.json');
+  // Absolute base URL (not './assets/i18n/') so the loader resolves correctly
+  // under Nitro SSR — a relative URL resolves against http://localhost:80 on the
+  // server (ECONNREFUSED). This mirrors the absolute environment.URL the data
+  // services already use, so client behaviour is unchanged and prod picks up the
+  // real host from environment.baseURL.
+  return new TranslateHttpLoader(http, `${environment.baseURL}assets/i18n/`, '.json');
 }
 
 export const appConfig: ApplicationConfig = {

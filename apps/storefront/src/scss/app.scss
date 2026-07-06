@@ -1,0 +1,20 @@
+// Compiled to app.gen.css by the `styles` npm script (dart-sass), which is what
+// main.ts imports — analog()'s SSR dev server breaks Vite's sass importer for
+// global scss (relative @imports fail "canonicalize() must return a URL").
+// dart-sass resolves everything correctly, identical to the production build.
+//
+// owl-carousel is @import'ed here (not a JS import in main.ts) because its scss
+// has internal relative @imports that also trip Vite's dev importer, and it
+// ships no compiled css; dart-sass resolves it via the node_modules load path.
+// bootstrap / ngx-toastr / swiper stay as JS imports in main.ts (plain css that
+// Vite's JS resolver handles), loaded BEFORE this file to preserve the cascade.
+@import 'ngx-owl-carousel-o/lib/styles/scss/owl.carousel';
+@import 'ngx-owl-carousel-o/lib/styles/scss/owl.theme.default';
+
+@import 'utils/variables';
+@import 'style';
+
+.dark {
+  @import 'utils/dark_variables';
+  @import 'style';
+}

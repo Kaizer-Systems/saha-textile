@@ -1535,7 +1535,7 @@
 
   &:after {
     @include pos;
-    background-image: url('../../images/withdraw-bg.png');
+    background-image: url('/assets/images/withdraw-bg.png');
     background-repeat: no-repeat;
     background-size: cover;
     right: 0;

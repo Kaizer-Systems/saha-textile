@@ -15,7 +15,7 @@
         top: 0;
         left: 0;
         background-size: cover;
-        background-image: url(../../images/circle.png);
+        background-image: url(/assets/images/circle.png);
         background-position: center center;
         background-repeat: no-repeat;
         display: block;
@@ -276,7 +276,7 @@
         @include pseudowh;
         background-repeat: no-repeat;
         background-size: contain;
-        background-image: url(../../../assets/images/circle.png);
+        background-image: url(/assets/images/circle.png);
         background-position: center;
         animation: rounded infinite 30s linear;
         right: 0;

@@ -13,6 +13,10 @@
     },
     "outDir": "./dist/out-tsc",
     "forceConsistentCasingInFileNames": true,
+    // Don't type-check node_modules .d.ts. Analog/Nitro pull in unstorage driver
+    // typings that reference optional, uninstalled peers (bun, @azure/*, deno…);
+    // those are not our code and must not fail our build.
+    "skipLibCheck": true,
     "strict": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,

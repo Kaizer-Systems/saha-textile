@@ -4,12 +4,11 @@ import { toObservable } from '@angular/core/rxjs-interop';
 
 import { NgbRating, NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { CarouselModule } from 'ngx-owl-carousel-o';
 import { Observable } from 'rxjs';
 
-import { AddToCompareAction } from '@data-access/actions/compare.action';
-import { AddToWishlistAction } from '@data-access/actions/wishlist.action';
+import { CompareFacade } from '@core/state/compare/compare.store';
+import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
 import { ProductDetailModal } from '@shared/ui/modal/product-detail-modal/product-detail-modal';
 import * as data from '../../../../shared/data/owl-carousel';
 import { injectProductsQuery } from '@data-access/queries/product.queries';
@@ -26,7 +25,8 @@ import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 })
 export class Deal {
   config = inject(NgbRatingConfig);
-  private store = inject(Store);
+  private wishlistFacade = inject(WishlistFacade);
+  private compareFacade = inject(CompareFacade);
 
   // TODO: Skipped for migration because:
   //  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
@@ -85,10 +85,10 @@ export class Deal {
   }
 
   addToWishlist(id: number) {
-    this.store.dispatch(new AddToWishlistAction({ product_id: id }));
+    this.wishlistFacade.addToWishlist({ product_id: id });
   }
 
   addToCompare(id: number) {
-    this.store.dispatch(new AddToCompareAction({ product_id: id }));
+    this.compareFacade.addToCompare({ product_id: id });
   }
 }

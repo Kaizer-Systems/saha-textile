@@ -1,12 +1,12 @@
 import { Component, inject, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { Params } from '@data-access/interfaces/core.interface';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
 import { AttributeService } from '@data-access/services/attribute.service';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 import { Banner } from '../widgets/banner/banner';
 import { CollectionProducts } from '../widgets/collection-products/collection-products';
 
@@ -19,9 +19,7 @@ import { CollectionProducts } from '../widgets/collection-products/collection-pr
 export class CollectionNoSidebar {
   attributeService = inject(AttributeService);
 
-  themeOptions$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+  themeOptions$: Observable<IOption> = toObservable(inject(ThemeOptionStore).themeOptions) as Observable<IOption>;
 
   readonly filter = input<Params>();
 

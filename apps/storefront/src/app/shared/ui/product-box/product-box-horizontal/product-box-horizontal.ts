@@ -3,18 +3,13 @@ import { RouterLink } from '@angular/router';
 
 import { NgbRatingConfig, NgbRating } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { AddToCartAction } from '@data-access/actions/cart.action';
-import { AddToCompareAction } from '@data-access/actions/compare.action';
-import {
-  AddToWishlistAction,
-  DeleteWishlistAction,
-} from '@data-access/actions/wishlist.action';
 import { ICartAddOrUpdate, ICart } from '@data-access/interfaces/cart.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
-import { CartState } from '@data-access/states/cart.state';
+import { CartFacade } from '@core/state/cart/cart.facade';
+import { CompareFacade } from '@core/state/compare/compare.store';
+import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
 import { ProductDetailModal } from '@shared/ui/modal/product-detail-modal/product-detail-modal';
@@ -38,7 +33,9 @@ import { VariationModal } from '../../modal/variation-modal/variation-modal';
   ],
 })
 export class ProductBoxHorizontal {
-  private store = inject(Store);
+  private wishlistFacade = inject(WishlistFacade);
+  private compareFacade = inject(CompareFacade);
+  private cartFacade = inject(CartFacade);
 
   // TODO: Skipped for migration because:
   //  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
@@ -47,7 +44,7 @@ export class ProductBoxHorizontal {
   readonly class = input<string>();
   readonly close = input<boolean>();
 
-  cartItem$: Observable<ICart[]> = inject(Store).select(CartState.cartItems) as Observable<ICart[]>;
+  cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
 
   readonly productDetailModal = viewChild<ProductDetailModal>('productDetailModal');
   readonly VariationModal = viewChild<VariationModal>('variationModal');
@@ -78,18 +75,18 @@ export class ProductBoxHorizontal {
       variation: this.cartItem ? this.cartItem?.variation : null,
       quantity: qty,
     };
-    this.store.dispatch(new AddToCartAction(params));
+    this.cartFacade.addToCart(params);
   }
 
   addToWishlist(id: number) {
-    this.store.dispatch(new AddToWishlistAction({ product_id: id }));
+    this.wishlistFacade.addToWishlist({ product_id: id });
   }
 
   removeWishlist(id: number) {
-    this.store.dispatch(new DeleteWishlistAction(id));
+    this.wishlistFacade.deleteWishlist(id);
   }
 
   addToCompar(id: number) {
-    this.store.dispatch(new AddToCompareAction({ product_id: id }));
+    this.compareFacade.addToCompare({ product_id: id });
   }
 }

@@ -13,7 +13,6 @@ import { Meta } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { injectQueryClient } from '@tanstack/angular-query-experimental';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { ProductAccordion } from './product-details/product-accordion/product-accordion';
@@ -34,7 +33,7 @@ import { Params } from '@data-access/interfaces/core.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
 import { ThemeOptionService } from '@data-access/services/theme-option.service';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 
 @Component({
   selector: 'app-product',
@@ -77,9 +76,7 @@ export class Product {
   });
   private readonly relatedQuery = injectRelatedProductsQuery(() => this.relatedParams());
 
-  themeOptions$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+  themeOptions$: Observable<IOption> = toObservable(inject(ThemeOptionStore).themeOptions) as Observable<IOption>;
 
   public breadcrumb: IBreadcrumb = {
     title: 'Product',

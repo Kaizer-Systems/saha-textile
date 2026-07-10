@@ -3,12 +3,11 @@ import { Component, PLATFORM_ID, TemplateRef, inject, viewChild } from '@angular
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 
-import { ReplaceCartAction } from '@data-access/actions/cart.action';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
+import { CartFacade } from '@core/state/cart/cart.facade';
 import { Button } from '../../button/button';
 import { VariantAttributes } from '../../variant-attributes/variant-attributes';
 
@@ -22,7 +21,7 @@ import { VariantAttributes } from '../../variant-attributes/variant-attributes';
 export class VariationModal {
   private modalService = inject(NgbModal);
   private platformId = inject<Object>(PLATFORM_ID);
-  private store = inject(Store);
+  private cartFacade = inject(CartFacade);
 
   readonly VariationModal = viewChild<TemplateRef<string>>('variationModal');
 
@@ -88,11 +87,8 @@ export class VariationModal {
         quantity: this.productQty,
       };
 
-      this.store.dispatch(new ReplaceCartAction(params)).subscribe({
-        complete: () => {
-          this.modalService.dismissAll();
-        },
-      });
+      this.cartFacade.replaceCart(params);
+      this.modalService.dismissAll();
     }
   }
 

@@ -9,9 +9,8 @@ import {
 import { Router, RouterLink } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 
-import { LoginAction } from '@data-access/actions/auth.action';
+import { AuthStore } from '@core/state/auth.store';
 import { Alert } from '@shared/ui/alert/alert';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
@@ -25,7 +24,7 @@ import { AuthService } from '@data-access/services/auth.service';
   imports: [Breadcrumb, Alert, ReactiveFormsModule, RouterLink, Button, TranslateModule],
 })
 export class Login {
-  private store = inject(Store);
+  private authStore = inject(AuthStore);
   private router = inject(Router);
   private formBuilder = inject(FormBuilder);
   private authService = inject(AuthService);
@@ -46,16 +45,12 @@ export class Login {
   submit() {
     this.form.markAllAsTouched();
     if (this.form.valid) {
-      this.store.dispatch(new LoginAction(this.form.value)).subscribe({
-        complete: () => {
-          // Navigate to the intended URL after successful login
-          const redirectUrl = this.authService.redirectUrl || '/account/dashboard';
-          void this.router.navigateByUrl(redirectUrl);
-
-          // Clear the stored redirect URL
-          this.authService.redirectUrl = undefined;
-        },
-      });
+      this.authStore.login(this.form.value);
+      // Navigate to the intended URL after login (login() is a synchronous mock).
+      const redirectUrl = this.authService.redirectUrl || '/account/dashboard';
+      void this.router.navigateByUrl(redirectUrl);
+      // Clear the stored redirect URL
+      this.authService.redirectUrl = undefined;
     }
   }
 }

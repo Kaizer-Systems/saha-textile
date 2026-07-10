@@ -1,12 +1,12 @@
 import { isPlatformBrowser, NgClass } from '@angular/common';
 import { Component, inject, PLATFORM_ID } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 import { ClickOutsideDirective } from '@shared/directives/out-side-directive';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
 import { ThemeOptionService } from '@data-access/services/theme-option.service';
@@ -30,9 +30,7 @@ export class ThemeCustomizer {
   themeOptionService = inject(ThemeOptionService);
   private platformId = inject<Object>(PLATFORM_ID);
 
-  themeOption$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+  themeOption$: Observable<IOption> = toObservable(inject(ThemeOptionStore).themeOptions) as Observable<IOption>;
 
   public open: boolean = false;
   public show: boolean = false;

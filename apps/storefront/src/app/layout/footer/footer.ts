@@ -1,13 +1,13 @@
 import { AsyncPipe } from '@angular/common';
 import { Component, inject, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { BasicFooter } from './basic-footer/basic-footer';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
 import { IFooter } from '@data-access/interfaces/theme.interface';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 
 @Component({
   selector: 'app-footer',
@@ -18,7 +18,5 @@ import { ThemeOptionState } from '@data-access/states/theme-option.state';
 export class Footer {
   readonly footer = input<IFooter>();
 
-  themeOption$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+  themeOption$: Observable<IOption> = toObservable(inject(ThemeOptionStore).themeOptions) as Observable<IOption>;
 }

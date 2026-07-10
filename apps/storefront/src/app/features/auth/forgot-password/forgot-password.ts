@@ -3,9 +3,8 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { Router } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 
-import { ForgotPassWordAction } from '@data-access/actions/auth.action';
+import { AuthStore } from '@core/state/auth.store';
 import { Alert } from '@shared/ui/alert/alert';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
@@ -18,7 +17,7 @@ import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
   imports: [Breadcrumb, Alert, ReactiveFormsModule, Button, TranslateModule],
 })
 export class ForgotPassword {
-  private store = inject(Store);
+  private authStore = inject(AuthStore);
   router = inject(Router);
   formBuilder = inject(FormBuilder);
 
@@ -37,11 +36,8 @@ export class ForgotPassword {
   submit() {
     this.form.markAllAsTouched();
     if (this.form.valid) {
-      this.store.dispatch(new ForgotPassWordAction(this.form.value)).subscribe({
-        complete: () => {
-          void this.router.navigateByUrl('/auth/otp');
-        },
-      });
+      this.authStore.forgotPassword(this.form.value);
+      void this.router.navigateByUrl('/auth/otp');
     }
   }
 }

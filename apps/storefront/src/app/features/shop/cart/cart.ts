@@ -3,18 +3,16 @@ import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { DeleteCartAction, UpdateCartAction } from '@data-access/actions/cart.action';
-import { AddToWishlistAction } from '@data-access/actions/wishlist.action';
+import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
 import { NoData } from '@shared/ui/no-data/no-data';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { CartState } from '@data-access/states/cart.state';
+import { CartFacade } from '@core/state/cart/cart.facade';
 
 @Component({
   selector: 'app-cart',
@@ -24,10 +22,11 @@ import { CartState } from '@data-access/states/cart.state';
   imports: [Breadcrumb, RouterLink, Button, NoData, AsyncPipe, CurrencySymbolPipe, TranslateModule],
 })
 export class Cart {
-  private store = inject(Store);
+  private wishlistFacade = inject(WishlistFacade);
+  private cartFacade = inject(CartFacade);
 
-  cartItem$: Observable<ICart[]> = inject(Store).select(CartState.cartItems);
-  cartTotal$: Observable<number> = inject(Store).select(CartState.cartTotal);
+  cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
+  cartTotal$: Observable<number> = this.cartFacade.cartTotal$;
 
   public breadcrumb: IBreadcrumb = {
     title: 'Cart',
@@ -43,14 +42,14 @@ export class Cart {
       variation_id: item?.variation_id ? item?.variation_id : null,
       quantity: qty,
     };
-    this.store.dispatch(new UpdateCartAction(params));
+    this.cartFacade.updateCart(params);
   }
 
   delete(id: number) {
-    this.store.dispatch(new DeleteCartAction(id));
+    this.cartFacade.deleteCart(id);
   }
 
   addToWishlist(id: number) {
-    this.store.dispatch(new AddToWishlistAction({ product_id: id }));
+    this.wishlistFacade.addToWishlist({ product_id: id });
   }
 }

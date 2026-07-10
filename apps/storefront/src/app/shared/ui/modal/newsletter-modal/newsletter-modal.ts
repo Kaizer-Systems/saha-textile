@@ -4,11 +4,10 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { Observable } from 'rxjs';
 
-import { UpdateSessionAction } from '@data-access/actions/theme-option.action';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 import { Button } from '../../button/button';
 
 @Component({
@@ -19,12 +18,12 @@ import { Button } from '../../button/button';
 })
 export class NewsletterModal {
   private modalService = inject(NgbModal);
-  private store = inject(Store);
+  private themeOptionStore = inject(ThemeOptionStore);
   private platformId = inject<Object>(PLATFORM_ID);
 
   readonly NewsletterModal = viewChild<TemplateRef<string>>('newsletterModal');
 
-  newsletter$: Observable<boolean> = inject(Store).select(ThemeOptionState.newsletter);
+  newsletter$: Observable<boolean> = toObservable(this.themeOptionStore.newsletter);
 
   public closeResult: string;
   public modalOpen: boolean = true;
@@ -39,7 +38,7 @@ export class NewsletterModal {
       setTimeout(() => {
         void this.openModal();
       }, 3000);
-      this.store.dispatch(new UpdateSessionAction('newsletter', false));
+      this.themeOptionStore.updateSession('newsletter', false);
     }
   }
 

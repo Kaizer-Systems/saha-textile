@@ -9,9 +9,8 @@ import {
 import { Router } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 
-import { UpdatePasswordAction } from '@data-access/actions/auth.action';
+import { AuthStore } from '@core/state/auth.store';
 import { Alert } from '@shared/ui/alert/alert';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
@@ -24,7 +23,7 @@ import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
   imports: [Breadcrumb, Alert, ReactiveFormsModule, Button, TranslateModule],
 })
 export class UpdatePassword {
-  private store = inject(Store);
+  private authStore = inject(AuthStore);
   private formBuilder = inject(FormBuilder);
   router = inject(Router);
 
@@ -37,8 +36,8 @@ export class UpdatePassword {
   };
 
   constructor() {
-    this.email = this.store.selectSnapshot(state => state.auth.email);
-    this.token = this.store.selectSnapshot(state => state.auth.token);
+    this.email = this.authStore.email();
+    this.token = this.authStore.token() as string;
     this.form = this.formBuilder.group({
       newPassword: new FormControl('', [Validators.required]),
       confirmPassword: new FormControl('', [Validators.required]),
@@ -48,20 +47,13 @@ export class UpdatePassword {
   submit() {
     this.form.markAllAsTouched();
     if (this.form.valid) {
-      this.store
-        .dispatch(
-          new UpdatePasswordAction({
-            email: this.email,
-            token: this.token,
-            password: this.form.value.newPassword,
-            password_confirmation: this.form.value.confirmPassword,
-          }),
-        )
-        .subscribe({
-          complete: () => {
-            void this.router.navigateByUrl('/auth/login');
-          },
-        });
+      this.authStore.updatePassword({
+        email: this.email,
+        token: this.token,
+        password: this.form.value.newPassword,
+        password_confirmation: this.form.value.confirmPassword,
+      });
+      void this.router.navigateByUrl('/auth/login');
     }
   }
 }

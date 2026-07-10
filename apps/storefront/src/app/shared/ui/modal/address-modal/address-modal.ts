@@ -19,11 +19,10 @@ import {
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
-import { CreateAddressAction, UpdateAddressAction } from '@data-access/actions/account.action';
+import { AccountStore } from '@core/state/account.store';
 import { injectCountriesQuery } from '@data-access/queries/country.queries';
 import { injectStatesQuery } from '@data-access/queries/state.queries';
 import * as data from '@shared/data/country-code';
@@ -39,7 +38,7 @@ import { Button } from '../../button/button';
 export class AddressModal {
   private modalService = inject(NgbModal);
   private platformId = inject<Object>(PLATFORM_ID);
-  private store = inject(Store);
+  private accountStore = inject(AccountStore);
   private formBuilder = inject(FormBuilder);
 
   public form: FormGroup;
@@ -147,21 +146,16 @@ export class AddressModal {
   submit() {
     this.form.markAllAsTouched();
 
-    let action = new CreateAddressAction(this.form.value);
-
-    if (this.address) {
-      action = new UpdateAddressAction(this.form.value, this.address.id);
-    }
-
     if (this.form.valid) {
-      this.store.dispatch(action).subscribe({
-        complete: () => {
-          this.form.reset();
-          if (!this.address) {
-            this.form?.controls?.['country_code'].setValue('91');
-          }
-        },
-      });
+      if (this.address) {
+        this.accountStore.updateAddress(this.form.value, this.address.id);
+      } else {
+        this.accountStore.createAddress(this.form.value);
+      }
+      this.form.reset();
+      if (!this.address) {
+        this.form?.controls?.['country_code'].setValue('91');
+      }
     }
   }
 

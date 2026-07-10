@@ -4,7 +4,6 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { injectBlogsQuery } from '@data-access/queries/blog.queries';
@@ -17,7 +16,7 @@ import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
 import { SummaryPipe } from '@shared/pipes/summary.pipe';
 import { BlogService } from '@data-access/services/blog.service';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 import { BlogSidebar } from './sidebar/sidebar';
 import { SkeletonBlog } from './skeleton-blog/skeleton-blog';
 
@@ -39,7 +38,6 @@ import { SkeletonBlog } from './skeleton-blog/skeleton-blog';
   ],
 })
 export class Blog {
-  private store = inject(Store);
   private route = inject(ActivatedRoute);
   blogService = inject(BlogService);
 
@@ -55,9 +53,7 @@ export class Blog {
   blog$: Observable<IBlogModel | undefined> = toObservable(
     computed(() => this.blogsQuery.data()),
   );
-  themeOption$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+  themeOption$: Observable<IOption> = toObservable(inject(ThemeOptionStore).themeOptions) as Observable<IOption>;
 
   public breadcrumb: IBreadcrumb = {
     title: 'Blogs',

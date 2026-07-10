@@ -3,17 +3,15 @@ import { Component, TemplateRef, PLATFORM_ID, inject, viewChild, input } from '@
 
 import { ModalDismissReasons, NgbModal, NgbRating } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { CarouselModule } from 'ngx-owl-carousel-o';
 import { Observable } from 'rxjs';
 
 import * as data from '@shared/data/owl-carousel';
-import { AddToCartAction } from '@data-access/actions/cart.action';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
-import { CartState } from '@data-access/states/cart.state';
+import { CartFacade } from '@core/state/cart/cart.facade';
 import { Button } from '../../button/button';
 import { VariantAttributes } from '../../variant-attributes/variant-attributes';
 
@@ -35,7 +33,7 @@ import { VariantAttributes } from '../../variant-attributes/variant-attributes';
 export class ProductDetailModal {
   private modalService = inject(NgbModal);
   private platformId = inject<Object>(PLATFORM_ID);
-  private store = inject(Store);
+  private cartFacade = inject(CartFacade);
 
   readonly productDetailModal = viewChild<TemplateRef<IProduct>>('productDetailModal');
 
@@ -44,7 +42,7 @@ export class ProductDetailModal {
   //  and migrating would break narrowing currently.
   readonly product = input<IProduct>();
 
-  cartItem$: Observable<ICart[]> = inject(Store).select(CartState.cartItems) as Observable<ICart[]>;
+  cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
 
   public closeResult: string;
   public modalOpen: boolean = false;
@@ -127,11 +125,8 @@ export class ProductDetailModal {
         variation_id: this.selectedVariation?.id ? this.selectedVariation?.id! : null,
         quantity: this.productQty,
       };
-      this.store.dispatch(new AddToCartAction(params)).subscribe({
-        complete: () => {
-          this.modalService.dismissAll();
-        },
-      });
+      this.cartFacade.addToCart(params);
+      this.modalService.dismissAll();
     }
   }
 

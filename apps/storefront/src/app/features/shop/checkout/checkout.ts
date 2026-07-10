@@ -12,13 +12,12 @@ import {
 import { Router } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { AddressBlock } from './address-block/address-block';
 import { DeliveryBlock } from './delivery-block/delivery-block';
 import { PaymentBlock } from './payment-block/payment-block';
-import { GetCartItemsAction } from '@data-access/actions/cart.action';
+import { CartFacade } from '@core/state/cart/cart.facade';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
 import { Loader } from '@shared/ui/loader/loader';
@@ -30,8 +29,7 @@ import { ICart } from '@data-access/interfaces/cart.interface';
 import { IOrderCheckout } from '@data-access/interfaces/order.interface';
 import { IValues, IDeliveryBlock } from '@data-access/interfaces/setting.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { AccountState } from '@data-access/states/account.state';
-import { CartState } from '@data-access/states/cart.state';
+import { AccountStore } from '@core/state/account.store';
 import { SettingStore } from '@core/state/setting.store';
 
 // Static mock checkout totals (was the NGXS CheckoutAction reducer — no backend
@@ -72,7 +70,7 @@ const CHECKOUT_TOTAL: IOrderCheckout = {
   ],
 })
 export class Checkout {
-  private store = inject(Store);
+  private cartFacade = inject(CartFacade);
   private formBuilder = inject(FormBuilder);
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
@@ -82,10 +80,11 @@ export class Checkout {
     items: [{ label: 'Checkout', active: true }],
   };
 
-  user$: Observable<IAccountUser> = inject(Store).select(
-    AccountState.user,
+  private accountStore = inject(AccountStore);
+  user$: Observable<IAccountUser> = toObservable(
+    this.accountStore.user,
   ) as Observable<IAccountUser>;
-  cartItem$: Observable<ICart[]> = inject(Store).select(CartState.cartItems);
+  cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
   private settingStore = inject(SettingStore);
   setting$: Observable<IValues> = toObservable(this.settingStore.setting) as Observable<IValues>;
 
@@ -101,7 +100,7 @@ export class Checkout {
   public loading: boolean = false;
 
   constructor() {
-    this.store.dispatch(new GetCartItemsAction());
+    this.cartFacade.getCartItems();
     this.settingStore.loadSettings();
 
     this.form = this.formBuilder.group({

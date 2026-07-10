@@ -1,15 +1,14 @@
 import { Component, DOCUMENT, inject, NgZone } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { Meta, Title } from '@angular/platform-browser';
 import { Router, RouterModule } from '@angular/router';
 
 import { NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
-import { Actions, ofActionDispatched, Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { Layout } from '@layout/layout';
-import { LogoutAction } from '@data-access/actions/auth.action';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 
 @Component({
   selector: 'app-root',
@@ -26,15 +25,12 @@ export class App {
     return !this.router.url.startsWith('/maintenance');
   }
 
-  private actions = inject(Actions);
   private router = inject(Router);
   private titleService = inject(Title);
   private ngZone = inject(NgZone);
   private meta = inject(Meta);
 
-  themeOption$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+  themeOption$: Observable<IOption> = toObservable(inject(ThemeOptionStore).themeOptions) as Observable<IOption>;
 
   public favIcon: HTMLLinkElement | null;
   public isTabInFocus = true;
@@ -102,10 +98,6 @@ export class App {
           }
         });
       });
-    });
-
-    this.actions.pipe(ofActionDispatched(LogoutAction)).subscribe(() => {
-      void this.router.navigate(['/auth/login']);
     });
   }
 

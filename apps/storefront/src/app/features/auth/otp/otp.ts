@@ -9,9 +9,8 @@ import {
 import { Router } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 
-import { VerifyEmailOtpAction } from '@data-access/actions/auth.action';
+import { AuthStore } from '@core/state/auth.store';
 import { Alert } from '@shared/ui/alert/alert';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
@@ -25,7 +24,7 @@ import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 })
 export class Otp {
   router = inject(Router);
-  store = inject(Store);
+  private authStore = inject(AuthStore);
   formBuilder = inject(FormBuilder);
 
   public form: FormGroup;
@@ -36,7 +35,7 @@ export class Otp {
   };
 
   constructor() {
-    this.email = this.store.selectSnapshot(state => state.auth.email);
+    this.email = this.authStore.email();
     this.form = this.formBuilder.group({
       otp: new FormControl('', [Validators.required, Validators.minLength(5)]),
     });
@@ -45,18 +44,11 @@ export class Otp {
   submit() {
     this.form.markAllAsTouched();
     if (this.form.valid) {
-      this.store
-        .dispatch(
-          new VerifyEmailOtpAction({
-            email: this.email,
-            token: this.form.value.otp,
-          }),
-        )
-        .subscribe({
-          complete: () => {
-            void this.router.navigateByUrl('/auth/update-password');
-          },
-        });
+      this.authStore.verifyEmail({
+        email: this.email,
+        token: this.form.value.otp,
+      });
+      void this.router.navigateByUrl('/auth/update-password');
     }
   }
 }

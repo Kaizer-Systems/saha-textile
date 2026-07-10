@@ -1,16 +1,14 @@
 import { Component, inject, Input, SimpleChanges } from '@angular/core';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { AddToCartAction } from '@data-access/actions/cart.action';
 import { Button } from '@shared/ui/button/button';
 import { VariantAttributes } from '@shared/ui/variant-attributes/variant-attributes';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { CartState } from '@data-access/states/cart.state';
+import { CartFacade } from '@core/state/cart/cart.facade';
 
 @Component({
   selector: 'app-sticky-checkout',
@@ -20,11 +18,11 @@ import { CartState } from '@data-access/states/cart.state';
   imports: [VariantAttributes, Button, CurrencySymbolPipe, TranslateModule],
 })
 export class StickyCheckout {
-  private store = inject(Store);
+  private cartFacade = inject(CartFacade);
 
   @Input() product: IProduct;
 
-  cartItem$: Observable<ICart[]> = inject(Store).select(CartState.cartItems);
+  cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
 
   public cartItem: ICart | null;
   public productQty: number = 1;
@@ -69,7 +67,7 @@ export class StickyCheckout {
         variation_id: this.selectedVariation?.id ? this.selectedVariation?.id! : null,
         quantity: this.productQty,
       };
-      this.store.dispatch(new AddToCartAction(params));
+      this.cartFacade.addToCart(params);
     }
   }
 }

@@ -1,12 +1,12 @@
 import { isPlatformBrowser, AsyncPipe, PlatformLocation, isPlatformServer } from '@angular/common';
-import { Component, inject, PLATFORM_ID } from '@angular/core';
+import { Component, computed, inject, PLATFORM_ID } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterOutlet } from '@angular/router';
 
 import { LoadingBarModule } from '@ngx-loading-bar/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { GetUserDetailsAction } from '@data-access/actions/account.action';
+import { AccountStore } from '@core/state/account.store';
 import { Footer } from '@layout/footer/footer';
 import { Header } from '@layout/header/header';
 import { BackToTop } from '@shared/ui/back-to-top/back-to-top';
@@ -20,7 +20,7 @@ import { StickyCompare } from '@shared/ui/sticky-compare/sticky-compare';
 import { ThemeCustomizer } from '@shared/ui/theme-customizer/theme-customizer';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
 import { ThemeOptionService } from '@data-access/services/theme-option.service';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 
 @Component({
   selector: 'app-layout',
@@ -44,16 +44,17 @@ import { ThemeOptionState } from '@data-access/states/theme-option.state';
   ],
 })
 export class Layout {
-  private store = inject(Store);
   private platformId = inject<Object>(PLATFORM_ID);
   themeOptionService = inject(ThemeOptionService);
   private platformLocation = inject(PlatformLocation);
+  private themeOptionStore = inject(ThemeOptionStore);
+  private accountStore = inject(AccountStore);
 
-  themeOption$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
+  themeOption$: Observable<IOption> = toObservable(
+    this.themeOptionStore.themeOptions,
   ) as Observable<IOption>;
-  cookies$: Observable<boolean> = inject(Store).select(ThemeOptionState.cookies);
-  exit$: Observable<boolean> = inject(Store).select(ThemeOptionState.exit);
+  cookies$: Observable<boolean> = toObservable(this.themeOptionStore.cookies);
+  exit$: Observable<boolean> = toObservable(this.themeOptionStore.exit);
 
   public cookies: boolean;
   public exit: boolean;
@@ -65,7 +66,7 @@ export class Layout {
     this.cookies$.subscribe(res => (this.cookies = res));
     this.exit$.subscribe(res => (this.exit = res));
     this.themeOptionService.preloader = true;
-    this.store.dispatch(new GetUserDetailsAction());
+    this.accountStore.loadUser();
     // Categories, blogs and deal products now load on-demand via TanStack queries
     // in each consumer (footer/filters/sidebar, menu/blog pages, header/menu deals);
     // no Layout prefetch remains. Route components own their own loading skeletons,

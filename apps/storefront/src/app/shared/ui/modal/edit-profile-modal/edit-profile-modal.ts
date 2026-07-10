@@ -10,14 +10,13 @@ import {
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { Select2Module } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
-import { UpdateUserProfileAction } from '@data-access/actions/account.action';
 import * as data from '@shared/data/country-code';
 import { IAccountUser } from '@data-access/interfaces/account.interface';
-import { AccountState } from '@data-access/states/account.state';
+import { AccountStore } from '@core/state/account.store';
 import { Button } from '../../button/button';
 
 @Component({
@@ -28,12 +27,12 @@ import { Button } from '../../button/button';
 })
 export class EditProfileModal {
   private modalService = inject(NgbModal);
-  private store = inject(Store);
+  private accountStore = inject(AccountStore);
   private platformId = inject<Object>(PLATFORM_ID);
   private formBuilder = inject(FormBuilder);
 
-  user$: Observable<IAccountUser> = inject(Store).select(
-    AccountState.user,
+  user$: Observable<IAccountUser> = toObservable(
+    this.accountStore.user,
   ) as Observable<IAccountUser>;
 
   public form: FormGroup;
@@ -95,7 +94,7 @@ export class EditProfileModal {
   submit() {
     this.form.markAllAsTouched();
     if (this.form.valid) {
-      this.store.dispatch(new UpdateUserProfileAction(this.form.value));
+      this.accountStore.updateProfile(this.form.value);
     }
   }
 

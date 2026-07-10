@@ -1,13 +1,13 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, TemplateRef, inject, viewChild } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { IOption } from '@data-access/interfaces/theme-option.interface';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 import { Button } from '../../button/button';
 
 @Component({
@@ -22,9 +22,7 @@ export class DeliveryReturnModal {
 
   readonly DeliveryReturnModal = viewChild<TemplateRef<string>>('deliveryReturnModal');
 
-  themeOption$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+  themeOption$: Observable<IOption> = toObservable(inject(ThemeOptionStore).themeOptions) as Observable<IOption>;
 
   public closeResult: string;
   public modalOpen: boolean = false;

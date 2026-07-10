@@ -2,7 +2,6 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { CollectionBanner } from './collection-banner/collection-banner';
@@ -19,7 +18,7 @@ import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProductModel } from '@data-access/interfaces/product.interface';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 
 @Component({
   selector: 'app-collection',
@@ -58,9 +57,7 @@ export class Collection {
   product$: Observable<IProductModel | undefined> = toObservable(
     computed(() => this.productsQuery.data()),
   );
-  themeOptions$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+  themeOptions$: Observable<IOption> = toObservable(inject(ThemeOptionStore).themeOptions) as Observable<IOption>;
 
   public breadcrumb: IBreadcrumb = {
     title: 'Collections',

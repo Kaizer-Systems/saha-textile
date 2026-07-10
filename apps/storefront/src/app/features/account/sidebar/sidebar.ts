@@ -4,17 +4,16 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLinkActive, RouterLink } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { LogoutAction } from '@data-access/actions/auth.action';
 import { Button } from '@shared/ui/button/button';
 import { ConfirmationModal } from '@shared/ui/modal/confirmation-modal/confirmation-modal';
 import { injectNotificationsQuery } from '@data-access/queries/notification.queries';
 import { INotification } from '@data-access/interfaces/notification.interface';
 import { IUser } from '@data-access/interfaces/user.interface';
 import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
-import { AccountState } from '@data-access/states/account.state';
+import { AccountStore } from '@core/state/account.store';
+import { AuthStore } from '@core/state/auth.store';
 
 @Component({
   selector: 'app-sidebar',
@@ -31,7 +30,8 @@ import { AccountState } from '@data-access/states/account.state';
   ],
 })
 export class Sidebar {
-  private store = inject(Store);
+  private authStore = inject(AuthStore);
+  private accountStore = inject(AccountStore);
 
   readonly show = input<boolean>();
   readonly menu = output<boolean>();
@@ -40,7 +40,7 @@ export class Sidebar {
   notification$: Observable<INotification[]> = toObservable(
     computed(() => this.notificationsQuery.data() ?? []),
   );
-  user$: Observable<IUser> = inject(Store).select(AccountState.user) as Observable<IUser>;
+  user$: Observable<IUser> = toObservable(this.accountStore.user) as unknown as Observable<IUser>;
 
   readonly ConfirmationModal = viewChild<ConfirmationModal>('confirmationModal');
 
@@ -53,7 +53,7 @@ export class Sidebar {
   }
 
   logout() {
-    this.store.dispatch(new LogoutAction());
+    this.authStore.logout();
   }
 
   openMenu(value: boolean) {

@@ -1,5 +1,6 @@
 import { AsyncPipe, NgClass, NgStyle } from '@angular/common';
-import { Component, inject, viewChild, input } from '@angular/core';
+import { Component, computed, inject, viewChild, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
@@ -18,8 +19,8 @@ import { IOption } from '@data-access/interfaces/theme-option.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { CartService } from '@data-access/services/cart.service';
 import { CartState } from '@data-access/states/cart.state';
-import { SettingState } from '@data-access/states/setting.state';
 import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { SettingStore } from '@core/state/setting.store';
 import { Button } from '@shared/ui/button/button';
 import { VariationModal } from '@shared/ui/modal/variation-modal/variation-modal';
 
@@ -41,6 +42,7 @@ import { VariationModal } from '@shared/ui/modal/variation-modal/variation-modal
 })
 export class Cart {
   private store = inject(Store);
+  private settingStore = inject(SettingStore);
   cartService = inject(CartService);
 
   cartItem$: Observable<ICart[]> = inject(Store).select(CartState.cartItems);
@@ -49,7 +51,7 @@ export class Cart {
   themeOption$: Observable<IOption> = inject(Store).select(
     ThemeOptionState.themeOptions,
   ) as Observable<IOption>;
-  setting$: Observable<IValues> = inject(Store).select(SettingState.setting) as Observable<IValues>;
+  setting$: Observable<IValues> = toObservable(this.settingStore.setting) as Observable<IValues>;
 
   readonly VariationModal = viewChild<VariationModal>('variationModal');
 

@@ -1,15 +1,15 @@
 import { AsyncPipe, isPlatformBrowser, UpperCasePipe } from '@angular/common';
-import { Component, inject, PLATFORM_ID, TemplateRef, viewChild } from '@angular/core';
+import { Component, computed, inject, PLATFORM_ID, TemplateRef, viewChild } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { IOrder } from '@data-access/interfaces/order.interface';
 import { IValues } from '@data-access/interfaces/setting.interface';
-import { SettingState } from '@data-access/states/setting.state';
+import { SettingStore } from '@core/state/setting.store';
 import { Button } from '../../button/button';
 
 @Component({
@@ -21,10 +21,10 @@ import { Button } from '../../button/button';
 export class PayModal {
   private modalService = inject(NgbModal);
   private platformId = inject<Object>(PLATFORM_ID);
-  private store = inject(Store);
+  private settingStore = inject(SettingStore);
 
   readonly PayModal = viewChild<TemplateRef<string>>('payModal');
-  setting$: Observable<IValues> = inject(Store).select(SettingState.setting) as Observable<IValues>;
+  setting$: Observable<IValues> = toObservable(this.settingStore.setting) as Observable<IValues>;
 
   public closeResult: string;
   public modalOpen: boolean = false;

@@ -1,5 +1,6 @@
 import { AsyncPipe, isPlatformBrowser } from '@angular/common';
 import { Component, ElementRef, inject, PLATFORM_ID, viewChild } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
   FormControl,
@@ -18,7 +19,6 @@ import { AddressBlock } from './address-block/address-block';
 import { DeliveryBlock } from './delivery-block/delivery-block';
 import { PaymentBlock } from './payment-block/payment-block';
 import { GetCartItemsAction } from '@data-access/actions/cart.action';
-import { GetSettingOptionAction } from '@data-access/actions/setting.action';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
 import { Loader } from '@shared/ui/loader/loader';
@@ -32,7 +32,7 @@ import { IValues, IDeliveryBlock } from '@data-access/interfaces/setting.interfa
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { AccountState } from '@data-access/states/account.state';
 import { CartState } from '@data-access/states/cart.state';
-import { SettingState } from '@data-access/states/setting.state';
+import { SettingStore } from '@core/state/setting.store';
 
 // Static mock checkout totals (was the NGXS CheckoutAction reducer — no backend
 // yet; real values get computed server-side later).
@@ -86,7 +86,8 @@ export class Checkout {
     AccountState.user,
   ) as Observable<IAccountUser>;
   cartItem$: Observable<ICart[]> = inject(Store).select(CartState.cartItems);
-  setting$: Observable<IValues> = inject(Store).select(SettingState.setting) as Observable<IValues>;
+  private settingStore = inject(SettingStore);
+  setting$: Observable<IValues> = toObservable(this.settingStore.setting) as Observable<IValues>;
 
   readonly AddressModal = viewChild<AddressModal>('addressModal');
   readonly cpnRef = viewChild<ElementRef<HTMLInputElement>>('cpn');
@@ -101,7 +102,7 @@ export class Checkout {
 
   constructor() {
     this.store.dispatch(new GetCartItemsAction());
-    this.store.dispatch(new GetSettingOptionAction());
+    this.settingStore.loadSettings();
 
     this.form = this.formBuilder.group({
       products: this.formBuilder.array([], [Validators.required]),

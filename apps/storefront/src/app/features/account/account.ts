@@ -1,18 +1,17 @@
 import { AsyncPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterOutlet } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { Sidebar } from './sidebar/sidebar';
-import { GetNotificationAction } from '@data-access/actions/notification.action';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
 import { Loader } from '@shared/ui/loader/loader';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
-import { LoaderState } from '@data-access/states/loader.state';
+import { LoaderStore } from '@core/state/loader.store';
 
 @Component({
   selector: 'app-account',
@@ -21,21 +20,15 @@ import { LoaderState } from '@data-access/states/loader.state';
   imports: [Breadcrumb, Sidebar, Loader, Button, RouterOutlet, AsyncPipe, TranslateModule],
 })
 export class Account {
-  private store = inject(Store);
+  private loaderStore = inject(LoaderStore);
 
-  loadingStatus$: Observable<boolean> = inject(Store).select(
-    LoaderState.status,
-  ) as Observable<boolean>;
+  loadingStatus$: Observable<boolean> = toObservable(this.loaderStore.status);
 
   public open: boolean = false;
   public breadcrumb: IBreadcrumb = {
     title: 'Dashboard',
     items: [{ label: 'Dashboard', active: false }],
   };
-
-  constructor() {
-    this.store.dispatch(new GetNotificationAction());
-  }
 
   openMenu(value: boolean) {
     this.open = value;

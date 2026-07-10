@@ -1,13 +1,13 @@
 import { SlicePipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, computed } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { ProductBox } from '@shared/ui/product-box/product-box';
+import { injectRelatedProductsData } from '@data-access/queries/product.queries';
 import { IProduct } from '@data-access/interfaces/product.interface';
-import { ProductState } from '@data-access/states/product.state';
 
 @Component({
   selector: 'app-trending-products',
@@ -16,7 +16,10 @@ import { ProductState } from '@data-access/states/product.state';
   imports: [ProductBox, SlicePipe, TranslateModule],
 })
 export class TrendingProducts {
-  relatedProduct$: Observable<IProduct[]> = inject(Store).select(ProductState.relatedProducts);
+  private readonly relatedQuery = injectRelatedProductsData();
+  relatedProduct$: Observable<IProduct[]> = toObservable(
+    computed(() => this.relatedQuery.data() ?? []),
+  );
 
   public relatedProducts: IProduct[] = [];
 

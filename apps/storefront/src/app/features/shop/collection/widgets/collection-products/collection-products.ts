@@ -1,16 +1,16 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, inject, input } from '@angular/core';
+import { Component, computed, effect, inject, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { NoData } from '@shared/ui/no-data/no-data';
 import { ProductBox } from '@shared/ui/product-box/product-box';
 import { SkeletonProductBox } from '@shared/ui/product-box/skeleton-product-box/skeleton-product-box';
+import { injectProductsQuery } from '@data-access/queries/product.queries';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProductModel } from '@data-access/interfaces/product.interface';
 import { ProductService } from '@data-access/services/product.service';
-import { ProductState } from '@data-access/states/product.state';
 import { CollectionPaginate } from '../collection-paginate/collection-paginate';
 import { CollectionSort } from '../collection-sort/collection-sort';
 
@@ -23,10 +23,19 @@ import { CollectionSort } from '../collection-sort/collection-sort';
 export class CollectionProducts {
   productService = inject(ProductService);
 
-  product$: Observable<IProductModel> = inject(Store).select(ProductState.product);
-
   readonly filter = input<Params>();
   readonly gridCol = input<string>();
+
+  private readonly productsQuery = injectProductsQuery(() => this.filter());
+  product$: Observable<IProductModel | undefined> = toObservable(
+    computed(() => this.productsQuery.data()),
+  );
+
+  constructor() {
+    // Drive the shared skeleton flag off the query's fetch state (was toggled by
+    // the old GetProductsAction reducer).
+    effect(() => (this.productService.skeletonLoader = this.productsQuery.isFetching()));
+  }
 
   public gridClass: string =
     'row g-sm-4 g-3 row-cols-xxl-4 row-cols-xl-3 row-cols-lg-2 row-cols-md-3 row-cols-2 product-list-section';

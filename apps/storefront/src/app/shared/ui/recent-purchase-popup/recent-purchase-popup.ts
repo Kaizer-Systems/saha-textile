@@ -1,13 +1,16 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, inject } from '@angular/core';
+import { Component, PLATFORM_ID, computed, inject } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
+import {
+  injectProductsQuery,
+  injectRelatedProductsData,
+} from '@data-access/queries/product.queries';
 import { IProduct, IProductModel } from '@data-access/interfaces/product.interface';
-import { ProductState } from '@data-access/states/product.state';
 
 @Component({
   selector: 'app-recent-purchase-popup',
@@ -18,8 +21,14 @@ import { ProductState } from '@data-access/states/product.state';
 export class RecentPurchasePopup {
   private platformId = inject<Object>(PLATFORM_ID);
 
-  relatesProduct$: Observable<IProduct[]> = inject(Store).select(ProductState.relatedProducts);
-  product$: Observable<IProductModel> = inject(Store).select(ProductState.product);
+  private readonly relatedQuery = injectRelatedProductsData();
+  relatesProduct$: Observable<IProduct[]> = toObservable(
+    computed(() => this.relatedQuery.data() ?? []),
+  );
+  private readonly productsQuery = injectProductsQuery(() => undefined);
+  product$: Observable<IProductModel | undefined> = toObservable(
+    computed(() => this.productsQuery.data()),
+  );
 
   public product: IProduct | null;
   public show: boolean = false;
@@ -43,7 +52,7 @@ export class RecentPurchasePopup {
 
   randomlySelectProduct() {
     this.product$.subscribe(product => {
-      if (!product.data.length) {
+      if (!product?.data?.length) {
         this.relatesProducts();
       } else {
         const randomIndex = Math.floor(Math.random() * product.data.length);

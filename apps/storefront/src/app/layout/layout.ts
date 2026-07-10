@@ -4,10 +4,9 @@ import { RouterOutlet } from '@angular/router';
 
 import { LoadingBarModule } from '@ngx-loading-bar/core';
 import { Store } from '@ngxs/store';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable } from 'rxjs';
 
 import { GetUserDetailsAction } from '@data-access/actions/account.action';
-import { GetDealProductsAction } from '@data-access/actions/product.action';
 import { Footer } from '@layout/footer/footer';
 import { Header } from '@layout/header/header';
 import { BackToTop } from '@shared/ui/back-to-top/back-to-top';
@@ -67,15 +66,12 @@ export class Layout {
     this.exit$.subscribe(res => (this.exit = res));
     this.themeOptionService.preloader = true;
     this.store.dispatch(new GetUserDetailsAction());
-    // Categories and blogs now load on-demand via TanStack queries in each
-    // consumer (footer/filters/sidebar, menu/blog pages); no Layout prefetch
-    // needed. Deal products stay on NGXS until ProductState is migrated.
-    const getProduct$ = this.store.dispatch(new GetDealProductsAction({ status: 1, paginate: 2 }));
-    forkJoin([getProduct$]).subscribe({
-      complete: () => {
-        this.themeOptionService.preloader = false;
-      },
-    });
+    // Categories, blogs and deal products now load on-demand via TanStack queries
+    // in each consumer (footer/filters/sidebar, menu/blog pages, header/menu deals);
+    // no Layout prefetch remains. Route components own their own loading skeletons,
+    // so drop the preloader immediately (theme pages still manage it during their
+    // own data fetch).
+    this.themeOptionService.preloader = false;
   }
 
   setLogo() {

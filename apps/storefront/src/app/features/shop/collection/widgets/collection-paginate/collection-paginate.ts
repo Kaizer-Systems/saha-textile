@@ -1,14 +1,14 @@
 import { AsyncPipe, ViewportScroller } from '@angular/common';
-import { Component, inject, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { Pagination } from '@shared/ui/pagination/pagination';
+import { injectProductsQuery } from '@data-access/queries/product.queries';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProductModel } from '@data-access/interfaces/product.interface';
-import { ProductState } from '@data-access/states/product.state';
 
 @Component({
   selector: 'app-collection-paginate',
@@ -21,14 +21,17 @@ export class CollectionPaginate {
   private router = inject(Router);
   private viewScroller = inject(ViewportScroller);
 
-  product$: Observable<IProductModel> = inject(Store).select(ProductState.product);
-
   readonly filter = input<Params>();
+
+  private readonly productsQuery = injectProductsQuery(() => this.filter());
+  product$: Observable<IProductModel | undefined> = toObservable(
+    computed(() => this.productsQuery.data()),
+  );
 
   public totalItems: number = 0;
 
   constructor() {
-    this.product$.subscribe(product => (this.totalItems = product?.total));
+    this.product$.subscribe(product => (this.totalItems = product?.total ?? 0));
   }
 
   setPaginate(page: number) {

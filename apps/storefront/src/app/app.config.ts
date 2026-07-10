@@ -32,7 +32,6 @@ import { CartState } from '@data-access/states/cart.state';
 import { CompareState } from '@data-access/states/compare.state';
 import { LoaderState } from '@data-access/states/loader.state';
 import { NotificationState } from '@data-access/states/notification.state';
-import { ProductState } from '@data-access/states/product.state';
 import { SettingState } from '@data-access/states/setting.state';
 import { ThemeOptionState } from '@data-access/states/theme-option.state';
 import { WishlistState } from '@data-access/states/wishlist.state';
@@ -94,7 +93,6 @@ export const appConfig: ApplicationConfig = {
         AccountState,
         SettingState,
         ThemeOptionState,
-        ProductState,
         CartState,
         WishlistState,
         CompareState,

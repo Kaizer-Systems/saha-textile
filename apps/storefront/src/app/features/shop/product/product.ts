@@ -1,8 +1,18 @@
 import { AsyncPipe, isPlatformBrowser } from '@angular/common';
-import { Component, HostListener, inject, PLATFORM_ID } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  computed,
+  effect,
+  inject,
+  PLATFORM_ID,
+  signal,
+} from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { Meta } from '@angular/platform-browser';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
+import { injectQueryClient } from '@tanstack/angular-query-experimental';
 import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
@@ -14,10 +24,16 @@ import { ProductThumbnail } from './product-details/product-thumbnail/product-th
 import { RelatedProducts } from './product-details/widgets/related-products/related-products';
 import { StickyCheckout } from './product-details/widgets/sticky-checkout/sticky-checkout';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
+import {
+  RELATED_PRODUCTS_KEY,
+  injectProductBySlugQuery,
+  injectRelatedProductsQuery,
+} from '@data-access/queries/product.queries';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
+import { Params } from '@data-access/interfaces/core.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
-import { ProductState } from '@data-access/states/product.state';
+import { ThemeOptionService } from '@data-access/services/theme-option.service';
 import { ThemeOptionState } from '@data-access/states/theme-option.state';
 
 @Component({
@@ -39,11 +55,28 @@ import { ThemeOptionState } from '@data-access/states/theme-option.state';
 export class Product {
   private route = inject(ActivatedRoute);
   private meta = inject(Meta);
+  private router = inject(Router);
   private platformId = inject<Object>(PLATFORM_ID);
+  private themeOptionService = inject(ThemeOptionService);
+  private queryClient = injectQueryClient();
 
-  product$: Observable<IProduct> = inject(Store).select(
-    ProductState.selectedProduct,
-  ) as Observable<IProduct>;
+  private readonly slug = signal<string | undefined>(undefined);
+  private readonly productQuery = injectProductBySlugQuery(() => this.slug());
+  product$: Observable<IProduct | undefined> = toObservable(
+    computed(() => this.productQuery.data()),
+  );
+
+  // Related/cross-sell + same-category params derived from the selected product
+  // (the slug reducer used to chain-dispatch GetRelatedProductsAction with these).
+  private readonly relatedParams = computed<Params | undefined>(() => {
+    const p = this.productQuery.data();
+    if (!p) return undefined;
+    const ids = [...(p.related_products ?? []), ...(p.cross_sell_products ?? [])];
+    const categoryIds = (p.categories ?? []).map(category => category.id);
+    return { ids: ids.join(','), category_ids: categoryIds.join(','), status: 1 };
+  });
+  private readonly relatedQuery = injectRelatedProductsQuery(() => this.relatedParams());
+
   themeOptions$: Observable<IOption> = inject(Store).select(
     ThemeOptionState.themeOptions,
   ) as Observable<IOption>;
@@ -59,6 +92,30 @@ export class Product {
 
   constructor() {
     this.isBrowser = isPlatformBrowser(this.platformId);
+
+    // Product looked up by slug via the query (was ProductResolver + selectedProduct).
+    this.route.params.subscribe(params => this.slug.set(params['slug']));
+
+    // Mirror the derived related set into the shared slot the detail widgets read.
+    effect(() => {
+      const related = this.relatedQuery.data();
+      if (related) this.queryClient.setQueryData(RELATED_PRODUCTS_KEY, related);
+    });
+
+    // 404 when the slug matches no product (was router.navigate in the reducer).
+    effect(() => {
+      if (this.slug() && !this.productQuery.isFetching() && this.productQuery.data() === undefined) {
+        void this.router.navigate(['/404']);
+      }
+    });
+
+    // Preloader mirrors the two queries' fetch state (was toggled by the reducers).
+    effect(
+      () =>
+        (this.themeOptionService.preloader =
+          this.productQuery.isFetching() || this.relatedQuery.isFetching()),
+    );
+
     this.product$.subscribe(product => {
       if (product) {
         this.breadcrumb.items = [];

@@ -1,19 +1,19 @@
 <app-breadcrumb [breadcrumb]="breadcrumb" />
 @if (layout === 'collection_category_slider') {
-<app-collection-category-slider [filter]="filter" />
+<app-collection-category-slider [filter]="filter()" />
 } @if (layout === 'collection_category_sidebar') {
-<app-collection-category-sidebar [filter]="filter" />
+<app-collection-category-sidebar [filter]="filter()" />
 } @if (layout === 'collection_banner') {
-<app-collection-banner [filter]="filter" />
+<app-collection-banner [filter]="filter()" />
 } @if (layout === 'collection_left_sidebar') {
-<app-collection-left-sidebar [filter]="filter" />
+<app-collection-left-sidebar [filter]="filter()" />
 } @if (layout === 'collection_right_sidebar') {
-<app-collection-right-sidebar [filter]="filter" />
+<app-collection-right-sidebar [filter]="filter()" />
 } @if (layout === 'collection_3_grid' || layout === 'collection_4_grid' || layout ===
 'collection_5_grid' || layout === 'collection_list_view') {
-<app-collection-list [filter]="filter" />
+<app-collection-list [filter]="filter()" />
 } @if (layout === 'collection_offcanvas_filter') {
-<app-collection-offcanvas-filter [filter]="filter" />
+<app-collection-offcanvas-filter [filter]="filter()" />
 } @if (layout === 'collection_no_sidebar') {
-<app-collection-no-sidebar [filter]="filter" />
+<app-collection-no-sidebar [filter]="filter()" />
 }

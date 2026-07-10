@@ -24,6 +24,11 @@
   },
   "dependencies": {
     "@analogjs/router": "^2.6.2",
+    "@ngrx/effects": "^21.1.1",
+    "@ngrx/entity": "^21.1.1",
+    "@ngrx/signals": "^21.1.1",
+    "@ngrx/store": "^21.1.1",
+    "@tanstack/angular-query-experimental": "^5.101.1",
     "@angular/animations": "^21.0.6",
     "@angular/cdk": "^21.0.0",
     "@angular/common": "^21.0.6",

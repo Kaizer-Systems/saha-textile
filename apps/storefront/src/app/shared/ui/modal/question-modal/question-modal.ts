@@ -4,12 +4,7 @@ import { FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 
-import {
-  SendQuestionAction,
-  UpdateQuestionAnswersAction,
-} from '@data-access/actions/questions-answers.action';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { IQuestionAnswers } from '@data-access/interfaces/questions-answers.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
@@ -25,7 +20,6 @@ import { Button } from '../../button/button';
 export class QuestionModal {
   private modalService = inject(NgbModal);
   private platformId = inject<Object>(PLATFORM_ID);
-  private store = inject(Store);
 
   readonly QuestionModal = viewChild<TemplateRef<string>>('questionModal');
 
@@ -74,21 +68,14 @@ export class QuestionModal {
   }
 
   submit() {
-    let data = {
+    const data = {
       question: this.question.value,
       product_id: this.product.id,
       answer: '',
     };
-    let action = new SendQuestionAction(data);
     if (data.question || data.product_id) {
-      if (this.type == 'edit' && this.id) {
-        action = new UpdateQuestionAnswersAction(data, this.id);
-      }
-      this.store.dispatch(action).subscribe({
-        complete: () => {
-          this.modalService.dismissAll();
-        },
-      });
+      // Ask/edit question has no backend yet — was Send/UpdateQuestionAnswersAction.
+      this.modalService.dismissAll();
     }
   }
 }

@@ -1,13 +1,14 @@
 import { AsyncPipe, isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, inject, input } from '@angular/core';
+import { Component, PLATFORM_ID, computed, inject, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { SelectedCurrencyAction } from '@data-access/actions/setting.action';
+import { injectCurrenciesQuery } from '@data-access/queries/currency.queries';
 import { ICurrency, ICurrencyModel } from '@data-access/interfaces/currency.interface';
 import { IValues } from '@data-access/interfaces/setting.interface';
-import { CurrencyState } from '@data-access/states/currency.state';
 import { SettingState } from '@data-access/states/setting.state';
 import { ClickOutsideDirective } from '@shared/directives/out-side-directive';
 import { Button } from '@shared/ui/button/button';
@@ -33,9 +34,10 @@ export class Currency {
 
   readonly style = input<string>('basic');
 
-  currency$: Observable<ICurrencyModel> = inject(Store).select(
-    CurrencyState.currency,
-  ) as Observable<ICurrencyModel>;
+  private readonly currenciesQuery = injectCurrenciesQuery(() => ({ status: 1 }));
+  currency$: Observable<ICurrencyModel> = toObservable(
+    computed(() => this.currenciesQuery.data() ?? { data: [], total: 0 }),
+  );
 
   constructor() {
     this.selectedCurrency$.subscribe(setting => (this.selectedCurrency = setting));

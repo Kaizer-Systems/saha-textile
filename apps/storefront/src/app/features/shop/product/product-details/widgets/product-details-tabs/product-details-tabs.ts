@@ -1,5 +1,6 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, inject, input, SimpleChanges } from '@angular/core';
+import { Component, computed, effect, inject, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 import {
   NgbNav,
@@ -11,16 +12,14 @@ import {
   NgbNavOutlet,
 } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { GetQuestionAnswersAction } from '@data-access/actions/questions-answers.action';
-import { GetReviewAction } from '@data-access/actions/review.action';
+import { injectQuestionAnswersQuery } from '@data-access/queries/questions-answers.queries';
+import { injectReviewQuery } from '@data-access/queries/review.queries';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { IQnAModel } from '@data-access/interfaces/questions-answers.interface';
 import { IReviewModel } from '@data-access/interfaces/review.interface';
-import { QuestionAnswersState } from '@data-access/states/questions-answers.state';
-import { ReviewState } from '@data-access/states/review.state';
+import { QuestionsAnswersService } from '@data-access/services/questions-answers.service';
 import { ProductReview } from '../product-review/product-review';
 import { QuestionsAnswers } from '../questions-answers/questions-answers';
 
@@ -43,18 +42,26 @@ import { QuestionsAnswers } from '../questions-answers/questions-answers';
   ],
 })
 export class ProductDetailsTabs {
-  private store = inject(Store);
+  private questionsAnswersService = inject(QuestionsAnswersService);
 
   readonly product = input<IProduct | null>();
 
-  question$: Observable<IQnAModel> = inject(Store).select(QuestionAnswersState.questionsAnswers);
-  review$: Observable<IReviewModel> = inject(Store).select(ReviewState.review);
+  private readonly qnaQuery = injectQuestionAnswersQuery(() => this.product()?.id);
+  question$: Observable<IQnAModel> = toObservable(
+    computed(() => this.qnaQuery.data() ?? { data: [], total: 0 }),
+  );
+  private readonly reviewQuery = injectReviewQuery(() => this.product()?.id);
+  review$: Observable<IReviewModel> = toObservable(
+    computed(() => this.reviewQuery.data() ?? { data: [], total: 0 }),
+  );
 
   public active = 'description';
 
-  ngOnChanges(changes: SimpleChanges) {
-    let product = changes['product']?.currentValue;
-    this.store.dispatch(new GetQuestionAnswersAction({ product_id: product.id }));
-    this.store.dispatch(new GetReviewAction({ product_id: product.id }));
+  constructor() {
+    // Q&A + reviews load reactively via queries keyed on the product input
+    // (was ngOnChanges dispatches). Drive the Q&A widget's skeleton off the query.
+    effect(() => {
+      this.questionsAnswersService.skeletonLoader = this.qnaQuery.isPending();
+    });
   }
 }

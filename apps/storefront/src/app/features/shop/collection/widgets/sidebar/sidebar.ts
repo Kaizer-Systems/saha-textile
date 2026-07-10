@@ -1,5 +1,6 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, inject, input } from '@angular/core';
+import { Component, computed, effect, inject, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 import {
   NgbAccordionBody,
@@ -12,14 +13,12 @@ import {
   NgbCollapse,
 } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { GetAttributesAction } from '@data-access/actions/attribute.action';
+import { injectAttributesQuery } from '@data-access/queries/attribute.queries';
 import { IAttributeModel } from '@data-access/interfaces/attribute.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { AttributeService } from '@data-access/services/attribute.service';
-import { AttributeState } from '@data-access/states/attribute.state';
 import { CollectionAttributes } from '../filter/collection-attributes-filter/collection-attributes-filter';
 import { CollectionCategoryFilter } from '../filter/collection-category-filter/collection-category-filter';
 import { CollectionFilter } from '../filter/collection-filter/collection-filter';
@@ -51,7 +50,6 @@ import { SkeletonCollectionSidebar } from '../skeleton-collection-sidebar/skelet
   ],
 })
 export class CollectionSidebar {
-  private store = inject(Store);
   attributeService = inject(AttributeService);
 
   // TODO: Skipped for migration because:
@@ -59,10 +57,16 @@ export class CollectionSidebar {
   //  and migrating would break narrowing currently.
   readonly filter = input<Params>();
 
-  attribute$: Observable<IAttributeModel> = inject(Store).select(AttributeState.attribute);
+  private readonly attributesQuery = injectAttributesQuery(() => ({ status: 1 }));
+  attribute$: Observable<IAttributeModel | undefined> = toObservable(
+    computed(() => this.attributesQuery.data()),
+  );
 
   constructor() {
-    this.store.dispatch(new GetAttributesAction({ status: 1 }));
+    // Drive the sidebar skeleton off the query (was AttributeService.skeletonLoader).
+    effect(() => {
+      this.attributeService.skeletonLoader = this.attributesQuery.isPending();
+    });
   }
 
   closeCanvasMenu() {

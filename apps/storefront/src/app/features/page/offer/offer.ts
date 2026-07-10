@@ -1,16 +1,15 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, computed, effect, inject } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { GetCouponsAction } from '@data-access/actions/coupon.action';
+import { injectCouponsQuery } from '@data-access/queries/coupon.queries';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { NoData } from '@shared/ui/no-data/no-data';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { ICouponModel } from '@data-access/interfaces/coupon.interface';
-import { CouponState } from '@data-access/states/coupon.state';
 import { CouponService } from '@data-access/services/coupon.service';
 
 @Component({
@@ -20,7 +19,6 @@ import { CouponService } from '@data-access/services/coupon.service';
   imports: [Breadcrumb, NoData, AsyncPipe, TranslateModule],
 })
 export class Offer {
-  private store = inject(Store);
   couponService = inject(CouponService);
 
   public skeletonItems = Array.from({ length: 8 }, (_, index) => index);
@@ -29,10 +27,16 @@ export class Offer {
     items: [{ label: 'Offer', active: true }],
   };
 
-  coupon$: Observable<ICouponModel> = inject(Store).select(CouponState.coupon);
+  private readonly couponsQuery = injectCouponsQuery(() => ({ status: 1 }));
+  coupon$: Observable<ICouponModel> = toObservable(
+    computed(() => this.couponsQuery.data() ?? { data: [], total: 0 }),
+  );
 
   constructor() {
-    this.store.dispatch(new GetCouponsAction({ status: 1 }));
+    // Drive the template skeleton off the query (was CouponService.skeletonLoader).
+    effect(() => {
+      this.couponService.skeletonLoader = this.couponsQuery.isPending();
+    });
   }
 
   copyFunction(txt: string) {

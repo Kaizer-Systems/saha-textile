@@ -1,5 +1,6 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 import {
   NgbAccordionBody,
@@ -12,18 +13,15 @@ import {
   NgbCollapse,
 } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { GetRecentBlogAction } from '@data-access/actions/blog.action';
-import { GetTagsAction } from '@data-access/actions/tag.action';
+import { injectRecentBlogsQuery } from '@data-access/queries/blog.queries';
+import { injectCategoriesQuery } from '@data-access/queries/category.queries';
+import { injectTagsQuery } from '@data-access/queries/tag.queries';
 import { IBlog } from '@data-access/interfaces/blog.interface';
 import { ICategoryModel } from '@data-access/interfaces/category.interface';
 import { ITagModel } from '@data-access/interfaces/tag.interface';
 import { BlogService } from '@data-access/services/blog.service';
-import { BlogState } from '@data-access/states/blog.state';
-import { CategoryState } from '@data-access/states/category.state';
-import { TagState } from '@data-access/states/tag.state';
 import { SkeletonBlog } from '../skeleton-blog/skeleton-blog';
 import { BlogCategory } from './blog-category/blog-category';
 import { BlogTag } from './blog-tag/blog-tag';
@@ -52,18 +50,21 @@ import { RecentPost } from './recent-post/recent-post';
 })
 export class BlogSidebar {
   blogService = inject(BlogService);
-  private store = inject(Store);
 
-  resentBlog$: Observable<IBlog[]> = inject(Store).select(BlogState.resentBlog) as Observable<
-    IBlog[]
-  >;
-  tag$: Observable<ITagModel> = inject(Store).select(TagState.tag) as Observable<ITagModel>;
-  category$: Observable<ICategoryModel> = inject(Store).select(
-    CategoryState.category,
-  ) as Observable<ICategoryModel>;
-
-  constructor() {
-    this.store.dispatch(new GetTagsAction({ status: 1, type: 'post' }));
-    this.store.dispatch(new GetRecentBlogAction({ status: 1, type: 'post', paginate: 5 }));
-  }
+  private readonly recentBlogsQuery = injectRecentBlogsQuery(() => ({
+    status: 1,
+    type: 'post',
+    paginate: 5,
+  }));
+  resentBlog$: Observable<IBlog[]> = toObservable(
+    computed(() => this.recentBlogsQuery.data() ?? []),
+  );
+  private readonly tagsQuery = injectTagsQuery(() => ({ status: 1, type: 'post' }));
+  tag$: Observable<ITagModel> = toObservable(
+    computed(() => this.tagsQuery.data() ?? { data: [], total: 0 }),
+  );
+  private readonly categoriesQuery = injectCategoriesQuery(() => ({ status: 1 }));
+  category$: Observable<ICategoryModel> = toObservable(
+    computed(() => this.categoriesQuery.data() ?? { data: [], total: 0 }),
+  );
 }

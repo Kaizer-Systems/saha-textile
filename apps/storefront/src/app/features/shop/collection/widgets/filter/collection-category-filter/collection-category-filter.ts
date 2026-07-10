@@ -1,12 +1,12 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
+import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
 import { Params } from '@data-access/interfaces/core.interface';
-import { CategoryState } from '@data-access/states/category.state';
 
 @Component({
   selector: 'app-collection-category-filter',
@@ -18,7 +18,10 @@ export class CollectionCategoryFilter {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
-  category$: Observable<ICategoryModel> = inject(Store).select(CategoryState.category);
+  private readonly categoriesQuery = injectCategoriesQuery(() => ({ status: 1 }));
+  category$: Observable<ICategoryModel> = toObservable(
+    computed(() => this.categoriesQuery.data() ?? { data: [], total: 0 }),
+  );
 
   readonly filter = input<Params>();
 

@@ -1,5 +1,14 @@
 import { AsyncPipe, isPlatformBrowser } from '@angular/common';
-import { Component, inject, PLATFORM_ID, TemplateRef, viewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  PLATFORM_ID,
+  signal,
+  TemplateRef,
+  viewChild,
+} from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
   FormControl,
@@ -12,13 +21,13 @@ import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
 import { Store } from '@ngxs/store';
 import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
-import { map, Observable } from 'rxjs';
+import { Observable } from 'rxjs';
 
 import { CreateAddressAction, UpdateAddressAction } from '@data-access/actions/account.action';
+import { injectCountriesQuery } from '@data-access/queries/country.queries';
+import { injectStatesQuery } from '@data-access/queries/state.queries';
 import * as data from '@shared/data/country-code';
 import { IUserAddress } from '@data-access/interfaces/user.interface';
-import { CountryState } from '@data-access/states/country.state';
-import { StateState } from '@data-access/states/state.state';
 import { Button } from '../../button/button';
 
 @Component({
@@ -37,14 +46,21 @@ export class AddressModal {
   public closeResult: string;
   public modalOpen: boolean = false;
 
-  public states$: Observable<Select2Data>;
+  private readonly statesQuery = injectStatesQuery();
+  private readonly selectedCountryId = signal<number | null>(null);
+  states$: Observable<Select2Data> = toObservable(
+    computed(() => this.filterStates(this.selectedCountryId())),
+  );
   public address: IUserAddress | null;
   public codes = data.countryCodes;
   public isBrowser: boolean;
 
   readonly AddressModal = viewChild<TemplateRef<string>>('addressModal');
 
-  countries$: Observable<Select2Data> = inject(Store).select(CountryState.countries);
+  private readonly countriesQuery = injectCountriesQuery();
+  countries$: Observable<Select2Data> = toObservable(
+    computed(() => this.countriesQuery.data()?.map(cn => ({ label: cn.name, value: cn.id })) ?? []),
+  );
 
   constructor() {
     this.isBrowser = isPlatformBrowser(this.platformId);
@@ -62,13 +78,18 @@ export class AddressModal {
 
   countryChange(data: Select2UpdateEvent) {
     if (data && data?.value) {
-      this.states$ = this.store
-        .select(StateState.states)
-        .pipe(map(filterFn => filterFn(+data?.value)));
+      this.selectedCountryId.set(+data?.value);
       if (!this.address) this.form.controls['state_id'].setValue('');
     } else {
       this.form.controls['state_id'].setValue('');
     }
+  }
+
+  // Replicates the old NGXS `states` filter-function selector over query data.
+  private filterStates(country_id: number | null): Select2Data {
+    const all = this.statesQuery.data() ?? [];
+    const list = country_id ? all.filter(st => st.country_id == country_id) : [];
+    return list.map(st => ({ label: st.name, value: st.id, country_id: st.country_id }));
   }
 
   async openModal(value?: IUserAddress) {

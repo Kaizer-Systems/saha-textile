@@ -4,7 +4,6 @@ import { Component, PLATFORM_ID, inject, input } from '@angular/core';
 import { Store } from '@ngxs/store';
 import { forkJoin } from 'rxjs';
 
-import { GetBlogsAction } from '@data-access/actions/blog.action';
 import { GetProductsAction } from '@data-access/actions/product.action';
 import { Title } from '@shared/ui/title/title';
 import * as data from '../../../shared/data/owl-carousel';
@@ -62,18 +61,10 @@ export class Osaka {
           }),
         );
 
-        // Get Blogs
-        const getBlogs$ = this.store.dispatch(
-          new GetBlogsAction({
-            status: 1,
-            ids: dataValue?.content?.featured_blogs?.blog_ids?.join(','),
-          }),
-        );
-
         // Skeleton Loader
         document.body.classList.add('skeleton-body');
 
-        forkJoin([getProducts$, getBlogs$]).subscribe({
+        forkJoin([getProducts$]).subscribe({
           complete: () => {
             document.body.classList.remove('skeleton-body');
             this.themeOptionService.preloader = false;

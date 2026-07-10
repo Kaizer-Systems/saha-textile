@@ -1,15 +1,15 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, input } from '@angular/core';
+import { Component, computed, effect, inject, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
-import { Store } from '@ngxs/store';
 import { CarouselModule, OwlOptions } from 'ngx-owl-carousel-o';
 import { Observable } from 'rxjs';
 
 import * as data from '../../../../shared/data/owl-carousel';
+import { injectBlogsQuery } from '@data-access/queries/blog.queries';
 import { IBlog, IBlogModel } from '@data-access/interfaces/blog.interface';
 import { BlogService } from '@data-access/services/blog.service';
-import { BlogState } from '@data-access/states/blog.state';
 import { SkeletonBlog } from '../../../blog/skeleton-blog/skeleton-blog';
 
 @Component({
@@ -21,7 +21,10 @@ import { SkeletonBlog } from '../../../blog/skeleton-blog/skeleton-blog';
 export class Blog {
   blogService = inject(BlogService);
 
-  blog$: Observable<IBlogModel> = inject(Store).select(BlogState.blog) as Observable<IBlogModel>;
+  private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1 }));
+  blog$: Observable<IBlogModel | undefined> = toObservable(
+    computed(() => this.blogsQuery.data()),
+  );
 
   readonly blogIds = input<number[]>([]);
   // TODO: Skipped for migration because:
@@ -33,10 +36,16 @@ export class Blog {
   public skeletonItems = Array.from({ length: 5 }, (_, index) => index);
   public bannerSlider = data.customOptionsItem3;
 
+  constructor() {
+    // Mirror the query's fetch state onto the shared skeleton flag (was toggled
+    // by the theme page's now-removed GetBlogsAction dispatch).
+    effect(() => (this.blogService.skeletonLoader = this.blogsQuery.isFetching()));
+  }
+
   ngOnChanges() {
     if (Array.isArray(this.blogIds())) {
       this.blog$.subscribe(blogs => {
-        this.blogs = blogs.data.filter(blog => this.blogIds()?.includes(blog?.id!));
+        this.blogs = (blogs?.data ?? []).filter(blog => this.blogIds()?.includes(blog?.id!));
       });
     }
   }

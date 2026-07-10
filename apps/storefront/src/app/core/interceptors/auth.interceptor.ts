@@ -12,10 +12,7 @@ import { Store } from '@ngxs/store';
 import { catchError, Observable, throwError } from 'rxjs';
 
 import { AuthClearAction } from '@data-access/actions/auth.action';
-import { GetCountriesAction } from '@data-access/actions/country.action';
-import { GetCurrenciesAction } from '@data-access/actions/currency.action';
 import { GetSettingOptionAction } from '@data-access/actions/setting.action';
-import { GetStatesAction } from '@data-access/actions/state.action';
 import { GetThemeOptionAction } from '@data-access/actions/theme-option.action';
 import { IValues } from '@data-access/interfaces/setting.interface';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -32,11 +29,10 @@ export class AuthInterceptor implements HttpInterceptor {
   public isMaintenanceModeOn: boolean = false;
 
   constructor() {
-    this.store.dispatch(new GetCountriesAction());
-    this.store.dispatch(new GetStatesAction());
+    // Countries + states now load on-demand via TanStack queries in the
+    // address-modal; no app-start prefetch needed.
     this.store.dispatch(new GetSettingOptionAction());
     this.store.dispatch(new GetThemeOptionAction());
-    this.store.dispatch(new GetCurrenciesAction({ status: 1 }));
     this.setting$.subscribe(setting => {
       this.isMaintenanceModeOn = setting?.maintenance?.maintenance_mode!;
     });

@@ -1,17 +1,16 @@
 import { AsyncPipe, DatePipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { GetRefundAction } from '@data-access/actions/refund.action';
+import { injectRefundsQuery } from '@data-access/queries/refund.queries';
 import { NoData } from '@shared/ui/no-data/no-data';
 import { Pagination } from '@shared/ui/pagination/pagination';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IRefundModel } from '@data-access/interfaces/refund.interface';
 import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
-import { RefundState } from '@data-access/states/refund.state';
 
 @Component({
   selector: 'app-refund',
@@ -20,23 +19,17 @@ import { RefundState } from '@data-access/states/refund.state';
   imports: [Pagination, NoData, AsyncPipe, DatePipe, TitleCasePipe, TranslateModule],
 })
 export class Refund {
-  private store = inject(Store);
-
-  refund$: Observable<IRefundModel> = inject(Store).select(
-    RefundState.refund,
-  ) as Observable<IRefundModel>;
-
-  public filter: Params = {
+  public filter = signal<Params>({
     page: 1, // Current page number
     paginate: 10, // Display per page,
-  };
+  });
 
-  constructor() {
-    this.store.dispatch(new GetRefundAction(this.filter));
-  }
+  private readonly refundsQuery = injectRefundsQuery(() => this.filter());
+  refund$: Observable<IRefundModel | undefined> = toObservable(
+    computed(() => this.refundsQuery.data()),
+  );
 
   setPaginate(page: number) {
-    this.filter['page'] = page;
-    this.store.dispatch(new GetRefundAction(this.filter));
+    this.filter.update(f => ({ ...f, page }));
   }
 }

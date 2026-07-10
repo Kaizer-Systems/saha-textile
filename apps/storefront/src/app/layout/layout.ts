@@ -7,8 +7,6 @@ import { Store } from '@ngxs/store';
 import { Observable, forkJoin } from 'rxjs';
 
 import { GetUserDetailsAction } from '@data-access/actions/account.action';
-import { GetBlogsAction } from '@data-access/actions/blog.action';
-import { GetCategoriesAction } from '@data-access/actions/category.action';
 import { GetDealProductsAction } from '@data-access/actions/product.action';
 import { Footer } from '@layout/footer/footer';
 import { Header } from '@layout/header/header';
@@ -69,10 +67,11 @@ export class Layout {
     this.exit$.subscribe(res => (this.exit = res));
     this.themeOptionService.preloader = true;
     this.store.dispatch(new GetUserDetailsAction());
-    const getCategories$ = this.store.dispatch(new GetCategoriesAction({ status: 1 }));
-    const getBlog$ = this.store.dispatch(new GetBlogsAction({ status: 1, paginate: 10 }));
+    // Categories and blogs now load on-demand via TanStack queries in each
+    // consumer (footer/filters/sidebar, menu/blog pages); no Layout prefetch
+    // needed. Deal products stay on NGXS until ProductState is migrated.
     const getProduct$ = this.store.dispatch(new GetDealProductsAction({ status: 1, paginate: 2 }));
-    forkJoin([getCategories$, getBlog$, getProduct$]).subscribe({
+    forkJoin([getProduct$]).subscribe({
       complete: () => {
         this.themeOptionService.preloader = false;
       },

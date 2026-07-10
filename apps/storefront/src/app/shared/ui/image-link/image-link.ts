@@ -1,12 +1,12 @@
 import { AsyncPipe, NgClass } from '@angular/common';
-import { Component, inject, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
+import { injectProductsQuery } from '@data-access/queries/product.queries';
 import { IProduct, IProductModel } from '@data-access/interfaces/product.interface';
-import { ProductState } from '@data-access/states/product.state';
 
 @Component({
   selector: 'app-image-link',
@@ -15,7 +15,10 @@ import { ProductState } from '@data-access/states/product.state';
   imports: [NgClass, RouterLink, AsyncPipe],
 })
 export class ImageLink {
-  product$: Observable<IProductModel> = inject(Store).select(ProductState.product);
+  private readonly productsQuery = injectProductsQuery(() => undefined);
+  product$: Observable<IProductModel | undefined> = toObservable(
+    computed(() => this.productsQuery.data()),
+  );
 
   // TODO: Skipped for migration because:
   //  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
@@ -27,8 +30,8 @@ export class ImageLink {
 
   constructor() {}
 
-  getProductSlug(id: number, products: IProduct[]) {
-    let product = products.find(product => product.id === id);
+  getProductSlug(id: number, products: IProduct[] | undefined) {
+    let product = products?.find(product => product.id === id);
     return product ? product.slug : null;
   }
 }

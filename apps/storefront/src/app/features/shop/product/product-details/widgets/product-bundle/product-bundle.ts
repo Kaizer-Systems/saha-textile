@@ -1,4 +1,5 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
@@ -7,11 +8,11 @@ import { Observable } from 'rxjs';
 
 import { AddToCartAction } from '@data-access/actions/cart.action';
 import { Button } from '@shared/ui/button/button';
+import { injectRelatedProductsData } from '@data-access/queries/product.queries';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { CartState } from '@data-access/states/cart.state';
-import { ProductState } from '@data-access/states/product.state';
 
 @Component({
   selector: 'app-product-bundle',
@@ -23,7 +24,10 @@ import { ProductState } from '@data-access/states/product.state';
 export class ProductBundle {
   private store = inject(Store);
 
-  crossSellproduct$: Observable<IProduct[]> = inject(Store).select(ProductState.relatedProducts);
+  private readonly relatedQuery = injectRelatedProductsData();
+  crossSellproduct$: Observable<IProduct[]> = toObservable(
+    computed(() => this.relatedQuery.data() ?? []),
+  );
   cartItem$: Observable<ICart[]> = inject(Store).select(CartState.cartItems);
 
   readonly product = input<IProduct | null>();

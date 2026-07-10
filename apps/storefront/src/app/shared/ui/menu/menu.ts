@@ -1,17 +1,16 @@
 import { DatePipe, NgClass, NgTemplateOutlet } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import * as data from '@shared/data/menu';
 import { injectBlogsQuery } from '@data-access/queries/blog.queries';
+import { injectDealProductsQuery } from '@data-access/queries/product.queries';
 import { IBlog, IBlogModel } from '@data-access/interfaces/blog.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
-import { ProductState } from '@data-access/states/product.state';
 import { IMenu } from '@data-access/interfaces/menu.interface';
 import { ProductBox } from '../product-box/product-box';
 
@@ -22,7 +21,8 @@ import { ProductBox } from '../product-box/product-box';
   imports: [NgTemplateOutlet, NgClass, RouterLink, ProductBox, DatePipe, TranslateModule],
 })
 export class Menu {
-  product$: Observable<IProduct[]> = inject(Store).select(ProductState.dealProducts);
+  private readonly dealQuery = injectDealProductsQuery(() => ({ status: 1, paginate: 2 }));
+  product$: Observable<IProduct[]> = toObservable(computed(() => this.dealQuery.data() ?? []));
   private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1, paginate: 10 }));
   blog$: Observable<IBlogModel | undefined> = toObservable(
     computed(() => this.blogsQuery.data()),

@@ -1,10 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, inject, viewChild, input } from '@angular/core';
 
-import { Store } from '@ngxs/store';
-import { forkJoin } from 'rxjs';
 
-import { GetProductsAction } from '@data-access/actions/product.action';
 import { ImageLink } from '@shared/ui/image-link/image-link';
 import { ExitModal } from '@shared/ui/modal/exit-modal/exit-modal';
 import { NewsletterModal } from '@shared/ui/modal/newsletter-modal/newsletter-modal';
@@ -26,7 +23,6 @@ import { Product } from '../widgets/product/product';
   imports: [HomeBanner, Banner, Categorie, Product, Title, ImageLink, Blog, Newsletter],
 })
 export class Paris {
-  private store = inject(Store);
   private platformId = inject<Object>(PLATFORM_ID);
   private themeOptionService = inject(ThemeOptionService);
 
@@ -50,23 +46,9 @@ export class Paris {
     if (this.isBrowser) {
       const dataValue = this.data();
       if (dataValue?.slug == this.slug()) {
-        // Get Products
-        const getProducts$ = this.store.dispatch(
-          new GetProductsAction({
-            status: 1,
-            ids: dataValue?.content?.products_ids?.join(','),
-          }),
-        );
-
-        // Skeleton Loader
-        document.body.classList.add('skeleton-body');
-
-        forkJoin([getProducts$]).subscribe({
-          complete: () => {
-            document.body.classList.remove('skeleton-body');
-            this.themeOptionService.preloader = false;
-          },
-        });
+        // Products load on-demand in each widget (TanStack query); no page-
+        // level prefetch. Drop the preloader now that the theme data is in.
+        this.themeOptionService.preloader = false;
       }
 
       // Change color for this layout

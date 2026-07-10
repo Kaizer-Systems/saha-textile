@@ -1,17 +1,16 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, inject, PLATFORM_ID, input } from '@angular/core';
+import { Component, computed, inject, PLATFORM_ID, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
-import { Store } from '@ngxs/store';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable } from 'rxjs';
 
-import { GetProductsAction } from '@data-access/actions/product.action';
 import { ImageLink } from '@shared/ui/image-link/image-link';
 import { Title } from '@shared/ui/title/title';
 import * as data from '../../../shared/data/owl-carousel';
+import { injectProductsQuery } from '@data-access/queries/product.queries';
 import { IProductModel } from '@data-access/interfaces/product.interface';
 import { IRome } from '@data-access/interfaces/theme.interface';
 import { ThemeOptionService } from '@data-access/services/theme-option.service';
-import { ProductState } from '@data-access/states/product.state';
 import { Banner } from '../widgets/banner/banner';
 import { Blog } from '../widgets/blog/blog';
 import { Categorie } from '../widgets/categorie/categorie';
@@ -37,7 +36,6 @@ import { Product } from '../widgets/product/product';
 ],
 })
 export class Rome {
-  private store = inject(Store);
   private platformId = inject<Object>(PLATFORM_ID);
   private themeOptionService = inject(ThemeOptionService);
 
@@ -47,9 +45,10 @@ export class Rome {
   readonly data = input<IRome>();
   readonly slug = input<string>();
 
-  categoryProduct$: Observable<IProductModel> = inject(Store).select(
-    ProductState.product,
-  ) as Observable<IProductModel>;
+  private readonly productsQuery = injectProductsQuery(() => undefined);
+  categoryProduct$: Observable<IProductModel | undefined> = toObservable(
+    computed(() => this.productsQuery.data()),
+  );
 
   public categorySlider = data.categorySlider9;
   public productSlider6ItemMargin = data.productSlider6ItemMargin;
@@ -61,23 +60,9 @@ export class Rome {
     if (isPlatformBrowser(this.platformId)) {
       const dataValue = this.data();
       if (dataValue?.slug == this.slug()) {
-        // Get Products
-        const getProducts$ = this.store.dispatch(
-          new GetProductsAction({
-            status: 1,
-            ids: dataValue?.content?.products_ids?.join(','),
-          }),
-        );
-
-        // Skeleton Loader
-        document.body.classList.add('skeleton-body');
-
-        forkJoin([getProducts$]).subscribe({
-          complete: () => {
-            document.body.classList.remove('skeleton-body');
-            this.themeOptionService.preloader = false;
-          },
-        });
+        // Products load on-demand in each widget (TanStack query); no page-level
+        // prefetch. Drop the preloader now that the theme data is in.
+        this.themeOptionService.preloader = false;
 
         if (
           dataValue?.content?.categories_products &&
@@ -104,7 +89,7 @@ export class Rome {
     if (isPlatformBrowser(this.platformId)) {
       this.selectedCategoryId = id;
       this.categoryProduct$.subscribe(product => {
-        this.productFilterIds = product.data
+        this.productFilterIds = (product?.data ?? [])
           .filter(product => product?.categories?.map(category => category.id).includes(id))
           ?.map(product => product.id)
           .slice(0, 5);

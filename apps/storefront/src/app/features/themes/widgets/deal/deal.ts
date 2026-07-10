@@ -1,5 +1,6 @@
 
-import { Component, inject, input, SimpleChanges, viewChild } from '@angular/core';
+import { Component, computed, inject, input, SimpleChanges, viewChild } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 import { NgbRating, NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
@@ -11,10 +12,10 @@ import { AddToCompareAction } from '@data-access/actions/compare.action';
 import { AddToWishlistAction } from '@data-access/actions/wishlist.action';
 import { ProductDetailModal } from '@shared/ui/modal/product-detail-modal/product-detail-modal';
 import * as data from '../../../../shared/data/owl-carousel';
+import { injectProductsQuery } from '@data-access/queries/product.queries';
 import { IProductModel } from '@data-access/interfaces/product.interface';
 import { IDeal, IDealOfDays } from '@data-access/interfaces/theme.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { ProductState } from '@data-access/states/product.state';
 
 @Component({
   selector: 'app-deal',
@@ -32,7 +33,10 @@ export class Deal {
   //  and migrating would break narrowing currently.
   readonly data = input<IDealOfDays>();
 
-  product$: Observable<IProductModel> = inject(Store).select(ProductState.product);
+  private readonly productsQuery = injectProductsQuery(() => undefined);
+  product$: Observable<IProductModel | undefined> = toObservable(
+    computed(() => this.productsQuery.data()),
+  );
 
   readonly productDetailModal = viewChild<ProductDetailModal>('productDetailModal');
 
@@ -50,7 +54,7 @@ export class Deal {
     let dealsArray = changes['data']?.currentValue?.deals;
     this.product$.subscribe(products => {
       dealsArray.map((deal: any) => {
-        deal.product = products?.data.find(product => product.id === deal.product_id);
+        deal.product = products?.data?.find(product => product.id === deal.product_id);
       });
       this.deals = dealsArray;
       this.startTimers();

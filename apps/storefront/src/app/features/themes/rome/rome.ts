@@ -4,7 +4,6 @@ import { Component, inject, PLATFORM_ID, input } from '@angular/core';
 import { Store } from '@ngxs/store';
 import { Observable, forkJoin } from 'rxjs';
 
-import { GetBlogsAction } from '@data-access/actions/blog.action';
 import { GetProductsAction } from '@data-access/actions/product.action';
 import { ImageLink } from '@shared/ui/image-link/image-link';
 import { Title } from '@shared/ui/title/title';
@@ -70,18 +69,10 @@ export class Rome {
           }),
         );
 
-        // Get Blogs
-        const getBlogs$ = this.store.dispatch(
-          new GetBlogsAction({
-            status: 1,
-            ids: dataValue?.content?.featured_blogs?.blog_ids?.join(','),
-          }),
-        );
-
         // Skeleton Loader
         document.body.classList.add('skeleton-body');
 
-        forkJoin([getProducts$, getBlogs$]).subscribe({
+        forkJoin([getProducts$]).subscribe({
           complete: () => {
             document.body.classList.remove('skeleton-body');
             this.themeOptionService.preloader = false;

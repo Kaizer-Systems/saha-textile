@@ -4,15 +4,15 @@ import { FormControl } from '@angular/forms';
 
 import { TranslateModule } from '@ngx-translate/core';
 import { Store } from '@ngxs/store';
+import { injectQueryClient } from '@tanstack/angular-query-experimental';
 import { Observable, Subject } from 'rxjs';
 
 import { GetUserDetailsAction } from '@data-access/actions/account.action';
-import { FeedbackAction } from '@data-access/actions/questions-answers.action';
 import { QuestionModal } from '@shared/ui/modal/question-modal/question-modal';
 import { NoData } from '@shared/ui/no-data/no-data';
 import { IAccountUser } from '@data-access/interfaces/account.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
-import { IQuestionAnswers } from '@data-access/interfaces/questions-answers.interface';
+import { IQnAModel, IQuestionAnswers } from '@data-access/interfaces/questions-answers.interface';
 import { QuestionsAnswersService } from '@data-access/services/questions-answers.service';
 import { AccountState } from '@data-access/states/account.state';
 
@@ -24,6 +24,7 @@ import { AccountState } from '@data-access/states/account.state';
 })
 export class QuestionsAnswers {
   private store = inject(Store);
+  private queryClient = injectQueryClient();
   questionAnswersService = inject(QuestionsAnswersService);
 
   public user: IAccountUser;
@@ -51,12 +52,30 @@ export class QuestionsAnswers {
     }
   }
 
+  // Optimistic like/dislike on the cached Q&A list (was the NGXS FeedbackAction
+  // reducer). No backend yet — mutate the ['qna', productId] query cache in place.
   feedback(qna: IQuestionAnswers, value: string) {
-    const data = {
-      question_and_answer_id: qna.id,
-      reaction: value,
-    };
-    this.store.dispatch(new FeedbackAction(data, value));
+    const productId = this.product()?.id;
+    this.queryClient.setQueryData<IQnAModel>(['qna', productId], old => {
+      if (!old) return old;
+      const data = old.data.map(q => ({ ...q }));
+      const index = data.findIndex(item => Number(item.id) === Number(qna.id));
+      if (index === -1) return old;
+
+      const currentReaction = data[index].reaction;
+      if (currentReaction === value) {
+        if (value === 'liked') data[index].total_likes -= 1;
+        else data[index].total_dislikes -= 1;
+        data[index].reaction = null;
+      } else {
+        if (currentReaction === 'liked') data[index].total_likes -= 1;
+        else if (currentReaction === 'disliked') data[index].total_dislikes -= 1;
+        if (value === 'liked') data[index].total_likes += 1;
+        else data[index].total_dislikes += 1;
+        data[index].reaction = value;
+      }
+      return { ...old, data };
+    });
   }
 
   ngOnDestroy() {

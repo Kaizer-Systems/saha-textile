@@ -2,12 +2,11 @@
 // features/ (ported verbatim). File path = URL; see route map in app notes.
 
 import { ScrollPositionGuard } from '@core/guards/scroll.guard';
-import { BlogResolver } from '@data-access/resolvers/blog.resolver';
 import { BlogDetails } from '@features/blog/blog-details/blog-details';
 
+// Blog now loads by slug via injectBlogBySlugQuery inside BlogDetails (was BlogResolver).
 export const routeMeta = {
   canActivate: [ScrollPositionGuard],
-  resolve: { data: BlogResolver },
 };
 
 export default BlogDetails;

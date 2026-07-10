@@ -4,7 +4,6 @@ import { Component, PLATFORM_ID, inject, viewChild, input } from '@angular/core'
 import { Store } from '@ngxs/store';
 import { forkJoin } from 'rxjs';
 
-import { GetBlogsAction } from '@data-access/actions/blog.action';
 import { GetProductsAction } from '@data-access/actions/product.action';
 import { ImageLink } from '@shared/ui/image-link/image-link';
 import { ExitModal } from '@shared/ui/modal/exit-modal/exit-modal';
@@ -59,18 +58,10 @@ export class Paris {
           }),
         );
 
-        // Get Blogs
-        const getBlogs$ = this.store.dispatch(
-          new GetBlogsAction({
-            status: 1,
-            ids: dataValue?.content.main_content?.section9_featured_blogs?.blog_ids.join(','),
-          }),
-        );
-
         // Skeleton Loader
         document.body.classList.add('skeleton-body');
 
-        forkJoin([getProducts$, getBlogs$]).subscribe({
+        forkJoin([getProducts$]).subscribe({
           complete: () => {
             document.body.classList.remove('skeleton-body');
             this.themeOptionService.preloader = false;

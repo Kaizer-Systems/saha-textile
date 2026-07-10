@@ -11,7 +11,6 @@ import { TranslateModule } from '@ngx-translate/core';
 import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { ContactUsAction } from '@data-access/actions/page.action';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
@@ -55,11 +54,8 @@ export class ContactUs {
   submit() {
     this.form.markAllAsTouched();
     if (this.form.valid) {
-      this.store.dispatch(new ContactUsAction(this.form.value)).subscribe({
-        complete: () => {
-          this.form.reset();
-        },
-      });
+      // Contact form has no backend yet — just reset locally.
+      this.form.reset();
     }
   }
 }

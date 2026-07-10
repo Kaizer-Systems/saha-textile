@@ -1,15 +1,15 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, inject, input, output } from '@angular/core';
+import { Component, PLATFORM_ID, computed, inject, input, output } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { CarouselModule, OwlOptions } from 'ngx-owl-carousel-o';
 import { Observable } from 'rxjs';
 
+import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
-import { CategoryState } from '@data-access/states/category.state';
 import { Button } from '../button/button';
 
 @Component({
@@ -22,7 +22,10 @@ export class Categories {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
-  category$: Observable<ICategoryModel> = inject(Store).select(CategoryState.category);
+  private readonly categoriesQuery = injectCategoriesQuery(() => ({ status: 1 }));
+  category$: Observable<ICategoryModel> = toObservable(
+    computed(() => this.categoriesQuery.data() ?? { data: [], total: 0 }),
+  );
 
   readonly categoryIds = input<number[]>([]);
   readonly style = input<string>('vertical');

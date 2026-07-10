@@ -10,10 +10,8 @@ import {
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Select2Data, Select2Module } from 'ng-select2-component';
 
-import { SendRefundRequestAction } from '@data-access/actions/refund.action';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { Button } from '../../button/button';
@@ -34,7 +32,6 @@ import { Button } from '../../button/button';
 })
 export class RefundModal {
   private modalService = inject(NgbModal);
-  private store = inject(Store);
   private platformId = inject<Object>(PLATFORM_ID);
 
   readonly RefundModal = viewChild<TemplateRef<string>>('refundModal');
@@ -100,12 +97,9 @@ export class RefundModal {
   sendRequest() {
     this.form.markAllAsTouched();
     if (this.form.valid) {
-      this.store.dispatch(new SendRefundRequestAction(this.form.value)).subscribe({
-        complete: () => {
-          this.form.reset();
-          this.modalService.dismissAll();
-        },
-      });
+      // Refund request has no backend yet — was SendRefundRequestAction (no-op mock).
+      this.form.reset();
+      this.modalService.dismissAll();
     }
   }
 }

@@ -8,6 +8,7 @@ import {
   FormArray,
   ReactiveFormsModule,
 } from '@angular/forms';
+import { Router } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
 import { Store } from '@ngxs/store';
@@ -17,7 +18,6 @@ import { AddressBlock } from './address-block/address-block';
 import { DeliveryBlock } from './delivery-block/delivery-block';
 import { PaymentBlock } from './payment-block/payment-block';
 import { GetCartItemsAction } from '@data-access/actions/cart.action';
-import { CheckoutAction, PlaceOrderAction, ClearAction } from '@data-access/actions/order.action';
 import { GetSettingOptionAction } from '@data-access/actions/setting.action';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
@@ -32,8 +32,24 @@ import { IValues, IDeliveryBlock } from '@data-access/interfaces/setting.interfa
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { AccountState } from '@data-access/states/account.state';
 import { CartState } from '@data-access/states/cart.state';
-import { OrderState } from '@data-access/states/order.state';
 import { SettingState } from '@data-access/states/setting.state';
+
+// Static mock checkout totals (was the NGXS CheckoutAction reducer — no backend
+// yet; real values get computed server-side later).
+const CHECKOUT_TOTAL: IOrderCheckout = {
+  total: {
+    convert_point_amount: -10,
+    convert_wallet_balance: -84.4,
+    coupon_total_discount: 10,
+    points: 300,
+    points_amount: 10,
+    shipping_total: 0,
+    sub_total: 35.19,
+    tax_total: 2.54,
+    total: 37.73,
+    wallet_balance: 84.4,
+  },
+};
 
 @Component({
   selector: 'app-checkout',
@@ -59,6 +75,7 @@ export class Checkout {
   private store = inject(Store);
   private formBuilder = inject(FormBuilder);
   private platformId = inject(PLATFORM_ID);
+  private router = inject(Router);
 
   public breadcrumb: IBreadcrumb = {
     title: 'Checkout',
@@ -69,9 +86,6 @@ export class Checkout {
     AccountState.user,
   ) as Observable<IAccountUser>;
   cartItem$: Observable<ICart[]> = inject(Store).select(CartState.cartItems);
-  checkout$: Observable<IOrderCheckout> = inject(Store).select(
-    OrderState.checkout,
-  ) as Observable<IOrderCheckout>;
   setting$: Observable<IValues> = inject(Store).select(SettingState.setting) as Observable<IValues>;
 
   readonly AddressModal = viewChild<AddressModal>('addressModal');
@@ -82,7 +96,7 @@ export class Checkout {
   public couponCode: string;
   public appliedCoupon: boolean = false;
   public couponError: string | null;
-  public checkoutTotal: IOrderCheckout;
+  public checkoutTotal: IOrderCheckout | null;
   public loading: boolean = false;
 
   constructor() {
@@ -107,7 +121,6 @@ export class Checkout {
   }
 
   ngOnInit() {
-    this.checkout$.subscribe(data => (this.checkoutTotal = data));
     this.cartItem$.subscribe(items => {
       if (!items.length) {
         return;
@@ -170,15 +183,11 @@ export class Checkout {
     if (value) this.form.controls['coupon'].setValue(value);
     else this.form.controls['coupon'].reset();
 
-    this.store.dispatch(new CheckoutAction(this.form.value)).subscribe({
-      error: err => {
-        this.couponError = err.message;
-      },
-      complete: () => {
-        this.appliedCoupon = value ? true : false;
-        this.couponError = null;
-      },
-    });
+    // Checkout totals are a client-side mock now (was CheckoutAction) — compute
+    // synchronously, no dispatch/observable.
+    this.checkoutTotal = CHECKOUT_TOTAL;
+    this.appliedCoupon = value ? true : false;
+    this.couponError = null;
   }
 
   couponRemove() {
@@ -195,15 +204,8 @@ export class Checkout {
 
     if (this.form.valid) {
       this.loading = true;
-      this.store.dispatch(new CheckoutAction(this.form.value)).subscribe({
-        error: err => {
-          this.loading = false;
-          throw new Error(err);
-        },
-        complete: () => {
-          this.loading = false;
-        },
-      });
+      this.checkoutTotal = CHECKOUT_TOTAL;
+      this.loading = false;
     }
   }
 
@@ -213,13 +215,14 @@ export class Checkout {
       if (cpnRef && !cpnRef.nativeElement.value) {
         this.form.controls['coupon'].reset();
       }
-      this.store.dispatch(new PlaceOrderAction(this.form.value));
+      // Place order has no backend yet — was PlaceOrderAction (navigate to a stub order).
+      void this.router.navigateByUrl('/account/order/details/1000');
     }
   }
 
   ngOnDestroy() {
     if (isPlatformBrowser(this.platformId)) {
-      this.store.dispatch(new ClearAction());
+      this.checkoutTotal = null; // was ClearAction
       this.form.reset();
     }
   }

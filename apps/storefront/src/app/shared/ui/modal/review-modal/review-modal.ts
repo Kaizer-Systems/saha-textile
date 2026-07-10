@@ -4,9 +4,7 @@ import { FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angula
 
 import { ModalDismissReasons, NgbModal, NgbRating } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 
-import { SendReviewAction, UpdateReviewAction } from '@data-access/actions/review.action';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { Button } from '../../button/button';
 
@@ -19,7 +17,6 @@ import { Button } from '../../button/button';
 export class ReviewModal {
   private modalService = inject(NgbModal);
   private platformId = inject<Object>(PLATFORM_ID);
-  private store = inject(Store);
 
   readonly ReviewModal = viewChild<TemplateRef<string>>('reviewModal');
 
@@ -80,18 +77,7 @@ export class ReviewModal {
   submit() {
     this.form.markAllAsTouched();
     if (this.form.valid) {
-      let data = {
-        product_id: this.product.id,
-        rating: this.form.get('rating')?.value,
-        review_image_id: '',
-        description: this.form.get('description')?.value,
-      };
-      let action = new SendReviewAction(data);
-
-      if (this.type && this.type === 'edit' && this.product.user_review.id) {
-        action = new UpdateReviewAction(this.product.user_review.id, data);
-      }
-      this.store.dispatch(action);
+      // Review submit has no backend yet — was Send/UpdateReviewAction (no-op mocks).
     }
   }
 }

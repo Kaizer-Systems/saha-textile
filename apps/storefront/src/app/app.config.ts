@@ -17,6 +17,7 @@ import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { NgxsStoragePluginModule } from '@ngxs/storage-plugin';
 import { NgxsModule } from '@ngxs/store';
+import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { provideToastr } from 'ngx-toastr';
 
 import { environment } from '../../public/environments/environment';
@@ -26,32 +27,14 @@ import { LoaderInterceptor } from './core/interceptors/loader.interceptor';
 import { ErrorService } from '@data-access/services/error.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { AccountState } from '@data-access/states/account.state';
-import { AttributeState } from '@data-access/states/attribute.state';
 import { AuthState } from '@data-access/states/auth.state';
-import { BlogState } from '@data-access/states/blog.state';
 import { CartState } from '@data-access/states/cart.state';
-import { CategoryState } from '@data-access/states/category.state';
 import { CompareState } from '@data-access/states/compare.state';
-import { CountryState } from '@data-access/states/country.state';
-import { CouponState } from '@data-access/states/coupon.state';
-import { CurrencyState } from '@data-access/states/currency.state';
 import { LoaderState } from '@data-access/states/loader.state';
 import { NotificationState } from '@data-access/states/notification.state';
-import { OrderStatusState } from '@data-access/states/order-status.state';
-import { OrderState } from '@data-access/states/order.state';
-import { PageState } from '@data-access/states/page.state';
-import { PaymentDetailsState } from '@data-access/states/payment-details.state';
-import { PointState } from '@data-access/states/point.state';
 import { ProductState } from '@data-access/states/product.state';
-import { QuestionAnswersState } from '@data-access/states/questions-answers.state';
-import { RefundState } from '@data-access/states/refund.state';
-import { ReviewState } from '@data-access/states/review.state';
 import { SettingState } from '@data-access/states/setting.state';
-import { StateState } from '@data-access/states/state.state';
-import { TagState } from '@data-access/states/tag.state';
 import { ThemeOptionState } from '@data-access/states/theme-option.state';
-import { ThemeState } from '@data-access/states/theme.state';
-import { WalletState } from '@data-access/states/wallet.state';
 import { WishlistState } from '@data-access/states/wishlist.state';
 
 export function HttpLoaderFactory(http: HttpClient) {
@@ -109,38 +92,18 @@ export const appConfig: ApplicationConfig = {
       NgxsModule.forRoot([
         LoaderState,
         AccountState,
-        CountryState,
-        StateState,
         SettingState,
-        CurrencyState,
-        ThemeState,
         ThemeOptionState,
-        CategoryState,
-        PageState,
-        AttributeState,
         ProductState,
         CartState,
-        BlogState,
-        TagState,
         WishlistState,
         CompareState,
-        OrderState,
-        OrderStatusState,
-        WalletState,
-        PointState,
-        RefundState,
-        PaymentDetailsState,
         NotificationState,
-        QuestionAnswersState,
-        ReviewState,
-        CouponState,
       ]),
       NgxsStoragePluginModule.forRoot({
         keys: [
           'auth',
           'account',
-          'country',
-          'state',
           'cart',
           'theme',
           'theme_option',
@@ -151,6 +114,9 @@ export const appConfig: ApplicationConfig = {
       NgxsModule.forFeature([AuthState]),
     ),
     provideHttpClient(withInterceptorsFromDi(), withFetch()),
+    // TanStack Query — server-state (lists/details/dropdowns) migrated off NGXS
+    // feature states, one feature at a time (queries in data-access/queries/).
+    provideTanStackQuery(new QueryClient()),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideToastr({
       positionClass: 'toast-top-center',

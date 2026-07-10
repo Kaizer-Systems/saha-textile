@@ -1,16 +1,17 @@
 import { AsyncPipe, DatePipe, NgClass } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { Meta } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 
 import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
+import { injectBlogBySlugQuery } from '@data-access/queries/blog.queries';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { IBlog } from '@data-access/interfaces/blog.interface';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
-import { BlogState } from '@data-access/states/blog.state';
 import { ThemeOptionState } from '@data-access/states/theme-option.state';
 import { BlogSidebar } from '../sidebar/sidebar';
 
@@ -24,7 +25,9 @@ export class BlogDetails {
   private meta = inject(Meta);
   private route = inject(ActivatedRoute);
 
-  blog$: Observable<IBlog> = inject(Store).select(BlogState.selectedBlog) as Observable<IBlog>;
+  private readonly slug = signal<string | undefined>(undefined);
+  private readonly blogQuery = injectBlogBySlugQuery(() => this.slug());
+  blog$: Observable<IBlog | undefined> = toObservable(computed(() => this.blogQuery.data()));
   themeOption$: Observable<IOption> = inject(Store).select(
     ThemeOptionState.themeOptions,
   ) as Observable<IOption>;
@@ -37,7 +40,11 @@ export class BlogDetails {
   public sidebar: string;
 
   constructor() {
+    // Blog looked up by slug via the query (was BlogResolver + selectedBlog).
+    this.route.params.subscribe(params => this.slug.set(params['slug']));
+
     this.blog$.subscribe(blog => {
+      if (!blog) return;
       this.breadcrumb.items = [];
       this.breadcrumb.title = blog.title;
       this.breadcrumb.items.push(

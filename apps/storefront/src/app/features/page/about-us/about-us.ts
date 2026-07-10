@@ -1,18 +1,17 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, computed } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { CarouselModule, OwlOptions } from 'ngx-owl-carousel-o';
 import { Observable } from 'rxjs';
 
-import { GetBlogsAction } from '@data-access/actions/blog.action';
+import { injectBlogsQuery } from '@data-access/queries/blog.queries';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import * as data from '../../../shared/data/owl-carousel';
 import { IBlogModel } from '@data-access/interfaces/blog.interface';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
-import { BlogState } from '@data-access/states/blog.state';
 
 export interface Clients {
   title: string;
@@ -28,9 +27,10 @@ export interface Clients {
   imports: [Breadcrumb, CarouselModule, RouterLink, AsyncPipe, TranslateModule],
 })
 export class AboutUs {
-  private store = inject(Store);
-
-  blog$: Observable<IBlogModel> = inject(Store).select(BlogState.blog) as Observable<IBlogModel>;
+  private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1, paginate: 10 }));
+  blog$: Observable<IBlogModel | undefined> = toObservable(
+    computed(() => this.blogsQuery.data()),
+  );
 
   public breadcrumb: IBreadcrumb = {
     title: 'About Us',
@@ -243,8 +243,4 @@ export class AboutUs {
       },
     },
   };
-
-  constructor() {
-    this.store.dispatch(new GetBlogsAction({ status: 1, paginate: 10 }));
-  }
 }

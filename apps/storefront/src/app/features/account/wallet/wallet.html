@@ -52,8 +52,8 @@
   <nav class="custome-pagination">
     <app-pagination
       [total]="(wallet$ | async)?.transactions?.total!"
-      [currentPage]="filter['page']"
-      [pageSize]="filter['paginate']"
+      [currentPage]="filter()['page']"
+      [pageSize]="filter()['paginate']"
       (setPage)="setPaginate($event)"
     />
   </nav>

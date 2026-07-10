@@ -7,7 +7,6 @@ import { TranslateModule } from '@ngx-translate/core';
 import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { RePaymentAction } from '@data-access/actions/order.action';
 import { IOrder } from '@data-access/interfaces/order.interface';
 import { IValues } from '@data-access/interfaces/setting.interface';
 import { SettingState } from '@data-access/states/setting.state';
@@ -66,15 +65,8 @@ export class PayModal {
   submit() {
     this.paymentType.markAllAsTouched();
     if (this.paymentType.valid) {
-      const data = {
-        order_number: this.order.order_number,
-        payment_method: this.paymentType.value!,
-      };
-      this.store.dispatch(new RePaymentAction(data)).subscribe({
-        complete: () => {
-          this.modalService.dismissAll();
-        },
-      });
+      // Re-payment has no backend yet — was RePaymentAction (no-op mock).
+      this.modalService.dismissAll();
     }
   }
 }

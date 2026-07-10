@@ -1,8 +1,8 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { Berlin } from './berlin/berlin';
@@ -12,9 +12,8 @@ import { Osaka } from './osaka/osaka';
 import { Paris } from './paris/paris';
 import { Rome } from './rome/rome';
 import { Tokyo } from './tokyo/tokyo';
-import { GetHomePageAction } from '@data-access/actions/theme.action';
+import { injectHomePageQuery } from '@data-access/queries/theme.queries';
 import { ThemeOptionService } from '@data-access/services/theme-option.service';
-import { ThemeState } from '@data-access/states/theme.state';
 
 @Component({
   selector: 'app-themes',
@@ -23,19 +22,26 @@ import { ThemeState } from '@data-access/states/theme.state';
   imports: [Paris, Tokyo, Osaka, Rome, Madrid, Berlin, Denver, AsyncPipe],
 })
 export class Themes {
-  private store = inject(Store);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private themeOptionService = inject(ThemeOptionService);
 
-  homePage$: Observable<any> = inject(Store).select(ThemeState.homePage);
+  public slug = signal<string>('paris');
 
-  public slug: string;
+  private readonly homePageQuery = injectHomePageQuery(() => this.slug());
+  homePage$: Observable<any> = toObservable(computed(() => this.homePageQuery.data()));
 
   constructor() {
     this.route.params.subscribe(params => {
-      this.themeOptionService.preloader = true;
-      this.slug = params['slug'] ? params['slug'] : 'paris';
-      this.store.dispatch(new GetHomePageAction(params['slug'] ? params['slug'] : 'paris'));
+      this.slug.set(params['slug'] ? params['slug'] : 'paris');
+    });
+    // Preloader + 404-on-error were handled by the old NGXS action; drive them
+    // off the query now.
+    effect(() => {
+      this.themeOptionService.preloader = this.homePageQuery.isFetching();
+      if (this.homePageQuery.isError()) {
+        void this.router.navigate(['/404']);
+      }
     });
   }
 }

@@ -2,10 +2,7 @@ import { AsyncPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { Store } from '@ngxs/store';
-import { Observable } from 'rxjs';
-
-import { CompareState } from '@data-access/states/compare.state';
+import { CompareFacade } from '@core/state/compare/compare.store';
 
 @Component({
   selector: 'app-header-compare',
@@ -14,5 +11,5 @@ import { CompareState } from '@data-access/states/compare.state';
   imports: [RouterLink, AsyncPipe],
 })
 export class Compare {
-  compareTotal$: Observable<number> = inject(Store).select(CompareState.compareTotal);
+  compareTotal$ = inject(CompareFacade).compareTotal$;
 }

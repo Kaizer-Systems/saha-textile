@@ -1,14 +1,14 @@
 import { AsyncPipe, Location } from '@angular/common';
 import { Component, inject } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 
 @Component({
   selector: 'app-error404',
@@ -19,9 +19,7 @@ import { ThemeOptionState } from '@data-access/states/theme-option.state';
 export class Error404 {
   private location = inject(Location);
 
-  themeOption$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+  themeOption$: Observable<IOption> = toObservable(inject(ThemeOptionStore).themeOptions) as Observable<IOption>;
 
   public breadcrumb: IBreadcrumb = {
     title: '404',

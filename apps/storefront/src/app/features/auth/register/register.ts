@@ -10,10 +10,9 @@ import {
 import { Router, RouterLink } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Select2Module } from 'ng-select2-component';
 
-import { RegisterAction } from '@data-access/actions/auth.action';
+import { AuthStore } from '@core/state/auth.store';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
 import * as data from '../../../shared/data/country-code';
@@ -27,7 +26,7 @@ import { CustomValidators } from '@shared/validators/password-match';
   imports: [Breadcrumb, ReactiveFormsModule, Select2Module, Button, RouterLink, TranslateModule],
 })
 export class Register {
-  private store = inject(Store);
+  private authStore = inject(AuthStore);
   private router = inject(Router);
   private formBuilder = inject(FormBuilder);
   private platformId = inject<Object>(PLATFORM_ID);
@@ -66,11 +65,8 @@ export class Register {
       return;
     }
     if (this.form.valid) {
-      this.store.dispatch(new RegisterAction(this.form.value)).subscribe({
-        complete: () => {
-          void this.router.navigateByUrl('/account/dashboard');
-        },
-      });
+      this.authStore.register(this.form.value);
+      void this.router.navigateByUrl('/account/dashboard');
     }
   }
 }

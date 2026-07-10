@@ -1,11 +1,10 @@
 import { Component, inject } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { UpdateSessionAction } from '@data-access/actions/theme-option.action';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 
 @Component({
   selector: 'app-cookie',
@@ -14,9 +13,9 @@ import { ThemeOptionState } from '@data-access/states/theme-option.state';
   imports: [TranslateModule],
 })
 export class Cookie {
-  private store = inject(Store);
+  private themeOptionStore = inject(ThemeOptionStore);
 
-  cookies$: Observable<boolean> = inject(Store).select(ThemeOptionState.cookies);
+  cookies$: Observable<boolean> = toObservable(this.themeOptionStore.cookies);
 
   public cookies: boolean = true;
 
@@ -25,6 +24,6 @@ export class Cookie {
   }
 
   acceptCookies(value: boolean) {
-    this.store.dispatch(new UpdateSessionAction('cookies', value));
+    this.themeOptionStore.updateSession('cookies', value);
   }
 }

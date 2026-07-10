@@ -1,8 +1,8 @@
 import { AsyncPipe, isPlatformBrowser, isPlatformServer, PlatformLocation } from '@angular/common';
 import { Component, inject, input, PLATFORM_ID } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { BasicHeader } from './basic-header/basic-header';
@@ -10,7 +10,7 @@ import { ClassicHeader } from './classic-header/classic-header';
 import { MinimalHeader } from './minimal-header/minimal-header';
 import { StandardHeader } from './standard-header/standard-header';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 import { MobileMenu } from './widgets/mobile-menu/mobile-menu';
 
 @Component({
@@ -23,9 +23,7 @@ export class Header {
   private platformId = inject<Object>(PLATFORM_ID);
   private platformLocation = inject(PlatformLocation);
 
-  themeOption$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+  themeOption$: Observable<IOption> = toObservable(inject(ThemeOptionStore).themeOptions) as Observable<IOption>;
 
   readonly logo = input<string>();
 

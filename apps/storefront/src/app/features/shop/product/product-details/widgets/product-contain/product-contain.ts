@@ -4,20 +4,18 @@ import { Router } from '@angular/router';
 
 import { NgbRating } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 import { Observable } from 'rxjs';
 
-import { AddToCartAction } from '@data-access/actions/cart.action';
-import { AddToCompareAction } from '@data-access/actions/compare.action';
-import { AddToWishlistAction } from '@data-access/actions/wishlist.action';
+import { CompareFacade } from '@core/state/compare/compare.store';
+import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
 import { Button } from '@shared/ui/button/button';
 import { VariantAttributes } from '@shared/ui/variant-attributes/variant-attributes';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { CartState } from '@data-access/states/cart.state';
+import { CartFacade } from '@core/state/cart/cart.facade';
 import { SaleTimer } from '../sale-timer/sale-timer';
 
 @Component({
@@ -28,7 +26,9 @@ import { SaleTimer } from '../sale-timer/sale-timer';
   imports: [NgbRating, VariantAttributes, SaleTimer, Button, CurrencySymbolPipe, TranslateModule],
 })
 export class ProductContain {
-  private store = inject(Store);
+  private wishlistFacade = inject(WishlistFacade);
+  private compareFacade = inject(CompareFacade);
+  private cartFacade = inject(CartFacade);
   private router = inject(Router);
 
   @Input() product: IProduct;
@@ -37,7 +37,7 @@ export class ProductContain {
 
   readonly owlCar = input<CarouselComponent>();
 
-  cartItem$: Observable<ICart[]> = inject(Store).select(CartState.cartItems);
+  cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
 
   public cartItem: ICart | null;
   public productQty: number = 1;
@@ -113,7 +113,7 @@ export class ProductContain {
         variation_id: this.selectedVariation?.id ? this.selectedVariation?.id! : null,
         quantity: this.productQty,
       };
-      this.store.dispatch(new AddToCartAction(params));
+      this.cartFacade.addToCart(params);
     }
   }
 
@@ -127,20 +127,17 @@ export class ProductContain {
         variation_id: this.selectedVariation?.id ? this.selectedVariation?.id! : null,
         quantity: this.productQty,
       };
-      this.store.dispatch(new AddToCartAction(params)).subscribe({
-        complete: () => {
-          void this.router.navigate(['/checkout']);
-        },
-      });
+      this.cartFacade.addToCart(params);
+      void this.router.navigate(['/checkout']);
     }
   }
 
   addToWishlist(id: number) {
-    this.store.dispatch(new AddToWishlistAction({ product_id: id }));
+    this.wishlistFacade.addToWishlist({ product_id: id });
   }
 
   addToCompare(id: number) {
-    this.store.dispatch(new AddToCompareAction({ product_id: id }));
+    this.compareFacade.addToCompare({ product_id: id });
   }
 
   ngOnDestroy() {

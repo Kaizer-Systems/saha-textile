@@ -10,10 +10,9 @@ import {
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 
-import { UpdateUserPasswordAction } from '@data-access/actions/account.action';
 import { CustomValidators } from '@shared/validators/password-match';
+import { AccountStore } from '@core/state/account.store';
 import { Button } from '../../button/button';
 
 @Component({
@@ -25,7 +24,7 @@ import { Button } from '../../button/button';
 export class ChangePasswordModal {
   private modalService = inject(NgbModal);
   private platformId = inject<Object>(PLATFORM_ID);
-  private store = inject(Store);
+  private accountStore = inject(AccountStore);
   private formBuilder = inject(FormBuilder);
 
   public form: FormGroup;
@@ -83,11 +82,8 @@ export class ChangePasswordModal {
   submit() {
     this.form.markAllAsTouched();
     if (this.form.valid) {
-      this.store.dispatch(new UpdateUserPasswordAction(this.form.value)).subscribe({
-        complete: () => {
-          this.form.reset();
-        },
-      });
+      this.accountStore.updatePassword(this.form.value);
+      this.form.reset();
     }
   }
 

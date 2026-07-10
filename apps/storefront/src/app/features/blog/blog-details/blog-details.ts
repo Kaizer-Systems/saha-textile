@@ -4,7 +4,6 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { Meta } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { injectBlogBySlugQuery } from '@data-access/queries/blog.queries';
@@ -12,7 +11,7 @@ import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { IBlog } from '@data-access/interfaces/blog.interface';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 import { BlogSidebar } from '../sidebar/sidebar';
 
 @Component({
@@ -28,9 +27,7 @@ export class BlogDetails {
   private readonly slug = signal<string | undefined>(undefined);
   private readonly blogQuery = injectBlogBySlugQuery(() => this.slug());
   blog$: Observable<IBlog | undefined> = toObservable(computed(() => this.blogQuery.data()));
-  themeOption$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+  themeOption$: Observable<IOption> = toObservable(inject(ThemeOptionStore).themeOptions) as Observable<IOption>;
 
   public breadcrumb: IBreadcrumb = {
     title: 'Product',

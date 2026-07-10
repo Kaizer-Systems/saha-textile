@@ -3,16 +3,14 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { AddToCartAction } from '@data-access/actions/cart.action';
 import { Button } from '@shared/ui/button/button';
 import { injectRelatedProductsData } from '@data-access/queries/product.queries';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { CartState } from '@data-access/states/cart.state';
+import { CartFacade } from '@core/state/cart/cart.facade';
 
 @Component({
   selector: 'app-product-bundle',
@@ -22,13 +20,13 @@ import { CartState } from '@data-access/states/cart.state';
   imports: [RouterLink, Button, CurrencySymbolPipe, TranslateModule],
 })
 export class ProductBundle {
-  private store = inject(Store);
+  private cartFacade = inject(CartFacade);
 
   private readonly relatedQuery = injectRelatedProductsData();
   crossSellproduct$: Observable<IProduct[]> = toObservable(
     computed(() => this.relatedQuery.data() ?? []),
   );
-  cartItem$: Observable<ICart[]> = inject(Store).select(CartState.cartItems);
+  cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
 
   readonly product = input<IProduct | null>();
 
@@ -80,7 +78,7 @@ export class ProductBundle {
           variation_id: null,
           quantity: 1,
         };
-        this.store.dispatch(new AddToCartAction(params));
+        this.cartFacade.addToCart(params);
       }
     });
   }

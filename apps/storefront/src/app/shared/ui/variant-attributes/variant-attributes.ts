@@ -4,14 +4,13 @@ import { ReactiveFormsModule } from '@angular/forms';
 
 import { NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 import { Observable } from 'rxjs';
 
 import { IAttribute, IAttributeValue } from '@data-access/interfaces/attribute.interface';
 import { ICart } from '@data-access/interfaces/cart.interface';
 import { IProduct, ISelectedVariant, IVariation } from '@data-access/interfaces/product.interface';
-import { CartState } from '@data-access/states/cart.state';
+import { CartFacade } from '@core/state/cart/cart.facade';
 import { Button } from '../button/button';
 
 @Component({
@@ -29,7 +28,7 @@ export class VariantAttributes {
 
   readonly selectVariation = output<IVariation | null>();
 
-  cartItem$: Observable<ICart[]> = inject(Store).select(CartState.cartItems);
+  cartItem$: Observable<ICart[]> = inject(CartFacade).cartItems$;
 
   public cartItem: ICart | null;
   public productQty: number = 1;

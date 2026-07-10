@@ -1,20 +1,20 @@
 import { AsyncPipe } from '@angular/common';
 import { Component, inject, input, viewChild } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { FormControl } from '@angular/forms';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { injectQueryClient } from '@tanstack/angular-query-experimental';
 import { Observable, Subject } from 'rxjs';
 
-import { GetUserDetailsAction } from '@data-access/actions/account.action';
 import { QuestionModal } from '@shared/ui/modal/question-modal/question-modal';
 import { NoData } from '@shared/ui/no-data/no-data';
 import { IAccountUser } from '@data-access/interfaces/account.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { IQnAModel, IQuestionAnswers } from '@data-access/interfaces/questions-answers.interface';
 import { QuestionsAnswersService } from '@data-access/services/questions-answers.service';
-import { AccountState } from '@data-access/states/account.state';
+import { AccountStore } from '@core/state/account.store';
+import { AuthStore } from '@core/state/auth.store';
 
 @Component({
   selector: 'app-questions-answers',
@@ -23,7 +23,8 @@ import { AccountState } from '@data-access/states/account.state';
   imports: [NoData, QuestionModal, AsyncPipe, TranslateModule],
 })
 export class QuestionsAnswers {
-  private store = inject(Store);
+  private authStore = inject(AuthStore);
+  private accountStore = inject(AccountStore);
   private queryClient = injectQueryClient();
   questionAnswersService = inject(QuestionsAnswersService);
 
@@ -41,14 +42,14 @@ export class QuestionsAnswers {
 
   readonly QuestionModal = viewChild<QuestionModal>('questionModal');
 
-  user$: Observable<IAccountUser> = inject(Store).select(
-    AccountState.user,
+  user$: Observable<IAccountUser> = toObservable(
+    this.accountStore.user,
   ) as Observable<IAccountUser>;
 
   constructor() {
-    this.isLogin = !!this.store.selectSnapshot(state => state.auth && state.auth.access_token);
+    this.isLogin = !!this.authStore.access_token();
     if (this.isLogin) {
-      this.store.dispatch(new GetUserDetailsAction());
+      this.accountStore.loadUser();
     }
   }
 

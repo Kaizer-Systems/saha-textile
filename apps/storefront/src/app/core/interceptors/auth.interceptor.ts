@@ -8,29 +8,29 @@ import {
 import { effect, inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { Store } from '@ngxs/store';
 import { catchError, Observable, throwError } from 'rxjs';
 
-import { AuthClearAction } from '@data-access/actions/auth.action';
-import { GetThemeOptionAction } from '@data-access/actions/theme-option.action';
 import { NotificationService } from '@data-access/services/notification.service';
+import { AuthStore } from '@core/state/auth.store';
 import { SettingStore } from '@core/state/setting.store';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
-  private store = inject(Store);
   private router = inject(Router);
   private notificationService = inject(NotificationService);
+  private authStore = inject(AuthStore);
   private settingStore = inject(SettingStore);
+  private themeOptionStore = inject(ThemeOptionStore);
 
   public isMaintenanceModeOn: boolean = false;
 
   constructor() {
     // Countries + states now load on-demand via TanStack queries in the
-    // address-modal; no app-start prefetch needed. Settings move to SettingStore
-    // (SignalStore); theme options stay on NGXS until that state is migrated.
+    // address-modal; no app-start prefetch needed. Settings + theme options move
+    // to SignalStores; auth stays on NGXS until that state is migrated.
     this.settingStore.loadSettings();
-    this.store.dispatch(new GetThemeOptionAction());
+    this.themeOptionStore.loadThemeOption();
     effect(() => {
       this.isMaintenanceModeOn = this.settingStore.setting()?.maintenance?.maintenance_mode!;
     });
@@ -42,7 +42,7 @@ export class AuthInterceptor implements HttpInterceptor {
       void this.router.navigate(['/maintenance']);
     }
 
-    const token = this.store.selectSnapshot(state => state.auth.access_token);
+    const token = this.authStore.access_token();
     if (token) {
       req = req.clone({
         setHeaders: {
@@ -55,7 +55,7 @@ export class AuthInterceptor implements HttpInterceptor {
       catchError((error: HttpErrorResponse) => {
         if (error.status === 401) {
           this.notificationService.notification = false;
-          this.store.dispatch(new AuthClearAction());
+          this.authStore.authClear();
         }
         return throwError(() => error);
       }),

@@ -1,8 +1,8 @@
 
 import { Component, inject, input, viewChild } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { DeliveryReturnModal } from '@shared/ui/modal/delivery-return-modal/delivery-return-modal';
@@ -10,7 +10,8 @@ import { QuestionModal } from '@shared/ui/modal/question-modal/question-modal';
 import { SizeChartModal } from '@shared/ui/modal/size-chart-modal/size-chart-modal';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { AuthStore } from '@core/state/auth.store';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 
 @Component({
   selector: 'app-product-action',
@@ -19,7 +20,7 @@ import { ThemeOptionState } from '@data-access/states/theme-option.state';
   imports: [SizeChartModal, DeliveryReturnModal, QuestionModal, TranslateModule],
 })
 export class ProductAction {
-  private store = inject(Store);
+  private authStore = inject(AuthStore);
 
   // TODO: Skipped for migration because:
   //  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
@@ -30,9 +31,7 @@ export class ProductAction {
   readonly DeliveryReturnModal = viewChild<DeliveryReturnModal>('deliveryReturnModal');
   readonly QuestionModal = viewChild<QuestionModal>('questionModal');
 
-  themeOptions$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+  themeOptions$: Observable<IOption> = toObservable(inject(ThemeOptionStore).themeOptions) as Observable<IOption>;
 
   public policy: string;
   public isLogin: boolean;
@@ -41,6 +40,6 @@ export class ProductAction {
     this.themeOptions$.subscribe(option => {
       this.policy = option?.product?.shipping_and_return;
     });
-    this.isLogin = !!this.store.selectSnapshot(state => state.auth && state.auth.access_token);
+    this.isLogin = !!this.authStore.access_token();
   }
 }

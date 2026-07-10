@@ -3,11 +3,9 @@ import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { GetCompareAction } from '@data-access/actions/compare.action';
-import { CompareState } from '@data-access/states/compare.state';
+import { CompareFacade } from '@core/state/compare/compare.store';
 
 @Component({
   selector: 'app-sticky-compare',
@@ -16,11 +14,11 @@ import { CompareState } from '@data-access/states/compare.state';
   imports: [RouterLink, AsyncPipe, TranslateModule],
 })
 export class StickyCompare {
-  private store = inject(Store);
+  private compareFacade = inject(CompareFacade);
 
-  compareTotal$: Observable<number> = inject(Store).select(CompareState.compareTotal);
+  compareTotal$: Observable<number> = this.compareFacade.compareTotal$;
 
   constructor() {
-    this.store.dispatch(new GetCompareAction());
+    this.compareFacade.getCompare();
   }
 }

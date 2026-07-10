@@ -1,11 +1,11 @@
 
 import { Component, inject, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
 
 @Component({
@@ -22,7 +22,5 @@ export class Logo {
   //  and migrating would break narrowing currently.
   readonly logo = input<string | null>();
 
-  themeOption$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+  themeOption$: Observable<IOption> = toObservable(inject(ThemeOptionStore).themeOptions) as Observable<IOption>;
 }

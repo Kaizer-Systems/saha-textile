@@ -10,11 +10,10 @@ import {
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { Observable } from 'rxjs';
 
-import { UpdateSessionAction } from '@data-access/actions/theme-option.action';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 import { Button } from '../../button/button';
 
 @Component({
@@ -25,12 +24,12 @@ import { Button } from '../../button/button';
 })
 export class ExitModal {
   private modalService = inject(NgbModal);
-  private store = inject(Store);
+  private themeOptionStore = inject(ThemeOptionStore);
   private platformId = inject<Object>(PLATFORM_ID);
 
   readonly ExitModal = viewChild<TemplateRef<string>>('exitModal');
 
-  exit$: Observable<boolean> = inject(Store).select(ThemeOptionState.exit) as Observable<boolean>;
+  exit$: Observable<boolean> = toObservable(this.themeOptionStore.exit) as Observable<boolean>;
 
   public closeResult: string;
   public modalOpen: boolean = true;
@@ -46,7 +45,7 @@ export class ExitModal {
     if (event.clientY <= 0) {
       if (this.exit === true) {
         void this.openModal();
-        this.store.dispatch(new UpdateSessionAction('exit', false));
+        this.themeOptionStore.updateSession('exit', false);
       }
     }
   }

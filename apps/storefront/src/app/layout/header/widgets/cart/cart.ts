@@ -4,22 +4,15 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import {
-  DeleteCartAction,
-  GetCartItemsAction,
-  ToggleSidebarCartAction,
-  UpdateCartAction,
-} from '@data-access/actions/cart.action';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { IValues } from '@data-access/interfaces/setting.interface';
 import { IOption } from '@data-access/interfaces/theme-option.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { CartService } from '@data-access/services/cart.service';
-import { CartState } from '@data-access/states/cart.state';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { CartFacade } from '@core/state/cart/cart.facade';
+import { ThemeOptionStore } from '@core/state/theme-option.store';
 import { SettingStore } from '@core/state/setting.store';
 import { Button } from '@shared/ui/button/button';
 import { VariationModal } from '@shared/ui/modal/variation-modal/variation-modal';
@@ -41,16 +34,14 @@ import { VariationModal } from '@shared/ui/modal/variation-modal/variation-modal
   ],
 })
 export class Cart {
-  private store = inject(Store);
+  private cartFacade = inject(CartFacade);
   private settingStore = inject(SettingStore);
   cartService = inject(CartService);
 
-  cartItem$: Observable<ICart[]> = inject(Store).select(CartState.cartItems);
-  cartTotal$: Observable<number> = inject(Store).select(CartState.cartTotal);
-  sidebarCartOpen$: Observable<boolean> = inject(Store).select(CartState.sidebarCartOpen);
-  themeOption$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+  cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
+  cartTotal$: Observable<number> = this.cartFacade.cartTotal$;
+  sidebarCartOpen$: Observable<boolean> = this.cartFacade.sidebarCartOpen$;
+  themeOption$: Observable<IOption> = toObservable(inject(ThemeOptionStore).themeOptions) as Observable<IOption>;
   setting$: Observable<IValues> = toObservable(this.settingStore.setting) as Observable<IValues>;
 
   readonly VariationModal = viewChild<VariationModal>('variationModal');
@@ -66,7 +57,7 @@ export class Cart {
   public loader: boolean = false;
 
   constructor() {
-    this.store.dispatch(new GetCartItemsAction());
+    this.cartFacade.getCartItems();
     this.themeOption$.subscribe(option => (this.cartStyle = option?.general?.cart_style));
 
     // Calculation
@@ -91,7 +82,7 @@ export class Cart {
   }
 
   cartToggle(value: boolean) {
-    this.store.dispatch(new ToggleSidebarCartAction(value));
+    this.cartFacade.toggleSidebarCart(value);
   }
 
   updateQuantity(item: ICart, qty: number) {
@@ -103,10 +94,10 @@ export class Cart {
       variation: item?.variation ? item?.variation : null,
       quantity: qty,
     };
-    this.store.dispatch(new UpdateCartAction(params));
+    this.cartFacade.updateCart(params);
   }
 
   delete(id: number) {
-    this.store.dispatch(new DeleteCartAction(id));
+    this.cartFacade.deleteCart(id);
   }
 }

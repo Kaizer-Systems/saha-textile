@@ -1,12 +1,12 @@
 import { CurrencyPipe } from '@angular/common';
 import { inject, Pipe, PipeTransform } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { ICurrency } from '@data-access/interfaces/currency.interface';
 import { IValues } from '@data-access/interfaces/setting.interface';
-import { SettingState } from '@data-access/states/setting.state';
+import { SettingStore } from '@core/state/setting.store';
 
 @Pipe({
   name: 'currencySymbol',
@@ -14,9 +14,10 @@ import { SettingState } from '@data-access/states/setting.state';
 })
 export class CurrencySymbolPipe implements PipeTransform {
   private currencyPipe = inject(CurrencyPipe);
+  private settingStore = inject(SettingStore);
 
-  selectedCurrency$: Observable<ICurrency> = inject(Store).select(
-    SettingState.selectedCurrency,
+  selectedCurrency$: Observable<ICurrency> = toObservable(
+    this.settingStore.selectedCurrency,
   ) as Observable<ICurrency>;
 
   public symbol: string = '$';

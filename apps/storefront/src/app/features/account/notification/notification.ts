@@ -1,14 +1,13 @@
-import { AsyncPipe, DatePipe, isPlatformBrowser } from '@angular/common';
-import { Component, inject, PLATFORM_ID } from '@angular/core';
+import { AsyncPipe, DatePipe } from '@angular/common';
+import { Component, computed } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { MarkAsReadNotificationAction } from '@data-access/actions/notification.action';
+import { injectNotificationsQuery } from '@data-access/queries/notification.queries';
 import { NoData } from '@shared/ui/no-data/no-data';
 import { INotification } from '@data-access/interfaces/notification.interface';
-import { NotificationState } from '@data-access/states/notification.state';
 
 @Component({
   selector: 'app-notification',
@@ -17,16 +16,9 @@ import { NotificationState } from '@data-access/states/notification.state';
   imports: [NoData, AsyncPipe, DatePipe, TranslateModule],
 })
 export class Notification {
-  private store = inject(Store);
-  private platformId = inject(PLATFORM_ID);
-
-  notification$: Observable<INotification[]> = inject(Store).select(
-    NotificationState.notification,
-  ) as Observable<INotification[]>;
-
-  ngOnDestroy() {
-    if (isPlatformBrowser(this.platformId)) {
-      this.store.dispatch(new MarkAsReadNotificationAction());
-    }
-  }
+  // Mark-as-read on destroy was a no-op stub with no backend, so it's dropped.
+  private readonly notificationsQuery = injectNotificationsQuery();
+  notification$: Observable<INotification[]> = toObservable(
+    computed(() => this.notificationsQuery.data() ?? []),
+  );
 }

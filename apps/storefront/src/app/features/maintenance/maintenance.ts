@@ -1,12 +1,11 @@
 import { AsyncPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { GetSettingOptionAction } from '@data-access/actions/setting.action';
 import { IValues } from '@data-access/interfaces/setting.interface';
-import { SettingState } from '@data-access/states/setting.state';
+import { SettingStore } from '@core/state/setting.store';
 
 @Component({
   selector: 'app-maintenance',
@@ -15,11 +14,11 @@ import { SettingState } from '@data-access/states/setting.state';
   imports: [AsyncPipe],
 })
 export class Maintenance {
-  private store = inject(Store);
+  private settingStore = inject(SettingStore);
 
-  setting$: Observable<IValues> = inject(Store).select(SettingState.setting) as Observable<IValues>;
+  setting$: Observable<IValues> = toObservable(this.settingStore.setting) as Observable<IValues>;
 
   constructor() {
-    this.store.dispatch(new GetSettingOptionAction());
+    this.settingStore.loadSettings();
   }
 }

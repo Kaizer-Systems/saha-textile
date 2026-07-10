@@ -1,5 +1,6 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, inject, viewChild, output, input } from '@angular/core';
+import { Component, computed, inject, viewChild, output, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLinkActive, RouterLink } from '@angular/router';
 
 import { TranslateModule } from '@ngx-translate/core';
@@ -9,11 +10,11 @@ import { Observable } from 'rxjs';
 import { LogoutAction } from '@data-access/actions/auth.action';
 import { Button } from '@shared/ui/button/button';
 import { ConfirmationModal } from '@shared/ui/modal/confirmation-modal/confirmation-modal';
+import { injectNotificationsQuery } from '@data-access/queries/notification.queries';
 import { INotification } from '@data-access/interfaces/notification.interface';
 import { IUser } from '@data-access/interfaces/user.interface';
 import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
 import { AccountState } from '@data-access/states/account.state';
-import { NotificationState } from '@data-access/states/notification.state';
 
 @Component({
   selector: 'app-sidebar',
@@ -35,9 +36,10 @@ export class Sidebar {
   readonly show = input<boolean>();
   readonly menu = output<boolean>();
 
-  notification$: Observable<INotification[]> = inject(Store).select(
-    NotificationState.notification,
-  ) as Observable<INotification[]>;
+  private readonly notificationsQuery = injectNotificationsQuery();
+  notification$: Observable<INotification[]> = toObservable(
+    computed(() => this.notificationsQuery.data() ?? []),
+  );
   user$: Observable<IUser> = inject(Store).select(AccountState.user) as Observable<IUser>;
 
   readonly ConfirmationModal = viewChild<ConfirmationModal>('confirmationModal');

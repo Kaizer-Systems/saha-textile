@@ -3,7 +3,6 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 
 import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { injectPointTransactionsQuery } from '@data-access/queries/point.queries';
@@ -14,7 +13,7 @@ import { IPoint } from '@data-access/interfaces/point.interface';
 import { IValues } from '@data-access/interfaces/setting.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
-import { SettingState } from '@data-access/states/setting.state';
+import { SettingStore } from '@core/state/setting.store';
 
 @Component({
   selector: 'app-point',
@@ -32,7 +31,8 @@ import { SettingState } from '@data-access/states/setting.state';
   ],
 })
 export class Point {
-  setting$: Observable<IValues> = inject(Store).select(SettingState.setting) as Observable<IValues>;
+  private settingStore = inject(SettingStore);
+  setting$: Observable<IValues> = toObservable(this.settingStore.setting) as Observable<IValues>;
 
   public filter = signal<Params>({
     page: 1, // Current page number

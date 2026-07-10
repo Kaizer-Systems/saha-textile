@@ -1,10 +1,10 @@
 import { AsyncPipe, NgClass } from '@angular/common';
 import { Component, inject, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { LoaderState } from '@data-access/states/loader.state';
+import { LoaderStore } from '@core/state/loader.store';
 
 @Component({
   selector: 'app-button',
@@ -23,9 +23,8 @@ export class Button {
 
   public buttonId: string | null;
 
-  spinnerStatus$: Observable<boolean> = inject(Store).select(
-    LoaderState.buttonSpinner,
-  ) as Observable<boolean>;
+  private loaderStore = inject(LoaderStore);
+  spinnerStatus$: Observable<boolean> = toObservable(this.loaderStore.button_spinner);
 
   constructor() {
     this.spinnerStatus$.subscribe(res => {

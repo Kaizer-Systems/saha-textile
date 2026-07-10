@@ -5,36 +5,34 @@ import {
   HttpErrorResponse,
   HttpEvent,
 } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { effect, inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { Store } from '@ngxs/store';
 import { catchError, Observable, throwError } from 'rxjs';
 
 import { AuthClearAction } from '@data-access/actions/auth.action';
-import { GetSettingOptionAction } from '@data-access/actions/setting.action';
 import { GetThemeOptionAction } from '@data-access/actions/theme-option.action';
-import { IValues } from '@data-access/interfaces/setting.interface';
 import { NotificationService } from '@data-access/services/notification.service';
-import { SettingState } from '@data-access/states/setting.state';
+import { SettingStore } from '@core/state/setting.store';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
   private store = inject(Store);
   private router = inject(Router);
   private notificationService = inject(NotificationService);
-
-  setting$: Observable<IValues> = inject(Store).select(SettingState.setting) as Observable<IValues>;
+  private settingStore = inject(SettingStore);
 
   public isMaintenanceModeOn: boolean = false;
 
   constructor() {
     // Countries + states now load on-demand via TanStack queries in the
-    // address-modal; no app-start prefetch needed.
-    this.store.dispatch(new GetSettingOptionAction());
+    // address-modal; no app-start prefetch needed. Settings move to SettingStore
+    // (SignalStore); theme options stay on NGXS until that state is migrated.
+    this.settingStore.loadSettings();
     this.store.dispatch(new GetThemeOptionAction());
-    this.setting$.subscribe(setting => {
-      this.isMaintenanceModeOn = setting?.maintenance?.maintenance_mode!;
+    effect(() => {
+      this.isMaintenanceModeOn = this.settingStore.setting()?.maintenance?.maintenance_mode!;
     });
   }
 

@@ -1,53 +1,47 @@
 import { CurrencyPipe } from '@angular/common';
 import { inject, Pipe, PipeTransform } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
-
-import { Observable } from 'rxjs';
 
 import { ICurrency } from '@data-access/interfaces/currency.interface';
-import { IValues } from '@data-access/interfaces/setting.interface';
 import { SettingStore } from '@core/state/setting.store';
 
 @Pipe({
-  name: 'currencySymbol',
-  standalone: true,
+	name: 'currencySymbol',
+	standalone: true,
+	// Impure: the selected currency arrives asynchronously (from the settings load)
+	// and via a signal, not an input. A pure pipe caches the first (often null)
+	// value and never re-runs, rendering "undefined $" until an input changes. NGXS
+	// masked this by persisting selectedCurrency synchronously; the SignalStore
+	// resolves it after bootstrap, so the pipe must re-evaluate as it updates.
+	pure: false,
 })
 export class CurrencySymbolPipe implements PipeTransform {
-  private currencyPipe = inject(CurrencyPipe);
-  private settingStore = inject(SettingStore);
+	private currencyPipe = inject(CurrencyPipe);
+	private settingStore = inject(SettingStore);
 
-  selectedCurrency$: Observable<ICurrency> = toObservable(
-    this.settingStore.selectedCurrency,
-  ) as Observable<ICurrency>;
+	public symbol: string = '$';
 
-  public symbol: string = '$';
-  public setting: IValues;
-  public selectedCurrency: ICurrency;
+	transform(
+		value: number | undefined,
+		position: 'before_price' | 'after_price' | string = 'before_price',
+	): string | number {
+		const selectedCurrency = this.settingStore.selectedCurrency() as ICurrency | null;
 
-  constructor() {
-    this.selectedCurrency$.subscribe(currency => (this.selectedCurrency = currency));
-  }
+		if (!value) {
+			value = 0;
+		}
+		value = Number(value);
+		value = value * (selectedCurrency?.exchange_rate ?? 1);
 
-  transform(
-    value: number | undefined,
-    position: 'before_price' | 'after_price' | string = 'before_price',
-  ): string | number {
-    if (!value) {
-      value = 0;
-    }
-    value = Number(value);
-    value = value * this.selectedCurrency?.exchange_rate;
+		this.symbol = selectedCurrency?.symbol || '$';
+		position = selectedCurrency?.symbol_position ?? position;
 
-    this.symbol = this.selectedCurrency?.symbol || '$';
-    position = this.selectedCurrency?.symbol_position;
+		let formattedValue = this.currencyPipe.transform(value, this.symbol);
+		formattedValue = formattedValue?.replace(this.symbol, '')!;
 
-    let formattedValue = this.currencyPipe.transform(value, this.symbol);
-    formattedValue = formattedValue?.replace(this.symbol, '')!;
-
-    if (position === 'before_price') {
-      return `${this.symbol} ${formattedValue}`;
-    } else {
-      return `${formattedValue} ${this.symbol}`;
-    }
-  }
+		if (position === 'before_price') {
+			return `${this.symbol} ${formattedValue}`;
+		} else {
+			return `${formattedValue} ${this.symbol}`;
+		}
+	}
 }

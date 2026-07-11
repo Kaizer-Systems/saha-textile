@@ -2,198 +2,138 @@ import { inject, Injectable } from '@angular/core';
 
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
-import { catchError, delay, EMPTY, map, switchMap, withLatestFrom } from 'rxjs';
+import { delay, EMPTY, map, mergeMap, of, switchMap, withLatestFrom } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 import { ICart } from '@data-access/interfaces/cart.interface';
 import { CartService } from '@data-access/services/cart.service';
 import { NotificationService } from '@data-access/services/notification.service';
+import { variationLabel } from './cart.models';
 import { CartActions } from './cart.actions';
-import { selectCartState } from './cart.selectors';
-
-const variationLabel = (variation: ICart['variation'] | undefined | null): string =>
-  variation?.attribute_values?.map(values => values.value).join('/') ?? '';
-
-const recomputeTotal = (items: ICart[]): number =>
-  items.reduce((prev, curr) => prev + Number(curr.sub_total), 0);
+import { selectCartItems } from './cart.selectors';
 
 /**
- * Cart effects — a near-verbatim port of the old NGXS @Action methods (which were
- * already effect-like: dispatching, calling the service, showing toasts). Working
- * copies are constructed immutably so NgRx's strict-immutability runtime checks
- * don't trip on the shared/frozen state objects.
+ * Cart effects — the imperative logic (routing add→update/new, stock validation,
+ * variation replace, the sticky-cart timer) that the old NGXS @Action methods held.
+ * They read the current items via the adapter's selectAll selector and dispatch the
+ * pure entity write actions (addNewItem / updateItem / deleteCart). Out-of-stock and
+ * "item not found" branches return EMPTY (no state change) instead of a noop action.
  */
 @Injectable()
 export class CartEffects {
-  private actions$ = inject(Actions);
-  private store = inject(Store);
-  private cartService = inject(CartService);
-  private notificationService = inject(NotificationService);
+	private actions$ = inject(Actions);
+	private store = inject(Store);
+	private cartService = inject(CartService);
+	private notificationService = inject(NotificationService);
 
-  getCartItems$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType(CartActions.getCartItems),
-      switchMap(() =>
-        this.cartService.getCartItems().pipe(
-          map(result => {
-            const items = (result?.items ?? []).map(item =>
-              item?.variation
-                ? { ...item, variation: { ...item.variation, selected_variation: variationLabel(item.variation) } }
-                : item,
-            );
-            return CartActions.loadCartSuccess({ items, total: result?.total ?? recomputeTotal(items) });
-          }),
-          catchError(() => EMPTY),
-        ),
-      ),
-    ),
-  );
+	getCartItems$ = createEffect(() =>
+		this.actions$.pipe(
+			ofType(CartActions.getCartItems),
+			switchMap(() =>
+				this.cartService.getCartItems().pipe(
+					map((result) =>
+						CartActions.loadCartSuccess({ items: result?.items ?? [], total: result?.total ?? 0 }),
+					),
+					catchError(() => EMPTY),
+				),
+			),
+		),
+	);
 
-  // '[Cart] Add' routed to update (existing id) or a fresh local-storage add.
-  addToCart$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType(CartActions.addToCart),
-      map(({ payload }) =>
-        payload.id
-          ? CartActions.updateCart({ payload })
-          : CartActions.addToCartLocalStorage({ payload }),
-      ),
-    ),
-  );
+	// '[Cart] Add' → update an existing line (has id) or add a new one.
+	addToCart$ = createEffect(() =>
+		this.actions$.pipe(
+			ofType(CartActions.addToCart),
+			map(({ payload }) =>
+				payload.id ? CartActions.updateCart({ payload }) : CartActions.addNewItem({ payload }),
+			),
+		),
+	);
 
-  addToCartLocalStorage$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType(CartActions.addToCartLocalStorage),
-      withLatestFrom(this.store.select(selectCartState)),
-      map(([{ payload }, state]) => {
-        const salePrice = payload.variation
-          ? payload.variation.sale_price
-          : payload.product?.sale_price;
-        let newItem: ICart = {
-          id: Number(
-            Math.floor(Math.random() * 10000)
-              .toString()
-              .padStart(4, '0'),
-          ),
-          quantity: payload.quantity,
-          sub_total: salePrice ? salePrice * payload.quantity : 0,
-          product: payload.product!,
-          product_id: payload.product_id,
-          variation: payload.variation!,
-          variation_id: payload.variation_id,
-        } as ICart;
-        if (newItem.variation) {
-          newItem = {
-            ...newItem,
-            variation: { ...newItem.variation, selected_variation: variationLabel(newItem.variation) },
-          };
-        }
-        const items = [...state.items, newItem];
-        return CartActions.patchCart({
-          changes: {
-            items,
-            total: recomputeTotal(items),
-            stickyCartOpen: true,
-            sidebarCartOpen: true,
-          },
-        });
-      }),
-    ),
-  );
+	// Sticky cart auto-closes 1.5s after a new item is added (was a setTimeout).
+	closeStickyAfterAdd$ = createEffect(() =>
+		this.actions$.pipe(
+			ofType(CartActions.addNewItem),
+			delay(1500),
+			map(() => CartActions.closeStickyCart()),
+		),
+	);
 
-  // Sticky cart auto-closes 1.5s after a local add (was a setTimeout in the reducer).
-  closeStickyAfterAdd$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType(CartActions.addToCartLocalStorage),
-      delay(1500),
-      map(() => CartActions.closeStickyCart()),
-    ),
-  );
+	// Delta quantity change with stock validation; a variation change routes to replace.
+	updateCart$ = createEffect(() =>
+		this.actions$.pipe(
+			ofType(CartActions.updateCart),
+			withLatestFrom(this.store.select(selectCartItems)),
+			mergeMap(([{ payload }, items]) => {
+				const item = items.find((i) => Number(i.id) === Number(payload.id));
+				if (!item) return EMPTY;
 
-  updateCart$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType(CartActions.updateCart),
-      withLatestFrom(this.store.select(selectCartState)),
-      map(([{ payload }, state]) => {
-        const cart = state.items.map(item => ({ ...item }));
-        const index = cart.findIndex(item => Number(item.id) === Number(payload.id));
-        const target = cart[index];
+				// Same cart line but a different variation → replace instead of increment.
+				if (
+					item.variation &&
+					payload.variation_id &&
+					Number(item.id) === Number(payload.id) &&
+					Number(item.variation_id) != Number(payload.variation_id)
+				) {
+					return of(CartActions.replaceCart({ payload }));
+				}
 
-        // Same cart line but a different variation → replace instead of increment.
-        if (
-          target?.variation &&
-          payload.variation_id &&
-          Number(target.id) === Number(payload.id) &&
-          Number(target.variation_id) != Number(payload.variation_id)
-        ) {
-          return CartActions.replaceCart({ payload });
-        }
+				const productQty = item.variation ? item.variation.quantity : item.product?.quantity;
+				if (productQty < item.quantity + payload.quantity) {
+					this.notificationService.showError(
+						`You can not add more items than available. In stock ${productQty} items.`,
+					);
+					return EMPTY;
+				}
 
-        const productQty = target?.variation ? target.variation.quantity : target?.product?.quantity;
-        if (productQty < target?.quantity + payload.quantity) {
-          this.notificationService.showError(
-            `You can not add more items than available. In stock ${productQty} items.`,
-          );
-          return CartActions.noop();
-        }
+				const quantity = item.quantity + payload.quantity;
+				if (quantity < 1) return of(CartActions.deleteCart({ id: payload.id! }));
 
-        const variation = target?.variation
-          ? { ...target.variation, selected_variation: variationLabel(target.variation) }
-          : target?.variation;
-        const quantity = target.quantity + payload.quantity;
-        const sub_total = quantity * (variation ? variation.sale_price : target.product.sale_price);
-        cart[index] = { ...target, variation, quantity, sub_total };
+				const price = item.variation ? item.variation.sale_price : item.product.sale_price;
+				const changes: Partial<ICart> = { quantity, sub_total: quantity * price };
+				if (item.variation) {
+					changes.variation = { ...item.variation, selected_variation: variationLabel(item.variation) };
+				}
+				return of(CartActions.updateItem({ id: payload.id!, changes }));
+			}),
+		),
+	);
 
-        if (quantity < 1) {
-          return CartActions.deleteCart({ id: payload.id! });
-        }
-        return CartActions.patchCart({ changes: { items: cart, total: recomputeTotal(cart) } });
-      }),
-    ),
-  );
+	// Swap the variation on an existing line — quantity resets to 0 then adds the delta.
+	replaceCart$ = createEffect(() =>
+		this.actions$.pipe(
+			ofType(CartActions.replaceCart),
+			withLatestFrom(this.store.select(selectCartItems)),
+			mergeMap(([{ payload }, items]) => {
+				const item = items.find((i) => Number(i.id) === Number(payload.id));
+				if (!item) return EMPTY;
 
-  replaceCart$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType(CartActions.replaceCart),
-      withLatestFrom(this.store.select(selectCartState)),
-      map(([{ payload }, state]) => {
-        const cart = state.items.map(item => ({ ...item }));
-        const index = cart.findIndex(item => Number(item.id) === Number(payload.id));
-        let target = { ...cart[index] };
+				let variation = item.variation;
+				let variation_id = item.variation_id;
+				if (
+					item.variation &&
+					payload.variation_id &&
+					Number(item.id) === Number(payload.id) &&
+					Number(item.variation_id) != Number(payload.variation_id)
+				) {
+					variation = { ...payload.variation!, selected_variation: variationLabel(payload.variation) };
+					variation_id = payload.variation_id;
+				}
 
-        // Swap in the new variation when the cart id matches but variation differs.
-        if (
-          target?.variation &&
-          payload.variation_id &&
-          Number(target.id) === Number(payload.id) &&
-          Number(target.variation_id) != Number(payload.variation_id)
-        ) {
-          const variation = {
-            ...payload.variation!,
-            selected_variation: variationLabel(payload.variation),
-          };
-          target = { ...target, variation, variation_id: payload.variation_id };
-        }
+				const quantity = 0 + payload.quantity;
+				const productQty = variation ? variation.quantity : item.product?.quantity;
+				if (productQty < quantity) {
+					this.notificationService.showError(
+						`You can not add more items than available. In stock ${productQty} items.`,
+					);
+					return EMPTY;
+				}
+				if (quantity < 1) return of(CartActions.deleteCart({ id: payload.id! }));
 
-        target.quantity = 0;
-
-        const productQty = target?.variation ? target.variation.quantity : target?.product?.quantity;
-        if (productQty < target.quantity + payload.quantity) {
-          this.notificationService.showError(
-            `You can not add more items than available. In stock ${productQty} items.`,
-          );
-          return CartActions.noop();
-        }
-
-        target.quantity = target.quantity + payload.quantity;
-        target.sub_total =
-          target.quantity * (target.variation ? target.variation.sale_price : target.product.sale_price);
-        cart[index] = target;
-
-        if (target.quantity < 1) {
-          return CartActions.deleteCart({ id: payload.id! });
-        }
-        return CartActions.patchCart({ changes: { items: cart, total: recomputeTotal(cart) } });
-      }),
-    ),
-  );
+				const price = variation ? variation.sale_price : item.product.sale_price;
+				const changes: Partial<ICart> = { variation, variation_id, quantity, sub_total: quantity * price };
+				return of(CartActions.updateItem({ id: payload.id!, changes }));
+			}),
+		),
+	);
 }

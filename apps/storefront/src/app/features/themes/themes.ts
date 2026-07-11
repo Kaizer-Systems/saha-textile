@@ -16,32 +16,32 @@ import { injectHomePageQuery } from '@data-access/queries/theme.queries';
 import { ThemeOptionService } from '@data-access/services/theme-option.service';
 
 @Component({
-  selector: 'app-themes',
-  templateUrl: './themes.html',
-  styleUrls: ['./themes.scss'],
-  imports: [Paris, Tokyo, Osaka, Rome, Madrid, Berlin, Denver, AsyncPipe],
+	selector: 'app-themes',
+	templateUrl: './themes.html',
+	styleUrls: ['./themes.scss'],
+	imports: [Paris, Tokyo, Osaka, Rome, Madrid, Berlin, Denver, AsyncPipe],
 })
 export class Themes {
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private themeOptionService = inject(ThemeOptionService);
+	private route = inject(ActivatedRoute);
+	private router = inject(Router);
+	private themeOptionService = inject(ThemeOptionService);
 
-  public slug = signal<string>('paris');
+	public slug = signal<string>('paris');
 
-  private readonly homePageQuery = injectHomePageQuery(() => this.slug());
-  homePage$: Observable<any> = toObservable(computed(() => this.homePageQuery.data()));
+	private readonly homePageQuery = injectHomePageQuery(() => this.slug());
+	homePage$: Observable<any> = toObservable(computed(() => this.homePageQuery.data()));
 
-  constructor() {
-    this.route.params.subscribe(params => {
-      this.slug.set(params['slug'] ? params['slug'] : 'paris');
-    });
-    // Preloader + 404-on-error were handled by the old NGXS action; drive them
-    // off the query now.
-    effect(() => {
-      this.themeOptionService.preloader = this.homePageQuery.isFetching();
-      if (this.homePageQuery.isError()) {
-        void this.router.navigate(['/404']);
-      }
-    });
-  }
+	constructor() {
+		this.route.params.subscribe((params) => {
+			this.slug.set(params['slug'] ? params['slug'] : 'paris');
+		});
+		// Preloader + 404-on-error were handled by the old NGXS action; drive them
+		// off the query now.
+		effect(() => {
+			this.themeOptionService.preloader.set(this.homePageQuery.isFetching());
+			if (this.homePageQuery.isError()) {
+				void this.router.navigate(['/404']);
+			}
+		});
+	}
 }

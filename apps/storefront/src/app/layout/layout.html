@@ -1,8 +1,12 @@
 <!-- Top Progress Loader -->
-<ngx-loading-bar class="loader-bg" [includeSpinner]="true" [height]="'3px'" />
+<ngx-loading-bar
+	class="loader-bg"
+	[includeSpinner]="true"
+	[height]="'3px'"
+/>
 
 <!-- Main Loader -->
-@if (themeOptionService.preloader) {
+@if (themeOptionService.preloader()) {
 <app-loader />
 }
 
@@ -18,10 +22,10 @@
 }
 <app-sticky-compare />
 <div class="theme-option">
-  <app-theme-customizer />
-  @if ((themeOption$ | async)?.general?.back_to_top_enable) {
-  <app-back-to-top />
-  }
+	<app-theme-customizer />
+	@if ((themeOption$ | async)?.general?.back_to_top_enable) {
+	<app-back-to-top />
+	}
 </div>
 <app-newsletter-modal />
 <app-cookie />

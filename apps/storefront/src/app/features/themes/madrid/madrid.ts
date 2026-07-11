@@ -1,7 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, inject, input } from '@angular/core';
 
-
 import { ImageLink } from '@shared/ui/image-link/image-link';
 import { Title } from '@shared/ui/title/title';
 import * as data from '../../../shared/data/owl-carousel';
@@ -16,45 +15,45 @@ import { Product } from '../widgets/product/product';
 import { WalletOffer } from '../widgets/wallet-offer/wallet-offer';
 
 @Component({
-  selector: 'app-madrid',
-  templateUrl: './madrid.html',
-  styleUrls: ['./madrid.scss'],
-  imports: [HomeBanner, Banner, Title, Categorie, Product, WalletOffer, Deal, ImageLink, Blog],
+	selector: 'app-madrid',
+	templateUrl: './madrid.html',
+	styleUrls: ['./madrid.scss'],
+	imports: [HomeBanner, Banner, Title, Categorie, Product, WalletOffer, Deal, ImageLink, Blog],
 })
 export class Madrid {
-  private platformId = inject<Object>(PLATFORM_ID);
-  private themeOptionService = inject(ThemeOptionService);
+	private platformId = inject<Object>(PLATFORM_ID);
+	private themeOptionService = inject(ThemeOptionService);
 
-  // TODO: Skipped for migration because:
-  //  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
-  //  and migrating would break narrowing currently.
-  readonly data = input<IMadrid>();
-  readonly slug = input<string>();
+	// TODO: Skipped for migration because:
+	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
+	//  and migrating would break narrowing currently.
+	readonly data = input<IMadrid>();
+	readonly slug = input<string>();
 
-  public categorySlider = data.categorySlider9;
-  public productSlider6Item = data.productSlider6Item;
-  public productSlider6ItemMargin = data.productSlider6ItemMargin;
-  public customOptionsItem4 = data.customOptionsItem4;
+	public categorySlider = data.categorySlider9;
+	public productSlider6Item = data.productSlider6Item;
+	public productSlider6ItemMargin = data.productSlider6ItemMargin;
+	public customOptionsItem4 = data.customOptionsItem4;
 
-  ngOnInit() {
-    if (isPlatformBrowser(this.platformId)) {
-      const dataValue = this.data();
-      if (dataValue?.slug == this.slug()) {
-        // Products load on-demand in each widget (TanStack query); no page-
-        // level prefetch. Drop the preloader now that the theme data is in.
-        this.themeOptionService.preloader = false;
-      }
+	ngOnInit() {
+		if (isPlatformBrowser(this.platformId)) {
+			const dataValue = this.data();
+			if (dataValue?.slug == this.slug()) {
+				// Products load on-demand in each widget (TanStack query); no page-
+				// level prefetch. Drop the preloader now that the theme data is in.
+				this.themeOptionService.preloader.set(false);
+			}
 
-      // Change color for this layout
-      document.documentElement.style.setProperty('--theme-color', '#239698');
-      this.themeOptionService.theme_color = '#239698';
-    }
-  }
+			// Change color for this layout
+			document.documentElement.style.setProperty('--theme-color', '#239698');
+			this.themeOptionService.theme_color = '#239698';
+		}
+	}
 
-  ngOnDestroy() {
-    if (isPlatformBrowser(this.platformId)) {
-      // Remove Color
-      document.documentElement.style.removeProperty('--theme-color');
-    }
-  }
+	ngOnDestroy() {
+		if (isPlatformBrowser(this.platformId)) {
+			// Remove Color
+			document.documentElement.style.removeProperty('--theme-color');
+		}
+	}
 }

@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { EntityState, createEntityAdapter } from '@ngrx/entity';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
+import { EntityState, createEntityAdapter } from '@ngrx/entity';
 import {
 	createActionGroup,
 	createFeatureSelector,

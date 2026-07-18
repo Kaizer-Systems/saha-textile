@@ -1,75 +1,77 @@
 <div class="title-header">
-  <div class="d-flex align-items-center">
-    <h5>{{ 'points' | translate }}</h5>
-  </div>
+	<div class="d-flex align-items-center">
+		<h5>{{ 'points' | transloco }}</h5>
+	</div>
 </div>
 @if ((point$ | async)?.transactions?.data?.length) {
 <div class="total-box mt-0">
-  <div class="row">
-    <div class="col-12">
-      <div class="totle-contain wallet-bg">
-        <div class="wallet-point-box">
-          <img src="assets/images/svg/coin.svg" alt="coin" class="img-fluid" />
-          <div class="totle-detail">
-            <h5>{{ 'total_points'| translate}}</h5>
-            <h3>{{ ((point$ | async) ? (point$ | async)?.balance : 0) }}</h3>
-          </div>
-        </div>
-        <div class="point-ratio">
-          <h3 class="counter">
-            <i class="ri-information-line me-2"></i>
-            {{ '1_point'| translate}} = {{ (1 / (setting$ |
-            async)?.wallet_points?.point_currency_ratio!) | currencySymbol }} {{ 'balance'|
-            translate}}
-          </h3>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="wallet-table">
-    <h4 class="user-dashboard-title">{{ 'transactions' | translate}}</h4>
-    <table>
-      <tbody>
-        <tr>
-          <th>{{ 'no' | translate}}.</th>
-          <th>{{ 'date' | translate}}</th>
-          <th>{{ 'amount' | translate}}</th>
-          <th>{{ 'remark' | translate}}</th>
-          <th>{{ 'status' | translate}}</th>
-        </tr>
-        @for (transaction of (point$ | async)?.transactions?.data ; track transaction;let i =
-        $index) {
-        <tr>
-          <td>{{ i + 1 }}</td>
-          <td>{{ transaction?.created_at | date: 'dd MMM yyyy hh:mm:a' }}</td>
-          <td>{{ transaction.amount }}</td>
-          <td>{{ transaction.detail }}</td>
-          <td>
-            <div class="status-{{transaction.type}}">
-              <span>{{ transaction.type | titleCase }}</span>
-            </div>
-          </td>
-        </tr>
-        }
-      </tbody>
-    </table>
-  </div>
-  @if ((point$ | async)?.transactions?.data?.length) {
-  <nav class="custome-pagination">
-    <app-pagination
-      [total]="(point$ | async)?.transactions?.total!"
-      [currentPage]="filter()['page']"
-      [pageSize]="filter()['paginate']"
-      (setPage)="setPaginate($event)"
-    />
-  </nav>
-  }
+	<div class="row">
+		<div class="col-12">
+			<div class="totle-contain wallet-bg">
+				<div class="wallet-point-box">
+					<img
+						src="assets/images/svg/coin.svg"
+						alt="coin"
+						class="img-fluid"
+					/>
+					<div class="totle-detail">
+						<h5>{{ 'total_points'| transloco}}</h5>
+						<h3>{{ ((point$ | async) ? (point$ | async)?.balance : 0) }}</h3>
+					</div>
+				</div>
+				<div class="point-ratio">
+					<h3 class="counter">
+						<i class="ri-information-line me-2"></i>
+						{{ '1_point'| transloco}} = {{ (1 / (setting$ | async)?.wallet_points?.point_currency_ratio!) |
+						currencySymbol }} {{ 'balance'| transloco}}
+					</h3>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="wallet-table">
+		<h4 class="user-dashboard-title">{{ 'transactions' | transloco}}</h4>
+		<table>
+			<tbody>
+				<tr>
+					<th>{{ 'no' | transloco}}.</th>
+					<th>{{ 'date' | transloco}}</th>
+					<th>{{ 'amount' | transloco}}</th>
+					<th>{{ 'remark' | transloco}}</th>
+					<th>{{ 'status' | transloco}}</th>
+				</tr>
+				@for (transaction of (point$ | async)?.transactions?.data ; track transaction;let i = $index) {
+				<tr>
+					<td>{{ i + 1 }}</td>
+					<td>{{ transaction?.created_at | date: 'dd MMM yyyy hh:mm:a' }}</td>
+					<td>{{ transaction.amount }}</td>
+					<td>{{ transaction.detail }}</td>
+					<td>
+						<div class="status-{{transaction.type}}">
+							<span>{{ transaction.type | titleCase }}</span>
+						</div>
+					</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	@if ((point$ | async)?.transactions?.data?.length) {
+	<nav class="custome-pagination">
+		<app-pagination
+			[total]="(point$ | async)?.transactions?.total!"
+			[currentPage]="filter()['page']"
+			[pageSize]="filter()['paginate']"
+			(setPage)="setPaginate($event)"
+		/>
+	</nav>
+	}
 </div>
 } @if (!(point$ | async)?.transactions?.data?.length) {
 <app-no-data
-  [class]="'no-data-added'"
-  [image]="'assets/svg/empty-items.svg'"
-  [text]="'No Transaction Found'"
-  [description]="'You have not earned any points yet'"
+	[class]="'no-data-added'"
+	[image]="'assets/svg/empty-items.svg'"
+	[text]="'no_transaction_found' | transloco"
+	[description]="'no_points_description' | transloco"
 />
 }

@@ -4,9 +4,9 @@ import { Router } from '@angular/router';
 
 import { catchError, Observable, throwError } from 'rxjs';
 
-import { NotificationService } from '@data-access/services/notification.service';
 import { AuthStore } from '@core/state/auth.store';
 import { SettingStore } from '@core/state/setting.store';
+import { NotificationService } from '@data-access/services/notification.service';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {

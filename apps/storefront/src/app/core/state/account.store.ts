@@ -14,34 +14,32 @@ import { AccountService } from '@data-access/services/account.service';
  * server read (loadUser); the profile/password/address mutations were no-op
  * stubs with no backend and stay as hook points for future API wiring.
  */
-type AccountStateModel = {
-  user: IAccountUser | null;
-  permissions: IPermission[];
-};
+interface AccountStateModel {
+	user: IAccountUser | null;
+	permissions: IPermission[];
+}
 
 export const AccountStore = signalStore(
-  { providedIn: 'root' },
-  withState<AccountStateModel>({ user: null, permissions: [] }),
-  withMethods((store, accountService = inject(AccountService)) => ({
-    loadUser: rxMethod<void>(
-      pipe(
-        switchMap(() =>
-          accountService
-            .GetUserDetails()
-            .pipe(
-              tap(result => patchState(store, { user: result, permissions: result.permission })),
-            ),
-        ),
-      ),
-    ),
-    clear(): void {
-      patchState(store, { user: null, permissions: [] });
-    },
-    // No-op hook points (were empty NGXS reducers — backend wiring comes later).
-    updateProfile(_payload: IAccountUser): void {},
-    updatePassword(_payload: IAccountUserUpdatePassword): void {},
-    createAddress(_payload: IUserAddress): void {},
-    updateAddress(_payload: IUserAddress, _id: number): void {},
-    deleteAddress(_id: number): void {},
-  })),
+	{ providedIn: 'root' },
+	withState<AccountStateModel>({ user: null, permissions: [] }),
+	withMethods((store, accountService = inject(AccountService)) => ({
+		loadUser: rxMethod<void>(
+			pipe(
+				switchMap(() =>
+					accountService
+						.GetUserDetails()
+						.pipe(tap((result) => patchState(store, { user: result, permissions: result.permission }))),
+				),
+			),
+		),
+		clear(): void {
+			patchState(store, { user: null, permissions: [] });
+		},
+		// No-op hook points (were empty NGXS reducers — backend wiring comes later).
+		updateProfile(_payload: IAccountUser): void {},
+		updatePassword(_payload: IAccountUserUpdatePassword): void {},
+		createAddress(_payload: IUserAddress): void {},
+		updateAddress(_payload: IUserAddress, _id: number): void {},
+		deleteAddress(_id: number): void {},
+	})),
 );

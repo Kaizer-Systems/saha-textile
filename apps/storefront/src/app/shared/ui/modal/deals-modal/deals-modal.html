@@ -1,58 +1,72 @@
-<ng-template #dealsModal let-modal>
-  <div class="modal-content">
-    <div class="modal-header">
-      <div>
-        <h5 class="modal-title w-100" id="deal_today">{{ 'deal_today' | translate }}</h5>
-        <p class="text-content">{{ 'recommended_deals_for_you' | translate }}</p>
-      </div>
-      <app-button
-        [type]="'button'"
-        [class]="'btn btn-close'"
-        [id]="'close_deal_modal_btn'"
-        (click)="modal.dismiss('Cross click')"
-      >
-        <i class="ri-close-line"></i>
-      </app-button>
-    </div>
-    <div class="modal-body">
-      @if (products()?.length) {
-      <div class="deal-offer-box">
-        <ul class="deal-offer-list">
-          @for (product of products(); track product) {
-          <li class="list-1">
-            <div class="deal-offer-contain">
-              <a
-                [routerLink]="['/product/', product?.slug]"
-                class="deal-image"
-                (click)="closeModal()"
-              >
-                <img
-                  [src]="product?.product_thumbnail ?
+<ng-template
+	#dealsModal
+	let-modal
+>
+	<div class="modal-content">
+		<div class="modal-header">
+			<div>
+				<h5
+					class="modal-title w-100"
+					id="deal_today"
+				>
+					{{ 'deal_today' | transloco }}
+				</h5>
+				<p class="text-content">{{ 'recommended_deals_for_you' | transloco }}</p>
+			</div>
+			<app-button
+				[type]="'button'"
+				[class]="'btn btn-close'"
+				[id]="'close_deal_modal_btn'"
+				(click)="modal.dismiss('Cross click')"
+			>
+				<i class="ri-close-line"></i>
+			</app-button>
+		</div>
+		<div class="modal-body">
+			@if (products()?.length) {
+			<div class="deal-offer-box">
+				<ul class="deal-offer-list">
+					@for (product of products(); track product) {
+					<li class="list-1">
+						<div class="deal-offer-contain">
+							<a
+								[routerLink]="['/en/product/', product?.slug]"
+								class="deal-image"
+								(click)="closeModal()"
+							>
+								<img
+									[src]="product?.product_thumbnail ?
                                     product?.product_thumbnail?.original_url :
                                     'assets/images/product.png'"
-                  alt="product"
-                />
-              </a>
-              <a [routerLink]="['/product/', product?.slug]" class="deal-contain">
-                <h5 class="fw-semibold">{{ product?.name }}</h5>
-                <h6>
-                  {{ product.sale_price | currencySymbol }} @if (product.discount) {
-                  <del>{{ product.price | currencySymbol }}</del>
-                  } @if (product.unit) {
-                  <span>{{ product.unit }}</span>
-                  }
-                </h6>
-              </a>
-            </div>
-          </li>
-          }
-        </ul>
-      </div>
-      }
-      <!-- No Data -->
-      @if (!products()?.length) {
-      <app-no-data [class]="'no-data-added bg-light'" [text]="'No Product Found'" />
-      }
-    </div>
-  </div>
+									alt="product"
+								/>
+							</a>
+							<a
+								[routerLink]="['/en/product/', product?.slug]"
+								class="deal-contain"
+							>
+								<h5 class="fw-semibold">{{ product?.name }}</h5>
+								<h6>
+									{{ product.sale_price | currencySymbol }} @if (product.discount) {
+									<del>{{ product.price | currencySymbol }}</del>
+									} @if (product.unit) {
+									<span>{{ product.unit }}</span>
+									}
+								</h6>
+							</a>
+						</div>
+					</li>
+					}
+				</ul>
+			</div>
+			}
+			<!-- No Data -->
+			@if (!products()?.length) {
+			<app-no-data
+				[class]="'no-data-added bg-light'"
+				[text]="'No Product Found'"
+			/>
+			}
+		</div>
+	</div>
 </ng-template>

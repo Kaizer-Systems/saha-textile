@@ -6,7 +6,7 @@ import { BlogDetails } from '@features/blog/blog-details/blog-details';
 
 // Blog now loads by slug via injectBlogBySlugQuery inside BlogDetails (was BlogResolver).
 export const routeMeta = {
-  canActivate: [ScrollPositionGuard],
+	canActivate: [ScrollPositionGuard],
 };
 
 export default BlogDetails;

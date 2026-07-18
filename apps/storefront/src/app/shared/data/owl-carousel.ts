@@ -2,354 +2,409 @@ import { OwlOptions } from 'ngx-owl-carousel-o';
 
 // Product Slider (5 Items)
 export const productSlider: OwlOptions = {
-  loop: true,
-  nav: false,
-  items: 5,
-  margin: 0,
-  dots: false,
-  responsive: {
-    0: {
-      items: 2,
-    },
-    530: {
-      items: 3,
-    },
-    749: {
-      items: 4,
-    },
-    1000: {
-      items: 5,
-    },
-  },
+	loop: true,
+	nav: false,
+	items: 5,
+	margin: 0,
+	dots: false,
+	responsive: {
+		0: {
+			items: 2,
+		},
+		530: {
+			items: 3,
+		},
+		749: {
+			items: 4,
+		},
+		1000: {
+			items: 5,
+		},
+	},
 };
 
 // Product Slider (5 Items)
 export const productSliderMargin: OwlOptions = {
-  loop: true,
-  nav: false,
-  items: 5,
-  margin: 20,
-  dots: false,
-  responsive: {
-    0: {
-      items: 1,
-    },
-    400: {
-      items: 2,
-    },
-    716: {
-      items: 3,
-    },
-    1030: {
-      items: 4,
-    },
-    1230: {
-      items: 5,
-    },
-  },
+	loop: true,
+	nav: false,
+	items: 5,
+	margin: 20,
+	dots: false,
+	responsive: {
+		0: {
+			items: 1,
+		},
+		400: {
+			items: 2,
+		},
+		716: {
+			items: 3,
+		},
+		1030: {
+			items: 4,
+		},
+		1230: {
+			items: 5,
+		},
+	},
 };
 
 // Product Slider (5 Items)
 export const productSlider2: OwlOptions = {
-  loop: true,
-  nav: false,
-  items: 5,
-  margin: 15,
-  dots: false,
-  responsive: {
-    0: {
-      items: 2,
-    },
-    535: {
-      items: 3,
-    },
-    740: {
-      items: 4,
-    },
-    990: {
-      items: 5,
-    },
-  },
+	loop: true,
+	nav: false,
+	items: 5,
+	margin: 15,
+	dots: false,
+	responsive: {
+		0: {
+			items: 2,
+		},
+		535: {
+			items: 3,
+		},
+		740: {
+			items: 4,
+		},
+		990: {
+			items: 5,
+		},
+	},
 };
 
 // Product Slider (6 Items)
 export const productSlider6Item: OwlOptions = {
-  loop: true,
-  nav: false,
-  items: 6,
-  dots: false,
-  responsive: {
-    0: {
-      items: 2,
-    },
-    520: {
-      items: 3,
-    },
-    665: {
-      items: 4,
-    },
-    900: {
-      items: 5,
-    },
-    1065: {
-      items: 6,
-    },
-  },
+	loop: true,
+	nav: false,
+	items: 6,
+	dots: false,
+	responsive: {
+		0: {
+			items: 2,
+		},
+		520: {
+			items: 3,
+		},
+		665: {
+			items: 4,
+		},
+		900: {
+			items: 5,
+		},
+		1065: {
+			items: 6,
+		},
+	},
 };
 
 // Product Slider (6 Items)
 export const productSlider6ItemMargin: OwlOptions = {
-  loop: true,
-  nav: false,
-  items: 6,
-  margin: 24,
-  dots: false,
-  responsive: {
-    0: {
-      margin: 16,
-      items: 2,
-    },
-    560: {
-      margin: 16,
-      items: 3,
-    },
-    760: {
-      margin: 16,
-      items: 4,
-    },
-    980: {
-      items: 5,
-    },
-    1180: {
-      items: 6,
-    },
-  },
+	loop: true,
+	nav: false,
+	items: 6,
+	margin: 24,
+	dots: false,
+	responsive: {
+		0: {
+			margin: 16,
+			items: 2,
+		},
+		560: {
+			margin: 16,
+			items: 3,
+		},
+		760: {
+			margin: 16,
+			items: 4,
+		},
+		980: {
+			items: 5,
+		},
+		1180: {
+			items: 6,
+		},
+	},
 };
 
 // Banner Slider
 export const bannerSlider: OwlOptions = {
-  loop: true,
-  nav: false,
-  dots: false,
-  items: 4,
-  margin: 20,
-  responsive: {
-    0: {
-      items: 1,
-      autoplay: true,
-      autoplayTimeout: 5500,
-    },
-    525: {
-      items: 2,
-      autoplay: true,
-      autoplayTimeout: 4500,
-    },
-    870: {
-      items: 3,
-      autoplay: true,
-      autoplayTimeout: 5500,
-    },
-    1190: {
-      items: 4,
-      autoplay: true,
-      autoplayTimeout: 5500,
-    },
-  },
+	loop: true,
+	nav: false,
+	dots: false,
+	items: 4,
+	margin: 20,
+	responsive: {
+		0: {
+			items: 1,
+			autoplay: true,
+			autoplayTimeout: 5500,
+		},
+		525: {
+			items: 2,
+			autoplay: true,
+			autoplayTimeout: 4500,
+		},
+		870: {
+			items: 3,
+			autoplay: true,
+			autoplayTimeout: 5500,
+		},
+		1190: {
+			items: 4,
+			autoplay: true,
+			autoplayTimeout: 5500,
+		},
+	},
 };
 
 // Product Slider(3 Items)
 export const customOptionsItem3: OwlOptions = {
-  loop: true,
-  nav: false,
-  dots: false,
-  margin: 20,
-  items: 3,
-  responsive: {
-    0: {
-      margin: 16,
-      items: 1,
-    },
-    580: {
-      margin: 16,
-      items: 2,
-    },
-    1050: {
-      items: 3,
-    },
-  },
+	loop: true,
+	nav: false,
+	dots: false,
+	margin: 20,
+	items: 3,
+	responsive: {
+		0: {
+			margin: 16,
+			items: 1,
+		},
+		580: {
+			margin: 16,
+			items: 2,
+		},
+		1050: {
+			items: 3,
+		},
+	},
 };
 
 // Product Slider(4 Items)
 export const customOptionsItem4: OwlOptions = {
-  loop: true,
-  nav: false,
-  dots: false,
-  margin: 20,
-  items: 4,
-  responsive: {
-    0: {
-      items: 1,
-    },
-    480: {
-      items: 2,
-    },
-    896: {
-      items: 3,
-    },
-    1105: {
-      items: 4,
-    },
-  },
+	loop: true,
+	nav: false,
+	dots: false,
+	margin: 20,
+	items: 4,
+	responsive: {
+		0: {
+			items: 1,
+		},
+		480: {
+			items: 2,
+		},
+		896: {
+			items: 3,
+		},
+		1105: {
+			items: 4,
+		},
+	},
 };
 
 // Category Slider
 export const categorySlider: OwlOptions = {
-  loop: true,
-  nav: false,
-  dots: false,
-  items: 7,
-  margin: 20,
-  responsive: {
-    0: {
-      margin: 16,
-      items: 2,
-    },
-    400: {
-      margin: 16,
-      items: 3,
-    },
-    490: {
-      margin: 16,
-      items: 4,
-    },
-    680: {
-      items: 5,
-    },
-    880: {
-      items: 6,
-    },
-    1024: {
-      items: 7,
-    },
-  },
+	loop: true,
+	nav: false,
+	dots: false,
+	items: 7,
+	margin: 20,
+	responsive: {
+		0: {
+			margin: 16,
+			items: 2,
+		},
+		400: {
+			margin: 16,
+			items: 3,
+		},
+		490: {
+			margin: 16,
+			items: 4,
+		},
+		680: {
+			items: 5,
+		},
+		880: {
+			items: 6,
+		},
+		1024: {
+			items: 7,
+		},
+	},
 };
 
 // Category Slider
 export const categorySlider9: OwlOptions = {
-  loop: true,
-  nav: false,
-  dots: false,
-  margin: 10,
-  items: 9,
-  responsive: {
-    0: {
-      items: 2,
-      autoplay: true,
-      autoplayTimeout: 5500,
-    },
-    360: {
-      items: 3,
-      autoplay: true,
-      autoplayTimeout: 5500,
-    },
-    480: {
-      items: 4,
-      autoplay: true,
-      autoplayTimeout: 5500,
-    },
-    620: {
-      items: 5,
-      autoplay: true,
-      autoplayTimeout: 5500,
-    },
-    760: {
-      items: 6,
-    },
-    945: {
-      items: 7,
-    },
-    1150: {
-      items: 8,
-    },
-    1313: {
-      items: 9,
-    },
-  },
+	loop: true,
+	nav: false,
+	dots: false,
+	margin: 10,
+	items: 9,
+	responsive: {
+		0: {
+			items: 2,
+			autoplay: true,
+			autoplayTimeout: 5500,
+		},
+		360: {
+			items: 3,
+			autoplay: true,
+			autoplayTimeout: 5500,
+		},
+		480: {
+			items: 4,
+			autoplay: true,
+			autoplayTimeout: 5500,
+		},
+		620: {
+			items: 5,
+			autoplay: true,
+			autoplayTimeout: 5500,
+		},
+		760: {
+			items: 6,
+		},
+		945: {
+			items: 7,
+		},
+		1150: {
+			items: 8,
+		},
+		1313: {
+			items: 9,
+		},
+	},
 };
 
 export const singleSlider: OwlOptions = {
-  loop: true,
-  nav: true,
-  dots: false,
-  items: 1,
-  responsive: {
-    0: {
-      items: 1,
-    },
-    600: {
-      items: 1,
-    },
-    1000: {
-      items: 1,
-    },
-  },
+	loop: true,
+	nav: true,
+	dots: false,
+	items: 1,
+	responsive: {
+		0: {
+			items: 1,
+		},
+		600: {
+			items: 1,
+		},
+		1000: {
+			items: 1,
+		},
+	},
+};
+
+// Full-width hero banner carousel (custom home). One slide at a time, infinite
+// auto-advance, with BOTH manual controls: side arrows (nav) and bottom dots.
+// autoplayHoverPause lets the user stop on hover to read/click a slide.
+export const heroBannerSlider: OwlOptions = {
+	loop: true,
+	items: 1,
+	nav: true,
+	dots: true,
+	autoplay: true,
+	autoplayTimeout: 5000,
+	autoplayHoverPause: true,
+	smartSpeed: 700,
+	navText: ['<i class="ri-arrow-left-s-line"></i>', '<i class="ri-arrow-right-s-line"></i>'],
+	responsive: {
+		0: { items: 1 },
+	},
 };
 
 // Product Main Thumb Slider
 export const productMainThumbSlider: OwlOptions = {
-  loop: true,
-  mouseDrag: true,
-  touchDrag: true,
-  pullDrag: true,
-  dots: false,
-  items: 1,
-  nav: true,
-  autoplay: true,
-  navSpeed: 300,
-  responsive: {
-    0: {
-      items: 1,
-    },
-  },
+	loop: true,
+	mouseDrag: true,
+	touchDrag: true,
+	pullDrag: true,
+	dots: false,
+	items: 1,
+	nav: true,
+	autoplay: true,
+	navSpeed: 300,
+	responsive: {
+		0: {
+			items: 1,
+		},
+	},
 };
 
 // Product Thumbnail Slider
 export const productThumbSlider: OwlOptions = {
-  loop: false,
-  dots: false,
-  margin: 10,
-  navSpeed: 300,
-  autoHeight: true,
-  items: 4,
-  responsive: {
-    0: {
-      items: 3,
-    },
-    485: {
-      items: 4,
-    },
-  },
+	loop: false,
+	dots: false,
+	margin: 10,
+	navSpeed: 300,
+	autoHeight: true,
+	items: 4,
+	responsive: {
+		0: {
+			items: 3,
+		},
+		485: {
+			items: 4,
+		},
+	},
 };
 
 export const productSliderLayout: OwlOptions = {
-  items: 4,
-  loop: true,
-  dots: false,
-  margin: 15,
-  navSpeed: 300,
-  responsive: {
-    0: {
-      items: 2,
-      autoplay: true,
-      autoplayTimeout: 4500,
-    },
-    527: {
-      items: 3,
-      autoplay: true,
-      autoplayTimeout: 4500,
-    },
-    750: {
-      items: 4,
-    },
-  },
+	items: 4,
+	loop: true,
+	dots: false,
+	margin: 15,
+	navSpeed: 300,
+	responsive: {
+		0: {
+			items: 2,
+			autoplay: true,
+			autoplayTimeout: 4500,
+		},
+		527: {
+			items: 3,
+			autoplay: true,
+			autoplayTimeout: 4500,
+		},
+		750: {
+			items: 4,
+		},
+	},
+};
+
+// Custom-home nav-enabled variants — same layout as their base option, plus the
+// left/right side arrows (navText) for an explicit "there's more, scroll" affordance.
+// Arrows reuse the hero's remixicon glyphs so every carousel on `/` looks consistent.
+const navArrows: Pick<OwlOptions, 'nav' | 'navText'> = {
+	nav: true,
+	navText: ['<i class="ri-arrow-left-s-line"></i>', '<i class="ri-arrow-right-s-line"></i>'],
+};
+
+// Product rails (Top Selling / Trendy Fashion Finds / Chic Style Selection).
+export const productSlider6ItemMarginNav: OwlOptions = {
+	...productSlider6ItemMargin,
+	...navArrows,
+};
+
+// Featured-blog rail (from Osaka).
+export const blogSliderNav: OwlOptions = {
+	...customOptionsItem3,
+	...navArrows,
+};
+
+// PDP "You May Also Like" rail. ngx-owl-carousel-o drops a top-level `nav` when
+// `responsive` breakpoints omit it, so nav is set on EVERY breakpoint here to
+// guarantee the side arrows render at all viewports.
+export const relatedProductSliderNav: OwlOptions = {
+	loop: true,
+	dots: false,
+	margin: 24,
+	...navArrows,
+	responsive: {
+		0: { margin: 16, items: 2, nav: true },
+		560: { margin: 16, items: 3, nav: true },
+		760: { margin: 16, items: 4, nav: true },
+		980: { items: 5, nav: true },
+		1180: { items: 6, nav: true },
+	},
 };

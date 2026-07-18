@@ -1,29 +1,29 @@
 import { Component, inject } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
-import { ThemeOptionStore } from '@core/state/theme-option.store';
+import { SiteConfigStore } from '@core/state/site-config.store';
 
 @Component({
-  selector: 'app-cookie',
-  templateUrl: './cookie.html',
-  styleUrls: ['./cookie.scss'],
-  imports: [TranslateModule],
+	selector: 'app-cookie',
+	templateUrl: './cookie.html',
+	styleUrls: ['./cookie.scss'],
+	imports: [TranslocoModule],
 })
 export class Cookie {
-  private themeOptionStore = inject(ThemeOptionStore);
+	private siteConfigStore = inject(SiteConfigStore);
 
-  cookies$: Observable<boolean> = toObservable(this.themeOptionStore.cookies);
+	cookies$: Observable<boolean> = toObservable(this.siteConfigStore.cookies);
 
-  public cookies: boolean = true;
+	public cookies: boolean = true;
 
-  constructor() {
-    this.cookies$.subscribe(res => (this.cookies = res));
-  }
+	constructor() {
+		this.cookies$.subscribe((res) => (this.cookies = res));
+	}
 
-  acceptCookies(value: boolean) {
-    this.themeOptionStore.updateSession('cookies', value);
-  }
+	acceptCookies(value: boolean) {
+		this.siteConfigStore.updateSession('cookies', value);
+	}
 }

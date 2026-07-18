@@ -2,54 +2,68 @@ import { AsyncPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
+import { CartFacade } from '@core/state/cart/cart.facade';
 import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
-import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
-import { Button } from '@shared/ui/button/button';
-import { NoData } from '@shared/ui/no-data/no-data';
-import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { CartFacade } from '@core/state/cart/cart.facade';
+import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
+import { Button } from '@shared/ui/button/button';
+import { CartLineConfig } from '@shared/ui/cart-line-config/cart-line-config';
+import { ProductConfigModal } from '@shared/ui/modal/product-config-modal/product-config-modal';
+import { NoData } from '@shared/ui/no-data/no-data';
+import { translatedBreadcrumb } from '@shared/util/breadcrumb-i18n';
 
 @Component({
-  selector: 'app-cart',
-  templateUrl: './cart.html',
-  styleUrls: ['./cart.scss'],
-  providers: [CurrencySymbolPipe],
-  imports: [Breadcrumb, RouterLink, Button, NoData, AsyncPipe, CurrencySymbolPipe, TranslateModule],
+	selector: 'app-cart',
+	templateUrl: './cart.html',
+	styleUrls: ['./cart.scss'],
+	providers: [CurrencySymbolPipe],
+	imports: [
+		Breadcrumb,
+		RouterLink,
+		Button,
+		CartLineConfig,
+		ProductConfigModal,
+		NoData,
+		AsyncPipe,
+		CurrencySymbolPipe,
+		TranslocoModule,
+	],
 })
 export class Cart {
-  private wishlistFacade = inject(WishlistFacade);
-  private cartFacade = inject(CartFacade);
+	private wishlistFacade = inject(WishlistFacade);
+	private cartFacade = inject(CartFacade);
 
-  cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
-  cartTotal$: Observable<number> = this.cartFacade.cartTotal$;
+	cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
+	cartTotal$: Observable<number> = this.cartFacade.cartTotal$;
 
-  public breadcrumb: IBreadcrumb = {
-    title: 'Cart',
-    items: [{ label: 'Cart', active: true }],
-  };
+	/** Composed per-unit price (base + add-on/bundle deltas) when present, else plain sale price. */
+	unitPrice(item: ICart): number {
+		return item.unit_price ?? (item.variation ? item.variation.sale_price : item.product.sale_price);
+	}
 
-  updateQuantity(item: ICart, qty: number) {
-    const params: ICartAddOrUpdate = {
-      id: item.id,
-      product: item.product,
-      product_id: item.product.id,
-      variation: item.variation,
-      variation_id: item?.variation_id ? item?.variation_id : null,
-      quantity: qty,
-    };
-    this.cartFacade.updateCart(params);
-  }
+	public breadcrumb = translatedBreadcrumb('cart');
 
-  delete(id: number) {
-    this.cartFacade.deleteCart(id);
-  }
+	updateQuantity(item: ICart, qty: number) {
+		const params: ICartAddOrUpdate = {
+			id: item.id,
+			product: item.product,
+			product_id: item.product.id,
+			variation: item.variation,
+			variation_id: item?.variation_id ? item?.variation_id : null,
+			quantity: qty,
+		};
+		this.cartFacade.updateCart(params);
+	}
 
-  addToWishlist(id: number) {
-    this.wishlistFacade.addToWishlist({ product_id: id });
-  }
+	delete(id: number) {
+		this.cartFacade.deleteCart(id);
+	}
+
+	addToWishlist(id: number) {
+		this.wishlistFacade.addToWishlist({ product_id: id });
+	}
 }

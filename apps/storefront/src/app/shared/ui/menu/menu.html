@@ -1,127 +1,172 @@
 <ul class="navbar-nav">
-  <div *ngTemplateOutlet="recursiveMenu; context: { $implicit: menu }"></div>
-  <ng-template #recursiveMenu let-menus>
-    @for (menu of menus; track menu) {
-    <li
-      [ngClass]="[menu.type === 'sub' && menu.children ? 'nav-item dropdown' : 'nav-item', menu.megaMenu ? 'dropdown-mega' : '']"
-      [class.new-nav-item]="menu.badge"
-    >
-      @if (menu.type === 'sub') {
-      <a class="nav-link dropdown-toggle" (click)="toggle(menu)">
-        {{ menu.title | translate }} @if (menu.badge) {
-        <label class="new-dropdown">{{ menu.badge | translate }}</label>
-        }
-      </a>
-      } @if (menu.type === 'link') {
-      <a
-        class="dropdown-item"
-        [routerLink]="menu.path"
-        [class.show]="menu.active"
-        [queryParams]="menu.params"
-      >
-        {{ menu.title | translate }} @if (menu.label) {
-        <label class="menu-label {{ menu.labelClass }}">{{ menu.label | translate }}</label>
-        }
-      </a>
-      } @if (menu.megaMenu && menu.megaMenuType === 'link') {
-      <div class="dropdown-menu dropdown-menu-2" [class.show]="menu.active">
-        <div class="row">
-          @for (megaMenu of menu.children; track megaMenu) {
-          <div class="dropdown-column col-xl-3">
-            @for (link of megaMenu.children; track link) { @if (link.type === 'sub') {
-            <h5 class="dropdown-header {{ link.class }}">{{ link.title | translate }}</h5>
-            } @else { @if (link.type === 'link') {
-            <a class="dropdown-item" [routerLink]="link.path" [queryParams]="link.params">
-              {{ link.title | translate }} @if (link.label) {
-              <label class="menu-label {{ link.labelClass }}">{{ link.label | translate }}</label>
-              }
-            </a>
-            } @if (link.type === 'external_link') {
-            <a href="{{link.path}}" class="dropdown-item" target="_blank">
-              {{ link.title | translate }} @if (link.label) {
-              <label class="menu-label {{ link.labelClass }}">{{ link.label | translate }}</label>
-              }
-            </a>
-            } } }
-          </div>
-          } @if (menu.slider === 'product') {
-          <div class="dropdown-column col-xl-6 d-xl-block d-none">
-            <div class="menu-product-slider">
-              <div class="row">
-                @for (product of products; track product) {
-                <div class="col-6">
-                  <app-product-box
-                    [product]="product"
-                    [class]="'product-box-3'"
-                    [style]="'horizontal'"
-                  />
-                </div>
-                }
-              </div>
-            </div>
-          </div>
-          } @if (menu.slider === 'banner_portrait') {
-          <div class="dropdown-column col-xl-3 d-xl-block d-none">
-            <div class="menu-img-banner">
-              <a routerLink="/product/deliciously-sweet-watermelon" class="text-title">
-                <img src="assets/images/mega-menu.png" alt="banner" />
-              </a>
-            </div>
-          </div>
-          } @if (menu.slider === 'banner_landscape') {
-          <div class="dropdown-column col-xl-12 d-xl-block d-none">
-            <div class="menu-img-banner rounded overflow-hidden mx-0 mt-3 mb-0">
-              <img src="assets/images/mega-menu2.png" class="img-fluid" alt="img" />
-            </div>
-          </div>
-          } @if (menu.slider === 'blog') {
-          <div class="dropdown-column col-xl-9 d-xl-block d-none">
-            <div class="row">
-              @for (blog of blogs; track blog) {
-              <div class="col-6">
-                <div class="blog-box sticky-blog">
-                  <div class="blog-box-image">
-                    <a [routerLink]="['/blog/', blog?.slug]" class="blog-image">
-                      <img
-                        [src]="blog.blog_thumbnail ? blog?.blog_thumbnail?.original_url : 'assets/images/product.png'"
-                        class="img-fluid"
-                        [alt]="blog.title"
-                      />
-                    </a>
-                  </div>
-                  <a [routerLink]="['/blog/', blog?.slug]" class="blog-detail" tabindex="0">
-                    <h6>{{ blog.created_at | date: 'dd MMM yyyy hh:mm:a' }}</h6>
-                    <h5>{{ blog.title }}</h5>
-                  </a>
-                </div>
-              </div>
-              }
-            </div>
-          </div>
-          }
-        </div>
-      </div>
-      } @if (menu.megaMenu && menu.megaMenuType === 'image') {
-      <div class="dropdown-menu dropdown-menu-2 dropdown-image" [class.show]="menu.active">
-        <div class="dropdown-column">
-          @for (imageMenu of menu.children; track imageMenu) {
-          <a
-            href="javascript:void(0)"
-            class="dropdown-item text-center"
-            [routerLink]="imageMenu.path"
-          >
-            <img [src]="imageMenu.image" class="img-fluid" [alt]="imageMenu.title" />
-            <span>{{ imageMenu.title | translate }}</span>
-          </a>
-          }
-        </div>
-      </div>
-      } @if (menu.children && !menu.megaMenu) {
-      <ul class="dropdown-menu" [class.show]="menu.active">
-        <ng-container *ngTemplateOutlet="recursiveMenu; context: { $implicit: menu.children }" />
-      </ul>
-      }
-    </li>
-    }
-  </ng-template>
+	<div *ngTemplateOutlet="recursiveMenu; context: { $implicit: menu, top: true }"></div>
+	<ng-template
+		#recursiveMenu
+		let-menus
+		let-top="top"
+	>
+		@for (menu of menus; track menu) {
+		<li
+			[ngClass]="[menu.type === 'sub' && menu.children ? 'nav-item dropdown' : 'nav-item', menu.megaMenu ? 'dropdown-mega' : '']"
+			[class.new-nav-item]="menu.badge"
+		>
+			@if (menu.type === 'sub') {
+			<a
+				class="nav-link dropdown-toggle"
+				(click)="toggle(menu)"
+			>
+				{{ menu.title | transloco }} @if (menu.badge) {
+				<label class="new-dropdown">{{ menu.badge | transloco }}</label>
+				}
+			</a>
+			} @if (menu.type === 'link') {
+			<a
+				[class]="top ? 'nav-link' : 'dropdown-item'"
+				[routerLink]="menu.path"
+				[class.show]="menu.active"
+				[queryParams]="menu.params"
+			>
+				{{ menu.title | transloco }} @if (menu.label) {
+				<label class="menu-label {{ menu.labelClass }}">{{ menu.label | transloco }}</label>
+				}
+			</a>
+			} @if (menu.megaMenu && menu.megaMenuType === 'link') {
+			<div
+				class="dropdown-menu dropdown-menu-2"
+				[class.show]="menu.active"
+			>
+				<div class="row">
+					@for (megaMenu of menu.children; track megaMenu) {
+					<div class="dropdown-column col-xl-3">
+						@for (link of megaMenu.children; track link) { @if (link.type === 'sub') {
+						<h5 class="dropdown-header {{ link.class }}">{{ link.title | transloco }}</h5>
+						} @else { @if (link.type === 'link') {
+						<a
+							class="dropdown-item"
+							[routerLink]="link.path"
+							[queryParams]="link.params"
+						>
+							{{ link.title | transloco }} @if (link.label) {
+							<label class="menu-label {{ link.labelClass }}">{{ link.label | transloco }}</label>
+							}
+						</a>
+						} @if (link.type === 'external_link') {
+						<a
+							href="{{link.path}}"
+							class="dropdown-item"
+							target="_blank"
+						>
+							{{ link.title | transloco }} @if (link.label) {
+							<label class="menu-label {{ link.labelClass }}">{{ link.label | transloco }}</label>
+							}
+						</a>
+						} } }
+					</div>
+					} @if (menu.slider === 'product') {
+					<div class="dropdown-column col-xl-6 d-xl-block d-none">
+						<div class="menu-product-slider">
+							<div class="row">
+								@for (product of products; track product) {
+								<div class="col-6">
+									<app-product-box
+										[product]="product"
+										[class]="'product-box-3'"
+										[style]="'horizontal'"
+									/>
+								</div>
+								}
+							</div>
+						</div>
+					</div>
+					} @if (menu.slider === 'banner_portrait') {
+					<div class="dropdown-column col-xl-3 d-xl-block d-none">
+						<div class="menu-img-banner">
+							<a
+								routerLink="/en/product/deliciously-sweet-watermelon"
+								class="text-title"
+							>
+								<img
+									src="assets/images/mega-menu.png"
+									alt="banner"
+								/>
+							</a>
+						</div>
+					</div>
+					} @if (menu.slider === 'banner_landscape') {
+					<div class="dropdown-column col-xl-12 d-xl-block d-none">
+						<div class="menu-img-banner mx-0 mt-3 mb-0 overflow-hidden rounded">
+							<img
+								src="assets/images/mega-menu2.png"
+								class="img-fluid"
+								alt="img"
+							/>
+						</div>
+					</div>
+					} @if (menu.slider === 'blog') {
+					<div class="dropdown-column col-xl-9 d-xl-block d-none">
+						<div class="row">
+							@for (blog of blogs; track blog) {
+							<div class="col-6">
+								<div class="blog-box sticky-blog">
+									<div class="blog-box-image">
+										<a
+											[routerLink]="['/blog/', blog?.slug]"
+											class="blog-image"
+										>
+											<img
+												[src]="blog.blog_thumbnail ? blog?.blog_thumbnail?.original_url : 'assets/images/product.png'"
+												class="img-fluid"
+												[alt]="blog.title"
+											/>
+										</a>
+									</div>
+									<a
+										[routerLink]="['/blog/', blog?.slug]"
+										class="blog-detail"
+										tabindex="0"
+									>
+										<h6>{{ blog.created_at | date: 'dd MMM yyyy hh:mm:a' }}</h6>
+										<h5>{{ blog.title }}</h5>
+									</a>
+								</div>
+							</div>
+							}
+						</div>
+					</div>
+					}
+				</div>
+			</div>
+			} @if (menu.megaMenu && menu.megaMenuType === 'image') {
+			<div
+				class="dropdown-menu dropdown-menu-2 dropdown-image"
+				[class.show]="menu.active"
+			>
+				<div class="dropdown-column">
+					@for (imageMenu of menu.children; track imageMenu) {
+					<a
+						href="javascript:void(0)"
+						class="dropdown-item text-center"
+						[routerLink]="imageMenu.path"
+					>
+						<img
+							[src]="imageMenu.image"
+							class="img-fluid"
+							[alt]="imageMenu.title"
+						/>
+						<span>{{ imageMenu.title | transloco }}</span>
+					</a>
+					}
+				</div>
+			</div>
+			} @if (menu.children && !menu.megaMenu) {
+			<ul
+				class="dropdown-menu"
+				[class.show]="menu.active"
+			>
+				<ng-container *ngTemplateOutlet="recursiveMenu; context: { $implicit: menu.children, top: false }" />
+			</ul>
+			}
+		</li>
+		}
+	</ng-template>
 </ul>

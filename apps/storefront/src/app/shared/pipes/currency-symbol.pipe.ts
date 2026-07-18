@@ -1,8 +1,8 @@
 import { CurrencyPipe } from '@angular/common';
 import { inject, Pipe, PipeTransform } from '@angular/core';
 
-import { ICurrency } from '@data-access/interfaces/currency.interface';
 import { SettingStore } from '@core/state/setting.store';
+import { ICurrency } from '@data-access/interfaces/currency.interface';
 
 @Pipe({
 	name: 'currencySymbol',

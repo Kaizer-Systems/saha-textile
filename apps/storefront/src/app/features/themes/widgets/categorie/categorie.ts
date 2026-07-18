@@ -5,25 +5,25 @@ import { OwlOptions } from 'ngx-owl-carousel-o';
 import { Categories } from '@shared/ui/categories/categories';
 
 @Component({
-  selector: 'app-theme-categorie',
-  templateUrl: './categorie.html',
-  styleUrls: ['./categorie.scss'],
-  imports: [Categories],
+	selector: 'app-theme-categorie',
+	templateUrl: './categorie.html',
+	styleUrls: ['./categorie.scss'],
+	imports: [Categories],
 })
 export class Categorie {
-  readonly categoryIds = input<number[]>([]);
-  readonly style = input<string>('vertical');
-  readonly title = input<string>();
-  readonly image = input<string>();
-  readonly theme = input<string>();
-  readonly sliderOption = input<OwlOptions>();
-  readonly selectedCategoryId = input<number>();
+	readonly categoryIds = input<number[]>([]);
+	readonly style = input<string>('vertical');
+	readonly title = input<string>();
+	readonly image = input<string>();
+	readonly theme = input<string>();
+	readonly sliderOption = input<OwlOptions>();
+	readonly selectedCategoryId = input<number>();
 
-  readonly selectedCategory = output<number>();
+	readonly selectedCategory = output<number>();
 
-  constructor() {}
+	constructor() {}
 
-  selectCategory(id: number) {
-    this.selectedCategory.emit(id);
-  }
+	selectCategory(id: number) {
+		this.selectedCategory.emit(id);
+	}
 }

@@ -8,12 +8,12 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
  * `loadingCount` ref-counts in-flight requests so overlapping calls don't clear
  * the loader early (ported verbatim from the old reducers).
  */
-type LoaderStateModel = {
+interface LoaderStateModel {
 	status: boolean;
 	loadingCount: number;
 	button_spinner: boolean;
 	button_id: string | null;
-};
+}
 
 const initialState: LoaderStateModel = {
 	status: false,

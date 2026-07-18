@@ -1,1 +1,4 @@
-<app-basic-footer [data]="(themeOption$ | async)" [footer]="footer()" />
+<app-basic-footer
+	[data]="(siteConfig$ | async)"
+	[footer]="footer()"
+/>

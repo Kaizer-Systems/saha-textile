@@ -1,62 +1,71 @@
 <header [class.active]="stick && sticky()">
-  @if (data()?.header?.page_top_bar_enable) {
-  <app-topbar [data]="data()" />
-  }
-  <div class="top-nav top-header sticky-header">
-    <div class="container-fluid-lg">
-      <div class="row">
-        <div class="col-12">
-          <div class="navbar-top">
-            <app-navbar-menu-button (activeMenu)="toggle($event)" [show]="active" />
-            <app-logo [data]="data()" [logo]="logo()" />
-            <div class="header-nav-middle">
-              <div class="main-nav navbar navbar-expand-xl navbar-light navbar-sticky">
-                <div class="offcanvas offcanvas-collapse order-xl-2" [class.show]="active">
-                  <div class="offcanvas-header navbar-shadow">
-                    <h5>{{ 'menu' | translate }}</h5>
-                    <app-button
-                      [class]="'btn-close lead'"
-                      [type]="'button'"
-                      [id]="'close_btn'"
-                      [spinner]="false"
-                      (click)="toggle(false)"
-                    />
-                  </div>
-                  <div class="offcanvas-body">
-                    <app-menu />
-                  </div>
-                </div>
-                @if (active) {
-                <div
-                  class="offcanvas-backdrop fade"
-                  [class.show]="active"
-                  (click)="toggle(false)"
-                ></div>
-                }
-              </div>
-            </div>
+	@if (data()?.header?.page_top_bar_enable) {
+	<app-topbar [data]="data()" />
+	}
+	<div class="top-nav top-header sticky-header">
+		<div class="container-fluid-lg">
+			<div class="row">
+				<div class="col-12">
+					<div class="navbar-top">
+						<app-navbar-menu-button
+							(activeMenu)="toggle($event)"
+							[show]="active"
+						/>
+						<app-logo
+							[data]="data()"
+							[logo]="logo()"
+						/>
+						<div class="header-nav-middle">
+							<div class="main-nav navbar navbar-expand-xl navbar-light navbar-sticky">
+								<div
+									class="offcanvas offcanvas-collapse order-xl-2"
+									[class.show]="active"
+								>
+									<div class="offcanvas-header navbar-shadow">
+										<h5>{{ 'menu' | transloco }}</h5>
+										<app-button
+											[class]="'btn-close lead'"
+											[type]="'button'"
+											[id]="'close_btn'"
+											[spinner]="false"
+											(click)="toggle(false)"
+										/>
+									</div>
+									<div class="offcanvas-body">
+										<app-menu />
+									</div>
+								</div>
+								@if (active) {
+								<div
+									class="offcanvas-backdrop fade"
+									[class.show]="active"
+									(click)="toggle(false)"
+								></div>
+								}
+							</div>
+						</div>
 
-            <div class="rightside-box">
-              <ul class="right-side-menu">
-                <li class="right-side search-icon search-full-icon">
-                  <app-search [style]="'berlin'" />
-                </li>
-                <li class="right-side">
-                  <app-header-wishlist [style]="'basic'" />
-                </li>
-                <li class="right-side">
-                  <div class="onhover-dropdown header-badge">
-                    <app-header-cart [style]="'basic'" />
-                  </div>
-                </li>
-                <li class="right-side onhover-dropdown">
-                  <app-my-account [style]="'basic'" />
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+						<div class="rightside-box">
+							<ul class="right-side-menu">
+								<li class="right-side search-icon search-full-icon">
+									<app-search [style]="'berlin'" />
+								</li>
+								<li class="right-side">
+									<app-header-wishlist [style]="'basic'" />
+								</li>
+								<li class="right-side">
+									<div class="onhover-dropdown header-badge">
+										<app-header-cart [style]="'basic'" />
+									</div>
+								</li>
+								<li class="right-side onhover-dropdown">
+									<app-my-account [style]="'basic'" />
+								</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 </header>

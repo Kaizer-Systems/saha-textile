@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+	<title id="title">Saha Textile monogram</title>
+	<rect width="64" height="64" rx="12" fill="#7a1f2b"/>
+	<path d="M18 20h28v7H26v7h17c5 0 9 4 9 9s-4 9-9 9H18v-7h25c1 0 2-1 2-2s-1-2-2-2H26c-5 0-9-4-9-9s4-12 1-12Z" fill="#f7d8a8"/>
+</svg>

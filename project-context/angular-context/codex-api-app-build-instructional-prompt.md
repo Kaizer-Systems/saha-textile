@@ -1126,4 +1126,12 @@ Use official/current docs while implementing, especially because this project ta
 - Google OAuth 2.0: https://developers.google.com/identity/protocols/oauth2
 - Meta Facebook Login: https://developers.facebook.com/docs/facebook-login/web
 
+### 25. Deferred Storefront → API Integration Notes (added 2026-07-17)
+
+Recorded here so they are not lost while the storefront is built ahead of the API:
+
+- **Server-error interception → `/500`.** The storefront `/500` page and route now exist (`apps/storefront/.../features/page/error500` + `pages/500.page.ts`), but nothing auto-navigates to it yet. When the API/SSR layer is wired, add a real error path that routes users to `/500` on backend/SSR 5xx failures (HTTP interceptor + Nitro/AnalogJS SSR error handling). Do not silently swallow 5xx. Keep 404 (not-found) and 500 (server-error) paths distinct. This mirrors how the maintenance interceptor already routes to `/maintenance` when `setting.maintenance.maintenance_mode` is on.
+- **`500.png` placeholder asset.** The storefront currently uses a duplicate of `404.png` saved as `assets/images/inner-page/500.png`. Replace with a dedicated 500 illustration before launch.
+- **Error/status page copy is storefront Transloco keys, not API/CMS.** 404/500/maintenance text is developer-managed i18n (Machine-1). The API does not need to serve this copy. The `maintenance_mode` flag (and maintenance image) remain settings-driven.
+
 End of prompt.

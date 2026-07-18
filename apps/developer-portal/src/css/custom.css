@@ -1,0 +1,439 @@
+:root {
+	--ifm-color-primary: #a83c42;
+	--ifm-color-primary-dark: #97363b;
+	--ifm-color-primary-darker: #8e3338;
+	--ifm-color-primary-darkest: #752a2e;
+	--ifm-color-primary-light: #b3474d;
+	--ifm-color-primary-lighter: #b85056;
+	--ifm-color-primary-lightest: #c66a6f;
+	--ifm-background-color: #fbf8f3;
+	--ifm-navbar-background-color: rgba(251, 248, 243, 0.88);
+	--ifm-navbar-shadow: 0 1px 0 rgba(63, 38, 30, 0.08);
+	--ifm-footer-background-color: #201a1d;
+	--ifm-font-family-base: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--ifm-heading-font-family:
+		Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--ifm-code-font-size: 95%;
+	--ifm-heading-letter-spacing: 0;
+	--portal-ink: #201a1d;
+	--portal-muted: #705f5b;
+	--portal-surface: rgba(255, 252, 246, 0.86);
+	--portal-border: rgba(85, 53, 44, 0.14);
+	--portal-gold: #c8953a;
+	--portal-teal: #1b746a;
+	--portal-rose: #a83c42;
+	--portal-indigo: #3d4d83;
+}
+
+[data-theme='dark'] {
+	--ifm-color-primary: #efb55e;
+	--ifm-color-primary-dark: #eca745;
+	--ifm-color-primary-darker: #eb9f38;
+	--ifm-color-primary-darkest: #d48417;
+	--ifm-color-primary-light: #f2c377;
+	--ifm-color-primary-lighter: #f4ca84;
+	--ifm-color-primary-lightest: #f8dfa9;
+	--ifm-background-color: #151416;
+	--ifm-navbar-background-color: rgba(21, 20, 22, 0.88);
+	--ifm-footer-background-color: #111012;
+	--portal-ink: #f9efe2;
+	--portal-muted: #c9bab1;
+	--portal-surface: rgba(34, 31, 34, 0.86);
+	--portal-border: rgba(239, 181, 94, 0.18);
+	--portal-gold: #efb55e;
+	--portal-teal: #62c8ba;
+	--portal-rose: #e7777d;
+	--portal-indigo: #9caaf2;
+}
+
+html {
+	scroll-behavior: smooth;
+}
+
+body {
+	background:
+		linear-gradient(90deg, rgba(32, 26, 29, 0.035) 1px, transparent 1px) 0 0 / 44px 44px,
+		linear-gradient(0deg, rgba(32, 26, 29, 0.028) 1px, transparent 1px) 0 0 / 44px 44px,
+		var(--ifm-background-color);
+	color: var(--portal-ink);
+}
+
+.navbar {
+	backdrop-filter: blur(18px);
+}
+
+.navbar__brand {
+	font-weight: 780;
+}
+
+.navbar__logo img {
+	border-radius: 10px;
+	box-shadow: 0 8px 24px rgba(32, 26, 29, 0.14);
+}
+
+.theme-doc-markdown {
+	font-size: 1.02rem;
+}
+
+.theme-doc-sidebar-container {
+	border-right-color: var(--portal-border) !important;
+}
+
+.menu__link {
+	border-radius: 7px;
+}
+
+.menu__link--active {
+	font-weight: 700;
+}
+
+.theme-doc-markdown h1,
+.theme-doc-markdown h2,
+.theme-doc-markdown h3 {
+	font-weight: 760;
+}
+
+.theme-doc-markdown:not(.markdown) {
+	max-width: none;
+}
+
+.theme-doc-markdown table {
+	display: table;
+	width: 100%;
+}
+
+.theme-doc-markdown th {
+	background: rgba(168, 60, 66, 0.08);
+}
+
+.portalHero {
+	position: relative;
+	display: grid;
+	grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+	gap: clamp(2rem, 6vw, 5rem);
+	align-items: end;
+	min-height: min(680px, calc(100vh - 160px));
+	margin: 0 0 3rem;
+	padding: clamp(3rem, 7vw, 6rem) clamp(1.25rem, 5vw, 4rem);
+	overflow: hidden;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 8px;
+	background:
+		linear-gradient(115deg, rgba(32, 26, 29, 0.92) 0%, rgba(75, 40, 50, 0.88) 38%, rgba(184, 80, 86, 0.8) 100%),
+		repeating-linear-gradient(90deg, rgba(255, 247, 229, 0.1) 0 1px, transparent 1px 18px),
+		repeating-linear-gradient(0deg, rgba(255, 247, 229, 0.08) 0 1px, transparent 1px 22px);
+	color: #fff7e8;
+}
+
+.portalHero::after {
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	height: 7px;
+	content: '';
+	background: linear-gradient(
+		90deg,
+		var(--portal-gold),
+		var(--portal-teal),
+		var(--portal-rose),
+		var(--portal-indigo)
+	);
+}
+
+.portalHero__content,
+.portalHero__panel {
+	position: relative;
+	z-index: 1;
+}
+
+.portalEyebrow {
+	margin: 0 0 0.85rem;
+	color: var(--portal-gold);
+	font-size: 0.78rem;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.portalHero h1 {
+	max-width: 760px;
+	margin: 0;
+	color: #fffaf0;
+	font-size: clamp(3rem, 5.3vw, 5.25rem);
+	line-height: 0.98;
+	letter-spacing: 0;
+	overflow-wrap: normal;
+	word-break: normal;
+	hyphens: none;
+}
+
+.portalHero__lede {
+	max-width: 720px;
+	margin: 1.4rem 0 0;
+	color: rgba(255, 250, 240, 0.82);
+	font-size: clamp(1.02rem, 1.6vw, 1.24rem);
+	line-height: 1.55;
+}
+
+.portalHero__actions,
+.portalNext {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.85rem;
+	margin-top: 2rem;
+}
+
+.portalButton,
+.portalNext a {
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+	padding: 0.78rem 1.05rem;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 7px;
+	font-weight: 760;
+	text-decoration: none;
+	transition:
+		transform 160ms ease,
+		border-color 160ms ease,
+		background 160ms ease;
+}
+
+.portalButton:hover,
+.portalNext a:hover,
+.portalCard:hover {
+	transform: translateY(-2px);
+	text-decoration: none;
+}
+
+.portalButton--primary {
+	background: #f3bd61;
+	color: #2b1c17;
+}
+
+.portalButton--secondary {
+	background: rgba(255, 255, 255, 0.08);
+	color: #fff7e8;
+}
+
+.portalHero__panel {
+	padding: 1rem;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 8px;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)), rgba(20, 16, 18, 0.54);
+	box-shadow: 0 32px 80px rgba(0, 0, 0, 0.32);
+	backdrop-filter: blur(18px);
+}
+
+.portalStatusHeader {
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.2rem 0 1rem;
+	color: rgba(255, 250, 240, 0.72);
+	font-size: 0.86rem;
+}
+
+.portalStatusHeader strong {
+	color: #fffaf0;
+}
+
+.portalSignalGrid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75rem;
+}
+
+.portalSignalGrid div {
+	min-height: 108px;
+	padding: 1rem;
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	border-radius: 7px;
+	background: linear-gradient(135deg, rgba(243, 189, 97, 0.14), rgba(98, 200, 186, 0.06)), rgba(255, 255, 255, 0.06);
+}
+
+.portalSignalGrid span,
+.portalCard span {
+	display: block;
+	color: rgba(255, 250, 240, 0.68);
+	font-size: 0.77rem;
+	font-weight: 780;
+	text-transform: uppercase;
+}
+
+.portalSignalGrid strong {
+	display: block;
+	margin-top: 1.85rem;
+	color: #fffaf0;
+	font-size: 1.45rem;
+}
+
+.portalSection,
+.portalRoadmap {
+	display: grid;
+	grid-template-columns: minmax(220px, 0.74fr) minmax(0, 1.26fr);
+	gap: clamp(1.5rem, 4vw, 3rem);
+	margin: 3rem 0;
+	padding: 2rem 0;
+	border-top: 1px solid var(--portal-border);
+}
+
+.portalSection h2,
+.portalRoadmap h2 {
+	margin: 0;
+	font-size: clamp(1.9rem, 3.6vw, 3.2rem);
+	line-height: 1.02;
+}
+
+.portalSection > p {
+	margin: 0;
+	color: var(--portal-muted);
+	font-size: 1.16rem;
+	line-height: 1.75;
+}
+
+.portalCardGrid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 1rem;
+	margin: 3rem 0;
+}
+
+.portalCard {
+	min-height: 300px;
+	padding: 1.35rem;
+	border: 1px solid var(--portal-border);
+	border-radius: 8px;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.62)), var(--portal-surface);
+	color: var(--portal-ink);
+	box-shadow: 0 18px 48px rgba(75, 40, 50, 0.08);
+	transition:
+		transform 160ms ease,
+		box-shadow 160ms ease,
+		border-color 160ms ease;
+}
+
+[data-theme='dark'] .portalCard {
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)), var(--portal-surface);
+	box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+}
+
+.portalCard:hover {
+	border-color: rgba(200, 149, 58, 0.62);
+	box-shadow: 0 24px 70px rgba(75, 40, 50, 0.16);
+}
+
+.portalCard span {
+	color: var(--portal-muted);
+}
+
+.portalCard h2 {
+	margin: 5rem 0 1rem;
+	font-size: 1.45rem;
+	line-height: 1.1;
+}
+
+.portalCard p {
+	margin: 0;
+	color: var(--portal-muted);
+	line-height: 1.55;
+}
+
+.portalCard--architecture {
+	border-top: 4px solid var(--portal-gold);
+}
+
+.portalCard--flow {
+	border-top: 4px solid var(--portal-teal);
+}
+
+.portalCard--api {
+	border-top: 4px solid var(--portal-rose);
+}
+
+.portalCard--database {
+	border-top: 4px solid var(--portal-indigo);
+}
+
+.portalRoadmap table {
+	margin: 0;
+	border: 1px solid var(--portal-border);
+	border-radius: 8px;
+	overflow: hidden;
+	background: var(--portal-surface);
+	box-shadow: 0 18px 48px rgba(75, 40, 50, 0.08);
+}
+
+.portalRoadmap th,
+.portalRoadmap td {
+	padding: 1rem;
+}
+
+.portalBadge {
+	display: inline-flex;
+	align-items: center;
+	min-height: 28px;
+	padding: 0.2rem 0.58rem;
+	border: 1px solid rgba(61, 77, 131, 0.28);
+	border-radius: 999px;
+	color: var(--portal-indigo);
+	font-size: 0.78rem;
+	font-weight: 780;
+}
+
+.portalBadge--live {
+	border-color: rgba(27, 116, 106, 0.28);
+	color: var(--portal-teal);
+}
+
+.portalNext {
+	margin: 3rem 0 0;
+}
+
+.portalNext a {
+	border-color: var(--portal-border);
+	background: var(--portal-surface);
+	color: var(--portal-ink);
+}
+
+@media (max-width: 996px) {
+	.portalHero,
+	.portalSection,
+	.portalRoadmap {
+		grid-template-columns: 1fr;
+	}
+
+	.portalHero {
+		min-height: auto;
+		padding-top: 4rem;
+	}
+
+	.portalCardGrid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 640px) {
+	.portalHero {
+		padding-right: 1rem;
+		padding-left: 1rem;
+	}
+
+	.portalHero h1 {
+		font-size: 2.6rem;
+	}
+
+	.portalSignalGrid,
+	.portalCardGrid {
+		grid-template-columns: 1fr;
+	}
+
+	.portalCard {
+		min-height: 240px;
+	}
+
+	.portalCard h2 {
+		margin-top: 3rem;
+	}
+}

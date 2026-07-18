@@ -1,0 +1,82 @@
+@if (crossSellproducts.length) {
+<div class="related-product bundle-sec">
+	<div class="product-title-2">
+		<h4>{{ 'frequently_bought_together' | transloco }}</h4>
+	</div>
+	<div class="related-box">
+		<div class="related-image">
+			<ul>
+				@for (crossSellproduct of crossSellproducts; track crossSellproduct) {
+				<li>
+					<div class="product-box product-box-bg wow fadeInUp">
+						<div class="product-image">
+							<a [routerLink]="['/en/product/', crossSellproduct.slug]">
+								<img
+									[src]="crossSellproduct.product_thumbnail ?
+                                        crossSellproduct.product_thumbnail.original_url :
+                                        'assets/images/product.png'"
+									class="img-fluid"
+									alt="{{ crossSellproduct.name }}"
+								/>
+							</a>
+						</div>
+						<div class="product-detail">
+							<a [routerLink]="['/en/product/', crossSellproduct.slug]">
+								<h6 class="name">{{ crossSellproduct.name }}</h6>
+							</a>
+							<h5 class="sold text-content">
+								<span class="theme-color price">
+									{{ crossSellproduct.sale_price | currencySymbol }}
+								</span>
+								@if (crossSellproduct.discount) {
+								<del>{{ crossSellproduct.price | currencySymbol }}</del>
+								}
+							</h5>
+						</div>
+					</div>
+				</li>
+				}
+			</ul>
+		</div>
+		<div class="budle-list">
+			<ul>
+				@for (crossSellproduct of crossSellproducts; track crossSellproduct) {
+				<li>
+					<div class="form-check">
+						<input
+							class="checkbox_animated"
+							type="checkbox"
+							value="{{crossSellproduct.id}}"
+							id="crosssell-{{crossSellproduct.id}}"
+							(change)="select($event)"
+						/>
+						<label
+							class="form-check-label"
+							for="crosssell-{{crossSellproduct.id}}"
+						>
+							<span class="color color-1">
+								{{ crossSellproduct.name }}
+								<span>{{ crossSellproduct.sale_price | currencySymbol }}</span>
+							</span>
+						</label>
+					</div>
+				</li>
+				}
+				<li class="contant">
+					<h5>{{ 'product_selected_for' | transloco }}</h5>
+					<h4 class="theme-color">{{ total | currencySymbol }}</h4>
+					<app-button
+						[iconClass]="'fa-solid fa-cart-shopping ms-2'"
+						[id]="'addcartAllbtn'"
+						[class]="'btn text-white theme-bg-color btn-md mt-sm-4 mt-3 fw-bold'"
+						[disabled]="!total"
+						(click)="addToCartAll()"
+					>
+						{{ 'add_all_to_cart' | transloco }}
+					</app-button>
+				</li>
+			</ul>
+		</div>
+	</div>
+</div>
+}

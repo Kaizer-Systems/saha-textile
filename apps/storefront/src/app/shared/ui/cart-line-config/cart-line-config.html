@@ -1,0 +1,40 @@
+@if (config(); as c) { @if (c.variation_label || c.addon_options?.length || c.bundle_options?.length ||
+c.bundle_components?.length || c.measurements?.length) {
+<ul class="cart-line-config">
+	@if (c.variation_label) {
+	<li>
+		<span class="cfg-label">{{ 'variation' | transloco }}:</span>
+		<span class="cfg-value">{{ c.variation_label | transloco }}</span>
+	</li>
+	} @for (o of c.addon_options; track o.group) { @if (o.value) {
+	<li>
+		<span class="cfg-label">{{ o.group | transloco }}:</span>
+		<span class="cfg-value">{{ o.value | transloco }}</span>
+		@if (o.price_delta) {
+		<span class="cfg-delta">+{{ o.price_delta | currencySymbol }}</span>
+		}
+	</li>
+	} } @for (o of c.bundle_options; track o.group) { @if (o.value) {
+	<li>
+		<span class="cfg-label">{{ o.group | transloco }}:</span>
+		<span class="cfg-value">{{ o.value | transloco }}</span>
+		@if (o.price_delta) {
+		<span class="cfg-delta">+{{ o.price_delta | currencySymbol }}</span>
+		}
+	</li>
+	} } @if (c.bundle_components?.length) {
+	<li>
+		<span class="cfg-label">{{ 'includes' | transloco }}:</span>
+		<span class="cfg-value">{{ componentNames() }}</span>
+	</li>
+	} @if (c.measurements?.length) {
+	<li>
+		<span class="cfg-label">{{ 'measurements' | transloco }}:</span>
+		<span class="cfg-value">
+			@for (m of c.measurements; track m.label) {{{ m.label | transloco }} {{ m.value }}{{ m.unit }}@if (!$last)
+			{, }}
+		</span>
+	</li>
+	}
+</ul>
+} }

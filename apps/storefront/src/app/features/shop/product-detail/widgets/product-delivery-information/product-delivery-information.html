@@ -1,0 +1,20 @@
+@if (product()?.estimated_delivery_text || (product()?.return_policy_text && product()?.is_return)) {
+<div class="delivery-info">
+	<div class="product-title">
+		<h4>{{ 'delivery_details' | transloco }}</h4>
+	</div>
+	<ul>
+		@if (product()?.estimated_delivery_text) {
+		<li>
+			<i class="ri-truck-line"></i>
+			{{ product()?.estimated_delivery_text }}
+		</li>
+		} @if (product()?.return_policy_text) {
+		<li>
+			<i class="ri-arrow-left-right-line"></i>
+			{{ product()?.return_policy_text }}
+		</li>
+		}
+	</ul>
+</div>
+}

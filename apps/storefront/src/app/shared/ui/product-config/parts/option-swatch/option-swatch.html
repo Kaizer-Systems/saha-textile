@@ -1,0 +1,115 @@
+<div class="option-swatch">
+	@if (label()) {
+	<div class="option-swatch-head">
+		<h4>
+			{{ label() | transloco }} @if (required()) {
+			<span class="req">*</span>
+			}
+		</h4>
+		@if (selectedLabel()) {
+		<span class="selected-hint">{{ selectedLabel() | transloco }}</span>
+		}
+	</div>
+	} @switch (displayStyle()) { @case ('dropdown') {
+	<select
+		class="form-control form-select"
+		(change)="select($any($event.target).value)"
+	>
+		@for (t of terms(); track t.code) {
+		<option
+			[value]="t.code"
+			[selected]="t.code === selected()"
+		>
+			{{ t.label | transloco }}@if (t.price_delta) { (+{{ t.price_delta | currencySymbol }}) }
+		</option>
+		}
+	</select>
+	} @case ('radio_bar') {
+	<div class="option-radio-list">
+		@for (t of terms(); track t.code) {
+		<label
+			class="option-radio"
+			[class.active]="t.code === selected()"
+		>
+			<input
+				type="radio"
+				class="form-check-input"
+				[checked]="t.code === selected()"
+				(change)="select(t.code)"
+			/>
+			<span class="opt-label">{{ t.label | transloco }}</span>
+			<span class="opt-delta">
+				{{ t.price_delta ? ('+' + (t.price_delta | currencySymbol)) : ('free' | transloco) }}
+			</span>
+		</label>
+		}
+	</div>
+	} @case ('image_tile') {
+	<ul class="option-tiles image-tiles">
+		@for (t of terms(); track t.code) {
+		<li
+			class="option-tile"
+			[class.active]="t.code === selected()"
+			(click)="select(t.code)"
+		>
+			@if (t.code === selected()) {
+			<i class="ri-checkbox-circle-fill tile-check"></i>
+			}
+			<img
+				[src]="t.image || 'assets/images/product.png'"
+				[alt]="t.label"
+			/>
+			<span class="tile-label">{{ t.label | transloco }}</span>
+			<span class="tile-delta">
+				{{ t.price_delta ? ('+' + (t.price_delta | currencySymbol)) : ('+' + (0 | currencySymbol)) }}
+			</span>
+		</li>
+		}
+	</ul>
+	} @case ('color') {
+	<!-- theme variant colour swatch (.select-package.color), reused for add-on/bundle colour field -->
+	<ul class="circle select-package color">
+		@for (t of terms(); track t.code) {
+		<li
+			[class.active]="t.code === selected()"
+			placement="top"
+			ngbTooltip="{{ t.label | transloco }}"
+		>
+			<button
+				type="button"
+				(click)="select(t.code)"
+				[style.background-color]="t.image || '#cccccc'"
+			></button>
+		</li>
+		}
+	</ul>
+	} @case ('circle') {
+	<!-- reuse the theme's variant circle styling (proper round, no custom CSS) -->
+	<ul class="select-package circle">
+		@for (t of terms(); track t.code) {
+		<li [class.active]="t.code === selected()">
+			<button
+				type="button"
+				(click)="select(t.code)"
+			>
+				{{ t.label | transloco }}
+			</button>
+		</li>
+		}
+	</ul>
+	} @default {
+	<!-- rectangle (and fallback): reuse the theme's variant rectangle styling -->
+	<ul class="select-package {{ displayStyle() }}">
+		@for (t of terms(); track t.code) {
+		<li [class.active]="t.code === selected()">
+			<button
+				type="button"
+				(click)="select(t.code)"
+			>
+				{{ t.label | transloco }}@if (t.price_delta) { (+{{ t.price_delta | currencySymbol }}) }
+			</button>
+		</li>
+		}
+	</ul>
+	} }
+</div>

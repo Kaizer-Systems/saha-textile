@@ -1,0 +1,89 @@
+<ng-template
+	#configModal
+	let-modal
+>
+	<div class="modal-content">
+		<div class="modal-header">
+			<h4 class="modal-title">
+				{{ (isEdit() ? 'edit_configuration' : 'configure') | transloco }}: {{ product().name }}
+			</h4>
+			<app-button
+				[type]="'button'"
+				[class]="'btn btn-close'"
+				[id]="'product_config_close_modal_btn'"
+				[spinner]="false"
+				(click)="modal.dismiss('Cross click')"
+			>
+				<i class="ri-close-line"></i>
+			</app-button>
+		</div>
+		<div class="modal-body">
+			<!-- .right-box-contain > .product-package: the theme's configure-modal
+			     wrapper chain that sizes the reused variant swatches correctly. -->
+			<div class="right-box-contain">
+				<div class="product-package">
+					<!-- shared configurator: identical composition to the PDP -->
+					<app-product-configurator
+						#cfg
+						[product]="configProduct()"
+						[initialConfig]="editLine()?.line_config"
+						(summaryChange)="onSummary($event)"
+					/>
+
+					<div class="config-total">
+						<span class="total-label">{{ 'total_price' | transloco }}</span>
+						<span class="total-value theme-color">{{ unitPrice() | currencySymbol }}</span>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<div class="modal-qty">
+				<div class="input-group">
+					<app-button
+						[class]="'btn qty-left-minus'"
+						[id]="'config_qty_minus'"
+						[spinner]="false"
+						(click)="updateQuantity(-1)"
+					>
+						<i class="ri-subtract-fill"></i>
+					</app-button>
+					<input
+						class="form-control input-number qty-input"
+						type="text"
+						name="quantity"
+						value="{{ productQty() }}"
+						readonly
+					/>
+					<app-button
+						[class]="'btn qty-left-minus'"
+						[id]="'config_qty_plus'"
+						[spinner]="false"
+						(click)="updateQuantity(1)"
+					>
+						<i class="ri-add-line"></i>
+					</app-button>
+				</div>
+			</div>
+			@if (purchasable()) {
+			<app-button
+				[id]="'config_confirm_btn'"
+				[class]="'btn theme-bg-color view-button icon text-white fw-bold btn-md'"
+				(click)="confirm(cfg)"
+			>
+				<i class="ri-shopping-cart-line me-1"></i>
+				{{ (isEdit() ? 'update_cart' : 'add_to_cart') | transloco }}
+			</app-button>
+			} @else {
+			<app-button
+				[id]="'config_disabled_btn'"
+				[class]="'btn theme-bg-color view-button icon text-white fw-bold btn-md disabled'"
+				[spinner]="false"
+				[disabled]="true"
+			>
+				{{ (soldOut() ? 'sold_out' : (isEdit() ? 'update_cart' : 'add_to_cart')) | transloco }}
+			</app-button>
+			}
+		</div>
+	</div>
+</ng-template>

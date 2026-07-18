@@ -1,0 +1,45 @@
+<div class="addon-group product-package">
+	@for (group of groups(); track group.code) {
+	<div class="addon-block">
+		<div class="addon-head">
+			<h4>{{ 'required_addon' | transloco }}: {{ group.label | transloco }}</h4>
+		</div>
+		@if (group.help_text) {
+		<p class="addon-help text-content">{{ group.help_text | transloco }}</p>
+		}
+		<app-option-swatch
+			[terms]="group.terms"
+			[displayStyle]="group.style"
+			[required]="group.required"
+			[selected]="selectedCode(group)"
+			(selectedChange)="select(group, $event)"
+		/>
+	</div>
+	} @if (needsMeasurements()) {
+	<app-measurements-form
+		[fields]="product().measurement_fields || []"
+		[title]="'measurements_required_for_selection'"
+		[initialValues]="initialMeasurements()"
+		(valueChange)="onMeasurementsValue($event)"
+		(validChange)="onMeasurementsValid($event)"
+	/>
+	}
+
+	<div class="addon-total">
+		<span class="total-label">{{ 'total_price' | transloco }}</span>
+		<span class="total-value">
+			{{ total() | currencySymbol }}
+			<small>
+				({{ 'base' | transloco }} {{ base() | currencySymbol }} @if (delta()) { + {{ 'addon' | transloco }} {{
+				delta() | currencySymbol }} })
+			</small>
+		</span>
+	</div>
+
+	@if (needsMeasurements() && !valid()) {
+	<p class="addon-warning">
+		<i class="ri-error-warning-line"></i>
+		{{ 'fill_measurements_to_add' | transloco }}
+	</p>
+	}
+</div>

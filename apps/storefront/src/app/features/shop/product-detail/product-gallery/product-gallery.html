@@ -1,0 +1,90 @@
+<div class="product-left-box">
+	<div class="row g-2">
+		<div class="col-12">
+			<div class="product-main-1 no-arrow">
+				<div class="product-label-group">
+					@if (product()?.is_sale_enable) {
+					<div class="product-label-tag"><span>{{ 'sale' | transloco }}</span></div>
+					} @else { @if (product()?.is_featured) {
+					<div class="product-label-tag warning-label-tag">
+						<span>{{ 'featured' | transloco }}</span>
+					</div>
+					} } @if (product()?.bundle) {
+					<div class="product-label-tag"><span>{{ 'bundle' | transloco }}</span></div>
+					}
+				</div>
+				<owl-carousel-o
+					[options]="productMainThumbSlider"
+					#owlCar
+				>
+					@for (image of product()?.product_galleries; track image; let i = $index) {
+					<ng-template
+						carouselSlide
+						[id]="image.id.toString()"
+					>
+						<div>
+							<div class="slider-image">
+								<lib-ngx-image-zoom
+									[zoomMode]="'click'"
+									[thumbImage]="image.original_url"
+									[fullImage]="image.original_url"
+									[magnification]="3"
+									[enableScrollZoom]="true"
+									[enableLens]="true"
+									[lensWidth]="350"
+									[lensHeight]="350"
+								/>
+							</div>
+						</div>
+					</ng-template>
+					} @if (!product()?.product_galleries?.length) {
+					<ng-template
+						carouselSlide
+						[id]="'1'"
+					>
+						<div>
+							<div class="slider-image">
+								<img
+									[src]="product() && product()?.product_thumbnail ?
+                                        product()?.product_thumbnail?.original_url :
+                                        'assets/images/product.png'"
+									class="img-fluid"
+									alt="{{ product()?.name }}"
+								/>
+							</div>
+						</div>
+					</ng-template>
+					}
+				</owl-carousel-o>
+			</div>
+		</div>
+		@if (product()?.product_galleries?.length) {
+		<div class="col-12">
+			<div class="bottom-slider-image left-slider no-arrow slick-top">
+				<owl-carousel-o [options]="productThumbSlider">
+					@for (image of product()?.product_galleries; track image) {
+					<ng-template
+						carouselSlide
+						[id]="image.id.toString()"
+					>
+						<div>
+							<div
+								class="slider-image"
+								[class.active]="image.id.toString() === activeSlide.toString()"
+							>
+								<img
+									[src]="image ? image.original_url : 'assets/images/product.png'"
+									class="img-fluid"
+									alt="{{ product()?.name }}"
+									(click)="carousel()?.to(activeSlide = image.id.toString())"
+								/>
+							</div>
+						</div>
+					</ng-template>
+					}
+				</owl-carousel-o>
+			</div>
+		</div>
+		}
+	</div>
+</div>

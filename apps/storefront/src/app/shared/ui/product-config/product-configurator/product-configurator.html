@@ -1,0 +1,28 @@
+<!-- filter_only descriptive attributes (display-only) -->
+@if (hasFilterAttrs()) {
+<app-attributes-info [attributes]="product().semantic_attributes || []" />
+}
+
+<!-- composed sections: any combination of variation axis + add-on + bundle -->
+@if (hasVariation()) {
+<app-variation-axis
+	[product]="product()"
+	[owlCar]="owlCar()"
+	(selectVariation)="selectVariation($event)"
+/>
+} @if (hasAddon()) {
+<app-addon-group
+	[product]="product()"
+	[basePrice]="effectiveBase()"
+	[initialSelections]="addonSeed()"
+	[initialMeasurements]="measurementSeed()"
+	(change)="onAddonChange($event)"
+/>
+} @if (hasBundle()) {
+<app-bundle-configurator
+	[product]="product()"
+	[initialSelections]="bundleSeed()"
+	[initialMeasurements]="measurementSeed()"
+	(change)="onBundleChange($event)"
+/>
+}

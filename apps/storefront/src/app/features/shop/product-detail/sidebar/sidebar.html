@@ -1,0 +1,9 @@
+<div class="right-sidebar-box">
+	@if (product()?.store) {
+	<app-store-information [store]="product()?.store" />
+	} @if ((siteConfig$ | async)?.product?.is_trending_product) {
+	<app-trending-products />
+	} @if ((siteConfig$ | async)?.product?.banner_enable && (siteConfig$ | async)?.product?.banner_image_url) {
+	<app-product-banner [image]="(siteConfig$ | async)?.product?.banner_image_url!" />
+	}
+</div>

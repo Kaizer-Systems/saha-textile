@@ -1,0 +1,20 @@
+<div class="pickup-box">
+	<div class="product-title">
+		<h4>{{ 'product_information' | transloco }}</h4>
+	</div>
+	<div class="product-info">
+		<ul class="product-info-list product-info-list-2">
+			@if (product()?.sku) {
+			<li>{{ 'sku' | transloco }}: {{ product()?.sku }}</li>
+			} @if (product()?.unit) {
+			<li>{{ 'unit' | transloco }}: {{ product()?.unit }}</li>
+			} @if (product()?.sku) {
+			<li>{{ 'weight' | transloco }}: {{ product()?.weight }} {{ 'gms' | transloco }}</li>
+			} @if (product()?.stock_status) {
+			<li>{{ 'stock_status' | transloco }}: {{ product()?.stock_status! | titleCase }}</li>
+			} @if (product()?.quantity! > 0) {
+			<li>{{ 'quantity' | transloco }}: {{ product()?.quantity }} {{ 'items_left' | transloco }}</li>
+			}
+		</ul>
+	</div>
+</div>

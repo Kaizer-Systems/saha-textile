@@ -16,8 +16,11 @@ import 'swiper/swiper-bundle.css';
 // doesn't hit this). dart-sass compiles it identically to the production build;
 // the css's url()s are absolute (/assets/images/...) so they resolve untouched.
 import './scss/app.gen.css';
+// App-wide theme colour override (Denver blue). Must come AFTER app.gen.css so its
+// :root rule wins the source-order tie against the generated default.
+import './scss/theme-color.css';
 
 import { App } from './app/app';
 import { appConfig } from './app/app.config';
 
-bootstrapApplication(App, appConfig).catch(err => console.error(err));
+bootstrapApplication(App, appConfig).catch((err) => console.error(err));

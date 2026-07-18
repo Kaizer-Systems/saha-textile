@@ -14,13 +14,15 @@ import { config } from './app/app.config.server';
 // (real fixes land with the template/state migration); drop them SSR-side so the
 // terminal stays readable. Client-side (browser console) is unaffected.
 const NOISY_SSR_WARNINGS = /NG0955|NG0956/;
+/* eslint-disable no-console -- deliberately wrapping console.warn/error to filter benign vendor SSR noise */
 for (const level of ['warn', 'error'] as const) {
-  const original = console[level].bind(console);
-  console[level] = (...args: unknown[]) => {
-    if (typeof args[0] === 'string' && NOISY_SSR_WARNINGS.test(args[0])) return;
-    original(...args);
-  };
+	const original = console[level].bind(console);
+	console[level] = (...args: unknown[]) => {
+		if (typeof args[0] === 'string' && NOISY_SSR_WARNINGS.test(args[0])) return;
+		original(...args);
+	};
 }
+/* eslint-enable no-console */
 
 // Analog/Nitro SSR entry. `render` works with the plain Angular Router config
 // (file-based routing is opt-in and lands in a later phase).

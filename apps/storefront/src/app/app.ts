@@ -6,10 +6,10 @@ import { Router, RouterModule } from '@angular/router';
 import { NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 
-import { Layout } from '@layout/layout';
-import { IOption } from '@data-access/interfaces/theme-option.interface';
 import { SettingStore } from '@core/state/setting.store';
-import { ThemeOptionStore } from '@core/state/theme-option.store';
+import { SiteConfigStore } from '@core/state/site-config.store';
+import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
+import { Layout } from '@layout/layout';
 
 @Component({
 	selector: 'app-root',
@@ -32,9 +32,9 @@ export class App {
 	private meta = inject(Meta);
 
 	private settingStore = inject(SettingStore);
-	private themeOptionStore = inject(ThemeOptionStore);
+	private siteConfigStore = inject(SiteConfigStore);
 
-	themeOption$: Observable<IOption> = toObservable(this.themeOptionStore.themeOptions) as Observable<IOption>;
+	siteConfig$: Observable<ISiteConfig> = toObservable(this.siteConfigStore.siteConfig) as Observable<ISiteConfig>;
 
 	public favIcon: HTMLLinkElement | null;
 	public isTabInFocus = true;
@@ -55,9 +55,9 @@ export class App {
 		// circular HTTP_INTERCEPTORS dependency). App is the root component, built
 		// after the HTTP providers, so these HTTP calls route through interceptors safely.
 		this.settingStore.loadSettings();
-		this.themeOptionStore.loadThemeOption();
+		this.siteConfigStore.loadSiteConfig();
 
-		this.themeOption$.subscribe((theme) => {
+		this.siteConfig$.subscribe((theme) => {
 			if (theme?.general?.mode === 'dark') {
 				document.getElementsByTagName('html')[0].classList.add(theme?.general && theme?.general?.mode);
 			} else {

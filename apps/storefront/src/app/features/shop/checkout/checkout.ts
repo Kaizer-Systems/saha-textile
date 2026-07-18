@@ -1,229 +1,218 @@
 import { AsyncPipe, isPlatformBrowser } from '@angular/common';
 import { Component, ElementRef, inject, PLATFORM_ID, viewChild } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
-import {
-  FormBuilder,
-  FormControl,
-  FormGroup,
-  Validators,
-  FormArray,
-  ReactiveFormsModule,
-} from '@angular/forms';
+import { FormBuilder, FormControl, FormGroup, Validators, FormArray, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
-import { AddressBlock } from './address-block/address-block';
-import { DeliveryBlock } from './delivery-block/delivery-block';
-import { PaymentBlock } from './payment-block/payment-block';
+import { AccountStore } from '@core/state/account.store';
 import { CartFacade } from '@core/state/cart/cart.facade';
+import { SettingStore } from '@core/state/setting.store';
+import { IAccountUser } from '@data-access/interfaces/account.interface';
+import { ICart } from '@data-access/interfaces/cart.interface';
+import { IOrderCheckout } from '@data-access/interfaces/order.interface';
+import { IValues, IDeliveryBlock } from '@data-access/interfaces/setting.interface';
+import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
 import { Loader } from '@shared/ui/loader/loader';
 import { AddressModal } from '@shared/ui/modal/address-modal/address-modal';
 import { NoData } from '@shared/ui/no-data/no-data';
-import { IAccountUser } from '@data-access/interfaces/account.interface';
-import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
-import { ICart } from '@data-access/interfaces/cart.interface';
-import { IOrderCheckout } from '@data-access/interfaces/order.interface';
-import { IValues, IDeliveryBlock } from '@data-access/interfaces/setting.interface';
-import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { AccountStore } from '@core/state/account.store';
-import { SettingStore } from '@core/state/setting.store';
+import { translatedBreadcrumb } from '@shared/util/breadcrumb-i18n';
+
+import { AddressBlock } from './address-block/address-block';
+import { DeliveryBlock } from './delivery-block/delivery-block';
+import { PaymentBlock } from './payment-block/payment-block';
 
 // Static mock checkout totals (was the NGXS CheckoutAction reducer — no backend
 // yet; real values get computed server-side later).
 const CHECKOUT_TOTAL: IOrderCheckout = {
-  total: {
-    convert_point_amount: -10,
-    convert_wallet_balance: -84.4,
-    coupon_total_discount: 10,
-    points: 300,
-    points_amount: 10,
-    shipping_total: 0,
-    sub_total: 35.19,
-    tax_total: 2.54,
-    total: 37.73,
-    wallet_balance: 84.4,
-  },
+	total: {
+		convert_point_amount: -10,
+		convert_wallet_balance: -84.4,
+		coupon_total_discount: 10,
+		points: 300,
+		points_amount: 10,
+		shipping_total: 0,
+		sub_total: 35.19,
+		tax_total: 2.54,
+		total: 37.73,
+		wallet_balance: 84.4,
+	},
 };
 
 @Component({
-  selector: 'app-checkout',
-  templateUrl: './checkout.html',
-  styleUrls: ['./checkout.scss'],
-  providers: [CurrencySymbolPipe],
-  imports: [
-    Breadcrumb,
-    AddressBlock,
-    DeliveryBlock,
-    PaymentBlock,
-    NoData,
-    ReactiveFormsModule,
-    Loader,
-    Button,
-    AddressModal,
-    AsyncPipe,
-    CurrencySymbolPipe,
-    TranslateModule,
-  ],
+	selector: 'app-checkout',
+	templateUrl: './checkout.html',
+	styleUrls: ['./checkout.scss'],
+	providers: [CurrencySymbolPipe],
+	imports: [
+		Breadcrumb,
+		AddressBlock,
+		DeliveryBlock,
+		PaymentBlock,
+		NoData,
+		ReactiveFormsModule,
+		Loader,
+		Button,
+		AddressModal,
+		AsyncPipe,
+		CurrencySymbolPipe,
+		TranslocoModule,
+	],
 })
 export class Checkout {
-  private cartFacade = inject(CartFacade);
-  private formBuilder = inject(FormBuilder);
-  private platformId = inject(PLATFORM_ID);
-  private router = inject(Router);
+	private cartFacade = inject(CartFacade);
+	private formBuilder = inject(FormBuilder);
+	private platformId = inject(PLATFORM_ID);
+	private router = inject(Router);
 
-  public breadcrumb: IBreadcrumb = {
-    title: 'Checkout',
-    items: [{ label: 'Checkout', active: true }],
-  };
+	public breadcrumb = translatedBreadcrumb('checkout');
 
-  private accountStore = inject(AccountStore);
-  user$: Observable<IAccountUser> = toObservable(
-    this.accountStore.user,
-  ) as Observable<IAccountUser>;
-  cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
-  private settingStore = inject(SettingStore);
-  setting$: Observable<IValues> = toObservable(this.settingStore.setting) as Observable<IValues>;
+	private accountStore = inject(AccountStore);
+	user$: Observable<IAccountUser> = toObservable(this.accountStore.user) as Observable<IAccountUser>;
+	cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
+	private settingStore = inject(SettingStore);
+	setting$: Observable<IValues> = toObservable(this.settingStore.setting) as Observable<IValues>;
 
-  readonly AddressModal = viewChild<AddressModal>('addressModal');
-  readonly cpnRef = viewChild<ElementRef<HTMLInputElement>>('cpn');
+	readonly AddressModal = viewChild<AddressModal>('addressModal');
+	readonly cpnRef = viewChild<ElementRef<HTMLInputElement>>('cpn');
 
-  public form: FormGroup;
-  public coupon: boolean = true;
-  public couponCode: string;
-  public appliedCoupon: boolean = false;
-  public couponError: string | null;
-  public checkoutTotal: IOrderCheckout | null;
-  public loading: boolean = false;
+	public form: FormGroup;
+	public coupon: boolean = true;
+	public couponCode: string;
+	public appliedCoupon: boolean = false;
+	public couponError: string | null;
+	public checkoutTotal: IOrderCheckout | null;
+	public loading: boolean = false;
 
-  constructor() {
-    this.cartFacade.getCartItems();
-    this.settingStore.loadSettings();
+	constructor() {
+		this.cartFacade.getCartItems();
+		this.settingStore.loadSettings();
 
-    this.form = this.formBuilder.group({
-      products: this.formBuilder.array([], [Validators.required]),
-      shipping_address_id: new FormControl('', [Validators.required]),
-      billing_address_id: new FormControl('', [Validators.required]),
-      points_amount: new FormControl(false),
-      wallet_balance: new FormControl(false),
-      coupon: new FormControl(),
-      delivery_description: new FormControl('', [Validators.required]),
-      delivery_interval: new FormControl(),
-      payment_method: new FormControl('', [Validators.required]),
-    });
-  }
+		this.form = this.formBuilder.group({
+			products: this.formBuilder.array([], [Validators.required]),
+			shipping_address_id: new FormControl('', [Validators.required]),
+			billing_address_id: new FormControl('', [Validators.required]),
+			points_amount: new FormControl(false),
+			wallet_balance: new FormControl(false),
+			coupon: new FormControl(),
+			delivery_description: new FormControl('', [Validators.required]),
+			delivery_interval: new FormControl(),
+			payment_method: new FormControl('', [Validators.required]),
+		});
+	}
 
-  get productControl(): FormArray {
-    return this.form.get('products') as FormArray;
-  }
+	get productControl(): FormArray {
+		return this.form.get('products') as FormArray;
+	}
 
-  ngOnInit() {
-    this.cartItem$.subscribe(items => {
-      if (!items.length) {
-        return;
-      }
-      this.productControl.clear();
-      items!.forEach((item: ICart) =>
-        this.productControl.push(
-          this.formBuilder.group({
-            product_id: new FormControl(item?.product_id, [Validators.required]),
-            variation_id: new FormControl(item?.variation_id ? item?.variation_id : ''),
-            quantity: new FormControl(item?.quantity),
-          }),
-        ),
-      );
-    });
-  }
+	ngOnInit() {
+		this.cartItem$.subscribe((items) => {
+			if (!items.length) {
+				return;
+			}
+			this.productControl.clear();
+			items!.forEach((item: ICart) =>
+				this.productControl.push(
+					this.formBuilder.group({
+						product_id: new FormControl(item?.product_id, [Validators.required]),
+						variation_id: new FormControl(item?.variation_id ? item?.variation_id : ''),
+						quantity: new FormControl(item?.quantity),
+					}),
+				),
+			);
+		});
+	}
 
-  selectShippingAddress(id: number) {
-    if (id) {
-      this.form.controls['shipping_address_id'].setValue(Number(id));
-      this.checkout();
-    }
-  }
+	selectShippingAddress(id: number) {
+		if (id) {
+			this.form.controls['shipping_address_id'].setValue(Number(id));
+			this.checkout();
+		}
+	}
 
-  selectBillingAddress(id: number) {
-    if (id) {
-      this.form.controls['billing_address_id'].setValue(Number(id));
-      this.checkout();
-    }
-  }
+	selectBillingAddress(id: number) {
+		if (id) {
+			this.form.controls['billing_address_id'].setValue(Number(id));
+			this.checkout();
+		}
+	}
 
-  selectDelivery(value: IDeliveryBlock) {
-    this.form.controls['delivery_description'].setValue(value?.delivery_description);
-    this.form.controls['delivery_interval'].setValue(value?.delivery_interval);
-    this.checkout();
-  }
+	selectDelivery(value: IDeliveryBlock) {
+		this.form.controls['delivery_description'].setValue(value?.delivery_description);
+		this.form.controls['delivery_interval'].setValue(value?.delivery_interval);
+		this.checkout();
+	}
 
-  selectPaymentMethod(value: string) {
-    this.form.controls['payment_method'].setValue(value);
-    this.checkout();
-  }
+	selectPaymentMethod(value: string) {
+		this.form.controls['payment_method'].setValue(value);
+		this.checkout();
+	}
 
-  togglePoint(event: Event) {
-    this.form.controls['points_amount'].setValue((<HTMLInputElement>event.target)?.checked);
-    this.checkout();
-  }
+	togglePoint(event: Event) {
+		this.form.controls['points_amount'].setValue((<HTMLInputElement>event.target)?.checked);
+		this.checkout();
+	}
 
-  toggleWallet(event: Event) {
-    this.form.controls['wallet_balance'].setValue((<HTMLInputElement>event.target)?.checked);
-    this.checkout();
-  }
+	toggleWallet(event: Event) {
+		this.form.controls['wallet_balance'].setValue((<HTMLInputElement>event.target)?.checked);
+		this.checkout();
+	}
 
-  showCoupon() {
-    this.coupon = true;
-  }
+	showCoupon() {
+		this.coupon = true;
+	}
 
-  setCoupon(value?: string) {
-    this.couponError = null;
+	setCoupon(value?: string) {
+		this.couponError = null;
 
-    if (value) this.form.controls['coupon'].setValue(value);
-    else this.form.controls['coupon'].reset();
+		if (value) this.form.controls['coupon'].setValue(value);
+		else this.form.controls['coupon'].reset();
 
-    // Checkout totals are a client-side mock now (was CheckoutAction) — compute
-    // synchronously, no dispatch/observable.
-    this.checkoutTotal = CHECKOUT_TOTAL;
-    this.appliedCoupon = value ? true : false;
-    this.couponError = null;
-  }
+		// Checkout totals are a client-side mock now (was CheckoutAction) — compute
+		// synchronously, no dispatch/observable.
+		this.checkoutTotal = CHECKOUT_TOTAL;
+		this.appliedCoupon = value ? true : false;
+		this.couponError = null;
+	}
 
-  couponRemove() {
-    this.setCoupon();
-  }
+	couponRemove() {
+		this.setCoupon();
+	}
 
-  checkout() {
-    // If has coupon error while checkout
-    if (this.couponError) {
-      this.couponError = null;
-      this.cpnRef()!.nativeElement.value = '';
-      this.form.controls['coupon'].reset();
-    }
+	checkout() {
+		// If has coupon error while checkout
+		if (this.couponError) {
+			this.couponError = null;
+			this.cpnRef()!.nativeElement.value = '';
+			this.form.controls['coupon'].reset();
+		}
 
-    if (this.form.valid) {
-      this.loading = true;
-      this.checkoutTotal = CHECKOUT_TOTAL;
-      this.loading = false;
-    }
-  }
+		if (this.form.valid) {
+			this.loading = true;
+			this.checkoutTotal = CHECKOUT_TOTAL;
+			this.loading = false;
+		}
+	}
 
-  placeorder() {
-    if (this.form.valid) {
-      const cpnRef = this.cpnRef();
-      if (cpnRef && !cpnRef.nativeElement.value) {
-        this.form.controls['coupon'].reset();
-      }
-      // Place order has no backend yet — was PlaceOrderAction (navigate to a stub order).
-      void this.router.navigateByUrl('/account/order/details/1000');
-    }
-  }
+	placeorder() {
+		if (this.form.valid) {
+			const cpnRef = this.cpnRef();
+			if (cpnRef && !cpnRef.nativeElement.value) {
+				this.form.controls['coupon'].reset();
+			}
+			// Place order has no backend yet — was PlaceOrderAction (navigate to a stub order).
+			void this.router.navigateByUrl('/account/order/details/1000');
+		}
+	}
 
-  ngOnDestroy() {
-    if (isPlatformBrowser(this.platformId)) {
-      this.checkoutTotal = null; // was ClearAction
-      this.form.reset();
-    }
-  }
+	ngOnDestroy() {
+		if (isPlatformBrowser(this.platformId)) {
+			this.checkoutTotal = null; // was ClearAction
+			this.form.reset();
+		}
+	}
 }

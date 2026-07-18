@@ -31,10 +31,7 @@ export function cartPersistenceMetaReducer(reducer: ActionReducer<CartStateModel
 
 		const nextState = reducer(state, action);
 		if (canUseStorage() && nextState) {
-			localStorage.setItem(
-				STORAGE_KEY,
-				JSON.stringify({ items: selectAll(nextState), total: nextState.total }),
-			);
+			localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: selectAll(nextState), total: nextState.total }));
 		}
 		return nextState;
 	};

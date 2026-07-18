@@ -1,6 +1,6 @@
 import { EntityState, createEntityAdapter } from '@ngrx/entity';
 
-import { ICart } from '@data-access/interfaces/cart.interface';
+import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 
 /**
  * Classic-NgRx cart feature state (replaces NGXS CartState). Cart is heavily
@@ -35,3 +35,10 @@ export const calcCartTotal = (state: CartStateModel): number =>
 
 export const variationLabel = (variation: ICart['variation'] | undefined | null): string =>
 	variation?.attribute_values?.map((values) => values.value).join('/') ?? '';
+
+/**
+ * Per-unit price for a line: the composed `unit_price` (base + add-on/bundle
+ * deltas) when the PDP supplied it, else the plain variation/product sale price.
+ */
+export const lineUnitPrice = (line: ICart | ICartAddOrUpdate): number =>
+	line.unit_price ?? (line.variation ? line.variation.sale_price : (line.product?.sale_price ?? 0));

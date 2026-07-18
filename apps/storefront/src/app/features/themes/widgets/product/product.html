@@ -1,77 +1,91 @@
 <!-- Vertical Product Box 1 -->
 @if (style() === 'vertical') {
-<ul class="product-list border-0 p-0 sidebar-product d-flex">
-  @if (productService.skeletonLoader) { @for (item of skeletonItems; track item) {
-  <li>
-    <app-skeleton-product-box [style]="'vertical'" />
-  </li>
-  } } @else { @for (product of products; track product) {
-  <li>
-    <app-product-box [product]="product" [style]="'vertical'" />
-  </li>
-  } }
+<ul class="product-list sidebar-product d-flex border-0 p-0">
+	@if (productService.skeletonLoader) { @for (item of skeletonItems; track item) {
+	<li>
+		<app-skeleton-product-box [style]="'vertical'" />
+	</li>
+	} } @else { @for (product of products; track product) {
+	<li>
+		<app-product-box
+			[product]="product"
+			[style]="'vertical'"
+		/>
+	</li>
+	} }
 </ul>
 }
 
 <!-- Vertical Product Box 2 -->
 @if (style() === 'classic') {
 <div class="best-selling-slider product-wrapper">
-  <div class="position-relative">
-    <span class="border-effect"></span>
-    <ul class="product-list">
-      @if (productService.skeletonLoader) { @for (item of skeletonItems; track item) {
-      <li>
-        <app-skeleton-product-box [style]="'vertical'" />
-      </li>
-      } } @else { @for (product of products; track product) {
-      <li>
-        <app-product-box [product]="product" [style]="'vertical'" />
-      </li>
-      } }
-    </ul>
-  </div>
+	<div class="position-relative">
+		<span class="border-effect"></span>
+		<ul class="product-list">
+			@if (productService.skeletonLoader) { @for (item of skeletonItems; track item) {
+			<li>
+				<app-skeleton-product-box [style]="'vertical'" />
+			</li>
+			} } @else { @for (product of products; track product) {
+			<li>
+				<app-product-box
+					[product]="product"
+					[style]="'vertical'"
+				/>
+			</li>
+			} }
+		</ul>
+	</div>
 </div>
 }
 
 <!-- Horizontal Product Box -->
 @if (style() === 'horizontal') {
 <div [class]="!productService.skeletonLoader ? productStyle() : ''">
-  @if (productService.skeletonLoader) {
-  <div class="row row-cols-5 m-0">
-    @for (item of skeletonItems; track item) {
-    <div>
-      <app-skeleton-product-box />
-    </div>
-    }
-  </div>
-  } @else { @if (slider()) {
-  <div class="product-box-slider">
-    <!-- Horizontal Product Box With Slider -->
-    <owl-carousel-o [options]="sliderOption()">
-      @for (product of products; track product) {
-      <ng-template carouselSlide>
-        <div class="row m-0">
-          <div class="col-12 px-0">
-            <app-product-box [product]="product" [class]="boxClass()" [style]="'horizontal'" />
-          </div>
-        </div>
-      </ng-template>
-      }
-    </owl-carousel-o>
-  </div>
-  } @else {
-  <div
-    [ngClass]="[showItem() === 5 ? 'row g-sm-4 g-3 row-cols-xl-5 row-cols-lg-4 row-cols-md-3 row-cols-2' : '', 
+	@if (productService.skeletonLoader) {
+	<div class="row row-cols-5 m-0">
+		@for (item of skeletonItems; track item) {
+		<div>
+			<app-skeleton-product-box />
+		</div>
+		}
+	</div>
+	} @else { @if (slider()) {
+	<div class="product-box-slider">
+		<!-- Horizontal Product Box With Slider -->
+		<owl-carousel-o [options]="sliderOption()">
+			@for (product of products; track product) {
+			<ng-template carouselSlide>
+				<div class="row m-0">
+					<div class="col-12 px-0">
+						<app-product-box
+							[product]="product"
+							[class]="boxClass()"
+							[style]="'horizontal'"
+						/>
+					</div>
+				</div>
+			</ng-template>
+			}
+		</owl-carousel-o>
+	</div>
+	} @else {
+	<div
+		[ngClass]="[showItem() === 5 ? 'row g-sm-4 g-3 row-cols-xl-5 row-cols-lg-4 row-cols-md-3 row-cols-2' : '', 
                       showItem() === 6 ? 'row g-sm-4 g-3 row-cols-xl-6 row-cols-lg-5 row-cols-md-4 row-cols-2' : '', 
                       showItem() === 4 ? 'row g-sm-4 g-3 row-cols-xl-4 row-cols-lg-3 row-cols-md-3 row-cols-sm-2 row-cols-2' : '',]"
-  >
-    <!-- Horizontal Product Box Without Slider -->
-    @for (product of products; track product) {
-    <div>
-      <app-product-box [product]="product" [class]="boxClass()" [style]="'horizontal'" />
-    </div>
-    }
-  </div>
-  } }
+	>
+		<!-- Horizontal Product Box Without Slider -->
+		@for (product of products; track product) {
+		<div>
+			<app-product-box
+				[product]="product"
+				[class]="boxClass()"
+				[style]="'horizontal'"
+			/>
+		</div>
+		}
+	</div>
+	} }
 </div>
 }

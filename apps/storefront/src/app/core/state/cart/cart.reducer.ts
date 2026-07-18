@@ -1,8 +1,9 @@
 import { createReducer, on } from '@ngrx/store';
 
 import { ICart } from '@data-access/interfaces/cart.interface';
+
 import { CartActions } from './cart.actions';
-import { CartStateModel, calcCartTotal, cartAdapter, initialCartState, variationLabel } from './cart.models';
+import { calcCartTotal, cartAdapter, initialCartState, lineUnitPrice, variationLabel } from './cart.models';
 
 /** Attach the joined variation label the templates read (was set in the reducers). */
 const withSelectedVariation = (item: ICart): ICart =>
@@ -23,7 +24,7 @@ export const cartReducer = createReducer(
 		return { ...next, total: total ? total : calcCartTotal(next) };
 	}),
 	on(CartActions.addNewItem, (state, { payload }) => {
-		const salePrice = payload.variation ? payload.variation.sale_price : payload.product?.sale_price;
+		const salePrice = lineUnitPrice(payload);
 		const item = withSelectedVariation({
 			// Random client-side id (mock cart — no backend id yet).
 			id: Number(
@@ -37,6 +38,8 @@ export const cartReducer = createReducer(
 			product_id: payload.product_id,
 			variation: payload.variation!,
 			variation_id: payload.variation_id,
+			unit_price: payload.unit_price,
+			line_config: payload.line_config,
 		} as ICart);
 		const next = cartAdapter.addOne(item, state);
 		return { ...next, total: calcCartTotal(next), stickyCartOpen: true, sidebarCartOpen: true };

@@ -1,37 +1,57 @@
-<ng-template #newsletterModal let-modal>
-  <div class="modal-header p-0">
-    <app-button
-      [class]="'btn btn-close'"
-      [spinner]="false"
-      [id]="'profile_modal_close_btn'"
-      (click)="modal.dismiss('Cross click')"
-    >
-      <i class="ri-close-line"></i>
-    </app-button>
-  </div>
-  <div class="modal-box">
-    <div class="modal-image">
-      <img src="assets/images/newsletter/3.jpg" class="img-fluid" alt="newsletter" />
-    </div>
-    <div class="modal-content content-padding">
-      <div>
-        <img src="assets/images/logo/1.png" class="modal-logo" alt="logo" />
-        <h2>{{ '15%' | translate }} <span>{{ 'off' | translate }}</span></h2>
-        <h5>{{ 'want_to_make_your_purchase' | translate }}?</h5>
-        <p>{{ 'plus_early_access_to_new_arrivals_exclusive_sales_lots_more' | translate }}?</p>
-        <form class="modal-form">
-          <div class="input-group modal-form-box">
-            <input type="email" class="form-control" placeholder="Your email here" #emailVal />
-            <app-button
-              [class]="'input-group-text'"
-              [id]="'submit_newsletter_btn'"
-              [spinner]="true"
-              (click)="submit(emailVal.value)"
-              >{{ 'submit' | translate }}</app-button
-            >
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+<ng-template
+	#newsletterModal
+	let-modal
+>
+	<div class="modal-header p-0">
+		<app-button
+			[class]="'btn btn-close'"
+			[spinner]="false"
+			[id]="'profile_modal_close_btn'"
+			(click)="modal.dismiss('Cross click')"
+		>
+			<i class="ri-close-line"></i>
+		</app-button>
+	</div>
+	<div class="modal-box">
+		<div class="modal-image">
+			<img
+				src="assets/images/newsletter/3.jpg"
+				class="img-fluid"
+				alt="newsletter"
+			/>
+		</div>
+		<div class="modal-content content-padding">
+			<div>
+				<img
+					src="assets/images/logo/1.png"
+					class="modal-logo"
+					alt="logo"
+				/>
+				<h2>
+					{{ '15%' | transloco }}
+					<span>{{ 'off' | transloco }}</span>
+				</h2>
+				<h5>{{ 'want_to_make_your_purchase' | transloco }}?</h5>
+				<p>{{ 'plus_early_access_to_new_arrivals_exclusive_sales_lots_more' | transloco }}?</p>
+				<form class="modal-form">
+					<div class="input-group modal-form-box">
+						<input
+							type="email"
+							class="form-control"
+							placeholder="Your email here"
+							#emailVal
+						/>
+						<app-button
+							[class]="'input-group-text'"
+							[id]="'submit_newsletter_btn'"
+							[spinner]="true"
+							(click)="submit(emailVal.value)"
+						>
+							{{ 'submit' | transloco }}
+						</app-button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
 </ng-template>

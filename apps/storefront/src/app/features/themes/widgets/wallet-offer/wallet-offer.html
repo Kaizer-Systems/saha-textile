@@ -1,40 +1,45 @@
 <div class="slider-bank-3 arrow-slider slick-height">
-  <owl-carousel-o [options]="customOptionsItem3">
-    @for (offer of offers(); track offer) {
-    <ng-container carouselSlide>
-      @if (offer?.status) {
-      <ng-template carouselSlide>
-        <div>
-          <div class="bank-offer">
-            <div class="bank-header">
-              <div class="bank-right w-100">
-                <img [src]="offer.image_url" class="img-fluid" [alt]="offer.coupon_code" />
-              </div>
-            </div>
-            <div class="bank-footer">
-              <h4>
-                {{ 'code' | translate }} :
-                <input
-                  class="form-control"
-                  type="text"
-                  [name]="offer.coupon_code"
-                  [(ngModel)]="offer.coupon_code"
-                />
-              </h4>
-              <app-button
-                [type]="'button'"
-                [class]="'bank-coupon btn'"
-                [id]="'coupon_btn'"
-                [spinner]="false"
-                (click)="copyFunction(offer.coupon_code)"
-                >Copy Code</app-button
-              >
-            </div>
-          </div>
-        </div>
-      </ng-template>
-      }
-    </ng-container>
-    }
-  </owl-carousel-o>
+	<owl-carousel-o [options]="customOptionsItem3">
+		@for (offer of offers(); track offer) {
+		<ng-container carouselSlide>
+			@if (offer?.status) {
+			<ng-template carouselSlide>
+				<div>
+					<div class="bank-offer">
+						<div class="bank-header">
+							<div class="bank-right w-100">
+								<img
+									[src]="offer.image_url"
+									class="img-fluid"
+									[alt]="offer.coupon_code"
+								/>
+							</div>
+						</div>
+						<div class="bank-footer">
+							<h4>
+								{{ 'code' | transloco }} :
+								<input
+									class="form-control"
+									type="text"
+									[name]="offer.coupon_code"
+									[(ngModel)]="offer.coupon_code"
+								/>
+							</h4>
+							<app-button
+								[type]="'button'"
+								[class]="'bank-coupon btn'"
+								[id]="'coupon_btn'"
+								[spinner]="false"
+								(click)="copyFunction(offer.coupon_code)"
+							>
+								Copy Code
+							</app-button>
+						</div>
+					</div>
+				</div>
+			</ng-template>
+			}
+		</ng-container>
+		}
+	</owl-carousel-o>
 </div>

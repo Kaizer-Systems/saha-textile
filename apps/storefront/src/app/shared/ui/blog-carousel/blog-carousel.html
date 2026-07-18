@@ -1,0 +1,57 @@
+@if (blogs().length) {
+<div class="container-fluid-lg blog-carousel-section">
+	@if (title()) {
+	<app-title [title]="title() | transloco" />
+	}
+	<!-- .product-arrow = theme's styled owl-nav arrows -->
+	<div class="product-arrow blog-carousel">
+		<owl-carousel-o [options]="options()">
+			@for (blog of blogs(); track blog.id) {
+			<ng-template carouselSlide>
+				<div class="blog-slide">
+					<div
+						class="blog-box"
+						[class.blog-list]="isSingle()"
+						[class.sticky-blog-box]="blog.is_sticky === 1"
+					>
+						@if (blog.is_featured) {
+						<div class="blog-label-tag"><span>{{ 'featured' | transloco }}</span></div>
+						}
+						<div class="blog-image">
+							<a [routerLink]="['/blog/', blog?.slug]">
+								<img
+									[src]="blog?.blog_thumbnail?.original_url || 'assets/images/blog.png'"
+									[alt]="blog?.title"
+								/>
+							</a>
+						</div>
+						<div
+							class="blog-contain"
+							[class.blog-contain-2]="isSingle()"
+						>
+							<div class="blog-label">
+								<span class="time">
+									<i class="ri-time-line"></i>
+									<span>{{ blog?.created_at | date: 'dd MMM yyyy' }}</span>
+								</span>
+							</div>
+							<a [routerLink]="['/blog/', blog?.slug]">
+								<h3>{{ blog?.title }}</h3>
+							</a>
+							<p [innerHTML]="blog.description | summary: 200"></p>
+							<a
+								[routerLink]="['/blog/', blog?.slug]"
+								class="blog-button"
+							>
+								{{ 'read_more' | transloco }}
+								<i class="ri-arrow-right-fill"></i>
+							</a>
+						</div>
+					</div>
+				</div>
+			</ng-template>
+			}
+		</owl-carousel-o>
+	</div>
+</div>
+}

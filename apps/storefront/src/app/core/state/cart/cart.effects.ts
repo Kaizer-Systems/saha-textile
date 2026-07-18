@@ -8,8 +8,9 @@ import { catchError } from 'rxjs/operators';
 import { ICart } from '@data-access/interfaces/cart.interface';
 import { CartService } from '@data-access/services/cart.service';
 import { NotificationService } from '@data-access/services/notification.service';
-import { variationLabel } from './cart.models';
+
 import { CartActions } from './cart.actions';
+import { lineUnitPrice, variationLabel } from './cart.models';
 import { selectCartItems } from './cart.selectors';
 
 /**
@@ -89,7 +90,7 @@ export class CartEffects {
 				const quantity = item.quantity + payload.quantity;
 				if (quantity < 1) return of(CartActions.deleteCart({ id: payload.id! }));
 
-				const price = item.variation ? item.variation.sale_price : item.product.sale_price;
+				const price = lineUnitPrice(item); // composed unit price (incl. add-on/bundle deltas) when present
 				const changes: Partial<ICart> = { quantity, sub_total: quantity * price };
 				if (item.variation) {
 					changes.variation = { ...item.variation, selected_variation: variationLabel(item.variation) };
@@ -130,8 +131,16 @@ export class CartEffects {
 				}
 				if (quantity < 1) return of(CartActions.deleteCart({ id: payload.id! }));
 
-				const price = variation ? variation.sale_price : item.product.sale_price;
-				const changes: Partial<ICart> = { variation, variation_id, quantity, sub_total: quantity * price };
+				// variation swap: recompute on the new variant, preserving any add-on/bundle deltas.
+				const delta = item.line_config?.delta_total ?? 0;
+				const price = (variation ? variation.sale_price : item.product.sale_price) + delta;
+				const changes: Partial<ICart> = {
+					variation,
+					variation_id,
+					quantity,
+					sub_total: quantity * price,
+					unit_price: price,
+				};
 				return of(CartActions.updateItem({ id: payload.id!, changes }));
 			}),
 		),

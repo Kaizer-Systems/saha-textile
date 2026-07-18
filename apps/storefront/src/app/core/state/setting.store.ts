@@ -19,50 +19,48 @@ import { SettingService } from '@data-access/services/setting.service';
  *    the full-page reload the currency switcher triggers (NGXS persisted it via
  *    the storage plugin). SSR-guarded.
  */
-type SettingStateModel = {
-  setting: IValues | null;
-  selectedCurrency: ICurrency | null;
-};
+interface SettingStateModel {
+	setting: IValues | null;
+	selectedCurrency: ICurrency | null;
+}
 
 const CURRENCY_KEY = 'selectedCurrency';
 
 export const SettingStore = signalStore(
-  { providedIn: 'root' },
-  withState<SettingStateModel>({ setting: null, selectedCurrency: null }),
-  withMethods(
-    (store, settingService = inject(SettingService), platformId = inject(PLATFORM_ID)) => ({
-      loadSettings: rxMethod<void>(
-        pipe(
-          switchMap(() =>
-            settingService.getSettingOption().pipe(
-              tap(result => {
-                patchState(store, state => ({
-                  setting: result.values,
-                  selectedCurrency: state.selectedCurrency
-                    ? state.selectedCurrency
-                    : (result?.values?.general?.default_currency ?? null),
-                }));
-              }),
-            ),
-          ),
-        ),
-      ),
-      setCurrency(currency: ICurrency): void {
-        patchState(store, { selectedCurrency: currency });
-        if (isPlatformBrowser(platformId)) {
-          localStorage.setItem(CURRENCY_KEY, JSON.stringify(currency));
-        }
-      },
-    }),
-  ),
-  withHooks({
-    onInit(store) {
-      // Restore the persisted currency before settings load, so it isn't
-      // overwritten by the default_currency fallback.
-      if (isPlatformBrowser(inject(PLATFORM_ID))) {
-        const saved = localStorage.getItem(CURRENCY_KEY);
-        if (saved) patchState(store, { selectedCurrency: JSON.parse(saved) });
-      }
-    },
-  }),
+	{ providedIn: 'root' },
+	withState<SettingStateModel>({ setting: null, selectedCurrency: null }),
+	withMethods((store, settingService = inject(SettingService), platformId = inject(PLATFORM_ID)) => ({
+		loadSettings: rxMethod<void>(
+			pipe(
+				switchMap(() =>
+					settingService.getSettingOption().pipe(
+						tap((result) => {
+							patchState(store, (state) => ({
+								setting: result.values,
+								selectedCurrency: state.selectedCurrency
+									? state.selectedCurrency
+									: (result?.values?.general?.default_currency ?? null),
+							}));
+						}),
+					),
+				),
+			),
+		),
+		setCurrency(currency: ICurrency): void {
+			patchState(store, { selectedCurrency: currency });
+			if (isPlatformBrowser(platformId)) {
+				localStorage.setItem(CURRENCY_KEY, JSON.stringify(currency));
+			}
+		},
+	})),
+	withHooks({
+		onInit(store) {
+			// Restore the persisted currency before settings load, so it isn't
+			// overwritten by the default_currency fallback.
+			if (isPlatformBrowser(inject(PLATFORM_ID))) {
+				const saved = localStorage.getItem(CURRENCY_KEY);
+				if (saved) patchState(store, { selectedCurrency: JSON.parse(saved) });
+			}
+		},
+	}),
 );

@@ -1,54 +1,108 @@
 <div class="left-sidebar-box">
-  @if (blogService.skeletonLoader) {
-  <app-skeleton-blog [type]="'sidebar'" />
-  } @else {
-  <div class="accordion left-accordion-box" ngbAccordion>
-    @if ((resentBlog$ | async)?.length) {
-    <div class="accordion-item" ngbAccordionItem [collapsed]="false">
-      <h2 class="accordion-header" ngbAccordionHeader>
-        <button class="accordion-button" type="button" ngbAccordionButton>
-          {{ 'recent_posts' | translate }}
-        </button>
-      </h2>
-      <div class="accordion-collapse collapse" ngbAccordionCollapse>
-        <div class="accordion-body pt-0" ngbAccordionBody>
-          <ng-template>
-            <app-recent-post [blogs]="(resentBlog$ | async) || []" />
-          </ng-template>
-        </div>
-      </div>
-    </div>
-    } @if ((category$ | async)?.data?.length) {
-    <div class="accordion-item" ngbAccordionItem [collapsed]="false">
-      <h2 class="accordion-header" ngbAccordionHeader>
-        <button class="accordion-button" type="button" ngbAccordionButton>
-          {{ 'categories' | translate }}
-        </button>
-      </h2>
-      <div ngbAccordionCollapse class="accordion-collapse collapse">
-        <div class="accordion-body pt-0" ngbAccordionBody>
-          <ng-template>
-            <app-blog-category [data]="(category$ | async)?.data || []" />
-          </ng-template>
-        </div>
-      </div>
-    </div>
-    } @if ((tag$ | async)?.data?.length) {
-    <div class="accordion-item" ngbAccordionItem [collapsed]="false">
-      <h2 class="accordion-header" ngbAccordionHeader>
-        <button class="accordion-button" type="button" ngbAccordionButton>
-          {{ 'tags' | translate }}
-        </button>
-      </h2>
-      <div ngbAccordionCollapse class="accordion-collapse collapse">
-        <div class="accordion-body pt-0" ngbAccordionBody>
-          <ng-template>
-            <app-blog-tag [tags]="(tag$ | async)?.data || []" />
-          </ng-template>
-        </div>
-      </div>
-    </div>
-    }
-  </div>
-  }
+	@if (blogService.skeletonLoader) {
+	<app-skeleton-blog [type]="'sidebar'" />
+	} @else {
+	<div
+		class="accordion left-accordion-box"
+		ngbAccordion
+	>
+		@if ((resentBlog$ | async)?.length) {
+		<div
+			class="accordion-item"
+			ngbAccordionItem
+			[collapsed]="false"
+		>
+			<h2
+				class="accordion-header"
+				ngbAccordionHeader
+			>
+				<button
+					class="accordion-button"
+					type="button"
+					ngbAccordionButton
+				>
+					{{ 'recent_posts' | transloco }}
+				</button>
+			</h2>
+			<div
+				class="accordion-collapse collapse"
+				ngbAccordionCollapse
+			>
+				<div
+					class="accordion-body pt-0"
+					ngbAccordionBody
+				>
+					<ng-template>
+						<app-recent-post [blogs]="(resentBlog$ | async) || []" />
+					</ng-template>
+				</div>
+			</div>
+		</div>
+		} @if ((category$ | async)?.data?.length) {
+		<div
+			class="accordion-item"
+			ngbAccordionItem
+			[collapsed]="false"
+		>
+			<h2
+				class="accordion-header"
+				ngbAccordionHeader
+			>
+				<button
+					class="accordion-button"
+					type="button"
+					ngbAccordionButton
+				>
+					{{ 'categories' | transloco }}
+				</button>
+			</h2>
+			<div
+				ngbAccordionCollapse
+				class="accordion-collapse collapse"
+			>
+				<div
+					class="accordion-body pt-0"
+					ngbAccordionBody
+				>
+					<ng-template>
+						<app-blog-category [data]="(category$ | async)?.data || []" />
+					</ng-template>
+				</div>
+			</div>
+		</div>
+		} @if ((tag$ | async)?.data?.length) {
+		<div
+			class="accordion-item"
+			ngbAccordionItem
+			[collapsed]="false"
+		>
+			<h2
+				class="accordion-header"
+				ngbAccordionHeader
+			>
+				<button
+					class="accordion-button"
+					type="button"
+					ngbAccordionButton
+				>
+					{{ 'tags' | transloco }}
+				</button>
+			</h2>
+			<div
+				ngbAccordionCollapse
+				class="accordion-collapse collapse"
+			>
+				<div
+					class="accordion-body pt-0"
+					ngbAccordionBody
+				>
+					<ng-template>
+						<app-blog-tag [tags]="(tag$ | async)?.data || []" />
+					</ng-template>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+	}
 </div>

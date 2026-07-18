@@ -1,0 +1,17 @@
+// Give the item-detail cell more room and stop it clipping, so composed-line
+// config (add-on / bundle / measurements) wraps cleanly instead of truncating.
+.cart-section {
+	.cart-table {
+		td.product-detail {
+			max-width: 360px;
+
+			@media (max-width: 767px) {
+				max-width: none;
+			}
+		}
+
+		.product.border-0 {
+			overflow: visible;
+		}
+	}
+}

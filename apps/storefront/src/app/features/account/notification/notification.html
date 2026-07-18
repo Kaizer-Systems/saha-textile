@@ -1,24 +1,25 @@
 <div class="title-header">
-  <div class="d-flex align-items-center">
-    <h5>{{ 'notifications' | translate }}</h5>
-  </div>
+	<div class="d-flex align-items-center">
+		<h5>{{ 'notifications' | transloco }}</h5>
+	</div>
 </div>
 @if ((notification$ | async)?.length) {
 <ul class="notification-list">
-  @for (notification of (notification$ | async); track notification) {
-  <li [class.unread]="!notification.read_at">
-    <h4>{{ notification?.data?.message }}</h4>
-    <h5>
-      <i class="ri-time-line"></i> {{ notification?.created_at | date: 'dd MMM yyyy hh:mm:a' }}
-    </h5>
-  </li>
-  }
+	@for (notification of (notification$ | async); track notification) {
+	<li [class.unread]="!notification.read_at">
+		<h4>{{ notification?.data?.message }}</h4>
+		<h5>
+			<i class="ri-time-line"></i>
+			{{ notification?.created_at | date: 'dd MMM yyyy hh:mm:a' }}
+		</h5>
+	</li>
+	}
 </ul>
 } @if (!(notification$ | async)?.length) {
 <app-no-data
-  [class]="'no-data-added'"
-  [image]="'assets/svg/empty-items.svg'"
-  [text]="'No Notifications Found'"
-  [description]="'You have not received any notification yet'"
+	[class]="'no-data-added'"
+	[image]="'assets/svg/empty-items.svg'"
+	[text]="'no_notifications_found' | transloco"
+	[description]="'no_notifications_description' | transloco"
 />
 }

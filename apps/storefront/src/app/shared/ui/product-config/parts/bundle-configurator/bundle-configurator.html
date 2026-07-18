@@ -1,0 +1,109 @@
+<div class="bundle-configurator product-package">
+	<div class="bundle-status">
+		<i class="ri-checkbox-circle-line"></i>
+		<span>{{ 'bundle_availability_checked' | transloco }}</span>
+	</div>
+
+	<!-- Components -->
+	<div class="bundle-section">
+		<h4 class="bundle-heading">
+			{{ 'bundle_components' | transloco }}
+			<span class="count">({{ components().length }})</span>
+		</h4>
+		<ul class="bundle-components">
+			@for (comp of components(); track comp.code; let i = $index) {
+			<li class="bundle-component">
+				<span class="comp-index">{{ i + 1 }}</span>
+				<img
+					class="comp-image"
+					[src]="comp.image || 'assets/images/product.png'"
+					[alt]="comp.name"
+				/>
+				<div class="comp-main">
+					<h6 class="comp-name">{{ comp.name }}</h6>
+					<div class="comp-sku text-content">{{ 'sku' | transloco }}: {{ comp.sku }}</div>
+					@if (comp.attributes?.length) {
+					<div class="comp-attrs">
+						@for (a of comp.attributes; track a.code) {
+						<span>
+							{{ a.label | transloco }}:
+							<b>{{ a.value }}</b>
+						</span>
+						}
+					</div>
+					}
+				</div>
+				<div class="comp-meta">
+					<div class="comp-consumes text-content">
+						{{ 'consumes' | transloco }}:
+						<b>{{ comp.consumes }}</b>
+					</div>
+					@if (comp.requires_measurements) {
+					<div class="comp-flag warn">
+						<i class="ri-error-warning-line"></i>
+						{{ 'requires_measurements' | transloco }}
+					</div>
+					} @else if (comp.stock_status === 'in_stock') {
+					<div class="comp-flag ok">
+						{{ 'in_stock' | transloco }} @if (comp.stock) { ({{ comp.stock }} {{ 'units' | transloco }}) }
+					</div>
+					} @else {
+					<div class="comp-flag danger">{{ 'out_of_stock' | transloco }}</div>
+					}
+				</div>
+			</li>
+			}
+		</ul>
+	</div>
+
+	<!-- Options -->
+	@if (optionGroups().length) {
+	<div class="bundle-section">
+		<h4 class="bundle-heading">{{ 'choose_bundle_options' | transloco }}</h4>
+		@for (group of optionGroups(); track group.code) {
+		<app-option-swatch
+			[label]="group.label"
+			[terms]="group.terms"
+			[displayStyle]="group.style"
+			[required]="group.required"
+			[selected]="selectedCode(group)"
+			(selectedChange)="select(group, $event)"
+		/>
+		}
+	</div>
+	} @if (needsMeasurements()) {
+	<app-measurements-form
+		[fields]="bundle().measurement_fields || []"
+		[title]="'measurements_required_for_selection'"
+		[initialValues]="initialMeasurements()"
+		(valueChange)="onMeasurementsValue($event)"
+		(validChange)="onMeasurementsValid($event)"
+	/>
+	}
+
+	<!-- Order summary snapshot -->
+	<div class="bundle-summary">
+		<h5>{{ 'order_summary_snapshot' | transloco }}</h5>
+		<ul class="summary-lines">
+			@for (comp of components(); track comp.code) {
+			<li>
+				<span class="s-name">
+					{{ comp.name }}
+					<small>({{ comp.sku }})</small>
+				</span>
+				<span class="s-price">{{ comp.price | currencySymbol }}</span>
+			</li>
+			} @for (group of optionGroups(); track group.code) {
+			<li class="s-option">
+				<span class="s-name">{{ group.label | transloco }}: {{ selectedTermLabel(group) | transloco }}</span>
+				<span class="s-price">—</span>
+			</li>
+			}
+		</ul>
+		<div class="summary-total">
+			<span>{{ 'total' | transloco }}</span>
+			<span class="s-total-value">{{ total() | currencySymbol }}</span>
+		</div>
+		<p class="bundle-note text-content">{{ 'bundle_deliver_together' | transloco }}</p>
+	</div>
+</div>

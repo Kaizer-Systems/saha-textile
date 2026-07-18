@@ -1,0 +1,17 @@
+@if (relatedProducts.length) {
+<div class="pt-25">
+	<div class="category-menu">
+		<h3>{{ 'trending_products' | transloco }}</h3>
+		<ul class="product-list sidebar-product d-flex border-0 p-0">
+			@for (product of relatedProducts | slice:0:4; track product) {
+			<li>
+				<app-product-box
+					[product]="product"
+					[style]="'vertical'"
+				/>
+			</li>
+			}
+		</ul>
+	</div>
+</div>
+}

@@ -1,0 +1,59 @@
+.addon-group {
+	.addon-block {
+		margin-bottom: 18px;
+
+		.addon-head h4 {
+			font-size: 17px;
+			font-weight: 600;
+			margin-bottom: 6px;
+		}
+
+		.addon-help {
+			font-size: 13px;
+			margin-bottom: 12px;
+		}
+	}
+
+	.addon-total {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 14px 16px;
+		border-radius: 8px;
+		background-color: rgba(65, 115, 148, 0.06);
+		margin-bottom: 12px;
+
+		.total-label {
+			font-size: 15px;
+			font-weight: 600;
+		}
+
+		.total-value {
+			font-size: 20px;
+			font-weight: 700;
+			color: var(--theme-color);
+
+			small {
+				display: block;
+				text-align: right;
+				font-size: 12px;
+				font-weight: 400;
+				color: #666;
+			}
+		}
+	}
+
+	.addon-warning {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		color: #e8590c;
+		font-size: 13px;
+		margin: 0 0 8px;
+
+		i {
+			font-size: 16px;
+		}
+	}
+}

@@ -1,0 +1,16 @@
+@if (products().length) {
+<div class="container-fluid-lg you-may-also-like">
+	<app-title [title]="'you_may_also_like' | transloco" />
+	<!-- .product-arrow = theme's styled owl-nav arrows (rounded, remixicon glyphs) -->
+	<div class="product-arrow">
+		<app-theme-product
+			[productIds]="productIds()"
+			[style]="'horizontal'"
+			[slider]="true"
+			[sliderOption]="slider"
+			[productStyle]="'product-solid'"
+			[boxClass]="'product-box-bg'"
+		/>
+	</div>
+</div>
+}

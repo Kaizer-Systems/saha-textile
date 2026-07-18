@@ -13,11 +13,11 @@ import { OrderService } from '@data-access/services/order.service';
  * checkout component locally.
  */
 export function injectOrdersQuery(params: () => Params) {
-  const orderService = inject(OrderService);
-  return injectQuery(() => ({
-    queryKey: ['orders', params()],
-    queryFn: () => firstValueFrom(orderService.getOrders(params())),
-  }));
+	const orderService = inject(OrderService);
+	return injectQuery(() => ({
+		queryKey: ['orders', params()],
+		queryFn: () => firstValueFrom(orderService.getOrders(params())),
+	}));
 }
 
 /**
@@ -25,12 +25,11 @@ export function injectOrdersQuery(params: () => Params) {
  * Fetches the order list and selects the match (mock data has no by-id endpoint).
  */
 export function injectOrderByNumberQuery(orderNumber: () => number | string | undefined) {
-  const orderService = inject(OrderService);
-  return injectQuery(() => ({
-    queryKey: ['orders', 'all'],
-    queryFn: () => firstValueFrom(orderService.getOrders()),
-    select: (res: IOrderModel): IOrder | undefined =>
-      res.data.find(order => order.order_number == orderNumber()),
-    enabled: !!orderNumber(),
-  }));
+	const orderService = inject(OrderService);
+	return injectQuery(() => ({
+		queryKey: ['orders', 'all'],
+		queryFn: () => firstValueFrom(orderService.getOrders()),
+		select: (res: IOrderModel): IOrder | undefined => res.data.find((order) => order.order_number == orderNumber()),
+		enabled: !!orderNumber(),
+	}));
 }

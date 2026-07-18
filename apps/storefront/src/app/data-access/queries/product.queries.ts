@@ -14,57 +14,51 @@ import { ProductService } from '@data-access/services/product.service';
  * this moves server-side and the transform can be dropped.
  */
 export function filterProducts(result: IProductModel, payload?: Params): IProductModel {
-  let products = result.data || [];
+	let products = result.data || [];
 
-  if (payload) {
-    products = result?.data?.filter(
-      product =>
-        (payload['store_slug'] && product?.store?.slug == payload['store_slug']) ||
-        (payload['category'] &&
-          product?.categories.length &&
-          product?.categories?.some(category =>
-            payload['category']?.split(',')?.includes(category.slug),
-          )),
-    );
+	if (payload) {
+		products = result?.data?.filter(
+			(product) =>
+				(payload['store_slug'] && product?.store?.slug == payload['store_slug']) ||
+				(payload['category'] &&
+					product?.categories.length &&
+					product?.categories?.some((category) => payload['category']?.split(',')?.includes(category.slug))),
+		);
 
-    products = products && products.length ? products : result.data;
+		products = products && products.length ? products : result.data;
 
-    if (products) {
-      if (payload['sortBy']) {
-        if (payload['sortBy'] === 'asc') {
-          products = products.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-        } else if (payload['sortBy'] === 'desc') {
-          products = products.sort((a, b) => (a.id > b.id ? -1 : a.id < b.id ? 1 : 0));
-        } else if (payload['sortBy'] === 'a-z') {
-          products = products.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-        } else if (payload['sortBy'] === 'z-a') {
-          products = products.sort((a, b) => (a.name > b.name ? -1 : a.name < b.name ? 1 : 0));
-        } else if (payload['sortBy'] === 'low-high') {
-          products = products.sort((a, b) =>
-            a.sale_price < b.sale_price ? -1 : a.price > b.price ? 1 : 0,
-          );
-        } else if (payload['sortBy'] === 'high-low') {
-          products = products.sort((a, b) =>
-            a.sale_price > b.sale_price ? -1 : a.price < b.price ? 1 : 0,
-          );
-        }
-      } else if (!payload['ids']) {
-        products = products.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-      }
-    }
+		if (products) {
+			if (payload['sortBy']) {
+				if (payload['sortBy'] === 'asc') {
+					products = products.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+				} else if (payload['sortBy'] === 'desc') {
+					products = products.sort((a, b) => (a.id > b.id ? -1 : a.id < b.id ? 1 : 0));
+				} else if (payload['sortBy'] === 'a-z') {
+					products = products.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+				} else if (payload['sortBy'] === 'z-a') {
+					products = products.sort((a, b) => (a.name > b.name ? -1 : a.name < b.name ? 1 : 0));
+				} else if (payload['sortBy'] === 'low-high') {
+					products = products.sort((a, b) => (a.sale_price < b.sale_price ? -1 : a.price > b.price ? 1 : 0));
+				} else if (payload['sortBy'] === 'high-low') {
+					products = products.sort((a, b) => (a.sale_price > b.sale_price ? -1 : a.price < b.price ? 1 : 0));
+				}
+			} else if (!payload['ids']) {
+				products = products.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+			}
+		}
 
-    if (payload['search']) {
-      products = products.filter(product =>
-        product.name.toLowerCase().includes(payload['search'].toLowerCase()),
-      );
-    }
-  }
+		if (payload['search']) {
+			products = products.filter((product) =>
+				product.name.toLowerCase().includes(payload['search'].toLowerCase()),
+			);
+		}
+	}
 
-  return {
-    ...result,
-    data: products,
-    total: result?.total ? result?.total : result.data ? result.data.length : 0,
-  };
+	return {
+		...result,
+		data: products,
+		total: result?.total ? result?.total : result.data ? result.data.length : 0,
+	};
 }
 
 /**
@@ -73,13 +67,13 @@ export function filterProducts(result: IProductModel, payload?: Params): IProduc
  * for the raw, untransformed list (theme widgets that filter by their own ids).
  */
 export function injectProductsQuery(params: () => Params | undefined) {
-  const productService = inject(ProductService);
-  return injectQuery(() => ({
-    queryKey: ['products', params()],
-    queryFn: () => firstValueFrom(productService.getProducts(params())),
-    select: (res: IProductModel): IProductModel => filterProducts(res, params()),
-    staleTime: Infinity,
-  }));
+	const productService = inject(ProductService);
+	return injectQuery(() => ({
+		queryKey: ['products', params()],
+		queryFn: () => firstValueFrom(productService.getProducts(params())),
+		select: (res: IProductModel): IProductModel => filterProducts(res, params()),
+		staleTime: Infinity,
+	}));
 }
 
 /**
@@ -87,22 +81,22 @@ export function injectProductsQuery(params: () => Params | undefined) {
  * Filters the list to the given ids, falling back to the last two products.
  */
 export function injectDealProductsQuery(params: () => Params | undefined) {
-  const productService = inject(ProductService);
-  return injectQuery(() => ({
-    queryKey: ['products', 'deal', params()],
-    queryFn: () => firstValueFrom(productService.getProducts(params())),
-    select: (res: IProductModel): IProduct[] => {
-      const ids = params()?.['ids'];
-      const matched = res?.data?.filter(product =>
-        ids
-          ?.split(',')
-          ?.map((id: number) => Number(id))
-          .includes(product.id),
-      );
-      return matched && matched.length ? matched : res?.data?.reverse()?.slice(0, 2);
-    },
-    staleTime: Infinity,
-  }));
+	const productService = inject(ProductService);
+	return injectQuery(() => ({
+		queryKey: ['products', 'deal', params()],
+		queryFn: () => firstValueFrom(productService.getProducts(params())),
+		select: (res: IProductModel): IProduct[] => {
+			const ids = params()?.['ids'];
+			const matched = res?.data?.filter((product) =>
+				ids
+					?.split(',')
+					?.map((id: number) => Number(id))
+					.includes(product.id),
+			);
+			return matched && matched.length ? matched : res?.data?.reverse()?.slice(0, 2);
+		},
+		staleTime: Infinity,
+	}));
 }
 
 /**
@@ -111,24 +105,22 @@ export function injectDealProductsQuery(params: () => Params | undefined) {
  * detail widgets can derive their related-products query params.
  */
 export function injectProductBySlugQuery(slug: () => string | undefined) {
-  const productService = inject(ProductService);
-  return injectQuery(() => ({
-    queryKey: ['products', 'all'],
-    queryFn: () => firstValueFrom(productService.getProducts()),
-    select: (res: IProductModel): IProduct | undefined => {
-      const result = res.data.find(product => product.slug == slug());
-      if (!result) return undefined;
-      result.related_products =
-        result.related_products && result.related_products.length ? result.related_products : [];
-      result.cross_sell_products =
-        result.cross_sell_products && result.cross_sell_products.length
-          ? result.cross_sell_products
-          : [];
-      return result;
-    },
-    enabled: !!slug(),
-    staleTime: Infinity,
-  }));
+	const productService = inject(ProductService);
+	return injectQuery(() => ({
+		queryKey: ['products', 'all'],
+		queryFn: () => firstValueFrom(productService.getProducts()),
+		select: (res: IProductModel): IProduct | undefined => {
+			const result = res.data.find((product) => product.slug == slug());
+			if (!result) return undefined;
+			result.related_products =
+				result.related_products && result.related_products.length ? result.related_products : [];
+			result.cross_sell_products =
+				result.cross_sell_products && result.cross_sell_products.length ? result.cross_sell_products : [];
+			return result;
+		},
+		enabled: !!slug(),
+		staleTime: Infinity,
+	}));
 }
 
 /** Fixed cache slot the detail widgets read as the shared related-products set. */
@@ -143,27 +135,27 @@ export const RELATED_PRODUCTS_KEY = ['products', 'related', 'current'];
  * so the detail widgets can read the same set via injectRelatedProductsData.
  */
 export function injectRelatedProductsQuery(params: () => Params | undefined) {
-  const productService = inject(ProductService);
-  return injectQuery(() => ({
-    queryKey: ['products', 'related', params()],
-    queryFn: async (): Promise<IProduct[]> => {
-      const payload = params();
-      const res = await firstValueFrom(productService.getProducts());
-      return res.data.filter(
-        product =>
-          payload?.['ids']
-            ?.split(',')
-            ?.map((id: number) => Number(id))
-            .includes(product.id) ||
-          (product?.categories.length &&
-            product?.categories
-              ?.map(category => category.id)
-              .includes(Number(payload?.['category_ids']))),
-      );
-    },
-    enabled: !!params()?.['ids'] || !!params()?.['category_ids'],
-    staleTime: Infinity,
-  }));
+	const productService = inject(ProductService);
+	return injectQuery(() => ({
+		queryKey: ['products', 'related', params()],
+		queryFn: async (): Promise<IProduct[]> => {
+			const payload = params();
+			const res = await firstValueFrom(productService.getProducts());
+			return res.data.filter(
+				(product) =>
+					payload?.['ids']
+						?.split(',')
+						?.map((id: number) => Number(id))
+						.includes(product.id) ||
+					(product?.categories.length &&
+						product?.categories
+							?.map((category) => category.id)
+							.includes(Number(payload?.['category_ids']))),
+			);
+		},
+		enabled: !!params()?.['ids'] || !!params()?.['category_ids'],
+		staleTime: Infinity,
+	}));
 }
 
 /**
@@ -172,10 +164,10 @@ export function injectRelatedProductsQuery(params: () => Params | undefined) {
  * RELATED_PRODUCTS_KEY. Used by the detail widgets (related/trending/bundle).
  */
 export function injectRelatedProductsData() {
-  return injectQuery(() => ({
-    queryKey: RELATED_PRODUCTS_KEY,
-    queryFn: () => Promise.resolve<IProduct[]>([]),
-    enabled: false,
-    staleTime: Infinity,
-  }));
+	return injectQuery(() => ({
+		queryKey: RELATED_PRODUCTS_KEY,
+		queryFn: () => Promise.resolve<IProduct[]>([]),
+		enabled: false,
+		staleTime: Infinity,
+	}));
 }

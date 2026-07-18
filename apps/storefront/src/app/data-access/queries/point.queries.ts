@@ -11,9 +11,9 @@ import { PointService } from '@data-access/services/point.service';
  * PointState + GetUserTransactionAction). Keyed on the paginate params signal.
  */
 export function injectPointTransactionsQuery(params: () => Params) {
-  const pointService = inject(PointService);
-  return injectQuery(() => ({
-    queryKey: ['point-transactions', params()],
-    queryFn: () => firstValueFrom(pointService.getUserTransaction(params())),
-  }));
+	const pointService = inject(PointService);
+	return injectQuery(() => ({
+		queryKey: ['point-transactions', params()],
+		queryFn: () => firstValueFrom(pointService.getUserTransaction(params())),
+	}));
 }

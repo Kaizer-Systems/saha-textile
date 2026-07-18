@@ -1,10 +1,10 @@
 export interface IBreadcrumb {
-  title: string;
-  items: IItem[];
+	title: string;
+	items: IItem[];
 }
 
 export interface IItem {
-  label: string;
-  url?: string;
-  active?: boolean;
+	label: string;
+	url?: string;
+	active?: boolean;
 }

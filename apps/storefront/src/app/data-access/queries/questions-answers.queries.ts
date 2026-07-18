@@ -12,10 +12,10 @@ import { QuestionsAnswersService } from '@data-access/services/questions-answers
  * ['qna', productId] from the display widget. Send/Update were no-op mocks.
  */
 export function injectQuestionAnswersQuery(productId: () => number | string | undefined) {
-  const service = inject(QuestionsAnswersService);
-  return injectQuery(() => ({
-    queryKey: ['qna', productId()],
-    queryFn: () => firstValueFrom(service.getQuestionAnswers({ product_id: productId() })),
-    enabled: !!productId(),
-  }));
+	const service = inject(QuestionsAnswersService);
+	return injectQuery(() => ({
+		queryKey: ['qna', productId()],
+		queryFn: () => firstValueFrom(service.getQuestionAnswers({ product_id: productId() })),
+		enabled: !!productId(),
+	}));
 }

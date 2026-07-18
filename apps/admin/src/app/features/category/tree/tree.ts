@@ -1,17 +1,18 @@
 import { Component, input } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
+
+import { ICategory } from '@data-access/interfaces/category.interface';
+import { NoData } from '@shared/ui/no-data/no-data';
 
 import { TreeNode } from './tree-node/tree-node';
-import { NoData } from '@shared/ui/no-data/no-data';
-import { ICategory } from '@data-access/interfaces/category.interface';
 
 @Component({
 	selector: 'app-tree',
 	templateUrl: './tree.html',
 	styleUrls: ['./tree.scss'],
-	imports: [ReactiveFormsModule, TreeNode, NoData, TranslateModule],
+	imports: [ReactiveFormsModule, TreeNode, NoData, TranslocoModule],
 })
 export class Tree {
 	readonly type = input<string>(undefined);

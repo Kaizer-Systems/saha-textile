@@ -41,7 +41,7 @@
 		}
 		<app-page-wrapper
 			[gridClass]="'col-sm-12'"
-			[title]="('order_number' | translate)+': #'+order?.order_number"
+			[title]="('order_number' | transloco)+': #'+order?.order_number"
 		>
 			@if (!order?.sub_orders?.length && (order?.order_status?.slug !== 'cancelled' && order?.order_status?.slug
 			!== 'delivered')) {
@@ -50,7 +50,7 @@
 				<select2
 					class="custom-select min-w-cls"
 					[data]="(orderStatuses$ | async)?.length ? (orderStatuses$ | async) : []"
-					[placeholder]="'select_status' | translate "
+					[placeholder]="'select_status' | transloco "
 					[value]="order?.order_status?.id"
 					(update)="updateOrderStatus($event)"
 				/>
@@ -61,11 +61,11 @@
 				<table class="product-table table">
 					<thead>
 						<tr>
-							<th scope="col">{{ 'image' | translate }}</th>
-							<th scope="col">{{ 'name' | translate }}</th>
-							<th scope="col">{{ 'price' | translate }}</th>
-							<th scope="col">{{ 'quantity' | translate }}</th>
-							<th scope="col">{{ 'subtotal' | translate }}</th>
+							<th scope="col">{{ 'image' | transloco }}</th>
+							<th scope="col">{{ 'name' | transloco }}</th>
+							<th scope="col">{{ 'price' | transloco }}</th>
+							<th scope="col">{{ 'quantity' | transloco }}</th>
+							<th scope="col">{{ 'subtotal' | transloco }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -111,11 +111,11 @@
 				<table class="all-package theme-table no-footer table">
 					<thead>
 						<tr>
-							<th scope="col">{{ 'order_number' | translate }}</th>
-							<th scope="col">{{ 'order_date' | translate }}</th>
-							<th scope="col">{{ 'total_amount' | translate }}</th>
-							<th scope="col">{{ 'status' | translate }}</th>
-							<th scope="col">{{ 'action' | translate }}</th>
+							<th scope="col">{{ 'order_number' | transloco }}</th>
+							<th scope="col">{{ 'order_date' | transloco }}</th>
+							<th scope="col">{{ 'total_amount' | transloco }}</th>
+							<th scope="col">{{ 'status' | transloco }}</th>
+							<th scope="col">{{ 'action' | transloco }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -166,7 +166,7 @@
 						class="btn btn-animation btn-sm ms-auto"
 						download="download"
 					>
-						{{ 'invoice' | translate }}
+						{{ 'invoice' | transloco }}
 						<i class="ri-download-2-fill"></i>
 					</a>
 				</div>
@@ -174,30 +174,30 @@
 				<div class="tracking-total tracking-wrapper">
 					<ul>
 						<li>
-							{{ 'subtotal' | translate }}
+							{{ 'subtotal' | transloco }}
 							<span>{{ (order?.amount ? order?.amount : 0) | currencySymbol }}</span>
 						</li>
 						<li>
-							{{ 'shipping' | translate }}
+							{{ 'shipping' | transloco }}
 							<span>{{ (order?.shipping_total ? order?.shipping_total : 0) | currencySymbol }}</span>
 						</li>
 						<li>
-							{{ 'tax' | translate }}
+							{{ 'tax' | transloco }}
 							<span>{{ (order?.tax_total ? order?.tax_total : 0) | currencySymbol }}</span>
 						</li>
 						@if (order?.points_amount !== 0) {
 						<li class="txt-primary fw-bold">
-							{{ 'points' | translate }}
+							{{ 'points' | transloco }}
 							<span>{{ order?.points_amount | currencySymbol }}</span>
 						</li>
 						} @if (order?.wallet_balance !== 0) {
 						<li class="txt-primary fw-bold">
-							{{ 'wallet_balance' | translate }}
+							{{ 'wallet_balance' | transloco }}
 							<span>{{ order?.wallet_balance | currencySymbol }}</span>
 						</li>
 						}
 						<li>
-							{{ 'total' | translate }}
+							{{ 'total' | transloco }}
 							<span>{{ (order?.total ? order?.total : 0) | currencySymbol }}</span>
 						</li>
 					</ul>
@@ -210,41 +210,41 @@
 				<div class="customer-detail tracking-wrapper">
 					<ul>
 						<li>
-							<label>{{ 'name' | translate }}:</label>
+							<label>{{ 'name' | transloco }}:</label>
 							<h4>{{ order?.consumer?.name }}</h4>
 						</li>
 						<li>
-							<label>{{ 'email_address' | translate }}:</label>
+							<label>{{ 'email_address' | transloco }}:</label>
 							<h4>{{ order?.consumer?.email }}</h4>
 						</li>
 						<li>
-							<label>{{'billing_address' | translate }}:</label>
+							<label>{{'billing_address' | transloco }}:</label>
 							<h4>
 								{{ order?.billing_address?.street }} {{ order?.billing_address?.city }} {{
 								order?.billing_address?.state?.name }} {{ order?.billing_address?.country?.name }} {{
 								order?.billing_address?.pincode }}
 								<br />
-								{{ 'phone' | translate }} : +{{ order?.shipping_address?.country_code }} {{
+								{{ 'phone' | transloco }} : +{{ order?.shipping_address?.country_code }} {{
 								order?.billing_address?.phone }}
 							</h4>
 						</li>
 						<li>
-							<label>{{ 'shipping_address' | translate }}:</label>
+							<label>{{ 'shipping_address' | transloco }}:</label>
 							<h4>
 								{{ order?.shipping_address?.street }} {{ order?.shipping_address?.city }} {{
 								order?.shipping_address?.state?.name }} {{ order?.shipping_address?.country?.name }} {{
 								order?.shipping_address?.pincode }}
 								<br />
-								{{ 'phone' | translate }} : +{{ order?.shipping_address?.country_code }} {{
+								{{ 'phone' | transloco }} : +{{ order?.shipping_address?.country_code }} {{
 								order?.shipping_address?.phone }}
 							</h4>
 						</li>
 						<li>
-							<label>{{ 'delivery_slot' | translate }}:</label>
+							<label>{{ 'delivery_slot' | transloco }}:</label>
 							<h4>{{ order?.delivery_description }}</h4>
 						</li>
 						<li>
-							<label>{{ 'payment_mode' | translate }}:</label>
+							<label>{{ 'payment_mode' | transloco }}:</label>
 							<h4>{{ order?.payment_method | uppercase }}</h4>
 						</li>
 					</ul>

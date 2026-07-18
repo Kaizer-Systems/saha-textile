@@ -1,8 +1,10 @@
 import { isPlatformBrowser, AsyncPipe } from '@angular/common';
 import { Component, DOCUMENT, computed, inject, input, PLATFORM_ID, Renderer2, signal, viewChild } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import {
 	NgbCalendar,
 	NgbDate,
@@ -17,20 +19,18 @@ import {
 	NgbNavLinkBase,
 	NgbNavOutlet,
 } from '@ng-bootstrap/ng-bootstrap';
-import { toObservable } from '@angular/core/rxjs-interop';
-import { TranslateModule } from '@ngx-translate/core';
 import { Select2, Select2Data, Select2Module, Select2SearchEvent } from 'ng-select2-component';
 import { Observable, of, Subject } from 'rxjs';
 import { debounceTime, map, switchMap, takeUntil } from 'rxjs/operators';
 
-import { injectProductsQuery } from '@data-access/queries/product.queries';
 import { SettingStore } from '@core/state/setting.store';
+import { Params } from '@data-access/interfaces/core.interface';
+import { ICoupon } from '@data-access/interfaces/coupon.interface';
+import { IValues } from '@data-access/interfaces/setting.interface';
+import { injectProductsQuery } from '@data-access/queries/product.queries';
 import { CouponService } from '@data-access/services/coupon.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ICoupon } from '@data-access/interfaces/coupon.interface';
-import { Params } from '@data-access/interfaces/core.interface';
-import { IValues } from '@data-access/interfaces/setting.interface';
 
 function convertToNgbDate(date: NgbDateStruct): NgbDate {
 	return new NgbDate(date.year, date.month, date.day);
@@ -53,7 +53,7 @@ function convertToNgbDate(date: NgbDateStruct): NgbDate {
 		NgbInputDatepicker,
 		NgbNavOutlet,
 		Button,
-		TranslateModule,
+		TranslocoModule,
 		AsyncPipe,
 	],
 })

@@ -1,7 +1,7 @@
 import { Component, TemplateRef, inject, viewChild } from '@angular/core';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { NgbModal, ModalDismissReasons } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 
 import { FormShipping } from '../../form-shipping/form-shipping';
 
@@ -9,7 +9,7 @@ import { FormShipping } from '../../form-shipping/form-shipping';
 	selector: 'app-shipping-rule-modal',
 	templateUrl: './shipping-rule-modal.html',
 	styleUrls: ['./shipping-rule-modal.scss'],
-	imports: [FormShipping, TranslateModule],
+	imports: [FormShipping, TranslocoModule],
 })
 export class ShippingRuleModal {
 	private modalService = inject(NgbModal);

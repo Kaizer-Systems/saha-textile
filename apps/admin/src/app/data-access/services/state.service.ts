@@ -3,8 +3,9 @@ import { Injectable, inject } from '@angular/core';
 
 import { Observable } from 'rxjs';
 
-import { environment } from '../../../../public/environments/environment';
 import { IStates } from '@data-access/interfaces/state.interface';
+
+import { environment } from '../../../../public/environments/environment';
 
 @Injectable({
 	providedIn: 'root',

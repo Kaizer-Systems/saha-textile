@@ -3,23 +3,23 @@ import { Component, PLATFORM_ID, computed, inject, input } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Select2Data, Select2Module } from 'ng-select2-component';
 import { Subject, of } from 'rxjs';
 import { map, switchMap, takeUntil } from 'rxjs/operators';
 
 import { injectRolesQuery } from '@data-access/queries/role.queries';
+import { UserService } from '@data-access/services/user.service';
+import * as data from '@shared/data/country-code';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import * as data from '@shared/data/country-code';
-import { UserService } from '@data-access/services/user.service';
 import { CustomValidators } from '@shared/validators/password-match';
 
 @Component({
 	selector: 'app-form-user',
 	templateUrl: './form-user.html',
 	styleUrls: ['./form-user.scss'],
-	imports: [ReactiveFormsModule, FormFields, Select2Module, Button, TranslateModule, AsyncPipe],
+	imports: [ReactiveFormsModule, FormFields, Select2Module, Button, TranslocoModule, AsyncPipe],
 })
 export class FormUser {
 	private route = inject(ActivatedRoute);

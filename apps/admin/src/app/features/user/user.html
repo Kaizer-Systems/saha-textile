@@ -13,7 +13,7 @@
 			(click)="CSVModal().openModal()"
 		>
 			<i class="ri-upload-2-line"></i>
-			{{ 'Import' | translate }}
+			{{ 'Import' | transloco }}
 		</a>
 		<a
 			href="javascript:void(0)"
@@ -21,14 +21,14 @@
 			(click)="export()"
 		>
 			<i class="ri-download-2-line"></i>
-			{{ 'Export' | translate }}
+			{{ 'Export' | transloco }}
 		</a>
 		<a
 			[routerLink]="['/user/create']"
 			class="align-items-center btn btn-theme"
 		>
 			<i class="ri-add-line"></i>
-			{{ 'add_user' | translate }}
+			{{ 'add_user' | transloco }}
 		</a>
 	</div>
 	<app-table

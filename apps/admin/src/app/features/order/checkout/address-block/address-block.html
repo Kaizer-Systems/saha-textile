@@ -1,6 +1,6 @@
 @if (!addresses()?.length) {
 <div class="empty-box">
-	<h2>{{ 'no_address_found' | translate }}</h2>
+	<h2>{{ 'no_address_found' | transloco }}</h2>
 </div>
 }
 <div class="row g-3">
@@ -25,7 +25,7 @@
 						</li>
 						<li>
 							<p class="text-content">
-								<span class="text-title">{{ 'address' | translate }}:</span>
+								<span class="text-title">{{ 'address' | transloco }}:</span>
 								{{ address?.street }}, {{ address?.city }}, {{ address?.state?.name }}, {{
 								address?.country?.name }}
 							</p>
@@ -33,14 +33,14 @@
 						@if (address?.pincode) {
 						<li>
 							<h6 class="text-content">
-								<span class="text-title">{{ 'pincode' | translate }}:</span>
+								<span class="text-title">{{ 'pincode' | transloco }}:</span>
 								{{ address?.pincode }}
 							</h6>
 						</li>
 						} @if (address?.phone) {
 						<li>
 							<h6 class="text-content mb-0">
-								<span class="text-title">{{ 'phone' | translate }} :</span>
+								<span class="text-title">{{ 'phone' | transloco }} :</span>
 								{{ address?.phone }}
 							</h6>
 						</li>

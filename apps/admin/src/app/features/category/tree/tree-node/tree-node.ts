@@ -1,9 +1,9 @@
 import { Component, inject, viewChild, input } from '@angular/core';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 
-import { DeleteModal } from '@shared/ui/modal/delete-modal/delete-modal';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { ICategory } from '@data-access/interfaces/category.interface';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { DeleteModal } from '@shared/ui/modal/delete-modal/delete-modal';
 
 @Component({
 	selector: 'app-tree-node',

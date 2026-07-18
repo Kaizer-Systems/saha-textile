@@ -4,6 +4,7 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import {
 	NgbAccordionBody,
 	NgbAccordionButton,
@@ -26,29 +27,28 @@ import {
 	NgbNavLinkBase,
 	NgbNavOutlet,
 } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 import { Select2, Select2Data, Select2Module, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
 import { Editor, NgxEditorModule } from 'ngx-editor';
 import { Observable, of, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map, switchMap, takeUntil } from 'rxjs/operators';
 
-import { injectAttributesQuery, injectAttributeValuesQuery } from '@data-access/queries/attribute.queries';
-import { injectCategoriesQuery } from '@data-access/queries/category.queries';
-import { injectProductsQuery } from '@data-access/queries/product.queries';
-import { ProductService } from '@data-access/services/product.service';
-import { injectStoresQuery } from '@data-access/queries/store.queries';
-import { injectTaxesQuery } from '@data-access/queries/tax.queries';
-import { injectTagsQuery } from '@data-access/queries/tag.queries';
-import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
-import { Button } from '@shared/ui/button/button';
-import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { SettingStore } from '@core/state/setting.store';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICategoryModel } from '@data-access/interfaces/category.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProduct, IVariant, IVariation, IVariationCombination } from '@data-access/interfaces/product.interface';
 import { IValues } from '@data-access/interfaces/setting.interface';
-import { SettingStore } from '@core/state/setting.store';
+import { injectAttributesQuery, injectAttributeValuesQuery } from '@data-access/queries/attribute.queries';
+import { injectCategoriesQuery } from '@data-access/queries/category.queries';
+import { injectProductsQuery } from '@data-access/queries/product.queries';
+import { injectStoresQuery } from '@data-access/queries/store.queries';
+import { injectTagsQuery } from '@data-access/queries/tag.queries';
+import { injectTaxesQuery } from '@data-access/queries/tax.queries';
+import { ProductService } from '@data-access/services/product.service';
+import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
+import { Button } from '@shared/ui/button/button';
+import { FormFields } from '@shared/ui/form-fields/form-fields';
+import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 import { priceValidator } from '@shared/validators/price-validator';
 
 function convertToNgbDate(date: NgbDateStruct): NgbDate {
@@ -83,7 +83,7 @@ function convertToNgbDate(date: NgbDateStruct): NgbDate {
 		ImageUpload,
 		AdvancedDropdown,
 		NgbNavOutlet,
-		TranslateModule,
+		TranslocoModule,
 		AsyncPipe,
 	],
 })
@@ -128,7 +128,9 @@ export class FormProduct {
 	);
 	private readonly storesQuery = injectStoresQuery(() => ({ status: 1, is_approved: 1 }));
 	store$: Observable<Select2Data> = toObservable(
-		computed(() => this.storesQuery.data()?.data.map((store) => ({ label: store.store_name, value: store.id })) ?? []),
+		computed(
+			() => this.storesQuery.data()?.data.map((store) => ({ label: store.store_name, value: store.id })) ?? [],
+		),
 	);
 	private readonly categoriesQuery = injectCategoriesQuery(() => ({ type: 'product', status: 1 }));
 	category$: Observable<ICategoryModel | undefined> = toObservable(this.categoriesQuery.data);

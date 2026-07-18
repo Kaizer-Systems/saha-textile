@@ -1,6 +1,7 @@
 import { Component, input } from '@angular/core';
 
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+
 import { FormTag } from '../form-tag/form-tag';
 
 @Component({

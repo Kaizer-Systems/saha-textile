@@ -5,8 +5,8 @@
 				<app-alert />
 				<div class="log-in-box">
 					<div class="log-in-title">
-						<h3>{{ 'welcome_to_fastkart' | translate }}</h3>
-						<h4>{{ 'log_in_your_account' | translate }}</h4>
+						<h3>{{ 'welcome_to_fastkart' | transloco }}</h3>
+						<h4>{{ 'log_in_your_account' | transloco }}</h4>
 					</div>
 					<div class="input-box">
 						<form
@@ -21,14 +21,14 @@
 										class="form-control"
 										id="email"
 										formControlName="email"
-										placeholder="{{ 'email_address' | translate }}"
+										placeholder="{{ 'email_address' | transloco }}"
 									/>
-									<label for="email">{{ 'email_address' | translate }}</label>
+									<label for="email">{{ 'email_address' | transloco }}</label>
 									@if (form.controls['email'].touched && form.controls['email'].errors?.['required'])
 									{
-									<div class="invalid-feedback">{{ 'email_is_required' | translate }}</div>
+									<div class="invalid-feedback">{{ 'email_is_required' | transloco }}</div>
 									} @if (form.controls['email'].touched && form.controls['email'].errors?.['email']) {
-									<div class="invalid-feedback">{{ 'invalid_email' | translate }}</div>
+									<div class="invalid-feedback">{{ 'invalid_email' | transloco }}</div>
 									}
 								</div>
 							</div>
@@ -39,12 +39,12 @@
 										class="form-control"
 										id="password"
 										formControlName="password"
-										placeholder="{{ 'password' | translate }} "
+										placeholder="{{ 'password' | transloco }} "
 									/>
-									<label for="password">{{ 'password' | translate }}</label>
+									<label for="password">{{ 'password' | transloco }}</label>
 									@if (form.controls['password'].touched &&
 									form.controls['password'].errors?.['required']) {
-									<div class="invalid-feedback">{{ 'password_is_required' | translate }}</div>
+									<div class="invalid-feedback">{{ 'password_is_required' | transloco }}</div>
 									}
 								</div>
 							</div>
@@ -54,7 +54,7 @@
 										class="forgot-password"
 										[routerLink]="['/auth/forgot-password']"
 									>
-										{{ 'forgot_password' | translate }}?
+										{{ 'forgot_password' | transloco }}?
 									</a>
 								</div>
 							</div>
@@ -63,7 +63,7 @@
 									[class]="'btn btn-theme w-100 justify-content-center'"
 									[id]="'login_btn'"
 								>
-									{{ 'log_in' | translate }}
+									{{ 'log_in' | transloco }}
 								</app-button>
 							</div>
 						</form>

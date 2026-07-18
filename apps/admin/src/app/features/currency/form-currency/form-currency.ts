@@ -3,21 +3,21 @@ import { Component, PLATFORM_ID, inject, input } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Select2Data, Select2UpdateEvent, Select2Module } from 'ng-select2-component';
 import { Subject, of } from 'rxjs';
 import { switchMap, map, takeUntil } from 'rxjs/operators';
 
+import { CurrencyService } from '@data-access/services/currency.service';
+import * as data from '@shared/data/currency';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import * as data from '@shared/data/currency';
-import { CurrencyService } from '@data-access/services/currency.service';
 
 @Component({
 	selector: 'app-form-currency',
 	templateUrl: './form-currency.html',
 	styleUrls: ['./form-currency.scss'],
-	imports: [ReactiveFormsModule, FormFields, Select2Module, Button, TranslateModule],
+	imports: [ReactiveFormsModule, FormFields, Select2Module, Button, TranslocoModule],
 })
 export class FormCurrency {
 	private currencyService = inject(CurrencyService);

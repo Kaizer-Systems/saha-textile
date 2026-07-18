@@ -6,7 +6,7 @@
 			<div class="col-xl-3 col-sm-6">
 				<div class="card-tiles">
 					<div>
-						<h6>{{ 'total_revenue' | translate }}</h6>
+						<h6>{{ 'total_revenue' | transloco }}</h6>
 						<h3>{{ (statistics$ | async)?.total_revenue | currencySymbol }}</h3>
 					</div>
 					<div class="icon-box">
@@ -17,7 +17,7 @@
 			<div class="col-xl-3 col-sm-6">
 				<div class="card-tiles">
 					<div>
-						<h6>{{ 'total_orders' | translate }}</h6>
+						<h6>{{ 'total_orders' | transloco }}</h6>
 						<h3>{{ (statistics$ | async)?.total_orders }}</h3>
 					</div>
 					<div class="icon-box">
@@ -28,7 +28,7 @@
 			<div class="col-xl-3 col-sm-6">
 				<div class="card-tiles">
 					<div>
-						<h6>{{ 'total_stores' | translate }}</h6>
+						<h6>{{ 'total_stores' | transloco }}</h6>
 						<h3>{{ (statistics$ | async)?.total_stores }}</h3>
 					</div>
 					<div class="icon-box">
@@ -39,7 +39,7 @@
 			<div class="col-xl-3 col-sm-6">
 				<div class="card-tiles">
 					<div>
-						<h6>{{ 'total_user' | translate }}</h6>
+						<h6>{{ 'total_user' | transloco }}</h6>
 						<h3>{{ (statistics$ | async)?.total_users }}</h3>
 					</div>
 					<div class="icon-box">
@@ -53,7 +53,7 @@
 			<div class="col-3">
 				<div class="card-tiles">
 					<div>
-						<h6>{{ 'total_revenue' | translate }}</h6>
+						<h6>{{ 'total_revenue' | transloco }}</h6>
 						<h3>{{ (statistics$ | async)?.total_revenue | currencySymbol }}</h3>
 					</div>
 					<div class="icon-box">
@@ -64,7 +64,7 @@
 			<div class="col-3">
 				<div class="card-tiles">
 					<div>
-						<h6>{{ 'total_orders' | translate }}</h6>
+						<h6>{{ 'total_orders' | transloco }}</h6>
 						<h3>{{ (statistics$ | async)?.total_orders }}</h3>
 					</div>
 					<div class="icon-box">
@@ -75,7 +75,7 @@
 			<div class="col-3">
 				<div class="card-tiles">
 					<div>
-						<h6>{{ 'total_product' | translate }}</h6>
+						<h6>{{ 'total_product' | transloco }}</h6>
 						<h3>{{ (product$ | async)?.total }}</h3>
 					</div>
 					<div class="icon-box">
@@ -86,7 +86,7 @@
 			<div class="col-3">
 				<div class="card-tiles">
 					<div>
-						<h6>{{ 'total_balance' | translate }}</h6>
+						<h6>{{ 'total_balance' | transloco }}</h6>
 						<h3>{{ ( user$ | async )?.vendor_wallet?.balance }}</h3>
 					</div>
 					<div class="icon-box">
@@ -123,7 +123,7 @@
 					<select2
 						class="custom-select min-w-cls"
 						[data]="filter?.length ? filter : []"
-						[placeholder]="'filter_by' | translate"
+						[placeholder]="'filter_by' | transloco"
 						(update)="filterSeller($event)"
 					/>
 					}
@@ -153,7 +153,7 @@
 					<select2
 						class="custom-select min-w-cls"
 						[data]="filter?.length ? filter : []"
-						[placeholder]="'filter_by' | translate"
+						[placeholder]="'filter_by' | transloco"
 						(update)="filterTopProduct($event)"
 					/>
 					}
@@ -161,7 +161,7 @@
 				<div class="top-selling-table datatable-wrapper table-responsive">
 					@if (topProductLoader) {
 					<div class="table-loader">
-						<span>{{ 'please_wait' | translate }}...</span>
+						<span>{{ 'please_wait' | transloco }}...</span>
 					</div>
 					}
 					<table>
@@ -181,19 +181,19 @@
 								</div>
 							</td>
 							<td>
-								<h6>{{ 'price' | translate }}</h6>
+								<h6>{{ 'price' | transloco }}</h6>
 								<h5>{{ product?.sale_price | currencySymbol }}</h5>
 							</td>
 							<td>
-								<h6>{{ 'orders' | translate }}</h6>
+								<h6>{{ 'orders' | transloco }}</h6>
 								<h5>{{ product?.orders_count }}</h5>
 							</td>
 							<td>
-								<h6>{{ 'stock' | translate }}</h6>
+								<h6>{{ 'stock' | transloco }}</h6>
 								<h5>{{ product?.quantity }}</h5>
 							</td>
 							<td>
-								<h6>{{ 'amount' | translate }}</h6>
+								<h6>{{ 'amount' | transloco }}</h6>
 								<h5>{{ +product?.order_amount | currencySymbol }}</h5>
 							</td>
 						</tr>
@@ -201,7 +201,7 @@
 						<tr>
 							<td>
 								<div class="no-data-added">
-									<h4>{{ 'no_records_found' | translate }}</h4>
+									<h4>{{ 'no_records_found' | transloco }}</h4>
 								</div>
 							</td>
 						</tr>
@@ -245,7 +245,7 @@
 					<select2
 						class="custom-select min-w-cls"
 						[data]="(category$ | async)?.length ? (category$ | async) : []"
-						[placeholder]="'select_category' | translate"
+						[placeholder]="'select_category' | transloco"
 						(update)="filterProduct($event)"
 						resettable
 					/>
@@ -274,7 +274,7 @@
 						[routerLink]="['/review']"
 						class="txt-primary"
 					>
-						{{ 'view_all' | translate }}
+						{{ 'view_all' | transloco }}
 					</a>
 				</div>
 				<div class="review-box table-responsive">
@@ -306,7 +306,7 @@
 				</div>
 				@if (!(review$ | async)?.data?.length) {
 				<div class="no-data-added">
-					<h4>{{ 'no_records_found' | translate }}</h4>
+					<h4>{{ 'no_records_found' | transloco }}</h4>
 				</div>
 				}
 			</app-page-wrapper>
@@ -342,7 +342,7 @@
 				</div>
 				} @if (!(blog$ | async)?.data?.length) {
 				<div class="no-data-added">
-					<h4>{{ 'no_records_found' | translate }}</h4>
+					<h4>{{ 'no_records_found' | transloco }}</h4>
 				</div>
 				}
 			</app-page-wrapper>

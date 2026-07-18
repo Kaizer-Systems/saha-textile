@@ -1,6 +1,6 @@
 import { Component, inject, input, viewChild } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 
@@ -9,6 +9,7 @@ import { selectCartItems } from '@core/state/cart/cart.selectors';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
+
 import { Button } from '../button/button';
 import { Addtocart } from './modal/addtocart/addtocart';
 
@@ -16,7 +17,7 @@ import { Addtocart } from './modal/addtocart/addtocart';
 	selector: 'app-product-box',
 	templateUrl: './product-box.html',
 	styleUrls: ['./product-box.scss'],
-	imports: [Button, Addtocart, TranslateModule, CurrencySymbolPipe],
+	imports: [Button, Addtocart, TranslocoModule, CurrencySymbolPipe],
 })
 export class ProductBox {
 	private store = inject(Store);

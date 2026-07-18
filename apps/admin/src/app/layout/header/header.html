@@ -37,14 +37,14 @@
 				class="btn btn-outline"
 				*hasPermission="'product.create'"
 			>
-				{{ 'add_product' | translate }}
+				{{ 'add_product' | transloco }}
 			</a>
 			<a
 				[routerLink]="['/order/create']"
 				class="btn btn-animation"
 				*hasPermission="'order.create'"
 			>
-				{{ 'add_order' | translate }}
+				{{ 'add_order' | transloco }}
 			</a>
 		</div>
 		<ul class="nav-menus">

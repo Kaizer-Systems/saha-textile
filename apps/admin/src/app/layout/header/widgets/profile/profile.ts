@@ -1,9 +1,9 @@
 import { AsyncPipe } from '@angular/common';
 import { Component, inject, viewChild } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterModule } from '@angular/router';
 
-import { toObservable } from '@angular/core/rxjs-interop';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
 import { AccountStore } from '@core/state/account.store';
@@ -15,7 +15,7 @@ import { ConfirmationModal } from '@shared/ui/modal/confirmation-modal/confirmat
 	selector: 'app-profile',
 	templateUrl: './profile.html',
 	styleUrls: ['./profile.scss'],
-	imports: [RouterModule, ConfirmationModal, TranslateModule, AsyncPipe],
+	imports: [RouterModule, ConfirmationModal, TranslocoModule, AsyncPipe],
 })
 export class Profile {
 	private accountStore = inject(AccountStore);

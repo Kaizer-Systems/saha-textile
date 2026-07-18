@@ -1,11 +1,11 @@
 import { Component, DOCUMENT, inject } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { RouterModule } from '@angular/router';
 
-import { toObservable } from '@angular/core/rxjs-interop';
+import { TranslocoService } from '@jsverse/transloco';
 import { NgbNavConfig } from '@ng-bootstrap/ng-bootstrap';
 import { LoadingBarRouterModule } from '@ngx-loading-bar/router';
-import { TranslateService } from '@ngx-translate/core';
 import { Observable } from 'rxjs';
 
 import { SettingStore } from '@core/state/setting.store';
@@ -20,7 +20,7 @@ import { IValues } from '@data-access/interfaces/setting.interface';
 export class App {
 	private titleService = inject(Title);
 	private settingStore = inject(SettingStore);
-	private translate = inject(TranslateService);
+	private translate = inject(TranslocoService);
 
 	setting$: Observable<IValues | null> = toObservable(this.settingStore.setting);
 
@@ -30,7 +30,7 @@ export class App {
 		const config = inject(NgbNavConfig);
 		const document = inject<Document>(DOCUMENT);
 
-		this.translate.use('en');
+		this.translate.setActiveLang('en');
 		this.settingStore.loadSetting().subscribe();
 		this.setting$.subscribe((setting) => {
 			// Set Direction

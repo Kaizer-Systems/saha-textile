@@ -3,21 +3,22 @@ import { Component, input } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterModule } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
-import { FormCategory } from './form-category/form-category';
-import { Tree } from './tree/tree';
+import { ICategoryModel } from '@data-access/interfaces/category.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
-import { ICategoryModel } from '@data-access/interfaces/category.interface';
+
+import { FormCategory } from './form-category/form-category';
+import { Tree } from './tree/tree';
 
 @Component({
 	selector: 'app-category',
 	templateUrl: './category.html',
 	styleUrls: ['./category.scss'],
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Tree, FormCategory, TranslateModule, AsyncPipe],
+	imports: [PageWrapper, HasPermissionDirective, RouterModule, Tree, FormCategory, TranslocoModule, AsyncPipe],
 })
 export class Category {
 	// TODO: Skipped for migration because:

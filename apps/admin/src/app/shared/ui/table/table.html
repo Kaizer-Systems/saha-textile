@@ -1,7 +1,7 @@
 @if (topbar()) {
 <div class="show-box">
 	<div class="selection-box">
-		<label>{{ 'show' | translate }} :</label>
+		<label>{{ 'show' | transloco }} :</label>
 		<select
 			class="form-control"
 			(change)="onChangeTable($event, 'paginate')"
@@ -10,7 +10,7 @@
 			<option [value]="item">{{item}}</option>
 			}
 		</select>
-		<label>{{ 'items_per_page' | translate }}</label>
+		<label>{{ 'items_per_page' | transloco }}</label>
 		@if (deleteButtonStatus) {
 		<a
 			href="javascript:void(0)"
@@ -18,7 +18,7 @@
 			(click)="DeleteModal().openModal('deleteAll', selected)"
 		>
 			<i [class]="'ri-delete-bin-line'"></i>
-			{{ 'delete' | translate }}
+			{{ 'delete' | transloco }}
 		</a>
 		} @if (duplicateButtonStatus && hasDuplicate()) {
 		<a
@@ -28,7 +28,7 @@
                      $event.preventDefault(); $event.stopPropagation()"
 		>
 			<i [class]="'ri-file-copy-line'"></i>
-			{{ 'duplicate' | translate }}
+			{{ 'duplicate' | transloco }}
 		</a>
 		}
 	</div>
@@ -130,7 +130,7 @@
 			for="role-search"
 			class="form-label"
 		>
-			{{ 'search' | translate }} :
+			{{ 'search' | transloco }} :
 		</label>
 		<input
 			type="search"
@@ -146,7 +146,7 @@
 	<div class="table-responsive datatable-wrapper border-table">
 		@if (loader.status() && loading()) {
 		<div class="table-loader">
-			<span>{{ 'please_wait' | translate }}...</span>
+			<span>{{ 'please_wait' | transloco }}...</span>
 		</div>
 		}
 		<table class="all-package theme-table no-footer table">
@@ -176,7 +176,7 @@
 						[class.cursor-pointer]="columnHead?.sortable"
 						(click)="columnHead?.sortable && onChangeTable(columnHead, 'sort')"
 					>
-						{{ columnHead?.title | translate }} @if (columnHead?.sortable) {
+						{{ columnHead?.title | transloco }} @if (columnHead?.sortable) {
 						<div class="filter-arrow">
 							<div>
 								@if (columnHead?.sort_direction && columnHead?.sort_direction === 'desc') {
@@ -189,7 +189,7 @@
 						}
 					</th>
 					} @if (tableConfig?.rowActions?.length) {
-					<th>{{ 'actions' | translate }}</th>
+					<th>{{ 'actions' | transloco }}</th>
 					}
 				</tr>
 			</thead>
@@ -307,7 +307,7 @@
                                                         : (tableConfig?.rowActions?.length ? (tableConfig?.columns?.length + 1) : tableConfig?.columns?.length)"
 					>
 						<div class="no-data-added">
-							<h4>{{ 'no_records_found' | translate }}</h4>
+							<h4>{{ 'no_records_found' | transloco }}</h4>
 						</div>
 					</td>
 				</tr>

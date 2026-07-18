@@ -2,19 +2,19 @@ import { Component, inject, input } from '@angular/core';
 import { FormGroup, FormBuilder, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Subject, of } from 'rxjs';
 import { switchMap, map, takeUntil } from 'rxjs/operators';
 
+import { IAttachment } from '@data-access/interfaces/attachment.interface';
+import { ICategory } from '@data-access/interfaces/category.interface';
+import { CategoryService } from '@data-access/services/category.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { NumberDirective } from '@shared/directives/numbers-only.directive';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
-import { NumberDirective } from '@shared/directives/numbers-only.directive';
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
-import { ICategory } from '@data-access/interfaces/category.interface';
-import { CategoryService } from '@data-access/services/category.service';
 
 @Component({
 	selector: 'app-form-category',
@@ -28,7 +28,7 @@ import { CategoryService } from '@data-access/services/category.service';
 		AdvancedDropdown,
 		ImageUpload,
 		Button,
-		TranslateModule,
+		TranslocoModule,
 	],
 })
 export class FormCategory {

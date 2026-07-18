@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, inject } from '@angular/core';
 
-import { TranslateService } from '@ngx-translate/core';
+import { TranslocoService } from '@jsverse/transloco';
 
 import { ClickOutsideDirective } from '@shared/directives/out-side-directive';
 import { Button } from '@shared/ui/button/button';
@@ -19,7 +19,7 @@ export interface ILanguage {
 	imports: [ClickOutsideDirective, Button],
 })
 export class Languages {
-	private translate = inject(TranslateService);
+	private translate = inject(TranslocoService);
 	private platformId = inject<Object>(PLATFORM_ID);
 
 	public active: boolean = false;
@@ -47,17 +47,17 @@ export class Languages {
 			let language = localStorage.getItem('language');
 
 			if (language == null) {
-				this.translate.use(this.selectedLanguage.code);
+				this.translate.setActiveLang(this.selectedLanguage.code);
 			} else {
 				this.selectedLanguage = JSON.parse(language);
-				this.translate.use(this.selectedLanguage.code);
+				this.translate.setActiveLang(this.selectedLanguage.code);
 			}
 		}
 	}
 
 	selectLanguage(language: ILanguage) {
 		this.active = false;
-		this.translate.use(language.code);
+		this.translate.setActiveLang(language.code);
 		this.selectedLanguage = language;
 		localStorage.setItem('language', JSON.stringify(this.selectedLanguage));
 	}

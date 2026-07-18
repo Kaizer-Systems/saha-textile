@@ -3,9 +3,10 @@ import { Injectable, inject } from '@angular/core';
 
 import { Observable } from 'rxjs';
 
-import { environment } from '../../../../public/environments/environment';
 import { IAttachmentModel } from '@data-access/interfaces/attachment.interface';
 import { Params } from '@data-access/interfaces/core.interface';
+
+import { environment } from '../../../../public/environments/environment';
 
 @Injectable({
 	providedIn: 'root',

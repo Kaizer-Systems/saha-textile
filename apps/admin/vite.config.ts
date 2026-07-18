@@ -2,8 +2,8 @@
 
 import { fileURLToPath, URL } from 'node:url';
 
-import { defineConfig } from 'vite';
 import angular from '@analogjs/vite-plugin-angular';
+import { defineConfig } from 'vite';
 
 const appPath = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 

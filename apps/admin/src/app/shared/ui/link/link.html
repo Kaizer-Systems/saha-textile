@@ -7,11 +7,11 @@
 		<select2
 			class="custom-select"
 			[data]="linkOption.length ? linkOption : []"
-			[placeholder]="'select_link' | translate"
+			[placeholder]="'select_link' | transloco"
 			multiple="false"
 			formControlName="link_type"
 			(click)="selectImageLink()"
-			noResultMessage="{{ 'no_data_found' | translate }}"
+			noResultMessage="{{ 'no_data_found' | transloco }}"
 			resettable
 		/>
 		}
@@ -27,9 +27,9 @@
 			class="custom-select"
 			[templates]="template"
 			[data]="products().length ? products() : []"
-			[placeholder]="'select_product' | translate"
+			[placeholder]="'select_product' | transloco"
 			formControlName="link"
-			noResultMessage="{{ 'no_data_found' | translate }}"
+			noResultMessage="{{ 'no_data_found' | transloco }}"
 			[customSearchEnabled]="true"
 			(update)="selectProduct($event)"
 			(close)="productDropdown($event)"
@@ -63,10 +63,10 @@
 			class="custom-select"
 			[templates]="template"
 			[data]="categories.length ? categories : []"
-			[placeholder]="'select_categories' | translate"
+			[placeholder]="'select_categories' | transloco"
 			formControlName="link"
 			multiple="false"
-			noResultMessage="{{ 'no_data_found' | translate }}"
+			noResultMessage="{{ 'no_data_found' | transloco }}"
 			resettable
 		>
 			<ng-template

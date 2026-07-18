@@ -14,7 +14,7 @@
 								</div>
 								<div class="checkout-box">
 									<div class="checkout-title">
-										<h4>{{ 'select_customer' | translate }}</h4>
+										<h4>{{ 'select_customer' | transloco }}</h4>
 										<a
 											href="javascript:void(0)"
 											class="d-flex align-items-center fw-bold"
@@ -22,17 +22,17 @@
 											*hasPermission="'user.create'"
 										>
 											<i class="ri-add-line me-1"></i>
-											{{ 'add_new' | translate }}
+											{{ 'add_new' | transloco }}
 										</a>
 									</div>
 									<form [formGroup]="form">
 										<select2
 											class="custom-select"
-											[placeholder]="'select_customer' | translate"
+											[placeholder]="'select_customer' | transloco"
 											[data]="(users$ | async)?.length ? (users$ | async) : []"
 											formControlName="consumer_id"
 											[customSearchEnabled]="true"
-											noResultMessage="{{ 'no_data_found' | translate }}"
+											noResultMessage="{{ 'no_data_found' | transloco }}"
 											(close)="userDropdown($event)"
 											(search)="searchUser($event)"
 											(update)="selectUser($event)"
@@ -49,7 +49,7 @@
 										href="javascript:void(0)"
 										class="checkout-title"
 									>
-										<h4>{{ 'shipping_address' | translate }}</h4>
+										<h4>{{ 'shipping_address' | transloco }}</h4>
 										@if (form.controls['consumer_id'].value) {
 										<a
 											href="javascript:void(0)"
@@ -57,7 +57,7 @@
 											(click)="AddAddressModal().openModal('shipping')"
 										>
 											<i class="ri-add-line me-1"></i>
-											{{ 'add_new' | translate }}
+											{{ 'add_new' | transloco }}
 										</a>
 										}
 									</div>
@@ -79,7 +79,7 @@
 										href="javascript:void(0)"
 										class="checkout-title"
 									>
-										<h4>{{ 'billing_address'| translate }}</h4>
+										<h4>{{ 'billing_address'| transloco }}</h4>
 										@if (form.controls['consumer_id'].value) {
 										<a
 											href="javascript:void(0)"
@@ -87,7 +87,7 @@
 											(click)="AddAddressModal().openModal('billing')"
 										>
 											<i class="ri-add-line me-1"></i>
-											{{ 'add_new' | translate }}
+											{{ 'add_new' | transloco }}
 										</a>
 										}
 									</div>
@@ -106,11 +106,11 @@
 								</div>
 								<div class="checkout-box">
 									<div class="checkout-title">
-										<h4>{{ 'delivery_options' | translate }}</h4>
+										<h4>{{ 'delivery_options' | transloco }}</h4>
 									</div>
 									@if (!(selectedUser$ | async )) {
 									<div class="empty-box">
-										<h2>{{ 'no_delivery_options_found' | translate }}</h2>
+										<h2>{{ 'no_delivery_options_found' | transloco }}</h2>
 									</div>
 									} @if ((selectedUser$ | async)) {
 									<app-delivery-block
@@ -126,11 +126,11 @@
 								</div>
 								<div class="checkout-box">
 									<div class="checkout-title">
-										<h4>{{ 'payment_options' | translate }}</h4>
+										<h4>{{ 'payment_options' | transloco }}</h4>
 									</div>
 									@if (!(selectedUser$ | async)) {
 									<div class="empty-box">
-										<h2>{{ 'no_payment_options_found' | translate }}</h2>
+										<h2>{{ 'no_payment_options_found' | transloco }}</h2>
 									</div>
 									} @if ((selectedUser$ | async)) {
 									<app-payment-block (selectPaymentMethod)="selectPaymentMethod($event)" />
@@ -146,7 +146,7 @@
 					<div class="card-body">
 						<div class="title-header">
 							<div class="d-flex align-items-center">
-								<h5>{{ 'checkout' | translate }}</h5>
+								<h5>{{ 'checkout' | transloco }}</h5>
 							</div>
 						</div>
 						<div class="product-details">
@@ -197,24 +197,24 @@
 								}
 								<ul class="summary-total">
 									<li>
-										<h4>{{ 'subtotal' | translate }}</h4>
+										<h4>{{ 'subtotal' | transloco }}</h4>
 										<h4 class="price">
 											{{ (checkoutTotal ? (checkoutTotal?.total?.sub_total | currencySymbol) :
-											'not_calculated_yet' | translate) }}
+											'not_calculated_yet' | transloco) }}
 										</h4>
 									</li>
 									<li>
-										<h4>{{ 'shipping' | translate }}</h4>
+										<h4>{{ 'shipping' | transloco }}</h4>
 										<h4 class="price">
 											{{ (checkoutTotal ? (checkoutTotal?.total?.shipping_total | currencySymbol)
-											: 'not_calculated_yet' | translate) }}
+											: 'not_calculated_yet' | transloco) }}
 										</h4>
 									</li>
 									<li>
-										<h4>{{ 'tax' | translate }}</h4>
+										<h4>{{ 'tax' | transloco }}</h4>
 										<h4 class="price">
 											{{ (checkoutTotal ? (checkoutTotal?.total?.tax_total | currencySymbol) :
-											'not_calculated_yet' | translate) }}
+											'not_calculated_yet' | transloco) }}
 										</h4>
 									</li>
 									@if ((selectedUser$ | async) && checkoutTotal && (selectedUser$ |
@@ -223,13 +223,13 @@
 										<h4
 											[class]="form.controls['points_amount'].value ? 'txt-primary fw-bold' : 'text-muted'"
 										>
-											{{ 'points' | translate }}
+											{{ 'points' | transloco }}
 										</h4>
 										<h4
 											[class]="form.controls['points_amount'].value ? 'txt-primary fw-bold price' : 'text-muted price'"
 										>
 											{{ (checkoutTotal ? (checkoutTotal?.total?.convert_point_amount |
-											currencySymbol) : 'not_calculated_yet' | translate) }}
+											currencySymbol) : 'not_calculated_yet' | transloco) }}
 										</h4>
 									</li>
 									} @if ((selectedUser$ | async) && checkoutTotal && (selectedUser$ |
@@ -239,7 +239,7 @@
 											class="form-check-label m-0"
 											for="ponts"
 										>
-											{{ 'would_you_prefer_to_pay_using_points?' | translate }}
+											{{ 'would_you_prefer_to_pay_using_points?' | transloco }}
 										</label>
 										<input
 											class="checkbox_animated check-it"
@@ -254,13 +254,13 @@
 										<h4
 											[class]="form.controls['wallet_balance'].value ? 'txt-primary fw-bold' : 'text-muted'"
 										>
-											{{ 'wallet_balance' | translate }}
+											{{ 'wallet_balance' | transloco }}
 										</h4>
 										<h4
 											[class]="form.controls['wallet_balance'].value ? 'txt-primary fw-bold price' : 'text-muted price'"
 										>
 											{{ (checkoutTotal ? (checkoutTotal?.total?.convert_wallet_balance |
-											currencySymbol) : 'not_calculated_yet' | translate ) }}
+											currencySymbol) : 'not_calculated_yet' | transloco ) }}
 										</h4>
 									</li>
 									} @if ((selectedUser$ | async) && checkoutTotal && (selectedUser$ |
@@ -270,7 +270,7 @@
 											class="form-check-label m-0"
 											for="wallet"
 										>
-											{{ 'would_you_prefer_to_pay_using_wallet?' | translate }}
+											{{ 'would_you_prefer_to_pay_using_wallet?' | transloco }}
 										</label>
 										<input
 											class="checkbox_animated check-it"
@@ -286,7 +286,7 @@
 											class="promocode-title"
 											(click)="showCoupon()"
 										>
-											<h4>{{ 'have_a_promo_code?' | translate }}</h4>
+											<h4>{{ 'have_a_promo_code?' | transloco }}</h4>
 										</a>
 										} @if (coupon && !appliedCoupon) {
 										<div class="w-100">
@@ -326,30 +326,30 @@
 													alt="offer"
 												/>
 												<h4>
-													{{ 'you_saved' | translate }}
+													{{ 'you_saved' | transloco }}
 													<span>
 														{{ checkoutTotal?.total?.coupon_total_discount | currencySymbol
 														}}
 													</span>
-													{{ 'with_this_code' | translate }} 🎉
-													<p>{{ 'coupon_applied' | translate }}</p>
+													{{ 'with_this_code' | transloco }} 🎉
+													<p>{{ 'coupon_applied' | transloco }}</p>
 												</h4>
 											</div>
 											<a
 												href="javascript:void(0)"
 												(click)="couponRemove()"
 											>
-												{{ 'remove' | translate }}
+												{{ 'remove' | transloco }}
 											</a>
 										</div>
 										}
 									</li>
 									}
 									<li class="list-total">
-										<h4>{{ 'total' | translate }}</h4>
+										<h4>{{ 'total' | transloco }}</h4>
 										<h4 class="price">
 											{{ (checkoutTotal ? (checkoutTotal?.total?.total | currencySymbol) :
-											'not_calculated_yet' | translate ) }}
+											'not_calculated_yet' | transloco ) }}
 										</h4>
 									</li>
 								</ul>
@@ -359,7 +359,7 @@
 										[id]="'place_order'"
 										[disabled]="form.invalid"
 									>
-										{{ 'place_order' | translate }}
+										{{ 'place_order' | transloco }}
 									</app-button>
 								</ng-container>
 							</div>

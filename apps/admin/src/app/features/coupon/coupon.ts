@@ -1,21 +1,21 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
-import { injectCouponsQuery } from '@data-access/queries/coupon.queries';
-import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { Table } from '@shared/ui/table/table';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ICoupon } from '@data-access/interfaces/coupon.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
+import { injectCouponsQuery } from '@data-access/queries/coupon.queries';
+import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { Table } from '@shared/ui/table/table';
 
 @Component({
 	selector: 'app-coupon',
 	templateUrl: './coupon.html',
 	styleUrls: ['./coupon.scss'],
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslateModule],
+	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
 })
 export class Coupon {
 	router = inject(Router);

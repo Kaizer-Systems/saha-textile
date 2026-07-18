@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+
 import { FormPage } from '../form-page/form-page';
 
 @Component({

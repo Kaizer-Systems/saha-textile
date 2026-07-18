@@ -31,13 +31,13 @@
 		<li>
 			<a [routerLink]="['/account']">
 				<i class="ri-user-line"></i>
-				<span>{{ 'my_account' | translate }}</span>
+				<span>{{ 'my_account' | transloco }}</span>
 			</a>
 		</li>
 		<li>
 			<a (click)="confirmationModal.openModal('')">
 				<i class="ri-logout-box-line"></i>
-				<span>{{ 'log_out' | translate }}</span>
+				<span>{{ 'log_out' | transloco }}</span>
 			</a>
 		</li>
 	</ul>

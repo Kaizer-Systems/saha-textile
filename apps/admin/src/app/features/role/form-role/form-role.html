@@ -12,21 +12,21 @@
 			<input
 				class="form-control"
 				type="text"
-				placeholder="{{ 'enter_name' | translate }}"
+				placeholder="{{ 'enter_name' | transloco }}"
 				name="name"
 				formControlName="name"
 			/>
 			@if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
-			<div class="invalid-feedback">{{ 'name_is_required' | translate }}</div>
+			<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
 			}
 		</app-form-fields>
 		<div class="d-flex mb-3">
 			<h4 class="form-label-title">
-				{{ 'permissions' | translate }}
+				{{ 'permissions' | transloco }}
 				<span class="theme-color required-dot ms-2">*</span>
 			</h4>
 			@if (form.controls['permissions'].touched && form.controls['permissions'].invalid) {
-			<div class="invalid-feedback ms-4 mt-0">{{ 'permissions_is_required' | translate }}</div>
+			<div class="invalid-feedback ms-4 mt-0">{{ 'permissions_is_required' | transloco }}</div>
 			}
 		</div>
 		<app-permissions
@@ -34,5 +34,5 @@
 			(setPermissions)="setPermissions($event)"
 		/>
 	</div>
-	<app-button [id]="'role_btn'">{{ 'save' | translate }}</app-button>
+	<app-button [id]="'role_btn'">{{ 'save' | transloco }}</app-button>
 </form>

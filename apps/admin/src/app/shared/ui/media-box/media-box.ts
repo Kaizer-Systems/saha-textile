@@ -15,16 +15,17 @@ import {
 import { toObservable } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { NgbDropdown, NgbDropdownItem, NgbDropdownMenu, NgbDropdownToggle } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 import { Observable, debounceTime, distinctUntilChanged } from 'rxjs';
 
-import { DeleteModal, DeleteModal as DeleteModalComponent_1 } from '@shared/ui/modal/delete-modal/delete-modal';
-import { injectAttachmentsQuery } from '@data-access/queries/attachment.queries';
 import { IAttachment, IAttachmentModel } from '@data-access/interfaces/attachment.interface';
 import { Params } from '@data-access/interfaces/core.interface';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { injectAttachmentsQuery } from '@data-access/queries/attachment.queries';
 import { Loader } from '@layout/loader/loader';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { DeleteModal, DeleteModal as DeleteModalComponent_1 } from '@shared/ui/modal/delete-modal/delete-modal';
+
 import { NoData } from '../no-data/no-data';
 import { Pagination } from '../pagination/pagination';
 
@@ -43,7 +44,7 @@ import { Pagination } from '../pagination/pagination';
 		Pagination,
 		NoData,
 		DeleteModalComponent_1,
-		TranslateModule,
+		TranslocoModule,
 		AsyncPipe,
 	],
 })

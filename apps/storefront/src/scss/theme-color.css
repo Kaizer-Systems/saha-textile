@@ -1,0 +1,8 @@
+/* App-wide theme colour — Denver blue (matches `.theme-color-5` in scss/style.scss).
+   Imported in main.ts AFTER app.gen.css so it overrides the generated :root default
+   (#0da487). Theme reference pages (/theme/*) still set their own colour via an inline
+   style on <html> in their ngOnInit, which outranks this stylesheet rule — so those
+   pages keep their original palette while every other page defaults to Denver blue. */
+:root {
+	--theme-color: #417394;
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@saha-textile/developer-portal",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "docusaurus start --host 0.0.0.0",
+    "start": "docusaurus start --host 0.0.0.0",
+    "build": "docusaurus build",
+    "serve": "docusaurus serve --host 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.1",
+    "@docusaurus/preset-classic": "3.10.1",
+    "@docusaurus/theme-mermaid": "3.10.1",
+    "@mdx-js/react": "3.1.1",
+    "@mermaid-js/layout-elk": "0.1.9",
+    "clsx": "2.1.1",
+    "prism-react-renderer": "2.4.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "3.10.1",
+    "@docusaurus/tsconfig": "3.10.1",
+    "@docusaurus/types": "3.10.1",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "typescript": "6.0.3"
+  }
+}

@@ -186,7 +186,7 @@ Placement shape:
 	"ancestorCategoryIds": ["cat_saree"],
 	"isCanonical": true,
 	"sortOrder": 10,
-	"status": "active"
+	"status": "active",
 }
 ```
 
@@ -243,9 +243,14 @@ Placement shape:
 			"defaultTermCode": "no-design",
 			"terms": [
 				{ "code": "no-design", "label": { "en": "No Design" }, "priceDeltaINR": 0 },
-				{ "code": "design-1", "label": { "en": "Design 1" }, "priceDeltaINR": 500, "requiresMeasurements": true }
-			]
-		}
+				{
+					"code": "design-1",
+					"label": { "en": "Design 1" },
+					"priceDeltaINR": 500,
+					"requiresMeasurements": true,
+				},
+			],
+		},
 	],
 
 	"variations": [
@@ -351,12 +356,14 @@ A single polymorphic `promotions` collection with a `scope` discriminator:
 
 - Client: **NgRx hybrid** — cart lives in a classic **NgRx Store + Effects + Entity** slice (instant UI, persisted/rehydrated for offline), while feature/UI state uses **SignalStore**. Hydrated from server.
 - Server: persistent `carts` collection. Guest carts keyed by an httpOnly cookie token; on login, merge guest cart into the user cart (sum quantities, dedupe by variation+addons signature), then delete the guest cart — giving cross-browser/cross-device continuity.
-- **`@tanstack/angular-query` mutations** sync line changes to the API with optimistic updates. Boundary: **TanStack Query owns server data** (fetch/cache, + offline persistence of fetched catalogue via `persistQueryClient` + `idb`); **NgRx owns app/cart/UI state**.
+- **`@tanstack/angular-query` mutations** sync line changes to the API with optimistic updates. Boundary: **TanStack Query owns server data** (fetch/cache, + offline persistence of fetched public catalogue via `persistQueryClient` + IndexedDB/`idb`); **NgRx owns app/cart/UI state**. IndexedDB is browser-side storage only, not a backend database; MongoDB/server cart remains the source of truth.
 
 **PWA (fully offline-capable, installable — offline _catalogue browsing_ + offline cart):**
 
 - Use **`vite-plugin-pwa` (Workbox)** — Analog-native, full Workbox feature set. Precache the app shell; runtime strategies: network-first for product/data API, cache-first for static assets/images; **background sync** for queued offline cart mutations; offline fallback route at `/offline`.
-- Use IndexedDB (via **`idb`**) for the offline cart and, with TanStack's `persistQueryClient`, for **offline catalogue browsing** (previously-fetched products/categories readable offline).
+- Use browser-side storage in two layers: **Cache Storage/service worker** for app shell, static files, images, and cacheable HTTP responses; **IndexedDB** (via **`idb`**) for structured public catalogue data, TanStack Query persisted cache, and pending offline cart mutations. IndexedDB works for normal website visits too; installing the PWA is not required.
+- Offline catalogue browsing means showing **previously fetched/cached public catalogue data only**, not downloading or guaranteeing the whole live catalogue offline. Do not store auth tokens, refresh tokens, payment data, admin data, account/order PII, or secrets in IndexedDB/Cache Storage/localStorage/service worker caches.
+- Provide a storefront/account privacy action such as **Clear local/offline data on this device**. Browser storage can also be cleared by the user's browser settings, private browsing, quota pressure, or strict privacy settings, so the app must degrade gracefully and refetch when online.
 - Enable the SW only in production builds (avoid dev cache-hell). Capability floor: must meet or exceed what Fastkart ships for any offline feature (Fastkart ships no PWA, so this is net-new and unconstrained upward).
 
 **Analytics instrumentation (events to emit):**

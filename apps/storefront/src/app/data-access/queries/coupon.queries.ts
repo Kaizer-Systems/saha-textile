@@ -11,9 +11,9 @@ import { CouponService } from '@data-access/services/coupon.service';
  * The query's isPending() drives the skeleton (was CouponService.skeletonLoader).
  */
 export function injectCouponsQuery(params: () => Params) {
-  const couponService = inject(CouponService);
-  return injectQuery(() => ({
-    queryKey: ['coupons', params()],
-    queryFn: () => firstValueFrom(couponService.getCoupons(params())),
-  }));
+	const couponService = inject(CouponService);
+	return injectQuery(() => ({
+		queryKey: ['coupons', params()],
+		queryFn: () => firstValueFrom(couponService.getCoupons(params())),
+	}));
 }

@@ -11,10 +11,10 @@ import { CurrencyService } from '@data-access/services/currency.service';
  * Reference data — cache indefinitely. Consumed by the header currency switcher.
  */
 export function injectCurrenciesQuery(params: () => Params) {
-  const currencyService = inject(CurrencyService);
-  return injectQuery(() => ({
-    queryKey: ['currencies', params()],
-    queryFn: () => firstValueFrom(currencyService.getCurrencies(params())),
-    staleTime: Infinity,
-  }));
+	const currencyService = inject(CurrencyService);
+	return injectQuery(() => ({
+		queryKey: ['currencies', params()],
+		queryFn: () => firstValueFrom(currencyService.getCurrencies(params())),
+		staleTime: Infinity,
+	}));
 }

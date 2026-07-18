@@ -1,10 +1,10 @@
 import { Injectable } from '@angular/core';
 
 @Injectable({
-  providedIn: 'root',
+	providedIn: 'root',
 })
 export class AuthService {
-  public redirectUrl: string | undefined;
+	public redirectUrl: string | undefined;
 
-  // Auth Function Here
+	// Auth Function Here
 }

@@ -12,10 +12,10 @@ import { StateService } from '@data-access/services/state.service';
  * computed keyed on a selected-country signal (see address-modal, checklist 2d).
  */
 export function injectStatesQuery() {
-  const stateService = inject(StateService);
-  return injectQuery(() => ({
-    queryKey: ['states'],
-    queryFn: () => firstValueFrom(stateService.getStates()),
-    staleTime: Infinity,
-  }));
+	const stateService = inject(StateService);
+	return injectQuery(() => ({
+		queryKey: ['states'],
+		queryFn: () => firstValueFrom(stateService.getStates()),
+		staleTime: Infinity,
+	}));
 }

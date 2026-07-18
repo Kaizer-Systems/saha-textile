@@ -8,9 +8,9 @@ import { RefundService } from '@data-access/services/refund.service';
 
 /** Refund list (replaces NGXS RefundState + GetRefundAction). Keyed on paginate params. */
 export function injectRefundsQuery(params: () => Params) {
-  const refundService = inject(RefundService);
-  return injectQuery(() => ({
-    queryKey: ['refunds', params()],
-    queryFn: () => firstValueFrom(refundService.getRefunds(params())),
-  }));
+	const refundService = inject(RefundService);
+	return injectQuery(() => ({
+		queryKey: ['refunds', params()],
+		queryFn: () => firstValueFrom(refundService.getRefunds(params())),
+	}));
 }

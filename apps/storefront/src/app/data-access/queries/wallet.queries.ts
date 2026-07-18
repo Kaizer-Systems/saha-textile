@@ -11,9 +11,9 @@ import { WalletService } from '@data-access/services/wallet.service';
  * GetUserTransactionAction). Keyed on the paginate params signal.
  */
 export function injectWalletTransactionsQuery(params: () => Params) {
-  const walletService = inject(WalletService);
-  return injectQuery(() => ({
-    queryKey: ['wallet-transactions', params()],
-    queryFn: () => firstValueFrom(walletService.getUserTransaction(params())),
-  }));
+	const walletService = inject(WalletService);
+	return injectQuery(() => ({
+		queryKey: ['wallet-transactions', params()],
+		queryFn: () => firstValueFrom(walletService.getUserTransaction(params())),
+	}));
 }

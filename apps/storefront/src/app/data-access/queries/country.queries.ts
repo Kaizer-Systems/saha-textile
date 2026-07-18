@@ -12,10 +12,10 @@ import { CountryService } from '@data-access/services/country.service';
  * via a computed (see address-modal).
  */
 export function injectCountriesQuery() {
-  const countryService = inject(CountryService);
-  return injectQuery(() => ({
-    queryKey: ['countries'],
-    queryFn: () => firstValueFrom(countryService.getCountries()),
-    staleTime: Infinity,
-  }));
+	const countryService = inject(CountryService);
+	return injectQuery(() => ({
+		queryKey: ['countries'],
+		queryFn: () => firstValueFrom(countryService.getCountries()),
+		staleTime: Infinity,
+	}));
 }

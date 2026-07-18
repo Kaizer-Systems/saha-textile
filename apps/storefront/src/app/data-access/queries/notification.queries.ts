@@ -13,11 +13,11 @@ import { NotificationService } from '@data-access/services/notification.service'
  * moves to TanStack Query rather than a SignalStore. Selects the data array.
  */
 export function injectNotificationsQuery(params: () => Params | undefined = () => undefined) {
-  const notificationService = inject(NotificationService);
-  return injectQuery(() => ({
-    queryKey: ['notifications', params()],
-    queryFn: () => firstValueFrom(notificationService.getNotifications(params())),
-    select: (res: INotificationModel): INotification[] => res.data,
-    staleTime: Infinity,
-  }));
+	const notificationService = inject(NotificationService);
+	return injectQuery(() => ({
+		queryKey: ['notifications', params()],
+		queryFn: () => firstValueFrom(notificationService.getNotifications(params())),
+		select: (res: INotificationModel): INotification[] => res.data,
+		staleTime: Infinity,
+	}));
 }

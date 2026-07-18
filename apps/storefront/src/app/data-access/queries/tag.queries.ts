@@ -12,10 +12,10 @@ import { TagService } from '@data-access/services/tag.service';
  * "fetch once" behaviour).
  */
 export function injectTagsQuery(params: () => Params) {
-  const tagService = inject(TagService);
-  return injectQuery(() => ({
-    queryKey: ['tags', params()],
-    queryFn: () => firstValueFrom(tagService.getTags(params())),
-    staleTime: Infinity,
-  }));
+	const tagService = inject(TagService);
+	return injectQuery(() => ({
+		queryKey: ['tags', params()],
+		queryFn: () => firstValueFrom(tagService.getTags(params())),
+		staleTime: Infinity,
+	}));
 }

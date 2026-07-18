@@ -3,16 +3,17 @@ import { Injectable, inject } from '@angular/core';
 
 import { Observable } from 'rxjs';
 
-import { environment } from '../../../../public/environments/environment';
 import { IStates } from '@data-access/interfaces/state.interface';
 
+import { environment } from '../../../../public/environments/environment';
+
 @Injectable({
-  providedIn: 'root',
+	providedIn: 'root',
 })
 export class StateService {
-  private http = inject(HttpClient);
+	private http = inject(HttpClient);
 
-  getStates(): Observable<IStates[]> {
-    return this.http.get<IStates[]>(`${environment.URL}/state.json`);
-  }
+	getStates(): Observable<IStates[]> {
+		return this.http.get<IStates[]>(`${environment.URL}/state.json`);
+	}
 }

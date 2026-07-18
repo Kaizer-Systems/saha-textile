@@ -12,10 +12,10 @@ import { CategoryService } from '@data-access/services/category.service';
  * consumers use { status: 1 } so they share one cache entry.
  */
 export function injectCategoriesQuery(params: () => Params) {
-  const categoryService = inject(CategoryService);
-  return injectQuery(() => ({
-    queryKey: ['categories', params()],
-    queryFn: () => firstValueFrom(categoryService.getCategories(params())),
-    staleTime: Infinity,
-  }));
+	const categoryService = inject(CategoryService);
+	return injectQuery(() => ({
+		queryKey: ['categories', params()],
+		queryFn: () => firstValueFrom(categoryService.getCategories(params())),
+		staleTime: Infinity,
+	}));
 }

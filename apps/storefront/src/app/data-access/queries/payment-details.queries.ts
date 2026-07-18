@@ -7,9 +7,9 @@ import { PaymentDetailsService } from '@data-access/services/payment-details.ser
 
 /** Payment/bank details (replaces NGXS PaymentDetailsState + GetPaymentDetailsAction). */
 export function injectPaymentDetailsQuery() {
-  const paymentDetailsService = inject(PaymentDetailsService);
-  return injectQuery(() => ({
-    queryKey: ['payment-details'],
-    queryFn: () => firstValueFrom(paymentDetailsService.getPaymentAccount()),
-  }));
+	const paymentDetailsService = inject(PaymentDetailsService);
+	return injectQuery(() => ({
+		queryKey: ['payment-details'],
+		queryFn: () => firstValueFrom(paymentDetailsService.getPaymentAccount()),
+	}));
 }

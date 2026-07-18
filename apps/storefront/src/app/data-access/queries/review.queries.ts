@@ -12,10 +12,10 @@ import { ReviewService } from '@data-access/services/review.service';
  * no-op mocks — dropped (no backend yet).
  */
 export function injectReviewQuery(productId: () => number | string | undefined) {
-  const reviewService = inject(ReviewService);
-  return injectQuery(() => ({
-    queryKey: ['reviews', productId()],
-    queryFn: () => firstValueFrom(reviewService.getReview({ product_id: productId() })),
-    enabled: !!productId(),
-  }));
+	const reviewService = inject(ReviewService);
+	return injectQuery(() => ({
+		queryKey: ['reviews', productId()],
+		queryFn: () => firstValueFrom(reviewService.getReview({ product_id: productId() })),
+		enabled: !!productId(),
+	}));
 }

@@ -1,21 +1,24 @@
 @if (categories && categories.length) {
 <ul class="category-list custom-padding custom-height">
-  @for (category of categories; track category) {
-  <li>
-    <div class="form-check ps-0 m-0 category-list-box">
-      <input
-        class="checkbox_animated"
-        type="checkbox"
-        id="category-{{category.id}}"
-        [value]="category.slug"
-        [checked]="checked(category.slug!)"
-        (change)="applyFilter($event)"
-      />
-      <label class="form-check-label" for="category-{{category.id}}">
-        <span class="name">{{ category.name }}</span>
-      </label>
-    </div>
-  </li>
-  }
+	@for (category of categories; track category) {
+	<li>
+		<div class="form-check category-list-box m-0 ps-0">
+			<input
+				class="checkbox_animated"
+				type="checkbox"
+				id="category-{{category.id}}"
+				[value]="category.slug"
+				[checked]="checked(category.slug!)"
+				(change)="applyFilter($event)"
+			/>
+			<label
+				class="form-check-label"
+				for="category-{{category.id}}"
+			>
+				<span class="name">{{ category.name }}</span>
+			</label>
+		</div>
+	</li>
+	}
 </ul>
 }

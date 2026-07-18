@@ -1,19 +1,34 @@
-<app-breadcrumb [breadcrumb]="breadcrumb" />
-@if (layout === 'collection_category_slider') {
-<app-collection-category-slider [filter]="filter()" />
-} @if (layout === 'collection_category_sidebar') {
-<app-collection-category-sidebar [filter]="filter()" />
-} @if (layout === 'collection_banner') {
-<app-collection-banner [filter]="filter()" />
-} @if (layout === 'collection_left_sidebar') {
-<app-collection-left-sidebar [filter]="filter()" />
-} @if (layout === 'collection_right_sidebar') {
-<app-collection-right-sidebar [filter]="filter()" />
-} @if (layout === 'collection_3_grid' || layout === 'collection_4_grid' || layout ===
-'collection_5_grid' || layout === 'collection_list_view') {
-<app-collection-list [filter]="filter()" />
-} @if (layout === 'collection_offcanvas_filter') {
-<app-collection-offcanvas-filter [filter]="filter()" />
-} @if (layout === 'collection_no_sidebar') {
-<app-collection-no-sidebar [filter]="filter()" />
-}
+<app-breadcrumb [breadcrumb]="breadcrumb()" />
+<section>
+	<div class="container-fluid-lg">
+		<div class="row">
+			<div class="col-12">
+				<app-collection-categories
+					[sliderOption]="categorySlider"
+					[theme]="'paris'"
+					[style]="'horizontal'"
+				/>
+			</div>
+		</div>
+	</div>
+</section>
+<section
+	class="section-b-space shop-section"
+	id="filtered_products"
+>
+	<div class="container-fluid-lg">
+		<div class="row">
+			<div class="col-custome-3">
+				<div
+					class="left-box"
+					[class.show]="attributeService.offCanvasMenu"
+				>
+					<app-collection-sidebar [filter]="filter" />
+				</div>
+			</div>
+			<div class="col-custome-9">
+				<app-collection-products [filter]="filter()" />
+			</div>
+		</div>
+	</div>
+</section>

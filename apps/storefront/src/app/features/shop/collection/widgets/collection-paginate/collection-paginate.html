@@ -1,10 +1,10 @@
 @if ((product$ | async)?.data?.length) {
 <nav class="custome-pagination">
-  <app-pagination
-    [total]="totalItems"
-    [currentPage]="filter()!['page']"
-    [pageSize]="filter()!['paginate']"
-    (setPage)="setPaginate($event)"
-  />
+	<app-pagination
+		[total]="totalItems"
+		[currentPage]="filter()!['page']"
+		[pageSize]="filter()!['paginate']"
+		(setPage)="setPaginate($event)"
+	/>
 </nav>
 }

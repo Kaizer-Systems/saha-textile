@@ -2,19 +2,19 @@ import { Component, inject, input } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { map, of, Subject, switchMap, takeUntil } from 'rxjs';
 
-import { Button } from '@shared/ui/button/button';
-import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { IFaq } from '@data-access/interfaces/faq.interface';
 import { FaqService } from '@data-access/services/faq.service';
+import { Button } from '@shared/ui/button/button';
+import { FormFields } from '@shared/ui/form-fields/form-fields';
 
 @Component({
 	selector: 'app-form-faq',
 	templateUrl: './form-faq.html',
 	styleUrls: ['./form-faq.scss'],
-	imports: [ReactiveFormsModule, FormFields, Button, TranslateModule],
+	imports: [ReactiveFormsModule, FormFields, Button, TranslocoModule],
 })
 export class FormFaq {
 	private faqService = inject(FaqService);

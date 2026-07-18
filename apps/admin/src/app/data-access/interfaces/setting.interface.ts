@@ -174,9 +174,7 @@ export interface ICOD {
 }
 
 export interface IMaintenance {
-	title: string;
 	maintenance_mode: boolean;
 	maintenance_image_id: number;
 	maintenance_image: IAttachment;
-	description: string;
 }

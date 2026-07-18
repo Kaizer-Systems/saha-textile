@@ -2,18 +2,18 @@ import { Component, effect, inject, input, signal } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
+import { ITag } from '@data-access/interfaces/tag.interface';
 import { injectTagQuery } from '@data-access/queries/tag.queries';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ITag } from '@data-access/interfaces/tag.interface';
 
 @Component({
 	selector: 'app-form-tag',
 	templateUrl: './form-tag.html',
 	styleUrls: ['./form-tag.scss'],
-	imports: [ReactiveFormsModule, FormFields, Button, TranslateModule],
+	imports: [ReactiveFormsModule, FormFields, Button, TranslocoModule],
 })
 export class FormTag {
 	private router = inject(Router);

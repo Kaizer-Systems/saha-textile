@@ -1,17 +1,18 @@
 import { ChangeDetectionStrategy, Component, ElementRef, input, output, viewChild } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
+
+import { ClickOutsideDirective } from '@shared/directives/out-side-directive';
 
 import { DropdownList } from './dropdown-list/dropdown-list';
-import { ClickOutsideDirective } from '@shared/directives/out-side-directive';
 
 @Component({
 	selector: 'app-advanced-dropdown',
 	templateUrl: './advanced-dropdown.html',
 	styleUrls: ['./advanced-dropdown.scss'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [ClickOutsideDirective, ReactiveFormsModule, DropdownList, TranslateModule],
+	imports: [ClickOutsideDirective, ReactiveFormsModule, DropdownList, TranslocoModule],
 })
 export class AdvancedDropdown {
 	readonly dropdownContainer = viewChild<ElementRef>('dropdownContainer');

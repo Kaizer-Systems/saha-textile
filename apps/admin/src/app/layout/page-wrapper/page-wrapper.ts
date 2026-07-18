@@ -1,6 +1,6 @@
 import { Component, inject, input } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
 import { LoaderStore } from '@core/state/loader.store';
 import { Loader } from '@layout/loader/loader';
@@ -9,7 +9,7 @@ import { Loader } from '@layout/loader/loader';
 	selector: 'app-page-wrapper',
 	templateUrl: './page-wrapper.html',
 	styleUrls: ['./page-wrapper.scss'],
-	imports: [Loader, TranslateModule],
+	imports: [Loader, TranslocoModule],
 })
 export class PageWrapper {
 	// TODO: Skipped for migration because:

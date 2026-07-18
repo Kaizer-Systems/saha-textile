@@ -1,12 +1,12 @@
 import { Component, input } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
 @Component({
 	selector: 'app-no-data',
 	templateUrl: './no-data.html',
 	styleUrls: ['./no-data.scss'],
-	imports: [TranslateModule],
+	imports: [TranslocoModule],
 })
 export class NoData {
 	readonly class = input<string>('no-data-added');

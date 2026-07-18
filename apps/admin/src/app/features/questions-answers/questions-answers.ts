@@ -1,13 +1,14 @@
 import { Component, effect, inject, signal, viewChild } from '@angular/core';
 import { Params, Router } from '@angular/router';
 
-import { AnswersModal } from './answers-modal/answers-modal';
-import { injectQuestionAnswersQuery } from '@data-access/queries/questions-answers.queries';
-import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { Table } from '@shared/ui/table/table';
 import { IQuestionAnswers } from '@data-access/interfaces/questions-answers.interface';
 import { IStores } from '@data-access/interfaces/store.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
+import { injectQuestionAnswersQuery } from '@data-access/queries/questions-answers.queries';
+import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { Table } from '@shared/ui/table/table';
+
+import { AnswersModal } from './answers-modal/answers-modal';
 
 @Component({
 	selector: 'app-questions-answers',

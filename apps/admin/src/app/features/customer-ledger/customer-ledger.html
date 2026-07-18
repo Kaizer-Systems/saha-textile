@@ -9,9 +9,9 @@
 				<select2
 					class="custom-select"
 					[data]="(users$ | async)?.length ? (users$ | async) : []"
-					[placeholder]="'select_consumer' | translate "
+					[placeholder]="'select_consumer' | transloco "
 					formControlName="consumer_id"
-					noResultMessage="{{ 'no_data_found' | translate }}"
+					noResultMessage="{{ 'no_data_found' | transloco }}"
 				/>
 				}
 			</app-page-wrapper>
@@ -30,7 +30,7 @@
 						</div>
 						<div>
 							<h2>{{ balance | currencySymbol }}</h2>
-							<h5>{{ 'wallet_balance' | translate }}</h5>
+							<h5>{{ 'wallet_balance' | transloco }}</h5>
 						</div>
 					</div>
 					<input
@@ -38,7 +38,7 @@
 						#bal
 						formControlName="balance"
 						class="form-control"
-						placeholder="{{ 'add_withdraw_amount' | translate }}"
+						placeholder="{{ 'add_withdraw_amount' | transloco }}"
 						numbersOnly
 					/>
 					<div class="btn-sec">
@@ -49,7 +49,7 @@
 							(click)="form.valid && ConfirmationModal().openModal('credit')"
 							*hasPermission="'wallet.credit'"
 						>
-							{{ 'add' | translate }}
+							{{ 'add' | transloco }}
 						</app-button>
 						<app-button
 							[class]="'btn btn-outline'"
@@ -58,7 +58,7 @@
 							(click)="+balance < +bal.value || !!bal.value && ConfirmationModal().openModal('debit')"
 							*hasPermission="'wallet.debit'"
 						>
-							{{ 'withdraw' | translate }}
+							{{ 'withdraw' | transloco }}
 						</app-button>
 					</div>
 				</div>

@@ -9,7 +9,7 @@
 			<li ngbNavItem="profile">
 				<a ngbNavLink>
 					<i class="ri-account-pin-box-line"></i>
-					{{ 'profile_setting' | translate }}
+					{{ 'profile_setting' | transloco }}
 				</a>
 				<ng-template ngbNavContent>
 					<form
@@ -31,20 +31,20 @@
 								/>
 							</app-form-fields>
 							<app-form-fields
-								[label]="'name' | translate"
+								[label]="'name' | transloco"
 								[for]="'name'"
 								[required]="true"
 							>
 								<input
 									class="form-control"
 									type="text"
-									placeholder="{{ 'enter_full_name' | translate }}"
+									placeholder="{{ 'enter_full_name' | transloco }}"
 									name="name"
 									formControlName="name"
 								/>
 								@if (profileForm.controls['name'].touched &&
 								profileForm.controls['name'].errors?.['required']) {
-								<div class="invalid-feedback">{{ 'name_is_required' | translate }}</div>
+								<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
 								}
 							</app-form-fields>
 							<app-form-fields
@@ -55,16 +55,16 @@
 								<input
 									class="form-control"
 									type="email"
-									placeholder="{{ 'enter_email' | translate }}"
+									placeholder="{{ 'enter_email' | transloco }}"
 									name="email"
 									formControlName="email"
 								/>
 								@if (profileForm.controls['email'].touched &&
 								profileForm.controls['email'].errors?.['required']) {
-								<div class="invalid-feedback">{{ 'email_is_required' | translate }}</div>
+								<div class="invalid-feedback">{{ 'email_is_required' | transloco }}</div>
 								} @if (profileForm.controls['email'].touched &&
 								profileForm.controls['email'].errors?.['email']) {
-								<div class="invalid-feedback">{{ 'enter_valid_email' | translate }}</div>
+								<div class="invalid-feedback">{{ 'enter_valid_email' | transloco }}</div>
 								}
 							</app-form-fields>
 							<app-form-fields
@@ -102,14 +102,14 @@
 								/>
 								@if (profileForm.controls['phone'].touched &&
 								profileForm.controls['phone'].errors?.['required']) {
-								<div class="invalid-feedback">{{ 'phone_number_is_required' | translate }}</div>
+								<div class="invalid-feedback">{{ 'phone_number_is_required' | transloco }}</div>
 								} @if (profileForm.controls['phone'].touched &&
 								profileForm.controls['phone'].errors?.['pattern']) {
-								<div class="invalid-feedback">{{'phone_number_is_invalid' | translate }}</div>
+								<div class="invalid-feedback">{{'phone_number_is_invalid' | transloco }}</div>
 								}
 							</app-form-fields>
 						</div>
-						<app-button [id]="'profile_btn'">{{ 'save' | translate }}</app-button>
+						<app-button [id]="'profile_btn'">{{ 'save' | transloco }}</app-button>
 					</form>
 				</ng-template>
 			</li>
@@ -117,7 +117,7 @@
 			<li ngbNavItem="vendor-setting">
 				<a ngbNavLink>
 					<i class="ri-account-pin-box-line"></i>
-					{{ 'store_setting' | translate }}
+					{{ 'store_setting' | transloco }}
 				</a>
 				<ng-template ngbNavContent>
 					<form
@@ -127,7 +127,7 @@
 					>
 						<div class="row">
 							<app-form-fields
-								[label]="'store_logo' | translate"
+								[label]="'store_logo' | transloco"
 								[for]="'logo'"
 								[required]="false"
 							>
@@ -145,12 +145,12 @@
 								<input
 									class="form-control"
 									type="text"
-									placeholder="{{ 'enter_store_name' | translate }}"
+									placeholder="{{ 'enter_store_name' | transloco }}"
 									formControlName="store_name"
 								/>
 								@if (form?.controls['store_name'].touched &&
 								form.controls['store_name'].errors?.['required']) {
-								<div class="invalid-feedback">{{ 'store_name_is_required' | translate }}</div>
+								<div class="invalid-feedback">{{ 'store_name_is_required' | transloco }}</div>
 								}
 							</app-form-fields>
 							<app-form-fields
@@ -160,13 +160,13 @@
 							>
 								<textarea
 									class="form-control"
-									placeholder="{{ 'enter_description' | translate }}"
+									placeholder="{{ 'enter_description' | transloco }}"
 									formControlName="description"
 									rows="3"
 								></textarea>
 								@if (form.controls['description'].touched &&
 								form.controls['description'].errors?.['required']) {
-								<div class="invalid-feedback">{{ 'description_is_required' | translate }}</div>
+								<div class="invalid-feedback">{{ 'description_is_required' | transloco }}</div>
 								}
 							</app-form-fields>
 							<app-form-fields
@@ -178,14 +178,14 @@
 								<select2
 									class="custom-select"
 									[data]="(countries$ | async)?.length ? (countries$ | async) : []"
-									[placeholder]="'select_country' | translate"
+									[placeholder]="'select_country' | transloco"
 									formControlName="country_id"
 									(update)="countryChange($event)"
 									resettable
 								/>
 								} @if (form?.controls['country_id']?.touched &&
 								form?.controls['country_id']?.errors?.['required']) {
-								<div class="invalid-feedback">{{ 'country_is_required' | translate }}</div>
+								<div class="invalid-feedback">{{ 'country_is_required' | transloco }}</div>
 								}
 							</app-form-fields>
 							<app-form-fields
@@ -197,13 +197,13 @@
 								<select2
 									class="custom-select"
 									[data]="(states$ | async)?.length ? (states$ | async) : [] "
-									[placeholder]="'select_state' | translate"
+									[placeholder]="'select_state' | transloco"
 									formControlName="state_id"
 									resettable
 								/>
 								} @if (form?.controls['state_id'].touched &&
 								form?.controls['state_id'].errors?.['required']) {
-								<div class="invalid-feedback">{{ 'state_is_required' | translate }}</div>
+								<div class="invalid-feedback">{{ 'state_is_required' | transloco }}</div>
 								}
 							</app-form-fields>
 							<app-form-fields
@@ -214,12 +214,12 @@
 								<input
 									class="form-control"
 									type="text"
-									placeholder="{{ 'enter_city_name' | translate }}"
+									placeholder="{{ 'enter_city_name' | transloco }}"
 									name="city"
 									formControlName="city"
 								/>
 								@if (form.controls['city'].touched && form.controls['city'].errors?.['required']) {
-								<div class="invalid-feedback">{{ 'city_is_required' | translate }}</div>
+								<div class="invalid-feedback">{{ 'city_is_required' | transloco }}</div>
 								}
 							</app-form-fields>
 							<app-form-fields
@@ -230,13 +230,13 @@
 								<input
 									class="form-control"
 									type="text"
-									placeholder="{{ 'enter_store_address' | translate }}"
+									placeholder="{{ 'enter_store_address' | transloco }}"
 									name="address"
 									formControlName="address"
 								/>
 								@if (form.controls['address'].touched && form.controls['address'].errors?.['required'])
 								{
-								<div class="invalid-feedback">{{ 'address_is_required' | translate }}</div>
+								<div class="invalid-feedback">{{ 'address_is_required' | transloco }}</div>
 								}
 							</app-form-fields>
 							<app-form-fields
@@ -247,13 +247,13 @@
 								<input
 									class="form-control"
 									type="number"
-									placeholder="{{ 'enter_pincode' | translate }}"
+									placeholder="{{ 'enter_pincode' | transloco }}"
 									name="pincode"
 									formControlName="pincode"
 								/>
 								@if (form.controls['pincode'].touched && form.controls['pincode'].errors?.['required'])
 								{
-								<div class="invalid-feedback">{{ 'pincode_is_required' | translate }}</div>
+								<div class="invalid-feedback">{{ 'pincode_is_required' | transloco }}</div>
 								}
 							</app-form-fields>
 							<app-form-fields
@@ -263,7 +263,7 @@
 								<input
 									type="url"
 									class="form-control"
-									placeholder="{{ 'enter_url' | translate }}"
+									placeholder="{{ 'enter_url' | transloco }}"
 									formControlName="facebook"
 								/>
 							</app-form-fields>
@@ -274,7 +274,7 @@
 								<input
 									type="url"
 									class="form-control"
-									placeholder="{{ 'enter_url' | translate }}"
+									placeholder="{{ 'enter_url' | transloco }}"
 									formControlName="instagram"
 								/>
 							</app-form-fields>
@@ -285,7 +285,7 @@
 								<input
 									type="url"
 									class="form-control"
-									placeholder="{{ 'enter_url' | translate }}"
+									placeholder="{{ 'enter_url' | transloco }}"
 									formControlName="twitter"
 								/>
 							</app-form-fields>
@@ -296,7 +296,7 @@
 								<input
 									type="url"
 									class="form-control"
-									placeholder="{{ 'enter_url' | translate }}"
+									placeholder="{{ 'enter_url' | transloco }}"
 									formControlName="youtube"
 								/>
 							</app-form-fields>
@@ -307,12 +307,12 @@
 								<input
 									type="url"
 									class="form-control"
-									placeholder="{{ 'enter_url' | translate }}"
+									placeholder="{{ 'enter_url' | transloco }}"
 									formControlName="pinterest"
 								/>
 							</app-form-fields>
 							<app-form-fields
-								[label]="'hide_email' | translate"
+								[label]="'hide_email' | transloco"
 								[for]="'hide_vendor_email'"
 								[required]="false"
 							>
@@ -328,7 +328,7 @@
 								</div>
 							</app-form-fields>
 							<app-form-fields
-								[label]="'hide_phone' | translate"
+								[label]="'hide_phone' | transloco"
 								[for]="'hide_vendor_phone'"
 								[required]="false"
 							>
@@ -344,7 +344,7 @@
 								</div>
 							</app-form-fields>
 						</div>
-						<app-button [id]="'store_setting_btn'">{{ 'save' | translate }}</app-button>
+						<app-button [id]="'store_setting_btn'">{{ 'save' | transloco }}</app-button>
 					</form>
 				</ng-template>
 			</li>
@@ -352,7 +352,7 @@
 			<li ngbNavItem="password">
 				<a ngbNavLink>
 					<i class="ri-phone-lock-line"></i>
-					{{ 'change_password' | translate }}
+					{{ 'change_password' | transloco }}
 				</a>
 				<ng-template ngbNavContent>
 					<form
@@ -369,13 +369,13 @@
 								<input
 									class="form-control"
 									type="password"
-									placeholder="{{ 'enter_current_password' | translate }}"
+									placeholder="{{ 'enter_current_password' | transloco }}"
 									name="current_password"
 									formControlName="current_password"
 								/>
 								@if (passwordForm.controls['current_password'].touched &&
 								passwordForm.controls['current_password'].errors?.['required']) {
-								<div class="invalid-feedback">{{ 'current_password_is_required' | translate }}</div>
+								<div class="invalid-feedback">{{ 'current_password_is_required' | transloco }}</div>
 								}
 							</app-form-fields>
 							<app-form-fields
@@ -386,13 +386,13 @@
 								<input
 									class="form-control"
 									type="password"
-									placeholder="{{ 'enter_new_password' | translate }}"
+									placeholder="{{ 'enter_new_password' | transloco }}"
 									name="password"
 									formControlName="password"
 								/>
 								@if (passwordForm.controls['password'].touched &&
 								passwordForm.controls['password'].errors?.['required']) {
-								<div class="invalid-feedback">{{ 'new_password_is_required' | translate }}</div>
+								<div class="invalid-feedback">{{ 'new_password_is_required' | transloco }}</div>
 								}
 							</app-form-fields>
 							<app-form-fields
@@ -403,21 +403,21 @@
 								<input
 									class="form-control"
 									type="password"
-									placeholder="{{ 'enter_confirm_password' | translate }}"
+									placeholder="{{ 'enter_confirm_password' | transloco }}"
 									name="password_confirmation"
 									formControlName="password_confirmation"
 								/>
 								@if (passwordForm.controls['password_confirmation'].touched &&
 								passwordForm.controls['password_confirmation'].errors?.['required']) {
-								<div class="invalid-feedback">{{ 'confirm_password_is_required' | translate }}</div>
+								<div class="invalid-feedback">{{ 'confirm_password_is_required' | transloco }}</div>
 								} @else { @if (passwordMatchError) {
 								<div class="invalid-feedback">
-									{{ 'confirm_password_does_not_matched' | translate }}
+									{{ 'confirm_password_does_not_matched' | transloco }}
 								</div>
 								} }
 							</app-form-fields>
 						</div>
-						<app-button [id]="'password_btn'">{{ 'save' | translate }}</app-button>
+						<app-button [id]="'password_btn'">{{ 'save' | transloco }}</app-button>
 					</form>
 				</ng-template>
 			</li>

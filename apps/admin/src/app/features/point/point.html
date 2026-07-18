@@ -9,7 +9,7 @@
 				<select2
 					class="custom-select"
 					[data]="(users$ | async)?.length ? (users$ | async) : []"
-					[placeholder]="'select_consumer' | translate"
+					[placeholder]="'select_consumer' | transloco"
 					formControlName="consumer_id"
 				/>
 				}
@@ -29,7 +29,7 @@
 						</div>
 						<div>
 							<h2>{{ balance?.toFixed(2) }}</h2>
-							<h5>{{ 'point_balance' | translate }}</h5>
+							<h5>{{ 'point_balance' | transloco }}</h5>
 						</div>
 					</div>
 					<input
@@ -48,7 +48,7 @@
 							(click)="form.valid && ConfirmationModal().openModal('credit')"
 							*hasPermission="'point.credit'"
 						>
-							{{ 'add' | translate }}
+							{{ 'add' | transloco }}
 						</app-button>
 						<app-button
 							[class]="'btn btn-outline'"
@@ -57,7 +57,7 @@
 							(click)="(+balance < +bal.value || !!bal.value) && ConfirmationModal().openModal('debit')"
 							*hasPermission="'point.debit'"
 						>
-							{{ 'withdraw' | translate }}
+							{{ 'withdraw' | transloco }}
 						</app-button>
 					</div>
 				</div>

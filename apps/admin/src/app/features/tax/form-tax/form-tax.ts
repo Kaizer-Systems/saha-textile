@@ -2,19 +2,19 @@ import { Component, inject, input } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Subject, of } from 'rxjs';
 import { map, switchMap, takeUntil } from 'rxjs/operators';
 
+import { TaxService } from '@data-access/services/tax.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { TaxService } from '@data-access/services/tax.service';
 
 @Component({
 	selector: 'app-form-tax',
 	templateUrl: './form-tax.html',
 	styleUrls: ['./form-tax.scss'],
-	imports: [ReactiveFormsModule, FormFields, Button, TranslateModule],
+	imports: [ReactiveFormsModule, FormFields, Button, TranslocoModule],
 })
 export class FormTax {
 	private taxService = inject(TaxService);

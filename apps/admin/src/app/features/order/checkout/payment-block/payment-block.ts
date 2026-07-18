@@ -1,12 +1,12 @@
 import { Component, output } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
 @Component({
 	selector: 'app-payment-block',
 	templateUrl: './payment-block.html',
 	styleUrls: ['./payment-block.scss'],
-	imports: [TranslateModule],
+	imports: [TranslocoModule],
 })
 export class PaymentBlock {
 	readonly selectPaymentMethod = output<string>();

@@ -20,7 +20,7 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-settings-line"></i>
-							{{ 'general' | translate }}
+							{{ 'general' | transloco }}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -38,11 +38,11 @@
 										class="form-control"
 										id="name"
 										type="text"
-										placeholder="{{ 'enter_product_name' | translate }}"
+										placeholder="{{ 'enter_product_name' | transloco }}"
 										formControlName="name"
 									/>
 									@if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
-									<div class="invalid-feedback">{{ 'name_is_required' | translate }}</div>
+									<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
 								<app-form-fields
@@ -55,7 +55,7 @@
 									<textarea
 										class="form-control"
 										id="sort_description"
-										placeholder="{{ 'enter_short_description' | translate }}"
+										placeholder="{{ 'enter_short_description' | transloco }}"
 										rows="3"
 										formControlName="short_description"
 									></textarea>
@@ -63,7 +63,7 @@
 									@if (form.controls['short_description'].touched &&
 									form.controls['short_description'].errors?.['required']) {
 									<div class="invalid-feedback">
-										{{ 'short_description_is_required' | translate }}
+										{{ 'short_description_is_required' | transloco }}
 									</div>
 									}
 								</app-form-fields>
@@ -85,7 +85,7 @@
 										/>
 										} @if (form.controls['description'].touched &&
 										form.controls['description'].errors?.['required']) {
-										<div class="invalid-feedback">{{ 'description_is_required' | translate }}</div>
+										<div class="invalid-feedback">{{ 'description_is_required' | transloco }}</div>
 										}
 									</div>
 								</app-form-fields>
@@ -100,16 +100,16 @@
 									@if(isBrowser) {
 									<select2
 										class="custom-select"
-										[placeholder]="'select_store' | translate"
+										[placeholder]="'select_store' | transloco"
 										[data]="(store$ | async)?.length ? (store$ | async) : []"
 										formControlName="store_id"
-										noResultMessage="{{ 'no_data_found' | translate }}"
+										noResultMessage="{{ 'no_data_found' | transloco }}"
 										id="store_id"
 										resettable
 									/>
 									} @if (form.controls['store_id'].touched &&
 									form.controls['store_id'].errors?.['required']) {
-									<div class="invalid-feedback">{{ 'store_is_required' | translate }}</div>
+									<div class="invalid-feedback">{{ 'store_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
 								}
@@ -123,7 +123,7 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-file-list-line"></i>
-							{{ 'inventory' | translate }}
+							{{ 'inventory' | transloco }}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -140,14 +140,14 @@
 									@if(isBrowser) {
 									<select2
 										class="custom-select"
-										[placeholder]="'select_type' | translate "
+										[placeholder]="'select_type' | transloco "
 										[data]="productType.length ? productType : []"
-										noResultMessage="{{ 'no_data_found' | translate }}"
+										noResultMessage="{{ 'no_data_found' | transloco }}"
 										formControlName="type"
 									/>
 									} @if (form.controls['type'].touched && form.controls['type'].errors?.['required'])
 									{
-									<div class="invalid-feedback">{{ 'type_is_required' | translate }}</div>
+									<div class="invalid-feedback">{{ 'type_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
 								<app-form-fields
@@ -161,7 +161,7 @@
 										class="form-control"
 										id="unit"
 										type="text"
-										placeholder="{{ 'enter_unit' | translate }}"
+										placeholder="{{ 'enter_unit' | transloco }}"
 										formControlName="unit"
 									/>
 									<p class="help-text">
@@ -195,14 +195,14 @@
 									@if(isBrowser) {
 									<select2
 										class="custom-select"
-										[placeholder]="'select_stock_status' | translate"
+										[placeholder]="'select_stock_status' | transloco"
 										[data]="stocks.length ? stocks : []"
-										noResultMessage="{{ 'no_data_found' | translate }}"
+										noResultMessage="{{ 'no_data_found' | transloco }}"
 										formControlName="stock_status"
 									/>
 									} @if (form.controls['stock_status'].touched &&
 									form.controls['stock_status'].errors?.['required']) {
-									<div class="invalid-feedback">{{ 'stock_is_required' | translate }}</div>
+									<div class="invalid-feedback">{{ 'stock_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
 								}
@@ -218,11 +218,11 @@
 										class="form-control"
 										id="sku"
 										type="text"
-										placeholder="{{ 'enter_sku' | translate }}"
+										placeholder="{{ 'enter_sku' | transloco }}"
 										formControlName="sku"
 									/>
 									@if (form.controls['sku'].touched && form.controls['sku'].errors?.['required']) {
-									<div class="invalid-feedback">{{ 'sku_is_required' | translate}}</div>
+									<div class="invalid-feedback">{{ 'sku_is_required' | transloco}}</div>
 									}
 								</app-form-fields>
 								@if (form.controls['type'].value === 'simple') {
@@ -237,12 +237,12 @@
 										class="form-control"
 										id="quantity"
 										type="number"
-										placeholder="{{ 'enter_quantity' | translate }}"
+										placeholder="{{ 'enter_quantity' | transloco }}"
 										formControlName="quantity"
 									/>
 									@if (form.controls['quantity'].touched &&
 									form.controls['quantity'].errors?.['required']) {
-									<div class="invalid-feedback">{{ 'quantity_is_required' | translate }}</div>
+									<div class="invalid-feedback">{{ 'quantity_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
 								} @if (form.controls['type'].value === 'simple') {
@@ -262,16 +262,16 @@
 											class="form-control"
 											id="price"
 											type="number"
-											placeholder="{{ 'enter_price' | translate }}"
+											placeholder="{{ 'enter_price' | transloco }}"
 											formControlName="price"
 										/>
 									</div>
 									@if (form.controls['price'].touched && form.controls['price'].errors?.['required'])
 									{
-									<div class="invalid-feedback">{{ 'price_is_required' | translate }}</div>
+									<div class="invalid-feedback">{{ 'price_is_required' | transloco }}</div>
 									} @if (form.controls['price'].touched &&
 									form.controls['price'].errors?.['invalidPrice']) {
-									<div class="invalid-feedback">{{ 'please_enter_a_valid_price' | translate }}</div>
+									<div class="invalid-feedback">{{ 'please_enter_a_valid_price' | transloco }}</div>
 									}
 								</app-form-fields>
 								} @if (form.controls['type'].value === 'simple') {
@@ -293,7 +293,7 @@
 												if (value > 100) value = 100;
 												if (value < 0) value = 0;
 											"
-											placeholder="{{ 'enter_discount' | translate }}"
+											placeholder="{{ 'enter_discount' | transloco }}"
 											formControlName="discount"
 										/>
 										<span class="input-group-text">%</span>
@@ -404,7 +404,7 @@
 										</div>
 										@if (form.controls['sale_starts_at'].touched &&
 										form.controls['sale_starts_at'].errors?.['required']) {
-										<div class="invalid-feedback">{{ 'start_date_is_required' | translate }}</div>
+										<div class="invalid-feedback">{{ 'start_date_is_required' | transloco }}</div>
 										}
 									</app-form-fields>
 									<app-form-fields
@@ -434,7 +434,7 @@
 										</div>
 										@if (form.controls['sale_expired_at'].touched &&
 										form.controls['sale_expired_at'].errors?.['required']) {
-										<div class="invalid-feedback">{{ 'end_date_is_required' | translate }}</div>
+										<div class="invalid-feedback">{{ 'end_date_is_required' | transloco }}</div>
 										}
 									</app-form-fields>
 								</div>
@@ -455,10 +455,10 @@
 													<select2
 														class="custom-select d-block"
 														[data]="(attribute$ | async)?.length ? (attribute$ | async) : []"
-														[placeholder]="'select_attribute' | translate "
+														[placeholder]="'select_attribute' | transloco "
 														(update)="updateAttribute($event, index)"
 														formControlName="id"
-														noResultMessage="{{ 'no_data_found' | translate }}"
+														noResultMessage="{{ 'no_data_found' | transloco }}"
 														resettable
 													/>
 													}
@@ -473,10 +473,10 @@
 													<select2
 														class="custom-select d-block"
 														[data]="variant.get('variant_option')?.value?.length ? variant.get('variant_option').value : []"
-														[placeholder]="'select_value' | translate "
+														[placeholder]="'select_value' | transloco "
 														formControlName="attribute_values"
 														(update)="updateAttributeValue($event, index)"
-														noResultMessage="{{ 'no_data_found' | translate }}"
+														noResultMessage="{{ 'no_data_found' | transloco }}"
 														[multiple]="true"
 													/>
 													}
@@ -488,7 +488,7 @@
 													class="invalid-feedback"
 													(click)="removeVariant(index)"
 												>
-													{{ 'remove' | translate }}
+													{{ 'remove' | transloco }}
 												</a>
 											</div>
 										</div>
@@ -501,11 +501,11 @@
 										[spinner]="false"
 										(click)="addVariant($event)"
 									>
-										{{ 'add_variant' | translate }}
+										{{ 'add_variant' | transloco }}
 									</app-button>
 									} @if (variationControl.controls.length) {
 									<div class="shipping-accordion variant-accordion">
-										<h3 class="form-label-title mb-2">{{ 'variants' | translate }}</h3>
+										<h3 class="form-label-title mb-2">{{ 'variants' | transloco }}</h3>
 										<ng-container formArrayName="variations">
 											<div ngbAccordion>
 												@for (variation of variationControl?.controls; track variation ; let i =
@@ -526,7 +526,7 @@
 																<app-form-fields
 																	[labelClass]="'form-label-title col-sm-3 mb-0'"
 																	[gridClass]="'col-sm-9'"
-																	[label]="'name' | translate"
+																	[label]="'name' | transloco"
 																	[for]="'variation_name'+i"
 																	[required]="true"
 																>
@@ -540,7 +540,7 @@
 																	@if (variation.get('name')?.touched &&
 																	variation.get('name')?.errors?.['required']) {
 																	<div class="invalid-feedback">
-																		{{ 'name_is_required' | translate }}
+																		{{ 'name_is_required' | transloco }}
 																	</div>
 																	}
 																</app-form-fields>
@@ -570,19 +570,19 @@
 																	@if (variation.get('price')?.touched &&
 																	variation.get('price')?.errors?.['required']) {
 																	<div class="invalid-feedback">
-																		{{ 'price_is_required' | translate }}
+																		{{ 'price_is_required' | transloco }}
 																	</div>
 																	} @if (variation.get('price')?.touched &&
 																	variation.get('price')?.errors?.['invalidPrice']) {
 																	<div class="invalid-feedback">
-																		{{ 'please_enter_a_valid_price' | translate }}
+																		{{ 'please_enter_a_valid_price' | transloco }}
 																	</div>
 																	}
 																</app-form-fields>
 																<app-form-fields
 																	[labelClass]="'form-label-title col-sm-3 mb-0'"
 																	[gridClass]="'col-sm-9'"
-																	[label]="'discount' | translate "
+																	[label]="'discount' | transloco "
 																	[for]="'discount_value'+i"
 																	[required]="false"
 																>
@@ -597,7 +597,7 @@
 																				if (value > 100) value = 100;
 																				if (value < 0) value = 0;
 																			"
-																			placeholder="{{ 'enter_discount' | translate }}"
+																			placeholder="{{ 'enter_discount' | transloco }}"
 																			formControlName="discount"
 																		/>
 																		<span class="input-group-text">%</span>
@@ -631,7 +631,7 @@
 																<app-form-fields
 																	[labelClass]="'form-label-title col-sm-3 mb-0'"
 																	[gridClass]="'col-sm-9'"
-																	[label]="'stock_quantity' | translate"
+																	[label]="'stock_quantity' | transloco"
 																	[for]="'quantity'+i"
 																	[required]="true"
 																>
@@ -645,7 +645,7 @@
 																	@if (variation.get('quantity')?.touched &&
 																	variation.get('quantity')?.errors?.['required']) {
 																	<div class="invalid-feedback">
-																		{{ 'quantity_is_required' | translate }}
+																		{{ 'quantity_is_required' | transloco }}
 																	</div>
 																	}
 																</app-form-fields>
@@ -666,7 +666,7 @@
 																	@if (variation.get('sku')?.touched &&
 																	variation.get('sku')?.errors?.['required']) {
 																	<div class="invalid-feedback">
-																		{{ 'sku_is_required' | translate }}
+																		{{ 'sku_is_required' | transloco }}
 																	</div>
 																	}
 																</app-form-fields>
@@ -680,16 +680,16 @@
 																	@if(isBrowser) {
 																	<select2
 																		class="custom-select"
-																		[placeholder]="'select_stock_status' | translate"
+																		[placeholder]="'select_stock_status' | transloco"
 																		[data]="stocks.length ? stocks : []"
-																		noResultMessage="{{ 'no_data_found' | translate }}"
+																		noResultMessage="{{ 'no_data_found' | transloco }}"
 																		formControlName="stock_status"
 																	/>
 																	} @if (variation.get('stock_status')?.touched &&
 																	variation.get('stock_status')?.errors?.['required'])
 																	{
 																	<div class="invalid-feedback">
-																		{{ 'stock_is_required' | translate }}
+																		{{ 'stock_is_required' | transloco }}
 																	</div>
 																	}
 																</app-form-fields>
@@ -744,7 +744,7 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-tools-line"></i>
-							{{ 'setup' | translate }}
+							{{ 'setup' | transloco }}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -782,7 +782,7 @@
 									/>
 									@if (form.controls['categories'].touched &&
 									form.controls['categories'].errors?.['required']) {
-									<div class="invalid-feedback">{{ 'categories_is_required' | translate }}</div>
+									<div class="invalid-feedback">{{ 'categories_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
 								<app-form-fields
@@ -811,7 +811,7 @@
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
-									[label]="'related_products' | translate"
+									[label]="'related_products' | transloco"
 									[for]="'related_product_id'"
 									[required]="false"
 								>
@@ -820,9 +820,9 @@
 										class="custom-select"
 										[templates]="template"
 										[data]="(products$ | async)?.length ? (products$ | async) : []"
-										[placeholder]="'select_product' | translate"
+										[placeholder]="'select_product' | transloco"
 										formControlName="related_products"
-										noResultMessage="{{ 'no_data_found' | translate }}"
+										noResultMessage="{{ 'no_data_found' | transloco }}"
 										[customSearchEnabled]="true"
 										(close)="productDropdown($event)"
 										(search)="searchProduct($event)"
@@ -861,9 +861,9 @@
 										class="custom-select"
 										[templates]="template"
 										[data]="collectionProduct?.length ? collectionProduct : []"
-										[placeholder]="'select_product' | translate"
+										[placeholder]="'select_product' | transloco"
 										formControlName="cross_sell_products"
-										noResultMessage="{{ 'no_data_found' | translate }}"
+										noResultMessage="{{ 'no_data_found' | transloco }}"
 										[customSearchEnabled]="true"
 										(close)="productDropdown($event)"
 										(search)="searchProduct($event)"
@@ -898,7 +898,7 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-image-line"></i>
-							{{ 'images' | translate }}
+							{{ 'images' | transloco }}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -957,7 +957,7 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-earth-line"></i>
-							{{ 'seo' | translate }}
+							{{ 'seo' | transloco }}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -975,7 +975,7 @@
 										class="form-control"
 										id="meta_title"
 										type="text"
-										placeholder="{{'enter_meta_title' | translate }}"
+										placeholder="{{'enter_meta_title' | transloco }}"
 										formControlName="meta_title"
 									/>
 								</app-form-fields>
@@ -989,7 +989,7 @@
 									<textarea
 										class="form-control"
 										id="meta_desc"
-										placeholder="{{ 'enter_meta_description' | translate }}"
+										placeholder="{{ 'enter_meta_description' | transloco }}"
 										rows="3"
 										formControlName="meta_description"
 									></textarea>
@@ -1017,7 +1017,7 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-truck-line"></i>
-							{{ 'shipping_&_tax' | translate }}
+							{{ 'shipping_&_tax' | transloco }}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -1052,16 +1052,16 @@
 									@if(isBrowser) {
 									<select2
 										class="custom-select"
-										[placeholder]="'select_tax' | translate "
+										[placeholder]="'select_tax' | transloco "
 										[data]="taxes().length ? taxes() : []"
 										formControlName="tax_id"
 										[id]="'tax_id'"
-										noResultMessage="{{ 'no_data_found' | translate }}"
+										noResultMessage="{{ 'no_data_found' | transloco }}"
 										resettable
 									/>
 									} @if (form.controls['tax_id'].touched &&
 									form.controls['tax_id'].errors?.['required']) {
-									<div class="invalid-feedback">{{ 'tax_is_required' | translate }}</div>
+									<div class="invalid-feedback">{{ 'tax_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
 								<app-form-fields
@@ -1075,7 +1075,7 @@
 										class="form-control"
 										id="estimated_delivery_text"
 										type="text"
-										placeholder="{{'enter_estimated_delivery_text' | translate }}"
+										placeholder="{{'enter_estimated_delivery_text' | transloco }}"
 										formControlName="estimated_delivery_text"
 									/>
 									<p class="help-text">
@@ -1094,7 +1094,7 @@
 										class="form-control"
 										id="return_policy_text"
 										type="text"
-										placeholder="{{ 'enter_return_policy_text' | translate }}"
+										placeholder="{{ 'enter_return_policy_text' | transloco }}"
 										formControlName="return_policy_text"
 									/>
 									<p class="help-text">
@@ -1112,7 +1112,7 @@
 					>
 						<a ngbNavLink>
 							<i class="ri-checkbox-circle-line"></i>
-							{{ 'status' | translate }}
+							{{ 'status' | transloco }}
 						</a>
 						<ng-template ngbNavContent>
 							<div
@@ -1325,7 +1325,7 @@
 			</div>
 		</div>
 		<app-button [id]="'product_btn'">
-			{{ (type() === 'create' ? 'save_product' : 'update_product') | translate }}
+			{{ (type() === 'create' ? 'save_product' : 'update_product') | transloco }}
 		</app-button>
 	</div>
 </form>

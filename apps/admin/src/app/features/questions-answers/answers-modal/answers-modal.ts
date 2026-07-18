@@ -1,17 +1,17 @@
 import { Component, TemplateRef, inject, viewChild } from '@angular/core';
 import { FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 
-import { Button } from '@shared/ui/button/button';
 import { IQuestionAnswers } from '@data-access/interfaces/questions-answers.interface';
+import { Button } from '@shared/ui/button/button';
 
 @Component({
 	selector: 'app-answers-modal',
 	templateUrl: './answers-modal.html',
 	styleUrls: ['./answers-modal.scss'],
-	imports: [Button, ReactiveFormsModule, TranslateModule],
+	imports: [Button, ReactiveFormsModule, TranslocoModule],
 })
 export class AnswersModal {
 	private modalService = inject(NgbModal);

@@ -1,26 +1,26 @@
 import { isPlatformBrowser, AsyncPipe } from '@angular/common';
 import { Component, DOCUMENT, computed, inject, PLATFORM_ID, Renderer2, viewChild } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { toObservable } from '@angular/core/rxjs-interop';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Select2Data, Select2Module } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
-import { injectUsersQuery } from '@data-access/queries/user.queries';
-import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { Button } from '@shared/ui/button/button';
-import { ConfirmationModal } from '@shared/ui/modal/confirmation-modal/confirmation-modal';
-import { Table } from '@shared/ui/table/table';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
-import { NumberDirective } from '@shared/directives/numbers-only.directive';
+import { SettingStore } from '@core/state/setting.store';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IValues } from '@data-access/interfaces/setting.interface';
 import { ITableConfig } from '@data-access/interfaces/table.interface';
 import { ITransactionsData } from '@data-access/interfaces/wallet.interface';
-import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { SettingStore } from '@core/state/setting.store';
+import { injectUsersQuery } from '@data-access/queries/user.queries';
 import { CustomerLedgerService } from '@data-access/services/customer-ledger.service';
+import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { NumberDirective } from '@shared/directives/numbers-only.directive';
+import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
+import { Button } from '@shared/ui/button/button';
+import { ConfirmationModal } from '@shared/ui/modal/confirmation-modal/confirmation-modal';
+import { Table } from '@shared/ui/table/table';
 
 @Component({
 	selector: 'app-customer-ledger',
@@ -36,7 +36,7 @@ import { CustomerLedgerService } from '@data-access/services/customer-ledger.ser
 		Button,
 		Table,
 		ConfirmationModal,
-		TranslateModule,
+		TranslocoModule,
 		CurrencySymbolPipe,
 		AsyncPipe,
 	],

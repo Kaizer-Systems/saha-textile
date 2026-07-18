@@ -3,17 +3,17 @@ import { Component, computed, inject, PLATFORM_ID } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable, of, Subject } from 'rxjs';
 import { map, switchMap, takeUntil } from 'rxjs/operators';
 
-import { injectOrderStatusQuery } from '@data-access/queries/order-status.queries';
-import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { IOrderStatus, IOrderStatusModel } from '@data-access/interfaces/order-status.interface';
 import { IOrder } from '@data-access/interfaces/order.interface';
-import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
+import { injectOrderStatusQuery } from '@data-access/queries/order-status.queries';
 import { OrderService } from '@data-access/services/order.service';
+import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 
 @Component({
 	selector: 'app-details',
@@ -26,7 +26,7 @@ import { OrderService } from '@data-access/services/order.service';
 		UpperCasePipe,
 		TitleCasePipe,
 		DatePipe,
-		TranslateModule,
+		TranslocoModule,
 		CurrencySymbolPipe,
 		AsyncPipe,
 		DatePipe,
@@ -41,7 +41,9 @@ export class Details {
 	private readonly orderStatusQuery = injectOrderStatusQuery(() => ({}));
 	orderStatus$: Observable<IOrderStatusModel | undefined> = toObservable(this.orderStatusQuery.data);
 	orderStatuses$: Observable<Select2Data> = toObservable(
-		computed(() => this.orderStatusQuery.data()?.data.map((status) => ({ label: status.name, value: status.id })) ?? []),
+		computed(
+			() => this.orderStatusQuery.data()?.data.map((status) => ({ label: status.name, value: status.id })) ?? [],
+		),
 	);
 
 	public order: IOrder;

@@ -8,35 +8,35 @@
 		(ngSubmit)="submit()"
 	>
 		<app-form-fields
-			[label]="'name' | translate"
+			[label]="'name' | transloco"
 			[for]="'name'"
 			[required]="true"
 		>
 			<input
 				class="form-control"
 				type="text"
-				placeholder="{{ 'enter_name' | translate }}"
+				placeholder="{{ 'enter_name' | transloco }}"
 				formControlName="name"
 			/>
 			@if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
-			<div class="invalid-feedback">{{ 'name_is_required' | translate }}</div>
+			<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
 			}
 		</app-form-fields>
 		<app-form-fields
-			[label]="'description' | translate"
+			[label]="'description' | transloco"
 			[for]="'description'"
 			[required]="false"
 		>
 			<textarea
 				class="form-control"
-				placeholder="{{ 'enter_description' | translate }}"
+				placeholder="{{ 'enter_description' | transloco }}"
 				formControlName="description"
 				rows="3"
 			></textarea>
 		</app-form-fields>
 		@if (categoryType() === 'product') {
 		<app-form-fields
-			[label]="'commission_rate' | translate "
+			[label]="'commission_rate' | transloco "
 			[for]="'commission_rate'"
 			[required]="false"
 		>
@@ -61,7 +61,7 @@
 		</app-form-fields>
 		}
 		<app-form-fields
-			[label]="'select_parent' | translate "
+			[label]="'select_parent' | transloco "
 			[for]="'category'"
 			[required]="false"
 		>
@@ -74,7 +74,7 @@
 			/>
 		</app-form-fields>
 		<app-form-fields
-			[label]="'image' | translate "
+			[label]="'image' | transloco "
 			[for]="'image'"
 			[required]="false"
 		>
@@ -85,7 +85,7 @@
 			/>
 		</app-form-fields>
 		<app-form-fields
-			[label]="'icon' | translate "
+			[label]="'icon' | transloco "
 			[for]="'icon'"
 			[required]="false"
 		>
@@ -96,7 +96,7 @@
 			/>
 		</app-form-fields>
 		<app-form-fields
-			[label]="'status' | translate "
+			[label]="'status' | transloco "
 			[for]="'status'"
 			[required]="false"
 		>
@@ -112,7 +112,7 @@
 			</div>
 		</app-form-fields>
 		<app-button [id]="'category_btn'">
-			{{ (type() === 'create' ? 'save_category' : 'update_category') | translate }}
+			{{ (type() === 'create' ? 'save_category' : 'update_category') | transloco }}
 		</app-button>
 	</form>
 </app-page-wrapper>

@@ -2,6 +2,7 @@ import { EntityState, createEntityAdapter } from '@ngrx/entity';
 import { createReducer, on } from '@ngrx/store';
 
 import { ICart } from '@data-access/interfaces/cart.interface';
+
 import { CartActions } from './cart.actions';
 
 export const cartAdapter = createEntityAdapter<ICart>();
@@ -13,7 +14,8 @@ export interface CartFeatureState extends EntityState<ICart> {
 export const initialCartState: CartFeatureState = cartAdapter.getInitialState({ total: 0 });
 
 const { selectAll } = cartAdapter.getSelectors();
-const calcTotal = (state: CartFeatureState) => selectAll(state).reduce((prev, curr) => prev + Number(curr.sub_total), 0);
+const calcTotal = (state: CartFeatureState) =>
+	selectAll(state).reduce((prev, curr) => prev + Number(curr.sub_total), 0);
 
 export const cartReducer = createReducer(
 	initialCartState,

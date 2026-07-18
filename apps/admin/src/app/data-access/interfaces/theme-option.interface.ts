@@ -17,7 +17,6 @@ export interface IOption {
 	seller: ISeller;
 	about_us: IAboutUs;
 	contact_us: IContact;
-	error_page: IErrorPage;
 }
 
 export interface ILogo {
@@ -236,12 +235,6 @@ export interface IDetail {
 	label: string;
 	icon: string;
 	text: string;
-}
-
-export interface IErrorPage {
-	error_page_content: string;
-	back_button_enable: number | boolean;
-	back_button_text: string;
 }
 
 export interface IProductThemeOption {

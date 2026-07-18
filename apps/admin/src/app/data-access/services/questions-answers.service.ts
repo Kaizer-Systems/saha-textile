@@ -3,9 +3,10 @@ import { Injectable, inject } from '@angular/core';
 
 import { Observable } from 'rxjs';
 
-import { environment } from '../../../../public/environments/environment';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IQnAModel } from '@data-access/interfaces/questions-answers.interface';
+
+import { environment } from '../../../../public/environments/environment';
 
 @Injectable({
 	providedIn: 'root',

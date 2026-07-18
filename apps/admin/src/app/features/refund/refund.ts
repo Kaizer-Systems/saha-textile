@@ -1,12 +1,12 @@
 import { Component, effect, inject, signal, viewChild } from '@angular/core';
 
+import { Params } from '@data-access/interfaces/core.interface';
+import { IRefund } from '@data-access/interfaces/refund.interface';
+import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { injectRefundsQuery } from '@data-access/queries/refund.queries';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { PayoutModal } from '@shared/ui/modal/payout-modal/payout-modal';
 import { Table } from '@shared/ui/table/table';
-import { Params } from '@data-access/interfaces/core.interface';
-import { IRefund } from '@data-access/interfaces/refund.interface';
-import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 
 @Component({
 	selector: 'app-refund',

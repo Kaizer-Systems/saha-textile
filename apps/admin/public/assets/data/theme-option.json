@@ -252,11 +252,6 @@
 				"text": "Visitación de la Encina 22"
 			}
 		},
-		"error_page": {
-			"error_page_content": "The page you are looking for could not be found. The link to this address may be outdated or we may have moved the since you last bookmarked it.",
-			"back_button_enable": true,
-			"back_button_text": "Back To Home"
-		},
 		"seo": {
 			"meta_tags": "FastKart Marketplace: Where Vendors Shine Together",
 			"meta_title": "Online Marketplace, Vendor Collaboration, E-commerce Platform",

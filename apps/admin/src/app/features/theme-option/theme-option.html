@@ -20,7 +20,7 @@
 						<li ngbNavItem="general">
 							<a ngbNavLink>
 								<i class="ri-settings-line"></i>
-								{{ 'general' | translate }}
+								{{ 'general' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div class="row">
@@ -81,13 +81,13 @@
 													class="form-control"
 													id="site_title"
 													type="text"
-													placeholder="{{ 'enter_site_title' | translate }}"
+													placeholder="{{ 'enter_site_title' | transloco }}"
 													formControlName="site_title"
 												/>
 												@if (form.get('general.site_title')?.touched &&
 												form.get('general.site_title')?.errors?.['required']) {
 												<div class="invalid-feedback">
-													{{ 'site_title_is_required' | translate }}
+													{{ 'site_title_is_required' | transloco }}
 												</div>
 												}
 											</app-form-fields>
@@ -101,7 +101,7 @@
 													class="form-control"
 													id="site_tagline"
 													type="text"
-													placeholder="{{ 'enter_site_tagline' | translate }}"
+													placeholder="{{ 'enter_site_tagline' | transloco }}"
 													formControlName="site_tagline"
 												/>
 											</app-form-fields>
@@ -165,8 +165,8 @@
 												<select2
 													class="custom-select"
 													[data]="cart_style?.length ? cart_style : []"
-													[placeholder]="'select_mode' | translate "
-													noResultMessage="{{ 'no_data_found' | translate }}"
+													[placeholder]="'select_mode' | transloco "
+													noResultMessage="{{ 'no_data_found' | transloco }}"
 													formControlName="cart_style"
 												/>
 												}
@@ -180,7 +180,7 @@
 												@if(isBrowser) {
 												<select2
 													class="custom-select"
-													[placeholder]="'select_footer_mode' | translate"
+													[placeholder]="'select_footer_mode' | transloco"
 													formControlName="language_direction"
 													[data]="language_direction?.length ? language_direction : []"
 												/>
@@ -196,8 +196,8 @@
 												<select2
 													class="custom-select"
 													[data]="mode?.length ? mode : []"
-													[placeholder]="'select_mode' | translate "
-													noResultMessage="{{ 'no_data_found' | translate }}"
+													[placeholder]="'select_mode' | transloco "
+													noResultMessage="{{ 'no_data_found' | transloco }}"
 													formControlName="mode"
 												/>
 												}
@@ -210,7 +210,7 @@
 						<li ngbNavItem="header">
 							<a ngbNavLink>
 								<i class="ri-layout-top-line"></i>
-								{{ 'header' | translate }}
+								{{ 'header' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div class="row">
@@ -373,14 +373,14 @@
 													<app-form-fields
 														[labelClass]="'form-label-title col-sm-3 mb-0'"
 														[gridClass]="'col-sm-9'"
-														[label]="('top_bar_content' | translate)+' '+(i+1)"
+														[label]="('top_bar_content' | transloco)+' '+(i+1)"
 														[for]="'top_bar_content'"
 													>
 														<input
 															type="text"
 															class="form-control"
 															id="top_bar_content"
-															placeholder="{{ 'enter_top_bar_content' | translate }}"
+															placeholder="{{ 'enter_top_bar_content' | transloco }}"
 															formControlName="content"
 														/>
 														<p class="help-text">
@@ -419,7 +419,7 @@
 												<input
 													type="text"
 													class="form-control"
-													placeholder="{{ 'Enter' | translate }} Phone Number"
+													placeholder="{{ 'Enter' | transloco }} Phone Number"
 													formControlName="support_number"
 												/>
 											</app-form-fields>
@@ -434,7 +434,7 @@
 													class="custom-select"
 													[templates]="template"
 													[data]="(product$ | async)?.length ? (product$ | async) : []"
-													[placeholder]="'select_product' | translate "
+													[placeholder]="'select_product' | transloco "
 													formControlName="today_deals"
 													multiple="true"
 												>
@@ -469,10 +469,10 @@
 													class="custom-select"
 													[templates]="template"
 													[data]="(categories$ | async) ? (categories$ | async) : []"
-													[placeholder]="'select_categories' | translate "
+													[placeholder]="'select_categories' | transloco "
 													formControlName="category_ids"
 													multiple="true"
-													noResultMessage="{{ 'no_data_found' | translate }}"
+													noResultMessage="{{ 'no_data_found' | transloco }}"
 													resettable
 												>
 													<ng-template
@@ -499,7 +499,7 @@
 						<li ngbNavItem="footer">
 							<a ngbNavLink>
 								<i class="ri-layout-bottom-line"></i>
-								{{ 'footer' | translate }}
+								{{ 'footer' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div class="row">
@@ -514,7 +514,7 @@
 												@if(isBrowser) {
 												<select2
 													class="custom-select"
-													[placeholder]="'select_footer_mode' | translate"
+													[placeholder]="'select_footer_mode' | transloco"
 													[data]="footer_mode?.length ? footer_mode : []"
 													formControlName="footer_style"
 												/>
@@ -529,7 +529,7 @@
 												<textarea
 													class="w-100"
 													formControlName="footer_about"
-													placeholder="{{ 'enter_footer_content' | translate }}"
+													placeholder="{{ 'enter_footer_content' | transloco }}"
 												></textarea>
 											</app-form-fields>
 											<app-form-fields
@@ -540,7 +540,7 @@
 											>
 												<textarea
 													class="w-100"
-													placeholder="{{ 'enter_address' | translate }}"
+													placeholder="{{ 'enter_address' | transloco }}"
 													formControlName="about_address"
 												></textarea>
 											</app-form-fields>
@@ -554,7 +554,7 @@
 													type="email"
 													class="form-control"
 													id="about_email"
-													placeholder="{{ 'enter_email' | translate }}"
+													placeholder="{{ 'enter_email' | transloco }}"
 													formControlName="about_email"
 												/>
 											</app-form-fields>
@@ -576,7 +576,7 @@
 												[labelClass]="'form-label-title col-sm-3 mb-0'"
 												[gridClass]="'col-sm-9'"
 												[label]="'useful_link'"
-												[for]="'useful_link' | translate"
+												[for]="'useful_link' | transloco"
 											>
 												<app-advanced-dropdown
 													[position]="'bottom'"
@@ -592,7 +592,7 @@
 												[labelClass]="'form-label-title col-sm-3 mb-0'"
 												[gridClass]="'col-sm-9'"
 												[label]="'help_center'"
-												[for]="'useful_link' | translate"
+												[for]="'useful_link' | transloco"
 											>
 												<app-advanced-dropdown
 													[position]="'bottom'"
@@ -613,7 +613,7 @@
 												<input
 													type="text"
 													class="form-control"
-													placeholder="{{ 'enter_phone_number' | translate }}"
+													placeholder="{{ 'enter_phone_number' | transloco }}"
 													formControlName="support_number"
 												/>
 											</app-form-fields>
@@ -625,7 +625,7 @@
 												<input
 													type="email"
 													class="form-control"
-													placeholder="{{ 'enter_email' | translate }}"
+													placeholder="{{ 'enter_email' | transloco }}"
 													formControlName="support_email"
 												/>
 											</app-form-fields>
@@ -638,7 +638,7 @@
 												<input
 													type="url"
 													class="form-control"
-													placeholder="{{ 'enter_play_store_url' | translate }}"
+													placeholder="{{ 'enter_play_store_url' | transloco }}"
 													formControlName="play_store_url"
 												/>
 											</app-form-fields>
@@ -651,7 +651,7 @@
 												<input
 													type="url"
 													class="form-control"
-													placeholder="{{ 'enter_app_store_url' | translate }}"
+													placeholder="{{ 'enter_app_store_url' | transloco }}"
 													formControlName="app_store_url"
 												/>
 											</app-form-fields>
@@ -683,7 +683,7 @@
 													<input
 														type="url"
 														class="form-control"
-														placeholder="{{ 'enter_facebook_url' | translate }}"
+														placeholder="{{ 'enter_facebook_url' | transloco }}"
 														formControlName="facebook"
 													/>
 												</app-form-fields>
@@ -696,7 +696,7 @@
 													<input
 														type="url"
 														class="form-control"
-														placeholder="{{ 'enter_instagram_url' | translate }}"
+														placeholder="{{ 'enter_instagram_url' | transloco }}"
 														formControlName="instagram"
 													/>
 												</app-form-fields>
@@ -709,7 +709,7 @@
 													<input
 														type="url"
 														class="form-control"
-														placeholder="{{ 'enter_twitter_url' | translate }}"
+														placeholder="{{ 'enter_twitter_url' | transloco }}"
 														formControlName="twitter"
 													/>
 												</app-form-fields>
@@ -722,7 +722,7 @@
 													<input
 														type="url"
 														class="form-control"
-														placeholder="{{ 'enter_pinterest_url' | translate }}"
+														placeholder="{{ 'enter_pinterest_url' | transloco }}"
 														formControlName="pinterest"
 													/>
 												</app-form-fields>
@@ -754,7 +754,7 @@
 											>
 												<textarea
 													class="w-100"
-													placeholder="{{ 'enter_copyright_text' | translate }}"
+													placeholder="{{ 'enter_copyright_text' | transloco }}"
 													formControlName="copyright_content"
 												></textarea>
 											</app-form-fields>
@@ -767,12 +767,12 @@
 						<li ngbNavItem="shop_layout">
 							<a ngbNavLink>
 								<i class="ri-shopping-basket-line"></i>
-								{{ 'collection' | translate }}
+								{{ 'collection' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="collection">
 									<div class="selection-layout radio-type-sec">
-										<h4 class="fw-semibold">{{ 'collection_page_layout' | translate }}</h4>
+										<h4 class="fw-semibold">{{ 'collection_page_layout' | transloco }}</h4>
 										<div
 											class="row row-cols-xxl-4 row-cols-xl-3 row-cols-lg-2 row-cols-md-3 row-cols-2 g-4"
 										>
@@ -794,7 +794,7 @@
 															[alt]="layout.label"
 														/>
 													</div>
-													<h4 class="mt-2">{{ layout.value | translate }}</h4>
+													<h4 class="mt-2">{{ layout.value | transloco }}</h4>
 												</label>
 											</div>
 											}
@@ -828,12 +828,12 @@
 						<li ngbNavItem="product_layout">
 							<a ngbNavLink>
 								<i class="ri-shopping-basket-line"></i>
-								{{ 'product' | translate }}
+								{{ 'product' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="product">
 									<div class="selection-layout radio-type-sec mb-5">
-										<h4 class="fw-semibold">{{ 'product_page_layout' | translate }}</h4>
+										<h4 class="fw-semibold">{{ 'product_page_layout' | transloco }}</h4>
 										<div
 											class="row row-cols-xxl-4 row-cols-xl-3 row-cols-lg-2 row-cols-md-3 row-cols-2 g-4"
 										>
@@ -854,7 +854,7 @@
 															[alt]="pageLayout.label"
 														/>
 													</div>
-													<h4 class="mt-2">{{ pageLayout.value | translate }}</h4>
+													<h4 class="mt-2">{{ pageLayout.value | transloco }}</h4>
 												</label>
 											</div>
 											}
@@ -863,7 +863,7 @@
 									<app-form-fields
 										[labelClass]="'form-label-title col-sm-3 mb-0'"
 										[gridClass]="'col-sm-9'"
-										[label]="'trending_product' | translate"
+										[label]="'trending_product' | transloco"
 										[for]="'is_trending_product'"
 									>
 										<div class="form-check form-switch ps-0">
@@ -1028,7 +1028,7 @@
 												if (value > 100) value = 100;
 												if (value < 0) value = 0;
 											"
-											placeholder="{{ 'enter_count' | translate }}"
+											placeholder="{{ 'enter_count' | transloco }}"
 											formControlName="encourage_max_order_count"
 										/>
 										<p class="help-text">
@@ -1074,7 +1074,7 @@
 												if (value > 100) value = 100;
 												if (value < 0) value = 0;
 											"
-											placeholder="{{ 'enter_count' | translate }}"
+											placeholder="{{ 'enter_count' | transloco }}"
 											formControlName="encourage_max_view_count"
 										/>
 										<p class="help-text">
@@ -1175,11 +1175,11 @@
 						<li ngbNavItem="blog">
 							<a ngbNavLink>
 								<i class="ri-file-list-2-line"></i>
-								{{ 'blog' | translate }}
+								{{ 'blog' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div class="selection-layout radio-type-sec mb-4">
-									<h4 class="fw-semibold w-100">{{ 'blog_style' | translate }}</h4>
+									<h4 class="fw-semibold w-100">{{ 'blog_style' | transloco }}</h4>
 									<div
 										class="row row-cols-xxl-4 row-cols-xl-3 row-cols-lg-2 row-cols-md-3 row-cols-2 w-webkit g-4"
 										formGroupName="blog"
@@ -1201,7 +1201,7 @@
 															alt="grid-view"
 														/>
 													</div>
-													<h4 class="mt-2">{{ 'grid_view' | translate }}</h4>
+													<h4 class="mt-2">{{ 'grid_view' | transloco }}</h4>
 												</label>
 											</div>
 										</div>
@@ -1222,14 +1222,14 @@
 															alt="list-view"
 														/>
 													</div>
-													<h4 class="mt-2">{{ 'list_view' | translate }}</h4>
+													<h4 class="mt-2">{{ 'list_view' | transloco }}</h4>
 												</label>
 											</div>
 										</div>
 									</div>
 								</div>
 								<div class="selection-layout radio-type-sec mb-4">
-									<h4 class="fw-semibold w-100">{{ 'blog_sidebar_type' | translate }}</h4>
+									<h4 class="fw-semibold w-100">{{ 'blog_sidebar_type' | transloco }}</h4>
 									<div
 										class="row row-cols-xxl-4 row-cols-xl-3 row-cols-lg-2 row-cols-md-3 row-cols-2 w-webkit g-4"
 										formGroupName="blog"
@@ -1251,7 +1251,7 @@
 														[alt]="blogType.label"
 													/>
 												</div>
-												<h4 class="mt-2">{{ blogType.value | translate }}</h4>
+												<h4 class="mt-2">{{ blogType.value | transloco }}</h4>
 											</label>
 										</div>
 										}
@@ -1302,12 +1302,12 @@
 						<li ngbNavItem="seller">
 							<a ngbNavLink>
 								<i class="ri-file-list-2-line"></i>
-								{{ 'seller' | translate }}
+								{{ 'seller' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="seller">
 									<div class="selection-layout radio-type-sec mb-4">
-										<h4 class="fw-semibold w-100">{{ 'store_layout' | translate }}</h4>
+										<h4 class="fw-semibold w-100">{{ 'store_layout' | transloco }}</h4>
 										<div
 											class="row row-cols-xxl-4 row-cols-xl-3 row-cols-lg-2 row-cols-md-3 row-cols-2 w-webkit g-4"
 										>
@@ -1328,7 +1328,7 @@
 																alt="basic-store"
 															/>
 														</div>
-														<h4 class="mt-2">{{ 'basic_store' | translate }}</h4>
+														<h4 class="mt-2">{{ 'basic_store' | transloco }}</h4>
 													</label>
 												</div>
 											</div>
@@ -1349,14 +1349,14 @@
 																alt="classic-store"
 															/>
 														</div>
-														<h4 class="mt-2">{{ 'classic_store' | translate }}</h4>
+														<h4 class="mt-2">{{ 'classic_store' | transloco }}</h4>
 													</label>
 												</div>
 											</div>
 										</div>
 									</div>
 									<div class="selection-layout radio-type-sec mb-4">
-										<h4 class="fw-semibold w-100">{{ 'store_details' | translate }}</h4>
+										<h4 class="fw-semibold w-100">{{ 'store_details' | transloco }}</h4>
 										<div
 											class="row row-cols-xxl-4 row-cols-xl-3 row-cols-lg-2 row-cols-md-3 row-cols-2 w-webkit g-4"
 										>
@@ -1377,7 +1377,7 @@
 																alt="basic-store"
 															/>
 														</div>
-														<h4 class="mt-2">{{ 'basic_store_details' | translate }}</h4>
+														<h4 class="mt-2">{{ 'basic_store_details' | transloco }}</h4>
 													</label>
 												</div>
 											</div>
@@ -1398,7 +1398,7 @@
 																alt="classic-store"
 															/>
 														</div>
-														<h4 class="mt-2">{{ 'classic_store_details' | translate }}</h4>
+														<h4 class="mt-2">{{ 'classic_store_details' | transloco }}</h4>
 													</label>
 												</div>
 											</div>
@@ -1412,7 +1412,7 @@
 											class="nav-tabs"
 										>
 											<li ngbNavItem="about">
-												<a ngbNavLink>{{ 'about' | translate }}</a>
+												<a ngbNavLink>{{ 'about' | transloco }}</a>
 												<ng-template ngbNavContent>
 													<div formGroupName="about">
 														<app-form-fields
@@ -1440,7 +1440,7 @@
 																class="form-control"
 																id="title"
 																type="text"
-																placeholder="{{ 'enter_title' | translate }}"
+																placeholder="{{ 'enter_title' | transloco }}"
 																formControlName="title"
 															/>
 														</app-form-fields>
@@ -1453,7 +1453,7 @@
 																id="description"
 																type="text"
 																rows="8"
-																placeholder="{{ 'enter_description' | translate }}"
+																placeholder="{{ 'enter_description' | transloco }}"
 																formControlName="description"
 															></textarea>
 														</app-form-fields>
@@ -1474,7 +1474,7 @@
 												</ng-template>
 											</li>
 											<li ngbNavItem="services">
-												<a ngbNavLink>{{ 'services' | translate }}</a>
+												<a ngbNavLink>{{ 'services' | transloco }}</a>
 												<ng-template ngbNavContent>
 													<div formGroupName="services">
 														<app-form-fields
@@ -1500,13 +1500,13 @@
 																class="form-control"
 																id="title"
 																type="text"
-																placeholder="{{ 'enter_title' | translate }}"
+																placeholder="{{ 'enter_title' | transloco }}"
 																formControlName="title"
 															/>
 														</app-form-fields>
 														<div formGroupName="service_1">
 															<h4 class="fw-semibold txt-primary mb-3 w-100">
-																{{ 'service_box' | translate }} 1
+																{{ 'service_box' | transloco }} 1
 															</h4>
 															<app-form-fields
 																[label]="'title'"
@@ -1516,7 +1516,7 @@
 																	class="form-control"
 																	id="title"
 																	type="text"
-																	placeholder="{{ 'enter_title' | translate }}"
+																	placeholder="{{ 'enter_title' | transloco }}"
 																	formControlName="title"
 																/>
 															</app-form-fields>
@@ -1528,7 +1528,7 @@
 																	class="form-control"
 																	id="description"
 																	type="text"
-																	placeholder="{{ 'enter_description' | translate }}"
+																	placeholder="{{ 'enter_description' | transloco }}"
 																	formControlName="description"
 																></textarea>
 															</app-form-fields>
@@ -1548,7 +1548,7 @@
 														</div>
 														<div formGroupName="service_2">
 															<h4 class="fw-semibold txt-primary mb-3 w-100">
-																{{ 'service_box' | translate }} 2
+																{{ 'service_box' | transloco }} 2
 															</h4>
 															<app-form-fields
 																[label]="'title'"
@@ -1558,7 +1558,7 @@
 																	class="form-control"
 																	id="title"
 																	type="text"
-																	placeholder="{{ 'enter_title' | translate }}"
+																	placeholder="{{ 'enter_title' | transloco }}"
 																	formControlName="title"
 																/>
 															</app-form-fields>
@@ -1570,7 +1570,7 @@
 																	class="form-control"
 																	id="description"
 																	type="text"
-																	placeholder="{{ 'enter_description' | translate }}"
+																	placeholder="{{ 'enter_description' | transloco }}"
 																	formControlName="description"
 																></textarea>
 															</app-form-fields>
@@ -1590,7 +1590,7 @@
 														</div>
 														<div formGroupName="service_3">
 															<h4 class="fw-semibold txt-primary mb-3 w-100">
-																{{ 'service_box' | translate }} 3
+																{{ 'service_box' | transloco }} 3
 															</h4>
 															<app-form-fields
 																[label]="'title'"
@@ -1600,7 +1600,7 @@
 																	class="form-control"
 																	id="title"
 																	type="text"
-																	placeholder="{{ 'enter_title' | translate }}"
+																	placeholder="{{ 'enter_title' | transloco }}"
 																	formControlName="title"
 																/>
 															</app-form-fields>
@@ -1612,7 +1612,7 @@
 																	class="form-control"
 																	id="description"
 																	type="text"
-																	placeholder="{{ 'enter_description' | translate }}"
+																	placeholder="{{ 'enter_description' | transloco }}"
 																	formControlName="description"
 																></textarea>
 															</app-form-fields>
@@ -1632,7 +1632,7 @@
 														</div>
 														<div formGroupName="service_4">
 															<h4 class="fw-semibold txt-primary mb-3 w-100">
-																{{ 'service_box' | translate }} 4
+																{{ 'service_box' | transloco }} 4
 															</h4>
 															<app-form-fields
 																[label]="'title'"
@@ -1642,7 +1642,7 @@
 																	class="form-control"
 																	id="title"
 																	type="text"
-																	placeholder="{{ 'enter_title' | translate }}"
+																	placeholder="{{ 'enter_title' | transloco }}"
 																	formControlName="title"
 																/>
 															</app-form-fields>
@@ -1654,7 +1654,7 @@
 																	class="form-control"
 																	id="description"
 																	type="text"
-																	placeholder="{{ 'enter_description' | translate }}"
+																	placeholder="{{ 'enter_description' | transloco }}"
 																	formControlName="description"
 																></textarea>
 															</app-form-fields>
@@ -1676,7 +1676,7 @@
 												</ng-template>
 											</li>
 											<li ngbNavItem="steps">
-												<a ngbNavLink>{{ 'steps' | translate }}</a>
+												<a ngbNavLink>{{ 'steps' | transloco }}</a>
 												<ng-template ngbNavContent>
 													<div formGroupName="steps">
 														<app-form-fields
@@ -1702,13 +1702,13 @@
 																class="form-control"
 																id="title"
 																type="text"
-																placeholder="{{ 'enter_title' | translate }}"
+																placeholder="{{ 'enter_title' | transloco }}"
 																formControlName="title"
 															/>
 														</app-form-fields>
 														<div formGroupName="step_1">
 															<h4 class="fw-semibold txt-primary mb-3 w-100">
-																{{ 'step' | translate }} 1
+																{{ 'step' | transloco }} 1
 															</h4>
 															<app-form-fields
 																[label]="'title'"
@@ -1718,7 +1718,7 @@
 																	class="form-control"
 																	id="title"
 																	type="text"
-																	placeholder="{{ 'enter_title' | translate }}"
+																	placeholder="{{ 'enter_title' | transloco }}"
 																	formControlName="title"
 																/>
 															</app-form-fields>
@@ -1730,14 +1730,14 @@
 																	class="form-control"
 																	id="description"
 																	type="text"
-																	placeholder="{{ 'enter_description' | translate }}"
+																	placeholder="{{ 'enter_description' | transloco }}"
 																	formControlName="description"
 																></textarea>
 															</app-form-fields>
 														</div>
 														<div formGroupName="step_2">
 															<h4 class="fw-semibold txt-primary mb-3 w-100">
-																{{ 'step' | translate }} 2
+																{{ 'step' | transloco }} 2
 															</h4>
 															<app-form-fields
 																[label]="'title'"
@@ -1747,7 +1747,7 @@
 																	class="form-control"
 																	id="title"
 																	type="text"
-																	placeholder="{{ 'enter_title' | translate }}"
+																	placeholder="{{ 'enter_title' | transloco }}"
 																	formControlName="title"
 																/>
 															</app-form-fields>
@@ -1759,14 +1759,14 @@
 																	class="form-control"
 																	id="description"
 																	type="text"
-																	placeholder="{{ 'enter_description' | translate }}"
+																	placeholder="{{ 'enter_description' | transloco }}"
 																	formControlName="description"
 																></textarea>
 															</app-form-fields>
 														</div>
 														<div formGroupName="step_3">
 															<h4 class="fw-semibold txt-primary mb-3 w-100">
-																{{ 'step' | translate }} 3
+																{{ 'step' | transloco }} 3
 															</h4>
 															<app-form-fields
 																[label]="'title'"
@@ -1776,7 +1776,7 @@
 																	class="form-control"
 																	id="title"
 																	type="text"
-																	placeholder="{{ 'enter_title' | translate }}"
+																	placeholder="{{ 'enter_title' | transloco }}"
 																	formControlName="title"
 																/>
 															</app-form-fields>
@@ -1788,7 +1788,7 @@
 																	class="form-control"
 																	id="description"
 																	type="text"
-																	placeholder="{{ 'enter_description' | translate }}"
+																	placeholder="{{ 'enter_description' | transloco }}"
 																	formControlName="description"
 																></textarea>
 															</app-form-fields>
@@ -1797,7 +1797,7 @@
 												</ng-template>
 											</li>
 											<li ngbNavItem="start_selling">
-												<a ngbNavLink>{{ 'selling' | translate }}</a>
+												<a ngbNavLink>{{ 'selling' | transloco }}</a>
 												<ng-template ngbNavContent>
 													<div formGroupName="start_selling">
 														<app-form-fields
@@ -1823,7 +1823,7 @@
 																class="form-control"
 																id="title"
 																type="text"
-																placeholder="{{ 'enter_title' | translate }}"
+																placeholder="{{ 'enter_title' | transloco }}"
 																formControlName="title"
 															/>
 														</app-form-fields>
@@ -1835,7 +1835,7 @@
 																class="form-control"
 																id="description"
 																type="text"
-																placeholder="{{ 'enter_description' | translate }}"
+																placeholder="{{ 'enter_description' | transloco }}"
 																rows="6"
 																formControlName="description"
 															></textarea>
@@ -1855,7 +1855,7 @@
 						<li ngbNavItem="contact_page">
 							<a ngbNavLink>
 								<i class="ri-contacts-line"></i>
-								{{ 'contact_page' | translate }}
+								{{ 'contact_page' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div class="row">
@@ -1877,7 +1877,7 @@
 											</app-form-fields>
 											<div formGroupName="detail_1">
 												<h4 class="fw-semibold txt-primary mb-3 w-100">
-													{{ 'detail' | translate }} 1
+													{{ 'detail' | transloco }} 1
 												</h4>
 												<app-form-fields
 													[label]="'label'"
@@ -1886,7 +1886,7 @@
 													<input
 														type="text"
 														class="form-control"
-														placeholder="{{ 'enter_label' | translate }}"
+														placeholder="{{ 'enter_label' | transloco }}"
 														formControlName="label"
 													/>
 												</app-form-fields>
@@ -1897,7 +1897,7 @@
 													<input
 														type="text"
 														class="form-control"
-														placeholder="{{ 'enter_icon' | translate }}"
+														placeholder="{{ 'enter_icon' | transloco }}"
 														formControlName="icon"
 													/>
 												</app-form-fields>
@@ -1908,14 +1908,14 @@
 													<input
 														type="text"
 														class="form-control"
-														placeholder="{{ 'enter_text' | translate }}"
+														placeholder="{{ 'enter_text' | transloco }}"
 														formControlName="text"
 													/>
 												</app-form-fields>
 											</div>
 											<div formGroupName="detail_2">
 												<h4 class="fw-semibold txt-primary mb-3 w-100">
-													{{ 'detail' | translate }} 2
+													{{ 'detail' | transloco }} 2
 												</h4>
 												<app-form-fields
 													[label]="'label'"
@@ -1924,7 +1924,7 @@
 													<input
 														type="text"
 														class="form-control"
-														placeholder="{{ 'enter_label' | translate }}"
+														placeholder="{{ 'enter_label' | transloco }}"
 														formControlName="label"
 													/>
 												</app-form-fields>
@@ -1935,7 +1935,7 @@
 													<input
 														type="text"
 														class="form-control"
-														placeholder="{{ 'enter_icon' | translate }}"
+														placeholder="{{ 'enter_icon' | transloco }}"
 														formControlName="icon"
 													/>
 												</app-form-fields>
@@ -1946,14 +1946,14 @@
 													<input
 														type="text"
 														class="form-control"
-														placeholder="{{ 'enter_text' | translate }}"
+														placeholder="{{ 'enter_text' | transloco }}"
 														formControlName="text"
 													/>
 												</app-form-fields>
 											</div>
 											<div formGroupName="detail_3">
 												<h4 class="fw-semibold txt-primary mb-3 w-100">
-													{{ 'detail' | translate }} 3
+													{{ 'detail' | transloco }} 3
 												</h4>
 												<app-form-fields
 													[label]="'label'"
@@ -1962,7 +1962,7 @@
 													<input
 														type="text"
 														class="form-control"
-														placeholder="{{ 'enter_label' | translate }}"
+														placeholder="{{ 'enter_label' | transloco }}"
 														formControlName="label"
 													/>
 												</app-form-fields>
@@ -1973,7 +1973,7 @@
 													<input
 														type="text"
 														class="form-control"
-														placeholder="{{ 'enter_icon' | translate }}"
+														placeholder="{{ 'enter_icon' | transloco }}"
 														formControlName="icon"
 													/>
 												</app-form-fields>
@@ -1984,14 +1984,14 @@
 													<input
 														type="text"
 														class="form-control"
-														placeholder="{{ 'enter_text' | translate }}"
+														placeholder="{{ 'enter_text' | transloco }}"
 														formControlName="text"
 													/>
 												</app-form-fields>
 											</div>
 											<div formGroupName="detail_4">
 												<h4 class="fw-semibold txt-primary mb-3 w-100">
-													{{ 'detail' | translate }} 4
+													{{ 'detail' | transloco }} 4
 												</h4>
 												<app-form-fields
 													[label]="'label'"
@@ -2000,7 +2000,7 @@
 													<input
 														type="text"
 														class="form-control"
-														placeholder="{{ 'enter_label' | translate }}"
+														placeholder="{{ 'enter_label' | transloco }}"
 														formControlName="label"
 													/>
 												</app-form-fields>
@@ -2011,7 +2011,7 @@
 													<input
 														type="text"
 														class="form-control"
-														placeholder="{{ 'enter_icon' | translate }}"
+														placeholder="{{ 'enter_icon' | transloco }}"
 														formControlName="icon"
 													/>
 												</app-form-fields>
@@ -2022,7 +2022,7 @@
 													<input
 														type="text"
 														class="form-control"
-														placeholder="{{ 'enter_text' | translate }}"
+														placeholder="{{ 'enter_text' | transloco }}"
 														formControlName="text"
 													/>
 												</app-form-fields>
@@ -2036,7 +2036,7 @@
 						<li ngbNavItem="about_us">
 							<a ngbNavLink>
 								<i class="ri-contacts-line"></i>
-								{{ 'about_us' | translate }}
+								{{ 'about_us' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div
@@ -2050,7 +2050,7 @@
 										class="nav-tabs"
 									>
 										<li ngbNavItem="about">
-											<a ngbNavLink>{{ 'about' | translate }}</a>
+											<a ngbNavLink>{{ 'about' | transloco }}</a>
 											<ng-template ngbNavContent>
 												<div class="row">
 													<div formGroupName="about">
@@ -2101,7 +2101,7 @@
 																class="form-control"
 																id="sub_title"
 																type="text"
-																placeholder="{{ 'enter_sub_title' | translate }}"
+																placeholder="{{ 'enter_sub_title' | transloco }}"
 																formControlName="sub_title"
 															/>
 														</app-form-fields>
@@ -2113,7 +2113,7 @@
 																class="form-control"
 																id="title"
 																type="text"
-																placeholder="{{ 'enter_title' | translate }}"
+																placeholder="{{ 'enter_title' | transloco }}"
 																formControlName="title"
 															/>
 														</app-form-fields>
@@ -2123,7 +2123,7 @@
 														>
 															<textarea
 																class="w-100"
-																placeholder="{{ 'enter_description' | translate }}"
+																placeholder="{{ 'enter_description' | transloco }}"
 																formControlName="description"
 															></textarea>
 														</app-form-fields>
@@ -2134,7 +2134,7 @@
 																[spinner]="false"
 																(click)="addFuture($event)"
 															>
-																{{ 'add_future' | translate }}
+																{{ 'add_future' | transloco }}
 															</app-button>
 															<div class="shipping-accordion variant-accordion">
 																<ng-container>
@@ -2171,7 +2171,7 @@
 																											class="form-control"
 																											id="title"
 																											type="text"
-																											placeholder="{{ 'enter_title' | translate }}"
+																											placeholder="{{ 'enter_title' | transloco }}"
 																											formControlName="title"
 																										/>
 																									</app-form-fields>
@@ -2215,7 +2215,7 @@
 											</ng-template>
 										</li>
 										<li ngbNavItem="clients">
-											<a ngbNavLink>{{ 'clients' | translate }}</a>
+											<a ngbNavLink>{{ 'clients' | transloco }}</a>
 											<ng-template ngbNavContent>
 												<div
 													class="row"
@@ -2244,7 +2244,7 @@
 															class="form-control"
 															id="sub_title"
 															type="text"
-															placeholder="{{ 'enter_sub_title' | translate }}"
+															placeholder="{{ 'enter_sub_title' | transloco }}"
 															formControlName="sub_title"
 														/>
 													</app-form-fields>
@@ -2256,7 +2256,7 @@
 															class="form-control"
 															id="title"
 															type="text"
-															placeholder="{{ 'enter_title' | translate }}"
+															placeholder="{{ 'enter_title' | transloco }}"
 															formControlName="title"
 														/>
 													</app-form-fields>
@@ -2267,7 +2267,7 @@
 															[spinner]="false"
 															(click)="addClientsContent($event)"
 														>
-															{{ 'add_content' | translate }}
+															{{ 'add_content' | transloco }}
 														</app-button>
 														<div class="shipping-accordion variant-accordion">
 															<ng-container>
@@ -2313,7 +2313,7 @@
 																										class="form-control"
 																										id="title"
 																										type="text"
-																										placeholder="{{ 'enter_title' | translate }}"
+																										placeholder="{{ 'enter_title' | transloco }}"
 																										formControlName="title"
 																									/>
 																								</app-form-fields>
@@ -2323,7 +2323,7 @@
 																								>
 																									<textarea
 																										class="w-100"
-																										placeholder="{{ 'enter_description' | translate }}"
+																										placeholder="{{ 'enter_description' | transloco }}"
 																										formControlName="description"
 																									></textarea>
 																								</app-form-fields>
@@ -2352,7 +2352,7 @@
 											</ng-template>
 										</li>
 										<li ngbNavItem="team">
-											<a ngbNavLink>{{ 'team' | translate }}</a>
+											<a ngbNavLink>{{ 'team' | transloco }}</a>
 											<ng-template ngbNavContent>
 												<div
 													class="row"
@@ -2381,7 +2381,7 @@
 															class="form-control"
 															id="sub_title"
 															type="text"
-															placeholder="{{ 'enter_sub_title' | translate }}"
+															placeholder="{{ 'enter_sub_title' | transloco }}"
 															formControlName="sub_title"
 														/>
 													</app-form-fields>
@@ -2393,7 +2393,7 @@
 															class="form-control"
 															id="title"
 															type="text"
-															placeholder="{{ 'enter_title' | translate }}"
+															placeholder="{{ 'enter_title' | transloco }}"
 															formControlName="title"
 														/>
 													</app-form-fields>
@@ -2404,7 +2404,7 @@
 															[spinner]="false"
 															(click)="addMember($event)"
 														>
-															{{ 'add_content' | translate }}
+															{{ 'add_content' | transloco }}
 														</app-button>
 														<div class="shipping-accordion variant-accordion">
 															<ng-container>
@@ -2446,7 +2446,7 @@
 																										class="form-control"
 																										id="name"
 																										type="text"
-																										placeholder="{{ 'enter_name' | translate }}"
+																										placeholder="{{ 'enter_name' | transloco }}"
 																										formControlName="name"
 																									/>
 																								</app-form-fields>
@@ -2458,7 +2458,7 @@
 																										class="form-control"
 																										id="designation"
 																										type="text"
-																										placeholder="{{ 'enter_designation' | translate }}"
+																										placeholder="{{ 'enter_designation' | transloco }}"
 																										formControlName="designation"
 																									/>
 																								</app-form-fields>
@@ -2468,7 +2468,7 @@
 																								>
 																									<textarea
 																										class="w-100"
-																										placeholder="{{ 'enter_description' | translate }}"
+																										placeholder="{{ 'enter_description' | transloco }}"
 																										formControlName="description"
 																									></textarea>
 																								</app-form-fields>
@@ -2479,7 +2479,7 @@
 																									<input
 																										type="url"
 																										class="form-control"
-																										placeholder="{{ 'enter_url' | translate }}"
+																										placeholder="{{ 'enter_url' | transloco }}"
 																										formControlName="facebook"
 																									/>
 																								</app-form-fields>
@@ -2490,7 +2490,7 @@
 																									<input
 																										type="url"
 																										class="form-control"
-																										placeholder="{{ 'enter_url' | translate }}"
+																										placeholder="{{ 'enter_url' | transloco }}"
 																										formControlName="instagram"
 																									/>
 																								</app-form-fields>
@@ -2501,7 +2501,7 @@
 																									<input
 																										type="url"
 																										class="form-control"
-																										placeholder="{{ 'enter_url' | translate }}"
+																										placeholder="{{ 'enter_url' | transloco }}"
 																										formControlName="twitter"
 																									/>
 																								</app-form-fields>
@@ -2512,7 +2512,7 @@
 																									<input
 																										type="url"
 																										class="form-control"
-																										placeholder="{{ 'enter_url' | translate }}"
+																										placeholder="{{ 'enter_url' | transloco }}"
 																										formControlName="pinterest"
 																									/>
 																								</app-form-fields>
@@ -2541,7 +2541,7 @@
 											</ng-template>
 										</li>
 										<li ngbNavItem="testimonial">
-											<a ngbNavLink>{{ 'testimonial' | translate }}</a>
+											<a ngbNavLink>{{ 'testimonial' | transloco }}</a>
 											<ng-template ngbNavContent>
 												<div
 													class="row"
@@ -2570,7 +2570,7 @@
 															class="form-control"
 															id="sub_title"
 															type="text"
-															placeholder="{{ 'enter_sub_title' | translate }}"
+															placeholder="{{ 'enter_sub_title' | transloco }}"
 															formControlName="sub_title"
 														/>
 													</app-form-fields>
@@ -2582,7 +2582,7 @@
 															class="form-control"
 															id="title"
 															type="text"
-															placeholder="{{ 'enter_title' | translate }}"
+															placeholder="{{ 'enter_title' | transloco }}"
 															formControlName="title"
 														/>
 													</app-form-fields>
@@ -2593,7 +2593,7 @@
 															[spinner]="false"
 															(click)="reviews($event)"
 														>
-															{{ 'add_content' | translate }}
+															{{ 'add_content' | transloco }}
 														</app-button>
 														<div class="shipping-accordion variant-accordion">
 															<ng-container>
@@ -2635,7 +2635,7 @@
 																										class="form-control"
 																										id="title"
 																										type="text"
-																										placeholder="{{ 'enter_title' | translate }}"
+																										placeholder="{{ 'enter_title' | transloco }}"
 																										formControlName="title"
 																									/>
 																								</app-form-fields>
@@ -2647,7 +2647,7 @@
 																										class="form-control"
 																										id="name"
 																										type="text"
-																										placeholder="{{ 'enter_name' | translate }}"
+																										placeholder="{{ 'enter_name' | transloco }}"
 																										formControlName="name"
 																									/>
 																								</app-form-fields>
@@ -2659,7 +2659,7 @@
 																										class="form-control"
 																										id="designation"
 																										type="text"
-																										placeholder="{{ 'enter_designation' | translate }}"
+																										placeholder="{{ 'enter_designation' | transloco }}"
 																										formControlName="designation"
 																									/>
 																								</app-form-fields>
@@ -2669,7 +2669,7 @@
 																								>
 																									<textarea
 																										class="w-100"
-																										placeholder="{{ 'enter_review' | translate }}"
+																										placeholder="{{ 'enter_review' | transloco }}"
 																										formControlName="review"
 																									></textarea>
 																								</app-form-fields>
@@ -2698,7 +2698,7 @@
 											</ng-template>
 										</li>
 										<li ngbNavItem="blog">
-											<a ngbNavLink>{{ 'blog' | translate }}</a>
+											<a ngbNavLink>{{ 'blog' | transloco }}</a>
 											<ng-template ngbNavContent>
 												<div
 													class="row"
@@ -2727,9 +2727,9 @@
 														<select2
 															class="custom-select"
 															[data]="(blogs$ | async) ? (blogs$ | async) : []"
-															[placeholder]="'select_blogs' | translate "
+															[placeholder]="'select_blogs' | transloco "
 															formControlName="blog_ids"
-															noResultMessage="{{ 'no_data_found' | translate }}"
+															noResultMessage="{{ 'no_data_found' | transloco }}"
 															multiple="true"
 														/>
 														}
@@ -2745,71 +2745,10 @@
 								</div>
 							</ng-template>
 						</li>
-						<li ngbNavItem="errorPage">
-							<a ngbNavLink>
-								<i class="ri-alert-line"></i>
-								{{ '404_error_page' | translate }}
-							</a>
-							<ng-template ngbNavContent>
-								<div class="row">
-									<div class="col-xl-9">
-										<div formGroupName="error_page">
-											<app-form-fields
-												[labelClass]="'form-label-title col-sm-3 mb-0'"
-												[gridClass]="'col-sm-9'"
-												[label]="'error_page_content'"
-												[for]="'site_tagline'"
-											>
-												<textarea
-													class="w-100"
-													placeholder="{{ 'enter_error_page_content' | translate }}"
-													formControlName="error_page_content"
-												></textarea>
-											</app-form-fields>
-											<app-form-fields
-												[labelClass]="'form-label-title col-sm-3 mb-0'"
-												[gridClass]="'col-sm-9'"
-												[label]="'back_button'"
-												[for]="'blog_author'"
-											>
-												<div class="form-check form-switch ps-0">
-													<label class="switch">
-														<input
-															type="checkbox"
-															id="blog_author"
-															placeholder="{{ 'enter_blog_author' | translate }}"
-															formControlName="back_button_enable"
-														/>
-														<span class="switch-state"></span>
-													</label>
-												</div>
-											</app-form-fields>
-											@if (form.get('error_page.back_button_enable')?.value) {
-											<div>
-												<app-form-fields
-													[labelClass]="'form-label-title col-sm-3 mb-0'"
-													[gridClass]="'col-sm-9'"
-													[label]="'back_button_text'"
-													[for]="'back_button_text'"
-												>
-													<input
-														type="text"
-														class="form-control"
-														placeholder="{{ 'enter_back_button_text' | translate }}"
-														formControlName="back_button_text"
-													/>
-												</app-form-fields>
-											</div>
-											}
-										</div>
-									</div>
-								</div>
-							</ng-template>
-						</li>
 						<li ngbNavItem="seo">
 							<a ngbNavLink>
 								<i class="ri-earth-line"></i>
-								{{ 'seo' | translate }}
+								{{ 'seo' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div class="row">
@@ -2825,7 +2764,7 @@
 													class="form-control"
 													id="meta_title"
 													type="text"
-													placeholder="{{ 'enter_meta_title' | translate }}"
+													placeholder="{{ 'enter_meta_title' | transloco }}"
 													formControlName="meta_tags"
 												/>
 											</app-form-fields>
@@ -2839,7 +2778,7 @@
 													class="form-control"
 													id="meta_tags"
 													type="text"
-													placeholder="{{ 'enter_meta_tags' | translate }}"
+													placeholder="{{ 'enter_meta_tags' | transloco }}"
 													formControlName="meta_title"
 												/>
 											</app-form-fields>
@@ -2853,7 +2792,7 @@
 													class="form-control"
 													id="meta_description"
 													type="text"
-													placeholder="{{ 'enter_meta_description' | translate }}"
+													placeholder="{{ 'enter_meta_description' | transloco }}"
 													formControlName="meta_description"
 												></textarea>
 											</app-form-fields>
@@ -2867,7 +2806,7 @@
 													class="form-control"
 													id="og_title"
 													type="text"
-													placeholder="{{ 'enter_og_title' | translate }}"
+													placeholder="{{ 'enter_og_title' | transloco }}"
 													formControlName="og_title"
 												/>
 											</app-form-fields>
@@ -2881,7 +2820,7 @@
 													class="form-control"
 													id="og_description"
 													type="text"
-													placeholder="{{ 'enter_og_description' | translate }}"
+													placeholder="{{ 'enter_og_description' | transloco }}"
 													formControlName="og_description"
 												></textarea>
 											</app-form-fields>
@@ -2914,7 +2853,7 @@
 			[id]="'theme-option'"
 			*hasPermission="'theme_option.edit'"
 		>
-			{{ 'submit' | translate }}
+			{{ 'submit' | transloco }}
 		</app-button>
 	</form>
 </app-page-wrapper>

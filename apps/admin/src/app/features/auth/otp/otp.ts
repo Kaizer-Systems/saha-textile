@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
 import { AuthStore } from '@core/state/auth.store';
 import { Alert } from '@shared/ui/alert/alert';
@@ -12,7 +12,7 @@ import { Button } from '@shared/ui/button/button';
 	selector: 'app-otp',
 	templateUrl: './otp.html',
 	styleUrls: ['./otp.scss'],
-	imports: [Alert, ReactiveFormsModule, Button, TranslateModule],
+	imports: [Alert, ReactiveFormsModule, Button, TranslocoModule],
 })
 export class Otp {
 	router = inject(Router);

@@ -1,6 +1,6 @@
 import { Component, output, input } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
 import { IValues, IDeliveryBlock } from '@data-access/interfaces/setting.interface';
 
@@ -8,7 +8,7 @@ import { IValues, IDeliveryBlock } from '@data-access/interfaces/setting.interfa
 	selector: 'app-delivery-block',
 	templateUrl: './delivery-block.html',
 	styleUrls: ['./delivery-block.scss'],
-	imports: [TranslateModule],
+	imports: [TranslocoModule],
 })
 export class DeliveryBlock {
 	// TODO: Skipped for migration because:

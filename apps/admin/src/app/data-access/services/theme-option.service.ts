@@ -3,8 +3,9 @@ import { Injectable, inject } from '@angular/core';
 
 import { Observable } from 'rxjs';
 
-import { environment } from '../../../../public/environments/environment';
 import { IThemeOption } from '@data-access/interfaces/theme-option.interface';
+
+import { environment } from '../../../../public/environments/environment';
 
 @Injectable({
 	providedIn: 'root',

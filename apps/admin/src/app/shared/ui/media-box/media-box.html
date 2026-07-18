@@ -3,7 +3,7 @@
 		<input
 			type="text"
 			class="form-control"
-			placeholder="{{ 'search_your_files' | translate }}"
+			placeholder="{{ 'search_your_files' | transloco }}"
 			[formControl]="term"
 		/>
 	</div>
@@ -11,11 +11,11 @@
 		class="form-select"
 		(change)="onMediaChange($event)"
 	>
-		<option value="">{{ 'sort_by_desc' | translate }}</option>
-		<option value="newest">{{ 'sort_by_newest' | translate }}</option>
-		<option value="oldest">{{ 'sort_by_oldest' | translate }}</option>
-		<option value="smallest">{{ 'sort_by_smallest' | translate }}</option>
-		<option value="largest">{{ 'sort_by_largest' | translate }}</option>
+		<option value="">{{ 'sort_by_desc' | transloco }}</option>
+		<option value="newest">{{ 'sort_by_newest' | transloco }}</option>
+		<option value="oldest">{{ 'sort_by_oldest' | transloco }}</option>
+		<option value="smallest">{{ 'sort_by_smallest' | transloco }}</option>
+		<option value="largest">{{ 'sort_by_largest' | transloco }}</option>
 	</select>
 </div>
 <div class="content-section select-file-section ratio2_3 custom-box-loader py-0">
@@ -69,7 +69,7 @@
 								(click)="DeleteModal().openModal('delete', attachment)"
 							>
 								<i class="ri-delete-bin-line me-2"></i>
-								{{ 'delete' | translate }}
+								{{ 'delete' | transloco }}
 							</a>
 						</ul>
 					</div>

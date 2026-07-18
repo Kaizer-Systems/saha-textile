@@ -3,25 +3,15 @@ import { Component, computed, inject, PLATFORM_ID, signal } from '@angular/core'
 import { toObservable } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { NgbAccordionModule, NgbNavModule, NgbNavOutlet } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 import { Select2Data, Select2Module } from 'ng-select2-component';
 import { Editor, NgxEditorModule } from 'ngx-editor';
 import { map, of, Observable } from 'rxjs';
 
-import { injectBlogsQuery } from '@data-access/queries/blog.queries';
-import { injectCategoriesQuery } from '@data-access/queries/category.queries';
-import { injectProductsQuery } from '@data-access/queries/product.queries';
-import { Params } from '@data-access/interfaces/core.interface';
-import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
-import { Button } from '@shared/ui/button/button';
-import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
-import * as data from '@shared/data/theme-option';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICategoryModel } from '@data-access/interfaces/category.interface';
+import { Params } from '@data-access/interfaces/core.interface';
 import {
 	IAboutFutures,
 	IClientsContent,
@@ -31,7 +21,17 @@ import {
 	IReview,
 	ITopBarContent,
 } from '@data-access/interfaces/theme-option.interface';
+import { injectBlogsQuery } from '@data-access/queries/blog.queries';
+import { injectCategoriesQuery } from '@data-access/queries/category.queries';
+import { injectProductsQuery } from '@data-access/queries/product.queries';
 import { ThemeOptionService } from '@data-access/services/theme-option.service';
+import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import * as data from '@shared/data/theme-option';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
+import { Button } from '@shared/ui/button/button';
+import { FormFields } from '@shared/ui/form-fields/form-fields';
+import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 
 @Component({
 	selector: 'app-theme-option',
@@ -50,7 +50,7 @@ import { ThemeOptionService } from '@data-access/services/theme-option.service';
 		Button,
 		NgbAccordionModule,
 		HasPermissionDirective,
-		TranslateModule,
+		TranslocoModule,
 		AsyncPipe,
 	],
 })
@@ -338,11 +338,6 @@ export class ThemeOption {
 					blog_ids: new FormControl([]),
 				}),
 			}),
-			error_page: new FormGroup({
-				error_page_content: new FormControl(''),
-				back_button_enable: new FormControl(true),
-				back_button_text: new FormControl(''),
-			}),
 			seo: new FormGroup({
 				meta_tags: new FormControl(''),
 				meta_title: new FormControl(''),
@@ -367,272 +362,267 @@ export class ThemeOption {
 			.getThemeOption()
 			.pipe(map((res) => res.options))
 			.subscribe((option) => {
-			this.selectedCategories = option?.footer?.footer_categories!;
-			this.theme_option_data = option!;
-			if (option?.header.today_deals?.length) {
-				let array = option?.header.today_deals;
-				this.filter['paginate'] = array?.length >= 15 ? array?.length : 15;
-				this.filter['ids'] = array?.join();
-				this.filter['with_union_products'] = array?.length ? (array?.length >= 15 ? 0 : 1) : 0;
-			}
+				this.selectedCategories = option?.footer?.footer_categories!;
+				this.theme_option_data = option!;
+				if (option?.header.today_deals?.length) {
+					let array = option?.header.today_deals;
+					this.filter['paginate'] = array?.length >= 15 ? array?.length : 15;
+					this.filter['ids'] = array?.join();
+					this.filter['with_union_products'] = array?.length ? (array?.length >= 15 ? 0 : 1) : 0;
+				}
 
-			of(this.productParams.set({ ...this.filter })).subscribe({
-				next: () => {
-					this.topBarContent.clear();
-					this.initializeForm(option?.header?.top_bar_content!);
-					this.usefulLinks = option?.footer?.useful_link?.map((link: ICustomDropdown) => link.id) || [];
-					this.helpCenterIds = option?.footer?.help_center?.map((link: ICustomDropdown) => link.id) || [];
-					this.form.patchValue({
-						general: {
-							site_title: option?.general?.site_title,
-							site_tagline: option?.general?.site_tagline,
-							sticky_cart_enable: option?.general?.sticky_cart_enable,
-							cart_style: option?.general?.cart_style,
-							back_to_top_enable: option?.general?.back_to_top_enable,
-							language_direction: option?.general?.language_direction,
-							primary_color: option?.general?.primary_color,
-							mode: option?.general?.mode,
-						},
-						logo: {
-							header_logo_id: option?.logo?.header_logo_id,
-							footer_logo_id: option?.logo?.footer_logo_id,
-							favicon_icon_id: option?.logo?.favicon_icon_id,
-						},
-						seo: {
-							meta_tags: option?.seo?.meta_tags,
-							meta_title: option?.seo?.meta_title,
-							meta_description: option?.seo?.meta_description,
-							og_title: option?.seo?.og_title,
-							og_description: option?.seo?.og_description,
-							og_image_id: option?.seo?.og_image_id,
-						},
-						header: {
-							sticky_header_enable: option?.header?.sticky_header_enable,
-							header_options: option?.header?.header_options,
-							page_top_bar_enable: option?.header?.page_top_bar_enable,
-							top_bar_content: option?.header?.top_bar_content,
-							page_top_bar_dark: option?.header?.page_top_bar_dark,
-							support_number: option?.header?.support_number,
-							today_deals: option?.header?.today_deals,
-							category_ids: option?.header?.category_ids,
-						},
-						footer: {
-							footer_style: option?.footer?.footer_style,
-							footer_copyright: option?.footer?.footer_copyright,
-							copyright_content: option?.footer?.copyright_content,
-							footer_about: option?.footer?.footer_about,
-							about_address: option?.footer?.about_address,
-							about_email: option?.footer?.about_email,
-							footer_categories: option?.footer?.footer_categories,
-							useful_link: option?.footer?.useful_link,
-							help_center: option?.footer?.help_center,
-							support_number: option?.footer?.support_number,
-							support_email: option?.footer?.support_email,
-							play_store_url: option?.footer?.play_store_url,
-							app_store_url: option?.footer?.app_store_url,
-							social_media_enable: option?.footer?.social_media_enable,
-							facebook: option?.footer?.facebook,
-							instagram: option?.footer?.instagram,
-							twitter: option?.footer?.twitter,
-							pinterest: option?.footer?.pinterest,
-						},
-						blog: {
-							blog_style: option?.blog?.blog_style,
-							blog_sidebar_type: option?.blog?.blog_sidebar_type,
-							blog_author_enable: option?.blog?.blog_author_enable,
-							read_more_enable: option?.blog?.read_more_enable,
-						},
-						seller: {
-							about: {
-								title: option?.seller?.about?.title,
-								description: option?.seller?.about?.description,
-								image_url: option?.seller?.about?.image_url,
+				of(this.productParams.set({ ...this.filter })).subscribe({
+					next: () => {
+						this.topBarContent.clear();
+						this.initializeForm(option?.header?.top_bar_content!);
+						this.usefulLinks = option?.footer?.useful_link?.map((link: ICustomDropdown) => link.id) || [];
+						this.helpCenterIds = option?.footer?.help_center?.map((link: ICustomDropdown) => link.id) || [];
+						this.form.patchValue({
+							general: {
+								site_title: option?.general?.site_title,
+								site_tagline: option?.general?.site_tagline,
+								sticky_cart_enable: option?.general?.sticky_cart_enable,
+								cart_style: option?.general?.cart_style,
+								back_to_top_enable: option?.general?.back_to_top_enable,
+								language_direction: option?.general?.language_direction,
+								primary_color: option?.general?.primary_color,
+								mode: option?.general?.mode,
 							},
-							services: {
-								status: option?.seller?.services?.status,
-								title: option?.seller?.services?.title,
-								service_1: {
-									title: option?.seller?.services?.service_1?.title,
-									description: option?.seller?.services?.service_1?.description,
-									image_url: option?.seller?.services?.service_1?.image_url,
-								},
-								service_2: {
-									title: option?.seller?.services?.service_2?.title,
-									description: option?.seller?.services?.service_2?.description,
-									image_url: option?.seller?.services?.service_2?.image_url,
-								},
-								service_3: {
-									title: option?.seller?.services?.service_3?.title,
-									description: option?.seller?.services?.service_3?.description,
-									image_url: option?.seller?.services?.service_3?.image_url,
-								},
-								service_4: {
-									title: option?.seller?.services?.service_4?.title,
-									description: option?.seller?.services?.service_4?.description,
-									image_url: option?.seller?.services?.service_4?.image_url,
-								},
+							logo: {
+								header_logo_id: option?.logo?.header_logo_id,
+								footer_logo_id: option?.logo?.footer_logo_id,
+								favicon_icon_id: option?.logo?.favicon_icon_id,
 							},
-							steps: {
-								status: option?.seller?.steps?.status,
-								title: option?.seller?.steps?.title,
-								step_1: {
-									title: option?.seller?.steps?.step_1?.title,
-									description: option?.seller?.steps?.step_1?.description,
-								},
-								step_2: {
-									title: option?.seller?.steps?.step_2?.title,
-									description: option?.seller?.steps?.step_2?.description,
-								},
-								step_3: {
-									title: option?.seller?.steps?.step_3?.title,
-									description: option?.seller?.steps?.step_3?.description,
-								},
+							seo: {
+								meta_tags: option?.seo?.meta_tags,
+								meta_title: option?.seo?.meta_title,
+								meta_description: option?.seo?.meta_description,
+								og_title: option?.seo?.og_title,
+								og_description: option?.seo?.og_description,
+								og_image_id: option?.seo?.og_image_id,
 							},
-							start_selling: {
-								status: option?.seller?.steps?.status,
-								title: option?.seller?.start_selling?.title,
-								description: option?.seller?.start_selling?.description,
+							header: {
+								sticky_header_enable: option?.header?.sticky_header_enable,
+								header_options: option?.header?.header_options,
+								page_top_bar_enable: option?.header?.page_top_bar_enable,
+								top_bar_content: option?.header?.top_bar_content,
+								page_top_bar_dark: option?.header?.page_top_bar_dark,
+								support_number: option?.header?.support_number,
+								today_deals: option?.header?.today_deals,
+								category_ids: option?.header?.category_ids,
 							},
-							store_layout: option?.seller?.store_layout,
-							store_details: option?.seller?.store_details,
-						},
-						about_us: {
-							about: {
-								status: option?.about_us?.about?.status,
-								content_left_image_url: option?.about_us?.about?.content_left_image_url,
-								content_right_image_url: option?.about_us?.about?.content_right_image_url,
-								sub_title: option?.about_us?.about?.sub_title,
-								title: option?.about_us?.about?.title,
-								description: option?.about_us?.about?.description,
-								futures: option?.about_us?.about?.futures,
-							},
-							clients: {
-								status: option?.about_us?.clients?.status,
-								sub_title: option?.about_us?.clients?.sub_title,
-								title: option?.about_us?.clients?.title,
-								content: option?.about_us?.clients?.content,
-							},
-							team: {
-								status: option?.about_us?.team?.status,
-								sub_title: option?.about_us?.team?.sub_title,
-								title: option?.about_us?.team?.title,
-								members: option?.about_us?.team?.members,
-							},
-							testimonial: {
-								status: option?.about_us?.testimonial?.status,
-								sub_title: option?.about_us?.testimonial?.sub_title,
-								title: option?.about_us?.testimonial?.title,
-								reviews: option?.about_us?.testimonial?.reviews,
+							footer: {
+								footer_style: option?.footer?.footer_style,
+								footer_copyright: option?.footer?.footer_copyright,
+								copyright_content: option?.footer?.copyright_content,
+								footer_about: option?.footer?.footer_about,
+								about_address: option?.footer?.about_address,
+								about_email: option?.footer?.about_email,
+								footer_categories: option?.footer?.footer_categories,
+								useful_link: option?.footer?.useful_link,
+								help_center: option?.footer?.help_center,
+								support_number: option?.footer?.support_number,
+								support_email: option?.footer?.support_email,
+								play_store_url: option?.footer?.play_store_url,
+								app_store_url: option?.footer?.app_store_url,
+								social_media_enable: option?.footer?.social_media_enable,
+								facebook: option?.footer?.facebook,
+								instagram: option?.footer?.instagram,
+								twitter: option?.footer?.twitter,
+								pinterest: option?.footer?.pinterest,
 							},
 							blog: {
-								status: option?.about_us?.blog?.status,
-								blog_ids: option?.about_us?.blog?.blog_ids,
+								blog_style: option?.blog?.blog_style,
+								blog_sidebar_type: option?.blog?.blog_sidebar_type,
+								blog_author_enable: option?.blog?.blog_author_enable,
+								read_more_enable: option?.blog?.read_more_enable,
 							},
-						},
-						contact_us: {
-							contact_image_url: option?.contact_us?.contact_image_url,
-							detail_1: {
-								label: option?.contact_us?.detail_1?.label,
-								icon: option?.contact_us?.detail_1?.icon,
-								text: option?.contact_us?.detail_1?.text,
+							seller: {
+								about: {
+									title: option?.seller?.about?.title,
+									description: option?.seller?.about?.description,
+									image_url: option?.seller?.about?.image_url,
+								},
+								services: {
+									status: option?.seller?.services?.status,
+									title: option?.seller?.services?.title,
+									service_1: {
+										title: option?.seller?.services?.service_1?.title,
+										description: option?.seller?.services?.service_1?.description,
+										image_url: option?.seller?.services?.service_1?.image_url,
+									},
+									service_2: {
+										title: option?.seller?.services?.service_2?.title,
+										description: option?.seller?.services?.service_2?.description,
+										image_url: option?.seller?.services?.service_2?.image_url,
+									},
+									service_3: {
+										title: option?.seller?.services?.service_3?.title,
+										description: option?.seller?.services?.service_3?.description,
+										image_url: option?.seller?.services?.service_3?.image_url,
+									},
+									service_4: {
+										title: option?.seller?.services?.service_4?.title,
+										description: option?.seller?.services?.service_4?.description,
+										image_url: option?.seller?.services?.service_4?.image_url,
+									},
+								},
+								steps: {
+									status: option?.seller?.steps?.status,
+									title: option?.seller?.steps?.title,
+									step_1: {
+										title: option?.seller?.steps?.step_1?.title,
+										description: option?.seller?.steps?.step_1?.description,
+									},
+									step_2: {
+										title: option?.seller?.steps?.step_2?.title,
+										description: option?.seller?.steps?.step_2?.description,
+									},
+									step_3: {
+										title: option?.seller?.steps?.step_3?.title,
+										description: option?.seller?.steps?.step_3?.description,
+									},
+								},
+								start_selling: {
+									status: option?.seller?.steps?.status,
+									title: option?.seller?.start_selling?.title,
+									description: option?.seller?.start_selling?.description,
+								},
+								store_layout: option?.seller?.store_layout,
+								store_details: option?.seller?.store_details,
 							},
-							detail_2: {
-								label: option?.contact_us?.detail_2?.label,
-								icon: option?.contact_us?.detail_2?.icon,
-								text: option?.contact_us?.detail_2?.text,
+							about_us: {
+								about: {
+									status: option?.about_us?.about?.status,
+									content_left_image_url: option?.about_us?.about?.content_left_image_url,
+									content_right_image_url: option?.about_us?.about?.content_right_image_url,
+									sub_title: option?.about_us?.about?.sub_title,
+									title: option?.about_us?.about?.title,
+									description: option?.about_us?.about?.description,
+									futures: option?.about_us?.about?.futures,
+								},
+								clients: {
+									status: option?.about_us?.clients?.status,
+									sub_title: option?.about_us?.clients?.sub_title,
+									title: option?.about_us?.clients?.title,
+									content: option?.about_us?.clients?.content,
+								},
+								team: {
+									status: option?.about_us?.team?.status,
+									sub_title: option?.about_us?.team?.sub_title,
+									title: option?.about_us?.team?.title,
+									members: option?.about_us?.team?.members,
+								},
+								testimonial: {
+									status: option?.about_us?.testimonial?.status,
+									sub_title: option?.about_us?.testimonial?.sub_title,
+									title: option?.about_us?.testimonial?.title,
+									reviews: option?.about_us?.testimonial?.reviews,
+								},
+								blog: {
+									status: option?.about_us?.blog?.status,
+									blog_ids: option?.about_us?.blog?.blog_ids,
+								},
 							},
-							detail_3: {
-								label: option?.contact_us?.detail_3?.label,
-								icon: option?.contact_us?.detail_3?.icon,
-								text: option?.contact_us?.detail_3?.text,
+							contact_us: {
+								contact_image_url: option?.contact_us?.contact_image_url,
+								detail_1: {
+									label: option?.contact_us?.detail_1?.label,
+									icon: option?.contact_us?.detail_1?.icon,
+									text: option?.contact_us?.detail_1?.text,
+								},
+								detail_2: {
+									label: option?.contact_us?.detail_2?.label,
+									icon: option?.contact_us?.detail_2?.icon,
+									text: option?.contact_us?.detail_2?.text,
+								},
+								detail_3: {
+									label: option?.contact_us?.detail_3?.label,
+									icon: option?.contact_us?.detail_3?.icon,
+									text: option?.contact_us?.detail_3?.text,
+								},
+								detail_4: {
+									label: option?.contact_us?.detail_4?.label,
+									icon: option?.contact_us?.detail_4?.icon,
+									text: option?.contact_us?.detail_4?.text,
+								},
 							},
-							detail_4: {
-								label: option?.contact_us?.detail_4?.label,
-								icon: option?.contact_us?.detail_4?.icon,
-								text: option?.contact_us?.detail_4?.text,
+							collection: {
+								collection_layout: option?.collection?.collection_layout,
+								collection_banner_image_url: option?.collection?.collection_banner_image_url,
 							},
-						},
-						error_page: {
-							error_page_content: option?.error_page?.error_page_content,
-							back_button_enable: option?.error_page?.back_button_enable,
-							back_button_text: option?.error_page?.back_button_text,
-						},
-						collection: {
-							collection_layout: option?.collection?.collection_layout,
-							collection_banner_image_url: option?.collection?.collection_banner_image_url,
-						},
-						product: {
-							product_layout: option?.product?.product_layout,
-							is_trending_product: option?.product?.is_trending_product,
-							banner_enable: option?.product?.banner_enable,
-							banner_image_url: option?.product?.banner_image_url,
-							safe_checkout: option?.product?.safe_checkout,
-							safe_checkout_image: option?.product?.safe_checkout_image,
-							secure_checkout: option?.product?.secure_checkout,
-							secure_checkout_image: option?.product?.secure_checkout_image,
-							encourage_order: option?.product?.encourage_order,
-							encourage_max_order_count: option?.product?.encourage_max_order_count,
-							encourage_view: option?.product?.encourage_view,
-							encourage_max_view_count: option?.product?.encourage_max_view_count,
-							sticky_checkout: option?.product?.sticky_checkout,
-							sticky_product: option?.product?.sticky_product,
-							social_share: option?.product?.social_share,
-							shipping_and_return: option?.product?.shipping_and_return,
-						},
-					});
-				},
-			});
+							product: {
+								product_layout: option?.product?.product_layout,
+								is_trending_product: option?.product?.is_trending_product,
+								banner_enable: option?.product?.banner_enable,
+								banner_image_url: option?.product?.banner_image_url,
+								safe_checkout: option?.product?.safe_checkout,
+								safe_checkout_image: option?.product?.safe_checkout_image,
+								secure_checkout: option?.product?.secure_checkout,
+								secure_checkout_image: option?.product?.secure_checkout_image,
+								encourage_order: option?.product?.encourage_order,
+								encourage_max_order_count: option?.product?.encourage_max_order_count,
+								encourage_view: option?.product?.encourage_view,
+								encourage_max_view_count: option?.product?.encourage_max_view_count,
+								sticky_checkout: option?.product?.sticky_checkout,
+								sticky_product: option?.product?.sticky_product,
+								social_share: option?.product?.social_share,
+								shipping_and_return: option?.product?.shipping_and_return,
+							},
+						});
+					},
+				});
 
-			this.futuresContent.clear();
-			option?.about_us?.about?.futures?.forEach((future: IAboutFutures) => {
-				this.futuresContent?.push(
-					this.formBuilder.group({
-						icon: new FormControl(future?.icon),
-						title: new FormControl(future?.title),
-					}),
-				);
-			});
+				this.futuresContent.clear();
+				option?.about_us?.about?.futures?.forEach((future: IAboutFutures) => {
+					this.futuresContent?.push(
+						this.formBuilder.group({
+							icon: new FormControl(future?.icon),
+							title: new FormControl(future?.title),
+						}),
+					);
+				});
 
-			this.clientsContent.clear();
-			option?.about_us?.clients?.content?.forEach((content: IClientsContent) => {
-				this.clientsContent.push(
-					this.formBuilder.group({
-						icon: new FormControl(content.icon),
-						title: new FormControl(content.title),
-						description: new FormControl(content.description),
-					}),
-				);
-			});
+				this.clientsContent.clear();
+				option?.about_us?.clients?.content?.forEach((content: IClientsContent) => {
+					this.clientsContent.push(
+						this.formBuilder.group({
+							icon: new FormControl(content.icon),
+							title: new FormControl(content.title),
+							description: new FormControl(content.description),
+						}),
+					);
+				});
 
-			this.members.clear();
-			option?.about_us?.team?.members?.forEach((member: IMember) => {
-				this.members.push(
-					this.formBuilder.group({
-						profile_image_url: new FormControl(member.profile_image_url),
-						name: new FormControl(member.name),
-						designation: new FormControl(member.designation),
-						description: new FormControl(member.description),
-						instagram: new FormControl(member.instagram),
-						twitter: new FormControl(member.twitter),
-						pinterest: new FormControl(member.pinterest),
-						facebook: new FormControl(member.facebook),
-					}),
-				);
-			});
+				this.members.clear();
+				option?.about_us?.team?.members?.forEach((member: IMember) => {
+					this.members.push(
+						this.formBuilder.group({
+							profile_image_url: new FormControl(member.profile_image_url),
+							name: new FormControl(member.name),
+							designation: new FormControl(member.designation),
+							description: new FormControl(member.description),
+							instagram: new FormControl(member.instagram),
+							twitter: new FormControl(member.twitter),
+							pinterest: new FormControl(member.pinterest),
+							facebook: new FormControl(member.facebook),
+						}),
+					);
+				});
 
-			this.testimonials.clear();
-			option?.about_us?.testimonial?.reviews?.forEach((review: IReview) => {
-				this.testimonials.push(
-					this.formBuilder.group({
-						title: new FormControl(review.name),
-						profile_image_url: new FormControl(review.profile_image_url),
-						name: new FormControl(review.name),
-						review: new FormControl(review.review),
-						designation: new FormControl(review.designation),
-					}),
-				);
+				this.testimonials.clear();
+				option?.about_us?.testimonial?.reviews?.forEach((review: IReview) => {
+					this.testimonials.push(
+						this.formBuilder.group({
+							title: new FormControl(review.name),
+							profile_image_url: new FormControl(review.profile_image_url),
+							name: new FormControl(review.name),
+							review: new FormControl(review.review),
+							designation: new FormControl(review.designation),
+						}),
+					);
+				});
 			});
-		});
 	}
 
 	get topBarContent(): FormArray {

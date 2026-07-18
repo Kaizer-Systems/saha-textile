@@ -1,7 +1,7 @@
 import { Component, TemplateRef, inject, viewChild } from '@angular/core';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 import { Store } from '@ngrx/store';
 
 import { CartActions } from '@core/state/cart/cart.actions';
@@ -10,13 +10,14 @@ import { ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { IProduct, IVariation, ISelectedVariant } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { SummaryPipe } from '@shared/pipes/summary.pipe';
+
 import { Button } from '../../../button/button';
 
 @Component({
 	selector: 'app-addtocart',
 	templateUrl: './addtocart.html',
 	styleUrls: ['./addtocart.scss'],
-	imports: [Button, TranslateModule, CurrencySymbolPipe, SummaryPipe],
+	imports: [Button, TranslocoModule, CurrencySymbolPipe, SummaryPipe],
 })
 export class Addtocart {
 	private modalService = inject(NgbModal);

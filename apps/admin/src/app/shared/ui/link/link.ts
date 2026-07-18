@@ -1,14 +1,15 @@
 import { isPlatformBrowser } from '@angular/common';
 import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, input, output } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 
-import { toObservable } from '@angular/core/rxjs-interop';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Select2, Select2Data, Select2Module, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable, Subject, debounceTime } from 'rxjs';
 
-import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { Params } from '@data-access/interfaces/core.interface';
+import { injectCategoriesQuery } from '@data-access/queries/category.queries';
+
 import { FormFields } from '../form-fields/form-fields';
 
 @Component({
@@ -16,7 +17,7 @@ import { FormFields } from '../form-fields/form-fields';
 	templateUrl: './link.html',
 	styleUrls: ['./link.scss'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [ReactiveFormsModule, FormFields, Select2Module, TranslateModule],
+	imports: [ReactiveFormsModule, FormFields, Select2Module, TranslocoModule],
 })
 export class Link {
 	readonly linkForm = input<any>(undefined);

@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import {
 	NgbCalendar,
 	NgbDate,
@@ -21,15 +22,15 @@ import {
 	NgbRating,
 	NgbRatingConfig,
 } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { AccountStore } from '@core/state/account.store';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { LoaderStore } from '@core/state/loader.store';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableColumn, ITableConfig } from '@data-access/interfaces/table.interface';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { LoaderStore } from '@core/state/loader.store';
+
 import { ConfirmationModal } from '../modal/confirmation-modal/confirmation-modal';
 import { DeleteModal } from '../modal/delete-modal/delete-modal';
 import { Pagination } from '../pagination/pagination';
@@ -47,7 +48,7 @@ import { Pagination } from '../pagination/pagination';
 		DeleteModal,
 		ConfirmationModal,
 		DatePipe,
-		TranslateModule,
+		TranslocoModule,
 		CurrencySymbolPipe,
 		AsyncPipe,
 		DatePipe,

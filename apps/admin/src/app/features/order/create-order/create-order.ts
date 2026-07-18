@@ -4,30 +4,30 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { Store } from '@ngrx/store';
-import { TranslateModule } from '@ngx-translate/core';
 import { CarouselModule, OwlOptions } from 'ngx-owl-carousel-o';
 import { Observable } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { CartActions } from '@core/state/cart/cart.actions';
 import { selectCartItems, selectCartTotal } from '@core/state/cart/cart.selectors';
+import { LoaderStore } from '@core/state/loader.store';
+import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
+import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
+import { Params } from '@data-access/interfaces/core.interface';
+import { IProductModel } from '@data-access/interfaces/product.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { injectProductsQuery } from '@data-access/queries/product.queries';
 import { Loader } from '@layout/loader/loader';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { NoData } from '@shared/ui/no-data/no-data';
 import { Pagination } from '@shared/ui/pagination/pagination';
 import { ProductBox } from '@shared/ui/product-box/product-box';
 import { ProductBoxSkeleton } from '@shared/ui/skeleton/product-box-skeleton/product-box-skeleton';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
-import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
-import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
-import { Params } from '@data-access/interfaces/core.interface';
-import { IProductModel } from '@data-access/interfaces/product.interface';
-import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { LoaderStore } from '@core/state/loader.store';
 
 @Component({
 	selector: 'app-create-order',
@@ -46,7 +46,7 @@ import { LoaderStore } from '@core/state/loader.store';
 		Button,
 		HasPermissionDirective,
 		RouterModule,
-		TranslateModule,
+		TranslocoModule,
 		CurrencySymbolPipe,
 		AsyncPipe,
 	],

@@ -1,18 +1,19 @@
 import { Component, input } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
-import { IOption } from '@data-access/interfaces/theme-option.interface';
+import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
+
 import { Currency } from '../currency/currency';
 import { Language } from '../language/language';
 import { Notice } from '../notice/notice';
 
 @Component({
-  selector: 'app-topbar',
-  templateUrl: './topbar.html',
-  styleUrls: ['./topbar.scss'],
-  imports: [Notice, Language, Currency, TranslateModule],
+	selector: 'app-topbar',
+	templateUrl: './topbar.html',
+	styleUrls: ['./topbar.scss'],
+	imports: [Notice, Language, Currency, TranslocoModule],
 })
 export class Topbar {
-  readonly data = input<IOption | null>();
+	readonly data = input<ISiteConfig | null>();
 }

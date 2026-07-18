@@ -6,24 +6,23 @@
 />
 
 <!-- Main Loader -->
-@if (themeOptionService.preloader()) {
+@if (siteConfigService.preloader()) {
 <app-loader />
 }
 
 <!-- Layout Partial -->
-<app-header [logo]="setLogo().header_logo" />
+<app-header [logo]="headerLogo" />
 <router-outlet />
-<app-footer [footer]="setLogo().footer" />
+<app-footer [footer]="footerData" />
 
 <!-- Widgets -->
 <app-recent-purchase-popup />
-@if ((themeOption$ | async)?.general?.cart_style === 'cart_mini') {
+@if ((siteConfig$ | async)?.general?.cart_style === 'cart_mini') {
 <app-sticky-cart />
 }
 <app-sticky-compare />
 <div class="theme-option">
-	<app-theme-customizer />
-	@if ((themeOption$ | async)?.general?.back_to_top_enable) {
+	@if ((siteConfig$ | async)?.general?.back_to_top_enable) {
 	<app-back-to-top />
 	}
 </div>

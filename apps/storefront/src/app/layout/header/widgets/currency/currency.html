@@ -1,48 +1,66 @@
 <!-- Currency Basic Style -->
 @if (selectedCurrency && style() === 'basic') {
 <div (clickOutside)="hideDropdown()">
-  <div class="dropdown theme-form-select">
-    <app-button
-      [class]="'btn dropdown-toggle'"
-      [type]="'button'"
-      [id]="'open_dropdown_basic_btn'"
-      [spinner]="false"
-      (click)="openDropDown()"
-    >
-      <span>{{ selectedCurrency.code }}</span>
-    </app-button>
-    <ul class="dropdown-menu dropdown-menu-end sm-dropdown-menu" [class.show]="open">
-      @for (currency of (currency$ | async)?.data; track currency) {
-      <li>
-        <a class="dropdown-item" href="javascript:void(0)" (click)="selectCurrency(currency)"
-          >{{ currency.code }}</a
-        >
-      </li>
-      }
-    </ul>
-  </div>
+	<div class="dropdown theme-form-select">
+		<app-button
+			[class]="'btn dropdown-toggle'"
+			[type]="'button'"
+			[id]="'open_dropdown_basic_btn'"
+			[spinner]="false"
+			(click)="openDropDown()"
+		>
+			<span>{{ selectedCurrency.code }}</span>
+		</app-button>
+		<ul
+			class="dropdown-menu dropdown-menu-end sm-dropdown-menu"
+			[class.show]="open"
+		>
+			@for (currency of (currency$ | async)?.data; track currency) {
+			<li>
+				<a
+					class="dropdown-item"
+					href="javascript:void(0)"
+					(click)="selectCurrency(currency)"
+				>
+					{{ currency.code }}
+				</a>
+			</li>
+			}
+		</ul>
+	</div>
 </div>
 }
 <!-- Currency Standard Style -->
 @if (selectedCurrency && style() === 'standard') {
 <div (clickOutside)="hideDropdown()">
-  <app-button
-    [class]="'dropdown-toggle m-0'"
-    [type]="'button'"
-    [id]="'open_dropdown_standard_btn'"
-    [spinner]="false"
-    (click)="openDropDown()"
-  >
-    <span>{{ selectedCurrency.code }} <i class="ri-arrow-down-s-line"></i></span>
-  </app-button>
-  <ul class="dropdown-menu" [class.show]="open">
-    @for (currency of (currency$ | async)?.data; track currency) {
-    <li>
-      <a id="usd" class="dropdown-item" href="javascript:void(0)" (click)="selectCurrency(currency)"
-        >{{ currency.code }}</a
-      >
-    </li>
-    }
-  </ul>
+	<app-button
+		[class]="'dropdown-toggle m-0'"
+		[type]="'button'"
+		[id]="'open_dropdown_standard_btn'"
+		[spinner]="false"
+		(click)="openDropDown()"
+	>
+		<span>
+			{{ selectedCurrency.code }}
+			<i class="ri-arrow-down-s-line"></i>
+		</span>
+	</app-button>
+	<ul
+		class="dropdown-menu"
+		[class.show]="open"
+	>
+		@for (currency of (currency$ | async)?.data; track currency) {
+		<li>
+			<a
+				id="usd"
+				class="dropdown-item"
+				href="javascript:void(0)"
+				(click)="selectCurrency(currency)"
+			>
+				{{ currency.code }}
+			</a>
+		</li>
+		}
+	</ul>
 </div>
 }

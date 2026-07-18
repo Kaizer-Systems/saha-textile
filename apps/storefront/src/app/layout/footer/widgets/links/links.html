@@ -1,7 +1,12 @@
 <ul>
-  @for (link of links(); track link) {
-  <li>
-    <a routerLink="/{{link.link}}" class="text-content">{{ link.label | titleCase }}</a>
-  </li>
-  }
+	@for (link of links(); track link) {
+	<li>
+		<a
+			routerLink="/{{link.link}}"
+			class="text-content"
+		>
+			{{ link.label | titleCase }}
+		</a>
+	</li>
+	}
 </ul>

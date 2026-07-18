@@ -1,22 +1,15 @@
 import { CurrencyPipe } from '@angular/common';
-import {
-	HTTP_INTERCEPTORS,
-	HttpClient,
-	provideHttpClient,
-	withFetch,
-	withInterceptorsFromDi,
-} from '@angular/common/http';
-import { ApplicationConfig, importProvidersFrom, provideZoneChangeDetection } from '@angular/core';
+import { HTTP_INTERCEPTORS, provideHttpClient, withFetch, withInterceptorsFromDi } from '@angular/common/http';
+import { ApplicationConfig, importProvidersFrom, isDevMode, provideZoneChangeDetection } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { withInMemoryScrolling } from '@angular/router';
 
 import { provideFileRouter } from '@analogjs/router';
-import { LoadingBarRouterModule } from '@ngx-loading-bar/router';
-import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
-import { TranslateHttpLoader } from '@ngx-translate/http-loader';
+import { provideTransloco } from '@jsverse/transloco';
 import { provideEffects } from '@ngrx/effects';
 import { provideState, provideStore } from '@ngrx/store';
+import { LoadingBarRouterModule } from '@ngx-loading-bar/router';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { provideToastr } from 'ngx-toastr';
 
@@ -26,22 +19,13 @@ import { cartPersistenceMetaReducer } from '@core/state/cart/cart.persistence';
 import { cartReducer } from '@core/state/cart/cart.reducer';
 import { COMPARE_FEATURE_KEY, CompareEffects, compareReducer } from '@core/state/compare/compare.store';
 import { WISHLIST_FEATURE_KEY, WishlistEffects, wishlistReducer } from '@core/state/wishlist/wishlist.store';
-
-import { environment } from '../../public/environments/environment';
-import { AuthInterceptor } from './core/interceptors/auth.interceptor';
-import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-handler.interceptor';
-import { LoaderInterceptor } from './core/interceptors/loader.interceptor';
 import { ErrorService } from '@data-access/services/error.service';
 import { NotificationService } from '@data-access/services/notification.service';
 
-export function HttpLoaderFactory(http: HttpClient) {
-	// Absolute base URL (not './assets/i18n/') so the loader resolves correctly
-	// under Nitro SSR — a relative URL resolves against http://localhost:80 on the
-	// server (ECONNREFUSED). This mirrors the absolute environment.URL the data
-	// services already use, so client behaviour is unchanged and prod picks up the
-	// real host from environment.baseURL.
-	return new TranslateHttpLoader(http, `${environment.baseURL}assets/i18n/`, '.json');
-}
+import { TranslocoHttpLoader } from './core/i18n/transloco-loader';
+import { AuthInterceptor } from './core/interceptors/auth.interceptor';
+import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-handler.interceptor';
+import { LoaderInterceptor } from './core/interceptors/loader.interceptor';
 
 export const appConfig: ApplicationConfig = {
 	providers: [
@@ -49,8 +33,7 @@ export const appConfig: ApplicationConfig = {
 		ErrorService,
 		NotificationService,
 		// Analog file-based routing (pages under src/app/pages). `/` is the custom
-		// home (pages/index.page.ts → features/home); the themes stay reachable at
-		// /theme/[slug] as a reference while the home is built. Replaces the old
+		// home (pages/index.page.ts → features/home). Replaces the old
 		// provideRouter + app.routes.ts / feature *.routes.ts config.
 		provideFileRouter(
 			withInMemoryScrolling({
@@ -73,20 +56,22 @@ export const appConfig: ApplicationConfig = {
 			useClass: LoaderInterceptor,
 			multi: true,
 		},
-		importProvidersFrom(
-			BrowserModule,
-			BrowserAnimationsModule,
-			LoadingBarRouterModule,
-			TranslateModule.forRoot({
-				loader: {
-					provide: TranslateLoader,
-					useFactory: HttpLoaderFactory,
-					deps: [HttpClient],
-				},
-				defaultLanguage: 'en',
-			}),
-		),
+		importProvidersFrom(BrowserModule, BrowserAnimationsModule, LoadingBarRouterModule),
 		provideHttpClient(withInterceptorsFromDi(), withFetch()),
+		// Transloco — the locked i18n lib (ngx-translate fully removed). Loads
+		// assets/i18n/<lang>.json via TranslocoHttpLoader; the language switcher drives
+		// it through TranslocoService.setActiveLang.
+		provideTransloco({
+			config: {
+				availableLangs: ['en', 'fr'],
+				defaultLang: 'en',
+				fallbackLang: 'en',
+				reRenderOnLangChange: true,
+				prodMode: !isDevMode(),
+				missingHandler: { useFallbackTranslation: true },
+			},
+			loader: TranslocoHttpLoader,
+		}),
 		// Classic NgRx (@ngrx/store + effects) — cart is heavily client-mutated with
 		// optimistic updates, so it moves here rather than to TanStack/SignalStore.
 		provideStore(),

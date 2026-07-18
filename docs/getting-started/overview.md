@@ -1,6 +1,12 @@
 ---
 title: Overview
 description: Start here when maintaining the Saha Textile platform.
+status: implemented
+audience: [beginner, frontend, backend, operator]
+last_verified: '2026-07-18'
+source_of_truth:
+    - project-context/angular-context/private-developer-portal-documentation-plan.md
+    - project-context/angular-context/owner-decisions-log.md
 ---
 
 # Developer portal overview
@@ -16,11 +22,11 @@ This portal is the private operating manual for the Saha Textile platform. It sh
 
 ## What waits for implementation
 
-- OpenAPI and Redoc output wait until `apps/api` exposes the finished controller surface.
-- Database collection pages wait until Mongo schemas and indexes exist in the adapter.
+- Scalar API Reference waits for the real OpenAPI document to be integrated into the portal at the locked route.
+- Generated database collection pages wait for the catalogue generator; models and indexes already exist in the Mongo adapter.
 - Storybook links wait until storefront/admin components and stories exist.
 - Pagefind waits until the portal has enough built pages to index usefully.
 
 ## Source-of-truth rule
 
-When portal content conflicts with code or `project-context/angular-context`, treat the portal as stale and update it in the same PR as the code change.
+Use [Source of Truth and Freshness](/governance/source-of-truth-and-freshness) to resolve conflicts. The portal presents evidence; it does not override tested implementation or locked owner decisions.

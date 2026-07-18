@@ -1,6 +1,12 @@
 ---
 title: Start Developer Portal Early
 description: ADR for starting the portal before all generated artifacts exist.
+status: implemented
+audience: [beginner, frontend, backend, operator]
+last_verified: '2026-07-18'
+source_of_truth:
+    - project-context/angular-context/execution-roadmap.md
+    - project-context/angular-context/private-developer-portal-documentation-plan.md
 ---
 
 # Start developer portal early
@@ -11,7 +17,7 @@ Accepted.
 
 ## Context
 
-The roadmap says the Docusaurus developer portal should grow incrementally during every phase. Some portal sections depend on real implementation artifacts, including OpenAPI output, Mongo schemas, Storybook builds, TypeDoc, Redoc, and Pagefind indexes.
+The roadmap says the Docusaurus developer portal should grow incrementally during every phase. Some portal sections depend on real implementation artifacts, including OpenAPI output, Mongo schemas, Storybook builds, TypeDoc, Scalar API Reference, and Pagefind indexes.
 
 ## Decision
 

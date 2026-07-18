@@ -9,14 +9,77 @@ Use:
 - **Docusaurus** as the central private developer portal.
 - **Storybook** inside that ecosystem for storefront/admin UI documentation.
 - **NestJS OpenAPI generation** for the API contract.
-- **Swagger UI** for interactive API testing.
-- **Redoc Community Edition** for a cleaner API reference view.
+- **Scalar API Reference** as the single modern API reference and interactive testing console.
 - **Generated JSON Schema documentation** for MongoDB collections.
 - **Mermaid** for architecture, business-flow, sequence and database-relationship diagrams.
 - **Pagefind** for completely local, private full-text search.
 - **TypeDoc** optionally for shared TypeScript packages.
 
 Docusaurus supports MDX, React components, structured navigation, documentation versioning and Mermaid diagrams, making it much more appropriate as the umbrella portal. ([docusaurus.io](https://docusaurus.io/docs?utm_source=chatgpt.com))
+
+## Locked visual baseline
+
+The Docusaurus shell follows `developer-portal-scalar-visual-baseline.md`. It is dark-first and reproduces the captured Scalar documentation geometry, tokens, technical density, navigation rails, typography and responsive behaviour while carrying only Saha Textile branding and content. Treat that dated baseline as the visual acceptance reference for all subsequent portal passes.
+
+## Implemented Pass 1 foundation
+
+The foundation includes:
+
+- role-based entry paths for beginners, frontend developers, backend developers and operators;
+- five enforced lifecycle states: implemented, scaffolded, planned, deferred and deprecated;
+- required audience, verification-date and source-of-truth metadata on every page;
+- an automatically rendered provenance strip;
+- authority, conflict, freshness, contribution and page-template standards;
+- a content validator that runs before production builds and enforces the portal terminology boundary;
+- honest backend surfaces: the API/OpenAPI and Mongo adapter are scaffolded, while Scalar integration and the generated database catalogue remain deferred;
+- a responsive Scalar-faithful landing dashboard and navigation shell.
+
+## Implemented Pass 2 frontend application atlas
+
+Pass 2 adds:
+
+- evidence-backed storefront and admin orientations;
+- interactive capability atlases with lifecycle filters, search and source disclosures;
+- storefront file-routing, dynamic SSR, state/data ownership and contributor recipes;
+- admin route/shell, query/store/service, forms/tables/CRUD and contributor recipes;
+- a shared frontend state-ownership decision lab and dependency-boundary guide;
+- honest locale, PWA, mock-data, authorization, shared-UI and test-coverage boundaries; and
+- a frontend quality and definition-of-done contract.
+
+The detailed implementation and verification record is `developer-portal-pass-2-frontend-atlas.md`.
+
+## Implemented Pass 3 business and commerce journeys
+
+Pass 3 adds:
+
+- an interactive cross-application journey atlas;
+- separate current-code, locked-target and failure-recovery lenses;
+- discovery and semantic product-configuration guidance;
+- guest/user cart, pending-intent, merge and offline-reconciliation guidance;
+- checkout pricing, tax, currency, promotion and shipping guidance;
+- payment, order, shipment, return, refund and notification lifecycle guidance;
+- storefront identity and admin resume/draft-restoration guidance; and
+- a cross-journey failure-recovery and debugging playbook.
+
+The detailed implementation and verification record is `developer-portal-pass-3-commerce-journeys.md`.
+
+## Implemented Pass 4 backend platform atlas
+
+Pass 4 adds:
+
+- an interactive backend request-path and current-risk atlas;
+- current execution, locked target and verification lenses;
+- request lifecycle, error and boundary tracing guidance;
+- request/domain/persistence/response contract separation;
+- core-domain pricing/port inventory and swappability rules;
+- NestJS composition, Mongo mapping and provider-adapter guidance;
+- browser-session, CSRF, audience, permission and object-authorization guidance;
+- readiness, observability, testing and transaction proof guidance;
+- a complete current controller-route inventory;
+- OpenAPI completeness plus Scalar integration/security triggers; and
+- current Mongo adapter plus future transaction/generated-catalogue maps.
+
+The detailed implementation and verification record is `developer-portal-pass-4-backend-platform-atlas.md`.
 
 ---
 
@@ -50,8 +113,7 @@ Developer Portal
 ├── API
 │   ├── API Concepts
 │   ├── Authentication
-│   ├── Swagger Console
-│   └── Redoc Reference
+│   └── Scalar API Reference + Console
 ├── Database
 │   ├── Data Model Overview
 │   ├── Collection Catalogue
@@ -235,11 +297,11 @@ Business Components
 
 Use `@nestjs/swagger` to generate an OpenAPI document from NestJS controllers, DTOs and decorators. NestJS supports serializing that OpenAPI document to JSON or YAML rather than requiring the documentation page to be served dynamically by the API. ([docs.nestjs.com](https://docs.nestjs.com/openapi/introduction?utm_source=chatgpt.com))
 
-Provide two views:
+Provide one consolidated view:
 
-## Swagger UI
+## Scalar API Reference
 
-Use it as the internal API console:
+Use Scalar as both the readable API reference and the internal API console:
 
 - Browse endpoints.
 - View request DTOs.
@@ -248,25 +310,15 @@ Use it as the internal API console:
 - Enter parameters.
 - Execute requests against development or staging.
 - View validation and error responses.
+- Generate code examples for supported languages/frameworks.
+- Keep reading and request execution in one consistent, modern interface.
 
-## Redoc
-
-Use Redoc Community Edition for the polished reading/reference interface:
-
-- Three-column API layout.
-- Navigation by API tags.
-- Request and response schemas.
-- Examples.
-- Authentication information.
-- Cleaner long-form reading than Swagger UI.
-
-Redoc Community Edition can generate self-hosted web documentation or standalone HTML from the OpenAPI specification and remains available as an open-source option. ([redocly.com](https://redocly.com/docs/redoc?utm_source=chatgpt.com))
+Scalar consumes the generated OpenAPI document; OpenAPI remains the machine-readable source of truth. Do not maintain parallel Swagger UI and Redoc surfaces. Interactive execution is enabled only for approved development/staging targets and must never expose production credentials or bypass normal authentication, CSRF, authorization, or rate limits.
 
 Recommended routes:
 
 ```text id="but2ik"
-/api/reference   → Redoc
-/api/console     → Swagger UI
+/api/reference   → Scalar API Reference + testing client
 /api/openapi.json
 ```
 
@@ -484,7 +536,7 @@ Build all documentation statically in GitHub Actions:
 Docusaurus build
 Storybook static build
 OpenAPI generation
-Redoc static build
+Scalar API reference build/integration
 Database MDX generation
 TypeDoc generation
 Pagefind indexing
@@ -499,7 +551,6 @@ developer-portal-build/
 ├── admin-storybook/
 ├── api/
 │   ├── reference/
-│   ├── console/
 │   └── openapi.json
 ├── database/
 └── typedoc/
@@ -642,8 +693,7 @@ For a genuinely complete maintenance handover, include:
 - **Central portal:** Docusaurus.
 - **UI catalogue:** Storybook.
 - **Business and technical flows:** Docusaurus + Mermaid.
-- **Interactive API testing:** Swagger UI.
-- **Readable API reference:** Redoc CE.
+- **API reference + interactive testing:** Scalar API Reference, generated from OpenAPI.
 - **MongoDB catalogue:** Generated MDX from JSON Schema/Mongoose schemas.
 - **Shared TypeScript APIs:** TypeDoc.
 - **Private full-text search:** Pagefind.

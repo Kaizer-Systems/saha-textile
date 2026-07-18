@@ -1,6 +1,13 @@
 ---
 title: Monorepo Map
 description: Workspace package ownership and responsibilities.
+status: implemented
+audience: [beginner, frontend, backend, operator]
+last_verified: '2026-07-18'
+source_of_truth:
+    - pnpm-workspace.yaml
+    - turbo.json
+    - AGENTS.md
 ---
 
 # Monorepo map

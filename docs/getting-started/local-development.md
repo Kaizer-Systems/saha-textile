@@ -1,6 +1,13 @@
 ---
 title: Local Development
 description: Local setup checklist for the monorepo and developer portal.
+status: scaffolded
+audience: [beginner, frontend, backend, operator]
+last_verified: '2026-07-18'
+source_of_truth:
+    - package.json
+    - pnpm-workspace.yaml
+    - project-context/angular-context/mcp-automation-setup.md
 ---
 
 # Local development
@@ -18,8 +25,11 @@ pnpm turbo run lint typecheck test
 
 ```bash
 pnpm --filter @saha-textile/developer-portal dev
+pnpm --filter @saha-textile/developer-portal validate
 pnpm --filter @saha-textile/developer-portal build
 ```
+
+The production build runs the content validator first. Validation checks required provenance metadata and the portal terminology boundary before Docusaurus compiles pages.
 
 ## Local MCP phase
 

@@ -1,0 +1,313 @@
+.atlas,
+.decisionLab {
+	margin: 1.5rem 0 2.5rem;
+}
+
+.summaryGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+	border: 1px solid var(--ifm-color-emphasis-200);
+	border-radius: 0.75rem;
+	background: color-mix(in srgb, var(--ifm-background-surface-color) 92%, transparent);
+	overflow: hidden;
+}
+
+.summaryGrid > div {
+	display: grid;
+	gap: 0.25rem;
+	padding: 1rem;
+	border-right: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.summaryGrid > div:last-child {
+	border-right: 0;
+}
+
+.summaryGrid strong {
+	font-size: 1.2rem;
+	color: var(--ifm-heading-color);
+}
+
+.eyebrow {
+	font-family: var(--ifm-font-family-monospace);
+	font-size: 0.68rem;
+	font-weight: 650;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ifm-color-emphasis-600);
+}
+
+.controls {
+	display: flex;
+	align-items: end;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-top: 1rem;
+}
+
+.filterGroup,
+.decisionTabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+}
+
+.filter,
+.activeFilter,
+.decision,
+.activeDecision {
+	min-height: 2.25rem;
+	padding: 0.45rem 0.75rem;
+	border: 1px solid var(--ifm-color-emphasis-300);
+	border-radius: 0.5rem;
+	background: var(--ifm-background-surface-color);
+	color: var(--ifm-font-color-base);
+	font: inherit;
+	font-size: 0.78rem;
+	cursor: pointer;
+	transition:
+		border-color 150ms ease,
+		background 150ms ease,
+		color 150ms ease;
+}
+
+.filter:hover,
+.decision:hover {
+	border-color: var(--ifm-color-primary);
+}
+
+.activeFilter,
+.activeDecision {
+	border-color: color-mix(in srgb, var(--ifm-color-primary) 68%, transparent);
+	background: color-mix(in srgb, var(--ifm-color-primary) 14%, var(--ifm-background-surface-color));
+	color: var(--ifm-color-primary-lightest);
+}
+
+.searchLabel {
+	display: grid;
+	gap: 0.35rem;
+	min-width: min(18rem, 100%);
+	font-size: 0.72rem;
+	font-weight: 650;
+	color: var(--ifm-color-emphasis-700);
+}
+
+.searchLabel input {
+	min-height: 2.35rem;
+	padding: 0.55rem 0.7rem;
+	border: 1px solid var(--ifm-color-emphasis-300);
+	border-radius: 0.5rem;
+	background: var(--ifm-background-surface-color);
+	color: var(--ifm-font-color-base);
+	font: inherit;
+}
+
+.searchLabel input:focus-visible,
+.filter:focus-visible,
+.activeFilter:focus-visible,
+.decision:focus-visible,
+.activeDecision:focus-visible {
+	outline: 2px solid var(--ifm-color-primary);
+	outline-offset: 2px;
+}
+
+.resultCount {
+	margin: 0.8rem 0;
+	font-size: 0.75rem;
+	color: var(--ifm-color-emphasis-600);
+}
+
+.cards {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75rem;
+}
+
+.card {
+	display: flex;
+	flex-direction: column;
+	gap: 0.8rem;
+	min-width: 0;
+	padding: 1rem;
+	border: 1px solid var(--ifm-color-emphasis-200);
+	border-radius: 0.75rem;
+	background:
+		linear-gradient(135deg, color-mix(in srgb, var(--ifm-color-primary) 5%, transparent), transparent 42%),
+		var(--ifm-background-surface-color);
+}
+
+.card p,
+.card dl,
+.card details,
+.card ul {
+	margin: 0;
+}
+
+.cardHeader {
+	display: flex;
+	align-items: start;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.cardHeader h3 {
+	margin: 0;
+	font-size: 1rem;
+}
+
+.implemented,
+.scaffolded,
+.planned,
+.deferred,
+.deprecated {
+	flex: none;
+	padding: 0.22rem 0.45rem;
+	border: 1px solid currentColor;
+	border-radius: 999px;
+	font-family: var(--ifm-font-family-monospace);
+	font-size: 0.62rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.implemented {
+	color: #5de2a5;
+}
+
+.scaffolded {
+	color: #75b7ff;
+}
+
+.planned {
+	color: #c5a7ff;
+}
+
+.deferred {
+	color: #f3bd6b;
+}
+
+.deprecated {
+	color: #ff8c96;
+}
+
+.card dl {
+	display: grid;
+	gap: 0.65rem;
+}
+
+.card dl > div {
+	display: grid;
+	grid-template-columns: 6.5rem 1fr;
+	gap: 0.75rem;
+}
+
+.card dt {
+	font-size: 0.7rem;
+	font-weight: 700;
+	color: var(--ifm-color-emphasis-600);
+}
+
+.card dd {
+	margin: 0;
+	font-size: 0.78rem;
+}
+
+.caution {
+	padding: 0.65rem 0.75rem;
+	border-left: 2px solid #f3bd6b;
+	background: color-mix(in srgb, #f3bd6b 8%, transparent);
+	font-size: 0.76rem;
+}
+
+.card summary {
+	cursor: pointer;
+	font-size: 0.75rem;
+	font-weight: 650;
+	color: var(--ifm-color-primary-lightest);
+}
+
+.card details ul {
+	display: grid;
+	gap: 0.35rem;
+	margin-top: 0.65rem;
+	padding-left: 1rem;
+}
+
+.card code {
+	white-space: normal;
+	word-break: break-word;
+}
+
+.decisionLab {
+	border: 1px solid var(--ifm-color-emphasis-200);
+	border-radius: 0.8rem;
+	background: var(--ifm-background-surface-color);
+	overflow: hidden;
+}
+
+.decisionTabs {
+	padding: 0.75rem;
+	border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.decisionPanel {
+	padding: 1.1rem;
+}
+
+.decisionPanel h3 {
+	margin: 0.3rem 0 0.45rem;
+}
+
+.decisionGrid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75rem;
+	margin-top: 1rem;
+}
+
+.decisionGrid > div {
+	padding: 0.8rem;
+	border: 1px solid var(--ifm-color-emphasis-200);
+	border-radius: 0.6rem;
+	background: color-mix(in srgb, var(--ifm-background-color) 80%, transparent);
+}
+
+.decisionGrid p {
+	margin: 0.35rem 0 0;
+	font-size: 0.8rem;
+}
+
+@media (max-width: 760px) {
+	.controls {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.cards,
+	.decisionGrid {
+		grid-template-columns: 1fr;
+	}
+
+	.card dl > div {
+		grid-template-columns: 1fr;
+		gap: 0.2rem;
+	}
+
+	.summaryGrid > div {
+		border-bottom: 1px solid var(--ifm-color-emphasis-200);
+	}
+
+	.summaryGrid > div:last-child {
+		border-bottom: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.filter,
+	.activeFilter,
+	.decision,
+	.activeDecision {
+		transition: none;
+	}
+}

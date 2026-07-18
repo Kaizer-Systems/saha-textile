@@ -120,6 +120,6 @@
 
 ## Continuous (every phase)
 
-- Grow the **Docusaurus developer portal** incrementally per `private-developer-portal-documentation-plan.md` (OpenAPI→Redoc, generated DB-schema docs, Storybook, Mermaid diagrams, Pagefind search).
+- Grow the **Docusaurus developer portal** incrementally per `private-developer-portal-documentation-plan.md` (OpenAPI→Scalar API Reference, generated DB-schema docs, Storybook, Mermaid diagrams, Pagefind search).
 - Keep tests green; keep docs in sync with code; one PR per coherent unit; squash-merge into protected branches with human approval.
 - Use the phase-appropriate MCP environment (Phases 0-7 mostly **LOCAL**; Phase 8 uses **TEST-E2E** then **PROD-E2E**).

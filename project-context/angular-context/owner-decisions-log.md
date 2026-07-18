@@ -233,3 +233,61 @@ This section professionalizes and locks the owner-reviewed `deferred-queued-acti
     - (1) ✅ Machine-1 keys added for general chrome + mega-menu + footer. The mega-menu data (`shared/data/menu.ts`) and footer (`layout/footer/basic-footer/basic-footer.html`) had literal display strings piped through `| transloco` (which warn because keys are snake_case). Converted to keys: `Customer Service→customer_service`, `Help Center→help_center`, `Authentication→authentication` (existing key), `Popular Categories→popular_categories`, `Popular Tags→popular_tags`, `Product Review→product_review`, `Overall Rating→overall_rating` (`widgets/product-review`), `Edit review→edit_review`, and the demo category/tag names (`Vegetables & Fruits→vegetables_fruits`, `Biscuits & Snacks→biscuits_snacks`, `Daily Breakfast→daily_breakfast`, `Trendy Fashion→trendy_fashion`, `Furniture & Decore→furniture_decore`, `Beauty Products→beauty_products`, `Electronics & Accessories→electronics_accessories`, `Pet Shop→pet_shop`, `Milk & Dairy Products→milk_dairy_products`, `Sports→sports`). New keys added to `en/fr.json` (now 542/542, full parity; also mirrored 4 pre-existing en-only keys `variation`/`configure`/`edit_configuration`/`update_cart` into `fr`). Fixed a stray corrupted label `'Payment ISiteConfig'` → `payment_method` in the refund modal.
     - (2) ✅ No Machine-2 un-piping needed in the general scope — the footer widgets already render admin data raw (`categories.name` raw; footer links use `| titleCase`). The only remaining piped data lives in the PDP configurator.
     - (3) ⏳ **PENDING (PDP session):** the remaining ~13 distinct warnings (`Chest`/`Shoulder`/`Waist`/`Sleeve`, `Green`/`M`/`Maroon / Zari`/`Design 1`, `Blouse Design`/`Petticoat Size`, …) all originate in `shared/ui/product-config/parts/*` + `cart-line-config` and are owned by the PDP build session — see `claude-code-pdp-i18n-reconciliation-handoff.md`. Verified: storefront typecheck clean, `eslint` 0 errors (2 pre-existing prettier warnings remain in the PDP-owned `product-configurator.ts`, intentionally left for that session), SSR home + collections render 200 with **zero** general-chrome missing-translation warnings.
+## 2026-07-18 — Developer portal API reference
+
+- **LOCKED — Scalar API Reference replaces Swagger UI + Redoc in the developer portal.** The NestJS API still generates the authoritative OpenAPI document at `/openapi.json` (using `@nestjs/swagger` where appropriate), but the human-facing portal exposes one modern Scalar surface for both reference reading and approved interactive requests.
+- **LOCKED — Portal route:** `/api/reference` hosts Scalar; `/api/openapi.json` exposes the machine-readable contract. Do not maintain parallel Swagger UI, Redoc, or a separate `/api/console` surface.
+- **LOCKED — Environment/security boundary:** interactive requests target approved development/staging environments only. Scalar must not embed secrets, weaken cookie/CSRF/auth/RBAC/rate-limit controls, or make an unprotected production console available. In production the reference is disabled or protected together with the private developer portal.
+- **DEFERRED IMPLEMENTATION:** do not install or wire Scalar until the API produces a real OpenAPI document. Current portal pages may show an explicitly labelled planned placeholder only.
+
+## 2026-07-18 — Developer portal visual baseline
+
+- **LOCKED — Scalar-faithful portal shell:** the private Docusaurus portal reproduces the dated Scalar documentation interface captured in `developer-portal-scalar-visual-baseline.md`, including its dark-first shell geometry, compact technical density, typography, navigation rails, surface treatments and responsive behaviour.
+- **LOCKED — Saha-owned identity:** Saha Textile branding, content and routes replace Scalar branding. Scalar logos, wordmarks and proprietary brand artwork are not copied.
+- **LOCKED — implementation freedom for fidelity:** reuse/adapt MIT-licensed Scalar source with required notices where useful; otherwise use Docusaurus React theme wrappers, scoped CSS and custom components. Tailwind/shadcn-style primitives are permitted when they materially improve fidelity, but are not mandatory dependencies.
+- **LOCKED — dated target:** the 2026-07-18 capture is the visual acceptance baseline. A future Scalar redesign requires an explicit owner decision before the portal follows it.
+
+## 2026-07-18 — Developer portal Pass 1 governance foundation
+
+- **LOCKED — lifecycle vocabulary:** every portal page uses exactly one of `implemented`, `scaffolded`, `planned`, `deferred`, or `deprecated`. These states describe evidence relative to implementation and are not progress percentages.
+- **LOCKED — required provenance:** every human-authored portal page declares audience, ISO verification date, and repository source-of-truth paths. The portal renders these values next to the page title and pre-build validation rejects missing metadata.
+- **LOCKED — audience entry points:** the foundation maintains separate beginner, frontend, backend, and operator onboarding paths under one Docusaurus umbrella.
+- **LOCKED — authority boundary:** owner decisions govern locked intent; tested code/runtime govern current behaviour; contracts/OpenAPI govern HTTP shapes; adapter models/indexes govern persistence shapes; the portal is a derived maintained view and must expose disagreements instead of silently choosing one.
+- **LOCKED — backend honesty:** current NestJS/OpenAPI and Mongo-adapter code is `scaffolded`, not “not started.” The Scalar portal integration and generated database catalogue are `deferred` until their recorded integration/generation triggers are satisfied. The transitional framework API UI is `deprecated` and must not become a parallel long-term documentation surface.
+- **LOCKED — validation boundary:** portal builds validate lifecycle metadata, provenance metadata, verification dates, and the forbidden vendor-name boundary before Docusaurus compilation.
+
+## 2026-07-18 — Developer portal Pass 2 frontend atlas
+
+- **LOCKED — frontend documentation is code-evidence-first:** a routed or visually complete screen is not described as operational when its read, write or security boundary remains mocked or disconnected.
+- **LOCKED — separate application atlases:** storefront customer/SSR concerns and admin operator/SPA concerns remain distinct while sharing state, contract and quality guidance where appropriate.
+- **LOCKED — lifecycle cards expose evidence:** interactive atlas entries include implementation status, runtime, data boundary, caution text and source paths.
+- **LOCKED — current implementation gaps stay explicit:** mixed catalogue sources, client-only cart behavior, unconnected checkout/auth writes, the `en/fr` versus locked `en/bn` mismatch, absent PWA wiring, admin mock mutations and minimal tests are not hidden.
+- **LOCKED — UI permissions are never authorization:** guards, menus and directives improve presentation; the API must authorize actor, action and resource.
+- **LOCKED — shared foundations are documented only when present:** `packages/contracts` is real; a repository-level `packages/ui` implementation is not claimed.
+- **LOCKED — frontend state ownership is decision-based:** TanStack Query owns server state, SignalStore/local signals own compact browser/UI state, and classic NgRx is reserved for heavily mutated client workflows.
+- **LOCKED — backend generated surfaces remain later work:** Scalar API reference and generated database catalogue work do not advance during Pass 2.
+
+## 2026-07-18 — Developer portal Pass 3 commerce journeys
+
+- **LOCKED — every journey has three evidence lenses:** current code, locked target and failure recovery remain visibly separate.
+- **LOCKED — a surface is not an end-to-end flow:** routes, UI, controllers, ports, contracts and collections advance only the lifecycle boundary they actually implement.
+- **LOCKED — commerce invariants are prominent:** INR is canonical, Angular does not own final totals, server revalidation precedes payment, guest checkout is unavailable at launch, guest-cart merge precedes pending-intent replay, and orders snapshot purchased facts.
+- **LOCKED — separate operational lifecycles:** order, payment, shipment, return, refund and notification state are documented separately and linked through durable identifiers.
+- **LOCKED — failure recovery is first-class documentation:** every critical journey explains corrections, idempotency, ownership, authorization, safe retries and audit evidence.
+- **LOCKED — current gaps remain explicit:** static checkout totals, stub place-order navigation, transitional bearer/demo auth, absent provider adapters, absent `NotificationPort` and deferred public tracking are not presented as operational.
+- **LOCKED — journey interaction is accessible:** journey-area and lifecycle-status filters use pressed state, evidence lenses implement keyboard tab behavior, and the journey timeline reflows vertically on mobile.
+- **LOCKED — Pass 3 is documentation-only:** no API, database or provider implementation is implied or authorized by this pass.
+
+## 2026-07-18 — Developer portal Pass 4 backend platform atlas
+
+- **LOCKED — backend documentation is request-path evidence-first:** a controller, service, port, model or OpenAPI operation is not described as production-capable without its authentication, authorization, validation, invariant, transaction, response-safety and verification boundaries.
+- **LOCKED — public visibility is server-enforced:** storefront callers never select draft/archived visibility, and public catalogue/search responses use explicit public-safe policies.
+- **LOCKED — authentication is not object authorization:** every cart, order, user and other owned-resource operation proves actor-to-resource ownership or an explicit privileged permission.
+- **LOCKED — transport/domain/persistence/response shapes remain distinct:** persistence documents and secret/internal fields never leak through shared/public responses; actor-specific DTOs are allowlists.
+- **LOCKED — adapters contain edge details:** provider SDKs, Mongoose sessions/documents and provider payloads stay outside core/application contracts; composition is the binding boundary.
+- **LOCKED — atomicity and proof are visible:** workflows spanning several durable facts identify their unit-of-work/idempotency boundary and require replica-set rollback/replay tests before becoming implemented.
+- **LOCKED — liveness is not readiness:** a running process is documented separately from Mongo/search/provider readiness and deployment promotion evidence.
+- **LOCKED — generated surfaces remain honest:** OpenAPI is machine truth; Scalar stays deferred until completeness/security triggers pass; the database catalogue stays deferred until deterministic generation from stable explicit schemas/indexes/mappings is possible.
+- **LOCKED — current security/data gaps stay explicit:** public-status leakage, missing cart/order ownership, non-transactional order placement, bearer browser auth, development secret defaults, absent readiness, regex search, stale hosted-Mongo assumptions and skipped/missing backend tests are not hidden.
+- **RECONCILIATION GATE — core dependency direction:** before expanding backend Phase B, resolve the constitution's “core depends on nothing external” rule against current core imports from `packages/contracts`; do not spread the ambiguity silently.
+- **LOCKED — Pass 4 is documentation-only:** no API, database, auth, search or provider implementation is implied or authorized by this pass.

@@ -35,7 +35,11 @@ const config: Config = {
 				},
 				blog: false,
 				theme: {
-					customCss: './src/css/custom.css',
+					customCss: [
+						require.resolve('@fontsource-variable/inter/index.css'),
+						require.resolve('@fontsource-variable/jetbrains-mono/index.css'),
+						'./src/css/custom.css',
+					],
 				},
 				sitemap: false,
 			} satisfies Preset.Options,
@@ -44,18 +48,54 @@ const config: Config = {
 	themes: ['@docusaurus/theme-mermaid'],
 	themeConfig: {
 		image: 'img/social-card.png',
+		colorMode: {
+			defaultMode: 'dark',
+			disableSwitch: false,
+			respectPrefersColorScheme: false,
+		},
+		docs: {
+			sidebar: {
+				hideable: false,
+				autoCollapseCategories: false,
+			},
+		},
 		navbar: {
-			title: 'Saha Textile Dev',
+			title: 'Saha Textile',
 			logo: {
 				alt: 'Saha Textile',
 				src: 'img/logo.svg',
 			},
 			items: [
 				{
-					type: 'docSidebar',
-					sidebarId: 'portalSidebar',
+					to: '/',
+					label: 'Home',
 					position: 'left',
-					label: 'Docs',
+					exact: true,
+				},
+				{
+					to: '/getting-started/choose-your-path',
+					position: 'left',
+					label: 'Start here',
+				},
+				{
+					to: '/architecture/system-overview',
+					position: 'left',
+					label: 'Architecture',
+				},
+				{
+					to: '/business-flows/overview',
+					position: 'left',
+					label: 'Journeys',
+				},
+				{
+					to: '/backend/overview',
+					position: 'left',
+					label: 'Backend',
+				},
+				{
+					to: '/operations/overview',
+					position: 'left',
+					label: 'Operations',
 				},
 				{
 					to: '/decisions/developer-portal-now',
@@ -68,30 +108,46 @@ const config: Config = {
 			style: 'dark',
 			links: [
 				{
-					title: 'Operate',
+					title: 'Start',
 					items: [
-						{ label: 'Getting Started', to: '/getting-started/overview' },
-						{ label: 'Deployment', to: '/deployment/overview' },
-						{ label: 'Troubleshooting', to: '/troubleshooting/overview' },
+						{ label: 'Choose your path', to: '/getting-started/choose-your-path' },
+						{ label: 'Local development', to: '/getting-started/local-development' },
 					],
 				},
 				{
 					title: 'Build',
 					items: [
 						{ label: 'Architecture', to: '/architecture/system-overview' },
+						{ label: 'Business journeys', to: '/business-flows/overview' },
+						{ label: 'Backend atlas', to: '/backend/overview' },
 						{ label: 'API', to: '/api/overview' },
 						{ label: 'Database', to: '/database/overview' },
 					],
 				},
+				{
+					title: 'Operate',
+					items: [
+						{ label: 'Deployment', to: '/deployment/overview' },
+						{ label: 'Operations', to: '/operations/overview' },
+						{ label: 'Troubleshooting', to: '/troubleshooting/overview' },
+					],
+				},
+				{
+					title: 'Govern',
+					items: [
+						{ label: 'Status model', to: '/governance/status-model' },
+						{ label: 'Documentation standard', to: '/governance/contribution-standard' },
+					],
+				},
 			],
-			copyright: `Copyright © ${new Date().getFullYear()} Saha Textile.`,
+			copyright: `Copyright © ${new Date().getFullYear()} Saha Textile. Private engineering system.`,
 		},
 		prism: {
 			theme: require('prism-react-renderer').themes.github,
 			darkTheme: require('prism-react-renderer').themes.dracula,
 		},
 		mermaid: {
-			theme: { light: 'neutral', dark: 'forest' },
+			theme: { light: 'neutral', dark: 'dark' },
 		},
 	} satisfies Preset.ThemeConfig,
 };

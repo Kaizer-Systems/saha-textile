@@ -39,7 +39,7 @@ Scope: Planning/instruction only. This file does not implement code.
 - Pricing floor: INR canonical, tax-inclusive stored/displayed by default, backend-only currency conversion, PayPal gross-up formula, FX rate history, order-line snapshots, tax/shipping/payment snapshots.
 - Inventory floor: purchase invoice intake near Products, FIFO hidden cost layers, inventory ledger, unit-level COGS, sales/profit/purchase/category reports, no customer-facing batch/MRP complexity at launch.
 - Reporting floor: analytics events roll into daily aggregates, business report snapshots, weekly product insight sets, and product badge assignments; storefront reads stable insight collections, not live analytics scans.
-- Documentation floor: OpenAPI at `/openapi.json`, Swagger/Redoc compatible output, generated DB docs later, clear environment catalog, runbooks, and tests as part of done.
+- Documentation floor: OpenAPI at `/openapi.json`, Scalar API Reference compatible output, generated DB docs later, clear environment catalog, runbooks, and tests as part of done.
 - Security floor: OWASP-aligned controls, object-level authorization, CSRF, CORS allowlist, rate limits, secure cookies, no browser tokens, no secrets in bundles, no PII in logs, audit every admin write.
 - Quality gate: do not consider API work done with `vitest --passWithNoTests`; add meaningful unit and integration tests, including auth, CSRF, transactions, public/admin route separation, and OpenAPI smoke checks.
 - Execution cadence (LOCKED 2026-07-02): build **one phase at a time**. Each of Phases A–J is its own run/session; run the §21 command gates and **stop for owner review before starting the next phase**. Do not attempt the whole thing in one pass.
@@ -101,7 +101,7 @@ Avoid unless explicitly required:
 The existing API already has:
 
 - NestJS on Fastify.
-- `@fastify/helmet`, `@fastify/rate-limit`, Swagger setup, CORS allowlist.
+- `@fastify/helmet`, `@fastify/rate-limit`, OpenAPI generation setup, CORS allowlist.
 - Modules for auth, catalog, cart, orders, currency, promotions, health.
 - zod validation pipe.
 - Mongo adapter package using Mongoose.
@@ -313,7 +313,7 @@ Rules:
 Upgrade `main.ts` and boot config to include:
 
 - Fastify adapter with proxy awareness for the **Cloudflare → Nginx → API** chain: set `trustProxy` appropriately and derive the real client IP from **`CF-Connecting-IP`** (fall back to `X-Forwarded-For` from Nginx). Every IP-dependent feature — rate-limit keys, structured logs, consent IP hashing, auth audit — must use that resolved client IP, not the proxy IP. Assume the droplet firewall is restricted to Cloudflare IP ranges (documented as an infra step; the app must not rely on being publicly reachable).
-- `@fastify/helmet` with production CSP handled jointly with Nginx; development Swagger can relax CSP only in development.
+- `@fastify/helmet` with production CSP handled jointly with Nginx; the development/staging Scalar surface may receive only the narrowly required CSP allowances.
 - `@fastify/rate-limit` global defaults plus stricter per-route/auth/search/checkout limits.
 - `@fastify/cookie` for signed/secure cookie parsing and setting.
 - Credentialed CORS allowlist for only `https://sahatextile.com`, `https://www.sahatextile.com` if used, `https://admin.sahatextile.com`, staging origins, and local dev origins.
@@ -322,7 +322,7 @@ Upgrade `main.ts` and boot config to include:
 - Global error filter returning consistent, sanitized error envelopes.
 - Request ID generation and propagation.
 - Structured logs with PII redaction; do not log tokens, OTPs, passwords, raw provider tokens, raw IPs, or full address payloads.
-- OpenAPI generation at `/openapi.json`; Swagger UI can remain at `/docs` in dev/staging and be disabled or protected in prod.
+- OpenAPI generation at `/openapi.json`; Scalar API Reference is mounted or statically integrated at `/api/reference` for approved development/staging use and disabled or access-protected in production.
 - Health endpoints:
     - `/health/live`: process is alive.
     - `/health/ready`: Mongo, Meilisearch, and required runtime dependencies are reachable.
@@ -973,7 +973,7 @@ OpenAPI must be useful enough for admin/storefront development and Postman.
 Requirements:
 
 - `/openapi.json` always generated in non-production and available to CI.
-- Swagger UI protected or disabled in production.
+- Scalar API Reference and its interactive client protected or disabled in production.
 - DTOs documented from zod/Nest decorators as far as practical.
 - Tags separate public vs admin areas.
 - Every endpoint documents auth, CSRF, roles/permissions, request body, query params, response, validation errors, rate limits, idempotency requirements, and side effects.

@@ -1,11 +1,50 @@
 import { inject } from '@angular/core';
 
-import { injectQuery } from '@tanstack/angular-query-experimental';
+import { injectQuery, keepPreviousData } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
+import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProduct, IProductModel } from '@data-access/interfaces/product.interface';
 import { ProductService } from '@data-access/services/product.service';
+
+/** Map the collection page's filter signal to the Nitro catalog route's query params. */
+function toCatalogParams(f?: Params): Params {
+	const p: Params = { page: f?.['page'] ?? 1, limit: f?.['paginate'] ?? 25 };
+	if (f?.['category']) p['category'] = f['category'];
+	if (f?.['sortBy']) p['sortBy'] = f['sortBy'];
+	if (f?.['rating']) p['rating'] = f['rating'];
+	// price "min-max" -> price_min/price_max
+	if (f?.['price']) {
+		const [lo, hi] = String(f['price']).split('-');
+		if (lo) p['price_min'] = lo;
+		if (hi) p['price_max'] = hi;
+	}
+	// attribute facets: "fabric:Silk,Cotton|color:Red" -> fabric=Silk,Cotton & color=Red
+	if (f?.['attribute']) {
+		for (const grp of String(f['attribute']).split('|')) {
+			const [key, vals] = grp.split(':');
+			if (key && vals) p[key] = vals;
+		}
+	}
+	return p;
+}
+
+/**
+ * Category-listing query (Pass B) — hits the Nitro `/api/products` route for a
+ * server-side filtered/sorted/paginated lean slice + disjunctive facets. Keyed on
+ * the filter params; keepPreviousData holds the old page visible while the next
+ * one loads. Replaces the "download product.json + client filter" path here.
+ */
+export function injectCatalogQuery(params: () => Params | undefined) {
+	const productService = inject(ProductService);
+	return injectQuery(() => ({
+		queryKey: ['catalog', toCatalogParams(params())],
+		queryFn: () => firstValueFrom(productService.getCatalog(toCatalogParams(params()))),
+		placeholderData: keepPreviousData,
+		staleTime: Infinity,
+	}));
+}
 
 /**
  * Client-side filter/sort/search transform, ported verbatim from the old

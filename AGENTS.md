@@ -19,15 +19,15 @@
 - DB: **self-hosted Docker MongoDB 8.3** (single-node replica set for multi-document transactions) — **not Atlas**. Same Docker profile locally and in prod for parity. Media: **DigitalOcean Spaces** (S3-compatible, SGP).
 - Search: **self-hosted Meilisearch behind `SearchPort`** (Mongo is source of truth; Meili is a derived, rebuildable index). Do **not** use Mongo regex/`$text` for storefront typeahead.
 - i18n: **Transloco** (runtime en↔bn). Validation: **zod** at every boundary.
-- Payments: **CCAvenue** (INR) + **PayPal** (foreign currencies). FX: **ExchangeRate-API** (daily cron, rates persisted). Shipping: **Shiprocket** (domestic + international) behind `ShippingPort`. Notifications: **MSG91** (SMS/WhatsApp/Email) behind `NotificationPort` with split transactional/marketing kill-switches.
+- Payments: **`PaymentGatewayPort`** — INR online gateway slot + PayPal for foreign; **no COD** at launch. Ops preference for the INR adapter is CCAvenue now / Razorpay later; **swap = adapter + DI only** (core/UI never vendor-specific). FX: **ExchangeRate-API** (daily cron, rates persisted) + PayPal gross-up for non-INR. Shipping: **Shiprocket** (domestic + international) behind `ShippingPort`. Notifications: **MSG91** (SMS/WhatsApp/Email) behind `NotificationPort` with split transactional/marketing kill-switches.
 - Tooling: **angular-eslint** + ESLint flat config, Prettier (tabs/4), **Vitest** (unit) + Playwright (e2e).
 - Node: pin via `.nvmrc` (root engines require Node ≥24).
 - Use **Context7** (MCP) for version-correct docs of any library — always pin the version in the query.
 
 ## 3. Architecture — non-negotiable: hexagonal / ports & adapters
 
-- **`packages/core-domain` depends on NOTHING external.** It holds entities, value objects, use-cases, and **PORT interfaces**: repositories (`CatalogRepository`, `OrderRepository`, `CartRepository`, `UserRepository`, `CurrencyRepository`, `PromotionRepository`) plus `StoragePort`, `PaymentGatewayPort`, `ShippingPort`, `FxRatePort`, `SearchPort`, `AuthPort` (and `NotificationPort` for MSG91).
-- **Adapters** implement ports at the edges (`adapters-db-mongo`, `adapters-storage-spaces`, `adapters-payments`, `adapters-shipping`, `adapters-fx`, `adapters-search`, `adapters-auth`). Wire them to ports via **NestJS DI** at composition time in the API. The Angular apps never touch adapters — they consume the API over HTTP.
+- **`packages/core-domain` depends on NOTHING external.** It holds entities, value objects, use-cases, and **PORT interfaces**: repositories (`CatalogRepository`, `OrderRepository`, `CartRepository`, `UserRepository`, `CurrencyRepository`, `PromotionRepository`) plus `StoragePort`, `PaymentGatewayPort`, `ShippingPort`, `FxRatePort`, `SearchPort`, `AuthPort`, `NotificationPort` (MSG91), **`YouTubePort`** (channel-feed discovery), and **`VideoTranscodePort`** (HLS encode; ffmpeg worker via BullMQ at the edge — see owner-decisions-log 2026-07-18 video pipeline).
+- **Adapters** implement ports at the edges (`adapters-db-mongo`, `adapters-storage-spaces`, `adapters-payments`, `adapters-shipping`, `adapters-fx`, `adapters-search`, `adapters-auth`, plus YouTube / video-transcode adapters as built). Wire them to ports via **NestJS DI** at composition time in the API. The Angular apps never touch adapters — they consume the API over HTTP.
 - **Dependency rule:** all imports point inward. Core never imports an adapter.
 - **Swappability test:** replacing MongoDB with PostgreSQL must touch only a new db adapter + one DI binding — never core, use-cases, or UI. If a task forces edits across layers to swap an edge concern, the layering is wrong: **stop and flag it.**
 - Adapters map persistence shapes ↔ domain entities (DTOs). **Never leak Mongoose docs / SQL rows into core.**
@@ -61,9 +61,9 @@ project-context/   angular-context/ (live KB + roadmap) · nextjs-context/ (supe
 
 - Object-level authorization on every order/cart/user endpoint (BOLA is the #1 API risk).
 - Rate-limit auth/OTP/checkout/search; strict CORS allowlist; CSP + security headers via the **Nginx reverse proxy** (Cloudflare-fronted edge).
-- **API-set httpOnly/Secure/SameSite cookie sessions** with double-submit CSRF; argon2id password hashing; short-lived access + rotating refresh tokens; email OTP (via MSG91) rate-limited + short TTL with anti-enumeration; 6-digit admin PIN.
+- **API-set httpOnly/Secure/SameSite cookie sessions** with double-submit CSRF; argon2id password hashing; short-lived access + rotating refresh tokens; email OTP (via MSG91) rate-limited + short TTL with anti-enumeration; **6-digit admin PIN** (optional onboarding + Security Settings; preferred login method `password` | `pin`; lockout after failed attempts — see owner-decisions-log 2026-07-23).
 - `pnpm audit` + Dependabot/Renovate; pin Docker base images; fail closed and never leak internals.
-- PCI: card data never touches our servers (CCAvenue hosted/iframe + PayPal).
+- PCI: card data never touches our servers (hosted/iframe INR gateway adapter + PayPal; vendor SDKs stay in `adapters-payments` only).
 
 ## 7. Git & PR workflow (rulesets are ACTIVE — see project-context for details)
 

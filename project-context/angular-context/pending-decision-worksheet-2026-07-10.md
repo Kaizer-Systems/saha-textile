@@ -211,86 +211,15 @@ Notes:
 
 ---
 
-## 03. Launch Payment Methods
+## 03. Launch Payment Methods — RESOLVED 2026-07-23
 
-### 03.1 Decision Needed
+**Owner choice: Option B — online payments only.**
 
-Choose which payment methods launch, and what limits apply.
+- **INR → Indian online gateway role** (ops: CCAvenue now / Razorpay later). **Non-INR → PayPal only.** FX + PayPal gross-up as in the technical KB.
+- **COD / manual UPI / split-partial: no** at launch.
+- **Architecture:** CCAvenue vs Razorpay is **adapter + DI only** — core, contracts, and Angular apps never vendor-branch (`PaymentGatewayPort`).
 
-### 03.2 What Is Already In The KB
-
-1. INR checkout should go through CCAvenue when live credentials exist.
-2. Non-INR checkout should go through PayPal.
-3. Payment providers remain behind `PaymentGatewayPort`.
-4. Real provider wiring happens only after credentials/access are available.
-
-### 03.3 Recommended Route
-
-Launch with online payments as the primary path, keep COD as an optional controlled method for domestic India, and do not build split/partial payments at launch.
-
-### 03.4 Options
-
-#### Option A - Recommended: Online payments plus capped COD
-
-Pros:
-
-1. Good conversion for India.
-2. COD is available but controlled.
-3. Online payments remain the clean default.
-4. COD cap protects high-value inventory.
-5. Fits boutique operations without overbuilding.
-
-Cons:
-
-1. COD requires order confirmation and cancellation handling.
-2. COD increases failed delivery/return risk.
-3. Admin needs COD status visibility.
-
-Recommended COD constraints if chosen:
-
-1. Domestic India only.
-2. Maximum order value cap, for example INR 5,000 or INR 10,000.
-3. Disable COD for custom stitched / made-to-order / non-returnable items if needed.
-4. Optional phone confirmation before dispatch.
-
-#### Option B - Online payments only
-
-Pros:
-
-1. Simplest operationally.
-2. Lower fake-order risk.
-3. Cleaner payment reconciliation.
-4. Better fit for custom products.
-
-Cons:
-
-1. May reduce conversion with Indian customers who expect COD.
-2. No fallback for customers uncomfortable with online payment.
-
-#### Option C - Online payments plus COD plus manual UPI proof
-
-Pros:
-
-1. Maximum customer flexibility.
-2. Useful if gateway onboarding is delayed.
-3. UPI manual can work for small owner-operated launch.
-
-Cons:
-
-1. Manual proof review adds admin workload.
-2. Risk of fake/duplicate payment screenshots.
-3. Requires pending-payment order flow.
-4. Less elegant than a proper gateway flow.
-
-### 03.5 Owner Answer
-
-Owner choice:
-
-COD cap, if any:
-
-Manual UPI allowed:
-
-Notes:
+Authoritative text: `owner-decisions-log.md` §2026-07-23 Launch payment methods; `saha-textile-technical-knowledgebase.md` §06–§07; `AGENTS.md` payments line.
 
 ---
 
@@ -1291,173 +1220,49 @@ Notes:
 
 ---
 
-## 17. Media, DigitalOcean Spaces, Image Derivatives, And Upload Workflow
+## 17. Media, DigitalOcean Spaces, Image Derivatives, And Upload Workflow — RESOLVED 2026-07-18 (px/caps deferred)
 
-### 17.1 Decision Needed
+**Owner choice: Option A — Spaces + responsive derivative pipeline** (not originals-only, not API byte-proxy for browsing).
 
-Choose how product/category/banner/media uploads are stored, transformed, served, and referenced.
+- **Store:** DigitalOcean Spaces **SGP** + CDN; Mongo holds metadata/`mediaAssets` references only.
+- **Upload:** presigned **direct-to-Spaces**; API does not proxy browse bytes.
+- **Images:** upload JPEG/PNG; retain **original + full-res WebP + static WebP ladder** via BullMQ + **sharp**; **no AVIF** for ~2 years.
+- **Ladder roles locked:** `thumb`, `card`, `gallery`, `zoom`, `swatch_image`, `swatch_image_v2`.
+- **Alt/SEO:** required for **all active locales** before upload (Machine 2 on the asset).
+- **Orphans:** soft-delete + GC when unused after grace.
+- **Video companion** (same media family): master MP4 → ffmpeg HLS → delete master — see owner-decisions-log §2026-07-18 video.
 
-### 17.2 What Is Already Locked
+**Still deferred (raise when building those features; does not block schema):**
 
-1. DigitalOcean Spaces is used for media.
-2. Region is SGP.
-3. MongoDB stores references/metadata, not binary media files.
-4. Spaces can also later store cold archive JSON blobs.
+1. Exact ladder **pixel sizes** per role.
+2. Ingest **caps** (max upload MB / max long-edge).
 
-### 17.3 Recommended Route
-
-Use Spaces as the origin/CDN-backed media store. Upload through API-issued signed upload URLs or API-mediated upload flow. Store media metadata in Mongo. Generate responsive image derivatives and keep the original.
-
-### 17.4 Options
-
-#### Option A - Recommended: Spaces plus responsive derivative pipeline
-
-Pros:
-
-1. Best storefront performance.
-2. Better Core Web Vitals.
-3. Keeps droplet disk clean.
-4. Supports product cards, PDP zoom, swatches, banners, and admin thumbnails.
-5. Future-proof for AVIF/WebP.
-
-Cons:
-
-1. Needs upload and derivative worker logic.
-2. Needs image metadata collection.
-3. Needs cleanup policy for unused uploads.
-
-Recommended derivative set:
-
-1. Original retained.
-2. Thumbnail for admin/selectors.
-3. Product card size.
-4. PDP gallery medium.
-5. PDP zoom large.
-6. Optional AVIF/WebP where conversion is safe.
-
-Recommended metadata:
-
-1. Storage key.
-2. Public/CDN URL or resolvable key.
-3. MIME type.
-4. Width/height.
-5. Size.
-6. Alt text per locale.
-7. Usage references.
-8. Created by/admin id.
-9. Status: temporary, active, orphaned, archived.
-
-#### Option B - Spaces originals only, browser/CSS resizing
-
-Pros:
-
-1. Fastest to build.
-2. Simple storage model.
-3. Still keeps media out of Mongo.
-
-Cons:
-
-1. Large images hurt performance.
-2. Poor mobile bandwidth usage.
-3. Less polished product experience.
-
-#### Option C - Proxy all media through API
-
-Pros:
-
-1. Strong access control.
-2. Centralized logging.
-
-Cons:
-
-1. Wastes API/droplet bandwidth.
-2. More latency.
-3. Bad fit for public product media.
-4. CDN becomes less effective.
-
-### 17.5 Owner Answer
-
-Owner choice:
-
-Derivative sizes/formats:
-
-Alt text required before publish:
-
-Notes:
+Authoritative text: `owner-decisions-log.md` §2026-07-18 Images (+ video section); technical KB media/image sections.
 
 ---
 
-## 18. Manual Stock Adjustment Reason Codes
+## 18. Manual Stock Adjustment Reason Codes — RESOLVED 2026-07-23
 
-### 18.1 Decision Needed
+**Owner choice: Option A — Fixed taxonomy plus notes** (not free-text-only, not codes-without-notes).
 
-Choose the reason-code taxonomy for manual inventory adjustments outside normal purchase invoice/order flows.
+Applies to **manual inventory adjustments** outside normal purchase-invoice / order fulfillment flows (admin stock corrections).
 
-### 18.2 Recommended Route
+**Locked reason codes** (required enum on every manual adjustment):
 
-Use fixed reason codes plus optional notes.
+1. `damage`
+2. `lost_missing`
+3. `manual_recount_correction`
+4. `supplier_shortage`
+5. `return_restocked`
+6. `return_not_restocked`
+7. `internal_use_sample`
+8. `photoshoot_display_use`
+9. `system_migration_correction`
+10. `other` — **note mandatory**
 
-### 18.3 Options
+**Notes:** optional for codes 1–9; **required** when reason = `other`. Taxonomy is fixed in code/config (expand only via deliberate product change, not free admin invent-a-code). Every adjustment still records actor + timestamp for audit.
 
-#### Option A - Recommended: Fixed taxonomy plus notes
-
-Pros:
-
-1. Clean reports.
-2. Prevents vague stock changes.
-3. Supports audit trails.
-4. Still allows explanation through notes.
-
-Cons:
-
-1. Admin must choose a reason.
-2. Taxonomy may need occasional expansion.
-
-Recommended reason codes:
-
-1. Damage.
-2. Lost/missing.
-3. Manual recount/correction.
-4. Supplier shortage.
-5. Return restocked.
-6. Return not restocked.
-7. Internal use/sample.
-8. Photoshoot/display use.
-9. System migration correction.
-10. Other, with mandatory note.
-
-#### Option B - Free-text only
-
-Pros:
-
-1. Flexible.
-2. Very fast to build.
-
-Cons:
-
-1. Poor reporting.
-2. Inconsistent wording.
-3. Harder fraud/error review.
-
-#### Option C - Fixed codes only, no notes
-
-Pros:
-
-1. Very clean analytics.
-2. Simple UI.
-
-Cons:
-
-1. Not enough context for unusual cases.
-2. Admin may choose wrong code just to proceed.
-
-### 18.4 Owner Answer
-
-Owner choice:
-
-Reason codes to add/remove:
-
-Notes:
+Authoritative text: `owner-decisions-log.md` §2026-07-23 Manual stock adjustment reason codes; technical KB §03 inventory note; catalog DB plan `inventoryLedger`.
 
 ---
 
@@ -1526,140 +1331,28 @@ Notes:
 
 ---
 
-## 20. Reviews Policy
+## 20. Reviews Policy — RESOLVED 2026-07-23
 
-### 20.1 Decision Needed
+**Owner choice: Option A — Verified purchase plus moderation** (not auto-publish; not anyone-can-review).
 
-Define who can review, what review content is allowed, and moderation rules.
+- **Who:** logged-in users with a **verified purchase** of that product only. Guests / non-logged-in see login-to-review; after auth, purchase eligibility is re-checked (existing pending-intent rule).
+- **Content:** star rating + text + **optional images** (images go through the same media/`mediaAssets` pipeline as other uploads where applicable).
+- **Moderation:** admin **must approve** before the review is public. No instant public publish. Admin review queue required.
+- **Aggregates / SEO:** product `ratingAverage` / `ratingCount` / rating facets and any review JSON-LD use **published (approved) verified reviews only** — never pending or rejected; never fake schema.
 
-### 20.2 What Is Already Partly Locked
-
-Reviews require login and verified purchase. Guests/non-logged-in users see login-to-review.
-
-### 20.3 Recommended Route
-
-Allow logged-in verified purchasers to submit star rating plus text plus optional images. Moderate before public publish.
-
-### 20.4 Options
-
-#### Option A - Recommended: Verified purchase plus moderation
-
-Pros:
-
-1. Highest trust.
-2. Lower spam risk.
-3. Good fit for premium boutique presentation.
-4. Supports image reviews without public abuse.
-
-Cons:
-
-1. Admin review queue required.
-2. Reviews do not appear instantly.
-
-#### Option B - Verified purchase, auto-publish
-
-Pros:
-
-1. Less admin work.
-2. Faster social proof.
-3. Still blocks fake non-purchaser reviews.
-
-Cons:
-
-1. Risk of inappropriate content.
-2. Needs report/hide tooling.
-3. Image reviews are riskier.
-
-#### Option C - Anyone can review
-
-Pros:
-
-1. More review volume.
-2. Lower friction.
-
-Cons:
-
-1. Lower trust.
-2. Higher spam risk.
-3. Not recommended for this brand standard.
-
-### 20.5 Owner Answer
-
-Owner choice:
-
-Allow review images:
-
-Moderation required:
-
-Notes:
+Authoritative text: `owner-decisions-log.md` §2026-07-23 Reviews policy; technical KB §03/§04; catalog plan `reviews`; umbrella **F1**.
 
 ---
 
-## 21. Public Track-Order Lookup
+## 21. Public Track-Order Lookup — RESOLVED 2026-07-23
 
-### 21.1 Decision Needed
+**Owner choice: Option A — Defer at launch; when built use order number + email/phone verification.**
 
-Decide whether to build public order tracking and how identity is verified.
+- **Launch:** no public track-order page; no public track-order pending-intent. Logged-in customers use **account order history** (and support email) until shipping/status flow is solid.
+- **When built (post order/payment/shipping):** public/guest-friendly lookup requires **order number + matching email or phone** (not order-number-only). Rate-limit and anti-enumeration required. Do **not** expose full PII or payable payment details on a weakly authenticated lookup.
+- **Rejected:** order-number-only public lookup (privacy); authenticated-only forever (less guest-checkout-friendly later).
 
-### 21.2 Current KB Status
-
-Track order is deferred. It should be decided after full order/payment/shipping flow exists.
-
-### 21.3 Recommended Route
-
-Defer launch implementation, but when built use order number plus email/phone verification.
-
-### 21.4 Options
-
-#### Option A - Recommended: Defer, then order number plus email/phone verification
-
-Pros:
-
-1. Avoids premature workflow before shipping statuses exist.
-2. Protects customer privacy.
-3. Good guest-checkout seam later.
-4. Works for both logged-in and future guest orders.
-
-Cons:
-
-1. No public track-order page at launch.
-2. Customers must log in or use email/support until built.
-
-#### Option B - Authenticated-only tracking
-
-Pros:
-
-1. Safest and simplest.
-2. Reuses account order history.
-3. No public lookup abuse.
-
-Cons:
-
-1. Less convenient.
-2. Less future-friendly for guest checkout.
-
-#### Option C - Public order number lookup only
-
-Pros:
-
-1. Very convenient.
-2. Easy UX.
-
-Cons:
-
-1. Privacy risk.
-2. Order numbers can be guessed/shared.
-3. Not acceptable for detailed order data.
-
-### 21.5 Owner Answer
-
-Owner choice:
-
-Build at launch:
-
-Verification method:
-
-Notes:
+Authoritative text: `owner-decisions-log.md` §2026-07-23 Public track-order lookup; technical KB §04; catalog `orders`/`shipments` notes; API build prompt deferred seam; umbrella **D7**.
 
 ---
 
@@ -1747,92 +1440,39 @@ Notes:
 
 ---
 
-## 23. Audit Logging Scope And Retention
+## 23. Audit Logging Scope And Retention — RESOLVED 2026-07-23
 
-### 23.1 Decision Needed
+**Owner choice: Option A — Broad admin/security audit** (not sensitive-modules-only; not audit-everything-forever without retention).
 
-Define what mutations are audited and how long audit logs are retained.
+**Must audit (non-exhaustive launch floor):**
 
-### 23.2 Recommended Route
-
-Audit all admin writes plus all security-sensitive user/system actions. Keep financial/security/catalog audit for long retention, while raw analytics events can have short retention after rollup.
-
-### 23.3 Options
-
-#### Option A - Recommended: Broad admin/security audit
-
-Audit:
-
-1. Product create/update/archive/delete.
+1. Product create/update/archive/delete (and equivalent status/sale switches).
 2. Category/facet/SEO changes.
 3. Price/MRP/sale changes.
-4. Stock and inventory adjustments.
-5. Purchase invoice posting.
+4. Stock and inventory adjustments (incl. manual reason-coded adjustments).
+5. Purchase invoice posting (and void/compensating entries).
 6. Order status changes.
 7. Payment/refund state changes.
 8. Shipping config changes.
 9. Tax config changes.
-10. Payment gateway config changes.
+10. Payment gateway / currency / PayPal commission config changes.
 11. Notification/channel setting changes.
 12. Role/permission/user admin changes.
-13. Login failures/lockouts for admin.
-14. Session revocation/reuse-detection events.
+13. Admin login failures/lockouts.
+14. Session revocation / refresh reuse-detection events.
 15. Admin draft restore conflicts where relevant.
 
-Pros:
+Plus: **all other admin writes** as the default floor (API rule: every admin mutating route writes an audit row). Security-sensitive system/user actions above are in scope even when not “catalog.”
 
-1. Strong operational accountability.
-2. Supports investigation and compliance.
-3. Fits the admin RBAC/security posture.
+**Retention (defaults; accountant may lengthen financial/security, not silently shorten):**
 
-Cons:
+1. **Financial / security** audit: **7 years**.
+2. **Catalog / general admin mutation** audit: **5 years** (within recommended 3–7).
+3. **Raw analytics events** (not `auditLogs`): **90 days** after aggregate rollup (within recommended 30–180), then TTL/delete or cold-archive.
 
-1. More storage.
-2. Needs redaction rules.
-3. Needs clear audit viewer.
+**Redaction / size:** never store secrets, passwords, full session/refresh tokens, card data, or Working Keys in audit payloads. Prefer important field diffs over huge before/after blobs; cold-archive or compact when retention/disk pressure requires (same Spaces cold-archive pattern as product archives if needed).
 
-Recommended retention:
-
-1. Financial/security audit: 7 years or accountant-confirmed period.
-2. Catalog/admin mutation audit: 3 to 7 years.
-3. Noisy raw analytics: 30 to 180 days after aggregate rollup.
-
-#### Option B - Audit only sensitive modules
-
-Pros:
-
-1. Lower storage.
-2. Less noise.
-3. Faster to build.
-
-Cons:
-
-1. Gaps in investigation.
-2. Product/price changes may be missed.
-3. Harder to prove who changed what.
-
-#### Option C - Audit everything forever
-
-Pros:
-
-1. Maximum evidence.
-2. No retention edge cases.
-
-Cons:
-
-1. Storage/noise grows forever.
-2. Not necessary for low-noise boutique scale.
-3. Privacy/data-minimization concerns.
-
-### 23.4 Owner Answer
-
-Owner choice:
-
-Retention periods:
-
-Modules to exclude:
-
-Notes:
+Authoritative text: `owner-decisions-log.md` §2026-07-23 Audit logging; technical KB §05; catalog `auditLogs`; auth plan §15.4; API build prompt; umbrella **G2**.
 
 ---
 
@@ -2013,82 +1653,32 @@ Notes:
 
 ---
 
-## 26. Admin PIN UX, Setup, Reset, And Lockout
+## 26. Admin PIN UX, Setup, Reset, And Lockout — RESOLVED 2026-07-23
 
-### 26.1 Decision Needed
+**Owner choice: Option A (expanded)** — security-settings setup after password proof **plus** optional onboarding PIN setup (Option B convenience folded in). Not PIN-only-for-idle-resume (Option C rejected).
 
-Define exactly how the admin 6-digit PIN is set, used, reset, and locked after failures.
+### Setup surfaces
 
-### 26.2 What Is Already Locked
+1. **Primary / always available:** authenticated **Admin Security Settings** — set, change, or reset PIN only after **password proof**. Audited.
+2. **Optional first-run:** during **admin invite / onboarding** (after password is established), show an optional PIN setup section. Admin may **skip** and set PIN later from Security Settings.
+3. **Preferred login method:** admin chooses **`password` | `pin`** via a **Bootstrap / theme form-switch (toggle)** — present on **both** the onboarding PIN section and the Security Settings PIN section. Prefer PIN only when a PIN is actually set; if no PIN exists, preference stays `password` and the toggle is disabled or forced off.
 
-1. Admin can use a 6-digit PIN as a quick-login/quick-resume alternative.
-2. Weak/sequential/repeated PINs are rejected.
-3. Idle lock uses password or PIN based on preferred quick-resume method.
-4. Admin soft-lock preserves exact screen/form state where possible.
+### Usage
 
-### 26.3 Recommended Route
+- PIN allowed for **full admin login** and for **idle soft-lock / quick-resume** (same session/cookie security as password).
+- Idle lock / quick-resume UI shows only the credential matching `preferredLoginMethod` (existing 2026-07-07 lock).
+- Login screen may offer PIN when preferred and PIN is set; password always remains a recovery path.
 
-PIN is set from authenticated admin security settings after password proof. PIN can be used for idle quick-resume and optionally full login. After repeated PIN failures, disable PIN quick-resume temporarily and require password.
+### Strength & lockout
 
-### 26.4 Options
-
-#### Option A - Recommended: Set in security settings after password proof
-
-Pros:
-
-1. Secure setup.
-2. Avoids PIN setup during fragile invite/onboarding.
-3. Lets admin change/reset deliberately.
-4. Works cleanly with audit logging.
-
-Cons:
-
-1. Admin must first log in with password.
-2. Slightly more settings UI.
-
-Recommended lockout:
-
-1. 5 failed PIN attempts.
-2. Lock PIN quick-resume for 15 minutes or until password login.
-3. Notify/audit the event.
-4. Password change invalidates PIN sessions.
+1. Reject weak/sequential/repeated PINs (existing denylist + pattern checks).
+2. **5** failed PIN attempts → lock PIN login/quick-resume for **15 minutes** or until successful **password** login.
+3. Audit / notify the lockout event.
+4. Password change invalidates PIN sessions / increments token version (existing session rules).
 5. Role/permission change invalidates quick-resume.
+6. Hash PIN with password-grade seriousness; never plaintext.
 
-#### Option B - Set PIN during admin onboarding/invite
-
-Pros:
-
-1. Smooth first-run setup.
-2. PIN is ready immediately.
-
-Cons:
-
-1. More invite flow complexity.
-2. Higher risk of rushed weak setup.
-3. More recovery paths needed.
-
-#### Option C - PIN only for idle resume, never full login
-
-Pros:
-
-1. Safer than PIN full-login.
-2. Still solves the main admin idle-lock UX.
-3. Lower attack surface.
-
-Cons:
-
-1. Less convenient.
-2. Admin still needs password for initial login every fresh session.
-
-### 26.5 Owner Answer
-
-Owner choice:
-
-PIN allowed for full login:
-
-Failed attempt lockout:
-
-Notes:
+Authoritative text: `owner-decisions-log.md` §2026-07-23 Admin PIN UX; auth plan users/`pinCredentials`; API build prompt admin auth; technical KB §08; umbrella **G5**.
 
 ---
 
@@ -2280,67 +1870,11 @@ Notes:
 
 # Appendix A. Storefront Architecture Follow-Ups From The KB
 
-These were surfaced in the KB as storefront-specific re-ask items. They are not counted in the 27 business/API/DB decision calls above, but they should be answered before the storefront build reaches implementation.
+These were surfaced in the KB as storefront-specific re-ask items. They are not counted in the 27 business/API/DB decision calls above.
 
-## A.1 Storefront Rendering Strategy
+**Resolved and removed (2026-07-23):** A.1 rendering strategy (Analog SSR/SSG hybrid), A.2 routing (Analog file-based), A.3 SSR hydration (TanStack + TransferState where useful), A.4 auth state (httpOnly cookie sessions + CSRF; no browser tokens), A.5 cart/checkout client state (NgRx classic for cart + TanStack for server state). See `owner-decisions-log.md` and `saha-textile-technical-knowledgebase.md`.
 
-Recommended: Analog SSR/SSG with product/category prerender for published slugs, SSR for dynamic pages, and Nginx/CDN cache for freshness.
-
-Options:
-
-1. SSR/SSG hybrid with cache - recommended.
-2. SSR-only.
-3. Full prerender on deploy only.
-
-Owner answer:
-
-## A.2 Storefront Routing Style
-
-Recommended: Analog file-based routes for the storefront, with locale-prefixed URLs.
-
-Options:
-
-1. Analog file-based routing - recommended.
-2. Angular config router only.
-3. Hybrid.
-
-Owner answer:
-
-## A.3 SSR Data Hydration
-
-Recommended: TanStack Query dehydration/hydration, using Angular TransferState where it helps prevent duplicate fetches.
-
-Options:
-
-1. TanStack hydration plus TransferState - recommended.
-2. TransferState only.
-3. Client refetch after SSR.
-
-Owner answer:
-
-## A.4 Storefront Auth State
-
-Recommended: httpOnly cookie sessions plus CSRF. SignalStore stores only session/user view state. No browser token storage.
-
-Options:
-
-1. Cookie-session view state only - recommended.
-2. Store auth tokens in browser storage - rejected by KB security posture.
-3. Stateless anonymous-only storefront with login redirects - too limited.
-
-Owner answer:
-
-## A.5 Cart And Checkout Client State
-
-Recommended: classic NgRx Entity/Effects for cart and checkout orchestration; TanStack Query for server reads and mutations.
-
-Options:
-
-1. NgRx classic for cart/checkout plus TanStack server state - recommended.
-2. TanStack Query only.
-3. SignalStore only.
-
-Owner answer:
+**Still open:**
 
 ## A.6 i18n Route Policy
 

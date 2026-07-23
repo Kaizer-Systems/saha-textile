@@ -4,9 +4,6 @@
 >
 	<div class="modal-content">
 		<div class="modal-header">
-			<h4 class="modal-title">
-				{{ (isEdit() ? 'edit_configuration' : 'configure') | transloco }}: {{ product().name }}
-			</h4>
 			<app-button
 				[type]="'button'"
 				[class]="'btn btn-close'"
@@ -18,9 +15,16 @@
 			</app-button>
 		</div>
 		<div class="modal-body">
-			<!-- .right-box-contain > .product-package: the theme's configure-modal
-			     wrapper chain that sizes the reused variant swatches correctly. -->
+			<!-- .right-box-contain > .product-package: the theme's configure-modal wrapper chain — it sizes the reused
+			swatches and styles the title, price and qty row, so no custom chrome CSS is needed. -->
 			<div class="right-box-contain">
+				<h2 class="name">
+					{{ (isEdit() ? 'edit_configuration' : 'configure') | transloco }}: {{ product().name }}
+				</h2>
+				<div class="price-rating">
+					<h3 class="theme-color price">{{ unitPrice() | currencySymbol }}</h3>
+				</div>
+
 				<div class="product-package">
 					<!-- shared configurator: identical composition to the PDP -->
 					<app-product-configurator
@@ -29,61 +33,57 @@
 						[initialConfig]="editLine()?.line_config"
 						(summaryChange)="onSummary($event)"
 					/>
+				</div>
 
-					<div class="config-total">
-						<span class="total-label">{{ 'total_price' | transloco }}</span>
-						<span class="total-value theme-color">{{ unitPrice() | currencySymbol }}</span>
+				<div class="note-box">
+					<div class="cart_qty qty-box product-qty">
+						<div class="input-group">
+							<app-button
+								[class]="'btn qty-left-minus'"
+								[id]="'config_qty_minus'"
+								[spinner]="false"
+								(click)="updateQuantity(-1)"
+							>
+								<i class="ri-subtract-fill"></i>
+							</app-button>
+							<input
+								class="form-control input-number qty-input"
+								type="text"
+								name="quantity"
+								value="{{ productQty() }}"
+								readonly
+							/>
+							<app-button
+								[class]="'btn qty-left-minus'"
+								[id]="'config_qty_plus'"
+								[spinner]="false"
+								(click)="updateQuantity(1)"
+							>
+								<i class="ri-add-line"></i>
+							</app-button>
+						</div>
 					</div>
+					@if (purchasable()) {
+					<app-button
+						[id]="'config_confirm_btn'"
+						[class]="'btn btn-md theme-bg-color text-white fw-bold'"
+						(click)="confirm(cfg)"
+					>
+						<i class="ri-shopping-cart-line me-1"></i>
+						{{ (isEdit() ? 'update_cart' : 'add_to_cart') | transloco }}
+					</app-button>
+					} @else {
+					<app-button
+						[id]="'config_disabled_btn'"
+						[class]="'btn btn-md theme-bg-color text-white fw-bold disabled'"
+						[spinner]="false"
+						[disabled]="true"
+					>
+						{{ (soldOut() ? 'sold_out' : (isEdit() ? 'update_cart' : 'add_to_cart')) | transloco }}
+					</app-button>
+					}
 				</div>
 			</div>
-		</div>
-		<div class="modal-footer">
-			<div class="modal-qty">
-				<div class="input-group">
-					<app-button
-						[class]="'btn qty-left-minus'"
-						[id]="'config_qty_minus'"
-						[spinner]="false"
-						(click)="updateQuantity(-1)"
-					>
-						<i class="ri-subtract-fill"></i>
-					</app-button>
-					<input
-						class="form-control input-number qty-input"
-						type="text"
-						name="quantity"
-						value="{{ productQty() }}"
-						readonly
-					/>
-					<app-button
-						[class]="'btn qty-left-minus'"
-						[id]="'config_qty_plus'"
-						[spinner]="false"
-						(click)="updateQuantity(1)"
-					>
-						<i class="ri-add-line"></i>
-					</app-button>
-				</div>
-			</div>
-			@if (purchasable()) {
-			<app-button
-				[id]="'config_confirm_btn'"
-				[class]="'btn theme-bg-color view-button icon text-white fw-bold btn-md'"
-				(click)="confirm(cfg)"
-			>
-				<i class="ri-shopping-cart-line me-1"></i>
-				{{ (isEdit() ? 'update_cart' : 'add_to_cart') | transloco }}
-			</app-button>
-			} @else {
-			<app-button
-				[id]="'config_disabled_btn'"
-				[class]="'btn theme-bg-color view-button icon text-white fw-bold btn-md disabled'"
-				[spinner]="false"
-				[disabled]="true"
-			>
-				{{ (soldOut() ? 'sold_out' : (isEdit() ? 'update_cart' : 'add_to_cart')) | transloco }}
-			</app-button>
-			}
 		</div>
 	</div>
 </ng-template>

@@ -100,6 +100,44 @@ export class CartEffects {
 		),
 	);
 
+	// Edit an existing composed line in place — a FULL replace of its configuration
+	// (variation + add-on/bundle selections + measurements + price) at an absolute
+	// quantity. Unlike updateCart this never increments; it overwrites the line.
+	editLine$ = createEffect(() =>
+		this.actions$.pipe(
+			ofType(CartActions.editLine),
+			withLatestFrom(this.store.select(selectCartItems)),
+			mergeMap(([{ payload }, items]) => {
+				const item = items.find((i) => Number(i.id) === Number(payload.id));
+				if (!item) return EMPTY;
+
+				const quantity = payload.quantity > 0 ? payload.quantity : item.quantity;
+				const price = payload.unit_price ?? lineUnitPrice({ ...item, ...payload });
+				const variation = payload.variation
+					? { ...payload.variation, selected_variation: variationLabel(payload.variation) }
+					: item.variation;
+
+				const productQty = payload.variation ? payload.variation.quantity : item.product?.quantity;
+				if (productQty != null && productQty < quantity) {
+					this.notificationService.showError(
+						`You can not add more items than available. In stock ${productQty} items.`,
+					);
+					return EMPTY;
+				}
+
+				const changes: Partial<ICart> = {
+					variation,
+					variation_id: payload.variation_id ?? item.variation_id,
+					quantity,
+					unit_price: price,
+					sub_total: price * quantity,
+					line_config: payload.line_config ?? item.line_config,
+				};
+				return of(CartActions.updateItem({ id: payload.id!, changes }));
+			}),
+		),
+	);
+
 	// Swap the variation on an existing line — quantity resets to 0 then adds the delta.
 	replaceCart$ = createEffect(() =>
 		this.actions$.pipe(

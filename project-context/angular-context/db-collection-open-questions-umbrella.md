@@ -55,8 +55,7 @@ Additional 2026-07-04 option-model lock:
 
 - **C1 — Stock reservation.** When is stock decremented/held — on **add-to-cart, checkout start, or order placement**? Reservation TTL for abandoned carts? → ⭐ _soft-reserve at checkout start with TTL; hard-decrement on order placement._
 - **C2 — Backorder / oversell policy.** Allow backorders (sell past 0) per product, or hard-block at 0? Low-stock threshold for badges? → _Confirm per-product backorder toggle default._
-- **C3 — FIFO cost layers (Q9 LOCKED).** Confirm: cost layers are **admin-invisible to customers**, feed COGS/margin reports only, and are written from **purchase invoices** (`purchaseInvoiceLines` → `inventoryCostLayers`). Any manual stock adjustments (damage, correction) — do they need a reason code taxonomy? → _List adjustment reason codes you want._
-
+- **C3 — FIFO cost layers (Q9 LOCKED).** Cost layers are **admin-invisible to customers**, feed COGS/margin reports only, and are written from **purchase invoices** (`purchaseInvoiceLines` → `inventoryCostLayers`). **Manual stock adjustment reason codes LOCKED 2026-07-23:** fixed taxonomy + notes (note mandatory for `other`) — see `owner-decisions-log.md` §2026-07-23 Manual stock adjustment reason codes.
 ---
 
 ## D. Orders, checkout & customers
@@ -67,12 +66,13 @@ Additional 2026-07-04 option-model lock:
 - **D4 — Addresses.** Multiple saved addresses per user, default shipping/billing, address validation? Phone captured at checkout (LOCKED optional) — required for shipping though? → _Confirm address model + phone requirement at checkout._
 - **D5 — Coupons/promotions stacking.** Can multiple coupons stack? Coupon + automatic promotion together? Per-user usage limits (LOCKED fields exist)? Exclusions (sale items)? → _State stacking rules._
 - **D6 — Wishlist / saved-for-later. LOCKED 2026-07-07.** Wishlist and Save for Later are distinct account-bound concepts. Wishlist is a discovery/favorites list across product surfaces. Save for Later is cart-adjacent and moves a cart line out of the active cart without treating it as a general wishlist item.
+- **D7 — Public track-order lookup. LOCKED 2026-07-23.** **Defer at launch.** When built: **order number + email/phone** verification (not order-number-only); rate-limit + anti-enumeration; minimal tracking DTO. Launch path = authenticated order history. See `owner-decisions-log.md` §2026-07-23 Public track-order lookup.
 
 ---
 
 ## E. Payments, shipping, tax, returns
 
-- **E1 — Payment methods at launch.** COD? Online (CCAvenue/PayPal seams LOCKED)? UPI? Partial/split payments? → _List launch methods + whether COD needs order-value caps._
+- **E1 — Payment methods at launch. LOCKED 2026-07-23.** Online only: INR → Indian online gateway role (ops: CCAvenue / later Razorpay via adapter+DI); non-INR → PayPal only. **No COD**, no manual UPI proof, no split/partial. See `owner-decisions-log.md` §2026-07-23 Launch payment methods.
 - **E2 — Shipping model.** Zone-based rates, weight-based, flat, or provider-quoted (Shiprocket seam)? Free-shipping threshold? Multiple packages per order? → ⭐ _zone + weight tiers with free-shipping threshold; provider-quote seam later._
 - **E3 — Tax rules granularity.** Tax-inclusive LOCKED. Do you need per-category or per-product tax classes (e.g. different GST slabs for fabric vs stitched garments)? HSN codes stored? → _Confirm tax-class granularity + HSN need._
 - **E4 — Returns/refunds windows.** Return window (days), which products are non-returnable, refund method (original / store credit / wallet), restocking? Ties to the `customer-ledger` we built. → _State the policy._
@@ -82,7 +82,7 @@ Additional 2026-07-04 option-model lock:
 
 ## F. Content, search, reviews, Q&A, analytics
 
-- **F1 — Reviews.** Moderated (admin approve before publish) or auto-publish? Verified-purchase only? Star + text + images? → ⭐ _moderated, verified-purchase badge, star+text+optional images._
+- **F1 — Reviews. LOCKED 2026-07-23.** Verified-purchase only; star + text + optional images; **admin moderate before publish**. Aggregates/SEO from published verified reviews only. See `owner-decisions-log.md` §2026-07-23 Reviews policy.
 - **F2 — Q&A (new spec per the FAQ/Q&A correction).** **LOCKED:** customer-submitted product questions, admin-only answers, public after admin answer, email-on-answer, guest or logged-in identity capture, editable display name/email, and anonymous public display flag. No community answers at launch.
 - **F3 — FAQ / content blocks.** **LOCKED:** FAQ is admin-curated editorial content, separate from Q&A, targetable globally, by category, by product, or by mixed category+product union with dedupe/preview. Rich localized content is required.
 - **F4 — Search/category facets. LOCKED:** category/collection/sidebar filters are backed by Meilisearch facets through `SearchPort`. Use category/placement-level facet config to decide public visibility, order, display style, count visibility, translation labels, and whether a facet is desktop/sidebar/mobile-offcanvas eligible. Launch candidates include category, price, color, fabric, tag, sale/featured badges, rating bucket, stock availability, and coarse shipping eligibility; exact enabled facets vary per category path.
@@ -93,9 +93,10 @@ Additional 2026-07-04 option-model lock:
 ## G. Cross-cutting
 
 - **G1 — Soft-delete vs hard-delete** across collections (products, categories, users, orders). ⭐ _soft-delete (status + deletedAt) everywhere except truly transient data._ → _Confirm._
-- **G2 — Audit logging scope.** `auditLogs` LOCKED. Which mutations must be audited (all admin writes, or a subset)? Retention? → _Confirm scope + retention._
+- **G2 — Audit logging scope and retention. LOCKED 2026-07-23.** Broad admin writes + security-sensitive actions → `auditLogs`. Retention: financial/security **7y**, catalog/admin mutation **5y**, raw analytics after rollup **90d**. Redact secrets; prefer diffs. See `owner-decisions-log.md` §2026-07-23 Audit logging.
 - **G3 — i18n content.** **LOCKED:** product, category, FAQ, Q&A, option labels, add-on labels, SEO metadata, content pages, and admin-visible reporting labels must be translation-ready (`en` + `bn` with explicit fallback approval where incomplete). Search transliteration is additive, not a substitute for localized content fields.
 - **G4 — ID strategy.** Mongo `ObjectId` everywhere, or human-friendly slugs/codes as primary business keys (products, categories, orders)? SEO routes/redirects collections exist — confirm slug immutability + redirect-on-change policy. → ⭐ _ObjectId `_id` + immutable slug/code business keys + auto-redirect on slug change._
+- **G5 — Admin PIN UX. LOCKED 2026-07-23.** Optional onboarding PIN + Security Settings (password proof); preferred method toggle `password` | `pin` on both surfaces; PIN for full login + idle resume; 5 fails / 15 min lockout. See `owner-decisions-log.md` §2026-07-23 Admin PIN UX.
 
 ---
 

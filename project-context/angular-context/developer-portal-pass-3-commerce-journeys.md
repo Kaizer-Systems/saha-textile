@@ -34,7 +34,7 @@ Pass 3 explains how customer and operator intent crosses storefront, admin, cont
 - Notification architecture is locked, but `NotificationPort` is not present in the current core-domain package.
 - Current auth endpoints/stores are transitional bearer/demo scaffolds; the locked browser model is secure cookies, CSRF and rotating sessions.
 - Order/invoice numbering remains an owner-decision gate and is not inferred from the current `orderNumber` contract field.
-- Public order tracking remains deliberately deferred.
+- Public order tracking remains deliberately deferred at launch; **when-built verification is locked** (order number + email/phone — see `owner-decisions-log.md` §2026-07-23).
 
 ## Interaction and accessibility contract
 
@@ -62,5 +62,5 @@ Pass 3 explains how customer and operator intent crosses storefront, admin, cont
 - Scalar API reference integration.
 - Generated database catalogue.
 - Live payment, shipping or notification provider adapters.
-- Public order tracking.
+- Public order tracking (deferred at launch; when built: order number + email/phone verification — owner-locked 2026-07-23).
 - Repairing the non-critical Docusaurus hot-reload memory issue.

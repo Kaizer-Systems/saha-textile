@@ -143,7 +143,7 @@ saha/  (pnpm workspace, Turborepo)
 
 ### Hexagonal / ports & adapters (the swappability mechanism)
 
-- **Core (`core-domain`)** holds business logic and depends on NOTHING external. It defines **ports** (TypeScript interfaces): `ProductRepository`, `OrderRepository`, `StoragePort`, `PaymentGatewayPort`, `ShippingPort`, `FxRatePort`, `SearchPort`, `AuthPort`.
+- **Core (`core-domain`)** holds business logic and depends on NOTHING external. It defines **ports** (TypeScript interfaces): `ProductRepository`, `OrderRepository`, `StoragePort`, `PaymentGatewayPort`, `ShippingPort`, `FxRatePort`, `SearchPort`, `AuthPort`, `NotificationPort`, plus **`YouTubePort`** (channel-feed discovery) and **`VideoTranscodePort`** (HLS encode jobs; ffmpeg/BullMQ adapter at the edge).
 - **Adapters** are concrete implementations at the edges (`adapters-db-mongo`, `adapters-payments`, etc.). Each implements a port.
 - The dependency rule: all arrows point inward. The core never imports an adapter; NestJS DI injects the chosen adapter at composition time.
 - **Concrete swap example (MongoDB → PostgreSQL):** Write a new `adapters-db-postgres` package implementing the same `ProductRepository`/`OrderRepository` interfaces. Change one DI binding in the API's composition module. The core domain, use-cases, controllers, storefront, and admin are untouched — switching DB is "a repository adapter rewrite, not an application rewrite."
@@ -302,6 +302,7 @@ Key decisions:
 - Measurement fields are `addons`, captured per cart-line, NOT variations (otherwise the combination matrix explodes).
 - A standalone blouse product may use `Blouse Design` as a variation axis. A saree with an attached blouse piece keeps the saree as the base product; `Blouse Design` is a named add-on group with default `No Design`, optional price/media, and required measurements for stitched choices.
 - True bundle/composite products are first-class seams for products that consume separate inventory/components as kits; they are not the same as cross-sell/bought-together displays.
+- **Manual stock adjustments (owner-locked 2026-07-23):** every admin quantity change outside purchase-invoice receive / normal order reserve–release–fulfill must pick a **fixed `reasonCode`** (`damage`, `lost_missing`, `manual_recount_correction`, `supplier_shortage`, `return_restocked`, `return_not_restocked`, `internal_use_sample`, `photoshoot_display_use`, `system_migration_correction`, `other`) plus optional `note` (**mandatory** when `other`). Written on `inventoryLedger` for audit/COGS — not a warehouse WMS. See `owner-decisions-log.md` §2026-07-23.
 - **Product lifecycle / archival (catalog runs to low-thousands of docs).** `status` drives visibility: `published` = live on storefront; `draft` = admin-only WIP; `archived`/`disabled`/`discontinued` = **removed from all storefront surfaces (listing, search index, sitemap, related/cross-sell) but retained in the DB**. Why retain: historical orders snapshot the product but still reference its id for re-display, returns, and analytics; an item may also be re-listed seasonally. Indexing: keep a compound index on `{ status, categoryIds }` and `{ status, updatedAt }` so the ~500–1,000 active set is queried without scanning the 2,000+ archived rows. **A discontinued product's old URL should return HTTP 410 Gone (or 301-redirect to its category)** — not a soft 404 — for SEO hygiene. A bulk-purge/cold-archive policy for very old disabled products is **deferred to post-launch** (e.g., move to a `products_archive` collection or cold storage once order-retention windows expire).
 
 ### Discounts / offers (applicable at ANY level)
@@ -335,7 +336,8 @@ A single polymorphic `promotions` collection with a `scope` discriminator:
 - **orders**: line items snapshot product+variation+addons+resolved prices in BOTH INR and the paid currency, gateway used, shipping quote (value + currency), promotions applied, status timeline.
 - **users**: multiple auth identities, addresses, guestCartId linkage, GDPR consent record + timestamp.
 - **carts**: server-side persistent carts keyed by userId or guest token (cross-device + guest→login merge).
-- **shippingQuotes** (cached), **fxRateHistory** (audit), **reviews**, **wishlists**, **newsletterSubscribers**.
+- **shippingQuotes** (cached), **fxRateHistory** (audit), **wishlists**, **newsletterSubscribers**.
+- **reviews (owner-locked 2026-07-23):** login + **verified purchase** required to submit; payload = star rating + text + **optional images**; status machine includes at least `pending` → `approved` | `rejected` (admin moderation queue). Storefront and rating aggregates / JSON-LD use **approved** reviews only. See `owner-decisions-log.md` §2026-07-23.
 - **Future add-on seam — loyalty/reward points (design now, build later):** reserve the model for a `points` concept — per-user `pointsBalance`, a `pointsLedger`/`pointsTransactions` collection (earn/redeem entries referencing orders), and earn/redeem rule config (admin-editable). Orders should be able to carry a points-earned and points-redeemed amount. Not built at launch, but the schema, API DTOs (`contracts`), and admin UI should leave clean seams so it switches on without a migration. (Admin Points page is replicated in the UI now — see Fastkart execution plan.)
 
 ---
@@ -366,6 +368,27 @@ A single polymorphic `promotions` collection with a `scope` discriminator:
 - Provide a storefront/account privacy action such as **Clear local/offline data on this device**. Browser storage can also be cleared by the user's browser settings, private browsing, quota pressure, or strict privacy settings, so the app must degrade gracefully and refetch when online.
 - Enable the SW only in production builds (avoid dev cache-hell). Capability floor: must meet or exceed what Fastkart ships for any offline feature (Fastkart ships no PWA, so this is net-new and unconstrained upward).
 
+**Video (YouTube rails + Spaces HLS VOD — owner-locked 2026-07-18; see `owner-decisions-log.md`):**
+
+- **Player:** **Vidstack** (Angular web-components). One chrome for YouTube + self-hosted HLS. Thin swappable UI wrapper; **core never imports Vidstack**.
+- **YouTube “latest N”:** `YouTubePort` → Data API v3 (`playlistItems.list` on uploads playlist; never `search.list`). Cache **5–10** DTOs; refresh **00:00 IST** daily. Playback = Vidstack YouTube provider.
+- **Admin site videos (pipeline):**
+    1. API creates reusable **`mediaAssets`** row + **presigned PUT** → browser uploads master **MP4 (H.264+AAC, ≥1080p)** **direct to Spaces SGP**.
+    2. Status `processing` → **BullMQ** job (Redis broker) → worker runs **free ffmpeg** via **`VideoTranscodePort`** → writes **HLS** package on Spaces.
+    3. On success: status `ready`, set `playback.masterPlaylistUrl`; **delete master from hot Spaces**.
+    4. Storefront/admin play via Vidstack **HLS** on that single playlist URL (quality menu = ladder).
+- **Fixed ladder:** always **480 + 720 + 1080**; plus **1440** only if master is 2K; plus **2160** only if master is 4K (**skip 1440** on 4K). No 144/240/360. Default quality preference **720p**.
+- **Reuse:** gallery/products reference **`mediaAssetId` only** — one card in UI, full ladder resolved via playback DTO; same asset attachable to many products without re-encode.
+- Fastkart storefront has **no** video player — this capability is net-new.
+
+**Images (Spaces + sharp — owner-locked 2026-07-18; see `owner-decisions-log.md`):**
+
+- Same reusable **`mediaAssets`** (`kind: 'image'`), presigned upload, BullMQ job `image.derivatives` (sharp) on the shared worker image with `video.hls`.
+- Upload **JPEG/PNG**; retain **original** + **full-resolution WebP** + static WebP ladder. **No AVIF** for ~2 years. Ladder roles (px PENDING): `thumb`, `card`, `gallery`, `zoom`, `swatch_image` (`image_swatch` / “Image”), `swatch_image_v2` (`image_tile` / “Image V2”).
+- Alt + required SEO fields at upload for **all active locales** (Machine 2 on the asset). Orphans: soft-delete + GC.
+- Product admin: **Simple ↔ Compound** image mode. Compound rows = **full inventory Cartesian**. Toggle **parks** the inactive mode’s data. Editable unique sequences `1…N` per list/row (`#1` = primary); remove renumbers. **Named add-on terms** (e.g. Blouse Design 1/2/3) get their own ordered galleries (not inventory); PDP carousel jumps to that term’s `#1` on select (theme-like). Sequence is on **attachments**, not `mediaAssets`. **Variation-axis add-order** = PDP top-to-bottom order and primary visual axis (first image-styled axis) for initial hierarchy; carousel always shows the **selected combination row’s** gallery. Ladder px + ingest caps **deferred** until those features are built.
+- New locale: admin/dev **language-addition checklist** covering Machine 1 JSON, Machine 2 DB fields, emails, SEO/hreflang, etc. (see owner-decisions-log).
+
 **Analytics instrumentation (events to emit):**
 
 - Abandoned cart (items, no checkout within N hours) and "still-not-purchased" reminders — driven by cart timestamps + a scheduled job.
@@ -373,7 +396,7 @@ A single polymorphic `promotions` collection with a `scope` discriminator:
 - Newsletter subscribe popup (with "don't show again" suppression, mirroring current site).
 - Funnel: view_item, add_to_cart, begin_checkout, purchase. Pipe to a privacy-respecting endpoint (self-hosted Plausible/Umami recommended for GDPR simplicity, gated behind consent).
 
-**Feature set (appropriately scoped):** cart, wishlist, search + configurable facets (category, price, color, tag, fabric, sale/featured, rating bucket, stock and coarse shipping eligibility as category-appropriate), reviews/ratings, order history, address book, offers/coupons, flash-sale countdowns, related/cross-sell, newsletter. NOT building (launch): marketplace, multi-vendor, complex returns RMA portal (keep returns as a simple email/manual workflow). **Loyalty/reward points — PLANNED FUTURE ADD-ON (not built at launch):** the admin UI for Points is replicated now, and the **data model + API must reserve seams for it** (a `points`/loyalty concept: per-user balance, earn/redeem rules, points lines on orders) so it can be switched on later without schema churn. Design for it; don't build the engine yet.
+**Feature set (appropriately scoped):** cart, wishlist, search + configurable facets (category, price, color, tag, fabric, sale/featured, rating bucket, stock and coarse shipping eligibility as category-appropriate), **reviews/ratings** (verified purchase + admin moderation + optional images — owner-locked 2026-07-23), **authenticated order history**, address book, offers/coupons, flash-sale countdowns, related/cross-sell, newsletter. NOT building (launch): marketplace, multi-vendor, complex returns RMA portal (keep returns as a simple email/manual workflow), **public track-order page** (deferred; when built = order number + email/phone verification — owner-locked 2026-07-23). **Loyalty/reward points — PLANNED FUTURE ADD-ON (not built at launch):** the admin UI for Points is replicated now, and the **data model + API must reserve seams for it** (a `points`/loyalty concept: per-user balance, earn/redeem rules, points lines on orders) so it can be switched on later without schema churn. Design for it; don't build the engine yet.
 
 ---
 
@@ -389,7 +412,7 @@ A single polymorphic `promotions` collection with a `scope` discriminator:
 - **Pricing/offers:** create promotions at any scope (global/category/product/variation/color/tag/cart), flash sales with UTC start/end, clearance, coupons, cross-sell/upsell linking.
 - Order management: status workflow, view captured measurements, shipping label/quote, refunds.
 - Content: saree blog editor, FAQ manager (feeds SEO-safe accordions), homepage banners.
-- Roles: admin + staff; audit log of changes.
+- Roles: admin + staff; **audit log of changes** (owner-locked 2026-07-23: broad admin/security audit; financial/security retention **7 years**, catalog/admin mutation **5 years**; redact secrets; prefer diffs — see `owner-decisions-log.md`).
 
 ---
 
@@ -426,7 +449,7 @@ A single polymorphic `promotions` collection with a `scope` discriminator:
 
 1. User selects a currency; persisted (cookie) and sent to the backend.
 2. **Backend recalculates prices before data is returned** (never trust client math): INR canonical → × `rateFromINR` → if currency ≠ INR, add the PayPal commission gross-up (below) → return display prices. For INR, factor = 1, no markup.
-3. Active gateway selected by currency: **INR → CCAvenue; any other currency → PayPal.**
+3. Active gateway **role** selected by currency: **INR → Indian online gateway** (ops: CCAvenue now, Razorpay later — **adapter/DI only**); **any other currency → PayPal only.** **No COD** at launch. Core/UI never branch on vendor name.
 4. Page reloads/refetches with new prices.
 
 **PayPal gross-up markup math (so the seller nets the intended INR after PayPal's cut):**
@@ -441,15 +464,23 @@ Derivation: PayPal keeps `p·G + f`, leaving `G(1−p) − f`. Set `G(1−p) −
 - Worked example: `N` = $100.00; `p` = 4.4% (0.044); `f` = $0.30 (USD fixed fee). `G = (100 + 0.30)/(1 − 0.044) = 100.30/0.956 = $104.92`. After PayPal's 4.4% + $0.30, the seller nets ≈ $100.00.
 - The % and fixed fee MUST be admin-editable per currency (PayPal's fixed fee differs by currency — e.g., $0.30 USD). Note PayPal India's real all-in cost is higher (4.4% + fixed + 3–4% FX-conversion markup + 18% GST on fees); decide in admin whether to also gross-up for the FX-conversion markup or absorb it, and document the policy.
 
-**Shipping + currency interaction:** When a shipping provider returns a cost, capture BOTH the value AND its currency. Convert to display currency via stored rates. Apply the PayPal gross-up to the shipping cost ONLY when the shipment is international (non-INR/PayPal path); for domestic INR shipments (CCAvenue), no markup.
+**Shipping + currency interaction:** When a shipping provider returns a cost, capture BOTH the value AND its currency. Convert to display currency via stored rates. Apply the PayPal gross-up to the shipping cost ONLY when the shipment is international (non-INR / PayPal path); for domestic INR shipments (INR online-gateway path), no PayPal markup.
 
 ---
 
 ## 07 — Payments and Shipping
 
-### Indian gateway: use CCAvenue (not BillDesk) — corrected recommendation
+### Launch payment methods (owner-locked 2026-07-23)
 
-You weren't sure whether the client has BillDesk or CCAvenue. **Recommendation: CCAvenue**, and confirm the client's existing account.
+- **Online only.** **No COD**, no manual UPI/screenshot proof, no split/partial payments at launch.
+- **Hexagonal:** checkout / core / contracts speak **`PaymentGatewayPort`** + currency→gateway-**role** only. **CCAvenue vs Razorpay must not affect application code** — only which concrete adapter is bound in NestJS DI inside `adapters-payments`. Swappability test: replace INR vendor without touching core, use-cases, or Angular apps.
+- **Ops preference:** INR adapter = CCAvenue now; planned successor preference = Razorpay (timing: during development or after go-live). Hosted/iframe so card data never hits our servers.
+- **Non-INR → PayPal only.** Conversion from canonical INR + PayPal gross-up markup as above (§06).
+- Wire real providers only with credentials; until then ports + stub/sandbox adapters (existing seams-first policy).
+
+### Indian gateway ops note: CCAvenue (not BillDesk); Razorpay as preferred successor
+
+Historical recommendation favoured **CCAvenue** over BillDesk for boutique onboarding. **Owner lock 2026-07-23:** that is an **ops/adapter** preference only — **Razorpay is the preferred later INR adapter**. Neither name belongs in core or UI.
 
 - **Ownership correction (your earlier assumption):** BillDesk is NOT part of PayU — the $4.7 B PayU/Prosus acquisition was **terminated on 3 October 2022**; BillDesk (legal entity IndiaIdeas.com Ltd) remains independent. (Juspay merely supports BillDesk as one routing connector; BillDesk is not "branded under" Juspay.)
 - **CCAvenue (Infibeam Avenues):** redirect/hosted billing page, iFrame, or seamless API. Security = **AES-CBC encryption** of the request string with a **Working Key**, plus **Merchant ID + Access Code** (16-byte key → AES-128-CBC, 32-byte → AES-256-CBC). Test endpoint `test.ccavenue.com`, prod `secure.ccavenue.com`. Community npm package **`node-ccavenue`** (encrypt/decrypt helpers) exists; encryption is also reproducible with Node's native `crypto`. Onboarding is self-serve, PAN-based, ~24–48 h after approval; documents: PAN, GSTIN, bank proof/cancelled cheque, business registration, website evaluation.
@@ -508,6 +539,7 @@ You weren't sure whether the client has BillDesk or CCAvenue. **Recommendation: 
 - **OWASP API Security Top 10** (separate list) — design for BOLA/BOPLA protection, rate limiting, property-level authorization.
 - **Concrete controls:**
     - Auth/session: short-lived access tokens + rotating refresh tokens (httpOnly, Secure, SameSite cookies); argon2id hashing; OTP rate-limited + short TTL; lockout/backoff.
+    - **Admin PIN (owner-locked 2026-07-23):** optional 6-digit PIN for staff/admin full login + idle quick-resume; optional setup during invite/onboarding (skippable) and Security Settings after password proof; preferred method toggle `password` | `pin` (theme form-switch on both surfaces); weak-PIN rejection; **5** fails → **15 min** PIN lockout (or until password login); audit. See `owner-decisions-log.md`.
     - Input validation: zod schemas at every API boundary (Fastify schema validation doubles as serialization).
     - Rate limiting: `@fastify/rate-limit` on auth, OTP, search, checkout.
     - CORS: allowlist storefront + admin origins only.

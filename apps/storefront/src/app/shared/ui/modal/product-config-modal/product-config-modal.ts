@@ -84,7 +84,9 @@ export class ProductConfigModal {
 		if (!this.purchasable()) return;
 		const line = this.editLine();
 		const params = configurator.buildParams(this.productQty(), line ? line.id : null);
-		this.cartFacade.addToCart(params);
+		// Edit = full in-place replace of the line; Add = increment/new line.
+		if (line) this.cartFacade.editLine(params);
+		else this.cartFacade.addToCart(params);
 		this.modalService.dismissAll();
 	}
 }

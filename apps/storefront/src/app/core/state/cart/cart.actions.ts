@@ -19,6 +19,7 @@ export const CartActions = createActionGroup({
 		'Add New Item': props<{ payload: ICartAddOrUpdate }>(),
 		'Update Cart': props<{ payload: ICartAddOrUpdate }>(),
 		'Replace Cart': props<{ payload: ICartAddOrUpdate }>(),
+		'Edit Line': props<{ payload: ICartAddOrUpdate }>(),
 		'Update Item': props<{ id: number; changes: Partial<ICart> }>(),
 		'Delete Cart': props<{ id: number }>(),
 		'Close Sticky Cart': emptyProps(),

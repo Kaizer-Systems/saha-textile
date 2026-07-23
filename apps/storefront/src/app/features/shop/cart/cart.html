@@ -63,33 +63,36 @@
 														</h5>
 													</li>
 													}
-													<li class="quantity-price-box">
-														<div class="cart_qty">
-															<div class="input-group">
+													<li class="cart-line-qty">
+														<!-- theme off-canvas cart qty stepper, reused verbatim (.qty-box) -->
+														<div class="cart_qty qty-box product-qty">
+															<div class="input-group h-100">
 																<app-button
 																	[class]="'btn qty-left-minus'"
-																	[id]="'minus_quantity'"
+																	[id]="'minus_quantity'+item.product.id"
 																	[spinner]="false"
-																	[type]="'button'"
 																	(click)="updateQuantity(item, -1)"
 																>
-																	<i class="ri-subtract-fill ms-0"></i>
+																	@if (item.quantity > 1) {
+																	<i class="ri-subtract-line"></i>
+																	} @if (item.quantity <= 1) {
+																	<i class="ri-delete-bin-line"></i>
+																	}
 																</app-button>
 																<input
 																	class="form-control input-number qty-input"
-																	type="text"
+																	type="number"
 																	name="quantity"
-																	value="{{ item.quantity }}"
+																	[value]="item?.quantity"
 																	readonly
 																/>
 																<app-button
 																	[class]="'btn qty-left-minus'"
-																	[id]="'plus_quantity'"
+																	[id]="'qty-left-minus'+item.product.id"
 																	[spinner]="false"
-																	[type]="'button'"
 																	(click)="updateQuantity(item, 1)"
 																>
-																	<i class="ri-add-line ms-0"></i>
+																	<i class="ri-add-line"></i>
 																</app-button>
 															</div>
 														</div>

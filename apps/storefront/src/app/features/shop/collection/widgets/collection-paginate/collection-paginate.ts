@@ -5,9 +5,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { Observable } from 'rxjs';
 
+import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
-import { IProductModel } from '@data-access/interfaces/product.interface';
-import { injectProductsQuery } from '@data-access/queries/product.queries';
+import { injectCatalogQuery } from '@data-access/queries/product.queries';
 import { Pagination } from '@shared/ui/pagination/pagination';
 
 @Component({
@@ -23,8 +23,8 @@ export class CollectionPaginate {
 
 	readonly filter = input<Params>();
 
-	private readonly productsQuery = injectProductsQuery(() => this.filter());
-	product$: Observable<IProductModel | undefined> = toObservable(computed(() => this.productsQuery.data()));
+	private readonly productsQuery = injectCatalogQuery(() => this.filter());
+	product$: Observable<ICatalogResponse | undefined> = toObservable(computed(() => this.productsQuery.data()));
 
 	public totalItems: number = 0;
 

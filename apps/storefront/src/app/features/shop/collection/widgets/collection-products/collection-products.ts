@@ -5,9 +5,9 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
+import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
-import { IProductModel } from '@data-access/interfaces/product.interface';
-import { injectProductsQuery } from '@data-access/queries/product.queries';
+import { injectCatalogQuery } from '@data-access/queries/product.queries';
 import { ProductService } from '@data-access/services/product.service';
 import { NoData } from '@shared/ui/no-data/no-data';
 import { ProductBox } from '@shared/ui/product-box/product-box';
@@ -28,8 +28,8 @@ export class CollectionProducts {
 	readonly filter = input<Params>();
 	readonly gridCol = input<string>();
 
-	private readonly productsQuery = injectProductsQuery(() => this.filter());
-	product$: Observable<IProductModel | undefined> = toObservable(computed(() => this.productsQuery.data()));
+	private readonly productsQuery = injectCatalogQuery(() => this.filter());
+	product$: Observable<ICatalogResponse | undefined> = toObservable(computed(() => this.productsQuery.data()));
 
 	constructor() {
 		// Drive the shared skeleton flag off the query's fetch state (was toggled by

@@ -1,27 +1,22 @@
-@if (attribute()?.attribute_values?.length) {
+@if (values()?.length) {
 <ul class="category-list custom-padding custom-height">
-	@for (attribute_value of attribute()?.attribute_values; track attribute_value) {
+	@for (fv of values(); track fv.value) {
 	<li>
 		<div class="form-check category-list-box m-0 ps-0">
 			<input
 				class="checkbox_animated"
 				type="checkbox"
-				id="attribute-{{attribute_value.id}}"
-				[value]="attribute_value.slug"
-				[checked]="checked(attribute_value.slug!)"
+				id="facet-{{ facetKey() }}-{{ fv.value }}"
+				[value]="fv.value"
+				[checked]="checked(fv.value)"
 				(change)="applyFilter($event)"
 			/>
 			<label
 				class="form-check-label color-label-box"
-				for="attribute-{{attribute_value.id}}"
+				for="facet-{{ facetKey() }}-{{ fv.value }}"
 			>
-				@if (attribute()?.style === 'color') {
-				<div
-					class="color-box"
-					[style.background-color]="attribute_value.hex_color"
-				></div>
-				}
-				<span class="name">{{ attribute_value.value }}</span>
+				<span class="name">{{ fv.value }}</span>
+				<span class="text-content ms-1">({{ fv.count }})</span>
 			</label>
 		</div>
 	</li>

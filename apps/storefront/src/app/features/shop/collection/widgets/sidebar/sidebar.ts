@@ -1,6 +1,4 @@
-import { AsyncPipe } from '@angular/common';
 import { Component, computed, effect, inject, input } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import {
@@ -13,12 +11,11 @@ import {
 	NgbAccordionToggle,
 	NgbCollapse,
 } from '@ng-bootstrap/ng-bootstrap';
-import { Observable } from 'rxjs';
 
-import { IAttributeModel } from '@data-access/interfaces/attribute.interface';
 import { Params } from '@data-access/interfaces/core.interface';
-import { injectAttributesQuery } from '@data-access/queries/attribute.queries';
+import { injectCatalogQuery } from '@data-access/queries/product.queries';
 import { AttributeService } from '@data-access/services/attribute.service';
+import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
 
 import { CollectionAttributes } from '../filter/collection-attributes-filter/collection-attributes-filter';
 import { CollectionCategoryFilter } from '../filter/collection-category-filter/collection-category-filter';
@@ -46,7 +43,7 @@ import { SkeletonCollectionSidebar } from '../skeleton-collection-sidebar/skelet
 		CollectionAttributes,
 		CollectionPriceFilter,
 		CollectionRatingFilter,
-		AsyncPipe,
+		TitleCasePipe,
 		TranslocoModule,
 	],
 })
@@ -58,13 +55,16 @@ export class CollectionSidebar {
 	//  and migrating would break narrowing currently.
 	readonly filter = input<Params>();
 
-	private readonly attributesQuery = injectAttributesQuery(() => ({ status: 1 }));
-	attribute$: Observable<IAttributeModel | undefined> = toObservable(computed(() => this.attributesQuery.data()));
+	// Facets ride along on the same catalog query the list uses (shared cache key),
+	// so their disjunctive counts always match the current filter — no extra fetch.
+	private readonly catalogQuery = injectCatalogQuery(() => this.filter());
+	readonly facets = computed(() => this.catalogQuery.data()?.facets ?? {});
+	readonly facetKeys = computed(() => Object.keys(this.facets()));
 
 	constructor() {
-		// Drive the sidebar skeleton off the query (was AttributeService.skeletonLoader).
+		// Drive the sidebar skeleton off the catalog query's first load.
 		effect(() => {
-			this.attributeService.skeletonLoader = this.attributesQuery.isPending();
+			this.attributeService.skeletonLoader = this.catalogQuery.isPending();
 		});
 	}
 

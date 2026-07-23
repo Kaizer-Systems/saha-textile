@@ -15,7 +15,9 @@
 								class="breadcrumb-item"
 								[class.active]="item?.active"
 							>
-								{{ item?.label! | titleCase }}
+								@if (item?.url && !item?.active) {
+								<a [routerLink]="item?.url">{{ item?.label! | titleCase }}</a>
+								} @else { {{ item?.label! | titleCase }} }
 							</li>
 							}
 						</ol>

@@ -14,6 +14,12 @@ export class AuthInterceptor implements HttpInterceptor {
 	private notificationService = inject(NotificationService);
 
 	intercept<T>(req: HttpRequest<T>, next: HttpHandler): Observable<HttpEvent<T>> {
+		// Locked auth target = API-set httpOnly cookie sessions + CSRF (Chunk D):
+		// always send credentials so session cookies flow on cross-origin API calls.
+		req = req.clone({ withCredentials: true });
+
+		// TRANSITIONAL: localStorage bearer token remains only until the Chunk D
+		// cookie-session refactor lands; it is removed as the happy path there.
 		const token = this.authStore.access_token();
 
 		if (token) {

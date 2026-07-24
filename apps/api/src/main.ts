@@ -1,3 +1,7 @@
+// Load apps/api/.env before anything reads process.env (Nest CLI does not).
+// Deployed environments inject env via Compose env_file/secrets instead;
+// dotenv is a no-op there when no .env file is present.
+import 'dotenv/config';
 import 'reflect-metadata';
 
 import helmet from '@fastify/helmet';

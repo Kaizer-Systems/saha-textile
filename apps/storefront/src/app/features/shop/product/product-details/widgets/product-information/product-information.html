@@ -1,0 +1,22 @@
+<div class="pickup-box">
+  <div class="product-title">
+    <h4>{{ 'product_information' | translate }}</h4>
+  </div>
+  <div class="product-info">
+    <ul class="product-info-list product-info-list-2">
+      @if (product()?.sku) {
+      <li>{{ 'sku' | translate }}: {{ product()?.sku }}</li>
+      } @if (product()?.unit) {
+      <li>{{ 'unit' | translate }}: {{ product()?.unit }}</li>
+      } @if (product()?.sku) {
+      <li>{{ 'weight' | translate }}: {{ product()?.weight }} {{ 'gms' | translate }}</li>
+      } @if (product()?.stock_status) {
+      <li>{{ 'stock_status' | translate }}: {{ product()?.stock_status! | titleCase }}</li>
+      } @if (product()?.quantity! > 0) {
+      <li>
+        {{ 'quantity' | translate }}: {{ product()?.quantity }} {{ 'items_left' | translate }}
+      </li>
+      }
+    </ul>
+  </div>
+</div>

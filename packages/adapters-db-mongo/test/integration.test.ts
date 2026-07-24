@@ -6,9 +6,10 @@ import { MongoCategoryRepository, MongoProductRepository } from '../src/reposito
 import { seedDatabase } from '../src/seed/index';
 
 /**
- * Live integration tests against a real MongoDB (test M0). GATED: they only run
+ * Live integration tests against Docker Mongo (local RS). GATED: they only run
  * when RUN_DB_IT=1 and Mongo env vars are present, so normal `pnpm test` / CI
  * stays offline. Run locally with:
+ *   pnpm mongo:up
  *   RUN_DB_IT=1 pnpm --filter @saha-textile/adapters-db-mongo test
  */
 function hasMongoEnv(): boolean {

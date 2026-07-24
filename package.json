@@ -13,7 +13,11 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "mongo:up": "bash scripts/mongo-up.sh",
+    "mongo:down": "bash scripts/mongo-down.sh",
+    "mongo:status": "bash scripts/mongo-status.sh",
+    "mongo:wipe": "bash scripts/mongo-down.sh --wipe"
   },
   "devDependencies": {
     "@saha-textile/config": "workspace:*",

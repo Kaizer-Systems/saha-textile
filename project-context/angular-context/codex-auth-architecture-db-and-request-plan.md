@@ -5,7 +5,7 @@ Scope: Storefront auth, admin auth, auth-related MongoDB structure, contracts, D
 
 This file is a planning artifact only. It intentionally does not modify existing code, contracts, schemas, or env files.
 
-> **⚠️ Superseded email-provider note (2026-07-02).** Every "Brevo" reference below (including the "Brevo manual setup" section and `BREVO_API_KEY` env) is **stale**. Email OTP and all transactional email now go through our **`EmailPort` with a provider adapter — primary Resend (free tier), swappable to MailerSend/SES**; **no Brevo lock-in**. Inbound `@sahatextile.com` mail = **Cloudflare Email Routing (free)**. Also LOCKED: OTP "send code" uses a **generic anti-enumeration response**. Source of truth = `owner-decisions-log.md` (2026-07-02). Read "Brevo" as "the configured `EmailPort` provider (Resend)".
+> **⚠️ Superseded messaging notes (2026-07-24).** Every **Brevo** / **Resend-as-primary** reference below is **stale**. Customer messaging (email + SMS + WhatsApp, including OTP delivery) goes through **`NotificationPort` — primary adapter = MSG91**; optional `EmailPort` adapters (Resend/SES/SMTP) are **fallback-only**. **Brevo is out.** Channel-direct OTP (we generate/store/verify); no MSG91 OTP-Widget. Anti-enumeration on OTP "send code" remains LOCKED. Auth session target remains **httpOnly cookies + CSRF** (not localStorage bearer). Source of truth = `owner-decisions-log.md` + `msg91-notifications-provider-and-pricing.md`.
 
 ---
 

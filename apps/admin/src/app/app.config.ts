@@ -1,6 +1,6 @@
 import { CurrencyPipe } from '@angular/common';
 import { HTTP_INTERCEPTORS, provideHttpClient, withFetch, withInterceptorsFromDi } from '@angular/common/http';
-import { ApplicationConfig, isDevMode, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig, isDevMode, provideAppInitializer, provideZoneChangeDetection } from '@angular/core';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 
@@ -17,6 +17,8 @@ import { CartEffects } from '@core/state/cart/cart.effects';
 import { cartReducer } from '@core/state/cart/cart.reducer';
 
 import { routes } from './app.routes';
+import { applyRuntimeConfig } from '../../public/environments/environment';
+import { loadRuntimeConfig } from './core/config/runtime-config';
 import { TranslocoHttpLoader } from './core/i18n/transloco-loader';
 
 export const appConfig: ApplicationConfig = {
@@ -64,6 +66,7 @@ export const appConfig: ApplicationConfig = {
 		provideEffects(CartEffects),
 		provideTanStackQuery(new QueryClient()),
 		provideHttpClient(withInterceptorsFromDi(), withFetch()),
+		provideAppInitializer(async () => applyRuntimeConfig(await loadRuntimeConfig())),
 		provideToastr({
 			positionClass: 'toast-top-center',
 		}),

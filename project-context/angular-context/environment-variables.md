@@ -13,7 +13,7 @@ Master reference of every environment variable across the three phases. **No sec
 | Storefront  | `apps/storefront/.env.example` | `apps/storefront/.env`                               | `apps/storefront` (**Angular** — see runtime-config note below) |
 | Admin       | `apps/admin/.env.example`      | `apps/admin/.env`                                    | `apps/admin` (**Angular**)                                      |
 
-> **Angular runtime config (replaces Next's `NEXT_PUBLIC_*`).** Next bakes `NEXT_PUBLIC_*` into the bundle at build. Angular's `environment.ts` does the same — which is **wrong for our build-once/run-many-envs Docker flow**. Instead, the Angular apps read browser-facing config at **runtime** via an `APP_INITIALIZER` that fetches a per-environment `assets/config.json` (or `window.__env`) mounted into the container. So the variables below are **not** baked secrets — they're public config values, delivered per environment at container start. (No secret ever ships in the client bundle; server-only secrets live in the API container — see KB §09.)
+> **Angular runtime config (replaces Next's `NEXT_PUBLIC_*`).** Next bakes `NEXT_PUBLIC_*` into the bundle at build. Angular's baked `environment.ts` / `fileReplacements` do the same — which is **wrong for our build-once/run-many-envs Docker flow**. Instead, the Angular apps read browser-facing config at **runtime** via an `APP_INITIALIZER` that fetches per-environment `/config.json` from `apps/*/public/config.json` (mounted/overwritten in the container). So the variables below are **not** baked secrets — they're public config values, delivered per environment at container start. (No secret ever ships in the client bundle; server-only secrets live in the API container — see KB §09.)
 
 ## MCP layer (`.env.mcp`)
 
@@ -49,44 +49,54 @@ MongoDB is self-hosted Docker MongoDB 8.3 with a single-node replica set in loca
 | `JWT_ACCESS_SECRET`                                                         |         yes         |            yes            |            yes            | `openssl rand -hex 48`                                                       |
 | `JWT_REFRESH_SECRET`                                                        |         yes         |            yes            |            yes            | distinct from access                                                         |
 | `JWT_ACCESS_TTL` / `JWT_REFRESH_TTL`                                        |    `15m` / `30d`    |           same            |           same            |                                                                              |
-| `EMAIL_PROVIDER`                                                            |      `console`      |         `resend`          |         `resend`          | `resend`\|`smtp`\|`ses`\|`console`\|`disabled` (EmailPort; no Brevo lock-in) |
-| `RESEND_API_KEY`                                                            |        later        |            yes            |            yes            | outbound transactional (free tier, primary)                                  |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD`                   |         no          |         optional          |         optional          | only when `EMAIL_PROVIDER=smtp` (e.g. MailerSend relay)                      |
-| `MAIL_FROM` / `OTP_EMAIL_FROM` / `OTP_TTL_SECONDS` / `OTP_MAX_ATTEMPTS`     |         yes         |            yes            |            yes            | verified sender; `600` / `5`                                                 |
+| `NOTIFICATION_PROVIDER`                                                     |      `console`      |         `msg91`           |         `msg91`           | `NotificationPort` primary = **MSG91** (email+SMS+WhatsApp); adapter-swappable |
+| `MSG91_AUTH_KEY` / `MSG91_SMS_SENDER_ID` / `MSG91_WHATSAPP_NUMBER` / …     |        later        |            yes            |            yes            | live MSG91; DLT/WhatsApp templates required before prod sends                |
+| `EMAIL_PROVIDER`                                                            |      `console`      |      optional fallback    |      optional fallback    | `EmailPort` **fallback only** (`resend`\|`smtp`\|`ses`\|`console`\|`disabled`) — not the primary messaging path |
+| `RESEND_API_KEY` / SMTP_*                                                   |         no          |         optional          |         optional          | only if `EMAIL_PROVIDER` fallback adapter is enabled                         |
+| `MAIL_FROM` / `OTP_TTL_SECONDS` / `OTP_MAX_ATTEMPTS`                        |         yes         |            yes            |            yes            | verified sender; `600` / `5`                                                 |
 | `TRUST_PROXY` / `CLIENT_IP_HEADER`                                          |     `false` / —     | `true`/`cf-connecting-ip` | `true`/`cf-connecting-ip` | Cloudflare→Nginx origin; real client IP source                               |
 | `EDGE_TLS_MODE` / `EDGE_CACHE_OVERRIDE`                                     |          —          |         optional          |         optional          | empty = Cloudflare-managed; else `origin-ca`\|`letsencrypt` / cache override |
-| `GOOGLE_OAUTH_CLIENT_ID` / `_SECRET`                                        |        later        |            yes            |            yes            | social login                                                                 |
-| `FACEBOOK_OAUTH_APP_ID` / `_SECRET`                                         |        later        |            yes            |            yes            | social login                                                                 |
-| `SPACES_KEY` / `_SECRET` / `_BUCKET` / `_REGION` / `_ENDPOINT` / `_CDN_URL` |      Phase 4+       |            yes            |            yes            | DO Spaces media                                                              |
-| `CCAVENUE_MERCHANT_ID` / `_ACCESS_CODE` / `_WORKING_KEY` / `_BASE_URL`      |       Phase 6       |           test            |           prod            | INR payments                                                                 |
-| `PAYPAL_CLIENT_ID` / `_SECRET` / `_ENV`                                     |       Phase 6       |          sandbox          |           live            | non-INR payments                                                             |
-| `EXCHANGERATE_API_KEY`                                                      | Phase 7 (optional)  |         optional          |         optional          | free open tier needs none                                                    |
-| `SHIPROCKET_EMAIL` / `_PASSWORD` / `_PICKUP_PINCODE`                        |       Phase 6       |            yes            |            yes            | shipping                                                                     |
+| `GOOGLE_OAUTH_CLIENT_ID` / `_SECRET`                                        |        later        |            yes            |            yes            | secret stays API-only; client id may also appear in public runtime config    |
+| `FACEBOOK_OAUTH_APP_ID` / `_SECRET`                                         |        later        |            yes            |            yes            | same                                                                         |
+| `SPACES_KEY` / `_SECRET` / `_BUCKET` / `_REGION` / `_ENDPOINT` / `_CDN_URL` |      Phase I+       |            yes            |            yes            | DO Spaces media — **region = SGP (`sgp1`)** only (no BLR Spaces)             |
+| `CCAVENUE_MERCHANT_ID` / `_ACCESS_CODE` / `_WORKING_KEY` / `_BASE_URL`      |       later         |           test            |           prod            | INR gateway adapter                                                          |
+| `PAYPAL_CLIENT_ID` / `_SECRET` / `_ENV`                                     |       later         |          sandbox          |           live            | non-INR                                                                      |
+| `EXCHANGERATE_API_KEY`                                                      |      optional       |         optional          |         optional          | free open tier needs none                                                    |
+| `SHIPROCKET_EMAIL` / `_PASSWORD` / `_PICKUP_PINCODE`                        |       later         |            yes            |            yes            | shipping                                                                     |
 | `RATE_LIMIT_MAX` / `RATE_LIMIT_WINDOW`                                      |         yes         |            yes            |            yes            | `@fastify/rate-limit`                                                        |
 
-## Storefront (`apps/storefront`) — public runtime config (browser-exposed, no secrets)
+## Storefront / Admin — public runtime config (browser-exposed, no secrets)
 
-Delivered via `assets/config.json` / `window.__env` at container start (not baked). Keys are camelCase config, not `NEXT_PUBLIC_*` env vars; the `.env`/compose layer just templates the `config.json`.
+Loaded at **runtime** via `APP_INITIALIZER` from `/config.json` (not Angular `environment.ts` fileReplacements). Services may still read the mutable `environment` object after apply.
 
-| Key (config.json)               | LOCAL                   | TEST-E2E                    | PROD-E2E               |
-| ------------------------------- | ----------------------- | --------------------------- | ---------------------- |
-| `apiUrl`                        | `http://localhost:4000` | `https://api.test.<domain>` | `https://api.<domain>` |
-| `siteUrl`                       | `http://localhost:3000` | test                        | prod                   |
-| `defaultLocale`                 | `en`                    | `en`                        | `en`                   |
-| `supportedLocales`              | `en,bn`                 | `en,bn`                     | `en,bn`                |
-| `analyticsDomain` / `scriptUrl` | later                   | yes                         | yes                    |
+| Key (config.json)               | LOCAL (committed default)              | TEST / PROD (deploy-mounted; **not committed**) |
+| ------------------------------- | -------------------------------------- | ----------------------------------------------- |
+| `apiUrl`                        | `http://localhost:4000`                | `https://api…`                                  |
+| `assetsDataUrl`                 | `http://localhost:4200/assets/data` (SF) / `4300` (admin) | same pattern or omit when fully on API |
+| `siteUrl`                       | `http://localhost:4200` / `4300`       | public site / admin host                        |
+| `defaultLocale` / `supportedLocales` | `en` / `["en","bn"]`              | same                                            |
+| `analyticsDomain` / `scriptUrl` | later                                  | yes                                             |
 
-## Admin (`apps/admin`) — public runtime config
+Templates: `apps/*/public/config.example.json`. Localhost `config.json` may stay in git for DX. **Staging/prod `config.json` is generated or mounted at deploy — never committed.**
 
-| Key (config.json) | LOCAL                   | TEST-E2E                    | PROD-E2E               |
-| ----------------- | ----------------------- | --------------------------- | ---------------------- |
-| `apiUrl`          | `http://localhost:4000` | `https://api.test.<domain>` | `https://api.<domain>` |
-| `adminUrl`        | `http://localhost:3001` | test                        | prod                   |
+## How deployment injects secrets + public config (locked ops model)
+
+Boutique-scale, not enterprise vault sprawl:
+
+| Kind | Store where | How it reaches the process |
+| --- | --- | --- |
+| **Server secrets** (Mongo, JWT, MSG91, Spaces, payment keys) | **GitHub Actions encrypted secrets** (CI) + **root-owned env file or Docker Compose `secrets:` on the droplet** (runtime). Never in git, never in images, never in markdown notes. | Compose/`docker run` `--env-file` or secret mounts into the **API** container only. |
+| **Public runtime config** (apiUrl, siteUrl, locales, OAuth **client** ids) | Same deploy pipeline: GitHub Environment variables (non-secret) or droplet env. | Deploy step **writes** `config.json` into the storefront/admin container filesystem (bind-mount or copy) **before/at** start. Image is build-once; config is env-specific. |
+| **Local DX** | Gitignored `apps/api/.env` + committed localhost `config.json` | Copy from `*.example` once; no need to re-paste keys every day. |
+
+**Not used:** baking secrets into Vite/Angular builds; committing prod config.json; storing live keys in KB docs; Atlas-style shared cluster URIs for launch.
+
+**Auth target:** browser = API-set **httpOnly** cookies + **CSRF** + rotating refresh. Bearer-in-JSON / localStorage is transitional scaffold only (Phase D removes it). Angular interceptors already send `withCredentials: true`.
 
 ## Setup checklist (LOCAL)
 
-1. Start the local Docker Compose profile that runs MongoDB 8.3 as a single-node replica set and Meilisearch.
-2. `cp .env.mcp.example .env.mcp` → fill LOCAL block (Mongo string with `@`→`%40`, Postman key). Restart Cursor.
-3. `cp apps/api/.env.example apps/api/.env` → fill `MONGODB_*`, `MEILISEARCH_*`, and JWT/CSRF/refresh secrets.
-4. `cp apps/storefront/.env.example apps/storefront/.env` and `cp apps/admin/.env.example apps/admin/.env`.
-5. Confirm MCP servers green and tool count < ~40 (see `mcp-automation-setup.md`).
+1. Docker engine up → `pnpm mongo:up` → `pnpm mongo:status`.
+2. `cp apps/api/.env.example apps/api/.env` → set JWT secrets (Mongo localhost defaults are fine).
+3. Storefront/admin: localhost `public/config.json` already present; optional `cp .env.example .env` for port hints only.
+4. Optional Cursor MCP: update `.env.mcp` LOCAL Mongo URI + Postman key; restart Cursor.
+5. Confirm tool count < ~40 (`mcp-automation-setup.md`).

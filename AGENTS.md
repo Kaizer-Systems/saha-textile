@@ -61,7 +61,7 @@ project-context/   angular-context/ (live KB + roadmap) · nextjs-context/ (supe
 
 - Object-level authorization on every order/cart/user endpoint (BOLA is the #1 API risk).
 - Rate-limit auth/OTP/checkout/search; strict CORS allowlist; CSP + security headers via the **Nginx reverse proxy** (Cloudflare-fronted edge).
-- **API-set httpOnly/Secure/SameSite cookie sessions** with double-submit CSRF; argon2id password hashing; short-lived access + rotating refresh tokens; email OTP (via MSG91) rate-limited + short TTL with anti-enumeration; **6-digit admin PIN** (optional onboarding + Security Settings; preferred login method `password` | `pin`; lockout after failed attempts — see owner-decisions-log 2026-07-23).
+- **API-set httpOnly/Secure/SameSite cookie sessions** with double-submit CSRF; argon2id password hashing; short-lived access + rotating refresh tokens; OTP via **`NotificationPort` (MSG91 primary, adapter-swappable fallbacks)** rate-limited + short TTL with anti-enumeration; **6-digit admin PIN** (optional onboarding + Security Settings; preferred login method `password` | `pin`; lockout after failed attempts — see owner-decisions-log 2026-07-23). Browser must not store access/refresh tokens in localStorage; Angular uses `withCredentials` (Phase D completes API cookie refactor off transitional bearer scaffolds).
 - `pnpm audit` + Dependabot/Renovate; pin Docker base images; fail closed and never leak internals.
 - PCI: card data never touches our servers (hosted/iframe INR gateway adapter + PayPal; vendor SDKs stay in `adapters-payments` only).
 

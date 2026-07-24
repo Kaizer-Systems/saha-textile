@@ -1046,7 +1046,7 @@ Work in phases and stop for review after each major phase.
 #### Phase C: API Security Foundation
 
 - Add cookies, CSRF guard, error filter, request id, redacted logger, CORS hardening, health readiness, OpenAPI improvements.
-- Update runtime config and `.env.example` for self-hosted Mongo, Meilisearch, Cloudflare→Nginx edge assumptions (`TRUST_PROXY`, `CLIENT_IP_HEADER=cf-connecting-ip`, `EDGE_*` toggles), SGP Spaces, cookie/session variables, and transactional email (`EMAIL_PROVIDER=resend`, `RESEND_API_KEY`).
+- Update runtime config and `.env.example` for self-hosted Mongo, Meilisearch, Cloudflare→Nginx edge assumptions (`TRUST_PROXY`, `CLIENT_IP_HEADER=cf-connecting-ip`, `EDGE_*` toggles), SGP Spaces, cookie/session variables, and messaging (`NOTIFICATION_PROVIDER=msg91`, `MSG91_*`; optional `EMAIL_PROVIDER` fallback only).
 - **Deliver the Docker Compose test profile that runs a single-node Mongo replica set** (hard deliverable), so `withTransaction()` tests in later phases have a real replica set locally and in CI. Document how to start it.
 - Add security bootstrap tests.
 

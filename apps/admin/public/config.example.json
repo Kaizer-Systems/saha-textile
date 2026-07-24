@@ -1,0 +1,8 @@
+{
+	"production": false,
+	"apiUrl": "http://localhost:4000",
+	"assetsDataUrl": "http://localhost:4300/assets/data",
+	"siteUrl": "http://localhost:4300",
+	"defaultLocale": "en",
+	"supportedLocales": ["en", "bn"]
+}

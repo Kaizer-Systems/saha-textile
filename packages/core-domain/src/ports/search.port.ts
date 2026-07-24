@@ -7,7 +7,7 @@ export interface SearchQuery extends PageQuery {
 	categoryId?: string;
 }
 
-/** Full-text search port (Mongo Atlas Search now; swappable later). */
+/** Full-text search port (Meilisearch adapter at launch; swappable e.g. Typesense). Mongo is source of truth — not Atlas Search. */
 export interface SearchPort {
 	indexProduct(product: Product): Promise<void>;
 	removeProduct(productId: string): Promise<void>;

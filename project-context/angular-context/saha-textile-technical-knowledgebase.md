@@ -511,15 +511,16 @@ Historical recommendation favoured **CCAvenue** over BillDesk for boutique onboa
 | Method                  | Cost                         | Notes                                      |
 | ----------------------- | ---------------------------- | ------------------------------------------ |
 | Email + password        | **Free**                     | argon2id/bcrypt hashing                    |
-| Email + email OTP       | **Free**                     | OTP via transactional email free tier      |
+| Email + email OTP       | **Low / MSG91 email credits** | OTP via `NotificationPort` (MSG91 primary) |
 | Phone + password        | **Free**                     | Phone is just an identifier; no SMS needed |
 | Phone + phone OTP (SMS) | **Costs money**              | SMS gateway required (only paid method)    |
 | Google login            | **Free**                     | OAuth app registration                     |
 | Facebook login          | **Free**                     | OAuth app registration                     |
 | X/Twitter login         | **Effectively paid / avoid** | See below                                  |
 
-- **Your assumption confirmed with one correction:** Only **phone OTP (SMS)** has an unavoidable per-message cost (SMS gateways like MSG91/Twilio charge per SMS; no free programmatic SMS at production scale).
-- **email OTP CAN be done for free programmatically** — confirmed. Use a transactional email free tier behind our `EmailPort`: **Resend** (3,000/mo·100/day, API+SMTP) or **MailerSend** (3,000/mo). **LOCKED 2026-07-02: primary = Resend, adapter-swappable, no Brevo** (see `owner-decisions-log.md`). Inbound `@sahatextile.com` mail = **Cloudflare Email Routing (free)**. So keep email OTP — it's free. (Self-hosting SMTP on the droplet is rejected: DO blocks port 25 + poor IP reputation.)
+- **LOCKED (2026-07-05, reinforced 2026-07-24):** all customer messaging (email + SMS + WhatsApp) goes through **`NotificationPort` with MSG91 as the primary adapter**. Extra email adapters (Resend/SES/SMTP) may exist only as **DI fallbacks** for outage/cost — use-cases never hard-code a vendor. **Brevo is out.** Channel-direct OTP (we generate/store/verify); no MSG91 OTP-Widget/SendOTP. See `msg91-notifications-provider-and-pricing.md` + `owner-decisions-log.md`.
+- Inbound team mailboxes = **Google Workspace** (separate). Optional inbound routing notes remain Cloudflare Email Routing where used.
+- Self-hosting SMTP on the droplet is rejected (DO blocks port 25 + poor IP reputation).
 - **Social logins are free to implement** (you pay nothing to Google/Facebook for OAuth login), EXCEPT **X/Twitter**: X removed its free API tier; 2026 pricing is pay-per-use/paid tiers with no real free tier for API access. **Recommendation: drop X/Twitter login** (low ROI for a saree boutique) and offer Google + Facebook. If X login is truly required, note it may incur API costs and added compliance.
 
 **OAuth app registration steps (free ones):**
@@ -595,10 +596,12 @@ Nginx setup notes for this stack:
     - Reserve ~1 GiB for OS/overhead/burst. Set `deploy.resources.limits`/`mem_limit` accordingly; let the OOM killer act per-container.
     - **If search load grows, move to 8 GiB and budget `search (Meilisearch): ~0.5–1.0 GiB`.**
 
-### Secrets handling
+### Secrets + public runtime config
 
-- Do NOT bake secrets into images, Dockerfiles, or build args. Do NOT expose via any browser-bundled config — Angular `environment.*.ts` and build-time vars are compiled into the client JS (the Angular analogue of `NEXT_PUBLIC_*`), so they are public to the browser. Server-only secrets stay in the API container's runtime env.
-- Inject at runtime via **Docker Compose secrets** (mounted as files) or root-owned `/etc/saha/*.env` referenced by Compose `env_file`/`secrets`. Keep production config out of source control.
+- **Server secrets** (Mongo, JWT/CSRF, MSG91, Spaces, payment/shipping keys): never in git, never in images/build args, never in Angular. Store in **GitHub Actions encrypted secrets** + droplet **root-owned env / Compose `secrets:`**; inject only into the **API** container at start.
+- **Public runtime config** (`apiUrl`, `siteUrl`, locales, OAuth **client** ids): also not baked into Vite/Angular builds. Apps load `/config.json` at runtime (`APP_INITIALIZER`). Deploy pipeline **writes or mounts** env-specific `config.json` into storefront/admin containers. Localhost defaults may live in git; **staging/prod config.json must not**.
+- Do NOT use Angular `fileReplacements` / baked `environment.*.ts` values for deploy targets (those compile into client JS like Next's `NEXT_PUBLIC_*`). Mutable `environment` objects are filled after runtime fetch only.
+- Full catalogue + local DX: `environment-variables.md`.
 
 ### CI/CD (GitHub Actions)
 
@@ -611,7 +614,7 @@ Nginx setup notes for this stack:
 - **(b) GitHub Actions for private repos: 2,000 free Linux minutes/month + 500 MB artifact storage** on the Free plan; beyond that billed (~$0.006/Linux min after the Jan 2026 rate cut). Your 3-app build-and-deploy fits comfortably within 2,000 min with caching (Turbo remote cache + Docker layer cache). Public repos = unlimited free.
 - **(c) GHCR storage for PRIVATE images: currently FREE.** GitHub explicitly states "container image storage and bandwidth for the Container registry is currently free" — it does NOT fall under the GitHub Packages tiered storage billing. Unlimited private image repos. Gotcha: this is a "currently free / soft-billing" status; GitHub has promised 30-day notice before charging — keep a Plan B (mirror to another registry) for the long term.
 - **(d) Pulling images to the droplet: FREE.** GHCR imposes no Docker-Hub-style pull rate limits on your private images tied to your account. (Pulls via Actions are guaranteed free.)
-- **Other monthly costs (revised for the owner decision):** Droplet $24 at launch (2 vCPU / 4 GB / 80 GB SSD) or $48 when upgraded to 4 vCPU / 8 GB / 160 GB, Spaces $5 (250 GiB storage + 1 TiB egress + built-in CDN; overage $0.02/GiB storage, $0.01/GiB transfer), MongoDB Atlas $0 because Atlas is not used, ExchangeRate-API free, Resend/MailerSend/MSG91-email free/low-tier depending provider, Cloudflare free (edge + DNS; team mailboxes separately via Google Workspace if used), self-hosted Meilisearch $0 (runs on the droplet), domain/registrar separate. **Approx fixed infra ≈ $29/mo at launch ($24 droplet + $5 Spaces) plus email/team-mailbox choices and payment/shipping per-transaction fees; upgrade to ≈$53/mo when the 8 GB droplet is needed.**
+- **Other monthly costs (revised for the owner decision):** Droplet $24 at launch (2 vCPU / 4 GB / 80 GB SSD) or $48 when upgraded to 4 vCPU / 8 GB / 160 GB, Spaces $5 SGP (250 GiB storage + 1 TiB egress + built-in CDN; overage $0.02/GiB storage, $0.01/GiB transfer), MongoDB Atlas $0 because Atlas is not used, ExchangeRate-API free, **MSG91** messaging credits (email/SMS/WhatsApp — see MSG91 pricing note), Cloudflare free (edge + DNS; team mailboxes via Google Workspace), self-hosted Meilisearch $0 (runs on the droplet), domain/registrar separate. **Approx fixed infra ≈ $29/mo at launch ($24 droplet + $5 Spaces) plus MSG91 usage and payment/shipping per-transaction fees; upgrade to ≈$53/mo when the 8 GB droplet is needed.**
 
 **MongoDB self-hosted tier (owner decision):** MongoDB runs in Docker on the droplet, with a single-node replica set for transactions, private Docker networking only, no public `27017`, a persistent volume/bind mount on the droplet SSD, memory/WiredTiger caps, health checks, restart policy, and scheduled backups. Local development must run the same MongoDB 8.3 replica-set profile through Docker Desktop. Archived products stay fully in Mongo at launch; a compressed JSON-to-Spaces cold archive seam is designed now but only built/run later when droplet disk pressure is real.
 

@@ -1,0 +1,88 @@
+# Local / CI MongoDB 8.3 — single-node replica set (rs0)
+# Matches owner lock: Docker Mongo, private by default, volume-backed, transaction-ready.
+#
+# LOCAL: publishes 27017 on the host loopback so apps/MCP on the Mac can connect.
+# DROPLET (later): use a sibling compose that does NOT publish ports; only the
+# Docker private network hostname `mongo` is reachable (API container only).
+#
+# Usage (from repo root):
+#   pnpm mongo:up
+#   pnpm mongo:status
+#   pnpm mongo:down
+
+name: saha-mongo
+
+services:
+  mongo:
+    image: mongo:8.3
+    container_name: saha-mongo
+    restart: unless-stopped
+    # Single-node RS so withTransaction() works with the same profile as prod.
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    ports:
+      # Host-only convenience for LOCAL. Do not publish on the production droplet.
+      - '127.0.0.1:27017:27017'
+    volumes:
+      - saha_mongo_data:/data/db
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mongosh',
+          '--quiet',
+          '--eval',
+          "db.adminCommand({ ping: 1 }).ok === 1 || quit(1)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - saha_internal
+
+  # One-shot initiator. Idempotent: initiates rs0 if not yet configured.
+  # Member host is localhost:27017 so Mac-host drivers discover a reachable primary.
+  mongo-rs-init:
+    image: mongo:8.3
+    container_name: saha-mongo-rs-init
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: 'no'
+    entrypoint:
+      - bash
+      - -lc
+      - |
+        set -euo pipefail
+        echo "Waiting for mongod..."
+        until mongosh --host mongo:27017 --quiet --eval 'db.adminCommand({ ping: 1 }).ok' | grep -q 1; do
+          sleep 1
+        done
+        STATUS=$$(mongosh --host mongo:27017 --quiet --eval 'try { rs.status().ok } catch (e) { 0 }' || true)
+        if [ "$$STATUS" = "1" ]; then
+          echo "Replica set rs0 already initialized."
+          exit 0
+        fi
+        echo "Initializing replica set rs0..."
+        mongosh --host mongo:27017 --quiet --eval '
+          rs.initiate({
+            _id: "rs0",
+            members: [{ _id: 0, host: "localhost:27017" }]
+          })
+        '
+        echo "Waiting for PRIMARY..."
+        until mongosh --host mongo:27017 --quiet --eval 'rs.isMaster().ismaster' | grep -q true; do
+          sleep 1
+        done
+        echo "Replica set rs0 is PRIMARY."
+    networks:
+      - saha_internal
+
+volumes:
+  saha_mongo_data:
+    name: saha_mongo_data
+
+networks:
+  saha_internal:
+    name: saha_internal
+    driver: bridge

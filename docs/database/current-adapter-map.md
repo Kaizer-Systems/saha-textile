@@ -72,16 +72,14 @@ Current risks:
 
 ## Current connection behavior
 
-`connectMongo` is idempotent while Mongoose reports a connected state. Configuration either accepts `MONGODB_URI` or assembles an `mongodb+srv` URI from username/password/cluster host.
+`connectMongo` is idempotent while Mongoose reports a connected state. Configuration accepts `MONGODB_URI`, or assembles a **self-hosted** `mongodb://` URI from `MONGODB_HOST` / `MONGODB_PORT` / optional user+password / `replicaSet=rs0` (with `directConnection=true` for local host access). Legacy Atlas `mongodb+srv` / `MONGODB_CLUSTER_HOST` remains only as compatibility — **not** the launch path.
 
-This conflicts with the locked deployment model:
+Locked deployment model:
 
 ```text
-Local: Docker Desktop → MongoDB 8.3 single-node replica set
-Production: private Docker network → MongoDB 8.3 single-node replica set
+Local: Docker Desktop → MongoDB 8.3 single-node replica set (pnpm mongo:up)
+Production: private Docker network → MongoDB 8.3 single-node replica set (no public 27017)
 ```
-
-Required reconciliation includes replica-set URI/config, authentication and secret handling, connection pool/timeouts, private networking, readiness, resource caps, test profile, and no hosted-cluster assumptions.
 
 ## Seed tooling
 

@@ -1,6 +1,6 @@
 import { CurrencyPipe } from '@angular/common';
 import { HTTP_INTERCEPTORS, provideHttpClient, withFetch, withInterceptorsFromDi } from '@angular/common/http';
-import { ApplicationConfig, importProvidersFrom, isDevMode, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig, importProvidersFrom, isDevMode, provideAppInitializer, provideZoneChangeDetection } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { withInMemoryScrolling } from '@angular/router';
@@ -23,6 +23,8 @@ import { ErrorService } from '@data-access/services/error.service';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { TranslocoHttpLoader } from './core/i18n/transloco-loader';
+import { applyRuntimeConfig } from '../../public/environments/environment';
+import { loadRuntimeConfig } from './core/config/runtime-config';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from './core/interceptors/loader.interceptor';
@@ -58,6 +60,7 @@ export const appConfig: ApplicationConfig = {
 		},
 		importProvidersFrom(BrowserModule, BrowserAnimationsModule, LoadingBarRouterModule),
 		provideHttpClient(withInterceptorsFromDi(), withFetch()),
+		provideAppInitializer(async () => applyRuntimeConfig(await loadRuntimeConfig())),
 		// Transloco — the locked i18n lib (ngx-translate fully removed). Loads
 		// assets/i18n/<lang>.json via TranslocoHttpLoader; the language switcher drives
 		// it through TranslocoService.setActiveLang.

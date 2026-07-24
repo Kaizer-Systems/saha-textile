@@ -16,7 +16,7 @@
     3. If both pass → no notification needed (silent success).
 - **LOCKED — Password length ≥ 12** for **both** frontends (storefront + admin) + common-password denylist.
 - **LOCKED — Cookie-session model.** Adopt API-set **httpOnly cookie sessions + double-submit CSRF + opaque rotating refresh with reuse-detection.** Refactor: add `@fastify/cookie`, CSRF guard, cookie set/clear session service, cookie-first JWT guard (bearer fallback for non-browser), refresh rotation + reuse detection. _(This replaces our current Phase-3 "JSON bearer token" auth.)_
-- **LOCKED — Email OTP is conditional, NOT Brevo.** Include email OTP **only if it can be done programmatically at $0** in our setup. **Do not lock Brevo.** Keep email OTP as a **seam** like phone-OTP. _(Honest note: $0 transactional email with good deliverability is hard — options are self-hosted SMTP from the droplet w/ SPF/DKIM/DMARC [free but spam-risk] or a free provider tier [Resend/MailerSend]. Not a launch blocker — password + Google/FB cover login.)_ **→ RESOLVED 2026-07-02: outbound transactional email via `EmailPort`, primary Resend free tier (adapter-swappable, no Brevo); inbound via Cloudflare Email Routing. Hostinger dropped at go-live. See the 2026-07-02 section.**
+- **LOCKED — Notifications = MSG91 behind `NotificationPort` (2026-07-05, reinforced 2026-07-24).** All transactional/marketing email + SMS + WhatsApp go through **`NotificationPort`** with per-channel adapters. **Primary provider = MSG91.** Provider SDKs stay in adapters only — core/UI never import MSG91. **Swappable / aggregatable:** additional provider adapters (e.g. Resend/SES as **email fallback**) may be bound for cost optimisation or failover via DI/config — not by hard-coding a second path in use-cases. **Brevo is out.** Channel-direct OTP (we own generate/store/verify); no MSG91 OTP-Widget/SendOTP.
 - **LOCKED — Provider scope:** Google ✅, Facebook ✅, phone-OTP seam-only (paid SMS, deferred), **X/Twitter excluded.**
 - **RESOLVED 2026-07-23 — Admin PIN UX / setup / lockout:** see §2026-07-23 Admin PIN UX (clears the former “PENDING owner clarity” on exact PIN UX).
 
@@ -459,3 +459,13 @@ Context: companion to the video pipeline. Same `mediaAssets` / gallery reuse / B
 - **LOCKED — Strength:** reject weak/sequential/repeated PINs (denylist + pattern checks). Hash with password-grade seriousness (separate `pinCredentials` or equivalent); never plaintext. Same cookie-session security as password login.
 - **LOCKED — Lockout:** **5** failed PIN attempts → disable PIN login/quick-resume for **15 minutes** or until successful **password** login; **audit** the event. Password change and role/permission changes invalidate PIN sessions / quick-resume (token/permission version bumps).
 - **LOCKED — Storefront:** admin PIN is **admin/staff only** — never a storefront customer feature.
+
+## 2026-07-24 — Config injection, MSG91 primary, Spaces SGP, auth orientation
+
+- **LOCKED — Two-tier config (no secrets in git, no bake-in, no local key notebook):**
+    1. **Server secrets** → GitHub Actions encrypted secrets + droplet root-owned env / Compose secrets → injected into **API** only at container start.
+    2. **Public runtime config** → non-secret deploy vars → pipeline **writes/mounts** `apps/*/public/config.json` into storefront/admin at deploy. Angular loads via `APP_INITIALIZER` (not `fileReplacements`). Localhost `config.json` may stay in git; **staging/prod config.json never committed**.
+- **LOCKED — Notifications:** MSG91 **only as primary** behind `NotificationPort`; adapters remain swappable/aggregatable for fallback or cost optimisation. Resend/SES/SMTP = optional email fallback adapters only.
+- **LOCKED — Spaces region = SGP (`sgp1`) only.** No BLR Spaces (not offered). Droplet compute may still be BLR.
+- **LOCKED — Auth orientation:** browser path = httpOnly cookies + CSRF + rotating refresh. Bearer/localStorage scaffolds are transitional until Phase D cookie refactor completes. Angular interceptors already use `withCredentials: true`.
+- **LOCKED — Do not edit `project-context/nextjs-context/`** — superseded stack; ignore for all work.

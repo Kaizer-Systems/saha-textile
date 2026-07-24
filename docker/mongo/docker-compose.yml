@@ -1,0 +1,57 @@
+# =============================================================================
+#  Local MongoDB 8.3 — single-node replica set `rs0` (SAFE NOW profile)
+# =============================================================================
+#  The same self-hosted Docker profile shape is used locally and in prod for
+#  parity (never Atlas). A single-node replica set is required so the API can
+#  use multi-document transactions (withTransaction()).
+#
+#  Lifecycle (from repo root):
+#    pnpm mongo:up       start + wait healthy (rs.initiate is idempotent)
+#    pnpm mongo:status   compose state + replica-set status
+#    pnpm mongo:down     stop (data volume kept)
+#    pnpm mongo:wipe     stop + DELETE the data volume (destructive)
+#
+#  Connection (API / tools on the host):
+#    mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directConnection=true
+#
+#  HOST PORT OVERRIDE (per-machine, canonical default stays 27017):
+#    If your machine already runs a native mongod on 27017, create a
+#    gitignored docker/mongo/.env with e.g. MONGO_HOST_PORT=27018 and set the
+#    same port in your gitignored apps/api/.env (MONGODB_PORT) and .env.mcp.
+#    Only the Mac-side doorway moves — the container port, rs0 name, and URI
+#    shape stay identical, so prod parity is unaffected.
+#
+#  Local profile runs WITHOUT auth and publishes on loopback only — never
+#  expose 27017 publicly. Deployed environments run on a private Docker
+#  network with credentials injected at deploy time (roadmap §0d).
+# =============================================================================
+
+name: saha-textile-mongo
+
+services:
+    mongo:
+        image: mongo:8.3
+        container_name: saha-textile-mongo
+        command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+        ports:
+            - '127.0.0.1:${MONGO_HOST_PORT:-27017}:27017'
+        volumes:
+            - saha_textile_mongo_data:/data/db
+            - saha_textile_mongo_configdb:/data/configdb
+        healthcheck:
+            # Idempotent: initiates the replica set on first run, then reports
+            # healthy once rs.status() is ok. Host is 127.0.0.1 so host-side
+            # clients (API, MCP, mongosh) resolve the sole member directly.
+            test: |
+                mongosh --quiet --eval "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] }).ok }" | grep -q 1
+            interval: 5s
+            timeout: 10s
+            retries: 24
+            start_period: 15s
+        restart: unless-stopped
+
+volumes:
+    saha_textile_mongo_data:
+        name: saha_textile_mongo_data
+    saha_textile_mongo_configdb:
+        name: saha_textile_mongo_configdb

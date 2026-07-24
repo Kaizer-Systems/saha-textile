@@ -84,6 +84,10 @@ project-context/   angular-context/ (live KB + roadmap) · nextjs-context/ (supe
 The live KB is `project-context/angular-context/`. `project-context/nextjs-context/` is the superseded pre-migration KB — **ignore it.**
 
 - **`owner-decisions-log.md`** — authoritative running record of locked owner decisions. Check here first; it overrides older docs on conflict.
+- **`project-progress.md`** — **cross-tool living checkpoint** (Cursor / Claude Code / Codex / parallel agents). Read before work; append a dated status bullet after every small task. Maintained until end of project — see that file’s header for format rules.
+- **`api-db-development-roadmap-with-pending-decision-gates.md`** — API+DB chunk plan (SAFE NOW / SEAM NOW / BLOCKED), env/secrets sync, often-missed deploy concerns, detailed deploy-script requirements, and the Claude/Codex **context pack** file list.
+- **`api-db-local-environment-bootstrap.md`** — local Mongo/tooling handoff before API+DB chunks.
+- **`environment-variables.md`** — env catalogue (names/purpose only; never real secrets).
 - **`saha-textile-technical-knowledgebase.md`** — master: architecture, data model, taxonomy, the variable-product / "No Stitching → Design 1-3 + Color" pattern, currency/PayPal math, payments, shipping, auth, infra.
 - **`execution-roadmap.md`** — the ordered build plan. **Follow it.**
 - **`codex-catalog-db-architecture-assessment-and-plan.md`** — the target catalog/category/product/search/commerce/reporting DB model (placements, first-class variants, semantic option roles, bundles, badges, insight sets, SEO routes).
@@ -95,9 +99,11 @@ The live KB is `project-context/angular-context/`. `project-context/nextjs-conte
 
 ## 10. Operating rules for you (the agent)
 
-- Before each phase/task: **read the relevant KB section, state your plan, and confirm any destructive/irreversible action.**
+- Before each phase/task: **read the relevant KB section, state your plan, and confirm any destructive/irreversible action.** Also read **`project-progress.md`** for continuity across tools.
+- After each small completed task: **append** a dated `[DONE|PARTIAL|BLOCKED|…]` bullet to the matching section of `project-progress.md` (never store secrets there).
 - Keep every change inside its layer. If a task seems to require crossing layer boundaries, surface it instead of doing it quietly.
 - Prefer editing over rewriting; keep diffs small and reviewable; one PR per coherent unit.
 - When a requirement is ambiguous — especially data model, pricing, auth, or security — **ask, don't assume.**
 - Build tests and Docusaurus docs **as you go**, not after.
 - Never invent credentials, endpoints, or data. Never weaken a security control to make something pass.
+- Ignore `project-context/nextjs-context/` (superseded).

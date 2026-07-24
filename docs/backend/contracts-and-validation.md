@@ -1,0 +1,164 @@
+---
+title: Contracts, Validation, and Serialization
+description: Zod contract ownership, request parsing, persistence mapping, response safety, and evolution rules.
+status: scaffolded
+audience: [beginner, backend, frontend]
+last_verified: '2026-07-18'
+source_of_truth:
+    - packages/contracts/src
+    - packages/contracts/test
+    - apps/api/src/common/zod-validation.pipe.ts
+    - apps/api/src
+    - packages/adapters-db-mongo/src/mappers.ts
+    - project-context/angular-context/codex-api-app-build-instructional-prompt.md
+---
+
+# Contracts, validation, and serialization
+
+`packages/contracts` is the shared runtime boundary. Its zod schemas can validate unknown data and infer TypeScript types from the same source.
+
+That does **not** mean one schema should represent every layer.
+
+## Four different shapes
+
+| Shape                | Purpose                    |              May contain secrets? | Current state                                  |
+| -------------------- | -------------------------- | --------------------------------: | ---------------------------------------------- |
+| Request DTO          | What one operation accepts |                                No | Many controller-local schemas                  |
+| Domain input/entity  | Business-meaningful value  |          No infrastructure fields | Partial contract/core overlap                  |
+| Persistence document | How an adapter stores data |    Sometimes internal-only values | Mongoose interfaces/models exist               |
+| Response DTO         | What one actor may receive | Never secret/internal-only fields | Mostly public entity schemas returned directly |
+
+An API request for account registration should not accept `role`, `emailVerified`, `passwordHash`, or internal flags merely because those fields exist somewhere in a user model.
+
+## Current contract families
+
+| File           | Principal schemas                                          | Notable invariant                              |
+| -------------- | ---------------------------------------------------------- | ---------------------------------------------- |
+| `common.ts`    | locale, localized text, id, slug, INR price, datetime, SEO | canonical price is non-negative INR            |
+| `category.ts`  | category                                                   | current shape models parent/path/ancestors     |
+| `product.ts`   | product, variation, attribute, add-on                      | variation price/stock and configurable add-ons |
+| `promotion.ts` | promotion and conditions                                   | discount scope/type and timing                 |
+| `cart.ts`      | cart and cart line                                         | user/guest identifiers and selected add-ons    |
+| `order.ts`     | order, lines, status events                                | INR and paid-currency snapshots                |
+| `currency.ts`  | currency                                                   | INR-derived rate and PayPal fee inputs         |
+| `shipping.ts`  | quote                                                      | value and currency always travel together      |
+| `user.ts`      | public user, identities, addresses, consent                | password hash intentionally absent             |
+
+These schemas are useful scaffolds. They do not yet express the complete locked catalogue, auth/session, consent, checkout, payment, inventory, notification, reporting, audit, or database model.
+
+## Boundary validation today
+
+`ZodValidationPipe` correctly treats input as `unknown`, calls `safeParse`, and returns a sanitized `400` issue list. Current limitations:
+
+- controllers define many body schemas locally;
+- path/query values are often plain strings or manually converted numbers;
+- there is no shared request/response schema naming system;
+- OpenAPI does not automatically receive complete zod shape information from the local pipe;
+- returned values are not consistently parsed through explicit response schemas;
+- Mongoose `Mixed` nested arrays are cast by mappers without runtime revalidation.
+
+## Target naming convention
+
+Use bounded-context and operation names rather than one overloaded entity name.
+
+```text
+CatalogProductResponse
+CatalogProductListQuery
+AdminCreateProductRequest
+AdminUpdateProductRequest
+AdminProductResponse
+CartResponse
+AddCartLineRequest
+CheckoutQuoteRequest
+CheckoutQuoteResponse
+PlaceOrderRequest
+OrderSummaryResponse
+OrderDetailResponse
+AdminOrderDetailResponse
+```
+
+## Request parsing rule
+
+```mermaid
+flowchart LR
+    Unknown["unknown HTTP input"] --> Schema["Operation zod schema"]
+    Schema -->|success| DTO["Parsed DTO"]
+    Schema -->|failure| Error["Stable validation envelope"]
+    DTO --> Context["Actor/request context"]
+    Context --> UseCase["Application use case input"]
+```
+
+- Apply defaults only when the API truly owns the default.
+- Coerce only deliberate transport representations such as numeric query strings.
+- Reject unknown privileged fields or strip them by an explicit, tested policy.
+- Do not trust a TypeScript type assertion; it performs no runtime validation.
+- Validate provider/webhook payloads even after signature verification.
+
+## Response serialization rule
+
+Response contracts are an allowlist. They should make it impossible to leak:
+
+- password/PIN/OTP hashes;
+- refresh-token/session hashes;
+- provider credentials or raw provider payloads;
+- internal fraud/risk flags;
+- cost layers and supplier terms to customers;
+- admin-only notes;
+- hidden product states or embargoed content;
+- full audit metadata not appropriate to the actor.
+
+Storefront, admin, and internal-job responses may legitimately use different DTOs for the same underlying aggregate.
+
+## Persistence mapping
+
+Current mappers translate `_id` and `Date` values into contract-friendly ids and ISO strings. That is the correct adapter responsibility. The risk is that several nested fields use `unknown[]`/`Mixed` and then cast directly to contract types.
+
+Target mapping sequence:
+
+```text
+Mongoose lean document
+→ explicit adapter mapper
+→ domain/contract runtime parse
+→ application result
+→ actor-specific response parse
+```
+
+Parsing twice is acceptable at trust boundaries when it prevents persistence drift or response leakage. Optimize only after measuring and preserving the guarantees.
+
+## Evolution rules
+
+### Backward-compatible changes
+
+- Add an optional response field.
+- Add an optional request field with server-owned default.
+- Add a new enum only when every consumer handles unknown/future values safely.
+- Add a new endpoint without changing existing semantics.
+
+### Potentially breaking changes
+
+- Rename/remove a field.
+- Change nullability, unit, currency, or timestamp meaning.
+- Make an optional request field required.
+- Change pagination, sorting, error, idempotency, or authorization behavior.
+- Reuse an enum value for a different lifecycle meaning.
+
+When a breaking change is required, version the HTTP contract or execute a coordinated migration. Do not silently reinterpret persisted data.
+
+## Contract test matrix
+
+For every important schema, test:
+
+1. minimum valid input;
+2. full valid input;
+3. defaults;
+4. each boundary value;
+5. malformed primitives;
+6. missing required fields;
+7. invalid enum/identifier/date/currency;
+8. privileged or secret-field injection;
+9. safe serialization;
+10. compatibility fixture from the previous released contract.
+
+## Current reconciliation warning
+
+The current product/category contracts reflect an earlier simplified model. Locked architecture now requires multi-placement categories, semantic option roles, true bundles, richer inventory and search-facet configuration. Do not extend the simplified shape ad hoc; implement the relevant backend phase from the reconciled catalogue plan.

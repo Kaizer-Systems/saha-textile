@@ -323,6 +323,10 @@ type UserDoc = {
 		failedLoginCount: number;
 		lockoutUntil: Date | null;
 		riskLevel: 'normal' | 'watch' | 'blocked';
+		/** Admin/staff only. Owner-locked 2026-07-23. Prefer pin only when pinCredentials exist. */
+		preferredLoginMethod?: 'password' | 'pin';
+		pinFailedAttemptCount?: number;
+		pinLockoutUntil?: Date | null;
 	};
 	adminProfile?: {
 		employeeCode: string | null;
@@ -427,6 +431,41 @@ Rules:
 
 - On password change, increment `users.security.tokenVersion` and revoke active sessions.
 - Password hash is never returned through repositories except explicit credential lookup paths.
+
+### 7.3A `pinCredentials` (admin/staff only — owner-locked 2026-07-23)
+
+Purpose: store admin 6-digit PIN material separately from public user profile (parallel to `passwordCredentials`).
+
+```ts
+type PinCredentialDoc = {
+	_id: string;
+	userId: string;
+	pinHash: string;
+	algorithm: 'argon2id'; // or equally serious KDF; never plaintext
+	params: {
+		memoryCost: number;
+		timeCost: number;
+		parallelism: number;
+	};
+	pinVersion: number;
+	createdAt: Date;
+	updatedAt: Date;
+	disabledAt: Date | null;
+};
+```
+
+Rules:
+
+- Staff/admin only. Never for storefront customers.
+- Setup/change/reset requires **password proof** from Security Settings; **optional** during invite/onboarding after password exists (may skip).
+- Reject weak PINs (denylist + sequential/repeated patterns).
+- `users.security.preferredLoginMethod` may be `pin` only when an active `pinCredentials` row exists; otherwise `password`.
+- **5** failed PIN verifies → set `pinLockoutUntil` (~15 minutes) or clear on successful password login; write `auditLogs`.
+- Password change / role-permission bump invalidates PIN sessions (token/permission version).
+
+Indexes:
+
+- Unique `{ userId: 1 }`.
 
 ### 7.4 `authSessions`
 
@@ -1324,8 +1363,9 @@ Baseline limits to tune during implementation:
 
 - Admin login must accept only users with `role: staff | admin` and `status: active`.
 - Admin sessions use `aud: admin` and shorter refresh TTL.
-- Every admin write creates an audit log.
+- Every admin write creates an audit log (owner-locked 2026-07-23: broad admin/security scope; retention financial/security **7 years**, catalog/admin mutation **5 years**; redact secrets; prefer diffs — see `owner-decisions-log.md`).
 - Role/permission changes increment `permissionsVersion`.
+- **Admin PIN (owner-locked 2026-07-23):** optional onboarding setup + Security Settings (password proof); preferred method toggle `password` | `pin` (theme form-switch on both surfaces); PIN allowed for full login and idle quick-resume; **5** fails → **15 min** PIN lockout (or until password login); audit lockouts; hash in `pinCredentials`.
 - Critical admin actions should have a future `step_up_required` seam.
 - Staff/admin cannot be created through storefront registration.
 - Admin routes should be hidden from indexing and protected at API level, not only UI routes.

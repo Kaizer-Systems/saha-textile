@@ -1,0 +1,33 @@
+<div class="measurements-form">
+	<h5 class="measurements-title">
+		<i class="ri-ruler-line"></i>
+		{{ title() | transloco }}
+	</h5>
+	<form [formGroup]="form">
+		<div class="row g-3">
+			@for (field of fields(); track field.code) {
+			<div class="col-md-3 col-6">
+				<label
+					class="form-label"
+					[for]="'meas-' + field.code"
+				>
+					{{ field.label | transloco }}
+				</label>
+				<div class="input-group">
+					<input
+						type="number"
+						class="form-control"
+						[id]="'meas-' + field.code"
+						[formControlName]="field.code"
+						[placeholder]="'enter' | transloco"
+						[min]="field.min ?? 1"
+						[max]="field.max ?? 200"
+					/>
+					<span class="input-group-text">{{ field.unit }}</span>
+				</div>
+			</div>
+			}
+		</div>
+		<p class="measurements-note text-content">{{ 'measurements_note' | transloco }}</p>
+	</form>
+</div>

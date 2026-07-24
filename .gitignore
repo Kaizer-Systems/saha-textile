@@ -21,6 +21,7 @@ node_modules/
 .pnpm-store/
 dist/
 build/
+.docusaurus/
 .next/
 .turbo/
 .angular/
@@ -34,3 +35,6 @@ Thumbs.db
 
 # ---- Vendor Theme Files ----
 vendor
+
+# Generated: dart-sass precompiled theme css (analog SSR dev sass-importer workaround)
+apps/storefront/src/scss/app.gen.css

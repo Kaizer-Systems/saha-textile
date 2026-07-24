@@ -1,0 +1,20 @@
+@if (attributes().length) {
+<div class="attributes-info product-package">
+	<div class="product-title">
+		<h4>{{ 'attributes' | transloco }}</h4>
+	</div>
+	<ul class="attributes-pill-list">
+		@for (attr of attributes(); track attr.code) {
+		<li class="attributes-pill">
+			<i class="{{ attr.icon || 'ri-price-tag-3-line' }}"></i>
+			<span class="attr-label">{{ attr.label | transloco }}:</span>
+			<span class="attr-value">{{ attr.value }}</span>
+		</li>
+		}
+	</ul>
+	<p class="attributes-note text-content">
+		<i class="ri-information-line"></i>
+		{{ 'attributes_display_note' | transloco }}
+	</p>
+</div>
+}

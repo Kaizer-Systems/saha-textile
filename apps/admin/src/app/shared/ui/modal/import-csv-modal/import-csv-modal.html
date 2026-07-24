@@ -3,7 +3,7 @@
 	let-modal
 >
 	<div class="modal-header">
-		<h2>{{ 'Import CSV' | translate }}</h2>
+		<h2>{{ 'Import CSV' | transloco }}</h2>
 		<app-button
 			[class]="'btn btn-close'"
 			[spinner]="false"
@@ -32,7 +32,7 @@
 					>
 						<ngx-dropzone-label>
 							<div>
-								<h2>{{ 'drop_files_here' | translate }}</h2>
+								<h2>{{ 'drop_files_here' | transloco }}</h2>
 							</div>
 						</ngx-dropzone-label>
 						@for (f of files; track f) {
@@ -60,7 +60,7 @@
 				[id]="'upload_csv'"
 				(click)="upload()"
 			>
-				{{ 'upload' | translate }}
+				{{ 'upload' | transloco }}
 			</app-button>
 		</div>
 	</div>

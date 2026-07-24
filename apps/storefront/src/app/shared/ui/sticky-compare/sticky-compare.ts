@@ -2,25 +2,23 @@ import { AsyncPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
-import { GetCompareAction } from '@data-access/actions/compare.action';
-import { CompareState } from '@data-access/states/compare.state';
+import { CompareFacade } from '@core/state/compare/compare.store';
 
 @Component({
-  selector: 'app-sticky-compare',
-  templateUrl: './sticky-compare.html',
-  styleUrls: ['./sticky-compare.scss'],
-  imports: [RouterLink, AsyncPipe, TranslateModule],
+	selector: 'app-sticky-compare',
+	templateUrl: './sticky-compare.html',
+	styleUrls: ['./sticky-compare.scss'],
+	imports: [RouterLink, AsyncPipe, TranslocoModule],
 })
 export class StickyCompare {
-  private store = inject(Store);
+	private compareFacade = inject(CompareFacade);
 
-  compareTotal$: Observable<number> = inject(Store).select(CompareState.compareTotal);
+	compareTotal$: Observable<number> = this.compareFacade.compareTotal$;
 
-  constructor() {
-    this.store.dispatch(new GetCompareAction());
-  }
+	constructor() {
+		this.compareFacade.getCompare();
+	}
 }

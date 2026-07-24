@@ -1,65 +1,49 @@
 import { Component, inject } from '@angular/core';
-import {
-  FormBuilder,
-  FormControl,
-  FormGroup,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
-import { ContactUsAction } from '@data-access/actions/page.action';
+import { SiteConfigStore } from '@core/state/site-config.store';
+import { IContact, ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
-import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
-import { IContact, IOption } from '@data-access/interfaces/theme-option.interface';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { translatedBreadcrumb } from '@shared/util/breadcrumb-i18n';
 
 @Component({
-  selector: 'app-contact-us',
-  templateUrl: './contact-us.html',
-  styleUrls: ['./contact-us.scss'],
-  imports: [Breadcrumb, ReactiveFormsModule, Button, TranslateModule],
+	selector: 'app-contact-us',
+	templateUrl: './contact-us.html',
+	styleUrls: ['./contact-us.scss'],
+	imports: [Breadcrumb, ReactiveFormsModule, Button, TranslocoModule],
 })
 export class ContactUs {
-  private formBuilder = inject(FormBuilder);
-  private store = inject(Store);
+	private formBuilder = inject(FormBuilder);
 
-  themeOption$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+	siteConfig$: Observable<ISiteConfig> = toObservable(inject(SiteConfigStore).siteConfig) as Observable<ISiteConfig>;
 
-  public breadcrumb: IBreadcrumb = {
-    title: 'Contact Us',
-    items: [{ label: 'Contact Us', active: true }],
-  };
+	public breadcrumb = translatedBreadcrumb('contact_us');
 
-  public form: FormGroup;
-  public contactData: IContact;
+	public form: FormGroup;
+	public contactData: IContact;
 
-  constructor() {
-    this.form = this.formBuilder.group({
-      name: new FormControl('', [Validators.required]),
-      email: new FormControl('', [Validators.required, Validators.email]),
-      phone: new FormControl('', [Validators.required]),
-      subject: new FormControl('', [Validators.required]),
-      message: new FormControl('', [Validators.required]),
-    });
+	constructor() {
+		this.form = this.formBuilder.group({
+			name: new FormControl('', [Validators.required]),
+			email: new FormControl('', [Validators.required, Validators.email]),
+			phone: new FormControl('', [Validators.required]),
+			subject: new FormControl('', [Validators.required]),
+			message: new FormControl('', [Validators.required]),
+		});
 
-    this.themeOption$.subscribe(data => (this.contactData = data?.contact_us));
-  }
+		this.siteConfig$.subscribe((data) => (this.contactData = data?.contact_us));
+	}
 
-  submit() {
-    this.form.markAllAsTouched();
-    if (this.form.valid) {
-      this.store.dispatch(new ContactUsAction(this.form.value)).subscribe({
-        complete: () => {
-          this.form.reset();
-        },
-      });
-    }
-  }
+	submit() {
+		this.form.markAllAsTouched();
+		if (this.form.valid) {
+			// Contact form has no backend yet — just reset locally.
+			this.form.reset();
+		}
+	}
 }

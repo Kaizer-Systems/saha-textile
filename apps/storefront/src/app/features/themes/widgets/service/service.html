@@ -1,17 +1,21 @@
 <section class="service-section">
-  <div class="container-fluid-lg">
-    <div class="row g-3 row-cols-xxl-5 row-cols-lg-3 row-cols-sm-2">
-      @for (service of data(); track service) {
-      <div>
-        <div class="service-contain-2">
-          <img [src]="service.image_url" class="icon-width" [alt]="service?.title" />
-          <div class="service-detail">
-            <h3>{{ service?.title }}</h3>
-            <h6 class="text-content">{{ service?.sub_title}}</h6>
-          </div>
-        </div>
-      </div>
-      }
-    </div>
-  </div>
+	<div class="container-fluid-lg">
+		<div class="row g-3 row-cols-xxl-5 row-cols-lg-3 row-cols-sm-2">
+			@for (service of data(); track service) {
+			<div>
+				<div class="service-contain-2">
+					<img
+						[src]="service.image_url"
+						class="icon-width"
+						[alt]="service?.title"
+					/>
+					<div class="service-detail">
+						<h3>{{ service?.title }}</h3>
+						<h6 class="text-content">{{ service?.sub_title}}</h6>
+					</div>
+				</div>
+			</div>
+			}
+		</div>
+	</div>
 </section>

@@ -1,21 +1,21 @@
 import { Component, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
-import { injectTagsQuery } from '@data-access/queries/tag.queries';
-import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { Table } from '@shared/ui/table/table';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { ITag } from '@data-access/interfaces/tag.interface';
+import { injectTagsQuery } from '@data-access/queries/tag.queries';
+import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { Table } from '@shared/ui/table/table';
 
 @Component({
 	selector: 'app-tag',
 	templateUrl: './tag.html',
 	styleUrls: ['./tag.scss'],
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslateModule],
+	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
 })
 export class Tag {
 	router = inject(Router);

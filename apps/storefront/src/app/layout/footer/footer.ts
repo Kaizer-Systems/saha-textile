@@ -1,24 +1,23 @@
 import { AsyncPipe } from '@angular/common';
 import { Component, inject, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
-import { BasicFooter } from './basic-footer/basic-footer';
-import { IOption } from '@data-access/interfaces/theme-option.interface';
+import { SiteConfigStore } from '@core/state/site-config.store';
+import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { IFooter } from '@data-access/interfaces/theme.interface';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+
+import { BasicFooter } from './basic-footer/basic-footer';
 
 @Component({
-  selector: 'app-footer',
-  templateUrl: './footer.html',
-  styleUrls: ['./footer.scss'],
-  imports: [BasicFooter, AsyncPipe],
+	selector: 'app-footer',
+	templateUrl: './footer.html',
+	styleUrls: ['./footer.scss'],
+	imports: [BasicFooter, AsyncPipe],
 })
 export class Footer {
-  readonly footer = input<IFooter>();
+	readonly footer = input<IFooter>();
 
-  themeOption$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
+	siteConfig$: Observable<ISiteConfig> = toObservable(inject(SiteConfigStore).siteConfig) as Observable<ISiteConfig>;
 }

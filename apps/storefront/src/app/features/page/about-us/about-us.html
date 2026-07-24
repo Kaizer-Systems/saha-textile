@@ -1,289 +1,351 @@
 <!-- Fresh Vegetable Section Start -->
-<app-breadcrumb [breadcrumb]="breadcrumb" />
+<app-breadcrumb [breadcrumb]="breadcrumb()" />
 <section class="fresh-vegetable-section section-lg-space">
-  <div class="container-fluid-lg">
-    <div class="row gx-xl-5 gy-xl-0 g-3 ratio_148_1">
-      <div class="col-xl-6 col-12">
-        <div class="row g-sm-4 g-2">
-          <div class="col-6">
-            <div class="fresh-image-2">
-              <div>
-                <img src="assets/images/inner-page/about-us/1.jpg" class="bg-img" alt="icon" />
-              </div>
-            </div>
-          </div>
+	<div class="container-fluid-lg">
+		<div class="row gx-xl-5 gy-xl-0 g-3 ratio_148_1">
+			<div class="col-xl-6 col-12">
+				<div class="row g-sm-4 g-2">
+					<div class="col-6">
+						<div class="fresh-image-2">
+							<div>
+								<img
+									src="assets/images/inner-page/about-us/1.jpg"
+									class="bg-img"
+									alt="icon"
+								/>
+							</div>
+						</div>
+					</div>
 
-          <div class="col-6">
-            <div class="fresh-image">
-              <div>
-                <img src="assets/images/inner-page/about-us/2.jpg" class="bg-img" alt="icon" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+					<div class="col-6">
+						<div class="fresh-image">
+							<div>
+								<img
+									src="assets/images/inner-page/about-us/2.jpg"
+									class="bg-img"
+									alt="icon"
+								/>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 
-      <div class="col-xl-6 col-12">
-        <div class="fresh-contain p-center-left">
-          <div>
-            <div class="review-title">
-              <h4>{{ 'about_us' | translate }}</h4>
-              <h2>{{ 'we_make_organic_food_in_market' | translate }}</h2>
-            </div>
+			<div class="col-xl-6 col-12">
+				<div class="fresh-contain p-center-left">
+					<div>
+						<div class="review-title">
+							<h4>{{ 'about_us' | transloco }}</h4>
+							<h2>{{ 'we_make_organic_food_in_market' | transloco }}</h2>
+						</div>
 
-            <div class="delivery-list">
-              <p class="text-content">
-                {{
-                "just_a_few_seconds_to_measure_your_body_temperature_up_to_5_users_the_battery_lasts_up_to_2_years_there_are_many_variations_of_passages_of_lorem_ipsum_available_we_started_in_2019_and_haven't_stopped_smashing_it_since_A_global_brand_that_doesn't_sleep_we_are_24/7_and_always_bringing_something_new_with_over_100_new_products_dropping_on_the_monhtly_bringing_you_the_latest_looks_for_less."
-                | translate }}
-              </p>
+						<div class="delivery-list">
+							<p class="text-content">
+								{{
+								"just_a_few_seconds_to_measure_your_body_temperature_up_to_5_users_the_battery_lasts_up_to_2_years_there_are_many_variations_of_passages_of_lorem_ipsum_available_we_started_in_2019_and_haven't_stopped_smashing_it_since_A_global_brand_that_doesn't_sleep_we_are_24/7_and_always_bringing_something_new_with_over_100_new_products_dropping_on_the_monhtly_bringing_you_the_latest_looks_for_less."
+								| transloco }}
+							</p>
 
-              <ul class="delivery-box">
-                <li>
-                  <div class="delivery-box">
-                    <div class="delivery-icon">
-                      <img src="assets/svg/3/delivery.svg" class="" alt="icon" />
-                    </div>
+							<ul class="delivery-box">
+								<li>
+									<div class="delivery-box">
+										<div class="delivery-icon">
+											<img
+												src="assets/svg/3/delivery.svg"
+												class=""
+												alt="icon"
+											/>
+										</div>
 
-                    <div class="delivery-detail">
-                      <h5 class="text">{{ 'free_delivery_for_all_orders' | translate }}</h5>
-                    </div>
-                  </div>
-                </li>
+										<div class="delivery-detail">
+											<h5 class="text">{{ 'free_delivery_for_all_orders' | transloco }}</h5>
+										</div>
+									</div>
+								</li>
 
-                <li>
-                  <div class="delivery-box">
-                    <div class="delivery-icon">
-                      <img src="assets/svg/3/leaf.svg" class="" alt="icon" />
-                    </div>
+								<li>
+									<div class="delivery-box">
+										<div class="delivery-icon">
+											<img
+												src="assets/svg/3/leaf.svg"
+												class=""
+												alt="icon"
+											/>
+										</div>
 
-                    <div class="delivery-detail">
-                      <h5 class="text">{{ 'only_fresh_foods' | translate }}</h5>
-                    </div>
-                  </div>
-                </li>
+										<div class="delivery-detail">
+											<h5 class="text">{{ 'only_fresh_foods' | transloco }}</h5>
+										</div>
+									</div>
+								</li>
 
-                <li>
-                  <div class="delivery-box">
-                    <div class="delivery-icon">
-                      <img src="assets/svg/3/delivery.svg" class="" alt="icon" />
-                    </div>
+								<li>
+									<div class="delivery-box">
+										<div class="delivery-icon">
+											<img
+												src="assets/svg/3/delivery.svg"
+												class=""
+												alt="icon"
+											/>
+										</div>
 
-                    <div class="delivery-detail">
-                      <h5 class="text">{{ 'free_delivery_for_all_orders' | translate }}</h5>
-                    </div>
-                  </div>
-                </li>
+										<div class="delivery-detail">
+											<h5 class="text">{{ 'free_delivery_for_all_orders' | transloco }}</h5>
+										</div>
+									</div>
+								</li>
 
-                <li>
-                  <div class="delivery-box">
-                    <div class="delivery-icon">
-                      <img src="assets/svg/3/leaf.svg" class="" alt="icon" />
-                    </div>
+								<li>
+									<div class="delivery-box">
+										<div class="delivery-icon">
+											<img
+												src="assets/svg/3/leaf.svg"
+												class=""
+												alt="icon"
+											/>
+										</div>
 
-                    <div class="delivery-detail">
-                      <h5 class="text">{{ 'only_fresh_foods' | translate }}</h5>
-                    </div>
-                  </div>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+										<div class="delivery-detail">
+											<h5 class="text">{{ 'only_fresh_foods' | transloco }}</h5>
+										</div>
+									</div>
+								</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 </section>
 <!-- Fresh Vegetable Section End -->
 
 <!-- Client Section Start -->
 <section class="client-section section-lg-space">
-  <div class="container-fluid-lg">
-    <div class="row">
-      <div class="col-12">
-        <div class="about-us-title text-center">
-          <h4>{{ 'what_we_do' | translate }}</h4>
-          <h2 class="center">{{ 'we_are_trusted_by_clients' | translate }}</h2>
-        </div>
-        <div class="slider-dots">
-          <owl-carousel-o [options]="clientsOptions">
-            @for (client of clients; track client) {
-            <ng-template carouselSlide>
-              <div class="slider-3_1 product-wrapper">
-                <div>
-                  <div class="clint-contain">
-                    <div class="client-icon">
-                      <img [src]="client.imageIcon" [alt]="client.title" />
-                    </div>
-                    <h2>{{ client.count }}</h2>
-                    <h4>{{ client.title }}</h4>
-                    <p>{{ client.description }}</p>
-                  </div>
-                </div>
-              </div>
-            </ng-template>
-            }
-          </owl-carousel-o>
-        </div>
-      </div>
-    </div>
-  </div>
+	<div class="container-fluid-lg">
+		<div class="row">
+			<div class="col-12">
+				<div class="about-us-title text-center">
+					<h4>{{ 'what_we_do' | transloco }}</h4>
+					<h2 class="center">{{ 'we_are_trusted_by_clients' | transloco }}</h2>
+				</div>
+				<div class="slider-dots">
+					<owl-carousel-o [options]="clientsOptions">
+						@for (client of clients; track client) {
+						<ng-template carouselSlide>
+							<div class="slider-3_1 product-wrapper">
+								<div>
+									<div class="clint-contain">
+										<div class="client-icon">
+											<img
+												[src]="client.imageIcon"
+												[alt]="client.title"
+											/>
+										</div>
+										<h2>{{ client.count }}</h2>
+										<h4>{{ client.title }}</h4>
+										<p>{{ client.description }}</p>
+									</div>
+								</div>
+							</div>
+						</ng-template>
+						}
+					</owl-carousel-o>
+				</div>
+			</div>
+		</div>
+	</div>
 </section>
 <!-- Client Section End -->
 
 <!-- Team Section Start -->
 <section class="team-section section-lg-space">
-  <div class="container-fluid-lg">
-    <div class="about-us-title text-center">
-      <h4 class="text-content">{{ 'our_creative_team' | translate }}</h4>
-      <h2 class="center">{{ 'fastkart_team_member' | translate }}</h2>
-    </div>
-    <div class="row">
-      <div class="col-12">
-        <div class="slider-dots">
-          <owl-carousel-o [options]="teamOptions">
-            @for (team of teamMembers; track team) {
-            <ng-template carouselSlide>
-              <div>
-                <div class="team-box">
-                  <div class="team-iamge">
-                    <img [src]="team.profile_image" class="img-fluid" [alt]="team.name" />
-                  </div>
-                  <div class="team-name">
-                    <h3>{{ team.name }}</h3>
-                    <h5>{{ team.designation }}</h5>
-                    <p>{{ team.description }}</p>
-                    <ul class="team-media">
-                      <li>
-                        <a href="https://www.facebook.com/" class="fb-bg">
-                          <i class="ri-facebook-fill"></i>
-                        </a>
-                      </li>
-                      <li>
-                        <a href="https://in.pinterest.com/" class="pint-bg">
-                          <i class="ri-pinterest-fill"></i>
-                        </a>
-                      </li>
-                      <li>
-                        <a href="https://twitter.com/" class="twitter-bg">
-                          <i class="ri-twitter-fill"></i>
-                        </a>
-                      </li>
-                      <li>
-                        <a href="https://www.instagram.com/" class="insta-bg">
-                          <i class="ri-instagram-fill"></i>
-                        </a>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </ng-template>
-            }
-          </owl-carousel-o>
-        </div>
-      </div>
-    </div>
-  </div>
+	<div class="container-fluid-lg">
+		<div class="about-us-title text-center">
+			<h4 class="text-content">{{ 'our_creative_team' | transloco }}</h4>
+			<h2 class="center">{{ 'fastkart_team_member' | transloco }}</h2>
+		</div>
+		<div class="row">
+			<div class="col-12">
+				<div class="slider-dots">
+					<owl-carousel-o [options]="teamOptions">
+						@for (team of teamMembers; track team) {
+						<ng-template carouselSlide>
+							<div>
+								<div class="team-box">
+									<div class="team-iamge">
+										<img
+											[src]="team.profile_image"
+											class="img-fluid"
+											[alt]="team.name"
+										/>
+									</div>
+									<div class="team-name">
+										<h3>{{ team.name }}</h3>
+										<h5>{{ team.designation }}</h5>
+										<p>{{ team.description }}</p>
+										<ul class="team-media">
+											<li>
+												<a
+													href="https://www.facebook.com/"
+													class="fb-bg"
+												>
+													<i class="ri-facebook-fill"></i>
+												</a>
+											</li>
+											<li>
+												<a
+													href="https://in.pinterest.com/"
+													class="pint-bg"
+												>
+													<i class="ri-pinterest-fill"></i>
+												</a>
+											</li>
+											<li>
+												<a
+													href="https://twitter.com/"
+													class="twitter-bg"
+												>
+													<i class="ri-twitter-fill"></i>
+												</a>
+											</li>
+											<li>
+												<a
+													href="https://www.instagram.com/"
+													class="insta-bg"
+												>
+													<i class="ri-instagram-fill"></i>
+												</a>
+											</li>
+										</ul>
+									</div>
+								</div>
+							</div>
+						</ng-template>
+						}
+					</owl-carousel-o>
+				</div>
+			</div>
+		</div>
+	</div>
 </section>
 <!-- Team Section End -->
 
 <!-- Review Section Start -->
 <section class="review-section section-lg-space">
-  <div class="container-fluid">
-    <div class="about-us-title text-center">
-      <h4 class="text-content">{{ 'latest_testimonials' | translate }}</h4>
-      <h2 class="center">{{ 'what_people_say' | translate }}</h2>
-    </div>
-    <div class="row">
-      <div class="col-12">
-        <div class="slider-dots">
-          <owl-carousel-o [options]="testimonialsOptions">
-            @for (team of testimonials; track team) {
-            <ng-template carouselSlide>
-              <div>
-                <div class="reviewer-box">
-                  <i class="ri-double-quotes-r"></i>
-                  <div class="product-rating">
-                    <ul class="rating">
-                      <li>
-                        <i data-feather="star" class="fill"></i>
-                      </li>
-                      <li>
-                        <i data-feather="star" class="fill"></i>
-                      </li>
-                      <li>
-                        <i data-feather="star" class="fill"></i>
-                      </li>
-                      <li>
-                        <i data-feather="star" class="fill"></i>
-                      </li>
-                      <li>
-                        <i data-feather="star"></i>
-                      </li>
-                    </ul>
-                  </div>
-                  <h3>{{ team.short_description }}</h3>
-                  <p>"{{ team.description }}"</p>
-                  <div class="reviewer-profile">
-                    <div class="reviewer-image">
-                      <img [src]="team.profile_image" class="" alt="{{ team.name }}" />
-                    </div>
-                    <div class="reviewer-name">
-                      <h4>{{ team.name }}</h4>
-                      <h6>{{ team.designation }}</h6>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </ng-template>
-            }
-          </owl-carousel-o>
-        </div>
-      </div>
-    </div>
-  </div>
+	<div class="container-fluid">
+		<div class="about-us-title text-center">
+			<h4 class="text-content">{{ 'latest_testimonials' | transloco }}</h4>
+			<h2 class="center">{{ 'what_people_say' | transloco }}</h2>
+		</div>
+		<div class="row">
+			<div class="col-12">
+				<div class="slider-dots">
+					<owl-carousel-o [options]="testimonialsOptions">
+						@for (team of testimonials; track team) {
+						<ng-template carouselSlide>
+							<div>
+								<div class="reviewer-box">
+									<i class="ri-double-quotes-r"></i>
+									<div class="product-rating">
+										<ul class="rating">
+											<li>
+												<i
+													data-feather="star"
+													class="fill"
+												></i>
+											</li>
+											<li>
+												<i
+													data-feather="star"
+													class="fill"
+												></i>
+											</li>
+											<li>
+												<i
+													data-feather="star"
+													class="fill"
+												></i>
+											</li>
+											<li>
+												<i
+													data-feather="star"
+													class="fill"
+												></i>
+											</li>
+											<li>
+												<i data-feather="star"></i>
+											</li>
+										</ul>
+									</div>
+									<h3>{{ team.short_description }}</h3>
+									<p>"{{ team.description }}"</p>
+									<div class="reviewer-profile">
+										<div class="reviewer-image">
+											<img
+												[src]="team.profile_image"
+												class=""
+												alt="{{ team.name }}"
+											/>
+										</div>
+										<div class="reviewer-name">
+											<h4>{{ team.name }}</h4>
+											<h6>{{ team.designation }}</h6>
+										</div>
+									</div>
+								</div>
+							</div>
+						</ng-template>
+						}
+					</owl-carousel-o>
+				</div>
+			</div>
+		</div>
+	</div>
 </section>
 <!-- Review Section End -->
 <!-- Blog Section Start -->
 <section class="section-lg-space">
-  <div class="container-fluid-lg">
-    <div class="about-us-title text-center">
-      <h4 class="text-content">{{ 'our_blog' | translate }}</h4>
-      <h2 class="center">{{ 'our_latest_blog' | translate }}</h2>
-    </div>
-    <div class="row">
-      <div class="col-12">
-        <div class="slider-dots">
-          <owl-carousel-o [options]="blogOptions">
-            @for (blog of (blog$ | async)?.data; track blog) {
-            <ng-template carouselSlide>
-              <div>
-                <div class="blog-box">
-                  <div class="blog-box-image">
-                    <div class="blog-image">
-                      <a [routerLink]="['/blog/', blog?.slug]">
-                        <img
-                          [src]="blog?.blog_thumbnail?.original_url
+	<div class="container-fluid-lg">
+		<div class="about-us-title text-center">
+			<h4 class="text-content">{{ 'our_blog' | transloco }}</h4>
+			<h2 class="center">{{ 'our_latest_blog' | transloco }}</h2>
+		</div>
+		<div class="row">
+			<div class="col-12">
+				<div class="slider-dots">
+					<owl-carousel-o [options]="blogOptions">
+						@for (blog of (blog$ | async)?.data; track blog) {
+						<ng-template carouselSlide>
+							<div>
+								<div class="blog-box">
+									<div class="blog-box-image">
+										<div class="blog-image">
+											<a [routerLink]="['/blog/', blog?.slug]">
+												<img
+													[src]="blog?.blog_thumbnail?.original_url
                                                 ? blog?.blog_thumbnail?.original_url
                                                 : 'assets/images/blog.png'"
-                          [alt]="blog.title"
-                        />
-                      </a>
-                    </div>
-                  </div>
-                  <a [routerLink]="['/blog/', blog?.slug]" class="blog-detail d-block">
-                    <h6>{{ blog?.created_by?.name }}</h6>
-                    <h5>{{ blog?.title }}</h5>
-                  </a>
-                </div>
-              </div>
-            </ng-template>
-            }
-          </owl-carousel-o>
-        </div>
-      </div>
-    </div>
-  </div>
+													[alt]="blog.title"
+												/>
+											</a>
+										</div>
+									</div>
+									<a
+										[routerLink]="['/blog/', blog?.slug]"
+										class="blog-detail d-block"
+									>
+										<h6>{{ blog?.created_by?.name }}</h6>
+										<h5>{{ blog?.title }}</h5>
+									</a>
+								</div>
+							</div>
+						</ng-template>
+						}
+					</owl-carousel-o>
+				</div>
+			</div>
+		</div>
+	</div>
 </section>
 <!-- Blog Section End -->

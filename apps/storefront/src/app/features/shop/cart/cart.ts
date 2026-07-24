@@ -2,55 +2,68 @@ import { AsyncPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
-import { DeleteCartAction, UpdateCartAction } from '@data-access/actions/cart.action';
-import { AddToWishlistAction } from '@data-access/actions/wishlist.action';
-import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
-import { Button } from '@shared/ui/button/button';
-import { NoData } from '@shared/ui/no-data/no-data';
-import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
+import { CartFacade } from '@core/state/cart/cart.facade';
+import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { CartState } from '@data-access/states/cart.state';
+import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
+import { Button } from '@shared/ui/button/button';
+import { CartLineConfig } from '@shared/ui/cart-line-config/cart-line-config';
+import { ProductConfigModal } from '@shared/ui/modal/product-config-modal/product-config-modal';
+import { NoData } from '@shared/ui/no-data/no-data';
+import { translatedBreadcrumb } from '@shared/util/breadcrumb-i18n';
 
 @Component({
-  selector: 'app-cart',
-  templateUrl: './cart.html',
-  styleUrls: ['./cart.scss'],
-  providers: [CurrencySymbolPipe],
-  imports: [Breadcrumb, RouterLink, Button, NoData, AsyncPipe, CurrencySymbolPipe, TranslateModule],
+	selector: 'app-cart',
+	templateUrl: './cart.html',
+	styleUrls: ['./cart.scss'],
+	providers: [CurrencySymbolPipe],
+	imports: [
+		Breadcrumb,
+		RouterLink,
+		Button,
+		CartLineConfig,
+		ProductConfigModal,
+		NoData,
+		AsyncPipe,
+		CurrencySymbolPipe,
+		TranslocoModule,
+	],
 })
 export class Cart {
-  private store = inject(Store);
+	private wishlistFacade = inject(WishlistFacade);
+	private cartFacade = inject(CartFacade);
 
-  cartItem$: Observable<ICart[]> = inject(Store).select(CartState.cartItems);
-  cartTotal$: Observable<number> = inject(Store).select(CartState.cartTotal);
+	cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
+	cartTotal$: Observable<number> = this.cartFacade.cartTotal$;
 
-  public breadcrumb: IBreadcrumb = {
-    title: 'Cart',
-    items: [{ label: 'Cart', active: true }],
-  };
+	/** Composed per-unit price (base + add-on/bundle deltas) when present, else plain sale price. */
+	unitPrice(item: ICart): number {
+		return item.unit_price ?? (item.variation ? item.variation.sale_price : item.product.sale_price);
+	}
 
-  updateQuantity(item: ICart, qty: number) {
-    const params: ICartAddOrUpdate = {
-      id: item.id,
-      product: item.product,
-      product_id: item.product.id,
-      variation: item.variation,
-      variation_id: item?.variation_id ? item?.variation_id : null,
-      quantity: qty,
-    };
-    this.store.dispatch(new UpdateCartAction(params));
-  }
+	public breadcrumb = translatedBreadcrumb('cart');
 
-  delete(id: number) {
-    this.store.dispatch(new DeleteCartAction(id));
-  }
+	updateQuantity(item: ICart, qty: number) {
+		const params: ICartAddOrUpdate = {
+			id: item.id,
+			product: item.product,
+			product_id: item.product.id,
+			variation: item.variation,
+			variation_id: item?.variation_id ? item?.variation_id : null,
+			quantity: qty,
+		};
+		this.cartFacade.updateCart(params);
+	}
 
-  addToWishlist(id: number) {
-    this.store.dispatch(new AddToWishlistAction({ product_id: id }));
-  }
+	delete(id: number) {
+		this.cartFacade.deleteCart(id);
+	}
+
+	addToWishlist(id: number) {
+		this.wishlistFacade.addToWishlist({ product_id: id });
+	}
 }

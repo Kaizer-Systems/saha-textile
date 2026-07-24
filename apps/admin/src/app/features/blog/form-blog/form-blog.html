@@ -11,12 +11,12 @@
 		<input
 			class="form-control"
 			type="text"
-			placeholder="{{ 'enter_blog_title' | translate }}"
+			placeholder="{{ 'enter_blog_title' | transloco }}"
 			name="title"
 			formControlName="title"
 		/>
 		@if (form.controls['title'].touched && form.controls['title'].errors?.['required']) {
-		<div class="invalid-feedback">{{ 'title_is_required' | translate }}</div>
+		<div class="invalid-feedback">{{ 'title_is_required' | transloco }}</div>
 		}
 	</app-form-fields>
 	<app-form-fields
@@ -26,7 +26,7 @@
 	>
 		<textarea
 			class="form-control"
-			placeholder="{{ 'enter_blog_description' | translate }}"
+			placeholder="{{ 'enter_blog_description' | transloco }}"
 			formControlName="description"
 			rows="3"
 		></textarea>
@@ -61,7 +61,7 @@
 			(selectedFiles)="selectThumbnail($event)"
 		/>
 		@if (form.controls['blog_thumbnail_id'].touched && form.controls['blog_thumbnail_id'].errors?.['required']) {
-		<div class="invalid-feedback">{{ 'thumbnail_is_required' | translate }}</div>
+		<div class="invalid-feedback">{{ 'thumbnail_is_required' | transloco }}</div>
 		}
 	</app-form-fields>
 	<app-form-fields
@@ -77,7 +77,7 @@
 			(selectedItem)="selectCategoryItem($event)"
 		/>
 		@if (form.controls['categories'].touched && form.controls['categories'].errors?.['required']) {
-		<div class="invalid-feedback">{{ 'select_category_is_required' | translate }}</div>
+		<div class="invalid-feedback">{{ 'select_category_is_required' | transloco }}</div>
 		}
 	</app-form-fields>
 	<app-form-fields
@@ -132,7 +132,7 @@
 		<input
 			class="form-control"
 			type="text"
-			placeholder="{{ 'enter_meta_title' | translate }}"
+			placeholder="{{ 'enter_meta_title' | transloco }}"
 			formControlName="meta_title"
 		/>
 	</app-form-fields>
@@ -143,7 +143,7 @@
 	>
 		<textarea
 			class="form-control"
-			placeholder="{{ 'enter_meta_description' | translate }}"
+			placeholder="{{ 'enter_meta_description' | transloco }}"
 			formControlName="meta_description"
 			rows="3"
 		></textarea>
@@ -175,5 +175,5 @@
 			</label>
 		</div>
 	</app-form-fields>
-	<app-button [id]="'blog_btn'">{{ (type() === 'create' ? 'save_blog' : 'update_blog') | translate }}</app-button>
+	<app-button [id]="'blog_btn'">{{ (type() === 'create' ? 'save_blog' : 'update_blog') | transloco }}</app-button>
 </form>

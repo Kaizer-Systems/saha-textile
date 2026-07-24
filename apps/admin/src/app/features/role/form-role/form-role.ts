@@ -2,20 +2,21 @@ import { Component, inject, input } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, FormArray, ReactiveFormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Subject, of } from 'rxjs';
 import { switchMap, map, takeUntil } from 'rxjs/operators';
 
+import { RoleService } from '@data-access/services/role.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { RoleService } from '@data-access/services/role.service';
+
 import { Permissions } from '../permissions/permissions';
 
 @Component({
 	selector: 'app-form-role',
 	templateUrl: './form-role.html',
 	styleUrls: ['./form-role.scss'],
-	imports: [ReactiveFormsModule, FormFields, Permissions, Button, TranslateModule],
+	imports: [ReactiveFormsModule, FormFields, Permissions, Button, TranslocoModule],
 })
 export class FormRole {
 	private roleService = inject(RoleService);

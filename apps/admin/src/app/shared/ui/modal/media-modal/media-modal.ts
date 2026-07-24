@@ -1,5 +1,6 @@
 import { Component, TemplateRef, inject, viewChild, output, input } from '@angular/core';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import {
 	NgbModal,
 	ModalDismissReasons,
@@ -12,12 +13,12 @@ import {
 	NgbNavContent,
 	NgbNavOutlet,
 } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 import { NgxDropzoneChangeEvent, NgxDropzoneModule } from 'ngx-dropzone';
 
+import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { NotificationService } from '@data-access/services/notification.service';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
+
 import { Button } from '../../button/button';
 import { MediaBox } from '../../media-box/media-box';
 
@@ -37,7 +38,7 @@ import { MediaBox } from '../../media-box/media-box';
 		HasPermissionDirective,
 		NgxDropzoneModule,
 		NgbNavOutlet,
-		TranslateModule,
+		TranslocoModule,
 	],
 })
 export class MediaModal {

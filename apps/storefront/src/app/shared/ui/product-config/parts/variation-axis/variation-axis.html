@@ -1,0 +1,53 @@
+<div class="variation-axis product-package">
+	<app-variant-attributes
+		[product]="product()!"
+		[attributes]="product()?.attributes || []"
+		[owlCar]="owlCar()"
+		(selectVariation)="onSelect($event)"
+	/>
+
+	@if (product()?.variations?.length) {
+	<div class="variation-table-wrap">
+		<table class="variation-table table">
+			<thead>
+				<tr>
+					<th scope="col">{{ 'option' | transloco }}</th>
+					<th scope="col">{{ 'sku' | transloco }}</th>
+					<th scope="col">{{ 'stock' | transloco }}</th>
+					<th
+						scope="col"
+						class="text-end"
+					>
+						{{ 'price' | transloco }}
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+				@for (variation of product()?.variations; track variation.id) {
+				<tr
+					[class.active]="selectedVariation?.id === variation.id"
+					[class.disabled]="variation.stock_status === 'out_of_stock'"
+				>
+					<td class="option-cell">
+						<i
+							class="ri-checkbox-circle-fill"
+							[class.checked]="selectedVariation?.id === variation.id"
+						></i>
+						{{ variation.name }}
+					</td>
+					<td class="text-content">{{ variation.sku }}</td>
+					<td>
+						@if (variation.stock_status === 'out_of_stock') {
+						<span class="text-danger">{{ 'out_of_stock' | transloco }}</span>
+						} @else {
+						<span class="in-stock">{{ variation.quantity }} {{ 'in_stock' | transloco }}</span>
+						}
+					</td>
+					<td class="price-cell text-end">{{ variation.sale_price | currencySymbol }}</td>
+				</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+	}
+</div>

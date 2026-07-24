@@ -1,22 +1,22 @@
 import { Component, effect, inject, signal, viewChild } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
-import { injectUsersQuery } from '@data-access/queries/user.queries';
-import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { ImportCsvModal } from '@shared/ui/modal/import-csv-modal/import-csv-modal';
-import { Table } from '@shared/ui/table/table';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { IUser } from '@data-access/interfaces/user.interface';
+import { injectUsersQuery } from '@data-access/queries/user.queries';
+import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { ImportCsvModal } from '@shared/ui/modal/import-csv-modal/import-csv-modal';
+import { Table } from '@shared/ui/table/table';
 
 @Component({
 	selector: 'app-user',
 	templateUrl: './user.html',
 	styleUrls: ['./user.scss'],
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, ImportCsvModal, TranslateModule],
+	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, ImportCsvModal, TranslocoModule],
 })
 export class User {
 	router = inject(Router);

@@ -1,25 +1,28 @@
 <ul class="category-list custom-padding custom-height">
-  @for (price of prices; track price) {
-  <li>
-    <div class="form-check ps-0 m-0 category-list-box">
-      <input
-        class="checkbox_animated"
-        type="checkbox"
-        id="price-filter{{price.id}}"
-        [value]="price.value"
-        [checked]="checked(price.value!)"
-        (change)="applyFilter($event)"
-      />
-      <label class="form-check-label" for="price-filter{{price.id}}">
-        @if (price?.price) {
-        <span class="name">{{ price.text }} {{ price.price! | currencySymbol }}</span>
-        } @else {
-        <span class="name"
-          >{{ price.minPrice! | currencySymbol }} - {{ price.maxPrice! | currencySymbol }}</span
-        >
-        }
-      </label>
-    </div>
-  </li>
-  }
+	@for (price of prices; track price) {
+	<li>
+		<div class="form-check category-list-box m-0 ps-0">
+			<input
+				class="checkbox_animated"
+				type="checkbox"
+				id="price-filter{{price.id}}"
+				[value]="price.value"
+				[checked]="checked(price.value!)"
+				(change)="applyFilter($event)"
+			/>
+			<label
+				class="form-check-label"
+				for="price-filter{{price.id}}"
+			>
+				@if (price?.price) {
+				<span class="name">{{ price.text }} {{ price.price! | currencySymbol }}</span>
+				} @else {
+				<span class="name">
+					{{ price.minPrice! | currencySymbol }} - {{ price.maxPrice! | currencySymbol }}
+				</span>
+				}
+			</label>
+		</div>
+	</li>
+	}
 </ul>

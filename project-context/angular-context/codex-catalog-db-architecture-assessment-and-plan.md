@@ -273,7 +273,7 @@ Rules:
 - Product-level `filter_only` values match denormalized product metadata.
 - Named add-ons and bundle component options are not sidebar facets by default; expose them only if the admin explicitly marks the facet as merchandising-relevant, e.g. `Custom blouse available`.
 - Shipping filters are coarse flags (`domesticShipping`, `internationalShipping`, `codEligible`, `freeShippingEligible`). Exact pincode/courier serviceability remains PDP/cart/checkout.
-- Rating filters use persisted product aggregates (`ratingAverage`, `ratingCount`, rating buckets), not live review scans.
+- Rating filters use persisted product aggregates (`ratingAverage`, `ratingCount`, rating buckets), not live review scans. Aggregates are recomputed from **approved** verified reviews only (owner-locked 2026-07-23).
 - Price facets use canonical INR effective prices; converted storefront ranges are translated to INR before filtering and converted back for display.
 - Arbitrary facet combinations are `noindex,follow`; only curated `productGroups`/SEO routes may become indexable landing pages.
 
@@ -891,7 +891,20 @@ Purpose: stock audit without building a warehouse system.
   productId: string;
   type: 'manual_adjustment' | 'order_reserved' | 'order_released' | 'order_fulfilled' | 'return_restocked' | 'damage_writeoff';
   quantityDelta: number;
-  reason?: string;
+  /** Required when type === 'manual_adjustment'. Fixed taxonomy (owner-locked 2026-07-23). */
+  reasonCode?:
+    | 'damage'
+    | 'lost_missing'
+    | 'manual_recount_correction'
+    | 'supplier_shortage'
+    | 'return_restocked'
+    | 'return_not_restocked'
+    | 'internal_use_sample'
+    | 'photoshoot_display_use'
+    | 'system_migration_correction'
+    | 'other';
+  /** Optional for most manual reason codes; mandatory when reasonCode === 'other'. */
+  note?: string;
   orderId?: string;
   returnId?: string;
   actorUserId?: string;
@@ -899,10 +912,18 @@ Purpose: stock audit without building a warehouse system.
 }
 ```
 
+Rules (owner-locked 2026-07-23):
+
+- Manual adjustments **must** set `reasonCode` from the fixed enum above (not free-text reasons as the primary key).
+- `note` is optional except when `reasonCode === 'other'` (then required).
+- Automated `type` values keep their own provenance (`orderId` / `returnId`); they do not use the manual reason taxonomy.
+- Prefer `type: 'manual_adjustment'` + `reasonCode: 'damage'` (etc.) over inventing parallel free-text `reason` strings for reporting.
+
 Indexes:
 
 - `{ variantId: 1, createdAt: -1 }`.
 - `{ orderId: 1 }`.
+- `{ type: 1, reasonCode: 1, createdAt: -1 }` (manual adjustment reports).
 
 ### 7.15 `mediaAssets`
 
@@ -1079,6 +1100,8 @@ lineSnapshot: {
 
 Why: archived products must not affect order history, return processing, GST/tax reports, or refund calculations.
 
+**Public track-order (owner-locked 2026-07-23):** not a launch feature. When later implemented, public lookup must require **order number + email or phone** match (never order-number-only), with rate limits and a minimal tracking response derived from order + shipment status — not a full order dump. Authenticated account order history remains the launch path.
+
 ### 7.21 `payments`
 
 Purpose: gateway attempts and settlement data, separate from order.
@@ -1196,22 +1219,40 @@ Order lines snapshot the resolved tax result.
 
 ### 7.26 `auditLogs`
 
-Purpose: admin accountability for products/categories/prices/promotions/orders.
+Purpose: admin + security-sensitive accountability (owner-locked 2026-07-23: broad audit, tiered retention).
 
 ```ts
 {
   _id: string;
-  actorUserId: string;
+  actorUserId?: string; // may be null for some system events; prefer always set when known
+  actorAudience?: 'admin' | 'system';
   action: string;
   entityType: string;
   entityId: string;
+  /** Important field diffs only — not unbounded full documents; never secrets/tokens/card data. */
   before?: Record<string, unknown>;
   after?: Record<string, unknown>;
+  /** Helps retention jobs: 'financial_security' | 'catalog_admin' | 'security_auth' etc. */
+  retentionClass?: 'financial_security' | 'catalog_admin' | 'security_auth';
+  ipHash?: string;
+  requestId?: string;
   createdAt: Date;
 }
 ```
 
-Self-hosted Mongo note: do not store huge before/after payloads forever. Store important diffs and consider TTL/cold archive once retention becomes operationally expensive.
+Rules (owner-locked 2026-07-23):
+
+- **Every admin mutating write** creates an audit row (floor). Explicit coverage includes catalog, pricing, inventory, purchase invoices, orders, payments/refunds, shipping/tax/gateway/currency/commission/notification config, RBAC/user-admin, admin auth failures/lockouts, session revocation/reuse-detection, relevant draft-restore conflicts.
+- **Retention defaults:** `financial_security` / security auth family → **7 years**; catalog/general admin mutation → **5 years**. Accountant may lengthen financial/security; do not silently shorten.
+- **Raw analytics events** are **not** this collection; after rollup retain raw events ~**90 days** then TTL/cold-archive.
+- Redact secrets; prefer diffs; avoid unbounded before/after blobs. Cold-archive compacted audit JSON to Spaces only if disk pressure / retention policy requires (restore is explicit, not live query).
+
+Indexes:
+
+- `{ entityType: 1, entityId: 1, createdAt: -1 }`.
+- `{ actorUserId: 1, createdAt: -1 }`.
+- `{ retentionClass: 1, createdAt: 1 }` (retention/TTL jobs).
+- `{ createdAt: -1 }` (admin viewer).
 
 ### 7.27 `faqEntries` and `contentBlocks`
 
@@ -1807,6 +1848,45 @@ Indexes:
 - `{ badgeCode: 1, status: 1 }`.
 - `{ source: 1, sourceId: 1 }`.
 
+### 7.41 `reviews`
+
+Purpose: product reviews/ratings with verified-purchase eligibility and admin moderation (owner-locked 2026-07-23).
+
+```ts
+type ReviewDoc = {
+	_id: string;
+	productId: string;
+	variantId?: string;
+	userId: string;
+	orderId: string; // purchase proof; one logical review per user+product (policy at API)
+	rating: 1 | 2 | 3 | 4 | 5;
+	title?: { en?: string; bn?: string }; // optional; body is primary
+	body: { en?: string; bn?: string }; // at least one active locale required at submit
+	imageMediaAssetIds?: string[]; // optional; same mediaAssets pipeline
+	status: 'pending' | 'approved' | 'rejected' | 'hidden';
+	verifiedPurchase: true; // always true for accepted submissions; reject if not verifiable
+	moderatedByUserId?: string;
+	moderatedAt?: Date;
+	moderationNote?: string;
+	createdAt: Date;
+	updatedAt: Date;
+};
+```
+
+Rules (owner-locked 2026-07-23):
+
+- Submitters must be **logged in** with a **verified purchase** of the product; guests use login-to-review + pending-intent replay.
+- Content: **star + text required**; **images optional**.
+- Public storefront lists and rating aggregates (`ratingAverage`, `ratingCount`, buckets) include **`status: 'approved'` only**.
+- Admin moderation queue required (approve / reject / hide). No auto-publish.
+- Do not emit review/rating JSON-LD from pending or fake data.
+
+Indexes:
+
+- `{ productId: 1, status: 1, createdAt: -1 }`.
+- Unique `{ userId: 1, productId: 1 }` (one review per user per product unless a future policy explicitly allows edits/replacements).
+- `{ status: 1, createdAt: -1 }` (admin queue).
+
 ## 8. Product Type Strategy
 
 ### Option Semantics Rule
@@ -2049,7 +2129,7 @@ Category and group pages should generate:
 
 Rules:
 
-- Do not emit fake review/rating schema. Use only stored verified review data.
+- Do not emit fake review/rating schema. Use only stored **approved, verified-purchase** review data (owner-locked 2026-07-23: moderation before publish; optional images).
 - Do not emit out-of-stock variants as available.
 - Do not expose draft/hidden/archived products in structured data.
 - Product schema must use the canonical product URL, not every category placement URL.
@@ -2490,8 +2570,8 @@ Mongo cannot query Spaces directly. A cold archive is restored explicitly by the
 - Avoid indexing archived-heavy fields.
 - Use projections everywhere.
 - Keep variants in a separate collection so product table/search reads stay small.
-- Avoid unbounded audit logs in Mongo.
-- Do not store raw search events indefinitely.
+- Avoid unbounded audit logs in Mongo — use tiered retention (financial/security **7y**, catalog/admin **5y**) and compact diffs; cold-archive only if needed (owner-locked 2026-07-23).
+- Do not store raw search/analytics events indefinitely — **~90 days** after rollup then TTL/cold-archive.
 - Do not use regex typeahead against products.
 - Prefer keyset pagination for admin lists after data grows.
 - Store media outside Mongo.

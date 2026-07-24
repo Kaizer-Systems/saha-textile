@@ -3,7 +3,7 @@
 	let-modal
 >
 	<div class="modal-header">
-		<h3 class="fw-semibold mb-1">{{ 'Answers' | translate }}</h3>
+		<h3 class="fw-semibold mb-1">{{ 'Answers' | transloco }}</h3>
 		<app-button
 			[class]="'btn btn-close'"
 			[spinner]="false"
@@ -18,11 +18,11 @@
 			<table class="all-package theme-table no-footer table">
 				<tbody>
 					<tr>
-						<td class="fw-semibold text-start">{{ 'Question' | translate }}</td>
+						<td class="fw-semibold text-start">{{ 'Question' | transloco }}</td>
 						<td class="text-start">{{ qna?.question }}</td>
 					</tr>
 					<tr>
-						<td class="fw-semibold text-start">{{ 'Answers' | translate }}</td>
+						<td class="fw-semibold text-start">{{ 'Answers' | transloco }}</td>
 						<td class="text-start">
 							<textarea
 								class="form-control"
@@ -40,14 +40,14 @@
 					[class]="'btn-md fw-bold btn btn-secondary'"
 					[id]="'close_answers_modal_btn'"
 				>
-					{{ 'Close' | translate }}
+					{{ 'Close' | transloco }}
 				</app-button>
 				<app-button
 					[class]="'btn-theme btn-md fw-bold btn'"
 					[id]="'submit_answers_btn'"
 					(click)="submit()"
 				>
-					{{ 'submit' | translate }}
+					{{ 'submit' | transloco }}
 				</app-button>
 			</div>
 		</div>

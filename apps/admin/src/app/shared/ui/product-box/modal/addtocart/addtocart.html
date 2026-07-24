@@ -3,7 +3,7 @@
 	let-modal
 >
 	<div class="modal-header">
-		<h3 class="fw-semibold mb-1">{{ 'product_details' | translate }}</h3>
+		<h3 class="fw-semibold mb-1">{{ 'product_details' | transloco }}</h3>
 		<app-button
 			[class]="'btn btn-close'"
 			[spinner]="false"
@@ -92,7 +92,7 @@
 							[class]="'btn btn-animation'"
 							(click)="addToCart(product)"
 						>
-							{{ 'add_to_cart' | translate }}
+							{{ 'add_to_cart' | transloco }}
 						</app-button>
 						} @else {
 						<app-button

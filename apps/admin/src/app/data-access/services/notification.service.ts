@@ -5,9 +5,10 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ToastrService } from 'ngx-toastr';
 import { Observable, Subject } from 'rxjs';
 
-import { environment } from '../../../../public/environments/environment';
 import { Params } from '@data-access/interfaces/core.interface';
 import { INotificationModel } from '@data-access/interfaces/notification.interface';
+
+import { environment } from '../../../../public/environments/environment';
 
 @Injectable({
 	providedIn: 'root',

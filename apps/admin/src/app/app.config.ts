@@ -1,32 +1,23 @@
 import { CurrencyPipe } from '@angular/common';
-import {
-	HTTP_INTERCEPTORS,
-	HttpClient,
-	provideHttpClient,
-	withFetch,
-	withInterceptorsFromDi,
-} from '@angular/common/http';
-import { ApplicationConfig, importProvidersFrom, provideZoneChangeDetection } from '@angular/core';
+import { HTTP_INTERCEPTORS, provideHttpClient, withFetch, withInterceptorsFromDi } from '@angular/common/http';
+import { ApplicationConfig, isDevMode, provideZoneChangeDetection } from '@angular/core';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 
+import { provideTransloco } from '@jsverse/transloco';
 import { provideEffects } from '@ngrx/effects';
 import { provideStore } from '@ngrx/store';
-import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
-import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { provideToastr } from 'ngx-toastr';
 
-import { routes } from './app.routes';
-import { CartEffects } from '@core/state/cart/cart.effects';
-import { cartReducer } from '@core/state/cart/cart.reducer';
 import { AuthInterceptor } from '@core/interceptors/auth.interceptor';
 import { GlobalErrorHandlerInterceptor } from '@core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from '@core/interceptors/loader.interceptor';
+import { CartEffects } from '@core/state/cart/cart.effects';
+import { cartReducer } from '@core/state/cart/cart.reducer';
 
-export function HttpLoaderFactory(http: HttpClient) {
-	return new TranslateHttpLoader(http, './assets/i18n/', '.json');
-}
+import { routes } from './app.routes';
+import { TranslocoHttpLoader } from './core/i18n/transloco-loader';
 
 export const appConfig: ApplicationConfig = {
 	providers: [
@@ -53,15 +44,20 @@ export const appConfig: ApplicationConfig = {
 			useClass: LoaderInterceptor,
 			multi: true,
 		},
-		importProvidersFrom(
-			TranslateModule.forRoot({
-				loader: {
-					provide: TranslateLoader,
-					useFactory: HttpLoaderFactory,
-					deps: [HttpClient],
-				},
-			}),
-		),
+		// Transloco — the locked i18n lib (ngx-translate fully removed). Loads
+		// assets/i18n/<lang>.json via TranslocoHttpLoader; the language switcher drives
+		// it through TranslocoService.setActiveLang.
+		provideTransloco({
+			config: {
+				availableLangs: ['en', 'fr'],
+				defaultLang: 'en',
+				fallbackLang: 'en',
+				reRenderOnLangChange: true,
+				prodMode: !isDevMode(),
+				missingHandler: { useFallbackTranslation: true },
+			},
+			loader: TranslocoHttpLoader,
+		}),
 		provideZoneChangeDetection({ eventCoalescing: true }),
 		provideAnimations(),
 		provideStore({ cart: cartReducer }),

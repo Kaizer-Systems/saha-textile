@@ -1,36 +1,37 @@
-import { Component, inject, input, SimpleChanges } from '@angular/core';
+import { Component, computed, input, SimpleChanges } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
-import { Store } from '@ngxs/store';
 import { Observable } from 'rxjs';
 
 import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
-import { IOption } from '@data-access/interfaces/theme-option.interface';
-import { CategoryState } from '@data-access/states/category.state';
+import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
+import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 
 @Component({
-  selector: 'app-footer-categories',
-  templateUrl: './categories.html',
-  styleUrls: ['./categories.scss'],
-  imports: [RouterLink],
+	selector: 'app-footer-categories',
+	templateUrl: './categories.html',
+	styleUrls: ['./categories.scss'],
+	imports: [RouterLink],
 })
 export class FooterCategories {
-  readonly data = input<IOption | null>();
+	readonly data = input<ISiteConfig | null>();
 
-  category$: Observable<ICategoryModel> = inject(Store).select(
-    CategoryState.category,
-  ) as Observable<ICategoryModel>;
+	private readonly categoriesQuery = injectCategoriesQuery(() => ({ status: 1 }));
+	category$: Observable<ICategoryModel> = toObservable(
+		computed(() => this.categoriesQuery.data() ?? { data: [], total: 0 }),
+	);
 
-  public categories: ICategory[];
+	public categories: ICategory[];
 
-  ngOnChanges(changes: SimpleChanges) {
-    const ids = changes['data']?.currentValue?.footer?.footer_categories;
-    if (Array.isArray(ids)) {
-      this.category$.subscribe(categories => {
-        if (Array.isArray(categories.data)) {
-          this.categories = categories.data.filter(category => ids?.includes(category.id));
-        }
-      });
-    }
-  }
+	ngOnChanges(changes: SimpleChanges) {
+		const ids = changes['data']?.currentValue?.footer?.footer_categories;
+		if (Array.isArray(ids)) {
+			this.category$.subscribe((categories) => {
+				if (Array.isArray(categories.data)) {
+					this.categories = categories.data.filter((category) => ids?.includes(category.id));
+				}
+			});
+		}
+	}
 }

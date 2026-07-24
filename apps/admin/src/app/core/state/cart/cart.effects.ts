@@ -7,6 +7,7 @@ import { catchError, map, mergeMap, withLatestFrom } from 'rxjs/operators';
 
 import { CartService } from '@data-access/services/cart.service';
 import { NotificationService } from '@data-access/services/notification.service';
+
 import { CartActions } from './cart.actions';
 import { selectCartItems } from './cart.selectors';
 
@@ -22,7 +23,9 @@ export class CartEffects {
 			ofType(CartActions.loadCart),
 			mergeMap(() =>
 				this.cartService.getCartItems().pipe(
-					map((result) => CartActions.loadCartSuccess({ items: result.items ?? [], total: result.total ?? 0 })),
+					map((result) =>
+						CartActions.loadCartSuccess({ items: result.items ?? [], total: result.total ?? 0 }),
+					),
 					catchError(() => of(CartActions.loadCartSuccess({ items: [], total: 0 }))),
 				),
 			),

@@ -11,12 +11,12 @@
 		<input
 			class="form-control"
 			type="text"
-			placeholder="{{ 'enter_title' | translate }}"
+			placeholder="{{ 'enter_title' | transloco }}"
 			name="title"
 			formControlName="title"
 		/>
 		@if (form.controls['title'].touched && form.controls['title'].errors?.['required']) {
-		<div class="invalid-feedback">{{ 'title_is_required' | translate }}</div>
+		<div class="invalid-feedback">{{ 'title_is_required' | transloco }}</div>
 		}
 	</app-form-fields>
 	<app-form-fields
@@ -45,7 +45,7 @@
 		<input
 			class="form-control"
 			type="text"
-			placeholder="{{'enter_meta_title' | translate }}"
+			placeholder="{{'enter_meta_title' | transloco }}"
 			formControlName="meta_title"
 		/>
 	</app-form-fields>
@@ -56,7 +56,7 @@
 	>
 		<textarea
 			class="form-control"
-			placeholder="{{ 'enter_meta_description' | translate }}"
+			placeholder="{{ 'enter_meta_description' | transloco }}"
 			formControlName="meta_description"
 			rows="3"
 		></textarea>
@@ -88,5 +88,5 @@
 			</label>
 		</div>
 	</app-form-fields>
-	<app-button [id]="'page_btn'">{{ (type() === 'create' ? 'save_page' : 'update_page') | translate }}</app-button>
+	<app-button [id]="'page_btn'">{{ (type() === 'create' ? 'save_page' : 'update_page') | transloco }}</app-button>
 </form>

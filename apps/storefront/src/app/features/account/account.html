@@ -1,35 +1,44 @@
-<app-breadcrumb [breadcrumb]="breadcrumb" />
+<app-breadcrumb [breadcrumb]="breadcrumb()" />
 <section class="user-dashboard-section section-b-space">
-  <div class="container-fluid-lg">
-    <div class="row">
-      <div class="col-xxl-3 col-lg-4">
-        <div class="dashboard-left-sidebar" [class.show]="open">
-          <app-sidebar [show]="open" (menu)="openMenu($event)" />
-        </div>
-      </div>
-      <div class="col-xxl-9 col-lg-8 custom-box-loader" id="account">
-        @if ((loadingStatus$ | async)) {
-        <div class="box-loader">
-          <app-loader [loaderClass]="'custom-loader-wrapper blur-bg'" />
-        </div>
-        }
-        <ng-container>
-          <app-button
-            [class]="'btn left-dashboard-show btn-animation btn-md fw-bold d-block mb-4 d-lg-none'"
-            [type]="'button'"
-            [id]="'show_menu'"
-            (click)="openMenu(true)"
-            [spinner]="false"
-          >
-            {{ 'show_menu' | translate }}
-          </app-button>
-          <div class="dashboard-right-sidebar">
-            <div class="tab-content">
-              <router-outlet />
-            </div>
-          </div>
-        </ng-container>
-      </div>
-    </div>
-  </div>
+	<div class="container-fluid-lg">
+		<div class="row">
+			<div class="col-xxl-3 col-lg-4">
+				<div
+					class="dashboard-left-sidebar"
+					[class.show]="open"
+				>
+					<app-sidebar
+						[show]="open"
+						(menu)="openMenu($event)"
+					/>
+				</div>
+			</div>
+			<div
+				class="col-xxl-9 col-lg-8 custom-box-loader"
+				id="account"
+			>
+				@if ((loadingStatus$ | async)) {
+				<div class="box-loader">
+					<app-loader [loaderClass]="'custom-loader-wrapper blur-bg'" />
+				</div>
+				}
+				<ng-container>
+					<app-button
+						[class]="'btn left-dashboard-show btn-animation btn-md fw-bold d-block mb-4 d-lg-none'"
+						[type]="'button'"
+						[id]="'show_menu'"
+						(click)="openMenu(true)"
+						[spinner]="false"
+					>
+						{{ 'show_menu' | transloco }}
+					</app-button>
+					<div class="dashboard-right-sidebar">
+						<div class="tab-content">
+							<router-outlet />
+						</div>
+					</div>
+				</ng-container>
+			</div>
+		</div>
+	</div>
 </section>

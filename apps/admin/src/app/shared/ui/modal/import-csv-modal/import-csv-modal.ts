@@ -1,5 +1,6 @@
 import { Component, inject, input, TemplateRef, viewChild } from '@angular/core';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import {
 	ModalDismissReasons,
 	NgbModal,
@@ -11,7 +12,6 @@ import {
 	NgbNavLinkBase,
 	NgbNavOutlet,
 } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 import { NgxDropzoneChangeEvent, NgxDropzoneModule } from 'ngx-dropzone';
 
 import { Button } from '../../button/button';
@@ -30,7 +30,7 @@ import { Button } from '../../button/button';
 		NgbNavContent,
 		NgxDropzoneModule,
 		NgbNavOutlet,
-		TranslateModule,
+		TranslocoModule,
 	],
 })
 export class ImportCsvModal {

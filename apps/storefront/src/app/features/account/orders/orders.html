@@ -1,62 +1,62 @@
 <div class="title-header">
-  <div class="d-flex align-items-center">
-    <h5>{{ 'my_orders' | translate }}</h5>
-  </div>
+	<div class="d-flex align-items-center">
+		<h5>{{ 'my_orders' | transloco }}</h5>
+	</div>
 </div>
 @if ((order$ | async)?.data?.length) {
 <div class="total-box mt-0">
-  <div class="wallet-table mt-0">
-    <div class="table-responsive">
-      <table>
-        <tbody>
-          <tr>
-            <th>{{ 'no' | translate }}</th>
-            <th>{{ 'order_number' | translate }}</th>
-            <th>{{ 'date' | translate }}</th>
-            <th>{{ 'amount' | translate }}</th>
-            <th>{{ 'payment_status' | translate }}</th>
-            <th>{{ 'payment_method' | translate }}</th>
-            <th>{{ 'option' | translate }}</th>
-          </tr>
-          @for (order of (order$ | async)?.data ; track order ; let i = $index) {
-          <tr>
-            <td>{{ i + 1 }}</td>
-            <td><span class="fw-bolder">#{{order.order_number}}</span></td>
-            <td>{{ order?.created_at | date: 'dd MMM yyyy hh:mm:a' }}</td>
-            <td>{{ order?.total! | currencySymbol }}</td>
-            <td>
-              <div class="status-{{order.payment_status.toLowerCase()}}">
-                <span>{{ order.payment_status | titleCase }}</span>
-              </div>
-            </td>
-            <td>{{ order.payment_method.toUpperCase() }}</td>
-            <td>
-              <a [routerLink]="['/account/order/details', order.order_number]"
-                ><i class="ri-eye-line"></i
-              ></a>
-            </td>
-          </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </div>
-  @if ((order$ | async)?.data?.length) {
-  <nav class="custome-pagination">
-    <app-pagination
-      [total]="(order$ | async)?.total || 0"
-      [currentPage]="filter['page']"
-      [pageSize]="filter['paginate']"
-      (setPage)="setPaginate($event)"
-    />
-  </nav>
-  }
+	<div class="wallet-table mt-0">
+		<div class="table-responsive">
+			<table>
+				<tbody>
+					<tr>
+						<th>{{ 'no' | transloco }}</th>
+						<th>{{ 'order_number' | transloco }}</th>
+						<th>{{ 'date' | transloco }}</th>
+						<th>{{ 'amount' | transloco }}</th>
+						<th>{{ 'payment_status' | transloco }}</th>
+						<th>{{ 'payment_method' | transloco }}</th>
+						<th>{{ 'option' | transloco }}</th>
+					</tr>
+					@for (order of (order$ | async)?.data ; track order ; let i = $index) {
+					<tr>
+						<td>{{ i + 1 }}</td>
+						<td><span class="fw-bolder">#{{order.order_number}}</span></td>
+						<td>{{ order?.created_at | date: 'dd MMM yyyy hh:mm:a' }}</td>
+						<td>{{ order?.total! | currencySymbol }}</td>
+						<td>
+							<div class="status-{{order.payment_status.toLowerCase()}}">
+								<span>{{ order.payment_status | titleCase }}</span>
+							</div>
+						</td>
+						<td>{{ order.payment_method.toUpperCase() }}</td>
+						<td>
+							<a [routerLink]="['/account/order/details', order.order_number]">
+								<i class="ri-eye-line"></i>
+							</a>
+						</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+	@if ((order$ | async)?.data?.length) {
+	<nav class="custome-pagination">
+		<app-pagination
+			[total]="(order$ | async)?.total || 0"
+			[currentPage]="filter()['page']"
+			[pageSize]="filter()['paginate']"
+			(setPage)="setPaginate($event)"
+		/>
+	</nav>
+	}
 </div>
 } @if (!(order$ | async)?.data?.length) {
 <app-no-data
-  [class]="'no-data-added'"
-  [image]="'assets/svg/empty-items.svg'"
-  [text]="'No Orders Found'"
-  [description]="'No orders have been made yet'"
+	[class]="'no-data-added'"
+	[image]="'assets/svg/empty-items.svg'"
+	[text]="'no_orders_found' | transloco"
+	[description]="'no_orders_description' | transloco"
 />
 }

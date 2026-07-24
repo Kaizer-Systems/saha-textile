@@ -9,7 +9,7 @@
 	>
 		@if (images?.length) {
 		<ul>
-			<li>{{ 'selected' | translate }}({{ images.length ? images.length : 0 }})</li>
+			<li>{{ 'selected' | transloco }}({{ images.length ? images.length : 0 }})</li>
 			<li>
 				<a
 					href="javascript:void(0)"
@@ -28,7 +28,7 @@
 			class="align-items-center btn btn-theme d-flex"
 		>
 			<i class="ri-add-line"></i>
-			{{ 'add_media' | translate }}
+			{{ 'add_media' | transloco }}
 		</a>
 	</div>
 	<app-media-box

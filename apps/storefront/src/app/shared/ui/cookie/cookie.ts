@@ -1,30 +1,29 @@
 import { Component, inject } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
-import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
-import { UpdateSessionAction } from '@data-access/actions/theme-option.action';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
+import { SiteConfigStore } from '@core/state/site-config.store';
 
 @Component({
-  selector: 'app-cookie',
-  templateUrl: './cookie.html',
-  styleUrls: ['./cookie.scss'],
-  imports: [TranslateModule],
+	selector: 'app-cookie',
+	templateUrl: './cookie.html',
+	styleUrls: ['./cookie.scss'],
+	imports: [TranslocoModule],
 })
 export class Cookie {
-  private store = inject(Store);
+	private siteConfigStore = inject(SiteConfigStore);
 
-  cookies$: Observable<boolean> = inject(Store).select(ThemeOptionState.cookies);
+	cookies$: Observable<boolean> = toObservable(this.siteConfigStore.cookies);
 
-  public cookies: boolean = true;
+	public cookies: boolean = true;
 
-  constructor() {
-    this.cookies$.subscribe(res => (this.cookies = res));
-  }
+	constructor() {
+		this.cookies$.subscribe((res) => (this.cookies = res));
+	}
 
-  acceptCookies(value: boolean) {
-    this.store.dispatch(new UpdateSessionAction('cookies', value));
-  }
+	acceptCookies(value: boolean) {
+		this.siteConfigStore.updateSession('cookies', value);
+	}
 }

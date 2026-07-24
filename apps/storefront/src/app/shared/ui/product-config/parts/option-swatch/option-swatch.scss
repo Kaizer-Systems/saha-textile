@@ -1,0 +1,120 @@
+.option-swatch {
+	margin-bottom: 18px;
+
+	.option-swatch-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 10px;
+		margin-bottom: 10px;
+
+		h4 {
+			margin: 0;
+			font-size: 16px;
+			font-weight: 600;
+
+			.req {
+				color: #e03131;
+			}
+		}
+
+		.selected-hint {
+			font-size: 13px;
+			color: var(--theme-color);
+			font-weight: 600;
+		}
+	}
+
+	// Approved add-on/bundle image tile (visible border + checkmark on selected).
+	.option-tiles {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+
+		.option-tile {
+			position: relative;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 4px;
+			padding: 10px;
+			border: 1.5px solid #e6e6e6;
+			border-radius: 8px;
+			cursor: pointer;
+			transition:
+				border-color 0.15s ease,
+				box-shadow 0.15s ease;
+			text-align: center;
+
+			&:hover {
+				border-color: #c9c9c9;
+			}
+
+			&.active {
+				border-color: var(--theme-color);
+				box-shadow: 0 0 0 1px var(--theme-color);
+			}
+
+			.tile-check {
+				position: absolute;
+				top: 4px;
+				right: 4px;
+				color: var(--theme-color);
+				font-size: 16px;
+				background: #fff;
+				border-radius: 50%;
+			}
+
+			img {
+				width: 84px;
+				height: 84px;
+				object-fit: cover;
+				border-radius: 6px;
+			}
+
+			.tile-label {
+				font-size: 13px;
+				font-weight: 600;
+			}
+
+			.tile-delta {
+				font-size: 12px;
+				color: #666;
+			}
+		}
+	}
+
+	// add-on "long bar" radio (name + price on one row) — add-on options only
+	.option-radio-list {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+
+		.option-radio {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			padding: 10px 14px;
+			border: 1.5px solid #e6e6e6;
+			border-radius: 8px;
+			cursor: pointer;
+
+			&.active {
+				border-color: var(--theme-color);
+			}
+
+			.opt-label {
+				flex: 1;
+				font-weight: 500;
+			}
+
+			.opt-delta {
+				font-size: 13px;
+				color: #666;
+			}
+		}
+	}
+}

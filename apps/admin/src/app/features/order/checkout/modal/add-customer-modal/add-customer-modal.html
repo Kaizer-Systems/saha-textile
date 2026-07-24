@@ -3,7 +3,7 @@
 	let-modal
 >
 	<div class="modal-header">
-		<h3 class="fw-semibold">{{ 'add_customer' | translate }}</h3>
+		<h3 class="fw-semibold">{{ 'add_customer' | transloco }}</h3>
 		<app-button
 			[class]="'btn btn-close'"
 			[spinner]="false"
@@ -20,7 +20,7 @@
 			(ngSubmit)="submit()"
 		>
 			<app-form-fields
-				[label]="'name' | translate"
+				[label]="'name' | transloco"
 				[for]="'name'"
 				[required]="true"
 			>
@@ -28,11 +28,11 @@
 					class="form-control"
 					id="name"
 					type="text"
-					placeholder="{{ 'enter_name' | translate }}"
+					placeholder="{{ 'enter_name' | transloco }}"
 					formControlName="name"
 				/>
 				@if (form?.controls['name']?.touched && form.controls['name']?.errors?.['required']) {
-				<div class="invalid-feedback">{{ 'name_is_required' | translate }}</div>
+				<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
 				}
 			</app-form-fields>
 			<app-form-fields
@@ -44,13 +44,13 @@
 					class="form-control"
 					id="email"
 					type="email"
-					placeholder="{{ 'enter_email' | translate }}"
+					placeholder="{{ 'enter_email' | transloco }}"
 					formControlName="email"
 				/>
 				@if (form?.controls['email']?.touched && form.controls['email']?.errors?.['required']) {
-				<div class="invalid-feedback">{{ 'email_is_required' | translate }}</div>
+				<div class="invalid-feedback">{{ 'email_is_required' | transloco }}</div>
 				} @if (form?.controls['email']?.touched && form.controls['email']?.errors?.['email']) {
-				<div class="invalid-feedback">{{ 'invalid_email' | translate }}</div>
+				<div class="invalid-feedback">{{ 'invalid_email' | transloco }}</div>
 				}
 			</app-form-fields>
 			<app-form-fields
@@ -80,7 +80,7 @@
 					type="number"
 					class="form-control intl-input-padding"
 					formControlName="phone"
-					placeholder="{{ 'enter_phone_number' | translate }}"
+					placeholder="{{ 'enter_phone_number' | transloco }}"
 					name="phone"
 				/>
 				@if (form.controls['phone'].touched && form.controls['phone'].errors?.['required']) {
@@ -88,10 +88,10 @@
 					class="invalid-feedback"
 					autocomplete="false"
 				>
-					{{ 'phone_number_is_required' | translate }}
+					{{ 'phone_number_is_required' | transloco }}
 				</div>
 				} @if (form.controls['phone'].touched && form.controls['phone'].errors?.['pattern']) {
-				<div class="invalid-feedback">{{ 'phone_number_is_invalid' | translate }}</div>
+				<div class="invalid-feedback">{{ 'phone_number_is_invalid' | transloco }}</div>
 				}
 			</app-form-fields>
 			<app-form-fields
@@ -107,7 +107,7 @@
 					formControlName="password"
 				/>
 				@if (form?.controls['password']?.touched && form.controls['password']?.errors?.['required']) {
-				<div class="invalid-feedback">{{ 'password_is_required' | translate }}</div>
+				<div class="invalid-feedback">{{ 'password_is_required' | transloco }}</div>
 				}
 			</app-form-fields>
 			<app-form-fields
@@ -119,14 +119,14 @@
 					class="form-control"
 					id="password_confirmation"
 					type="password"
-					placeholder="{{ 'enter_password_confirmation' | translate }}"
+					placeholder="{{ 'enter_password_confirmation' | transloco }}"
 					formControlName="password_confirmation"
 				/>
 				@if (form?.controls['password_confirmation']?.touched &&
 				form.controls['password_confirmation']?.errors?.['required']) {
-				<div class="invalid-feedback">{{ 'confirm_password_is_required' | translate }}</div>
+				<div class="invalid-feedback">{{ 'confirm_password_is_required' | transloco }}</div>
 				} @else { @if (passwordMatchError) {
-				<div class="invalid-feedback">{{ 'confirm_password_does_not_matched' | translate }}</div>
+				<div class="invalid-feedback">{{ 'confirm_password_does_not_matched' | transloco }}</div>
 				} }
 			</app-form-fields>
 			<div class="button-box">
@@ -136,13 +136,13 @@
 					[id]="'cancel_customer_btn'"
 					(click)="modal.dismiss('Cancel')"
 				>
-					{{ 'Cancel' | translate }}
+					{{ 'Cancel' | transloco }}
 				</app-button>
 				<app-button
 					[class]="'btn-theme btn-md fw-bold btn'"
 					[id]="'submit_customer_btn'"
 				>
-					{{ 'Submit' | translate }}
+					{{ 'Submit' | transloco }}
 				</app-button>
 			</div>
 		</form>

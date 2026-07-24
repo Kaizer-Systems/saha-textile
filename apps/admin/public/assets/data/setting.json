@@ -143,10 +143,8 @@
 			]
 		},
 		"maintenance": {
-			"title": "We'll be back Soon..",
 			"maintenance_mode": false,
 			"maintenance_image_id": 6,
-			"description": "We are busy to updating our store for you.",
 			"maintenance_image": {
 				"id": 6,
 				"collection_name": "attachment",

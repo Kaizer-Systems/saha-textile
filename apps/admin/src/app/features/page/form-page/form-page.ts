@@ -3,23 +3,23 @@ import { Component, PLATFORM_ID, inject, input } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Editor, NgxEditorModule } from 'ngx-editor';
 import { Subject, of } from 'rxjs';
 import { map, switchMap, takeUntil } from 'rxjs/operators';
 
-import { Button } from '@shared/ui/button/button';
-import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { IPage } from '@data-access/interfaces/page.interface';
 import { PageService } from '@data-access/services/page.service';
+import { Button } from '@shared/ui/button/button';
+import { FormFields } from '@shared/ui/form-fields/form-fields';
+import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 
 @Component({
 	selector: 'app-form-page',
 	templateUrl: './form-page.html',
 	styleUrls: ['./form-page.scss'],
-	imports: [ReactiveFormsModule, FormFields, NgxEditorModule, ImageUpload, Button, TranslateModule],
+	imports: [ReactiveFormsModule, FormFields, NgxEditorModule, ImageUpload, Button, TranslocoModule],
 })
 export class FormPage {
 	private pageService = inject(PageService);

@@ -1,20 +1,20 @@
 import { Component, TemplateRef, inject, viewChild } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 import { Select2Module } from 'ng-select2-component';
 
+import * as data from '@shared/data/country-code';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import * as data from '@shared/data/country-code';
 import { CustomValidators } from '@shared/validators/password-match';
 
 @Component({
 	selector: 'app-customer-modal',
 	templateUrl: './add-customer-modal.html',
 	styleUrls: ['./add-customer-modal.scss'],
-	imports: [Button, ReactiveFormsModule, FormFields, Select2Module, TranslateModule],
+	imports: [Button, ReactiveFormsModule, FormFields, Select2Module, TranslocoModule],
 })
 export class AddCustomerModal {
 	private modalService = inject(NgbModal);

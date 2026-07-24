@@ -1,11 +1,17 @@
 /* To learn more about Typescript configuration file: https://www.typescriptlang.org/docs/handbook/tsconfig-json.html. */
 /* To learn more about Angular compiler options: https://angular.dev/reference/configs/angular-compiler-options. */
 {
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "outDir": "./out-tsc/app",
-    "types": ["node"]
-  },
-  "files": ["src/main.ts", "src/main.server.ts", "src/server.ts"],
-  "include": ["src/**/*.d.ts"]
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"outDir": "./out-tsc/app",
+		"types": ["node"]
+	},
+	"files": ["src/main.ts", "src/main.server.ts"],
+	// Include the app sources (esp. src/app/pages/**) in the Angular program.
+	// File-based routing discovers pages via a build-time glob, not the static
+	// import graph from main.ts, so without this the SSR build leaves page
+	// components untransformed ("you need plugins to import files that are not
+	// JavaScript"). The default Analog template can rely on the import graph;
+	// file routing cannot.
+	"include": ["src/**/*.d.ts", "src/app/**/*.ts"]
 }

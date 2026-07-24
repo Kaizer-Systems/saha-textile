@@ -1,174 +1,182 @@
-<ng-template #productDetailModal let-modal>
-  <div class="modal-content">
-    <div class="modal-header p-0">
-      <app-button
-        [type]="'button'"
-        [class]="'btn btn-close'"
-        [id]="'product_detail_close_modal_btn'"
-        [spinner]="false"
-        (click)="modal.dismiss('Cross click')"
-      >
-        <i class="ri-close-line"></i>
-      </app-button>
-    </div>
-    <div class="modal-body">
-      <div class="row g-sm-4 g-2">
-        @if(isBrowser) {
-        <div class="col-lg-6">
-          <div class="view-image-slider">
-            <owl-carousel-o [options]="productMainThumbSlider" #owlCar>
-              @for (image of product()?.product_galleries; track image; let i = $index) {
-              <ng-template carouselSlide [id]="image.id.toString()">
-                <img
-                  [src]="( image ? image.original_url
+<ng-template
+	#productDetailModal
+	let-modal
+>
+	<div class="modal-content">
+		<div class="modal-header p-0">
+			<app-button
+				[type]="'button'"
+				[class]="'btn btn-close'"
+				[id]="'product_detail_close_modal_btn'"
+				[spinner]="false"
+				(click)="modal.dismiss('Cross click')"
+			>
+				<i class="ri-close-line"></i>
+			</app-button>
+		</div>
+		<div class="modal-body">
+			<div class="row g-sm-4 g-2">
+				@if(isBrowser) {
+				<div class="col-lg-6">
+					<div class="view-image-slider">
+						<owl-carousel-o
+							[options]="productMainThumbSlider"
+							#owlCar
+						>
+							@for (image of product()?.product_galleries; track image; let i = $index) {
+							<ng-template
+								carouselSlide
+								[id]="image.id.toString()"
+							>
+								<img
+									[src]="( image ? image.original_url
                                           : 'assets/images/product.png')"
-                  class="img-fluid"
-                  alt="product"
-                />
-              </ng-template>
-              }
-            </owl-carousel-o>
-          </div>
-          @if (product()?.product_galleries?.length) {
-          <div class="col-12">
-            <div class="bottom-slider-image left-slider no-arrow slick-top">
-              <owl-carousel-o [options]="productThumbSlider">
-                @for (image of product()?.product_galleries; track image) {
-                <ng-template carouselSlide [id]="image.id.toString()">
-                  <div>
-                    <div
-                      class="slider-image"
-                      [class.active]="image.id.toString() === activeSlide.toString()"
-                    >
-                      <img
-                        [src]="image ? image.original_url
+									class="img-fluid"
+									alt="product"
+								/>
+							</ng-template>
+							}
+						</owl-carousel-o>
+					</div>
+					@if (product()?.product_galleries?.length) {
+					<div class="col-12">
+						<div class="bottom-slider-image left-slider no-arrow slick-top">
+							<owl-carousel-o [options]="productThumbSlider">
+								@for (image of product()?.product_galleries; track image) {
+								<ng-template
+									carouselSlide
+									[id]="image.id.toString()"
+								>
+									<div>
+										<div
+											class="slider-image"
+											[class.active]="image.id.toString() === activeSlide.toString()"
+										>
+											<img
+												[src]="image ? image.original_url
                                                       : 'assets/images/product.png'"
-                        class="img-fluid"
-                        [alt]="product()?.name"
-                        (click)="owlCar.to(activeSlide = image.id.toString())"
-                      />
-                    </div>
-                  </div>
-                </ng-template>
-                }
-              </owl-carousel-o>
-            </div>
-          </div>
-          }
-        </div>
-        <div class="col-lg-6">
-          <div class="right-sidebar-modal">
-            <h4 class="title-name">
-              {{ selectedVariation ? selectedVariation.name : product()?.name }}
-            </h4>
-            <h4 class="price">
-              {{ (selectedVariation ? selectedVariation.sale_price : product()?.sale_price) |
-              currencySymbol }} @if (selectedVariation ? selectedVariation.discount :
-              product()?.discount) {
-              <del>
-                {{ (selectedVariation ? selectedVariation.price : product()?.price) | currencySymbol
-                }}
-              </del>
-              } @if (selectedVariation ? selectedVariation.discount : product()?.discount) {
-              <label class="modal-label">
-                {{ (selectedVariation ? selectedVariation.discount : product()?.discount) }}% {{
-                'off' | translate }}
-              </label>
-              }
-            </h4>
-            <div class="product-rating">
-              <ngb-rating [rate]="product()!.rating_count" />
-              <div class="fs-14 ms-2">
-                {{ product()?.reviews_count }} {{ 'review' | translate }}
-              </div>
-            </div>
-            <div class="product-detail mb-2">
-              <h4>{{ 'product_details' | translate }}:</h4>
-              <p [innerHTML]="product()?.short_description"></p>
-            </div>
-            <div class="pickup-box">
-              <div class="product-info">
-                <ul class="product-info-list product-info-list-2">
-                  @if (product()?.sku) {
-                  <li>{{ 'sku' | translate }}: {{ product()?.sku }}</li>
-                  } @if (product()?.stock_status) {
-                  <li>
-                    {{ 'stock_status' | translate }}: {{ product()?.stock_status! | titleCase }}
-                  </li>
-                  } @if (product()!.quantity > 0) {
-                  <li>
-                    {{ 'quantity' | translate }}: {{ product()?.quantity }} {{ 'items_left' |
-                    translate }}
-                  </li>
-                  }
-                </ul>
-              </div>
-            </div>
-            @if (product()?.attributes?.length) {
-            <div class="selection-section mt-3">
-              <app-variant-attributes
-                [product]="product()!"
-                [attributes]="product()?.attributes || []"
-                [owlCar]="owlCar"
-                (selectVariation)="selectVariation($event!)"
-              />
-            </div>
-            }
-            <div class="modal-button">
-              <div class="modal-qty">
-                <div class="input-group">
-                  <app-button
-                    [class]="'btn qty-left-minus'"
-                    [id]="'add-to-cart'+product()?.id"
-                    [spinner]="false"
-                    (click)="updateQuantity(-1)"
-                  >
-                    <i class="ri-subtract-fill"></i>
-                  </app-button>
-                  <input
-                    class="form-control input-number qty-input"
-                    type="text"
-                    name="quantity"
-                    value="{{productQty}}"
-                    readonly
-                  />
-                  <app-button
-                    [class]="'btn qty-left-minus'"
-                    [id]="'qty-left-minus'+product()?.id"
-                    [spinner]="false"
-                    (click)="updateQuantity(1)"
-                  >
-                    <i class="ri-add-line"></i>
-                  </app-button>
-                </div>
-              </div>
-              @if ((selectedVariation && selectedVariation.stock_status === 'in_stock' ||
-              product()?.stock_status === 'in_stock' && product()?.type && product()?.type ===
-              'simple')) {
-              <app-button
-                [id]="'addcartDetailsbtnVariation'+product()?.id"
-                [class]="'btn theme-bg-color view-button icon text-white fw-bold btn-md'"
-                (click)="addToCart(product()!)"
-              >
-                <i class="ri-shopping-cart-line me-1"></i> {{ 'add_to_cart' | translate }}
-              </app-button>
-              } @else {
-              <app-button
-                [class]="'btn theme-bg-color view-button icon text-white fw-bold btn-md'"
-                [id]="'cartDetailsbtnOs'+product()?.id"
-                [spinner]="false"
-                [disabled]="true"
-              >
-                {{ ((selectedVariation && selectedVariation.stock_status === 'out_of_stock' ||
-                product()?.stock_status === 'out_of_stock' ) ? 'sold_out' : 'add_to_cart') |
-                translate }}
-              </app-button>
-              }
-            </div>
-          </div>
-        </div>
-        }
-      </div>
-    </div>
-  </div>
+												class="img-fluid"
+												[alt]="product()?.name"
+												(click)="owlCar.to(activeSlide = image.id.toString())"
+											/>
+										</div>
+									</div>
+								</ng-template>
+								}
+							</owl-carousel-o>
+						</div>
+					</div>
+					}
+				</div>
+				<div class="col-lg-6">
+					<div class="right-sidebar-modal">
+						<h4 class="title-name">{{ selectedVariation ? selectedVariation.name : product()?.name }}</h4>
+						<h4 class="price">
+							{{ (selectedVariation ? selectedVariation.sale_price : product()?.sale_price) |
+							currencySymbol }} @if (selectedVariation ? selectedVariation.discount : product()?.discount)
+							{
+							<del>
+								{{ (selectedVariation ? selectedVariation.price : product()?.price) | currencySymbol }}
+							</del>
+							} @if (selectedVariation ? selectedVariation.discount : product()?.discount) {
+							<label class="modal-label">
+								{{ (selectedVariation ? selectedVariation.discount : product()?.discount) }}% {{ 'off' |
+								transloco }}
+							</label>
+							}
+						</h4>
+						<div class="product-rating">
+							<ngb-rating [rate]="product()!.rating_count" />
+							<div class="fs-14 ms-2">{{ product()?.reviews_count }} {{ 'review' | transloco }}</div>
+						</div>
+						<div class="product-detail mb-2">
+							<h4>{{ 'product_details' | transloco }}:</h4>
+							<p [innerHTML]="product()?.short_description"></p>
+						</div>
+						<div class="pickup-box">
+							<div class="product-info">
+								<ul class="product-info-list product-info-list-2">
+									@if (product()?.sku) {
+									<li>{{ 'sku' | transloco }}: {{ product()?.sku }}</li>
+									} @if (product()?.stock_status) {
+									<li>
+										{{ 'stock_status' | transloco }}: {{ product()?.stock_status! | titleCase }}
+									</li>
+									} @if (product()!.quantity > 0) {
+									<li>
+										{{ 'quantity' | transloco }}: {{ product()?.quantity }} {{ 'items_left' |
+										transloco }}
+									</li>
+									}
+								</ul>
+							</div>
+						</div>
+						@if (product()?.attributes?.length) {
+						<div class="selection-section mt-3">
+							<app-variant-attributes
+								[product]="product()!"
+								[attributes]="product()?.attributes || []"
+								[owlCar]="owlCar"
+								(selectVariation)="selectVariation($event!)"
+							/>
+						</div>
+						}
+						<div class="modal-button">
+							<div class="modal-qty">
+								<div class="input-group">
+									<app-button
+										[class]="'btn qty-left-minus'"
+										[id]="'add-to-cart'+product()?.id"
+										[spinner]="false"
+										(click)="updateQuantity(-1)"
+									>
+										<i class="ri-subtract-fill"></i>
+									</app-button>
+									<input
+										class="form-control input-number qty-input"
+										type="text"
+										name="quantity"
+										value="{{productQty}}"
+										readonly
+									/>
+									<app-button
+										[class]="'btn qty-left-minus'"
+										[id]="'qty-left-minus'+product()?.id"
+										[spinner]="false"
+										(click)="updateQuantity(1)"
+									>
+										<i class="ri-add-line"></i>
+									</app-button>
+								</div>
+							</div>
+							@if ((selectedVariation && selectedVariation.stock_status === 'in_stock' ||
+							product()?.stock_status === 'in_stock' && product()?.type && product()?.type === 'simple'))
+							{
+							<app-button
+								[id]="'addcartDetailsbtnVariation'+product()?.id"
+								[class]="'btn theme-bg-color view-button icon text-white fw-bold btn-md'"
+								(click)="addToCart(product()!)"
+							>
+								<i class="ri-shopping-cart-line me-1"></i>
+								{{ 'add_to_cart' | transloco }}
+							</app-button>
+							} @else {
+							<app-button
+								[class]="'btn theme-bg-color view-button icon text-white fw-bold btn-md'"
+								[id]="'cartDetailsbtnOs'+product()?.id"
+								[spinner]="false"
+								[disabled]="true"
+							>
+								{{ ((selectedVariation && selectedVariation.stock_status === 'out_of_stock' ||
+								product()?.stock_status === 'out_of_stock' ) ? 'sold_out' : 'add_to_cart') | transloco
+								}}
+							</app-button>
+							}
+						</div>
+					</div>
+				</div>
+				}
+			</div>
+		</div>
+	</div>
 </ng-template>

@@ -1,0 +1,72 @@
+<div class="product-section-box mt-0">
+	<ul
+		class="nav nav-tabs custom-nav"
+		role="tablist"
+	>
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				role="tab"
+				[class.active]="active === 'description'"
+				(click)="active = 'description'"
+			>
+				{{ 'description' | transloco }}
+			</a>
+		</li>
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				role="tab"
+				[class.active]="active === 'review'"
+				(click)="active = 'review'"
+			>
+				{{ 'review' | transloco }}
+			</a>
+		</li>
+		<li class="nav-item">
+			<a
+				class="nav-link"
+				role="tab"
+				[class.active]="active === 'questions_answers'"
+				(click)="active = 'questions_answers'"
+			>
+				{{ 'q_a' | transloco }}
+			</a>
+		</li>
+	</ul>
+
+	<!-- All three panes stay in the DOM (server-rendered) and toggle via Bootstrap's
+	     .tab-pane/.active display CSS, so Review + Q&A content is crawlable rather than
+	     lazily mounted on click. Do NOT switch this back to ngbNav <ng-template> panes. -->
+	<div class="tab-content custom-tab">
+		<div
+			class="tab-pane"
+			[class.active]="active === 'description'"
+		>
+			<div class="product-description">
+				<div
+					class="nav-desh ckeditor-content"
+					[innerHTML]="product()?.description"
+				></div>
+			</div>
+		</div>
+		<div
+			class="tab-pane"
+			[class.active]="active === 'review'"
+		>
+			<app-product-review
+				[product]="product()!"
+				[reviews]="(review$ | async)?.data || []"
+			/>
+		</div>
+		<div
+			class="tab-pane"
+			[class.active]="active === 'questions_answers'"
+		>
+			<app-questions-answers
+				[product]="product()!"
+				[questionAnswers]="(question$ | async)?.data || []"
+			/>
+		</div>
+	</div>
+</div>

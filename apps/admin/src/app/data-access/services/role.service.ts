@@ -3,9 +3,10 @@ import { Injectable, inject } from '@angular/core';
 
 import { Observable } from 'rxjs';
 
-import { environment } from '../../../../public/environments/environment';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IModule, IRoleModel } from '@data-access/interfaces/role.interface';
+
+import { environment } from '../../../../public/environments/environment';
 
 @Injectable({
 	providedIn: 'root',

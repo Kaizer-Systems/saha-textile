@@ -1,36 +1,34 @@
 import { AsyncPipe } from '@angular/common';
 import { Component, inject, input, viewChild } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
-import { LogoutAction } from '@data-access/actions/auth.action';
+import { AccountStore } from '@core/state/account.store';
+import { AuthStore } from '@core/state/auth.store';
 import { IAccountUser } from '@data-access/interfaces/account.interface';
-import { AccountState } from '@data-access/states/account.state';
-import { AuthState } from '@data-access/states/auth.state';
 import { ConfirmationModal } from '@shared/ui/modal/confirmation-modal/confirmation-modal';
 
 @Component({
-  selector: 'app-my-account',
-  templateUrl: './my-account.html',
-  styleUrls: ['./my-account.scss'],
-  imports: [RouterLink, ConfirmationModal, AsyncPipe, TranslateModule],
+	selector: 'app-my-account',
+	templateUrl: './my-account.html',
+	styleUrls: ['./my-account.scss'],
+	imports: [RouterLink, ConfirmationModal, AsyncPipe, TranslocoModule],
 })
 export class MyAccount {
-  private store = inject(Store);
+	private authStore = inject(AuthStore);
+	private accountStore = inject(AccountStore);
 
-  readonly style = input<string>('basic');
+	readonly style = input<string>('basic');
 
-  isAuthenticated$: Observable<Boolean> = inject(Store).select(AuthState.isAuthenticated);
-  user$: Observable<IAccountUser> = inject(Store).select(
-    AccountState.user,
-  ) as Observable<IAccountUser>;
+	isAuthenticated$: Observable<boolean> = toObservable(this.authStore.isAuthenticated);
+	user$: Observable<IAccountUser> = toObservable(this.accountStore.user) as Observable<IAccountUser>;
 
-  readonly ConfirmationModal = viewChild<ConfirmationModal>('confirmationModal');
+	readonly ConfirmationModal = viewChild<ConfirmationModal>('confirmationModal');
 
-  logout() {
-    this.store.dispatch(new LogoutAction());
-  }
+	logout() {
+		this.authStore.logout();
+	}
 }

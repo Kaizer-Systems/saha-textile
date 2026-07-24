@@ -17,7 +17,7 @@
 	>
 		<li>
 			<i class="ri-notification-line"></i>
-			<h6 class="f-18 mb-0">{{ 'notifications' | translate }}</h6>
+			<h6 class="f-18 mb-0">{{ 'notifications' | transloco }}</h6>
 		</li>
 		@for (notification of notifications() | slice:0:3; track notification.id) {
 		<li>
@@ -32,7 +32,7 @@
 				[routerLink]="['/notification']"
 				class="btn btn-theme"
 			>
-				{{ 'check_all_notification' | translate }}
+				{{ 'check_all_notification' | transloco }}
 			</a>
 		</li>
 	</ul>

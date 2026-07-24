@@ -3,7 +3,7 @@ import { Component, inject } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
 import { AuthStore } from '@core/state/auth.store';
 import { Alert } from '@shared/ui/alert/alert';
@@ -13,7 +13,7 @@ import { Button } from '@shared/ui/button/button';
 	selector: 'app-update-password',
 	templateUrl: './update-password.html',
 	styleUrls: ['./update-password.scss'],
-	imports: [Alert, ReactiveFormsModule, NgClass, Button, TranslateModule],
+	imports: [Alert, ReactiveFormsModule, NgClass, Button, TranslocoModule],
 })
 export class UpdatePassword {
 	private authStore = inject(AuthStore);

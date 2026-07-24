@@ -1,15 +1,15 @@
-import { isPlatformBrowser, AsyncPipe, PlatformLocation, isPlatformServer } from '@angular/common';
+import { isPlatformBrowser, AsyncPipe } from '@angular/common';
 import { Component, inject, PLATFORM_ID } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterOutlet } from '@angular/router';
 
 import { LoadingBarModule } from '@ngx-loading-bar/core';
-import { Store } from '@ngxs/store';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable } from 'rxjs';
 
-import { GetUserDetailsAction } from '@data-access/actions/account.action';
-import { GetBlogsAction } from '@data-access/actions/blog.action';
-import { GetCategoriesAction } from '@data-access/actions/category.action';
-import { GetDealProductsAction } from '@data-access/actions/product.action';
+import { AccountStore } from '@core/state/account.store';
+import { SiteConfigStore } from '@core/state/site-config.store';
+import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
+import { SiteConfigService } from '@data-access/services/site-config.service';
 import { Footer } from '@layout/footer/footer';
 import { Header } from '@layout/header/header';
 import { BackToTop } from '@shared/ui/back-to-top/back-to-top';
@@ -20,106 +20,61 @@ import { NewsletterModal } from '@shared/ui/modal/newsletter-modal/newsletter-mo
 import { RecentPurchasePopup } from '@shared/ui/recent-purchase-popup/recent-purchase-popup';
 import { StickyCart } from '@shared/ui/sticky-cart/sticky-cart';
 import { StickyCompare } from '@shared/ui/sticky-compare/sticky-compare';
-import { ThemeCustomizer } from '@shared/ui/theme-customizer/theme-customizer';
-import { IOption } from '@data-access/interfaces/theme-option.interface';
-import { ThemeOptionService } from '@data-access/services/theme-option.service';
-import { ThemeOptionState } from '@data-access/states/theme-option.state';
 
 @Component({
-  selector: 'app-layout',
-  templateUrl: './layout.html',
-  styleUrls: ['./layout.scss'],
-  imports: [
-    LoadingBarModule,
-    Loader,
-    Header,
-    RouterOutlet,
-    Footer,
-    RecentPurchasePopup,
-    StickyCart,
-    StickyCompare,
-    BackToTop,
-    NewsletterModal,
-    Cookie,
-    ExitModal,
-    AsyncPipe,
-    ThemeCustomizer,
-  ],
+	selector: 'app-layout',
+	templateUrl: './layout.html',
+	styleUrls: ['./layout.scss'],
+	imports: [
+		LoadingBarModule,
+		Loader,
+		Header,
+		RouterOutlet,
+		Footer,
+		RecentPurchasePopup,
+		StickyCart,
+		StickyCompare,
+		BackToTop,
+		NewsletterModal,
+		Cookie,
+		ExitModal,
+		AsyncPipe,
+	],
 })
 export class Layout {
-  private store = inject(Store);
-  private platformId = inject<Object>(PLATFORM_ID);
-  themeOptionService = inject(ThemeOptionService);
-  private platformLocation = inject(PlatformLocation);
+	private platformId = inject<Object>(PLATFORM_ID);
+	siteConfigService = inject(SiteConfigService);
+	private siteConfigStore = inject(SiteConfigStore);
+	private accountStore = inject(AccountStore);
 
-  themeOption$: Observable<IOption> = inject(Store).select(
-    ThemeOptionState.themeOptions,
-  ) as Observable<IOption>;
-  cookies$: Observable<boolean> = inject(Store).select(ThemeOptionState.cookies);
-  exit$: Observable<boolean> = inject(Store).select(ThemeOptionState.exit);
+	siteConfig$: Observable<ISiteConfig> = toObservable(this.siteConfigStore.siteConfig) as Observable<ISiteConfig>;
+	cookies$: Observable<boolean> = toObservable(this.siteConfigStore.cookies);
+	exit$: Observable<boolean> = toObservable(this.siteConfigStore.exit);
 
-  public cookies: boolean;
-  public exit: boolean;
-  public isBrowser: boolean;
-  public isLoading: boolean = true;
+	public cookies: boolean;
+	public exit: boolean;
+	public isBrowser: boolean;
+	public isLoading: boolean = true;
 
-  constructor() {
-    this.isBrowser = isPlatformBrowser(this.platformId);
-    this.cookies$.subscribe(res => (this.cookies = res));
-    this.exit$.subscribe(res => (this.exit = res));
-    this.themeOptionService.preloader = true;
-    this.store.dispatch(new GetUserDetailsAction());
-    const getCategories$ = this.store.dispatch(new GetCategoriesAction({ status: 1 }));
-    const getBlog$ = this.store.dispatch(new GetBlogsAction({ status: 1, paginate: 10 }));
-    const getProduct$ = this.store.dispatch(new GetDealProductsAction({ status: 1, paginate: 2 }));
-    forkJoin([getCategories$, getBlog$, getProduct$]).subscribe({
-      complete: () => {
-        this.themeOptionService.preloader = false;
-      },
-    });
-  }
+	// Single app-wide chrome (Denver): logo + dark footer. Static — the old
+	// per-theme pathname branching in setLogo() was removed with the theme concept.
+	// Bound as plain fields (not a method call) so they don't re-run every CD cycle.
+	public readonly headerLogo = 'assets/images/logo/6.png';
+	public readonly footerData = {
+		footer_logo: 'assets/images/logo/4.png',
+		footer_class: 'footer-section-2 footer-color-3',
+	};
 
-  setLogo() {
-    var headerLogo;
-    var footerLogo;
-    var footerClass;
-
-    const pathname = isPlatformBrowser(this.platformId)
-      ? window.location.pathname
-      : isPlatformServer(this.platformId)
-        ? this.platformLocation.pathname
-        : null;
-
-    if (pathname) {
-      if (pathname.includes('/theme/paris') || pathname.includes('/theme/osaka')) {
-        headerLogo = 'assets/images/logo/1.png';
-        footerLogo = 'assets/images/logo/1.png';
-      } else if (pathname.includes('/theme/tokyo')) {
-        headerLogo = 'assets/images/logo/2.png';
-        footerLogo = 'assets/images/logo/2.png';
-      } else if (pathname.includes('/theme/rome')) {
-        headerLogo = 'assets/images/logo/3.png';
-        footerLogo = 'assets/images/logo/3.png';
-      } else if (pathname.includes('/theme/madrid')) {
-        headerLogo = 'assets/images/logo/4.png';
-        footerLogo = 'assets/images/logo/4.png';
-        footerClass = 'footer-section-2 footer-color-2';
-      } else if (pathname.includes('/theme/berlin') || pathname.includes('/theme/denver')) {
-        headerLogo = 'assets/images/logo/6.png';
-        footerLogo = 'assets/images/logo/4.png';
-        footerClass = 'footer-section-2 footer-color-3';
-      } else {
-        this.themeOption$.subscribe(theme => {
-          headerLogo = theme?.logo?.header_logo?.original_url;
-          footerLogo = theme?.logo?.footer_logo?.original_url;
-          footerClass =
-            theme?.footer.footer_style === 'dark_mode' ? 'footer-section-2 footer-color-3' : '';
-        });
-      }
-    }
-    return {
-      header_logo: headerLogo,
-      footer: { footer_logo: footerLogo, footer_class: footerClass },
-    };
-  }
+	constructor() {
+		this.isBrowser = isPlatformBrowser(this.platformId);
+		this.cookies$.subscribe((res) => (this.cookies = res));
+		this.exit$.subscribe((res) => (this.exit = res));
+		this.siteConfigService.preloader.set(true);
+		this.accountStore.loadUser();
+		// Categories, blogs and deal products load on-demand via TanStack queries in
+		// each consumer (footer/filters/sidebar, menu/blog pages, header/menu deals);
+		// no Layout prefetch remains. Route components own their own loading skeletons,
+		// so drop the preloader immediately.
+		this.siteConfigService.preloader.set(false);
+	}
 }

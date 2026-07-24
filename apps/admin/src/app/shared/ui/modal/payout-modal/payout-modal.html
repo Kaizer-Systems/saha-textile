@@ -3,7 +3,7 @@
 	let-modal
 >
 	<div class="modal-header">
-		<h3 class="fw-semibold mb-1">{{ label() | translate }}</h3>
+		<h3 class="fw-semibold mb-1">{{ label() | transloco }}</h3>
 		<app-button
 			[class]="'btn btn-close'"
 			[spinner]="false"
@@ -19,57 +19,57 @@
 				<tbody>
 					@if (payoutData.message) {
 					<tr>
-						<td class="fw-semibold text-start">{{ 'message' | translate }}</td>
+						<td class="fw-semibold text-start">{{ 'message' | transloco }}</td>
 						<td class="text-start">{{ payoutData.message }}</td>
 					</tr>
 					} @if (payoutData.reason) {
 					<tr>
-						<td class="fw-semibold text-start">{{ 'reason' | translate }}</td>
+						<td class="fw-semibold text-start">{{ 'reason' | transloco }}</td>
 						<td class="text-start">{{ payoutData.reason }}</td>
 					</tr>
 					} @if (payoutData.user.payment_account) {
 					<tr>
-						<td class="fw-semibold text-start">{{ 'due_to_seller' | translate }}</td>
+						<td class="fw-semibold text-start">{{ 'due_to_seller' | transloco }}</td>
 						<td class="text-start">{{ payoutData?.amount | currencySymbol }}</td>
 					</tr>
 					} @if (payoutData.user.payment_account) {
 					<tr>
-						<td class="fw-semibold text-start">{{ 'bank_name' | translate }}</td>
+						<td class="fw-semibold text-start">{{ 'bank_name' | transloco }}</td>
 						<td class="text-start">{{ payoutData?.user?.payment_account?.bank_name }}</td>
 					</tr>
 					} @if (payoutData.user.payment_account) {
 					<tr>
-						<td class="fw-semibold text-start">{{ 'bank_account_name' | translate }}</td>
+						<td class="fw-semibold text-start">{{ 'bank_account_name' | transloco }}</td>
 						<td class="text-start">{{ payoutData?.user?.payment_account?.bank_holder_name }}</td>
 					</tr>
 					} @if (payoutData.user.payment_account) {
 					<tr>
-						<td class="fw-semibold text-start">{{ 'bank_account_number' | translate }}</td>
+						<td class="fw-semibold text-start">{{ 'bank_account_number' | transloco }}</td>
 						<td class="text-start">{{ payoutData?.user?.payment_account?.bank_account_no }}</td>
 					</tr>
 					} @if (payoutData.user.payment_account) {
 					<tr>
-						<td class="fw-semibold text-start">{{ 'bank_ifsc_code' | translate }}</td>
+						<td class="fw-semibold text-start">{{ 'bank_ifsc_code' | transloco }}</td>
 						<td class="text-start">{{ payoutData?.user?.payment_account?.ifsc }}</td>
 					</tr>
 					} @if (payoutData.user.payment_account) {
 					<tr>
-						<td class="fw-semibold text-start">{{ 'bank_swift_Code' | translate }}</td>
+						<td class="fw-semibold text-start">{{ 'bank_swift_Code' | transloco }}</td>
 						<td class="text-start">{{ payoutData?.user?.payment_account?.swift }}</td>
 					</tr>
 					} @if (!payoutData.user.payment_account) {
 					<tr>
-						<td class="fw-semibold text-start">{{ 'amount' | translate }}</td>
+						<td class="fw-semibold text-start">{{ 'amount' | transloco }}</td>
 						<td class="text-start">{{ payoutData?.amount | currencySymbol }}</td>
 					</tr>
 					} @if (payoutData?.payment_type) {
 					<tr>
-						<td class="fw-semibold text-start">{{ 'payment_method' | translate }}</td>
+						<td class="fw-semibold text-start">{{ 'payment_method' | transloco }}</td>
 						<td class="text-start">{{ payoutData?.payment_type | uppercase }}</td>
 					</tr>
 					} @if (payoutData?.status) {
 					<tr>
-						<td class="fw-semibold text-start">{{ 'status' | translate }}</td>
+						<td class="fw-semibold text-start">{{ 'status' | transloco }}</td>
 						<td class="text-start">
 							<div class="status-{{ payoutData?.status }}">
 								<span>{{ payoutData?.status | uppercase }}</span>
@@ -88,14 +88,14 @@
 					[id]="'withdrawal_rejected_btn'"
 					(click)="actionPerform('rejected')"
 				>
-					{{ 'rejected' | translate }}
+					{{ 'rejected' | transloco }}
 				</app-button>
 				<app-button
 					[class]="'btn-theme btn-md fw-bold btn'"
 					[id]="'withdrawal_approved_btn'"
 					(click)="actionPerform('approved')"
 				>
-					{{ 'approved' | translate }}
+					{{ 'approved' | transloco }}
 				</app-button>
 			</div>
 			}

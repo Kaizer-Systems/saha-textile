@@ -1,65 +1,67 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, inject } from '@angular/core';
+import { Component, PLATFORM_ID, computed, inject } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
 import { IProduct, IProductModel } from '@data-access/interfaces/product.interface';
-import { ProductState } from '@data-access/states/product.state';
+import { injectProductsQuery, injectRelatedProductsData } from '@data-access/queries/product.queries';
 
 @Component({
-  selector: 'app-recent-purchase-popup',
-  templateUrl: './recent-purchase-popup.html',
-  styleUrls: ['./recent-purchase-popup.scss'],
-  imports: [RouterLink, TranslateModule],
+	selector: 'app-recent-purchase-popup',
+	templateUrl: './recent-purchase-popup.html',
+	styleUrls: ['./recent-purchase-popup.scss'],
+	imports: [RouterLink, TranslocoModule],
 })
 export class RecentPurchasePopup {
-  private platformId = inject<Object>(PLATFORM_ID);
+	private platformId = inject<Object>(PLATFORM_ID);
 
-  relatesProduct$: Observable<IProduct[]> = inject(Store).select(ProductState.relatedProducts);
-  product$: Observable<IProductModel> = inject(Store).select(ProductState.product);
+	private readonly relatedQuery = injectRelatedProductsData();
+	relatesProduct$: Observable<IProduct[]> = toObservable(computed(() => this.relatedQuery.data() ?? []));
+	private readonly productsQuery = injectProductsQuery(() => undefined);
+	product$: Observable<IProductModel | undefined> = toObservable(computed(() => this.productsQuery.data()));
 
-  public product: IProduct | null;
-  public show: boolean = false;
-  public min: number = 10;
-  public popup_enable: boolean = true;
+	public product: IProduct | null;
+	public show: boolean = false;
+	public min: number = 10;
+	public popup_enable: boolean = true;
 
-  constructor() {
-    if (isPlatformBrowser(this.platformId)) {
-      if (this.popup_enable) {
-        setInterval(() => {
-          this.show = true;
-          this.min = Math.floor(Math.random() * 60) + 1;
-          this.randomlySelectProduct();
-          setTimeout(() => {
-            this.show = false;
-          }, 5000);
-        }, 20000);
-      }
-    }
-  }
+	constructor() {
+		if (isPlatformBrowser(this.platformId)) {
+			if (this.popup_enable) {
+				setInterval(() => {
+					this.show = true;
+					this.min = Math.floor(Math.random() * 60) + 1;
+					this.randomlySelectProduct();
+					setTimeout(() => {
+						this.show = false;
+					}, 5000);
+				}, 20000);
+			}
+		}
+	}
 
-  randomlySelectProduct() {
-    this.product$.subscribe(product => {
-      if (!product.data.length) {
-        this.relatesProducts();
-      } else {
-        const randomIndex = Math.floor(Math.random() * product.data.length);
-        this.product = product.data[randomIndex];
-      }
-    });
-  }
+	randomlySelectProduct() {
+		this.product$.subscribe((product) => {
+			if (!product?.data?.length) {
+				this.relatesProducts();
+			} else {
+				const randomIndex = Math.floor(Math.random() * product.data.length);
+				this.product = product.data[randomIndex];
+			}
+		});
+	}
 
-  relatesProducts() {
-    this.relatesProduct$.subscribe(products => {
-      const randomIndex = Math.floor(Math.random() * products.length);
-      this.product = products[randomIndex];
-    });
-  }
+	relatesProducts() {
+		this.relatesProduct$.subscribe((products) => {
+			const randomIndex = Math.floor(Math.random() * products.length);
+			this.product = products[randomIndex];
+		});
+	}
 
-  closePopup() {
-    this.popup_enable = false;
-  }
+	closePopup() {
+		this.popup_enable = false;
+	}
 }

@@ -1,5 +1,9 @@
 @if (style() === 'vertical') {
 <app-product-box-vertical [product]="product()!" />
 } @if (style() === 'horizontal') {
-<app-product-box-horizontal [product]="product()!" [class]="class()" [close]="close()" />
+<app-product-box-horizontal
+	[product]="product()!"
+	[class]="class()"
+	[close]="close()"
+/>
 }

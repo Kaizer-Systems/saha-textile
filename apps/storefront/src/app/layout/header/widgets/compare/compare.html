@@ -1,7 +1,0 @@
-<!-- Compare basic Style -->
-<a [routerLink]="['/compare']" class="header-icon">
-  @if ((compareTotal$ | async)) {
-  <small class="badge-number badge-light">{{ (compareTotal$ | async) }}</small>
-  }
-  <i class="ri-arrow-left-right-line"></i>
-</a>

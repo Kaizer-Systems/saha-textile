@@ -977,7 +977,7 @@ Pros:
 Cons:
 
 1. Wrong when variants have different regular prices.
-2. Weak for real Saha design/stitching pattern.
+2. Weak for real Saha Textile design/stitching pattern.
 3. Requires exceptions later.
 
 #### Option C - No MRP, only effective selling price

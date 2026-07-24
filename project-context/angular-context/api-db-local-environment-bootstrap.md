@@ -45,7 +45,7 @@
 5. Optional Cursor MCP: `.env.mcp` LOCAL block; tool count &lt; ~40.
 6. Read `project-progress.md` before coding.
 
-URI shape: `mongodb://127.0.0.1:27017/saha_local?replicaSet=rs0&directConnection=true`
+URI shape: `mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directConnection=true`
 
 ---
 

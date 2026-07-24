@@ -2,18 +2,19 @@
 
 Master reference of every environment variable across the three phases. **No secret values appear here** — only names, purpose, and where each is set. This doubles as the handover env catalogue (KB §10).
 
-> Phases: **LOCAL** (local dev → Docker MongoDB 8.3 replica set), **TEST-E2E** (short-lived real infra → test droplet with Docker MongoDB), **PROD-E2E** (production droplet with Docker MongoDB). Real values live only in gitignored files locally, and in **Docker Compose secrets / root-owned env files** in deployed environments. Never commit real values (repo is public).
+> Phases: **LOCAL** (local dev → Docker MongoDB 8.3 replica set), **TEST-E2E** (short-lived real infra → test droplet with Docker MongoDB), **PROD-E2E** (production droplet with Docker MongoDB). Real values live only in gitignored files locally, and in **GitHub Actions encrypted secrets → root-owned env files / Docker Compose secrets** in deployed environments (roadmap §0b/0d). Never commit real values (repo is public).
 
 ## Where values live
 
-| Layer       | Template (committed)           | Real file (gitignored)                               | Consumed by                                                     |
-| ----------- | ------------------------------ | ---------------------------------------------------- | --------------------------------------------------------------- |
-| MCP servers | `.env.mcp.example`             | `.env.mcp`                                           | Cursor MCP (mongodb, postman, github, digitalocean, context7)   |
-| API         | `apps/api/.env.example`        | `apps/api/.env` (local) · compose secrets (deployed) | `apps/api` (NestJS) + seed script + `adapters-db-mongo`         |
-| Storefront  | `apps/storefront/.env.example` | `apps/storefront/.env`                               | `apps/storefront` (**Angular** — see runtime-config note below) |
-| Admin       | `apps/admin/.env.example`      | `apps/admin/.env`                                    | `apps/admin` (**Angular**)                                      |
+| Layer       | Template (committed)                   | Real file (gitignored / deploy-written)                       | Consumed by                                                  |
+| ----------- | -------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------ |
+| MCP servers | `.env.mcp.example`                     | `.env.mcp`                                                    | Cursor MCP (mongodb, postman, github, digitalocean, context7)|
+| API         | `apps/api/.env.example`                | `apps/api/.env` (local) · Compose secrets / root-owned env (deployed) | `apps/api` (NestJS, loads it via `dotenv/config`) + `adapters-db-mongo` |
+| Storefront  | `apps/storefront/public/config.example.json` | `apps/storefront/public/config.json` (localhost defaults committed; deploy overwrites) | Storefront at runtime via `core/config/runtime-config.ts` |
+| Admin       | `apps/admin/public/config.example.json`      | `apps/admin/public/config.json` (same rule)             | Admin at runtime via `core/config/runtime-config.ts`         |
+| Mongo host port | — (default 27017 in compose)       | `docker/mongo/.env` (`MONGO_HOST_PORT`, per-machine)          | `docker/mongo/docker-compose.yml` + `scripts/mongo-*.sh`     |
 
-> **Angular runtime config (replaces Next's `NEXT_PUBLIC_*`).** Next bakes `NEXT_PUBLIC_*` into the bundle at build. Angular's `environment.ts` does the same — which is **wrong for our build-once/run-many-envs Docker flow**. Instead, the Angular apps read browser-facing config at **runtime** via an `APP_INITIALIZER` that fetches a per-environment `assets/config.json` (or `window.__env`) mounted into the container. So the variables below are **not** baked secrets — they're public config values, delivered per environment at container start. (No secret ever ships in the client bundle; server-only secrets live in the API container — see KB §09.)
+> **Angular runtime config (locked — no build-time bake-in).** The Angular apps read browser-facing, NON-SECRET config at **runtime**: `provideAppInitializer` fetches `public/config.json` before the app starts and fills the mutable `environment` object (`runtime-config.ts` in each app). No `fileReplacements` for deploy URLs — images are build-once/run-many; the deploy pipeline writes the per-environment `config.json` into the container (roadmap §0d `render-frontend-config`). No secret ever ships in the client bundle; server-only secrets live in the API env (KB §09).
 
 ## MCP layer (`.env.mcp`)
 
@@ -21,7 +22,7 @@ Master reference of every environment variable across the three phases. **No sec
 | ------------------------------ | :---------------------: | :---------------------: | :-------------------------: | ------------------------------------------------------------------------ |
 | `CONTEXT7_API_KEY`             |        optional         |        optional         |          optional           | Free tier works empty (500 req/mo)                                       |
 | `POSTMAN_API_KEY`              |           yes           |           yes           |             yes             | Account-level key                                                        |
-| `MDB_MCP_CONNECTION_STRING`    | local Docker Mongo (rw) | test droplet Mongo (rw) | prod Mongo (read-only user) | Single string → **percent-encode** `@`→`%40` etc.; replica set required. |
+| `MDB_MCP_CONNECTION_STRING`    | local Docker rs0 (no auth) | test droplet Docker Mongo (rw) | prod Docker Mongo (read-only user) | Single string → **percent-encode** `@`→`%40` etc.; must include `replicaSet=rs0`. LOCAL: `mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directConnection=true` (port per `MONGO_HOST_PORT` override). |
 | `MDB_MCP_READ_ONLY`            |         `false`         |         `false`         |           `true`            | Defense in depth on prod                                                 |
 | `GITHUB_PERSONAL_ACCESS_TOKEN` |            —            |           yes           |             yes             | Fine-grained PAT; PROD read-oriented                                     |
 | `GITHUB_TOOLSETS`              |            —            |     `actions,repos`     |       `actions,repos`       |                                                                          |
@@ -30,63 +31,63 @@ Master reference of every environment variable across the three phases. **No sec
 
 ## API (`apps/api/.env`)
 
-MongoDB is self-hosted Docker MongoDB 8.3 with a single-node replica set in local/test/prod. Configure either `MONGODB_URI` directly or separate host/user parts; the app assembles the URI at runtime and percent-encodes the password via `encodeURIComponent`, so the raw `@` is stored as-is (no manual encoding).
+MongoDB is self-hosted Docker MongoDB 8.3 with a single-node replica set (`rs0`) in local/test/prod — never Atlas. Configure either `MONGODB_URI` directly (must include `replicaSet=rs0`) or the separate parts; the adapter assembles a `mongodb://` URI at runtime and percent-encodes credentials via `encodeURIComponent`, so raw `@` etc. are stored as-is. The local profile runs without auth (leave username/password empty).
 
 | Var                                                                         |        LOCAL        |         TEST-E2E          |         PROD-E2E          | Notes                                                                        |
 | --------------------------------------------------------------------------- | :-----------------: | :-----------------------: | :-----------------------: | ---------------------------------------------------------------------------- |
 | `NODE_ENV`                                                                  |    `development`    |       `production`        |       `production`        |                                                                              |
 | `PORT`                                                                      |       `4000`        |          `4000`           |          `4000`           | Behind Nginx in deploys                                                      |
-| `CORS_ALLOWED_ORIGINS`                                                      | localhost:3000/3001 |       test domains        |       prod domains        | Comma-separated allowlist                                                    |
-| `MONGODB_USERNAME`                                                          |         yes         |            yes            |            yes            |                                                                              |
-| `MONGODB_PASSWORD`                                                          |      yes (raw)      |         yes (raw)         |         yes (raw)         | Special chars stored raw; encoded at runtime                                 |
-| `MONGODB_HOST`                                                              |     `localhost`     |          `mongo`          |          `mongo`          | Docker service/host; no public 27017                                         |
-| `MONGODB_PORT`                                                              |       `27017`       |          `27017`          |          `27017`          | Private Docker network in deployed envs                                      |
+| `CORS_ALLOWED_ORIGINS`                                                      | `http://localhost:4200,http://localhost:4300` | test domains | prod domains | Comma-separated allowlist (storefront + admin origins)     |
+| `TRUST_PROXY` / `CLIENT_IP_HEADER`                                          |     `false` / —     | `true`/`cf-connecting-ip` | `true`/`cf-connecting-ip` | Cloudflare→Nginx origin; real client IP for rate-limit/audit                 |
+| `MONGODB_HOST`                                                              |     `127.0.0.1`     |          `mongo`          |          `mongo`          | Docker service name on the private network in deploys; no public 27017       |
+| `MONGODB_PORT`                                                              | `27017` (or `MONGO_HOST_PORT` override) | `27017`   |          `27017`          | Local override when a native mongod owns 27017 (see `docker/mongo/.env`)     |
+| `MONGODB_USERNAME` / `MONGODB_PASSWORD`                                     |    empty (no auth)  |         yes (raw)         |         yes (raw)         | Both or neither; special chars stored raw, encoded at runtime                |
 | `MONGODB_REPLICA_SET`                                                       |        `rs0`        |           `rs0`           |           `rs0`           | Required for transactions                                                    |
-| `MONGODB_DB_NAME`                                                           |    `saha_local`     |        `saha_test`        |        `saha_prod`        |                                                                              |
-| `MONGODB_APP_NAME`                                                          |         yes         |            yes            |            yes            | App name / driver metadata                                                   |
-| `MONGODB_URI`                                                               |  optional override  |         optional          |         optional          | If set, must include `replicaSet=rs0` and be pre-encoded                     |
-| `MEILISEARCH_HOST` / `MEILISEARCH_API_KEY`                                  |   local/container   |            yes            |            yes            | Self-hosted search container; API key is server-side only                    |
-| `JWT_ACCESS_SECRET`                                                         |         yes         |            yes            |            yes            | `openssl rand -hex 48`                                                       |
-| `JWT_REFRESH_SECRET`                                                        |         yes         |            yes            |            yes            | distinct from access                                                         |
+| `MONGODB_DB_NAME`                                                           | `saha_textile_local` |   `saha_textile_test`    |   `saha_textile_prod`     |                                                                              |
+| `MONGODB_APP_NAME`                                                          | `saha-textile-api`  |            yes            |            yes            | Driver metadata                                                              |
+| `MONGODB_URI`                                                               |  optional override  |         optional          |         optional          | If set: pre-encoded, must include `replicaSet=rs0` (+ `directConnection=true` single-node) |
+| `MEILISEARCH_HOST` / `MEILISEARCH_API_KEY`                                  |  Chunk F (container) |            yes            |            yes            | Self-hosted search behind `SearchPort`; key is server-side only              |
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`                                  |         yes         |            yes            |            yes            | `openssl rand -hex 48`; distinct values. Transitional bearer until Chunk D   |
 | `JWT_ACCESS_TTL` / `JWT_REFRESH_TTL`                                        |    `15m` / `30d`    |           same            |           same            |                                                                              |
-| `EMAIL_PROVIDER`                                                            |      `console`      |         `resend`          |         `resend`          | `resend`\|`smtp`\|`ses`\|`console`\|`disabled` (EmailPort; no Brevo lock-in) |
-| `RESEND_API_KEY`                                                            |        later        |            yes            |            yes            | outbound transactional (free tier, primary)                                  |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD`                   |         no          |         optional          |         optional          | only when `EMAIL_PROVIDER=smtp` (e.g. MailerSend relay)                      |
-| `MAIL_FROM` / `OTP_EMAIL_FROM` / `OTP_TTL_SECONDS` / `OTP_MAX_ATTEMPTS`     |         yes         |            yes            |            yes            | verified sender; `600` / `5`                                                 |
-| `TRUST_PROXY` / `CLIENT_IP_HEADER`                                          |     `false` / —     | `true`/`cf-connecting-ip` | `true`/`cf-connecting-ip` | Cloudflare→Nginx origin; real client IP source                               |
-| `EDGE_TLS_MODE` / `EDGE_CACHE_OVERRIDE`                                     |          —          |         optional          |         optional          | empty = Cloudflare-managed; else `origin-ca`\|`letsencrypt` / cache override |
-| `GOOGLE_OAUTH_CLIENT_ID` / `_SECRET`                                        |        later        |            yes            |            yes            | social login                                                                 |
-| `FACEBOOK_OAUTH_APP_ID` / `_SECRET`                                         |        later        |            yes            |            yes            | social login                                                                 |
-| `SPACES_KEY` / `_SECRET` / `_BUCKET` / `_REGION` / `_ENDPOINT` / `_CDN_URL` |      Phase 4+       |            yes            |            yes            | DO Spaces media                                                              |
-| `CCAVENUE_MERCHANT_ID` / `_ACCESS_CODE` / `_WORKING_KEY` / `_BASE_URL`      |       Phase 6       |           test            |           prod            | INR payments                                                                 |
+| `COOKIE_DOMAIN`                                                             |        empty        |       apex domain         |       apex domain         | Cross-subdomain cookie auth (Chunk D)                                        |
+| `ACCESS_COOKIE_NAME` / `REFRESH_COOKIE_NAME` / `CSRF_COOKIE_NAME`           | `st_access` / `st_refresh` / `st_csrf` | same       |           same            | Compact `st_*` cookie names (owner lock 2026-07-24)                          |
+| `CSRF_HEADER_NAME` / `CSRF_SECRET`                                          | `x-csrf-token` / later |          yes           |            yes            | Double-submit CSRF (Chunk D); secret via `openssl rand -hex 48`              |
+| `NOTIFICATION_PROVIDER`                                                     |      `console`      |          `msg91`          |          `msg91`          | **MSG91 primary** behind `NotificationPort` (SMS/WhatsApp/Email incl. OTP); `console` logs only |
+| `MSG91_AUTH_KEY` / `MSG91_SENDER_ID` / `MSG91_EMAIL_FROM` / `MSG91_EMAIL_DOMAIN` / `MSG91_WHATSAPP_NUMBER` | later | yes | yes | Sender ID = DLT-approved 6-char header (e.g. `SAHATX` — regulator-capped abbreviation) <!-- naming-law:allow --> |
+| `EMAIL_FALLBACK_PROVIDER`                                                   |     `disabled`      |         optional          |         optional          | `disabled`\|`resend`\|`ses`\|`smtp` — optional email **fallback only**, never primary |
+| `RESEND_API_KEY` / `SES_*` / `SMTP_*`                                       |         no          |         optional          |         optional          | Only when the matching fallback is enabled                                   |
+| `OTP_TTL_SECONDS` / `OTP_MAX_ATTEMPTS`                                      |    `600` / `5`      |           same            |           same            | Channel-direct OTP via `NotificationPort`                                    |
+| `GOOGLE_OAUTH_CLIENT_ID` / `_SECRET`                                        |        later        |            yes            |            yes            | Client id is public (also in `config.json`); **secret API-only**             |
+| `FACEBOOK_OAUTH_APP_ID` / `_SECRET`                                         |        later        |            yes            |            yes            | Same split                                                                   |
+| `SPACES_KEY` / `_SECRET` / `_BUCKET` / `_REGION` / `_ENDPOINT` / `_CDN_URL` |      Phase 4+       |            yes            |            yes            | DO Spaces media — **SGP only**: region `sgp1`, endpoint `https://sgp1.digitaloceanspaces.com` |
+| `CCAVENUE_MERCHANT_ID` / `_ACCESS_CODE` / `_WORKING_KEY` / `_BASE_URL`      |       Phase 6       |           test            |           prod            | INR gateway role (adapter-swappable)                                         |
 | `PAYPAL_CLIENT_ID` / `_SECRET` / `_ENV`                                     |       Phase 6       |          sandbox          |           live            | non-INR payments                                                             |
 | `EXCHANGERATE_API_KEY`                                                      | Phase 7 (optional)  |         optional          |         optional          | free open tier needs none                                                    |
 | `SHIPROCKET_EMAIL` / `_PASSWORD` / `_PICKUP_PINCODE`                        |       Phase 6       |            yes            |            yes            | shipping                                                                     |
 | `RATE_LIMIT_MAX` / `RATE_LIMIT_WINDOW`                                      |         yes         |            yes            |            yes            | `@fastify/rate-limit`                                                        |
 
-## Storefront (`apps/storefront`) — public runtime config (browser-exposed, no secrets)
+## Storefront (`apps/storefront/public/config.json`) — public runtime config (browser-exposed, no secrets)
 
-Delivered via `assets/config.json` / `window.__env` at container start (not baked). Keys are camelCase config, not `NEXT_PUBLIC_*` env vars; the `.env`/compose layer just templates the `config.json`.
+Fetched at app init by `src/app/core/config/runtime-config.ts` (`provideAppInitializer`); fills the mutable `environment`. Committed file = localhost defaults only; deploys write the real one (roadmap §0d). SSR may alternatively receive the same JSON via the `SAHA_TEXTILE_PUBLIC_CONFIG` env var.
 
-| Key (config.json)               | LOCAL                   | TEST-E2E                    | PROD-E2E               |
-| ------------------------------- | ----------------------- | --------------------------- | ---------------------- |
-| `apiUrl`                        | `http://localhost:4000` | `https://api.test.<domain>` | `https://api.<domain>` |
-| `siteUrl`                       | `http://localhost:3000` | test                        | prod                   |
-| `defaultLocale`                 | `en`                    | `en`                        | `en`                   |
-| `supportedLocales`              | `en,bn`                 | `en,bn`                     | `en,bn`                |
-| `analyticsDomain` / `scriptUrl` | later                   | yes                         | yes                    |
+| Key (config.json)  | LOCAL                   | TEST-E2E                    | PROD-E2E               |
+| ------------------ | ----------------------- | --------------------------- | ---------------------- |
+| `apiUrl`           | `http://localhost:4000` | `https://api.test.<domain>` | `https://api.<domain>` |
+| `siteUrl`          | `http://localhost:4200` | test                        | prod                   |
+| `defaultLocale`    | `en`                    | `en`                        | `en`                   |
+| `supportedLocales` | `["en","bn"]`           | same                        | same                   |
 
-## Admin (`apps/admin`) — public runtime config
+## Admin (`apps/admin/public/config.json`) — public runtime config
 
 | Key (config.json) | LOCAL                   | TEST-E2E                    | PROD-E2E               |
 | ----------------- | ----------------------- | --------------------------- | ---------------------- |
 | `apiUrl`          | `http://localhost:4000` | `https://api.test.<domain>` | `https://api.<domain>` |
-| `adminUrl`        | `http://localhost:3001` | test                        | prod                   |
+| `adminUrl`        | `http://localhost:4300` | test                        | prod                   |
 
 ## Setup checklist (LOCAL)
 
-1. Start the local Docker Compose profile that runs MongoDB 8.3 as a single-node replica set and Meilisearch.
-2. `cp .env.mcp.example .env.mcp` → fill LOCAL block (Mongo string with `@`→`%40`, Postman key). Restart Cursor.
-3. `cp apps/api/.env.example apps/api/.env` → fill `MONGODB_*`, `MEILISEARCH_*`, and JWT/CSRF/refresh secrets.
-4. `cp apps/storefront/.env.example apps/storefront/.env` and `cp apps/admin/.env.example apps/admin/.env`.
-5. Confirm MCP servers green and tool count < ~40 (see `mcp-automation-setup.md`).
+1. Docker running → `pnpm mongo:up` → `pnpm mongo:status` (MongoDB 8.3 single-node `rs0`; port 27017, or set `MONGO_HOST_PORT` in gitignored `docker/mongo/.env` if a native mongod owns it).
+2. `cp apps/api/.env.example apps/api/.env` → set JWT secrets (`openssl rand -hex 48`); Mongo localhost defaults are fine (mirror `MONGODB_PORT` if you overrode the host port). The API loads it via `dotenv/config`.
+3. Storefront/admin need nothing — committed localhost `public/config.json` is picked up at app init.
+4. Optional Cursor MCP: `cp .env.mcp.example .env.mcp` → fill LOCAL block; restart Cursor; keep tool count < ~40 (see `mcp-automation-setup.md`).
+5. `pnpm lint` also runs the brand naming guard (`scripts/check-naming.sh`).

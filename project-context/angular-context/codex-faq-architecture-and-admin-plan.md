@@ -24,7 +24,7 @@ FAQ is a managed editorial/content module with flexible targeting. It is differe
 - True customer Q&A: customer-submitted product questions answered by admin, then published and emailed back to the asker.
 - This file's old "Q&A" wording means targeted FAQ records that can be general, product-specific, category-specific, or a deliberate category-plus-product combination.
 
-Fastkart's FAQ/Q&A-looking pages should be replicated in look/feel, but the FAQ targeting model and the separate customer Q&A workflow are Saha-specific.
+Fastkart's FAQ/Q&A-looking pages should be replicated in look/feel, but the FAQ targeting model and the separate customer Q&A workflow are Saha Textile-specific.
 
 Locked separation:
 

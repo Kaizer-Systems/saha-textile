@@ -149,12 +149,12 @@ Use API-set cookies for both storefront and admin.
 
 | Cookie                | HttpOnly | Secure | SameSite | Path            | Purpose                                                            |
 | --------------------- | -------- | ------ | -------- | --------------- | ------------------------------------------------------------------ |
-| `__Host-saha_access`  | Yes      | Yes    | Lax      | `/`             | Short-lived access JWT for API authorization.                      |
-| `__Host-saha_refresh` | Yes      | Yes    | Lax      | `/auth/refresh` | Opaque refresh token, hashed in DB.                                |
-| `saha_csrf`           | No       | Yes    | Lax      | `/`             | CSRF token value readable by Angular and echoed in `X-CSRF-Token`. |
-| `saha_guest`          | Yes      | Yes    | Lax      | `/`             | Anonymous guest cart/session id.                                   |
-| `saha_locale`         | No       | Yes    | Lax      | `/`             | Locale preference for SSR.                                         |
-| `saha_currency`       | No       | Yes    | Lax      | `/`             | Currency preference for SSR/API pricing.                           |
+| `__Host-st_access`  | Yes      | Yes    | Lax      | `/`             | Short-lived access JWT for API authorization.                      |
+| `__Host-st_refresh` | Yes      | Yes    | Lax      | `/auth/refresh` | Opaque refresh token, hashed in DB.                                |
+| `st_csrf`           | No       | Yes    | Lax      | `/`             | CSRF token value readable by Angular and echoed in `X-CSRF-Token`. |
+| `st_guest`          | Yes      | Yes    | Lax      | `/`             | Anonymous guest cart/session id.                                   |
+| `saha_textile_locale`         | No       | Yes    | Lax      | `/`             | Locale preference for SSR.                                         |
+| `st_currency`       | No       | Yes    | Lax      | `/`             | Currency preference for SSR/API pricing.                           |
 
 Cookie notes:
 
@@ -202,8 +202,8 @@ Use double-submit CSRF plus server-side session binding.
 
 Flow:
 
-1. API sets a non-httpOnly `saha_csrf` cookie on session creation or `/auth/csrf`.
-2. Angular interceptor reads `saha_csrf` and sends `X-CSRF-Token` for unsafe methods.
+1. API sets a non-httpOnly `st_csrf` cookie on session creation or `/auth/csrf`.
+2. Angular interceptor reads `st_csrf` and sends `X-CSRF-Token` for unsafe methods.
 3. API `CsrfGuard` validates the header value against the cookie and session-bound hash.
 4. Auth endpoints that accept provider POST callbacks must follow provider-specific CSRF rules too, especially Google GIS double-submit CSRF when using `credential` POST.
 

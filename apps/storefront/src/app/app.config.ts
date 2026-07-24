@@ -22,6 +22,7 @@ import { WISHLIST_FEATURE_KEY, WishlistEffects, wishlistReducer } from '@core/st
 import { ErrorService } from '@data-access/services/error.service';
 import { NotificationService } from '@data-access/services/notification.service';
 
+import { provideRuntimeConfig } from './core/config/runtime-config';
 import { TranslocoHttpLoader } from './core/i18n/transloco-loader';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-handler.interceptor';
@@ -32,6 +33,9 @@ export const appConfig: ApplicationConfig = {
 		CurrencyPipe,
 		ErrorService,
 		NotificationService,
+		// Public runtime config: fetches /config.json before the app starts and
+		// fills the mutable environment (no fileReplacements for deploy URLs).
+		provideRuntimeConfig(),
 		// Analog file-based routing (pages under src/app/pages). `/` is the custom
 		// home (pages/index.page.ts → features/home). Replaces the old
 		// provideRouter + app.routes.ts / feature *.routes.ts config.

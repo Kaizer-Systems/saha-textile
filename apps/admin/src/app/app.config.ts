@@ -10,6 +10,7 @@ import { provideStore } from '@ngrx/store';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { provideToastr } from 'ngx-toastr';
 
+import { provideRuntimeConfig } from '@core/config/runtime-config';
 import { AuthInterceptor } from '@core/interceptors/auth.interceptor';
 import { GlobalErrorHandlerInterceptor } from '@core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from '@core/interceptors/loader.interceptor';
@@ -22,6 +23,9 @@ import { TranslocoHttpLoader } from './core/i18n/transloco-loader';
 export const appConfig: ApplicationConfig = {
 	providers: [
 		CurrencyPipe,
+		// Public runtime config: fetches /config.json before the app starts and
+		// fills the mutable environment (no fileReplacements for deploy URLs).
+		provideRuntimeConfig(),
 		provideRouter(
 			routes,
 			withInMemoryScrolling({

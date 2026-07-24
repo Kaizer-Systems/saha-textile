@@ -22,7 +22,6 @@
     "test": "vitest run --passWithNoTests",
     "format": "prettier --write \"**/*.{ts,html,scss,css,js,json,md}\""
   },
-  "private": true,
   "dependencies": {
     "@analogjs/router": "^2.6.2",
     "@angular/animations": "^21.0.6",

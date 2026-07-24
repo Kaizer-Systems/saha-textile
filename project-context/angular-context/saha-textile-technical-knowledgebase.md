@@ -118,7 +118,7 @@ Everything else we locked — NgRx (hybrid), Transloco, TanStack Angular Query, 
 ### Repo layout
 
 ```
-saha/  (pnpm workspace, Turborepo)
+saha-textile/  (pnpm workspace, Turborepo)
 ├─ apps/
 │  ├─ admin/         (Angular + Analog — BUILT FIRST; custom, Fastkart admin UI as reference)
 │  ├─ storefront/    (Angular + Analog SSR/SSG, PWA — custom, Fastkart front UI as reference)
@@ -598,7 +598,7 @@ Nginx setup notes for this stack:
 ### Secrets handling
 
 - Do NOT bake secrets into images, Dockerfiles, or build args. Do NOT expose via any browser-bundled config — Angular `environment.*.ts` and build-time vars are compiled into the client JS (the Angular analogue of `NEXT_PUBLIC_*`), so they are public to the browser. Server-only secrets stay in the API container's runtime env.
-- Inject at runtime via **Docker Compose secrets** (mounted as files) or root-owned `/etc/saha/*.env` referenced by Compose `env_file`/`secrets`. Keep production config out of source control.
+- Inject at runtime via **Docker Compose secrets** (mounted as files) or root-owned `/etc/saha-textile/*.env` referenced by Compose `env_file`/`secrets`. Keep production config out of source control.
 
 ### CI/CD (GitHub Actions)
 

@@ -12,7 +12,7 @@ export class HealthController {
 	check(): HealthStatus {
 		return {
 			status: 'ok',
-			service: 'saha-api',
+			service: 'saha-textile-api',
 			timestamp: new Date().toISOString(),
 		};
 	}

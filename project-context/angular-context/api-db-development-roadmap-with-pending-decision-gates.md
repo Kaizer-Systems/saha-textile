@@ -118,7 +118,7 @@ These are **not** waiting on the open worksheet/umbrella items:
 
 | Path | Role |
 | --- | --- |
-| `docker/mongo/docker-compose.yml` | Mongo 8.3 single-node `rs0`, volume `saha_mongo_data`, loopback publish |
+| `docker/mongo/docker-compose.yml` | Mongo 8.3 single-node `rs0`, volume `saha_textile_mongo_data`, loopback publish |
 | `pnpm mongo:up` / `mongo:down` / `mongo:status` / `mongo:wipe` | Lifecycle scripts |
 | `apps/api/.env.example` | Self-hosted `MONGODB_*` (not Atlas) |
 | `.env.mcp.example` | LOCAL MCP URI → local Docker RS |
@@ -131,7 +131,7 @@ pnpm mongo:up
 pnpm mongo:status
 ```
 
-URI: `mongodb://127.0.0.1:27017/saha_local?replicaSet=rs0&directConnection=true`  
+URI: `mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directConnection=true`  
 **API-only** access path in architecture; Angular apps never hold this URI.
 
 ### Not required to start Phases A–E
@@ -198,7 +198,7 @@ Include these in `.env.example`, Compose, Actions, and Nest config **when the re
 | `.github/workflows/deploy-<env>.yml` | Build images (secret-free), push GHCR with git SHA tags, SSH to droplet, run remote deploy script |
 | `docker/compose/docker-compose.yml` (or env-specific overlays) | Services: nginx, storefront, admin, api, mongo (`rs0`), meilisearch; private network; **no public 27017** |
 | `docker/nginx/` configs | TLS (Certbot/LE or Cloudflare origin), proxy to apps, security headers, `cf-connecting-ip` forwarding awareness |
-| `scripts/deploy/render-api-env.sh` | From CI-injected env, render **root-owned** `/etc/saha/api.env` (or Compose secret files) with **all** API secrets for that environment — validated against expected key list from `.env.example` |
+| `scripts/deploy/render-api-env.sh` | From CI-injected env, render **root-owned** `/etc/saha-textile/api.env` (or Compose secret files) with **all** API secrets for that environment — validated against expected key list from `.env.example` |
 | `scripts/deploy/render-frontend-config.sh` | Render storefront + admin `config.json` from **non-secret** vars (`apiUrl`, `siteUrl`, locales, OAuth client ids only) into mount paths |
 | `scripts/deploy/remote-up.sh` | On droplet: pull SHA-tagged images, render env/config, `docker compose up -d`, healthcheck gate, optional rollback to previous SHA |
 | `scripts/deploy/backup-mongo.sh` | Scheduled volume-aware Mongo dump + retention (weekly baseline per owner lock) |
@@ -219,7 +219,7 @@ Include these in `.env.example`, Compose, Actions, and Nest config **when the re
 - GitHub Environments: `test`, `production` with isolated secrets.
 - Secrets: Mongo, JWT/CSRF, MSG91, Spaces, OAuth secrets, payment/shipping when live, droplet SSH key, GHCR pull token if needed.
 - Variables (non-secret): public URLs, CORS origins, `SPACES_CDN_URL`, OAuth client ids, feature flags.
-- Droplet: Docker Engine, deploy user, `/etc/saha/` permissions, Cloudflare DNS to Nginx.
+- Droplet: Docker Engine, deploy user, `/etc/saha-textile/` permissions, Cloudflare DNS to Nginx.
 
 ---
 

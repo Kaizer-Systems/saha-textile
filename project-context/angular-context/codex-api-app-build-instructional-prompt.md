@@ -344,8 +344,8 @@ COOKIE_SECURE=true
 COOKIE_SAMESITE=lax
 COOKIE_DOMAIN=
 
-MONGODB_URI=mongodb://saha_api:...@mongo:27017/saha_prod?replicaSet=rs0&authSource=admin
-MONGODB_DB_NAME=saha_prod
+MONGODB_URI=mongodb://saha_textile_api:...@mongo:27017/saha_textile_prod?replicaSet=rs0&authSource=admin
+MONGODB_DB_NAME=saha_textile_prod
 MONGODB_REPLICA_SET=rs0
 
 MEILISEARCH_HOST=http://meilisearch:7700
@@ -383,7 +383,7 @@ OTP_MAX_ATTEMPTS=5
 # Per-channel on/off toggles + plan limits live in DB (notificationChannelSettings), NOT env — admin/RBAC controlled.
 NOTIFICATIONS_PROVIDER=msg91            # msg91 | twilio | console (dev) | disabled
 MSG91_AUTH_KEY=...                      # when provider=msg91
-MSG91_SMS_SENDER_ID=                    # DLT-approved header, e.g. SAHATX
+MSG91_SMS_SENDER_ID=                    # DLT-approved header, e.g. SAHATX (TRAI DLT caps sender headers at 6 chars — permitted abbreviation exception to the brand naming law)
 MSG91_WHATSAPP_NUMBER=                  # approved WhatsApp Business number
 DLT_ENTITY_ID=                          # TRAI DLT principal entity id (India SMS)
 # TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_MESSAGING_SERVICE_SID  # only if provider=twilio
@@ -462,10 +462,10 @@ Refactor browser auth away from JSON bearer token responses.
 
 Browser session model:
 
-- Access token: short-lived JWT in `__Host-saha_access` httpOnly Secure cookie.
-- Refresh token: opaque high-entropy token in `__Host-saha_refresh` httpOnly Secure cookie; only hash stored in DB.
-- CSRF token: readable `saha_csrf` cookie plus `X-CSRF-Token` header on unsafe methods; sign/bind token to session.
-- Guest identity: separate `saha_guest` httpOnly cookie for cart/session continuity, never account authority.
+- Access token: short-lived JWT in `__Host-st_access` httpOnly Secure cookie.
+- Refresh token: opaque high-entropy token in `__Host-st_refresh` httpOnly Secure cookie; only hash stored in DB.
+- CSRF token: readable `st_csrf` cookie plus `X-CSRF-Token` header on unsafe methods; sign/bind token to session.
+- Guest identity: separate `st_guest` httpOnly cookie for cart/session continuity, never account authority.
 - Locale/currency preferences may use non-httpOnly preference cookies because they are not secrets.
 
 Add or update auth collections:
@@ -736,7 +736,7 @@ Admin search requirements:
 Cart requirements:
 
 - Server-side persistent cart for guest and logged-in users.
-- Guest cart linked by `saha_guest` cookie.
+- Guest cart linked by `st_guest` cookie.
 - On login/register/OAuth, merge guest cart into user cart transactionally.
 - Merge key: productId + variantId + selected options + add-on measurement signature.
 - Angular may store offline cart locally, but API is final source when online.
@@ -1104,7 +1104,7 @@ Work in phases and stop for review after each major phase.
 
 - Update API README/runbook.
 - Update OpenAPI and env docs.
-- Add seed data for real Saha patterns: multi-placement categories, simple products, variable products with No Stitching/No Blouse, filter-only color, named add-on blouse-design-on-saree example, bundle/composite seam fixture, tags, sample search dictionary, sample admin user bootstrap.
+- Add seed data for real Saha Textile patterns: multi-placement categories, simple products, variable products with No Stitching/No Blouse, filter-only color, named add-on blouse-design-on-saree example, bundle/composite seam fixture, tags, sample search dictionary, sample admin user bootstrap.
 - Run full lint/typecheck/test gates.
 - Provide final report with implemented endpoints, contracts, collections, tests, and remaining deferred seams.
 

@@ -23,6 +23,7 @@
     "@saha-textile/contracts": "workspace:*",
     "@saha-textile/core-domain": "workspace:*",
     "argon2": "^0.44.0",
+    "dotenv": "^17.4.2",
     "jsonwebtoken": "^9.0.3",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",

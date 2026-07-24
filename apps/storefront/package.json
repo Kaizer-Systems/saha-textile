@@ -16,6 +16,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "watch": "vite build --watch",
+    "prelint": "pnpm run styles",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",

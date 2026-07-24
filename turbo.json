@@ -7,8 +7,11 @@
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**", "!**/.angular/cache/**", "!**/.nitro/**"]
 		},
+		"styles": {
+			"outputs": ["src/scss/app.gen.css"]
+		},
 		"lint": {
-			"dependsOn": ["^build"]
+			"dependsOn": ["^build", "styles"]
 		},
 		"typecheck": {
 			"dependsOn": ["^build"]

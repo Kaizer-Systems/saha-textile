@@ -1,0 +1,88 @@
+<header class="header-2" [class.active]="stick && sticky()">
+  @if (data()?.header?.page_top_bar_enable) {
+  <app-topbar [data]="data()" />
+  }
+  <div class="top-nav top-header sticky-header sticky-header-3">
+    <div class="container-fluid-lg">
+      <div class="row">
+        <div class="col-12">
+          <div class="navbar-top">
+            <app-navbar-menu-button (activeMenu)="toggle($event)" [show]="active" />
+            <app-logo [textClass]="'txt-theme f-w-600'" [data]="data()" [logo]="logo()" />
+            <div class="middle-box">
+              <div class="center-box">
+                <div class="searchbar-box order-xl-1 d-none d-xl-block">
+                  <app-search [style]="'standard'" />
+                </div>
+              </div>
+            </div>
+            <div class="rightside-menu">
+              <div class="option-list">
+                <ul>
+                  <li>
+                    <app-my-account [style]="'standard'" />
+                  </li>
+                  <li>
+                    <app-search-box [style]="'classic'" />
+                  </li>
+                  <li>
+                    <app-header-compare />
+                  </li>
+                  <li>
+                    <app-header-wishlist [style]="'classic'" />
+                  </li>
+                  <li class="onhover-dropdown">
+                    <app-header-cart [style]="'classic'" />
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="container-fluid-lg">
+    <div class="row">
+      <div class="col-12">
+        <div class="main-nav">
+          <div class="header-nav-left">
+            <app-header-categories [data]="data()" />
+          </div>
+          <div class="main-nav navbar navbar-expand-xl navbar-light navbar-sticky">
+            <div
+              class="offcanvas offcanvas-collapse order-xl-2"
+              [class.show]="active"
+              id="primaryMenu"
+            >
+              <div class="offcanvas-header navbar-shadow">
+                <h5>{{ 'menu' | translate }}</h5>
+                <app-button
+                  [type]="'button'"
+                  [class]="'btn-close lead'"
+                  [id]="'toggle_menu_btn'"
+                  [spinner]="false"
+                  (click)="toggle(false)"
+                />
+              </div>
+              <div class="offcanvas-body">
+                <app-menu />
+              </div>
+            </div>
+            @if (active) {
+            <div
+              class="offcanvas-backdrop fade"
+              [class.show]="active"
+              (click)="toggle(false)"
+            ></div>
+            }
+          </div>
+          <div class="right-nav">
+            <app-call [style]="'standard'" [data]="data()" />
+            <app-deal [style]="'standard'" [data]="data()" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>

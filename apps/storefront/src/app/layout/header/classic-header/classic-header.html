@@ -1,0 +1,78 @@
+<header class="header-3" [class.active]="stick && sticky()">
+  <div class="top-nav sticky-header sticky-header-2">
+    <div class="container-fluid-lg">
+      <div class="row">
+        <div class="col-12">
+          <div class="navbar-top">
+            <app-navbar-menu-button (activeMenu)="toggle($event)" [show]="active" />
+            <app-logo [data]="data()" [logo]="logo()" />
+            <!-- <div class="search-full">
+            <app-search></app-search>
+          </div> -->
+            <div class="middle-box">
+              <div class="center-box">
+                <app-search [style]="'classic'" />
+              </div>
+            </div>
+            <div class="rightside-menu support-sidemenu">
+              <app-call [style]="'classic'" [data]="data()" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="container-fluid-lg">
+    <div class="row">
+      <div class="col-12 position-relative">
+        <div class="main-nav nav-left-align">
+          <div class="main-nav navbar navbar-expand-xl navbar-light navbar-sticky p-0">
+            <div
+              class="offcanvas offcanvas-collapse order-xl-2"
+              [class.show]="active"
+              id="primaryMenu"
+            >
+              <div class="offcanvas-header navbar-shadow">
+                <h5>{{ 'menu' | translate }}</h5>
+                <app-button
+                  [class]="'btn-close lead'"
+                  [type]="'button'"
+                  [spinner]="false"
+                  [id]="'close_btn'"
+                  (click)="toggle(false)"
+                />
+              </div>
+              <div class="offcanvas-body">
+                <app-menu />
+              </div>
+            </div>
+            @if (active) {
+            <div
+              class="offcanvas-backdrop fade"
+              [class.show]="active"
+              (click)="toggle(false)"
+            ></div>
+            }
+          </div>
+          <div class="rightside-menu">
+            <ul class="option-list-2">
+              <li>
+                <app-search-box [style]="'classic'" />
+              </li>
+              <li>
+                <app-header-compare />
+              </li>
+              <li>
+                <app-header-wishlist [style]="'classic'" />
+              </li>
+              <li class="onhover-dropdown">
+                <app-header-cart [style]="'classic'" />
+              </li>
+            </ul>
+            <app-my-account [style]="'classic'" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>

@@ -1,0 +1,152 @@
+<!-- Home Section Start -->
+@if (data()?.content?.home_banner) {
+<section class="home-section-2 home-section-bg pt-md-0 pt-2 overflow-hidden">
+  <app-theme-home-banner [theme]="'denver'" [data]="data()?.content?.home_banner" />
+</section>
+}
+<!-- Home Section End -->
+
+<!-- Category Section Start -->
+@if (data()?.content?.categories_icon_list?.status &&
+data()?.content?.categories_icon_list?.category_ids?.length) {
+<section>
+  <div class="container-fluid-lg">
+    <app-theme-categorie
+      [style]="'horizontal'"
+      [theme]="'paris'"
+      [sliderOption]="categorySlider"
+      [categoryIds]="data()?.content?.categories_icon_list?.category_ids || []"
+      [image]="data()?.content?.categories_icon_list?.image_url"
+    />
+  </div>
+</section>
+}
+<!-- Category Section End -->
+
+<!-- Deal Section Start -->
+@if (data()?.content?.products_list_1?.product_ids?.length || 0 >= 6 &&
+data()?.content?.products_list_1?.status) {
+<section class="product-section product-section-3">
+  <div class="container-fluid-lg">
+    <div>
+      <app-title [title]="data()?.content?.products_list_1?.title" [style]="'simple'" />
+      <app-theme-product
+        [productIds]="data()?.content?.products_list_1?.product_ids || []"
+        [style]="'horizontal'"
+        [slider]="true"
+        [sliderOption]="productSlider6ItemMargin"
+        [productStyle]="'product-solid'"
+        [boxClass]="'product-box-bg'"
+      />
+    </div>
+  </div>
+</section>
+}
+<!-- Deal Section End -->
+
+<!-- banner section start -->
+@if (data()?.content?.two_column_banners?.status) {
+<section>
+  <div class="container-fluid-lg">
+    <div class="row g-4">
+      <div class="col-xxl-8 col-xl-12 col-md-7">
+        <app-image-link [image]="data()?.content?.two_column_banners?.banner_1" [bgImage]="false" />
+      </div>
+      <div class="col-xxl-4 col-xl-12 col-md-5">
+        <app-image-link [image]="data()?.content?.two_column_banners?.banner_2" [bgImage]="false" />
+      </div>
+    </div>
+  </div>
+</section>
+}
+<!-- banner section end -->
+
+<!-- Top Selling Section Start -->
+<section class="top-selling-section no-bg-category">
+  <div class="container-fluid-lg">
+    <div class="row">
+      @if (data()?.content?.slider_product_with_banner?.left_side_banners?.status) {
+      <div class="col-xl-3 col-lg-4 d-lg-block d-none">
+        <div class="ratio_156">
+          <app-image-link
+            [image]="data()?.content?.slider_product_with_banner?.left_side_banners?.banner_1"
+            [class]="'banner-contain-2 hover-effect'"
+            [bgImage]="false"
+          />
+        </div>
+      </div>
+      }
+      <div
+        [ngClass]="data()?.content?.slider_product_with_banner?.left_side_banners?.status ? 'col-xl-9 col-lg-8' : 'col-xxl-12 col-lg-12'"
+      >
+        <app-four-column-product
+          [data]="data()?.content?.slider_product_with_banner?.slider_products"
+          [col]="'col-xl-4 col-lg-6 col-md-4 col-sm-6'"
+        />
+      </div>
+    </div>
+  </div>
+</section>
+<!-- Top Selling Section End -->
+
+<!-- banner section start -->
+@if (data()?.content?.coupon_banner?.status && data()?.content?.coupon_banner) {
+<section class="section-t-space">
+  <div class="container-fluid-lg">
+    <div class="banner-contain">
+      <app-image-link [image]="data()?.content?.coupon_banner" [bgImage]="false" />
+    </div>
+  </div>
+</section>
+}
+<!-- banner section End -->
+
+<!-- Top Selling Section Start -->
+@if (data()?.content?.products_list_2?.product_ids?.length || 0 >= 6 &&
+data()?.content?.products_list_2?.status) {
+<section class="product-section product-section-3">
+  <div class="container-fluid-lg">
+    <div>
+      <app-title [title]="data()?.content?.products_list_2?.title" [style]="'simple'" />
+      <app-theme-product
+        [productIds]="data()?.content?.products_list_2?.product_ids || []"
+        [style]="'horizontal'"
+        [slider]="true"
+        [sliderOption]="productSlider6ItemMargin"
+        [productStyle]="'product-solid'"
+        [boxClass]="'product-box-bg'"
+      />
+    </div>
+  </div>
+</section>
+}
+<!-- Top Selling Section End -->
+
+<!-- Top Selling Section Start -->
+@if (data()?.content?.products_list_3?.product_ids?.length || 0 >= 6 &&
+data()?.content?.products_list_3?.status) {
+<section class="product-section product-section-3">
+  <div class="container-fluid-lg">
+    <div>
+      <app-title [title]="data()?.content?.products_list_3?.title!" [style]="'simple'" />
+      <app-theme-product
+        [productIds]="data()?.content?.products_list_3?.product_ids!"
+        [style]="'horizontal'"
+        [slider]="true"
+        [sliderOption]="productSlider6ItemMargin"
+        [productStyle]="'product-solid'"
+        [boxClass]="'product-box-bg'"
+      />
+    </div>
+  </div>
+</section>
+}
+<!-- Top Selling Section End -->
+
+<!-- Newsletter Section Start -->
+@if (data()?.content?.news_letter?.status) {
+<section class="newsletter-section section-b-space">
+  <app-newsletter [data]="data()?.content?.news_letter!" />
+</section>
+}
+<!-- Newsletter Section End -->

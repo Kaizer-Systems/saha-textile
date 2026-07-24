@@ -125,7 +125,7 @@ Owner decision: self-host **Meilisearch** on the droplet behind `SearchPort`. Mo
 - Codex rec: A if overlaps are intentional; B if many overlaps are Woo cleanup debt.
 - **MY CALL: Option A (multi-placement DAG) + a one-time taxonomy cleanup during migration.** The live site genuinely has the same node under multiple paths and products in many categories, so the DAG is the honest model and it's strictly more capable than our KB's single-`parentId`. _But_ don't import all 77 Woo terms — migrate the ~26 real public categories and treat the rest as cleanup debt. So: adopt A, and clean the data on the way in.
 
-**C.4 — What does "multi-level compounded product" mean for Saha? — UPDATED 2026-07-04**
+**C.4 — What does "multi-level compounded product" mean for Saha Textile? — UPDATED 2026-07-04**
 
 Owner decision: build the domain model/contracts for **all five** patterns: simple, variation/SKU, tailoring/customization, bought-together/cross-sell/upsell relations, and true bundle/composite. Launch sequencing may still phase the deepest bundle UI, but the schema/API should not require later redesign.
 

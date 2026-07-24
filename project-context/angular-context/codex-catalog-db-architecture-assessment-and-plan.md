@@ -2356,7 +2356,7 @@ Shared select/dropdown behavior:
 - Purchase invoice product selector uses the same searchable dropdown component configured in single-select mode; only one product/variant can be selected per invoice line.
 - Q&A targeting uses the same dropdown pattern in multi-select mode for categories and products.
 - Attribute/option selection reuses Fastkart's existing conditional UI pattern: attribute dropdown, searchable value multi-select, dynamic generated forms, accordions, switches, media pickers, and the same Bootstrap/SCSS styling.
-- Direct reuse of Fastkart's business assumption is forbidden: in Fastkart, every selected "Attribute" in Classified mode becomes a variation axis. In Saha, the admin must first choose `filter_only`, `variation_axis`, `named_add_on`, or `bundle_component_option`.
+- Direct reuse of Fastkart's business assumption is forbidden: in Fastkart, every selected "Attribute" in Classified mode becomes a variation axis. In Saha Textile, the admin must first choose `filter_only`, `variation_axis`, `named_add_on`, or `bundle_component_option`.
 - Only `variation_axis` selections feed the Cartesian variant matrix and per-variant price/SKU/stock/image/status forms.
 - `named_add_on` and `bundle_component_option` groups reuse the same visual building blocks but render separate grouped/nested panels and do not create variant rows.
 - Storefront display style is chosen per option/add-on/bundle group from `rectangle`, `circle`, `image_swatch`, `color_swatch`, `radio`, `dropdown`; this choice controls only the renderer.
@@ -2816,7 +2816,7 @@ This module is required because catalog stock cannot be trustworthy if inventory
 - The user mentally receives stock as products.
 - The purchase invoice screen often needs to create missing products immediately.
 - Existing product form, product modal, searchable dropdown, table, media picker, and validation UI can be reused.
-- It should look like the Fastkart admin theme but be custom-composed for Saha's workflow.
+- It should look like the Fastkart admin theme but be custom-composed for Saha Textile's workflow.
 
 ### 19.2 Line-item workflow
 
@@ -3045,7 +3045,7 @@ Cons:
 
 Final decision: Option A, with imported Woo junk cleaned rather than modeled as future truth.
 
-### QUERY 4: What does "multi-level compounded product" mean for Saha? — RESOLVED
+### QUERY 4: What does "multi-level compounded product" mean for Saha Textile? — RESOLVED
 
 Owner decision: **Build all five model patterns**: simple products, variation/SKU products, tailoring/customization, bought-together/cross-sell/upsell product relations, and true bundle/composite products.
 

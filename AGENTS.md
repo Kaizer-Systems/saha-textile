@@ -56,6 +56,7 @@ project-context/   angular-context/ (live KB + roadmap) · nextjs-context/ (supe
 - **Conventional Commits** (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `ci:`).
 - Small, focused modules. Co-locate tests. Cover use-cases and adapters.
 - **No secrets in code, logs, or the browser bundle.** Secrets live in server-side runtime env only; the Angular apps get non-secret config at runtime (not build-time inlining).
+- **Brand naming law (owner lock 2026-07-24): never bare `saha`.** Every identifier — containers, volumes, DB names, env values, service names, paths, mock-data strings — and all prose uses the full brand: `saha-textile` / `saha_textile` / "Saha Textile". Enforced by `scripts/check-naming.sh` in `pnpm lint`. Exceptions: geography data (Sahara/Saharsa/the town "Saha"), the 6-char TRAI DLT sender `SAHATX`, and compact `st_*` cookie names. See owner-decisions-log §2026-07-24. <!-- naming-law:allow -->
 
 ## 6. Security baseline (OWASP Top 10:2025)
 

@@ -12,7 +12,7 @@
 4. **UI before data:** build the full admin UI on **dummy data/forms/modals** first; then finalize the DB model (revisit sahatextile.com) and wire each page.
 5. **Apply Fastkart's pro-theme polish with our rigor:** highly modular, reusable, lazy-loaded, typed, lint-clean — the same level of structure a paid theme ships, expressed in our conventions.
 6. **Pin borrowed UI packages to Fastkart's exact versions** (matrix in §5) for visual parity.
-7. **Reuse UI patterns, not Fastkart's product semantics.** Fastkart's Attribute/Classified builder is a strong conditional UI reference, but Saha's domain requires separate option roles and display styles.
+7. **Reuse UI patterns, not Fastkart's product semantics.** Fastkart's Attribute/Classified builder is a strong conditional UI reference, but Saha Textile's domain requires separate option roles and display styles.
 
 ## 2. Locked stack (final)
 
@@ -52,7 +52,7 @@ Source: `vendor/.../fastkart-admin/src/app/components/*` (enumerated). "Replicat
 ### ✅ REPLICATE (UI now, wire later)
 
 - **Dashboard** (ApexCharts widgets, stats cards).
-- **Product** — list, create/edit (shared `form-product`), option/variant builder (extended for Saha: semantic role selector, display style selector, design/stitching base, named add-ons, measurement add-ons, bundle component options, status/archive).
+- **Product** — list, create/edit (shared `form-product`), option/variant builder (extended for Saha Textile: semantic role selector, display style selector, design/stitching base, named add-ons, measurement add-ons, bundle component options, status/archive).
 - **Category** — list, tree view, create/edit (extended: arbitrary multi-parent + materialized path).
 - **Attribute** (create/edit/form), **Tag** (create/edit/form), **Tax** (create/edit/form).
 - **Coupon** (create/edit/form), **Currency** (create/edit/form) — extended for INR-canonical + gateway-per-currency + PayPal markup.
@@ -116,9 +116,9 @@ Use these exact versions for visual/behavioural parity, adjusting only where Ana
 - **Example:** Lock the `products`, `categories`, `promotions`, `currencies`, `orders`, `users` schemas; decide DTO mapping per entity.
 - **Outcome:** Final data model + contracts — the source of truth for wiring.
 
-### Phase D — Wire admin pages to the real API + Saha builders
+### Phase D — Wire admin pages to the real API + Saha Textile builders
 
-- **Action:** Replace dummy data with **NestJS API + `contracts`** via TanStack Query + HttpClient. Modify each page to the finalized model (add/remove fields). Build the Saha-specific extensions: option builder with `filter_only` / `variation_axis` / `named_add_on` / `bundle_component_option`, Fastkart display style dropdown, variant matrix only for `variation_axis`, named add-on panels, bundle component panels, base/default flags, measurement add-ons, status/archive, multi-parent taxonomy manager, category/sidebar facet configuration, currency/gateway/markup controls, scoped-promotion builder, order management with captured measurements, roles + audit log.
+- **Action:** Replace dummy data with **NestJS API + `contracts`** via TanStack Query + HttpClient. Modify each page to the finalized model (add/remove fields). Build the Saha Textile-specific extensions: option builder with `filter_only` / `variation_axis` / `named_add_on` / `bundle_component_option`, Fastkart display style dropdown, variant matrix only for `variation_axis`, named add-on panels, bundle component panels, base/default flags, measurement add-ons, status/archive, multi-parent taxonomy manager, category/sidebar facet configuration, currency/gateway/markup controls, scoped-promotion builder, order management with captured measurements, roles + audit log.
 - **Example:** Admin creates a real variable salwaar where `Design` is the variation axis and `Color` is filter-only, configures the Salwaar category sidebar to show Design/Color/Price facets, creates a saree where `Blouse Design` is a required named add-on with default `No Design`, a true bundle seam fixture, a category-scoped flash sale, and edits the USD PayPal markup — persisted to MongoDB.
 - **Outcome:** Fully functional admin on real data, our architecture, meeting/exceeding Fastkart.
 

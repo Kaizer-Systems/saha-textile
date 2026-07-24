@@ -11,7 +11,7 @@
 - **Fastkart is a strong, current, well-architected asset — but we use it as a UI + behaviour _reference_, not a codebase.** It's **Angular 21**, ships **SSR already working**, has a clean layered structure (services / NGXS state / interceptors / resolvers / typed interfaces / guards), and is the **`-rest` variant designed to consume a REST API**. We study it to understand normal e-commerce flows and to replicate its polished look/feel — then we build the actual app to **our** architecture, never forking its code.
 - **Decided:** we keep **our** heightened stack for all logic (**AnalogJS, NgRx hybrid, TanStack Query, Transloco, vite-plugin-pwa/Workbox, Vitest, Reactive/Signal Forms**) and accept from Fastkart only its **look/feel (Bootstrap 5 + ng-bootstrap + SCSS)**, **ApexCharts**, and **angular-eslint** style. Fastkart's own choices (NGXS, ngx-translate) are **not** adopted — they were considered and rejected in favour of our stack. The bar runs one way: our implementation must **meet or exceed** Fastkart for every feature.
 - **Fastkart is a MULTI-VENDOR grocery/general marketplace** ("FastKart Marketplace: Where Vendors Shine Together"). We **strip the marketplace** (vendors/stores, commission, payouts, withdrawal, vendor-wallet, customer wallet) and the **6 extra demo themes**, keeping the single **Paris** theme and single-store config (Setting + Theme-Options). **Loyalty Points is kept as a future add-on** (UI replicated now; model/API seams reserved).
-- **The real work is not the UI — it's: (1) repointing the data layer to our API + reconciling DTOs with `contracts`, (2) the Saha-specific commerce model (design/stitching base option + per-line measurement add-ons, multi-parent taxonomy, status/archival, scoped promotions, INR-canonical multi-currency with gross-up), and (3) full en↔bn translation of BOTH UI chrome and DB content.** Fastkart gives us ~70% of the storefront/admin shell for free; these three are the 30% that's ours.
+- **The real work is not the UI — it's: (1) repointing the data layer to our API + reconciling DTOs with `contracts`, (2) the Saha Textile-specific commerce model (design/stitching base option + per-line measurement add-ons, multi-parent taxonomy, status/archival, scoped promotions, INR-canonical multi-currency with gross-up), and (3) full en↔bn translation of BOTH UI chrome and DB content.** Fastkart gives us ~70% of the storefront/admin shell for free; these three are the 30% that's ours.
 
 ---
 
@@ -87,7 +87,7 @@ This analysed the conflicts between Fastkart's stack and ours; the owner has sin
 - **fr** locale demo data (optional — could keep as a bonus, but bn is required; en+bn is the target).
 - Any Karma test scaffolding if we standardize on Vitest.
 
-### 🏗️ BUILD-NEW (Saha-specific; Fastkart has no equivalent)
+### 🏗️ BUILD-NEW (Saha Textile-specific; Fastkart has no equivalent)
 
 - **Design/stitching variation pattern** with `isBase` "Material Only" + per-line **measurement add-ons** (Shoulder/Waist/Sleeve/Chest) captured per cart line (Reactive Forms).
 - **Polymorphic scoped promotions** (global/category/product/variation/**color**/tag/cart; flash/clearance/coupon) — admin builder + storefront resolution display (engine lives in our API).
@@ -113,11 +113,11 @@ Fastkart's `IProduct` is a Laravel-style, **snake_case, single-language** shape.
 5. **No materialized-path / multi-parent ancestors** on category.
 6. **Naming/casing**: snake_case vs our camelCase zod types.
 
-**Strategy (recommended): an anti-corruption mapping layer.** Keep `contracts` (zod) as the canonical API shape. In the API, expose endpoints that return Fastkart-friendly shapes (or add a thin **adapter/mapper** in the storefront's services that maps `contracts` ⇄ Fastkart `interface`). **Do not bend our domain to Fastkart's DTO** — map at the edge. This preserves the hexagonal discipline. Decide per-entity whether to (a) reshape the API response to match Fastkart's interface (fastest for high-overlap entities like product/cart/order) or (b) keep our shape and map in the Angular service (cleaner for entities we're extending heavily). Default: (a) where overlap is high, (b) where we add Saha-specific fields.
+**Strategy (recommended): an anti-corruption mapping layer.** Keep `contracts` (zod) as the canonical API shape. In the API, expose endpoints that return Fastkart-friendly shapes (or add a thin **adapter/mapper** in the storefront's services that maps `contracts` ⇄ Fastkart `interface`). **Do not bend our domain to Fastkart's DTO** — map at the edge. This preserves the hexagonal discipline. Decide per-entity whether to (a) reshape the API response to match Fastkart's interface (fastest for high-overlap entities like product/cart/order) or (b) keep our shape and map in the Angular service (cleaner for entities we're extending heavily). Default: (a) where overlap is high, (b) where we add Saha Textile-specific fields.
 
 ---
 
-## 5. The Saha commerce model on Fastkart
+## 5. The Saha Textile commerce model on Fastkart
 
 - **Option semantics:** Fastkart's Attribute master becomes our reusable option/attribute definition, not the full domain truth. Product upload chooses semantic role per option group: `filter_only`, `variation_axis`, `named_add_on`, or `bundle_component_option`.
 - **Display styles:** keep Fastkart's visual renderers as `displayStyle`: `rectangle`, `circle`, `image_swatch`, `color_swatch`, `radio`, `dropdown`. Display style is visual only and never decides business behavior.
@@ -172,7 +172,7 @@ Each phase: **action → example → outcome.** (Historical — discarded.)
 ### Phase F1 — Strip to scope
 
 - **Action:** Remove multi-vendor/store, wallet, points, vendor screens; remove 6 non-Paris themes + grocery demo content; trim unused routes/states/services.
-- **Example:** Deleting `store.*`, `wallet.*`, `point.*` states/services and the "vendor" routes; mega-menu reduced to Saha taxonomy.
+- **Example:** Deleting `store.*`, `wallet.*`, `point.*` states/services and the "vendor" routes; mega-menu reduced to Saha Textile taxonomy.
 - **Outcome:** A lean single-store, single-theme app — no marketplace surface area to maintain.
 
 ### Phase F2 — Repoint the data layer to the NestJS API
@@ -181,11 +181,11 @@ Each phase: **action → example → outcome.** (Historical — discarded.)
 - **Example:** `product.service.ts` GET `${URL}/products?...` returns our `contracts` product; a `toIProduct()` mapper adapts it; the product-list page renders unchanged.
 - **Outcome:** Storefront/admin run on **live data from our API + self-hosted Docker MongoDB 8.3** — Fastkart's demo backend fully discarded.
 
-### Phase F3 — Saha commerce model
+### Phase F3 — Saha Textile commerce model
 
 - **Action:** Implement design/stitching base + measurement add-ons on product detail; arbitrary multi-parent taxonomy + breadcrumbs; product status/archival; scoped-promotion display.
 - **Example:** Selecting "No Blouse" shows "Material Only" price; choosing "Design 2" updates price/swatch; Shoulder/Waist inputs append to the cart line; a category page resolves from a 3-level path.
-- **Outcome:** The real Saha product/variation/measurement/discount behavior works end-to-end.
+- **Outcome:** The real Saha Textile product/variation/measurement/discount behavior works end-to-end.
 
 ### Phase F4 — Full i18n (en + bn)
 
@@ -205,7 +205,7 @@ Each phase: **action → example → outcome.** (Historical — discarded.)
 - **Example:** Rich Results Test validates Product/Offer; Lighthouse SEO+PWA pass; offline shell loads; sitemap excludes archived.
 - **Outcome:** SEO-rich, installable, offline-capable storefront.
 
-### Phase F7 — Admin Saha screens
+### Phase F7 — Admin Saha Textile screens
 
 - **Action:** On Fastkart admin: variable-product builder (attributes→matrix, base flag, add-on config, status/archive), multi-parent taxonomy manager, currency/gateway/markup controls, scoped-promotion builder, order management with captured measurements, content (blog/FAQ/banners), roles + audit log.
 - **Example:** Admin builds a variable saree with 3 designs × 3 colors + measurement fields, sets a category-scoped flash sale, edits the USD PayPal markup.

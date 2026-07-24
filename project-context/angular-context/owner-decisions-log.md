@@ -182,7 +182,7 @@ This section professionalizes and locks the owner-reviewed `deferred-queued-acti
 
 ### Guest cart behavior
 
-- **LOCKED — Guest cart is server-authoritative.** Guest carts are first-class launch behavior and are keyed by an httpOnly, Secure, SameSite `saha_guest` cookie containing an opaque random token. The token grants access only to that guest cart; it is not account authority. Store only a hash of the guest token server-side.
+- **LOCKED — Guest cart is server-authoritative.** Guest carts are first-class launch behavior and are keyed by an httpOnly, Secure, SameSite `st_guest` cookie containing an opaque random token. The token grants access only to that guest cart; it is not account authority. Store only a hash of the guest token server-side.
 - **LOCKED — Guest cart storage.** Persist guest carts in the `carts` collection with `ownerType: guest`, guest token hash, line items, selected variant/options, named add-on selections, measurements/customization values, currency/locale preferences as display context, `createdAt`, `updatedAt`, and `expiresAt`. Product prices, discounts, tax, shipping, and availability are recalculated by the API; cart values are not trusted as final checkout amounts.
 - **LOCKED — Guest cart TTL.** Guest cart TTL is **30 days sliding from last activity**. Reading/updating the cart extends `expiresAt`; abandoned guest carts are cleaned up by TTL index/job. This TTL is separate from the 30-minute pending-intent TTL: cart persistence supports normal browsing return behavior, while pending intent is only a short-lived post-login replay instruction.
 - **LOCKED — Offline cart interaction.** The browser may keep an IndexedDB/offline queue for PWA offline cart edits, but the server cart remains the source of truth once online. On reconnect, sync pending local mutations to the guest cart, then validate status and inventory line by line.
@@ -242,7 +242,7 @@ Context: Saha Textile needs (1) automatic “latest N” videos from the brand Y
 
 ### Player & hexagonal boundaries
 
-- **LOCKED — Player = Vidstack Player.** One programmable chrome for YouTube embeds and self-hosted HLS. Angular path = web components + Vite. Prefer Default Layout or Plyr Layout first; custom Saha chrome later if needed. No dual-UI (different chrome for YouTube vs Spaces).
+- **LOCKED — Player = Vidstack Player.** One programmable chrome for YouTube embeds and self-hosted HLS. Angular path = web components + Vite. Prefer Default Layout or Plyr Layout first; custom Saha Textile chrome later if needed. No dual-UI (different chrome for YouTube vs Spaces).
 - **LOCKED — Hexagonal / swappable.** Core never imports Vidstack, ffmpeg, BullMQ, or the Spaces SDK. Ports:
     - `YouTubePort` (channel-feed discovery)
     - `StoragePort` (presign, put/delete object keys, CDN URL resolution)
@@ -342,7 +342,7 @@ Context: companion to the video pipeline. Same `mediaAssets` / gallery reuse / B
 ## 2026-07-18 — Developer portal visual baseline
 
 - **LOCKED — Scalar-faithful portal shell:** the private Docusaurus portal reproduces the dated Scalar documentation interface captured in `developer-portal-scalar-visual-baseline.md`, including its dark-first shell geometry, compact technical density, typography, navigation rails, surface treatments and responsive behaviour.
-- **LOCKED — Saha-owned identity:** Saha Textile branding, content and routes replace Scalar branding. Scalar logos, wordmarks and proprietary brand artwork are not copied.
+- **LOCKED — Saha Textile-owned identity:** Saha Textile branding, content and routes replace Scalar branding. Scalar logos, wordmarks and proprietary brand artwork are not copied.
 - **LOCKED — implementation freedom for fidelity:** reuse/adapt MIT-licensed Scalar source with required notices where useful; otherwise use Docusaurus React theme wrappers, scoped CSS and custom components. Tailwind/shadcn-style primitives are permitted when they materially improve fidelity, but are not mandatory dependencies.
 - **LOCKED — dated target:** the 2026-07-18 capture is the visual acceptance baseline. A future Scalar redesign requires an explicit owner decision before the portal follows it.
 
@@ -459,3 +459,18 @@ Context: companion to the video pipeline. Same `mediaAssets` / gallery reuse / B
 - **LOCKED — Strength:** reject weak/sequential/repeated PINs (denylist + pattern checks). Hash with password-grade seriousness (separate `pinCredentials` or equivalent); never plaintext. Same cookie-session security as password login.
 - **LOCKED — Lockout:** **5** failed PIN attempts → disable PIN login/quick-resume for **15 minutes** or until successful **password** login; **audit** the event. Password change and role/permission changes invalidate PIN sessions / quick-resume (token/permission version bumps).
 - **LOCKED — Storefront:** admin PIN is **admin/staff only** — never a storefront customer feature.
+
+## 2026-07-24 — Brand naming law (all identifiers and prose)
+
+- **LOCKED — Full brand only, never bare `saha`.** The brand is **Saha Textile**. Every project identifier — Docker containers/volumes/projects, database names, env values, service names, package/app names, mock-data brand strings, file names, deploy paths — uses the full form: `saha-textile` (kebab), `saha_textile` (snake), or `Saha Textile` (prose). Bare `saha` (e.g. `saha_local`, `saha-mongo`, `saha_mongo_data`, `/etc/saha/`) is **forbidden** and was scrubbed repo-wide on 2026-07-24. <!-- naming-law:allow -->
+- **LOCKED — Enforcement is mechanical:** `scripts/check-naming.sh` runs in the root `pnpm lint` pipeline and fails on any bare-`saha` token. Allowlisted: geography data (Sahara, Sahalin, Saharsa, Saharanpur, the town "Saha" in Haryana within vendor-derived country/state/city datasets) and **`SAHATX`** — the MSG91/TRAI **DLT sender header is capped at 6 characters by the regulator**, so this abbreviation is a documented exception. <!-- naming-law:allow -->
+- **LOCKED — Cookie names are the compact exception:** session/CSRF/preference cookies use the short `st_` prefix (`st_access`, `st_refresh`, `st_csrf`, `st_guest`, `st_locale`, `st_currency`; `__Host-st_*` variants per the auth plan) — compact on purpose, and containing no bare `saha`. <!-- naming-law:allow -->
+- **Scope note:** applies to all tools/agents (Cursor, Claude Code, Codex, humans) and all future files; also encoded in `AGENTS.md` §5 so it is always in agent context.
+
+## 2026-07-24 — Config injection, MSG91 primary reinforce, Spaces SGP, auth orientation
+
+- **LOCKED — Config injection model (roadmap §0b executed).** Server secrets → **API runtime only** (local gitignored `apps/api/.env`; deploys = GitHub Actions encrypted secrets → root-owned env / Compose secrets). Public runtime config → Angular **`public/config.json` fetched at app init** (`runtime-config.ts` + `provideAppInitializer` in storefront and admin; mutable `environment` filled after fetch). **No `fileReplacements` bake-in for deploy URLs**; committed `config.json` holds localhost defaults only; deploys write the real file at container start (§0d).
+- **LOCKED — MSG91 primary reinforced.** `NOTIFICATION_PROVIDER=console|msg91` behind `NotificationPort`; MSG91 is the primary SMS/WhatsApp/Email (incl. OTP) provider. Resend/SES/SMTP exist only as `EMAIL_FALLBACK_PROVIDER` options — **optional email fallback, never primary**. Brevo-as-primary shapes removed from code and examples.
+- **LOCKED — Spaces region SGP only.** `SPACES_REGION=sgp1`, endpoint `https://sgp1.digitaloceanspaces.com`; all `blr1` references scrubbed.
+- **LOCKED — Auth orientation.** Target remains API-set httpOnly cookie sessions + double-submit CSRF (Chunk D). Interceptors already send `withCredentials: true`; the localStorage Bearer path is explicitly **transitional** and is removed as the happy path in Chunk D. Cookie/CSRF env names (`st_access`/`st_refresh`/`st_csrf`/`x-csrf-token`) are reserved now so deploy tooling stays stable.
+- **LOCKED — Local port map.** Storefront `:4200`, admin `:4300`, API `:4000`; CORS allowlist matches. Mongo = self-hosted Docker 8.3 single-node `rs0` (host-port overridable per machine via gitignored `docker/mongo/.env`, canonical default 27017).

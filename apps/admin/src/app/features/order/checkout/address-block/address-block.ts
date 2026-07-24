@@ -1,6 +1,6 @@
 import { Component, output, input } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
 import { IUserAddress } from '@data-access/interfaces/user.interface';
 
@@ -8,7 +8,7 @@ import { IUserAddress } from '@data-access/interfaces/user.interface';
 	selector: 'app-address-block',
 	templateUrl: './address-block.html',
 	styleUrls: ['./address-block.scss'],
-	imports: [TranslateModule],
+	imports: [TranslocoModule],
 })
 export class AddressBlock {
 	readonly addresses = input<IUserAddress[]>([]);

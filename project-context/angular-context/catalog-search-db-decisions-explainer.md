@@ -211,13 +211,13 @@ Facet semantics:
 
 ## H. Locked one-line recap
 
-| Item | Locked decision |
-| --- | --- |
-| Q3 categories | **Multi-placement DAG + clean Woo junk** |
-| Q4 compound products | **Build all 5 model patterns: simple, variation/SKU, tailoring/customization, bought-together/relations, true bundle/composite** |
-| Q5 color/options | **Every option axis is toggle-based per product; Color is filter-only unless explicitly made variation-driving** |
-| Fastkart option UI | **Use Fastkart's visual styles as `displayStyle`; keep business role separate** |
-| Saree/blouse nuance | **Standalone blouse design may be a variation axis; saree-attached blouse design is a named add-on group with default `No Design`** |
-| Q7 archive | **Keep archived products in Mongo now; design cold-archive stub to Spaces later at disk threshold** |
-| Q8 search | **Self-hosted Meilisearch with Level 1-4 feature surface day one; data quality improves via admin curation** |
-| Mongo/Spaces | **Docker MongoDB 8.3 local/prod parity, SGP Spaces, single-node RS + transactions, 8 GB droplet later when needed** |
+| Item                 | Locked decision                                                                                                                     |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Q3 categories        | **Multi-placement DAG + clean Woo junk**                                                                                            |
+| Q4 compound products | **Build all 5 model patterns: simple, variation/SKU, tailoring/customization, bought-together/relations, true bundle/composite**    |
+| Q5 color/options     | **Every option axis is toggle-based per product; Color is filter-only unless explicitly made variation-driving**                    |
+| Fastkart option UI   | **Use Fastkart's visual styles as `displayStyle`; keep business role separate**                                                     |
+| Saree/blouse nuance  | **Standalone blouse design may be a variation axis; saree-attached blouse design is a named add-on group with default `No Design`** |
+| Q7 archive           | **Keep archived products in Mongo now; design cold-archive stub to Spaces later at disk threshold**                                 |
+| Q8 search            | **Self-hosted Meilisearch with Level 1-4 feature surface day one; data quality improves via admin curation**                        |
+| Mongo/Spaces         | **Docker MongoDB 8.3 local/prod parity, SGP Spaces, single-node RS + transactions, 8 GB droplet later when needed**                 |

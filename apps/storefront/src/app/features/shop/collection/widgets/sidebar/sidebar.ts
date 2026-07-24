@@ -1,25 +1,22 @@
-import { AsyncPipe } from '@angular/common';
-import { Component, inject, input } from '@angular/core';
+import { Component, computed, effect, inject, input } from '@angular/core';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import {
-  NgbAccordionBody,
-  NgbAccordionButton,
-  NgbAccordionCollapse,
-  NgbAccordionDirective,
-  NgbAccordionHeader,
-  NgbAccordionItem,
-  NgbAccordionToggle,
-  NgbCollapse,
+	NgbAccordionBody,
+	NgbAccordionButton,
+	NgbAccordionCollapse,
+	NgbAccordionDirective,
+	NgbAccordionHeader,
+	NgbAccordionItem,
+	NgbAccordionToggle,
+	NgbCollapse,
 } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
-import { Store } from '@ngxs/store';
-import { Observable } from 'rxjs';
 
-import { GetAttributesAction } from '@data-access/actions/attribute.action';
-import { IAttributeModel } from '@data-access/interfaces/attribute.interface';
 import { Params } from '@data-access/interfaces/core.interface';
+import { injectCatalogQuery } from '@data-access/queries/product.queries';
 import { AttributeService } from '@data-access/services/attribute.service';
-import { AttributeState } from '@data-access/states/attribute.state';
+import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
+
 import { CollectionAttributes } from '../filter/collection-attributes-filter/collection-attributes-filter';
 import { CollectionCategoryFilter } from '../filter/collection-category-filter/collection-category-filter';
 import { CollectionFilter } from '../filter/collection-filter/collection-filter';
@@ -28,44 +25,50 @@ import { CollectionRatingFilter } from '../filter/collection-rating-filter/colle
 import { SkeletonCollectionSidebar } from '../skeleton-collection-sidebar/skeleton-collection-sidebar';
 
 @Component({
-  selector: 'app-collection-sidebar',
-  templateUrl: './sidebar.html',
-  styleUrls: ['./sidebar.scss'],
-  imports: [
-    CollectionFilter,
-    SkeletonCollectionSidebar,
-    NgbAccordionDirective,
-    NgbAccordionItem,
-    NgbAccordionHeader,
-    NgbAccordionToggle,
-    NgbAccordionButton,
-    NgbCollapse,
-    NgbAccordionCollapse,
-    NgbAccordionBody,
-    CollectionCategoryFilter,
-    CollectionAttributes,
-    CollectionPriceFilter,
-    CollectionRatingFilter,
-    AsyncPipe,
-    TranslateModule,
-  ],
+	selector: 'app-collection-sidebar',
+	templateUrl: './sidebar.html',
+	styleUrls: ['./sidebar.scss'],
+	imports: [
+		CollectionFilter,
+		SkeletonCollectionSidebar,
+		NgbAccordionDirective,
+		NgbAccordionItem,
+		NgbAccordionHeader,
+		NgbAccordionToggle,
+		NgbAccordionButton,
+		NgbCollapse,
+		NgbAccordionCollapse,
+		NgbAccordionBody,
+		CollectionCategoryFilter,
+		CollectionAttributes,
+		CollectionPriceFilter,
+		CollectionRatingFilter,
+		TitleCasePipe,
+		TranslocoModule,
+	],
 })
 export class CollectionSidebar {
-  private store = inject(Store);
-  attributeService = inject(AttributeService);
+	attributeService = inject(AttributeService);
 
-  // TODO: Skipped for migration because:
-  //  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
-  //  and migrating would break narrowing currently.
-  readonly filter = input<Params>();
+	// TODO: Skipped for migration because:
+	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
+	//  and migrating would break narrowing currently.
+	readonly filter = input<Params>();
 
-  attribute$: Observable<IAttributeModel> = inject(Store).select(AttributeState.attribute);
+	// Facets ride along on the same catalog query the list uses (shared cache key),
+	// so their disjunctive counts always match the current filter — no extra fetch.
+	private readonly catalogQuery = injectCatalogQuery(() => this.filter());
+	readonly facets = computed(() => this.catalogQuery.data()?.facets ?? {});
+	readonly facetKeys = computed(() => Object.keys(this.facets()));
 
-  constructor() {
-    this.store.dispatch(new GetAttributesAction({ status: 1 }));
-  }
+	constructor() {
+		// Drive the sidebar skeleton off the catalog query's first load.
+		effect(() => {
+			this.attributeService.skeletonLoader = this.catalogQuery.isPending();
+		});
+	}
 
-  closeCanvasMenu() {
-    this.attributeService.offCanvasMenu = false;
-  }
+	closeCanvasMenu() {
+		this.attributeService.offCanvasMenu = false;
+	}
 }

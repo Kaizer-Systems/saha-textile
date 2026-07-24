@@ -21,15 +21,15 @@
 
 The user's full E2E testing runs against **real, production-grade infrastructure spun up briefly and then destroyed** (real DigitalOcean droplet + Spaces, real GitHub account + Actions, real self-hosted Docker MongoDB/Meilisearch profile). Pure local development needs none of that. So there are three phases:
 
-| Server                                | LOCAL (constant dev) | TEST-E2E (real infra, short-lived) |     PROD-E2E (real production)      |
-| ------------------------------------- | :------------------: | :--------------------------------: | :---------------------------------: |
-| **Context7** (docs)                   |          ✅          |                 ✅                 |                 ✅                  |
-| ~~shadcn/ui~~ → **DROPPED (Angular)** |          —           |                 —                  |                  —                  |
-| **MongoDB**                           |   ✅ → **local Docker MongoDB 8.3 RS**   |       ✅ → **test droplet Docker MongoDB 8.3 RS**        | ✅ → **prod Docker MongoDB 8.3 RS, restricted user** |
-| **Postman**                           |  ✅ → localhost API  |       ✅ → test droplet API        |            ✅ → prod API            |
-| **GitHub** (+ `actions`)              |          ❌          |   ✅ (toolsets: actions + repos)   |        ✅ (read-only scope)         |
-| **DigitalOcean**                      |          ❌          |      ✅ (test project token)       |       ✅ (prod project token)       |
-| **Docker MCP** (optional)             |          ❌          |              optional              |              optional               |
+| Server                                |         LOCAL (constant dev)         |     TEST-E2E (real infra, short-lived)      |              PROD-E2E (real production)              |
+| ------------------------------------- | :----------------------------------: | :-----------------------------------------: | :--------------------------------------------------: |
+| **Context7** (docs)                   |                  ✅                  |                     ✅                      |                          ✅                          |
+| ~~shadcn/ui~~ → **DROPPED (Angular)** |                  —                   |                      —                      |                          —                           |
+| **MongoDB**                           | ✅ → **local Docker MongoDB 8.3 RS** | ✅ → **test droplet Docker MongoDB 8.3 RS** | ✅ → **prod Docker MongoDB 8.3 RS, restricted user** |
+| **Postman**                           |          ✅ → localhost API          |            ✅ → test droplet API            |                    ✅ → prod API                     |
+| **GitHub** (+ `actions`)              |                  ❌                  |       ✅ (toolsets: actions + repos)        |                 ✅ (read-only scope)                 |
+| **DigitalOcean**                      |                  ❌                  |           ✅ (test project token)           |               ✅ (prod project token)                |
+| **Docker MCP** (optional)             |                  ❌                  |                  optional                   |                       optional                       |
 
 > **Angular stack change:** The `shadcn/ui` MCP server (which scaffolds React shadcn components) is **dropped** — Angular uses **Bootstrap 5 + ng-bootstrap + SCSS** to replicate Fastkart's look, installed through normal npm/pnpm packages, not an MCP. So the LOCAL set is now **3 servers: context7, mongodb, postman**. This _frees_ tool-budget headroom. Everywhere below that says "shadcn," treat it as removed for Angular.
 

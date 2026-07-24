@@ -4,18 +4,19 @@ import { Params } from '@angular/router';
 
 import { Observable } from 'rxjs';
 
-import { environment } from '../../../../public/environments/environment';
 import { ICouponModel } from '@data-access/interfaces/coupon.interface';
 
+import { environment } from '../../../../public/environments/environment';
+
 @Injectable({
-  providedIn: 'root',
+	providedIn: 'root',
 })
 export class CouponService {
-  private http = inject(HttpClient);
+	private http = inject(HttpClient);
 
-  public skeletonLoader: boolean = false;
+	public skeletonLoader: boolean = false;
 
-  getCoupons(payload?: Params): Observable<ICouponModel> {
-    return this.http.get<ICouponModel>(`${environment.URL}/coupon.json`, { params: payload });
-  }
+	getCoupons(payload?: Params): Observable<ICouponModel> {
+		return this.http.get<ICouponModel>(`${environment.URL}/coupon.json`, { params: payload });
+	}
 }

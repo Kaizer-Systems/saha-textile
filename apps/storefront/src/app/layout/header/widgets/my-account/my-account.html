@@ -1,53 +1,64 @@
 <!-- My Account Basic Style -->
 @if (style() === 'basic') {
 <div>
-  <div class="delivery-login-box">
-    <div class="delivery-icon">
-      @if (!(isAuthenticated$ | async)) {
-      <i class="ri-user-line"></i>
-      } @else {
-      <div class="user-box">
-        @if ((user$ | async)?.profile_image && (user$ | async)?.profile_image?.original_url) {
-        <img [src]="(user$ | async)?.profile_image?.original_url" class="img-fluid" alt="profile" />
-        } @else {
-        <h3>{{ (user$ | async)?.name?.charAt(0)?.toString()?.toUpperCase() }}</h3>
-        }
-      </div>
-      }
-    </div>
-    <div class="delivery-detail">
-      <h6>
-        {{ 'hi' | translate }}, {{ ((isAuthenticated$ | async) ? (user$ | async)?.name : 'user' |
-        translate) }}
-      </h6>
-      <h5>{{ 'my_account' | translate }}</h5>
-    </div>
-  </div>
-  <div class="onhover-div onhover-div-login">
-    <ul class="user-box-name">
-      @if (!(isAuthenticated$ | async)) {
-      <li class="product-box-contain">
-        <a [routerLink]="['/auth/login']">{{ 'log_in' | translate }}</a>
-      </li>
-      } @if (!(isAuthenticated$ | async)) {
-      <li class="product-box-contain">
-        <a [routerLink]="['/auth/register']">{{ 'register' | translate }}</a>
-      </li>
-      } @if ((isAuthenticated$ | async)) {
-      <li class="product-box-contain">
-        <a [routerLink]="['/account/dashboard']"
-          ><i class="ri-user-line me-2"></i> {{ 'my_account' | translate }}</a
-        >
-      </li>
-      } @if ((isAuthenticated$ | async)) {
-      <li class="product-box-contain">
-        <a href="javascript:void(0)" (click)="confirmationModal.openModal()"
-          ><i class="ri-logout-box-r-line me-2"></i> {{ 'log_out' | translate }}</a
-        >
-      </li>
-      }
-    </ul>
-  </div>
+	<div class="delivery-login-box">
+		<div class="delivery-icon">
+			@if (!(isAuthenticated$ | async)) {
+			<i class="ri-user-line"></i>
+			} @else {
+			<div class="user-box">
+				@if ((user$ | async)?.profile_image && (user$ | async)?.profile_image?.original_url) {
+				<img
+					[src]="(user$ | async)?.profile_image?.original_url"
+					class="img-fluid"
+					alt="profile"
+				/>
+				} @else {
+				<h3>{{ (user$ | async)?.name?.charAt(0)?.toString()?.toUpperCase() }}</h3>
+				}
+			</div>
+			}
+		</div>
+		<div class="delivery-detail">
+			<h6>
+				{{ 'hi' | transloco }}, {{ ((isAuthenticated$ | async) ? (user$ | async)?.name : 'user' | transloco) }}
+			</h6>
+			<h5>{{ 'my_account' | transloco }}</h5>
+		</div>
+	</div>
+	<div class="onhover-div onhover-div-login">
+		<ul class="user-box-name">
+			@if (!(isAuthenticated$ | async)) {
+			<li class="product-box-contain">
+				<a [routerLink]="['/auth/login']">{{ 'log_in' | transloco }}</a>
+			</li>
+			} @if (!(isAuthenticated$ | async)) {
+			<li class="product-box-contain">
+				<a [routerLink]="['/auth/register']">{{ 'register' | transloco }}</a>
+			</li>
+			} @if ((isAuthenticated$ | async)) {
+			<li class="product-box-contain">
+				<a [routerLink]="['/account/dashboard']">
+					<i class="ri-user-line me-2"></i>
+					{{ 'my_account' | transloco }}
+				</a>
+			</li>
+			} @if ((isAuthenticated$ | async)) {
+			<li class="product-box-contain">
+				<a
+					href="javascript:void(0)"
+					(click)="confirmationModal.openModal()"
+				>
+					<i class="ri-logout-box-r-line me-2"></i>
+					{{ 'log_out' | transloco }}
+				</a>
+			</li>
+			}
+		</ul>
+	</div>
 </div>
 }
-<app-confirmation-modal #confirmationModal (confirmed)="logout()" />
+<app-confirmation-modal
+	#confirmationModal
+	(confirmed)="logout()"
+/>

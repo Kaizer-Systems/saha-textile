@@ -4,11 +4,28 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { Store } from '@ngrx/store';
-import { TranslateModule } from '@ngx-translate/core';
 import { Select2, Select2Data, Select2Module, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
 import { debounceTime, Observable, Subject } from 'rxjs';
 import { map } from 'rxjs/operators';
+
+import { CartActions } from '@core/state/cart/cart.actions';
+import { selectCartItems } from '@core/state/cart/cart.selectors';
+import { LoaderStore } from '@core/state/loader.store';
+import { SettingStore } from '@core/state/setting.store';
+import { ICart } from '@data-access/interfaces/cart.interface';
+import { Params } from '@data-access/interfaces/core.interface';
+import { IOrderCheckout } from '@data-access/interfaces/order.interface';
+import { IDeliveryBlock, IValues } from '@data-access/interfaces/setting.interface';
+import { IUser } from '@data-access/interfaces/user.interface';
+import { injectUsersQuery } from '@data-access/queries/user.queries';
+import { UserService } from '@data-access/services/user.service';
+import { Loader } from '@layout/loader/loader';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
+import { Button } from '@shared/ui/button/button';
+import { NoData } from '@shared/ui/no-data/no-data';
 
 import { AddressBlock } from './address-block/address-block';
 import { DeliveryBlock } from './delivery-block/delivery-block';
@@ -16,22 +33,6 @@ import { AddAddressModal } from './modal/add-address-modal/add-address-modal';
 import { AddCustomerModal } from './modal/add-customer-modal/add-customer-modal';
 import { CouponModal } from './modal/coupon-modal/coupon-modal';
 import { PaymentBlock } from './payment-block/payment-block';
-import { CartActions } from '@core/state/cart/cart.actions';
-import { selectCartItems } from '@core/state/cart/cart.selectors';
-import { SettingStore } from '@core/state/setting.store';
-import { injectUsersQuery } from '@data-access/queries/user.queries';
-import { Loader } from '@layout/loader/loader';
-import { Button } from '@shared/ui/button/button';
-import { NoData } from '@shared/ui/no-data/no-data';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
-import { ICart } from '@data-access/interfaces/cart.interface';
-import { Params } from '@data-access/interfaces/core.interface';
-import { IOrderCheckout } from '@data-access/interfaces/order.interface';
-import { IDeliveryBlock, IValues } from '@data-access/interfaces/setting.interface';
-import { IUser } from '@data-access/interfaces/user.interface';
-import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { LoaderStore } from '@core/state/loader.store';
-import { UserService } from '@data-access/services/user.service';
 
 // Static mock checkout totals (mirrors the former OrderState.checkout — real totals come from the API later).
 const STATIC_CHECKOUT: IOrderCheckout = {
@@ -66,7 +67,7 @@ const STATIC_CHECKOUT: IOrderCheckout = {
 		AddCustomerModal,
 		AddAddressModal,
 		CouponModal,
-		TranslateModule,
+		TranslocoModule,
 		CurrencySymbolPipe,
 		AsyncPipe,
 	],

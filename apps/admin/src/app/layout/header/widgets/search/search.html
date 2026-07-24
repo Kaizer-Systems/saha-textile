@@ -16,7 +16,7 @@
 			(click)="openDropDown(text)"
 			type="text"
 			autocomplete="off"
-			placeholder="{{ 'search_fastkart' | translate }} .."
+			placeholder="{{ 'search_fastkart' | transloco }} .."
 		/>
 		<i
 			class="ri-close-line close-icon"
@@ -36,7 +36,7 @@
 				>
 					@if (menu.icon) {
 					<i class="{{ menu.icon }}"></i>
-					} @if (menu.title) { {{ menu.title.replace(' ', '_') | translate }} }
+					} @if (menu.title) { {{ menu.title.replace(' ', '_') | transloco }} }
 				</a>
 			</li>
 			}
@@ -47,7 +47,7 @@
 			[class.open]="searchResultEmpty"
 		>
 			<div class="tt-dataset tt-dataset-0">
-				<div class="EmptyMessage">{{ 'opps!!_There_are_no_result_found' | translate }}</div>
+				<div class="EmptyMessage">{{ 'opps!!_There_are_no_result_found' | transloco }}</div>
 			</div>
 		</div>
 		}

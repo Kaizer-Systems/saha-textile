@@ -1,21 +1,21 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
-import { injectBlogsQuery } from '@data-access/queries/blog.queries';
-import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { Table } from '@shared/ui/table/table';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { IBlog } from '@data-access/interfaces/blog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
+import { injectBlogsQuery } from '@data-access/queries/blog.queries';
+import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { Table } from '@shared/ui/table/table';
 
 @Component({
 	selector: 'app-blog',
 	templateUrl: './blog.html',
 	styleUrls: ['./blog.scss'],
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslateModule],
+	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
 })
 export class Blog {
 	router = inject(Router);

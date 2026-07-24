@@ -1,7 +1,9 @@
 import { isPlatformBrowser, AsyncPipe } from '@angular/common';
 import { Component, computed, PLATFORM_ID, inject, signal } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import {
 	NgbNav,
 	NgbNavContent,
@@ -11,21 +13,19 @@ import {
 	NgbNavLinkBase,
 	NgbNavOutlet,
 } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
-import { toObservable } from '@angular/core/rxjs-interop';
 import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
 import { AccountStore } from '@core/state/account.store';
+import { IAccountUser } from '@data-access/interfaces/account.interface';
+import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { injectCountriesQuery } from '@data-access/queries/country.queries';
 import { injectStatesQuery } from '@data-access/queries/state.queries';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import * as data from '@shared/data/country-code';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
-import * as data from '@shared/data/country-code';
-import { IAccountUser } from '@data-access/interfaces/account.interface';
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { CustomValidators } from '@shared/validators/password-match';
 
 @Component({
@@ -46,7 +46,7 @@ import { CustomValidators } from '@shared/validators/password-match';
 		Select2Module,
 		Button,
 		NgbNavOutlet,
-		TranslateModule,
+		TranslocoModule,
 		AsyncPipe,
 	],
 })
@@ -60,7 +60,9 @@ export class Account {
 
 	user$: Observable<IAccountUser | null> = toObservable(this.accountStore.user);
 	countries$: Observable<Select2Data> = toObservable(
-		computed(() => this.countriesQuery.data()?.map((country) => ({ label: country.name, value: country.id })) ?? []),
+		computed(
+			() => this.countriesQuery.data()?.map((country) => ({ label: country.name, value: country.id })) ?? [],
+		),
 	);
 	roleName$: Observable<string | null> = toObservable(this.accountStore.roleName);
 

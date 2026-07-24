@@ -21,62 +21,73 @@ Source of truth for decisions: `owner-decisions-log.md` (2026-07-05 section). Th
 All prices **exclude 18% GST** unless noted. India origin.
 
 ### Hello (support desk — live chat + shared inbox + tickets)
-| Plan | Price/mo | Included | Extra |
-|---|---|---|---|
-| Live Chat | ₹0 | Unlimited tickets, 1 inbox | — |
-| Free | ₹0 | 2 inbox, 50 tickets | — |
-| Basic | ₹1,500 | 2 inbox, 1,000 tickets | Inbox ₹500/unit, Tickets ₹0.50/unit |
-| Premium | ₹3,000 | 3 inbox, 2,000 tickets | Inbox ₹500/unit, Tickets ₹0.75/unit |
+
+| Plan      | Price/mo | Included                   | Extra                               |
+| --------- | -------- | -------------------------- | ----------------------------------- |
+| Live Chat | ₹0       | Unlimited tickets, 1 inbox | —                                   |
+| Free      | ₹0       | 2 inbox, 50 tickets        | —                                   |
+| Basic     | ₹1,500   | 2 inbox, 1,000 tickets     | Inbox ₹500/unit, Tickets ₹0.50/unit |
+| Premium   | ₹3,000   | 3 inbox, 2,000 tickets     | Inbox ₹500/unit, Tickets ₹0.75/unit |
 
 ### Campaign (bulk-send engine)
+
 - Campaign usage **free**; pay the per-channel message cost. Third-party API calls to be charged per 1,000 "soon."
 
 ### Segmento (contacts + segmentation + automation — billed by contacts/mo, quota resets)
-| Plan | Price/mo | Contacts | Extra |
-|---|---|---|---|
-| Unlimited Contacts | ₹0 | Unlimited (no Automations/Segmentation) | — |
-| Free | ₹0 | 2,000 | not allowed |
-| Starter | ₹1,999 (0 for 2 mo) | 10,000 | ₹499/1,000 |
-| Cruiser | ₹4,999 (0 for 2 mo) | 30,000 | ₹349/1,000 |
-| Turbo | ₹9,999 (0 for 2 mo) | 1,00,000 | ₹199/1,000 |
-| Nitro | ₹19,999 | 3,00,000 | — |
-| Supersonic | ₹49,999 | 10,00,000 | — |
+
+| Plan               | Price/mo            | Contacts                                | Extra       |
+| ------------------ | ------------------- | --------------------------------------- | ----------- |
+| Unlimited Contacts | ₹0                  | Unlimited (no Automations/Segmentation) | —           |
+| Free               | ₹0                  | 2,000                                   | not allowed |
+| Starter            | ₹1,999 (0 for 2 mo) | 10,000                                  | ₹499/1,000  |
+| Cruiser            | ₹4,999 (0 for 2 mo) | 30,000                                  | ₹349/1,000  |
+| Turbo              | ₹9,999 (0 for 2 mo) | 1,00,000                                | ₹199/1,000  |
+| Nitro              | ₹19,999             | 3,00,000                                | —           |
+| Supersonic         | ₹49,999             | 10,00,000                               | —           |
 
 ### OTP Widget (free widget/SDK) — NOT USED by us (see §1)
+
 - Email OTP ₹0.03/unit · Voice OTP ₹1/unit · Invisible OTP ₹0.15 (India) · SMS/WhatsApp OTP per channel rate card.
 
 ### SMS (volume-tiered, source→destination)
-- **India→India:** ₹0.25 (5k) → ₹0.20 (16.5k) → ₹0.18 (30k) → ₹0.17 (60k–4.5L) → ₹0.16 (9.6L). Negotiable to ₹0.13. *(30k = ₹5,400 @ ₹0.18)*
+
+- **India→India:** ₹0.25 (5k) → ₹0.20 (16.5k) → ₹0.18 (30k) → ₹0.17 (60k–4.5L) → ₹0.16 (9.6L). Negotiable to ₹0.13. _(30k = ₹5,400 @ ₹0.18)_
 - **India→UK:** ~₹5.12/SMS (→ ₹4.48 at high volume).
 - ⚠️ **Failed SMS also charged.**
 
 ### SendOTP (OTP over SMS) — NOT USED by us
+
 - India→India ₹0.25→₹0.18; India→UK ~₹5.76→₹5.12.
 
 ### Email (monthly quota, resets — no rollover)
-| Plan | Price/mo | Emails | Validations | Overage | DMARC + Handlebars |
-|---|---|---|---|---|---|
-| Free | ₹0 | 5,000 | 50 | none | ❌ |
-| Starter | ₹2,000 | 1,00,000 | 500 | ₹0.02/email | ✅ |
-| Basic | ₹4,600 | 2,50,000 | 5,000 | ₹0.015/email | ✅ |
-| Alpha | ₹7,500 | 5,00,000 | 8,000 | ₹0.01/email | ✅ |
+
+| Plan    | Price/mo | Emails   | Validations | Overage      | DMARC + Handlebars |
+| ------- | -------- | -------- | ----------- | ------------ | ------------------ |
+| Free    | ₹0       | 5,000    | 50          | none         | ❌                 |
+| Starter | ₹2,000   | 1,00,000 | 500         | ₹0.02/email  | ✅                 |
+| Basic   | ₹4,600   | 2,50,000 | 5,000       | ₹0.015/email | ✅                 |
+| Alpha   | ₹7,500   | 5,00,000 | 8,000       | ₹0.01/email  | ✅                 |
 
 ⚠️ **DMARC compliance + Handlebars templating start at Starter** → Starter (₹2,000/mo) is our practical floor for transactional email.
 
 ### WhatsApp (Titan plan)
+
 - **₹500/mo per number** (single fee, free first 2 months) covering **all** WA categories. Per-message billed per rate card by category × country:
 - **India:** Utility **₹0.115** · Authentication **₹0.115** · Marketing **₹0.8631**.
 - Examples abroad: Germany ₹4.03/₹4.03/₹10.01 · France –/–/₹6.30 · Brazil ₹0.50/₹0.50/₹4.58 · Indonesia ₹1.83/₹1.83/₹3.01.
 
 ### Voice
+
 - India landline outgoing ₹0.5/min; international via premium A-Z. Voice OTP ₹1/unit. Add-ons (recording/analytics/monitoring/masking) free. → **defer / not launch.**
 
 ### RCS (emerging — defer as future seam)
-| Plan | Price/mo | Wallet | iPhone RCS delivery |
-|---|---|---|---|
-| Launch | ₹2,000 | ₹2,000 | ❌ |
-| Build | ₹5,000 | ₹5,000 | ❌ |
-| Grow | ₹10,000 | ₹10,000 | ✅ |
+
+| Plan   | Price/mo | Wallet  | iPhone RCS delivery |
+| ------ | -------- | ------- | ------------------- |
+| Launch | ₹2,000   | ₹2,000  | ❌                  |
+| Build  | ₹5,000   | ₹5,000  | ❌                  |
+| Grow   | ₹10,000  | ₹10,000 | ✅                  |
+
 - Rate card: single-text promo/transactional ₹0.15; rich promo/transactional ₹0.20.
 
 ---
@@ -97,18 +108,18 @@ Three payment mechanics run in parallel:
 
 ## 4. Tool glossary — keep / skip
 
-| Tool | What it is | Our use |
-|---|---|---|
-| **SMS** | Transactional/promo SMS, wallet | ✅ channel adapter |
-| **Email** | Transactional + marketing email, monthly quota | ✅ channel adapter (Starter+ for DMARC/Handlebars) |
-| **WhatsApp** | WhatsApp Business API, wallet + ₹500/mo number | ✅ channel adapter |
-| **Campaign** | Free bulk-send engine | ✅ marketing sends (pay channel cost) |
-| **Segmento** | Contacts + segmentation + automation | ✅ marketing segmentation (contacts-billed) |
-| **OTP (Widget)** | Managed multi-channel OTP widget | ❌ not used — we own OTP (channel-direct) |
-| **SendOTP** | Managed OTP over SMS (API) | ❌ not used — we own OTP |
-| **Voice** | Voice calls / Voice OTP | ⏸ defer (fallback seam only) |
-| **RCS** | Rich messaging (Android-first) | ⏸ defer (future seam) |
-| **Hello** | Omnichannel support desk | ⏸ optional; mailboxes are Google Workspace |
+| Tool             | What it is                                     | Our use                                            |
+| ---------------- | ---------------------------------------------- | -------------------------------------------------- |
+| **SMS**          | Transactional/promo SMS, wallet                | ✅ channel adapter                                 |
+| **Email**        | Transactional + marketing email, monthly quota | ✅ channel adapter (Starter+ for DMARC/Handlebars) |
+| **WhatsApp**     | WhatsApp Business API, wallet + ₹500/mo number | ✅ channel adapter                                 |
+| **Campaign**     | Free bulk-send engine                          | ✅ marketing sends (pay channel cost)              |
+| **Segmento**     | Contacts + segmentation + automation           | ✅ marketing segmentation (contacts-billed)        |
+| **OTP (Widget)** | Managed multi-channel OTP widget               | ❌ not used — we own OTP (channel-direct)          |
+| **SendOTP**      | Managed OTP over SMS (API)                     | ❌ not used — we own OTP                           |
+| **Voice**        | Voice calls / Voice OTP                        | ⏸ defer (fallback seam only)                       |
+| **RCS**          | Rich messaging (Android-first)                 | ⏸ defer (future seam)                              |
+| **Hello**        | Omnichannel support desk                       | ⏸ optional; mailboxes are Google Workspace         |
 
 ---
 
@@ -119,29 +130,31 @@ Three payment mechanics run in parallel:
 **One-to-many (origin = India, destination = many):** SMS & WhatsApp rows above are India→India; any customer abroad deducts that **destination country's** rate for the same message. Email is flat regardless of country; admin rows are India-cost.
 
 ### Storefront
-| # | Use case | MSG91 Tool(s) | Type | Credit-consuming stage | Units per event | Pricing per tool (India→dest.) |
-|---|---|---|---|---|---|---|
-| 1 | Signup / login OTP | Email, (SMS), (WhatsApp) | Auth | On "send code" (verify = 0 sends) | 1 × enabled channel; +1 per resend | Email ~₹0.02 · SMS ₹0.18 (UK ₹5.12) · WA-Auth ₹0.115 |
-| 2 | Password reset / email-change verify | Email, (SMS) | Auth/Utility | On request | 1 × channel | Email ~₹0.02 · SMS ₹0.18 |
-| 3 | Welcome message | Email, (WhatsApp) | Utility (or Mktg if promo) | On signup complete | 1 × channel | Email ~₹0.02 · WA-Util ₹0.115 (or WA-Mktg ₹0.8631) |
-| 4 | Order placed / confirmed | SMS + WhatsApp + Email | Utility | On order success | 1 each = up to 3 | SMS ₹0.18 · WA-Util ₹0.115 · Email ~₹0.02 |
-| 5 | Order status updates | SMS + WhatsApp + Email | Utility | Each status change | 1 × channel × transition | as #4, × each transition |
-| 6 | Payment events (success/fail/refund) | SMS + WhatsApp + Email | Utility | Each payment/refund change | 1 × channel × event | SMS ₹0.18 · WA-Util ₹0.115 · Email ~₹0.02 |
-| 7 | Shipment/tracking (link, OFD, delivered) | WhatsApp + Email + (SMS) | Utility | Each shipping event | 1 × channel × event | WA-Util ₹0.115 · Email ~₹0.02 · SMS ₹0.18 |
-| 8 | Abandoned-cart reminder | Campaign + Segmento → Email + WhatsApp + (SMS) | Marketing (consent) | Each reminder | 1 × channel × reminder × abandoner | WA-Mktg ₹0.8631 · Email ~₹0.02 · SMS ₹0.18 |
-| 9 | Back-in-stock / price-drop / wishlist | Email + WhatsApp + SMS (via Campaign/Segmento) | Marketing | On trigger, per subscriber | 1 × channel × subscriber | WA-Mktg ₹0.8631 · Email ~₹0.02 · SMS ₹0.18 |
-| 10 | Q&A answer notification | Email | Utility | When admin publishes answer | 1 | Email ~₹0.02 |
-| 11 | Review request post-delivery | Email + (WhatsApp) | Marketing/Utility | After delivered | 1 × channel × order | Email ~₹0.02 · WA-Mktg ₹0.8631 (or Util) |
-| 12 | Promotional campaign / newsletter | Campaign + Segmento → Email + WhatsApp + SMS | Marketing (consent) | On campaign send to segment | 1 × channel × contact | WA-Mktg ₹0.8631 · Email ~₹0.02 · SMS ₹0.18 — × contacts (biggest cost) |
-| 13 | Account/security alerts | Email | Utility | Per security event | 1 | Email ~₹0.02 |
+
+| #   | Use case                                 | MSG91 Tool(s)                                  | Type                       | Credit-consuming stage            | Units per event                    | Pricing per tool (India→dest.)                                         |
+| --- | ---------------------------------------- | ---------------------------------------------- | -------------------------- | --------------------------------- | ---------------------------------- | ---------------------------------------------------------------------- |
+| 1   | Signup / login OTP                       | Email, (SMS), (WhatsApp)                       | Auth                       | On "send code" (verify = 0 sends) | 1 × enabled channel; +1 per resend | Email ~₹0.02 · SMS ₹0.18 (UK ₹5.12) · WA-Auth ₹0.115                   |
+| 2   | Password reset / email-change verify     | Email, (SMS)                                   | Auth/Utility               | On request                        | 1 × channel                        | Email ~₹0.02 · SMS ₹0.18                                               |
+| 3   | Welcome message                          | Email, (WhatsApp)                              | Utility (or Mktg if promo) | On signup complete                | 1 × channel                        | Email ~₹0.02 · WA-Util ₹0.115 (or WA-Mktg ₹0.8631)                     |
+| 4   | Order placed / confirmed                 | SMS + WhatsApp + Email                         | Utility                    | On order success                  | 1 each = up to 3                   | SMS ₹0.18 · WA-Util ₹0.115 · Email ~₹0.02                              |
+| 5   | Order status updates                     | SMS + WhatsApp + Email                         | Utility                    | Each status change                | 1 × channel × transition           | as #4, × each transition                                               |
+| 6   | Payment events (success/fail/refund)     | SMS + WhatsApp + Email                         | Utility                    | Each payment/refund change        | 1 × channel × event                | SMS ₹0.18 · WA-Util ₹0.115 · Email ~₹0.02                              |
+| 7   | Shipment/tracking (link, OFD, delivered) | WhatsApp + Email + (SMS)                       | Utility                    | Each shipping event               | 1 × channel × event                | WA-Util ₹0.115 · Email ~₹0.02 · SMS ₹0.18                              |
+| 8   | Abandoned-cart reminder                  | Campaign + Segmento → Email + WhatsApp + (SMS) | Marketing (consent)        | Each reminder                     | 1 × channel × reminder × abandoner | WA-Mktg ₹0.8631 · Email ~₹0.02 · SMS ₹0.18                             |
+| 9   | Back-in-stock / price-drop / wishlist    | Email + WhatsApp + SMS (via Campaign/Segmento) | Marketing                  | On trigger, per subscriber        | 1 × channel × subscriber           | WA-Mktg ₹0.8631 · Email ~₹0.02 · SMS ₹0.18                             |
+| 10  | Q&A answer notification                  | Email                                          | Utility                    | When admin publishes answer       | 1                                  | Email ~₹0.02                                                           |
+| 11  | Review request post-delivery             | Email + (WhatsApp)                             | Marketing/Utility          | After delivered                   | 1 × channel × order                | Email ~₹0.02 · WA-Mktg ₹0.8631 (or Util)                               |
+| 12  | Promotional campaign / newsletter        | Campaign + Segmento → Email + WhatsApp + SMS   | Marketing (consent)        | On campaign send to segment       | 1 × channel × contact              | WA-Mktg ₹0.8631 · Email ~₹0.02 · SMS ₹0.18 — × contacts (biggest cost) |
+| 13  | Account/security alerts                  | Email                                          | Utility                    | Per security event                | 1                                  | Email ~₹0.02                                                           |
 
 ### Admin
-| # | Use case | MSG91 Tool(s) | Type | Stage | Units | Pricing (India) |
-|---|---|---|---|---|---|---|
-| 14 | Staff invite | Email | Transactional | On invite | 1 | Email ~₹0.02 |
-| 15 | Admin password reset | Email | Transactional | On request | 1 | Email ~₹0.02 |
-| 16 | Ops alerts to admin (new order, low stock, failed payment, new Q&A) | Email + (WhatsApp) | Utility | Per event, per admin recipient | 1 × channel × recipient × event | Email ~₹0.02 · WA-Util ₹0.115 |
-| 17 | Scheduled report digests (optional) | Email | Utility | On schedule | 1 × recipient | Email ~₹0.02 |
+
+| #   | Use case                                                            | MSG91 Tool(s)      | Type          | Stage                          | Units                           | Pricing (India)               |
+| --- | ------------------------------------------------------------------- | ------------------ | ------------- | ------------------------------ | ------------------------------- | ----------------------------- |
+| 14  | Staff invite                                                        | Email              | Transactional | On invite                      | 1                               | Email ~₹0.02                  |
+| 15  | Admin password reset                                                | Email              | Transactional | On request                     | 1                               | Email ~₹0.02                  |
+| 16  | Ops alerts to admin (new order, low stock, failed payment, new Q&A) | Email + (WhatsApp) | Utility       | Per event, per admin recipient | 1 × channel × recipient × event | Email ~₹0.02 · WA-Util ₹0.115 |
+| 17  | Scheduled report digests (optional)                                 | Email              | Utility       | On schedule                    | 1 × recipient                   | Email ~₹0.02                  |
 
 **Per-order multiplier:** all-3-channels order lifecycle ≈ 6 touchpoints × 3 channels ≈ **~18 transactional units/order**; cheap (WA-Util ₹0.115 / SMS ₹0.18 / Email quota). The runaway line is **Marketing WhatsApp (₹0.8631 × list)** — governed by the split marketing toggle.
 

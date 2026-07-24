@@ -1,0 +1,129 @@
+import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
+
+const sidebars: SidebarsConfig = {
+	portalSidebar: [
+		'intro',
+		{
+			type: 'category',
+			label: 'Start Here',
+			collapsed: false,
+			items: [
+				'getting-started/choose-your-path',
+				{
+					type: 'category',
+					label: 'Audience Paths',
+					items: [
+						'getting-started/beginner-path',
+						'getting-started/frontend-path',
+						'getting-started/backend-path',
+						'getting-started/operator-path',
+					],
+				},
+				'getting-started/overview',
+				'getting-started/local-development',
+			],
+		},
+		{
+			type: 'category',
+			label: 'Architecture',
+			items: ['architecture/system-overview', 'architecture/monorepo-map'],
+		},
+		{
+			type: 'category',
+			label: 'Business Journeys',
+			collapsed: false,
+			items: [
+				'business-flows/overview',
+				'business-flows/discovery-and-product-configuration',
+				'business-flows/cart-and-intent',
+				'business-flows/checkout',
+				'business-flows/payment-and-order-lifecycle',
+				'business-flows/returns-refunds-and-notifications',
+				'business-flows/identity-account-and-admin-resume',
+				'business-flows/failure-recovery-and-debugging',
+			],
+		},
+		{
+			type: 'category',
+			label: 'Applications',
+			collapsed: false,
+			items: [
+				{
+					type: 'category',
+					label: 'Storefront',
+					items: [
+						'storefront/overview',
+						'storefront/application-atlas',
+						'storefront/routing-and-rendering',
+						'storefront/state-and-data',
+						'storefront/contributor-recipes',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Admin',
+					items: [
+						'admin/overview',
+						'admin/application-atlas',
+						'admin/routing-and-shell',
+						'admin/state-and-data',
+						'admin/forms-tables-and-crud',
+						'admin/contributor-recipes',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Shared Frontend',
+					items: ['frontend/engineering-system', 'frontend/quality-and-definition-of-done'],
+				},
+			],
+		},
+		{
+			type: 'category',
+			label: 'Backend Platform',
+			collapsed: false,
+			items: [
+				'backend/overview',
+				'backend/request-lifecycle',
+				'backend/contracts-and-validation',
+				'backend/core-domain-and-ports',
+				'backend/composition-and-adapters',
+				'backend/security-and-identity',
+				'backend/readiness-testing-and-observability',
+				{
+					type: 'category',
+					label: 'API Reference System',
+					items: ['api/overview', 'api/route-inventory', 'api/openapi-and-scalar'],
+				},
+				{
+					type: 'category',
+					label: 'Database System',
+					items: [
+						'database/overview',
+						'database/current-adapter-map',
+						'database/transactions-and-generation',
+					],
+				},
+			],
+		},
+		{
+			type: 'category',
+			label: 'Operate the Platform',
+			items: ['deployment/overview', 'operations/overview', 'troubleshooting/overview'],
+		},
+		{
+			type: 'category',
+			label: 'Engineering Governance',
+			items: [
+				'decisions/developer-portal-now',
+				'governance/status-model',
+				'governance/source-of-truth-and-freshness',
+				'governance/contribution-standard',
+				'governance/page-template',
+				'maintenance/overview',
+			],
+		},
+	],
+};
+
+export default sidebars;

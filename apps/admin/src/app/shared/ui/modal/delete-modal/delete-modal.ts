@@ -1,7 +1,7 @@
 import { Component, TemplateRef, inject, output, viewChild } from '@angular/core';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 
 import { ITableClickedAction } from '@data-access/interfaces/table.interface';
 
@@ -11,7 +11,7 @@ import { Button } from '../../button/button';
 	selector: 'app-delete-modal',
 	templateUrl: './delete-modal.html',
 	styleUrls: ['./delete-modal.scss'],
-	imports: [Button, TranslateModule],
+	imports: [Button, TranslocoModule],
 })
 export class DeleteModal {
 	private modalService = inject(NgbModal);

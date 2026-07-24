@@ -1,0 +1,44 @@
+---
+title: Admin Application Atlas
+description: Interactive, evidence-backed map of admin capabilities and integration boundaries.
+status: scaffolded
+audience: [beginner, frontend, operator]
+last_verified: '2026-07-18'
+source_of_truth:
+    - apps/admin/src/app/app.routes.ts
+    - apps/admin/src/app/routes
+    - apps/admin/src/app/features
+    - apps/admin/src/app/data-access
+---
+
+import { ApplicationAtlas } from '@site/src/components/ApplicationAtlas';
+
+# Admin application atlas
+
+Filter the atlas before working on an operator workflow. A screen can look complete while its records and actions remain disconnected from the backend.
+
+<ApplicationAtlas application="admin" />
+
+## What “scaffolded” usually means here
+
+For most admin feature families, scaffolded means:
+
+- a lazy route exists;
+- a standalone component and template exist;
+- list/detail query functions exist;
+- the service reads a typed JSON fixture;
+- table/form interaction is present; and
+- create/update/delete/approve/bulk behavior is absent, mocked, or navigation-only.
+
+## Operational readiness test
+
+Do not call an admin workflow implemented until all of these are true:
+
+1. The API contract is validated at the boundary.
+2. Authentication uses a real secure session rather than the demo token.
+3. The API authorizes the action and target resource.
+4. Reads and writes use real endpoints.
+5. The UI handles pending, success, validation, conflict, failure, and retry states.
+6. Audit/event requirements are satisfied.
+7. Tests cover the critical operator path.
+8. Portal evidence and status are updated.

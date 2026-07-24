@@ -3,7 +3,7 @@
 		[attr.for]="for()"
 		[class]="labelClass()"
 	>
-		{{ label() | translate }}@if (required()) {
+		{{ label() | transloco }}@if (required()) {
 		<span class="theme-color required-dot ms-2">*</span>
 		}
 	</label>

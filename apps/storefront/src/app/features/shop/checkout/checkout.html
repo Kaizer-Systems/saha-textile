@@ -1,299 +1,331 @@
-<app-breadcrumb [breadcrumb]="breadcrumb" />
+<app-breadcrumb [breadcrumb]="breadcrumb()" />
 <section class="checkout-section-2 section-b-space">
-  <div class="container-fluid-lg">
-    <div class="row g-sm-4 g-3">
-      <div class="col-xxl-8 col-xl-7">
-        <div class="left-sidebar-checkout">
-          <div class="checkout-detail-box">
-            <ul>
-              <li>
-                <div class="checkout-icon">
-                  <i class="ri-map-pin-line"></i>
-                </div>
-                <div class="checkout-box">
-                  <div href="javascript:void(0)" class="checkout-title">
-                    <h4>{{ 'shipping_address' | translate }}</h4>
-                    <a
-                      href="javascript:void(0)"
-                      class="d-flex align-items-center fw-bold"
-                      (click)="AddressModal()?.openModal()"
-                    >
-                      <i class="ri-add-line me-1"></i> {{ 'add_new' | translate }}
-                    </a>
-                  </div>
-                  <div class="checkout-detail">
-                    <app-address-block
-                      [addresses]="(user$ | async)?.address"
-                      [type]="'shipping'"
-                      (selectAddress)="selectShippingAddress($event)"
-                    />
-                  </div>
-                </div>
-              </li>
-              <li>
-                <div class="checkout-icon">
-                  <i class="ri-map-pin-line"></i>
-                </div>
-                <div class="checkout-box">
-                  <div href="javascript:void(0)" class="checkout-title">
-                    <h4>{{ 'billing_address' | translate }}</h4>
-                    <a
-                      href="javascript:void(0)"
-                      class="d-flex align-items-center fw-bold"
-                      (click)="AddressModal()?.openModal()"
-                    >
-                      <i class="ri-add-line me-1"></i> {{ 'add_new' | translate }}
-                    </a>
-                  </div>
-                  <div class="checkout-detail">
-                    <app-address-block
-                      [addresses]="(user$ | async)?.address"
-                      [type]="'billing'"
-                      (selectAddress)="selectBillingAddress($event)"
-                    />
-                  </div>
-                </div>
-              </li>
-              <li>
-                <div class="checkout-icon">
-                  <i class="ri-truck-line"></i>
-                </div>
-                <div class="checkout-box">
-                  <div class="checkout-title">
-                    <h4>{{ 'delivery_options' | translate }}</h4>
-                  </div>
-                  @if (!(user$ | async)) {
-                  <div class="empty-box">
-                    <h2>{{ 'no_delivery_options_found' | translate }}</h2>
-                  </div>
-                  }
-                  <app-delivery-block
-                    [setting]="(setting$ | async)!"
-                    (selectDelivery)="selectDelivery($event)"
-                  />
-                </div>
-              </li>
-              <li>
-                <div class="checkout-icon">
-                  <i class="ri-bank-card-line"></i>
-                </div>
-                <div class="checkout-box">
-                  <div class="checkout-title">
-                    <h4>{{ 'payment_options' | translate }}</h4>
-                  </div>
-                  @if (!(user$ | async)) {
-                  <div class="empty-box">
-                    <h2>{{ 'no_payment_options_found' | translate }}</h2>
-                  </div>
-                  }
-                  <app-payment-block
-                    [setting]="(setting$ | async)!"
-                    (selectPaymentMethod)="selectPaymentMethod($event)"
-                  />
-                </div>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-      <div class="col-xxl-4 col-xl-5">
-        <div class="card pos-detail-card">
-          <div class="card-body">
-            <div class="title-header">
-              <div class="d-flex align-items-center">
-                <h5>{{ 'checkout' | translate }}</h5>
-              </div>
-            </div>
-            <div class="product-details">
-              @if (!(cartItem$ | async)?.length) {
-              <app-no-data
-                [class]="'empty-cart'"
-                [image]="'assets/svg/empty-items.svg'"
-                [text]="'No items in a cart'"
-              />
-              } @if ((cartItem$ | async)?.length) {
-              <ul class="cart-listing">
-                @for (item of cartItem$ | async; track item) {
-                <li>
-                  <img
-                    [src]="item?.variation && item?.variation?.variation_image
+	<div class="container-fluid-lg">
+		<div class="row g-sm-4 g-3">
+			<div class="col-xxl-8 col-xl-7">
+				<div class="left-sidebar-checkout">
+					<div class="checkout-detail-box">
+						<ul>
+							<li>
+								<div class="checkout-icon">
+									<i class="ri-map-pin-line"></i>
+								</div>
+								<div class="checkout-box">
+									<div
+										href="javascript:void(0)"
+										class="checkout-title"
+									>
+										<h4>{{ 'shipping_address' | transloco }}</h4>
+										<a
+											href="javascript:void(0)"
+											class="d-flex align-items-center fw-bold"
+											(click)="AddressModal()?.openModal()"
+										>
+											<i class="ri-add-line me-1"></i>
+											{{ 'add_new' | transloco }}
+										</a>
+									</div>
+									<div class="checkout-detail">
+										<app-address-block
+											[addresses]="(user$ | async)?.address"
+											[type]="'shipping'"
+											(selectAddress)="selectShippingAddress($event)"
+										/>
+									</div>
+								</div>
+							</li>
+							<li>
+								<div class="checkout-icon">
+									<i class="ri-map-pin-line"></i>
+								</div>
+								<div class="checkout-box">
+									<div
+										href="javascript:void(0)"
+										class="checkout-title"
+									>
+										<h4>{{ 'billing_address' | transloco }}</h4>
+										<a
+											href="javascript:void(0)"
+											class="d-flex align-items-center fw-bold"
+											(click)="AddressModal()?.openModal()"
+										>
+											<i class="ri-add-line me-1"></i>
+											{{ 'add_new' | transloco }}
+										</a>
+									</div>
+									<div class="checkout-detail">
+										<app-address-block
+											[addresses]="(user$ | async)?.address"
+											[type]="'billing'"
+											(selectAddress)="selectBillingAddress($event)"
+										/>
+									</div>
+								</div>
+							</li>
+							<li>
+								<div class="checkout-icon">
+									<i class="ri-truck-line"></i>
+								</div>
+								<div class="checkout-box">
+									<div class="checkout-title">
+										<h4>{{ 'delivery_options' | transloco }}</h4>
+									</div>
+									@if (!(user$ | async)) {
+									<div class="empty-box">
+										<h2>{{ 'no_delivery_options_found' | transloco }}</h2>
+									</div>
+									}
+									<app-delivery-block
+										[setting]="(setting$ | async)!"
+										(selectDelivery)="selectDelivery($event)"
+									/>
+								</div>
+							</li>
+							<li>
+								<div class="checkout-icon">
+									<i class="ri-bank-card-line"></i>
+								</div>
+								<div class="checkout-box">
+									<div class="checkout-title">
+										<h4>{{ 'payment_options' | transloco }}</h4>
+									</div>
+									@if (!(user$ | async)) {
+									<div class="empty-box">
+										<h2>{{ 'no_payment_options_found' | transloco }}</h2>
+									</div>
+									}
+									<app-payment-block
+										[setting]="(setting$ | async)!"
+										(selectPaymentMethod)="selectPaymentMethod($event)"
+									/>
+								</div>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+			<div class="col-xxl-4 col-xl-5">
+				<div class="card pos-detail-card">
+					<div class="card-body">
+						<div class="title-header">
+							<div class="d-flex align-items-center">
+								<h5>{{ 'checkout' | transloco }}</h5>
+							</div>
+						</div>
+						<div class="product-details">
+							@if (!(cartItem$ | async)?.length) {
+							<app-no-data
+								[class]="'empty-cart'"
+								[image]="'assets/svg/empty-items.svg'"
+								[text]="'no_items_in_a_cart' | transloco"
+							/>
+							} @if ((cartItem$ | async)?.length) {
+							<ul class="cart-listing">
+								@for (item of cartItem$ | async; track item) {
+								<li>
+									<img
+										[src]="item?.variation && item?.variation?.variation_image
                                                 ? item?.variation?.variation_image?.original_url
                                                 : item?.product?.product_thumbnail
                                                 ? item?.product?.product_thumbnail?.original_url
                                                 : 'assets/images/product.png'"
-                    class="img-fluid"
-                    alt="product"
-                  />
-                  <div class="cart-content">
-                    <h4>{{ item?.variation ? item?.variation?.name : item?.product?.name }}</h4>
-                    <h5 class="text-theme">
-                      {{ (item?.variation ? item.variation.sale_price : item.product.sale_price) |
-                      currencySymbol }} X {{ item.quantity }}
-                    </h5>
-                    <h5 class="price">
-                      {{ (item?.variation ? item.variation.sale_price : item.product.sale_price) *
-                      item.quantity | currencySymbol }}
-                    </h5>
-                  </div>
-                </li>
-                }
-              </ul>
-              }
-            </div>
-            @if ((cartItem$ | async)?.length) {
-            <form [formGroup]="form" (ngSubmit)="placeorder()">
-              <div class="custom-box-loader">
-                @if (loading) {
-                <div class="box-loader">
-                  <app-loader [loaderClass]="'custom-loader-wrapper blur-bg'" />
-                </div>
-                }
-                <ul class="summary-total">
-                  <li>
-                    <h4>{{ 'subtotal' | translate }}</h4>
-                    <h4 class="price">
-                      {{ (checkoutTotal ? (checkoutTotal.total.sub_total | currencySymbol) :
-                      'not_calculated_yet' | translate ) }}
-                    </h4>
-                  </li>
-                  <li>
-                    <h4>{{ 'shipping' | translate }}</h4>
-                    <h4 class="price">
-                      {{ (checkoutTotal ? (checkoutTotal.total.shipping_total | currencySymbol) :
-                      'not_calculated_yet' | translate) }}
-                    </h4>
-                  </li>
-                  <li>
-                    <h4>{{ 'tax' | translate }}</h4>
-                    <h4 class="price">
-                      {{ (checkoutTotal ? (checkoutTotal.total.tax_total | currencySymbol) :
-                      'not_calculated_yet' | translate ) }}
-                    </h4>
-                  </li>
-                  @if ((user$ | async) && checkoutTotal && (user$ | async)?.point?.balance) {
-                  <li>
-                    <h4
-                      [class]="form.controls['points_amount'].value ? 'txt-primary fw-bold' : 'text-muted'"
-                    >
-                      {{ 'points' | translate }}
-                    </h4>
-                    <h4
-                      [class]="form.controls['points_amount'].value ? 'txt-primary fw-bold price' : 'text-muted price'"
-                    >
-                      {{ (checkoutTotal ? (checkoutTotal.total.convert_point_amount! |
-                      currencySymbol) : 'not_calculated_yet' | translate ) }}
-                    </h4>
-                  </li>
-                  } @if ((user$ | async) && checkoutTotal && (user$ | async)?.point?.balance) {
-                  <li class="border-cls">
-                    <label class="form-check-label m-0" for="ponts"
-                      >{{ 'using_point' | translate }}</label
-                    >
-                    <input
-                      class="checkbox_animated check-it"
-                      type="checkbox"
-                      id="ponts"
-                      (change)="togglePoint($event)"
-                    />
-                  </li>
-                  } @if ((user$ | async) && checkoutTotal && (user$ | async)?.wallet?.balance) {
-                  <li>
-                    <h4
-                      [class]="form.controls['wallet_balance'].value ? 'txt-primary fw-bold' : 'text-muted'"
-                    >
-                      {{ 'wallet_balance' | translate }}
-                    </h4>
-                    <h4
-                      [class]="form.controls['wallet_balance'].value ? 'txt-primary fw-bold price' : 'text-muted price'"
-                    >
-                      {{ (checkoutTotal ? (checkoutTotal.total.convert_wallet_balance! |
-                      currencySymbol) : 'not_calculated_yet' | translate ) }}
-                    </h4>
-                  </li>
-                  } @if ((user$ | async) && checkoutTotal && (user$ | async)?.wallet?.balance) {
-                  <li class="border-cls">
-                    <label class="form-check-label m-0" for="wallet"
-                      >{{ 'using_wallet' | translate }}</label
-                    >
-                    <input
-                      class="checkbox_animated check-it"
-                      type="checkbox"
-                      id="wallet"
-                      (change)="toggleWallet($event)"
-                    />
-                  </li>
-                  } @if ((user$ | async) && checkoutTotal) {
-                  <li class="coupon-sec">
-                    @if (!coupon && !appliedCoupon) {
-                    <a class="promocode-title" (click)="showCoupon()">
-                      <h4>{{ 'have_a_promo_code?' | translate }}</h4>
-                    </a>
-                    } @if (coupon && !appliedCoupon) {
-                    <div class="w-100">
-                      <div class="coupon-box mt-2 d-flex w-100">
-                        <div class="input-group" [class.coupon-error]="couponError">
-                          <input
-                            type="text"
-                            [class]="'form-control'"
-                            [class.is-invalid]="couponError"
-                            id="coupon"
-                            #cpn
-                            placeholder="{{ 'enter_coupon_code_here'  | translate  }}..."
-                          />
-                          <app-button
-                            [class]="'btn-apply'"
-                            [type]="'button'"
-                            [id]="'coupon_apply'"
-                            (click)="cpn.value && setCoupon(cpn.value)"
-                          >
-                            {{ 'apply' | translate }}
-                          </app-button>
-                          @if (couponError) {
-                          <div class="invalid-feedback">{{ couponError }}</div>
-                          }
-                        </div>
-                      </div>
-                    </div>
-                    } @if (appliedCoupon) {
-                    <div class="apply-sec mb-3">
-                      <div>
-                        <img src="assets/images/offer.gif" class="img-fluid" alt="offer" />
-                        <h4>
-                          {{ 'you_saved' | translate }}
-                          <span
-                            >{{ checkoutTotal.total.coupon_total_discount | currencySymbol }}</span
-                          >
-                          {{ 'with_this_code' | translate }} 🎉
-                          <p>{{ 'coupon_applied' | translate }}</p>
-                        </h4>
-                      </div>
-                      <a href="javascript:void(0)" (click)="couponRemove()">{{ 'remove'}}</a>
-                    </div>
-                    }
-                  </li>
-                  }
-                  <li class="list-total">
-                    <h4>{{ 'total' | translate }}</h4>
-                    <h4 class="price">
-                      {{ (checkoutTotal ? (checkoutTotal.total.total | currencySymbol) :
-                      'not_calculated_yet' | translate ) }}
-                    </h4>
-                  </li>
-                </ul>
-                <app-button
-                  [class]="'btn theme-bg-color text-white btn-md w-100 mt-4 fw-bold'"
-                  [id]="'place_order'"
-                  [disabled]="form.valid && checkoutTotal ? false : true"
-                >
-                  {{ 'place_order' | translate }}
-                </app-button>
-              </div>
-            </form>
-            }
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+										class="img-fluid"
+										alt="product"
+									/>
+									<div class="cart-content">
+										<h4>{{ item?.variation ? item?.variation?.name : item?.product?.name }}</h4>
+										<h5 class="text-theme">
+											{{ (item?.variation ? item.variation.sale_price : item.product.sale_price) |
+											currencySymbol }} X {{ item.quantity }}
+										</h5>
+										<h5 class="price">
+											{{ (item?.variation ? item.variation.sale_price : item.product.sale_price) *
+											item.quantity | currencySymbol }}
+										</h5>
+									</div>
+								</li>
+								}
+							</ul>
+							}
+						</div>
+						@if ((cartItem$ | async)?.length) {
+						<form
+							[formGroup]="form"
+							(ngSubmit)="placeorder()"
+						>
+							<div class="custom-box-loader">
+								@if (loading) {
+								<div class="box-loader">
+									<app-loader [loaderClass]="'custom-loader-wrapper blur-bg'" />
+								</div>
+								}
+								<ul class="summary-total">
+									<li>
+										<h4>{{ 'subtotal' | transloco }}</h4>
+										<h4 class="price">
+											{{ (checkoutTotal ? (checkoutTotal.total.sub_total | currencySymbol) :
+											'not_calculated_yet' | transloco ) }}
+										</h4>
+									</li>
+									<li>
+										<h4>{{ 'shipping' | transloco }}</h4>
+										<h4 class="price">
+											{{ (checkoutTotal ? (checkoutTotal.total.shipping_total | currencySymbol) :
+											'not_calculated_yet' | transloco) }}
+										</h4>
+									</li>
+									<li>
+										<h4>{{ 'tax' | transloco }}</h4>
+										<h4 class="price">
+											{{ (checkoutTotal ? (checkoutTotal.total.tax_total | currencySymbol) :
+											'not_calculated_yet' | transloco ) }}
+										</h4>
+									</li>
+									@if ((user$ | async) && checkoutTotal && (user$ | async)?.point?.balance) {
+									<li>
+										<h4
+											[class]="form.controls['points_amount'].value ? 'txt-primary fw-bold' : 'text-muted'"
+										>
+											{{ 'points' | transloco }}
+										</h4>
+										<h4
+											[class]="form.controls['points_amount'].value ? 'txt-primary fw-bold price' : 'text-muted price'"
+										>
+											{{ (checkoutTotal ? (checkoutTotal.total.convert_point_amount! |
+											currencySymbol) : 'not_calculated_yet' | transloco ) }}
+										</h4>
+									</li>
+									} @if ((user$ | async) && checkoutTotal && (user$ | async)?.point?.balance) {
+									<li class="border-cls">
+										<label
+											class="form-check-label m-0"
+											for="ponts"
+										>
+											{{ 'using_point' | transloco }}
+										</label>
+										<input
+											class="checkbox_animated check-it"
+											type="checkbox"
+											id="ponts"
+											(change)="togglePoint($event)"
+										/>
+									</li>
+									} @if ((user$ | async) && checkoutTotal && (user$ | async)?.wallet?.balance) {
+									<li>
+										<h4
+											[class]="form.controls['wallet_balance'].value ? 'txt-primary fw-bold' : 'text-muted'"
+										>
+											{{ 'wallet_balance' | transloco }}
+										</h4>
+										<h4
+											[class]="form.controls['wallet_balance'].value ? 'txt-primary fw-bold price' : 'text-muted price'"
+										>
+											{{ (checkoutTotal ? (checkoutTotal.total.convert_wallet_balance! |
+											currencySymbol) : 'not_calculated_yet' | transloco ) }}
+										</h4>
+									</li>
+									} @if ((user$ | async) && checkoutTotal && (user$ | async)?.wallet?.balance) {
+									<li class="border-cls">
+										<label
+											class="form-check-label m-0"
+											for="wallet"
+										>
+											{{ 'using_wallet' | transloco }}
+										</label>
+										<input
+											class="checkbox_animated check-it"
+											type="checkbox"
+											id="wallet"
+											(change)="toggleWallet($event)"
+										/>
+									</li>
+									} @if ((user$ | async) && checkoutTotal) {
+									<li class="coupon-sec">
+										@if (!coupon && !appliedCoupon) {
+										<a
+											class="promocode-title"
+											(click)="showCoupon()"
+										>
+											<h4>{{ 'have_a_promo_code?' | transloco }}</h4>
+										</a>
+										} @if (coupon && !appliedCoupon) {
+										<div class="w-100">
+											<div class="coupon-box d-flex mt-2 w-100">
+												<div
+													class="input-group"
+													[class.coupon-error]="couponError"
+												>
+													<input
+														type="text"
+														[class]="'form-control'"
+														[class.is-invalid]="couponError"
+														id="coupon"
+														#cpn
+														placeholder="{{ 'enter_coupon_code_here'  | transloco  }}..."
+													/>
+													<app-button
+														[class]="'btn-apply'"
+														[type]="'button'"
+														[id]="'coupon_apply'"
+														(click)="cpn.value && setCoupon(cpn.value)"
+													>
+														{{ 'apply' | transloco }}
+													</app-button>
+													@if (couponError) {
+													<div class="invalid-feedback">{{ couponError }}</div>
+													}
+												</div>
+											</div>
+										</div>
+										} @if (appliedCoupon) {
+										<div class="apply-sec mb-3">
+											<div>
+												<img
+													src="assets/images/offer.gif"
+													class="img-fluid"
+													alt="offer"
+												/>
+												<h4>
+													{{ 'you_saved' | transloco }}
+													<span>
+														{{ checkoutTotal.total.coupon_total_discount | currencySymbol }}
+													</span>
+													{{ 'with_this_code' | transloco }} 🎉
+													<p>{{ 'coupon_applied' | transloco }}</p>
+												</h4>
+											</div>
+											<a
+												href="javascript:void(0)"
+												(click)="couponRemove()"
+											>
+												{{ 'remove'}}
+											</a>
+										</div>
+										}
+									</li>
+									}
+									<li class="list-total">
+										<h4>{{ 'total' | transloco }}</h4>
+										<h4 class="price">
+											{{ (checkoutTotal ? (checkoutTotal.total.total | currencySymbol) :
+											'not_calculated_yet' | transloco ) }}
+										</h4>
+									</li>
+								</ul>
+								<app-button
+									[class]="'btn theme-bg-color text-white btn-md w-100 mt-4 fw-bold'"
+									[id]="'place_order'"
+									[disabled]="form.valid && checkoutTotal ? false : true"
+								>
+									{{ 'place_order' | transloco }}
+								</app-button>
+							</div>
+						</form>
+						}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 </section>
 <address-modal #addressModal />

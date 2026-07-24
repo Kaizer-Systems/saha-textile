@@ -1,88 +1,103 @@
 <!-- Search Basic Style -->
 @if (style() === 'basic') {
 <div class="input-group">
-  <input type="search" class="form-control" placeholder="Search here.." [formControl]="term" />
-  <app-button
-    [type]="'button'"
-    [class]="'btn'"
-    [spinner]="false"
-    [id]="'basic_search_btn'"
-    (click)="redirectToSearch()"
-  >
-    <i class="ri-search-line"></i>
-  </app-button>
+	<input
+		type="search"
+		class="form-control"
+		placeholder="Search here.."
+		[formControl]="term"
+	/>
+	<app-button
+		[type]="'button'"
+		[class]="'btn'"
+		[spinner]="false"
+		[id]="'basic_search_btn'"
+		(click)="redirectToSearch()"
+	>
+		<i class="ri-search-line"></i>
+	</app-button>
 </div>
 }
 <!-- Search Basic Style -->
 @if (style() === 'berlin') {
 <div class="input-group">
-  <a href="javascript:void(0)" class="btn" (click)="toggleSearchBox()">
-    <i class="ri-search-line"></i>
-  </a>
+	<a
+		href="javascript:void(0)"
+		class="btn"
+		(click)="toggleSearchBox()"
+	>
+		<i class="ri-search-line"></i>
+	</a>
 </div>
 }
 <!-- Search Classic Style -->
 @if (style() === 'classic') {
 <div class="searchbar-box-2 input-group d-xl-flex d-none">
-  <app-button
-    [type]="'button'"
-    [class]="'btn search-icon'"
-    [spinner]="false"
-    [id]="'classic_search_btn'"
-    (click)="redirectToSearch()"
-  >
-    <i class="ri-search-line"></i>
-  </app-button>
-  <input
-    type="text"
-    class="form-control"
-    placeholder="Search for products, styles,brands..."
-    [formControl]="term"
-  />
-  <app-button
-    [type]="'button'"
-    [class]="'btn search-button'"
-    [spinner]="false"
-    [id]="'classic_search_text_btn'"
-    (click)="redirectToSearch()"
-  >
-    {{ 'search' | translate }}
-  </app-button>
+	<app-button
+		[type]="'button'"
+		[class]="'btn search-icon'"
+		[spinner]="false"
+		[id]="'classic_search_btn'"
+		(click)="redirectToSearch()"
+	>
+		<i class="ri-search-line"></i>
+	</app-button>
+	<input
+		type="text"
+		class="form-control"
+		placeholder="Search for products, styles,brands..."
+		[formControl]="term"
+	/>
+	<app-button
+		[type]="'button'"
+		[class]="'btn search-button'"
+		[spinner]="false"
+		[id]="'classic_search_text_btn'"
+		(click)="redirectToSearch()"
+	>
+		{{ 'search' | transloco }}
+	</app-button>
 </div>
 }
 <!-- Search Standard Style -->
 @if (style() === 'standard') {
 <div>
-  <input
-    type="search"
-    class="form-control"
-    placeholder="search for product, delivered to your door..."
-  />
-  <app-button
-    [type]="'button'"
-    [class]="'btn search-button'"
-    [spinner]="false"
-    [id]="'standard_search_btn'"
-    (click)="redirectToSearch()"
-  >
-    <i class="ri-search-line"></i>
-  </app-button>
+	<input
+		type="search"
+		class="form-control"
+		placeholder="search for product, delivered to your door..."
+	/>
+	<app-button
+		[type]="'button'"
+		[class]="'btn search-button'"
+		[spinner]="false"
+		[id]="'standard_search_btn'"
+		(click)="redirectToSearch()"
+	>
+		<i class="ri-search-line"></i>
+	</app-button>
 </div>
 }
 <!-- Search Full -->
-<div class="search-full" [class.open]="show">
-  <div class="input-group">
-    <span class="input-group-text">
-      <i class="ri-search-line font-light"></i>
-    </span>
-    <input
-      type="text"
-      class="form-control search-type"
-      placeholder="Search here.."
-      [formControl]="term"
-    />
-    <span class="input-group-text close-search" (click)="toggleSearchBox()">
-      <i class="ri-close-line"></i>
-    </span>
-  </div>
+<div
+	class="search-full"
+	[class.open]="show"
+>
+	<div class="input-group">
+		<span class="input-group-text">
+			<i class="ri-search-line font-light"></i>
+		</span>
+		<input
+			type="text"
+			class="form-control search-type"
+			placeholder="Search here.."
+			[formControl]="term"
+		/>
+		<span
+			class="input-group-text close-search"
+			(click)="toggleSearchBox()"
+		>
+			<i class="ri-close-line"></i>
+		</span>
+	</div>
 </div>

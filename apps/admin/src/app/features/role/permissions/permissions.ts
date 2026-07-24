@@ -4,8 +4,8 @@ import { toObservable } from '@angular/core/rxjs-interop';
 
 import { Observable } from 'rxjs';
 
-import { injectRoleModulesQuery } from '@data-access/queries/role.queries';
 import { IModule } from '@data-access/interfaces/role.interface';
+import { injectRoleModulesQuery } from '@data-access/queries/role.queries';
 
 @Component({
 	selector: 'app-permissions',

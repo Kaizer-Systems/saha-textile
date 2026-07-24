@@ -1,53 +1,73 @@
-
 import { Component, inject, input } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { IAttribute } from '@data-access/interfaces/attribute.interface';
+import { IFacetValue } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 
+/**
+ * One facet section (e.g. Fabric) driven by the Nitro route's disjunctive facet
+ * block. Renders each value + its live count and toggles it in the grouped
+ * `attribute` query param — `fabric:Silk,Cotton|color:Red` — which `toCatalogParams`
+ * expands back into per-facet route params. Server-side filtering: a tick just
+ * changes the URL and re-queries; it never filters the on-hand cards.
+ */
 @Component({
-  selector: 'app-collection-attributes-filter',
-  imports: [],
-  templateUrl: './collection-attributes-filter.html',
-  styleUrls: ['./collection-attributes-filter.scss'],
+	selector: 'app-collection-attributes-filter',
+	imports: [],
+	templateUrl: './collection-attributes-filter.html',
+	styleUrls: ['./collection-attributes-filter.scss'],
 })
 export class CollectionAttributes {
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
+	private route = inject(ActivatedRoute);
+	private router = inject(Router);
 
-  readonly attribute = input<IAttribute>();
+	readonly facetKey = input<string>();
+	readonly values = input<IFacetValue[]>([]);
+	readonly filter = input<Params>();
 
-  readonly filter = input<Params>();
+	/** Parse the grouped `attribute` param into { facetKey: [values] }. */
+	private parse(): Record<string, string[]> {
+		const raw = this.filter()?.['attribute'];
+		const out: Record<string, string[]> = {};
+		if (raw) {
+			for (const grp of String(raw).split('|')) {
+				const [k, vals] = grp.split(':');
+				if (k && vals) out[k] = vals.split(',');
+			}
+		}
+		return out;
+	}
 
-  public selectedAttributes: string[] = [];
+	private serialize(map: Record<string, string[]>): string | null {
+		const parts = Object.entries(map)
+			.filter(([, v]) => v.length)
+			.map(([k, v]) => `${k}:${v.join(',')}`);
+		return parts.length ? parts.join('|') : null;
+	}
 
-  ngOnChanges() {
-    const filter = this.filter();
-    this.selectedAttributes = filter!['attribute'] ? filter!['attribute'].split(',') : [];
-  }
+	checked(value: string): boolean {
+		return (this.parse()[this.facetKey()!] ?? []).includes(value);
+	}
 
-  applyFilter(event: Event) {
-    const index = this.selectedAttributes.indexOf((<HTMLInputElement>event?.target)?.value); // checked and unchecked value
+	applyFilter(event: Event) {
+		const target = event.target as HTMLInputElement;
+		const val = target.value;
+		const key = this.facetKey()!;
+		const map = this.parse();
+		const arr = map[key] ?? [];
+		if (target.checked) {
+			if (!arr.includes(val)) arr.push(val);
+		} else {
+			const i = arr.indexOf(val);
+			if (i > -1) arr.splice(i, 1);
+		}
+		map[key] = arr;
 
-    if ((<HTMLInputElement>event?.target)?.checked)
-      this.selectedAttributes.push((<HTMLInputElement>event?.target)?.value); // push in array checked value
-    else this.selectedAttributes.splice(index, 1); // removed in array unchecked value
-
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: {
-        attribute: this.selectedAttributes.length ? this.selectedAttributes.join(',') : null,
-      },
-      queryParamsHandling: 'merge', // preserve the existing query params in the route
-      skipLocationChange: false, // do trigger navigation
-    });
-  }
-
-  // check if the item are selected
-  checked(item: string) {
-    if (this.selectedAttributes?.indexOf(item) != -1) {
-      return true;
-    }
-    return false;
-  }
+		void this.router.navigate([], {
+			relativeTo: this.route,
+			queryParams: { attribute: this.serialize(map), page: 1 }, // reset to page 1 on any filter change
+			queryParamsHandling: 'merge',
+			skipLocationChange: false,
+		});
+	}
 }

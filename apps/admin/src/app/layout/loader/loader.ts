@@ -1,12 +1,12 @@
 import { Component, input } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
 @Component({
 	selector: 'app-loader',
 	templateUrl: './loader.html',
 	styleUrls: ['./loader.scss'],
-	imports: [TranslateModule],
+	imports: [TranslocoModule],
 })
 export class Loader {
 	readonly loaderClass = input<string>('loader-wrapper');

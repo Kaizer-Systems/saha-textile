@@ -1,21 +1,21 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
-import { injectProductsQuery } from '@data-access/queries/product.queries';
-import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { Table } from '@shared/ui/table/table';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
+import { injectProductsQuery } from '@data-access/queries/product.queries';
+import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { Table } from '@shared/ui/table/table';
 
 @Component({
 	selector: 'app-product',
 	templateUrl: './product.html',
 	styleUrls: ['./product.scss'],
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslateModule],
+	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
 })
 export class Product {
 	private router = inject(Router);

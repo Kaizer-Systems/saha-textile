@@ -4,19 +4,19 @@
 	(ngSubmit)="submit()"
 >
 	<app-form-fields
-		[label]="'attribute_name' | translate"
+		[label]="'attribute_name' | transloco"
 		[for]="'name'"
 		[required]="true"
 	>
 		<input
 			class="form-control"
 			type="text"
-			placeholder="{{ 'attribute_name' | translate }}"
+			placeholder="{{ 'attribute_name' | transloco }}"
 			name="name"
 			formControlName="name"
 		/>
 		@if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
-		<div class="invalid-feedback">{{ 'attribute_name_is_required' | translate }}</div>
+		<div class="invalid-feedback">{{ 'attribute_name_is_required' | transloco }}</div>
 		}
 	</app-form-fields>
 	<app-form-fields
@@ -28,9 +28,9 @@
 		<select2
 			class="custom-select d-block"
 			[data]="variantStyle?.length ? variantStyle : []"
-			[placeholder]="'select_style' | translate"
+			[placeholder]="'select_style' | transloco"
 			formControlName="style"
-			noResultMessage="{{ 'no_data_found' | translate }}"
+			noResultMessage="{{ 'no_data_found' | transloco }}"
 		/>
 		}
 		<p class="help-text">
@@ -41,7 +41,7 @@
 	<ng-container formArrayName="value">
 		@for (val of valueControl.controls; track val; let index = $index) {
 		<app-form-fields
-			[label]="'value' | translate"
+			[label]="'value' | transloco"
 			[for]="'value'"
 			[required]="true"
 			formGroupName="{{ index }}"
@@ -52,10 +52,10 @@
 						class="form-control"
 						type="text"
 						formControlName="value"
-						placeholder="{{ 'attribute_value' | translate }}"
+						placeholder="{{ 'attribute_value' | transloco }}"
 					/>
 					@if (val.get('value').touched && val.get('value').errors?.['required']) {
-					<div class="invalid-feedback">{{ 'value_is_required' | translate }}</div>
+					<div class="invalid-feedback">{{ 'value_is_required' | transloco }}</div>
 					}
 				</div>
 				@if (form.get('style').value === 'color') {
@@ -75,7 +75,7 @@
 						class="invalid-feedback h-100 w-100 cursor-pointer"
 						(click)="remove(index)"
 					>
-						{{ 'remove' | translate }}
+						{{ 'remove' | transloco }}
 					</a>
 				</div>
 				}
@@ -91,7 +91,7 @@
 				[spinner]="false"
 				(click)="add($event)"
 			>
-				{{ 'add_value' | translate }}
+				{{ 'add_value' | transloco }}
 			</app-button>
 		</div>
 	</div>

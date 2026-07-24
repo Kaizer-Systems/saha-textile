@@ -1,24 +1,24 @@
 import { UpperCasePipe } from '@angular/common';
 import { Component, inject, input, output, TemplateRef, viewChild } from '@angular/core';
-
-import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { TranslateModule } from '@ngx-translate/core';
+
+import { TranslocoModule } from '@jsverse/transloco';
+import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 
-import { IPayoutStatus, IRefund } from '@data-access/interfaces/refund.interface';
-
 import { SettingStore } from '@core/state/setting.store';
+import { IPayoutStatus, IRefund } from '@data-access/interfaces/refund.interface';
 import { IValues } from '@data-access/interfaces/setting.interface';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
+
 import { Button } from '../../button/button';
 
 @Component({
 	selector: 'app-payout-modal',
 	templateUrl: './payout-modal.html',
 	styleUrls: ['./payout-modal.scss'],
-	imports: [Button, HasPermissionDirective, UpperCasePipe, TranslateModule, CurrencySymbolPipe],
+	imports: [Button, HasPermissionDirective, UpperCasePipe, TranslocoModule, CurrencySymbolPipe],
 })
 export class PayoutModal {
 	private modalService = inject(NgbModal);

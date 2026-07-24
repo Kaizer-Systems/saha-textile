@@ -1,7 +1,9 @@
 import { isPlatformBrowser, AsyncPipe } from '@angular/common';
 import { Component, computed, inject, PLATFORM_ID } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import {
 	NgbNav,
 	NgbNavContent,
@@ -11,23 +13,21 @@ import {
 	NgbNavLinkBase,
 	NgbNavOutlet,
 } from '@ng-bootstrap/ng-bootstrap';
-import { toObservable } from '@angular/core/rxjs-interop';
-import { TranslateModule } from '@ngx-translate/core';
 import { Select2Data, Select2Module } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-import { injectCurrenciesQuery } from '@data-access/queries/currency.queries';
 import { SettingStore } from '@core/state/setting.store';
+import { IAttachment } from '@data-access/interfaces/attachment.interface';
+import { IDayInterval, IValues } from '@data-access/interfaces/setting.interface';
+import { injectCurrenciesQuery } from '@data-access/queries/currency.queries';
+import { SettingService } from '@data-access/services/setting.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import * as data from '@shared/data/time-zone';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
-import * as data from '@shared/data/time-zone';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
-import { IDayInterval, IValues } from '@data-access/interfaces/setting.interface';
-import { SettingService } from '@data-access/services/setting.service';
 
 @Component({
 	selector: 'app-setting',
@@ -48,7 +48,7 @@ import { SettingService } from '@data-access/services/setting.service';
 		Button,
 		NgbNavOutlet,
 		HasPermissionDirective,
-		TranslateModule,
+		TranslocoModule,
 		AsyncPipe,
 	],
 })
@@ -241,10 +241,8 @@ export class Setting {
 				}),
 			}),
 			maintenance: new FormGroup({
-				title: new FormControl(),
 				maintenance_mode: new FormControl(false),
 				maintenance_image_id: new FormControl(),
-				description: new FormControl(),
 			}),
 		});
 	}
@@ -262,133 +260,131 @@ export class Setting {
 			.getBackendSettingOption()
 			.pipe(map((res) => res.values))
 			.subscribe((option) => {
-			this.form.patchValue({
-				general: {
-					light_logo_image_id: option?.general?.light_logo_image_id,
-					dark_logo_image_id: option?.general?.dark_logo_image_id,
-					favicon_image_id: option?.general?.favicon_image_id,
-					tiny_logo_image_id: option?.general?.tiny_logo_image_id,
-					site_title: option?.general?.site_title,
-					site_tagline: option?.general?.site_tagline,
-					default_timezone: option?.general?.default_timezone,
-					default_currency_id: +option?.general?.default_currency_id!,
-					admin_site_language_direction: option?.general?.admin_site_language_direction,
-					min_order_amount: option?.general?.min_order_amount,
-					min_order_free_shipping: option?.general?.min_order_free_shipping,
-					product_sku_prefix: option?.general?.product_sku_prefix,
-					mode: option?.general?.mode,
-					copyright: option?.general?.copyright,
-				},
-				activation: {
-					multivendor: option?.activation?.multivendor,
-					point_enable: option?.activation?.point_enable,
-					coupon_enable: option?.activation?.coupon_enable,
-					wallet_enable: option?.activation?.wallet_enable,
-					stock_product_hide: option?.activation?.stock_product_hide,
-					store_auto_approve: option?.activation?.store_auto_approve,
-					product_auto_approve: option?.activation?.product_auto_approve,
-				},
-				wallet_points: {
-					signup_points: option?.wallet_points?.signup_points,
-					min_per_order_amount: option?.wallet_points?.min_per_order_amount,
-					point_currency_ratio: option?.wallet_points?.point_currency_ratio,
-					reward_per_order_amount: option?.wallet_points?.reward_per_order_amount,
-				},
-				email: {
-					mail_host: option?.email?.mail_host,
-					mail_port: option?.email?.mail_port,
-					mail_mailer: option?.email?.mail_mailer,
-					mail_password: option?.email?.mail_password,
-					mail_username: option?.email?.mail_username,
-					mail_encryption: option?.email?.mail_encryption,
-					mail_from_name: option?.email?.mail_from_name,
-					mail_from_address: option?.email?.mail_from_address,
-					mailgun_domain: option?.email?.mailgun_domain,
-					mailgun_secret: option?.email?.mailgun_secret,
-				},
-				vendor_commissions: {
-					status: option?.vendor_commissions?.status,
-					min_withdraw_amount: option?.vendor_commissions?.min_withdraw_amount,
-					default_commission_rate: option?.vendor_commissions?.default_commission_rate,
-					is_category_based_commission: option?.vendor_commissions?.is_category_based_commission,
-				},
-				refund: {
-					status: option?.refund?.status,
-					refundable_days: option?.refund?.refundable_days,
-				},
-				newsletter: {
-					mailchip_api_key: option?.newsletter?.mailchip_api_key,
-					mailchip_list_id: option?.newsletter?.mailchip_list_id,
-				},
-				analytics: {
-					facebook_pixel: {
-						status: option?.analytics?.facebook_pixel?.status,
-						pixel_id: option?.analytics?.facebook_pixel?.pixel_id,
+				this.form.patchValue({
+					general: {
+						light_logo_image_id: option?.general?.light_logo_image_id,
+						dark_logo_image_id: option?.general?.dark_logo_image_id,
+						favicon_image_id: option?.general?.favicon_image_id,
+						tiny_logo_image_id: option?.general?.tiny_logo_image_id,
+						site_title: option?.general?.site_title,
+						site_tagline: option?.general?.site_tagline,
+						default_timezone: option?.general?.default_timezone,
+						default_currency_id: +option?.general?.default_currency_id!,
+						admin_site_language_direction: option?.general?.admin_site_language_direction,
+						min_order_amount: option?.general?.min_order_amount,
+						min_order_free_shipping: option?.general?.min_order_free_shipping,
+						product_sku_prefix: option?.general?.product_sku_prefix,
+						mode: option?.general?.mode,
+						copyright: option?.general?.copyright,
 					},
-					google_analytics: {
-						status: option?.analytics?.google_analytics?.status,
-						measurement_id: option?.analytics?.google_analytics?.measurement_id,
+					activation: {
+						multivendor: option?.activation?.multivendor,
+						point_enable: option?.activation?.point_enable,
+						coupon_enable: option?.activation?.coupon_enable,
+						wallet_enable: option?.activation?.wallet_enable,
+						stock_product_hide: option?.activation?.stock_product_hide,
+						store_auto_approve: option?.activation?.store_auto_approve,
+						product_auto_approve: option?.activation?.product_auto_approve,
 					},
-				},
-				delivery: {
-					default_delivery: 1,
-					default: {
-						title: option?.delivery?.default?.title,
-						description: option?.delivery?.default?.description,
+					wallet_points: {
+						signup_points: option?.wallet_points?.signup_points,
+						min_per_order_amount: option?.wallet_points?.min_per_order_amount,
+						point_currency_ratio: option?.wallet_points?.point_currency_ratio,
+						reward_per_order_amount: option?.wallet_points?.reward_per_order_amount,
 					},
-					same_day_delivery: option?.delivery?.same_day_delivery,
-					same_day: {
-						title: option?.delivery?.same_day?.title,
-						description: option?.delivery?.same_day?.description,
+					email: {
+						mail_host: option?.email?.mail_host,
+						mail_port: option?.email?.mail_port,
+						mail_mailer: option?.email?.mail_mailer,
+						mail_password: option?.email?.mail_password,
+						mail_username: option?.email?.mail_username,
+						mail_encryption: option?.email?.mail_encryption,
+						mail_from_name: option?.email?.mail_from_name,
+						mail_from_address: option?.email?.mail_from_address,
+						mailgun_domain: option?.email?.mailgun_domain,
+						mailgun_secret: option?.email?.mailgun_secret,
 					},
-				},
-				google_reCaptcha: {
-					secret: option?.google_reCaptcha?.secret,
-					status: option?.google_reCaptcha?.status,
-					site_key: option?.google_reCaptcha?.site_key,
-				},
-				payment_methods: {
-					paypal: {
-						status: option?.payment_methods?.paypal?.status,
-						client_id: option?.payment_methods?.paypal?.client_id,
-						client_secret: option?.payment_methods?.paypal?.client_secret,
-						sandbox_mode: option?.payment_methods?.paypal?.sandbox_mode,
+					vendor_commissions: {
+						status: option?.vendor_commissions?.status,
+						min_withdraw_amount: option?.vendor_commissions?.min_withdraw_amount,
+						default_commission_rate: option?.vendor_commissions?.default_commission_rate,
+						is_category_based_commission: option?.vendor_commissions?.is_category_based_commission,
 					},
-					stripe: {
-						key: option?.payment_methods?.stripe?.key,
-						secret: option?.payment_methods?.stripe?.secret,
-						status: option?.payment_methods?.stripe?.status,
+					refund: {
+						status: option?.refund?.status,
+						refundable_days: option?.refund?.refundable_days,
 					},
-					razorpay: {
-						key: option?.payment_methods?.razorpay?.key,
-						secret: option?.payment_methods?.razorpay?.secret,
-						status: option?.payment_methods?.razorpay?.status,
+					newsletter: {
+						mailchip_api_key: option?.newsletter?.mailchip_api_key,
+						mailchip_list_id: option?.newsletter?.mailchip_list_id,
 					},
-					mollie: {
-						status: option?.payment_methods?.mollie?.status,
-						secret_key: option?.payment_methods?.mollie?.secret_key,
+					analytics: {
+						facebook_pixel: {
+							status: option?.analytics?.facebook_pixel?.status,
+							pixel_id: option?.analytics?.facebook_pixel?.pixel_id,
+						},
+						google_analytics: {
+							status: option?.analytics?.google_analytics?.status,
+							measurement_id: option?.analytics?.google_analytics?.measurement_id,
+						},
 					},
-					cod: {
-						status: option?.payment_methods?.cod?.status,
+					delivery: {
+						default_delivery: 1,
+						default: {
+							title: option?.delivery?.default?.title,
+							description: option?.delivery?.default?.description,
+						},
+						same_day_delivery: option?.delivery?.same_day_delivery,
+						same_day: {
+							title: option?.delivery?.same_day?.title,
+							description: option?.delivery?.same_day?.description,
+						},
 					},
-				},
-				maintenance: {
-					title: option?.maintenance?.title,
-					maintenance_mode: option?.maintenance?.maintenance_mode,
-					maintenance_image_id: option?.maintenance?.maintenance_image_id,
-					description: option?.maintenance?.description,
-				},
+					google_reCaptcha: {
+						secret: option?.google_reCaptcha?.secret,
+						status: option?.google_reCaptcha?.status,
+						site_key: option?.google_reCaptcha?.site_key,
+					},
+					payment_methods: {
+						paypal: {
+							status: option?.payment_methods?.paypal?.status,
+							client_id: option?.payment_methods?.paypal?.client_id,
+							client_secret: option?.payment_methods?.paypal?.client_secret,
+							sandbox_mode: option?.payment_methods?.paypal?.sandbox_mode,
+						},
+						stripe: {
+							key: option?.payment_methods?.stripe?.key,
+							secret: option?.payment_methods?.stripe?.secret,
+							status: option?.payment_methods?.stripe?.status,
+						},
+						razorpay: {
+							key: option?.payment_methods?.razorpay?.key,
+							secret: option?.payment_methods?.razorpay?.secret,
+							status: option?.payment_methods?.razorpay?.status,
+						},
+						mollie: {
+							status: option?.payment_methods?.mollie?.status,
+							secret_key: option?.payment_methods?.mollie?.secret_key,
+						},
+						cod: {
+							status: option?.payment_methods?.cod?.status,
+						},
+					},
+					maintenance: {
+						maintenance_mode: option?.maintenance?.maintenance_mode,
+						maintenance_image_id: option?.maintenance?.maintenance_image_id,
+					},
+				});
+				this.sameDayIntervals.clear();
+				option?.delivery?.same_day_intervals?.forEach((delivery: IDayInterval) =>
+					this.sameDayIntervals.push(
+						this.formBuilder.group({
+							title: new FormControl(delivery?.title),
+							description: new FormControl(delivery?.description),
+						}),
+					),
+				);
 			});
-			this.sameDayIntervals.clear();
-			option?.delivery?.same_day_intervals?.forEach((delivery: IDayInterval) =>
-				this.sameDayIntervals.push(
-					this.formBuilder.group({
-						title: new FormControl(delivery?.title),
-						description: new FormControl(delivery?.description),
-					}),
-				),
-			);
-		});
 	}
 
 	selectLightLogo(data: IAttachment) {

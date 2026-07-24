@@ -1,0 +1,169 @@
+.bundle-configurator {
+	.bundle-status {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		color: #2f9e44;
+		font-size: 14px;
+		margin-bottom: 16px;
+
+		i {
+			font-size: 18px;
+		}
+	}
+
+	.bundle-section {
+		margin-bottom: 22px;
+	}
+
+	.bundle-heading {
+		font-size: 17px;
+		font-weight: 600;
+		margin-bottom: 12px;
+
+		.count {
+			color: #888;
+			font-weight: 400;
+		}
+	}
+
+	.bundle-components {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+
+		.bundle-component {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 12px;
+			border: 1px solid #eee;
+			border-radius: 8px;
+
+			.comp-index {
+				flex: 0 0 24px;
+				width: 24px;
+				height: 24px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border-radius: 50%;
+				background-color: var(--theme-color);
+				color: #fff;
+				font-size: 13px;
+				font-weight: 600;
+			}
+
+			.comp-image {
+				width: 56px;
+				height: 56px;
+				object-fit: cover;
+				border-radius: 6px;
+			}
+
+			.comp-main {
+				flex: 1;
+				min-width: 0;
+
+				.comp-name {
+					margin: 0 0 2px;
+					font-size: 15px;
+					font-weight: 600;
+				}
+
+				.comp-sku {
+					font-size: 12px;
+				}
+
+				.comp-attrs {
+					display: flex;
+					flex-wrap: wrap;
+					gap: 10px;
+					margin-top: 4px;
+					font-size: 12px;
+					color: #555;
+				}
+			}
+
+			.comp-meta {
+				text-align: right;
+				font-size: 12px;
+
+				.comp-consumes {
+					margin-bottom: 4px;
+				}
+
+				.comp-flag {
+					font-weight: 600;
+
+					&.ok {
+						color: #2f9e44;
+					}
+					&.warn {
+						color: #e8590c;
+					}
+					&.danger {
+						color: #e03131;
+					}
+				}
+			}
+		}
+	}
+
+	.bundle-summary {
+		padding: 16px;
+		border: 1px solid #eee;
+		border-radius: 10px;
+		background-color: #fafafa;
+
+		h5 {
+			font-size: 15px;
+			font-weight: 700;
+			margin-bottom: 12px;
+		}
+
+		.summary-lines {
+			list-style: none;
+			margin: 0 0 10px;
+			padding: 0;
+
+			li {
+				display: flex;
+				justify-content: space-between;
+				gap: 12px;
+				padding: 6px 0;
+				border-bottom: 1px dashed #e6e6e6;
+				font-size: 14px;
+
+				.s-name small {
+					color: #999;
+				}
+
+				&.s-option .s-name {
+					color: #555;
+				}
+			}
+		}
+
+		.summary-total {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding-top: 8px;
+			font-weight: 700;
+
+			.s-total-value {
+				font-size: 20px;
+				color: var(--theme-color);
+			}
+		}
+
+		.bundle-note {
+			margin: 10px 0 0;
+			font-size: 12px;
+		}
+	}
+}

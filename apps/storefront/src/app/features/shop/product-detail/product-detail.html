@@ -1,0 +1,78 @@
+<app-breadcrumb [breadcrumb]="breadcrumb" />
+
+@if (product) {
+<section
+	class="product-section"
+	[class.section-b-space]="!product.related_products?.length"
+>
+	<div class="container-fluid-lg">
+		<div class="row">
+			<div class="col-xxl-9 col-xl-8 col-lg-7">
+				<div class="row g-4">
+					<!-- Gallery needs browser-only carousel/zoom libs; a static image is
+					     server-rendered as a crawlable fallback. -->
+					<div class="col-xl-6">
+						@if (isBrowser) {
+						<app-product-gallery [product]="product" />
+						} @else {
+						<div class="product-left-box">
+							<img
+								class="img-fluid"
+								[src]="product.product_thumbnail?.original_url || 'assets/images/product.png'"
+								[alt]="product.name"
+							/>
+						</div>
+						}
+					</div>
+					<!-- Buy-box + detail widgets always render (crawlable). -->
+					<div class="col-xl-6">
+						<div class="right-box-contain">
+							<app-buy-box
+								[product]="product"
+								[option]="siteConfig$ | async"
+								[owlCar]="owlCar()"
+							/>
+							<app-product-action [product]="product" />
+							<app-product-information [product]="product" />
+							<app-product-delivery-information [product]="product" />
+							<app-payment-option
+								[product]="product"
+								[option]="(siteConfig$ | async)!"
+							/>
+							<app-product-social-share
+								[product]="product"
+								[option]="siteConfig$ | async"
+							/>
+						</div>
+					</div>
+
+					@if (product.cross_sell_products?.length) {
+					<div class="related-product-2 col-12">
+						<app-product-bundle [product]="product" />
+					</div>
+					}
+
+					<div class="col-12">
+						<app-product-details-tabs [product]="product" />
+					</div>
+				</div>
+			</div>
+
+			<div class="col-xxl-3 col-xl-4 col-lg-5 d-none d-lg-block">
+				<app-product-details-sidebar [product]="product" />
+			</div>
+		</div>
+	</div>
+</section>
+
+<!-- You May Also Like — related-products rail as a nav-arrow owl carousel -->
+<section class="product-list-section section-b-space">
+	<app-you-may-also-like />
+</section>
+
+<!-- Conditional: blogs the admin linked to this / parent product -->
+<app-product-blogs [product]="product" />
+
+<!-- Sticky Cart Box -->
+<app-sticky-checkout [product]="product" />
+}

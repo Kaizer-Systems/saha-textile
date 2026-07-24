@@ -11,11 +11,11 @@ import {
 	DOCUMENT,
 	viewChild,
 } from '@angular/core';
-import { Router, RouterModule } from '@angular/router';
 import { toObservable } from '@angular/core/rxjs-interop';
+import { Router, RouterModule } from '@angular/router';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { NgbRating, NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 import {
 	ApexAxisChartSeries,
 	ApexChart,
@@ -34,15 +34,7 @@ import {
 import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
-import { injectCategoriesQuery } from '@data-access/queries/category.queries';
-import { injectRevenueChartQuery, injectStatisticsQuery } from '@data-access/queries/dashboard.queries';
-import { injectOrdersQuery } from '@data-access/queries/order.queries';
-import { injectProductsQuery } from '@data-access/queries/product.queries';
-import { injectReviewsQuery } from '@data-access/queries/review.queries';
-import { injectStoresQuery } from '@data-access/queries/store.queries';
-import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { Table } from '@shared/ui/table/table';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { AccountStore } from '@core/state/account.store';
 import { IAccountUser } from '@data-access/interfaces/account.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IRevenueChart, IStatisticsCount } from '@data-access/interfaces/dashboard.interface';
@@ -51,8 +43,16 @@ import { IProduct, IProductModel } from '@data-access/interfaces/product.interfa
 import { IReviewModel } from '@data-access/interfaces/review.interface';
 import { IStoresModel } from '@data-access/interfaces/store.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
+import { injectCategoriesQuery } from '@data-access/queries/category.queries';
+import { injectRevenueChartQuery, injectStatisticsQuery } from '@data-access/queries/dashboard.queries';
+import { injectOrdersQuery } from '@data-access/queries/order.queries';
+import { injectProductsQuery } from '@data-access/queries/product.queries';
+import { injectReviewsQuery } from '@data-access/queries/review.queries';
+import { injectStoresQuery } from '@data-access/queries/store.queries';
+import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { CurrencySymbolPipe as CurrencySymbolPipe_1, CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { AccountStore } from '@core/state/account.store';
+import { Table } from '@shared/ui/table/table';
 
 export interface ChartOptions {
 	series: ApexAxisChartSeries;
@@ -83,7 +83,7 @@ export interface ChartOptions {
 		NgbRating,
 		SlicePipe,
 		DatePipe,
-		TranslateModule,
+		TranslocoModule,
 		CurrencySymbolPipe_1,
 		AsyncPipe,
 		DatePipe,
@@ -109,7 +109,12 @@ export class Dashboard {
 	private readonly productsQuery = injectProductsQuery(() => this.productParams());
 	product$: Observable<IProductModel | undefined> = toObservable(this.productsQuery.data);
 
-	private readonly topProductParams = signal<Params>({ status: 1, top_selling: 1, filter_by: 'this_year', paginate: 5 });
+	private readonly topProductParams = signal<Params>({
+		status: 1,
+		top_selling: 1,
+		filter_by: 'this_year',
+		paginate: 5,
+	});
 	private readonly topProductsQuery = injectProductsQuery(() => this.topProductParams());
 	topProduct$: Observable<IProduct[]> = toObservable(
 		computed(() => this.topProductsQuery.data()?.data.slice(0, 7) ?? []),

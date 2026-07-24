@@ -76,7 +76,7 @@
 									@if (menu.icon) {
 									<i class="{{ menu.icon }}"></i>
 									}
-									<div class="sidebar-main-link">{{ menu.title.replace(' ', '_') | translate }}</div>
+									<div class="sidebar-main-link">{{ menu.title.replace(' ', '_') | transloco }}</div>
 								</div>
 								@if (menu?.badgeType && menu?.badgeValue !== '0' && menu?.badgeValue) {
 								<span [class]="menu?.badgeType">{{ menu?.badgeValue }}</span>
@@ -99,7 +99,7 @@
 							[routerLinkActiveOptions]="{ exact: true }"
 							(click)="closeSidebar()"
 						>
-							<div>{{ menu.title.replace(' ', '_') | translate }}</div>
+							<div>{{ menu.title.replace(' ', '_') | transloco }}</div>
 							@if (menu?.badgeType && menu?.badgeValue !== '0' && menu?.badgeValue) {
 							<span [class]="menu?.badgeType">{{ menu?.badgeValue }}</span>
 							}

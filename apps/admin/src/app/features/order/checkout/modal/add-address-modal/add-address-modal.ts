@@ -3,17 +3,17 @@ import { Component, computed, inject, input, signal, TemplateRef, viewChild } fr
 import { toObservable } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
 import { injectCountriesQuery } from '@data-access/queries/country.queries';
 import { injectStatesQuery } from '@data-access/queries/state.queries';
-import { Button } from '@shared/ui/button/button';
-import { FormFields } from '@shared/ui/form-fields/form-fields';
 import * as data from '@shared/data/country-code';
 import { NumberDirective } from '@shared/directives/numbers-only.directive';
+import { Button } from '@shared/ui/button/button';
+import { FormFields } from '@shared/ui/form-fields/form-fields';
 
 @Component({
 	selector: 'app-address-modal',
@@ -26,7 +26,7 @@ import { NumberDirective } from '@shared/directives/numbers-only.directive';
 		Select2Module,
 		NumberDirective,
 		TitleCasePipe,
-		TranslateModule,
+		TranslocoModule,
 		AsyncPipe,
 		TitleCasePipe,
 	],
@@ -46,7 +46,9 @@ export class AddAddressModal {
 	private readonly selectedCountryId = signal<number | null>(null);
 
 	countries$: Observable<Select2Data> = toObservable(
-		computed(() => this.countriesQuery.data()?.map((country) => ({ label: country.name, value: country.id })) ?? []),
+		computed(
+			() => this.countriesQuery.data()?.map((country) => ({ label: country.name, value: country.id })) ?? [],
+		),
 	);
 	states$: Observable<Select2Data> = toObservable(computed(() => this.filterStates(this.selectedCountryId())));
 

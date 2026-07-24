@@ -3,20 +3,20 @@ import { Component, PLATFORM_ID, inject, input } from '@angular/core';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Select2Data, Select2Module } from 'ng-select2-component';
 import { Subject, of } from 'rxjs';
 import { map, switchMap, takeUntil } from 'rxjs/operators';
 
+import { AttributeService } from '@data-access/services/attribute.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { AttributeService } from '@data-access/services/attribute.service';
 
 @Component({
 	selector: 'app-form-attribute',
 	templateUrl: './form-attribute.html',
 	styleUrls: ['./form-attribute.scss'],
-	imports: [ReactiveFormsModule, FormFields, Select2Module, Button, TranslateModule],
+	imports: [ReactiveFormsModule, FormFields, Select2Module, Button, TranslocoModule],
 })
 export class FormAttribute {
 	private route = inject(ActivatedRoute);
@@ -47,12 +47,20 @@ export class FormAttribute {
 			label: 'Radio',
 		},
 		{
+			value: 'radio_bar',
+			label: 'Radio Bar',
+		},
+		{
 			value: 'dropdown',
 			label: 'Dropdown',
 		},
 		{
 			value: 'image',
 			label: 'Image',
+		},
+		{
+			value: 'image_tile',
+			label: 'Image V2',
 		},
 		{
 			value: 'color',

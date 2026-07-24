@@ -2,12 +2,12 @@ import { isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 
+import { AccountStore } from '@core/state/account.store';
+import { MenuStore } from '@core/state/menu.store';
 import { NavService } from '@data-access/services/nav.service';
 import { Footer } from '@layout/footer/footer';
 import { Header } from '@layout/header/header';
 import { Sidebar } from '@layout/sidebar/sidebar';
-import { AccountStore } from '@core/state/account.store';
-import { MenuStore } from '@core/state/menu.store';
 import { SidebarMenuSkeleton } from '@shared/ui/skeleton/sidebar-menu-skeleton/sidebar-menu-skeleton';
 
 @Component({

@@ -1,16 +1,17 @@
 import { Component, TemplateRef, inject, output, viewChild } from '@angular/core';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 
 import { ITableClickedAction } from '@data-access/interfaces/table.interface';
+
 import { Button } from '../../button/button';
 
 @Component({
 	selector: 'app-confirmation-modal',
 	templateUrl: './confirmation-modal.html',
 	styleUrls: ['./confirmation-modal.scss'],
-	imports: [Button, TranslateModule],
+	imports: [Button, TranslocoModule],
 })
 export class ConfirmationModal {
 	private modalService = inject(NgbModal);

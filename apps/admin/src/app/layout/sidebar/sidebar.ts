@@ -1,24 +1,24 @@
 import { isPlatformBrowser, NgTemplateOutlet, AsyncPipe } from '@angular/common';
 import { Component, inject, input, PLATFORM_ID } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 
-import { toObservable } from '@angular/core/rxjs-interop';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
 import { AccountStore } from '@core/state/account.store';
 import { MenuStore } from '@core/state/menu.store';
 import { SettingStore } from '@core/state/setting.store';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { IMenu } from '@data-access/interfaces/menu.interface';
 import { IValues } from '@data-access/interfaces/setting.interface';
 import { NavService } from '@data-access/services/nav.service';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
 @Component({
 	selector: 'app-sidebar',
 	templateUrl: './sidebar.html',
 	styleUrls: ['./sidebar.scss'],
-	imports: [RouterModule, NgTemplateOutlet, HasPermissionDirective, TranslateModule, AsyncPipe, NgTemplateOutlet],
+	imports: [RouterModule, NgTemplateOutlet, HasPermissionDirective, TranslocoModule, AsyncPipe, NgTemplateOutlet],
 })
 export class Sidebar {
 	navServices = inject(NavService);

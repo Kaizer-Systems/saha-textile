@@ -1,0 +1,132 @@
+<!--
+  Custom home page body. Global header (top-bar + mega-menu) and footer come from
+  Layout; this file owns the page sections only. Build it up between the hero and the
+  newsletter as we go — see the "build your homepage" guide in chat.
+-->
+
+<!-- ===== HERO: auto-scrolling carousel of Denver full-width banners ===== -->
+<!-- Denver's single ratio_30 hero, reworked into an infinite auto-carousel with
+     arrows + dots. ratio_30 stays on an ANCESTOR of the carousel so its .bg-size:before
+     rule keeps the exact Denver height (30% of width) on every slide. -->
+<section class="home-section-2 home-section-bg pt-md-0 overflow-hidden pt-2">
+	<div class="home-slider-carousel container-fluid ratio_30 p-0">
+		<div class="row">
+			<div class="col-12">
+				@if (isBrowser) {
+				<owl-carousel-o [options]="heroSlider">
+					@for (banner of heroBanners; track banner.image_url) {
+					<ng-template carouselSlide>
+						<app-image-link
+							[image]="banner"
+							[bgImage]="true"
+							[class]="'home-contain rounded-0 p-0'"
+						/>
+					</ng-template>
+					}
+				</owl-carousel-o>
+				}
+			</div>
+		</div>
+	</div>
+</section>
+
+<!-- ===== Top Selling Items (Denver products_list_1) — carousel w/ side arrows ===== -->
+<section class="product-section product-section-3">
+	<div class="container-fluid-lg">
+		<div>
+			<app-title
+				[title]="topSellingItems.title"
+				[style]="'simple'"
+			/>
+			<app-theme-product
+				[productIds]="topSellingItems.product_ids"
+				[style]="'horizontal'"
+				[slider]="true"
+				[sliderOption]="productSlider"
+				[productStyle]="'product-solid'"
+				[boxClass]="'product-box-bg'"
+			/>
+		</div>
+	</div>
+</section>
+
+<!-- ===== Two side-by-side promo banners (Denver two_column_banners) ===== -->
+<section>
+	<div class="container-fluid-lg">
+		<div class="row g-4">
+			<div class="col-xxl-8 col-xl-12 col-md-7">
+				<app-image-link
+					[image]="twoColumnBanners.banner_1"
+					[bgImage]="false"
+				/>
+			</div>
+			<div class="col-xxl-4 col-xl-12 col-md-5">
+				<app-image-link
+					[image]="twoColumnBanners.banner_2"
+					[bgImage]="false"
+				/>
+			</div>
+		</div>
+	</div>
+</section>
+
+<!-- ===== Trendy Fashion Finds (Denver products_list_2) — carousel w/ side arrows ===== -->
+<section class="product-section product-section-3">
+	<div class="container-fluid-lg">
+		<div>
+			<app-title
+				[title]="trendyFashionFinds.title"
+				[style]="'simple'"
+			/>
+			<app-theme-product
+				[productIds]="trendyFashionFinds.product_ids"
+				[style]="'horizontal'"
+				[slider]="true"
+				[sliderOption]="productSlider"
+				[productStyle]="'product-solid'"
+				[boxClass]="'product-box-bg'"
+			/>
+		</div>
+	</div>
+</section>
+
+<!-- ===== Chic Style Selection (Denver products_list_3) — carousel w/ side arrows ===== -->
+<section class="product-section product-section-3">
+	<div class="container-fluid-lg">
+		<div>
+			<app-title
+				[title]="chicStyleSelection.title"
+				[style]="'simple'"
+			/>
+			<app-theme-product
+				[productIds]="chicStyleSelection.product_ids"
+				[style]="'horizontal'"
+				[slider]="true"
+				[sliderOption]="productSlider"
+				[productStyle]="'product-solid'"
+				[boxClass]="'product-box-bg'"
+			/>
+		</div>
+	</div>
+</section>
+
+<!-- ===== Featured Blog (Osaka featured_blogs) — carousel w/ side arrows ===== -->
+<section>
+	<div class="container-fluid-lg">
+		<app-title
+			[title]="featuredBlogs.title"
+			[description]="featuredBlogs.description"
+		/>
+		<app-blog
+			[blogIds]="featuredBlogs.blog_ids"
+			[sliderOption]="blogSlider"
+		/>
+	</div>
+</section>
+
+<!-- ===== Join Our Newsletter (same as Denver) ===== -->
+@if (newsletter.status) {
+<section class="newsletter-section section-b-space">
+	<app-newsletter [data]="newsletter" />
+</section>
+}

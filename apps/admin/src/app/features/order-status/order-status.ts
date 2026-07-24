@@ -1,12 +1,12 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { injectOrderStatusQuery } from '@data-access/queries/order-status.queries';
-import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { Table } from '@shared/ui/table/table';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IOrderStatus } from '@data-access/interfaces/order-status.interface';
 import { ITableConfig } from '@data-access/interfaces/table.interface';
+import { injectOrderStatusQuery } from '@data-access/queries/order-status.queries';
+import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { Table } from '@shared/ui/table/table';
 
 @Component({
 	selector: 'app-order-status',

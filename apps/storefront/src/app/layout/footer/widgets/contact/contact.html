@@ -1,44 +1,56 @@
 <div class="footer-contact">
-  <ul>
-    @if (data()?.footer?.support_number) {
-    <li>
-      <div class="footer-number">
-        <i class="ri-phone-line"></i>
-        <div class="contact-number">
-          <h6 class="text-content">{{ 'customer_support_24_7' | translate }} :</h6>
-          <h5>{{ data()?.footer?.support_number }}</h5>
-        </div>
-      </div>
-    </li>
-    } @if (data()?.footer?.support_email) {
-    <li>
-      <div class="footer-number">
-        <i class="ri-mail-line"></i>
-        <div class="contact-number">
-          <h6 class="text-content">{{ 'email_address' | translate }} :</h6>
-          <h5>{{ data()?.footer?.support_email }}</h5>
-        </div>
-      </div>
-    </li>
-    } @if (data()?.footer?.play_store_url || data()?.footer?.app_store_url) {
-    <li class="social-app mb-0">
-      <h5 class="mb-2 text-content">{{ 'download_app' | translate }} :</h5>
-      <ul>
-        @if (data()?.footer?.play_store_url) {
-        <li class="mb-0">
-          <a href="{{ data()?.footer?.play_store_url }}" target="_blank">
-            <img src="assets/images/playstore.svg" alt="playstore" />
-          </a>
-        </li>
-        } @if (data()?.footer?.app_store_url) {
-        <li class="mb-0">
-          <a href="{{ data()?.footer?.app_store_url }}" target="_blank">
-            <img src="assets/images/appstore.svg" alt="appstore" />
-          </a>
-        </li>
-        }
-      </ul>
-    </li>
-    }
-  </ul>
+	<ul>
+		@if (data()?.footer?.support_number) {
+		<li>
+			<div class="footer-number">
+				<i class="ri-phone-line"></i>
+				<div class="contact-number">
+					<h6 class="text-content">{{ 'customer_support_24_7' | transloco }} :</h6>
+					<h5>{{ data()?.footer?.support_number }}</h5>
+				</div>
+			</div>
+		</li>
+		} @if (data()?.footer?.support_email) {
+		<li>
+			<div class="footer-number">
+				<i class="ri-mail-line"></i>
+				<div class="contact-number">
+					<h6 class="text-content">{{ 'email_address' | transloco }} :</h6>
+					<h5>{{ data()?.footer?.support_email }}</h5>
+				</div>
+			</div>
+		</li>
+		} @if (data()?.footer?.play_store_url || data()?.footer?.app_store_url) {
+		<li class="social-app mb-0">
+			<h5 class="text-content mb-2">{{ 'download_app' | transloco }} :</h5>
+			<ul>
+				@if (data()?.footer?.play_store_url) {
+				<li class="mb-0">
+					<a
+						href="{{ data()?.footer?.play_store_url }}"
+						target="_blank"
+					>
+						<img
+							src="assets/images/playstore.svg"
+							alt="playstore"
+						/>
+					</a>
+				</li>
+				} @if (data()?.footer?.app_store_url) {
+				<li class="mb-0">
+					<a
+						href="{{ data()?.footer?.app_store_url }}"
+						target="_blank"
+					>
+						<img
+							src="assets/images/appstore.svg"
+							alt="appstore"
+						/>
+					</a>
+				</li>
+				}
+			</ul>
+		</li>
+		}
+	</ul>
 </div>

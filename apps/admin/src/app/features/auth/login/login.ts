@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
 import { AuthStore } from '@core/state/auth.store';
 import { Alert } from '@shared/ui/alert/alert';
@@ -12,7 +12,7 @@ import { Button } from '@shared/ui/button/button';
 	selector: 'app-login',
 	templateUrl: './login.html',
 	styleUrls: ['./login.scss'],
-	imports: [Alert, ReactiveFormsModule, RouterModule, TranslateModule, Button],
+	imports: [Alert, ReactiveFormsModule, RouterModule, TranslocoModule, Button],
 })
 export class Login {
 	private authStore = inject(AuthStore);

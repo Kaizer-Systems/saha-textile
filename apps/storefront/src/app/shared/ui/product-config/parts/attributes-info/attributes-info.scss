@@ -1,0 +1,49 @@
+.attributes-info {
+	.attributes-pill-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+
+		.attributes-pill {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			padding: 8px 14px;
+			border: 1px solid #eee;
+			border-radius: 6px;
+			background-color: #f8f8f8;
+			font-size: 14px;
+			line-height: 1;
+
+			i {
+				color: var(--theme-color);
+				font-size: 16px;
+			}
+
+			.attr-label {
+				color: #4a5568;
+			}
+
+			.attr-value {
+				font-weight: 600;
+				color: var(--theme-color);
+			}
+		}
+	}
+
+	.attributes-note {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin-top: 10px;
+		margin-bottom: 0;
+		font-size: 13px;
+
+		i {
+			font-size: 15px;
+		}
+	}
+}

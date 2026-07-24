@@ -1,0 +1,52 @@
+@if (product()?.quantity && product()!.quantity <= 10) {
+<div class="progress-sec">
+	<div class="left-progressbar">
+		<h6>{{ 'please_hurry_only' | transloco }} {{ product()?.quantity }} {{ 'left_in_stock' | transloco }}</h6>
+		<div
+			class="progress"
+			[class]="{ 'danger-progress': product()!.quantity <= 2, 'warning-progress': product()!.quantity >= 3 && product()!.quantity <= 7 }"
+			role="progressbar"
+			aria-valuenow="75"
+			aria-valuemin="0"
+			aria-valuemax="100"
+		>
+			<div
+				class="progress-bar progress-bar-striped progress-bar-animated"
+				[style.width]="(product()!.quantity * 100) / 10+'%'"
+			></div>
+		</div>
+	</div>
+</div>
+} @if (product()?.size_chart_image || (policy && product()?.is_return)) {
+<div class="size-delivery-info">
+	@if (product()?.size_chart_image) {
+	<a
+		href="javascript:void(0)"
+		(click)="SizeChartModal()?.openModal(product()!.size_chart_image)"
+	>
+		<i class="ri-ruler-line"></i>
+		{{ 'size_chart' | transloco }}
+	</a>
+	} @if (policy && product()?.is_return) {
+	<a
+		href="javascript:void(0)"
+		(click)="DeliveryReturnModal()?.openModal(policy)"
+	>
+		<i class="ri-truck-line"></i>
+		{{ 'delivery_return' | transloco }}
+	</a>
+	} @if (policy && product()?.is_return) {
+	<a
+		href="javascript:void(0)"
+		(click)="QuestionModal()?.openModal(product()!)"
+	>
+		<i class="ri-questionnaire-line"></i>
+		{{ 'ask_a_question' | transloco }}
+	</a>
+	}
+</div>
+}
+
+<app-size-chart-modal #sizeChartModal />
+<app-delivery-return-modal #deliveryReturnModal />
+<app-question-modal #questionModal />

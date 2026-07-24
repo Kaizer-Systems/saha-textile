@@ -1,0 +1,26 @@
+.measurements-form {
+	padding: 16px;
+	border: 1px solid #eee;
+	border-radius: 8px;
+	background-color: #fafafa;
+	margin-bottom: 18px;
+
+	.measurements-title {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 15px;
+		font-weight: 600;
+		margin-bottom: 14px;
+	}
+
+	.form-label {
+		font-size: 13px;
+		margin-bottom: 4px;
+	}
+
+	.measurements-note {
+		margin: 12px 0 0;
+		font-size: 12px;
+	}
+}

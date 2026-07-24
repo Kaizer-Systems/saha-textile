@@ -1,23 +1,23 @@
 import { isPlatformBrowser, AsyncPipe } from '@angular/common';
 import { Component, PLATFORM_ID, inject, input } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { toObservable } from '@angular/core/rxjs-interop';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Editor, NgxEditorModule } from 'ngx-editor';
 import { Observable, Subject, of } from 'rxjs';
 import { map, switchMap, takeUntil } from 'rxjs/operators';
 
+import { IAttachment } from '@data-access/interfaces/attachment.interface';
+import { ICategoryModel } from '@data-access/interfaces/category.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { injectTagsQuery } from '@data-access/queries/tag.queries';
+import { BlogService } from '@data-access/services/blog.service';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
-import { ICategoryModel } from '@data-access/interfaces/category.interface';
-import { BlogService } from '@data-access/services/blog.service';
 
 @Component({
 	selector: 'app-form-blog',
@@ -30,7 +30,7 @@ import { BlogService } from '@data-access/services/blog.service';
 		ImageUpload,
 		AdvancedDropdown,
 		Button,
-		TranslateModule,
+		TranslocoModule,
 		AsyncPipe,
 	],
 })

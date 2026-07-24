@@ -1,69 +1,71 @@
 <div class="title-header">
-  <div class="d-flex align-items-center">
-    <h5>{{ 'my_wallet' | translate }}</h5>
-  </div>
+	<div class="d-flex align-items-center">
+		<h5>{{ 'my_wallet' | transloco }}</h5>
+	</div>
 </div>
 @if ((wallet$ | async)?.transactions?.data?.length) {
 <div class="total-box mt-0">
-  <div class="row">
-    <div class="col-12">
-      <div class="totle-contain wallet-bg">
-        <div class="wallet-point-box">
-          <img src="assets/images/svg/wallet.svg" alt="wallet" />
-          <div class="totle-detail">
-            <h5>{{ 'wallet_balance'| translate}}</h5>
-            <h3>{{ ((wallet$ | async) ? (wallet$ | async)?.balance! : 0) | currencySymbol }}</h3>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="wallet-table">
-    <h4 class="user-dashboard-title">{{ 'transactions' | translate }}</h4>
-    <div class="table-responsive">
-      <table>
-        <tbody>
-          <tr>
-            <th>{{ 'no'| translate}}.</th>
-            <th>{{ 'date'| translate}}</th>
-            <th>{{ 'amount'| translate}}</th>
-            <th>{{ 'remark'| translate}}</th>
-            <th>{{ 'status'| translate}}</th>
-          </tr>
-          @for (transaction of (wallet$ | async)?.transactions?.data; track transaction;let i =
-          $index) {
-          <tr>
-            <td>{{ i + 1 }}</td>
-            <td>{{ transaction?.created_at | date: 'dd MMM yyyy hh:mm:a' }}</td>
-            <td>{{ transaction.amount | currencySymbol }}</td>
-            <td>{{ transaction.detail }}</td>
-            <td>
-              <div class="status-{{transaction.type}}">
-                <span>{{ transaction.type | titleCase }}</span>
-              </div>
-            </td>
-          </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </div>
-  @if ((wallet$ | async)?.transactions?.data?.length) {
-  <nav class="custome-pagination">
-    <app-pagination
-      [total]="(wallet$ | async)?.transactions?.total!"
-      [currentPage]="filter['page']"
-      [pageSize]="filter['paginate']"
-      (setPage)="setPaginate($event)"
-    />
-  </nav>
-  }
+	<div class="row">
+		<div class="col-12">
+			<div class="totle-contain wallet-bg">
+				<div class="wallet-point-box">
+					<img
+						src="assets/images/svg/wallet.svg"
+						alt="wallet"
+					/>
+					<div class="totle-detail">
+						<h5>{{ 'wallet_balance'| transloco}}</h5>
+						<h3>{{ ((wallet$ | async) ? (wallet$ | async)?.balance! : 0) | currencySymbol }}</h3>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="wallet-table">
+		<h4 class="user-dashboard-title">{{ 'transactions' | transloco }}</h4>
+		<div class="table-responsive">
+			<table>
+				<tbody>
+					<tr>
+						<th>{{ 'no'| transloco}}.</th>
+						<th>{{ 'date'| transloco}}</th>
+						<th>{{ 'amount'| transloco}}</th>
+						<th>{{ 'remark'| transloco}}</th>
+						<th>{{ 'status'| transloco}}</th>
+					</tr>
+					@for (transaction of (wallet$ | async)?.transactions?.data; track transaction;let i = $index) {
+					<tr>
+						<td>{{ i + 1 }}</td>
+						<td>{{ transaction?.created_at | date: 'dd MMM yyyy hh:mm:a' }}</td>
+						<td>{{ transaction.amount | currencySymbol }}</td>
+						<td>{{ transaction.detail }}</td>
+						<td>
+							<div class="status-{{transaction.type}}">
+								<span>{{ transaction.type | titleCase }}</span>
+							</div>
+						</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+	@if ((wallet$ | async)?.transactions?.data?.length) {
+	<nav class="custome-pagination">
+		<app-pagination
+			[total]="(wallet$ | async)?.transactions?.total!"
+			[currentPage]="filter()['page']"
+			[pageSize]="filter()['paginate']"
+			(setPage)="setPaginate($event)"
+		/>
+	</nav>
+	}
 </div>
 } @if (!(wallet$ | async)?.transactions?.data?.length) {
 <app-no-data
-  [class]="'no-data-added'"
-  [image]="'assets/svg/empty-items.svg'"
-  [text]="'No Transaction Found'"
-  [description]="'No wallet balance activity detected'"
+	[class]="'no-data-added'"
+	[image]="'assets/svg/empty-items.svg'"
+	[text]="'no_transaction_found' | transloco"
+	[description]="'no_wallet_description' | transloco"
 />
 }

@@ -4,35 +4,35 @@
 	(ngSubmit)="submit()"
 >
 	<app-form-fields
-		[label]="'tag_name' | translate "
+		[label]="'tag_name' | transloco "
 		[for]="'name'"
 		[required]="true"
 	>
 		<input
 			class="form-control"
 			type="text"
-			placeholder="{{ 'enter_tag_name' | translate }}"
+			placeholder="{{ 'enter_tag_name' | transloco }}"
 			name="name"
 			formControlName="name"
 		/>
 		@if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
-		<div class="invalid-feedback">{{ 'tag_name_is_required' | translate }}</div>
+		<div class="invalid-feedback">{{ 'tag_name_is_required' | transloco }}</div>
 		}
 	</app-form-fields>
 	<app-form-fields
-		[label]="'description' | translate"
+		[label]="'description' | transloco"
 		[for]="'description'"
 		[required]="false"
 	>
 		<textarea
 			class="form-control"
-			placeholder="{{ 'enter_description' | translate }}"
+			placeholder="{{ 'enter_description' | transloco }}"
 			formControlName="description"
 			rows="3"
 		></textarea>
 	</app-form-fields>
 	<app-form-fields
-		[label]="'status' | translate"
+		[label]="'status' | transloco"
 		[for]="'status'"
 		[required]="false"
 	>
@@ -47,5 +47,5 @@
 			</label>
 		</div>
 	</app-form-fields>
-	<app-button [id]="'tag_btn'">{{ (type() === 'create' ? 'save_tag' : 'update_tag') | translate }}</app-button>
+	<app-button [id]="'tag_btn'">{{ (type() === 'create' ? 'save_tag' : 'update_tag') | transloco }}</app-button>
 </form>

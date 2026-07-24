@@ -20,7 +20,7 @@
 						<li ngbNavItem="general">
 							<a ngbNavLink>
 								<i class="ri-settings-line"></i>
-								{{ 'general' | translate }}
+								{{ 'general' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="general">
@@ -87,12 +87,12 @@
 											class="form-control"
 											id="site_title"
 											type="text"
-											placeholder="{{ 'enter_site_title' | translate }}"
+											placeholder="{{ 'enter_site_title' | transloco }}"
 											formControlName="site_title"
 										/>
 										@if (form.get('general.site_title').touched &&
 										form.get('general.site_title').errors?.['required']) {
-										<div class="invalid-feedback">{{ 'site_title_is_required' | translate }}</div>
+										<div class="invalid-feedback">{{ 'site_title_is_required' | transloco }}</div>
 										}
 									</app-form-fields>
 									<app-form-fields
@@ -105,7 +105,7 @@
 											class="form-control"
 											id="site_tagline"
 											type="text"
-											placeholder="{{ 'enter_site_tagline' | translate }}"
+											placeholder="{{ 'enter_site_tagline' | transloco }}"
 											formControlName="site_tagline"
 										/>
 									</app-form-fields>
@@ -119,13 +119,13 @@
 										<select2
 											class="custom-select"
 											[data]="time_zone?.length ? time_zone : []"
-											[placeholder]="'select_timezone' | translate "
-											noResultMessage="{{ 'no_data_found' | translate }}"
+											[placeholder]="'select_timezone' | transloco "
+											noResultMessage="{{ 'no_data_found' | transloco }}"
 											formControlName="default_timezone"
 										/>
 										} @if (form.get('general.default_timezone').touched &&
 										form.get('general.default_timezone').errors?.['required']) {
-										<div class="invalid-feedback">{{ 'timezone_is_required' | translate }}</div>
+										<div class="invalid-feedback">{{ 'timezone_is_required' | transloco }}</div>
 										}
 									</app-form-fields>
 									<app-form-fields
@@ -138,13 +138,13 @@
 										<select2
 											class="custom-select"
 											[data]="currencies().length ? currencies() : []"
-											[placeholder]="'select_currency' | translate "
-											noResultMessage="{{ 'no_data_found' | translate }}"
+											[placeholder]="'select_currency' | transloco "
+											noResultMessage="{{ 'no_data_found' | transloco }}"
 											formControlName="default_currency_id"
 										/>
 										} @if (form.get('general.default_currency_id').touched &&
 										form.get('general.default_currency_id').errors?.['required']) {
-										<div class="invalid-feedback">{{ 'currency_is_required' | translate }}</div>
+										<div class="invalid-feedback">{{ 'currency_is_required' | transloco }}</div>
 										}
 									</app-form-fields>
 									<app-form-fields
@@ -157,8 +157,8 @@
 										<select2
 											class="custom-select"
 											[data]="language_direction?.length ? language_direction : []"
-											[placeholder]="'select_language_direction' | translate"
-											noResultMessage="{{ 'no_data_found' | translate }}"
+											[placeholder]="'select_language_direction' | transloco"
+											noResultMessage="{{ 'no_data_found' | transloco }}"
 											formControlName="admin_site_language_direction"
 										/>
 										}
@@ -178,7 +178,7 @@
 												class="form-control"
 												id="minimum_order"
 												type="number"
-												placeholder="{{ 'enter_min_order_amount' | translate }}"
+												placeholder="{{ 'enter_min_order_amount' | transloco }}"
 												formControlName="min_order_amount"
 											/>
 										</div>
@@ -188,7 +188,7 @@
 										</p>
 										@if (form.get('general.min_order_amount').touched &&
 										form.get('general.min_order_amount').errors?.['required']) {
-										<div class="invalid-feedback">{{ 'amount_is_required' | translate }}</div>
+										<div class="invalid-feedback">{{ 'amount_is_required' | transloco }}</div>
 										}
 									</app-form-fields>
 									<app-form-fields
@@ -206,7 +206,7 @@
 												class="form-control"
 												id="minimum_order"
 												type="number"
-												placeholder="{{ 'enter_min_order_free_shipping' | translate }}"
+												placeholder="{{ 'enter_min_order_free_shipping' | transloco }}"
 												formControlName="min_order_free_shipping"
 											/>
 										</div>
@@ -216,7 +216,7 @@
 										@if (form.get('general.min_order_free_shipping').touched &&
 										form.get('general.min_order_free_shipping').errors?.['required']) {
 										<div class="invalid-feedback">
-											{{ 'min_order_free_shipping_is_required' | translate }}
+											{{ 'min_order_free_shipping_is_required' | transloco }}
 										</div>
 										}
 									</app-form-fields>
@@ -230,7 +230,7 @@
 											class="form-control"
 											id="store_prefix"
 											type="text"
-											placeholder="{{ 'enter_store_prefix' | translate }}"
+											placeholder="{{ 'enter_store_prefix' | transloco }}"
 											formControlName="product_sku_prefix"
 										/>
 									</app-form-fields>
@@ -244,13 +244,13 @@
 										<select2
 											class="custom-select"
 											[data]="mode?.length ? mode : []"
-											[placeholder]="'select_mode' | translate "
-											noResultMessage="{{ 'no_data_found' | translate }}"
+											[placeholder]="'select_mode' | transloco "
+											noResultMessage="{{ 'no_data_found' | transloco }}"
 											formControlName="mode"
 										/>
 										} @if (form.get('general.mode').touched &&
 										form.get('general.mode').errors?.['required']) {
-										<div class="invalid-feedback">{{ 'mode_is_required' | translate }}</div>
+										<div class="invalid-feedback">{{ 'mode_is_required' | transloco }}</div>
 										}
 									</app-form-fields>
 									<app-form-fields
@@ -263,7 +263,7 @@
 											class="form-control"
 											id="copyright"
 											type="text"
-											placeholder="{{ 'enter_copyright_text' | translate }}"
+											placeholder="{{ 'enter_copyright_text' | transloco }}"
 											formControlName="copyright"
 										/>
 									</app-form-fields>
@@ -273,7 +273,7 @@
 						<li ngbNavItem="activation">
 							<a ngbNavLink>
 								<i class="ri-radio-button-line"></i>
-								{{ 'activation' | translate }}
+								{{ 'activation' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="activation">
@@ -425,7 +425,7 @@
 						<li ngbNavItem="wallet_points">
 							<a ngbNavLink>
 								<i class="ri-wallet-line"></i>
-								{{ 'wallet_points' | translate }}
+								{{ 'wallet_points' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="wallet_points">
@@ -441,7 +441,7 @@
 												class="form-control"
 												id="signup_points"
 												type="number"
-												placeholder="{{ 'enter_signup_points' | translate }}"
+												placeholder="{{ 'enter_signup_points' | transloco }}"
 												formControlName="signup_points"
 											/>
 										</div>
@@ -464,7 +464,7 @@
 												class="form-control"
 												id="min_per_order_amount"
 												type="number"
-												placeholder="{{ 'enter_min_per_order_amount' | translate }}"
+												placeholder="{{ 'enter_min_per_order_amount' | transloco }}"
 												formControlName="min_per_order_amount"
 											/>
 										</div>
@@ -482,7 +482,7 @@
 											class="form-control"
 											id="point_currency_ratio"
 											type="number"
-											placeholder="{{ 'enter_point_currency_ratio' | translate }}"
+											placeholder="{{ 'enter_point_currency_ratio' | transloco }}"
 											formControlName="point_currency_ratio"
 										/>
 										<p class="help-text">
@@ -499,7 +499,7 @@
 											class="form-control"
 											id="reward_per_order_amount"
 											type="number"
-											placeholder="{{ 'enter_reward_per_order_point' | translate }}"
+											placeholder="{{ 'enter_reward_per_order_point' | transloco }}"
 											formControlName="reward_per_order_amount"
 										/>
 										<p class="help-text">
@@ -515,7 +515,7 @@
 						<li ngbNavItem="email_config">
 							<a ngbNavLink>
 								<i class="ri-mail-open-line"></i>
-								{{ 'email_configuration' | translate }}
+								{{ 'email_configuration' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="email">
@@ -529,8 +529,8 @@
 										<select2
 											class="custom-select"
 											[data]="mail_mailer?.length ? mail_mailer : []"
-											[placeholder]="'select_mailer' | translate "
-											noResultMessage="{{ 'no_data_found' | translate }}"
+											[placeholder]="'select_mailer' | transloco "
+											noResultMessage="{{ 'no_data_found' | transloco }}"
 											formControlName="mail_mailer"
 										/>
 										}
@@ -548,7 +548,7 @@
 												class="form-control"
 												id="mail_host"
 												type="text"
-												placeholder="{{ 'enter_host' | translate }}"
+												placeholder="{{ 'enter_host' | transloco }}"
 												formControlName="mail_host"
 											/>
 										</app-form-fields>
@@ -562,7 +562,7 @@
 												class="form-control"
 												id="mail_port"
 												type="number"
-												placeholder="{{ 'enter_port' | translate }}"
+												placeholder="{{ 'enter_port' | transloco }}"
 												formControlName="mail_port"
 											/>
 										</app-form-fields>
@@ -576,8 +576,8 @@
 											<select2
 												class="custom-select"
 												[data]="encryption?.length ? encryption : []"
-												[placeholder]="'select_encryption' | translate"
-												noResultMessage="{{ 'no_data_found' | translate }}"
+												[placeholder]="'select_encryption' | transloco"
+												noResultMessage="{{ 'no_data_found' | transloco }}"
 												formControlName="mail_encryption"
 											/>
 											}
@@ -592,7 +592,7 @@
 												class="form-control"
 												id="mail_username"
 												type="text"
-												placeholder="{{ 'enter_username' | translate }}"
+												placeholder="{{ 'enter_username' | transloco }}"
 												formControlName="mail_username"
 											/>
 										</app-form-fields>
@@ -606,7 +606,7 @@
 												class="form-control"
 												id="mail_password"
 												type="password"
-												placeholder="{{ 'enter_password' | translate }}"
+												placeholder="{{ 'enter_password' | transloco }}"
 												formControlName="mail_password"
 											/>
 										</app-form-fields>
@@ -620,7 +620,7 @@
 												class="form-control"
 												id="mail_from_name"
 												type="text"
-												placeholder="{{ 'enter_email_from_name' | translate }}"
+												placeholder="{{ 'enter_email_from_name' | transloco }}"
 												formControlName="mail_from_name"
 											/>
 										</app-form-fields>
@@ -634,7 +634,7 @@
 												class="form-control"
 												id="mail_from_address"
 												type="text"
-												placeholder="{{ 'enter_email_from_address' | translate }}"
+												placeholder="{{ 'enter_email_from_address' | transloco }}"
 												formControlName="mail_from_address"
 											/>
 										</app-form-fields>
@@ -650,7 +650,7 @@
 											class="form-control"
 											id="mailgun_domain"
 											type="text"
-											placeholder="{{ 'enter_mailgun_domain' | translate }}"
+											placeholder="{{ 'enter_mailgun_domain' | transloco }}"
 											formControlName="mailgun_domain"
 										/>
 									</app-form-fields>
@@ -665,7 +665,7 @@
 											class="form-control"
 											id="mailgun_secret"
 											type="text"
-											placeholder="{{ 'enter_mailgun_secret' | translate }}"
+											placeholder="{{ 'enter_mailgun_secret' | transloco }}"
 											formControlName="mailgun_secret"
 										/>
 									</app-form-fields>
@@ -676,7 +676,7 @@
 						<li ngbNavItem="vendor_commissions">
 							<a ngbNavLink>
 								<i class="ri-user-line"></i>
-								{{ 'vendor_commissions' | translate }}
+								{{ 'vendor_commissions' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="vendor_commissions">
@@ -712,7 +712,7 @@
 												class="form-control"
 												id="min_withdraw_amount"
 												type="number"
-												placeholder="{{ 'enter_min_withdraw_amount' | translate }}"
+												placeholder="{{ 'enter_min_withdraw_amount' | transloco }}"
 												formControlName="min_withdraw_amount"
 											/>
 										</div>
@@ -738,7 +738,7 @@
 													if (value < 0) value = 0;
 												"
 												type="number"
-												placeholder="{{ 'enter_default_commission_rate' | translate }}"
+												placeholder="{{ 'enter_default_commission_rate' | transloco }}"
 												formControlName="default_commission_rate"
 											/>
 											<span class="input-group-text">%</span>
@@ -776,7 +776,7 @@
 						<li ngbNavItem="refund">
 							<a ngbNavLink>
 								<i class="ri-exchange-dollar-line"></i>
-								{{ 'refund' | translate }}
+								{{ 'refund' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="refund">
@@ -807,7 +807,7 @@
 											class="form-control"
 											id="refundable_days"
 											type="number"
-											placeholder="{{ 'enter_refundable_days' | translate }}"
+											placeholder="{{ 'enter_refundable_days' | transloco }}"
 											formControlName="refundable_days"
 										/>
 										<p class="help-text">
@@ -821,7 +821,7 @@
 						<li ngbNavItem="newsletter">
 							<a ngbNavLink>
 								<i class="ri-mail-unread-line"></i>
-								{{ 'newsletter' | translate }}
+								{{ 'newsletter' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="newsletter">
@@ -852,7 +852,7 @@
 											class="form-control"
 											id="mailchip_api_key"
 											type="text"
-											placeholder="{{ 'enter_mailchip_api_key' | translate }}"
+											placeholder="{{ 'enter_mailchip_api_key' | transloco }}"
 											formControlName="mailchip_api_key"
 										/>
 									</app-form-fields>
@@ -866,7 +866,7 @@
 											class="form-control"
 											id="mailchip_list_id"
 											type="text"
-											placeholder="{{ 'enter_mailchip_list_id' | translate }}"
+											placeholder="{{ 'enter_mailchip_list_id' | transloco }}"
 											formControlName="mailchip_list_id"
 										/>
 									</app-form-fields>
@@ -876,7 +876,7 @@
 						<li ngbNavItem="delivery">
 							<a ngbNavLink>
 								<i class="ri-truck-line"></i>
-								{{ 'delivery' | translate }}
+								{{ 'delivery' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="delivery">
@@ -891,21 +891,21 @@
 												class="form-control"
 												id="default_title"
 												type="text"
-												placeholder="{{ 'enter_title' | translate }}"
+												placeholder="{{ 'enter_title' | transloco }}"
 												formControlName="title"
 											/>
 										</app-form-fields>
 										<app-form-fields
 											[labelClass]="'form-label-title col-sm-3 mb-0'"
 											[gridClass]="'col-sm-9'"
-											[label]="'description' | translate"
+											[label]="'description' | transloco"
 											[for]="'default_description'"
 										>
 											<input
 												class="form-control"
 												id="default_description"
 												type="text"
-												placeholder="{{ 'enter_description' | translate }}"
+												placeholder="{{ 'enter_description' | transloco }}"
 												formControlName="description"
 											/>
 										</app-form-fields>
@@ -939,21 +939,21 @@
 												class="form-control"
 												id="same_day_title"
 												type="text"
-												placeholder="{{ 'enter_title' | translate }}"
+												placeholder="{{ 'enter_title' | transloco }}"
 												formControlName="title"
 											/>
 										</app-form-fields>
 										<app-form-fields
 											[labelClass]="'form-label-title col-sm-3 mb-0'"
 											[gridClass]="'col-sm-9'"
-											[label]="'description' | translate"
+											[label]="'description' | transloco"
 											[for]="'same_day_description'"
 										>
 											<input
 												class="form-control"
 												id="same_day_description"
 												type="text"
-												placeholder="{{ 'enter_description' | translate }}"
+												placeholder="{{ 'enter_description' | transloco }}"
 												formControlName="description"
 											/>
 										</app-form-fields>
@@ -978,7 +978,7 @@
 																<input
 																	type="text"
 																	class="form-control mb-2"
-																	placeholder="{{ 'enter_title' | translate }}"
+																	placeholder="{{ 'enter_title' | transloco }}"
 																	formControlName="title"
 																/>
 															</div>
@@ -986,7 +986,7 @@
 																<input
 																	type="text"
 																	class="form-control"
-																	placeholder="{{ 'enter_description' | translate }}"
+																	placeholder="{{ 'enter_description' | transloco }}"
 																	formControlName="description"
 																/>
 															</div>
@@ -997,7 +997,7 @@
 																class="mt-custom d-block invalid-feedback cursor-pointer"
 																(click)="remove(index)"
 															>
-																{{ 'remove' | translate }}
+																{{ 'remove' | transloco }}
 															</a>
 														</div>
 													</div>
@@ -1009,7 +1009,7 @@
 												[spinner]="false"
 												(click)="addDays($event)"
 											>
-												{{ 'add' | translate }}
+												{{ 'add' | transloco }}
 											</app-button>
 										</app-form-fields>
 									</div>
@@ -1020,7 +1020,7 @@
 						<li ngbNavItem="payment_method">
 							<a ngbNavLink>
 								<i class="ri-bank-card-line"></i>
-								{{ 'payment_method' | translate }}
+								{{ 'payment_method' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="payment_methods">
@@ -1034,7 +1034,7 @@
 											<li [ngbNavItem]="1">
 												<a ngbNavLink>
 													<i class="ri-paypal-line"></i>
-													{{ 'paypal' | translate }}
+													{{ 'paypal' | transloco }}
 												</a>
 												<ng-template ngbNavContent>
 													<div formGroupName="paypal">
@@ -1082,7 +1082,7 @@
 																class="form-control"
 																id="client_id"
 																type="text"
-																placeholder="{{ 'enter_client_id' | translate }}"
+																placeholder="{{ 'enter_client_id' | transloco }}"
 																formControlName="client_id"
 															/>
 														</app-form-fields>
@@ -1096,7 +1096,7 @@
 																class="form-control"
 																id="client_secret"
 																type="text"
-																placeholder="{{ 'enter_secret' | translate }}"
+																placeholder="{{ 'enter_secret' | transloco }}"
 																formControlName="client_secret"
 															/>
 														</app-form-fields>
@@ -1106,7 +1106,7 @@
 											<li [ngbNavItem]="2">
 												<a ngbNavLink>
 													<i class="ri-creative-commons-nc-line"></i>
-													{{ 'stripe' | translate }}
+													{{ 'stripe' | transloco }}
 												</a>
 												<ng-template ngbNavContent>
 													<div formGroupName="stripe">
@@ -1137,7 +1137,7 @@
 																class="form-control"
 																id="stripe_key"
 																type="text"
-																placeholder="{{ 'enter_key' | translate }}"
+																placeholder="{{ 'enter_key' | transloco }}"
 																formControlName="key"
 															/>
 														</app-form-fields>
@@ -1151,7 +1151,7 @@
 																class="form-control"
 																id="stripe_secret"
 																type="text"
-																placeholder="{{ 'enter_secret' | translate }}"
+																placeholder="{{ 'enter_secret' | transloco }}"
 																formControlName="secret"
 															/>
 														</app-form-fields>
@@ -1159,7 +1159,7 @@
 												</ng-template>
 											</li>
 											<li [ngbNavItem]="3">
-												<a ngbNavLink>₹ {{ 'razorpay' | translate }}</a>
+												<a ngbNavLink>₹ {{ 'razorpay' | transloco }}</a>
 												<ng-template ngbNavContent>
 													<div formGroupName="razorpay">
 														<app-form-fields
@@ -1189,7 +1189,7 @@
 																class="form-control"
 																id="razorpay_key"
 																type="text"
-																placeholder="{{ 'enter_key' | translate }}"
+																placeholder="{{ 'enter_key' | transloco }}"
 																formControlName="key"
 															/>
 														</app-form-fields>
@@ -1203,7 +1203,7 @@
 																class="form-control"
 																id="razorpay_secret"
 																type="text"
-																placeholder="{{ 'enter_secret' | translate }}"
+																placeholder="{{ 'enter_secret' | transloco }}"
 																formControlName="secret"
 															/>
 														</app-form-fields>
@@ -1213,7 +1213,7 @@
 											<li [ngbNavItem]="4">
 												<a ngbNavLink>
 													<i class="ri-money-euro-box-line"></i>
-													{{ 'mollie' | translate }}
+													{{ 'mollie' | transloco }}
 												</a>
 												<ng-template ngbNavContent>
 													<div formGroupName="mollie">
@@ -1244,7 +1244,7 @@
 																class="form-control"
 																id="secret_key"
 																type="text"
-																placeholder="{{ 'enter_secret' | translate }}"
+																placeholder="{{ 'enter_secret' | transloco }}"
 																formControlName="secret_key"
 															/>
 														</app-form-fields>
@@ -1254,7 +1254,7 @@
 											<li [ngbNavItem]="5">
 												<a ngbNavLink>
 													<i class="ri-secure-payment-line"></i>
-													{{ 'cod' | translate }}
+													{{ 'cod' | transloco }}
 												</a>
 												<ng-template ngbNavContent>
 													<div formGroupName="cod">
@@ -1290,7 +1290,7 @@
 						<li ngbNavItem="analytics">
 							<a ngbNavLink>
 								<i class="ri-line-chart-line"></i>
-								{{ 'analytics' | translate }}
+								{{ 'analytics' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="analytics">
@@ -1304,7 +1304,7 @@
 											<li ngbNavItem="facebook">
 												<a ngbNavLink>
 													<i class="ri-facebook-circle-line"></i>
-													{{ 'facebook_pixel' | translate }}
+													{{ 'facebook_pixel' | transloco }}
 												</a>
 												<ng-template ngbNavContent>
 													<div formGroupName="facebook_pixel">
@@ -1335,7 +1335,7 @@
 																class="form-control"
 																id="pixel_id"
 																type="text"
-																placeholder="{{'enter_pixel_id' | translate }}"
+																placeholder="{{'enter_pixel_id' | transloco }}"
 																formControlName="pixel_id"
 															/>
 														</app-form-fields>
@@ -1345,7 +1345,7 @@
 											<li ngbNavItem="google">
 												<a ngbNavLink>
 													<i class="ri-google-line"></i>
-													{{ 'google_analytics' | translate }}
+													{{ 'google_analytics' | transloco }}
 												</a>
 												<ng-template ngbNavContent>
 													<div formGroupName="google_analytics">
@@ -1376,7 +1376,7 @@
 																class="form-control"
 																id="measurement_id"
 																type="text"
-																placeholder="{{ 'enter_measurement_id' | translate }}"
+																placeholder="{{ 'enter_measurement_id' | transloco }}"
 																formControlName="measurement_id"
 															/>
 														</app-form-fields>
@@ -1395,7 +1395,7 @@
 						<li ngbNavItem="recaptcha">
 							<a ngbNavLink>
 								<i class="ri-google-fill"></i>
-								{{ 're-captcha' | translate }}
+								{{ 're-captcha' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="google_reCaptcha">
@@ -1426,7 +1426,7 @@
 											class="form-control"
 											id="google_reCaptcha_secret"
 											type="text"
-											placeholder="{{ 'enter_secret_key' | translate }}"
+											placeholder="{{ 'enter_secret_key' | transloco }}"
 											formControlName="secret"
 										/>
 									</app-form-fields>
@@ -1440,7 +1440,7 @@
 											class="form-control"
 											id="google_reCaptcha_site_key"
 											type="text"
-											placeholder="{{ 'enter_site_key' | translate }}"
+											placeholder="{{ 'enter_site_key' | transloco }}"
 											formControlName="site_key"
 										/>
 									</app-form-fields>
@@ -1450,7 +1450,7 @@
 						<li ngbNavItem="maintenance">
 							<a ngbNavLink>
 								<i class="ri-alert-line"></i>
-								{{ 'maintenance' | translate }}
+								{{ 'maintenance' | transloco }}
 							</a>
 							<ng-template ngbNavContent>
 								<div formGroupName="maintenance">
@@ -1473,34 +1473,6 @@
 									</app-form-fields>
 									@if (form.get('maintenance.maintenance_mode')?.value) {
 									<div>
-										<app-form-fields
-											[labelClass]="'form-label-title col-sm-3 mb-0'"
-											[gridClass]="'col-sm-9'"
-											[label]="'title'"
-											[for]="'title'"
-										>
-											<input
-												class="form-control"
-												id="title"
-												type="text"
-												placeholder="{{ 'title' | translate }}"
-												formControlName="title"
-											/>
-										</app-form-fields>
-										<app-form-fields
-											[labelClass]="'form-label-title col-sm-3 mb-0'"
-											[gridClass]="'col-sm-9'"
-											[label]="'description'"
-											[for]="'description'"
-										>
-											<input
-												class="form-control"
-												id="description"
-												type="text"
-												placeholder="{{ 'enter_description' | translate }}"
-												formControlName="description"
-											/>
-										</app-form-fields>
 										<app-form-fields
 											[labelClass]="'form-label-title col-sm-3 mb-0'"
 											[gridClass]="'col-sm-9'"
@@ -1528,7 +1500,7 @@
 				[id]="'setting_btn'"
 				*hasPermission="'setting.edit'"
 			>
-				{{ 'save' | translate }}
+				{{ 'save' | transloco }}
 			</app-button>
 		</div>
 	</form>

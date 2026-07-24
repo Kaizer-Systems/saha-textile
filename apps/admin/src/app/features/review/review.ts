@@ -1,11 +1,11 @@
 import { Component, effect, signal } from '@angular/core';
 
-import { injectReviewsQuery } from '@data-access/queries/review.queries';
-import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { Table } from '@shared/ui/table/table';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IReview } from '@data-access/interfaces/review.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
+import { injectReviewsQuery } from '@data-access/queries/review.queries';
+import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { Table } from '@shared/ui/table/table';
 
 @Component({
 	selector: 'app-review',

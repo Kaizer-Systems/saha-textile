@@ -3,21 +3,22 @@ import { Injectable, inject } from '@angular/core';
 
 import { Observable } from 'rxjs';
 
-import { environment } from '../../../../public/environments/environment';
 import { ISetting } from '@data-access/interfaces/setting.interface';
 
+import { environment } from '../../../../public/environments/environment';
+
 @Injectable({
-  providedIn: 'root',
+	providedIn: 'root',
 })
 export class SettingService {
-  private http = inject(HttpClient);
+	private http = inject(HttpClient);
 
-  getSettingOption(): Observable<ISetting> {
-    return this.http.get<ISetting>(`${environment.URL}/setting.json`);
-  }
+	getSettingOption(): Observable<ISetting> {
+		return this.http.get<ISetting>(`${environment.URL}/setting.json`);
+	}
 
-  async getReCaptchaConfig(): Promise<void> {
-    // const config = await this.getSettingOption().toPromise();
-    // this.reCaptchaConfig = config?.values?.google_reCaptcha!;
-  }
+	async getReCaptchaConfig(): Promise<void> {
+		// const config = await this.getSettingOption().toPromise();
+		// this.reCaptchaConfig = config?.values?.google_reCaptcha!;
+	}
 }

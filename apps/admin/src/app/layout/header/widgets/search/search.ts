@@ -2,18 +2,18 @@ import { Component, ElementRef, Renderer2, inject, viewChild } from '@angular/co
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
-import * as data from '@shared/data/menu';
 import { IMenu } from '@data-access/interfaces/menu.interface';
 import { NavService } from '@data-access/services/nav.service';
+import * as data from '@shared/data/menu';
 import { ClickOutsideDirective } from '@shared/directives/out-side-directive';
 
 @Component({
 	selector: 'app-search',
 	templateUrl: './search.html',
 	styleUrls: ['./search.scss'],
-	imports: [ReactiveFormsModule, FormsModule, ClickOutsideDirective, RouterModule, TranslateModule],
+	imports: [ReactiveFormsModule, FormsModule, ClickOutsideDirective, RouterModule, TranslocoModule],
 })
 export class Search {
 	navServices = inject(NavService);

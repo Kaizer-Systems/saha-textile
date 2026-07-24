@@ -1,25 +1,28 @@
 import { AsyncPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 
-import { Store } from '@ngxs/store';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
-import { GetSettingOptionAction } from '@data-access/actions/setting.action';
+import { SettingStore } from '@core/state/setting.store';
 import { IValues } from '@data-access/interfaces/setting.interface';
-import { SettingState } from '@data-access/states/setting.state';
 
 @Component({
-  selector: 'app-maintenance',
-  templateUrl: './maintenance.html',
-  styleUrls: ['./maintenance.scss'],
-  imports: [AsyncPipe],
+	selector: 'app-maintenance',
+	templateUrl: './maintenance.html',
+	styleUrls: ['./maintenance.scss'],
+	imports: [AsyncPipe, TranslocoModule],
 })
 export class Maintenance {
-  private store = inject(Store);
+	private settingStore = inject(SettingStore);
 
-  setting$: Observable<IValues> = inject(Store).select(SettingState.setting) as Observable<IValues>;
+	// Background image stays settings-driven (an asset, not translatable copy). The
+	// maintenance-mode flag is read separately by the auth interceptor. Only the
+	// visible title/description text moved to Machine-1 (Transloco keys).
+	setting$: Observable<IValues> = toObservable(this.settingStore.setting) as Observable<IValues>;
 
-  constructor() {
-    this.store.dispatch(new GetSettingOptionAction());
-  }
+	constructor() {
+		this.settingStore.loadSettings();
+	}
 }

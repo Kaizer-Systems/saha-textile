@@ -1,22 +1,22 @@
 import { isPlatformBrowser, AsyncPipe } from '@angular/common';
 import { Component, DOCUMENT, computed, inject, PLATFORM_ID, Renderer2, viewChild } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { toObservable } from '@angular/core/rxjs-interop';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 import { Select2Data, Select2Module } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
+import { Params } from '@data-access/interfaces/core.interface';
+import { ITransactionsData } from '@data-access/interfaces/point.interface';
 import { injectUsersQuery } from '@data-access/queries/user.queries';
+import { PointService } from '@data-access/services/point.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
+import { NumberDirective } from '@shared/directives/numbers-only.directive';
 import { Button } from '@shared/ui/button/button';
 import { ConfirmationModal } from '@shared/ui/modal/confirmation-modal/confirmation-modal';
 import { Table } from '@shared/ui/table/table';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
-import { NumberDirective } from '@shared/directives/numbers-only.directive';
-import { Params } from '@data-access/interfaces/core.interface';
-import { ITransactionsData } from '@data-access/interfaces/point.interface';
-import { PointService } from '@data-access/services/point.service';
 
 @Component({
 	selector: 'app-point',
@@ -31,7 +31,7 @@ import { PointService } from '@data-access/services/point.service';
 		Button,
 		Table,
 		ConfirmationModal,
-		TranslateModule,
+		TranslocoModule,
 		AsyncPipe,
 	],
 })

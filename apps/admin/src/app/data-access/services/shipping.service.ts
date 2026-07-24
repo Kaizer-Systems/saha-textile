@@ -3,9 +3,10 @@ import { Injectable, inject } from '@angular/core';
 
 import { Observable, map } from 'rxjs';
 
-import { environment } from '../../../../public/environments/environment';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IShipping, IShippingModel } from '@data-access/interfaces/shipping.interface';
+
+import { environment } from '../../../../public/environments/environment';
 
 @Injectable({
 	providedIn: 'root',

@@ -17,16 +17,16 @@ Master reference of every environment variable across the three phases. **No sec
 
 ## MCP layer (`.env.mcp`)
 
-| Var                            |    LOCAL     |     TEST-E2E      |       PROD-E2E        | Notes                                             |
-| ------------------------------ | :----------: | :---------------: | :-------------------: | ------------------------------------------------- |
-| `CONTEXT7_API_KEY`             |   optional   |     optional      |       optional        | Free tier works empty (500 req/mo)                |
-| `POSTMAN_API_KEY`              |     yes      |        yes        |          yes          | Account-level key                                 |
+| Var                            |          LOCAL          |        TEST-E2E         |          PROD-E2E           | Notes                                                                    |
+| ------------------------------ | :---------------------: | :---------------------: | :-------------------------: | ------------------------------------------------------------------------ |
+| `CONTEXT7_API_KEY`             |        optional         |        optional         |          optional           | Free tier works empty (500 req/mo)                                       |
+| `POSTMAN_API_KEY`              |           yes           |           yes           |             yes             | Account-level key                                                        |
 | `MDB_MCP_CONNECTION_STRING`    | local Docker Mongo (rw) | test droplet Mongo (rw) | prod Mongo (read-only user) | Single string → **percent-encode** `@`→`%40` etc.; replica set required. |
-| `MDB_MCP_READ_ONLY`            |   `false`    |      `false`      |        `true`         | Defense in depth on prod                          |
-| `GITHUB_PERSONAL_ACCESS_TOKEN` |      —       |        yes        |          yes          | Fine-grained PAT; PROD read-oriented              |
-| `GITHUB_TOOLSETS`              |      —       |  `actions,repos`  |    `actions,repos`    |                                                   |
-| `GITHUB_READ_ONLY`             |      —       |      `false`      |        `true`         |                                                   |
-| `DIGITALOCEAN_API_TOKEN`       |      —       |    test token     |      prod token       | Absent in LOCAL                                   |
+| `MDB_MCP_READ_ONLY`            |         `false`         |         `false`         |           `true`            | Defense in depth on prod                                                 |
+| `GITHUB_PERSONAL_ACCESS_TOKEN` |            —            |           yes           |             yes             | Fine-grained PAT; PROD read-oriented                                     |
+| `GITHUB_TOOLSETS`              |            —            |     `actions,repos`     |       `actions,repos`       |                                                                          |
+| `GITHUB_READ_ONLY`             |            —            |         `false`         |           `true`            |                                                                          |
+| `DIGITALOCEAN_API_TOKEN`       |            —            |       test token        |         prod token          | Absent in LOCAL                                                          |
 
 ## API (`apps/api/.env`)
 
@@ -45,7 +45,7 @@ MongoDB is self-hosted Docker MongoDB 8.3 with a single-node replica set in loca
 | `MONGODB_DB_NAME`                                                           |    `saha_local`     |        `saha_test`        |        `saha_prod`        |                                                                              |
 | `MONGODB_APP_NAME`                                                          |         yes         |            yes            |            yes            | App name / driver metadata                                                   |
 | `MONGODB_URI`                                                               |  optional override  |         optional          |         optional          | If set, must include `replicaSet=rs0` and be pre-encoded                     |
-| `MEILISEARCH_HOST` / `MEILISEARCH_API_KEY`                                  |  local/container   |            yes            |            yes            | Self-hosted search container; API key is server-side only                    |
+| `MEILISEARCH_HOST` / `MEILISEARCH_API_KEY`                                  |   local/container   |            yes            |            yes            | Self-hosted search container; API key is server-side only                    |
 | `JWT_ACCESS_SECRET`                                                         |         yes         |            yes            |            yes            | `openssl rand -hex 48`                                                       |
 | `JWT_REFRESH_SECRET`                                                        |         yes         |            yes            |            yes            | distinct from access                                                         |
 | `JWT_ACCESS_TTL` / `JWT_REFRESH_TTL`                                        |    `15m` / `30d`    |           same            |           same            |                                                                              |

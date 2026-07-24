@@ -10,7 +10,7 @@
 					<div class="pos-product-screen">
 						<div class="title-header">
 							<div class="d-flex align-items-center">
-								<h5>{{ 'categories' | translate }}</h5>
+								<h5>{{ 'categories' | transloco }}</h5>
 							</div>
 						</div>
 						<owl-carousel-o [options]="customOptions">
@@ -46,7 +46,7 @@
 							<div class="col-sm-6">
 								<input
 									class="form-control"
-									placeholder="{{ 'search_here' | translate }}"
+									placeholder="{{ 'search_here' | transloco }}"
 									type="text"
 									[formControl]="term"
 								/>
@@ -98,7 +98,7 @@
 				<div class="card-body">
 					<div class="title-header">
 						<div class="d-flex align-items-center">
-							<h5>{{ 'cart' | translate }}</h5>
+							<h5>{{ 'cart' | transloco }}</h5>
 						</div>
 					</div>
 					<div class="product-details">
@@ -165,19 +165,19 @@
 					@if ((cartItem$ | async)?.length) {
 					<ul class="summary-total">
 						<li>
-							<h4>{{ 'subtotal' | translate }}</h4>
+							<h4>{{ 'subtotal' | transloco }}</h4>
 							<h4 class="price">{{ (cartTotal$ | async) | currencySymbol}}</h4>
 						</li>
 						<li>
-							<h4>{{ 'shipping' | translate }}</h4>
-							<h4 class="price">{{ 'cost_at_checkout' | translate }}</h4>
+							<h4>{{ 'shipping' | transloco }}</h4>
+							<h4 class="price">{{ 'cost_at_checkout' | transloco }}</h4>
 						</li>
 						<li>
-							<h4>{{ 'tax' | translate }}</h4>
-							<h4 class="price">{{ 'cost_at_checkout' | translate }}</h4>
+							<h4>{{ 'tax' | transloco }}</h4>
+							<h4 class="price">{{ 'cost_at_checkout' | transloco }}</h4>
 						</li>
 						<li class="list-total">
-							<h4>{{ 'total' | translate }}</h4>
+							<h4>{{ 'total' | transloco }}</h4>
 							<h4 class="price">{{ (cartTotal$ | async) | currencySymbol}}</h4>
 						</li>
 					</ul>
@@ -189,7 +189,7 @@
 							routerLinkActive="router-link-active"
 							class="btn btn-animation payment-btn mt-4"
 						>
-							{{ 'proceed_to_checkout' | translate }}
+							{{ 'proceed_to_checkout' | transloco }}
 						</a>
 						}
 					</ng-container>

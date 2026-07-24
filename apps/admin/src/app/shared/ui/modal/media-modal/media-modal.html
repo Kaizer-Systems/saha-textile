@@ -3,7 +3,7 @@
 	let-modal
 >
 	<div class="modal-header">
-		<h2>{{ 'insert_media' | translate }}</h2>
+		<h2>{{ 'insert_media' | transloco }}</h2>
 		<app-button
 			[class]="'btn btn-close'"
 			[spinner]="false"
@@ -22,7 +22,7 @@
 		>
 			@if (selectMedia()) {
 			<li [ngbNavItem]="'select'">
-				<a ngbNavLink>{{ 'select_file' | translate }}</a>
+				<a ngbNavLink>{{ 'select_file' | transloco }}</a>
 				<ng-template ngbNavContent>
 					<app-media-box
 						[multiple]="multipleImage()"
@@ -37,7 +37,7 @@
 				[ngbNavItem]="'upload'"
 				*hasPermission="'attachment.create'"
 			>
-				<a ngbNavLink>{{ 'upload_new' | translate }}</a>
+				<a ngbNavLink>{{ 'upload_new' | transloco }}</a>
 				<ng-template ngbNavContent>
 					<div
 						class="content-section drop-files-sec"
@@ -47,7 +47,7 @@
 					>
 						<ngx-dropzone-label>
 							<div>
-								<h2>{{ 'drop_files_here' | translate }}</h2>
+								<h2>{{ 'drop_files_here' | transloco }}</h2>
 							</div>
 						</ngx-dropzone-label>
 						@for (f of files; track f) {
@@ -77,7 +77,7 @@
 				[id]="'media_btn'"
 				(click)="active === 'upload' ? addMedia(nav) : selectedMedia(modal)"
 			>
-				{{ 'insert_media' | translate }}
+				{{ 'insert_media' | transloco }}
 			</app-button>
 		</div>
 	</div>

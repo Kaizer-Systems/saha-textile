@@ -25,14 +25,14 @@
 					[iconClass]="'ri-add-line'"
 					(click)="product().type === 'classified' ? addToCartModal.openModal(product()) : addToCart(product(), 1)"
 				>
-					{{ 'add' | translate }}
+					{{ 'add' | transloco }}
 				</app-button>
 				} @else {
 				<app-button
 					[class]="'add-button addcart-button btn buy-button disabled'"
 					[disabled]="true"
 				>
-					{{ 'out_of_stock' | translate }}
+					{{ 'out_of_stock' | transloco }}
 				</app-button>
 				}
 			</div>

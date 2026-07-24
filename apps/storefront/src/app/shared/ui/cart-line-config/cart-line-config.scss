@@ -1,0 +1,38 @@
+:host {
+	display: block;
+}
+
+.cart-line-config {
+	list-style: none;
+	margin: 6px 0 2px;
+	padding: 0;
+	font-size: 12px;
+	line-height: 1.5;
+
+	li {
+		// normal text flow so long config wraps at spaces instead of clipping
+		// (override the theme cart's `white-space: nowrap`/`display` on <li>)
+		display: block !important;
+		margin-bottom: 3px;
+		white-space: normal !important;
+		overflow-wrap: anywhere;
+		word-break: break-word;
+	}
+
+	.cfg-label {
+		font-weight: 600;
+		color: #6b7280;
+		margin-right: 4px;
+	}
+
+	.cfg-value {
+		color: #222;
+		font-weight: 500;
+	}
+
+	.cfg-delta {
+		color: var(--theme-color);
+		font-weight: 600;
+		margin-left: 4px;
+	}
+}

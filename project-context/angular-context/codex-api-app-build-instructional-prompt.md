@@ -25,7 +25,7 @@ Scope: Planning/instruction only. This file does not implement code.
 - Storefront decision: public Angular/Analog SSR/SSG PWA; API must support public catalog, SEO data, offline catalog reads, offline cart sync, cookie consent, search, checkout, and authenticated account flows.
 - Auth floor: API-set httpOnly cookies, signed double-submit CSRF, short access JWT cookie, opaque rotating refresh cookie, reuse detection, cookie-first guard with bearer fallback only for non-browser clients.
 - Login decisions: storefront supports email/password, Google, Facebook, guest cart, email OTP, and a seam for phone OTP; X excluded; phone OTP not implemented. **Email OTP is LOCKED (2026-07-02) to a transactional provider free tier via `EmailPort` — primary Resend, adapter-swappable (MailerSend/SES)**, $0 at launch, no Brevo lock-in. OTP "send code" uses a **generic anti-enumeration response**.
-- Admin login decisions: admin/staff use email-or-username plus password, no MFA at launch, optional 6-digit PIN alternative with strict weak-PIN rejection and the same session security as password login.
+- Admin login decisions: admin/staff use email-or-username plus password, no MFA at launch, optional 6-digit PIN alternative with strict weak-PIN rejection and the same session security as password login (**UX locked 2026-07-23:** optional onboarding + Security Settings; preferred method toggle password|pin; full login + idle resume; 5-fail/15-min lockout).
 - Password/PIN floor: passwords >= 12 characters for storefront and admin; common-password denylist; admin PIN must reject repeated/sequential/common values such as `000000`, `123456`, `012345`, `111111`.
 - OAuth decision: Google and Facebook provider buttons/SDK UX may be used, but backend verifies provider data and owns the session; request minimum scopes only.
 - Privacy/GDPR floor: self-hosted granular consent, no paid CMP; categories include strictly necessary, functional, targeting, marketing, promotional; block non-essential tracking until consent.
@@ -39,8 +39,8 @@ Scope: Planning/instruction only. This file does not implement code.
 - Pricing floor: INR canonical, tax-inclusive stored/displayed by default, backend-only currency conversion, PayPal gross-up formula, FX rate history, order-line snapshots, tax/shipping/payment snapshots.
 - Inventory floor: purchase invoice intake near Products, FIFO hidden cost layers, inventory ledger, unit-level COGS, sales/profit/purchase/category reports, no customer-facing batch/MRP complexity at launch.
 - Reporting floor: analytics events roll into daily aggregates, business report snapshots, weekly product insight sets, and product badge assignments; storefront reads stable insight collections, not live analytics scans.
-- Documentation floor: OpenAPI at `/openapi.json`, Swagger/Redoc compatible output, generated DB docs later, clear environment catalog, runbooks, and tests as part of done.
-- Security floor: OWASP-aligned controls, object-level authorization, CSRF, CORS allowlist, rate limits, secure cookies, no browser tokens, no secrets in bundles, no PII in logs, audit every admin write.
+- Documentation floor: OpenAPI at `/openapi.json`, Scalar API Reference compatible output, generated DB docs later, clear environment catalog, runbooks, and tests as part of done.
+- Security floor: OWASP-aligned controls, object-level authorization, CSRF, CORS allowlist, rate limits, secure cookies, no browser tokens, no secrets in bundles, no PII in logs, **audit every admin write** (broad scope + tiered retention — owner-locked 2026-07-23).
 - Quality gate: do not consider API work done with `vitest --passWithNoTests`; add meaningful unit and integration tests, including auth, CSRF, transactions, public/admin route separation, and OpenAPI smoke checks.
 - Execution cadence (LOCKED 2026-07-02): build **one phase at a time**. Each of Phases A–J is its own run/session; run the §21 command gates and **stop for owner review before starting the next phase**. Do not attempt the whole thing in one pass.
 - Provider integration policy (LOCKED 2026-07-02): payments (CCAvenue/PayPal) and shipping (Shiprocket) are **ports + stub/sandbox adapters only** at this stage. Real gateway wiring happens **only after the client provides live credentials/access**, following each chosen provider's official docs + supported SDK/stack then. No provider SDK is a launch blocker.
@@ -101,7 +101,7 @@ Avoid unless explicitly required:
 The existing API already has:
 
 - NestJS on Fastify.
-- `@fastify/helmet`, `@fastify/rate-limit`, Swagger setup, CORS allowlist.
+- `@fastify/helmet`, `@fastify/rate-limit`, OpenAPI generation setup, CORS allowlist.
 - Modules for auth, catalog, cart, orders, currency, promotions, health.
 - zod validation pipe.
 - Mongo adapter package using Mongoose.
@@ -304,7 +304,7 @@ Recommended admin route groups:
 
 Rules:
 
-- All admin routes require admin audience, role/permission checks, CSRF for unsafe methods, and audit logs for writes.
+- All admin routes require admin audience, role/permission checks, CSRF for unsafe methods, and audit logs for writes (owner-locked 2026-07-23: **broad** admin/security audit — not a sensitive-modules subset. Retention: financial/security **7y**, catalog/admin mutation **5y**. Redact secrets; prefer diffs. Raw analytics ≠ auditLogs; analytics raw retention ~**90d** after rollup).
 - Public routes must never accidentally accept admin cookies as customer authority unless a controlled impersonation flow is explicitly built later.
 - Storefront and admin may share application services, but HTTP contracts and authorization guards must stay separated.
 
@@ -313,7 +313,7 @@ Rules:
 Upgrade `main.ts` and boot config to include:
 
 - Fastify adapter with proxy awareness for the **Cloudflare → Nginx → API** chain: set `trustProxy` appropriately and derive the real client IP from **`CF-Connecting-IP`** (fall back to `X-Forwarded-For` from Nginx). Every IP-dependent feature — rate-limit keys, structured logs, consent IP hashing, auth audit — must use that resolved client IP, not the proxy IP. Assume the droplet firewall is restricted to Cloudflare IP ranges (documented as an infra step; the app must not rely on being publicly reachable).
-- `@fastify/helmet` with production CSP handled jointly with Nginx; development Swagger can relax CSP only in development.
+- `@fastify/helmet` with production CSP handled jointly with Nginx; the development/staging Scalar surface may receive only the narrowly required CSP allowances.
 - `@fastify/rate-limit` global defaults plus stricter per-route/auth/search/checkout limits.
 - `@fastify/cookie` for signed/secure cookie parsing and setting.
 - Credentialed CORS allowlist for only `https://sahatextile.com`, `https://www.sahatextile.com` if used, `https://admin.sahatextile.com`, staging origins, and local dev origins.
@@ -322,7 +322,7 @@ Upgrade `main.ts` and boot config to include:
 - Global error filter returning consistent, sanitized error envelopes.
 - Request ID generation and propagation.
 - Structured logs with PII redaction; do not log tokens, OTPs, passwords, raw provider tokens, raw IPs, or full address payloads.
-- OpenAPI generation at `/openapi.json`; Swagger UI can remain at `/docs` in dev/staging and be disabled or protected in prod.
+- OpenAPI generation at `/openapi.json`; Scalar API Reference is mounted or statically integrated at `/api/reference` for approved development/staging use and disabled or access-protected in production.
 - Health endpoints:
     - `/health/live`: process is alive.
     - `/health/ready`: Mongo, Meilisearch, and required runtime dependencies are reachable.
@@ -510,14 +510,18 @@ Admin auth:
 
 - No MFA at launch.
 - Admin/staff login via email-or-username plus password.
-- Admin 6-digit PIN alternative is allowed only after password credential exists and user is staff/admin.
-- Hash PIN with the same seriousness as password or a separate strong hash; never store plaintext.
-- Reject weak PINs with denylist plus pattern checks:
-    - all same digits.
-    - ascending/descending sequences.
-    - common keyboard/calendar-like values.
-    - known weak values such as `000000`, `111111`, `123456`, `012345`, `654321`.
-- Admin PIN has stricter rate limits and lockout than password login because entropy is lower.
+- **Admin 6-digit PIN (owner-locked 2026-07-23 UX):**
+    - Allowed for **full login** and **idle soft-lock / quick-resume** after a password credential exists and user is staff/admin.
+    - **Setup:** optional during invite/onboarding (skippable); always available later in **Security Settings after password proof**.
+    - **Preferred method:** `password` | `pin`, chosen via **Bootstrap/theme form-switch** on onboarding PIN section and Security Settings; prefer `pin` only when PIN is set.
+    - Hash PIN with the same seriousness as password (`pinCredentials`); never store plaintext.
+    - Reject weak PINs with denylist plus pattern checks:
+        - all same digits.
+        - ascending/descending sequences.
+        - common keyboard/calendar-like values.
+        - known weak values such as `000000`, `111111`, `123456`, `012345`, `654321`.
+    - Stricter rate limits; **5** failed PIN attempts → lock PIN path **15 minutes** or until successful password login; audit the event.
+    - Password change / role-permission change invalidates PIN sessions / quick-resume.
 - Admin sessions have shorter idle TTL than storefront.
 - Admin self-registration is forbidden; first admin uses guarded bootstrap script, later admins use invites.
 
@@ -882,6 +886,14 @@ Real customer Q&A module:
 - Add spam/rate limits and moderation guardrails.
 - Do not expose raw email publicly.
 
+### 17A. Product reviews (owner-locked 2026-07-23)
+
+- Eligibility: logged-in + **verified purchase** only; guests get login-to-review + auth replay with purchase re-check.
+- Payload: star rating + text; **optional images** (`mediaAssets`).
+- Status: `pending` → `approved` | `rejected` (| `hidden`). **Admin moderation before public publish** — no auto-publish.
+- Public list + product rating aggregates + SEO review schema use **approved** rows only.
+- Admin: moderation queue (approve/reject/hide). Collection shape: catalog plan §7.41 `reviews`.
+
 ### 18. Analytics, Reporting, Insight Sets, And Badges
 
 Collections/contracts:
@@ -973,7 +985,7 @@ OpenAPI must be useful enough for admin/storefront development and Postman.
 Requirements:
 
 - `/openapi.json` always generated in non-production and available to CI.
-- Swagger UI protected or disabled in production.
+- Scalar API Reference and its interactive client protected or disabled in production.
 - DTOs documented from zod/Nest decorators as far as practical.
 - Tags separate public vs admin areas.
 - Every endpoint documents auth, CSRF, roles/permissions, request body, query params, response, validation errors, rate limits, idempotency requirements, and side effects.
@@ -1042,7 +1054,7 @@ Work in phases and stop for review after each major phase.
 
 - Replace browser JSON token auth with cookie-set responses.
 - Implement session repository, refresh rotation, reuse detection, cookie service, CSRF issue/validation.
-- Implement password policy and admin PIN policy.
+- Implement password policy and admin PIN policy (optional onboarding setup, Security Settings with password proof, preferredLoginMethod toggle, pinCredentials, 5-fail/15-min lockout — owner-locked 2026-07-23).
 - Implement admin login, storefront login/register, logout, refresh, me.
 - Implement OAuth start/callback or provider-token verification paths for Google/Facebook behind provider services.
 - Implement **channel-direct OTP via `NotificationPort` (MSG91)** — email/SMS/WhatsApp; 6-digit CSPRNG, HMAC-stored in `otpChallenges`, single-active-per-(identifier,purpose), atomic race-safe verify, TTL cleanup, generic anti-enumeration, per-identifier/IP caps, `console` adapter in dev/test. No OTP-Widget/SendOTP. Keep **phone OTP** as a seam only.
@@ -1069,6 +1081,7 @@ Work in phases and stop for review after each major phase.
 - Implement pricing service: INR canonical, tax-inclusive calculations, FX, PayPal gross-up, promotion resolution.
 - Add payment/shipping ports with stub/sandbox-ready adapters and safe webhook patterns. **No live provider wiring at this stage** — real CCAvenue/PayPal/Shiprocket integration waits until the client provides live credentials/access (per the provider integration policy).
 - Add order/payment/shipment/return/refund snapshot models as needed.
+- **Do not** implement public track-order lookup in this phase (owner-locked 2026-07-23: deferred at launch). Authenticated account order history only. When a later phase/seam adds it: require **order number + email/phone**, rate limits, anti-enumeration, minimal tracking DTO — never order-number-only.
 - Add tests.
 
 #### Phase H: Inventory, Purchase Invoices, Reporting, Insight Jobs
@@ -1078,11 +1091,12 @@ Work in phases and stop for review after each major phase.
 - Add dashboard/report endpoints.
 - Add tests.
 
-#### Phase I: Privacy, Content, FAQ, Q&A, Media
+#### Phase I: Privacy, Content, FAQ, Q&A, Reviews, Media
 
 - Implement consent endpoints and analytics gating.
 - Implement FAQ targeting module and target preview.
 - Implement customer product Q&A submission and admin answer/publish/email flow.
+- Implement product reviews: verified-purchase submit, optional images, admin moderation queue, approve/reject/hide, and product rating aggregate recompute from approved reviews only (owner-locked 2026-07-23).
 - Implement Spaces media asset admin endpoints if not already present.
 - Add tests.
 
@@ -1101,7 +1115,7 @@ Do not mark the API app done unless all are true:
 - Browser auth uses httpOnly cookies and CSRF, not JSON tokens stored by Angular.
 - Admin and storefront auth audiences are separated and tested.
 - Public routes return only public-safe DTOs.
-- Admin routes require admin audience/permissions and audit writes.
+- Admin routes require admin audience/permissions and audit writes (broad audit + retention tiers per owner lock 2026-07-23).
 - Mongo transactions exist and are used on order placement and purchase invoice posting.
 - Search goes through `SearchPort` and Meilisearch adapter, with dictionary/outbox seams.
 - Offline cart sync returns line-level availability and inventory decisions.
@@ -1111,6 +1125,8 @@ Do not mark the API app done unless all are true:
 - Analytics rolls into stable insight sets/badge assignments for storefront rails/cards.
 - Consent events and analytics gating exist.
 - FAQ and true Q&A are separate modules.
+- Product reviews enforce verified purchase + moderation before publish; aggregates use approved reviews only.
+- Public track-order is **out of launch scope**; if later added, uses order number + email/phone verification (never order-number-only).
 - OpenAPI exists and tests cover major security and business flows.
 - No new stale dependencies or references to Caddy, Atlas-only features, Tailwind, shadcn, Brevo lock-in, X login, or browser token storage are introduced.
 
@@ -1125,5 +1141,13 @@ Use official/current docs while implementing, especially because this project ta
 - OWASP CSRF prevention: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
 - Google OAuth 2.0: https://developers.google.com/identity/protocols/oauth2
 - Meta Facebook Login: https://developers.facebook.com/docs/facebook-login/web
+
+### 25. Deferred Storefront → API Integration Notes (added 2026-07-17)
+
+Recorded here so they are not lost while the storefront is built ahead of the API:
+
+- **Server-error interception → `/500`.** The storefront `/500` page and route now exist (`apps/storefront/.../features/page/error500` + `pages/500.page.ts`), but nothing auto-navigates to it yet. When the API/SSR layer is wired, add a real error path that routes users to `/500` on backend/SSR 5xx failures (HTTP interceptor + Nitro/AnalogJS SSR error handling). Do not silently swallow 5xx. Keep 404 (not-found) and 500 (server-error) paths distinct. This mirrors how the maintenance interceptor already routes to `/maintenance` when `setting.maintenance.maintenance_mode` is on.
+- **`500.png` placeholder asset.** The storefront currently uses a duplicate of `404.png` saved as `assets/images/inner-page/500.png`. Replace with a dedicated 500 illustration before launch.
+- **Error/status page copy is storefront Transloco keys, not API/CMS.** 404/500/maintenance text is developer-managed i18n (Machine-1). The API does not need to serve this copy. The `maintenance_mode` flag (and maintenance image) remain settings-driven.
 
 End of prompt.

@@ -19,7 +19,9 @@ export const SettingStore = signalStore(
 	withState(initialState),
 	withMethods((store, settingService = inject(SettingService)) => ({
 		loadSetting(): Observable<ISetting> {
-			return settingService.getSettingOption().pipe(tap((result) => patchState(store, { setting: result.values })));
+			return settingService
+				.getSettingOption()
+				.pipe(tap((result) => patchState(store, { setting: result.values })));
 		},
 		update(_payload?: unknown) {
 			// Update setting has no backend yet.

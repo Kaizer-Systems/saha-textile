@@ -1,12 +1,12 @@
 import { Component, input } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
 @Component({
 	selector: 'app-form-fields',
 	templateUrl: './form-fields.html',
 	styleUrls: ['./form-fields.scss'],
-	imports: [TranslateModule],
+	imports: [TranslocoModule],
 })
 export class FormFields {
 	readonly class = input<string>('mb-4 row align-items-center g-2');

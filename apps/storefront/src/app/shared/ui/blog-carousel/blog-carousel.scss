@@ -1,0 +1,14 @@
+.blog-carousel-section {
+	margin-top: 20px;
+
+	.blog-slide {
+		padding: 0 2px;
+		height: 100%;
+	}
+
+	// keep grid cards uniform height across the row
+	:where(.owl-item) {
+		display: flex;
+		height: auto;
+	}
+}

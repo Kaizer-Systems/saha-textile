@@ -1,0 +1,90 @@
+// Give the item-detail cell more room and stop it clipping, so composed-line
+// config (add-on / bundle / measurements) wraps cleanly instead of truncating.
+.cart-section {
+	.cart-table {
+		td.product-detail {
+			max-width: 360px;
+
+			@media (max-width: 991px) {
+				max-width: none;
+			}
+		}
+
+		.product.border-0 {
+			overflow: visible;
+		}
+	}
+}
+
+// DISCLOSED custom responsive CSS: the theme's cart table gives each of its 5
+// columns a ~150px min-width, so on phones the row needs ~750px and the theme
+// falls back to an ugly horizontal scroll. Below that width we instead reflow
+// each row into an app-style stacked card: drop the redundant Price / Quantity /
+// Total COLUMNS and surface the theme's own in-cell price, `.quantity-price-box`
+// stepper and total (which the theme hides via `li:nth-child(n+4)` because
+// desktop uses the columns) — then lay the actions out beneath. Breakpoint is the
+// standard tablet boundary (≤991px): the 5-column table needs ~967px and only fits
+// beside the summary on large desktops, so phones AND tablets get the card view.
+@media (max-width: 991px) {
+	.cart-section .cart-table {
+		.table-responsive {
+			overflow-x: visible;
+		}
+
+		table,
+		tbody,
+		tr,
+		td {
+			display: block;
+			width: 100%;
+		}
+
+		tr.product-box-contain {
+			border: 1px solid #ececec;
+			border-radius: 8px;
+			padding: 14px;
+			margin-bottom: 14px;
+			background-color: #fff;
+		}
+
+		td {
+			min-width: 0 !important;
+			padding: 0 !important;
+			border: none !important;
+		}
+
+		// surface the in-cell price / qty stepper / total the theme hides on the card
+		td.product-detail .product-detail ul {
+			li:nth-child(n + 4) {
+				display: block;
+			}
+
+			li.name a {
+				white-space: normal; // long names wrap instead of truncating
+			}
+		}
+
+		// redundant on mobile — price / qty stepper / total now render inside the card
+		td.price,
+		td.quantity,
+		td.subtotal {
+			display: none;
+		}
+
+		// action links centered in a row beneath the card — symmetric spacing whether
+		// the card has 3 links (Edit / Save for later / Remove) or 2 (Save / Remove)
+		td.save-remove {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: center;
+			gap: 28px;
+			margin-top: 12px;
+			padding-top: 12px !important;
+			border-top: 1px solid #f1f1f1 !important;
+
+			.table-title {
+				display: none;
+			}
+		}
+	}
+}

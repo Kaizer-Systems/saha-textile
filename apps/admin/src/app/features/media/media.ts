@@ -1,19 +1,19 @@
 import { Component, viewChild } from '@angular/core';
 
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslocoModule } from '@jsverse/transloco';
 
+import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
+import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { MediaBox } from '@shared/ui/media-box/media-box';
 import { DeleteModal } from '@shared/ui/modal/delete-modal/delete-modal';
 import { MediaModal } from '@shared/ui/modal/media-modal/media-modal';
-import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
 
 @Component({
 	selector: 'app-media',
 	templateUrl: './media.html',
 	styleUrls: ['./media.scss'],
-	imports: [PageWrapper, HasPermissionDirective, MediaBox, MediaModal, DeleteModal, TranslateModule],
+	imports: [PageWrapper, HasPermissionDirective, MediaBox, MediaModal, DeleteModal, TranslocoModule],
 })
 export class Media {
 	public images: IAttachment[] = [];

@@ -1,72 +1,99 @@
 @if (image()?.redirect_link?.link_type === 'external_url') {
-<a href="{{ image()?.redirect_link?.link }}" target="_blank" class="banner-contain d-block h-100">
-  @if (bgImage()) {
-  <div
-    class="h-100 bg-size"
-    [ngClass]="class()"
-    [style.background-image]="'url(' + image()?.image_url + ')'"
-  ></div>
-  } @if (!bgImage()) {
-  <img src="{{ image()?.image_url }}" class="h-100 bg-img w-100" alt="{{ image()?.image_url }}" />
-  }
+<a
+	href="{{ image()?.redirect_link?.link }}"
+	target="_blank"
+	class="banner-contain d-block h-100"
+>
+	@if (bgImage()) {
+	<div
+		class="bg-size h-100"
+		[ngClass]="class()"
+		[style.background-image]="'url(' + image()?.image_url + ')'"
+	></div>
+	} @if (!bgImage()) {
+	<img
+		src="{{ image()?.image_url }}"
+		class="bg-img h-100 w-100"
+		alt="{{ image()?.image_url }}"
+	/>
+	}
 </a>
 } @else { @if (image()?.redirect_link?.link_type === 'collection') {
-<a [routerLink]="['/collections']" [queryParams]="{ category: image()?.redirect_link?.link }">
-  @if (bgImage()) {
-  <div
-    class="h-100 bg-size"
-    [ngClass]="class()"
-    [style.background-image]="'url(' + image()?.image_url + ')'"
-  ></div>
-  } @if (!bgImage()) {
-  <img src="{{ image()?.image_url }}" class="h-100 bg-img w-100" alt="{{ image()?.image_url }}" />
-  }
+<a
+	[routerLink]="['/collections']"
+	[queryParams]="{ category: image()?.redirect_link?.link }"
+>
+	@if (bgImage()) {
+	<div
+		class="bg-size h-100"
+		[ngClass]="class()"
+		[style.background-image]="'url(' + image()?.image_url + ')'"
+	></div>
+	} @if (!bgImage()) {
+	<img
+		src="{{ image()?.image_url }}"
+		class="bg-img h-100 w-100"
+		alt="{{ image()?.image_url }}"
+	/>
+	}
 </a>
 } @else { @if (image()?.redirect_link?.link_type === 'product') {
-<a
-  [routerLink]="['/product/', getProductSlug(image()?.redirect_link?.link, (product$ | async)?.data!)]"
->
-  @if (bgImage()) {
-  <div
-    class="h-100 bg-size"
-    [ngClass]="class()"
-    [style.background-image]="'url(' + image()?.image_url + ')'"
-  ></div>
-  } @if (!bgImage()) {
-  <img src="{{ image()?.image_url }}" class="h-100 bg-img w-100" alt="{{ image()?.image_url }}" />
-  }
+<a [routerLink]="['/en/product/', getProductSlug(image()?.redirect_link?.link, (product$ | async)?.data!)]">
+	@if (bgImage()) {
+	<div
+		class="bg-size h-100"
+		[ngClass]="class()"
+		[style.background-image]="'url(' + image()?.image_url + ')'"
+	></div>
+	} @if (!bgImage()) {
+	<img
+		src="{{ image()?.image_url }}"
+		class="bg-img h-100 w-100"
+		alt="{{ image()?.image_url }}"
+	/>
+	}
 </a>
 } @else { @if (bgImage()) {
 <div
-  class="h-100 bg-size"
-  [ngClass]="class()"
-  [style.background-image]="'url(' + image()?.image_url + ')'"
+	class="bg-size h-100"
+	[ngClass]="class()"
+	[style.background-image]="'url(' + image()?.image_url + ')'"
 ></div>
 } @if (!bgImage()) {
-<img src="{{ image()?.image_url }}" class="h-100 bg-img w-100" alt="{{ image()?.image_url }}" />
+<img
+	src="{{ image()?.image_url }}"
+	class="bg-img h-100 w-100"
+	alt="{{ image()?.image_url }}"
+/>
 } } } }
 <ng-template #product>
-  @if (image()?.redirect_link?.link_type === 'product') {
-  <a
-    [routerLink]="['/product/', getProductSlug(image()?.redirect_link?.link, (product$ | async)?.data!)]"
-  >
-    @if (bgImage()) {
-    <div
-      class="h-100 bg-size"
-      [ngClass]="class()"
-      [style.background-image]="'url(' + image()?.image_url + ')'"
-    ></div>
-    } @if (!bgImage()) {
-    <img src="{{ image()?.image_url }}" class="h-100 bg-img w-100" alt="{{ image()?.image_url }}" />
-    }
-  </a>
-  } @else { @if (bgImage()) {
-  <div
-    class="h-100 bg-size"
-    [ngClass]="class()"
-    [style.background-image]="'url(' + image()?.image_url + ')'"
-  ></div>
-  } @if (!bgImage()) {
-  <img src="{{ image()?.image_url }}" class="h-100 bg-img w-100" alt="{{ image()?.image_url }}" />
-  } }
+	@if (image()?.redirect_link?.link_type === 'product') {
+	<a [routerLink]="['/en/product/', getProductSlug(image()?.redirect_link?.link, (product$ | async)?.data!)]">
+		@if (bgImage()) {
+		<div
+			class="bg-size h-100"
+			[ngClass]="class()"
+			[style.background-image]="'url(' + image()?.image_url + ')'"
+		></div>
+		} @if (!bgImage()) {
+		<img
+			src="{{ image()?.image_url }}"
+			class="bg-img h-100 w-100"
+			alt="{{ image()?.image_url }}"
+		/>
+		}
+	</a>
+	} @else { @if (bgImage()) {
+	<div
+		class="bg-size h-100"
+		[ngClass]="class()"
+		[style.background-image]="'url(' + image()?.image_url + ')'"
+	></div>
+	} @if (!bgImage()) {
+	<img
+		src="{{ image()?.image_url }}"
+		class="bg-img h-100 w-100"
+		alt="{{ image()?.image_url }}"
+	/>
+	} }
 </ng-template>

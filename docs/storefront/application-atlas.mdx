@@ -1,0 +1,47 @@
+---
+title: Storefront Application Atlas
+description: Interactive, evidence-backed map of storefront capabilities and implementation boundaries.
+status: scaffolded
+audience: [beginner, frontend, operator]
+last_verified: '2026-07-18'
+source_of_truth:
+    - apps/storefront/src/app
+    - apps/storefront/vite.config.ts
+    - project-context/angular-context/owner-decisions-log.md
+---
+
+import { ApplicationAtlas } from '@site/src/components/ApplicationAtlas';
+
+# Storefront application atlas
+
+Use the filters and search field to answer two questions before editing the storefront:
+
+1. What customer capability already exists?
+2. Which part of it is real, transitional, or still planned?
+
+<ApplicationAtlas application="storefront" />
+
+## How to interpret the cards
+
+- **Implemented** describes working current behavior, but only within the stated boundary.
+- **Scaffolded** means the route, component, or state seam is real while integrations remain incomplete.
+- **Planned** is a locked direction that must not be represented as available behavior.
+- Expand **Evidence paths** to see the code or decision record supporting each statement.
+
+## Highest-risk misunderstandings
+
+### “The catalogue uses the API”
+
+Only part of it does. Catalogue listing has an API request path, while product detail and several related readers still derive records from the JSON product collection. Always identify the exact query function before changing a catalogue flow.
+
+### “The cart is implemented”
+
+The current browser cart behavior is implemented: actions, effects, selectors, optimistic updates, and persistence exist. Server ownership, identity reconciliation, pricing revalidation, stock reservation, and checkout transactionality are separate backend concerns.
+
+### “SSR means everything is server-safe”
+
+No. Dynamic SSR is enabled, but browser-dependent components still need `isPlatformBrowser()` or an equivalent guarded boundary. The server interceptor also returns a placeholder response for server-side HTTP requests, so a browser-successful reader is not automatically an SSR-complete reader.
+
+### “Language switching means Bengali is ready”
+
+No. Transloco is wired, but the present application configuration lists English and French. Bengali remains the locked product target and requires catalogue/content coverage plus validation before the status can advance.

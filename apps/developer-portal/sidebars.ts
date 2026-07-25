@@ -74,7 +74,12 @@ const sidebars: SidebarsConfig = {
 				{
 					type: 'category',
 					label: 'Shared Frontend',
-					items: ['frontend/engineering-system', 'frontend/quality-and-definition-of-done'],
+					items: [
+						'frontend/engineering-system',
+						'frontend/quality-and-definition-of-done',
+						'frontend/portal-experience-layer',
+						'frontend/interactive-instruments',
+					],
 				},
 			],
 		},
@@ -116,6 +121,7 @@ const sidebars: SidebarsConfig = {
 			label: 'Engineering Governance',
 			items: [
 				'decisions/developer-portal-now',
+				'decisions/gate-console',
 				'governance/status-model',
 				'governance/source-of-truth-and-freshness',
 				'governance/contribution-standard',

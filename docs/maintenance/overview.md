@@ -3,7 +3,7 @@ title: Maintenance Overview
 description: Maintenance and upgrade process.
 status: planned
 audience: [frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - package.json
     - project-context/angular-context/execution-roadmap.md

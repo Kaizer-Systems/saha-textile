@@ -1188,25 +1188,88 @@ pre code {
 }
 
 @media (min-width: 997px) {
-	.navbar__items--right {
-		position: fixed;
-		z-index: 4;
-		bottom: 12px;
-		left: 236px;
-		width: 32px;
-		height: 32px;
-		justify-content: center;
-		border: var(--portal-border-width) solid var(--portal-border);
-		border-radius: 999px;
-		background: var(--portal-surface);
-	}
-
+	/* NEXT-GEN-UI note: the color-mode toggle lives in `.navbar__items--right`
+	   and now sits in its conventional place at the right end of the navbar.
+	   A legacy rule used to float it as a fixed circular button (bottom/left),
+	   but the glass `.navbar` below has `backdrop-filter`, which makes the navbar
+	   the containing block for any position:fixed descendant — so that float
+	   collapsed *inside* the bar. Keep the toggle in normal flow; do NOT give
+	   descendants of `.navbar` position:fixed. */
+	/* NEXT-GEN-UI · Full-height command rail (desktop sidebar)
+	   ------------------------------------------------------------------
+	   The doc sidebar used to be a sticky element INSIDE the <aside>, so its
+	   visible box ended wherever the page content ended — near the footer the
+	   menu appeared "cut off" mid-air, hiding the fact that more items exist.
+	   Fix: the <aside> stays in the layout as a 280px SPACER only, while the
+	   actual menu nav becomes a position:fixed rail spanning navbar → viewport
+	   bottom on every page, always scrollable, always full height. The footer
+	   is indented so it starts to the right of the rail. A sticky-bottom fade +
+	   pulsing chevron (below) signals "more menu below" while scrollable —
+	   driven by data-more-below from useMicroInteractions.ts.
+	   CAUTION: position:fixed works here ONLY because no ancestor of the nav has
+	   backdrop-filter/transform (they would become its containing block). */
 	.theme-doc-sidebar-container {
 		width: var(--portal-sidebar-width) !important;
+		border-right: 0 !important; /* border lives on the fixed rail now */
+		/* Docusaurus ships `clip-path: inset(0)` here for its hideable-sidebar
+		   animation. `clip-path` on an ancestor clips the PAINT of even
+		   position:fixed descendants (their geometry stays correct, which makes
+		   this bug invisible to getBoundingClientRect) — it was beheading the
+		   fixed rail at the aside's bottom edge near the footer. We do not use
+		   the hideable sidebar (hideable: false), so remove the clip. */
+		clip-path: none !important;
+		will-change: auto;
+		transition: none;
 	}
 
-	.theme-doc-sidebar-menu {
+	/* NOTE: in the rendered DOM, `theme-doc-sidebar-menu` sits on the <ul>; the
+	   actual SCROLL CONTAINER is the `nav.menu` wrapping it — that is what
+	   becomes the fixed rail (stable Infima class, not a hashed CSS-module one). */
+	.theme-doc-sidebar-container nav.menu {
+		position: fixed;
+		top: var(--portal-header-height);
+		bottom: 0;
+		left: 0;
+		z-index: 20;
 		width: var(--portal-sidebar-width);
+		overflow-y: auto;
+		border-right: var(--portal-border-width) solid var(--portal-border);
+		overscroll-behavior: contain;
+		scrollbar-width: thin;
+	}
+
+	/* Sticky-bottom "more below" affordance: a soft mist + pulsing chevron
+	   pinned to the rail's scrollport bottom, visible only while more items
+	   remain below (data-more-below is toggled by the rail watcher JS). */
+	.theme-doc-sidebar-container nav.menu::after {
+		position: sticky;
+		bottom: 0;
+		display: flex;
+		height: 56px;
+		align-items: flex-end;
+		justify-content: center;
+		margin: -56px -12px 0;
+		padding-bottom: 6px;
+		background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--portal-canvas) 88%, transparent));
+		color: var(--portal-accent);
+		content: '▾';
+		font-size: 13px;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 220ms ease;
+	}
+
+	.theme-doc-sidebar-container nav.menu[data-more-below='true']::after {
+		opacity: 1;
+		animation: railChevronBob 1.8s ease-in-out infinite;
+	}
+
+	/* The footer must not sit under the fixed rail: give the whole box (border-top
+	   separator included) a left margin equal to the rail width, so it BEGINS at
+	   the rail's right edge instead of spanning the full page. `padding-left`
+	   would keep the box — and its border — full-width behind the rail. */
+	.footer {
+		margin-left: var(--portal-sidebar-width);
 	}
 
 	.theme-doc-toc-desktop {
@@ -1217,6 +1280,22 @@ pre code {
 	.pagination-nav {
 		padding-right: 28px;
 		padding-left: 28px;
+	}
+}
+
+@keyframes railChevronBob {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(3px);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.theme-doc-sidebar-container nav.menu[data-more-below='true']::after {
+		animation: none;
 	}
 }
 
@@ -1364,4 +1443,292 @@ pre code {
 		scroll-behavior: auto !important;
 		transition-duration: 0.01ms !important;
 	}
+}
+
+/* ============================================================================
+   NEXT-GEN-UI · Futuristic interaction layer (global styles)
+   ----------------------------------------------------------------------------
+   The GLOBAL half of the developer portal's next-gen styling pass (the other
+   half lives in the CSS modules under src/components/PortalExperience and
+   src/components/ArchitectureReactor). Kept as a readable reference — see
+   docs/frontend/portal-experience-layer.md and the styling convention in the
+   project KB. Grep `NEXT-GEN-UI` to find every piece of this pass.
+
+   HOW THE LAYERING WORKS (the key trick):
+     • AmbientReactor <canvas> + <div.scanlines> are position:fixed z-index:-1,
+       so they paint above the page background but below all content.
+     • The big content surfaces below (main-wrapper, navbar, sidebar, footer) are
+       made translucent + backdrop-blur ("glass chrome") so the living field and
+       scanlines read through without hurting text legibility.
+   Cursor spotlight, magnetic buttons and scroll-reveal are driven by JS
+   (useMicroInteractions.ts) that only sets CSS custom properties / classes —
+   the visuals themselves live here. All new motion is neutralised under
+   prefers-reduced-motion at the end of this block.
+   Tuning knob: .main-wrapper background alpha controls how strongly the ambient
+   field shows through the reading column.
+   ========================================================================= */
+
+/* THE FIELD MUST NOT BE TRAPPED UNDER AN OPAQUE <body>.
+   The ambient layers are position:fixed; z-index:-1. A z-index:-1 element whose
+   nearest stacking-context ancestor is the root paints in the root's negative
+   layer — which is BELOW the root's in-flow boxes, i.e. below <body>'s OWN
+   background. Docusaurus paints an opaque background on BOTH <html> and <body>,
+   so <body>'s fill was covering the whole field (only the tail below <body>'s
+   box showed, which read as a hard "cut line"). Fix: keep the opaque base colour
+   on <html> only (bottom-most, so no load flash) and make <body> transparent. */
+html {
+	background: var(--portal-canvas);
+}
+
+body {
+	background: transparent;
+}
+
+/* SEAMLESS FIELD: content surfaces are transparent so the ambient field is
+   dimmed exactly ONCE, by the single full-viewport `.scrim` (rendered in
+   PortalExperience, z-index:-1). Dimming each surface separately used to give
+   the field different strengths per zone and a hard "cut line" at every surface
+   edge — this removes all of that. Only the thin app bar keeps a glass fill; the
+   mobile nav drawer stays near-solid for legibility. */
+.main-wrapper,
+.footer,
+.theme-doc-sidebar-container {
+	background: transparent;
+}
+
+.navbar {
+	background: color-mix(in srgb, var(--portal-canvas) 72%, transparent);
+	-webkit-backdrop-filter: blur(14px) saturate(1.4);
+	backdrop-filter: blur(14px) saturate(1.4);
+}
+
+.navbar-sidebar {
+	background: color-mix(in srgb, var(--portal-canvas) 94%, transparent);
+	-webkit-backdrop-filter: blur(16px);
+	backdrop-filter: blur(16px);
+}
+
+/* Cursor spotlight — JS sets --spot-x/--spot-y per card on hover. */
+.portalCard,
+.portalPathCard,
+.portalImplementationItem,
+.portalSurfaceNotice,
+.portalHero__panel {
+	position: relative;
+	isolation: isolate;
+}
+
+.portalCard::before,
+.portalPathCard::before,
+.portalImplementationItem::before,
+.portalSurfaceNotice::before,
+.portalHero__panel::before {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	border-radius: inherit;
+	background: radial-gradient(
+		260px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+		color-mix(in srgb, var(--portal-accent) 24%, transparent),
+		transparent 62%
+	);
+	opacity: 0;
+	transition: opacity 220ms ease;
+	content: '';
+	pointer-events: none;
+}
+
+.portalCard:hover::before,
+.portalPathCard:hover::before,
+.portalImplementationItem:hover::before,
+.portalSurfaceNotice:hover::before,
+.portalHero__panel:hover::before {
+	opacity: 1;
+}
+
+/* Magnetic primary button with an accent bloom. */
+.portalButton--primary {
+	transition:
+		transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+		background-color 120ms ease,
+		border-color 120ms ease,
+		box-shadow 220ms ease;
+}
+
+.portalButton--primary:hover {
+	box-shadow:
+		0 10px 34px color-mix(in srgb, var(--portal-accent) 34%, transparent),
+		0 0 0 1px color-mix(in srgb, var(--portal-accent) 40%, transparent);
+}
+
+/* Scroll reveal — the initial hidden state is applied by JS only, so pages stay
+   fully visible without JavaScript. */
+.reveal-init {
+	opacity: 0;
+	transform: translateY(18px);
+	transition:
+		opacity 620ms cubic-bezier(0.2, 0.8, 0.2, 1),
+		transform 620ms cubic-bezier(0.2, 0.8, 0.2, 1);
+	will-change: opacity, transform;
+}
+
+.is-revealed {
+	opacity: 1;
+	transform: none;
+}
+
+/* Softly breathing status indicator. */
+.portalProvenance__dot {
+	animation: portalDotPulse 2.8s ease-in-out infinite;
+}
+
+@keyframes portalDotPulse {
+	0%,
+	100% {
+		box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 16%, transparent);
+	}
+	50% {
+		box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 5%, transparent);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.reveal-init {
+		opacity: 1 !important;
+		transform: none !important;
+	}
+
+	.portalProvenance__dot {
+		animation: none;
+	}
+}
+
+/* ============================================================================
+   NEXT-GEN-UI · Living mermaid diagrams
+   ----------------------------------------------------------------------------
+   Makes rendered mermaid diagrams (a) bigger/legible by floating in a glass
+   panel that uses the now-wider content column, and (b) "alive": accent edges
+   with a flowing-dash animation (data flow), glowing glass nodes, on-brand text.
+   Uses !important because mermaid inlines theme styles. Motion is disabled under
+   prefers-reduced-motion. Diagram pages set `wide: true` so the column is wide.
+   ========================================================================= */
+
+.theme-doc-markdown .docusaurus-mermaid-container {
+	margin: 30px 0;
+	padding: 22px 18px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: var(--portal-radius-lg, 8px);
+	background: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--portal-surface) 34%, transparent),
+		color-mix(in srgb, var(--portal-surface) 14%, transparent)
+	);
+	text-align: center;
+}
+
+.docusaurus-mermaid-container svg {
+	max-width: 100%;
+	height: auto;
+}
+
+/* Nodes / actors: glassy fill, accent stroke */
+.docusaurus-mermaid-container .node rect,
+.docusaurus-mermaid-container .node polygon,
+.docusaurus-mermaid-container .node circle,
+.docusaurus-mermaid-container .node path,
+.docusaurus-mermaid-container rect.actor,
+.docusaurus-mermaid-container .cluster rect {
+	fill: color-mix(in srgb, var(--portal-surface) 90%, var(--portal-canvas)) !important;
+	stroke: color-mix(in srgb, var(--portal-accent) 52%, var(--portal-border)) !important;
+	stroke-width: 1px !important;
+}
+
+.docusaurus-mermaid-container .node:hover rect,
+.docusaurus-mermaid-container .node:hover polygon,
+.docusaurus-mermaid-container .node:hover circle {
+	stroke: var(--portal-accent) !important;
+	filter: drop-shadow(0 0 8px color-mix(in srgb, var(--portal-accent) 45%, transparent));
+}
+
+/* Text: on-brand + legible */
+.docusaurus-mermaid-container .nodeLabel,
+.docusaurus-mermaid-container .edgeLabel,
+.docusaurus-mermaid-container .messageText,
+.docusaurus-mermaid-container .loopText,
+.docusaurus-mermaid-container text.actor,
+.docusaurus-mermaid-container .label,
+.docusaurus-mermaid-container text {
+	fill: var(--portal-ink) !important;
+	color: var(--portal-ink) !important;
+	font-family: var(--ifm-font-family-base) !important;
+	font-size: 15px !important;
+}
+
+.docusaurus-mermaid-container .edgeLabel,
+.docusaurus-mermaid-container .edgeLabel rect,
+.docusaurus-mermaid-container .labelBkg {
+	background-color: var(--portal-canvas) !important;
+	fill: var(--portal-canvas) !important;
+}
+
+/* Edges: accent + flowing dashes = data flow */
+.docusaurus-mermaid-container .edgePath .path,
+.docusaurus-mermaid-container .flowchart-link,
+.docusaurus-mermaid-container .messageLine0,
+.docusaurus-mermaid-container .messageLine1,
+.docusaurus-mermaid-container .relation {
+	stroke: color-mix(in srgb, var(--portal-accent) 62%, var(--portal-muted)) !important;
+	stroke-width: 1.5px !important;
+	stroke-dasharray: 5 5 !important;
+	animation: mermaidFlow 0.9s linear infinite;
+}
+
+/* Arrowheads */
+.docusaurus-mermaid-container marker path,
+.docusaurus-mermaid-container .arrowheadPath,
+.docusaurus-mermaid-container marker path.arrowMarkerPath {
+	fill: var(--portal-accent) !important;
+	stroke: var(--portal-accent) !important;
+}
+
+/* Sequence lifelines */
+.docusaurus-mermaid-container .actor-line {
+	stroke: color-mix(in srgb, var(--portal-accent) 30%, var(--portal-border)) !important;
+}
+
+@keyframes mermaidFlow {
+	to {
+		stroke-dashoffset: -10;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.docusaurus-mermaid-container .edgePath .path,
+	.docusaurus-mermaid-container .flowchart-link,
+	.docusaurus-mermaid-container .messageLine0,
+	.docusaurus-mermaid-container .messageLine1,
+	.docusaurus-mermaid-container .relation {
+		animation: none;
+		stroke-dasharray: none !important;
+	}
+}
+
+/* ============================================================================
+   NEXT-GEN-UI · Neutralize markdown list margins on COMPONENT lists
+   ----------------------------------------------------------------------------
+   Interactive components render <ol>/<ul>/<li> that live inside `.markdown`, so
+   they inherit Infima's list-item margins — the first <li> gets margin-top:0 and
+   the rest ~4px, which staggers any flex/grid row of list items (the 2px
+   misalignment seen on the Mission Control teaser pills and the request-atlas
+   pipeline). Markdown PROSE lists are unclassed; every component list carries a
+   CSS-module class, so `[class]` targets only components. This is the container-
+   level fix — new components using classed lists are handled automatically.
+   ========================================================================= */
+.theme-doc-markdown :is(ul, ol)[class] {
+	margin-top: 0;
+	margin-bottom: 0;
+}
+.theme-doc-markdown :is(ul, ol)[class] > li {
+	margin-top: 0;
+	margin-bottom: 0;
 }

@@ -1,15 +1,17 @@
 ---
 title: Core Domain, Pricing, and Ports
+wide: true
 description: Dependency direction, pure business logic, port contracts, swappability, and current gaps.
 status: scaffolded
 audience: [beginner, backend]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - packages/core-domain/src
     - packages/core-domain/test
     - packages/contracts/src
     - AGENTS.md
     - project-context/angular-context/codex-api-app-build-instructional-prompt.md
+    - project-context/angular-context/owner-decisions-log.md
 ---
 
 # Core domain, pricing, and ports
@@ -106,20 +108,20 @@ To replace MongoDB with PostgreSQL:
 
 If controllers, Angular clients, checkout rules, or core pricing must be rewritten, the previous boundary leaked.
 
-## Current dependency concern
+## Ratified contracts boundary
 
-The repository constitution says `packages/core-domain` depends on nothing external, while the current core port files import types from `packages/contracts`. This is an unresolved architectural dependency-direction issue.
+The owner resolved `G-CORE-CONTRACTS` on 2026-07-25 with Option C:
 
-Before expanding Phase B, reconcile one explicit policy:
+- `packages/contracts` remains the single zod-backed source of shared shapes;
+- core may consume those shapes with `import type` only;
+- the compiled core runtime must contain no contracts/zod import;
+- value imports from contracts and all framework, adapter, database, and provider-SDK imports remain forbidden.
 
-- core owns domain entities/value objects and contracts map to/from them; or
-- the constitution explicitly permits the contracts package as a dependency-free shared kernel.
+The current imports are type-only and the built JavaScript was verified runtime-pure. Mechanical enforcement is still incomplete: the current root ESLint rule blocks several infrastructure families, but it does not yet reject a value import from `@saha-textile/contracts`, and its provider-SDK denylist is not exhaustive. Treat that as remaining Chunk B/CI governance work, not as an unresolved architecture decision.
 
-Do not let the ambiguity spread through additional ports. Pass 4 records it; it does not silently choose a new architecture.
+## Current search boundary
 
-## Current stale search statement
-
-The `SearchPort` comment names a superseded hosted search approach. The locked architecture is self-hosted Meilisearch behind `SearchPort`, with MongoDB as source of truth and a rebuildable derived index. Treat the interface as a useful seam and the comment/current regex implementation as reconciliation debt.
+The `SearchPort` documentation now names the locked self-hosted Meilisearch target correctly. No Meilisearch adapter is bound yet; the current catalogue service still reaches an interim Mongo regular-expression search implementation. The interface is the durable seam, Mongo remains authoritative, and the future search index is derived and rebuildable.
 
 ## Domain test strategy
 

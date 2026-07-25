@@ -1,11 +1,13 @@
 ---
 title: Current API Route Inventory
+wide: true
 description: Verified controller routes, present controls, missing production guarantees, and target ownership.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-24'
 source_of_truth:
     - apps/api/src/main.ts
+    - apps/api/src/config/app-config.ts
     - apps/api/src/health
     - apps/api/src/auth
     - apps/api/src/catalog
@@ -30,14 +32,14 @@ This inventory describes controller code present on 2026-07-18. It is not a prod
 
 ## Authentication routes
 
-| Method | Route               | Present control                               | Current boundary/gap                                                    |
-| ------ | ------------------- | --------------------------------------------- | ----------------------------------------------------------------------- |
-| `POST` | `/auth/register`    | Zod body; argon2id password hash              | Returns tokens in JSON; min length 8; no session/CSRF/anti-abuse policy |
-| `POST` | `/auth/login`       | Zod body; generic invalid-credential response | Returns access/refresh JWTs in JSON; no rotation/reuse family           |
-| `POST` | `/auth/refresh`     | Verifies signed refresh JWT                   | No server-side rotation, revocation, or reuse detection                 |
-| `GET`  | `/auth/me`          | Bearer guard                                  | No cookie/audience/session-version model                                |
-| `POST` | `/auth/otp/request` | Email body validation                         | Always throws not implemented; wording/config is obsolete               |
-| `POST` | `/auth/otp/verify`  | Email/code validation                         | Always throws not implemented; no challenge lifecycle                   |
+| Method | Route               | Present control                               | Current boundary/gap                                                                                           |
+| ------ | ------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/auth/register`    | Zod body; argon2id password hash              | Returns tokens in JSON; min length 8; no session/CSRF/anti-abuse policy                                        |
+| `POST` | `/auth/login`       | Zod body; generic invalid-credential response | Returns access/refresh JWTs in JSON; no rotation/reuse family                                                  |
+| `POST` | `/auth/refresh`     | Verifies signed refresh JWT                   | No server-side rotation, revocation, or reuse detection                                                        |
+| `GET`  | `/auth/me`          | Bearer guard                                  | No cookie/audience/session-version model                                                                       |
+| `POST` | `/auth/otp/request` | Email body validation                         | Always throws not implemented; provider/policy config now exists (MSG91, `OTP_TTL_SECONDS`/`OTP_MAX_ATTEMPTS`) |
+| `POST` | `/auth/otp/verify`  | Email/code validation                         | Always throws not implemented; no challenge lifecycle                                                          |
 
 Locked target route families separate storefront/admin auth, add CSRF/logout, and implement secure cookie sessions. OAuth seam exists only as an unexposed service stub.
 
@@ -98,7 +100,7 @@ The current order service deletes the cart after a separate order save. A failur
 - shutdown hooks;
 - OpenAPI generation with bearer auth metadata.
 
-Still required: trusted proxy and real-client-IP resolution, strict route limits, cookie parsing, CSRF, audience/permission model, global validated inputs/response serialization, sanitized error envelope, request ids, redacted structured logs, production CSP, live/ready health, and OpenAPI completeness.
+Still required: trusted proxy and real-client-IP resolution (the `TRUST_PROXY`/`CLIENT_IP_HEADER` config is parsed but not yet applied to Fastify), strict route limits, cookie parsing, CSRF, audience/permission model, global validated inputs/response serialization, sanitized error envelope, request ids, redacted structured logs, production CSP, live/ready health, and OpenAPI completeness.
 
 ## Target route ownership
 

@@ -1,9 +1,10 @@
 ---
 title: Admin Orientation
+wide: true
 description: Start here before changing the Angular administration application.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/admin/src/app
     - project-context/angular-context/owner-decisions-log.md

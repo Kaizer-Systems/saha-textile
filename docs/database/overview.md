@@ -3,10 +3,11 @@ title: Database Overview
 description: Current Mongo adapter boundary, durable-data status, and future generated catalogue.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - packages/adapters-db-mongo/src
     - packages/contracts/src
+    - docker/mongo/docker-compose.yml
     - project-context/angular-context/codex-catalog-db-architecture-assessment-and-plan.md
 ---
 
@@ -43,7 +44,7 @@ Do not manually duplicate field tables once generation is available.
 
 ## Current reconciliation warnings
 
-- Connection configuration and `.env.example` still contain hosted-cluster/SRV assumptions; the locked deployment is self-hosted Docker MongoDB 8.3 with local/prod replica-set parity.
+- Connection configuration and `.env.example` now implement the locked self-hosted Docker MongoDB 8.3 single-node replica set (`rs0`), with the same profile locally and in production; the previous hosted-cluster/SRV assumptions have been removed. Start the local set with `pnpm mongo:up` (see [current adapter map](./current-adapter-map#local-replica-set-lifecycle)).
 - Current models use multiple `Mixed` nested structures, which are weaker than the future generated validator/catalogue needs.
 - No unit-of-work/transaction port or session-aware repository contract exists.
 - Order, payment, shipment, return, refund, inventory, auth-session, consent, notification, audit and search-outbox records are not represented by the current seven-model scaffold.

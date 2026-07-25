@@ -1,11 +1,15 @@
 ---
 title: Transactions and Generated Catalogue
+wide: true
 description: Atomic-write design, replica-set verification, migration and catalogue-generation requirements.
 status: planned
 audience: [beginner, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - packages/adapters-db-mongo/src
+    - apps/api/src/orders/orders.service.ts
+    - docker/mongo/docker-compose.yml
+    - scripts/mongo-up.sh
     - project-context/angular-context/owner-decisions-log.md
     - project-context/angular-context/codex-api-app-build-instructional-prompt.md
     - project-context/angular-context/private-developer-portal-documentation-plan.md
@@ -13,11 +17,11 @@ source_of_truth:
 
 # Transactions and generated catalogue
 
-Current repositories perform individual writes. The locked backend requires a MongoDB 8.3 single-node replica set and transactions for workflows where several durable facts must agree.
+The transaction **infrastructure now exists locally**, but the transaction **code does not yet**. The `rs0` single-node replica set is provisioned by the Docker profile (`docker/mongo/docker-compose.yml`, `pnpm mongo:up`), so multi-document transactions _can_ be exercised on a developer machine. What remains planned is the application side: there is no `UnitOfWorkPort`, no session-aware repository contract, and current repositories still perform individual writes. Order creation, for example, saves the order and then deletes the cart in two separate writes (`apps/api/src/orders/orders.service.ts`), which is not atomic.
 
 ## Why a replica set is required
 
-A standalone Mongo process does not provide the multi-document transaction behavior this architecture requires. Local and production use the same single-node replica-set behavior so transaction code is exercised before deployment.
+A standalone Mongo process does not provide the multi-document transaction behavior this architecture requires. Local and production use the same single-node replica-set profile (`rs0`) so transaction code is exercised before deployment. The replica set is already running locally; the transactional code paths below are the planned work it unblocks.
 
 A single-node replica set provides transactions, not high availability. Backups, restore drills, resource monitoring, and a later redundancy plan remain necessary.
 

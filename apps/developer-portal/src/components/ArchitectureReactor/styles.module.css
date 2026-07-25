@@ -1,0 +1,339 @@
+/* ============================================================================
+   NEXT-GEN-UI · Hexagonal architecture reactor styles
+   ----------------------------------------------------------------------------
+   Styles for the signature reactor centerpiece (see index.tsx and
+   docs/frontend/portal-experience-layer.md; grep `NEXT-GEN-UI`). Everything is
+   theme-aware via --portal-* tokens and color-mix(); the SMIL pulses are gated
+   in JS while these CSS spin/breathe animations are disabled under
+   prefers-reduced-motion at the bottom of this file.
+   Tuning knobs: pulse drop-shadow radii (.ringPulse/.spokePulse), ring
+   brightness (.ring/.spinRing), node glow (.nodeActive), core halo
+   (.coreGlow / @keyframes coreBreathe).
+   ========================================================================= */
+
+.reactor {
+	margin: 56px 0;
+	padding: 28px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: var(--portal-radius-xl, 12px);
+	background: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--portal-surface) 60%, transparent),
+		color-mix(in srgb, var(--portal-surface) 30%, transparent)
+	);
+	overflow: hidden;
+}
+
+.reactorHead {
+	max-width: 640px;
+	margin-bottom: 8px;
+}
+
+.eyebrow {
+	margin: 0 0 8px;
+	color: var(--portal-accent);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.reactorHead h2 {
+	margin: 0;
+	color: var(--portal-ink);
+	font-size: clamp(1.5rem, 3vw, 2rem);
+	font-weight: 600;
+	letter-spacing: -0.03em;
+}
+
+.lede {
+	margin: 12px 0 0;
+	max-width: 560px;
+	color: var(--portal-muted);
+	font-size: 14px;
+	line-height: 1.6;
+}
+
+.reactorBody {
+	display: grid;
+	grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+	gap: 24px;
+	align-items: center;
+	margin-top: 22px;
+}
+
+.stage {
+	position: relative;
+	display: grid;
+	place-items: center;
+	padding: 8px;
+}
+
+.stage::after {
+	position: absolute;
+	inset: 6% 12%;
+	z-index: 0;
+	background: radial-gradient(closest-side, color-mix(in srgb, var(--portal-accent) 12%, transparent), transparent);
+	content: '';
+	pointer-events: none;
+}
+
+.svg {
+	position: relative;
+	z-index: 1;
+	width: 100%;
+	max-width: 440px;
+	height: auto;
+	overflow: visible;
+}
+
+/* Connectors */
+.spoke {
+	stroke: color-mix(in srgb, var(--portal-border) 78%, transparent);
+	stroke-width: 1;
+	transition: stroke 200ms ease;
+}
+
+.spokeActive {
+	stroke: color-mix(in srgb, var(--portal-accent) 65%, transparent);
+	stroke-width: 1.4;
+}
+
+.ring {
+	stroke: color-mix(in srgb, var(--portal-accent) 55%, var(--portal-border));
+	stroke-width: 1.2;
+	stroke-dasharray: 3 5;
+	opacity: 0.85;
+	filter: drop-shadow(0 0 4px color-mix(in srgb, var(--portal-accent) 45%, transparent));
+}
+
+.spinRing,
+.spinRingReverse {
+	stroke: color-mix(in srgb, var(--portal-accent) 42%, transparent);
+	stroke-width: 1;
+	transform-box: fill-box;
+	transform-origin: center;
+}
+
+.spinRing {
+	animation: reactorSpin 42s linear infinite;
+}
+
+.spinRingReverse {
+	stroke: color-mix(in srgb, var(--portal-muted) 22%, transparent);
+	animation: reactorSpin 68s linear infinite reverse;
+}
+
+/* Pulses — bright energy travelling the ring and the inward spokes. */
+.ringPulse {
+	fill: color-mix(in srgb, var(--portal-accent) 92%, white);
+	filter: drop-shadow(0 0 9px var(--portal-accent)) drop-shadow(0 0 3px white);
+}
+
+.spokePulse {
+	fill: color-mix(in srgb, var(--portal-accent) 82%, white);
+	filter: drop-shadow(0 0 7px var(--portal-accent));
+	opacity: 0.95;
+}
+
+/* Slow breathing halo behind the core. */
+.coreGlow {
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: coreBreathe 4.5s ease-in-out infinite;
+}
+
+@keyframes coreBreathe {
+	0%,
+	100% {
+		opacity: 0.75;
+		transform: scale(0.94);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1.06);
+	}
+}
+
+/* Nodes */
+.node,
+.nodeActive,
+.core,
+.coreActive {
+	cursor: pointer;
+	outline: none;
+}
+
+.nodeDisc {
+	fill: color-mix(in srgb, var(--portal-canvas) 82%, var(--portal-surface));
+	stroke: var(--portal-border);
+	stroke-width: 1;
+	transition:
+		fill 200ms ease,
+		stroke 200ms ease;
+}
+
+.node:hover .nodeDisc,
+.node:focus-visible .nodeDisc {
+	stroke: color-mix(in srgb, var(--portal-accent) 55%, var(--portal-border));
+}
+
+.nodeActive .nodeDisc {
+	fill: color-mix(in srgb, var(--portal-accent) 22%, var(--portal-canvas));
+	stroke: var(--portal-accent);
+	stroke-width: 1.8;
+	filter: drop-shadow(0 0 16px color-mix(in srgb, var(--portal-accent) 60%, transparent));
+}
+
+.nodeLabel {
+	fill: var(--portal-ink);
+	font: 600 11px/1 var(--ifm-font-family-base);
+	text-anchor: middle;
+	pointer-events: none;
+}
+
+.coreDisc {
+	fill: color-mix(in srgb, var(--portal-accent) 22%, var(--portal-canvas));
+	stroke: var(--portal-accent);
+	stroke-width: 1.6;
+	transition: filter 200ms ease;
+}
+
+.coreActive .coreDisc {
+	filter: drop-shadow(0 0 16px color-mix(in srgb, var(--portal-accent) 60%, transparent));
+}
+
+.coreLabel {
+	fill: var(--portal-ink);
+	font: 700 13px/1 var(--ifm-font-family-base);
+	text-anchor: middle;
+	pointer-events: none;
+}
+
+.coreSub {
+	fill: var(--portal-muted);
+	font: 500 9px/1 var(--ifm-font-family-base);
+	letter-spacing: 0.14em;
+	text-anchor: middle;
+	text-transform: uppercase;
+	pointer-events: none;
+}
+
+/* Detail panel */
+.panel {
+	display: grid;
+	gap: 14px;
+	align-content: start;
+}
+
+.panelChips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.chip,
+.chipActive {
+	padding: 6px 11px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--portal-muted);
+	cursor: pointer;
+	font: 500 12px/1 var(--ifm-font-family-base);
+	transition:
+		border-color 160ms ease,
+		color 160ms ease,
+		background 160ms ease;
+}
+
+.chip:hover {
+	color: var(--portal-ink);
+	border-color: var(--portal-subtle);
+}
+
+.chipActive {
+	border-color: var(--portal-accent);
+	background: color-mix(in srgb, var(--portal-accent) 14%, transparent);
+	color: var(--portal-ink);
+}
+
+.panelCard {
+	padding: 18px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: var(--portal-radius-lg, 8px);
+	background: color-mix(in srgb, var(--portal-canvas) 70%, transparent);
+	backdrop-filter: blur(8px);
+}
+
+.panelKicker {
+	color: var(--portal-subtle);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.panelTitle {
+	margin: 6px 0 2px;
+	color: var(--portal-ink);
+	font-size: 19px;
+	font-weight: 600;
+	letter-spacing: -0.02em;
+}
+
+.panelSub {
+	margin: 0;
+	color: var(--portal-accent);
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.panelDetail {
+	margin: 12px 0 16px;
+	color: var(--portal-muted);
+	font-size: 13.5px;
+	line-height: 1.6;
+}
+
+.panelLink {
+	display: inline-flex;
+	align-items: center;
+	color: var(--portal-ink);
+	font-size: 13px;
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.panelLink:hover {
+	color: var(--portal-accent);
+}
+
+@keyframes reactorSpin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (max-width: 900px) {
+	.reactorBody {
+		grid-template-columns: 1fr;
+	}
+	.stage {
+		order: 2;
+	}
+}
+
+@media (max-width: 640px) {
+	.reactor {
+		padding: 20px 16px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.spinRing,
+	.spinRingReverse,
+	.coreGlow {
+		animation: none;
+	}
+}

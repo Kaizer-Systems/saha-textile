@@ -3,7 +3,7 @@ title: Documentation Contribution Standard
 description: Definition of done for developer portal changes.
 status: implemented
 audience: [frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - AGENTS.md
     - project-context/angular-context/private-developer-portal-documentation-plan.md
@@ -33,7 +33,9 @@ Every Markdown/MDX page must declare:
 - `last_verified` as an ISO date;
 - `source_of_truth` as one or more repository paths.
 
-The portal renders these values near the page title, and validation rejects missing or unsupported values.
+The portal renders these values near the page title. Validation rejects missing or unsupported values, missing evidence paths, and a verification date older than a declared source's latest Git/working-tree change.
+
+For interactive instruments, project facts belong in the governed manifest/dataset and KB truth pipeline—not in React components. Extend `docs/_data/portal-manifest.json`, the relevant `docs/_data/instruments/*.json`, and the shared portal-data compiler together.
 
 ## Writing standard
 

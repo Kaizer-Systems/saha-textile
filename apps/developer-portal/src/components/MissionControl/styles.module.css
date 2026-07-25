@@ -1,0 +1,613 @@
+/* ============================================================================
+   NEXT-GEN-UI · Mission Control styles
+   ----------------------------------------------------------------------------
+   Deliberately shares the ArchitectureReactor's visual language (glass panel,
+   orbital ring, spokes, SMIL pulses, inspect panel) and only --portal-* tokens,
+   so Mission Control reads as the same portal. Status colours map to the
+   existing status palette (success / accent / warning / muted). Motion is
+   disabled under prefers-reduced-motion at the bottom of this file.
+   Tuning knobs: RADIUS/node r in index.tsx; ring pulse dur; glow radii here.
+   ========================================================================= */
+
+.mission {
+	margin: 56px 0;
+	padding: 28px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: var(--portal-radius-xl, 12px);
+	background: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--portal-surface) 58%, transparent),
+		color-mix(in srgb, var(--portal-surface) 28%, transparent)
+	);
+	overflow: hidden;
+}
+
+.head {
+	max-width: 660px;
+}
+
+.eyebrow {
+	margin: 0 0 8px;
+	color: var(--portal-accent);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.head h2 {
+	margin: 0;
+	color: var(--portal-ink);
+	font-size: clamp(1.5rem, 3vw, 2rem);
+	font-weight: 600;
+	letter-spacing: -0.03em;
+}
+
+.lede {
+	margin: 12px 0 0;
+	max-width: 600px;
+	color: var(--portal-muted);
+	font-size: 14px;
+	line-height: 1.6;
+}
+
+.legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 14px;
+	margin-top: 16px;
+	font-size: 11px;
+	font-weight: 550;
+}
+
+.legend span {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--portal-muted);
+}
+
+.legend span::before {
+	width: 9px;
+	height: 9px;
+	border-radius: 999px;
+	content: '';
+}
+
+.legDone::before {
+	background: var(--portal-success);
+}
+.legPartial::before {
+	background: var(--portal-accent);
+}
+.legNext::before {
+	background: color-mix(in srgb, var(--portal-accent) 60%, white);
+	box-shadow: 0 0 6px var(--portal-accent);
+}
+.legPlanned::before {
+	background: var(--portal-subtle);
+}
+.legGated::before {
+	background: transparent;
+	box-shadow: 0 0 0 2px var(--portal-warning);
+}
+
+.body {
+	display: grid;
+	grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+	gap: 24px;
+	/* align-items:start pins the constellation to the top so a taller flight-plan
+	   panel never re-centers (moves) the SVG out from under the cursor. */
+	align-items: start;
+	margin-top: 20px;
+}
+
+.stage {
+	position: relative;
+	display: grid;
+	place-items: center;
+	padding: 4px;
+}
+
+.svg {
+	position: relative;
+	z-index: 1;
+	width: 100%;
+	max-width: 480px;
+	height: auto;
+	overflow: visible;
+}
+
+/* Rings + spokes (reactor grammar) */
+.spoke {
+	stroke: color-mix(in srgb, var(--portal-border) 70%, transparent);
+	stroke-width: 1;
+}
+
+.ring {
+	stroke: color-mix(in srgb, var(--portal-accent) 34%, var(--portal-border));
+	stroke-width: 1;
+	stroke-dasharray: 3 6;
+	opacity: 0.6;
+}
+
+.spinRing,
+.spinRingReverse {
+	stroke: color-mix(in srgb, var(--portal-accent) 30%, transparent);
+	stroke-width: 1;
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: missionSpin 60s linear infinite;
+}
+
+.spinRingReverse {
+	stroke: color-mix(in srgb, var(--portal-muted) 20%, transparent);
+	animation-duration: 90s;
+	animation-direction: reverse;
+}
+
+.chordActive {
+	stroke: color-mix(in srgb, var(--portal-accent) 60%, transparent);
+	stroke-width: 1.4;
+	stroke-dasharray: 2 4;
+}
+
+.ringPulse {
+	fill: color-mix(in srgb, var(--portal-accent) 90%, white);
+	filter: drop-shadow(0 0 7px var(--portal-accent));
+}
+
+.chordPulse {
+	fill: color-mix(in srgb, var(--portal-accent) 85%, white);
+	filter: drop-shadow(0 0 6px var(--portal-accent));
+}
+
+.coreGlow {
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: missionBreathe 5s ease-in-out infinite;
+}
+
+.core {
+	pointer-events: none;
+}
+
+.coreDisc {
+	fill: color-mix(in srgb, var(--portal-accent) 20%, var(--portal-canvas));
+	stroke: var(--portal-accent);
+	stroke-width: 1.6;
+}
+
+.coreLabel {
+	fill: var(--portal-ink);
+	font: 700 18px/1 var(--ifm-font-family-base);
+	text-anchor: middle;
+	dominant-baseline: middle;
+}
+
+.coreSub {
+	fill: var(--portal-muted);
+	font: 500 9px/1 var(--ifm-font-family-base);
+	letter-spacing: 0.16em;
+	text-anchor: middle;
+	text-transform: uppercase;
+}
+
+/* Stations */
+.node {
+	cursor: pointer;
+	outline: none;
+}
+
+.nodeDisc {
+	stroke-width: 1.2;
+	transition:
+		fill 200ms ease,
+		stroke 200ms ease,
+		filter 200ms ease;
+}
+
+/* Status → fill/stroke, reusing the platform status palette. */
+.nodeDone .nodeDisc {
+	fill: color-mix(in srgb, var(--portal-success) 24%, var(--portal-canvas));
+	stroke: var(--portal-success);
+}
+.nodePartial .nodeDisc {
+	fill: color-mix(in srgb, var(--portal-accent) 22%, var(--portal-canvas));
+	stroke: var(--portal-accent);
+}
+.nodeNext .nodeDisc {
+	fill: color-mix(in srgb, var(--portal-accent) 14%, var(--portal-canvas));
+	stroke: color-mix(in srgb, var(--portal-accent) 70%, white);
+}
+.nodePlanned .nodeDisc {
+	fill: color-mix(in srgb, var(--portal-surface) 80%, var(--portal-canvas));
+	stroke: var(--portal-border);
+}
+
+.node:hover .nodeDisc,
+.node:focus-visible .nodeDisc {
+	stroke: var(--portal-accent);
+}
+
+.nodeActive .nodeDisc {
+	filter: drop-shadow(0 0 12px color-mix(in srgb, var(--portal-accent) 55%, transparent));
+	stroke-width: 1.8;
+}
+
+.nodeLabel {
+	fill: var(--portal-ink);
+	font: 700 13px/1 var(--ifm-font-family-base);
+	text-anchor: middle;
+	pointer-events: none;
+}
+
+.gateHalo {
+	stroke: var(--portal-warning);
+	stroke-width: 1.4;
+	stroke-dasharray: 3 4;
+	opacity: 0.9;
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: missionGateHalo 2.4s ease-in-out infinite;
+}
+
+/* Panel */
+.panel {
+	display: grid;
+	gap: 14px;
+	align-content: start;
+}
+
+.chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.chip {
+	width: 30px;
+	height: 30px;
+	padding: 0;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: 8px;
+	background: transparent;
+	color: var(--portal-muted);
+	cursor: pointer;
+	font: 700 12px/1 var(--ifm-font-family-base);
+	transition:
+		border-color 160ms ease,
+		color 160ms ease,
+		background 160ms ease;
+}
+
+.chip.nodeDone {
+	border-color: color-mix(in srgb, var(--portal-success) 45%, var(--portal-border));
+	color: var(--portal-success);
+}
+.chip.nodePartial,
+.chip.nodeNext {
+	border-color: color-mix(in srgb, var(--portal-accent) 45%, var(--portal-border));
+	color: var(--portal-accent);
+}
+
+.chipActive {
+	background: color-mix(in srgb, var(--portal-accent) 16%, transparent);
+	color: var(--portal-ink);
+	box-shadow: inset 0 0 0 1px var(--portal-accent);
+}
+
+.card {
+	/* Reserve enough height for the tallest flight plan so switching chunks does
+	   not change the panel height (no layout jump). Overflows scroll internally. */
+	display: flex;
+	min-height: 360px;
+	max-height: 520px;
+	flex-direction: column;
+	padding: 18px;
+	overflow-y: auto;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: var(--portal-radius-lg, 8px);
+	background: color-mix(in srgb, var(--portal-canvas) 68%, transparent);
+	backdrop-filter: blur(8px);
+	scrollbar-width: thin;
+}
+
+.cardHead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.cardKicker {
+	color: var(--portal-subtle);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.statusPill {
+	display: inline-flex;
+	align-items: center;
+	padding: 3px 9px;
+	border-radius: 999px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	color: var(--portal-muted);
+}
+.statusPill.nodeDone {
+	border-color: color-mix(in srgb, var(--portal-success) 45%, var(--portal-border));
+	color: var(--portal-success);
+}
+.statusPill.nodePartial,
+.statusPill.nodeNext {
+	border-color: color-mix(in srgb, var(--portal-accent) 45%, var(--portal-border));
+	color: var(--portal-accent);
+}
+
+.cardTitle {
+	margin: 8px 0 2px;
+	color: var(--portal-ink);
+	font-size: 18px;
+	font-weight: 600;
+	letter-spacing: -0.02em;
+}
+
+.cardBody {
+	margin: 10px 0 0;
+	color: var(--portal-muted);
+	font-size: 13.5px;
+	line-height: 1.6;
+}
+
+.cardMeta {
+	margin: 12px 0 0;
+	color: var(--portal-ink);
+	font-size: 12px;
+	font-weight: 600;
+}
+.cardMeta span {
+	margin-right: 6px;
+	color: var(--portal-subtle);
+	font-weight: 550;
+	text-transform: uppercase;
+	font-size: 10px;
+	letter-spacing: 0.04em;
+}
+
+.gateNotice {
+	display: flex;
+	gap: 9px;
+	margin-top: 14px;
+	padding: 10px 12px;
+	border: var(--portal-border-width, 1px) solid color-mix(in srgb, var(--portal-warning) 40%, var(--portal-border));
+	border-radius: var(--portal-radius, 6px);
+	background: color-mix(in srgb, var(--portal-warning) 8%, transparent);
+	color: var(--portal-muted);
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.gateDot {
+	flex: none;
+	width: 8px;
+	height: 8px;
+	margin-top: 4px;
+	border-radius: 999px;
+	background: var(--portal-warning);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--portal-warning) 20%, transparent);
+}
+
+.gateLink {
+	color: var(--portal-warning);
+	font-weight: 600;
+	text-decoration: none;
+}
+.gateLink:hover {
+	text-decoration: underline;
+}
+
+.cardDod {
+	display: grid;
+	gap: 3px;
+	/* margin-top:auto pins DoD to the bottom of the reserved-height card. */
+	margin: auto 0 0;
+	padding-top: 12px;
+	border-top: var(--portal-border-width, 1px) solid var(--portal-border);
+	color: var(--portal-muted);
+	font-size: 12.5px;
+	line-height: 1.55;
+}
+.cardDod span {
+	color: var(--portal-subtle);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+/* Gate strip */
+.gates {
+	margin-top: 24px;
+	padding-top: 20px;
+	border-top: var(--portal-border-width, 1px) solid var(--portal-border);
+}
+
+.gatesHead {
+	margin: 0 0 12px;
+	color: var(--portal-subtle);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.gateGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+	gap: 8px;
+}
+
+.gateItem {
+	display: grid;
+	gap: 2px;
+	padding: 12px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: var(--portal-radius, 6px);
+	background: var(--portal-canvas);
+}
+
+.gateOpen {
+	border-left: 2px solid var(--portal-warning);
+}
+.gateResolved {
+	border-left: 2px solid var(--portal-success);
+}
+
+.gateItemId {
+	color: var(--portal-ink);
+	font: 600 12px/1.2 var(--ifm-font-family-monospace);
+}
+.gateItemLabel {
+	color: var(--portal-muted);
+	font-size: 12px;
+}
+.gateItemStatus {
+	margin-top: 4px;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+.gateOpen .gateItemStatus {
+	color: var(--portal-warning);
+}
+.gateResolved .gateItemStatus {
+	color: var(--portal-success);
+}
+
+/* -- Teaser (homepage) --------------------------------------------------- */
+.teaser {
+	margin: 48px 0;
+	padding: 18px 20px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: var(--portal-radius-lg, 8px);
+	background: color-mix(in srgb, var(--portal-surface) 40%, transparent);
+}
+
+.teaserHead {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.teaserLink {
+	color: var(--portal-ink);
+	font-size: 12px;
+	font-weight: 600;
+	text-decoration: none;
+}
+.teaserLink:hover {
+	color: var(--portal-accent);
+}
+
+.teaserTrack {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin: 14px 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.teaserPill {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: 8px;
+	color: var(--portal-subtle);
+	font: 700 12px/1 var(--ifm-font-family-base);
+}
+
+.teaserPill.nodeDone {
+	border-color: color-mix(in srgb, var(--portal-success) 50%, var(--portal-border));
+	background: color-mix(in srgb, var(--portal-success) 16%, transparent);
+	color: var(--portal-success);
+}
+.teaserPill.nodePartial,
+.teaserPill.nodeNext {
+	border-color: color-mix(in srgb, var(--portal-accent) 50%, var(--portal-border));
+	background: color-mix(in srgb, var(--portal-accent) 14%, transparent);
+	color: var(--portal-accent);
+}
+
+.teaserGated {
+	box-shadow: 0 0 0 1px var(--portal-warning);
+}
+
+.teaserLegend {
+	margin: 12px 0 0;
+	color: var(--portal-subtle);
+	font-size: 12px;
+}
+
+/* Animations */
+@keyframes missionSpin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+@keyframes missionBreathe {
+	0%,
+	100% {
+		opacity: 0.75;
+		transform: scale(0.95);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1.05);
+	}
+}
+@keyframes missionGateHalo {
+	0%,
+	100% {
+		opacity: 0.5;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
+@media (max-width: 900px) {
+	.body {
+		grid-template-columns: 1fr;
+	}
+	.stage {
+		order: 2;
+	}
+}
+
+@media (max-width: 640px) {
+	.mission {
+		padding: 20px 16px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.spinRing,
+	.spinRingReverse,
+	.coreGlow,
+	.gateHalo {
+		animation: none;
+	}
+}

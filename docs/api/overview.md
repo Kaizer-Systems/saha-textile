@@ -3,7 +3,7 @@ title: API Overview
 description: Current API application boundary, capability status, navigation, and future generated reference.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/api/src
     - packages/contracts/src
@@ -28,7 +28,7 @@ Start with the [Backend Platform Atlas](../backend/overview) when you need to un
 
 ## Current module snapshot
 
-The application currently exposes health, authentication, catalogue, cart, orders, currency and promotion modules. Every module still needs to be evaluated against its roadmap definition of done before the overall API can be called implemented.
+The application currently exposes health, authentication, catalogue, cart, orders, currency and promotion modules. New shared auth/session/consent/audit/notification contract families are present, but they do not add routes or runtime behavior by themselves. Every module still needs to be evaluated against its roadmap definition of done before the overall API can be called implemented.
 
 ## Interactive-request boundary
 

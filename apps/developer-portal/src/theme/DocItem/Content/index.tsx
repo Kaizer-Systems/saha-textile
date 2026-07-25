@@ -73,8 +73,20 @@ export default function DocItemContent({ children }: Props): ReactNode {
 
 	const copyLabel = copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : 'Copy page';
 
+	// NEXT-GEN-UI: `wide: true` frontmatter widens the whole content column (the
+	// width rules read --portal-content-max-width, which cascades to the toolbar,
+	// provenance and markdown together). Instrument pages opt in so their wide
+	// visuals use the horizontal space instead of being boxed at the prose width.
+	const isWide = portalFrontMatter.wide === true;
+	const wideStyle = isWide
+		? ({ ['--portal-content-max-width' as string]: '1120px' } as React.CSSProperties)
+		: undefined;
+
 	return (
-		<div className={clsx(ThemeClassNames.docs.docMarkdown, 'markdown')}>
+		<div
+			className={clsx(ThemeClassNames.docs.docMarkdown, 'markdown')}
+			style={wideStyle}
+		>
 			<div className="portalDocToolbar">
 				<span className="portalDocToolbar__context">Developer portal</span>
 				<button

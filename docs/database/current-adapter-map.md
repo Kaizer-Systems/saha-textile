@@ -1,9 +1,10 @@
 ---
 title: Current Mongo Adapter Map
 description: Verified Mongoose models, indexes, repositories, mappers, seed tooling, and present persistence limitations.
+search_keywords: 'mongo rs0 replica set connection uri directConnection models indexes repositories'
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - packages/adapters-db-mongo/src/models
     - packages/adapters-db-mongo/src/repositories
@@ -12,6 +13,8 @@ source_of_truth:
     - packages/adapters-db-mongo/src/connection.ts
     - packages/adapters-db-mongo/src/seed
     - packages/adapters-db-mongo/test/integration.test.ts
+    - docker/mongo/docker-compose.yml
+    - scripts/mongo-up.sh
     - project-context/angular-context/owner-decisions-log.md
 ---
 
@@ -51,6 +54,7 @@ save/upsert → strip public id → findByIdAndUpdate($set) → mapper
 - Active promotions use start/end-window filtering and priority sort.
 - User credential lookup explicitly selects the hidden password hash.
 - User mapping never returns `passwordHash`.
+- User mapping currently supplies compatibility defaults for the widened public contract (`phone: null`, `phoneVerified: false`, `status: active`); the model does not persist those fields yet.
 - Order listing scopes by `userId`, but single-order lookup does not.
 - Order status update appends a timeline value but throws a generic adapter error when missing.
 
@@ -67,21 +71,35 @@ Current risks:
 
 - nested `Mixed` fields are type-cast, not runtime-parsed;
 - adapter values are often returned as broad public entity contracts rather than operation-specific response DTOs;
+- compatibility defaults can mask model/contract widening until the planned user-model migration lands;
 - no mapper receives transaction context or entity version;
 - no migration/version discriminator protects historical shapes.
 
 ## Current connection behavior
 
-`connectMongo` is idempotent while Mongoose reports a connected state. Configuration either accepts `MONGODB_URI` or assembles an `mongodb+srv` URI from username/password/cluster host.
+`connectMongo` is idempotent while Mongoose reports a connected state. `buildMongoConfig` accepts a pre-encoded `MONGODB_URI` (which must already include `replicaSet=rs0`) or assembles a plain `mongodb://` URI from `MONGODB_HOST/PORT/REPLICA_SET/DB_NAME`. Raw credentials are percent-encoded at runtime (`@` becomes `%40`), and the query string always appends `replicaSet=rs0&directConnection=true&retryWrites=true&w=majority`. Local development runs the Docker replica set without auth; deployed profiles set both username and password (setting only one is rejected).
 
-This conflicts with the locked deployment model:
+This now implements the locked deployment model rather than conflicting with it:
 
 ```text
-Local: Docker Desktop → MongoDB 8.3 single-node replica set
-Production: private Docker network → MongoDB 8.3 single-node replica set
+Local: Docker Desktop → MongoDB 8.3 single-node replica set (rs0)
+Production: private Docker network → MongoDB 8.3 single-node replica set (rs0)
 ```
 
-Required reconciliation includes replica-set URI/config, authentication and secret handling, connection pool/timeouts, private networking, readiness, resource caps, test profile, and no hosted-cluster assumptions.
+The `mongodb+srv`/hosted-cluster assumption has been removed. Remaining reconciliation is deploy-time only: authenticated credential/secret injection, connection pool/timeout tuning, private networking, a readiness split, resource caps, and a transaction-capable test profile.
+
+### Local replica-set lifecycle
+
+The same Docker profile is used locally and in production for parity. From the repository root:
+
+| Command             | Effect                                                           |
+| ------------------- | ---------------------------------------------------------------- |
+| `pnpm mongo:up`     | Start `rs0` and wait until healthy (`rs.initiate` is idempotent) |
+| `pnpm mongo:status` | Compose state plus replica-set status                            |
+| `pnpm mongo:down`   | Stop the container, keep the data volume                         |
+| `pnpm mongo:wipe`   | Stop and delete the data volume (destructive)                    |
+
+Definition in `docker/mongo/docker-compose.yml`. The canonical host port is `27017`; a per-machine `MONGO_HOST_PORT` override (gitignored `docker/mongo/.env`) moves only the Mac-side doorway, so the container port, `rs0` name, and URI shape stay identical. The host connection string is `mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directConnection=true`.
 
 ## Seed tooling
 
@@ -100,9 +118,8 @@ The test connects, seeds, reads taxonomy, verifies a base variation, and filters
 
 Limitations:
 
-- normal runs skip the suite;
-- it references the superseded hosted test model in comments/env guidance;
-- it does not start the required local replica set;
+- normal runs skip the suite (it requires `RUN_DB_IT=1` and Mongo configuration);
+- the suite does not start the replica set itself — bring it up first with `pnpm mongo:up`;
 - it does not exercise indexes/uniqueness broadly;
 - it does not prove transactions or rollback;
 - it does not cover every repository/mapper.

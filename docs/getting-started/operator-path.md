@@ -3,7 +3,7 @@ title: Operator Path
 description: Onboarding route for deployment and runtime operations.
 status: planned
 audience: [operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - project-context/angular-context/execution-roadmap.md
     - project-context/angular-context/mcp-automation-setup.md

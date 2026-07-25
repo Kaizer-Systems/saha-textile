@@ -3,19 +3,32 @@ title: Request Lifecycle and Boundary Tracing
 description: How a request enters the API, crosses application and domain boundaries, reaches an adapter, and returns safely.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
+wide: true
+search_keywords: 'flight simulator photon post orders idempotency transaction ghost stages trace'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/app.module.ts
     - apps/api/src
+    - apps/api/src/orders/orders.controller.ts
     - packages/core-domain/src
+    - packages/core-domain/src/pricing
     - packages/adapters-db-mongo/src
+    - apps/api/src/orders/orders.service.ts
+    - packages/adapters-db-mongo/src/repositories/order.repository.ts
+    - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
+    - docs/_data/portal-manifest.json
+    - docs/_data/instruments/request-flight.json
     - project-context/angular-context/codex-api-app-build-instructional-prompt.md
 ---
+
+import { FlightSimulator } from '@site/src/components/FlightSimulator';
 
 # Request lifecycle and boundary tracing
 
 A request is not “handled by the controller.” The controller is one checkpoint in a longer chain. A safe backend makes each checkpoint visible, testable, and replaceable.
+
+<FlightSimulator />
 
 ## Current request path
 

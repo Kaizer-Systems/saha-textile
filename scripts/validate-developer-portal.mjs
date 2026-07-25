@@ -18,6 +18,7 @@ const {
 
 const allowedStatuses = new Set(['implemented', 'scaffolded', 'planned', 'deferred', 'deprecated']);
 const blockedTerms = [['fast', 'kart'].join('')];
+const engineeringLiveContextPrefix = 'docs/engineering-live-context/';
 const scannedExtensions = new Set(['.css', '.js', '.jsx', '.json', '.md', '.mdx', '.ts', '.tsx']);
 const today = new Date().toISOString().slice(0, 10);
 
@@ -161,10 +162,12 @@ try {
 for (const filePath of [...documentationFiles, ...portalFiles]) {
 	const content = await readFile(filePath, 'utf8');
 	const normalizedContent = content.toLocaleLowerCase('en');
+	const repositoryPath = relativePath(filePath);
+	const isCanonicalLiveContext = repositoryPath.startsWith(engineeringLiveContextPrefix);
 
 	for (const blockedTerm of blockedTerms) {
-		if (normalizedContent.includes(blockedTerm)) {
-			failures.push(`${relativePath(filePath)} contains a forbidden vendor name.`);
+		if (normalizedContent.includes(blockedTerm) && !isCanonicalLiveContext) {
+			failures.push(`${repositoryPath} contains a forbidden vendor name.`);
 		}
 	}
 }
@@ -178,15 +181,31 @@ for (const page of pages) {
 		continue;
 	}
 
-	if (typeof frontMatter.status !== 'string' || !allowedStatuses.has(frontMatter.status)) {
-		failures.push(`${displayPath} must declare one supported status.`);
+	const isCanonicalLiveContext = displayPath.startsWith(engineeringLiveContextPrefix);
+	const isCanonical = frontMatter.document_role === 'canonical';
+	if (isCanonicalLiveContext !== isCanonical) {
+		failures.push(
+			`${displayPath} must declare document_role: canonical exactly when it is inside ${engineeringLiveContextPrefix}.`,
+		);
 	}
 	if (!Array.isArray(frontMatter.audience) || frontMatter.audience.length === 0) {
 		failures.push(`${displayPath} must declare a non-empty audience list.`);
 	}
-	if (!Array.isArray(frontMatter.source_of_truth) || frontMatter.source_of_truth.length === 0) {
+
+	if (isCanonical) {
+		if (typeof frontMatter.status !== 'undefined') {
+			failures.push(`${displayPath} is canonical and must not declare a derived-page lifecycle status.`);
+		}
+		if (typeof frontMatter.source_of_truth !== 'undefined') {
+			failures.push(`${displayPath} is canonical and must not cite itself through source_of_truth.`);
+		}
+	} else if (typeof frontMatter.status !== 'string' || !allowedStatuses.has(frontMatter.status)) {
+		failures.push(`${displayPath} must declare one supported status.`);
+	}
+
+	if (!isCanonical && (!Array.isArray(frontMatter.source_of_truth) || frontMatter.source_of_truth.length === 0)) {
 		failures.push(`${displayPath} must declare a non-empty source_of_truth list.`);
-	} else {
+	} else if (!isCanonical) {
 		const staleSources = [];
 		for (const source of frontMatter.source_of_truth) {
 			if (typeof source !== 'string' || !existsSync(path.join(repositoryRoot, source))) {

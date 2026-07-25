@@ -1,12 +1,21 @@
+---
+title: "Authentication Architecture, Data Model, and Request Plan"
+description: "Canonical target authentication boundary, persistence model, and secure request plan."
+audience: [backend, security, agent]
+document_role: canonical
+last_verified: 2026-07-25
+search_keywords: "authentication authorization cookies csrf oauth otp pin sessions database"
+---
+
 # Authentication Architecture, Data Model, and Request Plan
 
 **Status:** Target architecture and implementation contract
 **Last reconciled:** 2026-07-25
-**Authority:** `owner-decisions-log.md`; unresolved choices: `pending-decisions.md`
+**Authority:** `owner-decisions-log.mdx`; unresolved choices: `pending-decisions.mdx`
 
 This document defines the target authentication boundary. It does not claim that
 every capability described here is already implemented. Current delivery status
-lives in `project-progress.md`; actual request/response shapes live in
+lives in `project-progress.mdx`; actual request/response shapes live in
 `packages/contracts` and generated OpenAPI.
 
 ## 1. Outcomes
@@ -323,7 +332,7 @@ Every mutation:
 
 ## 10. Configuration
 
-The canonical variable inventory is `environment-variables.md`. Auth-relevant
+The canonical variable inventory is `environment-variables.mdx`. Auth-relevant
 groups include:
 
 - access/refresh/CSRF secrets and TTLs;
@@ -362,10 +371,10 @@ values may be supplied through Angular runtime config.
 - Provider failure does not bypass local authorization or session policy.
 - Admin PIN lockout and soft resume preserve the intended UX without weakening
   session invalidation.
-- Current verification status is recorded in `project-progress.md`.
+- Current verification status is recorded in `project-progress.mdx`.
 
 ## 13. Open decisions
 
 There is no question register in this architecture file. Any unresolved
-auth-adjacent owner choice belongs in `pending-decisions.md` under a stable
+auth-adjacent owner choice belongs in `pending-decisions.mdx` under a stable
 `DEC-*` identifier.

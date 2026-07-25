@@ -16,10 +16,10 @@ source_of_truth:
     - packages/adapters-db-mongo/src
     - apps/api/src/orders/orders.service.ts
     - packages/adapters-db-mongo/src/repositories/order.repository.ts
-    - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
     - docs/_data/portal-manifest.json
     - docs/_data/instruments/request-flight.json
-    - project-context/angular-context/saha-textile-technical-knowledgebase.md
+    - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
 ---
 
 import { FlightSimulator } from '@site/src/components/FlightSimulator';

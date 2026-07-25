@@ -19,6 +19,7 @@ cd "$ROOT_DIR"
 violations="$(
 	grep -rniI 'saha' . \
 		--exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist \
+		--exclude-dir=build --exclude-dir=.docusaurus \
 		--exclude-dir=.turbo --exclude-dir=.angular --exclude-dir=.nx \
 		--exclude-dir=vendor --exclude-dir=nextjs-context \
 		--exclude=check-naming.sh \

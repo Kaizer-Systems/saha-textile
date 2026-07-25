@@ -1,42 +1,51 @@
+---
+title: "API and Database Development Roadmap"
+description: "Canonical A-J backend delivery plan, decision gates, and verification contract."
+audience: [backend, operator, agent]
+document_role: canonical
+last_verified: 2026-07-25
+search_keywords: "api database roadmap backend chunks gates verification deployment"
+---
+
 # API + DB Development Roadmap
 
 **Status:** Detailed A–J backend delivery plan.
 
-**Current progress:** `project-progress.md`
+**Current progress:** `project-progress.mdx`
 
-**Open owner choices:** `pending-decisions.md`
+**Open owner choices:** `pending-decisions.mdx`
 
 **Last reconciled:** 2026-07-25
 
 ## Authority order
 
 1. `AGENTS.md`
-2. `owner-decisions-log.md`
+2. `owner-decisions-log.mdx`
 3. tested code/runtime and current contracts/models
 4. this roadmap
 5. auth/catalog/technical references
-6. `pending-decisions.md` for unanswered choices only
+6. `pending-decisions.mdx` for unanswered choices only
 
 ## Required reading
 
 ### Every API/DB session
 
 1. `AGENTS.md`
-2. `project-context/angular-context/project-progress.md`
+2. `docs/engineering-live-context/project-progress.mdx`
 3. this roadmap
-4. `project-context/angular-context/owner-decisions-log.md`
-5. `project-context/angular-context/api-db-local-environment-bootstrap.md`
-6. `project-context/angular-context/environment-variables.md`
+4. `docs/engineering-live-context/owner-decisions-log.mdx`
+5. `docs/engineering-live-context/api-db-local-environment-bootstrap.mdx`
+6. `docs/engineering-live-context/environment-variables.mdx`
 
 ### Add by domain
 
 | Domain | Reference |
 | --- | --- |
-| Auth, cookies, OTP, PIN, privacy | `codex-auth-architecture-db-and-request-plan.md` |
-| Catalog, collections, search, content | `codex-catalog-db-architecture-assessment-and-plan.md` |
-| Whole-system invariants | `saha-textile-technical-knowledgebase.md` |
-| Whole-product sequencing | `execution-roadmap.md` |
-| Unanswered policy | `pending-decisions.md` |
+| Auth, cookies, OTP, PIN, privacy | `codex-auth-architecture-db-and-request-plan.mdx` |
+| Catalog, collections, search, content | `codex-catalog-db-architecture-assessment-and-plan.mdx` |
+| Whole-system invariants | `saha-textile-technical-knowledgebase.mdx` |
+| Whole-product sequencing | `execution-roadmap.mdx` |
+| Unanswered policy | `pending-decisions.mdx` |
 
 ## Markers
 
@@ -77,7 +86,7 @@ Other open decisions block only their own final policy engine. Reversible schema
 ### Chunk A — Delta, dependency pins, and evidence baseline
 
 **Marker:** SAFE NOW
-**Progress authority:** `project-progress.md`
+**Progress authority:** `project-progress.mdx`
 
 #### Deliver
 
@@ -125,7 +134,7 @@ Other open decisions block only their own final policy engine. Reversible schema
 - security headers, cookies, CSRF foundation, rate-limit foundations.
 - `/health/live` and `/health/ready`.
 - local/CI MongoDB replica-set transaction profile.
-- config validation aligned with `environment-variables.md`.
+- config validation aligned with `environment-variables.mdx`.
 
 #### Definition of Done
 
@@ -294,6 +303,14 @@ Other open decisions block only their own final policy engine. Reversible schema
 - Backup restore is drilled.
 - Staging E2E covers auth, checkout, webhook, notification, and rollback paths.
 - Human approval precedes production promotion.
+
+#### Current developer-portal status — 2026-07-26
+
+- **DONE:** canonical Engineering Live Context, dynamic LIVE/search indexing, shared theme, one Angular Storybook, scoped TypeDoc, and the verified persistent composite local runner.
+- **BLOCKED — Scalar/Test Request:** OpenAPI completeness, deterministic CI generation, security/error/idempotency semantics, drift tests, and an approved non-production target are not complete.
+- **BLOCKED — database catalogue:** persistence schemas, nested validators/indexes, mappings, migrations, and deterministic sanitized examples are not stable enough for authoritative generation.
+- **BLOCKED — deployment:** `DEC-PORTAL-PRIVATE-ACCESS` is unanswered; whole-host default-deny identity and origin protection must be implemented and probed before promotion.
+- **PARTIAL — follow-up debt:** repository-level pnpm/peer/formatting issues and Storybook bundle/shell warnings remain tracked separately from the completed local portal foundation.
 
 ## Owner lock order
 

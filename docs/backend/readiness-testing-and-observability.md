@@ -14,8 +14,8 @@ source_of_truth:
     - packages/adapters-db-mongo/test
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh
-    - project-context/angular-context/execution-roadmap.md
-    - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
+    - docs/engineering-live-context/execution-roadmap.mdx
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
 ---
 
 # Readiness, observability, and verification

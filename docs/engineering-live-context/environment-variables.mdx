@@ -1,3 +1,12 @@
+---
+title: "Environment Variables Catalogue"
+description: "Canonical environment-variable names, ownership, phases, and secret-handling boundaries."
+audience: [backend, operator, security, agent]
+document_role: canonical
+last_verified: 2026-07-25
+search_keywords: "environment variables secrets local test production deployment configuration"
+---
+
 # Environment Variables Catalogue — Saha Textile
 
 Master reference of every environment variable across the three phases. **No secret values appear here** — only names, purpose, and where each is set. This doubles as the handover env catalogue (KB §10).
@@ -53,7 +62,7 @@ MongoDB is self-hosted Docker MongoDB 8.3 with a single-node replica set (`rs0`)
 | `ACCESS_COOKIE_NAME` / `REFRESH_COOKIE_NAME` / `CSRF_COOKIE_NAME`           | `st_access` / `st_refresh` / `st_csrf` | same       |           same            | Compact `st_*` cookie names (owner lock 2026-07-24)                          |
 | `CSRF_HEADER_NAME` / `CSRF_SECRET`                                          | `x-csrf-token` / later |          yes           |            yes            | Double-submit CSRF (Chunk D); secret via `openssl rand -hex 48`              |
 | `NOTIFICATION_PROVIDER`                                                     |      `console`      |          `msg91`          |          `msg91`          | **MSG91 primary** behind `NotificationPort` (SMS/WhatsApp/Email incl. OTP); `console` logs only |
-| `MSG91_AUTH_KEY` / `MSG91_SENDER_ID` / `MSG91_EMAIL_FROM` / `MSG91_EMAIL_DOMAIN` / `MSG91_WHATSAPP_NUMBER` | later | yes | yes | Sender ID = DLT-approved 6-char header (e.g. `SAHATX` — regulator-capped abbreviation) <!-- naming-law:allow --> |
+| `MSG91_AUTH_KEY` / `MSG91_SENDER_ID` / `MSG91_EMAIL_FROM` / `MSG91_EMAIL_DOMAIN` / `MSG91_WHATSAPP_NUMBER` | later | yes | yes | Sender ID = DLT-approved 6-char header (e.g. `SAHATX` — regulator-capped abbreviation) {/* naming-law:allow */} |
 | `EMAIL_FALLBACK_PROVIDER`                                                   |     `disabled`      |         optional          |         optional          | `disabled`\|`resend`\|`ses`\|`smtp` — optional email **fallback only**, never primary |
 | `RESEND_API_KEY` / `SES_*` / `SMTP_*`                                       |         no          |         optional          |         optional          | Only when the matching fallback is enabled                                   |
 | `OTP_TTL_SECONDS` / `OTP_MAX_ATTEMPTS`                                      |    `600` / `5`      |           same            |           same            | Channel-direct OTP via `NotificationPort`                                    |

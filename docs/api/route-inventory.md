@@ -15,7 +15,7 @@ source_of_truth:
     - apps/api/src/orders
     - apps/api/src/currency
     - apps/api/src/promotions
-    - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
 ---
 
 # Current API route inventory

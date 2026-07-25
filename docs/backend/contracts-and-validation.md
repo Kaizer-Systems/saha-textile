@@ -11,7 +11,7 @@ source_of_truth:
     - apps/api/src/common/zod-validation.pipe.ts
     - apps/api/src
     - packages/adapters-db-mongo/src/mappers.ts
-    - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
 ---
 
 # Contracts, validation, and serialization

@@ -8,8 +8,8 @@ source_of_truth:
     - packages/adapters-db-mongo/src
     - packages/contracts/src
     - docker/mongo/docker-compose.yml
-    - project-context/angular-context/codex-catalog-db-architecture-assessment-and-plan.md
-    - project-context/angular-context/codex-auth-architecture-db-and-request-plan.md
+    - docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx
+    - docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx
     - docs/_data/portal-manifest.json
     - docs/_data/instruments/schema-nebula.json
 ---

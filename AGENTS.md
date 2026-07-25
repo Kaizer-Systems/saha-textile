@@ -43,8 +43,8 @@ packages/    core-domain · contracts · config · ui ·
              adapters-db-mongo · adapters-storage-spaces · adapters-payments ·
              adapters-shipping · adapters-fx · adapters-search · adapters-auth
 vendor/      Fastkart (Angular storefront + admin reference — UI/behaviour only, never forked)
-docs/        Markdown source rendered by the developer portal (apps/developer-portal → ../../docs)
-project-context/   angular-context/ (live KB + roadmap) · nextjs-context/ (superseded — ignore)
+docs/        developer-portal content, including engineering-live-context/ (canonical live KB)
+project-context/   nextjs-context/ (superseded — ignore)
 .cursor/  .vscode/  .github/workflows/
 ```
 
@@ -80,30 +80,31 @@ project-context/   angular-context/ (live KB + roadmap) · nextjs-context/ (supe
 
 - See `.cursor/rules/mcp-tools.mdc`. Three phases — **LOCAL / TEST-E2E / PROD-E2E** — switched by uncommenting one block in `.env.mcp`. Respect the **~40 active-tool budget** and the on-demand activation protocol. **Production MongoDB is read-only.**
 
-## 9. Knowledge base — READ BEFORE BUILDING (in `project-context/angular-context/`)
+## 9. Knowledge base — READ BEFORE BUILDING (in `docs/engineering-live-context/`)
 
-The live KB is `project-context/angular-context/`. `project-context/nextjs-context/` is the superseded pre-migration KB — **ignore it.**
+The live KB is `docs/engineering-live-context/`. `project-context/nextjs-context/` is the superseded pre-migration KB — **ignore it.**
 
-- **`owner-decisions-log.md`** — authoritative running record of locked owner decisions. Check here first; it overrides older docs on conflict.
-- **`project-progress.md`** — **cross-tool living checkpoint** (Cursor / Claude Code / Codex / parallel agents). Read before work; append a dated status bullet after every small task. Maintained until end of project — see that file’s header for format rules.
-- **`api-db-development-roadmap-with-pending-decision-gates.md`** — API+DB chunk plan (SAFE NOW / SEAM NOW / BLOCKED), env/secrets sync, often-missed deploy concerns, detailed deploy-script requirements, and the Claude/Codex **context pack** file list.
-- **`api-db-local-environment-bootstrap.md`** — local Mongo/tooling handoff before API+DB chunks.
-- **`environment-variables.md`** — env catalogue (names/purpose only; never real secrets).
-- **`saha-textile-technical-knowledgebase.md`** — master: architecture, data model, taxonomy, the variable-product / "No Stitching → Design 1-3 + Color" pattern, currency/PayPal math, payments, shipping, auth, infra.
-- **`execution-roadmap.md`** — the ordered build plan. **Follow it.**
-- **`codex-catalog-db-architecture-assessment-and-plan.md`** — the target catalog/category/product/search/commerce/reporting DB model (placements, first-class variants, semantic option roles, bundles, badges, insight sets, SEO routes).
-- **`codex-auth-architecture-db-and-request-plan.md`** — cookie-session auth, OAuth, OTP, and auth collections.
-- **`pending-decisions.md`** — the sole open owner-question inbox; implementation gates reference stable `DEC-*` ids.
-- **`environment-variables.md`** + **`api-db-local-environment-bootstrap.md`** — configuration catalogue and local handoff.
+- **`owner-decisions-log.mdx`** — authoritative running record of locked owner decisions. Check here first; it overrides older docs on conflict.
+- **`project-progress.mdx`** — **cross-tool living checkpoint** (Cursor / Claude Code / Codex / parallel agents). Read before work; append a dated status bullet after every small task. Maintained until end of project — see that file’s header for format rules.
+- **`api-db-development-roadmap-with-pending-decision-gates.mdx`** — API+DB chunk plan (SAFE NOW / SEAM NOW / BLOCKED), env/secrets sync, often-missed deploy concerns, detailed deploy-script requirements, and the Claude/Codex **context pack** file list.
+- **`api-db-local-environment-bootstrap.mdx`** — local Mongo/tooling handoff before API+DB chunks.
+- **`environment-variables.mdx`** — env catalogue (names/purpose only; never real secrets).
+- **`saha-textile-technical-knowledgebase.mdx`** — master: architecture, data model, taxonomy, the variable-product / "No Stitching → Design 1-3 + Color" pattern, currency/PayPal math, payments, shipping, auth, infra.
+- **`execution-roadmap.mdx`** — the ordered build plan. **Follow it.**
+- **`codex-catalog-db-architecture-assessment-and-plan.mdx`** — the target catalog/category/product/search/commerce/reporting DB model (placements, first-class variants, semantic option roles, bundles, badges, insight sets, SEO routes).
+- **`codex-auth-architecture-db-and-request-plan.mdx`** — cookie-session auth, OAuth, OTP, and auth collections.
+- **`pending-decisions.mdx`** — the sole open owner-question inbox; implementation gates reference stable `DEC-*` ids.
+- **`environment-variables.mdx`** + **`api-db-local-environment-bootstrap.mdx`** — configuration catalogue and local handoff.
 - **`.cursor/rules/mcp-tools.mdc`** — MCP environment/tool-budget setup and switching.
 
 ## 10. Operating rules for you (the agent)
 
-- Before each phase/task: **read the relevant KB section, state your plan, and confirm any destructive/irreversible action.** Also read **`project-progress.md`** for continuity across tools.
-- After each small completed task: **append** a dated `[DONE|PARTIAL|BLOCKED|…]` bullet to the matching section of `project-progress.md` (never store secrets there).
+- Before each phase/task: **read the relevant KB section, state your plan, and confirm any destructive/irreversible action.** Also read **`project-progress.mdx`** for continuity across tools.
+- After each small completed task: **append** a dated `[DONE|PARTIAL|BLOCKED|…]` bullet to the matching section of `project-progress.mdx` (never store secrets there).
 - Keep every change inside its layer. If a task seems to require crossing layer boundaries, surface it instead of doing it quietly.
 - Prefer editing over rewriting; keep diffs small and reviewable; one PR per coherent unit.
 - When a requirement is ambiguous — especially data model, pricing, auth, or security — **ask, don't assume.**
 - Build tests and Docusaurus docs **as you go**, not after.
+- **Developer-portal release gate:** do not deploy the portal until whole-host private access, origin protection, and unauthorized asset/origin tests are implemented and verified. `noindex` is not access control.
 - Never invent credentials, endpoints, or data. Never weaken a security control to make something pass.
 - Ignore `project-context/nextjs-context/` (superseded).

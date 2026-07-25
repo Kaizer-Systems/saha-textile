@@ -14,8 +14,8 @@ source_of_truth:
     - packages/contracts/src/notification.ts
     - packages/contracts/src/consent.ts
     - packages/contracts/src/audit.ts
-    - project-context/angular-context/codex-catalog-db-architecture-assessment-and-plan.md
-    - project-context/angular-context/owner-decisions-log.md
+    - docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx
+    - docs/engineering-live-context/owner-decisions-log.mdx
 ---
 
 # Returns, refunds, and notifications

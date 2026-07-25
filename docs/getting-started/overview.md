@@ -5,8 +5,8 @@ status: implemented
 audience: [beginner, frontend, backend, operator]
 last_verified: '2026-07-25'
 source_of_truth:
-    - project-context/angular-context/owner-decisions-log.md
-    - project-context/angular-context/execution-roadmap.md
+    - docs/engineering-live-context/owner-decisions-log.mdx
+    - docs/engineering-live-context/execution-roadmap.mdx
 ---
 
 # Developer portal overview
@@ -15,7 +15,7 @@ This portal is the private operating manual for the Saha Textile platform. It sh
 
 ## What belongs here now
 
-- Stable decisions from `project-context/angular-context`.
+- Stable decisions from `docs/engineering-live-context`.
 - Monorepo maps, phase boundaries, and dependency rules.
 - Business flows at the level already locked by the knowledge base.
 - Placeholders for generated API, database, and UI documentation.

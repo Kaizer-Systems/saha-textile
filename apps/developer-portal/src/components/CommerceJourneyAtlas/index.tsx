@@ -41,7 +41,7 @@ const journeys: Journey[] = [
 			'apps/storefront/src/app/pages/en/collections',
 			'apps/storefront/src/app/pages/en/product/[slug].page.ts',
 			'apps/api/src/catalog',
-			'project-context/angular-context/codex-catalog-db-architecture-assessment-and-plan.md',
+			'docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx',
 		],
 	},
 	{
@@ -66,7 +66,7 @@ const journeys: Journey[] = [
 		sources: [
 			'apps/storefront/src/app/shared/ui/product-config',
 			'packages/contracts/src/product.ts',
-			'project-context/angular-context/owner-decisions-log.md',
+			'docs/engineering-live-context/owner-decisions-log.mdx',
 		],
 	},
 	{
@@ -91,7 +91,7 @@ const journeys: Journey[] = [
 			'apps/storefront/src/app/core/state/cart',
 			'apps/api/src/cart',
 			'packages/contracts/src/cart.ts',
-			'project-context/angular-context/owner-decisions-log.md',
+			'docs/engineering-live-context/owner-decisions-log.mdx',
 		],
 	},
 	{
@@ -115,8 +115,8 @@ const journeys: Journey[] = [
 		sources: [
 			'apps/storefront/src/app/pages/auth',
 			'apps/api/src/auth',
-			'project-context/angular-context/codex-auth-architecture-db-and-request-plan.md',
-			'project-context/angular-context/owner-decisions-log.md',
+			'docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx',
+			'docs/engineering-live-context/owner-decisions-log.mdx',
 		],
 	},
 	{
@@ -167,7 +167,7 @@ const journeys: Journey[] = [
 			'apps/api/src/orders',
 			'packages/contracts/src/order.ts',
 			'packages/core-domain/src/ports/payment-gateway.port.ts',
-			'project-context/angular-context/saha-textile-technical-knowledgebase.md',
+			'docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx',
 		],
 	},
 	{
@@ -192,7 +192,7 @@ const journeys: Journey[] = [
 			'apps/admin/src/app/features/order',
 			'apps/admin/src/app/features/refund',
 			'packages/core-domain/src/ports/shipping.port.ts',
-			'project-context/angular-context/codex-catalog-db-architecture-assessment-and-plan.md',
+			'docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx',
 		],
 	},
 	{
@@ -216,7 +216,7 @@ const journeys: Journey[] = [
 			'apps/admin/src/app/core/guards',
 			'apps/admin/src/app/core/state/auth.store.ts',
 			'apps/admin/src/app/features',
-			'project-context/angular-context/owner-decisions-log.md',
+			'docs/engineering-live-context/owner-decisions-log.mdx',
 		],
 	},
 	{
@@ -236,7 +236,7 @@ const journeys: Journey[] = [
 			'Threat-model enumeration',
 			'Implement only after owner review',
 		],
-		sources: ['project-context/angular-context/owner-decisions-log.md'],
+		sources: ['docs/engineering-live-context/owner-decisions-log.mdx'],
 	},
 ];
 

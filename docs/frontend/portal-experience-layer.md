@@ -5,8 +5,8 @@ status: implemented
 audience: [frontend]
 last_verified: '2026-07-25'
 source_of_truth:
-    - project-context/angular-context/owner-decisions-log.md
-    - project-context/angular-context/project-progress.md
+    - docs/engineering-live-context/owner-decisions-log.mdx
+    - docs/engineering-live-context/project-progress.mdx
     - docs/frontend/interactive-instruments.md
     - docs/_data/portal-manifest.json
     - docs/_data/instruments/decision-gates.json
@@ -78,7 +78,7 @@ Every file carries a `NEXT-GEN-UI` banner comment — run `grep -rn NEXT-GEN-UI 
 
 ⌘K is **not** a hand-maintained page list. The `portal-search` plugin reads every page through the same shared frontmatter compiler used by validation and publishes the search index to Docusaurus global data, so any new page appears automatically. A page can enrich its own terms with a `search_keywords` frontmatter field.
 
-Wave instruments use a parallel governed path: `docs/_data/portal-manifest.json` + versioned instrument JSON + the machine-readable Portal truth snapshot in `project-progress.md` → `portal-data` build compiler → validated Docusaurus global data → typed `src/data/*.ts` React adapters. Source paths, routes, catalog membership, chunk/gate state and page verification dates are checked before the site builds. Wide instrument pages opt in with `wide: true`.
+Wave instruments use a parallel governed path: `docs/_data/portal-manifest.json` + versioned instrument JSON + the machine-readable Portal truth snapshot in `project-progress.mdx` → `portal-data` build compiler → validated Docusaurus global data → typed `src/data/*.ts` React adapters. Source paths, routes, catalog membership, chunk/gate state and page verification dates are checked before the site builds. Wide instrument pages opt in with `wide: true`.
 
 First Flight extends that contract with a live Launch Bay and route-spanning HUD: its four persona paths live in governed JSON, while the compiler proves that every route and stable heading target still exists and injects the destination page title, lifecycle status, and source path. The persona console owns only the current selection. The global guide owns navigation, target focus, and the URL-carried active step—not onboarding facts or completion history.
 

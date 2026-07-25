@@ -1,10 +1,19 @@
+---
+title: "Execution Roadmap"
+description: "Canonical whole-program delivery order and definition-of-done contract."
+audience: [engineering, operator, agent]
+document_role: canonical
+last_verified: 2026-07-25
+search_keywords: "execution roadmap delivery phases definition of done verification"
+---
+
 # Execution Roadmap — Saha Textile
 
 **Status:** Whole-program delivery order.
 
-**Current status authority:** `project-progress.md`
+**Current status authority:** `project-progress.mdx`
 
-**Detailed API/DB plan:** `api-db-development-roadmap-with-pending-decision-gates.md`
+**Detailed API/DB plan:** `api-db-development-roadmap-with-pending-decision-gates.mdx`
 
 This roadmap describes sequencing and Definition of Done. It does not duplicate dated implementation status or owner questionnaires.
 
@@ -12,22 +21,22 @@ This roadmap describes sequencing and Definition of Done. It does not duplicate 
 
 For every coherent unit:
 
-1. Read `AGENTS.md`, `project-progress.md`, the relevant architecture reference, and affected open-decision gates.
+1. Read `AGENTS.md`, `project-progress.mdx`, the relevant architecture reference, and affected open-decision gates.
 2. Build inside the correct hexagonal layer.
 3. Add/update tests and developer-portal documentation with the code.
 4. Run the unit’s verification gates.
-5. Record a dated status bullet in `project-progress.md`.
+5. Record a dated status bullet in `project-progress.mdx`.
 6. Open a focused PR; never push directly to a protected branch.
 
 ## Authority order
 
 1. `AGENTS.md`
-2. `owner-decisions-log.md`
+2. `owner-decisions-log.mdx`
 3. tested code/runtime for current behavior
 4. contracts/OpenAPI and adapter persistence definitions
 5. this roadmap plus the API/DB roadmap
 6. detailed auth/catalog/technical references
-7. `pending-decisions.md` for unanswered choices only
+7. `pending-decisions.mdx` for unanswered choices only
 
 ## Milestone 0 — Repository and local foundation
 
@@ -152,7 +161,7 @@ For every coherent unit:
 - Guest checkout remains unavailable at launch.
 - Cart merge reports invalid lines rather than dropping them.
 - Place-order transaction is idempotent and rollback-tested.
-- Final policy engines honor `pending-decisions.md`.
+- Final policy engines honor `pending-decisions.mdx`.
 - Customer-facing numbering waits for `DEC-NUMBERING`.
 
 ## Milestone 7 — Payments, shipping, and notifications
@@ -213,16 +222,26 @@ For every coherent unit:
 
 ### Scope
 
-- derived, evidence-backed portal pages.
+- canonical Engineering Live Context plus derived, evidence-backed portal pages.
 - complete OpenAPI and protected Scalar reference.
 - deterministic database catalogue when schemas stabilize.
 - deployment scripts, backups/restores, observability, alerts, incident/runbook coverage.
 - production E2E and rollback.
 
+### Current checkpoint — 2026-07-26
+
+- **DONE:** canonical Engineering Live Context, build-indexed LIVE/search surfaces, one Angular Storybook, scoped TypeDoc, shared theme contract, and the atomic persistent local composite runner.
+- **BLOCKED:** Scalar and mandatory Test Request wait for deterministic complete OpenAPI, security/interaction semantics, drift checks, and an approved development/staging request target.
+- **BLOCKED:** the generated MongoDB field catalogue waits for stable models, nested validators/indexes, mappings, migrations, and sanitized deterministic examples.
+- **BLOCKED:** any portal deployment waits for `DEC-PORTAL-PRIVATE-ACCESS` and verified whole-host default-deny protection, including static assets and direct-origin bypass.
+- **PARTIAL:** Storybook bundle-size/unused-shell warnings and repository-level pnpm/peer/formatting debt remain non-release portal follow-ups; they are not grounds to mislabel the gated surfaces as implemented.
+
 ### Definition of Done
 
 - Portal validator, typecheck, build, links, provenance, and route checks pass.
 - Portal current/target claims match code and owner decisions.
+- The whole developer-portal host is behind verified default-deny private access; HTML, assets, search data, Storybook, Scalar, TypeDoc, and database-catalogue routes are tested as unauthorized.
+- Direct-origin bypass is closed and scoped service-token access is verified before any deployment is promoted.
 - Deployment uses commit-SHA images and readiness-gated promotion.
 - Backup restore is drilled.
 - Security, payment, webhook, checkout, and rollback E2E pass in approved environments.
@@ -230,7 +249,7 @@ For every coherent unit:
 
 ## Open-decision gates
 
-Open choices live only in `pending-decisions.md`. Roadmaps and code may build reversible seams, but final policy behavior must wait for the relevant decision ID.
+Open choices live only in `pending-decisions.mdx`. Roadmaps and code may build reversible seams, but final policy behavior must wait for the relevant decision ID.
 
 Highest-leverage gates:
 

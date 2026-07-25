@@ -1,0 +1,77 @@
+/* ============================================================================
+ * NEXT-GEN-UI · Shared developer-portal theme contract
+ * ----------------------------------------------------------------------------
+ * WHAT: portable typography, color, radius, border, focus, and canvas tokens.
+ * WHY: Docusaurus, Storybook previews, Scalar, TypeDoc, and future generated
+ * surfaces need one visual source of truth without importing Docusaurus layout
+ * selectors into child tools.
+ * HOW: Docusaurus supplies `data-theme`; child tools set either `data-theme` or
+ * `data-portal-theme` on their preview root and import this file directly.
+ * TUNING: change shared visual primitives here. Tool-specific layout stays in
+ * that tool's adapter stylesheet.
+ * ========================================================================= */
+
+:root,
+[data-portal-theme='light'] {
+	--portal-font-sans:
+		'Inter Variable', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--portal-font-mono:
+		'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	--portal-radius: 3px;
+	--portal-radius-lg: 6px;
+	--portal-radius-xl: 8px;
+	--portal-border-width: 0.5px;
+	--portal-canvas: #ffffff;
+	--portal-surface: #f6f5f4;
+	--portal-surface-raised: #f1ede9;
+	--portal-ink: #1b1b1b;
+	--portal-muted: #757575;
+	--portal-subtle: #8e8e8e;
+	--portal-border: #e7e7e7;
+	--portal-accent: #0082d0;
+	--portal-accent-soft: rgba(0, 130, 208, 0.1);
+	--portal-success: #069061;
+	--portal-warning: #d97805;
+	--portal-focus: 0 0 0 2px var(--portal-canvas), 0 0 0 4px var(--portal-accent);
+	--portal-scrollbar: rgba(27, 27, 27, 0.18);
+	color-scheme: light;
+}
+
+[data-theme='dark'],
+[data-portal-theme='dark'] {
+	--portal-canvas: #0f0f0f;
+	--portal-surface: #1a1a1a;
+	--portal-surface-raised: #272727;
+	--portal-ink: #e7e7e7;
+	--portal-muted: #a4a4a4;
+	--portal-subtle: #797979;
+	--portal-border: #2d2d2d;
+	--portal-accent: #3ea6ff;
+	--portal-accent-soft: rgba(62, 166, 255, 0.12);
+	--portal-success: #22b982;
+	--portal-warning: #ff9c32;
+	--portal-scrollbar: rgba(255, 255, 255, 0.18);
+	color-scheme: dark;
+}
+
+.portalThemeCanvas {
+	min-height: 100%;
+	background: var(--portal-canvas);
+	color: var(--portal-ink);
+	font-family: var(--portal-font-sans);
+	font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+	font-optical-sizing: auto;
+	-webkit-font-smoothing: antialiased;
+}
+
+.portalThemeCanvas *,
+.portalThemeCanvas *::before,
+.portalThemeCanvas *::after {
+	box-sizing: border-box;
+}
+
+.portalThemeCanvas :where(a, button, input, select, summary, textarea):focus-visible {
+	border-radius: var(--portal-radius);
+	box-shadow: var(--portal-focus);
+	outline: none;
+}

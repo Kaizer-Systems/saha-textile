@@ -7,7 +7,7 @@ last_verified: '2026-07-25'
 source_of_truth:
     - apps/storefront/src/app
     - apps/admin/src/app
-    - project-context/angular-context/saha-textile-technical-knowledgebase.md
+    - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
 ---
 
 # Frontend path

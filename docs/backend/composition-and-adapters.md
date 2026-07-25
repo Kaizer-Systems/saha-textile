@@ -11,7 +11,7 @@ source_of_truth:
     - apps/api/src/infra
     - packages/adapters-db-mongo/src
     - packages/core-domain/src/ports
-    - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
 ---
 
 # Composition root and adapters

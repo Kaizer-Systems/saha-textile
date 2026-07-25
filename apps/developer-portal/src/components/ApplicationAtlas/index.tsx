@@ -103,7 +103,7 @@ const atlases: Record<Application, AtlasItem[]> = {
 			status: 'planned',
 			runtime: 'Target: Workbox through the Vite PWA integration',
 			data: 'Caching and update policies are not yet implemented.',
-			sources: ['apps/storefront/vite.config.ts', 'project-context/angular-context/owner-decisions-log.md'],
+			sources: ['apps/storefront/vite.config.ts', 'docs/engineering-live-context/owner-decisions-log.mdx'],
 		},
 	],
 	admin: [

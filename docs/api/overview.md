@@ -7,7 +7,7 @@ last_verified: '2026-07-25'
 source_of_truth:
     - apps/api/src
     - packages/contracts/src
-    - project-context/angular-context/owner-decisions-log.md
+    - docs/engineering-live-context/owner-decisions-log.mdx
 ---
 
 # API overview

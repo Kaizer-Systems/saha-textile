@@ -1,7 +1,7 @@
 # API + DB local environment bootstrap (Cursor / Claude Code handoff)
 
-**Purpose.** What must be running on the machine before executing `api-db-development-roadmap-with-pending-decision-gates.md`.  
-**Date:** 2026-07-24  
+**Purpose.** What must be running on the machine before executing `api-db-development-roadmap-with-pending-decision-gates.md`.
+**Date:** 2026-07-24
 **Progress continuity:** always read/update `project-progress.md` in the same folder.
 
 ---
@@ -21,11 +21,11 @@
 
 ## 1. What an agent can set up in-repo vs what only you can do
 
-### Agent can (and should, per roadmap §0b–0d)
+### Agent can (when scheduled by the current roadmap)
 
 - Recreate `docker/mongo/docker-compose.yml` + `scripts/mongo-*.sh` + root `pnpm mongo:*` if missing.
 - Align `apps/api/.env.example`, `app-config.ts`, Angular `config.json` loaders, scrub Atlas/Brevo/`blr1`.
-- Write **detailed** deploy/render scripts and GitHub workflows when Infra work is scheduled (roadmap §0d — not minimal stubs).
+- Write detailed deploy/render scripts and GitHub workflows when infrastructure work is scheduled.
 - Update `project-progress.md` after each task.
 
 ### Only the human can
@@ -59,7 +59,7 @@ URI shape: `mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directCo
 | Git | Never | Localhost defaults OK; **prod/staging config.json never committed** |
 | Local DX | Once: `cp apps/api/.env.example apps/api/.env` | Committed localhost `public/config.json` |
 
-Build images **without** secrets. Detailed render/deploy scripts (roadmap §0d) place env + config at deploy time. Full catalogue: `environment-variables.md`.
+Build images **without** secrets. Detailed render/deploy scripts place env + config at deploy time. Full catalogue: `environment-variables.md`.
 
 ---
 
@@ -74,7 +74,9 @@ Minimum `@` / attach list:
 5. This file
 6. `project-context/angular-context/environment-variables.md`
 
-Plus chunk-specific files listed in the roadmap’s **Required reading / context pack** table.
+Plus the domain-specific retained architecture file listed in the roadmap’s
+**Required reading** table. Review relevant `DEC-*` entries in
+`pending-decisions.md` before finalizing gated policy.
 
 ---
 
@@ -85,6 +87,6 @@ Plus chunk-specific files listed in the roadmap’s **Required reading / context
 - `packages/adapters-db-mongo/src/config.ts`
 - `apps/api/.env.example`
 - `.env.mcp.example`
-- `mcp-automation-setup.md`
+- `.cursor/rules/mcp-tools.mdc`
 - `environment-variables.md`
 - `project-progress.md`

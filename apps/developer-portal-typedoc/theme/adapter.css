@@ -1,0 +1,64 @@
+/* TypeDoc-only layout adapter. Shared tokens are prepended at build time. */
+
+html,
+body {
+	background: var(--portal-canvas);
+	color: var(--portal-ink);
+	font-family: var(--portal-font-sans);
+}
+
+body {
+	--color-background: var(--portal-canvas);
+	--color-background-secondary: var(--portal-surface);
+	--color-background-code: var(--portal-surface-raised);
+	--color-accent: var(--portal-accent);
+	--color-active-menu-item: var(--portal-accent-soft);
+	--color-text: var(--portal-ink);
+	--color-text-aside: var(--portal-muted);
+	--color-link: var(--portal-accent);
+	--color-ts-keyword: var(--portal-warning);
+	--color-ts-interface: var(--portal-success);
+}
+
+.container-main {
+	max-width: 1440px;
+}
+
+.site-menu,
+.page-menu,
+.tsd-page-toolbar {
+	background: var(--portal-canvas);
+}
+
+.tsd-page-toolbar {
+	border-bottom: var(--portal-border-width) solid var(--portal-border);
+	box-shadow: none;
+}
+
+.tsd-panel,
+.col-content {
+	border-color: var(--portal-border);
+	background: var(--portal-canvas);
+}
+
+.tsd-signature,
+pre,
+code {
+	border-radius: var(--portal-radius);
+	font-family: var(--portal-font-mono);
+}
+
+.tsd-signature,
+pre {
+	border: var(--portal-border-width) solid var(--portal-border);
+	background: var(--portal-surface);
+}
+
+a {
+	color: var(--portal-accent);
+}
+
+:where(a, button, input, select, summary):focus-visible {
+	box-shadow: var(--portal-focus);
+	outline: none;
+}

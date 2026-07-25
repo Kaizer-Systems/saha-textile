@@ -110,6 +110,17 @@ const config: Config = {
 					position: 'left',
 				},
 				{
+					label: 'Tools',
+					position: 'right',
+					items: [
+						{ label: 'Angular Storybook', href: '/storybook/' },
+						{ label: 'TypeScript reference', href: '/typedoc/' },
+						{ label: 'Scalar readiness', to: '/api/openapi-and-scalar' },
+						{ label: 'Database catalogue readiness', to: '/database/transactions-and-generation' },
+						{ label: 'Runtime guide', to: '/tooling/generated-surfaces-and-runtime' },
+					],
+				},
+				{
 					type: 'custom-liveContext' as 'default',
 					label: 'LIVE',
 					position: 'right',
@@ -134,6 +145,7 @@ const config: Config = {
 						{ label: 'Backend atlas', to: '/backend/overview' },
 						{ label: 'API', to: '/api/overview' },
 						{ label: 'Database', to: '/database/overview' },
+						{ label: 'Generated tools', to: '/tooling/generated-surfaces-and-runtime' },
 					],
 				},
 				{

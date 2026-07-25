@@ -1,0 +1,19 @@
+{
+	"$schema": "https://typedoc.org/schema.json",
+	"name": "Saha Textile TypeScript Reference",
+	"entryPoints": ["../../packages/contracts/src/index.ts", "../../packages/core-domain/src/index.ts"],
+	"entryPointStrategy": "resolve",
+	"tsconfig": "./tsconfig.json",
+	"out": "./dist",
+	"readme": "./README.md",
+	"customCss": "./.generated/nextgen-typedoc.css",
+	"excludeInternal": true,
+	"excludePrivate": true,
+	"excludeProtected": true,
+	"excludeExternals": true,
+	"categorizeByGroup": true,
+	"searchInComments": true,
+	"includeVersion": false,
+	"hideGenerator": false,
+	"cleanOutputDir": true
+}

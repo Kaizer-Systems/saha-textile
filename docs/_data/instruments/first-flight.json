@@ -1,0 +1,288 @@
+{
+	"schemaVersion": 1,
+	"lastVerified": "2026-07-25",
+	"route": "/getting-started/first-flight",
+	"title": "First Flight",
+	"summary": "A persona-led, route-spanning orientation that teaches contributors how to find current evidence, follow the architecture, and stop safely when the portal exposes planned intent.",
+	"sourceOfTruth": [
+		"project-context/angular-context/owner-decisions-log.md",
+		"project-context/angular-context/project-progress.md",
+		"docs/frontend/interactive-instruments.md",
+		"docs/getting-started"
+	],
+	"targetContract": {
+		"primary": "stable-heading-id",
+		"enhancementAttribute": "data-first-flight-anchor",
+		"missingTarget": "fail-build"
+	},
+	"navigationPolicy": {
+		"mode": "url-query",
+		"personaParam": "firstFlight",
+		"stepParam": "step",
+		"persistsProgress": false
+	},
+	"progressPolicy": {
+		"mode": "device-local",
+		"storageKey": "saha-textile.portal.first-flight.v1",
+		"payloadVersion": 1,
+		"optIn": "explicit-per-persona",
+		"resumeStrategy": "furthest-reached",
+		"completionScope": "per-persona",
+		"resettable": true,
+		"telemetry": false,
+		"writesToApplicationApis": false,
+		"writesToRepository": false
+	},
+	"debriefPolicy": {
+		"trigger": "final-checkpoint",
+		"presentation": "route-overlay",
+		"requiresStoredProgress": false,
+		"persistsCompletionOnlyWhenOptedIn": true
+	},
+	"personas": [
+		{
+			"id": "beginner",
+			"label": "New contributor",
+			"summary": "Build a safe mental model before touching application code.",
+			"outcome": "You can identify the owning surface, distinguish evidence from intent, run the basic repository commands, and prepare a small change safely.",
+			"durationMinutes": 8,
+			"stops": [
+				{
+					"id": "truth-first",
+					"route": "/getting-started/choose-your-path",
+					"anchor": "the-universal-first-five-minutes",
+					"title": "Read truth before instructions",
+					"instruction": "Inspect lifecycle status, verification date, and provenance before trusting a procedure.",
+					"why": "The portal deliberately shows both current implementation and locked target intent."
+				},
+				{
+					"id": "surface-map",
+					"route": "/getting-started/beginner-path",
+					"anchor": "what-you-are-looking-at",
+					"title": "Map the four surfaces",
+					"instruction": "Locate the storefront, admin, API, and developer portal responsibilities.",
+					"why": "A correct first change begins by identifying which application owns the behavior."
+				},
+				{
+					"id": "dependency-rule",
+					"route": "/architecture/system-overview",
+					"anchor": "dependency-rule",
+					"title": "Follow dependencies inward",
+					"instruction": "Trace UI and edge concerns toward ports and the core domain.",
+					"why": "The dependency rule is the fastest test for whether a proposed change belongs in the right layer."
+				},
+				{
+					"id": "status-language",
+					"route": "/governance/status-model",
+					"anchor": "status-is-not-progress-percentage",
+					"title": "Interpret lifecycle labels",
+					"instruction": "Learn why implemented, scaffolded, planned, deferred, and deprecated are evidence labels rather than percentages.",
+					"why": "A polished page is not proof that its described runtime behavior exists."
+				},
+				{
+					"id": "repository-commands",
+					"route": "/getting-started/local-development",
+					"anchor": "repository-commands",
+					"title": "Learn the safe command surface",
+					"instruction": "Identify the package-manager, workspace, build, test, and portal commands used by this repository.",
+					"why": "Using the repository's own entry points avoids hidden environment and dependency drift."
+				},
+				{
+					"id": "handoff-standard",
+					"route": "/governance/contribution-standard",
+					"anchor": "pull-request-checklist",
+					"title": "Close with evidence",
+					"instruction": "Use the documentation pull-request checklist to prepare a reviewable handoff.",
+					"why": "A change is easier to trust when code, docs, verification, and known gaps move together."
+				}
+			]
+		},
+		{
+			"id": "frontend",
+			"label": "Frontend developer",
+			"summary": "Trace a customer or operator interaction through Angular routing, state, data, and verification.",
+			"outcome": "You can choose the correct frontend surface, state owner, server-data boundary, and definition-of-done checks for a change.",
+			"durationMinutes": 10,
+			"stops": [
+				{
+					"id": "frontend-reality",
+					"route": "/getting-started/frontend-path",
+					"anchor": "current-implementation-snapshot",
+					"title": "Start from the current frontend reality",
+					"instruction": "Review which state and data paths are working, transitional, or still mock-backed.",
+					"why": "Current behavior must remain visibly separate from the target frontend architecture."
+				},
+				{
+					"id": "storefront-mental-model",
+					"route": "/storefront/overview",
+					"anchor": "mental-model",
+					"title": "Orient inside the storefront",
+					"instruction": "Map a public experience from the file-based page into feature and data-access layers.",
+					"why": "Pages should stay thin while reusable behavior remains in the appropriate feature boundary."
+				},
+				{
+					"id": "routing",
+					"route": "/storefront/routing-and-rendering",
+					"anchor": "from-filename-to-url",
+					"title": "Trace filename to URL",
+					"instruction": "Follow the Analog file-based routing convention before adding or moving a customer route.",
+					"why": "Route ownership determines rendering, data loading, and browser-only safety."
+				},
+				{
+					"id": "state-owner",
+					"route": "/storefront/state-and-data",
+					"anchor": "decision-table",
+					"title": "Choose the state owner",
+					"instruction": "Use the decision table to distinguish server state, complex client mutation, and local feature state.",
+					"why": "TanStack Query, classic NgRx, and SignalStore solve different ownership problems."
+				},
+				{
+					"id": "admin-mental-model",
+					"route": "/admin/overview",
+					"anchor": "mental-model",
+					"title": "Compare the operator surface",
+					"instruction": "Review how admin routes, feature families, and services differ from the public storefront.",
+					"why": "Storefront and admin share contracts and conventions, but they do not share every interaction or state boundary."
+				},
+				{
+					"id": "frontend-done",
+					"route": "/frontend/quality-and-definition-of-done",
+					"anchor": "definition-of-done",
+					"title": "Prove the frontend change",
+					"instruction": "Close the flight with architecture, behavior, rendering, interaction, and verification checks.",
+					"why": "Responsive visuals alone do not prove loading, failure, keyboard, SSR, or contract behavior."
+				}
+			]
+		},
+		{
+			"id": "backend",
+			"label": "Backend developer",
+			"summary": "Trace a request from its validated contract through the domain ports, adapters, persistence evidence, and owner gates.",
+			"outcome": "You can place a backend change at the correct boundary and identify the runtime, schema, and decision evidence required to call it complete.",
+			"durationMinutes": 12,
+			"stops": [
+				{
+					"id": "inward-dependency",
+					"route": "/getting-started/backend-path",
+					"anchor": "required-dependency-direction",
+					"title": "Lock the dependency direction",
+					"instruction": "Read the controller-to-port-to-use-case-to-adapter flow before opening implementation files.",
+					"why": "Provider and persistence concerns must remain replaceable at the edges."
+				},
+				{
+					"id": "six-boundaries",
+					"route": "/backend/overview",
+					"anchor": "the-six-boundaries",
+					"title": "Map the backend platform",
+					"instruction": "Identify the six architectural boundaries and the responsibilities between them.",
+					"why": "The atlas provides the shared vocabulary used by request, contract, domain, and persistence documentation."
+				},
+				{
+					"id": "contract-shapes",
+					"route": "/backend/contracts-and-validation",
+					"anchor": "four-different-shapes",
+					"title": "Separate the four shapes",
+					"instruction": "Distinguish transport contracts, domain types, persistence models, and response serialization.",
+					"why": "Shape leakage is a common way to accidentally couple the core to an adapter."
+				},
+				{
+					"id": "ports",
+					"route": "/backend/core-domain-and-ports",
+					"anchor": "dependency-direction",
+					"title": "Read the port boundary",
+					"instruction": "Check what the core may depend on and how edge capabilities are expressed as ports.",
+					"why": "A swappable edge begins with a stable inward-facing contract."
+				},
+				{
+					"id": "request-trace",
+					"route": "/backend/request-lifecycle",
+					"anchor": "current-request-path",
+					"title": "Trace a real request",
+					"instruction": "Follow the current request path and compare it with the locked target before proposing missing stages.",
+					"why": "The request trace exposes which boundaries are real today and which remain planned."
+				},
+				{
+					"id": "persistence-evidence",
+					"route": "/database/schema-nebula",
+					"anchor": "how-to-read-the-constellation",
+					"title": "Inspect persistence evidence",
+					"instruction": "Use the constellation to distinguish seven current Mongo models from target-only collection nodes.",
+					"why": "An architecture plan does not make a collection implemented."
+				},
+				{
+					"id": "owner-gates",
+					"route": "/decisions/gate-console",
+					"anchor": "how-to-read-this",
+					"title": "Check owner decision gates",
+					"instruction": "Inspect unresolved decisions and their blast radius before crossing a blocked seam.",
+					"why": "A technically plausible default must not silently replace unresolved owner intent."
+				}
+			]
+		},
+		{
+			"id": "operator",
+			"label": "Platform operator",
+			"summary": "Move from honest readiness boundaries through configuration, health evidence, local persistence, and recovery entry points.",
+			"outcome": "You can distinguish a successful build from operational readiness and identify the evidence required before running or documenting a production procedure.",
+			"durationMinutes": 12,
+			"stops": [
+				{
+					"id": "honesty-boundary",
+					"route": "/getting-started/operator-path",
+					"anchor": "current-honesty-boundary",
+					"title": "Start at the honesty boundary",
+					"instruction": "Identify which runbooks are approved structure and which procedures have actually been exercised.",
+					"why": "Planned operations content is not production evidence."
+				},
+				{
+					"id": "local-services",
+					"route": "/getting-started/local-development",
+					"anchor": "environment-and-services",
+					"title": "Map environment and services",
+					"instruction": "Review local configuration, Docker Mongo replica-set assumptions, and browser runtime config.",
+					"why": "Local parity depends on starting the same supporting boundaries the applications expect."
+				},
+				{
+					"id": "secrets-boundary",
+					"route": "/deployment/overview",
+					"anchor": "locked-runtime-config-and-secrets-model",
+					"title": "Separate secrets from public config",
+					"instruction": "Trace server-only secrets and deploy-time browser configuration through their approved injection paths.",
+					"why": "Browser bundles must never receive server credentials or provider secrets."
+				},
+				{
+					"id": "operations-reality",
+					"route": "/operations/overview",
+					"anchor": "what-exists-now",
+					"title": "Inventory operational reality",
+					"instruction": "Separate existing workflow and infrastructure artifacts from the remaining deployment work.",
+					"why": "A repository file can establish intent without proving a running environment."
+				},
+				{
+					"id": "health-contract",
+					"route": "/backend/readiness-testing-and-observability",
+					"anchor": "target-health-contract",
+					"title": "Read the target health contract",
+					"instruction": "Distinguish liveness from dependency readiness and the evidence each signal must carry.",
+					"why": "A responsive process can still be unable to serve real traffic."
+				},
+				{
+					"id": "mongo-lifecycle",
+					"route": "/database/current-adapter-map",
+					"anchor": "local-replica-set-lifecycle",
+					"title": "Verify the local Mongo lifecycle",
+					"instruction": "Review the single-node replica-set lifecycle and the evidence available from the current adapter.",
+					"why": "Transaction-capable topology and application connectivity require separate checks."
+				},
+				{
+					"id": "recovery-entry",
+					"route": "/troubleshooting/overview",
+					"anchor": "troubleshooting-overview",
+					"title": "Enter recovery through symptoms",
+					"instruction": "Use the troubleshooting map to move from an observed symptom toward the relevant evidence and runbook.",
+					"why": "Recovery should begin with scoped evidence, not speculative configuration changes."
+				}
+			]
+		}
+	]
+}

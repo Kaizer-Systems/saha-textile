@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from '@docusaurus/router';
 
+import { FirstFlightHUD } from '../FirstFlight/FirstFlightHUD';
 import { AmbientReactor } from './AmbientReactor';
 import { CommandPalette } from './CommandPalette';
 import { ScrollBeam } from './ScrollBeam';
@@ -17,6 +18,7 @@ import styles from './styles.module.css';
  * - scanlines <div> : the holographic CRT veil + drifting scan sweep (Maximal).
  * - ScrollBeam      : read-progress beam under the app bar.
  * - CommandPalette  : the ⌘K warp navigator + its launcher pill.
+ * - FirstFlightHUD  : URL-carried route guide + measured spotlight aperture.
  *
  * `mounted` gates the first client render so nothing renders during SSR; the
  * pathname effect re-fires `portal:rescan` so the scroll-reveal layer re-scans
@@ -59,6 +61,7 @@ export function PortalExperience(): React.ReactNode {
 			/>
 			<ScrollBeam />
 			<CommandPalette />
+			<FirstFlightHUD />
 		</>
 	);
 }

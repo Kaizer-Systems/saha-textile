@@ -1,8 +1,8 @@
 /* ============================================================================
    NEXT-GEN-UI · Portal interaction-layer styles
    ----------------------------------------------------------------------------
-   Styles for the ambient canvas, holographic scanlines, scroll beam, ⌘K palette
-   and its launcher pill (see the PortalExperience components and
+   Styles for the ambient canvas, holographic scanlines, scroll beam, governed
+   ⌘K page/verb palette and its launcher pill (see the PortalExperience components and
    docs/frontend/portal-experience-layer.md; grep `NEXT-GEN-UI`). Theme-aware via
    --portal-* tokens + color-mix(); every animation is disabled/neutralised under
    prefers-reduced-motion at the bottom of this file.
@@ -269,6 +269,124 @@
 	color: var(--portal-subtle);
 }
 
+.verbRail {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 7px;
+	padding: 9px 14px;
+	border-bottom: var(--portal-border-width, 1px) solid var(--portal-border);
+	background: color-mix(in srgb, var(--portal-canvas) 22%, transparent);
+}
+
+.verbRailLabel {
+	margin-right: 2px;
+	color: var(--portal-subtle);
+	font-size: 9px;
+	font-weight: 650;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.verbChip,
+.verbChipActive {
+	display: inline-flex;
+	min-width: 0;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 8px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--portal-muted);
+	cursor: pointer;
+	font: 600 10px/1.2 var(--ifm-font-family-monospace);
+}
+
+.verbChip:hover,
+.verbChipActive {
+	border-color: color-mix(in srgb, var(--portal-accent) 62%, var(--portal-border));
+	background: color-mix(in srgb, var(--portal-accent) 11%, transparent);
+	color: var(--portal-ink);
+}
+
+.verbChip > span,
+.verbChipActive > span {
+	color: var(--portal-accent);
+	text-transform: uppercase;
+}
+
+.verbChip code,
+.verbChipActive code {
+	overflow: hidden;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--portal-subtle);
+	font: inherit;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.verbContext {
+	display: grid;
+	grid-template-columns: auto auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 9px;
+	padding: 10px 14px;
+	border-bottom: var(--portal-border-width, 1px) solid
+		color-mix(in srgb, var(--portal-accent) 24%, var(--portal-border));
+	background:
+		linear-gradient(90deg, color-mix(in srgb, var(--portal-accent) 10%, transparent), transparent 58%),
+		color-mix(in srgb, var(--portal-canvas) 32%, transparent);
+}
+
+.verbPrompt {
+	color: var(--portal-accent);
+	font: 700 14px/1 var(--ifm-font-family-monospace);
+}
+
+.verbToken {
+	padding: 4px 7px;
+	border: var(--portal-border-width, 1px) solid color-mix(in srgb, var(--portal-accent) 48%, transparent);
+	border-radius: 5px;
+	color: var(--portal-accent);
+	font: 650 10px/1 var(--ifm-font-family-monospace);
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+}
+
+.verbContext > div {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+
+.verbContext strong {
+	overflow: hidden;
+	color: var(--portal-ink);
+	font-size: 11.5px;
+	font-weight: 600;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.verbContext div span {
+	overflow: hidden;
+	color: var(--portal-subtle);
+	font-size: 9.5px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.verbContext output {
+	color: var(--portal-subtle);
+	font: 550 9px/1 var(--ifm-font-family-monospace);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
 .paletteEsc,
 .paletteFooter kbd {
 	padding: 2px 6px;
@@ -326,6 +444,41 @@
 	text-transform: uppercase;
 }
 
+.paletteRowMeta {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 7px;
+}
+
+.paletteRowStatus {
+	padding: 3px 5px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: 4px;
+	color: var(--portal-subtle);
+	font: 600 8px/1 var(--ifm-font-family-monospace);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.paletteRowStatus[data-status='implemented'],
+.paletteRowStatus[data-status='resolved'] {
+	border-color: color-mix(in srgb, var(--portal-success) 44%, var(--portal-border));
+	color: var(--portal-success);
+}
+
+.paletteRowStatus[data-status='scaffolded'] {
+	border-color: color-mix(in srgb, var(--portal-accent) 44%, var(--portal-border));
+	color: var(--portal-accent);
+}
+
+.paletteRowStatus[data-status='planned'],
+.paletteRowStatus[data-status='deferred'],
+.paletteRowStatus[data-status='open'] {
+	border-color: color-mix(in srgb, var(--portal-warning) 44%, var(--portal-border));
+	color: var(--portal-warning);
+}
+
 .paletteRowArrow {
 	width: 14px;
 	color: var(--portal-accent);
@@ -367,6 +520,47 @@
 	color: var(--portal-subtle);
 	font-weight: 500;
 	letter-spacing: 0.02em;
+}
+
+@media (max-width: 640px) {
+	.paletteScrim {
+		padding: 64px 10px 10px;
+	}
+
+	.palette {
+		max-height: calc(100vh - 74px);
+	}
+
+	.verbRailLabel {
+		width: 100%;
+	}
+
+	.verbChip,
+	.verbChipActive {
+		flex: 1;
+		justify-content: center;
+	}
+
+	.verbContext {
+		grid-template-columns: auto auto minmax(0, 1fr);
+	}
+
+	.verbContext output,
+	.paletteRowSection,
+	.paletteFooterBrand {
+		display: none;
+	}
+
+	.paletteRow,
+	.paletteRowActive {
+		grid-template-columns: minmax(0, 1fr) auto auto;
+		gap: 7px;
+	}
+
+	.paletteFooter {
+		justify-content: space-between;
+		gap: 6px;
+	}
 }
 
 @keyframes paletteFade {

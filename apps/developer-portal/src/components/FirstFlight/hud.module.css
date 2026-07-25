@@ -1,0 +1,832 @@
+/* ============================================================================
+   NEXT-GEN-UI · First Flight route HUD styles
+   ----------------------------------------------------------------------------
+   WHAT: fixed flight computer + measured spotlight aperture over governed page
+   targets. The aperture dims everything outside the current heading without
+   wrapping or relocating documentation markup.
+   WHY: route-spanning guidance must feel spatial and focused while preserving
+   the underlying page as the source being taught.
+   HOW: FirstFlightHUD writes only left/top/width/height/opacity to the frame;
+   CSS supplies the 100vmax outer shadow, telemetry surface, and responsive HUD.
+   TUNING: outside dim = .spotlightFrame box-shadow alpha; desktop HUD position =
+   .hud bottom/right; mobile maximum height = 64vh.
+   ========================================================================== */
+
+.spotlightFrame {
+	position: fixed;
+	z-index: 108;
+	top: 0;
+	left: 0;
+	width: 24px;
+	height: 24px;
+	pointer-events: none;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 88%, white);
+	border-radius: 9px;
+	box-shadow:
+		0 0 0 100vmax color-mix(in srgb, #03050a 68%, transparent),
+		0 0 28px 4px color-mix(in srgb, var(--portal-accent) 34%, transparent),
+		inset 0 0 18px color-mix(in srgb, var(--portal-accent) 9%, transparent);
+	opacity: 0;
+	transition:
+		left 180ms ease,
+		top 180ms ease,
+		width 180ms ease,
+		height 180ms ease,
+		opacity 120ms ease;
+}
+
+.spotlightFrame::before,
+.spotlightFrame::after {
+	position: absolute;
+	width: 9px;
+	height: 9px;
+	border-color: var(--portal-accent);
+	content: '';
+}
+
+.spotlightFrame::before {
+	top: -4px;
+	left: -4px;
+	border-top: 2px solid;
+	border-left: 2px solid;
+}
+
+.spotlightFrame::after {
+	right: -4px;
+	bottom: -4px;
+	border-right: 2px solid;
+	border-bottom: 2px solid;
+}
+
+:global([data-first-flight-active='true']) {
+	scroll-margin-top: calc(var(--portal-header-height, 48px) + 28px);
+}
+
+.hud,
+.beacon {
+	position: fixed;
+	z-index: 120;
+	right: 20px;
+	bottom: 72px;
+}
+
+.hud {
+	display: flex;
+	width: min(430px, calc(100vw - 40px));
+	max-height: min(72vh, 670px);
+	flex-direction: column;
+	padding: 18px;
+	overflow-y: auto;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 52%, var(--portal-border));
+	border-radius: 13px;
+	background:
+		linear-gradient(145deg, color-mix(in srgb, var(--portal-accent) 8%, transparent), transparent 42%),
+		color-mix(in srgb, var(--portal-surface) 91%, transparent);
+	backdrop-filter: blur(22px) saturate(1.25);
+	box-shadow:
+		0 24px 72px rgba(0, 0, 0, 0.5),
+		0 0 0 1px color-mix(in srgb, var(--portal-accent) 18%, transparent),
+		0 0 42px color-mix(in srgb, var(--portal-accent) 17%, transparent),
+		inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
+	scrollbar-width: thin;
+	animation: hudArrival 220ms cubic-bezier(0.18, 0.78, 0.28, 1);
+}
+
+.hud::before {
+	position: absolute;
+	top: 0;
+	right: 18px;
+	left: 18px;
+	height: 1px;
+	background: linear-gradient(90deg, transparent, var(--portal-accent), transparent);
+	box-shadow: 0 0 12px var(--portal-accent);
+	content: '';
+	opacity: 0.7;
+}
+
+.hudHeader {
+	display: flex;
+	align-items: start;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.eyebrow {
+	margin: 0 0 4px;
+	color: var(--portal-accent);
+	font-size: 9px;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.counter {
+	color: var(--portal-muted);
+	font-size: 10px;
+}
+
+.headerActions {
+	display: flex;
+	gap: 5px;
+}
+
+.headerActions button {
+	padding: 5px 7px;
+	border: 1px solid var(--portal-border);
+	border-radius: 5px;
+	background: transparent;
+	color: var(--portal-muted);
+	cursor: pointer;
+	font: 600 8px/1 var(--ifm-font-family-base);
+	text-transform: uppercase;
+}
+
+.headerActions button:hover,
+.headerActions button:focus-visible {
+	border-color: var(--portal-accent);
+	color: var(--portal-ink);
+	outline: none;
+}
+
+.progressTrack {
+	height: 3px;
+	flex: 0 0 auto;
+	margin: 13px 0 11px;
+	overflow: hidden;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--portal-border) 70%, transparent);
+}
+
+.progressTrack span {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: linear-gradient(90deg, var(--portal-accent), color-mix(in srgb, var(--portal-accent) 55%, white));
+	box-shadow: 0 0 12px var(--portal-accent);
+	transition: width 220ms ease;
+}
+
+.statusRow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
+}
+
+.statusRow span {
+	padding: 4px 6px;
+	border: 1px solid var(--portal-border);
+	border-radius: 999px;
+	color: var(--portal-muted);
+	font-size: 8px;
+	font-weight: 650;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.statusRow span[data-status='implemented'] {
+	border-color: color-mix(in srgb, var(--portal-success) 52%, var(--portal-border));
+	color: var(--portal-success);
+}
+
+.statusRow span[data-status='scaffolded'] {
+	border-color: color-mix(in srgb, var(--portal-accent) 52%, var(--portal-border));
+	color: var(--portal-accent);
+}
+
+.statusRow span[data-status='planned'],
+.statusRow span[data-status='deferred'],
+.statusRow span[data-status='deprecated'] {
+	border-color: color-mix(in srgb, var(--portal-warning) 52%, var(--portal-border));
+	color: var(--portal-warning);
+}
+
+.statusRow span[data-target-state='found'] {
+	border-color: color-mix(in srgb, var(--portal-accent) 52%, var(--portal-border));
+	color: var(--portal-accent);
+}
+
+.statusRow span[data-target-state='missing'] {
+	border-color: color-mix(in srgb, var(--portal-warning) 52%, var(--portal-border));
+	color: var(--portal-warning);
+}
+
+.resumeControl {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin-top: 8px;
+	padding: 7px 9px;
+	border: 1px solid var(--portal-border);
+	border-radius: 6px;
+	background: color-mix(in srgb, var(--portal-canvas) 36%, transparent);
+}
+
+.resumeControl > span {
+	color: var(--portal-muted);
+	font-size: 8px;
+	font-weight: 650;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.resumeControl > span[data-persisted='true'] {
+	color: var(--portal-success);
+}
+
+.resumeControl button {
+	padding: 3px 0;
+	border: 0;
+	background: transparent;
+	color: var(--portal-accent);
+	cursor: pointer;
+	font: 600 8px/1 var(--ifm-font-family-base);
+	text-decoration: underline;
+	text-decoration-color: color-mix(in srgb, var(--portal-accent) 42%, transparent);
+	text-underline-offset: 3px;
+}
+
+.resumeControl button:hover,
+.resumeControl button:focus-visible {
+	color: var(--portal-ink);
+	outline: none;
+	text-decoration-color: var(--portal-accent);
+}
+
+.resumeControl button:disabled {
+	cursor: not-allowed;
+	opacity: 0.48;
+	text-decoration: none;
+}
+
+.resumeControl button:focus-visible {
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--portal-accent) 18%, transparent);
+}
+
+.resumeError {
+	margin: 7px 0 0;
+	color: var(--portal-warning);
+	font-size: 8px;
+	line-height: 1.4;
+}
+
+.hud h2 {
+	margin: 13px 0 7px;
+	color: var(--portal-ink);
+	font-size: clamp(1.25rem, 3vw, 1.65rem);
+	font-weight: 650;
+	letter-spacing: -0.035em;
+	line-height: 1.12;
+}
+
+.instruction,
+.hudWarning > p {
+	margin: 0;
+	color: var(--portal-muted);
+	font-size: 12px;
+	line-height: 1.58;
+}
+
+.statusGuidance {
+	display: grid;
+	gap: 3px;
+	margin-top: 12px;
+	padding: 10px 11px;
+	border-left: 2px solid var(--portal-accent);
+	border-radius: 0 6px 6px 0;
+	background: color-mix(in srgb, var(--portal-accent) 7%, transparent);
+}
+
+.statusGuidance[data-status='planned'],
+.statusGuidance[data-status='deferred'],
+.statusGuidance[data-status='deprecated'] {
+	border-left-color: var(--portal-warning);
+	background: color-mix(in srgb, var(--portal-warning) 7%, transparent);
+}
+
+.statusGuidance strong {
+	color: var(--portal-ink);
+	font-size: 9px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.statusGuidance span {
+	color: var(--portal-muted);
+	font-size: 10px;
+	line-height: 1.45;
+}
+
+.whyPanel {
+	margin-top: 10px;
+	color: var(--portal-muted);
+	font-size: 10px;
+}
+
+.whyPanel summary {
+	width: fit-content;
+	cursor: pointer;
+	color: var(--portal-accent);
+}
+
+.whyPanel p {
+	margin: 7px 0 0;
+	line-height: 1.5;
+}
+
+.whyPanel code {
+	display: block;
+	margin-top: 7px;
+	padding: 6px 8px;
+	overflow-wrap: anywhere;
+	border: 1px solid var(--portal-border);
+	border-radius: 5px;
+	background: color-mix(in srgb, var(--portal-canvas) 66%, transparent);
+	color: var(--portal-muted);
+	font-size: 8px;
+}
+
+.hudFooter {
+	margin-top: 14px;
+	padding-top: 12px;
+	border-top: 1px solid var(--portal-border);
+}
+
+.navigationActions,
+.warningActions {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 6px;
+}
+
+.warningActions {
+	grid-template-columns: minmax(0, 1fr) auto;
+	margin-top: 14px;
+}
+
+.primaryButton,
+.secondaryButton {
+	min-height: 34px;
+	padding: 8px 9px;
+	border-radius: 6px;
+	cursor: pointer;
+	font: 650 10px/1 var(--ifm-font-family-base);
+}
+
+.primaryButton {
+	border: 1px solid var(--portal-accent);
+	background: color-mix(in srgb, var(--portal-accent) 17%, transparent);
+	box-shadow: 0 0 16px color-mix(in srgb, var(--portal-accent) 11%, transparent);
+	color: var(--portal-ink);
+}
+
+.secondaryButton {
+	border: 1px solid var(--portal-border);
+	background: transparent;
+	color: var(--portal-muted);
+}
+
+.primaryButton:hover,
+.primaryButton:focus-visible,
+.secondaryButton:hover,
+.secondaryButton:focus-visible {
+	border-color: var(--portal-accent);
+	color: var(--portal-ink);
+	outline: none;
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible {
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--portal-accent) 22%, transparent);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+	cursor: not-allowed;
+	opacity: 0.4;
+}
+
+.keyHints,
+.debriefNotice {
+	margin: 9px 0 0;
+	color: var(--portal-muted);
+	font-size: 8px;
+	line-height: 1.5;
+	text-align: center;
+}
+
+.keyHints kbd {
+	padding: 1px 4px;
+	border: 1px solid var(--portal-border);
+	border-radius: 4px;
+	background: var(--portal-canvas);
+	color: var(--portal-muted);
+	font: 600 8px/1.4 var(--ifm-font-family-monospace);
+}
+
+.debriefNotice {
+	padding-top: 8px;
+	border-top: 1px dashed var(--portal-border);
+	color: var(--portal-warning);
+}
+
+.hudWarning {
+	width: min(380px, calc(100vw - 40px));
+	border-color: color-mix(in srgb, var(--portal-warning) 55%, var(--portal-border));
+}
+
+.hudWarning .eyebrow {
+	color: var(--portal-warning);
+}
+
+.hudWarning .primaryButton {
+	margin-top: 14px;
+}
+
+.warningActions .primaryButton {
+	margin-top: 0;
+}
+
+.beacon {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 9px 12px;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 55%, var(--portal-border));
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--portal-surface) 90%, transparent);
+	backdrop-filter: blur(16px);
+	box-shadow:
+		0 12px 34px rgba(0, 0, 0, 0.34),
+		0 0 22px color-mix(in srgb, var(--portal-accent) 14%, transparent);
+	color: var(--portal-ink);
+	cursor: pointer;
+	font: 600 10px/1 var(--ifm-font-family-base);
+}
+
+.beaconSignal {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--portal-accent);
+	box-shadow: 0 0 10px var(--portal-accent);
+	animation: beaconPulse 2s ease-in-out infinite;
+}
+
+.beacon > span:last-child {
+	color: var(--portal-accent);
+	font-family: var(--ifm-font-family-monospace);
+}
+
+.debriefHud {
+	right: 50%;
+	bottom: 50%;
+	width: min(720px, calc(100vw - 48px));
+	max-height: min(86vh, 760px);
+	transform: translate(50%, 50%);
+	border-color: color-mix(in srgb, var(--portal-success) 42%, var(--portal-accent));
+	background:
+		radial-gradient(circle at 86% 8%, color-mix(in srgb, var(--portal-success) 13%, transparent), transparent 32%),
+		linear-gradient(145deg, color-mix(in srgb, var(--portal-accent) 9%, transparent), transparent 45%),
+		color-mix(in srgb, var(--portal-surface) 94%, transparent);
+}
+
+.debriefScrim {
+	position: fixed;
+	z-index: 119;
+	inset: 0;
+	background: color-mix(in srgb, #03050a 54%, transparent);
+	backdrop-filter: blur(2px);
+}
+
+.debriefHud:focus {
+	outline: 2px solid color-mix(in srgb, var(--portal-accent) 72%, transparent);
+	outline-offset: 3px;
+}
+
+.debriefHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 18px;
+}
+
+.debriefSeal {
+	display: grid;
+	width: 38px;
+	height: 38px;
+	flex: 0 0 auto;
+	place-items: center;
+	border: 1px solid color-mix(in srgb, var(--portal-success) 62%, var(--portal-border));
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--portal-success) 11%, transparent);
+	box-shadow: 0 0 24px color-mix(in srgb, var(--portal-success) 22%, transparent);
+	color: var(--portal-success);
+	font: 700 15px/1 var(--ifm-font-family-monospace);
+}
+
+.debriefHero {
+	margin-top: 15px;
+	padding: 15px;
+	border: 1px solid color-mix(in srgb, var(--portal-success) 24%, var(--portal-border));
+	border-radius: 8px;
+	background:
+		linear-gradient(100deg, color-mix(in srgb, var(--portal-success) 9%, transparent), transparent 58%),
+		color-mix(in srgb, var(--portal-canvas) 42%, transparent);
+}
+
+.debriefHero > span,
+.debriefOutcome > span,
+.debriefEvidence > span {
+	color: var(--portal-accent);
+	font-size: 8px;
+	font-weight: 700;
+	letter-spacing: 0.09em;
+	text-transform: uppercase;
+}
+
+.debriefHero h2 {
+	margin-top: 8px;
+}
+
+.debriefHero p,
+.debriefOutcome p,
+.debriefEvidence p {
+	margin: 0;
+	color: var(--portal-muted);
+	font-size: 10px;
+	line-height: 1.55;
+}
+
+.debriefTelemetry {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 7px;
+	margin-top: 10px;
+}
+
+.debriefTelemetry > div {
+	display: grid;
+	gap: 3px;
+	padding: 9px 10px;
+	border: 1px solid var(--portal-border);
+	border-radius: 6px;
+	background: color-mix(in srgb, var(--portal-canvas) 36%, transparent);
+}
+
+.debriefTelemetry strong {
+	color: var(--portal-ink);
+	font: 680 15px/1 var(--ifm-font-family-monospace);
+}
+
+.debriefTelemetry span {
+	color: var(--portal-muted);
+	font-size: 8px;
+	text-transform: uppercase;
+}
+
+.debriefGrid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	align-items: start;
+	gap: 9px;
+	margin-top: 10px;
+}
+
+.debriefOutcome,
+.debriefEvidence {
+	display: grid;
+	min-height: 146px;
+	gap: 8px;
+	padding: 12px;
+	border: 1px solid var(--portal-border);
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--portal-canvas) 34%, transparent);
+}
+
+.debriefRecord {
+	display: grid;
+	align-self: end;
+	gap: 3px;
+	padding-top: 8px;
+	border-top: 1px dashed var(--portal-border);
+}
+
+.debriefRecord strong {
+	color: var(--portal-warning);
+	font-size: 9px;
+}
+
+.debriefRecord[data-persisted='true'] strong {
+	color: var(--portal-success);
+}
+
+.debriefRecord span {
+	color: var(--portal-muted);
+	font-size: 8px;
+	line-height: 1.4;
+}
+
+.debriefStatusMix {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
+}
+
+.debriefStatusMix > span {
+	padding: 4px 6px;
+	border: 1px solid var(--portal-border);
+	border-radius: 999px;
+	color: var(--portal-muted);
+	font-size: 8px;
+}
+
+.debriefStatusMix > span[data-status='implemented'] {
+	border-color: color-mix(in srgb, var(--portal-success) 44%, var(--portal-border));
+	color: var(--portal-success);
+}
+
+.debriefStatusMix > span[data-status='scaffolded'] {
+	border-color: color-mix(in srgb, var(--portal-accent) 44%, var(--portal-border));
+	color: var(--portal-accent);
+}
+
+.debriefStatusMix > span[data-status='planned'],
+.debriefStatusMix > span[data-status='deferred'],
+.debriefStatusMix > span[data-status='deprecated'] {
+	border-color: color-mix(in srgb, var(--portal-warning) 44%, var(--portal-border));
+	color: var(--portal-warning);
+}
+
+.debriefManifest {
+	margin-top: 10px;
+	color: var(--portal-muted);
+	font-size: 9px;
+}
+
+.debriefManifest summary {
+	width: fit-content;
+	cursor: pointer;
+	color: var(--portal-accent);
+}
+
+.debriefManifest ol {
+	display: grid;
+	max-height: 175px;
+	gap: 4px;
+	margin: 8px 0 0;
+	padding: 0;
+	overflow-y: auto;
+	list-style: none;
+	scrollbar-width: thin;
+}
+
+.debriefManifest li {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+	border: 1px solid var(--portal-border);
+	border-radius: 5px;
+	background: color-mix(in srgb, var(--portal-canvas) 32%, transparent);
+}
+
+.debriefManifest li > span {
+	color: var(--portal-accent);
+	font: 650 8px/1 var(--ifm-font-family-monospace);
+}
+
+.debriefManifest li strong {
+	overflow: hidden;
+	color: var(--portal-ink);
+	font-size: 9px;
+	font-weight: 560;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.debriefManifest li small {
+	color: var(--portal-muted);
+	font-size: 7px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.debriefManifest li small[data-status='implemented'] {
+	color: var(--portal-success);
+}
+
+.debriefManifest li small[data-status='planned'],
+.debriefManifest li small[data-status='deferred'],
+.debriefManifest li small[data-status='deprecated'] {
+	color: var(--portal-warning);
+}
+
+.debriefActions {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 7px;
+	margin-top: 13px;
+	padding-top: 12px;
+	border-top: 1px solid var(--portal-border);
+}
+
+@keyframes hudArrival {
+	from {
+		opacity: 0;
+		transform: translateY(14px) scale(0.98);
+	}
+}
+
+@keyframes beaconPulse {
+	50% {
+		opacity: 0.42;
+	}
+}
+
+@media (max-width: 640px) {
+	.hud,
+	.beacon {
+		right: 10px;
+		bottom: 62px;
+	}
+
+	.hud {
+		width: calc(100vw - 20px);
+		max-height: 64vh;
+		padding: 15px;
+	}
+
+	.debriefHud {
+		right: 10px;
+		bottom: 50%;
+		width: calc(100vw - 20px);
+		max-height: 82vh;
+		transform: translateY(50%);
+	}
+
+	.debriefGrid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.debriefOutcome,
+	.debriefEvidence {
+		min-height: 0;
+	}
+
+	.debriefActions {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.resumeControl {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.hudHeader {
+		gap: 8px;
+	}
+
+	.navigationActions {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.navigationActions .primaryButton {
+		grid-column: 1 / -1;
+	}
+
+	.keyHints {
+		display: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.spotlightFrame,
+	.progressTrack span,
+	.beaconSignal,
+	.debriefScrim {
+		transition: none;
+		animation: none;
+	}
+
+	.hud {
+		animation: none;
+	}
+}
+
+@media (forced-colors: active) {
+	.spotlightFrame,
+	.hud,
+	.beacon,
+	.debriefScrim,
+	.primaryButton,
+	.secondaryButton {
+		border-color: CanvasText;
+		box-shadow: none;
+	}
+
+	.spotlightFrame {
+		outline: 3px solid Highlight;
+	}
+}

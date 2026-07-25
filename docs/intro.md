@@ -10,6 +10,7 @@ source_of_truth:
     - apps/developer-portal/src
     - apps/developer-portal/plugins
     - docs/_data/portal-manifest.json
+    - docs/_data/instruments/first-flight.json
 hide_title: true
 hide_table_of_contents: true
 ---
@@ -25,14 +26,15 @@ import { MissionControl } from '@site/src/components/MissionControl';
 			One evidence-linked home for application architecture, business behaviour, API and persistence boundaries, operational procedures and engineering decisions.
 		</div>
 		<div className="portalHero__actions">
-			<a className="portalButton portalButton--primary" href="/getting-started/choose-your-path">Choose your path</a>
+			<a className="portalButton portalButton--primary" href="/getting-started/first-flight">Enter First Flight</a>
+			<a className="portalButton portalButton--secondary" href="/getting-started/choose-your-path">Choose manually</a>
 			<a className="portalButton portalButton--secondary" href="/architecture/system-overview">Explore architecture</a>
 		</div>
 	</div>
 	<div className="portalHero__panel" aria-label="Portal foundation status">
 		<div className="portalStatusHeader">
 			<span>Latest milestone</span>
-			<strong>Interactive instruments · Wave 1</strong>
+			<strong>First Flight · Launch Bay</strong>
 		</div>
 		<div className="portalSignalGrid">
 			<div>
@@ -40,8 +42,8 @@ import { MissionControl } from '@site/src/components/MissionControl';
 				<strong>Implemented</strong>
 			</div>
 			<div>
-				<span>Risk map</span>
-				<strong>Implemented</strong>
+				<span>Guided onboarding</span>
+				<strong>Scaffolded</strong>
 			</div>
 			<div>
 				<span>API reference</span>
@@ -81,10 +83,10 @@ import { MissionControl } from '@site/src/components/MissionControl';
 			<h3>Current route inventory</h3>
 			<p>Every present controller route, existing control and missing production guarantee.</p>
 		</a>
-		<a className="portalPathCard" href="/database/current-adapter-map">
-			<span>Data · Trace</span>
-			<h3>Mongo adapter map</h3>
-			<p>Models, indexes, repositories, mappings, seeds and the transaction/catalogue triggers.</p>
+		<a className="portalPathCard" href="/database/schema-nebula">
+			<span>Data · Explore</span>
+			<h3>Schema Nebula</h3>
+			<p>Navigate 64 physical collection targets, current model evidence, context clusters and decision gravity.</p>
 		</a>
 	</div>
 </section>
@@ -251,6 +253,7 @@ import { MissionControl } from '@site/src/components/MissionControl';
 </section>
 
 <section className="portalNext">
+	<a href="/getting-started/first-flight">Enter First Flight</a>
 	<a href="/getting-started/choose-your-path">Choose your path</a>
 	<a href="/governance/status-model">Understand statuses</a>
 	<a href="/governance/contribution-standard">Contribute documentation</a>

@@ -14,6 +14,12 @@ import { usePluginData } from '@docusaurus/useGlobalData';
 export type ChunkStatus = 'done' | 'partial' | 'next' | 'planned';
 export type GateStatus = 'open' | 'resolved';
 export type StageKind = 'real' | 'ghost';
+export type SchemaCollectionState = 'existing' | 'planned';
+export type SchemaTargetAction = 'refactor' | 'add';
+export type PortalPageStatus = 'implemented' | 'scaffolded' | 'planned' | 'deferred' | 'deprecated';
+export type CommandTargetSource = 'journey-pages' | 'decision-gates' | 'document-status';
+export type CommandTargetKind = 'journey' | 'gate' | 'status';
+export type FirstFlightPersonaId = 'beginner' | 'frontend' | 'backend' | 'operator';
 
 export type MissionChunk = {
 	id: string;
@@ -55,6 +61,104 @@ export type RequestStage = {
 	target: string;
 };
 
+export type SchemaCluster = {
+	id: string;
+	label: string;
+	summary: string;
+	owningChunks: string[];
+};
+
+export type SchemaCollection = {
+	id: string;
+	label: string;
+	cluster: string;
+	currentState: SchemaCollectionState;
+	targetAction: SchemaTargetAction;
+	owningChunks: string[];
+	blockingDecisions: string[];
+	purpose: string;
+	source: string;
+	currentModel?: string;
+	references: string[];
+};
+
+export type CommandVerbTarget = {
+	id: string;
+	title: string;
+	path: string;
+	kind: CommandTargetKind;
+	section: string;
+	status: PortalPageStatus | GateStatus;
+	keywords: string;
+};
+
+export type CommandVerb = {
+	id: 'trace' | 'gate' | 'status';
+	token: 'trace' | 'gate' | 'status';
+	label: string;
+	description: string;
+	example: string;
+	targetSource: CommandTargetSource;
+	emptyRoute: string;
+	routePrefixes?: string[];
+	includeRoutes?: string[];
+	targets: CommandVerbTarget[];
+};
+
+export type FirstFlightTargetContract = {
+	primary: 'stable-heading-id';
+	enhancementAttribute: 'data-first-flight-anchor';
+	missingTarget: 'fail-build';
+};
+
+export type FirstFlightProgressPolicy = {
+	mode: 'device-local';
+	storageKey: string;
+	payloadVersion: 1;
+	optIn: 'explicit-per-persona';
+	resumeStrategy: 'furthest-reached';
+	completionScope: 'per-persona';
+	resettable: true;
+	telemetry: false;
+	writesToApplicationApis: false;
+	writesToRepository: false;
+};
+
+export type FirstFlightDebriefPolicy = {
+	trigger: 'final-checkpoint';
+	presentation: 'route-overlay';
+	requiresStoredProgress: false;
+	persistsCompletionOnlyWhenOptedIn: true;
+};
+
+export type FirstFlightNavigationPolicy = {
+	mode: 'url-query';
+	personaParam: 'firstFlight';
+	stepParam: 'step';
+	persistsProgress: false;
+};
+
+export type FirstFlightStop = {
+	id: string;
+	route: string;
+	anchor: string;
+	title: string;
+	instruction: string;
+	why: string;
+	pageTitle: string;
+	pageStatus: PortalPageStatus;
+	sourcePath: string;
+};
+
+export type FirstFlightPersona = {
+	id: FirstFlightPersonaId;
+	label: string;
+	summary: string;
+	outcome: string;
+	durationMinutes: number;
+	stops: FirstFlightStop[];
+};
+
 export type PortalData = {
 	schemaVersion: 1;
 	lastVerified: string;
@@ -65,6 +169,9 @@ export type PortalData = {
 		wave: number;
 		status: 'built' | 'locked';
 		route?: string;
+		page?: string;
+		component?: string;
+		dataset?: string;
 	}>;
 	missionControl: {
 		lastVerified: string;
@@ -88,6 +195,45 @@ export type PortalData = {
 		title: string;
 		summary: string;
 		stages: RequestStage[];
+	};
+	schemaNebula: {
+		schemaVersion: 1;
+		lastVerified: string;
+		route: string;
+		title: string;
+		summary: string;
+		sourceOfTruth: string[];
+		sourceAliases: Record<string, string>;
+		inventory: {
+			nodeCount: number;
+			existingModelCount: number;
+			targetOnlyCount: number;
+			countPolicy: string;
+			statusPolicy: string;
+		};
+		clusters: SchemaCluster[];
+		collections: SchemaCollection[];
+	};
+	commandVerbs: {
+		schemaVersion: 1;
+		lastVerified: string;
+		title: string;
+		summary: string;
+		sourceOfTruth: string[];
+		verbs: CommandVerb[];
+	};
+	firstFlight: {
+		schemaVersion: 1;
+		lastVerified: string;
+		route: string;
+		title: string;
+		summary: string;
+		sourceOfTruth: string[];
+		targetContract: FirstFlightTargetContract;
+		navigationPolicy: FirstFlightNavigationPolicy;
+		progressPolicy: FirstFlightProgressPolicy;
+		debriefPolicy: FirstFlightDebriefPolicy;
+		personas: FirstFlightPersona[];
 	};
 };
 

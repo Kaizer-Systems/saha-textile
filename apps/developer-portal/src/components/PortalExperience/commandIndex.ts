@@ -13,6 +13,7 @@ export type CommandEntry = {
 	path: string;
 	section: string;
 	keywords?: string;
+	status?: 'implemented' | 'scaffolded' | 'planned' | 'deferred' | 'deprecated';
 };
 
 /**

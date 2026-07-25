@@ -51,6 +51,7 @@ module.exports = function portalSearchPlugin(context) {
 					path: page.route,
 					section: toSection(page.relativePath),
 					keywords: [fm.description, fm.search_keywords].filter(Boolean).join(' '),
+					status: fm.status,
 				});
 			}
 			// Stable order: section, then title.

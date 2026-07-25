@@ -9,11 +9,14 @@ source_of_truth:
     - packages/contracts/src
     - docker/mongo/docker-compose.yml
     - project-context/angular-context/codex-catalog-db-architecture-assessment-and-plan.md
+    - project-context/angular-context/codex-auth-architecture-db-and-request-plan.md
+    - docs/_data/portal-manifest.json
+    - docs/_data/instruments/schema-nebula.json
 ---
 
 # Database overview
 
-The Mongo adapter contains real connection configuration, models, indexes, mappers, repositories, seed tooling and an integration test. The adapter is scaffolded and partially implemented; the generated portal catalogue described below does not exist yet.
+The Mongo adapter contains real connection configuration, models, indexes, mappers, repositories, seed tooling and an integration test. The adapter is scaffolded and partially implemented. The interactive [Schema Nebula](./schema-nebula) maps the governed 64-collection target without pretending the field-level generated catalogue described below exists.
 
 ## Current implementation boundary
 
@@ -37,6 +40,7 @@ Do not manually duplicate field tables once generation is available.
 
 ## Database documentation map
 
+- [Schema Nebula](./schema-nebula) — interactive 64-node current-versus-target collection constellation, context lenses, decisions and relationships.
 - [Current Mongo adapter map](./current-adapter-map) — models, indexes, repositories, mappings and verified gaps.
 - [Transactions and generated catalogue](./transactions-and-generation) — atomic-write boundary, replica-set proof, generation trigger and page contract.
 - [Contracts and validation](../backend/contracts-and-validation) — persistence versus request/domain/response shapes.

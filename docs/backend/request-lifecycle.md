@@ -19,7 +19,7 @@ source_of_truth:
     - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
     - docs/_data/portal-manifest.json
     - docs/_data/instruments/request-flight.json
-    - project-context/angular-context/codex-api-app-build-instructional-prompt.md
+    - project-context/angular-context/saha-textile-technical-knowledgebase.md
 ---
 
 import { FlightSimulator } from '@site/src/components/FlightSimulator';

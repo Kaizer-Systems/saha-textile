@@ -4,7 +4,7 @@ wide: true
 description: Verified controller routes, present controls, missing production guarantees, and target ownership.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-07-24'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/config/app-config.ts
@@ -15,7 +15,7 @@ source_of_truth:
     - apps/api/src/orders
     - apps/api/src/currency
     - apps/api/src/promotions
-    - project-context/angular-context/codex-api-app-build-instructional-prompt.md
+    - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
 ---
 
 # Current API route inventory

@@ -3,7 +3,7 @@ title: Deployment Overview
 description: Deployment documentation landing page.
 status: planned
 audience: [operator, backend]
-last_verified: '2026-07-24'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/api/.env.example
     - docker/mongo/docker-compose.yml

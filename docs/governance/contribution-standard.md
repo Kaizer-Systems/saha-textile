@@ -6,7 +6,7 @@ audience: [frontend, backend, operator]
 last_verified: '2026-07-25'
 source_of_truth:
     - AGENTS.md
-    - project-context/angular-context/private-developer-portal-documentation-plan.md
+    - project-context/angular-context/owner-decisions-log.md
     - scripts/validate-developer-portal.mjs
 ---
 

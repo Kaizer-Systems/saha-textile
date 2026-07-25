@@ -162,7 +162,7 @@ const requestPaths: RequestPath[] = [
 			'apps/api/src/orders/orders.service.ts',
 			'packages/core-domain/src/pricing',
 			'packages/core-domain/src/ports/payment-gateway.port.ts',
-			'project-context/angular-context/codex-api-app-build-instructional-prompt.md',
+			'project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md',
 		],
 	},
 	{
@@ -190,7 +190,7 @@ const requestPaths: RequestPath[] = [
 			'apps/api/src/orders/orders.controller.ts',
 			'apps/api/src/auth/roles.guard.ts',
 			'packages/adapters-db-mongo/src/repositories/order.repository.ts',
-			'project-context/angular-context/codex-api-app-build-instructional-prompt.md',
+			'project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md',
 		],
 	},
 	{
@@ -272,7 +272,7 @@ const requestPaths: RequestPath[] = [
 			'apps/api/src/main.ts',
 			'apps/api/src',
 			'project-context/angular-context/owner-decisions-log.md',
-			'project-context/angular-context/private-developer-portal-documentation-plan.md',
+			'docs/api/openapi-and-scalar.md',
 		],
 	},
 ];

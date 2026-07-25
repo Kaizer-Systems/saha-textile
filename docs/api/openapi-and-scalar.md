@@ -10,7 +10,7 @@ source_of_truth:
     - apps/api/src
     - packages/contracts/src
     - project-context/angular-context/owner-decisions-log.md
-    - project-context/angular-context/private-developer-portal-documentation-plan.md
+    - project-context/angular-context/saha-textile-technical-knowledgebase.md
 ---
 
 # OpenAPI and Scalar reference

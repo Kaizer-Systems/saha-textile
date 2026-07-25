@@ -12,9 +12,9 @@ The active phase is whichever single block is uncommented in `.env.mcp` (`LOCAL`
 
 | Phase | Live servers |
 |---|---|
-| LOCAL | context7, mongodb (test M0, read-write), postman (localhost) |
-| TEST-E2E | + github (actions+repos), digitalocean (droplets,spaces,apps) |
-| PROD-E2E | same as TEST-E2E, but mongodb is **read-only** and github is read-oriented |
+| LOCAL | context7, local Docker MongoDB replica set (read-write), postman (localhost) |
+| TEST-E2E | + github (actions+repos), digitalocean (droplets,spaces,apps); test Docker MongoDB is read-write |
+| PROD-E2E | same as TEST-E2E, but production Docker MongoDB is **read-only through MCP** and github is read-oriented |
 
 If a requested action needs a server not live in the current phase, tell the human which phase to switch to (uncomment its block in `.env.mcp` + restart Cursor) instead of trying to use it.
 
@@ -37,4 +37,6 @@ Never silently assume a disabled tool is available. Never enable destructive too
 ## Safety
 - Keep tool approval ON. Treat as irreversible (confirm first): droplet/app deletion, DB drop/delete-many, Postman collection/monitor deletion, force-push, branch deletion.
 - In PROD-E2E, MongoDB writes must fail (read-only). If a write is requested in PROD-E2E, refuse and explain.
-- After E2E testing, remind the human to destroy the short-lived droplet and Spaces bucket.
+- After TEST-E2E work, confirm whether short-lived infrastructure is still
+  required before asking the human to remove it. Never treat production
+  infrastructure as disposable.

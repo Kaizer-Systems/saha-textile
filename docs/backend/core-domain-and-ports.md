@@ -10,7 +10,7 @@ source_of_truth:
     - packages/core-domain/test
     - packages/contracts/src
     - AGENTS.md
-    - project-context/angular-context/codex-api-app-build-instructional-prompt.md
+    - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
     - project-context/angular-context/owner-decisions-log.md
 ---
 

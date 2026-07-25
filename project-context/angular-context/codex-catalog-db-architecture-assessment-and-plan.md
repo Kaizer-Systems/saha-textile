@@ -144,6 +144,12 @@ Atlas-specific capabilities such as Atlas Search, Atlas Data Federation, and Atl
 
 ## 7. Recommended Collections
 
+### Cross-plan canonical inventory
+
+The owner locked the developer portal’s Schema Nebula to **64 explicit collection nodes** on 2026-07-25. This document contributes 45 distinct catalog, content, commerce, inventory, and reporting collection names. The complete cross-plan inventory adds the reconciled auth family, notifications, `carts`, and `sequences`.
+
+The count follows a one-node-per-physical-collection rule. Multi-collection headings below—such as `taxClasses` and `taxRules`—count separately. The auth plan’s former `securityAuditLogs` concept is absorbed by the broad `auditLogs` collection locked for admin and security evidence. The governed inventory lives in `docs/_data/instruments/schema-nebula.json`; it is a derived map of this plan, the auth plan, the backend roadmap, current adapter models, and owner decisions.
+
 ### 7.1 `categories`
 
 Purpose: category/collection node identity, SEO metadata, labels, and admin lifecycle.

@@ -474,3 +474,34 @@ Context: companion to the video pipeline. Same `mediaAssets` / gallery reuse / B
 - **LOCKED — Spaces region SGP only.** `SPACES_REGION=sgp1`, endpoint `https://sgp1.digitaloceanspaces.com`; all `blr1` references scrubbed.
 - **LOCKED — Auth orientation.** Target remains API-set httpOnly cookie sessions + double-submit CSRF (Chunk D). Interceptors already send `withCredentials: true`; the localStorage Bearer path is explicitly **transitional** and is removed as the happy path in Chunk D. Cookie/CSRF env names (`st_access`/`st_refresh`/`st_csrf`/`x-csrf-token`) are reserved now so deploy tooling stays stable.
 - **LOCKED — Local port map.** Storefront `:4200`, admin `:4300`, API `:4000`; CORS allowlist matches. Mongo = self-hosted Docker 8.3 single-node `rs0` (host-port overridable per machine via gitignored `docker/mongo/.env`, canonical default 27017).
+
+## 2026-07-25 — G-CORE-CONTRACTS: core-domain ↔ contracts dependency direction
+
+Context: AGENTS §3 says "`packages/core-domain` depends on NOTHING external," yet most core ports
+referenced contract shapes (`Product`, `User`, `Order`, …). Chunk A verified the coupling is
+**`import type` only** — the compiled `core-domain/dist` contains **zero runtime**
+`require`/`import` of `@saha-textile/contracts` or zod; contracts appear only in `.d.ts` files.
+Owner was presented Options A (strict independence + duplicate entity layer + mappers),
+B (full runtime coupling, zod into core), C (ratify type-only). **Owner picked C (2026-07-25).**
+
+- **LOCKED — Option C: type-only coupling, ratified + mechanically enforced.**
+    - `packages/core-domain` **may** reference `@saha-textile/contracts` shapes via
+      **`import type` only** (compile-time, runtime-erased). It must **never** import contracts
+      as a runtime value, and must **never** depend on zod at runtime.
+    - `packages/core-domain` continues to forbid **all** imports of `@nestjs/*`, `mongoose`,
+      `fastify`, provider SDKs (Meilisearch/AWS/PayPal/CCAvenue/Shiprocket/MSG91/etc.), and
+      `@saha-textile/adapters-*` — value **or** type.
+    - **Enforcement:** ESLint flat-config boundary rules in `packages/core-domain`
+      (`no-restricted-imports` + import-kind awareness) fail lint on any violation; delivered in
+      Chunk B alongside this lock. TypeScript `verbatimModuleSyntax`-style discipline keeps
+      `import type` honest.
+    - **Interpretation of AGENTS §3:** "depends on nothing external" is read as **runtime/build
+      dependency purity** — the swappability guarantee (Mongo→Postgres = adapter + DI only) is the
+      protected property. Compile-time type sharing with the project-owned contracts package does
+      not violate it. AGENTS §3 wording to be annotated at next constitution touch (not urgent).
+    - **Direction of authorship:** `contracts` (zod) remains the single source of truth for shapes;
+      core consumes inferred types. No duplicate entity layer, no DTO↔domain mappers at launch
+      scale (~40 collections would double-type otherwise — rejected as boutique-inappropriate).
+    - **Escape hatch (future):** if a future need demands a zod-free consumer of core, revisit by
+      introducing core-owned entity types then — Option A can be adopted incrementally per domain
+      without a big-bang rewrite, since the runtime surface is already pure.

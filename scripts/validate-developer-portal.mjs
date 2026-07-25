@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
-const documentationRoot = path.join(repositoryRoot, 'docs');
 const portalRoot = path.join(repositoryRoot, 'apps', 'developer-portal');
 const require = createRequire(import.meta.url);
 const {

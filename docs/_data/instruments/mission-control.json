@@ -2,8 +2,8 @@
 	"schemaVersion": 1,
 	"lastVerified": "2026-07-25",
 	"sourceOfTruth": [
-		"project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md",
-		"project-context/angular-context/project-progress.md"
+		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
+		"docs/engineering-live-context/project-progress.mdx"
 	],
 	"gates": [
 		{ "id": "G-NUM-ORDER", "label": "Order / tax-invoice numbering" },

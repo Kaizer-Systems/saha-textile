@@ -5,7 +5,7 @@ status: planned
 audience: [operator]
 last_verified: '2026-07-25'
 source_of_truth:
-    - project-context/angular-context/execution-roadmap.md
+    - docs/engineering-live-context/execution-roadmap.mdx
     - .cursor/rules/mcp-tools.mdc
     - .github/workflows
 ---

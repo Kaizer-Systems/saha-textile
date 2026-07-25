@@ -6,7 +6,7 @@ audience: [frontend, backend, operator]
 last_verified: '2026-07-25'
 source_of_truth:
     - package.json
-    - project-context/angular-context/execution-roadmap.md
+    - docs/engineering-live-context/execution-roadmap.mdx
 ---
 
 # Maintenance overview

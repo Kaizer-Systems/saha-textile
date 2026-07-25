@@ -9,7 +9,7 @@ source_of_truth:
     - apps/storefront/vite.config.ts
     - apps/admin/src/app/app.component.spec.ts
     - package.json
-    - project-context/angular-context/execution-roadmap.md
+    - docs/engineering-live-context/execution-roadmap.mdx
 ---
 
 # Frontend quality and definition of done

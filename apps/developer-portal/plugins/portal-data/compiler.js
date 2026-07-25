@@ -6,7 +6,7 @@
  * WHY: Mission Control, Gate Console, Schema Nebula, search, and future instruments must render
  * the same validated truth instead of maintaining parallel facts in components.
  * HOW: docs/_data JSON supplies authored structure; the machine-readable block
- * in project-progress.md supplies live chunk/gate state; this compiler validates
+ * in project-progress.mdx supplies live chunk/gate state; this compiler validates
  * source paths, roadmap/gate/catalog alignment, and emits Docusaurus global data.
  * TUNING: extend DATASET_COMPILERS and the manifest schema when a new instrument
  * family lands. Do not weaken an assertion to make stale data build.
@@ -15,8 +15,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const PORTAL_TRUTH_START = '<!-- portal-truth:start -->';
-const PORTAL_TRUTH_END = '<!-- portal-truth:end -->';
+const PORTAL_TRUTH_START = '{/* portal-truth:start */}';
+const PORTAL_TRUTH_END = '{/* portal-truth:end */}';
 const VALID_CHUNK_STATUSES = new Set(['done', 'partial', 'next', 'planned']);
 const VALID_GATE_STATUSES = new Set(['open', 'resolved']);
 const VALID_STAGE_KINDS = new Set(['real', 'ghost']);
@@ -268,12 +268,12 @@ function validateSources(repositoryRoot, sources, label, failures) {
 }
 
 function readProjectTruth(repositoryRoot, failures) {
-	const progressPath = path.join(repositoryRoot, 'project-context/angular-context/project-progress.md');
+	const progressPath = path.join(repositoryRoot, 'docs/engineering-live-context/project-progress.mdx');
 	const progress = fs.readFileSync(progressPath, 'utf8');
 	const start = progress.indexOf(PORTAL_TRUTH_START);
 	const end = progress.indexOf(PORTAL_TRUTH_END);
 	if (start === -1 || end === -1 || end <= start) {
-		failures.push(`project-progress.md must contain ${PORTAL_TRUTH_START} … ${PORTAL_TRUTH_END}.`);
+		failures.push(`project-progress.mdx must contain ${PORTAL_TRUTH_START} … ${PORTAL_TRUTH_END}.`);
 		return { schemaVersion: 0, lastVerified: '', chunks: {}, gates: {} };
 	}
 
@@ -302,16 +302,16 @@ function validateProjectTruth(repositoryRoot, truth, failures) {
 	const roadmap = fs.readFileSync(
 		path.join(
 			repositoryRoot,
-			'project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md',
+			'docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx',
 		),
 		'utf8',
 	);
 	const progress = fs.readFileSync(
-		path.join(repositoryRoot, 'project-context/angular-context/project-progress.md'),
+		path.join(repositoryRoot, 'docs/engineering-live-context/project-progress.mdx'),
 		'utf8',
 	);
 	const ownerLog = fs.readFileSync(
-		path.join(repositoryRoot, 'project-context/angular-context/owner-decisions-log.md'),
+		path.join(repositoryRoot, 'docs/engineering-live-context/owner-decisions-log.mdx'),
 		'utf8',
 	);
 
@@ -630,7 +630,7 @@ function compileSchemaNebula(raw, truth, repositoryRoot, manifest, failures) {
 	}
 	const collectionIds = new Set(collections.map((collection) => collection.id));
 	const pendingDecisions = fs.readFileSync(
-		path.join(repositoryRoot, 'project-context/angular-context/pending-decisions.md'),
+		path.join(repositoryRoot, 'docs/engineering-live-context/pending-decisions.mdx'),
 		'utf8',
 	);
 	const knownDecisionIds = new Set(pendingDecisions.match(/\bDEC-[A-Z0-9-]+\b/g) ?? []);

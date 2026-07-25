@@ -9,8 +9,8 @@ source_of_truth:
     - AGENTS.md
     - apps/api/.env.example
     - apps/storefront/src/app/core/config/runtime-config.ts
-    - project-context/angular-context/saha-textile-technical-knowledgebase.md
-    - project-context/angular-context/owner-decisions-log.md
+    - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
+    - docs/engineering-live-context/owner-decisions-log.mdx
 ---
 
 import { ArchitectureReactor } from '@site/src/components/ArchitectureReactor';

@@ -5,8 +5,8 @@ status: implemented
 audience: [beginner, frontend, backend, operator]
 last_verified: '2026-07-25'
 source_of_truth:
-    - project-context/angular-context/execution-roadmap.md
-    - project-context/angular-context/owner-decisions-log.md
+    - docs/engineering-live-context/execution-roadmap.mdx
+    - docs/engineering-live-context/owner-decisions-log.mdx
     - apps/developer-portal
 ---
 

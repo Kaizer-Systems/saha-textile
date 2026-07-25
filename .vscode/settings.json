@@ -48,6 +48,7 @@
 	"[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
 	"[jsonc]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
 	"[markdown]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+	"[mdx]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
 
 	// ---- YAML & GitHub Actions MUST use spaces (tabs are invalid in YAML) ----
 	"[yaml]": {

@@ -37,7 +37,7 @@ function rankPages(query: string, entries: CommandEntry[]): Ranked[] {
 	const list = Array.isArray(entries) ? entries : [];
 	const trimmed = query.trim();
 	if (trimmed.length === 0) {
-		return list.map((entry) => ({ ...entry, score: 0 }));
+		return list.slice(0, 24).map((entry) => ({ ...entry, score: 0 }));
 	}
 
 	const ranked: Ranked[] = [];
@@ -294,7 +294,7 @@ export function CommandPalette(): React.ReactNode {
 									<button
 										key={
 											result.kind === 'page'
-												? `page:${result.entry.path}`
+												? `page:${result.entry.id}`
 												: `verb-target:${result.entry.id}`
 										}
 										type="button"
@@ -314,6 +314,14 @@ export function CommandPalette(): React.ReactNode {
 													data-status={entry.status}
 												>
 													{entry.status}
+												</span>
+											)}
+											{'documentRole' in entry && entry.documentRole === 'canonical' && (
+												<span
+													className={styles.paletteRowStatus}
+													data-status="canonical"
+												>
+													{entry.kind === 'heading' ? 'live heading' : 'canonical'}
 												</span>
 											)}
 										</span>

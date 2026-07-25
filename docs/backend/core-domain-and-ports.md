@@ -10,8 +10,8 @@ source_of_truth:
     - packages/core-domain/test
     - packages/contracts/src
     - AGENTS.md
-    - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
-    - project-context/angular-context/owner-decisions-log.md
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
+    - docs/engineering-live-context/owner-decisions-log.mdx
 ---
 
 # Core domain, pricing, and ports

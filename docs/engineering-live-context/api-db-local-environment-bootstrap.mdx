@@ -1,8 +1,17 @@
+---
+title: "API and Database Local Environment Bootstrap"
+description: "Canonical local MongoDB, API, tooling, and MCP readiness handoff."
+audience: [backend, operator, agent]
+document_role: canonical
+last_verified: 2026-07-25
+search_keywords: "local environment bootstrap mongodb replica set api mcp docker"
+---
+
 # API + DB local environment bootstrap (Cursor / Claude Code handoff)
 
-**Purpose.** What must be running on the machine before executing `api-db-development-roadmap-with-pending-decision-gates.md`.
+**Purpose.** What must be running on the machine before executing `api-db-development-roadmap-with-pending-decision-gates.mdx`.
 **Date:** 2026-07-24
-**Progress continuity:** always read/update `project-progress.md` in the same folder.
+**Progress continuity:** always read/update `project-progress.mdx` in the same folder.
 
 ---
 
@@ -14,7 +23,7 @@
 | Who connects to Mongo? | **API only** (via `adapters-db-mongo`). Storefront/admin never get a Mongo URI. |
 | Is Docker Mongo + RS part of SAFE NOW? | **Yes** — Phase/Chunk C hard deliverable; local profile belongs in `docker/mongo/`. |
 | Does “Postman app open” equal MCP ready? | **No.** Desktop Postman ≠ Postman MCP. Claude Code mainly uses shell + HTTP; Cursor MCP needs `.env.mcp` + restart. |
-| Where is shared progress? | `project-progress.md` — mandatory for all tools. |
+| Where is shared progress? | `project-progress.mdx` — mandatory for all tools. |
 | Touch `nextjs-context`? | **No.** |
 
 ---
@@ -26,7 +35,7 @@
 - Recreate `docker/mongo/docker-compose.yml` + `scripts/mongo-*.sh` + root `pnpm mongo:*` if missing.
 - Align `apps/api/.env.example`, `app-config.ts`, Angular `config.json` loaders, scrub Atlas/Brevo/`blr1`.
 - Write detailed deploy/render scripts and GitHub workflows when infrastructure work is scheduled.
-- Update `project-progress.md` after each task.
+- Update `project-progress.mdx` after each task.
 
 ### Only the human can
 
@@ -43,7 +52,7 @@
 3. `cp apps/api/.env.example apps/api/.env` → set JWT secrets (Mongo localhost defaults OK).
 4. Storefront/admin: localhost `public/config.json` (runtime-loaded).
 5. Optional Cursor MCP: `.env.mcp` LOCAL block; tool count &lt; ~40.
-6. Read `project-progress.md` before coding.
+6. Read `project-progress.mdx` before coding.
 
 URI shape: `mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directConnection=true`
 
@@ -59,7 +68,7 @@ URI shape: `mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directCo
 | Git | Never | Localhost defaults OK; **prod/staging config.json never committed** |
 | Local DX | Once: `cp apps/api/.env.example apps/api/.env` | Committed localhost `public/config.json` |
 
-Build images **without** secrets. Detailed render/deploy scripts place env + config at deploy time. Full catalogue: `environment-variables.md`.
+Build images **without** secrets. Detailed render/deploy scripts place env + config at deploy time. Full catalogue: `environment-variables.mdx`.
 
 ---
 
@@ -68,15 +77,15 @@ Build images **without** secrets. Detailed render/deploy scripts place env + con
 Minimum `@` / attach list:
 
 1. `AGENTS.md`
-2. `project-context/angular-context/project-progress.md`
-3. `project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md`
-4. `project-context/angular-context/owner-decisions-log.md`
+2. `docs/engineering-live-context/project-progress.mdx`
+3. `docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx`
+4. `docs/engineering-live-context/owner-decisions-log.mdx`
 5. This file
-6. `project-context/angular-context/environment-variables.md`
+6. `docs/engineering-live-context/environment-variables.mdx`
 
 Plus the domain-specific retained architecture file listed in the roadmap’s
 **Required reading** table. Review relevant `DEC-*` entries in
-`pending-decisions.md` before finalizing gated policy.
+`pending-decisions.mdx` before finalizing gated policy.
 
 ---
 
@@ -88,5 +97,5 @@ Plus the domain-specific retained architecture file listed in the roadmap’s
 - `apps/api/.env.example`
 - `.env.mcp.example`
 - `.cursor/rules/mcp-tools.mdc`
-- `environment-variables.md`
-- `project-progress.md`
+- `environment-variables.mdx`
+- `project-progress.mdx`

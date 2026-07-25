@@ -9,11 +9,14 @@
  * ========================================================================= */
 
 export type CommandEntry = {
+	id: string;
 	title: string;
 	path: string;
 	section: string;
 	keywords?: string;
 	status?: 'implemented' | 'scaffolded' | 'planned' | 'deferred' | 'deprecated';
+	documentRole?: 'canonical';
+	kind?: 'page' | 'heading';
 };
 
 /**

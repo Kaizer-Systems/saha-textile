@@ -1,15 +1,24 @@
+---
+title: "Pending Decisions"
+description: "Canonical inbox of unresolved owner decisions and stable implementation gates."
+audience: [engineering, product, operator, agent]
+document_role: canonical
+last_verified: 2026-07-25
+search_keywords: "pending decisions owner questions implementation gates unresolved"
+---
+
 # Pending Decisions — Saha Textile
 
-**Status:** Sole owner-question inbox. Nothing in this file is locked until the owner answers it and the answer is recorded in `owner-decisions-log.md`.
+**Status:** Sole owner-question inbox. Nothing in this file is locked until the owner answers it and the answer is recorded in `owner-decisions-log.mdx`.
 
-**Last reconciled:** 2026-07-25
+**Last reconciled:** 2026-07-26
 
 ## How this file works
 
 1. Every unresolved product, business, compliance, architecture, or operations choice lives here exactly once.
 2. Roadmaps and progress files refer to the stable decision ID, not copied question text.
 3. When the owner answers a decision:
-    - record the final rule in `owner-decisions-log.md`;
+    - record the final rule in `owner-decisions-log.mdx`;
     - reconcile affected architecture, contracts, code, and portal documentation;
     - remove the resolved decision from this file;
     - mark the corresponding roadmap/progress gate resolved.
@@ -47,6 +56,7 @@
 | `DEC-INR-GATEWAY-TIMING` | Timing of CCAvenue-to-Razorpay succession | Payment adapter delivery and operations |
 | `DEC-DOMAIN-TOPOLOGY` | Production storefront/admin/API hostname topology | Cookies, CORS, Nginx, deployment |
 | `DEC-TRANSLATION-QUALITY` | French translation authorship and acceptance policy | Storefront/admin copy quality and release QA |
+| `DEC-PORTAL-PRIVATE-ACCESS` | Developer-portal identity policy and origin-protection mechanism | Portal deployment, Cloudflare, service access |
 
 ---
 
@@ -1193,5 +1203,63 @@ Approved author/reviewer:
 May English fallback ship temporarily:
 
 Release gate:
+
+Notes:
+
+---
+
+## 28. `DEC-PORTAL-PRIVATE-ACCESS` — Developer-portal private-access design
+
+### Decision needed
+
+Choose the identity allowlist, session policy, and origin-protection mechanism
+for the entire developer-portal host.
+
+### Why this matters
+
+The static portal delivers canonical Engineering Live Context, search payloads,
+current Storybook and TypeDoc children, and future Scalar/OpenAPI and
+database-catalogue assets to the browser. Protecting only HTML routes or hiding
+navigation would still expose the underlying static assets. The public
+repository also means deployment controls cannot turn committed secrets into
+private information.
+
+### Locked baseline
+
+- Access is default-deny and covers the whole host and every asset.
+- There is no unrestricted “Everyone” rule or unrestricted email-OTP policy.
+- `noindex` is defense-in-depth only.
+- Unauthorized shell, static-asset, and direct-origin requests are release tests.
+- Machine access uses scoped service tokens.
+
+### Recommended route
+
+Use a Cloudflare Tunnel so the portal origin is not publicly reachable, plus a
+Cloudflare Access identity allowlist and short-lived sessions. Use scoped service
+tokens for CI or machine readers.
+
+### Options
+
+#### Option A — Cloudflare Tunnel + Access (recommended)
+
+- Pros: removes direct public origin exposure and centralizes identity policy.
+- Cons: requires tunnel lifecycle and service-token operations.
+
+#### Option B — Public origin restricted by authenticated-origin/JWT validation
+
+- Pros: works with a conventional origin topology.
+- Cons: more origin hardening and bypass testing; mistakes can expose static assets.
+
+### Owner answer
+
+Choice:
+
+Allowed human identities or domains:
+
+Session duration and re-authentication rule:
+
+Service-token consumers:
+
+Origin-bypass test target:
 
 Notes:

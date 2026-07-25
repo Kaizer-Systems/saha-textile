@@ -7,7 +7,7 @@ audience: [beginner, frontend, operator]
 last_verified: '2026-07-25'
 source_of_truth:
     - apps/admin/src/app
-    - project-context/angular-context/owner-decisions-log.md
+    - docs/engineering-live-context/owner-decisions-log.mdx
 ---
 
 # Admin orientation

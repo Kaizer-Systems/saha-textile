@@ -15,7 +15,7 @@ source_of_truth:
     - packages/adapters-db-mongo/test/integration.test.ts
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh
-    - project-context/angular-context/owner-decisions-log.md
+    - docs/engineering-live-context/owner-decisions-log.mdx
 ---
 
 # Current Mongo adapter map

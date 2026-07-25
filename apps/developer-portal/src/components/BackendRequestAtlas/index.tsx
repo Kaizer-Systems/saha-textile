@@ -50,7 +50,7 @@ const requestPaths: RequestPath[] = [
 			'apps/api/src/catalog/products.controller.ts',
 			'apps/api/src/catalog/catalog.service.ts',
 			'packages/adapters-db-mongo/src/repositories/product.repository.ts',
-			'project-context/angular-context/owner-decisions-log.md',
+			'docs/engineering-live-context/owner-decisions-log.mdx',
 		],
 	},
 	{
@@ -78,7 +78,7 @@ const requestPaths: RequestPath[] = [
 			'apps/api/src/cart',
 			'packages/core-domain/src/ports/cart.repository.ts',
 			'packages/adapters-db-mongo/src/models/cart.model.ts',
-			'project-context/angular-context/owner-decisions-log.md',
+			'docs/engineering-live-context/owner-decisions-log.mdx',
 		],
 	},
 	{
@@ -106,7 +106,7 @@ const requestPaths: RequestPath[] = [
 			'apps/api/src/auth',
 			'apps/api/src/infra/argon2-jwt.auth.ts',
 			'packages/core-domain/src/ports/auth.port.ts',
-			'project-context/angular-context/codex-auth-architecture-db-and-request-plan.md',
+			'docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx',
 		],
 	},
 	{
@@ -134,7 +134,7 @@ const requestPaths: RequestPath[] = [
 			'apps/api/src/orders/orders.controller.ts',
 			'apps/api/src/orders/orders.service.ts',
 			'packages/adapters-db-mongo/src/repositories/order.repository.ts',
-			'project-context/angular-context/saha-textile-technical-knowledgebase.md',
+			'docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx',
 		],
 	},
 	{
@@ -162,7 +162,7 @@ const requestPaths: RequestPath[] = [
 			'apps/api/src/orders/orders.service.ts',
 			'packages/core-domain/src/pricing',
 			'packages/core-domain/src/ports/payment-gateway.port.ts',
-			'project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md',
+			'docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx',
 		],
 	},
 	{
@@ -190,7 +190,7 @@ const requestPaths: RequestPath[] = [
 			'apps/api/src/orders/orders.controller.ts',
 			'apps/api/src/auth/roles.guard.ts',
 			'packages/adapters-db-mongo/src/repositories/order.repository.ts',
-			'project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md',
+			'docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx',
 		],
 	},
 	{
@@ -217,7 +217,7 @@ const requestPaths: RequestPath[] = [
 		sources: [
 			'packages/core-domain/src/ports/search.port.ts',
 			'packages/adapters-db-mongo/src/repositories/product.repository.ts',
-			'project-context/angular-context/owner-decisions-log.md',
+			'docs/engineering-live-context/owner-decisions-log.mdx',
 		],
 	},
 	{
@@ -244,7 +244,7 @@ const requestPaths: RequestPath[] = [
 		sources: [
 			'apps/api/src/health/health.controller.ts',
 			'apps/api/src/infra/persistence.module.ts',
-			'project-context/angular-context/execution-roadmap.md',
+			'docs/engineering-live-context/execution-roadmap.mdx',
 		],
 	},
 	{
@@ -271,7 +271,7 @@ const requestPaths: RequestPath[] = [
 		sources: [
 			'apps/api/src/main.ts',
 			'apps/api/src',
-			'project-context/angular-context/owner-decisions-log.md',
+			'docs/engineering-live-context/owner-decisions-log.mdx',
 			'docs/api/openapi-and-scalar.md',
 		],
 	},

@@ -1,15 +1,18 @@
 # Codex Catalog, Category, Product, Search, Commerce, and Reporting DB Architecture Assessment
 
-Date: 2026-06-28
+**Status:** Target catalog, commerce, search, and reporting architecture
+**Last reconciled:** 2026-07-25
+**Authority:** `owner-decisions-log.md`; unresolved choices: `pending-decisions.md`
 
-Scope: assessment and implementation plan only. This document is a planning artifact, not application code.
+This is a target design, not proof that every collection or capability exists.
+Current delivery status lives in `project-progress.md`; Zod contracts, adapter
+models/indexes, tests, and runtime behavior govern implemented truth.
 
 ## 1. Sources Read
 
-- Entire `project-context/angular-context/` folder.
-- Existing contracts, ports, Mongo models, mappers, repositories, seed data, and catalog API surface.
-- Re-read KB sections on SEO/i18n/multi-currency, payments/shipping, admin-first Fastkart execution, analytics/FX cron, and pricing/gateway markup logic for the 2026-06-28 update.
-- Re-read current admin/product/tag/FAQ/question stubs and storefront product-card badge stub for the 2026-06-28 reporting/status/Q&A update.
+- Current `owner-decisions-log.md`, `pending-decisions.md`, and retained technical KB.
+- Existing contracts, ports, Mongo models, mappers, repositories, seed data, tests, and catalog API surface.
+- Live-site observations below are dated discovery evidence, not a current production inventory guarantee.
 - User-provided product setup screenshot context: Fastkart status/setup toggles include Featured, Safe Checkout, Secure Checkout, Social Share, Encourage Order, Encourage View, Trending, Return, and Status; these must be retained in the custom product setup plan.
 - Live `sahatextile.com` public WooCommerce data fetched on 2026-06-28:
     - `/wp-json/wc/store/v1/products?per_page=100` returned 23 public products.
@@ -112,7 +115,7 @@ Atlas-specific capabilities such as Atlas Search, Atlas Data Federation, and Atl
 - `ProductStatus` is only `draft | published | archived`; the KB also discusses disabled/discontinued. The final contract should include a richer lifecycle.
 - `Category` has a single `parentId`; live behavior and future merchandising need multi-placement or category/collection separation.
 - Current product variants are embedded inside `products`. That is acceptable for the present catalog, but a first-class `productVariants` collection is cleaner for SKU uniqueness, stock changes, status changes, and search indexing.
-- Current `ProductRepository.list()` uses regex over slug/SKU/tags. This is not sufficient for typeahead, Bengali/English transliteration, typo tolerance, suggestions, or large archived catalogs.
+- Current `ProductRepository.list()` uses regex over slug/SKU/tags. This is not sufficient for typeahead, multilingual aliases/transliteration, typo tolerance, suggestions, or large archived catalogs.
 - SearchPort exists but is not wired to a real search adapter.
 - Orders snapshot product lines, but tax, payment, shipment, return, refund, and audit collections are not yet fully separated.
 - Category subtree querying currently relies on `parentId` and path arrays but not multi-placement.
@@ -151,13 +154,13 @@ Recommended shape:
 {
   _id: string;
   kind: 'taxonomy' | 'collection' | 'occasion' | 'fabric' | 'weave' | 'budget' | 'admin';
-  name: { en: string; bn?: string };
+  name: Record<string, string>;
   slug: string;
   status: 'active' | 'hidden' | 'archived';
-  description?: { en?: string; bn?: string };
+  description?: Record<string, string>;
   seo?: {
-    title?: { en?: string; bn?: string };
-    description?: { en?: string; bn?: string };
+    title?: Record<string, string>;
+    description?: Record<string, string>;
     canonicalPath?: string;
     noindex?: boolean;
   };
@@ -238,15 +241,12 @@ Recommended shape:
   categoryId?: string;
   categoryPlacementId?: string;
   productGroupId?: string;
-  localeOverrides?: {
-    en?: Record<string, string>;
-    bn?: Record<string, string>;
-  };
+  localeOverrides?: Record<string, Record<string, string>>;
   facets: Array<{
     code: string;
     source: 'category' | 'tag' | 'attribute' | 'variant_option' | 'price' | 'rating' | 'stock' | 'shipping' | 'merchandising_flag' | 'badge';
     attributeCode?: string;
-    label: { en: string; bn?: string };
+    label: Record<string, string>;
     enabled: boolean;
     displayOrder: number;
     displayStyle: 'checkbox' | 'swatch' | 'range' | 'rating' | 'toggle' | 'chips' | 'radio';
@@ -313,7 +313,7 @@ Purpose: loose merchandising and search labels, not hierarchy.
 ```ts
 {
   _id: string;
-  name: { en: string; bn?: string };
+  name: Record<string, string>;
   slug: string;
   type: 'style' | 'occasion' | 'color' | 'campaign' | 'search' | 'analytics' | 'system_badge' | 'legacy';
   status: 'active' | 'hidden' | 'archived';
@@ -342,13 +342,13 @@ Purpose: global attribute definitions and term dictionaries.
 {
   _id: string;
   code: string;
-  label: { en: string; bn?: string };
+  label: Record<string, string>;
   defaultRole: 'filter_only' | 'variation_axis' | 'named_add_on' | 'bundle_component_option' | 'descriptive' | 'search';
   defaultDisplayStyle: 'rectangle' | 'circle' | 'image_swatch' | 'color_swatch' | 'radio' | 'dropdown';
   valueType: 'term' | 'color' | 'number' | 'text';
   terms: Array<{
     code: string;
-    label: { en: string; bn?: string };
+    label: Record<string, string>;
     slug: string;
     hex?: string;
     swatchAssetId?: string;
@@ -360,7 +360,7 @@ Purpose: global attribute definitions and term dictionaries.
     sortOrder: number;
     facetEligible?: boolean;
     defaultFacetDisplayStyle?: 'checkbox' | 'swatch' | 'range' | 'rating' | 'toggle' | 'chips' | 'radio';
-    defaultFacetLabel?: { en: string; bn?: string };
+    defaultFacetLabel?: Record<string, string>;
     showCountsByDefault?: boolean;
   };
   externalRefs?: {
@@ -392,10 +392,10 @@ Purpose: reusable tailoring/customization fields and conditional visibility.
 {
   _id: string;
   code: string;
-  label: { en: string; bn?: string };
+  label: Record<string, string>;
   fields: Array<{
     code: string;
-    label: { en: string; bn?: string };
+    label: Record<string, string>;
     type: 'number' | 'text' | 'select';
     unit?: 'in' | 'cm';
     required: boolean;
@@ -428,7 +428,7 @@ Recommended shape:
 {
   _id: string;
   productType: 'simple' | 'variable' | 'bundle' | 'grouped';
-  title: { en: string; bn?: string };
+  title: Record<string, string>;
   slug: string;
   sku?: string;
   status: 'draft' | 'published' | 'hidden' | 'archived' | 'discontinued';
@@ -453,7 +453,7 @@ Recommended shape:
   };
   productCardBadges: Array<{
     code: 'sale' | 'new' | 'featured' | 'hot' | 'popular' | 'most_viewed' | 'most_bought' | 'most_searched' | 'trending';
-    label: { en: string; bn?: string };
+    label: Record<string, string>;
     source: 'manual' | 'analytics' | 'promotion' | 'system';
     priority: number;
     startsAt?: Date;
@@ -472,14 +472,14 @@ Recommended shape:
   }>;
   optionDefinitions: Array<{
     attributeCode: string;
-    label: { en: string; bn?: string };
+    label: Record<string, string>;
     semanticRole: 'filter_only' | 'variation_axis' | 'named_add_on' | 'bundle_component_option';
     displayStyle: 'rectangle' | 'circle' | 'image_swatch' | 'color_swatch' | 'radio' | 'dropdown';
     requiredSelection: boolean;
     defaultTermCode?: string;
     terms: Array<{
       code: string;
-      label: { en: string; bn?: string };
+      label: Record<string, string>;
       isBase?: boolean;
       swatchAssetId?: string;
       hex?: string;
@@ -490,13 +490,13 @@ Recommended shape:
   }>;
   namedAddonGroups: Array<{
     code: string;
-    label: { en: string; bn?: string };
+    label: Record<string, string>;
     displayStyle: 'rectangle' | 'circle' | 'image_swatch' | 'color_swatch' | 'radio' | 'dropdown';
     requiredSelection: boolean;
     defaultTermCode: string;
     optionTerms: Array<{
       code: string;
-      label: { en: string; bn?: string };
+      label: Record<string, string>;
       priceDeltaINR?: number;
       swatchAssetId?: string;
       hex?: string;
@@ -517,12 +517,12 @@ Recommended shape:
     galleryAssetIds: string[];
   };
   seo: {
-    title?: { en?: string; bn?: string };
-    description?: { en?: string; bn?: string };
+    title?: Record<string, string>;
+    description?: Record<string, string>;
     canonicalPath?: string;
     noindex?: boolean;
-    ogTitle?: { en?: string; bn?: string };
-    ogDescription?: { en?: string; bn?: string };
+    ogTitle?: Record<string, string>;
+    ogDescription?: Record<string, string>;
     ogImageAssetId?: string;
     robots?: 'index,follow' | 'noindex,follow' | 'noindex,nofollow';
     structuredDataMode?: 'auto' | 'manual_override' | 'disabled';
@@ -538,10 +538,7 @@ Recommended shape:
     normalizedTitle: string;
     aliases: string[];
     keywords: string[];
-    localeTokens: {
-      en: string[];
-      bn: string[];
-    };
+    localeTokens: Record<string, string[]>;
   };
   externalRefs?: {
     wooProductId?: number;
@@ -659,7 +656,7 @@ This is separate from cross-sell, upsell, related products, bought-together disp
 	pricePolicy: 'sum-components' | 'fixed-bundle-price' | 'discounted-components';
 	groups: Array<{
 		code: string;
-		label: { en: string; bn?: string };
+		label: Record<string, string>;
 		minSelections: number;
 		maxSelections: number;
 		components: Array<{
@@ -753,16 +750,16 @@ Use this when multiple products need to be managed as one merchandising unit but
     | 'new_arrivals'
     | 'clearance'
     | 'manual_admin_group';
-  title: { en: string; bn?: string };
+  title: Record<string, string>;
   slug?: string;
-  description?: { en?: string; bn?: string };
+  description?: Record<string, string>;
   status: 'draft' | 'active' | 'hidden' | 'archived';
   items: Array<{
     productId: string;
     variantId?: string;
     role?: 'primary' | 'supporting' | 'addon' | 'alternative';
     rank: number;
-    label?: { en?: string; bn?: string };
+    label?: Record<string, string>;
   }>;
   rules?: {
     includeCategoryIds?: string[];
@@ -780,8 +777,8 @@ Use this when multiple products need to be managed as one merchandising unit but
   seo?: {
     routable: boolean;
     canonicalPath?: string;
-    title?: { en?: string; bn?: string };
-    description?: { en?: string; bn?: string };
+    title?: Record<string, string>;
+    description?: Record<string, string>;
     noindex?: boolean;
   };
   createdAt: Date;
@@ -813,7 +810,7 @@ Purpose: canonical route registry and SEO rendering source for products, categor
   _id: string;
   entityType: 'product' | 'category' | 'product_group' | 'blog_post' | 'page';
   entityId: string;
-  locale: 'en' | 'bn';
+  locale: string; // configured active locale
   path: string;
   canonicalPath: string;
   status: 'indexable' | 'noindex' | 'redirect' | 'gone' | 'draft';
@@ -938,7 +935,7 @@ Purpose: Spaces media catalogue, alt text, image reuse, and SEO metadata.
   width?: number;
   height?: number;
   sizeBytes?: number;
-  alt: { en?: string; bn?: string };
+  alt: Record<string, string>;
   usage: Array<{
     entityType: 'product' | 'variant' | 'category' | 'blog' | 'page';
     entityId: string;
@@ -964,7 +961,7 @@ Purpose: curated transliteration, misspelling, synonym, and merchandising query 
 {
   _id: string;
   canonical: string;
-  locale: 'en' | 'bn' | 'mixed';
+  locale: string | 'mixed';
   aliases: string[];
   misspellings: string[];
   transliterations: string[];
@@ -987,7 +984,7 @@ Examples to seed manually:
 
 Rules:
 
-- Do not rely on the search engine alone for Bengali-English transliteration. Curate dictionary entries.
+- Do not rely on the search engine alone for locale-aware transliteration. Curate dictionary entries.
 - Store only aggregate search learning, not user-identifiable search history.
 
 ### 7.17 `searchOutbox`
@@ -1021,7 +1018,7 @@ Purpose: suggestions, popular searches, no-result analysis, and spell-correction
 {
   _id: string;
   normalizedQuery: string;
-  locale?: 'en' | 'bn' | 'mixed';
+  locale?: string | 'mixed';
   count: number;
   resultCountAvg: number;
   lastSeenAt: Date;
@@ -1263,8 +1260,8 @@ type FaqEntryDoc = {
 	_id: string;
 	ownerType: 'site' | 'product' | 'category' | 'product_group' | 'blog' | 'page';
 	ownerId?: string;
-	question: { en: string; bn?: string };
-	answerHtml: { en: string; bn?: string };
+	question: Record<string, string>;
+	answerHtml: Record<string, string>;
 	status: 'draft' | 'published' | 'archived';
 	includeInStructuredData: boolean;
 	sortOrder: number;
@@ -1277,9 +1274,9 @@ type ContentBlockDoc = {
 	ownerType: 'home' | 'category' | 'product' | 'product_group' | 'blog' | 'page';
 	ownerId?: string;
 	placement: string;
-	title?: { en: string; bn?: string };
-	bodyHtml?: { en: string; bn?: string };
-	ctaLabel?: { en: string; bn?: string };
+	title?: Record<string, string>;
+	bodyHtml?: Record<string, string>;
+	ctaLabel?: Record<string, string>;
 	ctaHref?: string;
 	mediaAssetId?: string;
 	status: 'draft' | 'published' | 'archived';
@@ -1294,7 +1291,7 @@ Rules:
 - Product/category fields stay embedded as i18n objects when they belong only to that entity.
 - Reusable or ordered content, especially FAQs, lives in `faqEntries`/`contentBlocks`.
 - FAQ answers must render in initial SSR HTML and remain in the DOM when collapsed.
-- Publish validation must check default-locale content and flag missing Bengali translations for admin QA.
+- Publish validation must require the default locale and report missing content for every configured active locale.
 
 Indexes:
 
@@ -1309,7 +1306,7 @@ Purpose: admin-controlled enabled currencies, display settings, gateway selectio
 type CurrencyDoc = {
 	_id: string;
 	code: string; // INR, USD, GBP, EUR, etc.
-	label: { en: string; bn?: string };
+	label: Record<string, string>;
 	symbol: string;
 	decimalPlaces: number;
 	roundingMode: 'none' | 'nearest_0_01' | 'nearest_0_05' | 'nearest_1';
@@ -1560,7 +1557,7 @@ type PurchaseInvoiceLineDoc = {
 	lineNo: number;
 	productId: string;
 	variantId?: string;
-	productTitleSnapshot: { en: string; bn?: string };
+	productTitleSnapshot: Record<string, string>;
 	skuSnapshot?: string;
 	quantityReceived: number;
 	unitPurchasePriceTaxInclusiveINR: number;
@@ -1650,7 +1647,7 @@ type AnalyticsEventDoc = {
 	categoryId?: string;
 	searchQuery?: string;
 	normalizedSearchQuery?: string;
-	locale?: 'en' | 'bn' | 'mixed';
+	locale?: string | 'mixed';
 	currency?: string;
 	valueINR?: number;
 	metadata?: Record<string, unknown>;
@@ -1760,7 +1757,7 @@ type ProductInsightSetDoc = {
 		| 'popular'
 		| 'abandoned_cart_recovery'
 		| 'manual_featured';
-	title: { en: string; bn?: string };
+	title: Record<string, string>;
 	status: 'draft' | 'active' | 'archived';
 	source: 'weekly_analytics_job' | 'manual' | 'hybrid';
 	periodStart: Date;
@@ -1822,7 +1819,7 @@ type ProductBadgeAssignmentDoc = {
 		| 'most_bought'
 		| 'most_searched'
 		| 'trending';
-	label: { en: string; bn?: string };
+	label: Record<string, string>;
 	source: 'manual_product_flag' | 'promotion' | 'weekly_insight' | 'system';
 	sourceId?: string;
 	priority: number;
@@ -1860,8 +1857,8 @@ type ReviewDoc = {
 	userId: string;
 	orderId: string; // purchase proof; one logical review per user+product (policy at API)
 	rating: 1 | 2 | 3 | 4 | 5;
-	title?: { en?: string; bn?: string }; // optional; body is primary
-	body: { en?: string; bn?: string }; // at least one active locale required at submit
+	title?: Record<string, string>; // optional; body is primary
+	body: Record<string, string>; // at least one active locale required at submit
 	imageMediaAssetIds?: string[]; // optional; same mediaAssets pipeline
 	status: 'pending' | 'approved' | 'rejected' | 'hidden';
 	verifiedPurchase: true; // always true for accepted submissions; reject if not verifiable
@@ -1984,7 +1981,7 @@ The desired experience is not basic search:
 - Typo tolerance.
 - Missing characters.
 - Suggested spellings.
-- English/Bengali transliteration and spelling variants.
+- Locale-aware transliteration and spelling variants (including future Bengali support).
 - Merchandising boosts.
 - Category/product/tag suggestions.
 - Free or self-hosted; no Algolia.
@@ -1993,7 +1990,7 @@ The desired experience is not basic search:
 
 Recommended primary: self-host **Meilisearch** behind `SearchPort`.
 
-Reason: the owner prioritizes a free, high-quality typo-tolerant typeahead experience with English/Bengali aliases, transliteration, suggested spellings, no-result learning, and admin-curated dictionary growth. Meilisearch gives the simplest operations for that goal. Typesense remains a possible future adapter behind `SearchPort`, not the launch target.
+Reason: the owner prioritizes a free, high-quality typo-tolerant typeahead experience with locale-aware aliases and transliteration, suggested spellings, no-result learning, and admin-curated dictionary growth. Meilisearch gives the simplest operations for that goal. Typesense remains a possible future adapter behind `SearchPort`, not the launch target.
 
 Both are free open-source engines when self-hosted. Both must be treated as derived indexes, not source-of-truth databases.
 
@@ -2004,7 +2001,7 @@ Self-hosted MongoDB remains source of truth. Search engine stores only published
 Regex over `slug`, `sku`, and `tags` cannot provide:
 
 - typo tolerance like `benaroshi` -> `banarasi`
-- mixed English/Bengali transliteration
+- mixed-script transliteration for configured dictionaries
 - ranking by popularity, category, stock, and exact match
 - suggestion generation
 - low-latency typeahead under growing archive volume
@@ -2023,14 +2020,13 @@ Only index published products and active categories.
 {
   id: string;
   entityType: 'product' | 'category' | 'tag';
-  title_en: string;
-  title_bn?: string;
+  titleByLocale: Record<string, string>;
   slug: string;
   sku?: string;
   categoryIds: string[];
-  categoryNames_en: string[];
-  tagNames_en: string[];
-  attributes_en: string[];
+  categoryNamesByLocale: Record<string, string[]>;
+  tagNamesByLocale: Record<string, string[]>;
+  attributesByLocale: Record<string, string[]>;
   aliases: string[];
   misspellings: string[];
   transliterations: string[];
@@ -2100,8 +2096,11 @@ SEO is not a frontend-only concern. It must be modeled in DB, validated in admin
 
 ### 10.1 Canonical Route Policy
 
-- Product canonical route: `/en/product/{productSlug}` and `/bn/product/{productSlug}` unless owner explicitly chooses category-in-product URLs.
-- Category canonical route: `/en/c/{categoryPath}` and `/bn/c/{categoryPath}` from canonical `categoryPlacements.pathSlugs`.
+- Route records are locale-aware, but the permanent prefix/canonical convention
+  remains gated by `DEC-I18N-ROUTES`.
+- Product and category routes must be generated from one centralized route
+  policy rather than hard-coded locale pairs.
+- Category paths come from canonical `categoryPlacements.pathSlugs`.
 - Product groups become routable only when `productGroups.seo.routable = true`; otherwise they are display modules only.
 - Every canonical route must have exactly one `seoRoutes` row per locale.
 - Every legacy WooCommerce route imported from the live site must become either a canonical route or a `seoRedirects` row.
@@ -2170,11 +2169,11 @@ Exclude:
 
 ### 10.5 Hreflang and Transloco/DB Content
 
-- Every indexable EN route must have a BN alternate when the route exists.
-- Every indexable BN route must have an EN alternate.
-- Add `x-default` to the default locale route.
-- If Bengali content is missing, use fallback content but keep route metadata explicit so missing translations are visible in admin QA.
-- Slugs may stay Latin initially. Bengali slugs are optional and should be decided deliberately, not mixed ad hoc.
+- Every indexable route must declare alternates for each configured active
+  locale where that route exists.
+- Add `x-default` to the approved default-locale route.
+- If configured-locale content is missing, use the approved fallback while keeping route metadata explicit so gaps remain visible in admin QA.
+- Slug script policy must be chosen deliberately and applied consistently.
 
 ### 10.6 Product Publish SEO Gate
 
@@ -2226,19 +2225,20 @@ Validate:
 
 Everything customer-visible must have an explicit translation source:
 
-- Angular UI strings: Transloco JSON keys for `en` and `bn`.
+- Angular UI strings: Transloco JSON keys for every configured active locale.
 - Product and variant content: DB i18n objects for title, description, option labels, swatches, alt text, and SEO fields.
 - Category and collection content: DB i18n objects for labels, descriptions, banners, SEO fields, FAQ blocks, and landing-page copy.
 - FAQ content: `faqEntries.question` and `faqEntries.answerHtml` as i18n objects.
 - Payment/shipping/currency labels: DB i18n labels or Transloco keys, depending whether admin edits them.
 - Admin reporting labels: Transloco keys, while report payload values remain locale-neutral numbers/codes.
 
-Admin QA should show translation completeness per entity: default locale complete, Bengali missing fields, fallback-in-use warning, and SEO fields missing. Storefront may fallback to English when Bengali is missing, but the admin must make the missing translation visible.
+Admin QA should show translation completeness per entity: default-locale completeness, missing configured-locale fields, fallback-in-use warnings, and missing SEO fields. The storefront may use the approved fallback, but admin must make every missing translation visible.
 
 FAQ-specific rules:
 
 - FAQ content must be real business content, not schema spam.
-- FAQ entries attached to product/category/group routes must be included in SSR HTML for both locales.
+- FAQ entries attached to product/category/group routes must be included in SSR
+  HTML for every active locale where the route exists.
 - `FAQPage` JSON-LD is emitted only for rendered FAQ entries on that route.
 - Archived products/categories must suppress their FAQ entries from public routes and sitemap generation.
 
@@ -2493,7 +2493,8 @@ Minimum contract families:
 - `BusinessReportSnapshot`
 - `ProductInsightSet`
 - `ProductBadgeAssignment`
-- `QuestionAnswer` (detailed in `codex-faq-architecture-and-admin-plan.md`, renamed from `codex-qna-...`)
+- `QuestionAnswer` (customer Q&A is specified in this document and
+  `owner-decisions-log.md`; it is separate from editorial FAQ)
 
 ## 13. Storefront Query Patterns
 
@@ -2554,7 +2555,7 @@ Cold-archive seam, built later when disk pressure is real:
 ```ts
 {
   _id: string;
-  title: { en: string; bn?: string };
+  title: Record<string, string>;
   slug: string;
   sku?: string;
   archivedAt: Date;
@@ -2585,7 +2586,7 @@ Mongo cannot query Spaces directly. A cold archive is restored explicitly by the
 
 ## 16. Required Implementation Sequence
 
-1. Freeze this model decision with owner answers from the query sections below.
+1. Review the applicable `DEC-*` gates in `pending-decisions.md`; proceed with stable seams and block only irreversible policy choices.
 2. Update contracts to support category placements, richer statuses, product variants, add-on conditions, product relations, product groups, SEO routes/redirects, search dictionary, localized content, currencies, FX rates, gateway configs, shipping quotes, purchase invoices, inventory cost layers, and analytics rollups.
 3. Update Mongo models and indexes.
 4. Build migration/import mapper from Woo public API/export to target model.
@@ -2606,7 +2607,9 @@ Mongo cannot query Spaces directly. A cold archive is restored explicitly by the
 19. Add analytics event capture and daily rollup jobs for admin reporting.
 20. Add weekly `productInsightSets` generation and `productBadgeAssignments` refresh for storefront rails/product-card markers.
 21. Add all-products table status/sale-status switch columns, filters, sorting, and bulk actions.
-22. Add FAQ/Q&A modules per `codex-faq-architecture-and-admin-plan.md` (renamed from `codex-qna-...`; note the owner correction — that file is the FAQ/editorial-targeting plan, and true customer Q&A is specified in `owner-decisions-log.md`).
+22. Add separate editorial FAQ and customer Q&A modules per this document and
+    `owner-decisions-log.md`, reusing editor/table primitives without merging
+    their business models.
 23. Add admin audit log for all catalog, pricing, inventory, payment, shipping, and reporting-sensitive mutations.
 
 ## 17. Pricing, Tax, FX, Payment, and Shipping Logic
@@ -2899,320 +2902,49 @@ Top-level page option:
 
 ## 21. Translation and Content Completion Rules
 
-Before public launch, every route-producing entity needs translation coverage checks.
-
-Required fields by entity:
-
-- Product: title, short description, long description, option labels, add-on labels, image alt text, SEO title, SEO description, FAQ if attached.
-- Variant: option labels, swatch labels, purchasable display labels.
-- Category: name, description, hero/banner copy, SEO title, SEO description, FAQ if attached.
-- Product group/collection: title, description, SEO copy, FAQ if routable.
-- Blog/page/FAQ/Q&A: all display copy in `en` and `bn` or explicit fallback approval.
-- Payment/shipping/currency: admin-editable labels and customer-facing labels.
-
-Admin validation levels:
-
-- Block publish when default locale is missing.
-- Warn when Bengali is missing and fallback will be used.
-- Show translation completeness percentage on list tables.
-- Include FAQ translation status in SEO QA.
-
-## 22. Resolved Owner Decisions And Remaining Human Approvals
-
-### QUERY 1: Is MongoDB Atlas M0 truly permanent for production? — RESOLVED
-
-Owner decision: **No. Atlas/M0 is not the production plan.** Production uses self-hosted Docker MongoDB 8.3 on the DigitalOcean droplet, with a single-node replica set, private Docker networking, persistent volume/bind mount, resource caps, backups, and local Docker Desktop parity.
-
-Historical options retained for context only:
-
-Option A: Strict MongoDB Atlas M0 forever.
-
-Pros:
-
-- Zero MongoDB subscription.
-- Forces disciplined operational data model.
-
-Cons:
-
-- Cannot safely retain unlimited rich archives in Mongo.
-- Cannot run heavy search/typeahead purely in Mongo.
-- Requires cold archive outside Mongo or reduced retention.
-- More engineering discipline needed to avoid storage/index bloat.
-
-Option B: M0 for operational hot catalog plus cold archive in DigitalOcean Spaces.
-
-Pros:
-
-- Preserves "free Mongo" while allowing fashion churn.
-- Keeps orders intact.
-- Avoids paying MongoDB for rarely-read archived product payloads.
-
-Cons:
-
-- Requires archive/restore tooling.
-- Archived product full detail is slower to inspect.
-
-Option C: Paid Mongo tier when business grows.
-
-Pros:
-
-- Operationally simplest.
-- Supports richer indexes, archives, and future growth.
-
-Cons:
-
-- Violates the current "always M0" instruction.
-- Adds recurring cost.
-
-Final decision: self-hosted MongoDB supersedes all Atlas M0 options.
-
-### QUERY 2: Is a self-hosted search engine allowed? — RESOLVED
-
-Owner decision: **Yes. Self-host Meilisearch** on the droplet behind `SearchPort`. Mongo remains source of truth; Meilisearch stores only derived searchable documents.
-
-Historical options retained for context only:
-
-Option A: Self-host Meilisearch on the launch droplet.
-
-Pros:
-
-- Free software.
-- Best match for typo-tolerant typeahead.
-- Keeps self-hosted MongoDB as source DB.
-- Search can be rebuilt from Mongo.
-
-Cons:
-
-- Uses droplet RAM/CPU.
-- Requires backups/config/monitoring for search index.
-
-Historical option B: Atlas Search only.
-
-Pros:
-
-- No extra process to run.
-- Mongo-integrated.
-
-Cons:
-
-- Availability/performance on free/shared tiers must be verified.
-- Less control for custom transliteration/dictionary UX.
-
-Option C: Mongo-only handcrafted n-gram/alias collections.
-
-Pros:
-
-- No extra service.
-
-Cons:
-
-- Worst fit for the desired UX.
-- Consumes Mongo storage/indexes quickly and still falls short of the desired typo/transliteration UX.
-- Hard to reach Meilisearch-class quality.
-
-Final decision: Option A, specifically Meilisearch for launch. Typesense remains a future swappable adapter if needed; Atlas Search is not a fallback while the DB is self-hosted.
-
-### QUERY 3: Should categories be true multi-parent DAG or strict tree plus collections? — RESOLVED
-
-Owner decision: **True multi-placement DAG via `categoryPlacements`** plus one-time Woo cleanup. Do not force strict single-parent category modeling.
-
-Historical options retained for context only:
-
-Option A: True multi-placement DAG via `categoryPlacements`.
-
-Pros:
-
-- Matches overlapping category reality.
-- Handles duplicate display names under different paths.
-- Strong SEO redirect control.
-
-Cons:
-
-- Admin UI is more complex.
-- Requires cycle prevention.
-
-Option B: Strict taxonomy tree plus separate collections/tags.
-
-Pros:
-
-- Easier admin mental model.
-- Cleaner breadcrumbs.
-
-Cons:
-
-- Requires cleanup of current overlapping Woo assignments.
-- Some merchandising paths become collections instead of categories.
-
-Final decision: Option A, with imported Woo junk cleaned rather than modeled as future truth.
-
-### QUERY 4: What does "multi-level compounded product" mean for Saha Textile? — RESOLVED
-
-Owner decision: **Build all five model patterns**: simple products, variation/SKU products, tailoring/customization, bought-together/cross-sell/upsell product relations, and true bundle/composite products.
-
-Historical options retained for context only:
-
-Option A: Tailoring/customization only.
-
-Pros:
-
-- Already covered by add-on templates.
-- No inventory complexity.
-
-Cons:
-
-- Does not support kits/sets.
-
-Option B: Bought-together/cross-sell only.
-
-Pros:
-
-- Simple relation model.
-- No bundle inventory complexity.
-
-Cons:
-
-- Not a true compound cart item.
-
-Option C: True bundle/composite product.
-
-Pros:
-
-- Supports sets, curated kits, optional component groups.
-
-Cons:
-
-- Requires bundle validation, inventory resolution, and order snapshots.
-
-Final decision: implement the model/contracts for Options A, B, and C. Launch UI may still be phased, but the DB/API architecture must not require later redesign for true bundles.
-
-### QUERY 5: Should color become a variation axis? — RESOLVED
-
-Owner decision: **Color and every other possible option axis are product-specific and toggle-based.** Product upload chooses semantic role separately from display style. Color defaults to filter/descriptive unless explicitly marked `variation_axis`.
-
-Historical options retained for context only:
-
-Option A: Product-by-product setting.
-
-Pros:
-
-- Matches live data: Salwaar Color is filter-only while design is variation-driving.
-- Supports future products where color affects stock/images.
-
-Cons:
-
-- Admin form needs explicit per-product option `semanticRole` control.
-
-Option B: Always variation axis.
-
-Pros:
-
-- Simpler mental model.
-
-Cons:
-
-- Creates unnecessary variant matrix explosion.
-- Contradicts observed live Store API for Salwaar products.
-
-Final decision: Option A, generalized beyond Color to all option groups. Storefront display style is separate and supports `rectangle`, `circle`, `image_swatch`, `color_swatch`, `radio`, and `dropdown`.
-
-### QUERY 6: What tax policy should launch with?
-
-Option A: Tax-inclusive displayed prices.
-
-Pros:
-
-- Simpler customer experience.
-- Matches many Indian retail expectations.
-
-Cons:
-
-- Requires clear invoice tax breakdown.
-
-Option B: Tax-exclusive displayed prices.
-
-Pros:
-
-- Cleaner accounting model.
-
-Cons:
-
-- Worse customer surprise at checkout.
-- Current site has custom JS replacing "ex. VAT" with "Ex TAX", so current policy is unclear.
-
-Recommended: confirm with accountant/client before contracts are finalized.
-
-### QUERY 7: How long must archived product detail remain in Mongo? — RESOLVED
-
-Owner decision: **Keep archived products fully in Mongo at launch.** Design the Spaces cold-archive stub seam now; build/run the cold-archive job only later when droplet disk pressure is real. Order-line snapshots stay in Mongo permanently.
-
-Historical options retained for context only:
-
-Option A: Forever in Mongo.
-
-Pros:
-
-- Easiest admin lookup.
-
-Cons:
-
-- Not compatible with M0 forever plus fashion churn.
-
-Option B: 12-24 months rich archive in Mongo, older archives in Spaces.
-
-Pros:
-
-- Compatible with M0.
-- Still preserves restore path.
-
-Cons:
-
-- Requires archive/restore tooling.
-
-Final decision: launch with full Mongo retention; later cold archive at real disk threshold.
-
-### QUERY 8: Who maintains search synonyms/transliterations? — RESOLVED
-
-Owner decision: **Hybrid with full day-one feature surface.** Seed the dictionary at launch, provide admin edit/tuning capability, and feed it from no-result analytics. The amount of curated data can grow over time, but the architecture must support the whole loop from day one.
-
-Historical options retained for context only:
-
-Option A: Admin-managed dictionary.
-
-Pros:
-
-- Business can tune `banarasi/benaroshi`, Bengali aliases, campaign terms.
-
-Cons:
-
-- Needs admin UI.
-
-Option B: Developer-managed seed file only.
-
-Pros:
-
-- Simpler launch.
-
-Cons:
-
-- Slower to adapt to real customer search behavior.
-
-Option C: Hybrid: seeded dictionary plus admin edits from no-result analytics.
-
-Pros:
-
-- Best long-term quality.
-
-Cons:
-
-- More build work.
-
-Final decision: Option C, backed by self-hosted Meilisearch.
+English is the primary locale. The active target locale pair is English and
+French. Bengali is a likely future locale and remains useful search-dictionary
+test coverage, but it is not a locked current launch pair.
+
+Use two translation machines:
+
+1. Developer-owned UI chrome uses reactive Transloco keys.
+2. Admin-authored catalog, CMS, media, measurement, FAQ, Q&A, and SEO content
+   uses locale-keyed DB fields resolved by the API.
+
+Never pass DB-authored content through Transloco. Before public launch, every
+route-producing entity must pass active-locale coverage checks for visible copy,
+media alt text, and SEO metadata.
+
+Admin validation:
+
+- Block publish when the default locale is missing.
+- Warn for every missing configured active locale and identify fallback use.
+- Show translation completeness on relevant list/edit screens.
+- Treat adding a locale as a checklist covering UI JSON, DB content, media,
+  notification templates, SEO defaults, hreflang, and compiled payloads.
+
+## 22. Decision Authority and Open Gates
+
+Resolved decisions are recorded once in `owner-decisions-log.md`; they are not
+repeated here with superseded alternatives. The current locks applied by this
+design include self-hosted MongoDB, Meilisearch behind `SearchPort`,
+multi-placement categories, product-specific semantic option roles, first-class
+variants, true bundle/composite support, retained archived products, and hybrid
+search-dictionary tuning.
+
+All unresolved owner choices live in `pending-decisions.md`. Catalog and
+commerce implementation must reference the applicable stable `DEC-*` ids,
+especially tax/HSN, stock reservation and backorder behavior, SKU/slug policy,
+variant overrides, add-on measurements, bundles, badges/rails, locale routes,
+media limits, and payment/FX timing. This file must not grow a second question
+register.
 
 ## 23. Final Recommendation
 
 Use the category placement model, `categoryFacetConfigs`, first-class product variants, add-on templates, localized FAQ/content blocks, Q&A module, search dictionary, search outbox, currency/FX collections, payment/shipping config collections, purchase invoice/cost-layer collections, analytics rollups, product insight sets, product badge assignments, and separate order/payment/shipment/return/refund collections.
 
-For search, use a free self-hosted Meilisearch adapter behind `SearchPort`, with self-hosted Mongo as source of truth and a curated `searchDictionary` for Bengali-English spelling and transliteration. Do not attempt the requested typeahead quality with Mongo regex.
+For search, use a self-hosted Meilisearch adapter behind `SearchPort`, with self-hosted Mongo as source of truth and a curated locale-aware `searchDictionary` for spelling, aliases, and transliteration. Do not attempt the requested typeahead quality with Mongo regex.
 
 For pricing, keep INR as canonical, calculate currency conversion and PayPal gross-up only on the backend, store FX history, version PayPal commission rules, and snapshot every resolved price/tax/shipping/payment value onto orders.
 

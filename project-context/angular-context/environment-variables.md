@@ -75,7 +75,7 @@ Fetched at app init by `src/app/core/config/runtime-config.ts` (`provideAppIniti
 | `apiUrl`           | `http://localhost:4000` | `https://api.test.<domain>` | `https://api.<domain>` |
 | `siteUrl`          | `http://localhost:4200` | test                        | prod                   |
 | `defaultLocale`    | `en`                    | `en`                        | `en`                   |
-| `supportedLocales` | `["en","bn"]`           | same                        | same                   |
+| `supportedLocales` | `["en","fr"]`           | same                        | same                   |
 
 ## Admin (`apps/admin/public/config.json`) — public runtime config
 
@@ -89,5 +89,5 @@ Fetched at app init by `src/app/core/config/runtime-config.ts` (`provideAppIniti
 1. Docker running → `pnpm mongo:up` → `pnpm mongo:status` (MongoDB 8.3 single-node `rs0`; port 27017, or set `MONGO_HOST_PORT` in gitignored `docker/mongo/.env` if a native mongod owns it).
 2. `cp apps/api/.env.example apps/api/.env` → set JWT secrets (`openssl rand -hex 48`); Mongo localhost defaults are fine (mirror `MONGODB_PORT` if you overrode the host port). The API loads it via `dotenv/config`.
 3. Storefront/admin need nothing — committed localhost `public/config.json` is picked up at app init.
-4. Optional Cursor MCP: `cp .env.mcp.example .env.mcp` → fill LOCAL block; restart Cursor; keep tool count < ~40 (see `mcp-automation-setup.md`).
+4. Optional Cursor MCP: `cp .env.mcp.example .env.mcp` → fill LOCAL block; restart Cursor; keep tool count below the active-tool budget documented in `.cursor/rules/mcp-tools.mdc`.
 5. `pnpm lint` also runs the brand naming guard (`scripts/check-naming.sh`).

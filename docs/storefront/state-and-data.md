@@ -1,11 +1,14 @@
 ---
 title: Storefront State and Data Ownership
+wide: true
 description: Practical rules for TanStack Query, SignalStore, classic NgRx, services, and local component state.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-07-18'
+last_verified: '2026-07-24'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
+    - apps/storefront/src/app/core/config/runtime-config.ts
+    - apps/storefront/src/app/core/interceptors/auth.interceptor.ts
     - apps/storefront/src/app/core/state
     - apps/storefront/src/app/data-access/queries
     - apps/storefront/src/app/data-access/services
@@ -69,6 +72,10 @@ Use it when:
 - several components need reactive reads;
 - methods form a small, coherent state API; and
 - classic event/effect ceremony would add no clarity.
+
+## Runtime configuration
+
+The API base URL is not compiled into the bundle. `core/config/runtime-config.ts` loads `public/config.json` at boot (via `provideAppInitializer`) and fills a mutable `runtimeConfig` singleton plus the legacy `environment` object that services read for `apiUrl`. Only non-secret values live there; deployments overwrite the file. The auth interceptor sends `withCredentials: true` on every request (locked cookie-session target) alongside a transitional bearer token — which is why the server interceptor behavior below is still transitional and must be verified separately under SSR and in the browser.
 
 ## Mixed-source catalogue warning
 

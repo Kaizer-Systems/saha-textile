@@ -1,0 +1,101 @@
+{
+	"schemaVersion": 1,
+	"lastVerified": "2026-07-25",
+	"sourceOfTruth": [
+		"apps/api/src/orders/orders.controller.ts",
+		"apps/api/src/orders/orders.service.ts",
+		"packages/core-domain/src/pricing",
+		"packages/adapters-db-mongo/src/repositories/order.repository.ts",
+		"project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md"
+	],
+	"method": "POST",
+	"path": "/orders",
+	"title": "Place an order",
+	"summary": "Trace a place-order request across the six boundaries. Toggle Current vs Locked target to reveal the ghost stages — idempotency, transaction and atomic side effects — that flip solid as Chunks E and G land.",
+	"stages": [
+		{
+			"id": "client",
+			"label": "Client",
+			"sublabel": "Storefront checkout",
+			"kind": "real",
+			"file": "apps/storefront/src/app/features/shop/checkout",
+			"current": "The checkout screen POSTs the cart id (plus chosen currency and coupon) with the session cookie.",
+			"target": "It also sends an Idempotency-Key and relies on an owned session — never a caller-supplied user id."
+		},
+		{
+			"id": "transport",
+			"label": "Transport",
+			"sublabel": "Fastify + NestJS",
+			"kind": "real",
+			"file": "apps/api/src/orders/orders.controller.ts",
+			"current": "OrdersController guards the route with a bearer JwtAuthGuard and validates the body with zod.",
+			"target": "An httpOnly cookie session + double-submit CSRF authenticate the storefront audience before anything runs."
+		},
+		{
+			"id": "idempotency",
+			"label": "Idempotency",
+			"sublabel": "Dedupe by key",
+			"kind": "ghost",
+			"chunk": "Chunk G",
+			"file": "planned — checkout use case",
+			"current": "Absent — a repeated submit can create a second order.",
+			"target": "The idempotency key is checked first; a replay returns the original order instead of creating a new one."
+		},
+		{
+			"id": "application",
+			"label": "Application",
+			"sublabel": "OrdersService.createFromCart",
+			"kind": "real",
+			"file": "apps/api/src/orders/orders.service.ts",
+			"current": "Loads the cart, reads each product sequentially, computes a subtotal and applies a coupon.",
+			"target": "Re-validates ownership, stock and price, then orchestrates the write inside a unit of work."
+		},
+		{
+			"id": "domain",
+			"label": "Domain",
+			"sublabel": "Pricing invariants",
+			"kind": "real",
+			"file": "packages/core-domain/src/pricing",
+			"current": "Pure helpers round money, convert from the canonical INR and apply the discount.",
+			"target": "Same pure helpers, extended with tax, shipping and a frozen price snapshot."
+		},
+		{
+			"id": "transaction",
+			"label": "Transaction",
+			"sublabel": "Unit of work",
+			"kind": "ghost",
+			"chunk": "Chunk E",
+			"file": "planned — TransactionManagerPort",
+			"current": "Absent — the order is saved, then the cart is deleted in a separate write (non-atomic).",
+			"target": "withTransaction() spans order, payment, inventory, cart and audit; any failure rolls all of them back."
+		},
+		{
+			"id": "adapter",
+			"label": "Port + Adapter",
+			"sublabel": "Order/Cart repositories → Mongo",
+			"kind": "real",
+			"file": "packages/adapters-db-mongo/src/repositories/order.repository.ts",
+			"current": "MongoOrderRepository saves the order via findByIdAndUpdate; the cart is deleted afterward.",
+			"target": "Session-aware repositories accept the transaction context and participate in the atomic write."
+		},
+		{
+			"id": "side-effects",
+			"label": "Side effects",
+			"sublabel": "Payment · inventory · audit",
+			"kind": "ghost",
+			"chunk": "Chunk G",
+			"file": "planned — payment / inventory / audit",
+			"current": "Absent — no payment attempt, stock reservation or audit event is written.",
+			"target": "A payment attempt, inventory reservation/ledger and an immutable audit event commit atomically with the order."
+		},
+		{
+			"id": "persistence",
+			"label": "Persistence",
+			"sublabel": "MongoDB rs0",
+			"kind": "real",
+			"file": "docker/mongo/docker-compose.yml",
+			"current": "The order document lands in the self-hosted single-node replica set.",
+			"target": "The whole set of records commits together, or none do."
+		}
+	]
+}

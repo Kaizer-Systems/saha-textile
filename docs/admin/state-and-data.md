@@ -1,11 +1,14 @@
 ---
 title: Admin State and Data
+wide: true
 description: Ownership rules for TanStack Query, SignalStore, classic NgRx, services, interceptors, and transitional fixtures.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-24'
 source_of_truth:
     - apps/admin/src/app/app.config.ts
+    - apps/admin/src/app/core/config/runtime-config.ts
+    - apps/admin/src/app/core/interceptors/auth.interceptor.ts
     - apps/admin/src/app/core/state
     - apps/admin/src/app/data-access/queries
     - apps/admin/src/app/data-access/services
@@ -77,6 +80,10 @@ sequenceDiagram
 ```
 
 Do not optimistically remove or approve records unless rollback behavior is defined. High-impact catalogue, refund, permission, and configuration changes should favor correctness and clear operator feedback.
+
+## Runtime configuration
+
+The admin loads `public/config.json` at boot (via `provideAppInitializer` in `core/config/runtime-config.ts`), filling the mutable `environment` object with `apiUrl` and other non-secret values. The committed file holds localhost defaults; deployments overwrite it. The auth interceptor sends `withCredentials: true` on every request so API-issued session cookies flow (locked cookie-session target), with a transitional bearer token until Chunk D. This is the concrete mechanism behind the security rule that only non-secret configuration reaches the admin bundle.
 
 ## Security boundary
 

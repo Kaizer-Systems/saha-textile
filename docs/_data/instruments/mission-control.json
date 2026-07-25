@@ -1,0 +1,97 @@
+{
+	"schemaVersion": 1,
+	"lastVerified": "2026-07-25",
+	"sourceOfTruth": [
+		"project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md",
+		"project-context/angular-context/project-progress.md"
+	],
+	"gates": [
+		{ "id": "G-NUM-ORDER", "label": "Order / tax-invoice numbering" },
+		{ "id": "G-NUM-PI", "label": "Purchase-invoice numbering" },
+		{ "id": "G-CORE-CONTRACTS", "label": "Core ↔ contracts dependency" },
+		{ "id": "G-I18N-ROUTES", "label": "Locale URL policy" },
+		{ "id": "G-IMG-PX", "label": "Image ladder px + caps" }
+	],
+	"chunks": [
+		{
+			"id": "A",
+			"title": "Context, delta & dependency pin",
+			"deps": [],
+			"blockingGates": [],
+			"summary": "Inspect the four packages, write the keep/refactor/missing delta report, and pin dependency versions.",
+			"dod": "Written delta + pinned versions; owner pause only on latest-together conflicts."
+		},
+		{
+			"id": "B",
+			"title": "Contracts & core ports",
+			"deps": ["A"],
+			"blockingGates": [],
+			"summary": "Expand the zod contract families and core ports (TransactionManager, Notification, Search, Storage, Payment, Shipping, FX…). The type-only contract boundary keeps core runtime-pure; the remaining port/test/lint work continues.",
+			"dod": "Packages typecheck; boundary lint green; contract + port unit tests."
+		},
+		{
+			"id": "C",
+			"title": "API security foundation, replica-set profile & env sync",
+			"deps": ["A"],
+			"blockingGates": [],
+			"summary": "Fastify security bootstrap (cookies, CSRF scaffold, CORS allowlist, rate-limit, request id, redacted logger, error filter, live/ready), env/secrets sync, and the Docker replica-set profile for CI transaction tests. §0b env sync + the rs0 profile are done; the security bootstrap remains.",
+			"dod": "API boots; security bootstrap tests; replica-set profile used in CI."
+		},
+		{
+			"id": "D",
+			"title": "Cookie-session auth, PIN, OTP & OAuth",
+			"deps": ["C"],
+			"blockingGates": [],
+			"summary": "Cookie access/refresh sessions + CSRF, admin PIN, channel-direct OTP via NotificationPort, Google/Facebook verify seams. Retire the transitional localStorage bearer.",
+			"dod": "login/register/refresh/logout/me + PIN + OTP tests; every admin write audited."
+		},
+		{
+			"id": "E",
+			"title": "Transaction manager & Mongo adapter upgrade",
+			"deps": ["C"],
+			"blockingGates": [],
+			"summary": "A withTransaction() manager; repositories accept session context; rollback-on-injected-failure integration tests.",
+			"dod": "Transaction tests green against the Chunk C replica-set profile."
+		},
+		{
+			"id": "F",
+			"title": "Catalog, SEO, search & merchandising",
+			"deps": ["B", "C"],
+			"blockingGates": ["G-I18N-ROUTES"],
+			"summary": "Catalog + SEO + self-hosted Meilisearch behind SearchPort + merchandising; published-only public reads; search outbox. Locale route seams are provisional until the URL policy is locked.",
+			"dod": "Public + admin catalog CRUD; Meili index of published only; search/facet tests."
+		},
+		{
+			"id": "G",
+			"title": "Cart, checkout, orders & payment/shipping ports",
+			"deps": ["B", "E", "F"],
+			"blockingGates": ["G-NUM-ORDER"],
+			"summary": "Cart + guest merge, pricing engine shell (INR canonical, FX, PayPal gross-up), Payment/Shipping ports + stubs, and order/payment/shipment/return/refund shapes with ownership, idempotency and transactions. Customer-facing order numbers wait on the numbering gate.",
+			"dod": "Cart + merge + quote + stub pay/ship + ownership tests; order placement internal-id-only or gated."
+		},
+		{
+			"id": "H",
+			"title": "Inventory, purchase invoices, reporting & insights",
+			"deps": ["E", "G"],
+			"blockingGates": ["G-NUM-PI"],
+			"summary": "Inventory ledger + FIFO cost layers, analytics aggregates, insight/badge job seams, and purchase-invoice drafts. Posting PIs that assign numbers waits on the PI numbering gate.",
+			"dod": "Ledger + aggregates; PI posting gated until the numbering lock."
+		},
+		{
+			"id": "I",
+			"title": "Privacy, content, FAQ, reviews & media",
+			"deps": ["B", "C"],
+			"blockingGates": ["G-IMG-PX"],
+			"summary": "Consent + analytics gating, FAQ / Q&A / reviews, media assets + Spaces SGP presign, and an image-derivative job skeleton. Exact sharp sizes wait on the image-ladder gate.",
+			"dod": "Consent gating; moderation model; media presign; derivative skeleton."
+		},
+		{
+			"id": "J",
+			"title": "Docs, seeds, verification & infra close-out",
+			"deps": ["D", "E", "F", "G", "H", "I"],
+			"blockingGates": [],
+			"summary": "OpenAPI / runbook / env docs aligned with §0b–0d, seeds + bulk fixtures, full lint/typecheck/test, and the detailed deploy scripts (not stubs).",
+			"dod": "Docs aligned; seeds; green gates; deploy scripts documented; deferred seams reported."
+		}
+	]
+}

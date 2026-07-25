@@ -3,7 +3,7 @@ title: Choose Your Path
 description: Select the shortest reliable onboarding route for your role.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - project-context/angular-context/private-developer-portal-documentation-plan.md
     - project-context/angular-context/execution-roadmap.md

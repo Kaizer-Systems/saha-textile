@@ -1,9 +1,10 @@
 ---
 title: Frontend Quality and Definition of Done
+wide: true
 description: Verification contract for storefront and admin changes, including current test-coverage honesty.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/storefront/vite.config.ts
     - apps/admin/src/app/app.component.spec.ts

@@ -1,11 +1,13 @@
 ---
 title: Composition Root and Adapters
+wide: true
 description: NestJS module wiring, dependency-injection tokens, adapter ownership, Mongo mappings, and provider seams.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/api/src/app.module.ts
+    - apps/api/src/config/app-config.ts
     - apps/api/src/infra
     - packages/adapters-db-mongo/src
     - packages/core-domain/src/ports
@@ -79,7 +81,7 @@ flowchart LR
     WriteMapper --> Model
 ```
 
-Current read mappers handle ids and dates explicitly, but nested `Mixed` values are cast. Future implementation should validate/marshal nested fields deliberately and keep secret fields, such as `passwordHash`, inside the adapter boundary.
+Current read mappers handle ids and dates explicitly, but nested `Mixed` values are cast. The widened public `User` contract now has `phone`, `phoneVerified`, and lifecycle `status`; until its model/repository upgrade lands, `toUser` deliberately supplies `null`, `false`, and `active` compatibility defaults. That keeps current code compiling but does not prove those fields are persisted. Future implementation should validate/marshal nested fields deliberately and keep secret fields, such as `passwordHash`, inside the adapter boundary.
 
 ## Provider adapter pattern
 
@@ -107,14 +109,17 @@ Seam-first provider work is locked: ports and stub/sandbox adapters can advance 
 
 ## Configuration boundary
 
-`app-config.ts` validates API runtime values with zod, which is the right direction. Current gaps include:
+`app-config.ts` validates API runtime values with zod, which is the right direction. The configuration **surface** has been reconciled to the locked model since these pages were first written:
 
-- development JWT secrets are supplied as defaults without a production rejection gate;
-- proxy/client-IP settings are absent;
-- cookie/session/CSRF configuration is absent;
-- notification/Meilisearch/self-hosted Mongo settings are not reconciled;
-- current Mongo config prefers a full URI or assembles an SRV hosted-cluster URI;
-- `.env.example` still describes a hosted test cluster and an obsolete email provider.
+- proxy/client-IP settings (`TRUST_PROXY`, `CLIENT_IP_HEADER`) are now parsed;
+- cookie/session/CSRF names (`st_access`, `st_refresh`, `st_csrf`, `x-csrf-token`, `CSRF_SECRET`) are present as placeholders for Chunk D;
+- notification (`NOTIFICATION_PROVIDER`/MSG91 plus an optional email fallback) and self-hosted Mongo (`rs0`) settings are reconciled in `.env.example` and `app-config.ts`;
+- the Mongo config now assembles a self-hosted `mongodb://…replicaSet=rs0` URI (or accepts a pre-encoded `MONGODB_URI`); the SRV hosted-cluster path and the obsolete email provider are gone.
+
+Remaining configuration gaps:
+
+- development JWT secrets are still supplied as defaults (`?? 'dev-…-change-me'`) without a production rejection gate;
+- the proxy, cookie, CSRF, and notification settings are declared but not yet wired into request handling or a live adapter.
 
 Production must fail closed when required secrets or security settings are absent. Never “helpfully” create predictable production secrets.
 

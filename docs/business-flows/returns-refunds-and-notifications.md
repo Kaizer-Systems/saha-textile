@@ -1,13 +1,19 @@
 ---
 title: Returns, Refunds, and Notifications
+wide: true
 description: Item return, financial reversal, shipment consequences, and multi-channel communication boundaries.
 status: planned
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/storefront/src/app/shared/ui/modal/refund-modal
     - apps/admin/src/app/features/refund
     - apps/admin/src/app/features/notification
+    - apps/api/.env.example
+    - apps/api/src/config/app-config.ts
+    - packages/contracts/src/notification.ts
+    - packages/contracts/src/consent.ts
+    - packages/contracts/src/audit.ts
     - project-context/angular-context/codex-catalog-db-architecture-assessment-and-plan.md
     - project-context/angular-context/owner-decisions-log.md
 ---
@@ -60,7 +66,7 @@ Partial refunds must never accidentally move an entire payment/order into a full
 
 ## Notifications
 
-Target customer messaging flows through `NotificationPort`, with SMS, WhatsApp, and email behind swappable adapters. The current core-domain package does not yet contain that port, so this remains planned architecture. Transactional and marketing controls are separate.
+Target customer messaging flows through `NotificationPort`, with SMS, WhatsApp, and email behind swappable adapters. The locked primary provider is **MSG91** (SMS / WhatsApp / Email, including auth OTP), with an optional email fallback (`resend`/`ses`/`smtp`) that is never primary. The API **configuration surface already exists** — `NOTIFICATION_PROVIDER` (`console` | `msg91`), `MSG91_*`, and `EMAIL_FALLBACK_PROVIDER` are validated in `app-config.ts`. Shared zod contracts now define channel/category settings, template metadata, usage rows, outbox states, consent events, and audit evidence. The `NotificationPort`, repositories, collections, use cases, and provider adapters are **not yet implemented**, so this remains planned architecture; local/test runs use the `console` provider (logs instead of sending). Transactional and marketing controls are separate.
 
 | Category              | Examples                                               | Consent/availability rule                                                             |
 | --------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------- |

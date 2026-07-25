@@ -3,7 +3,7 @@ title: Backend Path
 description: Onboarding route for API, contracts, domain and adapter work.
 status: scaffolded
 audience: [backend]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/api/src
     - packages/core-domain/src
@@ -43,7 +43,7 @@ HTTP controller
 ← adapter implementation bound at composition time
 ```
 
-The domain package must not import NestJS, Mongoose, provider SDKs or UI types. Persistence models must be mapped at the adapter boundary and must not leak into contracts.
+The domain package must not import NestJS, Mongoose, provider SDKs, adapters, or UI types. The ratified `G-CORE-CONTRACTS` exception permits project-owned contract shapes through `import type` only, preserving a runtime-pure core; value imports from contracts remain forbidden. Persistence models must be mapped at the adapter boundary and must not leak into public contracts.
 
 ## Before handing off
 

@@ -3,12 +3,14 @@ title: Backend Platform Atlas
 description: Interactive, evidence-backed map of API request paths, boundaries, risks, and proof obligations.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
+wide: true
 source_of_truth:
     - apps/api/src
     - packages/contracts/src
     - packages/core-domain/src
     - packages/adapters-db-mongo/src
+    - docker/mongo/docker-compose.yml
     - project-context/angular-context/codex-api-app-build-instructional-prompt.md
     - project-context/angular-context/owner-decisions-log.md
 ---
@@ -62,16 +64,16 @@ An implementation is incorrectly layered when a controller imports a provider SD
 
 ## Current capability radar
 
-| Boundary                 | What exists                                                    | What is not yet proven                                                                                  |
-| ------------------------ | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Fastify/NestJS bootstrap | Helmet, global rate limit, CORS, OpenAPI, shutdown hooks       | Trusted proxy chain, real client IP, route-specific limits, secure CSP, sanitized global errors         |
-| HTTP modules             | Health, auth, catalogue, currency, promotions, cart, orders    | Public/admin segregation, complete DTO families, versioning, consistent errors                          |
-| Authentication           | Argon2id, access/refresh JWT signing, bearer guard, role guard | Cookie sessions, CSRF, refresh rotation/reuse detection, audiences, permissions, admin PIN              |
-| Contracts                | Zod schemas for core catalogue/commerce shapes                 | Separate request/update/response schemas, sensitive-field policies, complete OpenAPI mapping            |
-| Core domain              | Repository/provider ports and pure pricing helpers             | Independent domain entities/use cases, unit of work, notification/media ports, complete policy coverage |
-| Mongo adapter            | Seven models, repositories, mappers, indexes, seed tool        | Replica-set parity, transactional context, stronger nested validation, migrations, backups/restore      |
-| Tests                    | Contract/pricing tests and gated Mongo integration tests       | API tests, mandatory transaction tests, auth/security tests, non-skipped CI evidence                    |
-| Generated references     | `/openapi.json` from the API                                   | Complete OpenAPI, portal publication, Scalar, generated database catalogue                              |
+| Boundary                 | What exists                                                                                                             | What is not yet proven                                                                                                     |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Fastify/NestJS bootstrap | Helmet, global rate limit, CORS, OpenAPI, shutdown hooks; `TRUST_PROXY`/`CLIENT_IP_HEADER` parsed in config             | Trusted proxy chain not yet applied to Fastify, real client IP, route-specific limits, secure CSP, sanitized global errors |
+| HTTP modules             | Health, auth, catalogue, currency, promotions, cart, orders                                                             | Public/admin segregation, complete DTO families, versioning, consistent errors                                             |
+| Authentication           | Argon2id, access/refresh JWT signing, bearer guard, role guard                                                          | Cookie sessions, CSRF, refresh rotation/reuse detection, audiences, permissions, admin PIN                                 |
+| Contracts                | Zod schemas for core catalogue/commerce plus auth/session/consent/audit/notification scaffolds                          | Runtime wiring, remaining domain families, planned tests, and complete OpenAPI mapping                                     |
+| Core domain              | Repository/provider ports, pure pricing helpers, and ratified type-only contracts coupling                              | Complete boundary lint, use cases, unit of work, notification/media ports, and policy coverage                             |
+| Mongo adapter            | Seven models, repositories, mappers, indexes, seed tool, self-hosted Docker `rs0` replica-set profile (`pnpm mongo:up`) | Transactional context, stronger nested validation, migrations, backups/restore                                             |
+| Tests                    | Contract/pricing tests and gated Mongo integration tests                                                                | API tests, mandatory transaction tests, auth/security tests, non-skipped CI evidence                                       |
+| Generated references     | `/openapi.json` from the API                                                                                            | Complete OpenAPI, portal publication, Scalar, generated database catalogue                                                 |
 
 ## Stop-the-line findings
 
@@ -85,7 +87,7 @@ These are documentation findings, not fixes made by Pass 4:
 6. API configuration supplies development JWT defaults without a production fail-closed check.
 7. `/health` can report success while Mongo-backed routes are unavailable.
 8. Storefront search currently uses Mongo regular expressions even though the locked target is Meilisearch through `SearchPort`.
-9. The Mongo connection/env examples still contain hosted-cluster assumptions that conflict with the self-hosted Docker MongoDB lock.
+9. Resolved (2026-07-24): the Mongo connection builder and `.env.example` now implement the self-hosted Docker `rs0` model; the former hosted-cluster/SRV assumptions are gone and a local replica set is available via `pnpm mongo:up`.
 10. API tests can pass with no tests, and the Mongo integration suite normally skips itself.
 
 Treat each finding as an explicit implementation and verification gate. Do not “solve” it by documenting the unsafe behavior as acceptable.

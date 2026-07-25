@@ -3,11 +3,12 @@ title: Source of Truth and Freshness
 description: Authority, conflict resolution and review timing for portal content.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - AGENTS.md
     - project-context/angular-context/owner-decisions-log.md
     - project-context/angular-context/private-developer-portal-documentation-plan.md
+    - scripts/validate-developer-portal.mjs
 ---
 
 # Source of truth and freshness
@@ -59,3 +60,17 @@ A page must be reverified when any of the following changes:
 | Historical ADR                                | On supersession or linked-decision change |
 
 The date is a review signal, not proof by itself. A recent date without named sources and actual verification is not acceptable provenance.
+
+## Automated freshness boundary
+
+`scripts/validate-developer-portal.mjs` makes the declared evidence graph executable:
+
+1. every `source_of_truth` path must exist;
+2. the validator reads the latest Git change date for each declared file or directory;
+3. a working-tree change counts as today because it is newer than committed evidence;
+4. the page fails validation when `last_verified` predates any declared evidence;
+5. internal routes and anchors are checked in the same run.
+
+A directory source is deliberately conservative: any changed file below it requires reverification. Prefer exact files when only a narrow behavior supports the page; retain a directory when the page genuinely summarizes that whole area. Never advance `last_verified` merely to silence the gate—compare the claims with the changed evidence and fix any drift first.
+
+Governed interactive instruments add a stricter layer. Their manifest, authored dataset, KB/progress evidence, page frontmatter, component binding, and compiled global data are cross-checked during validation and again during the Docusaurus build.

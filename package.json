@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@saha-textile/config": "workspace:*",
-    "@types/node": "^24",
+    "@types/node": "24.13.3",
     "eslint": "10.5.0",
     "prettier": "3.8.4",
     "prettier-plugin-tailwindcss": "0.8.0",

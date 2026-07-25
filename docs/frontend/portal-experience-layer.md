@@ -5,10 +5,22 @@ status: implemented
 audience: [frontend]
 last_verified: '2026-07-25'
 source_of_truth:
+    - project-context/angular-context/owner-decisions-log.md
+    - project-context/angular-context/project-progress.md
+    - docs/frontend/interactive-instruments.md
+    - docs/_data/portal-manifest.json
+    - docs/_data/instruments/decision-gates.json
+    - docs/_data/instruments/command-verbs.json
+    - docs/_data/instruments/first-flight.json
     - apps/developer-portal/src/theme/Root.tsx
     - apps/developer-portal/src/components/PortalExperience
+    - apps/developer-portal/src/components/GateConsole
     - apps/developer-portal/src/components/ArchitectureReactor
+    - apps/developer-portal/src/components/FirstFlight
     - apps/developer-portal/plugins/portal-data
+    - apps/developer-portal/plugins/portal-search
+    - apps/developer-portal/src/data/command-verbs.ts
+    - apps/developer-portal/src/data/first-flight.ts
     - apps/developer-portal/src/css/custom.css
 ---
 
@@ -20,15 +32,16 @@ Unlike the rest of the portal (which documents the Saha Textile platform), this 
 
 ## What it is
 
-Five self-contained, dependency-free features (pure Canvas / SVG / CSS / React), all theme-aware for light and dark and all `prefers-reduced-motion`-safe:
+Six self-contained, dependency-free features (pure Canvas / SVG / CSS / React), all theme-aware for light and dark and all `prefers-reduced-motion`-safe:
 
-| Feature                       | What it does                                                                                                  |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Ambient reactor**           | A fixed behind-content canvas constellation that drifts and leans toward the cursor.                          |
-| **Holographic scanlines**     | A faint CRT-line veil plus a slow drifting scan sweep over the ambient field.                                 |
-| **Command palette (⌘K)**      | A keyboard-first warp navigator; fuzzy-searches every page. Open with ⌘K / Ctrl-K, `/`, or the launcher pill. |
-| **Architecture reactor**      | The hexagonal architecture as a live orbital with animated data pulses; homepage + system-overview.           |
-| **Living micro-interactions** | Cursor-spotlight cards, magnetic buttons, scroll-reveal, a read-progress beam, breathing status dots.         |
+| Feature                       | What it does                                                                                                                |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Ambient reactor**           | A fixed behind-content canvas constellation that drifts and leans toward the cursor.                                        |
+| **Holographic scanlines**     | A faint CRT-line veil plus a slow drifting scan sweep over the ambient field.                                               |
+| **Command palette (⌘K)**      | A keyboard-first warp navigator over every page plus governed `trace`, `gate`, and `status` action verbs.                   |
+| **Architecture reactor**      | The hexagonal architecture as a live orbital with animated data pulses; homepage + system-overview.                         |
+| **First Flight system**       | Launch Bay, URL-carried spotlight guide, explicit device-local resume, reset controls, and a compiled-data Mission Debrief. |
+| **Living micro-interactions** | Cursor-spotlight cards, magnetic buttons, scroll-reveal, a read-progress beam, breathing status dots.                       |
 
 ## Code map
 
@@ -52,12 +65,58 @@ Every file carries a `NEXT-GEN-UI` banner comment — run `grep -rn NEXT-GEN-UI 
 | `docs/_data/instruments/*.json`                                    | Authored instrument structure; project status is injected from KB truth.   |
 | `src/data/*.ts`                                                    | Typed React adapters over compiled plugin data; contains no project facts. |
 | `src/components/{MissionControl,FlightSimulator,GateConsole}`      | The Wave-1 interactive instruments (see interactive-instruments).          |
+| `src/components/SchemaNebula`                                      | The governed 64-collection Wave-2 constellation.                           |
+| `src/components/FirstFlight/index.tsx`                             | Persona Launch Bay and governed checkpoint dossier.                        |
+| `src/components/FirstFlight/FirstFlightHUD.tsx`                    | Global URL-driven guide, target focus, route controls and status warnings. |
+| `src/components/FirstFlight/MissionDebrief.tsx`                    | Final-checkpoint handoff derived from compiled persona and lifecycle data. |
+| `src/components/FirstFlight/useFirstFlightProgress.ts`             | Versioned opt-in local progress parser, synchronizer and reset boundary.   |
+| `src/components/FirstFlight/{styles,hud}.module.css`               | Responsive Launch Bay, route HUD, resume and debrief visual systems.       |
+| `src/data/command-verbs.ts`                                        | Typed adapter for the compiled palette grammar and targets.                |
+| `src/data/first-flight.ts`                                         | Typed adapter for the governed persona paths and spotlight targets.        |
 
 ## Dynamic by construction
 
-⌘K is **not** a hand-maintained list. The `portal-search` plugin reads every page through the same shared frontmatter compiler used by validation and publishes the search index to Docusaurus global data, so any new page appears automatically. A page can enrich its own terms with a `search_keywords` frontmatter field.
+⌘K is **not** a hand-maintained page list. The `portal-search` plugin reads every page through the same shared frontmatter compiler used by validation and publishes the search index to Docusaurus global data, so any new page appears automatically. A page can enrich its own terms with a `search_keywords` frontmatter field.
 
 Wave instruments use a parallel governed path: `docs/_data/portal-manifest.json` + versioned instrument JSON + the machine-readable Portal truth snapshot in `project-progress.md` → `portal-data` build compiler → validated Docusaurus global data → typed `src/data/*.ts` React adapters. Source paths, routes, catalog membership, chunk/gate state and page verification dates are checked before the site builds. Wide instrument pages opt in with `wide: true`.
+
+First Flight extends that contract with a live Launch Bay and route-spanning HUD: its four persona paths live in governed JSON, while the compiler proves that every route and stable heading target still exists and injects the destination page title, lifecycle status, and source path. The persona console owns only the current selection. The global guide owns navigation, target focus, and the URL-carried active step—not onboarding facts or completion history.
+
+## First Flight navigation
+
+Selecting **Begin guided flight** adds the governed `firstFlight` and `step` query parameters, then opens the selected persona’s first checkpoint. `PortalExperience` reads those parameters on every route and mounts one global HUD:
+
+1. the persona and step resolve against compiled First Flight data;
+2. the current pathname must match the governed stop;
+3. the stable heading id is located, focused, observed for size changes, and measured;
+4. a fixed aperture receives direct `left`/`top`/`width`/`height` writes inside `requestAnimationFrame`;
+5. next/back dispatch the next governed route, while exit removes only the two flight parameters.
+
+The heading target remains the documentation’s real element. The guide temporarily adds focus and description attributes, then restores their prior values on route change or exit. An invalid persona/step fails closed in the UI; a valid step on the wrong route offers a course correction instead of spotlighting unrelated content.
+
+The HUD displays each destination’s compiler-injected lifecycle status and a matching evidence boundary. In particular, `planned`, `deferred`, and `deprecated` surfaces use a warning treatment and explicitly refuse to present target intent as working runtime behavior.
+
+URL state remains distinct from progress persistence: it makes the active view shareable and browser-history-aware but is not a completion record.
+
+Pass 5.4 adds a separate device-local boundary with explicit per-persona opt-in. Its versioned payload contains only persona id, furthest governed stop id, completion state and an optional completion timestamp. Every read is narrowed against the current compiled persona and stop ids; malformed or stale payloads are ignored and surfaced for reset. Same-tab components synchronize through a portal-local event, while the browser’s storage event covers other tabs. Storage denial degrades to session-only guidance.
+
+The final checkpoint opens Mission Debrief whether or not persistence was enabled. Its checkpoint count, lifecycle-state mix, evidence cautions, outcome and route manifest are derived from compiled data. Completion persists only for an opted-in persona, and the copy explicitly refuses to equate reaching the final checkpoint with studying every page, implementation approval, production readiness or mastery.
+
+The completion pass hardens that flow at the browser boundary: Launch Bay cannot navigate through a pre-hydration placeholder state; invalid saved payloads keep persistence disabled while exposing a recovery reset; HUD progress uses native progressbar semantics; minimize/restore preserves keyboard focus; and Mission Debrief blocks background interaction, moves focus into a labelled modal, cycles focus within it, and supports Escape. Reduced-motion and forced-colour treatments remain part of the shared visual contract.
+
+## Command verbs
+
+The palette now recognizes an exact **verb as the first token** and switches from page-search mode into a scoped, read-only action mode:
+
+| Grammar            | Compiled target source                                                                                                         | Result                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `trace <journey>`  | Every current `/business-flows/*` page plus the Request Flight Simulator, derived from documentation frontmatter at build time | Opens the best-matching journey or request trace.                                                |
+| `gate <decision>`  | The governed Decision Gate dataset, including current sealed/cleared state                                                     | Opens the Decision Gate Console with that validated gate selected through a deep-link parameter. |
+| `status <surface>` | Every portal page carrying the required lifecycle frontmatter                                                                  | Opens the matching surface and shows its `implemented`/`scaffolded`/`planned`/etc. state in ⌘K.  |
+
+Try `trace checkout`, `gate numbering`, or `status api`. The chips below the input make the grammar discoverable without hiding normal fuzzy page search.
+
+This is deliberately **navigation-only**. A command cannot flip an owner gate, change project status, call an API, or mutate the repository. The compiler derives and validates every target route; React owns only the current query, active row, focus and open/closed state.
 
 ## How the layering works
 

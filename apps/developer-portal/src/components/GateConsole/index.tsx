@@ -16,17 +16,29 @@
  * - ripple animation is disabled under prefers-reduced-motion.
  * ========================================================================= */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from '@docusaurus/Link';
+import { useLocation } from '@docusaurus/router';
 
 import { useDecisionGateData, type Gate } from '@site/src/data/decision-gates';
 import styles from './styles.module.css';
 
 export function GateConsole(): React.ReactNode {
 	const { gates, impactChunks, impactCollections } = useDecisionGateData();
+	const location = useLocation();
 	const openGateCount = useMemo(() => gates.filter((gate) => gate.status === 'open').length, [gates]);
 	const [selectedId, setSelectedId] = useState<string>(gates.find((g) => g.status === 'open')?.id ?? gates[0].id);
-	const selected: Gate = useMemo(() => gates.find((g) => g.id === selectedId) ?? gates[0], [selectedId]);
+	const selected: Gate = useMemo(() => gates.find((g) => g.id === selectedId) ?? gates[0], [gates, selectedId]);
+
+	// ⌘K Verbs deep-link contract: `gate numbering` resolves to this page with a
+	// validated governed gate id. The first render stays deterministic for SSR;
+	// the client selects the requested gate after hydration.
+	useEffect(() => {
+		const requestedGate = new URLSearchParams(location.search).get('gate');
+		if (requestedGate && gates.some((gate) => gate.id === requestedGate)) {
+			setSelectedId(requestedGate);
+		}
+	}, [gates, location.search]);
 
 	const blockedChunks = new Set(selected.blocksChunks);
 	const blockedCollections = new Set(selected.blocksCollections);

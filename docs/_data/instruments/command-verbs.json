@@ -1,0 +1,43 @@
+{
+	"schemaVersion": 1,
+	"lastVerified": "2026-07-25",
+	"title": "⌘K Verbs",
+	"summary": "Turn the dynamic page navigator into a read-only action grammar without creating a second search index or allowing the palette to mutate project state.",
+	"sourceOfTruth": [
+		"project-context/angular-context/owner-decisions-log.md",
+		"project-context/angular-context/project-progress.md",
+		"docs/frontend/interactive-instruments.md",
+		"docs/_data/instruments/decision-gates.json"
+	],
+	"verbs": [
+		{
+			"id": "trace",
+			"token": "trace",
+			"label": "Trace a journey",
+			"description": "Find a governed business journey or the request-flight trace.",
+			"example": "trace checkout",
+			"targetSource": "journey-pages",
+			"routePrefixes": ["/business-flows/"],
+			"includeRoutes": ["/backend/request-lifecycle"],
+			"emptyRoute": "/business-flows/overview"
+		},
+		{
+			"id": "gate",
+			"token": "gate",
+			"label": "Inspect a decision gate",
+			"description": "Open a governed owner gate with its current sealed or cleared state selected.",
+			"example": "gate numbering",
+			"targetSource": "decision-gates",
+			"emptyRoute": "/decisions/gate-console"
+		},
+		{
+			"id": "status",
+			"token": "status",
+			"label": "Check documentation status",
+			"description": "Find a portal surface and reveal its declared implementation lifecycle.",
+			"example": "status api",
+			"targetSource": "document-status",
+			"emptyRoute": "/mission-control"
+		}
+	]
+}

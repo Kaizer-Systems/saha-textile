@@ -1,15 +1,19 @@
 /* ============================================================================
- * NEXT-GEN-UI · CommandPalette (⌘K warp navigator)
+ * NEXT-GEN-UI · CommandPalette (⌘K warp navigator + governed verbs)
  * ----------------------------------------------------------------------------
- * A keyboard-first quick-navigator over the curated `commandIndex`. Educational
- * notes (see docs/frontend/portal-experience-layer.md, grep `NEXT-GEN-UI`):
+ * A keyboard-first quick-navigator over the dynamic frontmatter index, extended
+ * with the governed trace/gate/status action grammar. Educational notes (see
+ * docs/frontend/portal-experience-layer.md, grep `NEXT-GEN-UI`):
  *
  * - OPEN/CLOSE: a single window keydown listener handles ⌘K / Ctrl-K anywhere,
  *   "/" when not typing in a field, and Escape. Body scroll is locked while open.
- * - RANKING: `rank()` scores each entry with the subsequence fuzzy scorer in
- *   commandIndex.ts, weighting title matches over keyword matches, then slices
- *   the top results. Empty query lists everything.
- * - NAV: selection pushes onto the Docusaurus SPA history (no full reload).
+ * - PAGE RANKING: `rankPages()` fuzzy-scores the build-derived search index.
+ *   Adding a documentation page still needs no palette code or registry edit.
+ * - VERB RANKING: an exact first token activates a compiled target set. Journey
+ *   targets come from pages, gates from governed gate data, and status targets
+ *   from each page's lifecycle frontmatter—React owns none of those facts.
+ * - DISPATCH: every verb remains read-only navigation. Gate results add a
+ *   validated query parameter so the existing console selects that gate.
  * - The launcher pill is the discoverable/mobile entry point to the same dialog.
  * ========================================================================= */
 
@@ -17,12 +21,19 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useHistory } from '@docusaurus/router';
 import { usePluginData } from '@docusaurus/useGlobalData';
 
+import { useCommandVerbData, type CommandVerb, type CommandVerbTarget } from '@site/src/data/command-verbs';
 import { fuzzyScore, type CommandEntry } from './commandIndex';
 import styles from './styles.module.css';
 
 type Ranked = CommandEntry & { score: number };
+type RankedTarget = CommandVerbTarget & { score: number };
+type VerbMode = {
+	verb: CommandVerb;
+	argument: string;
+};
+type PaletteResult = { kind: 'page'; entry: Ranked } | { kind: 'verb-target'; entry: RankedTarget };
 
-function rank(query: string, entries: CommandEntry[]): Ranked[] {
+function rankPages(query: string, entries: CommandEntry[]): Ranked[] {
 	const list = Array.isArray(entries) ? entries : [];
 	const trimmed = query.trim();
 	if (trimmed.length === 0) {
@@ -40,8 +51,38 @@ function rank(query: string, entries: CommandEntry[]): Ranked[] {
 	return ranked.sort((a, b) => b.score - a.score).slice(0, 24);
 }
 
+function parseVerbMode(query: string, verbs: CommandVerb[]): VerbMode | null {
+	const trimmed = query.trimStart();
+	const tokenEnd = trimmed.search(/\s/);
+	const token = (tokenEnd === -1 ? trimmed : trimmed.slice(0, tokenEnd)).toLocaleLowerCase('en');
+	const verb = verbs.find((candidate) => candidate.token === token);
+	if (!verb) return null;
+	return {
+		verb,
+		argument: tokenEnd === -1 ? '' : trimmed.slice(tokenEnd).trim(),
+	};
+}
+
+function rankTargets(argument: string, targets: CommandVerbTarget[]): RankedTarget[] {
+	const trimmed = argument.trim();
+	if (trimmed.length === 0) {
+		return targets.slice(0, 24).map((target) => ({ ...target, score: 0 }));
+	}
+
+	const ranked: RankedTarget[] = [];
+	for (const target of targets) {
+		const haystack = `${target.title} ${target.id} ${target.section} ${target.status} ${target.keywords}`;
+		const titleScore = fuzzyScore(trimmed, target.title);
+		const anyScore = fuzzyScore(trimmed, haystack);
+		const best = Math.max(titleScore ?? -Infinity, (anyScore ?? -Infinity) * 0.62);
+		if (Number.isFinite(best)) ranked.push({ ...target, score: best });
+	}
+	return ranked.sort((left, right) => right.score - left.score).slice(0, 24);
+}
+
 export function CommandPalette(): React.ReactNode {
 	const history = useHistory();
+	const { verbs } = useCommandVerbData();
 	// DYNAMIC INDEX: built at build time by portal-search-plugin from every page's
 	// frontmatter, so new pages appear here automatically (no code change).
 	const pluginData = usePluginData('portal-search-plugin') as { index?: CommandEntry[] } | undefined;
@@ -52,7 +93,17 @@ export function CommandPalette(): React.ReactNode {
 	const inputRef = useRef<HTMLInputElement>(null);
 	const listRef = useRef<HTMLDivElement>(null);
 
-	const results = useMemo(() => rank(query, entries), [query, entries]);
+	const verbMode = useMemo(() => parseVerbMode(query, verbs), [query, verbs]);
+	const results = useMemo<PaletteResult[]>(
+		() =>
+			verbMode
+				? rankTargets(verbMode.argument, verbMode.verb.targets).map((entry) => ({
+						kind: 'verb-target',
+						entry,
+					}))
+				: rankPages(query, entries).map((entry) => ({ kind: 'page', entry })),
+		[entries, query, verbMode],
+	);
 
 	const close = useCallback(() => {
 		setOpen(false);
@@ -61,13 +112,18 @@ export function CommandPalette(): React.ReactNode {
 	}, []);
 
 	const go = useCallback(
-		(entry: CommandEntry | undefined) => {
-			if (!entry) return;
+		(result: PaletteResult | undefined) => {
+			if (!result) return;
 			close();
-			history.push(entry.path);
+			history.push(result.entry.path);
 		},
 		[close, history],
 	);
+
+	const chooseVerb = useCallback((verb: CommandVerb) => {
+		setQuery(`${verb.token} `);
+		requestAnimationFrame(() => inputRef.current?.focus());
+	}, []);
 
 	// Global open/close shortcuts: ⌘K / Ctrl-K anywhere, "/" outside inputs.
 	useEffect(() => {
@@ -143,7 +199,7 @@ export function CommandPalette(): React.ReactNode {
 					className={styles.launcherIcon}
 					aria-hidden="true"
 				/>
-				<span className={styles.launcherLabel}>Search</span>
+				<span className={styles.launcherLabel}>Search · act</span>
 				<kbd className={styles.launcherKbd}>⌘K</kbd>
 			</button>
 
@@ -171,7 +227,7 @@ export function CommandPalette(): React.ReactNode {
 								className={styles.paletteInput}
 								type="text"
 								value={query}
-								placeholder="Jump to any page — try “mongo rs0”, “csrf”, “config.json”…"
+								placeholder="Search pages or act — try “trace checkout”, “gate numbering”, “status api”…"
 								spellCheck={false}
 								autoComplete="off"
 								aria-label="Search the developer portal"
@@ -183,6 +239,42 @@ export function CommandPalette(): React.ReactNode {
 						</div>
 
 						<div
+							className={styles.verbRail}
+							role="group"
+							aria-label="Command verbs"
+						>
+							<span className={styles.verbRailLabel}>Action grammar</span>
+							{verbs.map((verb) => (
+								<button
+									key={verb.id}
+									type="button"
+									className={verbMode?.verb.id === verb.id ? styles.verbChipActive : styles.verbChip}
+									aria-pressed={verbMode?.verb.id === verb.id}
+									aria-label={`Use ${verb.label}: ${verb.example}`}
+									onClick={() => chooseVerb(verb)}
+								>
+									<span>{verb.token}</span>
+									<code>{verb.example.slice(verb.token.length).trim()}</code>
+								</button>
+							))}
+						</div>
+
+						{verbMode && (
+							<div
+								className={styles.verbContext}
+								role="status"
+							>
+								<span className={styles.verbPrompt}>&gt;</span>
+								<span className={styles.verbToken}>{verbMode.verb.token}</span>
+								<div>
+									<strong>{verbMode.verb.label}</strong>
+									<span>{verbMode.verb.description}</span>
+								</div>
+								<output>{results.length} targets</output>
+							</div>
+						)}
+
+						<div
 							id="command-palette-results"
 							className={styles.paletteResults}
 							ref={listRef}
@@ -190,29 +282,50 @@ export function CommandPalette(): React.ReactNode {
 							aria-label="Results"
 						>
 							{results.length === 0 && (
-								<div className={styles.paletteEmpty}>No pages match “{query.trim()}”.</div>
+								<div className={styles.paletteEmpty}>
+									{verbMode
+										? `No ${verbMode.verb.token} target matches “${verbMode.argument}”.`
+										: `No pages match “${query.trim()}”.`}
+								</div>
 							)}
-							{results.map((entry, index) => (
-								<button
-									key={entry.path}
-									type="button"
-									data-index={index}
-									role="option"
-									aria-selected={index === active}
-									className={index === active ? styles.paletteRowActive : styles.paletteRow}
-									onMouseMove={() => setActive(index)}
-									onClick={() => go(entry)}
-								>
-									<span className={styles.paletteRowTitle}>{entry.title}</span>
-									<span className={styles.paletteRowSection}>{entry.section}</span>
-									<span
-										className={styles.paletteRowArrow}
-										aria-hidden="true"
+							{results.map((result, index) => {
+								const entry = result.entry;
+								return (
+									<button
+										key={
+											result.kind === 'page'
+												? `page:${result.entry.path}`
+												: `verb-target:${result.entry.id}`
+										}
+										type="button"
+										data-index={index}
+										role="option"
+										aria-selected={index === active}
+										className={index === active ? styles.paletteRowActive : styles.paletteRow}
+										onMouseMove={() => setActive(index)}
+										onClick={() => go(result)}
 									>
-										↵
-									</span>
-								</button>
-							))}
+										<span className={styles.paletteRowTitle}>{entry.title}</span>
+										<span className={styles.paletteRowMeta}>
+											<span className={styles.paletteRowSection}>{entry.section}</span>
+											{entry.status && (
+												<span
+													className={styles.paletteRowStatus}
+													data-status={entry.status}
+												>
+													{entry.status}
+												</span>
+											)}
+										</span>
+										<span
+											className={styles.paletteRowArrow}
+											aria-hidden="true"
+										>
+											↵
+										</span>
+									</button>
+								);
+							})}
 						</div>
 
 						<div className={styles.paletteFooter}>
@@ -226,7 +339,9 @@ export function CommandPalette(): React.ReactNode {
 							<span>
 								<kbd>esc</kbd> close
 							</span>
-							<span className={styles.paletteFooterBrand}>Saha Textile · warp nav</span>
+							<span className={styles.paletteFooterBrand}>
+								Saha Textile · {verbMode ? `${verbMode.verb.token} mode` : 'warp nav'}
+							</span>
 						</div>
 					</div>
 				</div>

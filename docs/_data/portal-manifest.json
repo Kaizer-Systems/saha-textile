@@ -4,15 +4,33 @@
 	"datasets": {
 		"missionControl": {
 			"file": "docs/_data/instruments/mission-control.json",
+			"instrument": "mission-control",
 			"page": "docs/mission-control.md"
 		},
 		"decisionGates": {
 			"file": "docs/_data/instruments/decision-gates.json",
+			"instrument": "decision-gates",
 			"page": "docs/decisions/gate-console.md"
 		},
 		"requestFlight": {
 			"file": "docs/_data/instruments/request-flight.json",
+			"instrument": "request-flight",
 			"page": "docs/backend/request-lifecycle.md"
+		},
+		"schemaNebula": {
+			"file": "docs/_data/instruments/schema-nebula.json",
+			"instrument": "schema-nebula",
+			"page": "docs/database/schema-nebula.md"
+		},
+		"commandVerbs": {
+			"file": "docs/_data/instruments/command-verbs.json",
+			"instrument": "command-verbs",
+			"page": "docs/frontend/portal-experience-layer.md"
+		},
+		"firstFlight": {
+			"file": "docs/_data/instruments/first-flight.json",
+			"instrument": "first-flight",
+			"page": "docs/getting-started/first-flight.mdx"
 		}
 	},
 	"instruments": [
@@ -58,7 +76,11 @@
 			"catalogHeading": "Schema Nebula",
 			"wave": 2,
 			"waveLabel": "Schema Nebula",
-			"status": "locked"
+			"status": "built",
+			"route": "/database/schema-nebula",
+			"page": "docs/database/schema-nebula.md",
+			"component": "apps/developer-portal/src/components/SchemaNebula",
+			"dataset": "docs/_data/instruments/schema-nebula.json"
 		},
 		{
 			"id": 5,
@@ -66,7 +88,11 @@
 			"catalogHeading": "First Flight — guided onboarding copilot",
 			"wave": 2,
 			"waveLabel": "First Flight",
-			"status": "locked"
+			"status": "built",
+			"route": "/getting-started/first-flight",
+			"page": "docs/getting-started/first-flight.mdx",
+			"component": "apps/developer-portal/src/components/FirstFlight",
+			"dataset": "docs/_data/instruments/first-flight.json"
 		},
 		{
 			"id": 6,
@@ -90,7 +116,11 @@
 			"catalogHeading": "⌘K Verbs",
 			"wave": 2,
 			"waveLabel": "⌘K Verbs",
-			"status": "locked"
+			"status": "built",
+			"route": "/frontend/portal-experience-layer",
+			"page": "docs/frontend/portal-experience-layer.md",
+			"component": "apps/developer-portal/src/components/PortalExperience",
+			"dataset": "docs/_data/instruments/command-verbs.json"
 		},
 		{
 			"id": 9,

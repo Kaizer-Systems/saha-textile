@@ -1,0 +1,106 @@
+---
+title: First Flight
+description: Governed persona-led onboarding with a route-spanning guide, optional device-local resume, and an evidence-aware Mission Debrief.
+status: implemented
+audience: [beginner, frontend, backend, operator]
+last_verified: '2026-07-25'
+source_of_truth:
+    - project-context/angular-context/owner-decisions-log.md
+    - project-context/angular-context/project-progress.md
+    - docs/frontend/interactive-instruments.md
+    - docs/getting-started
+    - docs/_data/portal-manifest.json
+    - docs/_data/instruments/first-flight.json
+    - apps/developer-portal/plugins/portal-data/compiler.js
+    - apps/developer-portal/src/data/portal-data.ts
+    - apps/developer-portal/src/data/first-flight.ts
+    - apps/developer-portal/src/components/FirstFlight
+wide: true
+hide_table_of_contents: true
+search_keywords: onboarding guided tour launch bay beginner frontend backend operator first contribution
+---
+
+import { FirstFlight } from '@site/src/components/FirstFlight';
+
+# First Flight
+
+First Flight is the portal’s guided orientation system. It begins here in **Launch Bay**, where you can choose a role, inspect every checkpoint, see the current lifecycle state of each destination, and launch a route-spanning guide that follows the governed path.
+
+<FirstFlight />
+
+## Start a guided flight
+
+Launch Bay is a working persona selector, route planner, and flight launcher:
+
+1. Choose **New contributor**, **Frontend developer**, **Backend developer**, or **Platform operator**.
+2. Inspect the expected duration, ordered checkpoints, destination lifecycle states, and mission outcome.
+3. Expand any checkpoint to see why it matters and which documentation source will open.
+4. Select **Begin guided flight** to start the route-spanning HUD, or open one checkpoint directly for ordinary manual navigation.
+
+If you explicitly enable **Remember this persona on this device**, the primary action changes to the furthest saved checkpoint—or to **Review Mission Debrief** after a saved completion. Starting a flight without enabling that control remains fully supported and writes no progress.
+
+Every route and heading target is validated during the portal build. Renaming or removing a destination without updating the governed First Flight dataset fails validation instead of silently breaking the onboarding path.
+
+## During a guided flight
+
+The global flight computer focuses the current heading without replacing the documentation underneath it. It exposes:
+
+- **Previous** and **Next** to cross routes in the selected persona’s governed order;
+- **Recenter** to bring the current target back into view;
+- **Minimize** to collapse the console while retaining the active checkpoint;
+- **Exit** to remove First Flight from the URL without recording completion;
+- a destination lifecycle badge and evidence-boundary warning, so a planned or scaffolded page is never mistaken for implemented runtime behavior;
+- the checkpoint rationale and source path behind an expandable evidence control.
+- an explicit **Enable device resume** control when you decide to remember a flight after it has already started.
+
+Keyboard controls are available outside text fields: <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> moves between checkpoints, <kbd>R</kbd> recenters, <kbd>M</kbd> minimizes or restores, and <kbd>Esc</kbd> exits.
+
+The active persona and zero-based checkpoint travel in the URL as `firstFlight=<persona>&step=<index>`. That makes the current view linkable and recoverable through normal browser history. These parameters describe **where the guide is now**; they are not a completion record.
+
+The HUD exposes its position as an accessible progress indicator, preserves keyboard focus when it minimizes or restores, and announces target acquisition without making the entire dossier a live region.
+
+## Device-local resume
+
+Persistence is off by default and scoped independently to each persona. When you opt in, the versioned local record contains only:
+
+- the persona id;
+- the furthest governed stop id reached while the guide was active;
+- whether the final checkpoint was completed;
+- an optional local completion timestamp.
+
+It does not store routes, documentation text, source paths, search or browsing history, user identity, free text, telemetry, or application data. Returning to a saved checkpoint is a navigation convenience, not proof that preceding material was studied.
+
+Uncheck the persona’s device-resume control to forget that one flight. Launch Bay also provides a two-step **Reset all saved flights** action.
+
+## Mission Debrief
+
+At the final checkpoint, **Complete flight** opens Mission Debrief. The debrief derives its checkpoint count, lifecycle-state mix, evidence cautions, route manifest, and role outcome from the same compiled persona data used by Launch Bay and the HUD.
+
+Mission Debrief deliberately says only that the final checkpoint was reached. It does not grant implementation approval, production readiness, or contributor mastery. Without persistence opt-in, the debrief is session-only; with opt-in, the persona’s local completion record allows **Review Mission Debrief** from Launch Bay.
+
+The debrief is an accessible modal handoff: background interaction is blocked, focus enters the dialog and remains inside its controls, <kbd>Esc</kbd> exits, and the same responsive surface works without motion or colour-dependent meaning.
+
+## Delivery status
+
+| Capability                                           | State       |
+| ---------------------------------------------------- | ----------- |
+| Governed persona paths and stable heading targets    | Implemented |
+| Interactive Launch Bay and checkpoint dossier        | Implemented |
+| Direct links into every checkpoint                   | Implemented |
+| Route-spanning spotlight HUD and next/back controls  | Implemented |
+| URL-carried active persona and checkpoint            | Implemented |
+| Lifecycle-aware current-versus-planned warnings      | Implemented |
+| Device-local progress and resume                     | Implemented |
+| Mission Debrief and completion summary               | Implemented |
+| Accessibility, storage recovery, and hydration audit | Implemented |
+| Governed manifest status                             | Built       |
+
+Opening an individual checkpoint from its dossier remains ordinary manual navigation. Select **Begin guided flight** when you want the HUD and ordered route controls.
+
+## Privacy and control
+
+The First Flight contract permits only optional, resettable, device-local progress. Persistence is an explicit per-persona choice and does not permit telemetry, calls to application APIs, repository writes, browsing-history capture, or documentation-content storage. If browser storage is blocked, the guide remains usable in session-only mode and reports that saving is unavailable. If a malformed or obsolete record is found, First Flight ignores it and exposes the global reset control before persistence can be re-enabled.
+
+## Choose manual mode when
+
+You can always skip First Flight and use [Choose Your Path](/getting-started/choose-your-path). Manual mode is better when you already know the owning surface, need one exact reference, or want to explore the portal without an ordered sequence.

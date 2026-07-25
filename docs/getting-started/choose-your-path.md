@@ -7,11 +7,22 @@ last_verified: '2026-07-25'
 source_of_truth:
     - project-context/angular-context/owner-decisions-log.md
     - project-context/angular-context/execution-roadmap.md
+    - docs/_data/portal-manifest.json
+    - docs/_data/instruments/first-flight.json
 ---
 
 # Choose your path
 
 You do not need to read the portal from beginning to end. Start with the path that matches the work you are about to do. Each path gives you an ordered reading list, the files you should recognise, the commands you may need, and the point where you should stop and ask for clarification.
+
+<section className="portalSurfaceNotice">
+	<div>
+		<span className="portalStatusPill" data-status="scaffolded">Guided mode</span>
+		<h2>Prefer a mission briefing?</h2>
+	</div>
+	<p>First Flight turns these four paths into an interactive Launch Bay with verified checkpoints, lifecycle telemetry and a role-specific outcome.</p>
+	<a href="/getting-started/first-flight">Enter First Flight</a>
+</section>
 
 <section className="portalPathGrid" aria-label="Developer onboarding paths">
 	<a className="portalPathCard" href="/getting-started/beginner-path">

@@ -9,6 +9,7 @@ const sidebars: SidebarsConfig = {
 			collapsed: false,
 			items: [
 				'getting-started/choose-your-path',
+				'getting-started/first-flight',
 				{
 					type: 'category',
 					label: 'Audience Paths',
@@ -105,6 +106,7 @@ const sidebars: SidebarsConfig = {
 					label: 'Database System',
 					items: [
 						'database/overview',
+						'database/schema-nebula',
 						'database/current-adapter-map',
 						'database/transactions-and-generation',
 					],

@@ -53,7 +53,12 @@ function latestEvidenceDate(source) {
 	const hasWorkingChange = [...workingTreePaths].some(
 		(filePath) => filePath === normalizedSource || filePath.startsWith(`${normalizedSource}/`),
 	);
-	const committedDate = gitOutput(['log', '-1', '--format=%cs', '--', normalizedSource]);
+	const committedTimestamp = gitOutput(['log', '-1', '--format=%cI', '--', normalizedSource]);
+	const parsedCommittedTimestamp = committedTimestamp ? new Date(committedTimestamp) : null;
+	const committedDate =
+		parsedCommittedTimestamp && !Number.isNaN(parsedCommittedTimestamp.getTime())
+			? parsedCommittedTimestamp.toISOString().slice(0, 10)
+			: '';
 	const latest = hasWorkingChange ? today : committedDate || null;
 	evidenceDateCache.set(source, latest);
 	return latest;

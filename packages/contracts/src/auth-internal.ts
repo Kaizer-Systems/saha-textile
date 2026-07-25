@@ -1,0 +1,117 @@
+import { z } from 'zod';
+
+import { OtpChannel, OtpPurpose } from './auth';
+import { Id, IsoDateTime } from './common';
+import { SessionAudience } from './session';
+
+/**
+ * SERVER-INTERNAL auth entity shapes. These model persistence documents used by
+ * core-domain repository ports and DB adapters. They store HASHES only (never
+ * plaintext codes/tokens) and must never be returned by a public endpoint.
+ */
+
+/**
+ * OTP challenge entity (`otpChallenges`) — owner lock 2026-07-05: 6-digit CSPRNG
+ * code stored as `HMAC-SHA256(code, server-pepper)`; single active challenge per
+ * (identifier, purpose); TTL 600s; max 5 attempts; consumed atomically.
+ */
+export const OtpChallenge = z.object({
+	id: Id,
+	/** Normalized destination identity (email or E.164 phone). */
+	identifier: z.string().min(1),
+	purpose: OtpPurpose,
+	channel: OtpChannel,
+	/** HMAC hash of the code — plaintext is never stored or logged. */
+	codeHash: z.string().min(1),
+	userId: Id.nullable().default(null),
+	attempts: z.number().int().nonnegative().default(0),
+	maxAttempts: z.number().int().positive().default(5),
+	resendCount: z.number().int().nonnegative().default(0),
+	lastSentAt: IsoDateTime.nullable().default(null),
+	ipHash: z.string().nullable().default(null),
+	userAgentHash: z.string().nullable().default(null),
+	createdAt: IsoDateTime,
+	/** TTL index target — expired challenges are rejected then auto-purged. */
+	expiresAt: IsoDateTime,
+	consumedAt: IsoDateTime.nullable().default(null),
+	blockedAt: IsoDateTime.nullable().default(null),
+});
+export type OtpChallenge = z.infer<typeof OtpChallenge>;
+
+/** OAuth state entity (`oauthStates`) — provider CSRF/state/nonce validation (auth plan §7.6). */
+export const OAuthState = z.object({
+	id: Id,
+	provider: z.enum(['google', 'facebook']),
+	audience: SessionAudience,
+	stateHash: z.string().min(1),
+	nonceHash: z.string().nullable().default(null),
+	codeVerifierHash: z.string().nullable().default(null),
+	/** Relative path or strict-allowlist URL only — validated at consume time. */
+	redirectAfterLogin: z.string().nullable().default(null),
+	guestCartId: Id.nullable().default(null),
+	ipHash: z.string().nullable().default(null),
+	userAgentHash: z.string().nullable().default(null),
+	createdAt: IsoDateTime,
+	expiresAt: IsoDateTime,
+	consumedAt: IsoDateTime.nullable().default(null),
+});
+export type OAuthState = z.infer<typeof OAuthState>;
+
+/** Password reset token entity (`passwordResetTokens`) — hash only; single-use; TTL. */
+export const PasswordResetToken = z.object({
+	id: Id,
+	userId: Id,
+	tokenHash: z.string().min(1),
+	audience: SessionAudience,
+	ipHash: z.string().nullable().default(null),
+	userAgentHash: z.string().nullable().default(null),
+	createdAt: IsoDateTime,
+	expiresAt: IsoDateTime,
+	consumedAt: IsoDateTime.nullable().default(null),
+});
+export type PasswordResetToken = z.infer<typeof PasswordResetToken>;
+
+/** Email verification token entity (`emailVerificationTokens`) — separate from OTP login. */
+export const EmailVerificationToken = z.object({
+	id: Id,
+	userId: Id,
+	emailNormalized: z.string().min(1),
+	tokenHash: z.string().min(1),
+	createdAt: IsoDateTime,
+	expiresAt: IsoDateTime,
+	consumedAt: IsoDateTime.nullable().default(null),
+});
+export type EmailVerificationToken = z.infer<typeof EmailVerificationToken>;
+
+/** Admin invite entity (`adminInvites`) — controlled staff/admin creation; no self-registration. */
+export const AdminInvite = z.object({
+	id: Id,
+	emailNormalized: z.string().min(1),
+	role: z.enum(['staff', 'admin']),
+	permissions: z.array(z.string()).default([]),
+	invitedByUserId: Id,
+	tokenHash: z.string().min(1),
+	createdAt: IsoDateTime,
+	expiresAt: IsoDateTime,
+	acceptedAt: IsoDateTime.nullable().default(null),
+	revokedAt: IsoDateTime.nullable().default(null),
+});
+export type AdminInvite = z.infer<typeof AdminInvite>;
+
+/**
+ * Mongo-backed rate-limit entity (`authRateLimits`) — atomic `$inc` counters
+ * until a hot store (Redis) takes over; audit stays in Mongo.
+ */
+export const AuthRateLimit = z.object({
+	id: Id,
+	/** Composite key, e.g. `ip:<hash>` / `email:<hash>`. */
+	key: z.string().min(1),
+	scope: z.enum(['ip', 'email', 'phone', 'user', 'provider']),
+	action: z.enum(['login', 'pin_login', 'otp_request', 'otp_verify', 'password_reset', 'oauth_start', 'refresh']),
+	count: z.number().int().nonnegative().default(0),
+	firstSeenAt: IsoDateTime,
+	lastSeenAt: IsoDateTime,
+	expiresAt: IsoDateTime,
+	blockedUntil: IsoDateTime.nullable().default(null),
+});
+export type AuthRateLimit = z.infer<typeof AuthRateLimit>;

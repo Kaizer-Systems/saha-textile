@@ -96,7 +96,7 @@ These are **not** waiting on the open worksheet/umbrella items:
 - Reviews moderation; audit retention tiers; track-order deferred; FIFO cost layers + manual stock reason codes.
 - **Config injection:** server secrets → API runtime only; public runtime config → Angular `/config.json` at container start (never bake secrets into Vite/Angular builds).
 
-**Architecture reconciliation (do early in Phase B):** resolve whether `core-domain` may import `packages/contracts` (Pass 4 gate). Prefer core free of Zod/contracts; contracts depend inward. Do not silently spread an exception.
+**Architecture reconciliation (RESOLVED 2026-07-25 — owner log §G-CORE-CONTRACTS):** `core-domain` may reference contract shapes via **`import type` only** (runtime-erased; zero runtime dep on contracts/zod — verified in dist). Value imports of contracts, and any import of Nest/Mongoose/Fastify/provider SDKs/adapters, are forbidden and ESLint-enforced (Chunk B). Contracts stay the single shape source of truth.
 
 ---
 
@@ -229,7 +229,7 @@ Include these in `.env.example`, Compose, Actions, and Nest config **when the re
 | --- | --- | --- |
 | **G-NUM-ORDER** — order / tax-invoice numbering (Mode A FY-reset vs B perpetual; format; gapless; separate sequences) | owner log 2026-07-05; API prompt §14; worksheet §01; umbrella **D2** | Final order placement issuing customer-facing numbers; tax invoice PDFs; `sequences` allocator for those docs |
 | **G-NUM-PI** — purchase-invoice numbering (separate sequence, same format rules) | API prompt §16; worksheet §01 | Purchase-invoice **posting** that assigns PI numbers |
-| **G-CORE-CONTRACTS** — core ↔ contracts dependency direction | owner log Pass 4 | Expanding Phase B incorrectly if core already imports contracts |
+| **G-CORE-CONTRACTS** — core ↔ contracts dependency direction — **RESOLVED 2026-07-25 (owner log): Option C — `import type`-only coupling, runtime-pure, ESLint-enforced in Chunk B** | owner log §2026-07-25 | ~~Expanding Phase B~~ Unblocked — Chunk B may expand contracts/ports under the type-only rule |
 | **G-I18N-ROUTES** — always-prefixed vs default-unprefixed locales | worksheet **A.6** | Final irreversible SEO route / hreflang canonical policy (provisional `/en`/`/bn` seams OK) |
 | **G-IMG-PX** — exact image ladder px + ingest caps | owner log images (deferred) | Sharp derivative enforcement / upload size limits (metadata + presign OK) |
 

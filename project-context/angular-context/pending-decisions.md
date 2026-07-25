@@ -1,0 +1,1197 @@
+# Pending Decisions — Saha Textile
+
+**Status:** Sole owner-question inbox. Nothing in this file is locked until the owner answers it and the answer is recorded in `owner-decisions-log.md`.
+
+**Last reconciled:** 2026-07-25
+
+## How this file works
+
+1. Every unresolved product, business, compliance, architecture, or operations choice lives here exactly once.
+2. Roadmaps and progress files refer to the stable decision ID, not copied question text.
+3. When the owner answers a decision:
+    - record the final rule in `owner-decisions-log.md`;
+    - reconcile affected architecture, contracts, code, and portal documentation;
+    - remove the resolved decision from this file;
+    - mark the corresponding roadmap/progress gate resolved.
+4. Implementation tasks, credentials, external approvals, and ordinary TODOs do not belong here.
+5. `project-context/nextjs-context/` is superseded and is never a decision source.
+
+## Open-decision index
+
+| ID | Decision | Primary impact |
+| --- | --- | --- |
+| `DEC-NUMBERING` | Order, tax-invoice, purchase-invoice, and related document numbering | Orders, invoices, sequences, GST audit |
+| `DEC-TAX-HSN` | Tax classes, GST slabs, and HSN granularity | Catalog, checkout, invoices, accounting |
+| `DEC-SHIPPING` | Launch shipping-rate policy | Checkout, Shiprocket seam, promotions |
+| `DEC-RETURNS` | Return/refund policy | Orders, returns, refunds, customer support |
+| `DEC-PROMO-STACK` | Promotion and coupon stacking | Pricing engine, checkout |
+| `DEC-STOCK-RESERVE` | Stock reservation timing and TTL | Inventory, checkout, payment recovery |
+| `DEC-BACKORDER` | Backorder/oversell policy | Catalog, inventory, storefront |
+| `DEC-ORDER-SNAPSHOT` | Immutable order-line snapshot fields | Orders, invoices, analytics, support |
+| `DEC-ADDRESS` | Address model and checkout phone requirements | Accounts, checkout, shipping |
+| `DEC-SKU` | Product and variant SKU policy | Catalog, inventory, imports |
+| `DEC-VARIANT-OVERRIDES` | Fields variants may override | Catalog contracts and admin forms |
+| `DEC-PRICE-DISPLAY` | MRP, sale, and price-range behavior | Catalog, pricing, storefront |
+| `DEC-ADDON-MEASUREMENTS` | Add-on pricing and measurement validation | Product setup, cart, orders |
+| `DEC-PRODUCT-RELATIONS` | Curated versus analytics-backed relations | Merchandising and analytics |
+| `DEC-BUNDLE-NESTING` | Whether bundles can contain bundles | Catalog and inventory validation |
+| `DEC-CUSTOMER-CREDIT` | Ledger, store credit, wallet, and points scope | Customers, refunds, checkout |
+| `DEC-DELETE-RETENTION` | Soft delete, hard delete, and retention rules | All durable collections |
+| `DEC-ID-SLUG` | IDs, business codes, slugs, and redirects | Catalog, SEO, orders |
+| `DEC-BADGES-RAILS` | Storefront badge and rail taxonomy | Analytics and merchandising |
+| `DEC-SCOPE-GAPS` | Missing business flows and launch scope | Whole product |
+| `DEC-I18N-ROUTES` | Canonical locale URL policy | Routing, SEO, hreflang |
+| `DEC-IMG-PX` | Image derivative pixel ladder | Media worker and storefront images |
+| `DEC-MEDIA-CAPS` | Image/video ingest limits | Upload API, admin UX, workers |
+| `DEC-PAYPAL-FX` | Treatment of PayPal FX-conversion markup | Foreign-currency pricing and margin |
+| `DEC-INR-GATEWAY-TIMING` | Timing of CCAvenue-to-Razorpay succession | Payment adapter delivery and operations |
+| `DEC-DOMAIN-TOPOLOGY` | Production storefront/admin/API hostname topology | Cookies, CORS, Nginx, deployment |
+| `DEC-TRANSLATION-QUALITY` | French translation authorship and acceptance policy | Storefront/admin copy quality and release QA |
+
+---
+
+## 01. `DEC-NUMBERING` — Business document numbering
+
+### Decision needed
+
+Choose the human-readable format and allocation policy for customer orders, tax invoices, purchase invoices, and future credit/return notes.
+
+### Why this matters
+
+Numbers appear in customer communication, PDFs, admin search, GST records, accounting exports, refunds, and audits. Tax-invoice numbers must remain unique, consecutive where legally required, and at most 16 characters.
+
+### Recommended route
+
+Use separate Indian-financial-year sequences for each document family. Allocate numbers transactionally and never reuse a cancelled number.
+
+### Options
+
+#### Option A — FY-reset sequences (recommended)
+
+- Example: `O/26-27/0001`, `ST/26-27/0001`, `P/26-27/0001`.
+- Pros: accountant-friendly, clean document-family separation, natural 1-Apr rollover.
+- Cons: needs transactional rollover and length validation.
+
+#### Option B — Perpetual sequences
+
+- Example: `ST/00000042`.
+- Pros: simplest allocation and global search.
+- Cons: weaker financial-year readability and reporting ergonomics.
+
+#### Option C — Custom
+
+- Supply the exact prefix, separator, padding, reset rule, and gap policy for every document family.
+
+### Owner answer
+
+Choice:
+
+Order format:
+
+Tax-invoice format:
+
+Purchase-invoice format:
+
+Credit/return-note format:
+
+Gapless/cancellation policy:
+
+Notes:
+
+---
+
+## 02. `DEC-TAX-HSN` — Tax classes, GST slabs, and HSN
+
+### Decision needed
+
+Choose how tax classes and HSN codes are assigned and confirmed.
+
+### Recommended route
+
+Category defaults with product/variant overrides. Snapshot resolved HSN, tax rate, taxable base, and tax amount on each order line. Obtain accountant confirmation before final tax contracts are frozen.
+
+### Options
+
+#### Option A — Category defaults plus product/variant overrides (recommended)
+
+- Pros: efficient data entry with exception handling.
+- Cons: requires clear precedence and publish validation.
+
+#### Option B — Product/variant assignment only
+
+- Pros: explicit and independent of multi-placement categories.
+- Cons: repetitive and easier to omit.
+
+#### Option C — One global tax rule
+
+- Pros: simplest.
+- Cons: brittle if fabric, stitched goods, or services differ.
+
+### Owner answer
+
+Choice:
+
+HSN required at product or variant level:
+
+Accountant/contact who will confirm:
+
+Notes:
+
+---
+
+## 03. `DEC-SHIPPING` — Launch shipping-rate policy
+
+### Decision needed
+
+Choose how domestic and international shipping is charged before live provider credentials are available.
+
+### Recommended route
+
+Domestic zone-plus-weight tiers with a free-shipping threshold and a Shiprocket quote seam. Keep international shipping disabled or manual-quote until the provider flow is verified.
+
+### Options
+
+#### Option A — Zone plus weight tiers (recommended)
+
+- Pros: predictable, credential-independent, supports promotions.
+- Cons: may differ from actual courier cost.
+
+#### Option B — Flat domestic rate
+
+- Pros: fastest and easiest to explain.
+- Cons: can overcharge light orders and undercharge heavy orders.
+
+#### Option C — Live provider quote only
+
+- Pros: closest courier price.
+- Cons: checkout depends on provider availability and credentials.
+
+### Owner answer
+
+Choice:
+
+Free-shipping threshold:
+
+International shipping at launch:
+
+Multiple packages per order:
+
+Fallback when provider quote fails:
+
+Notes:
+
+---
+
+## 04. `DEC-RETURNS` — Returns and refunds
+
+### Decision needed
+
+Set the return window, exclusions, refund destination, restocking behavior, and launch workflow.
+
+### Recommended route
+
+Use a structured but manually operated return/refund workflow at launch.
+
+### Options
+
+#### Option A — Seven-day policy with exclusions (recommended)
+
+- Pros: clear customer promise without a large self-service RMA build.
+- Cons: requires explicit exclusions and support handling.
+
+#### Option B — Case-by-case manual policy
+
+- Pros: maximum owner discretion.
+- Cons: inconsistent customer expectation and weaker reporting.
+
+#### Option C — Full self-service RMA at launch
+
+- Pros: polished structured experience.
+- Cons: substantial status, upload, courier, and refund scope.
+
+### Owner answer
+
+Choice:
+
+Return window:
+
+Non-returnable products/services:
+
+Refund destinations:
+
+Restocking rule:
+
+Notes:
+
+---
+
+## 05. `DEC-PROMO-STACK` — Promotion and coupon stacking
+
+### Decision needed
+
+Define how sale prices, automatic promotions, and coupons combine.
+
+### Recommended route
+
+Allow one coupon per order. Automatic promotions stack only when explicitly configured. Exclude sale/clearance items by default.
+
+### Options
+
+#### Option A — One coupon plus controlled automatic stacking (recommended)
+
+- Pros: flexible but bounded.
+- Cons: needs priority, eligibility, and explanation rules.
+
+#### Option B — No stacking
+
+- Pros: safest and simplest.
+- Cons: limits campaign flexibility.
+
+#### Option C — Multiple coupons and promotions
+
+- Pros: maximum campaign flexibility.
+- Cons: high discount-leak and testing risk.
+
+### Owner answer
+
+Choice:
+
+Coupons on sale items:
+
+Automatic promotions may stack:
+
+Per-user limits:
+
+Notes:
+
+---
+
+## 06. `DEC-STOCK-RESERVE` — Stock reservation timing
+
+### Decision needed
+
+Choose when inventory is reserved and when it is permanently decremented.
+
+### Recommended route
+
+Do not reserve on add-to-cart. Create a short checkout reservation and finalize inventory only at the locked order/payment transition.
+
+### Options
+
+#### Option A — Reserve at checkout start (recommended)
+
+- Pros: protects serious buyers without letting long-lived carts lock stock.
+- Cons: requires TTL release and payment-failure recovery.
+
+#### Option B — Decrement only at order/payment
+
+- Pros: simpler.
+- Cons: higher last-item oversell risk.
+
+#### Option C — Reserve on add-to-cart
+
+- Pros: strongest cart-holder protection.
+- Cons: abandoned guest carts block stock.
+
+### Owner answer
+
+Choice:
+
+Reservation TTL:
+
+Extension rule:
+
+Final decrement transition:
+
+Notes:
+
+---
+
+## 07. `DEC-BACKORDER` — Backorder and oversell
+
+### Decision needed
+
+Decide whether a product can sell beyond available stock.
+
+### Recommended route
+
+Hard-block by default; allow a deliberate per-product preorder/backorder mode.
+
+### Options
+
+#### Option A — Block by default, per-product override (recommended)
+
+- Pros: safe for ready-stock boutique inventory while preserving future made-to-order support.
+- Cons: needs clear preorder labels and lead-time rules.
+
+#### Option B — Always allow
+
+- Pros: never loses a sale because of stock count.
+- Cons: high fulfillment risk.
+
+#### Option C — Never allow
+
+- Pros: simplest and safest.
+- Cons: no preorder/made-to-order flexibility.
+
+### Owner answer
+
+Choice:
+
+Default low-stock threshold:
+
+Launch products allowed to backorder:
+
+Notes:
+
+---
+
+## 08. `DEC-ORDER-SNAPSHOT` — Immutable order-line fields
+
+### Decision needed
+
+Confirm which catalog, pricing, tax, customization, media, and cost facts are frozen on an order line.
+
+### Recommended route
+
+Use a bounded rich snapshot: product/variant IDs, title, SKU, selected options/add-ons/measurements, primary media reference, quantity, INR price, display currency, FX, discounts, tax/HSN, totals, category/reporting context, return eligibility, and COGS allocation when available.
+
+### Options
+
+#### Option A — Rich bounded snapshot (recommended)
+
+- Pros: reliable invoices, support, refunds, analytics, and historical display.
+- Cons: more mapping and stable contract surface.
+
+#### Option B — Minimal snapshot plus live product reference
+
+- Pros: smaller order documents.
+- Cons: catalog edits corrupt historical presentation.
+
+#### Option C — Full product clone
+
+- Pros: maximum historical content.
+- Cons: excessive size and possible internal-data leakage.
+
+### Owner answer
+
+Choice:
+
+Fields to add:
+
+Fields to remove:
+
+Notes:
+
+---
+
+## 09. `DEC-ADDRESS` — Addresses and checkout phone
+
+### Decision needed
+
+Choose saved-address behavior and whether phone is mandatory for shipping.
+
+### Recommended route
+
+Multiple addresses per user, default shipping/billing flags, billing-same-as-shipping by default, and required shipping phone at checkout.
+
+### Options
+
+#### Option A — Multiple addresses with required shipping phone (recommended)
+
+- Pros: normal repeat-customer and courier experience.
+- Cons: more validation/default-state logic.
+
+#### Option B — One saved address
+
+- Pros: simpler.
+- Cons: poor repeat-order and billing flexibility.
+
+#### Option C — Fully separate billing/shipping workflow
+
+- Pros: most complete.
+- Cons: more checkout friction.
+
+### Owner answer
+
+Choice:
+
+Phone required:
+
+Alternate phone:
+
+Billing same as shipping by default:
+
+Address validation provider/manual:
+
+Notes:
+
+---
+
+## 10. `DEC-SKU` — SKU generation
+
+### Decision needed
+
+Choose SKU generation, uniqueness, editability, and legacy-import policy.
+
+### Recommended route
+
+Generate globally unique product/variant SKUs with validated admin override.
+
+### Options
+
+#### Option A — Generated with admin override (recommended)
+
+- Pros: consistent while supporting legacy labels.
+- Cons: needs generation and collision rules.
+
+#### Option B — Admin-entered only
+
+- Pros: maximum business control.
+- Cons: slower and error-prone.
+
+#### Option C — System-only immutable
+
+- Pros: strongest consistency.
+- Cons: poor legacy/supplier flexibility.
+
+### Owner answer
+
+Choice:
+
+Prefix/format:
+
+Global uniqueness:
+
+Override allowed:
+
+Notes:
+
+---
+
+## 11. `DEC-VARIANT-OVERRIDES` — Variant override fields
+
+### Decision needed
+
+Choose which fields a variant may override from its product.
+
+### Recommended route
+
+Allow SKU, price/MRP/sale, stock, media, weight/dimensions, barcode, and availability overrides. Keep descriptive content and SEO inherited.
+
+### Options
+
+#### Option A — Practical commerce overrides (recommended)
+
+- Pros: covers real variable-product needs without duplicating content.
+- Cons: needs clear inheritance UI.
+
+#### Option B — Minimal SKU/price/stock/image overrides
+
+- Pros: simpler form.
+- Cons: weak shipping/barcode/MRP support.
+
+#### Option C — Every field overrideable
+
+- Pros: maximum flexibility.
+- Cons: noisy admin UX and translation inconsistency.
+
+### Owner answer
+
+Choice:
+
+Allowed fields:
+
+Explicitly inherited fields:
+
+Notes:
+
+---
+
+## 12. `DEC-PRICE-DISPLAY` — MRP, sale, and ranges
+
+### Decision needed
+
+Choose per-variant MRP/sale storage and listing-card behavior when variant prices differ.
+
+### Recommended route
+
+Store MRP/compare-at and effective selling price per variant. Show one price when all active variants match and a min–max range otherwise.
+
+### Options
+
+#### Option A — Variant-level MRP and sale (recommended)
+
+- Pros: accurate strike-throughs and ranges.
+- Cons: more data entry and calculation.
+
+#### Option B — Product-level MRP
+
+- Pros: simpler.
+- Cons: wrong when variants differ.
+
+#### Option C — Effective price only
+
+- Pros: minimal and avoids fake discounts.
+- Cons: cannot represent normal Indian sale presentation.
+
+### Owner answer
+
+Choice:
+
+Show strike-through MRP:
+
+Show ranges:
+
+Rounding rule:
+
+Notes:
+
+---
+
+## 13. `DEC-ADDON-MEASUREMENTS` — Add-ons and measurements
+
+### Decision needed
+
+Confirm reusable add-on pricing and validation for data-driven tailoring measurements.
+
+### Recommended route
+
+Reusable add-on templates with per-term price deltas and reusable measurement definitions. Validate unit, minimum, maximum, and step on both client and API.
+
+### Options
+
+#### Option A — Reusable templates and definitions (recommended)
+
+- Pros: consistent and reusable.
+- Cons: needs template management.
+
+#### Option B — Product-specific definitions
+
+- Pros: flexible for a small catalog.
+- Cons: repetitive and inconsistent.
+
+#### Option C — Free-text measurements
+
+- Pros: quickest.
+- Cons: poor validation and fulfillment clarity.
+
+### Owner answer
+
+Choice:
+
+Default unit:
+
+Decimal step:
+
+Launch measurement definitions:
+
+How add-on price deltas are entered:
+
+Notes:
+
+---
+
+## 14. `DEC-PRODUCT-RELATIONS` — Related products and rails
+
+### Decision needed
+
+Choose how related, cross-sell, upsell, substitute, and bought-together relationships are populated.
+
+### Recommended route
+
+Admin-curated relationships with analytics fallback when curated data is absent.
+
+### Options
+
+#### Option A — Curated plus analytics fallback (recommended)
+
+- Pros: boutique control with useful automation.
+- Cons: needs fallback ranking rules.
+
+#### Option B — Curated only
+
+- Pros: complete brand control.
+- Cons: manual work and empty new-product relations.
+
+#### Option C — Analytics only
+
+- Pros: automatic.
+- Cons: weak at low traffic and less controllable.
+
+### Owner answer
+
+Choice:
+
+Relations to launch:
+
+Fallback ranking:
+
+Notes:
+
+---
+
+## 15. `DEC-BUNDLE-NESTING` — Nested bundles
+
+### Decision needed
+
+Decide whether bundle/composite products may contain another bundle.
+
+### Recommended route
+
+Disallow nested bundles at launch.
+
+### Options
+
+#### Option A — No nesting (recommended)
+
+- Pros: bounded pricing, stock, snapshots, and admin UX.
+- Cons: cannot model a set inside another set.
+
+#### Option B — Maximum depth two
+
+- Pros: limited flexibility.
+- Cons: more recursive validation.
+
+#### Option C — Unlimited
+
+- Pros: theoretical flexibility.
+- Cons: circularity and excessive complexity.
+
+### Owner answer
+
+Choice:
+
+Known product requiring nesting:
+
+Notes:
+
+---
+
+## 16. `DEC-CUSTOMER-CREDIT` — Ledger, credit, wallet, and points
+
+### Decision needed
+
+Choose whether the customer ledger is reporting-only or a spendable balance.
+
+### Recommended route
+
+Ledger-only at launch with future store-credit seams. No wallet top-up or points engine.
+
+### Options
+
+#### Option A — Ledger plus future credit seam (recommended)
+
+- Pros: simple accounting and future-ready.
+- Cons: no automatic credit redemption.
+
+#### Option B — Active store credit
+
+- Pros: useful for refunds/exchanges.
+- Cons: balance correctness and checkout liability.
+
+#### Option C — Wallet, top-up, and points
+
+- Pros: maximum retention feature set.
+- Cons: excessive launch and accounting scope.
+
+### Owner answer
+
+Choice:
+
+Refund-to-credit:
+
+Points at launch:
+
+Top-up allowed:
+
+Notes:
+
+---
+
+## 17. `DEC-DELETE-RETENTION` — Deletion and retention
+
+### Decision needed
+
+Choose status-delete, soft-delete, hard-delete, TTL cleanup, and legal/privacy purge rules.
+
+### Recommended route
+
+Soft-delete durable business records; TTL-delete transient security/session records; hard-delete only explicit privacy/legal purges and orphaned media after grace.
+
+### Options
+
+#### Option A — Soft durable, TTL transient (recommended)
+
+- Pros: auditability and recovery.
+- Cons: query filtering and growing storage.
+
+#### Option B — Soft-delete only financial/catalog records
+
+- Pros: less storage.
+- Cons: inconsistent recovery.
+
+#### Option C — Broad hard deletion
+
+- Pros: simplest storage.
+- Cons: unacceptable historical/audit risk.
+
+### Owner answer
+
+Choice:
+
+Hard-delete exceptions:
+
+Privacy purge requirements:
+
+Notes:
+
+---
+
+## 18. `DEC-ID-SLUG` — IDs, codes, slugs, and redirects
+
+### Decision needed
+
+Confirm internal IDs, human business identifiers, mutable slugs, redirect history, and discontinued-product URLs.
+
+### Recommended route
+
+Mongo ObjectId internally, immutable business codes/SKUs, mutable SEO slugs with permanent redirect history, and no reuse of old slugs.
+
+### Options
+
+#### Option A — ObjectId plus codes and redirects (recommended)
+
+- Pros: stable references and SEO-safe renames.
+- Cons: requires redirect management.
+
+#### Option B — Slug as primary business key
+
+- Pros: human-readable.
+- Cons: dangerous renames and historical references.
+
+#### Option C — Mutable slugs without history
+
+- Pros: simplest.
+- Cons: broken links and SEO loss.
+
+### Owner answer
+
+Choice:
+
+Discontinued URL: 410 or category redirect:
+
+Slug reuse:
+
+Notes:
+
+---
+
+## 19. `DEC-BADGES-RAILS` — Badges and merchandising rails
+
+### Decision needed
+
+Choose launch badges, rails, priority, and analytics/manual ownership.
+
+### Recommended route
+
+A restrained premium set, at most one primary plus one secondary badge per card, with admin pin/suppress controls.
+
+### Options
+
+#### Option A — Curated premium set (recommended)
+
+- Candidate badges: New, Sale, Bestseller, Trending, Featured, Low Stock, Back in Stock.
+- Candidate rails: New Arrivals, Bestsellers, Trending, Featured, Sale, Recently Viewed, Handpicked.
+- Pros: useful without marketplace clutter.
+- Cons: needs priority rules and weekly insight jobs.
+
+#### Option B — Manual only
+
+- Pros: maximum brand control.
+- Cons: ongoing admin effort.
+
+#### Option C — Highly dynamic urgency labels
+
+- Pros: conversion pressure.
+- Cons: can feel noisy or misleading at low traffic.
+
+### Owner answer
+
+Choice:
+
+Launch badges:
+
+Launch rails:
+
+Priority rule:
+
+Notes:
+
+---
+
+## 20. `DEC-SCOPE-GAPS` — Missing business flows
+
+### Decision needed
+
+Confirm launch, seam-only, and excluded treatment for business flows not yet justified by real products.
+
+### Recommended route
+
+- Wholesale/B2B: manual inquiry, seam only.
+- Made-to-order: product-level lead-time seam.
+- Gift cards: exclude at launch.
+- Subscription/repeat orders: exclude.
+- Bulk orders: inquiry/manual support.
+- Tailoring: named product add-ons, not standalone service products.
+
+### Options
+
+#### Option A — Recommended bounded scope
+
+- Pros: preserves boutique focus and future seams.
+- Cons: some requests need manual handling.
+
+#### Option B — Add selected flows now
+
+- Pros: supports known immediate demand.
+- Cons: expands pricing, fulfillment, auth, and accounting.
+
+#### Option C — Custom
+
+- List exact flows and required launch behavior.
+
+### Owner answer
+
+Overall choice:
+
+Build now:
+
+Seam only:
+
+Exclude:
+
+Notes:
+
+---
+
+## 21. `DEC-I18N-ROUTES` — Canonical locale URLs
+
+### Decision needed
+
+Choose the permanent routing/canonical rule for the default and additional locales.
+
+### Recommended route
+
+Always prefix every storefront locale, including English.
+
+### Options
+
+#### Option A — Always prefixed (recommended)
+
+- Examples: `/en/product/...`, `/fr/product/...`, later `/bn/product/...`.
+- Pros: explicit, symmetric, clean hreflang/canonical generation.
+- Cons: longer default-language URLs.
+
+#### Option B — Default locale unprefixed
+
+- Examples: `/product/...`, `/fr/product/...`.
+- Pros: shorter default URLs.
+- Cons: extra redirect/canonical logic.
+
+#### Option C — Locale outside the URL
+
+- Pros: shortest routes.
+- Cons: poor crawlability, sharing, and deterministic SSR behavior.
+
+### Owner answer
+
+Choice:
+
+Default locale:
+
+Redirect rule for old/unprefixed URLs:
+
+Notes:
+
+---
+
+## 22. `DEC-IMG-PX` — Image derivative dimensions
+
+### Decision needed
+
+Choose exact pixel dimensions and crop/fit rules for `thumb`, `card`, `gallery`, `zoom`, `swatch_image`, and `swatch_image_v2`.
+
+### Recommended route
+
+Decide after measuring the final storefront/admin rendered slots, then encode one static role ladder in worker config. Do not guess dimensions before the UI audit.
+
+### Options
+
+#### Option A — UI-audit-derived ladder (recommended)
+
+- Pros: avoids waste and undersized assets.
+- Cons: blocks final sharp enforcement until the audit.
+
+#### Option B — Adopt provisional industry-standard sizes now
+
+- Pros: unblocks worker early.
+- Cons: likely later reprocessing and storage churn.
+
+#### Option C — Owner-supplied dimensions
+
+- Pros: direct acceptance target.
+- Cons: still needs responsive/crop validation.
+
+### Owner answer
+
+Choice:
+
+`thumb`:
+
+`card`:
+
+`gallery`:
+
+`zoom`:
+
+`swatch_image`:
+
+`swatch_image_v2`:
+
+Fit/crop/background rules:
+
+Notes:
+
+---
+
+## 23. `DEC-MEDIA-CAPS` — Upload and ingest limits
+
+### Decision needed
+
+Choose maximum source bytes, dimensions, duration, and rejection/compression behavior for media uploads.
+
+### Recommended route
+
+Set separate image and video caps based on the worker/droplet budget. Reject over-limit uploads before presigning and show actionable admin guidance.
+
+### Options
+
+#### Option A — Strict pre-upload caps (recommended)
+
+- Pros: predictable storage, network, and worker cost.
+- Cons: admins must resize/transcode oversized sources.
+
+#### Option B — Accept larger sources and normalize server-side
+
+- Pros: easier admin UX.
+- Cons: expensive worker and storage spikes.
+
+#### Option C — Warning-only
+
+- Pros: least friction.
+- Cons: does not protect infrastructure.
+
+### Owner answer
+
+Choice:
+
+Image maximum MB:
+
+Image maximum long edge:
+
+Video maximum MB:
+
+Video maximum duration:
+
+Video maximum source resolution:
+
+Notes:
+
+---
+
+## 24. `DEC-PAYPAL-FX` — PayPal FX-conversion markup
+
+### Decision needed
+
+Choose whether foreign-currency prices gross up only PayPal transaction fees or also cover PayPal’s additional currency-conversion markup.
+
+### Recommended route
+
+Make the policy versioned and admin-configurable per currency, with a calculator preview. Start with transaction percentage plus fixed fee; add a separately visible FX-protection percentage only when settlement evidence confirms it.
+
+### Options
+
+#### Option A — Configurable transaction and FX protection (recommended)
+
+- Pros: transparent, adaptable, and margin-safe.
+- Cons: more configuration and disclosure discipline.
+
+#### Option B — Gross up transaction fees only
+
+- Pros: simpler prices.
+- Cons: Saha Textile absorbs conversion spread.
+
+#### Option C — Absorb all PayPal/FX costs
+
+- Pros: lowest displayed foreign price.
+- Cons: uncertain foreign-order margin.
+
+### Owner answer
+
+Choice:
+
+Default FX-protection percentage:
+
+Per-currency overrides:
+
+Customer-facing disclosure:
+
+Notes:
+
+---
+
+## 25. `DEC-INR-GATEWAY-TIMING` — INR gateway succession
+
+### Decision needed
+
+Choose when the operational preference changes from CCAvenue to Razorpay. The application remains vendor-neutral through `PaymentGatewayPort` regardless.
+
+### Recommended route
+
+Ship the port and stub first. Bind whichever approved sandbox/live credentials are available for launch. Treat a later switch as an adapter plus DI/config change.
+
+### Options
+
+#### Option A — CCAvenue launch, Razorpay later (recommended if CCAvenue credentials arrive first)
+
+- Pros: follows the current operational preference.
+- Cons: requires a later migration/acceptance pass.
+
+#### Option B — Razorpay before launch
+
+- Pros: avoids post-launch provider migration.
+- Cons: depends on timely onboarding and credentials.
+
+#### Option C — Build both before launch
+
+- Pros: immediate operational fallback.
+- Cons: doubles provider verification and webhook work.
+
+### Owner answer
+
+Choice:
+
+Launch INR adapter:
+
+Trigger/date for successor:
+
+Build both before launch:
+
+Notes:
+
+---
+
+## 26. `DEC-DOMAIN-TOPOLOGY` — Production hostname topology
+
+### Decision needed
+
+Choose the permanent production topology for the storefront, admin, and API.
+
+### Why this matters
+
+The choice controls cookie domain/scope, credentialed CORS, CSRF origins, Nginx
+routing, Cloudflare records, CSP/connect-src, OAuth callbacks, public runtime
+config, and deployment/runbook paths.
+
+### Recommended route
+
+Use explicit subdomains: `www.sahatextile.com`,
+`admin.sahatextile.com`, and `api.sahatextile.com`, with narrowly scoped
+cookies and exact CORS/CSRF allowlists.
+
+### Options
+
+#### Option A — Separate subdomains (recommended)
+
+- Pros: clear application/deployment boundaries and explicit API origin.
+- Pros: straightforward Cloudflare/Nginx routing and operational ownership.
+- Cons: requires careful cookie scope, credentialed CORS, and OAuth callback
+  configuration.
+
+#### Option B — Same-origin reverse-proxy paths
+
+- Example: storefront at `/`, admin at `/admin`, API at `/api`.
+- Pros: simpler browser-origin and cookie behavior.
+- Cons: more coupled routing/deployment and a more complex proxy namespace.
+
+#### Option C — Hybrid
+
+- Example: storefront/admin share the apex while API uses a subdomain.
+- Pros: may simplify one application boundary.
+- Cons: combines both models and needs a precise exception matrix.
+
+### Owner answer
+
+Choice:
+
+Storefront hostname:
+
+Admin hostname:
+
+API hostname:
+
+Cookie-domain rule:
+
+Notes:
+
+---
+
+## 27. `DEC-TRANSLATION-QUALITY` — French translation acceptance
+
+### Decision needed
+
+Choose who authors and approves French values for new/changed UI and
+admin-authored content.
+
+### Why this matters
+
+English and French are the active target locale pair, but a technical
+implementation pass cannot establish business-quality French by guessing.
+Without a rule, contributors may mix machine translation, English fallbacks,
+placeholders, and unreviewed copy.
+
+### Recommended route
+
+Allow clearly flagged best-effort French during implementation, require a named
+human review before the affected route is release-ready, and never ship visible
+placeholder tokens.
+
+### Options
+
+#### Option A — Best-effort then human review (recommended)
+
+- Pros: engineering is not blocked while keeping a real quality gate.
+- Cons: requires a visible review queue and accountable reviewer.
+
+#### Option B — English fallback until professional translation
+
+- Pros: avoids incorrect French.
+- Cons: the French experience remains incomplete and must be visibly tracked.
+
+#### Option C — Translation required before merge
+
+- Pros: every merged locale value is approved.
+- Cons: blocks engineering on translator availability.
+
+### Owner answer
+
+Choice:
+
+Approved author/reviewer:
+
+May English fallback ship temporarily:
+
+Release gate:
+
+Notes:

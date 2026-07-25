@@ -1,125 +1,245 @@
 # Execution Roadmap — Saha Textile
 
-> Ordered build plan for the agent. **Work phase by phase; do not skip ahead.** Each phase = **Read → Build → Verify (Definition of Done)**. Open a PR per coherent unit; squash-merge to protected branches with human approval. Re-read the named KB section in `project-context/saha-textile-technical-knowledgebase.md` before building.
+**Status:** Whole-program delivery order.
 
----
+**Current status authority:** `project-progress.md`
 
-## Phase 0 — Repo, tooling & MCP environment
+**Detailed API/DB plan:** `api-db-development-roadmap-with-pending-decision-gates.md`
 
-**Read:** `AGENTS.md`, `cursor-context-placement-instructions.md`, `project-context/mcp-automation-setup.md`
+This roadmap describes sequencing and Definition of Done. It does not duplicate dated implementation status or owner questionnaires.
 
-### 0.1 — Repo & tooling scaffold
+## Operating loop
 
-**Build:**
+For every coherent unit:
 
-- Initialize the pnpm + Turborepo monorepo at repo root: `pnpm-workspace.yaml`, `turbo.json`, root `package.json` (private, `packageManager: pnpm@…`).
-- Distribute the staged config files per the placement guide (`.cursor/mcp.json`, `.cursor/rules/mcp-tools.mdc`, `.vscode/`, root `.prettierrc` / `.editorconfig` / `.gitignore` / `.env.mcp.example`, `AGENTS.md` at root, the knowledge docs into `project-context/`).
-- Install root dev deps: `prettier`, `eslint` (flat config), `typescript`. (**No `prettier-plugin-tailwindcss`** — Tailwind is not used on this stack; styling is Bootstrap 5 + ng-bootstrap + SCSS.)
-- Create `.nvmrc` (current Node LTS) and empty `apps/` + `packages/` skeleton with workspace globs.
-- Ensure `main` exists; create `dev`, `qa`, `staging`; confirm the two rulesets apply to this repo, squash merging is enabled at repo level, and local commit signing (SSH/GPG) is set up.
-- Add a minimal CI skeleton `.github/workflows/ci.yml`: install + `turbo run lint typecheck` on PRs to protected branches.
+1. Read `AGENTS.md`, `project-progress.md`, the relevant architecture reference, and affected open-decision gates.
+2. Build inside the correct hexagonal layer.
+3. Add/update tests and developer-portal documentation with the code.
+4. Run the unit’s verification gates.
+5. Record a dated status bullet in `project-progress.md`.
+6. Open a focused PR; never push directly to a protected branch.
 
-### 0.2 — MCP environment setup & verification
+## Authority order
 
-**This must be working _before_ Phase 1.** `project-context/mcp-automation-setup.md` is the authoritative runbook; execute it. Summary:
+1. `AGENTS.md`
+2. `owner-decisions-log.md`
+3. tested code/runtime for current behavior
+4. contracts/OpenAPI and adapter persistence definitions
+5. this roadmap plus the API/DB roadmap
+6. detailed auth/catalog/technical references
+7. `pending-decisions.md` for unanswered choices only
 
-- **Human prerequisites (obtain first):**
-    - Start the **Docker MongoDB 8.3 single-node replica-set** profile for LOCAL. TEST-E2E/PROD-E2E use the deployed self-hosted Mongo container on the droplet, with read-only production access only for inspection tooling.
-    - Get a **Postman API key**; optionally a **Context7 API key** (free tier works without one, 500 req/mo).
-    - A **GitHub fine-grained PAT** and **DigitalOcean tokens** (test + prod) are needed only for the E2E blocks later — not for LOCAL.
-- **Configure the LOCAL phase:**
-    - `cp .env.mcp.example .env.mcp`; fill **only the LOCAL block** (Context7 optional, Postman key, the local Docker Mongo `MDB_MCP_CONNECTION_STRING`, `MDB_MCP_READ_ONLY=false`); leave TEST-E2E / PROD-E2E commented.
-    - Restart Cursor so it loads `.cursor/mcp.json` against the LOCAL env.
-- **Verify (runbook §9):** confirm **context7, mongodb, postman** show green in Cursor → Settings → Tools & MCP, and that **github / digitalocean stay dark** in LOCAL. Confirm the active tool count is **under ~40**. Smoke-test: a version-pinned Context7 query returns current docs (it covers Angular / ng-bootstrap / Transloco); MongoDB lists collections; Postman lists workspaces. **(Angular change: the `shadcn` MCP server from the Next plan is dropped — it served React shadcn/ui components; the Angular UI is Bootstrap 5 + ng-bootstrap (plain npm installs), and Context7 covers the docs.)**
-- **Defer:** fill the TEST-E2E and PROD-E2E blocks (GitHub PAT + DO tokens + prod read-only Mongo string) only when you reach **Phase 8**.
+## Milestone 0 — Repository and local foundation
 
-**Definition of Done (Phase 0):** `pnpm install` clean; `pnpm turbo run lint typecheck` passes on the empty scaffold; branches + rulesets + commit signing verified; CI green on a throwaway PR; **the three LOCAL MCP servers (context7, mongodb, postman) verified green in Cursor with the active tool count under ~40** (shadcn MCP dropped for the Angular stack — see above).
+### Scope
 
-## Phase 1 — Shared foundations (contracts + core-domain)
+- pnpm/Turborepo workspace.
+- Angular storefront/admin, NestJS/Fastify API, Docusaurus portal.
+- strict TypeScript, linting, formatting, tests.
+- Docker MongoDB 8.3 single-node replica set.
+- runtime env/config model.
+- branch/ruleset and naming-law enforcement.
 
-**Read:** KB §data-model, §architecture
-**Build:**
+### Definition of Done
 
-- `packages/contracts`: zod schemas + inferred types for Product, Variation, Category, Promotion, Currency, Order, User, Cart, ShippingQuote (per the KB schemas). This is the cross-app source of truth.
-- `packages/core-domain`: entities/value objects + the PORT interfaces (`ProductRepository`, `OrderRepository`, `StoragePort`, `PaymentGatewayPort`, `ShippingPort`, `FxRatePort`, `SearchPort`, `AuthPort`). **Zero infra dependencies.**
-- `packages/config`: shared eslint (+ angular-eslint) / tsconfig / **SCSS+Bootstrap** presets (no Tailwind).
-  **Definition of Done:** packages build & typecheck; zod schemas covered by unit tests; an ESLint boundary rule forbids infra imports inside `core-domain` and passes.
+- Clean install and workspace typecheck/lint entry points.
+- Mongo replica set can start, report status, transact, and persist locally.
+- Storefront/admin use public runtime `config.json`.
+- API secrets remain runtime-only.
+- No Atlas, Brevo-primary, `blr1`, bare-brand, or browser-secret assumptions in active sources.
 
-## Phase 2 — Data layer (MongoDB adapter)
+## Milestone 1 — Contracts and core boundaries
 
-**Read:** KB §data-model (collections, indexes), §architecture (repository pattern)
-**Build:**
+### Scope
 
-- `packages/adapters-db-mongo`: models + repository implementations of the core ports; map docs ↔ entities (DTOs, no leakage).
-- Self-hosted Mongo connection module (Docker MongoDB 8.3, single-node replica set, transaction-ready). Indexes: `slug`, `categoryIds`, `sku`, category placement paths, **plus compound `{ status, categoryIds }` and `{ status, updatedAt }`** so storefront queries hit only `published` rows and never scan archived docs (see KB §data-model lifecycle note).
-- Seed script: load the real taxonomy tree + representative products including the **"No Stitching" base → Design 1-3 with Color as filter-only** pattern, a saree with `Blouse Design` as a named add-on defaulting to `No Design`, a bundle/composite seam fixture, product option `displayStyle` examples, and sample `categoryFacetConfigs` for Fastkart-style collection sidebars. **Also provide a `--bulk N` mode that generates a few hundred–1,000 synthetic published products + a batch of `archived` ones**, so search, pagination, faceting, and listing performance are exercised at realistic catalog size (~500–1,000 active + 2,000+ archived), not just a handful.
-  **Definition of Done:** repositories pass integration tests against the local Docker replica-set profile; seed populates taxonomy + sample products **and bulk/archived fixtures**; transactions work through `withTransaction`; status-filtered queries return only active products; the adapter is swap-isolated (a hypothetical Postgres adapter would need no core changes).
+- Complete Zod families by domain.
+- Complete repository/provider/security ports.
+- Enforce core type-only contract imports and runtime purity.
+- Standard errors, pagination, money, localized content, audit metadata.
 
-## Phase 3 — API (NestJS on Fastify)
+### Definition of Done
 
-**Read:** KB §architecture, §auth-and-security
-**Build:**
+- Contracts have representative valid/invalid tests.
+- `core-domain/dist` contains no runtime contract/Zod dependency.
+- ESLint blocks forbidden framework/adapter/provider imports.
+- Public/admin/internal DTOs are distinct allowlists.
 
-- `apps/api`: NestJS with `@nestjs/platform-fastify`; wire adapters → ports via DI in a composition module.
-- Modules: catalog (products/categories/search/facets), cart, orders, currency/fx, promotions, auth. Controllers validate with `contracts` (zod). **Search and listing facets live behind `SearchPort`; at ~500–1,000 active SKUs with heavy fuzzy/multilingual/transliteration needs, implement a self-hosted Meilisearch adapter — see KB §04. Index only `status: published`; reindex on product/category/facet/product-status changes.**
-- OpenAPI generation (`@nestjs/swagger`); health-check endpoint; `@fastify/rate-limit`; CORS allowlist; security headers.
-- Auth: email+password (argon2id), email-OTP seam through `EmailPort` if free provider is available, API-set httpOnly cookie sessions + double-submit CSRF + opaque rotating refresh with reuse detection; Google/Facebook OAuth stubs. (Phone-OTP/SMS deferred — paid method seam only.)
-  **Definition of Done:** API boots; catalog CRUD + search return seeded data; OpenAPI served; invalid input rejected; health-check green; unit/integration tests pass.
+## Milestone 2 — API platform and security bootstrap
 
-## Phase 4 — Admin panel (Angular + Analog) — **BUILT FIRST**
+### Scope
 
-> **Order change:** the **admin is built before the storefront.** See `angular-context/fastkart-execution-plan.md` for the page-by-page plan.
+- Fastify bootstrap, request IDs, redacted logging, global validation/error mapping.
+- `/health/live` and dependency-aware `/health/ready`.
+- cookie parsing, CSRF foundation, strict CORS, proxy/IP handling, security headers.
+- Mongo transaction test profile in local/CI.
 
-**Read:** KB §admin-panel-spec; the Fastkart assessment + execution plan in `angular-context/`; `vendor/…/fastkart-admin` as **UI reference only** (never forked)
-**Build:**
+### Definition of Done
 
-- **Stage A (UI on dummy data):** `apps/admin` — a **custom Angular + Analog** app (NgRx hybrid, TanStack Query, Transloco, Bootstrap 5/ng-bootstrap, ApexCharts, ngx-editor, ngx-dropzone — UI libs pinned to Fastkart versions). **Replicate every Fastkart admin page/sub-page/modal/popup/notification in look/feel** using **our** reusable component architecture + conventions — no Fastkart code copied. Dummy forms/data throughout. **Drop:** wallet, the demo Themes (keep Theme-Options), and the marketplace/vendor cluster (Store/Vendor, Commission, Payout-Details, Withdrawal, Vendor-Wallet) — single-store config stays via Setting + Theme-Options. **Keep loyalty Points** (replicate UI; it's a planned future add-on — reserve model/API seams; see KB §data-model + Fastkart execution plan). Full inventory in `fastkart-execution-plan.md`.
-- **Stage B (wire to real data):** after the UI is complete, revisit sahatextile.com, finalize the **DB collections/data model**, then modify each page (add/remove fields) to our finalized model and repoint to the **NestJS API + `contracts`**. Then layer the Saha Textile-specific builders: option builder with semantic role + display style, variant matrix for `variation_axis` only, named add-on groups, bundle/composite panels, base/default flags, measurement add-ons, **status/archive**, arbitrary multi-parent taxonomy, per-category/per-placement facet configuration, currency/gateway/markup controls, scoped promotions, order management, content (blog/FAQ/banners), roles + audit log. Forms via **Reactive + Signal Forms**.
-  **Definition of Done:** Stage A — full admin UI replicated, navigable, on dummy data, in our architecture. Stage B — product/variation CRUD, multi-parent taxonomy, currency rate + PayPal markup edit, flash-sale promo, end-to-end order — all on real data.
+- API boot and health probes pass.
+- Security/bootstrap tests pass.
+- Readiness fails closed when required dependencies are unavailable.
+- Transaction tests run against a real replica set; no silent skipping.
 
-## Phase 5 — Storefront (Angular + Analog SSR/SSG, PWA)
+## Milestone 3 — Identity, privacy, and authorization
 
-**Read:** KB §storefront-spec, §seo-i18n-currency; the Fastkart assessment + execution plan; `vendor/…/fastkart-front` as **UI reference only**
-**Build:**
+### Scope
 
-- `apps/storefront`: a **custom Angular + Analog** app (SSR/SSG) — **replicate Fastkart `fastkart-front` look/feel**, build custom. Locale-prefixed routes (`/{locale}/product/{slug}`, `/{locale}/c/{path}`); breadcrumbs from the taxonomy path. Shared reusable components in `packages/ui`.
-- Product + category pages (**SSG prerender of `status: published` slugs + SSR for dynamic**); category/listing pages render Fastkart-style sidebar/off-canvas filters from API facets (`items + facets + counts/ranges + SEO`); option selector renderer using `rectangle`, `circle`, `image_swatch`, `color_swatch`, `radio`, `dropdown`; variation selection only for `variation_axis`; named add-on and measurement forms via Reactive/Signal Forms; cart (**NgRx hybrid** + server-persistent, guest→login merge) with **`@tanstack/angular-query`**.
-- **Full** i18n (**Transloco**, en + bn — every string); currency switch (backend price recompute + gateway switch); SEO (Angular `Title`/`Meta`, Product/Offer/BreadcrumbList/FAQPage JSON-LD, sitemap via Analog server route, **SEO-safe accordion FAQ** kept in the DOM); global cookie consent; PWA (**vite-plugin-pwa/Workbox**, offline catalogue + offline cart).
-  **Definition of Done:** browse taxonomy → product → add to cart → cart survives reload + login merge; **language toggle switches 100% of visible strings**; currency switch recomputes prices and flips the active gateway; Lighthouse SEO + PWA pass; **offline catalogue browsing + offline cart** work.
+- Storefront/admin audiences.
+- cookie sessions, rotating refresh, reuse detection, revocation.
+- password, admin PIN, OAuth verification, OTP challenges.
+- CSRF on unsafe browser requests.
+- consent events and privacy flows.
+- permission and object-ownership authorization.
 
-## Phase 6 — Payments & shipping
+### Definition of Done
 
-**Read:** KB §payments-and-shipping
-**Build:**
+- No browser token happy path.
+- Auth responses do not return session tokens in JSON.
+- CSRF, audience, role, permission-version, token-version, and ownership tests pass.
+- Generic OTP/reset responses resist account enumeration.
+- Admin PIN setup/login/lockout/quick-resume behavior is tested.
 
-- `adapters-payments`: CCAvenue (INR, AES encryption) + PayPal (foreign) behind `PaymentGatewayPort`; currency-driven gateway selection (INR→CCAvenue, else→PayPal).
-- `adapters-shipping`: Shiprocket domestic + international behind `ShippingPort`; pincode-based rate lookup; capture returned value **and its currency**; apply PayPal gross-up to shipping **only when international**.
-- Wire the full checkout; test every provider in sandbox.
-  **Definition of Done:** INR checkout via CCAvenue sandbox; foreign checkout via PayPal sandbox with correct gross-up; domestic + international shipping quotes resolve and apply correctly with currency handled.
+## Milestone 4 — Catalog, content, media metadata, and search
 
-## Phase 7 — SEO/i18n/currency polish + analytics + FX cron
+### Scope
 
-**Read:** KB §seo-i18n-currency
-**Build:**
+- categories and placements.
+- products, variants, option definitions/terms, add-ons, bundles, relations, facet configs.
+- FAQ, product Q&A, reviews.
+- media assets and attachment metadata.
+- Meilisearch projection/outbox/dictionary/facet search.
 
-- FX cron (`@nestjs/schedule`, daily ~00:30 UTC) → ExchangeRate-API → DB, with fallback + staleness alert. Validate the PayPal gross-up nets the intended INR. Complete hreflang/canonical/x-default. Saree blog. Analytics events (abandoned cart, still-not-purchased, guest-cart-attach-after-login, newsletter popup).
-  **Definition of Done:** rates refresh daily and persist; gross-up math verified with a worked example; analytics events fire on the right actions; structured data validates in the Rich Results Test.
+### Definition of Done
 
-## Phase 8 — Security hardening + Docker + CI/CD + deploy
+- Public reads enforce published visibility server-side.
+- Admin writes are validated, authorized, and audited.
+- Option semantic roles remain separate from display style.
+- Mongo-to-search synchronization is idempotent/rebuildable.
+- Public listing returns products plus configured facets/counts.
+- Search never relies on Mongo regex/`$text` typeahead.
 
-**Read:** KB §security, §infrastructure-deployment; `mcp-automation-setup.md`
-**Build:**
+## Milestone 5 — Inventory and purchasing
 
-- Multi-stage Dockerfiles (`turbo prune --docker`) for storefront/admin/api; non-root users; healthchecks; resource limits (≈1.2 GiB storefront / 0.6 GiB admin / 1.0 GiB api / Nginx / **self-hosted mongo ~1.0–1.5 GiB** / search).
-- `docker-compose` + **Nginx reverse proxy (TLS via Certbot/Let's Encrypt auto-renew)** + **self-hosted dockerized MongoDB (single-node replica set, private network only)**; runtime secrets via compose secrets / root-owned files; **no secrets in images or build args**.
-- GitHub Actions: test → build → push to GHCR (`Kaizer-Systems`, commit-SHA tags) → deploy (TEST-E2E droplet first, then PROD-E2E); rollback via previous SHA tag.
-- Final OWASP review; rate limits; CSP; dependency scan.
-  **Definition of Done:** three images build & push to GHCR; a short-lived TEST-E2E droplet deploys end to end (then destroyed); rollback verified; security checklist passes.
+### Scope
 
----
+- inventory ledger and stock mutations.
+- FIFO cost layers.
+- purchase invoices and posting transaction.
+- manual adjustment reason codes.
+- stock reservation/backorder seams pending owner policy.
 
-## Continuous (every phase)
+### Definition of Done
 
-- Grow the **Docusaurus developer portal** incrementally per `private-developer-portal-documentation-plan.md` (OpenAPI→Scalar API Reference, generated DB-schema docs, Storybook, Mermaid diagrams, Pagefind search).
-- Keep tests green; keep docs in sync with code; one PR per coherent unit; squash-merge into protected branches with human approval.
-- Use the phase-appropriate MCP environment (Phases 0-7 mostly **LOCAL**; Phase 8 uses **TEST-E2E** then **PROD-E2E**).
+- Every stock mutation has typed provenance and audit evidence.
+- Purchase posting is atomic and rollback-tested.
+- Cost-layer allocation tests cover partial consumption and reversal.
+- Purchase-number allocation waits for `DEC-NUMBERING`.
+
+## Milestone 6 — Cart, checkout, pricing, and orders
+
+### Scope
+
+- server-authoritative guest/user carts.
+- guest merge and pending-intent replay.
+- pricing, promotions, tax, FX, shipping quote.
+- checkout validation, stock handling, immutable order snapshots.
+- transactional order/payment/ledger/outbox writes.
+
+### Definition of Done
+
+- Cart ownership and guest-token authorization tests pass.
+- API recalculates all final amounts.
+- Guest checkout remains unavailable at launch.
+- Cart merge reports invalid lines rather than dropping them.
+- Place-order transaction is idempotent and rollback-tested.
+- Final policy engines honor `pending-decisions.md`.
+- Customer-facing numbering waits for `DEC-NUMBERING`.
+
+## Milestone 7 — Payments, shipping, and notifications
+
+### Scope
+
+- provider-neutral roles and ports.
+- sandbox/stub adapters before credentials.
+- PayPal foreign path; configured INR adapter.
+- Shiprocket shipping adapter.
+- MSG91 notification adapter, templates, outbox, callbacks, kill-switches, usage controls.
+
+### Definition of Done
+
+- Vendor SDKs exist only in adapter packages.
+- Webhooks/callbacks are authenticated, idempotent, audited, and replay-tested.
+- Disabled notification channel/category combinations make no provider call.
+- Marketing sends prove consent.
+- No production provider is enabled without approved credentials and official-doc verification.
+
+## Milestone 8 — Storefront production integration
+
+### Scope
+
+- API-backed discovery/PDP/cart/checkout/account/orders.
+- Analog SSR/SSG and canonical locale routing.
+- PWA app shell, cached public catalog, offline cart mutation queue.
+- SEO metadata, structured data, canonical/hreflang, sitemap.
+- accessible loading/error/empty/recovery states.
+
+### Definition of Done
+
+- No mock data on a production path.
+- SSR/SSG routes render correct localized public data.
+- Offline storage contains no account/order/admin/payment secrets or PII.
+- Reconnect revalidates product status, stock, price, and cart ownership.
+- Locale routing waits for `DEC-I18N-ROUTES`.
+- Image enforcement waits for `DEC-IMG-PX` and `DEC-MEDIA-CAPS`.
+
+## Milestone 9 — Admin production integration
+
+### Scope
+
+- API-backed catalog/content/media/inventory/orders/settings/users/audit.
+- server-enforced RBAC.
+- dynamic form draft/restore.
+- notification/payment/shipping/tax/currency controls.
+- operational dashboards based on persisted aggregates.
+
+### Definition of Done
+
+- No mock mutation is presented as successful production behavior.
+- Every admin mutation is authorized and audited.
+- Long/dynamic forms survive soft lock and restore safely.
+- Privileged settings are both UI-gated and server-authorized.
+
+## Milestone 10 — Developer portal, operations, and launch
+
+### Scope
+
+- derived, evidence-backed portal pages.
+- complete OpenAPI and protected Scalar reference.
+- deterministic database catalogue when schemas stabilize.
+- deployment scripts, backups/restores, observability, alerts, incident/runbook coverage.
+- production E2E and rollback.
+
+### Definition of Done
+
+- Portal validator, typecheck, build, links, provenance, and route checks pass.
+- Portal current/target claims match code and owner decisions.
+- Deployment uses commit-SHA images and readiness-gated promotion.
+- Backup restore is drilled.
+- Security, payment, webhook, checkout, and rollback E2E pass in approved environments.
+- Human owner approves production promotion.
+
+## Open-decision gates
+
+Open choices live only in `pending-decisions.md`. Roadmaps and code may build reversible seams, but final policy behavior must wait for the relevant decision ID.
+
+Highest-leverage gates:
+
+1. `DEC-NUMBERING`
+2. `DEC-TAX-HSN`
+3. `DEC-STOCK-RESERVE`
+4. `DEC-BACKORDER`
+5. `DEC-SHIPPING`
+6. `DEC-RETURNS`
+7. `DEC-I18N-ROUTES`
+8. `DEC-IMG-PX`
+9. `DEC-MEDIA-CAPS`

@@ -12,7 +12,7 @@ source_of_truth:
     - apps/api/src/currency
     - packages/contracts/src/order.ts
     - packages/contracts/src/shipping.ts
-    - project-context/angular-context/codex-catalog-db-architecture-assessment-and-plan.md
+    - docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx
 ---
 
 # Checkout, pricing, tax, currency, and shipping

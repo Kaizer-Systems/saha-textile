@@ -6,26 +6,28 @@ audience: [beginner, frontend, backend, operator]
 last_verified: '2026-07-25'
 source_of_truth:
     - AGENTS.md
-    - project-context/angular-context/owner-decisions-log.md
-    - project-context/angular-context/saha-textile-technical-knowledgebase.md
+    - docs/engineering-live-context/owner-decisions-log.mdx
+    - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
     - scripts/validate-developer-portal.mjs
 ---
 
 # Source of truth and freshness
 
-The portal is a maintained view of authoritative evidence. It is not allowed to become an independent version of the system.
+`docs/engineering-live-context/` is the portal-visible canonical source set.
+The rest of the portal is a maintained view of authoritative evidence and is
+not allowed to become an independent version of the system.
 
 ## Authority by question
 
 | Question                               | Primary authority                                        |
 | -------------------------------------- | -------------------------------------------------------- |
-| What has the owner locked?             | `project-context/angular-context/owner-decisions-log.md` |
+| What has the owner locked?             | `docs/engineering-live-context/owner-decisions-log.mdx` |
 | What architecture is intended?         | Current Angular knowledge-base documents and ADRs        |
 | What behaviour exists now?             | Tested code and observed runtime behaviour               |
 | What shape crosses an API boundary?    | zod contracts and generated OpenAPI                      |
 | What shape is persisted?               | Adapter models, validators, indexes and migrations       |
-| What must pass before delivery?        | `execution-roadmap.md`, tests and CI rules               |
-| How should a maintainer understand it? | This portal, derived from the authorities above          |
+| What must pass before delivery?        | `execution-roadmap.mdx`, tests and CI rules               |
+| How should a maintainer understand it? | Canonical Live Context plus derived portal guidance      |
 
 ## Conflict rule
 

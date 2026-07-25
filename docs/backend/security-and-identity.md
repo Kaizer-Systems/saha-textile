@@ -16,8 +16,8 @@ source_of_truth:
     - packages/contracts/src/auth-internal.ts
     - packages/contracts/src/admin-auth.ts
     - packages/contracts/src/session.ts
-    - project-context/angular-context/codex-auth-architecture-db-and-request-plan.md
-    - project-context/angular-context/owner-decisions-log.md
+    - docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx
+    - docs/engineering-live-context/owner-decisions-log.mdx
 ---
 
 # Security, sessions, and authorization

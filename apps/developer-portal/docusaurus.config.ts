@@ -38,6 +38,7 @@ const config: Config = {
 					customCss: [
 						require.resolve('@fontsource-variable/inter/index.css'),
 						require.resolve('@fontsource-variable/jetbrains-mono/index.css'),
+						'./src/css/nextgen-theme.css',
 						'./src/css/custom.css',
 					],
 				},
@@ -107,6 +108,11 @@ const config: Config = {
 					to: '/decisions/developer-portal-now',
 					label: 'ADRs',
 					position: 'left',
+				},
+				{
+					type: 'custom-liveContext' as 'default',
+					label: 'LIVE',
+					position: 'right',
 				},
 			],
 		},

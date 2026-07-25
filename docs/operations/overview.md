@@ -7,7 +7,7 @@ last_verified: '2026-07-25'
 source_of_truth:
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh
-    - project-context/angular-context/execution-roadmap.md
+    - docs/engineering-live-context/execution-roadmap.mdx
     - .cursor/rules/mcp-tools.mdc
 ---
 

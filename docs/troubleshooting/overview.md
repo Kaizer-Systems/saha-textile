@@ -5,7 +5,7 @@ status: scaffolded
 audience: [beginner, frontend, backend, operator]
 last_verified: '2026-07-25'
 source_of_truth:
-    - project-context/angular-context/execution-roadmap.md
+    - docs/engineering-live-context/execution-roadmap.mdx
     - docs/getting-started/local-development.md
 ---
 

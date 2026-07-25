@@ -8,13 +8,13 @@ audience: [beginner, backend, operator]
 last_verified: '2026-07-25'
 search_keywords: 'schema nebula collections database mongodb star map models ghosts graph relationships bounded context DEC'
 source_of_truth:
-    - project-context/angular-context/owner-decisions-log.md
-    - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
-    - project-context/angular-context/codex-catalog-db-architecture-assessment-and-plan.md
-    - project-context/angular-context/codex-auth-architecture-db-and-request-plan.md
-    - project-context/angular-context/pending-decisions.md
-    - project-context/angular-context/project-progress.md
-    - project-context/angular-context/saha-textile-technical-knowledgebase.md
+    - docs/engineering-live-context/owner-decisions-log.mdx
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
+    - docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx
+    - docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx
+    - docs/engineering-live-context/pending-decisions.mdx
+    - docs/engineering-live-context/project-progress.mdx
+    - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
     - packages/adapters-db-mongo/src/models
     - packages/contracts/src/notification.ts
     - docs/_data/portal-manifest.json

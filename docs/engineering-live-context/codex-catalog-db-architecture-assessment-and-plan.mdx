@@ -1,16 +1,25 @@
+---
+title: "Catalog and Commerce Database Architecture"
+description: "Canonical catalog, category, product, search, commerce, and reporting data architecture."
+audience: [backend, data, agent]
+document_role: canonical
+last_verified: 2026-07-25
+search_keywords: "catalog category product variants search commerce reporting mongodb schema"
+---
+
 # Codex Catalog, Category, Product, Search, Commerce, and Reporting DB Architecture Assessment
 
 **Status:** Target catalog, commerce, search, and reporting architecture
 **Last reconciled:** 2026-07-25
-**Authority:** `owner-decisions-log.md`; unresolved choices: `pending-decisions.md`
+**Authority:** `owner-decisions-log.mdx`; unresolved choices: `pending-decisions.mdx`
 
 This is a target design, not proof that every collection or capability exists.
-Current delivery status lives in `project-progress.md`; Zod contracts, adapter
+Current delivery status lives in `project-progress.mdx`; Zod contracts, adapter
 models/indexes, tests, and runtime behavior govern implemented truth.
 
 ## 1. Sources Read
 
-- Current `owner-decisions-log.md`, `pending-decisions.md`, and retained technical KB.
+- Current `owner-decisions-log.mdx`, `pending-decisions.mdx`, and retained technical KB.
 - Existing contracts, ports, Mongo models, mappers, repositories, seed data, tests, and catalog API surface.
 - Live-site observations below are dated discovery evidence, not a current production inventory guarantee.
 - User-provided product setup screenshot context: Fastkart status/setup toggles include Featured, Safe Checkout, Secure Checkout, Social Share, Encourage Order, Encourage View, Trending, Return, and Status; these must be retained in the custom product setup plan.
@@ -2500,7 +2509,7 @@ Minimum contract families:
 - `ProductInsightSet`
 - `ProductBadgeAssignment`
 - `QuestionAnswer` (customer Q&A is specified in this document and
-  `owner-decisions-log.md`; it is separate from editorial FAQ)
+  `owner-decisions-log.mdx`; it is separate from editorial FAQ)
 
 ## 13. Storefront Query Patterns
 
@@ -2592,7 +2601,7 @@ Mongo cannot query Spaces directly. A cold archive is restored explicitly by the
 
 ## 16. Required Implementation Sequence
 
-1. Review the applicable `DEC-*` gates in `pending-decisions.md`; proceed with stable seams and block only irreversible policy choices.
+1. Review the applicable `DEC-*` gates in `pending-decisions.mdx`; proceed with stable seams and block only irreversible policy choices.
 2. Update contracts to support category placements, richer statuses, product variants, add-on conditions, product relations, product groups, SEO routes/redirects, search dictionary, localized content, currencies, FX rates, gateway configs, shipping quotes, purchase invoices, inventory cost layers, and analytics rollups.
 3. Update Mongo models and indexes.
 4. Build migration/import mapper from Woo public API/export to target model.
@@ -2614,7 +2623,7 @@ Mongo cannot query Spaces directly. A cold archive is restored explicitly by the
 20. Add weekly `productInsightSets` generation and `productBadgeAssignments` refresh for storefront rails/product-card markers.
 21. Add all-products table status/sale-status switch columns, filters, sorting, and bulk actions.
 22. Add separate editorial FAQ and customer Q&A modules per this document and
-    `owner-decisions-log.md`, reusing editor/table primitives without merging
+    `owner-decisions-log.mdx`, reusing editor/table primitives without merging
     their business models.
 23. Add admin audit log for all catalog, pricing, inventory, payment, shipping, and reporting-sensitive mutations.
 
@@ -2932,14 +2941,14 @@ Admin validation:
 
 ## 22. Decision Authority and Open Gates
 
-Resolved decisions are recorded once in `owner-decisions-log.md`; they are not
+Resolved decisions are recorded once in `owner-decisions-log.mdx`; they are not
 repeated here with superseded alternatives. The current locks applied by this
 design include self-hosted MongoDB, Meilisearch behind `SearchPort`,
 multi-placement categories, product-specific semantic option roles, first-class
 variants, true bundle/composite support, retained archived products, and hybrid
 search-dictionary tuning.
 
-All unresolved owner choices live in `pending-decisions.md`. Catalog and
+All unresolved owner choices live in `pending-decisions.mdx`. Catalog and
 commerce implementation must reference the applicable stable `DEC-*` ids,
 especially tax/HSN, stock reservation and backorder behavior, SKU/slug policy,
 variant overrides, add-on measurements, bundles, badges/rails, locale routes,

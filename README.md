@@ -2,7 +2,7 @@
 
 Custom rebuild of [sahatextile.com](https://sahatextile.com) (Kolkata saree/textile retailer) off WooCommerce, as a pnpm + Turborepo monorepo with three deployable apps, a private developer portal, and a hexagonal (ports & adapters) architecture.
 
-> Read [`AGENTS.md`](./AGENTS.md) first — it is the project constitution. The live knowledge base is [`project-context/angular-context/`](./project-context/angular-context) (`nextjs-context/` is superseded — ignore it).
+> Read [`AGENTS.md`](./AGENTS.md) first — it is the project constitution. The live knowledge base is [`docs/engineering-live-context/`](./docs/engineering-live-context) (`nextjs-context/` is superseded — ignore it).
 
 ## Stack (pinned)
 
@@ -25,8 +25,8 @@ apps/        storefront (Angular + Analog PWA, :4200) · admin (Angular, :4300) 
 packages/    contracts · core-domain · config · adapters-db-mongo · (more adapters as built)
 vendor/      Fastkart (Angular storefront + admin reference — UI/behaviour only, never forked)
 docker/      mongo/ — local MongoDB 8.3 single-node replica set (rs0)
-docs/        markdown rendered by the developer portal
-project-context/   angular-context/ (live KB + roadmap) · nextjs-context/ (superseded — ignore)
+docs/        developer-portal content, including engineering-live-context/ (canonical live KB)
+project-context/   nextjs-context/ (superseded — ignore)
 ```
 
 ## Getting started
@@ -53,9 +53,9 @@ it in `apps/api/.env` (`MONGODB_PORT`).
 - **Server secrets → API only.** `cp apps/api/.env.example apps/api/.env` and fill. In deploys, secrets are injected via GitHub Actions encrypted secrets → droplet env / Compose secrets. Secrets never reach the Angular apps or the browser bundle.
 - **Public runtime config → Angular `config.json`.** Storefront and admin fetch `public/config.json` at app init (`runtime-config.ts` + `provideAppInitializer`) — no build-time `fileReplacements` for deploy URLs. Committed `config.json` holds localhost defaults only; deploys write the real one at container start.
 - MCP credentials (Cursor tooling): `cp .env.mcp.example .env.mcp`, fill the LOCAL block, restart Cursor. See [`.cursor/rules/mcp-tools.mdc`](./.cursor/rules/mcp-tools.mdc).
-- Full variable catalogue: [`project-context/angular-context/environment-variables.md`](./project-context/angular-context/environment-variables.md).
+- Full variable catalogue: [`docs/engineering-live-context/environment-variables.mdx`](./docs/engineering-live-context/environment-variables.mdx).
 - **Never commit real secrets** — the repo is public.
 
 ## Build plan
 
-Work proceeds per [`project-context/angular-context/execution-roadmap.md`](./project-context/angular-context/execution-roadmap.md) and the API/DB chunk plan in [`api-db-development-roadmap-with-pending-decision-gates.md`](./project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md). Cross-tool progress lives in [`project-progress.md`](./project-context/angular-context/project-progress.md). One PR per coherent unit; protected branches merge via PR with human approval.
+Work proceeds per [`docs/engineering-live-context/execution-roadmap.mdx`](./docs/engineering-live-context/execution-roadmap.mdx) and the API/DB chunk plan in [`api-db-development-roadmap-with-pending-decision-gates.mdx`](./docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx). Cross-tool progress lives in [`project-progress.mdx`](./docs/engineering-live-context/project-progress.mdx). One PR per coherent unit; protected branches merge via PR with human approval.

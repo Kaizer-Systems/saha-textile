@@ -11,7 +11,7 @@ source_of_truth:
     - apps/storefront/src/app/shared/ui/product-config
     - apps/api/src/catalog
     - packages/contracts/src/product.ts
-    - project-context/angular-context/codex-catalog-db-architecture-assessment-and-plan.md
+    - docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx
 ---
 
 # Discovery and product configuration

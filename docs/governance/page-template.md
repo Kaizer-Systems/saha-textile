@@ -22,7 +22,7 @@ audience: [frontend]
 last_verified: 'YYYY-MM-DD'
 source_of_truth:
     - path/to/primary-source.ts
-    - project-context/angular-context/relevant-decision.md
+    - docs/engineering-live-context/relevant-decision.md
 ---
 
 # Clear task-oriented title

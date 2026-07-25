@@ -9,8 +9,8 @@ source_of_truth:
     - apps/api/src/orders
     - packages/contracts/src/order.ts
     - packages/core-domain/src/ports/payment-gateway.port.ts
-    - project-context/angular-context/saha-textile-technical-knowledgebase.md
-    - project-context/angular-context/codex-catalog-db-architecture-assessment-and-plan.md
+    - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
+    - docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx
 ---
 
 # Payment and order lifecycle

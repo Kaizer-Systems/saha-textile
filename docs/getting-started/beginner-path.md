@@ -6,8 +6,8 @@ audience: [beginner]
 last_verified: '2026-07-25'
 source_of_truth:
     - AGENTS.md
-    - project-context/angular-context/saha-textile-technical-knowledgebase.md
-    - project-context/angular-context/execution-roadmap.md
+    - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
+    - docs/engineering-live-context/execution-roadmap.mdx
 ---
 
 # Beginner path

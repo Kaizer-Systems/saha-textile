@@ -27,7 +27,7 @@ source_of_truth:
 | `docker/mongo`                    | Local Docker MongoDB 8.3 single-node replica-set (`rs0`) profile  |
 | `scripts`                         | Repo lifecycle scripts (`mongo-*.sh`, `check-naming.sh`)          |
 | `docs`                            | Human-authored portal content plus future generated documentation |
-| `project-context/angular-context` | Planning and architecture source material                         |
+| `docs/engineering-live-context` | Planning and architecture source material                         |
 
 ## Documentation ownership
 

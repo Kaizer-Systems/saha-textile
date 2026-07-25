@@ -9,8 +9,8 @@ source_of_truth:
     - apps/storefront/src/app/core/state/cart
     - apps/api/src/cart
     - packages/contracts/src/cart.ts
-    - project-context/angular-context/owner-decisions-log.md
-    - project-context/angular-context/codex-auth-architecture-db-and-request-plan.md
+    - docs/engineering-live-context/owner-decisions-log.mdx
+    - docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx
 ---
 
 # Cart, pending intent, and offline reconciliation

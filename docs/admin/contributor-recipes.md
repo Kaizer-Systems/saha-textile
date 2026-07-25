@@ -3,7 +3,7 @@ title: Admin Contributor Recipes
 description: Beginner-safe recipes for routes, lists, forms, mutations, permissions, and operator verification.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/admin/src/app/routes
     - apps/admin/src/app/features
@@ -65,6 +65,15 @@ Search for the explicit mock comment before implementing. Then:
 4. Send the request normally when invoked.
 5. Require the API to authorize actor, action, and resource.
 6. Handle 403 without treating it as a generic system failure.
+
+## Recipe: add or update a component story
+
+1. Add the story under `apps/developer-portal-storybook/src/admin` and import the real Angular component from `apps/admin`; the single Storybook workspace owns the tool dependency.
+2. Use an `Admin/...` title so it stays under the single renderer's admin branch.
+3. Declare `parameters.application: 'admin'` so the admin decorator and isolated admin application stylesheet are active.
+4. Model useful loading, empty, success, permission, validation, and failure states rather than only a polished default.
+5. Add required Angular providers through story/application configuration; do not replace an Angular component with a React imitation.
+6. Verify the story in the shared light and dark portal themes.
 
 ## Operator verification checklist
 

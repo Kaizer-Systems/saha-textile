@@ -1,10 +1,19 @@
+---
+title: "Saha Textile Technical Knowledge Base"
+description: "Canonical retained whole-system technical reference and durable architecture invariants."
+audience: [engineering, operator, agent]
+document_role: canonical
+last_verified: 2026-07-25
+search_keywords: "technical knowledge base architecture invariants commerce platform"
+---
+
 # Saha Textile Technical Knowledge Base
 
 **Status:** Retained whole-system technical reference
 **Last reconciled:** 2026-07-25
-**Current delivery status:** `project-progress.md`
-**Locked owner intent:** `owner-decisions-log.md`
-**Unanswered choices:** `pending-decisions.md`
+**Current delivery status:** `project-progress.mdx`
+**Locked owner intent:** `owner-decisions-log.mdx`
+**Unanswered choices:** `pending-decisions.mdx`
 
 This file summarizes durable technical invariants and how the system fits
 together. It is not a second owner log, an implementation-status report, or a
@@ -77,7 +86,7 @@ packages/
   ui/                  reusable UI primitives
 docs/                  authored source rendered by developer portal
 project-context/
-  angular-context/     retained live KB and roadmaps
+  engineering-live-context/     retained live KB and roadmaps
   nextjs-context/      superseded; always ignore
 ```
 
@@ -120,7 +129,7 @@ Important ports include repositories plus `StoragePort`, `PaymentGatewayPort`,
 - Never expose MongoDB, Meilisearch admin keys, JWT/CSRF secrets, OAuth secrets,
   provider credentials, payment keys, or storage secrets to a browser bundle.
 - The canonical catalogue of names and placement is
-  `environment-variables.md`.
+  `environment-variables.mdx`.
 
 Canonical local ports:
 
@@ -147,7 +156,7 @@ Canonical local ports:
 ## 7. Catalog and content model
 
 The detailed design is
-`codex-catalog-db-architecture-assessment-and-plan.md`.
+`codex-catalog-db-architecture-assessment-and-plan.mdx`.
 
 Core rules:
 
@@ -239,7 +248,7 @@ one-time imperative translation for reactive TS-origin labels.
 
 ## 12. Authentication, authorization, and privacy
 
-The detailed design is `codex-auth-architecture-db-and-request-plan.md`.
+The detailed design is `codex-auth-architecture-db-and-request-plan.mdx`.
 
 - Browser auth uses API-set `httpOnly`, `Secure`, `SameSite` cookies.
 - Use short access state, rotating opaque refresh tokens, reuse detection, and
@@ -331,8 +340,8 @@ The detailed design is `codex-auth-architecture-db-and-request-plan.md`.
 
 ## 18. Delivery and verification
 
-Follow `execution-roadmap.md` for whole-program order and
-`api-db-development-roadmap-with-pending-decision-gates.md` for A–J backend
+Follow `execution-roadmap.mdx` for whole-program order and
+`api-db-development-roadmap-with-pending-decision-gates.mdx` for A–J backend
 chunks.
 
 For each coherent unit:
@@ -341,8 +350,8 @@ For each coherent unit:
 2. Implement inside the correct layer.
 3. Update tests, contracts/OpenAPI, and portal docs with the code.
 4. Run proportional typecheck, lint, unit/integration, build, and route checks.
-5. Record the evidence in `project-progress.md`.
+5. Record the evidence in `project-progress.mdx`.
 6. Deliver through a focused PR to protected branches.
 
 This file contains no open-question register. All unresolved choices live in
-`pending-decisions.md`.
+`pending-decisions.mdx`.

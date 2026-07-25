@@ -5,11 +5,11 @@ status: scaffolded
 audience: [frontend]
 last_verified: '2026-07-25'
 source_of_truth:
-    - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
-    - project-context/angular-context/codex-auth-architecture-db-and-request-plan.md
-    - project-context/angular-context/codex-catalog-db-architecture-assessment-and-plan.md
-    - project-context/angular-context/owner-decisions-log.md
-    - project-context/angular-context/project-progress.md
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
+    - docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx
+    - docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx
+    - docs/engineering-live-context/owner-decisions-log.mdx
+    - docs/engineering-live-context/project-progress.mdx
     - docs/_data/portal-manifest.json
     - docs/_data/instruments/schema-nebula.json
     - docs/_data/instruments/command-verbs.json

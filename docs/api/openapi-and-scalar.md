@@ -9,8 +9,8 @@ source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src
     - packages/contracts/src
-    - project-context/angular-context/owner-decisions-log.md
-    - project-context/angular-context/saha-textile-technical-knowledgebase.md
+    - docs/engineering-live-context/owner-decisions-log.mdx
+    - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
 ---
 
 # OpenAPI and Scalar reference

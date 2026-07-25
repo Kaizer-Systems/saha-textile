@@ -1,3 +1,12 @@
+---
+title: "Owner Decisions"
+description: "Authoritative record of currently locked Saha Textile owner decisions."
+audience: [engineering, product, operator, agent]
+document_role: canonical
+last_verified: 2026-07-25
+search_keywords: "owner decisions authoritative locked intent architecture product operations"
+---
+
 # Owner Decisions — Saha Textile
 
 **Status:** Authoritative record of currently locked owner decisions.
@@ -6,7 +15,7 @@
 
 This file contains current decisions only. Superseded intermediate positions remain available in Git history, not inline where they can be mistaken for current direction.
 
-Unanswered questions live only in `pending-decisions.md`. When an answer is confirmed, record the final rule here, reconcile dependent sources, and remove it from the pending file.
+Unanswered questions live only in `pending-decisions.mdx`. When an answer is confirmed, record the final rule here, reconcile dependent sources, and remove it from the pending file.
 
 ## Authority and interpretation
 
@@ -15,19 +24,19 @@ Unanswered questions live only in `pending-decisions.md`. When an answer is conf
 3. Tested code/runtime governs claims about what exists now.
 4. Zod contracts/OpenAPI govern API shapes.
 5. Adapter models, validators, indexes, and migrations govern persistence shapes.
-6. `project-progress.md` governs current delivery status.
-7. Portal documentation is a derived maintained view and never overrides these sources.
+6. `project-progress.mdx` governs current delivery status.
+7. `docs/engineering-live-context/` is canonical live context; all other portal documentation is a derived maintained view and never overrides canonical sources or tested runtime evidence.
 
 ## Project scope and brand
 
 - Saha Textile is a single-store boutique e-commerce platform, not a marketplace.
 - No multi-vendor, seller commissions, warehouse-management system, or recommendation ML.
 - Fastkart is a UI and behavior reference only. Its code is never forked.
-- Full brand naming is mandatory: `saha-textile`, `saha_textile`, or “Saha Textile”; never bare `saha`. <!-- naming-law:allow -->
+- Full brand naming is mandatory: `saha-textile`, `saha_textile`, or “Saha Textile”; never bare `saha`. {/* naming-law:allow */}
 - Allowed compact exceptions:
     - `st_*` and `__Host-st_*` cookie names;
     - TRAI/DLT sender `SAHATX`;
-    - genuine geography data containing “Saha”. <!-- naming-law:allow -->
+    - genuine geography data containing “Saha”. {/* naming-law:allow */}
 - `scripts/check-naming.sh` mechanically enforces the naming law.
 
 ## Architecture and dependency direction
@@ -341,6 +350,10 @@ Unanswered questions live only in `pending-decisions.md`. When an answer is conf
 
 - Docusaurus is the private developer portal.
 - Root `docs/` Markdown/MDX is the portal’s authored content source.
+- `docs/engineering-live-context/` is the canonical, human-readable MDX source of owner decisions, roadmaps, architecture references, environment-variable names, and current project progress. It is served at `/engineering-live-context` through the same Docusaurus docs instance.
+- All other `docs/` pages are derived, evidence-backed explanations and must cite canonical or runtime sources.
+- The Engineering Live Context file list, routes, and command-palette search entries are build-indexed; adding or removing a canonical file must not require a React registry or hard-coded count.
+- A small `LIVE` navbar control exposes the build-indexed canonical document set. “Live” means the latest successfully built portal snapshot, not unsaved editor content.
 - OpenAPI remains API machine truth.
 - Scalar is the single planned human-facing API reference at `/api/reference`.
 - `/api/openapi.json` exposes the machine-readable document.
@@ -355,6 +368,13 @@ Unanswered questions live only in `pending-decisions.md`. When an answer is conf
 - Portal pages declare audience, verification date, and precise source paths.
 - Portal validation rejects stale/missing provenance and forbidden terminology.
 - Current code/runtime and locked target intent must remain visibly distinct.
+- **Release blocker:** the portal must not be deployed until access control protects the entire host, including HTML, JavaScript/CSS/assets, search payloads, Engineering Live Context, Storybook, Scalar, TypeDoc, and future database-catalogue output.
+- Portal access is default-deny and identity-allowlisted. An unrestricted “Everyone” policy or unrestricted email-OTP access is forbidden.
+- `noindex`, robots directives, and hidden navigation are defense-in-depth only and never access control.
+- The origin must be protected from direct bypass, using an approved Cloudflare Tunnel or authenticated-origin/JWT design. Machine access uses scoped service tokens.
+- Release verification must prove unauthorized users cannot fetch either the portal shell or a known static asset and cannot reach the origin directly.
+- Local persistent serving binds to `127.0.0.1` by default.
+- The repository is public, so committed documentation is public in source even when the deployment is private; secret or confidential credentials must never enter portal content or its browser-delivered indexes.
 - Wave 2 delivery order is Schema Nebula → ⌘K Verbs → First Flight.
 - Schema Nebula’s canonical route is `/database/schema-nebula`.
 - Schema Nebula uses one star per distinct target MongoDB collection: **64 explicit nodes**, not the superseded 48-family approximation.
@@ -376,4 +396,4 @@ Unanswered questions live only in `pending-decisions.md`. When an answer is conf
 
 ## Open decisions
 
-All unresolved owner choices are listed in `pending-decisions.md`. No open question should be added to this file.
+All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

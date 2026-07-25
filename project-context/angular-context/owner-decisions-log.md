@@ -2,7 +2,7 @@
 
 **Status:** Authoritative record of currently locked owner decisions.
 
-**Last reconciled:** 2026-07-25
+**Last reconciled:** 2026-07-26
 
 This file contains current decisions only. Superseded intermediate positions remain available in Git history, not inline where they can be mistaken for current direction.
 
@@ -355,6 +355,24 @@ Unanswered questions live only in `pending-decisions.md`. When an answer is conf
 - Portal pages declare audience, verification date, and precise source paths.
 - Portal validation rejects stale/missing provenance and forbidden terminology.
 - Current code/runtime and locked target intent must remain visibly distinct.
+- Wave 2 delivery order is Schema Nebula → ⌘K Verbs → First Flight.
+- Schema Nebula’s canonical route is `/database/schema-nebula`.
+- Schema Nebula uses one star per distinct target MongoDB collection: **64 explicit nodes**, not the superseded 48-family approximation.
+    - Seven stars represent models that exist today: `categories`, `products`, `promotions`, `orders`, `currencies`, `carts`, and `users`.
+    - The remaining 57 stars represent target-only collections and stay visually ghosted until implementation evidence exists.
+    - Related collections may be clustered visually, but must never be collapsed into one family node or described as one physical collection.
+    - The broad `auditLogs` collection owns admin and security audit history; do not add a separate `securityAuditLogs` node.
+    - Collection status comes from tested adapter/model evidence. A contract or architecture section alone does not make a collection implemented.
+- First Flight’s canonical route is `/getting-started/first-flight`.
+- First Flight is an enterprise guided onboarding journey with three acts: Launch Bay persona selection, a route-spanning spotlight HUD, and Mission Debrief.
+- Its persona order is exactly beginner → frontend → backend → operator.
+- Persona stops are governed data, not React literals. Every destination route and stable heading/`data-first-flight-anchor` target must resolve at build time; a missing target fails the portal build.
+- First Flight progress is optional, resettable, and device-local only. It uses no telemetry and cannot write to an application API or the repository.
+- First Flight active navigation state is URL-carried through the governed `firstFlight` persona and zero-based `step` parameters. This is linkable navigation state, not completion history; the route-spanning engine must not write browser storage before the separately reviewed resume/debrief pass.
+- First Flight device-local persistence is explicit opt-in per persona. Its versioned payload may contain only persona id, furthest governed stop id, completion state, and an optional completion timestamp; it must never store page content, browsing/search history, source paths, user identity, free text, or analytics.
+- Resume returns to the furthest governed stop recorded for that persona. Reaching or saving a later stop does not prove that earlier checkpoints were studied. Users can forget one persona through its opt-in control or reset every saved flight from Launch Bay.
+- Mission Debrief appears at the final checkpoint and is derived from compiled persona, stop, and lifecycle data. It remains available for the current session without storage; completion persists only for a persona that explicitly opted in.
+- First Flight delivery remains incremental: contract/compiler → Launch Bay → route-spanning engine → resume/debrief → hardening. A governed dataset alone does not make the instrument live.
 
 ## Open decisions
 

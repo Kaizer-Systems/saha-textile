@@ -117,6 +117,11 @@ export function toUser(doc: UserDoc): User {
 		id: doc._id,
 		email: doc.email ?? null,
 		emailVerified: doc.emailVerified ?? false,
+		// Chunk B contract widening: fields not yet persisted by this model default
+		// safely here; the model/repo upgrade is Chunk D/E work.
+		phone: null,
+		phoneVerified: false,
+		status: 'active',
 		displayName: doc.displayName,
 		role: doc.role as User['role'],
 		identities: (doc.identities ?? []) as User['identities'],

@@ -11,7 +11,7 @@ source_of_truth:
     - apps/api/src/infra
     - packages/adapters-db-mongo/src
     - packages/core-domain/src/ports
-    - project-context/angular-context/codex-api-app-build-instructional-prompt.md
+    - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
 ---
 
 # Composition root and adapters

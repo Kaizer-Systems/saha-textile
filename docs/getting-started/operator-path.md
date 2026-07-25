@@ -6,7 +6,7 @@ audience: [operator]
 last_verified: '2026-07-25'
 source_of_truth:
     - project-context/angular-context/execution-roadmap.md
-    - project-context/angular-context/mcp-automation-setup.md
+    - .cursor/rules/mcp-tools.mdc
     - .github/workflows
 ---
 

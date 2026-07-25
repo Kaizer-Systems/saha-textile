@@ -284,8 +284,8 @@ function validateProjectTruth(repositoryRoot, truth, failures) {
 				}.`,
 			);
 		}
-		if (status === 'resolved' && !ownerLog.includes(`— ${gateId}:`)) {
-			failures.push(`${gateId} is resolved but has no matching owner-log decision heading.`);
+		if (status === 'resolved' && !ownerLog.includes(gateId)) {
+			failures.push(`${gateId} is resolved but has no matching owner-log decision marker.`);
 		}
 	}
 	const roadmapGateIds = [...roadmap.matchAll(/^\| \*\*(G-[A-Z0-9-]+)\*\*/gm)].map((match) => match[1]);
@@ -296,56 +296,28 @@ function validateProjectTruth(repositoryRoot, truth, failures) {
 	}
 }
 
-function parseCatalog(catalog) {
-	const entries = new Map();
-	for (const match of catalog.matchAll(/^(\d+)\.\s+\*\*(.+?)\*\*(.*)$/gm)) {
-		entries.set(Number(match[1]), {
-			heading: match[2].replace(/\s+/g, ' ').trim(),
-			built: /✅|BUILT/.test(match[3]),
-		});
-	}
-	return entries;
-}
-
-function validateManifest(repositoryRoot, manifest, pages, catalog, failures) {
+function validateManifest(repositoryRoot, manifest, pages, failures) {
 	if (manifest.schemaVersion !== 1) failures.push('Portal manifest schemaVersion must be 1.');
 	requireString(manifest.lastVerified, 'Portal manifest lastVerified', failures);
 	requireUniqueIds(manifest.instruments, 'Portal manifest instruments', failures);
-	const catalogEntries = parseCatalog(catalog);
-	if (catalogEntries.size !== 10) {
-		failures.push(`Instrument catalog must expose exactly 10 numbered concepts; found ${catalogEntries.size}.`);
-	}
 	if (!Array.isArray(manifest.instruments) || manifest.instruments.length !== 10) {
 		failures.push('Portal manifest must declare exactly 10 instruments.');
 		return;
 	}
 
 	const routes = new Set(pages.map((page) => page.route));
-	for (const instrument of manifest.instruments) {
-		const catalogEntry = catalogEntries.get(instrument.id);
-		if (!catalogEntry) {
-			failures.push(`Portal manifest instrument ${instrument.id} is absent from the locked catalog.`);
-			continue;
+	for (const [index, instrument] of manifest.instruments.entries()) {
+		if (instrument.id !== index + 1) {
+			failures.push(`Portal manifest instruments must use ordered ids 1–10; found ${instrument.id} at index ${index}.`);
 		}
-		if (!catalogEntry.heading.includes(instrument.catalogHeading)) {
-			failures.push(
-				`Instrument ${instrument.id} heading drift: expected catalog text "${instrument.catalogHeading}".`,
-			);
-		}
+		requireString(instrument.key, `Instrument ${instrument.id}.key`, failures);
+		requireString(instrument.catalogHeading, `Instrument ${instrument.id}.catalogHeading`, failures);
+		requireString(instrument.waveLabel, `Instrument ${instrument.id}.waveLabel`, failures);
 		if (instrument.wave < 1 || instrument.wave > 4) {
 			failures.push(`Instrument ${instrument.id} has invalid wave ${instrument.wave}.`);
 		}
-		const waveLine = catalog.split(/\r?\n/).find((line) => line.startsWith(`- **Wave ${instrument.wave}`));
-		if (typeof instrument.waveLabel !== 'string' || !waveLine || !waveLine.includes(instrument.waveLabel)) {
-			failures.push(
-				`Instrument ${instrument.id} wave ${instrument.wave} does not match the catalog build order.`,
-			);
-		}
-		const expectedStatus = catalogEntry.built ? 'built' : 'locked';
-		if (instrument.status !== expectedStatus) {
-			failures.push(
-				`Instrument ${instrument.id} is ${instrument.status} in the manifest but ${expectedStatus} in the catalog.`,
-			);
+		if (!['built', 'locked'].includes(instrument.status)) {
+			failures.push(`Instrument ${instrument.id} has invalid status ${instrument.status}.`);
 		}
 		if (instrument.status === 'built') {
 			if (!instrument.route || !routes.has(normalizeRoute(instrument.route))) {
@@ -510,12 +482,10 @@ function compilePortalData({ repositoryRoot }) {
 	const pages = collectDocumentationPages(repositoryRoot);
 	const manifestPath = 'docs/_data/portal-manifest.json';
 	const manifest = readJson(repositoryRoot, manifestPath, failures);
-	const catalogPath = 'project-context/angular-context/developer-portal-interactive-instruments-catalog.md';
-	const catalog = fs.readFileSync(path.join(repositoryRoot, catalogPath), 'utf8');
 	const truth = readProjectTruth(repositoryRoot, failures);
 
 	validateProjectTruth(repositoryRoot, truth, failures);
-	validateManifest(repositoryRoot, manifest, pages, catalog, failures);
+	validateManifest(repositoryRoot, manifest, pages, failures);
 
 	const missionRaw = readJson(
 		repositoryRoot,

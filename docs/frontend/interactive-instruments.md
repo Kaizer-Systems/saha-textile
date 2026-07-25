@@ -5,7 +5,6 @@ status: scaffolded
 audience: [frontend]
 last_verified: '2026-07-25'
 source_of_truth:
-    - project-context/angular-context/developer-portal-interactive-instruments-catalog.md
     - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
     - project-context/angular-context/project-progress.md
     - docs/_data/portal-manifest.json
@@ -14,7 +13,7 @@ source_of_truth:
 
 # Interactive instruments (roadmap)
 
-This portal is growing a set of **interactive instruments** that don't just describe the Saha Textile platform — they _perform_ its architecture, data flow, decisions and progress, and visibly fill in as the codebase is built. This page is the reader-facing mirror of the locked concept catalog (`developer-portal-interactive-instruments-catalog.md`).
+This portal is growing a set of **interactive instruments** that don't just describe the Saha Textile platform — they _perform_ its architecture, data flow, decisions and progress, and visibly fill in as the codebase is built. The governed catalog and build state live in `docs/_data/portal-manifest.json`; this page is its reader-facing explanation.
 
 **Status: Scaffolded.** Three instruments are **built and live** (Mission Control, Request Flight Simulator, Decision Gate Console — marked ✅ below); the rest are approved, locked concepts not yet built. Treat the un-built rows as intended design.
 

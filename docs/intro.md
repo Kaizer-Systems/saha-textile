@@ -6,12 +6,9 @@ status: scaffolded
 audience: [beginner, frontend, backend, operator]
 last_verified: '2026-07-25'
 source_of_truth:
-    - project-context/angular-context/private-developer-portal-documentation-plan.md
-    - project-context/angular-context/developer-portal-scalar-visual-baseline.md
-    - project-context/angular-context/developer-portal-pass-2-frontend-atlas.md
-    - project-context/angular-context/developer-portal-pass-3-commerce-journeys.md
-    - project-context/angular-context/developer-portal-pass-4-backend-platform-atlas.md
-    - project-context/angular-context/developer-portal-interactive-instruments-catalog.md
+    - project-context/angular-context/owner-decisions-log.md
+    - apps/developer-portal/src
+    - apps/developer-portal/plugins
     - docs/_data/portal-manifest.json
 hide_title: true
 hide_table_of_contents: true

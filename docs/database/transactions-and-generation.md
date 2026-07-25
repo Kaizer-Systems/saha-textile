@@ -11,8 +11,8 @@ source_of_truth:
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh
     - project-context/angular-context/owner-decisions-log.md
-    - project-context/angular-context/codex-api-app-build-instructional-prompt.md
-    - project-context/angular-context/private-developer-portal-documentation-plan.md
+    - project-context/angular-context/api-db-development-roadmap-with-pending-decision-gates.md
+    - project-context/angular-context/saha-textile-technical-knowledgebase.md
 ---
 
 # Transactions and generated catalogue

@@ -12,7 +12,7 @@ source_of_truth:
     - scripts/mongo-up.sh
     - apps/api/.env.example
     - apps/storefront/public/config.example.json
-    - project-context/angular-context/mcp-automation-setup.md
+    - .cursor/rules/mcp-tools.mdc
 ---
 
 # Local development
@@ -69,7 +69,7 @@ The production build runs the content validator first. Validation checks require
 
 ## Local MCP phase
 
-For application work through Phase 7, use the LOCAL MCP phase described in `project-context/angular-context/mcp-automation-setup.md`.
+For application work through Phase 7, use the LOCAL MCP phase described in `.cursor/rules/mcp-tools.mdc`.
 
 The expected local tool set is:
 

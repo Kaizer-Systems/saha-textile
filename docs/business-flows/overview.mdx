@@ -1,9 +1,10 @@
 ---
 title: Business and Commerce Journey Atlas
+wide: true
 description: Interactive map connecting current application behavior, locked target flows, and failure recovery.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/storefront/src/app
     - apps/admin/src/app
@@ -53,6 +54,8 @@ flowchart LR
 ```
 
 Not every current journey reaches every box. A missing segment is a documented implementation gap, not an invitation to pretend the flow is complete.
+
+Shared auth/session/consent/audit/notification contract scaffolds now describe several target boxes, but those shapes do not prove a route, use case, collection, adapter, or end-to-end journey exists. The **Current code** lens advances only when those runtime boundaries land and are verified.
 
 ## Evidence hierarchy
 

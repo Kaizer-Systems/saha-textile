@@ -3,7 +3,7 @@ title: Overview
 description: Start here when maintaining the Saha Textile platform.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - project-context/angular-context/private-developer-portal-documentation-plan.md
     - project-context/angular-context/owner-decisions-log.md
@@ -25,7 +25,7 @@ This portal is the private operating manual for the Saha Textile platform. It sh
 - Scalar API Reference waits for the real OpenAPI document to be integrated into the portal at the locked route.
 - Generated database collection pages wait for the catalogue generator; models and indexes already exist in the Mongo adapter.
 - Storybook links wait until storefront/admin components and stories exist.
-- Pagefind waits until the portal has enough built pages to index usefully.
+- Pagefind remains a deferred optional full-text layer. The current ⌘K palette already receives a build-generated index from every page's frontmatter, so new routes appear without maintaining a static command list.
 
 ## Source-of-truth rule
 

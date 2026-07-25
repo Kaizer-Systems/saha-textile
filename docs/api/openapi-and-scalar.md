@@ -1,9 +1,10 @@
 ---
 title: OpenAPI and Scalar Reference
+wide: true
 description: OpenAPI source-of-truth rules, completeness gates, Scalar integration trigger, security, and future build topology.
 status: deferred
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src
@@ -25,6 +26,8 @@ The decision is locked:
 NestJS creates an OpenAPI document and exposes it at `/openapi.json`. A transitional framework UI is mounted at `/docs`.
 
 Scalar remains **deferred** because the current document is not yet a complete, reliable operation contract. Installing a polished viewer would not repair missing schemas, security semantics, errors, authorization, idempotency, or side-effect documentation.
+
+The new shared auth/session/consent/audit/notification schemas are useful inputs to this future pipeline, but they are not yet wired to controllers or emitted as complete OpenAPI operations/components. Their presence does not satisfy the Scalar integration trigger.
 
 ## Target portal routes
 

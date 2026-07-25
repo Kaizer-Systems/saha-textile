@@ -1,0 +1,112 @@
+{
+	"schemaVersion": 1,
+	"lastVerified": "2026-07-25",
+	"datasets": {
+		"missionControl": {
+			"file": "docs/_data/instruments/mission-control.json",
+			"page": "docs/mission-control.md"
+		},
+		"decisionGates": {
+			"file": "docs/_data/instruments/decision-gates.json",
+			"page": "docs/decisions/gate-console.md"
+		},
+		"requestFlight": {
+			"file": "docs/_data/instruments/request-flight.json",
+			"page": "docs/backend/request-lifecycle.md"
+		}
+	},
+	"instruments": [
+		{
+			"id": 1,
+			"key": "mission-control",
+			"catalogHeading": "Mission Control — Chunk Constellation",
+			"wave": 1,
+			"waveLabel": "Mission Control",
+			"status": "built",
+			"route": "/mission-control",
+			"page": "docs/mission-control.md",
+			"component": "apps/developer-portal/src/components/MissionControl",
+			"dataset": "docs/_data/instruments/mission-control.json"
+		},
+		{
+			"id": 2,
+			"key": "request-flight",
+			"catalogHeading": "Request Flight Simulator",
+			"wave": 1,
+			"waveLabel": "Flight Simulator",
+			"status": "built",
+			"route": "/backend/request-lifecycle",
+			"page": "docs/backend/request-lifecycle.md",
+			"component": "apps/developer-portal/src/components/FlightSimulator",
+			"dataset": "docs/_data/instruments/request-flight.json"
+		},
+		{
+			"id": 3,
+			"key": "decision-gates",
+			"catalogHeading": "Decision Gate Console",
+			"wave": 1,
+			"waveLabel": "Gate Console",
+			"status": "built",
+			"route": "/decisions/gate-console",
+			"page": "docs/decisions/gate-console.md",
+			"component": "apps/developer-portal/src/components/GateConsole",
+			"dataset": "docs/_data/instruments/decision-gates.json"
+		},
+		{
+			"id": 4,
+			"key": "schema-nebula",
+			"catalogHeading": "Schema Nebula",
+			"wave": 2,
+			"waveLabel": "Schema Nebula",
+			"status": "locked"
+		},
+		{
+			"id": 5,
+			"key": "first-flight",
+			"catalogHeading": "First Flight — guided onboarding copilot",
+			"wave": 2,
+			"waveLabel": "First Flight",
+			"status": "locked"
+		},
+		{
+			"id": 6,
+			"key": "journey-cinematics",
+			"catalogHeading": "Journey Cinematics",
+			"wave": 3,
+			"waveLabel": "Journey Cinematics",
+			"status": "locked"
+		},
+		{
+			"id": 7,
+			"key": "alt-lens",
+			"catalogHeading": "Alt-Lens Evidence HUD",
+			"wave": 3,
+			"waveLabel": "Alt-Lens HUD",
+			"status": "locked"
+		},
+		{
+			"id": 8,
+			"key": "command-verbs",
+			"catalogHeading": "⌘K Verbs",
+			"wave": 2,
+			"waveLabel": "⌘K Verbs",
+			"status": "locked"
+		},
+		{
+			"id": 9,
+			"key": "systems-board",
+			"catalogHeading": "Systems Board",
+			"wave": 4,
+			"waveLabel": "Systems Board",
+			"status": "locked"
+		},
+		{
+			"id": 10,
+			"key": "transaction-theater",
+			"catalogHeading": "Transaction Theater",
+			"wave": 4,
+			"waveLabel": "Transaction Theater",
+			"status": "locked"
+		}
+	]
+}

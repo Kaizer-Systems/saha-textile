@@ -1,20 +1,25 @@
 ---
 title: Identity, Account, and Admin Resume
+wide: true
 description: Storefront sessions, OTP/OAuth, account boundaries, admin authorization, soft lock, and draft recovery.
 status: planned
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/storefront/src/app/pages/auth
     - apps/admin/src/app/features/auth
     - apps/api/src/auth
+    - packages/contracts/src/auth.ts
+    - packages/contracts/src/auth-internal.ts
+    - packages/contracts/src/admin-auth.ts
+    - packages/contracts/src/session.ts
     - project-context/angular-context/codex-auth-architecture-db-and-request-plan.md
     - project-context/angular-context/owner-decisions-log.md
 ---
 
 # Identity, account, and admin resume
 
-Current auth UI and API scaffolds exist, including password endpoints, bearer-token guards, OTP stubs, and demo frontend session stores. The locked browser architecture replaces browser-readable tokens with API-set cookie sessions and explicit CSRF protection.
+Current auth UI and API scaffolds exist, including password endpoints, bearer-token guards, OTP stubs, and demo frontend session stores. Shared zod contracts now model the locked storefront/admin requests, cookie-session metadata, refresh-family state, OTP/OAuth/reset/invite records, and sanitized responses. They are design/code seams only: the current API still returns browser-readable bearer tokens, and the new lifecycle is not persisted or executed.
 
 ## Storefront methods
 

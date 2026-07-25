@@ -1,9 +1,10 @@
 ---
 title: Readiness, Observability, and Verification
+wide: true
 description: Liveness versus readiness, logging, metrics, testing layers, transaction proof, and backend definition of done.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/api/src/health
     - apps/api/src/infra/persistence.module.ts
@@ -11,6 +12,8 @@ source_of_truth:
     - packages/contracts/test
     - packages/core-domain/test
     - packages/adapters-db-mongo/test
+    - docker/mongo/docker-compose.yml
+    - scripts/mongo-up.sh
     - project-context/angular-context/execution-roadmap.md
     - project-context/angular-context/codex-api-app-build-instructional-prompt.md
 ---
@@ -75,12 +78,12 @@ Avoid high-cardinality labels such as raw user id, order id, email, token, full 
 
 ## Current automated-test evidence
 
-| Package       | Present evidence                                                 | Limitation                                                                  |
-| ------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `contracts`   | Schema tests for common/product/category/currency/promotion/user | Incomplete operation DTO and security injection coverage                    |
-| `core-domain` | Pricing/discount/FX/gross-up unit tests                          | No use-case/state-machine/port contract suites                              |
-| Mongo adapter | Category/product/seed integration tests                          | Skips unless `RUN_DB_IT=1` and external config exists; no transaction proof |
-| API           | Test script allows no tests                                      | No API unit/integration/security/OpenAPI tests present                      |
+| Package       | Present evidence                                                 | Limitation                                                                                     |
+| ------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `contracts`   | Schema tests for common/product/category/currency/promotion/user | Incomplete operation DTO and security injection coverage                                       |
+| `core-domain` | Pricing/discount/FX/gross-up unit tests                          | No use-case/state-machine/port contract suites                                                 |
+| Mongo adapter | Category/product/seed integration tests                          | Skips unless `RUN_DB_IT=1` and Mongo config is present (`pnpm mongo:up`); no transaction proof |
+| API           | Test script allows no tests                                      | No API unit/integration/security/OpenAPI tests present                                         |
 
 The locked gate explicitly rejects “pass with no tests” and permanently skipped transaction tests as a done state.
 
@@ -123,7 +126,7 @@ flowchart TD
 
 For every atomic workflow:
 
-1. establish the real Docker MongoDB 8.3 single-node replica set;
+1. establish the real Docker MongoDB 8.3 single-node replica set (`pnpm mongo:up`);
 2. seed only isolated test fixtures;
 3. inject failure after each participating write;
 4. assert every participating collection rolled back;

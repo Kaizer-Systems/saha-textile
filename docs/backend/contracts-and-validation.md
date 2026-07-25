@@ -1,9 +1,10 @@
 ---
 title: Contracts, Validation, and Serialization
+wide: true
 description: Zod contract ownership, request parsing, persistence mapping, response safety, and evolution rules.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - packages/contracts/src
     - packages/contracts/test
@@ -32,19 +33,18 @@ An API request for account registration should not accept `role`, `emailVerified
 
 ## Current contract families
 
-| File           | Principal schemas                                          | Notable invariant                              |
-| -------------- | ---------------------------------------------------------- | ---------------------------------------------- |
-| `common.ts`    | locale, localized text, id, slug, INR price, datetime, SEO | canonical price is non-negative INR            |
-| `category.ts`  | category                                                   | current shape models parent/path/ancestors     |
-| `product.ts`   | product, variation, attribute, add-on                      | variation price/stock and configurable add-ons |
-| `promotion.ts` | promotion and conditions                                   | discount scope/type and timing                 |
-| `cart.ts`      | cart and cart line                                         | user/guest identifiers and selected add-ons    |
-| `order.ts`     | order, lines, status events                                | INR and paid-currency snapshots                |
-| `currency.ts`  | currency                                                   | INR-derived rate and PayPal fee inputs         |
-| `shipping.ts`  | quote                                                      | value and currency always travel together      |
-| `user.ts`      | public user, identities, addresses, consent                | password hash intentionally absent             |
+| File family                                         | Principal schemas                                                                 | Notable invariant                                                         |
+| --------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `common.ts`                                         | locale, localized text, id, slug, INR price, datetime, SEO                        | canonical price is non-negative INR                                       |
+| `category.ts`, `product.ts`, `promotion.ts`         | current catalogue, variation, add-on, and promotion shapes                        | current model remains simpler than the locked catalogue target            |
+| `cart.ts`, `order.ts`, `currency.ts`, `shipping.ts` | commerce aggregates, snapshots, FX inputs, and quote                              | value and currency travel together; canonical product price remains INR   |
+| `user.ts`                                           | sanitized public user, identities, addresses, consent snapshot                    | credential material is intentionally absent                               |
+| `session.ts`                                        | access claims, public session info, server-internal session/refresh-family entity | browser response metadata contains no token values                        |
+| `auth.ts`, `admin-auth.ts`                          | storefront/admin request and actor-safe response DTOs                             | 12-character password floor; six-digit admin PIN shape; no tokens in body |
+| `auth-internal.ts`                                  | OTP/OAuth/reset/invite/rate-limit persistence shapes                              | codes/tokens/IP/user-agent values are represented by hashes               |
+| `consent.ts`, `audit.ts`, `notification.ts`         | consent history, broad admin/security audit, notification settings/outbox         | append-only evidence and channel/category control are explicit            |
 
-These schemas are useful scaffolds. They do not yet express the complete locked catalogue, auth/session, consent, checkout, payment, inventory, notification, reporting, audit, or database model.
+The new auth/session/consent/audit/notification families are **contract scaffolds**, not live endpoints or collections. Controllers, repositories, adapters, migrations, policy/use-case logic, OpenAPI mapping, and the planned contract tests still have to land in their roadmap chunks. The contracts still do not express the complete locked catalogue, checkout, payment, inventory, reporting, analytics, media, or database model.
 
 ## Boundary validation today
 

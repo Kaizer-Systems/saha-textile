@@ -1,5 +1,6 @@
 ---
 title: Admin Routing and Shell
+wide: true
 description: How admin guards, layouts, lazy routes, and feature families compose the operator workspace.
 status: implemented
 audience: [beginner, frontend, operator]

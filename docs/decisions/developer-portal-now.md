@@ -3,7 +3,7 @@ title: Start Developer Portal Early
 description: ADR for starting the portal before all generated artifacts exist.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - project-context/angular-context/execution-roadmap.md
     - project-context/angular-context/private-developer-portal-documentation-plan.md
@@ -31,3 +31,7 @@ Defer generated documentation integrations until their source artifacts exist.
 - Future PRs have a known place to update operator-facing and developer-facing behavior.
 - Generated API, database, and component docs are not hand-written prematurely.
 - The portal can build before the full app surface is complete.
+
+## Related
+
+- [Decision Gate Console](/decisions/gate-console) — the live cockpit of open owner gates and the roadmap chunks and collections each one blocks.

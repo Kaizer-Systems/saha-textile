@@ -3,7 +3,7 @@ title: Documentation Status Model
 description: The five lifecycle states used throughout the developer portal.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - project-context/angular-context/private-developer-portal-documentation-plan.md
     - scripts/validate-developer-portal.mjs

@@ -1,9 +1,10 @@
 ---
 title: Storefront Routing and Rendering
+wide: true
 description: How AnalogJS file routes, route metadata, dynamic SSR, and browser-only code fit together.
 status: implemented
 audience: [beginner, frontend]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/storefront/src/app/app.config.server.ts

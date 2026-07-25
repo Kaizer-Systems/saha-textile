@@ -1,21 +1,28 @@
 ---
 title: Security, Sessions, and Authorization
+wide: true
 description: Current authentication scaffold, locked browser-session target, CSRF, authorization, BOLA, and security verification.
+search_keywords: 'cookies csrf st_access st_refresh otp msg91 jwt session bola audiences pin'
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/api/src/auth
     - apps/api/src/infra/argon2-jwt.auth.ts
     - apps/api/src/config/app-config.ts
+    - apps/api/.env.example
     - packages/adapters-db-mongo/src/models/user.model.ts
+    - packages/contracts/src/auth.ts
+    - packages/contracts/src/auth-internal.ts
+    - packages/contracts/src/admin-auth.ts
+    - packages/contracts/src/session.ts
     - project-context/angular-context/codex-auth-architecture-db-and-request-plan.md
     - project-context/angular-context/owner-decisions-log.md
 ---
 
 # Security, sessions, and authorization
 
-Security status is **scaffolded**. Argon2id, signed JWTs, a bearer guard, a role decorator/guard, CORS, Helmet, and rate limiting exist. The locked browser-session, CSRF, refresh-rotation, audience, permission, and object-authorization model does not.
+Security status is **scaffolded**. Argon2id, signed JWTs, a bearer guard, a role decorator/guard, CORS, Helmet, and rate limiting exist. Zod contract scaffolds now describe the locked browser-session, CSRF, refresh-family, audience, admin PIN, OTP, consent, and audit shapes, but those contracts are not wired into the current API, repositories, or collections.
 
 ## Authentication versus authorization
 
@@ -50,8 +57,8 @@ Important current gaps:
 - no logout revocation;
 - no storefront/admin audience separation;
 - no CSRF boundary because cookie sessions do not exist yet;
-- eight-character password minimum instead of locked 12 plus denylist;
-- OTP endpoints are explicit not-implemented stubs with obsolete provider wording;
+- the legacy controller-local registration schema still accepts eight characters; the new shared auth contract sets the locked 12-character floor, but it is not wired into that endpoint and the denylist policy is not implemented;
+- OTP endpoints are still explicit not-implemented stubs, though the provider and policy config now exist (MSG91 is the locked provider behind the notification abstraction; `OTP_TTL_SECONDS`/`OTP_MAX_ATTEMPTS` are parsed);
 - no admin PIN implementation;
 - no account lock/backoff/session/audit collections.
 
@@ -84,6 +91,8 @@ sequenceDiagram
 | CSRF cookie                |               Yes | Double-submit value bound/signed to session         |
 | Guest cookie               |                No | Opaque authority for one guest cart only            |
 | Locale/currency preference |            May be | Non-secret presentation context                     |
+
+The locked cookie names are `st_access`, `st_refresh`, and the browser-readable `st_csrf` (CSRF header `x-csrf-token`), delivered with the `__Host-` prefix in deployed environments. These names, plus `CSRF_SECRET`, are already present as configuration placeholders in `app-config.ts` and `.env.example`, but cookie sessions themselves are not yet wired — the current API still returns bearer tokens in JSON.
 
 ## CSRF rule
 
@@ -162,7 +171,7 @@ The current guard accepts `customer | staff | admin` role values. The target nee
 - Generic anti-enumeration responses.
 - Channel-direct delivery through locked notification abstraction/provider; no code/token logs.
 
-None of the locked PIN/OTP lifecycle is currently implemented.
+The PIN/OTP/session DTO and internal persistence shapes now exist in `packages/contracts`; none of the locked PIN/OTP/session lifecycle is currently implemented.
 
 ## Configuration fail-closed rule
 

@@ -1,12 +1,16 @@
 ---
 title: Frontend Engineering System
+wide: true
 description: Shared decision rules for state, contracts, layers, reusable UI, and cross-application behavior.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/admin/src/app/app.config.ts
+    - apps/storefront/src/app/core/config/runtime-config.ts
+    - apps/storefront/src/app/core/interceptors/auth.interceptor.ts
+    - apps/storefront/public/config.example.json
     - packages/contracts/src
     - project-context/angular-context/owner-decisions-log.md
 ---
@@ -45,9 +49,19 @@ flowchart TB
 
 Angular applications may consume contracts and non-secret shared configuration. They must never import database, payment, shipping, storage, search, authentication, or other server adapters.
 
+## Runtime configuration
+
+Both apps read their public, non-secret configuration at boot from `public/config.json` rather than baking URLs into the bundle. `provideAppInitializer(loadRuntimeConfig)` (in `core/config/runtime-config.ts`) fetches the file and fills a mutable `runtimeConfig` singleton plus the legacy `environment` object that existing consumers still import.
+
+- The file carries only non-secret values (API/site URLs, locales, public client IDs) — a secret never reaches a browser build.
+- The committed `config.json` holds localhost defaults; deployments overwrite or mount it at container start.
+- Under SSR (no browser `fetch`), the loader reads `SAHA_TEXTILE_PUBLIC_CONFIG` from the environment, else falls back to defaults. A failed fetch never blocks boot.
+
+The auth interceptor sends `withCredentials: true` on every request so API-issued session cookies flow — the locked target is httpOnly cookie sessions plus CSRF (Chunk D). A `localStorage` bearer token is a **transitional** fallback that is removed when the cookie-session refactor lands.
+
 ## Contracts today
 
-`packages/contracts/src` contains zod-backed contract modules for cart, category, common pagination/problem shapes, currency, order, product, promotion, shipping, and user.
+`packages/contracts/src` contains zod-backed contract modules for cart, category, common pagination/problem shapes, currency, order, product, promotion, shipping, and user, plus scaffolded auth/session/admin-auth/consent/audit/notification families. The latter describe locked boundaries but are not yet wired into the Angular applications or current API lifecycle.
 
 These contracts are the preferred trust boundary as real endpoints replace fixtures. Existing application-local interfaces still describe many fixture/view shapes; migrate deliberately rather than renaming them “contracts.”
 

@@ -4,16 +4,21 @@ slug: /
 description: Private developer portal for Saha Textile.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - project-context/angular-context/private-developer-portal-documentation-plan.md
     - project-context/angular-context/developer-portal-scalar-visual-baseline.md
     - project-context/angular-context/developer-portal-pass-2-frontend-atlas.md
     - project-context/angular-context/developer-portal-pass-3-commerce-journeys.md
     - project-context/angular-context/developer-portal-pass-4-backend-platform-atlas.md
+    - project-context/angular-context/developer-portal-interactive-instruments-catalog.md
+    - docs/_data/portal-manifest.json
 hide_title: true
 hide_table_of_contents: true
 ---
+
+import { ArchitectureReactor } from '@site/src/components/ArchitectureReactor';
+import { MissionControl } from '@site/src/components/MissionControl';
 
 <section className="portalHero portalHero--dashboard">
 	<div className="portalHero__content">
@@ -29,8 +34,8 @@ hide_table_of_contents: true
 	</div>
 	<div className="portalHero__panel" aria-label="Portal foundation status">
 		<div className="portalStatusHeader">
-			<span>Documentation release</span>
-			<strong>Backend platform atlas · Pass 4</strong>
+			<span>Latest milestone</span>
+			<strong>Interactive instruments · Wave 1</strong>
 		</div>
 		<div className="portalSignalGrid">
 			<div>
@@ -52,6 +57,10 @@ hide_table_of_contents: true
 		</div>
 	</div>
 </section>
+
+<ArchitectureReactor />
+
+<MissionControl variant="teaser" />
 
 <section className="portalDashboardSection">
 	<div className="portalDashboardSection__heading">

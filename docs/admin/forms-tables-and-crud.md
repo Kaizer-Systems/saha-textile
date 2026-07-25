@@ -1,5 +1,6 @@
 ---
 title: Admin Forms, Tables, and CRUD
+wide: true
 description: Conventions for safe operator forms, data tables, validation, actions, and future API mutations.
 status: scaffolded
 audience: [beginner, frontend, operator]

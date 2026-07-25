@@ -3,7 +3,7 @@ title: Beginner Path
 description: A hand-held first-day route through the project.
 status: implemented
 audience: [beginner]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - AGENTS.md
     - project-context/angular-context/saha-textile-technical-knowledgebase.md

@@ -3,7 +3,7 @@ title: Documentation Page Template
 description: Copyable template for new hand-written portal pages.
 status: implemented
 audience: [frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-07-25'
 source_of_truth:
     - docs/governance/contribution-standard.md
     - scripts/validate-developer-portal.mjs
@@ -69,3 +69,4 @@ List missing behaviour and the trigger that permits it to be implemented.
 - Do not describe a placeholder endpoint, collection or workflow as available.
 - Do not paste generated field or operation references that should come from automation.
 - Sanitise every example and keep credentials out of both prose and screenshots.
+- Keep `source_of_truth` as precise as the page allows. A declared directory intentionally makes every change below it a freshness trigger.

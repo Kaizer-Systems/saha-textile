@@ -14,7 +14,7 @@ Custom rebuild of [sahatextile.com](https://sahatextile.com) (Kolkata saree/text
 - DB: **self-hosted Docker MongoDB 8.3** — single-node replica set `rs0` for transactions (not Atlas); Search: **Meilisearch** behind `SearchPort`
 - Media: **DigitalOcean Spaces (SGP / `sgp1`)**; Notifications: **MSG91** (SMS/WhatsApp/Email) behind `NotificationPort`
 - Payments: INR gateway role (CCAvenue now / Razorpay later, adapter-swappable) + PayPal for non-INR; Shipping: Shiprocket behind `ShippingPort`
-- Validation: **zod** (shared `packages/contracts`); i18n: **Transloco** (en ↔ bn)
+- Validation: **zod** (shared `packages/contracts`); i18n: **Transloco** (current app locales: English + French)
 - Node: pinned via [`.nvmrc`](./.nvmrc)
 
 ## Layout
@@ -52,7 +52,7 @@ it in `apps/api/.env` (`MONGODB_PORT`).
 
 - **Server secrets → API only.** `cp apps/api/.env.example apps/api/.env` and fill. In deploys, secrets are injected via GitHub Actions encrypted secrets → droplet env / Compose secrets. Secrets never reach the Angular apps or the browser bundle.
 - **Public runtime config → Angular `config.json`.** Storefront and admin fetch `public/config.json` at app init (`runtime-config.ts` + `provideAppInitializer`) — no build-time `fileReplacements` for deploy URLs. Committed `config.json` holds localhost defaults only; deploys write the real one at container start.
-- MCP credentials (Cursor tooling): `cp .env.mcp.example .env.mcp`, fill the LOCAL block, restart Cursor. See [`project-context/angular-context/mcp-automation-setup.md`](./project-context/angular-context/mcp-automation-setup.md).
+- MCP credentials (Cursor tooling): `cp .env.mcp.example .env.mcp`, fill the LOCAL block, restart Cursor. See [`.cursor/rules/mcp-tools.mdc`](./.cursor/rules/mcp-tools.mdc).
 - Full variable catalogue: [`project-context/angular-context/environment-variables.md`](./project-context/angular-context/environment-variables.md).
 - **Never commit real secrets** — the repo is public.
 

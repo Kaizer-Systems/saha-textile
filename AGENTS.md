@@ -93,10 +93,9 @@ The live KB is `project-context/angular-context/`. `project-context/nextjs-conte
 - **`execution-roadmap.md`** — the ordered build plan. **Follow it.**
 - **`codex-catalog-db-architecture-assessment-and-plan.md`** — the target catalog/category/product/search/commerce/reporting DB model (placements, first-class variants, semantic option roles, bundles, badges, insight sets, SEO routes).
 - **`codex-auth-architecture-db-and-request-plan.md`** — cookie-session auth, OAuth, OTP, and auth collections.
-- **`codex-api-app-build-instructional-prompt.md`** — how to build/refactor `apps/api` within hexagonal boundaries.
-- **`fastkart-execution-plan.md`** + **`fastkart-assessment-and-plan.md`** — admin-first, build-custom plan using Fastkart as UI reference.
-- **`private-developer-portal-documentation-plan.md`** — the Docusaurus portal (`apps/developer-portal` → `docs/`) to build alongside the code.
-- **`mcp-automation-setup.md`** + `.cursor/rules/mcp-tools.mdc` — MCP environment setup and switching.
+- **`pending-decisions.md`** — the sole open owner-question inbox; implementation gates reference stable `DEC-*` ids.
+- **`environment-variables.md`** + **`api-db-local-environment-bootstrap.md`** — configuration catalogue and local handoff.
+- **`.cursor/rules/mcp-tools.mdc`** — MCP environment/tool-budget setup and switching.
 
 ## 10. Operating rules for you (the agent)
 

@@ -1,0 +1,9 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"outDir": "./dist/angular-ts",
+		"types": []
+	},
+	"files": ["src/main.ts"],
+	"include": [".storybook/**/*.ts", "src/**/*.ts"]
+}

@@ -1,0 +1,68 @@
+/* Tool adapter only. Shared primitives live in developer-portal/nextgen-theme.css. */
+
+html,
+body,
+#storybook-root {
+	min-height: 100%;
+	margin: 0;
+	background: var(--portal-canvas);
+}
+
+.storybookApp {
+	min-height: 100vh;
+	padding: clamp(20px, 4vw, 48px);
+}
+
+.storybookApp--storefront {
+	--storybook-application-accent: var(--portal-accent);
+}
+
+.storybookApp--admin {
+	--storybook-application-accent: var(--portal-warning);
+}
+
+.storybookApp--shared {
+	--storybook-application-accent: var(--portal-success);
+}
+
+.storybookThemeSpecimen {
+	display: grid;
+	max-width: 960px;
+	gap: 24px;
+	margin: 0 auto;
+	padding: 32px;
+	border: var(--portal-border-width) solid var(--portal-border);
+	border-radius: var(--portal-radius-xl);
+	background: var(--portal-surface);
+}
+
+.storybookThemeSpecimen h1,
+.storybookThemeSpecimen p {
+	margin: 0;
+}
+
+.storybookThemeSpecimen__tokens {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+	gap: 12px;
+}
+
+.storybookThemeSpecimen__tokens div {
+	display: grid;
+	gap: 8px;
+	padding: 14px;
+	border: var(--portal-border-width) solid var(--portal-border);
+	border-radius: var(--portal-radius-lg);
+	background: var(--portal-surface-raised);
+}
+
+.storybookThemeSpecimen__swatch {
+	height: 52px;
+	border-radius: var(--portal-radius);
+	background: var(--swatch);
+}
+
+.storybookThemeSpecimen code {
+	font-family: var(--portal-font-mono);
+	font-size: 11px;
+}

@@ -2,6 +2,11 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
+# Keep local and CI dependency layouts identical. pnpm otherwise enables the
+# experimental global virtual store only outside CI and repeatedly treats the
+# same installation as stale when switching between those environments.
+enableGlobalVirtualStore: false
+
 # Packages with native/postinstall build steps that pnpm is allowed to build.
 # (pnpm blocks lifecycle scripts unless explicitly approved here.)
 allowBuilds:

@@ -15,6 +15,7 @@
     "test": "turbo run test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "portal:persistent": "node scripts/serve-developer-portal-persistent.mjs",
     "mongo:up": "bash scripts/mongo-up.sh",
     "mongo:down": "bash scripts/mongo-down.sh",
     "mongo:status": "bash scripts/mongo-status.sh",

@@ -120,6 +120,11 @@ const sidebars: SidebarsConfig = {
 		},
 		{
 			type: 'category',
+			label: 'Generated Tools',
+			items: ['tooling/generated-surfaces-and-runtime'],
+		},
+		{
+			type: 'category',
 			label: 'Engineering Governance',
 			items: [
 				'decisions/developer-portal-now',

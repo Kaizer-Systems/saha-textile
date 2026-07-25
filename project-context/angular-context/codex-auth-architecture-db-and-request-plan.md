@@ -158,19 +158,24 @@ must not.
 
 ## 7. Persistence model
 
-Collection names are descriptive; adapter implementation remains authoritative.
+The target physical collection names below are canonical for the owner-approved
+64-node Schema Nebula inventory. They use the same camelCase convention as the
+catalog architecture. This list fixes target boundaries; it does not claim that
+the collections exist. Current adapter/model evidence remains authoritative for
+implementation status, and only `users` exists today.
 
-### `users`
+### 7.1 `users`
 
 - `_id`
 - normalized email and optional normalized phone
 - profile/status fields
-- password hash metadata when password auth is enabled
-- role/permission references
+- references to separately protected credentials and role assignments
 - preferred admin login method where applicable
-- admin PIN hash/lock metadata where applicable
 - token/session invalidation version
 - created/updated timestamps
+
+The current model still embeds `passwordHash`; moving secret credential material
+to the target collections below is a refactor destination, not current behavior.
 
 Indexes:
 
@@ -178,7 +183,7 @@ Indexes:
 - unique normalized phone where present
 - unique normalized admin username where present
 
-### `auth_identities`
+### 7.2 `authIdentities`
 
 - user id
 - provider (`google`, `facebook`, future approved provider)
@@ -188,7 +193,17 @@ Indexes:
 
 Unique compound index: provider plus provider subject.
 
-### `auth_sessions`
+### 7.3 `passwordCredentials`
+
+Store password hashes and credential-policy state separately from the public
+profile. Never return this shape through user-facing contracts.
+
+### 7.3A `pinCredentials`
+
+Store password-grade admin/staff PIN hashes, failed-attempt counters, lockout
+state, and login-preference evidence separately from `users`.
+
+### 7.4 `authSessions`
 
 - user id
 - refresh-token family id
@@ -203,7 +218,7 @@ Indexes:
 - user plus active/revoked state
 - TTL or scheduled cleanup on expiry, while preserving required audit facts
 
-### `otp_challenges`
+### 7.5 `otpChallenges`
 
 - normalized identifier hash
 - channel and purpose
@@ -218,12 +233,40 @@ Indexes:
 - active identifier/purpose uniqueness
 - cleanup/TTL on expiry subject to audit-retention rules
 
-### `password_reset_challenges`
+### 7.6 `oauthStates`
+
+Store short-lived OAuth state, nonce, optional verifier, allowlisted return
+intent, audience, and guest-cart continuation evidence.
+
+### 7.7 `passwordResetTokens`
 
 Use an opaque random token, store only a hash, expire quickly, consume once, and
 invalidate relevant sessions after successful reset.
 
-### `pending_intents`
+### 7.8 `emailVerificationTokens`
+
+Keep hashed, expiring email-verification credentials separate from login OTP
+challenges so the purposes cannot be confused.
+
+### 7.9 `adminInvites`
+
+Store controlled, expiring, single-use staff/admin invitations and their safe
+audit correlation. Public admin self-registration remains forbidden.
+
+### 7.10 `roles` and `userRoleAssignments`
+
+Keep reusable role/permission definitions separate from explicit, auditable
+user-to-role assignments. These are two physical collections and therefore two
+Schema Nebula nodes.
+
+### 7.11 `auditLogs`
+
+Record actor, target, action, outcome, request correlation, and bounded safe
+metadata. This broad collection owns both admin and security audit history;
+there is no separate `securityAuditLogs` collection. Never record passwords,
+PINs, OTPs, access tokens, refresh tokens, or provider secrets.
+
+### 7.12 `pendingIntents`
 
 - guest/session binding hash
 - intended user/action
@@ -233,12 +276,14 @@ invalidate relevant sessions after successful reset.
 
 Never store an arbitrary redirect URL or executable client command.
 
-### `audit_events`
+### 7.13 `consentEvents`
 
-Record actor, target, action, outcome, request correlation, and safe metadata.
-Never record passwords, PINs, OTPs, access tokens, refresh tokens, or provider
-secrets. Retention details follow the current retention decision and operational
-policy.
+Store append-only, versioned privacy and communication-consent history for
+authenticated users or bounded guest identifiers.
+
+Authentication rate limiting remains mandatory, but `authRateLimits` is not a
+locked physical MongoDB collection in the 64-node graph. Its backing mechanism
+stays an adapter/runtime concern rather than being fabricated by the portal.
 
 ## 8. Request surface
 

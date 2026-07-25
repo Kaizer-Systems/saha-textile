@@ -6,9 +6,10 @@
     "dev": "docusaurus start --host 0.0.0.0",
     "start": "docusaurus start --host 0.0.0.0",
     "validate": "node ../../scripts/validate-developer-portal.mjs",
-    "prebuild": "pnpm run validate",
+    "prebuild": "node ../../scripts/validate-developer-portal.mjs",
     "build": "docusaurus build",
     "serve": "docusaurus serve --host 0.0.0.0",
+    "persistent": "node ../../scripts/serve-developer-portal-persistent.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit"
   },

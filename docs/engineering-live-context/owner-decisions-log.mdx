@@ -375,6 +375,7 @@ Unanswered questions live only in `pending-decisions.mdx`. When an answer is con
 - Release verification must prove unauthorized users cannot fetch either the portal shell or a known static asset and cannot reach the origin directly.
 - Local persistent serving binds to `127.0.0.1` by default.
 - Portal navigation to every generated child surface always enters through a unique Docusaurus bridge route; generated mounts are never used as top-navbar destinations.
+- Bridge, overview, and generated-child entry surfaces are deployment-agnostic product experiences. They must not expose local orchestration commands, build prerequisites, filesystem mechanics, or “works only when locally running” copy; those instructions belong only in explicitly operational or local-development documentation.
 - The locked child-transition metaphors are:
     - Storybook — **Component Forge**: orbiting interface primitives assemble into one building block;
     - TypeDoc — **Type Lattice**: source glyphs resolve through a lattice into a typed contract prism;

@@ -1,0 +1,36 @@
+---
+title: TypeScript Reference
+slug: /typedoc
+description: Symbolic Docusaurus gateway to the generated TypeDoc child.
+status: implemented
+audience: [beginner, frontend, backend]
+last_verified: '2026-07-26'
+wide: true
+hide_table_of_contents: true
+source_of_truth:
+    - apps/developer-portal-typedoc
+    - apps/developer-portal/src/components/ChildToolGateway
+    - scripts/serve-developer-portal-persistent.mjs
+---
+
+import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
+
+# TypeScript reference
+
+<ChildToolGateway
+	toolName="TypeScript reference"
+	target="/typedoc/"
+	eyebrow="Type Lattice · Exported contracts"
+	title="Resolve source into a typed knowledge prism."
+	description="Source glyphs traverse a contract lattice and crystallize around the exported API, turning implementation boundaries into navigable type knowledge."
+	launchLabel="Resolve Type Lattice"
+	symbol="type-lattice"
+/>
+
+This gateway remains useful when Docusaurus runs alone. The launch succeeds when the complete atomic portal has generated and mounted TypeDoc:
+
+```bash
+corepack pnpm portal:persistent
+```
+
+Use the [generated surfaces and runtime guide](/tooling/generated-surfaces-and-runtime) for the intentionally narrow exported-symbol scope, shared-theme behavior, direct TypeDoc generation, and build topology.

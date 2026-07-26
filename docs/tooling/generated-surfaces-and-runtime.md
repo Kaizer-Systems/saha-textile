@@ -44,7 +44,7 @@ Each story declares `parameters.application` as `storefront`, `admin`, or `share
 
 The application style bundles are generated separately and enabled one at a time in the preview document. This avoids allowing storefront and admin global selectors to collide while keeping both applications in one renderer. Component-local Angular styles continue to travel with their components.
 
-The Docusaurus bridge and the generated child intentionally share `/storybook`. Navigation from the Tools menu and the Component Forge bridge must therefore use a full document request, not Docusaurus client routing. The composite server then resolves `/storybook/index.html`; running Docusaurus alone leaves the symbolic bridge available with its runtime guidance.
+The Docusaurus bridge and the generated child intentionally share `/storybook`. Navigation from the Tools menu and the Component Forge bridge must therefore use a full document request, not Docusaurus client routing. The composite server resolves `/storybook/index.html` and permanently redirects the extensionless `/storybook` and `/typedoc` child roots to `/storybook/` and `/typedoc/`, preserving query strings so relative child assets always resolve beneath the correct mount. Running Docusaurus alone leaves the symbolic bridges available with their runtime guidance.
 
 ## Shared next-generation theme
 

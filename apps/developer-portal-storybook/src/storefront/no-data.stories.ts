@@ -3,11 +3,16 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { NoData } from '../../../storefront/src/app/shared/ui/no-data/no-data';
 
 const meta = {
-	title: 'Storefront/States/No Data',
+	title: 'Storefront/Feedback/Empty State',
 	component: NoData,
 	tags: ['autodocs'],
 	parameters: {
 		application: 'storefront',
+		docs: {
+			description: {
+				component: 'The real storefront empty-state component with deterministic text fixtures.',
+			},
+		},
 	},
 	args: {
 		class: 'no-data-added',
@@ -19,4 +24,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const FilteredCatalogue: Story = {
+	name: 'Filtered catalogue',
+};

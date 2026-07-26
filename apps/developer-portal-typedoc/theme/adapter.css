@@ -8,6 +8,10 @@ body {
 	font-family: var(--portal-font-sans);
 }
 
+html {
+	font-size: 15px;
+}
+
 body {
 	--color-background: var(--portal-canvas);
 	--color-background-secondary: var(--portal-surface);
@@ -26,6 +30,7 @@ body {
 		var(--portal-canvas);
 	font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 	font-optical-sizing: auto;
+	line-height: 1.55;
 }
 
 body::before,
@@ -58,11 +63,36 @@ body::after {
 .container-main {
 	position: relative;
 	z-index: 6;
-	max-width: 1480px;
+	grid-template-areas: 'sidebar content toc';
+	grid-template-columns: minmax(190px, 220px) minmax(0, 1fr) minmax(210px, 250px);
+	gap: 24px;
+	width: min(1540px, calc(100% - 48px));
+	max-width: none;
+	margin: 28px auto 48px;
+	padding: 0;
+	align-items: start;
+}
+
+.tsd-page-toolbar .container,
+footer .container {
+	width: min(1540px, calc(100% - 48px));
+	max-width: none;
+	margin-inline: auto;
+	padding-inline: 0;
+}
+
+.col-content {
+	min-width: 0;
+	padding: 0;
 }
 
 .site-menu,
 .page-menu {
+	align-self: start;
+	height: fit-content;
+	max-height: calc(100vh - 104px);
+	overflow: auto;
+	padding: 14px;
 	border: var(--portal-border-width) solid var(--portal-border);
 	border-radius: var(--portal-radius-lg);
 	background: color-mix(in srgb, var(--portal-surface) 86%, transparent);
@@ -70,6 +100,10 @@ body::after {
 		0 18px 46px rgb(0 0 0 / 18%),
 		inset 0 1px 0 rgb(255 255 255 / 3%);
 	backdrop-filter: blur(16px);
+}
+
+.page-menu {
+	padding: 14px;
 }
 
 .tsd-page-toolbar {
@@ -82,6 +116,7 @@ body::after {
 
 .tsd-page-toolbar .title {
 	color: var(--portal-ink);
+	font-size: 0.92rem;
 	font-weight: 760;
 	letter-spacing: -0.035em;
 }
@@ -107,8 +142,20 @@ body::after {
 	background: transparent;
 }
 
+.tsd-page-title {
+	margin: 2px 0 14px;
+}
+
+.tsd-page-title h1 {
+	margin: 0;
+	font-size: clamp(1.55rem, 2.1vw, 1.9rem);
+	letter-spacing: -0.045em;
+	line-height: 1.15;
+}
+
 .tsd-panel {
-	padding: 20px;
+	margin: 0 0 24px;
+	padding: clamp(22px, 2.6vw, 34px);
 	border: var(--portal-border-width) solid var(--portal-border);
 	border-radius: var(--portal-radius-lg);
 	background: color-mix(in srgb, var(--portal-surface) 78%, transparent);
@@ -118,11 +165,34 @@ body::after {
 	backdrop-filter: blur(14px);
 }
 
-.tsd-page-title h1 {
-	letter-spacing: -0.055em;
+.tsd-typography :where(p, li) {
+	font-size: 0.94rem;
+	line-height: 1.62;
+}
+
+.tsd-typography p {
+	margin-block: 0 0.9rem;
+}
+
+.tsd-typography ul,
+.tsd-typography ol {
+	margin-block: 0.35rem 1rem;
+	padding-left: 1.3rem;
+}
+
+.tsd-typography :where(h1, h2, h3, h4) {
+	margin-top: 1.35em;
+	margin-bottom: 0.55em;
+	letter-spacing: -0.035em;
+	line-height: 1.18;
+}
+
+.tsd-typography > :first-child {
+	margin-top: 0;
 }
 
 .tsd-navigation a {
+	padding-block: 5px;
 	border-radius: var(--portal-radius);
 	transition:
 		background 160ms ease,
@@ -140,6 +210,7 @@ body::after {
 }
 
 .tsd-accordion-summary {
+	min-height: 32px;
 	border-radius: var(--portal-radius);
 	color: var(--portal-muted);
 }
@@ -188,8 +259,10 @@ a {
 footer {
 	position: relative;
 	z-index: 6;
+	padding-block: 13px;
 	border-top-color: var(--portal-border);
 	background: color-mix(in srgb, var(--portal-canvas) 88%, transparent);
+	font-size: 0.84rem;
 }
 
 * {
@@ -211,12 +284,43 @@ footer {
 }
 
 @media (max-width: 768px) {
+	html {
+		font-size: 14.5px;
+	}
+
+	.container-main {
+		display: block;
+		width: calc(100% - 24px);
+		margin: 18px auto 32px;
+	}
+
+	.tsd-page-toolbar .container,
+	footer .container {
+		width: calc(100% - 24px);
+	}
+
+	.site-menu,
+	.page-menu {
+		max-height: none;
+	}
+
 	.tsd-page-toolbar .title::before {
 		display: none;
 	}
 
 	.tsd-panel {
-		padding: 14px;
+		padding: 20px;
+	}
+}
+
+@media (min-width: 769px) and (max-width: 1120px) {
+	.container-main {
+		grid-template-areas: 'sidebar content';
+		grid-template-columns: minmax(180px, 210px) minmax(0, 1fr);
+	}
+
+	.page-menu {
+		display: none;
 	}
 }
 

@@ -919,13 +919,14 @@
 	fill: none;
 	stroke: var(--portal-warning);
 	stroke-dasharray: 5 7;
+	stroke-linecap: round;
 	stroke-width: 1.4;
 	animation: latticeFlow 2.4s linear infinite;
 }
 
 .requestPacket rect,
 .responsePacket rect {
-	fill: color-mix(in srgb, var(--portal-surface-raised) 94%, transparent);
+	fill: var(--portal-surface-raised);
 	stroke: var(--portal-accent);
 }
 

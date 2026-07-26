@@ -616,11 +616,11 @@ export function ChildToolGateway({
 					<span />
 					<span />
 				</div>
-				<div
-					className={styles.scanBeam}
-					aria-hidden="true"
-				/>
 				<div className={styles.visual}>
+					<div
+						className={styles.scanBeam}
+						aria-hidden="true"
+					/>
 					<div className={styles.symbolStage}>
 						<div
 							className={styles.orbitalShell}

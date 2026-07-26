@@ -1,10 +1,10 @@
 ---
-title: "API and Database Local Environment Bootstrap"
-description: "Canonical local MongoDB, API, tooling, and MCP readiness handoff."
+title: 'API and Database Local Environment Bootstrap'
+description: 'Canonical local MongoDB, API, tooling, and MCP readiness handoff.'
 audience: [backend, operator, agent]
 document_role: canonical
 last_verified: 2026-07-25
-search_keywords: "local environment bootstrap mongodb replica set api mcp docker"
+search_keywords: 'local environment bootstrap mongodb replica set api mcp docker'
 ---
 
 # API + DB local environment bootstrap (Cursor / Claude Code handoff)
@@ -17,14 +17,14 @@ search_keywords: "local environment bootstrap mongodb replica set api mcp docker
 
 ## Short answers
 
-| Question | Answer |
-| --- | --- |
-| Can Claude Code / Cursor start API+DB work with pending owner decisions still open? | **Yes** (SAFE NOW / SEAM NOW chunks). |
-| Who connects to Mongo? | **API only** (via `adapters-db-mongo`). Storefront/admin never get a Mongo URI. |
-| Is Docker Mongo + RS part of SAFE NOW? | **Yes** — Phase/Chunk C hard deliverable; local profile belongs in `docker/mongo/`. |
-| Does “Postman app open” equal MCP ready? | **No.** Desktop Postman ≠ Postman MCP. Claude Code mainly uses shell + HTTP; Cursor MCP needs `.env.mcp` + restart. |
-| Where is shared progress? | `project-progress.mdx` — mandatory for all tools. |
-| Touch `nextjs-context`? | **No.** |
+| Question                                                                            | Answer                                                                                                              |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Can Claude Code / Cursor start API+DB work with pending owner decisions still open? | **Yes** (SAFE NOW / SEAM NOW chunks).                                                                               |
+| Who connects to Mongo?                                                              | **API only** (via `adapters-db-mongo`). Storefront/admin never get a Mongo URI.                                     |
+| Is Docker Mongo + RS part of SAFE NOW?                                              | **Yes** — Phase/Chunk C hard deliverable; local profile belongs in `docker/mongo/`.                                 |
+| Does “Postman app open” equal MCP ready?                                            | **No.** Desktop Postman ≠ Postman MCP. Claude Code mainly uses shell + HTTP; Cursor MCP needs `.env.mcp` + restart. |
+| Where is shared progress?                                                           | `project-progress.mdx` — mandatory for all tools.                                                                   |
+| Touch `nextjs-context`?                                                             | **No.**                                                                                                             |
 
 ---
 
@@ -60,13 +60,13 @@ URI shape: `mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directCo
 
 ## 3. Deploy: secrets vs public config (locked ops model)
 
-| | Server secrets | Public runtime config |
-| --- | --- | --- |
-| Examples | Mongo URI/password, JWT/CSRF, MSG91, Spaces, payment keys | `apiUrl`, `siteUrl`, locales, OAuth **client** id |
-| Store | GitHub Actions encrypted secrets + droplet root-owned env / Compose secrets | Same pipeline as non-secret deploy vars |
-| Reach process | Injected into **API** container only | Deploy **writes/mounts** `config.json` into storefront/admin |
-| Git | Never | Localhost defaults OK; **prod/staging config.json never committed** |
-| Local DX | Once: `cp apps/api/.env.example apps/api/.env` | Committed localhost `public/config.json` |
+|               | Server secrets                                                              | Public runtime config                                               |
+| ------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Examples      | Mongo URI/password, JWT/CSRF, MSG91, Spaces, payment keys                   | `apiUrl`, `siteUrl`, locales, OAuth **client** id                   |
+| Store         | GitHub Actions encrypted secrets + droplet root-owned env / Compose secrets | Same pipeline as non-secret deploy vars                             |
+| Reach process | Injected into **API** container only                                        | Deploy **writes/mounts** `config.json` into storefront/admin        |
+| Git           | Never                                                                       | Localhost defaults OK; **prod/staging config.json never committed** |
+| Local DX      | Once: `cp apps/api/.env.example apps/api/.env`                              | Committed localhost `public/config.json`                            |
 
 Build images **without** secrets. Detailed render/deploy scripts place env + config at deploy time. Full catalogue: `environment-variables.mdx`.
 

@@ -3,7 +3,7 @@ title: Source of Truth and Freshness
 description: Authority, conflict resolution and review timing for portal content.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
     - AGENTS.md
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -19,15 +19,15 @@ not allowed to become an independent version of the system.
 
 ## Authority by question
 
-| Question                               | Primary authority                                        |
-| -------------------------------------- | -------------------------------------------------------- |
+| Question                               | Primary authority                                       |
+| -------------------------------------- | ------------------------------------------------------- |
 | What has the owner locked?             | `docs/engineering-live-context/owner-decisions-log.mdx` |
-| What architecture is intended?         | Current Angular knowledge-base documents and ADRs        |
-| What behaviour exists now?             | Tested code and observed runtime behaviour               |
-| What shape crosses an API boundary?    | zod contracts and generated OpenAPI                      |
-| What shape is persisted?               | Adapter models, validators, indexes and migrations       |
-| What must pass before delivery?        | `execution-roadmap.mdx`, tests and CI rules               |
-| How should a maintainer understand it? | Canonical Live Context plus derived portal guidance      |
+| What architecture is intended?         | Current Angular knowledge-base documents and ADRs       |
+| What behaviour exists now?             | Tested code and observed runtime behaviour              |
+| What shape crosses an API boundary?    | zod contracts and generated OpenAPI                     |
+| What shape is persisted?               | Adapter models, validators, indexes and migrations      |
+| What must pass before delivery?        | `execution-roadmap.mdx`, tests and CI rules             |
+| How should a maintainer understand it? | Canonical Live Context plus derived portal guidance     |
 
 ## Conflict rule
 

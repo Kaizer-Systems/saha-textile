@@ -355,9 +355,9 @@ Unanswered questions live only in `pending-decisions.mdx`. When an answer is con
 - The Engineering Live Context file list, routes, and command-palette search entries are build-indexed; adding or removing a canonical file must not require a React registry or hard-coded count.
 - A small `LIVE` navbar control exposes the build-indexed canonical document set. “Live” means the latest successfully built portal snapshot, not unsaved editor content.
 - OpenAPI remains API machine truth.
-- Scalar is the single planned human-facing API reference at `/api/reference`.
+- Scalar is the single human-facing API reference at `/api/reference`; its current generated document is explicitly scaffolded until the operation contract is complete.
 - `/api/openapi.json` exposes the machine-readable document.
-- Do not maintain parallel Swagger UI, Redoc, or `/api/console`.
+- Do not maintain parallel long-term API-reference UI or `/api/console` surfaces.
 - Interactive API requests target approved development/staging only and never bypass auth, CSRF, RBAC, or rate limits.
 - Portal page lifecycle values are exactly:
     - `implemented`;
@@ -368,12 +368,19 @@ Unanswered questions live only in `pending-decisions.mdx`. When an answer is con
 - Portal pages declare audience, verification date, and precise source paths.
 - Portal validation rejects stale/missing provenance and forbidden terminology.
 - Current code/runtime and locked target intent must remain visibly distinct.
-- **Release blocker:** the portal must not be deployed until access control protects the entire host, including HTML, JavaScript/CSS/assets, search payloads, Engineering Live Context, Storybook, Scalar, TypeDoc, and future database-catalogue output.
+- **Release blocker:** the portal must not be deployed until access control protects the entire host, including HTML, JavaScript/CSS/assets, search payloads, Engineering Live Context, Storybook, Scalar, TypeDoc, and database-catalogue output.
 - Portal access is default-deny and identity-allowlisted. An unrestricted “Everyone” policy or unrestricted email-OTP access is forbidden.
 - `noindex`, robots directives, and hidden navigation are defense-in-depth only and never access control.
 - The origin must be protected from direct bypass, using an approved Cloudflare Tunnel or authenticated-origin/JWT design. Machine access uses scoped service tokens.
 - Release verification must prove unauthorized users cannot fetch either the portal shell or a known static asset and cannot reach the origin directly.
 - Local persistent serving binds to `127.0.0.1` by default.
+- Portal navigation to every generated child surface always enters through a unique Docusaurus bridge route; generated mounts are never used as top-navbar destinations.
+- The locked child-transition metaphors are:
+    - Storybook — **Component Forge**: orbiting interface primitives assemble into one building block;
+    - TypeDoc — **Type Lattice**: source glyphs resolve through a lattice into a typed contract prism;
+    - Scalar — **Request Wormhole**: an OpenAPI operation packet crosses a contract event horizon and emerges as a governed test request;
+    - MongoDB catalogue — **Schema Observatory**: a telescope resolves the seven implemented model constellations from source evidence.
+- Canonical bridge routes are `/tools/storybook`, `/tools/typedoc`, `/tools/scalar`, and `/tools/database-catalogue`. Their generated child mounts remain `/storybook/`, `/typedoc/`, `/api/reference/`, and `/database/catalogue/`.
 - The repository is public, so committed documentation is public in source even when the deployment is private; secret or confidential credentials must never enter portal content or its browser-delivered indexes.
 - Wave 2 delivery order is Schema Nebula → ⌘K Verbs → First Flight.
 - Schema Nebula’s canonical route is `/database/schema-nebula`.

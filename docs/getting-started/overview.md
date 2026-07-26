@@ -3,7 +3,7 @@ title: Overview
 description: Start here when maintaining the Saha Textile platform.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/execution-roadmap.mdx
@@ -18,11 +18,11 @@ This portal is the private operating manual for the Saha Textile platform. It sh
 - Stable decisions from `docs/engineering-live-context`.
 - Monorepo maps, phase boundaries, and dependency rules.
 - Business flows at the level already locked by the knowledge base.
-- Placeholders for generated API, database, and UI documentation.
+- Generated Storybook and TypeDoc children plus visibly scaffolded current-evidence Scalar and MongoDB catalogue surfaces.
 
 ## What waits for implementation
 
-- Scalar API Reference waits for the real OpenAPI document to be integrated into the portal at the locked route.
+- Scalar renders the current generated OpenAPI at the locked route; the operation contract remains scaffolded until its completeness gates pass.
 - Generated database collection pages wait for the catalogue generator; models and indexes already exist in the Mongo adapter.
 - Storybook links wait until storefront/admin components and stories exist.
 - Pagefind remains a deferred optional full-text layer. The current ⌘K palette already receives a build-generated index from every page's frontmatter, so new routes appear without maintaining a static command list.

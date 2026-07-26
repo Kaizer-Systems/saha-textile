@@ -1,10 +1,10 @@
 ---
-title: "Pending Decisions"
-description: "Canonical inbox of unresolved owner decisions and stable implementation gates."
+title: 'Pending Decisions'
+description: 'Canonical inbox of unresolved owner decisions and stable implementation gates.'
 audience: [engineering, product, operator, agent]
 document_role: canonical
 last_verified: 2026-07-25
-search_keywords: "pending decisions owner questions implementation gates unresolved"
+search_keywords: 'pending decisions owner questions implementation gates unresolved'
 ---
 
 # Pending Decisions — Saha Textile
@@ -27,36 +27,36 @@ search_keywords: "pending decisions owner questions implementation gates unresol
 
 ## Open-decision index
 
-| ID | Decision | Primary impact |
-| --- | --- | --- |
-| `DEC-NUMBERING` | Order, tax-invoice, purchase-invoice, and related document numbering | Orders, invoices, sequences, GST audit |
-| `DEC-TAX-HSN` | Tax classes, GST slabs, and HSN granularity | Catalog, checkout, invoices, accounting |
-| `DEC-SHIPPING` | Launch shipping-rate policy | Checkout, Shiprocket seam, promotions |
-| `DEC-RETURNS` | Return/refund policy | Orders, returns, refunds, customer support |
-| `DEC-PROMO-STACK` | Promotion and coupon stacking | Pricing engine, checkout |
-| `DEC-STOCK-RESERVE` | Stock reservation timing and TTL | Inventory, checkout, payment recovery |
-| `DEC-BACKORDER` | Backorder/oversell policy | Catalog, inventory, storefront |
-| `DEC-ORDER-SNAPSHOT` | Immutable order-line snapshot fields | Orders, invoices, analytics, support |
-| `DEC-ADDRESS` | Address model and checkout phone requirements | Accounts, checkout, shipping |
-| `DEC-SKU` | Product and variant SKU policy | Catalog, inventory, imports |
-| `DEC-VARIANT-OVERRIDES` | Fields variants may override | Catalog contracts and admin forms |
-| `DEC-PRICE-DISPLAY` | MRP, sale, and price-range behavior | Catalog, pricing, storefront |
-| `DEC-ADDON-MEASUREMENTS` | Add-on pricing and measurement validation | Product setup, cart, orders |
-| `DEC-PRODUCT-RELATIONS` | Curated versus analytics-backed relations | Merchandising and analytics |
-| `DEC-BUNDLE-NESTING` | Whether bundles can contain bundles | Catalog and inventory validation |
-| `DEC-CUSTOMER-CREDIT` | Ledger, store credit, wallet, and points scope | Customers, refunds, checkout |
-| `DEC-DELETE-RETENTION` | Soft delete, hard delete, and retention rules | All durable collections |
-| `DEC-ID-SLUG` | IDs, business codes, slugs, and redirects | Catalog, SEO, orders |
-| `DEC-BADGES-RAILS` | Storefront badge and rail taxonomy | Analytics and merchandising |
-| `DEC-SCOPE-GAPS` | Missing business flows and launch scope | Whole product |
-| `DEC-I18N-ROUTES` | Canonical locale URL policy | Routing, SEO, hreflang |
-| `DEC-IMG-PX` | Image derivative pixel ladder | Media worker and storefront images |
-| `DEC-MEDIA-CAPS` | Image/video ingest limits | Upload API, admin UX, workers |
-| `DEC-PAYPAL-FX` | Treatment of PayPal FX-conversion markup | Foreign-currency pricing and margin |
-| `DEC-INR-GATEWAY-TIMING` | Timing of CCAvenue-to-Razorpay succession | Payment adapter delivery and operations |
-| `DEC-DOMAIN-TOPOLOGY` | Production storefront/admin/API hostname topology | Cookies, CORS, Nginx, deployment |
-| `DEC-TRANSLATION-QUALITY` | French translation authorship and acceptance policy | Storefront/admin copy quality and release QA |
-| `DEC-PORTAL-PRIVATE-ACCESS` | Developer-portal identity policy and origin-protection mechanism | Portal deployment, Cloudflare, service access |
+| ID                          | Decision                                                             | Primary impact                                |
+| --------------------------- | -------------------------------------------------------------------- | --------------------------------------------- |
+| `DEC-NUMBERING`             | Order, tax-invoice, purchase-invoice, and related document numbering | Orders, invoices, sequences, GST audit        |
+| `DEC-TAX-HSN`               | Tax classes, GST slabs, and HSN granularity                          | Catalog, checkout, invoices, accounting       |
+| `DEC-SHIPPING`              | Launch shipping-rate policy                                          | Checkout, Shiprocket seam, promotions         |
+| `DEC-RETURNS`               | Return/refund policy                                                 | Orders, returns, refunds, customer support    |
+| `DEC-PROMO-STACK`           | Promotion and coupon stacking                                        | Pricing engine, checkout                      |
+| `DEC-STOCK-RESERVE`         | Stock reservation timing and TTL                                     | Inventory, checkout, payment recovery         |
+| `DEC-BACKORDER`             | Backorder/oversell policy                                            | Catalog, inventory, storefront                |
+| `DEC-ORDER-SNAPSHOT`        | Immutable order-line snapshot fields                                 | Orders, invoices, analytics, support          |
+| `DEC-ADDRESS`               | Address model and checkout phone requirements                        | Accounts, checkout, shipping                  |
+| `DEC-SKU`                   | Product and variant SKU policy                                       | Catalog, inventory, imports                   |
+| `DEC-VARIANT-OVERRIDES`     | Fields variants may override                                         | Catalog contracts and admin forms             |
+| `DEC-PRICE-DISPLAY`         | MRP, sale, and price-range behavior                                  | Catalog, pricing, storefront                  |
+| `DEC-ADDON-MEASUREMENTS`    | Add-on pricing and measurement validation                            | Product setup, cart, orders                   |
+| `DEC-PRODUCT-RELATIONS`     | Curated versus analytics-backed relations                            | Merchandising and analytics                   |
+| `DEC-BUNDLE-NESTING`        | Whether bundles can contain bundles                                  | Catalog and inventory validation              |
+| `DEC-CUSTOMER-CREDIT`       | Ledger, store credit, wallet, and points scope                       | Customers, refunds, checkout                  |
+| `DEC-DELETE-RETENTION`      | Soft delete, hard delete, and retention rules                        | All durable collections                       |
+| `DEC-ID-SLUG`               | IDs, business codes, slugs, and redirects                            | Catalog, SEO, orders                          |
+| `DEC-BADGES-RAILS`          | Storefront badge and rail taxonomy                                   | Analytics and merchandising                   |
+| `DEC-SCOPE-GAPS`            | Missing business flows and launch scope                              | Whole product                                 |
+| `DEC-I18N-ROUTES`           | Canonical locale URL policy                                          | Routing, SEO, hreflang                        |
+| `DEC-IMG-PX`                | Image derivative pixel ladder                                        | Media worker and storefront images            |
+| `DEC-MEDIA-CAPS`            | Image/video ingest limits                                            | Upload API, admin UX, workers                 |
+| `DEC-PAYPAL-FX`             | Treatment of PayPal FX-conversion markup                             | Foreign-currency pricing and margin           |
+| `DEC-INR-GATEWAY-TIMING`    | Timing of CCAvenue-to-Razorpay succession                            | Payment adapter delivery and operations       |
+| `DEC-DOMAIN-TOPOLOGY`       | Production storefront/admin/API hostname topology                    | Cookies, CORS, Nginx, deployment              |
+| `DEC-TRANSLATION-QUALITY`   | French translation authorship and acceptance policy                  | Storefront/admin copy quality and release QA  |
+| `DEC-PORTAL-PRIVATE-ACCESS` | Developer-portal identity policy and origin-protection mechanism     | Portal deployment, Cloudflare, service access |
 
 ---
 

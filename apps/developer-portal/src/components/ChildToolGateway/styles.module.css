@@ -15,10 +15,10 @@
 	position: relative;
 	display: grid;
 	grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
-	width: min(1180px, calc(100vw - var(--portal-sidebar-width, 280px) - 64px));
+	width: 100%;
 	max-width: none;
 	min-height: 520px;
-	margin: 2.4rem 0 2.4rem 50%;
+	margin: 2.4rem 0;
 	overflow: hidden;
 	border: 1px solid color-mix(in srgb, var(--portal-accent) 38%, var(--portal-border));
 	border-radius: var(--portal-radius-xl);
@@ -31,7 +31,6 @@
 		inset 0 1px 0 rgb(255 255 255 / 6%);
 	isolation: isolate;
 	perspective: 1200px;
-	transform: translateX(-50%);
 }
 
 .gateway[data-symbol='type-lattice'] {
@@ -163,9 +162,11 @@
 
 .visual {
 	position: relative;
+	z-index: 1;
 	display: grid;
 	align-content: center;
 	min-width: 0;
+	overflow: hidden;
 	padding: clamp(20px, 4vw, 46px);
 	border-right: 1px solid color-mix(in srgb, var(--portal-accent) 22%, var(--portal-border));
 	transform: rotateX(var(--gateway-rotate-x)) rotateY(var(--gateway-rotate-y));
@@ -175,6 +176,7 @@
 
 .symbolStage {
 	position: relative;
+	z-index: 2;
 	display: grid;
 	place-items: center;
 	min-height: 360px;
@@ -249,6 +251,8 @@
 }
 
 .coordinates {
+	position: relative;
+	z-index: 2;
 	display: flex;
 	justify-content: space-between;
 	color: var(--portal-subtle);
@@ -259,23 +263,25 @@
 
 .copy {
 	position: relative;
+	z-index: 2;
 	display: grid;
 	align-content: center;
 	gap: 14px;
+	min-width: 0;
 	padding: clamp(28px, 4.2vw, 48px);
 	background: linear-gradient(135deg, transparent, color-mix(in srgb, var(--portal-surface) 42%, transparent));
 }
 
-.copy h1,
+.copy h2,
 .copy p {
 	margin: 0;
 }
 
-.copy h1 {
+.copy h2 {
 	color: var(--portal-ink);
-	font-size: clamp(1.9rem, 3.2vw, 2.7rem);
+	font-size: clamp(1.45rem, 2.25vw, 2.15rem);
 	letter-spacing: -0.045em;
-	line-height: 1.02;
+	line-height: 1.08;
 	text-wrap: balance;
 }
 
@@ -295,9 +301,9 @@
 }
 
 .personaRail {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: space-between;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	align-items: start;
 	gap: 8px 14px;
 	margin-bottom: 4px;
 	color: var(--portal-subtle);
@@ -310,6 +316,11 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 7px;
+}
+
+.personaRail span:last-child {
+	justify-self: end;
+	text-align: right;
 }
 
 .personaRail i {
@@ -1263,7 +1274,7 @@
 
 @media (max-width: 996px) {
 	.gateway {
-		width: calc(100vw - 32px);
+		width: 100%;
 	}
 }
 

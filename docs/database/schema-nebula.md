@@ -5,7 +5,7 @@ slug: /database/schema-nebula
 wide: true
 status: implemented
 audience: [beginner, backend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 search_keywords: 'schema nebula collections database mongodb star map models ghosts graph relationships bounded context DEC'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx

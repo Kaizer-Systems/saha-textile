@@ -1,10 +1,10 @@
 ---
-title: "Project Progress"
-description: "Canonical cross-tool checkpoint for current implementation status and verification evidence."
+title: 'Project Progress'
+description: 'Canonical cross-tool checkpoint for current implementation status and verification evidence.'
 audience: [engineering, operator, agent]
 document_role: canonical
-last_verified: 2026-07-25
-search_keywords: "project progress current status checkpoint verification evidence chunks gates"
+last_verified: 2026-07-26
+search_keywords: 'project progress current status checkpoint verification evidence chunks gates'
 ---
 
 # Project Progress — Saha Textile (cross-tool checkpoint)
@@ -79,7 +79,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 ```json
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-07-25",
+	"lastVerified": "2026-07-26",
 	"chunks": {
 		"A": "done",
 		"B": "partial",
@@ -269,6 +269,11 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 - 2026-07-26 — [BLOCKED] **Generated MongoDB field catalogue remains pending.** `/database/catalogue` intentionally returns 404 and the composite manifest records the child as gated. Reason: current persistence models still include temporary simplified shapes; nested validators/indexes, DTO-to-persistence mappings, transaction/migration metadata, and deterministic sanitized examples are not stable enough to generate authoritative documentation. Unblock only after the trigger in `docs/database/transactions-and-generation.md` passes; generation must remain source-only, deterministic, freshness-validated, and must never require production database access. Tool: codex.
 - 2026-07-26 — [BLOCKED] **Developer-portal production release remains pending on private access.** Local loopback serving is verified, but no deployment may be promoted until `DEC-PORTAL-PRIVATE-ACCESS` records the human allowlist, session/re-authentication policy, service-token consumers, and Cloudflare Tunnel versus authenticated-origin/JWT mechanism. Release verification must deny both the portal shell and a known static asset to an unauthorized user, prevent direct-origin bypass, and protect Docusaurus, search data, Engineering Live Context, Storybook, TypeDoc, future Scalar/OpenAPI, and future database-catalogue assets as one host. Tool: codex.
 - 2026-07-26 — [PARTIAL] **Portal-adjacent verification and performance debt remains visible.** Added portal packages pass direct typechecks, but the repository-wide Turbo typecheck is blocked on this machine because Turbo resolves global pnpm 11.17 while the repository pins 11.9. Repository peer checking also reports existing Analog/`marked`, Vite/Vitest/`@types/node`, and Angular/ng-apexcharts/ngx-infinite-scroll mismatches outside the new portal children. Storybook still reports non-blocking large preview-bundle and unused shell-entry warnings; legacy application Sass deprecations remain source debt. The repository-wide Prettier check also includes pre-existing Docker formatting plus the content-preserving migrated canonical MDX and generated lockfile; do not hide these by claiming the narrower portal format check is repository-wide green. Tool: codex.
+- 2026-07-26 — [DONE] **Generated-child navigation collision removed and symbolic gateways added.** The Docusaurus Tools menu now forces full-document navigation to the generated `/storybook/index.html` and `/typedoc/index.html` entries instead of letting the client router resolve the fallback bridge at the same route. The Storybook bridge is now a responsive Component Forge: orbiting interface primitives align into one component block before launch. The TypeDoc bridge is a Type Lattice: source/type glyphs resolve through a lattice into a contract prism. Both transitions are keyboard-operable, reduced-motion-safe, use the shared portal tokens, and retain truthful composite-runtime guidance. Browser QA verified the top-nav Storybook handoff, both bridge buttons, Storybook entry, and TypeDoc entry. Tool: codex.
+- 2026-07-26 — [DONE] **Storybook next-generation experience pass completed.** Storybook's manager and Angular preview now consume the shared portable token contract through tool-specific adapters, with a dark Component Forge manager, live canvas constellation, holographic scan veil, cursor-follow glow, glass depth, application context HUD, responsive/reduced-motion behavior, and a stable dark Docs base. Storefront/Admin application CSS remains generated separately and mutually exclusive. Production build and isolated browser QA are green after live QA caught and corrected an unsupported CSS-variable theme-object attempt that had blanked the manager. Existing preview bundle-size and unused-shell-entry warnings remain non-blocking debt. Tool: codex.
+- 2026-07-26 — [PARTIAL] **Storybook component expansion pass 1 landed with an explicit coverage policy.** The single renderer now contains a Shared Component Forge launch bay, the Shared theme-contract specimen, real Storefront empty/loading/title/product-skeleton stories (including horizontal/vertical states), and real Admin product/sidebar skeleton states. Remaining reusable UI is staged in four small passes—foundation/feedback, commerce configuration, admin operations, and application composition—because issuer-sensitive duplicate app aliases, deterministic store/query/router/runtime fixtures, strict legacy typing, and colliding application asset paths must be resolved without imitating components or weakening Storybook checks. The coverage policy and reasons are recorded in the generated-surfaces runtime guide. Tool: codex.
+- 2026-07-26 — [PARTIAL] **Storybook isolated dev command remains pending; verified production paths are unaffected.** Both the pinned Storybook 10.3.2 CLI and Angular start builder currently exit with `expected options to have a port` even when the workspace/CLI port is present. Production Storybook generation, the persistent composite build path, direct typecheck, and static browser rendering remain green. The runtime guide now advertises the verified direct build command and records the direct-development command as focused tooling debt instead of claiming it works. Tool: codex.
+- 2026-07-26 — [PARTIAL] **Latest persistent composite promotion is waiting on unrelated concurrent storefront freshness reconciliation.** During browser QA, separate user-owned taxonomy/menu changes appeared under `apps/storefront/src/app`; they were preserved and excluded from this task. The strict portal validator correctly rejects a new composite until those source changes reverify their dependent storefront/business-flow pages, so the running server retains its last known good tree. This task's Storybook production build, portal/Storybook TypeScript checks, built-child navigation, and isolated browser QA are independently green; do not claim the newest composite candidate was promoted until the separate storefront evidence is reconciled. Tool: codex.
 - _(append)_
 
 ---

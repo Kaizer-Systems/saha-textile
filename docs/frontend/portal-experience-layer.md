@@ -3,7 +3,7 @@ title: Portal Experience Layer
 description: The developer portal's own next-gen interaction layer, its code map, and the convention that these stylings stay comment-marked.
 status: implemented
 audience: [frontend]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/project-progress.mdx

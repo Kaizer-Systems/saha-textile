@@ -1,16 +1,11 @@
 /**
  * NEXT-GEN-UI · Child tool gateways
  * ----------------------------------------------------------------------------
- * WHAT: symbolic, accessible launch sequences between Docusaurus and generated
- * child tools.
- * WHY: every portal route lands on a unique Docusaurus bridge before handing
- * off to a separately mounted generated child. A full document navigation lets
- * the composite static server resolve that child entry.
- * HOW: each gateway owns a tool-specific SVG metaphor, responds to pointer
- * position, and awakens a full-viewport living-system sequence before the
- * document handoff.
- * TUNING: keep LAUNCH_DURATION_MS synchronized with
- * --gateway-launch-duration. Reduced-motion users bypass the cinematic delay.
+ * WHAT: four independent symbolic bridge scenes and cinematic handoffs.
+ * WHY: each generated child has its own visual identity; only navigation,
+ * prefetch, accessibility, and recovery are shared.
+ * HOW: tool-specific React scenes own their SVG vocabulary and six-second
+ * transition story. Reduced-motion users bypass the cinematic delay.
  */
 
 import React, { type PointerEvent, useCallback, useEffect, useRef, useState } from 'react';
@@ -30,47 +25,59 @@ type ChildToolGatewayProps = {
 	symbol: ChildToolSymbol;
 };
 
-const LAUNCH_DURATION_MS = 3000;
-
 type GatewayPersona = {
 	mode: string;
 	awakening: string;
-	phases: [string, string, string];
+	phases: [string, string, string, string];
 };
+
+const LAUNCH_DURATION_MS = 6000;
 
 function gatewayPersona(symbol: ChildToolSymbol): GatewayPersona {
 	switch (symbol) {
 		case 'component-forge':
 			return {
-				mode: 'PRIMITIVE MATRIX',
-				awakening: 'Component Forge is alive',
-				phases: ['Capturing interface atoms', 'Forging application contexts', 'Releasing the component matrix'],
+				mode: 'ZERO-G FABRICATION',
+				awakening: 'Component Forge online',
+				phases: [
+					'Igniting fabrication rails',
+					'Capturing interface primitives',
+					'Infusing the shared theme core',
+					'Deploying the component explorer',
+				],
 			};
 		case 'type-lattice':
 			return {
 				mode: 'CONTRACT INTELLIGENCE',
-				awakening: 'Type Lattice is resolving',
+				awakening: 'Type Lattice resolving',
 				phases: [
-					'Reading exported glyphs',
-					'Crystallizing contract edges',
-					'Opening the typed knowledge field',
+					'Activating exported source',
+					'Resolving type constraints',
+					'Crystallising contract knowledge',
+					'Unfolding the reference plane',
 				],
 			};
 		case 'request-wormhole':
 			return {
 				mode: 'GOVERNED REQUEST CHANNEL',
-				awakening: 'Request Wormhole is opening',
+				awakening: 'Request Wormhole opening',
 				phases: [
-					'Locking the OpenAPI vector',
-					'Bending the request corridor',
-					'Stabilizing the flight console',
+					'Assembling the operation packet',
+					'Clearing security gates',
+					'Crossing the contract horizon',
+					'Deploying the flight console',
 				],
 			};
 		case 'schema-observatory':
 			return {
 				mode: 'PERSISTENCE TELEMETRY',
-				awakening: 'Schema Observatory has sight',
-				phases: ['Acquiring model signals', 'Resolving schema constellations', 'Focusing the evidence field'],
+				awakening: 'Schema Observatory awake',
+				phases: [
+					'Opening the observatory',
+					'Acquiring model signals',
+					'Resolving schema evidence',
+					'Projecting the source catalogue',
+				],
 			};
 	}
 }
@@ -79,446 +86,668 @@ function resolveChildEntry(target: string): string {
 	return `${target.replace(/\/+$/u, '')}/index.html`;
 }
 
-function ComponentForgeSymbol({ active }: { active: boolean }) {
+function SceneTelemetry({ left, right }: { left: string; right: string }) {
 	return (
-		<svg
-			className={styles.symbol}
-			data-active={active ? 'true' : 'false'}
-			viewBox="0 0 520 300"
-			role="img"
-			aria-label="Interface primitives orbiting and assembling into a component block"
+		<div
+			className={styles.sceneTelemetry}
+			aria-hidden="true"
 		>
-			<defs>
-				<radialGradient id="forge-core">
-					<stop
-						offset="0"
-						stopColor="var(--portal-accent)"
-						stopOpacity="0.68"
-					/>
-					<stop
-						offset="1"
-						stopColor="var(--portal-accent)"
-						stopOpacity="0"
-					/>
-				</radialGradient>
-				<filter
-					id="forge-glow"
-					x="-80%"
-					y="-80%"
-					width="260%"
-					height="260%"
-				>
-					<feGaussianBlur
-						stdDeviation="5"
-						result="blur"
-					/>
-					<feMerge>
-						<feMergeNode in="blur" />
-						<feMergeNode in="SourceGraphic" />
-					</feMerge>
-				</filter>
-			</defs>
-			<circle
-				className={styles.orbit}
-				cx="260"
-				cy="150"
-				r="112"
-			/>
-			<circle
-				className={styles.orbit}
-				cx="260"
-				cy="150"
-				r="76"
-			/>
-			<circle
-				className={styles.coreHalo}
-				cx="260"
-				cy="150"
-				r="76"
-				fill="url(#forge-core)"
-			/>
-			<g className={`${styles.primitive} ${styles.primitiveOne}`}>
-				<rect
-					x="62"
-					y="60"
-					width="84"
-					height="38"
-					rx="8"
-				/>
-				<circle
-					cx="81"
-					cy="79"
-					r="6"
-				/>
-				<path d="M96 79h32" />
-			</g>
-			<g className={`${styles.primitive} ${styles.primitiveTwo}`}>
-				<rect
-					x="384"
-					y="52"
-					width="72"
-					height="72"
-					rx="12"
-				/>
-				<path d="M402 72h36M402 87h26M402 102h31" />
-			</g>
-			<g className={`${styles.primitive} ${styles.primitiveThree}`}>
-				<rect
-					x="388"
-					y="210"
-					width="82"
-					height="36"
-					rx="18"
-				/>
-				<path d="M410 228h38" />
-			</g>
-			<g className={`${styles.primitive} ${styles.primitiveFour}`}>
-				<rect
-					x="55"
-					y="202"
-					width="94"
-					height="50"
-					rx="8"
-				/>
-				<path d="m75 233 17-17 15 12 16-15" />
-			</g>
-			<g
-				className={styles.forgeBlock}
-				filter="url(#forge-glow)"
-			>
-				<rect
-					x="191"
-					y="93"
-					width="138"
-					height="114"
-					rx="16"
-				/>
-				<path d="M212 119h96M212 143h58M212 181h96" />
-				<circle
-					cx="295"
-					cy="143"
-					r="13"
-				/>
-				<path
-					className={styles.forgePulse}
-					d="M174 150h17M329 150h17"
-				/>
-			</g>
-			<g className={styles.connectionLines}>
-				<path d="M145 84 191 119M384 90l-55 29M149 225l42-44M388 228l-59-47" />
-			</g>
-		</svg>
+			<span>{left}</span>
+			<span>
+				<i />
+				{right}
+			</span>
+		</div>
 	);
 }
 
-function TypeLatticeSymbol({ active }: { active: boolean }) {
-	return (
-		<svg
-			className={styles.symbol}
-			data-active={active ? 'true' : 'false'}
-			viewBox="0 0 520 300"
-			role="img"
-			aria-label="Typed source glyphs resolving through a lattice into a contract prism"
-		>
-			<defs>
-				<linearGradient
-					id="lattice-prism"
-					x1="0"
-					y1="0"
-					x2="1"
-					y2="1"
-				>
-					<stop
-						offset="0"
-						stopColor="var(--portal-accent)"
-						stopOpacity="0.62"
-					/>
-					<stop
-						offset="0.52"
-						stopColor="var(--portal-success)"
-						stopOpacity="0.3"
-					/>
-					<stop
-						offset="1"
-						stopColor="var(--portal-warning)"
-						stopOpacity="0.18"
-					/>
-				</linearGradient>
-				<filter
-					id="lattice-glow"
-					x="-70%"
-					y="-70%"
-					width="240%"
-					height="240%"
-				>
-					<feGaussianBlur
-						stdDeviation="4"
-						result="blur"
-					/>
-					<feMerge>
-						<feMergeNode in="blur" />
-						<feMergeNode in="SourceGraphic" />
-					</feMerge>
-				</filter>
-			</defs>
-			<g className={styles.latticeLines}>
-				<path d="M74 72 260 150 446 72M74 228l186-78 186 78M74 72v156M446 72v156" />
-				<path d="M151 104v92M369 104v92M151 104l218 92M369 104 151 196" />
-			</g>
-			<g className={styles.typeGlyphs}>
-				<text
-					x="56"
-					y="64"
-				>
-					{'<'}
-				</text>
-				<text
-					x="444"
-					y="64"
-				>
-					{'>'}
-				</text>
-				<text
-					x="52"
-					y="254"
-				>
-					{'{'}
-				</text>
-				<text
-					x="448"
-					y="254"
-				>
-					{'}'}
-				</text>
-				<text
-					x="132"
-					y="100"
-				>
-					T
-				</text>
-				<text
-					x="370"
-					y="100"
-				>
-					?
-				</text>
-			</g>
-			<g className={styles.latticeNodes}>
-				{[
-					[74, 72],
-					[446, 72],
-					[74, 228],
-					[446, 228],
-					[151, 104],
-					[369, 104],
-					[151, 196],
-					[369, 196],
-				].map(([cx, cy]) => (
-					<circle
-						key={`${cx}-${cy}`}
-						cx={cx}
-						cy={cy}
-						r="5"
-					/>
-				))}
-			</g>
-			<g
-				className={styles.prism}
-				filter="url(#lattice-glow)"
-			>
-				<path
-					d="m260 72 72 42v76l-72 42-72-42v-76Z"
-					fill="url(#lattice-prism)"
-				/>
-				<path d="m260 72 72 42-72 42-72-42Zm0 84v76M188 114v76l72 42 72-42v-76" />
-				<text
-					x="234"
-					y="164"
-				>
-					TS
-				</text>
-			</g>
-		</svg>
-	);
-}
-
-function RequestWormholeSymbol({ active }: { active: boolean }) {
-	return (
-		<svg
-			className={styles.symbol}
-			data-active={active ? 'true' : 'false'}
-			viewBox="0 0 520 300"
-			role="img"
-			aria-label="An API request packet traversing an OpenAPI wormhole"
-		>
-			<defs>
-				<radialGradient id="wormhole-core">
-					<stop
-						offset="0"
-						stopColor="var(--portal-canvas)"
-					/>
-					<stop
-						offset="0.42"
-						stopColor="var(--portal-accent)"
-						stopOpacity="0.34"
-					/>
-					<stop
-						offset="1"
-						stopColor="var(--portal-accent)"
-						stopOpacity="0"
-					/>
-				</radialGradient>
-			</defs>
-			<g className={styles.wormholeRings}>
-				{[114, 90, 66, 42].map((radius) => (
-					<ellipse
-						key={radius}
-						cx="260"
-						cy="150"
-						rx={radius}
-						ry={Math.round(radius * 0.48)}
-					/>
-				))}
-			</g>
-			<circle
-				className={styles.wormholeCore}
-				cx="260"
-				cy="150"
-				r="82"
-				fill="url(#wormhole-core)"
-			/>
-			<path
-				className={styles.requestTrajectory}
-				d="M170 214C196 198 202 166 232 154s91-40 156-59"
-			/>
-			<g className={styles.requestPacket}>
-				<rect
-					x="38"
-					y="194"
-					width="132"
-					height="42"
-					rx="10"
-				/>
-				<text
-					x="104"
-					y="220"
-					textAnchor="middle"
-				>
-					POST /orders
-				</text>
-			</g>
-			<g className={styles.responsePacket}>
-				<rect
-					x="388"
-					y="74"
-					width="86"
-					height="42"
-					rx="10"
-				/>
-				<text
-					x="431"
-					y="100"
-					textAnchor="middle"
-				>
-					201
-				</text>
-			</g>
-			<text
-				className={styles.openapiLabel}
-				x="217"
-				y="176"
-			>
-				OPENAPI
-			</text>
-		</svg>
-	);
-}
-
-function SchemaObservatorySymbol({ active }: { active: boolean }) {
-	const modelStars = [
-		[186, 88],
-		[264, 66],
-		[336, 104],
-		[350, 182],
-		[276, 224],
-		[194, 207],
-		[158, 146],
+function ComponentForgeScene() {
+	const primitives = [
+		{ className: styles.forgeButton, label: 'BUTTON', path: 'M24 25h64', kind: 'button' },
+		{ className: styles.forgeInput, label: 'INPUT', path: 'M18 24h78', kind: 'input' },
+		{ className: styles.forgeCard, label: 'CARD', path: 'M18 19h80M18 36h50M18 53h66', kind: 'card' },
+		{ className: styles.forgeNav, label: 'NAV', path: 'M17 22h20M48 22h20M79 22h20', kind: 'nav' },
+		{ className: styles.forgeModal, label: 'MODAL', path: 'M20 18h76M20 34h54M20 50h32', kind: 'modal' },
 	];
+
 	return (
-		<svg
-			className={styles.symbol}
-			data-active={active ? 'true' : 'false'}
-			viewBox="0 0 520 300"
-			role="img"
-			aria-label="A schema telescope resolving seven current MongoDB model constellations"
+		<div
+			className={`${styles.scene} ${styles.forgeScene}`}
+			data-gateway-scene="true"
 		>
-			<g className={styles.observatoryOrbit}>
-				<ellipse
-					cx="260"
-					cy="150"
-					rx="118"
-					ry="94"
-				/>
-				<ellipse
-					cx="260"
-					cy="150"
-					rx="82"
-					ry="64"
-				/>
-			</g>
-			<path
-				className={styles.constellationPath}
-				d="M186 88 264 66 336 104 350 182 276 224 194 207 158 146 186 88 276 224M158 146l178-42"
-			/>
-			<g className={styles.modelStars}>
-				{modelStars.map(([cx, cy], index) => (
-					<g key={`${cx}-${cy}`}>
-						<circle
-							cx={cx}
-							cy={cy}
-							r="8"
-						/>
-						<text
-							x={cx}
-							y={cy + 3}
-						>
-							{index + 1}
-						</text>
-					</g>
-				))}
-			</g>
-			<g className={styles.telescope}>
-				<path d="m76 232 73-71 24 24-72 72Z" />
-				<ellipse
-					cx="162"
-					cy="173"
-					rx="24"
-					ry="35"
-					transform="rotate(-45 162 173)"
-				/>
-				<path d="m108 229-26 48M126 240l14 37" />
-			</g>
-			<text
-				className={styles.mongodbLabel}
-				x="385"
-				y="254"
+			<div
+				className={styles.forgeRail}
+				aria-hidden="true"
 			>
-				7 CURRENT
-			</text>
-		</svg>
+				<span />
+				<span />
+				<span />
+			</div>
+			<div className={styles.forgeCore}>
+				<div className={styles.forgeCorePulse} />
+				<div className={styles.forgeChassis}>
+					<span className={styles.chassisSocket} />
+					<span className={styles.chassisSocket} />
+					<span className={styles.chassisSocket} />
+					<span className={styles.chassisSocket} />
+					<strong>
+						THEME
+						<br />
+						CORE
+					</strong>
+					<small>UNIFIED TOKENS</small>
+				</div>
+				<div className={styles.forgeContext}>
+					<span>STOREFRONT</span>
+					<span>ADMIN</span>
+					<span>SHARED</span>
+				</div>
+			</div>
+			{primitives.map((primitive) => (
+				<div
+					className={`${styles.forgePrimitive} ${primitive.className}`}
+					data-kind={primitive.kind}
+					key={primitive.label}
+				>
+					<svg
+						viewBox="0 0 116 70"
+						aria-hidden="true"
+					>
+						<rect
+							x="3"
+							y="3"
+							width="110"
+							height="64"
+							rx="10"
+						/>
+						<path d={primitive.path} />
+					</svg>
+					<span>{primitive.label}</span>
+				</div>
+			))}
+			<div className={styles.forgeTokenStreams}>
+				<span>COLOR</span>
+				<span>TYPE</span>
+				<span>SPACE</span>
+				<span>DEPTH</span>
+			</div>
+			<SceneTelemetry
+				left="INTERFACE ATOMS · 05"
+				right="MAGNETIC FIELD LIVE"
+			/>
+		</div>
 	);
 }
 
-function GatewaySymbol({ symbol, active }: { symbol: ChildToolSymbol; active: boolean }) {
+function TypeLatticeScene() {
+	const nodes = [
+		{ x: 62, y: 68, label: 'interface' },
+		{ x: 184, y: 44, label: 'schema' },
+		{ x: 300, y: 96, label: 'port' },
+		{ x: 104, y: 190, label: 'params' },
+		{ x: 246, y: 220, label: 'return' },
+		{ x: 352, y: 172, label: 'type' },
+	];
+
+	return (
+		<div
+			className={`${styles.scene} ${styles.latticeScene}`}
+			data-gateway-scene="true"
+		>
+			<div
+				className={styles.sourceColumn}
+				aria-hidden="true"
+			>
+				<span>export interface</span>
+				<strong>{'{ ProductContract }'}</strong>
+				<span>extends Entity</span>
+				<span>price: Money</span>
+				<span>status: ProductStatus</span>
+				<span>resolve(): Promise&lt;Result&gt;</span>
+			</div>
+			<svg
+				className={styles.latticeMap}
+				viewBox="0 0 420 270"
+				role="img"
+				aria-label="Source contracts resolving through a type graph into a crystalline TypeScript prism"
+			>
+				<defs>
+					<linearGradient
+						id="bridge-prism-a"
+						x1="0"
+						y1="0"
+						x2="1"
+						y2="1"
+					>
+						<stop
+							offset="0"
+							stopColor="var(--portal-accent)"
+							stopOpacity=".72"
+						/>
+						<stop
+							offset=".55"
+							stopColor="var(--portal-success)"
+							stopOpacity=".42"
+						/>
+						<stop
+							offset="1"
+							stopColor="var(--portal-warning)"
+							stopOpacity=".2"
+						/>
+					</linearGradient>
+				</defs>
+				<g className={styles.latticeEdges}>
+					<path d="M62 68 184 44 300 96 352 172 246 220 104 190 62 68M184 44l62 176M300 96 104 190" />
+					<path d="M62 68 210 135 352 172M104 190l106-55 90-39" />
+				</g>
+				<g className={styles.latticeNodes}>
+					{nodes.map((node) => (
+						<g
+							key={node.label}
+							transform={`translate(${node.x} ${node.y})`}
+						>
+							<circle r="7" />
+							<circle
+								className={styles.nodeEcho}
+								r="15"
+							/>
+							<text
+								x="0"
+								y="-14"
+								textAnchor="middle"
+							>
+								{node.label}
+							</text>
+						</g>
+					))}
+				</g>
+				<g className={styles.latticePrism}>
+					<path
+						d="m210 80 76 44v82l-76 44-76-44v-82Z"
+						fill="url(#bridge-prism-a)"
+					/>
+					<path d="m210 80 76 44-76 44-76-44 76-44v170m-76-126v82l76 44 76-44v-82" />
+					<text
+						x="210"
+						y="178"
+						textAnchor="middle"
+					>
+						TS
+					</text>
+				</g>
+			</svg>
+			<div
+				className={styles.constraintLens}
+				aria-hidden="true"
+			>
+				<span>TYPE RESOLUTION</span>
+			</div>
+			<div className={styles.latticeCategories}>
+				<span>INTERFACES</span>
+				<span>SIGNATURES</span>
+				<span>PORTS</span>
+				<span>SCHEMAS</span>
+			</div>
+			<SceneTelemetry
+				left="EXPORT GRAPH · RESOLVED"
+				right="CONTRACT PRISM STABLE"
+			/>
+		</div>
+	);
+}
+
+function RequestWormholeScene() {
+	return (
+		<div
+			className={`${styles.scene} ${styles.wormholeScene}`}
+			data-gateway-scene="true"
+		>
+			<div className={styles.requestOrigin}>
+				<span>OPERATION PACKET</span>
+				<strong>POST</strong>
+				<code>/orders</code>
+				<small>JSON · APPLICATION CONTRACT</small>
+			</div>
+			<div
+				className={styles.securityGates}
+				aria-label="Request security controls"
+			>
+				<span>VALIDATE</span>
+				<span>AUTH</span>
+				<span>CSRF</span>
+				<span>RBAC</span>
+				<span>RATE</span>
+			</div>
+			<div
+				className={styles.eventHorizon}
+				aria-hidden="true"
+			>
+				<div className={styles.horizonMembrane} />
+				<div className={styles.horizonCore}>
+					<strong>OPENAPI</strong>
+					<span>CONTRACT HORIZON</span>
+				</div>
+			</div>
+			<div className={styles.responseDestination}>
+				<span>RESPONSE SIGNAL</span>
+				<strong>201</strong>
+				<code>Created</code>
+				<small>GOVERNED · TRACEABLE</small>
+			</div>
+			<div
+				className={styles.operationTrace}
+				aria-hidden="true"
+			>
+				<i />
+			</div>
+			<SceneTelemetry
+				left="TEST REQUEST · ARMED"
+				right="SECURITY CONTROLS ONLINE"
+			/>
+		</div>
+	);
+}
+
+function SchemaObservatoryScene() {
+	const stars = [
+		{ x: 166, y: 65 },
+		{ x: 244, y: 38 },
+		{ x: 326, y: 76 },
+		{ x: 350, y: 154 },
+		{ x: 280, y: 218 },
+		{ x: 190, y: 208 },
+		{ x: 132, y: 138 },
+	];
+
+	return (
+		<div
+			className={`${styles.scene} ${styles.observatoryScene}`}
+			data-gateway-scene="true"
+		>
+			<div
+				className={styles.observatoryDome}
+				aria-hidden="true"
+			>
+				<div className={styles.domeShutter} />
+				<div className={styles.telescopeBody}>
+					<span className={styles.telescopeLens} />
+					<i className={styles.telescopeSight} />
+				</div>
+				<div className={styles.telescopeMount}>
+					<span />
+					<i />
+					<i />
+					<i />
+				</div>
+			</div>
+			<svg
+				className={styles.modelSky}
+				viewBox="0 0 440 260"
+				role="img"
+				aria-label="A telescope resolving seven current MongoDB model constellations"
+			>
+				<g className={styles.skyConnections}>
+					<path d="M166 65 244 38 326 76 350 154 280 218 190 208 132 138 166 65M132 138l218 16M166 65l114 153" />
+				</g>
+				<g className={styles.skyStars}>
+					{stars.map((star, index) => (
+						<g
+							key={`${star.x}-${star.y}`}
+							transform={`translate(${star.x} ${star.y})`}
+						>
+							<circle
+								className={styles.starHalo}
+								r="16"
+							/>
+							<circle r="6" />
+							<text
+								y="3"
+								textAnchor="middle"
+							>
+								{index + 1}
+							</text>
+						</g>
+					))}
+				</g>
+			</svg>
+			<div
+				className={styles.observatoryLens}
+				aria-hidden="true"
+			>
+				<div>
+					<span>MODEL 04</span>
+					<strong>FIELDS · 17</strong>
+					<small>INDEXES · 03</small>
+				</div>
+			</div>
+			<div className={styles.evidenceConsole}>
+				<span>SOURCE EVIDENCE</span>
+				<i />
+				<i />
+				<i />
+				<strong>7 CURRENT MODELS</strong>
+			</div>
+			<SceneTelemetry
+				left="OPTICAL ARRAY · TRACKING"
+				right="NO DATABASE CONNECTION"
+			/>
+		</div>
+	);
+}
+
+function GatewayScene({ symbol }: { symbol: ChildToolSymbol }) {
 	switch (symbol) {
 		case 'component-forge':
-			return <ComponentForgeSymbol active={active} />;
+			return <ComponentForgeScene />;
 		case 'type-lattice':
-			return <TypeLatticeSymbol active={active} />;
+			return <TypeLatticeScene />;
 		case 'request-wormhole':
-			return <RequestWormholeSymbol active={active} />;
+			return <RequestWormholeScene />;
 		case 'schema-observatory':
-			return <SchemaObservatorySymbol active={active} />;
+			return <SchemaObservatoryScene />;
+	}
+}
+
+function TransitionHeader({ persona }: { persona: GatewayPersona }) {
+	return (
+		<div className={styles.transitionHeader}>
+			<span>
+				<i />
+				LIVE SYSTEM
+			</span>
+			<strong>{persona.awakening}</strong>
+		</div>
+	);
+}
+
+function TransitionPhases({ phases }: { phases: GatewayPersona['phases'] }) {
+	return (
+		<div className={styles.transitionPhases}>
+			{phases.map((phase, index) => (
+				<span key={phase}>
+					<small>0{index + 1}</small>
+					{phase}
+				</span>
+			))}
+		</div>
+	);
+}
+
+function ComponentForgeTransition({ persona }: { persona: GatewayPersona }) {
+	const modules = ['BUTTON', 'INPUT', 'CARD', 'NAV', 'MODAL', 'TYPE'];
+	return (
+		<div className={`${styles.transition} ${styles.forgeTransition}`}>
+			<TransitionHeader persona={persona} />
+			<div className={styles.forgeTransitionBay}>
+				<div className={styles.forgePressTop}>
+					<span />
+					<span />
+					<span />
+				</div>
+				<div className={styles.forgePressBottom}>
+					<span />
+					<span />
+					<span />
+				</div>
+				<div className={styles.forgeAssembly}>
+					{modules.map((module, index) => (
+						<div
+							className={styles.forgeModule}
+							data-index={index + 1}
+							key={module}
+						>
+							<span>{module}</span>
+						</div>
+					))}
+					<div className={styles.assembledBlock}>
+						<div />
+						<div />
+						<div />
+						<strong>UI</strong>
+					</div>
+				</div>
+				<div className={styles.tokenInfusion}>
+					<span>COLOR</span>
+					<span>TYPE</span>
+					<span>SPACE</span>
+					<span>DEPTH</span>
+				</div>
+				<div className={styles.storybookBlueprint}>
+					<div className={styles.blueprintNav}>
+						<i />
+						<i />
+						<i />
+						<i />
+					</div>
+					<div className={styles.blueprintCanvas}>
+						<i />
+						<i />
+						<i />
+					</div>
+					<div className={styles.blueprintControls} />
+				</div>
+			</div>
+			<TransitionPhases phases={persona.phases} />
+			<div className={styles.forgeHandoff} />
+		</div>
+	);
+}
+
+function TypeLatticeTransition({ persona }: { persona: GatewayPersona }) {
+	const glyphs = ['interface', 'type', 'schema', 'port', 'params', 'return'];
+	return (
+		<div className={`${styles.transition} ${styles.latticeTransition}`}>
+			<TransitionHeader persona={persona} />
+			<div className={styles.latticeTransitionField}>
+				<div className={styles.exportGlyphs}>
+					{glyphs.map((glyph, index) => (
+						<span
+							data-index={index + 1}
+							key={glyph}
+						>
+							{glyph}
+						</span>
+					))}
+				</div>
+				<svg
+					className={styles.constraintGraph}
+					viewBox="0 0 1000 620"
+					aria-hidden="true"
+				>
+					<path d="M80 100 300 190 495 78 708 184 920 112M80 510l220-320 198 342 210-348 212 326M80 100l418 432M920 112 300 190M80 510l628-326M920 510 495 78" />
+				</svg>
+				<div className={styles.crystalPrism}>
+					<div className={styles.crystalFaceOne} />
+					<div className={styles.crystalFaceTwo} />
+					<div className={styles.crystalFaceThree} />
+					<strong>TS</strong>
+				</div>
+				<div className={styles.prismRefractions}>
+					<span>INTERFACES</span>
+					<span>SIGNATURES</span>
+					<span>PORTS</span>
+					<span>SCHEMAS</span>
+				</div>
+				<div className={styles.referencePlane}>
+					<div className={styles.referenceTree}>
+						<i />
+						<i />
+						<i />
+						<i />
+					</div>
+					<div className={styles.referenceContent}>
+						<i />
+						<i />
+						<i />
+						<i />
+						<i />
+					</div>
+					<div className={styles.referenceIndex}>
+						<i />
+						<i />
+						<i />
+					</div>
+				</div>
+			</div>
+			<TransitionPhases phases={persona.phases} />
+			<div className={styles.latticeHandoff} />
+		</div>
+	);
+}
+
+function RequestWormholeTransition({ persona }: { persona: GatewayPersona }) {
+	return (
+		<div className={`${styles.transition} ${styles.wormholeTransition}`}>
+			<TransitionHeader persona={persona} />
+			<div className={styles.wormholeTransitionField}>
+				<div className={styles.operationPacket}>
+					<span>OPERATION PACKET</span>
+					<strong>POST</strong>
+					<code>/orders</code>
+					<i>JSON BODY</i>
+				</div>
+				<div
+					className={styles.operationPhoton}
+					aria-hidden="true"
+				>
+					<strong>POST</strong>
+					<span>/orders</span>
+				</div>
+				<div className={styles.clearanceTrack}>
+					{['VALIDATE', 'AUTH', 'CSRF', 'RBAC', 'RATE'].map((gate, index) => (
+						<span
+							data-index={index + 1}
+							key={gate}
+						>
+							<i />
+							{gate}
+						</span>
+					))}
+				</div>
+				<div className={styles.contractMembrane}>
+					<div className={styles.membraneGrid} />
+					<div className={styles.accretionDisk} />
+					<div className={styles.lensingArc} />
+					<div className={styles.membraneEdge} />
+					<div className={styles.membraneCore}>
+						<strong>OPENAPI</strong>
+						<span>EVENT HORIZON</span>
+					</div>
+				</div>
+				<div className={styles.responseSignal}>
+					<span>RESPONSE</span>
+					<strong>201</strong>
+					<code>Created</code>
+					<i>TRACE COMPLETE</i>
+				</div>
+				<div className={styles.requestBeam} />
+				<div className={styles.flightConsole}>
+					<div className={styles.flightOperation}>
+						<strong>OPERATIONS</strong>
+						<span>Orders</span>
+						<b>POST /orders</b>
+						<span>GET /orders/:id</span>
+					</div>
+					<div className={styles.flightRequest}>
+						<strong>TEST REQUEST</strong>
+						<span>POST /orders</span>
+						<code>{'{ "items": […], "currency": "INR" }'}</code>
+						<small>AUTH · CSRF · RBAC VERIFIED</small>
+						<b>SEND REQUEST →</b>
+					</div>
+					<div className={styles.flightResponse}>
+						<strong>RESPONSE</strong>
+						<b>201 CREATED</b>
+						<span>128 ms</span>
+						<code>{'{ "orderId": "…", "status": "created" }'}</code>
+					</div>
+				</div>
+			</div>
+			<TransitionPhases phases={persona.phases} />
+			<div className={styles.wormholeHandoff} />
+		</div>
+	);
+}
+
+function SchemaObservatoryTransition({ persona }: { persona: GatewayPersona }) {
+	const stars = [1, 2, 3, 4, 5, 6, 7];
+	return (
+		<div className={`${styles.transition} ${styles.observatoryTransition}`}>
+			<TransitionHeader persona={persona} />
+			<div className={styles.observatoryTransitionField}>
+				<div className={styles.transitionDome}>
+					<div className={styles.transitionShutterLeft} />
+					<div className={styles.transitionShutterRight} />
+					<div className={styles.transitionTelescope}>
+						<span />
+						<i className={styles.focusBeam}>
+							<b />
+						</i>
+					</div>
+					<div className={styles.transitionTelescopeStand} />
+				</div>
+				<div className={styles.transitionModelSky}>
+					<svg
+						viewBox="0 0 600 420"
+						aria-hidden="true"
+					>
+						<path d="M122 104 286 58 474 120 502 278 320 360 154 314 82 214 122 104M82 214l420 64M122 104l198 256" />
+					</svg>
+					{stars.map((star) => (
+						<span
+							data-star={star}
+							key={star}
+						>
+							{star}
+						</span>
+					))}
+				</div>
+				<div className={styles.schemaResolution}>
+					<span>MODEL 04 · RESOLVED</span>
+					<strong>orders</strong>
+					<div>
+						<i>FIELD</i>
+						<i>TYPE</i>
+						<i>POLICY</i>
+						<i>INDEX</i>
+					</div>
+				</div>
+				<div className={styles.catalogueProjection}>
+					<div className={styles.catalogueNav}>
+						{stars.map((star) => (
+							<i key={star} />
+						))}
+					</div>
+					<div className={styles.catalogueModel}>
+						<i />
+						<i />
+						<i />
+						<i />
+						<i />
+					</div>
+					<div className={styles.catalogueEvidence}>
+						<i />
+						<i />
+						<i />
+					</div>
+				</div>
+			</div>
+			<TransitionPhases phases={persona.phases} />
+			<div className={styles.observatoryHandoff} />
+		</div>
+	);
+}
+
+function GatewayTransition({ symbol, persona }: { symbol: ChildToolSymbol; persona: GatewayPersona }) {
+	switch (symbol) {
+		case 'component-forge':
+			return <ComponentForgeTransition persona={persona} />;
+		case 'type-lattice':
+			return <TypeLatticeTransition persona={persona} />;
+		case 'request-wormhole':
+			return <RequestWormholeTransition persona={persona} />;
+		case 'schema-observatory':
+			return <SchemaObservatoryTransition persona={persona} />;
 	}
 }
 
@@ -548,40 +777,75 @@ export function ChildToolGateway({
 	const gatewayRef = useRef<HTMLElement | null>(null);
 	const navigationTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 	const persona = gatewayPersona(symbol);
+	const childEntry = resolveChildEntry(target);
 
-	useEffect(
-		() => () => {
+	useEffect(() => {
+		const preloadLink = document.createElement('link');
+		preloadLink.rel = 'prefetch';
+		preloadLink.href = childEntry;
+		document.head.appendChild(preloadLink);
+
+		return () => {
+			preloadLink.remove();
 			if (navigationTimer.current) {
 				clearTimeout(navigationTimer.current);
 			}
-		},
-		[],
-	);
+		};
+	}, [childEntry]);
+
+	const navigate = useCallback(() => {
+		window.location.assign(childEntry);
+	}, [childEntry]);
 
 	const launch = useCallback(() => {
 		if (launching || typeof window === 'undefined') {
 			return;
 		}
-		setLaunching(true);
 		const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		navigationTimer.current = setTimeout(
-			() => window.location.assign(resolveChildEntry(target)),
-			reduceMotion ? 0 : LAUNCH_DURATION_MS,
-		);
-	}, [launching, target]);
+		setLaunching(true);
+		navigationTimer.current = setTimeout(navigate, reduceMotion ? 0 : LAUNCH_DURATION_MS);
+	}, [launching, navigate]);
+
+	const skip = useCallback(() => {
+		if (navigationTimer.current) {
+			clearTimeout(navigationTimer.current);
+		}
+		navigate();
+	}, [navigate]);
 
 	const trackPointer = useCallback((event: PointerEvent<HTMLElement>) => {
 		const gateway = gatewayRef.current;
 		if (!gateway) {
 			return;
 		}
-		const bounds = gateway.getBoundingClientRect();
+		const gatewayBounds = gateway.getBoundingClientRect();
+		const gatewayX = Math.max(0, Math.min(1, (event.clientX - gatewayBounds.left) / gatewayBounds.width));
+		const gatewayY = Math.max(0, Math.min(1, (event.clientY - gatewayBounds.top) / gatewayBounds.height));
+		gateway.style.setProperty('--pointer-x', `${(gatewayX * 100).toFixed(2)}%`);
+		gateway.style.setProperty('--pointer-y', `${(gatewayY * 100).toFixed(2)}%`);
+
+		const scene = gateway.querySelector<HTMLElement>('[data-gateway-scene="true"]');
+		if (!scene) {
+			return;
+		}
+		const bounds = scene.getBoundingClientRect();
+		const insideScene =
+			event.clientX >= bounds.left &&
+			event.clientX <= bounds.right &&
+			event.clientY >= bounds.top &&
+			event.clientY <= bounds.bottom;
+		if (!insideScene) {
+			gateway.style.setProperty('--scene-cursor-opacity', '0');
+			return;
+		}
 		const x = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
 		const y = Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height));
-		gateway.style.setProperty('--gateway-x', `${(x * 100).toFixed(2)}%`);
-		gateway.style.setProperty('--gateway-y', `${(y * 100).toFixed(2)}%`);
-		gateway.style.setProperty('--gateway-rotate-x', `${((0.5 - y) * 3).toFixed(2)}deg`);
-		gateway.style.setProperty('--gateway-rotate-y', `${((x - 0.5) * 4).toFixed(2)}deg`);
+		gateway.style.setProperty('--scene-pointer-x', `${(x * 100).toFixed(2)}%`);
+		gateway.style.setProperty('--scene-pointer-y', `${(y * 100).toFixed(2)}%`);
+		gateway.style.setProperty('--scene-cursor-opacity', '1');
+		gateway.style.setProperty('--scene-shift-x', `${((x - 0.5) * 18).toFixed(2)}px`);
+		gateway.style.setProperty('--scene-shift-y', `${((y - 0.5) * 14).toFixed(2)}px`);
+		gateway.style.setProperty('--scene-angle', `${((x - 0.5) * 10).toFixed(2)}deg`);
 	}, []);
 
 	const resetPointer = useCallback(() => {
@@ -589,17 +853,21 @@ export function ChildToolGateway({
 		if (!gateway) {
 			return;
 		}
-		gateway.style.setProperty('--gateway-x', '50%');
-		gateway.style.setProperty('--gateway-y', '50%');
-		gateway.style.setProperty('--gateway-rotate-x', '0deg');
-		gateway.style.setProperty('--gateway-rotate-y', '0deg');
+		gateway.style.setProperty('--pointer-x', '50%');
+		gateway.style.setProperty('--pointer-y', '50%');
+		gateway.style.setProperty('--scene-pointer-x', '50%');
+		gateway.style.setProperty('--scene-pointer-y', '50%');
+		gateway.style.setProperty('--scene-cursor-opacity', '0');
+		gateway.style.setProperty('--scene-shift-x', '0px');
+		gateway.style.setProperty('--scene-shift-y', '0px');
+		gateway.style.setProperty('--scene-angle', '0deg');
 	}, []);
 
 	return (
 		<>
 			<section
 				ref={gatewayRef}
-				className={`${styles.gateway}${launching ? ` ${styles.gatewayLaunching}` : ''}`}
+				className={styles.gateway}
 				data-symbol={symbol}
 				aria-label={`${toolName} launch gateway`}
 				aria-busy={launching}
@@ -607,48 +875,11 @@ export function ChildToolGateway({
 				onPointerLeave={resetPointer}
 			>
 				<div
-					className={styles.starField}
+					className={styles.gatewayStars}
 					aria-hidden="true"
 				/>
-				<div
-					className={styles.ambientBloom}
-					aria-hidden="true"
-				>
-					<span />
-					<span />
-					<span />
-				</div>
-				<div className={styles.visual}>
-					<div
-						className={styles.scanBeam}
-						aria-hidden="true"
-					/>
-					<div className={styles.symbolStage}>
-						<div
-							className={styles.orbitalShell}
-							aria-hidden="true"
-						/>
-						<GatewaySymbol
-							symbol={symbol}
-							active={launching}
-						/>
-						<div
-							className={styles.liveSignal}
-							aria-hidden="true"
-						>
-							<span />
-							LIVE SIGNAL
-						</div>
-					</div>
-					<div
-						className={styles.coordinates}
-						aria-hidden="true"
-					>
-						<span>GENERATED SURFACE</span>
-						<span>SIGNAL LOCKED</span>
-					</div>
-				</div>
-				<div className={styles.copy}>
+				<GatewayScene symbol={symbol} />
+				<div className={styles.narrative}>
 					<div
 						className={styles.personaRail}
 						aria-hidden="true"
@@ -695,32 +926,23 @@ export function ChildToolGateway({
 				typeof document !== 'undefined' &&
 				createPortal(
 					<div
-						className={`${styles.transitionVeil} ${styles.transitionActive}`}
+						className={styles.transitionPortal}
 						data-symbol={symbol}
-						aria-hidden="true"
+						role="dialog"
+						aria-modal="true"
+						aria-label={`${toolName} transition`}
 					>
-						<div className={styles.transitionCosmos} />
-						<div className={styles.transitionGeometry} />
-						<div className={styles.transitionIris} />
-						<div className={styles.transitionCore}>
-							<span className={styles.transitionGlyph}>{gatewayGlyph(symbol)}</span>
-							<span className={styles.transitionKicker}>LIVE SYSTEM AWAKENING</span>
-							<strong>{persona.awakening}</strong>
-							<div className={styles.transitionPhases}>
-								{persona.phases.map((phase) => (
-									<span key={phase}>{phase}</span>
-								))}
-							</div>
-						</div>
-						<div className={styles.transitionVitals}>
-							<span />
-							<span />
-							<span />
-							<span />
-							<span />
-							<em>LIVE LINK</em>
-						</div>
-						<div className={styles.transitionBlackout} />
+						<GatewayTransition
+							symbol={symbol}
+							persona={persona}
+						/>
+						<button
+							className={styles.skipTransition}
+							type="button"
+							onClick={skip}
+						>
+							Skip transition
+						</button>
 					</div>,
 					document.body,
 				)}

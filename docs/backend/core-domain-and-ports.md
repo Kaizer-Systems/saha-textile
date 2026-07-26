@@ -4,7 +4,7 @@ wide: true
 description: Dependency direction, pure business logic, port contracts, swappability, and current gaps.
 status: scaffolded
 audience: [beginner, backend]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
     - packages/core-domain/src
     - packages/core-domain/test

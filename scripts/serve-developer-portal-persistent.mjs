@@ -16,13 +16,16 @@ const debounceMilliseconds = 450;
 const portalPackage = '@saha-textile/developer-portal';
 const storybookPackage = '@saha-textile/developer-portal-storybook';
 const typedocPackage = '@saha-textile/developer-portal-typedoc';
+const scalarPackage = '@saha-textile/developer-portal-scalar';
+const apiPackage = '@saha-textile/api';
 const temporaryBuildRoot = join(tmpdir(), 'saha-textile-developer-portal-');
-const mountedChildRoots = new Set(['storybook', 'typedoc']);
+const mountedChildRoots = new Set(['storybook', 'typedoc', 'api/reference', 'database/catalogue']);
 
 const watchTargets = [
 	'apps/developer-portal',
 	'apps/developer-portal-storybook',
 	'apps/developer-portal-typedoc',
+	'apps/developer-portal-scalar',
 	'apps/storefront/src/app',
 	'apps/storefront/src/scss',
 	'apps/admin/src/app',
@@ -158,6 +161,9 @@ async function buildCandidate() {
 	const siteDirectory = join(candidateRoot, 'site');
 	const storybookDirectory = join(candidateRoot, 'storybook');
 	const typedocDirectory = join(candidateRoot, 'typedoc');
+	const scalarDirectory = join(candidateRoot, 'scalar');
+	const mongodbCatalogueDirectory = join(candidateRoot, 'mongodb-catalogue');
+	const openApiPath = join(candidateRoot, 'openapi.json');
 
 	try {
 		log(`build ${sequence}: validating sources`);
@@ -203,6 +209,37 @@ async function buildCandidate() {
 			typedocDirectory,
 		]);
 
+		log(`build ${sequence}: generating the source-only OpenAPI artifact`);
+		await run('corepack', ['pnpm', '--filter', apiPackage, 'exec', 'nest', 'build']);
+		await run(process.execPath, [
+			'apps/api/dist/generate-openapi.js',
+			'--output',
+			openApiPath,
+			'--server',
+			'http://127.0.0.1:4000',
+		]);
+
+		log(`build ${sequence}: building the Scalar child with Test Request available`);
+		await run('corepack', [
+			'pnpm',
+			'--filter',
+			scalarPackage,
+			'exec',
+			'vite',
+			'build',
+			'--outDir',
+			scalarDirectory,
+		]);
+
+		log(`build ${sequence}: generating the source-only MongoDB catalogue`);
+		await run(
+			process.execPath,
+			['--import', 'tsx', 'scripts/generate-catalogue.ts', '--output', mongodbCatalogueDirectory],
+			{
+				cwd: join(repositoryRoot, 'packages/adapters-db-mongo'),
+			},
+		);
+
 		log(`build ${sequence}: building Docusaurus`);
 		await run('corepack', [
 			'pnpm',
@@ -219,11 +256,18 @@ async function buildCandidate() {
 			verifyGeneratedSurface('Docusaurus', siteDirectory),
 			verifyGeneratedSurface('Storybook', storybookDirectory),
 			verifyGeneratedSurface('TypeDoc', typedocDirectory),
+			verifyGeneratedSurface('Scalar', scalarDirectory),
+			verifyGeneratedSurface('MongoDB catalogue', mongodbCatalogueDirectory),
 		]);
 
 		await Promise.all([
 			cp(storybookDirectory, join(siteDirectory, 'storybook'), { recursive: true }),
 			cp(typedocDirectory, join(siteDirectory, 'typedoc'), { recursive: true }),
+			cp(scalarDirectory, join(siteDirectory, 'api', 'reference'), { recursive: true }),
+			cp(openApiPath, join(siteDirectory, 'api', 'openapi.json')),
+			cp(mongodbCatalogueDirectory, join(siteDirectory, 'database', 'catalogue'), {
+				recursive: true,
+			}),
 		]);
 
 		await writeFile(
@@ -237,12 +281,14 @@ async function buildCandidate() {
 						storybook: '/storybook/',
 						typedoc: '/typedoc/',
 						scalar: {
-							route: '/api/reference',
-							status: 'gated',
+							route: '/api/reference/',
+							openapi: '/api/openapi.json',
+							status: 'scaffolded',
+							testRequest: true,
 						},
 						mongodbCatalogue: {
-							route: '/database/catalogue',
-							status: 'gated',
+							route: '/database/catalogue/',
+							status: 'scaffolded-current-evidence',
 						},
 					},
 				},

@@ -4,7 +4,7 @@ wide: true
 description: Storefront sessions, OTP/OAuth, account boundaries, admin authorization, soft lock, and draft recovery.
 status: planned
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
     - apps/storefront/src/app/pages/auth
     - apps/admin/src/app/features/auth

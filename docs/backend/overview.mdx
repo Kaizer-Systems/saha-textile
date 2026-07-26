@@ -3,7 +3,7 @@ title: Backend Platform Atlas
 description: Interactive, evidence-backed map of API request paths, boundaries, risks, and proof obligations.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 wide: true
 source_of_truth:
     - apps/api/src
@@ -38,7 +38,7 @@ This section teaches both facts at the same time. Every capability distinguishes
 5. [Security, sessions, and authorization](./security-and-identity)
 6. [Readiness, observability, and verification](./readiness-testing-and-observability)
 7. [Current API route inventory](../api/route-inventory)
-8. [OpenAPI and future Scalar integration](../api/openapi-and-scalar)
+8. [OpenAPI and the Scalar scaffold](../api/openapi-and-scalar)
 9. [Current Mongo adapter map](../database/current-adapter-map)
 10. [Transactions and generated catalogue trigger](../database/transactions-and-generation)
 
@@ -73,7 +73,7 @@ An implementation is incorrectly layered when a controller imports a provider SD
 | Core domain              | Repository/provider ports, pure pricing helpers, and ratified type-only contracts coupling                              | Complete boundary lint, use cases, unit of work, notification/media ports, and policy coverage                             |
 | Mongo adapter            | Seven models, repositories, mappers, indexes, seed tool, self-hosted Docker `rs0` replica-set profile (`pnpm mongo:up`) | Transactional context, stronger nested validation, migrations, backups/restore                                             |
 | Tests                    | Contract/pricing tests and gated Mongo integration tests                                                                | API tests, mandatory transaction tests, auth/security tests, non-skipped CI evidence                                       |
-| Generated references     | `/openapi.json` from the API                                                                                            | Complete OpenAPI, portal publication, Scalar, generated database catalogue                                                 |
+| Generated references     | API `/openapi.json`; portal OpenAPI + Scalar scaffold; seven-model source catalogue                                     | Complete OpenAPI operation metadata and target-complete database catalogue                                                 |
 
 ## Stop-the-line findings
 
@@ -108,4 +108,4 @@ For any backend change, answer these questions in order:
 
 ## Pass 4 boundary
 
-Pass 4 changes documentation and portal interaction only. It does not refactor the API, replace auth, create Mongo transactions, install Meilisearch, wire providers, generate database pages, or integrate Scalar.
+Pass 4 changed documentation and portal interaction only. Later portal tooling now source-generates a scaffolded OpenAPI/Scalar surface and current-model catalogue; it still does not replace auth, create Mongo transactions, install Meilisearch, wire providers, or complete either generated contract.

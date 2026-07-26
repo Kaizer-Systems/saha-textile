@@ -3,7 +3,7 @@ title: Deployment Overview
 description: Deployment documentation landing page.
 status: planned
 audience: [operator, backend]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
     - apps/api/.env.example
     - docker/mongo/docker-compose.yml
@@ -27,7 +27,7 @@ authenticated-origin/JWT mechanism remain gated by
 Do not deploy the portal until all of the following are implemented and tested:
 
 - default-deny access covers HTML, JavaScript/CSS/assets, search payloads,
-  Engineering Live Context, Storybook, Scalar, TypeDoc, and future
+  Engineering Live Context, Storybook, Scalar, TypeDoc, and generated
   database-catalogue output;
 - there is no unrestricted “Everyone” or unrestricted email-OTP policy;
 - direct-origin bypass is closed through the approved Tunnel or

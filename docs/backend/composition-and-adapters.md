@@ -4,7 +4,7 @@ wide: true
 description: NestJS module wiring, dependency-injection tokens, adapter ownership, Mongo mappings, and provider seams.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
     - apps/api/src/app.module.ts
     - apps/api/src/config/app-config.ts

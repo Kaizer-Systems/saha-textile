@@ -4,7 +4,7 @@ description: Local setup checklist for the monorepo and developer portal.
 search_keywords: 'mongo rs0 config.json env docker setup pnpm mongo:up check:naming replica set'
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
     - package.json
     - pnpm-workspace.yaml
@@ -38,7 +38,7 @@ The real `.env` is gitignored; copy the template and fill it for local use:
 cp apps/api/.env.example apps/api/.env
 ```
 
-Local defaults target the Docker MongoDB replica set below, `console` notifications (no real sends), and CORS for the storefront (`:4200`) and admin (`:4300`).
+Local defaults target the Docker MongoDB replica set below, `console` notifications (no real sends), and CORS for the storefront (`:4200`), admin (`:4300`), and persistent developer portal (`127.0.0.1:3457` / `localhost:3457`) so approved Scalar Test Requests can reach the local API.
 
 ### Local MongoDB (Docker replica set)
 

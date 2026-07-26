@@ -5,7 +5,7 @@ description: Current authentication scaffold, locked browser-session target, CSR
 search_keywords: 'cookies csrf st_access st_refresh otp msg91 jwt session bola audiences pin'
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
     - apps/api/src/auth
     - apps/api/src/infra/argon2-jwt.auth.ts

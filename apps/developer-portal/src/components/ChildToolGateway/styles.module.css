@@ -250,6 +250,13 @@
 	animation: livePulse 1.6s ease-in-out infinite;
 }
 
+.gateway[data-symbol='type-lattice'] .liveSignal {
+	right: auto;
+	bottom: 4%;
+	left: 50%;
+	transform: translateX(-50%);
+}
+
 .coordinates {
 	position: relative;
 	z-index: 2;

@@ -1,5 +1,3 @@
-# Saha Textile TypeScript reference
-
 This generated surface documents the exported TypeScript contracts and core-domain ports/pricing utilities that are useful across application boundaries.
 
 It is intentionally narrower than the developer portal:

@@ -3,7 +3,7 @@ title: Generated Surfaces and Persistent Portal Runtime
 description: Storybook, TypeDoc, Scalar, database-catalogue, shared-theme, and atomic local serving topology.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
     - apps/developer-portal
     - apps/developer-portal-storybook
@@ -44,17 +44,43 @@ Each story declares `parameters.application` as `storefront`, `admin`, or `share
 
 The application style bundles are generated separately and enabled one at a time in the preview document. This avoids allowing storefront and admin global selectors to collide while keeping both applications in one renderer. Component-local Angular styles continue to travel with their components.
 
+The Docusaurus bridge and the generated child intentionally share `/storybook`. Navigation from the Tools menu and the Component Forge bridge must therefore use a full document request, not Docusaurus client routing. The composite server then resolves `/storybook/index.html`; running Docusaurus alone leaves the symbolic bridge available with its runtime guidance.
+
 ## Shared next-generation theme
 
 `apps/developer-portal/src/css/nextgen-theme.css` is the portable source of truth for portal colors, typography, spacing primitives, radii, borders, focus treatment, and light/dark canvas behavior.
 
 - Docusaurus imports it before its own layout adapter.
-- Storybook imports it directly and layers its preview adapter plus the selected application stylesheet.
+- Storybook imports it into both its manager and Angular preview. Its adapters add a live constellation, scan veil, cursor-follow glow, glass depth, context HUD, and reduced-motion behavior; the selected application stylesheet still owns application UI.
 - TypeDoc composes it with a TypeDoc-only adapter during generation.
 - Scalar must map its supported theme variables/options to these tokens when the Scalar gate opens.
 - Generated database pages are ordinary Docusaurus pages and inherit the same source automatically.
 
 Tool-specific selectors remain in tool adapters. Shared token values must not be copied into those adapters.
+
+## Story coverage policy and staged expansion
+
+Storybook renders real Angular classes; it does not reproduce application components with Storybook-only HTML.
+
+The first expanded pass includes the real Storefront empty state, loader, section-title and horizontal/vertical product-skeleton states; the real Admin product and sidebar skeleton states; plus Shared Component Forge and theme-contract specimens. Every preview selects exactly one application stylesheet and the shared interaction adapter.
+
+Coverage expands in small passes:
+
+1. **Foundation and feedback:** dependency-light reusable UI, loading, empty, typography, focus, and translated states.
+2. **Commerce configuration:** product boxes, option swatches, variants, bundles, measurements, cart-line configuration, and useful stock/error combinations using deterministic product fixtures.
+3. **Admin operations:** buttons, alerts, pagination, dropdowns, tables, media, permission states, modals, and form validation using explicit store/query/service fixtures.
+4. **Application composition:** headers, footers, navigation, and bounded feature panels only after runtime configuration, router, i18n, and query providers can be represented honestly.
+
+Route shells and pages that only coordinate navigation or live server state are not useful isolated component stories. Their behavior belongs in application integration and Playwright coverage. A feature component receives a story when it exposes a meaningful visual or interactive state in isolation.
+
+The remaining coverage is deliberately pending rather than represented by empty stories. Current constraints are:
+
+- both applications use the same compile-time aliases (`@core`, `@shared`, `@data-access`, and `@layout`) for different roots, so the single renderer needs an issuer-aware resolution seam before importing both dependency graphs;
+- store/query/router/runtime-config/Transloco/modal dependencies need deterministic application-specific fixtures;
+- legacy components that do not pass the Storybook workspace's strict TypeScript boundary need source typing corrections rather than weaker Storybook checks; and
+- application assets need an isolated mount strategy so identical `assets/**` URLs cannot collide between Storefront and Admin.
+
+Each pass must add useful states, verify both portal themes and the correct application stylesheet, and update this section. Do not declare broad coverage complete from a generated filename inventory alone.
 
 ## Local commands
 
@@ -72,10 +98,10 @@ Run only Docusaurus in development:
 corepack pnpm --filter @saha-textile/developer-portal dev
 ```
 
-Run Storybook directly:
+Build Storybook directly:
 
 ```bash
-corepack pnpm --filter @saha-textile/developer-portal-storybook dev
+corepack pnpm --filter @saha-textile/developer-portal-storybook build
 ```
 
 Build TypeDoc directly:
@@ -114,6 +140,8 @@ corepack pnpm portal:persistent -- --port 3457
 While a replacement builds, the server continues serving the last successful composite. A failed build is logged and never replaces the active portal. Before the first successful build, the server returns a temporary `503` build-in-progress page.
 
 Running Docusaurus alone does **not** start or build Storybook and TypeDoc. Use their direct commands for isolated work or `portal:persistent` for the complete umbrella.
+
+The production Storybook build and composite runtime are verified. The isolated `developer-portal-storybook dev` command remains pending: pinned Storybook 10.3.2 currently exits from both its Angular builder and CLI with `expected options to have a port`, even when the declared/CLI port is present. Do not weaken or replace the verified production build path to conceal that upstream/tooling incompatibility; resolve and verify the direct-development command in a focused tooling pass.
 
 ## Gated surfaces
 

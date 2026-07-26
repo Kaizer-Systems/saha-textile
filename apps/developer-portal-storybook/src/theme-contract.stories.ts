@@ -8,7 +8,7 @@ const meta = {
 	},
 	render: () => ({
 		template: `
-			<section class="storybookThemeSpecimen">
+			<section class="storybookThemeSpecimen storybookSpotlight">
 				<div>
 					<p>Shared developer-portal theme</p>
 					<h1>One token source, multiple engineering surfaces</h1>

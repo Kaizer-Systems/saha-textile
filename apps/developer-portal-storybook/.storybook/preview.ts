@@ -1,10 +1,41 @@
-import type { Preview } from '@storybook/angular';
+import { importProvidersFrom } from '@angular/core';
+
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { applicationConfig, type Preview } from '@storybook/angular';
+import { themes } from 'storybook/theming';
 
 import { applicationDecorator } from './decorators/application';
 import { portalThemeDecorator } from './decorators/theme';
+import { installPreviewExperience } from './preview-experience';
+
+installPreviewExperience();
 
 const preview: Preview = {
-	decorators: [portalThemeDecorator, applicationDecorator],
+	decorators: [
+		applicationConfig({
+			providers: [
+				importProvidersFrom(
+					TranslocoTestingModule.forRoot({
+						langs: {
+							en: {
+								fastkart: 'Saha Textile',
+								loading: 'Loading interface',
+								'No records found': 'No records found',
+								'Product title': 'Product title',
+							},
+						},
+						translocoConfig: {
+							availableLangs: ['en'],
+							defaultLang: 'en',
+						},
+						preloadLangs: true,
+					}),
+				),
+			],
+		}),
+		portalThemeDecorator,
+		applicationDecorator,
+	],
 	globalTypes: {
 		portalTheme: {
 			description: 'Shared developer-portal color theme',
@@ -29,6 +60,9 @@ const preview: Preview = {
 				color: /(background|color)$/i,
 				date: /Date$/i,
 			},
+		},
+		docs: {
+			theme: themes.dark,
 		},
 		options: {
 			storySort: {

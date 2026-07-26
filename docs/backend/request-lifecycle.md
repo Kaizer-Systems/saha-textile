@@ -3,7 +3,7 @@ title: Request Lifecycle and Boundary Tracing
 description: How a request enters the API, crosses application and domain boundaries, reaches an adapter, and returns safely.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 wide: true
 search_keywords: 'flight simulator photon post orders idempotency transaction ghost stages trace'
 source_of_truth:

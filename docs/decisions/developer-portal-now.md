@@ -3,7 +3,7 @@ title: Start Developer Portal Early
 description: ADR for starting the portal before all generated artifacts exist.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
     - docs/engineering-live-context/execution-roadmap.mdx
     - docs/engineering-live-context/owner-decisions-log.mdx

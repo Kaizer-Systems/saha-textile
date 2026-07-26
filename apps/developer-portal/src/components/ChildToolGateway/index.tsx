@@ -6,13 +6,15 @@
  * WHY: every portal route lands on a unique Docusaurus bridge before handing
  * off to a separately mounted generated child. A full document navigation lets
  * the composite static server resolve that child entry.
- * HOW: each gateway owns a tool-specific SVG metaphor and calls
- * window.location.assign after a short reduced-motion-aware transition.
- * TUNING: timing is shared with the CSS --gateway-launch-duration custom
- * property. Keep it below one second so symbolism never becomes a delay tax.
+ * HOW: each gateway owns a tool-specific SVG metaphor, responds to pointer
+ * position, and awakens a full-viewport living-system sequence before the
+ * document handoff.
+ * TUNING: keep LAUNCH_DURATION_MS synchronized with
+ * --gateway-launch-duration. Reduced-motion users bypass the cinematic delay.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { type PointerEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import styles from './styles.module.css';
 
@@ -28,7 +30,50 @@ type ChildToolGatewayProps = {
 	symbol: ChildToolSymbol;
 };
 
-const LAUNCH_DURATION_MS = 760;
+const LAUNCH_DURATION_MS = 3000;
+
+type GatewayPersona = {
+	mode: string;
+	awakening: string;
+	phases: [string, string, string];
+};
+
+function gatewayPersona(symbol: ChildToolSymbol): GatewayPersona {
+	switch (symbol) {
+		case 'component-forge':
+			return {
+				mode: 'PRIMITIVE MATRIX',
+				awakening: 'Component Forge is alive',
+				phases: ['Capturing interface atoms', 'Forging application contexts', 'Releasing the component matrix'],
+			};
+		case 'type-lattice':
+			return {
+				mode: 'CONTRACT INTELLIGENCE',
+				awakening: 'Type Lattice is resolving',
+				phases: [
+					'Reading exported glyphs',
+					'Crystallizing contract edges',
+					'Opening the typed knowledge field',
+				],
+			};
+		case 'request-wormhole':
+			return {
+				mode: 'GOVERNED REQUEST CHANNEL',
+				awakening: 'Request Wormhole is opening',
+				phases: [
+					'Locking the OpenAPI vector',
+					'Bending the request corridor',
+					'Stabilizing the flight console',
+				],
+			};
+		case 'schema-observatory':
+			return {
+				mode: 'PERSISTENCE TELEMETRY',
+				awakening: 'Schema Observatory has sight',
+				phases: ['Acquiring model signals', 'Resolving schema constellations', 'Focusing the evidence field'],
+			};
+	}
+}
 
 function resolveChildEntry(target: string): string {
 	return `${target.replace(/\/+$/u, '')}/index.html`;
@@ -498,7 +543,9 @@ export function ChildToolGateway({
 	symbol,
 }: ChildToolGatewayProps) {
 	const [launching, setLaunching] = useState(false);
+	const gatewayRef = useRef<HTMLElement | null>(null);
 	const navigationTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+	const persona = gatewayPersona(symbol);
 
 	useEffect(
 		() => () => {
@@ -521,65 +568,160 @@ export function ChildToolGateway({
 		);
 	}, [launching, target]);
 
+	const trackPointer = useCallback((event: PointerEvent<HTMLElement>) => {
+		const gateway = gatewayRef.current;
+		if (!gateway) {
+			return;
+		}
+		const bounds = gateway.getBoundingClientRect();
+		const x = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
+		const y = Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height));
+		gateway.style.setProperty('--gateway-x', `${(x * 100).toFixed(2)}%`);
+		gateway.style.setProperty('--gateway-y', `${(y * 100).toFixed(2)}%`);
+		gateway.style.setProperty('--gateway-rotate-x', `${((0.5 - y) * 3).toFixed(2)}deg`);
+		gateway.style.setProperty('--gateway-rotate-y', `${((x - 0.5) * 4).toFixed(2)}deg`);
+	}, []);
+
+	const resetPointer = useCallback(() => {
+		const gateway = gatewayRef.current;
+		if (!gateway) {
+			return;
+		}
+		gateway.style.setProperty('--gateway-x', '50%');
+		gateway.style.setProperty('--gateway-y', '50%');
+		gateway.style.setProperty('--gateway-rotate-x', '0deg');
+		gateway.style.setProperty('--gateway-rotate-y', '0deg');
+	}, []);
+
 	return (
-		<section
-			className={`${styles.gateway}${launching ? ` ${styles.gatewayLaunching}` : ''}`}
-			aria-label={`${toolName} launch gateway`}
-			aria-busy={launching}
-		>
-			<div
-				className={styles.starField}
-				aria-hidden="true"
-			/>
-			<div className={styles.visual}>
-				<GatewaySymbol
-					symbol={symbol}
-					active={launching}
+		<>
+			<section
+				ref={gatewayRef}
+				className={`${styles.gateway}${launching ? ` ${styles.gatewayLaunching}` : ''}`}
+				data-symbol={symbol}
+				aria-label={`${toolName} launch gateway`}
+				aria-busy={launching}
+				onPointerMove={trackPointer}
+				onPointerLeave={resetPointer}
+			>
+				<div
+					className={styles.starField}
+					aria-hidden="true"
 				/>
 				<div
-					className={styles.coordinates}
+					className={styles.ambientBloom}
 					aria-hidden="true"
 				>
-					<span>CHILD SURFACE</span>
-					<span>VERIFIED BUILD</span>
+					<span />
+					<span />
+					<span />
 				</div>
-			</div>
-			<div className={styles.copy}>
-				<p className={styles.eyebrow}>{eyebrow}</p>
-				<h2>{title}</h2>
-				<p>{description}</p>
-				<button
-					className={styles.launchButton}
-					type="button"
-					onClick={launch}
-					disabled={launching}
-				>
-					<span
-						className={styles.buttonGlyph}
+				<div
+					className={styles.scanBeam}
+					aria-hidden="true"
+				/>
+				<div className={styles.visual}>
+					<div className={styles.symbolStage}>
+						<div
+							className={styles.orbitalShell}
+							aria-hidden="true"
+						/>
+						<GatewaySymbol
+							symbol={symbol}
+							active={launching}
+						/>
+						<div
+							className={styles.liveSignal}
+							aria-hidden="true"
+						>
+							<span />
+							LIVE SIGNAL
+						</div>
+					</div>
+					<div
+						className={styles.coordinates}
 						aria-hidden="true"
 					>
-						{gatewayGlyph(symbol)}
-					</span>
-					<span>{launching ? 'Aligning portal…' : launchLabel}</span>
-					<span
-						className={styles.buttonVector}
+						<span>GENERATED SURFACE</span>
+						<span>SIGNAL LOCKED</span>
+					</div>
+				</div>
+				<div className={styles.copy}>
+					<div
+						className={styles.personaRail}
 						aria-hidden="true"
 					>
-						→
+						<span>
+							<i />
+							LIVING INTERFACE
+						</span>
+						<span>{persona.mode}</span>
+					</div>
+					<p className={styles.eyebrow}>{eyebrow}</p>
+					<h2>{title}</h2>
+					<p>{description}</p>
+					<button
+						className={styles.launchButton}
+						type="button"
+						onClick={launch}
+						disabled={launching}
+					>
+						<span
+							className={styles.buttonGlyph}
+							aria-hidden="true"
+						>
+							{gatewayGlyph(symbol)}
+						</span>
+						<span>{launching ? persona.awakening : launchLabel}</span>
+						<span
+							className={styles.buttonVector}
+							aria-hidden="true"
+						>
+							→
+						</span>
+					</button>
+					<span
+						className={styles.srOnly}
+						role="status"
+						aria-live="polite"
+					>
+						{launching ? `${persona.awakening}. Preparing navigation.` : ''}
 					</span>
-				</button>
-				<p className={styles.runtimeNote}>
-					Requires the composite <code>portal:persistent</code> runtime.
-				</p>
-			</div>
-			<div
-				className={styles.transitionVeil}
-				aria-hidden="true"
-			>
-				<span />
-				<span />
-				<span />
-			</div>
-		</section>
+				</div>
+			</section>
+			{launching &&
+				typeof document !== 'undefined' &&
+				createPortal(
+					<div
+						className={`${styles.transitionVeil} ${styles.transitionActive}`}
+						data-symbol={symbol}
+						aria-hidden="true"
+					>
+						<div className={styles.transitionCosmos} />
+						<div className={styles.transitionGeometry} />
+						<div className={styles.transitionIris} />
+						<div className={styles.transitionCore}>
+							<span className={styles.transitionGlyph}>{gatewayGlyph(symbol)}</span>
+							<span className={styles.transitionKicker}>LIVE SYSTEM AWAKENING</span>
+							<strong>{persona.awakening}</strong>
+							<div className={styles.transitionPhases}>
+								{persona.phases.map((phase) => (
+									<span key={phase}>{phase}</span>
+								))}
+							</div>
+						</div>
+						<div className={styles.transitionVitals}>
+							<span />
+							<span />
+							<span />
+							<span />
+							<span />
+							<em>LIVE LINK</em>
+						</div>
+						<div className={styles.transitionBlackout} />
+					</div>,
+					document.body,
+				)}
+		</>
 	);
 }

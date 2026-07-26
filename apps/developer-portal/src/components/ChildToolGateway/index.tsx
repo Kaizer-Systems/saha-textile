@@ -3,9 +3,9 @@
  * ----------------------------------------------------------------------------
  * WHAT: symbolic, accessible launch sequences between Docusaurus and generated
  * child tools.
- * WHY: the child mount and the Docusaurus fallback bridge intentionally share a
- * route. A full document navigation is required so the composite static server,
- * rather than the Docusaurus client router, resolves the generated child.
+ * WHY: every portal route lands on a unique Docusaurus bridge before handing
+ * off to a separately mounted generated child. A full document navigation lets
+ * the composite static server resolve that child entry.
  * HOW: each gateway owns a tool-specific SVG metaphor and calls
  * window.location.assign after a short reduced-motion-aware transition.
  * TUNING: timing is shared with the CSS --gateway-launch-duration custom
@@ -16,7 +16,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import styles from './styles.module.css';
 
-export type ChildToolSymbol = 'component-forge' | 'type-lattice';
+export type ChildToolSymbol = 'component-forge' | 'type-lattice' | 'request-wormhole' | 'schema-observatory';
 
 type ChildToolGatewayProps = {
 	toolName: string;
@@ -297,6 +297,197 @@ function TypeLatticeSymbol({ active }: { active: boolean }) {
 	);
 }
 
+function RequestWormholeSymbol({ active }: { active: boolean }) {
+	return (
+		<svg
+			className={styles.symbol}
+			data-active={active ? 'true' : 'false'}
+			viewBox="0 0 520 300"
+			role="img"
+			aria-label="An API request packet traversing an OpenAPI wormhole"
+		>
+			<defs>
+				<radialGradient id="wormhole-core">
+					<stop
+						offset="0"
+						stopColor="var(--portal-canvas)"
+					/>
+					<stop
+						offset="0.42"
+						stopColor="var(--portal-accent)"
+						stopOpacity="0.34"
+					/>
+					<stop
+						offset="1"
+						stopColor="var(--portal-accent)"
+						stopOpacity="0"
+					/>
+				</radialGradient>
+			</defs>
+			<g className={styles.wormholeRings}>
+				{[114, 90, 66, 42].map((radius) => (
+					<ellipse
+						key={radius}
+						cx="260"
+						cy="150"
+						rx={radius}
+						ry={Math.round(radius * 0.48)}
+					/>
+				))}
+			</g>
+			<circle
+				className={styles.wormholeCore}
+				cx="260"
+				cy="150"
+				r="82"
+				fill="url(#wormhole-core)"
+			/>
+			<path
+				className={styles.requestTrajectory}
+				d="M44 214C132 214 146 158 222 151s118-49 254-56"
+			/>
+			<g className={styles.requestPacket}>
+				<rect
+					x="48"
+					y="194"
+					width="98"
+					height="42"
+					rx="10"
+				/>
+				<text
+					x="67"
+					y="220"
+				>
+					POST /orders
+				</text>
+			</g>
+			<g className={styles.responsePacket}>
+				<rect
+					x="388"
+					y="74"
+					width="86"
+					height="42"
+					rx="10"
+				/>
+				<text
+					x="411"
+					y="100"
+				>
+					201
+				</text>
+			</g>
+			<text
+				className={styles.openapiLabel}
+				x="217"
+				y="156"
+			>
+				OPENAPI
+			</text>
+		</svg>
+	);
+}
+
+function SchemaObservatorySymbol({ active }: { active: boolean }) {
+	const modelStars = [
+		[186, 88],
+		[264, 66],
+		[336, 104],
+		[350, 182],
+		[276, 224],
+		[194, 207],
+		[158, 146],
+	];
+	return (
+		<svg
+			className={styles.symbol}
+			data-active={active ? 'true' : 'false'}
+			viewBox="0 0 520 300"
+			role="img"
+			aria-label="A schema telescope resolving seven current MongoDB model constellations"
+		>
+			<g className={styles.observatoryOrbit}>
+				<ellipse
+					cx="260"
+					cy="150"
+					rx="118"
+					ry="94"
+				/>
+				<ellipse
+					cx="260"
+					cy="150"
+					rx="82"
+					ry="64"
+				/>
+			</g>
+			<path
+				className={styles.constellationPath}
+				d="M186 88 264 66 336 104 350 182 276 224 194 207 158 146 186 88 276 224M158 146l178-42"
+			/>
+			<g className={styles.modelStars}>
+				{modelStars.map(([cx, cy], index) => (
+					<g key={`${cx}-${cy}`}>
+						<circle
+							cx={cx}
+							cy={cy}
+							r="8"
+						/>
+						<text
+							x={cx}
+							y={cy + 3}
+						>
+							{index + 1}
+						</text>
+					</g>
+				))}
+			</g>
+			<g className={styles.telescope}>
+				<path d="m76 232 73-71 24 24-72 72Z" />
+				<ellipse
+					cx="162"
+					cy="173"
+					rx="24"
+					ry="35"
+					transform="rotate(-45 162 173)"
+				/>
+				<path d="m108 229-26 48M126 240l14 37" />
+			</g>
+			<text
+				className={styles.mongodbLabel}
+				x="385"
+				y="254"
+			>
+				7 CURRENT
+			</text>
+		</svg>
+	);
+}
+
+function GatewaySymbol({ symbol, active }: { symbol: ChildToolSymbol; active: boolean }) {
+	switch (symbol) {
+		case 'component-forge':
+			return <ComponentForgeSymbol active={active} />;
+		case 'type-lattice':
+			return <TypeLatticeSymbol active={active} />;
+		case 'request-wormhole':
+			return <RequestWormholeSymbol active={active} />;
+		case 'schema-observatory':
+			return <SchemaObservatorySymbol active={active} />;
+	}
+}
+
+function gatewayGlyph(symbol: ChildToolSymbol): string {
+	switch (symbol) {
+		case 'component-forge':
+			return '⬡';
+		case 'type-lattice':
+			return '⌁';
+		case 'request-wormhole':
+			return '⇢';
+		case 'schema-observatory':
+			return '⌾';
+	}
+}
+
 export function ChildToolGateway({
 	toolName,
 	target,
@@ -341,11 +532,10 @@ export function ChildToolGateway({
 				aria-hidden="true"
 			/>
 			<div className={styles.visual}>
-				{symbol === 'component-forge' ? (
-					<ComponentForgeSymbol active={launching} />
-				) : (
-					<TypeLatticeSymbol active={launching} />
-				)}
+				<GatewaySymbol
+					symbol={symbol}
+					active={launching}
+				/>
 				<div
 					className={styles.coordinates}
 					aria-hidden="true"
@@ -368,7 +558,7 @@ export function ChildToolGateway({
 						className={styles.buttonGlyph}
 						aria-hidden="true"
 					>
-						{symbol === 'component-forge' ? '⬡' : '⌁'}
+						{gatewayGlyph(symbol)}
 					</span>
 					<span>{launching ? 'Aligning portal…' : launchLabel}</span>
 					<span

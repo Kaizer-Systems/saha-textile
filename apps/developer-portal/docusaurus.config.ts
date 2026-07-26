@@ -114,17 +114,15 @@ const config: Config = {
 					position: 'right',
 					items: [
 						{
-							type: 'custom-childTool' as 'default',
 							label: 'Angular Storybook',
-							href: '/storybook/',
+							to: '/tools/storybook',
 						},
 						{
-							type: 'custom-childTool' as 'default',
 							label: 'TypeScript reference',
-							href: '/typedoc/',
+							to: '/tools/typedoc',
 						},
-						{ label: 'Scalar readiness', to: '/api/openapi-and-scalar' },
-						{ label: 'Database catalogue readiness', to: '/database/transactions-and-generation' },
+						{ label: 'Scalar API reference', to: '/tools/scalar' },
+						{ label: 'MongoDB catalogue', to: '/tools/database-catalogue' },
 						{ label: 'Runtime guide', to: '/tooling/generated-surfaces-and-runtime' },
 					],
 				},

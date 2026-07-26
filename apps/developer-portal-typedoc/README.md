@@ -6,6 +6,6 @@ It is intentionally narrower than the developer portal:
 
 - **TypeDoc owns:** exported symbols, signatures, types, schemas, interfaces, and source-linked API details.
 - **Docusaurus owns:** architecture, business meaning, implementation status, workflows, security policy, operational guidance, and decisions.
-- **Scalar owns later:** the verified HTTP/OpenAPI operation contract and approved Test Request workflow.
+- **Scalar owns:** the generated HTTP/OpenAPI operation contract and approved Test Request workflow; its current scaffold remains visibly incomplete where operation metadata is missing.
 
 Generation reads repository source only. It does not inspect production services, databases, credentials, or customer data.

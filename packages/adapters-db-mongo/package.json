@@ -18,6 +18,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
+    "generate:catalogue": "node --import tsx scripts/generate-catalogue.ts",
     "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {

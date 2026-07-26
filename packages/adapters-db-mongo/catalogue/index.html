@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" data-portal-theme="dark">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="robots" content="noindex, nofollow, noarchive" />
+		<title>Saha Textile · MongoDB Schema Observatory</title>
+		<link rel="stylesheet" href="./styles.css" />
+	</head>
+	<body class="portalThemeCanvas">
+		<div class="observatory-shell">
+			<header class="observatory-header">
+				<div>
+					<p class="eyebrow">Schema Observatory · generated current evidence</p>
+					<h1>MongoDB catalogue</h1>
+					<p>
+						Source-derived fields and indexes for the seven models implemented today. No database is
+						queried.
+					</p>
+				</div>
+				<a href="/tools/database-catalogue">Return to gateway</a>
+			</header>
+			<section class="truth-banner" role="note">
+				<strong>Scaffolded, not target-complete.</strong>
+				<span>
+					Temporary Mixed shapes remain explicitly marked; target-only Schema Nebula collections are not
+					promoted here.
+				</span>
+			</section>
+			<section class="observatory-controls" aria-label="Catalogue controls">
+				<label>
+					<span>Search models and fields</span>
+					<input id="catalogue-search" type="search" placeholder="product, status, unique…" />
+				</label>
+				<div id="catalogue-counts" class="catalogue-counts" aria-live="polite"></div>
+			</section>
+			<main class="observatory-main">
+				<nav id="model-list" class="model-list" aria-label="Current MongoDB models"></nav>
+				<article id="model-detail" class="model-detail" aria-live="polite"></article>
+			</main>
+		</div>
+		<script type="module" src="./app.js"></script>
+	</body>
+</html>

@@ -1,9 +1,9 @@
 ---
 title: API Overview
-description: Current API application boundary, capability status, navigation, and future generated reference.
+description: Current API application boundary, capability status, navigation, and generated reference.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
     - apps/api/src
     - packages/contracts/src
@@ -18,13 +18,13 @@ Start with the [Backend Platform Atlas](../backend/overview) when you need to un
 
 ## Current portal surfaces
 
-| Surface              | Purpose                                                | Status          | Evidence or trigger                                                                  |
-| -------------------- | ------------------------------------------------------ | --------------- | ------------------------------------------------------------------------------------ |
-| OpenAPI JSON         | Machine-readable API contract                          | **Implemented** | Generated in `apps/api/src/main.ts` at `/openapi.json`                               |
-| Transitional API UI  | Temporary framework-provided reference                 | **Deprecated**  | Existing `/docs` route; do not deepen it                                             |
-| Scalar API Reference | One readable reference and approved interactive client | **Deferred**    | Integrate at `/api/reference` after the portal consumes the real specification       |
-| Portal OpenAPI route | Stable machine-readable portal path                    | **Deferred**    | Publish or proxy safely at `/api/openapi.json`                                       |
-| Auth/session guide   | Human-authored security and lifecycle guide            | **Scaffolded**  | Auth controller, service, guards and infrastructure exist; full verification remains |
+| Surface              | Purpose                                                | Status         | Evidence or trigger                                                                  |
+| -------------------- | ------------------------------------------------------ | -------------- | ------------------------------------------------------------------------------------ |
+| OpenAPI JSON         | Machine-readable API contract                          | **Scaffolded** | Shared source generator; incomplete operation metadata remains visible               |
+| Transitional API UI  | Temporary framework-provided reference                 | **Deprecated** | Existing `/docs` route; do not deepen it                                             |
+| Scalar API Reference | One readable reference and approved interactive client | **Scaffolded** | Current OpenAPI at `/api/reference/`; promote only after the completeness gates pass |
+| Portal OpenAPI route | Stable machine-readable portal path                    | **Scaffolded** | Source-generated during the atomic build at `/api/openapi.json`                      |
+| Auth/session guide   | Human-authored security and lifecycle guide            | **Scaffolded** | Auth controller, service, guards and infrastructure exist; full verification remains |
 
 ## Current module snapshot
 
@@ -32,7 +32,7 @@ The application currently exposes health, authentication, catalogue, cart, order
 
 ## Interactive-request boundary
 
-The future Scalar client may target approved development or staging servers only. It must preserve normal authentication, CSRF, authorization, rate limits and CORS. It must never embed credentials or turn the private documentation deployment into an unrestricted production console.
+The Scalar client may target approved development or staging servers only. The current document declares local API port `4000`. It preserves normal authentication, CSRF, authorization, rate limits and CORS, and it must never embed credentials or turn the private documentation deployment into an unrestricted production console.
 
 Every endpoint page or generated operation should identify authentication, authorization, validation failures, business-rule failures, rate limits, side effects, and related collections.
 

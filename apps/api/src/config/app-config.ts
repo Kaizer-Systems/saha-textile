@@ -12,7 +12,7 @@ const ConfigSchema = z.object({
 	port: z.coerce.number().int().positive().default(4000),
 	corsAllowedOrigins: z
 		.string()
-		.default('http://localhost:4200,http://localhost:4300')
+		.default('http://localhost:4200,http://localhost:4300,http://127.0.0.1:3457,http://localhost:3457')
 		.transform((s) =>
 			s
 				.split(',')

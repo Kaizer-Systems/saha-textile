@@ -19,6 +19,7 @@ allowBuilds:
   msgpackr-extract: true
   sharp: true
   unrs-resolver: true
+  vue-demi: true
 
 # Auto-managed by pnpm: packages exempted from the global minimumReleaseAge gate
 # so freshly pinned versions can be installed.

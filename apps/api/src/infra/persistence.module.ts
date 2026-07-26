@@ -54,6 +54,10 @@ export class PersistenceModule implements OnApplicationBootstrap, OnApplicationS
 	private readonly logger = new Logger(PersistenceModule.name);
 
 	async onApplicationBootstrap(): Promise<void> {
+		if (process.env.SAHA_TEXTILE_DOCUMENTATION_BUILD === '1') {
+			this.logger.log('Skipping MongoDB connection for source-only documentation generation');
+			return;
+		}
 		try {
 			await connectMongo();
 			this.logger.log('Connected to MongoDB');
@@ -65,6 +69,9 @@ export class PersistenceModule implements OnApplicationBootstrap, OnApplicationS
 	}
 
 	async onApplicationShutdown(): Promise<void> {
+		if (process.env.SAHA_TEXTILE_DOCUMENTATION_BUILD === '1') {
+			return;
+		}
 		await disconnectMongo();
 	}
 }

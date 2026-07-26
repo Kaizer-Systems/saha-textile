@@ -13,6 +13,18 @@
 
 :root,
 [data-portal-theme='light'] {
+	--portal-dark-canvas: #0f0f0f;
+	--portal-dark-surface: #1a1a1a;
+	--portal-dark-surface-raised: #272727;
+	--portal-dark-ink: #e7e7e7;
+	--portal-dark-muted: #a4a4a4;
+	--portal-dark-subtle: #797979;
+	--portal-dark-border: #2d2d2d;
+	--portal-dark-accent: #3ea6ff;
+	--portal-dark-accent-soft: rgba(62, 166, 255, 0.12);
+	--portal-dark-success: #22b982;
+	--portal-dark-warning: #ff9c32;
+	--portal-dark-scrollbar: rgba(255, 255, 255, 0.18);
 	--portal-font-sans:
 		'Inter Variable', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 	--portal-font-mono:
@@ -39,19 +51,37 @@
 
 [data-theme='dark'],
 [data-portal-theme='dark'] {
-	--portal-canvas: #0f0f0f;
-	--portal-surface: #1a1a1a;
-	--portal-surface-raised: #272727;
-	--portal-ink: #e7e7e7;
-	--portal-muted: #a4a4a4;
-	--portal-subtle: #797979;
-	--portal-border: #2d2d2d;
-	--portal-accent: #3ea6ff;
-	--portal-accent-soft: rgba(62, 166, 255, 0.12);
-	--portal-success: #22b982;
-	--portal-warning: #ff9c32;
-	--portal-scrollbar: rgba(255, 255, 255, 0.18);
+	--portal-canvas: var(--portal-dark-canvas);
+	--portal-surface: var(--portal-dark-surface);
+	--portal-surface-raised: var(--portal-dark-surface-raised);
+	--portal-ink: var(--portal-dark-ink);
+	--portal-muted: var(--portal-dark-muted);
+	--portal-subtle: var(--portal-dark-subtle);
+	--portal-border: var(--portal-dark-border);
+	--portal-accent: var(--portal-dark-accent);
+	--portal-accent-soft: var(--portal-dark-accent-soft);
+	--portal-success: var(--portal-dark-success);
+	--portal-warning: var(--portal-dark-warning);
+	--portal-scrollbar: var(--portal-dark-scrollbar);
 	color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+	html[data-theme='os'] {
+		--portal-canvas: var(--portal-dark-canvas);
+		--portal-surface: var(--portal-dark-surface);
+		--portal-surface-raised: var(--portal-dark-surface-raised);
+		--portal-ink: var(--portal-dark-ink);
+		--portal-muted: var(--portal-dark-muted);
+		--portal-subtle: var(--portal-dark-subtle);
+		--portal-border: var(--portal-dark-border);
+		--portal-accent: var(--portal-dark-accent);
+		--portal-accent-soft: var(--portal-dark-accent-soft);
+		--portal-success: var(--portal-dark-success);
+		--portal-warning: var(--portal-dark-warning);
+		--portal-scrollbar: var(--portal-dark-scrollbar);
+		color-scheme: dark;
+	}
 }
 
 .portalThemeCanvas {

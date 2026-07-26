@@ -1,0 +1,33 @@
+---
+title: Scalar API Reference
+slug: /tools/scalar
+description: Symbolic Docusaurus gateway to the generated Scalar API reference child.
+status: scaffolded
+audience: [beginner, frontend, backend, operator]
+last_verified: '2026-07-26'
+wide: true
+hide_table_of_contents: true
+source_of_truth:
+    - apps/developer-portal-scalar
+    - apps/developer-portal/src/components/ChildToolGateway
+    - apps/api/src
+    - scripts/serve-developer-portal-persistent.mjs
+---
+
+import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
+
+# Scalar API reference
+
+<ChildToolGateway
+	toolName="Scalar API reference"
+	target="/api/reference/"
+	eyebrow="Request Wormhole · OpenAPI flight console"
+	title="Traverse the contract before sending a request."
+	description="An operation packet crosses the OpenAPI event horizon, resolves against an explicitly approved local or staging server, and emerges as a real request governed by normal API security controls."
+	launchLabel="Open Request Wormhole"
+	symbol="request-wormhole"
+/>
+
+This scaffold publishes the current generated OpenAPI evidence and keeps **Test Request** available. The document is still incomplete, so missing security, error, schema, and side-effect detail remains visibly flagged inside the child surface.
+
+Test requests never receive a privileged token or security bypass from the portal. They target only the server URLs present in the generated OpenAPI document and remain subject to normal CORS, authentication, CSRF, authorization, ownership, and rate-limit enforcement.

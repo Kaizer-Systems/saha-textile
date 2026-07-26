@@ -2,6 +2,7 @@
 
 html,
 body {
+	min-height: 100%;
 	background: var(--portal-canvas);
 	color: var(--portal-ink);
 	font-family: var(--portal-font-sans);
@@ -18,27 +19,133 @@ body {
 	--color-link: var(--portal-accent);
 	--color-ts-keyword: var(--portal-warning);
 	--color-ts-interface: var(--portal-success);
+	position: relative;
+	background:
+		radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--portal-accent) 11%, transparent), transparent 32%),
+		radial-gradient(circle at 16% 70%, color-mix(in srgb, var(--portal-success) 7%, transparent), transparent 28%),
+		var(--portal-canvas);
+	font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+	font-optical-sizing: auto;
+}
+
+body::before,
+body::after {
+	position: fixed;
+	z-index: 5;
+	inset: 0;
+	pointer-events: none;
+	content: '';
+}
+
+body::before {
+	background-image:
+		radial-gradient(circle at 12% 22%, var(--portal-accent) 0 1px, transparent 1.7px),
+		radial-gradient(circle at 72% 16%, var(--portal-success) 0 1px, transparent 1.7px),
+		radial-gradient(circle at 88% 68%, var(--portal-accent) 0 1px, transparent 1.7px);
+	background-size:
+		180px 160px,
+		250px 210px,
+		310px 260px;
+	opacity: 0.2;
+	animation: typedocStarDrift 24s linear infinite;
+}
+
+body::after {
+	background: repeating-linear-gradient(0deg, transparent 0 5px, rgb(255 255 255 / 1.1%) 6px);
+	mix-blend-mode: screen;
 }
 
 .container-main {
-	max-width: 1440px;
+	position: relative;
+	z-index: 6;
+	max-width: 1480px;
 }
 
 .site-menu,
-.page-menu,
-.tsd-page-toolbar {
-	background: var(--portal-canvas);
+.page-menu {
+	border: var(--portal-border-width) solid var(--portal-border);
+	border-radius: var(--portal-radius-lg);
+	background: color-mix(in srgb, var(--portal-surface) 86%, transparent);
+	box-shadow:
+		0 18px 46px rgb(0 0 0 / 18%),
+		inset 0 1px 0 rgb(255 255 255 / 3%);
+	backdrop-filter: blur(16px);
 }
 
 .tsd-page-toolbar {
-	border-bottom: var(--portal-border-width) solid var(--portal-border);
-	box-shadow: none;
+	z-index: 30;
+	border-bottom: var(--portal-border-width) solid color-mix(in srgb, var(--portal-accent) 28%, var(--portal-border));
+	background: color-mix(in srgb, var(--portal-canvas) 88%, transparent);
+	box-shadow: 0 16px 44px rgb(0 0 0 / 18%);
+	backdrop-filter: blur(18px) saturate(130%);
+}
+
+.tsd-page-toolbar .title {
+	color: var(--portal-ink);
+	font-weight: 760;
+	letter-spacing: -0.035em;
+}
+
+.tsd-page-toolbar .title::before {
+	display: inline-grid;
+	width: 24px;
+	height: 24px;
+	margin-right: 9px;
+	place-items: center;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 54%, var(--portal-border));
+	border-radius: var(--portal-radius);
+	box-shadow: 0 0 18px color-mix(in srgb, var(--portal-accent) 22%, transparent);
+	color: var(--portal-accent);
+	content: 'TS';
+	font: 700 0.62rem var(--portal-font-mono);
+	vertical-align: middle;
 }
 
 .tsd-panel,
 .col-content {
 	border-color: var(--portal-border);
-	background: var(--portal-canvas);
+	background: transparent;
+}
+
+.tsd-panel {
+	padding: 20px;
+	border: var(--portal-border-width) solid var(--portal-border);
+	border-radius: var(--portal-radius-lg);
+	background: color-mix(in srgb, var(--portal-surface) 78%, transparent);
+	box-shadow:
+		0 20px 54px rgb(0 0 0 / 14%),
+		inset 0 1px 0 rgb(255 255 255 / 3%);
+	backdrop-filter: blur(14px);
+}
+
+.tsd-page-title h1 {
+	letter-spacing: -0.055em;
+}
+
+.tsd-navigation a {
+	border-radius: var(--portal-radius);
+	transition:
+		background 160ms ease,
+		color 160ms ease,
+		box-shadow 160ms ease,
+		transform 160ms ease;
+}
+
+.tsd-navigation a:hover,
+.tsd-navigation a.current {
+	background: var(--portal-accent-soft);
+	box-shadow: inset 2px 0 0 var(--portal-accent);
+	color: var(--portal-accent);
+	transform: translateX(2px);
+}
+
+.tsd-accordion-summary {
+	border-radius: var(--portal-radius);
+	color: var(--portal-muted);
+}
+
+.tsd-accordion-summary:hover {
+	background: var(--portal-accent-soft);
 }
 
 .tsd-signature,
@@ -51,14 +158,74 @@ code {
 .tsd-signature,
 pre {
 	border: var(--portal-border-width) solid var(--portal-border);
-	background: var(--portal-surface);
+	background:
+		linear-gradient(90deg, color-mix(in srgb, var(--portal-accent) 6%, transparent), transparent 58%),
+		var(--portal-surface);
 }
 
 a {
 	color: var(--portal-accent);
 }
 
+#tsd-search {
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 36%, var(--portal-border));
+	border-radius: var(--portal-radius-lg);
+	background: color-mix(in srgb, var(--portal-surface) 94%, transparent);
+	box-shadow: 0 28px 80px rgb(0 0 0 / 38%);
+	color: var(--portal-ink);
+	backdrop-filter: blur(22px);
+}
+
+#tsd-search-input,
+#tsd-theme {
+	border-color: var(--portal-border);
+	border-radius: var(--portal-radius);
+	background: var(--portal-canvas);
+	color: var(--portal-ink);
+	font-family: var(--portal-font-mono);
+}
+
+footer {
+	position: relative;
+	z-index: 6;
+	border-top-color: var(--portal-border);
+	background: color-mix(in srgb, var(--portal-canvas) 88%, transparent);
+}
+
+* {
+	scrollbar-color: var(--portal-scrollbar) transparent;
+}
+
 :where(a, button, input, select, summary):focus-visible {
 	box-shadow: var(--portal-focus);
 	outline: none;
+}
+
+@keyframes typedocStarDrift {
+	to {
+		background-position:
+			180px 160px,
+			-250px 210px,
+			310px -260px;
+	}
+}
+
+@media (max-width: 768px) {
+	.tsd-page-toolbar .title::before {
+		display: none;
+	}
+
+	.tsd-panel {
+		padding: 14px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body::before {
+		animation: none;
+	}
+
+	.tsd-navigation a {
+		transition: none;
+	}
 }

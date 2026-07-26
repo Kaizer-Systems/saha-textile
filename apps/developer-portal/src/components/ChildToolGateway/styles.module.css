@@ -413,6 +413,117 @@
 	animation-duration: 440ms;
 }
 
+/* Request Wormhole: an operation packet bends through the OpenAPI contract. */
+.wormholeRings {
+	fill: none;
+	stroke: color-mix(in srgb, var(--portal-accent) 54%, transparent);
+	stroke-dasharray: 8 9;
+	transform-origin: 260px 150px;
+	animation: wormholeSpin 9s linear infinite;
+}
+
+.wormholeRings ellipse:nth-child(2n) {
+	stroke: color-mix(in srgb, var(--portal-success) 44%, transparent);
+}
+
+.wormholeCore {
+	animation: coreBreathe 2.8s ease-in-out infinite;
+}
+
+.requestTrajectory {
+	fill: none;
+	stroke: var(--portal-warning);
+	stroke-dasharray: 5 7;
+	stroke-width: 1.4;
+	animation: latticeFlow 2.4s linear infinite;
+}
+
+.requestPacket rect,
+.responsePacket rect {
+	fill: color-mix(in srgb, var(--portal-surface-raised) 94%, transparent);
+	stroke: var(--portal-accent);
+}
+
+.requestPacket text,
+.responsePacket text,
+.openapiLabel,
+.mongodbLabel {
+	fill: var(--portal-ink);
+	font: 700 12px var(--portal-font-mono);
+}
+
+.requestPacket,
+.responsePacket {
+	transition: transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gatewayLaunching .requestPacket {
+	transform: translate(170px, -62px) scale(0.35);
+}
+
+.gatewayLaunching .responsePacket {
+	transform: translate(42px, -12px) scale(1.18);
+}
+
+.openapiLabel {
+	fill: var(--portal-accent);
+	font-size: 11px;
+	letter-spacing: 0.12em;
+}
+
+/* Schema Observatory: seven implemented models resolve under one telescope. */
+.observatoryOrbit,
+.constellationPath {
+	fill: none;
+	stroke: color-mix(in srgb, var(--portal-accent) 34%, transparent);
+	stroke-dasharray: 4 7;
+	transform-origin: 260px 150px;
+}
+
+.observatoryOrbit {
+	animation: orbitSpin 24s linear infinite;
+}
+
+.constellationPath {
+	stroke: color-mix(in srgb, var(--portal-success) 52%, transparent);
+	animation: latticeFlow 5s linear infinite;
+}
+
+.modelStars circle {
+	fill: color-mix(in srgb, var(--portal-accent) 36%, var(--portal-surface));
+	stroke: var(--portal-accent);
+	filter: drop-shadow(0 0 7px color-mix(in srgb, var(--portal-accent) 70%, transparent));
+	transition: transform 520ms ease;
+	transform-origin: center;
+}
+
+.modelStars text {
+	fill: var(--portal-ink);
+	font: 700 8px var(--portal-font-mono);
+	text-anchor: middle;
+}
+
+.telescope {
+	fill: color-mix(in srgb, var(--portal-surface-raised) 88%, transparent);
+	stroke: color-mix(in srgb, var(--portal-accent) 72%, var(--portal-border));
+	stroke-width: 1.5;
+	transform-origin: 130px 214px;
+	transition: transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mongodbLabel {
+	fill: var(--portal-success);
+	letter-spacing: 0.11em;
+}
+
+.gatewayLaunching .telescope {
+	transform: rotate(-12deg) scale(1.08);
+}
+
+.gatewayLaunching .modelStars circle {
+	transform: scale(1.75);
+}
+
 @keyframes starDrift {
 	to {
 		background-position:
@@ -420,6 +531,12 @@
 			-230px 190px,
 			270px -210px,
 			-190px -240px;
+	}
+}
+
+@keyframes wormholeSpin {
+	to {
+		transform: rotate(360deg) scale(1.04);
 	}
 }
 
@@ -526,7 +643,12 @@
 	.primitive,
 	.forgePulse,
 	.latticeLines,
-	.latticeNodes circle {
+	.latticeNodes circle,
+	.wormholeRings,
+	.wormholeCore,
+	.requestTrajectory,
+	.observatoryOrbit,
+	.constellationPath {
 		animation: none;
 	}
 

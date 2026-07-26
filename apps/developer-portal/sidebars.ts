@@ -121,7 +121,13 @@ const sidebars: SidebarsConfig = {
 		{
 			type: 'category',
 			label: 'Generated Tools',
-			items: ['tooling/generated-surfaces-and-runtime'],
+			items: [
+				'tooling/generated-surfaces-and-runtime',
+				'tooling/storybook-bridge',
+				'tooling/typedoc-bridge',
+				'tooling/scalar-bridge',
+				'tooling/database-catalogue-bridge',
+			],
 		},
 		{
 			type: 'category',

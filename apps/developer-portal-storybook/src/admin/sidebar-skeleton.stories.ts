@@ -32,4 +32,16 @@ export const HiddenAfterLoad: Story = {
 	args: {
 		loading: false,
 	},
+	render: (args) => ({
+		props: args,
+		template: `
+			<section class="storybookComponentStage storybookComponentStage--stack">
+				<p class="storybookComponentStage__label">Resolved navigation state</p>
+				<app-sidebar-menu-skeleton [loading]="loading" />
+				<p class="storybookStateNote">
+					The placeholder correctly withdraws after navigation data resolves.
+				</p>
+			</section>
+		`,
+	}),
 };

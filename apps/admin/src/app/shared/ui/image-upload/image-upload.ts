@@ -18,7 +18,7 @@ export class ImageUpload {
 	// TODO: Skipped for migration because:
 	//  Your application code writes to the input. This prevents migration.
 	@Input() image: IAttachment | null;
-	readonly id = input<string>(undefined);
+	readonly id = input<string>('');
 	// TODO: Skipped for migration because:
 	//  Your application code writes to the input. This prevents migration.
 	@Input() imageUrl: string | null;

@@ -21,7 +21,7 @@ import { FormFields } from '../form-fields/form-fields';
 })
 export class Link {
 	readonly linkForm = input<any>(undefined);
-	readonly products = input<Select2Data>(undefined);
+	readonly products = input<Select2Data>([]);
 
 	readonly productFilter = output<Params>();
 

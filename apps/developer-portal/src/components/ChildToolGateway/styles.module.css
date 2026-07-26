@@ -1,342 +1,155 @@
-/* ============================================================================
- * NEXT-GEN-UI · Symbolic child-tool transitions
- * ----------------------------------------------------------------------------
- * Shared living-system frame; each tool supplies its own symbolic SVG motion,
- * ambient persona, pointer depth, and full-viewport awakening sequence.
- * ========================================================================= */
+/* ==========================================================================
+ * NEXT-GEN-UI · Four independent child-tool bridge systems
+ * --------------------------------------------------------------------------
+ * The route controller is shared; compositions and motion vocabularies are not.
+ * Every cinematic owns a six-second story and a destination-shaped handoff.
+ * ========================================================================== */
 
 .gateway {
-	--gateway-launch-duration: 3000ms;
-	--gateway-x: 50%;
-	--gateway-y: 50%;
-	--gateway-rotate-x: 0deg;
-	--gateway-rotate-y: 0deg;
-	--gateway-secondary: var(--portal-success);
+	--pointer-x: 50%;
+	--pointer-y: 50%;
+	--scene-pointer-x: 50%;
+	--scene-pointer-y: 50%;
+	--scene-cursor-opacity: 0;
+	--scene-shift-x: 0px;
+	--scene-shift-y: 0px;
+	--scene-angle: 0deg;
 	position: relative;
 	display: grid;
-	grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
 	width: 100%;
-	max-width: none;
-	min-height: 520px;
+	min-height: 660px;
 	margin: 2.4rem 0;
 	overflow: hidden;
-	border: 1px solid color-mix(in srgb, var(--portal-accent) 38%, var(--portal-border));
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 46%, var(--portal-border));
 	border-radius: var(--portal-radius-xl);
-	background:
-		linear-gradient(135deg, color-mix(in srgb, var(--portal-surface) 88%, transparent), transparent 62%),
-		color-mix(in srgb, var(--portal-canvas) 86%, transparent);
+	background: color-mix(in srgb, var(--portal-canvas) 93%, transparent);
 	box-shadow:
-		0 26px 80px rgb(0 0 0 / 24%),
-		0 0 100px color-mix(in srgb, var(--portal-accent) 6%, transparent),
-		inset 0 1px 0 rgb(255 255 255 / 6%);
+		0 30px 100px rgb(0 0 0 / 34%),
+		0 0 90px color-mix(in srgb, var(--portal-accent) 8%, transparent),
+		inset 0 1px 0 rgb(255 255 255 / 7%);
 	isolation: isolate;
-	perspective: 1200px;
 }
 
-.gateway[data-symbol='type-lattice'] {
-	--gateway-secondary: var(--portal-warning);
-}
-
-.gateway[data-symbol='request-wormhole'] {
-	--gateway-secondary: var(--portal-warning);
-}
-
-.gateway[data-symbol='schema-observatory'] {
-	--gateway-secondary: var(--portal-success);
-}
-
-.gateway::before {
+.gatewayStars {
 	position: absolute;
-	z-index: -1;
+	z-index: -2;
 	inset: 0;
 	background-image:
-		linear-gradient(color-mix(in srgb, var(--portal-accent) 7%, transparent) 1px, transparent 1px),
-		linear-gradient(90deg, color-mix(in srgb, var(--portal-accent) 7%, transparent) 1px, transparent 1px);
-	background-size: 32px 32px;
-	content: '';
-	mask-image: linear-gradient(90deg, black, transparent 78%);
+		radial-gradient(circle at 12% 20%, var(--portal-accent) 0 1px, transparent 1.8px),
+		radial-gradient(circle at 72% 16%, var(--portal-success) 0 1px, transparent 1.7px),
+		radial-gradient(circle at 88% 70%, var(--portal-warning) 0 1px, transparent 1.8px),
+		radial-gradient(circle at 38% 82%, var(--portal-accent) 0 1px, transparent 1.7px);
+	background-size:
+		170px 148px,
+		238px 190px,
+		270px 224px,
+		196px 246px;
+	opacity: 0.5;
+	animation: starDrift 28s linear infinite;
 }
 
 .gateway::after {
 	position: absolute;
 	z-index: -1;
-	top: var(--gateway-y);
-	left: var(--gateway-x);
-	width: 520px;
-	height: 520px;
+	top: var(--pointer-y);
+	left: var(--pointer-x);
+	width: 440px;
+	height: 440px;
 	border-radius: 50%;
-	background: radial-gradient(
-		circle,
-		color-mix(in srgb, var(--portal-accent) 18%, transparent),
-		color-mix(in srgb, var(--gateway-secondary) 7%, transparent) 34%,
-		transparent 70%
-	);
+	background: radial-gradient(circle, color-mix(in srgb, var(--portal-accent) 15%, transparent), transparent 68%);
 	content: '';
-	filter: blur(12px);
-	opacity: 0.78;
+	filter: blur(16px);
 	pointer-events: none;
 	transform: translate(-50%, -50%);
 	transition:
-		top 180ms ease-out,
-		left 180ms ease-out,
-		opacity 240ms ease;
+		top 170ms ease-out,
+		left 170ms ease-out;
 }
 
-.starField {
-	position: absolute;
-	z-index: -1;
-	inset: 0;
-	background-image:
-		radial-gradient(circle at 12% 22%, var(--portal-accent) 0 1px, transparent 1.7px),
-		radial-gradient(circle at 74% 16%, var(--portal-success) 0 1px, transparent 1.7px),
-		radial-gradient(circle at 87% 68%, var(--portal-accent) 0 1px, transparent 1.7px),
-		radial-gradient(circle at 36% 79%, var(--portal-warning) 0 1px, transparent 1.7px);
-	background-size:
-		170px 150px,
-		230px 190px,
-		270px 210px,
-		190px 240px;
-	opacity: 0.54;
-	animation: starDrift 16s linear infinite;
-}
-
-.ambientBloom {
-	position: absolute;
-	z-index: -1;
-	inset: 0;
-	overflow: hidden;
-	pointer-events: none;
-}
-
-.ambientBloom span {
-	position: absolute;
-	width: 240px;
-	height: 240px;
-	border: 1px solid color-mix(in srgb, var(--portal-accent) 16%, transparent);
-	border-radius: 50%;
-	box-shadow:
-		0 0 70px color-mix(in srgb, var(--portal-accent) 11%, transparent),
-		inset 0 0 50px color-mix(in srgb, var(--portal-accent) 8%, transparent);
-	opacity: 0.46;
-	animation: ambientOrbit 13s ease-in-out infinite;
-}
-
-.ambientBloom span:first-child {
-	top: -120px;
-	left: 20%;
-}
-
-.ambientBloom span:nth-child(2) {
-	right: -110px;
-	bottom: -130px;
-	animation-delay: -4s;
-	animation-duration: 17s;
-}
-
-.ambientBloom span:nth-child(3) {
-	bottom: -180px;
-	left: -80px;
-	width: 320px;
-	height: 320px;
-	animation-delay: -8s;
-	animation-duration: 21s;
-}
-
-.scanBeam {
-	position: absolute;
-	z-index: 1;
-	inset: -40% 0 auto;
-	height: 38%;
-	background: linear-gradient(
-		to bottom,
-		transparent,
-		color-mix(in srgb, var(--portal-accent) 5%, transparent) 45%,
-		color-mix(in srgb, var(--portal-accent) 28%, transparent) 50%,
-		transparent 55%
-	);
-	mix-blend-mode: screen;
-	opacity: 0.5;
-	pointer-events: none;
-	animation: gatewayScan 7s linear infinite;
-}
-
-.visual {
+.scene {
 	position: relative;
-	z-index: 1;
-	display: grid;
-	align-content: center;
 	min-width: 0;
 	overflow: hidden;
-	padding: clamp(20px, 4vw, 46px);
-	border-right: 1px solid color-mix(in srgb, var(--portal-accent) 22%, var(--portal-border));
-	transform: rotateX(var(--gateway-rotate-x)) rotateY(var(--gateway-rotate-y));
-	transform-style: preserve-3d;
-	transition: transform 180ms ease-out;
+	contain: paint;
 }
 
-.symbolStage {
+.narrative {
 	position: relative;
-	z-index: 2;
-	display: grid;
-	place-items: center;
-	min-height: 360px;
-	transform-style: preserve-3d;
-}
-
-.orbitalShell {
-	position: absolute;
-	width: min(74%, 420px);
-	aspect-ratio: 1;
-	border: 1px solid color-mix(in srgb, var(--portal-accent) 19%, transparent);
-	border-radius: 50%;
-	box-shadow:
-		0 0 80px color-mix(in srgb, var(--portal-accent) 10%, transparent),
-		inset 0 0 70px color-mix(in srgb, var(--gateway-secondary) 5%, transparent);
-	opacity: 0.72;
-	transform: translateZ(-22px) rotateX(68deg);
-}
-
-.orbitalShell::before,
-.orbitalShell::after {
-	position: absolute;
-	inset: 12%;
-	border: 1px dashed color-mix(in srgb, var(--gateway-secondary) 24%, transparent);
-	border-radius: inherit;
-	content: '';
-	animation: orbitSpin 18s linear infinite;
-}
-
-.orbitalShell::after {
-	inset: 27%;
-	border-style: solid;
-	animation-direction: reverse;
-	animation-duration: 12s;
-}
-
-.symbol {
-	position: relative;
-	z-index: 2;
-	width: 100%;
-	height: auto;
-	overflow: visible;
-	filter: drop-shadow(0 24px 38px rgb(0 0 0 / 30%));
-	transform: translateZ(38px);
-}
-
-.liveSignal {
-	position: absolute;
-	right: 5%;
-	bottom: 8%;
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	padding: 6px 9px;
-	border: 1px solid color-mix(in srgb, var(--portal-success) 36%, var(--portal-border));
-	border-radius: 999px;
-	background: color-mix(in srgb, var(--portal-canvas) 74%, transparent);
-	box-shadow: 0 0 24px color-mix(in srgb, var(--portal-success) 11%, transparent);
-	color: var(--portal-success);
-	font: 700 0.58rem/1 var(--portal-font-mono);
-	letter-spacing: 0.13em;
-	backdrop-filter: blur(12px);
-}
-
-.liveSignal span {
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	background: currentcolor;
-	box-shadow: 0 0 12px currentcolor;
-	animation: livePulse 1.6s ease-in-out infinite;
-}
-
-.gateway[data-symbol='type-lattice'] .liveSignal {
-	right: auto;
-	bottom: 4%;
-	left: 50%;
-	transform: translateX(-50%);
-}
-
-.coordinates {
-	position: relative;
-	z-index: 2;
-	display: flex;
-	justify-content: space-between;
-	color: var(--portal-subtle);
-	font-family: var(--portal-font-mono);
-	font-size: 0.62rem;
-	letter-spacing: 0.14em;
-}
-
-.copy {
-	position: relative;
-	z-index: 2;
+	z-index: 5;
 	display: grid;
 	align-content: center;
 	gap: 14px;
 	min-width: 0;
-	padding: clamp(28px, 4.2vw, 48px);
-	background: linear-gradient(135deg, transparent, color-mix(in srgb, var(--portal-surface) 42%, transparent));
+	padding: clamp(30px, 4vw, 52px);
+	background: linear-gradient(
+		135deg,
+		color-mix(in srgb, var(--portal-canvas) 94%, transparent),
+		color-mix(in srgb, var(--portal-surface) 76%, transparent)
+	);
+	backdrop-filter: blur(18px);
 }
 
-.copy h2,
-.copy p {
+.narrative h2,
+.narrative p {
 	margin: 0;
 }
 
-.copy h2 {
+.narrative h2 {
 	color: var(--portal-ink);
-	font-size: clamp(1.45rem, 2.25vw, 2.15rem);
-	letter-spacing: -0.045em;
-	line-height: 1.08;
+	font-size: clamp(1.55rem, 2.4vw, 2.35rem);
+	letter-spacing: -0.05em;
+	line-height: 1.04;
 	text-wrap: balance;
 }
 
-.copy > p:not(.eyebrow) {
+.narrative > p:not(.eyebrow) {
 	color: var(--portal-muted);
-	font-size: 0.94rem;
-	line-height: 1.62;
+	font-size: 0.96rem;
+	line-height: 1.64;
 }
 
 .eyebrow {
 	color: var(--portal-accent);
-	font-family: var(--portal-font-mono);
-	font-size: 0.7rem;
-	font-weight: 700;
+	font: 750 0.68rem/1.4 var(--portal-font-mono);
 	letter-spacing: 0.15em;
 	text-transform: uppercase;
 }
 
-.personaRail {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-	align-items: start;
-	gap: 8px 14px;
-	margin-bottom: 4px;
+.personaRail,
+.sceneTelemetry {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
 	color: var(--portal-subtle);
-	font: 700 0.56rem/1 var(--portal-font-mono);
-	letter-spacing: 0.13em;
+	font: 750 0.56rem/1.3 var(--portal-font-mono);
+	letter-spacing: 0.14em;
 	text-transform: uppercase;
 }
 
-.personaRail span {
+.personaRail span,
+.sceneTelemetry span:last-child {
 	display: inline-flex;
 	align-items: center;
-	gap: 7px;
+	gap: 8px;
 }
 
-.personaRail span:last-child {
-	justify-self: end;
-	text-align: right;
-}
-
-.personaRail i {
+.personaRail i,
+.sceneTelemetry i {
 	width: 6px;
 	height: 6px;
 	border-radius: 50%;
 	background: var(--portal-success);
-	box-shadow: 0 0 12px var(--portal-success);
-	animation: livePulse 1.6s ease-in-out infinite;
+	box-shadow: 0 0 14px var(--portal-success);
+	animation: signalPulse 1.8s ease-in-out infinite;
+}
+
+.sceneTelemetry {
+	position: absolute;
+	right: 24px;
+	bottom: 18px;
+	left: 24px;
+	z-index: 8;
 }
 
 .launchButton {
@@ -351,22 +164,20 @@
 	margin-top: 10px;
 	padding: 17px 18px;
 	overflow: hidden;
-	border: 1px solid color-mix(in srgb, var(--portal-accent) 64%, var(--portal-border));
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 70%, var(--portal-border));
 	border-radius: var(--portal-radius-lg);
 	background:
 		radial-gradient(
-			180px circle at var(--spot-x) var(--spot-y),
-			color-mix(in srgb, var(--portal-accent) 23%, transparent),
-			transparent 66%
+			190px circle at var(--pointer-x) var(--pointer-y),
+			color-mix(in srgb, var(--portal-accent) 20%, transparent),
+			transparent 68%
 		),
-		color-mix(in srgb, var(--portal-surface-raised) 92%, transparent);
-	box-shadow:
-		inset 0 0 0 1px color-mix(in srgb, var(--portal-accent) 8%, transparent),
-		0 0 0 transparent;
+		color-mix(in srgb, var(--portal-surface-raised) 94%, transparent);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--portal-accent) 8%, transparent);
 	color: var(--portal-ink);
 	cursor: pointer;
-	font: 700 0.86rem/1.15 var(--portal-font-mono);
-	letter-spacing: 0.04em;
+	font: 750 0.84rem/1.15 var(--portal-font-mono);
+	letter-spacing: 0.045em;
 	text-align: left;
 	transition:
 		border-color 180ms ease,
@@ -377,17 +188,17 @@
 .launchButton::after {
 	position: absolute;
 	inset: 0;
-	background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 14%) 50%, transparent 80%);
+	background: linear-gradient(100deg, transparent 18%, rgb(255 255 255 / 15%) 50%, transparent 82%);
 	content: '';
 	transform: translateX(-130%);
-	transition: transform 480ms ease;
+	transition: transform 520ms ease;
 }
 
 .launchButton:hover {
 	border-color: var(--portal-accent);
 	box-shadow:
-		0 0 26px color-mix(in srgb, var(--portal-accent) 26%, transparent),
-		inset 0 0 22px color-mix(in srgb, var(--portal-accent) 8%, transparent);
+		0 0 30px color-mix(in srgb, var(--portal-accent) 26%, transparent),
+		inset 0 0 24px color-mix(in srgb, var(--portal-accent) 10%, transparent);
 	transform: translateY(-2px);
 }
 
@@ -395,21 +206,18 @@
 	transform: translateX(130%);
 }
 
-.launchButton:disabled {
-	cursor: progress;
-	border-color: var(--portal-accent);
-	box-shadow:
-		0 0 34px color-mix(in srgb, var(--portal-accent) 30%, transparent),
-		inset 0 0 30px color-mix(in srgb, var(--portal-accent) 12%, transparent);
-	opacity: 1;
+.launchButton:focus-visible,
+.skipTransition:focus-visible {
+	outline: 2px solid var(--portal-accent);
+	outline-offset: 3px;
 }
 
 .buttonGlyph {
 	display: grid;
-	width: 32px;
-	height: 32px;
+	width: 34px;
+	height: 34px;
 	place-items: center;
-	border: 1px solid color-mix(in srgb, var(--portal-accent) 58%, transparent);
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 62%, transparent);
 	border-radius: var(--portal-radius);
 	color: var(--portal-accent);
 	font-size: 1.05rem;
@@ -417,12 +225,12 @@
 
 .buttonVector {
 	color: var(--portal-accent);
-	font-size: 1.1rem;
+	font-size: 1.12rem;
 	transition: transform 180ms ease;
 }
 
 .launchButton:hover .buttonVector {
-	transform: translateX(4px);
+	transform: translateX(5px);
 }
 
 .srOnly {
@@ -435,916 +243,3296 @@
 	white-space: nowrap;
 }
 
-.transitionVeil {
-	--gateway-launch-duration: 3000ms;
-	--gateway-secondary: var(--portal-success);
-	position: fixed;
-	z-index: 10000;
-	display: grid;
-	inset: 0;
-	overflow: hidden;
-	background: var(--portal-canvas);
-	pointer-events: none;
-	visibility: hidden;
-	opacity: 0;
+/* --------------------------------------------------------------------------
+ * Component Forge bridge · zero-gravity fabrication bay
+ * -------------------------------------------------------------------------- */
+
+.gateway[data-symbol='component-forge'] {
+	grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
+	grid-template-rows: minmax(660px, auto);
 }
 
-.transitionCosmos,
-.transitionGeometry,
-.transitionIris,
-.transitionCore,
-.transitionVitals,
-.transitionBlackout {
-	grid-area: 1 / 1;
-}
-
-.transitionCosmos {
-	position: absolute;
-	inset: -30%;
+.gateway[data-symbol='component-forge'] .forgeScene {
+	grid-column: 1;
+	grid-row: 1;
 	background:
-		radial-gradient(
-			circle at 50% 50%,
-			color-mix(in srgb, var(--portal-accent) 20%, transparent) 0 2px,
-			transparent 3px
-		),
-		radial-gradient(
-			circle at 50% 50%,
-			color-mix(in srgb, var(--gateway-secondary) 16%, transparent) 0 1px,
-			transparent 2px
-		);
+		linear-gradient(color-mix(in srgb, var(--portal-accent) 8%, transparent) 1px, transparent 1px),
+		linear-gradient(90deg, color-mix(in srgb, var(--portal-accent) 8%, transparent) 1px, transparent 1px),
+		radial-gradient(circle at 43% 45%, color-mix(in srgb, var(--portal-accent) 18%, transparent), transparent 38%);
 	background-size:
-		82px 82px,
-		47px 47px;
-	opacity: 0.22;
-	transform: scale(0.25);
+		36px 36px,
+		36px 36px,
+		auto;
 }
 
-.transitionGeometry {
+.gateway[data-symbol='component-forge'] .narrative {
+	grid-column: 2;
+	grid-row: 1;
+	width: auto;
+	margin: 0;
+	border-left: 1px solid color-mix(in srgb, var(--portal-accent) 35%, var(--portal-border));
+	border-radius: 0;
+	box-shadow: inset 26px 0 54px color-mix(in srgb, var(--portal-accent) 4%, transparent);
+}
+
+.forgeRail {
 	position: absolute;
-	inset: -25%;
-	background:
-		repeating-radial-gradient(
-			circle at center,
-			transparent 0 38px,
-			color-mix(in srgb, var(--portal-accent) 20%, transparent) 39px 40px
-		),
-		conic-gradient(
-			from 0deg,
-			transparent,
-			color-mix(in srgb, var(--portal-accent) 48%, transparent),
-			transparent 20%,
-			transparent 78%,
-			color-mix(in srgb, var(--gateway-secondary) 32%, transparent),
-			transparent
-		);
-	filter: blur(0.2px) drop-shadow(0 0 28px color-mix(in srgb, var(--portal-accent) 16%, transparent));
-	opacity: 0;
-	transform: rotate(0deg) scale(0.38);
-}
-
-.transitionGeometry::before,
-.transitionGeometry::after {
-	position: absolute;
-	inset: 28%;
-	border: 1px solid color-mix(in srgb, var(--portal-accent) 44%, transparent);
-	content: '';
-	transform: rotate(45deg);
-}
-
-.transitionGeometry::after {
-	inset: 36%;
-	border-color: color-mix(in srgb, var(--gateway-secondary) 34%, transparent);
-	transform: rotate(-45deg);
-}
-
-.transitionIris {
-	position: absolute;
-	inset: 0;
-	background: radial-gradient(
-		circle at center,
-		transparent 0 8%,
-		color-mix(in srgb, var(--portal-accent) 8%, transparent) 14%,
-		color-mix(in srgb, var(--portal-canvas) 88%, transparent) 44%,
-		var(--portal-canvas) 72%
-	);
-	opacity: 0;
-	transform: scale(1.5);
-}
-
-.transitionCore {
-	position: relative;
-	z-index: 2;
+	inset: 24px 22% auto 22px;
 	display: grid;
-	align-self: center;
-	justify-self: center;
-	justify-items: center;
-	width: min(680px, calc(100vw - 48px));
-	padding: 44px;
-	text-align: center;
-	opacity: 0;
-	transform: translateY(26px) scale(0.92);
+	grid-template-columns: 1fr 1fr 1fr;
+	gap: 16px;
 }
 
-.transitionGlyph {
+.forgeRail span {
+	height: 6px;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 38%, transparent);
+	border-radius: 99px;
+	background: linear-gradient(90deg, transparent, var(--portal-accent), transparent);
+	box-shadow: 0 0 16px color-mix(in srgb, var(--portal-accent) 26%, transparent);
+	opacity: 0.56;
+	animation: railCharge 3.2s ease-in-out infinite;
+}
+
+.forgeRail span:nth-child(2) {
+	animation-delay: -1.05s;
+}
+
+.forgeRail span:nth-child(3) {
+	animation-delay: -2.1s;
+}
+
+.forgeCore {
+	position: absolute;
+	top: 48%;
+	left: 42%;
+	width: 270px;
+	height: 270px;
+	transform: translate(calc(-50% + var(--scene-shift-x)), calc(-50% + var(--scene-shift-y)));
+	transition: transform 180ms ease-out;
+}
+
+.forgeCorePulse {
+	position: absolute;
+	inset: -30px;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 36%, transparent);
+	border-radius: 38%;
+	box-shadow:
+		0 0 70px color-mix(in srgb, var(--portal-accent) 18%, transparent),
+		inset 0 0 60px color-mix(in srgb, var(--portal-accent) 12%, transparent);
+	animation: forgeField 4.2s ease-in-out infinite;
+}
+
+.forgeChassis {
+	position: absolute;
+	inset: 28px;
 	display: grid;
-	width: 92px;
-	height: 92px;
-	margin-bottom: 24px;
-	place-items: center;
-	border: 1px solid color-mix(in srgb, var(--portal-accent) 66%, transparent);
+	place-content: center;
+	border: 2px solid color-mix(in srgb, var(--portal-accent) 72%, var(--portal-border));
 	border-radius: 26px;
 	background:
-		radial-gradient(circle, color-mix(in srgb, var(--portal-accent) 25%, transparent), transparent 72%),
-		color-mix(in srgb, var(--portal-canvas) 72%, transparent);
+		linear-gradient(135deg, color-mix(in srgb, var(--portal-accent) 16%, transparent), transparent 48%),
+		color-mix(in srgb, var(--portal-surface-raised) 90%, transparent);
 	box-shadow:
-		0 0 60px color-mix(in srgb, var(--portal-accent) 35%, transparent),
-		inset 0 0 35px color-mix(in srgb, var(--portal-accent) 12%, transparent);
-	color: var(--portal-accent);
-	font: 700 2.2rem/1 var(--portal-font-mono);
+		0 0 42px color-mix(in srgb, var(--portal-accent) 24%, transparent),
+		inset 0 0 38px color-mix(in srgb, var(--portal-accent) 10%, transparent);
+	text-align: center;
 }
 
-.transitionKicker {
-	margin-bottom: 12px;
-	color: var(--portal-success);
-	font: 800 0.66rem/1 var(--portal-font-mono);
-	letter-spacing: 0.26em;
-	text-transform: uppercase;
-}
-
-.transitionCore strong {
+.forgeChassis strong {
 	color: var(--portal-ink);
-	font-size: clamp(2rem, 5vw, 4.3rem);
-	font-weight: 780;
-	letter-spacing: -0.065em;
-	line-height: 0.96;
-	text-wrap: balance;
-	text-shadow: 0 0 34px color-mix(in srgb, var(--portal-accent) 20%, transparent);
+	font: 820 1.16rem/1.15 var(--portal-font-mono);
+	letter-spacing: 0.16em;
 }
 
-.transitionPhases {
-	position: relative;
-	display: grid;
-	min-height: 24px;
-	margin-top: 28px;
-	color: var(--portal-muted);
-	font: 700 0.72rem/1.4 var(--portal-font-mono);
-	letter-spacing: 0.12em;
-	text-transform: uppercase;
+.forgeChassis small {
+	margin-top: 8px;
+	color: var(--portal-accent);
+	font: 720 0.55rem/1 var(--portal-font-mono);
+	letter-spacing: 0.14em;
 }
 
-.transitionPhases span {
-	grid-area: 1 / 1;
-	opacity: 0;
-	transform: translateY(8px);
-}
-
-.transitionVitals {
+.chassisSocket {
 	position: absolute;
-	right: 28px;
-	bottom: 24px;
-	z-index: 3;
-	display: flex;
-	align-items: end;
-	gap: 4px;
-	color: var(--portal-success);
-	opacity: 0;
-}
-
-.transitionVitals span {
-	width: 3px;
-	height: 10px;
-	border-radius: 999px;
-	background: currentcolor;
-	box-shadow: 0 0 9px currentcolor;
-	animation: vitalBar 620ms ease-in-out infinite alternate;
-}
-
-.transitionVitals span:nth-child(2) {
-	height: 18px;
-	animation-delay: -180ms;
-}
-
-.transitionVitals span:nth-child(3) {
-	height: 13px;
-	animation-delay: -360ms;
-}
-
-.transitionVitals span:nth-child(4) {
-	height: 24px;
-	animation-delay: -90ms;
-}
-
-.transitionVitals span:nth-child(5) {
-	height: 15px;
-	animation-delay: -270ms;
-}
-
-.transitionVitals em {
-	margin-left: 8px;
-	font: 800 0.58rem/1 var(--portal-font-mono);
-	font-style: normal;
-	letter-spacing: 0.18em;
-}
-
-.transitionBlackout {
-	position: absolute;
-	z-index: 5;
-	inset: 0;
+	width: 14px;
+	height: 38px;
+	border: 1px solid var(--portal-accent);
+	border-radius: 6px;
 	background: var(--portal-canvas);
-	opacity: 0;
+	box-shadow: 0 0 14px color-mix(in srgb, var(--portal-accent) 34%, transparent);
 }
 
-.transitionActive {
-	visibility: visible;
-	animation: transitionSurface var(--gateway-launch-duration) linear forwards;
+.chassisSocket:first-child {
+	top: 26px;
+	left: -8px;
 }
 
-.transitionActive .transitionCosmos {
-	animation: cosmosRush var(--gateway-launch-duration) cubic-bezier(0.2, 0.72, 0.18, 1) forwards;
+.chassisSocket:nth-child(2) {
+	top: 26px;
+	right: -8px;
 }
 
-.transitionActive .transitionGeometry {
-	animation: geometryAwaken var(--gateway-launch-duration) cubic-bezier(0.2, 0.72, 0.18, 1) forwards;
+.chassisSocket:nth-child(3) {
+	bottom: 26px;
+	left: -8px;
 }
 
-.transitionActive .transitionIris {
-	animation: irisOpen var(--gateway-launch-duration) cubic-bezier(0.2, 0.72, 0.18, 1) forwards;
+.chassisSocket:nth-child(4) {
+	right: -8px;
+	bottom: 26px;
 }
 
-.transitionActive .transitionCore {
-	animation: personaAwaken var(--gateway-launch-duration) cubic-bezier(0.2, 0.72, 0.18, 1) forwards;
+.forgeContext {
+	position: absolute;
+	right: 0;
+	bottom: -32px;
+	left: 0;
+	display: flex;
+	justify-content: center;
+	gap: 7px;
 }
 
-.transitionActive .transitionGlyph {
-	animation: glyphAwaken var(--gateway-launch-duration) cubic-bezier(0.2, 0.72, 0.18, 1) forwards;
+.forgeContext span,
+.forgeTokenStreams span {
+	padding: 5px 8px;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 28%, var(--portal-border));
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--portal-canvas) 84%, transparent);
+	color: var(--portal-subtle);
+	font: 700 0.5rem/1 var(--portal-font-mono);
+	letter-spacing: 0.11em;
 }
 
-.transitionActive .transitionPhases span:first-child {
-	animation: phaseOne var(--gateway-launch-duration) linear forwards;
+.forgePrimitive {
+	position: absolute;
+	width: 116px;
+	padding: 5px;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 42%, var(--portal-border));
+	border-radius: 13px;
+	background: color-mix(in srgb, var(--portal-surface-raised) 88%, transparent);
+	box-shadow:
+		0 14px 28px rgb(0 0 0 / 28%),
+		0 0 18px color-mix(in srgb, var(--portal-accent) 10%, transparent);
+	backdrop-filter: blur(12px);
+	transition: transform 190ms ease-out;
 }
 
-.transitionActive .transitionPhases span:nth-child(2) {
-	animation: phaseTwo var(--gateway-launch-duration) linear forwards;
+.forgePrimitive svg {
+	display: block;
+	width: 100%;
 }
 
-.transitionActive .transitionPhases span:nth-child(3) {
-	animation: phaseThree var(--gateway-launch-duration) linear forwards;
+.forgePrimitive rect {
+	fill: color-mix(in srgb, var(--portal-canvas) 80%, transparent);
+	stroke: color-mix(in srgb, var(--portal-accent) 56%, var(--portal-border));
 }
 
-.transitionActive .transitionVitals {
-	animation: vitalsOnline var(--gateway-launch-duration) linear forwards;
+.forgePrimitive path {
+	fill: none;
+	stroke: var(--portal-muted);
+	stroke-linecap: round;
+	stroke-width: 3;
 }
 
-.transitionActive .transitionBlackout {
-	animation: transitionBlackout var(--gateway-launch-duration) linear forwards;
+.forgePrimitive > span {
+	display: block;
+	padding: 2px 5px 5px;
+	color: var(--portal-accent);
+	font: 700 0.52rem/1 var(--portal-font-mono);
+	letter-spacing: 0.13em;
 }
 
-.transitionVeil[data-symbol='type-lattice'],
-.transitionVeil[data-symbol='request-wormhole'] {
-	--gateway-secondary: var(--portal-warning);
+.forgeButton {
+	top: 14%;
+	left: 9%;
+	animation: zeroFloat 4.8s ease-in-out infinite;
 }
 
-.transitionVeil[data-symbol='component-forge'] .transitionGeometry {
-	clip-path: polygon(
-		12% 18%,
-		38% 18%,
-		38% 8%,
-		62% 8%,
-		62% 18%,
-		88% 18%,
-		88% 82%,
-		62% 82%,
-		62% 92%,
-		38% 92%,
-		38% 82%,
-		12% 82%
-	);
+.forgeInput {
+	top: 18%;
+	left: 55%;
+	animation: zeroFloat 5.6s ease-in-out -1.4s infinite;
 }
 
-.transitionVeil[data-symbol='type-lattice'] .transitionGeometry {
+.forgeCard {
+	top: 51%;
+	left: 5%;
+	animation: zeroFloat 6.2s ease-in-out -2.8s infinite;
+}
+
+.forgeNav {
+	right: 43%;
+	bottom: 10%;
+	animation: zeroFloat 5.2s ease-in-out -3.4s infinite;
+}
+
+.forgeModal {
+	top: 38%;
+	right: 6%;
+	animation: zeroFloat 5.9s ease-in-out -0.6s infinite;
+}
+
+.forgeTokenStreams {
+	position: absolute;
+	top: 68px;
+	right: 20px;
+	display: flex;
+	gap: 8px;
+}
+
+.forgeTokenStreams span {
+	border-radius: 4px;
+	color: var(--portal-accent);
+	animation: tokenSignal 3s ease-in-out infinite;
+}
+
+.forgeTokenStreams span:nth-child(2) {
+	animation-delay: -0.75s;
+}
+
+.forgeTokenStreams span:nth-child(3) {
+	animation-delay: -1.5s;
+}
+
+.forgeTokenStreams span:nth-child(4) {
+	animation-delay: -2.25s;
+}
+
+/* --------------------------------------------------------------------------
+ * Type Lattice bridge · crystalline source-intelligence laboratory
+ * -------------------------------------------------------------------------- */
+
+.gateway[data-symbol='type-lattice'] {
+	grid-template-columns: minmax(300px, 0.38fr) minmax(0, 0.62fr);
+}
+
+.gateway[data-symbol='type-lattice'] .narrative {
+	grid-column: 1;
+	grid-row: 1;
+	border-right: 1px solid color-mix(in srgb, var(--portal-warning) 26%, var(--portal-border));
+	background:
+		linear-gradient(145deg, color-mix(in srgb, var(--portal-warning) 5%, transparent), transparent 42%),
+		color-mix(in srgb, var(--portal-canvas) 94%, transparent);
+}
+
+.gateway[data-symbol='type-lattice'] .latticeScene {
+	grid-column: 2;
+	grid-row: 1;
 	background:
 		linear-gradient(
 			30deg,
-			transparent 48%,
-			color-mix(in srgb, var(--portal-accent) 26%, transparent) 49% 51%,
-			transparent 52%
+			transparent 49.5%,
+			color-mix(in srgb, var(--portal-accent) 7%, transparent) 50%,
+			transparent 50.5%
 		),
 		linear-gradient(
 			-30deg,
-			transparent 48%,
-			color-mix(in srgb, var(--gateway-secondary) 20%, transparent) 49% 51%,
-			transparent 52%
+			transparent 49.5%,
+			color-mix(in srgb, var(--portal-warning) 6%, transparent) 50%,
+			transparent 50.5%
 		);
 	background-size: 72px 124px;
 }
 
-.transitionVeil[data-symbol='request-wormhole'] .transitionGeometry {
-	border-radius: 50%;
-	background: repeating-conic-gradient(
-		from 0deg,
-		color-mix(in srgb, var(--portal-accent) 36%, transparent) 0 2deg,
-		transparent 3deg 13deg,
-		color-mix(in srgb, var(--gateway-secondary) 22%, transparent) 14deg 16deg,
-		transparent 17deg 29deg
-	);
-	filter: blur(2px) drop-shadow(0 0 36px color-mix(in srgb, var(--portal-accent) 24%, transparent));
+.sourceColumn {
+	position: absolute;
+	top: 44px;
+	left: 34px;
+	display: grid;
+	gap: 9px;
+	width: 220px;
+	padding: 16px;
+	border-left: 2px solid var(--portal-warning);
+	background: linear-gradient(90deg, color-mix(in srgb, var(--portal-warning) 7%, transparent), transparent);
+	color: var(--portal-subtle);
+	font: 650 0.61rem/1.35 var(--portal-font-mono);
 }
 
-.transitionVeil[data-symbol='schema-observatory'] .transitionGeometry {
-	background:
-		radial-gradient(circle at 36% 38%, var(--portal-accent) 0 2px, transparent 3px),
-		radial-gradient(circle at 62% 29%, var(--portal-success) 0 2px, transparent 3px),
-		radial-gradient(circle at 68% 65%, var(--portal-accent) 0 2px, transparent 3px),
-		radial-gradient(circle at 43% 72%, var(--portal-success) 0 2px, transparent 3px);
-	background-size: 210px 180px;
-	filter: drop-shadow(0 0 14px color-mix(in srgb, var(--portal-accent) 35%, transparent));
+.sourceColumn strong {
+	color: var(--portal-warning);
+	font-weight: 720;
 }
 
-/* Component Forge: primitives orbit independently until launch assembles them. */
-.orbit {
+.latticeMap {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: min(92%, 620px);
+	overflow: visible;
+	filter: drop-shadow(0 22px 36px rgb(0 0 0 / 34%));
+	transform: translate(calc(-50% + var(--scene-shift-x)), calc(-48% + var(--scene-shift-y)));
+	transition: transform 180ms ease-out;
+}
+
+.latticeEdges path {
 	fill: none;
-	stroke: color-mix(in srgb, var(--portal-accent) 22%, transparent);
-	stroke-dasharray: 4 9;
+	stroke: color-mix(in srgb, var(--portal-accent) 38%, transparent);
+	stroke-dasharray: 4 8;
+	stroke-width: 1;
+	animation: edgeResolve 5s linear infinite;
 }
 
-.orbit:first-of-type {
-	transform-origin: 260px 150px;
-	animation: orbitSpin 22s linear infinite;
-}
-
-.orbit:nth-of-type(2) {
-	transform-origin: 260px 150px;
-	animation: orbitSpin 15s linear infinite reverse;
-}
-
-.coreHalo {
-	animation: coreBreathe 3.6s ease-in-out infinite;
-}
-
-.primitive {
-	fill: color-mix(in srgb, var(--portal-surface-raised) 92%, transparent);
-	stroke: color-mix(in srgb, var(--portal-accent) 58%, var(--portal-border));
-	stroke-width: 1.2;
-	transition: transform 1400ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.primitive path {
-	fill: none;
-	stroke: var(--portal-muted);
-}
-
-.primitiveOne {
-	transform-origin: 104px 79px;
-	animation: primitiveFloat 4.2s ease-in-out infinite;
-}
-
-.primitiveTwo {
-	transform-origin: 420px 88px;
-	animation: primitiveFloat 5.1s ease-in-out -1.2s infinite;
-}
-
-.primitiveThree {
-	transform-origin: 429px 228px;
-	animation: primitiveFloat 4.7s ease-in-out -2s infinite;
-}
-
-.primitiveFour {
-	transform-origin: 102px 227px;
-	animation: primitiveFloat 5.4s ease-in-out -0.8s infinite;
-}
-
-.forgeBlock {
-	fill: color-mix(in srgb, var(--portal-surface) 84%, transparent);
-	stroke: var(--portal-accent);
-	stroke-width: 1.4;
-}
-
-.forgeBlock path {
-	fill: none;
-	stroke: color-mix(in srgb, var(--portal-accent) 70%, var(--portal-muted));
-}
-
-.forgeBlock circle {
-	fill: color-mix(in srgb, var(--portal-accent) 30%, transparent);
-	stroke: var(--portal-accent);
-}
-
-.forgePulse {
-	stroke-dasharray: 3 3;
-	animation: forgePulse 1.2s linear infinite;
-}
-
-.connectionLines {
-	fill: none;
-	stroke: color-mix(in srgb, var(--portal-accent) 34%, transparent);
-	stroke-dasharray: 4 6;
-}
-
-.gatewayLaunching .primitiveOne {
-	transform: translate(110px, 61px) scale(0.28);
-}
-
-.gatewayLaunching .primitiveTwo {
-	transform: translate(-125px, 62px) scale(0.28);
-}
-
-.gatewayLaunching .primitiveThree {
-	transform: translate(-136px, -78px) scale(0.28);
-}
-
-.gatewayLaunching .primitiveFour {
-	transform: translate(125px, -77px) scale(0.28);
-}
-
-/* Type Lattice: contract nodes flow into the central typed prism. */
-.latticeLines {
-	fill: none;
-	stroke: color-mix(in srgb, var(--portal-accent) 28%, transparent);
-	stroke-dasharray: 5 8;
-	animation: latticeFlow 5s linear infinite;
-}
-
-.typeGlyphs {
-	fill: var(--portal-muted);
-	font: 700 22px var(--portal-font-mono);
-}
-
-.latticeNodes {
+.latticeNodes circle:first-child {
 	fill: var(--portal-accent);
-	filter: drop-shadow(0 0 6px color-mix(in srgb, var(--portal-accent) 72%, transparent));
+	filter: drop-shadow(0 0 8px var(--portal-accent));
 }
 
-.latticeNodes circle {
-	animation: nodeResolve 2.4s ease-in-out infinite;
-}
-
-.latticeNodes circle:nth-child(2n) {
-	animation-delay: -1.2s;
-}
-
-.prism {
+.nodeEcho {
 	fill: none;
-	stroke: color-mix(in srgb, var(--portal-accent) 78%, var(--portal-ink));
-	stroke-width: 1.25;
-	transform-origin: 260px 152px;
-	transition: transform 1500ms cubic-bezier(0.16, 1, 0.3, 1);
+	stroke: color-mix(in srgb, var(--portal-warning) 34%, transparent);
+	animation: nodeEcho 2.6s ease-out infinite;
 }
 
-.prism text {
+.latticeNodes text {
+	fill: var(--portal-subtle);
+	font: 700 9px var(--portal-font-mono);
+	letter-spacing: 0.04em;
+}
+
+.latticePrism {
+	fill: none;
+	stroke: color-mix(in srgb, var(--portal-accent) 84%, var(--portal-ink));
+	stroke-width: 1.4;
+	filter: drop-shadow(0 0 13px color-mix(in srgb, var(--portal-accent) 44%, transparent));
+}
+
+.latticePrism text {
 	fill: var(--portal-ink);
 	stroke: none;
-	font: 800 25px var(--portal-font-mono);
-	letter-spacing: -0.08em;
+	font: 820 31px var(--portal-font-mono);
 }
 
-.gatewayLaunching .prism {
-	transform: scale(2.15) rotate(32deg);
+.constraintLens {
+	position: absolute;
+	z-index: 4;
+	top: var(--scene-pointer-y);
+	left: var(--scene-pointer-x);
+	display: grid;
+	width: 160px;
+	height: 160px;
+	place-items: end center;
+	border: 1px solid color-mix(in srgb, var(--portal-warning) 48%, transparent);
+	border-radius: 50%;
+	background: radial-gradient(circle, color-mix(in srgb, var(--portal-accent) 15%, transparent), transparent 62%);
+	box-shadow:
+		0 0 36px color-mix(in srgb, var(--portal-warning) 13%, transparent),
+		inset 0 0 30px color-mix(in srgb, var(--portal-accent) 10%, transparent);
+	color: var(--portal-warning);
+	font: 720 0.48rem/1 var(--portal-font-mono);
+	letter-spacing: 0.12em;
+	pointer-events: none;
+	opacity: var(--scene-cursor-opacity);
+	transform: translate(-50%, -50%);
+	transition: opacity 120ms ease;
 }
 
-.gatewayLaunching .latticeLines {
-	animation-duration: 440ms;
+.constraintLens span {
+	margin-bottom: 16px;
 }
 
-/* Request Wormhole: an operation packet bends through the OpenAPI contract. */
-.wormholeRings {
-	fill: none;
-	stroke: color-mix(in srgb, var(--portal-accent) 54%, transparent);
-	stroke-dasharray: 8 9;
-	transform-origin: 260px 150px;
-	animation: wormholeSpin 9s linear infinite;
+.latticeCategories {
+	position: absolute;
+	right: 26px;
+	bottom: 54px;
+	display: grid;
+	gap: 6px;
+	text-align: right;
 }
 
-.wormholeRings ellipse:nth-child(2n) {
-	stroke: color-mix(in srgb, var(--portal-success) 44%, transparent);
+.latticeCategories span {
+	color: var(--portal-subtle);
+	font: 700 0.54rem/1 var(--portal-font-mono);
+	letter-spacing: 0.14em;
 }
 
-.wormholeCore {
-	animation: coreBreathe 2.8s ease-in-out infinite;
+/* --------------------------------------------------------------------------
+ * Request Wormhole bridge · governed horizontal operation journey
+ * -------------------------------------------------------------------------- */
+
+.gateway[data-symbol='request-wormhole'] {
+	grid-template-rows: minmax(440px, 1fr) auto;
 }
 
-.requestTrajectory {
-	fill: none;
-	stroke: var(--portal-warning);
-	stroke-dasharray: 5 7;
-	stroke-linecap: round;
-	stroke-width: 1.4;
-	animation: latticeFlow 2.4s linear infinite;
+.gateway[data-symbol='request-wormhole'] .wormholeScene {
+	grid-row: 1;
+	background:
+		linear-gradient(color-mix(in srgb, var(--portal-accent) 6%, transparent) 1px, transparent 1px),
+		linear-gradient(90deg, color-mix(in srgb, var(--portal-accent) 6%, transparent) 1px, transparent 1px),
+		radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--portal-warning) 8%, transparent), transparent 46%);
+	background-size:
+		34px 34px,
+		34px 34px,
+		auto;
 }
 
-.requestPacket rect,
-.responsePacket rect {
-	fill: var(--portal-surface-raised);
-	stroke: var(--portal-accent);
+.gateway[data-symbol='request-wormhole'] .narrative {
+	grid-row: 2;
+	grid-template-columns: minmax(200px, 0.7fr) minmax(220px, 1fr) minmax(300px, 0.8fr);
+	align-items: center;
+	gap: 14px 28px;
+	padding: 26px 34px;
+	border-top: 1px solid color-mix(in srgb, var(--portal-warning) 26%, var(--portal-border));
 }
 
-.requestPacket text,
-.responsePacket text,
-.openapiLabel,
-.mongodbLabel {
-	fill: var(--portal-ink);
-	font: 700 12px var(--portal-font-mono);
+.gateway[data-symbol='request-wormhole'] .personaRail,
+.gateway[data-symbol='request-wormhole'] .eyebrow {
+	grid-column: 1;
 }
 
-.requestPacket,
-.responsePacket {
-	transition: transform 1500ms cubic-bezier(0.16, 1, 0.3, 1);
+.gateway[data-symbol='request-wormhole'] .narrative h2,
+.gateway[data-symbol='request-wormhole'] .narrative > p:not(.eyebrow) {
+	grid-column: 2;
 }
 
-.gatewayLaunching .requestPacket {
-	transform: translate(210px, -66px) scale(0.08) rotate(18deg);
+.gateway[data-symbol='request-wormhole'] .narrative h2 {
+	grid-row: 1;
 }
 
-.gatewayLaunching .responsePacket {
-	transform: translate(68px, -34px) scale(1.5);
+.gateway[data-symbol='request-wormhole'] .narrative > p:not(.eyebrow) {
+	grid-row: 2 / span 2;
 }
 
-.openapiLabel {
-	fill: var(--portal-accent);
-	font-size: 11px;
+.gateway[data-symbol='request-wormhole'] .launchButton {
+	grid-column: 3;
+	grid-row: 1 / span 3;
+	margin: 0;
+}
+
+.requestOrigin,
+.responseDestination {
+	position: absolute;
+	top: 50%;
+	z-index: 5;
+	display: grid;
+	width: 180px;
+	padding: 16px;
+	border: 1px solid var(--portal-accent);
+	border-radius: 16px;
+	background: color-mix(in srgb, var(--portal-surface-raised) 96%, var(--portal-canvas));
+	box-shadow:
+		0 18px 42px rgb(0 0 0 / 34%),
+		0 0 26px color-mix(in srgb, var(--portal-accent) 17%, transparent);
+	transform: translateY(-50%);
+}
+
+.requestOrigin {
+	left: 5%;
+}
+
+.responseDestination {
+	right: 5%;
+	border-color: var(--portal-success);
+	box-shadow:
+		0 18px 42px rgb(0 0 0 / 34%),
+		0 0 26px color-mix(in srgb, var(--portal-success) 17%, transparent);
+}
+
+.requestOrigin > span,
+.responseDestination > span {
+	color: var(--portal-subtle);
+	font: 700 0.5rem/1 var(--portal-font-mono);
+	letter-spacing: 0.13em;
+}
+
+.requestOrigin strong,
+.responseDestination strong {
+	margin-top: 12px;
+	color: var(--portal-accent);
+	font: 820 1.35rem/1 var(--portal-font-mono);
+}
+
+.responseDestination strong {
+	color: var(--portal-success);
+}
+
+.requestOrigin code,
+.responseDestination code {
+	margin-top: 6px;
+	color: var(--portal-ink);
+	font: 720 0.84rem/1.2 var(--portal-font-mono);
+}
+
+.requestOrigin small,
+.responseDestination small {
+	margin-top: 12px;
+	color: var(--portal-subtle);
+	font: 650 0.46rem/1 var(--portal-font-mono);
+	letter-spacing: 0.1em;
+}
+
+.securityGates {
+	position: absolute;
+	top: calc(50% + 86px);
+	left: 22%;
+	z-index: 4;
+	display: flex;
+	width: 22%;
+	justify-content: space-between;
+}
+
+.securityGates span {
+	display: grid;
+	place-items: center;
+	width: 42px;
+	height: 42px;
+	border: 1px solid color-mix(in srgb, var(--portal-warning) 54%, transparent);
+	border-radius: 9px;
+	background: color-mix(in srgb, var(--portal-canvas) 90%, transparent);
+	color: var(--portal-warning);
+	font: 720 0.43rem/1 var(--portal-font-mono);
+	box-shadow: inset 0 0 14px color-mix(in srgb, var(--portal-warning) 8%, transparent);
+}
+
+.eventHorizon {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 250px;
+	height: 310px;
+	transform: translate(calc(-50% + var(--scene-shift-x)), calc(-50% + var(--scene-shift-y)));
+	transition: transform 180ms ease-out;
+}
+
+.horizonMembrane {
+	position: absolute;
+	inset: 0;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 36%, transparent);
+	border-radius: 52% 48% 44% 56% / 42% 54% 46% 58%;
+	background:
+		repeating-radial-gradient(
+			ellipse at 50% 50%,
+			transparent 0 14px,
+			color-mix(in srgb, var(--portal-accent) 24%, transparent) 15px 16px
+		),
+		radial-gradient(
+			ellipse,
+			transparent 0 24%,
+			color-mix(in srgb, var(--portal-accent) 18%, transparent) 46%,
+			transparent 72%
+		);
+	box-shadow:
+		0 0 68px color-mix(in srgb, var(--portal-accent) 18%, transparent),
+		inset 0 0 44px color-mix(in srgb, var(--portal-warning) 10%, transparent);
+	transform: skewY(var(--scene-angle));
+	animation: membraneBreathe 3.4s ease-in-out infinite;
+}
+
+.horizonCore {
+	position: absolute;
+	inset: 35% 18%;
+	display: grid;
+	place-content: center;
+	border-radius: 50%;
+	background: var(--portal-canvas);
+	box-shadow: 0 0 34px rgb(0 0 0 / 80%);
+	text-align: center;
+}
+
+.horizonCore strong {
+	color: var(--portal-accent);
+	font: 820 0.8rem/1 var(--portal-font-mono);
 	letter-spacing: 0.12em;
 }
 
-/* Schema Observatory: seven implemented models resolve under one telescope. */
-.observatoryOrbit,
-.constellationPath {
+.horizonCore span {
+	margin-top: 7px;
+	color: var(--portal-subtle);
+	font: 650 0.44rem/1 var(--portal-font-mono);
+	letter-spacing: 0.1em;
+}
+
+.operationTrace {
+	position: absolute;
+	top: 50%;
+	right: calc(5% + 180px);
+	left: calc(5% + 180px);
+	z-index: 2;
+	height: 2px;
+	background: linear-gradient(90deg, var(--portal-accent), var(--portal-warning) 48%, var(--portal-success));
+	box-shadow: 0 0 16px color-mix(in srgb, var(--portal-accent) 40%, transparent);
+}
+
+.operationTrace i {
+	position: absolute;
+	top: -5px;
+	left: 0;
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: var(--portal-warning);
+	box-shadow: 0 0 18px var(--portal-warning);
+	animation: packetTraverse 4s ease-in-out infinite;
+}
+
+/* --------------------------------------------------------------------------
+ * Schema Observatory bridge · optical observation and source evidence
+ * -------------------------------------------------------------------------- */
+
+.gateway[data-symbol='schema-observatory'] {
+	grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr);
+}
+
+.gateway[data-symbol='schema-observatory'] .observatoryScene {
+	grid-column: 1;
+	background:
+		radial-gradient(circle at 75% 24%, color-mix(in srgb, var(--portal-success) 12%, transparent), transparent 35%),
+		linear-gradient(180deg, color-mix(in srgb, var(--portal-accent) 4%, transparent), transparent 68%);
+}
+
+.gateway[data-symbol='schema-observatory'] .narrative {
+	grid-column: 2;
+	border-left: 1px solid color-mix(in srgb, var(--portal-success) 24%, var(--portal-border));
+}
+
+.observatoryDome {
+	position: absolute;
+	bottom: 0;
+	left: -4%;
+	width: 47%;
+	aspect-ratio: 1.18;
+	overflow: hidden;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 42%, var(--portal-border));
+	border-bottom: 0;
+	border-radius: 55% 55% 0 0;
+	background:
+		linear-gradient(120deg, color-mix(in srgb, var(--portal-accent) 11%, transparent), transparent 45%),
+		color-mix(in srgb, var(--portal-surface-raised) 90%, transparent);
+	box-shadow:
+		0 -18px 60px color-mix(in srgb, var(--portal-accent) 12%, transparent),
+		inset 0 0 60px rgb(0 0 0 / 35%);
+}
+
+.domeShutter {
+	position: absolute;
+	top: -5%;
+	left: 45%;
+	width: 10%;
+	height: 70%;
+	background: var(--portal-canvas);
+	box-shadow:
+		-5px 0 0 color-mix(in srgb, var(--portal-accent) 20%, transparent),
+		5px 0 0 color-mix(in srgb, var(--portal-accent) 20%, transparent);
+}
+
+.telescopeBody {
+	position: absolute;
+	top: 25%;
+	left: 18%;
+	width: 62%;
+	height: 18%;
+	border: 3px solid color-mix(in srgb, var(--portal-accent) 86%, white);
+	border-radius: 42px 16px 16px 42px;
+	background:
+		linear-gradient(90deg, color-mix(in srgb, var(--portal-accent) 15%, transparent), transparent 42%),
+		color-mix(in srgb, var(--portal-surface-raised) 94%, transparent);
+	box-shadow:
+		0 0 28px color-mix(in srgb, var(--portal-accent) 24%, transparent),
+		inset 0 0 0 7px color-mix(in srgb, var(--portal-canvas) 66%, transparent);
+	transform: rotate(calc(-18deg + var(--scene-angle)));
+	transform-origin: 68% 50%;
+	transition: transform 90ms ease-out;
+}
+
+.telescopeBody::before,
+.telescopeBody::after {
+	position: absolute;
+	top: 14%;
+	bottom: 14%;
+	width: 2px;
+	background: color-mix(in srgb, var(--portal-accent) 58%, transparent);
+	content: '';
+}
+
+.telescopeBody::before {
+	left: 27%;
+}
+
+.telescopeBody::after {
+	left: 53%;
+}
+
+.telescopeLens {
+	position: absolute;
+	top: -15%;
+	right: -8%;
+	width: 20%;
+	height: 130%;
+	border: 2px solid var(--portal-success);
+	border-radius: 12px;
+	background:
+		radial-gradient(circle at 76% 50%, color-mix(in srgb, var(--portal-success) 34%, transparent), transparent 45%),
+		var(--portal-canvas);
+	box-shadow:
+		0 0 24px color-mix(in srgb, var(--portal-success) 34%, transparent),
+		inset 0 0 18px color-mix(in srgb, var(--portal-success) 12%, transparent);
+}
+
+.telescopeSight {
+	position: absolute;
+	top: -42%;
+	left: 36%;
+	width: 28%;
+	height: 38%;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 72%, transparent);
+	border-radius: 6px 6px 2px 2px;
+	background: var(--portal-canvas);
+	box-shadow: 0 0 14px color-mix(in srgb, var(--portal-accent) 20%, transparent);
+}
+
+.telescopeMount {
+	position: absolute;
+	bottom: 100px;
+	left: 48%;
+	width: 42px;
+	height: 42px;
+	border: 2px solid var(--portal-accent);
+	border-radius: 50%;
+	background: var(--portal-surface-raised);
+	box-shadow: 0 0 24px color-mix(in srgb, var(--portal-accent) 24%, transparent);
+}
+
+.telescopeMount span {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--portal-success);
+	box-shadow: 0 0 14px var(--portal-success);
+	transform: translate(-50%, -50%);
+}
+
+.telescopeMount i {
+	position: absolute;
+	top: 32px;
+	left: 18px;
+	width: 3px;
+	height: 64px;
+	border-radius: 99px;
+	background: linear-gradient(var(--portal-accent), color-mix(in srgb, var(--portal-accent) 28%, transparent));
+	transform-origin: top;
+}
+
+.telescopeMount i:nth-of-type(1) {
+	transform: rotate(24deg);
+}
+
+.telescopeMount i:nth-of-type(2) {
+	transform: rotate(0);
+}
+
+.telescopeMount i:nth-of-type(3) {
+	transform: rotate(-24deg);
+}
+
+.modelSky {
+	position: absolute;
+	top: 7%;
+	right: 4%;
+	width: 66%;
+	overflow: visible;
+	filter: drop-shadow(0 0 16px color-mix(in srgb, var(--portal-accent) 18%, transparent));
+	transform: translate(var(--scene-shift-x), var(--scene-shift-y));
+	transition: transform 90ms ease-out;
+}
+
+.skyConnections path {
 	fill: none;
-	stroke: color-mix(in srgb, var(--portal-accent) 34%, transparent);
-	stroke-dasharray: 4 7;
-	transform-origin: 260px 150px;
+	stroke: color-mix(in srgb, var(--portal-success) 50%, transparent);
+	stroke-dasharray: 4 8;
+	stroke-width: 1.2;
+	animation: edgeResolve 5s linear infinite;
 }
 
-.observatoryOrbit {
-	animation: orbitSpin 24s linear infinite;
-}
-
-.constellationPath {
-	stroke: color-mix(in srgb, var(--portal-success) 52%, transparent);
-	animation: latticeFlow 5s linear infinite;
-}
-
-.modelStars circle {
-	fill: color-mix(in srgb, var(--portal-accent) 36%, var(--portal-surface));
+.skyStars circle:not(.starHalo) {
+	fill: color-mix(in srgb, var(--portal-accent) 65%, var(--portal-surface));
 	stroke: var(--portal-accent);
-	filter: drop-shadow(0 0 7px color-mix(in srgb, var(--portal-accent) 70%, transparent));
-	transition: transform 1500ms cubic-bezier(0.16, 1, 0.3, 1);
-	transform-origin: center;
 }
 
-.modelStars text {
+.starHalo {
+	fill: color-mix(in srgb, var(--portal-accent) 8%, transparent);
+	stroke: color-mix(in srgb, var(--portal-accent) 28%, transparent);
+	animation: nodeEcho 3s ease-out infinite;
+}
+
+.skyStars text {
 	fill: var(--portal-ink);
-	font: 700 8px var(--portal-font-mono);
-	text-anchor: middle;
+	font: 720 7px var(--portal-font-mono);
 }
 
-.telescope {
-	fill: color-mix(in srgb, var(--portal-surface-raised) 88%, transparent);
-	stroke: color-mix(in srgb, var(--portal-accent) 72%, var(--portal-border));
-	stroke-width: 1.5;
-	transform-origin: 130px 214px;
-	transition: transform 1500ms cubic-bezier(0.16, 1, 0.3, 1);
+.observatoryLens {
+	position: absolute;
+	z-index: 5;
+	top: var(--scene-pointer-y);
+	left: var(--scene-pointer-x);
+	display: grid;
+	width: 176px;
+	height: 176px;
+	place-items: center;
+	border: 2px solid color-mix(in srgb, var(--portal-success) 58%, transparent);
+	border-radius: 50%;
+	background:
+		linear-gradient(color-mix(in srgb, var(--portal-success) 9%, transparent) 1px, transparent 1px),
+		linear-gradient(90deg, color-mix(in srgb, var(--portal-success) 9%, transparent) 1px, transparent 1px),
+		color-mix(in srgb, var(--portal-canvas) 68%, transparent);
+	background-size: 18px 18px;
+	box-shadow:
+		0 0 36px color-mix(in srgb, var(--portal-success) 20%, transparent),
+		inset 0 0 34px color-mix(in srgb, var(--portal-accent) 12%, transparent);
+	pointer-events: none;
+	opacity: var(--scene-cursor-opacity);
+	transform: translate(-50%, -50%);
+	transition: opacity 120ms ease;
 }
 
-.mongodbLabel {
-	fill: var(--portal-success);
+.observatoryLens::before,
+.observatoryLens::after {
+	position: absolute;
+	background: color-mix(in srgb, var(--portal-success) 42%, transparent);
+	content: '';
+}
+
+.observatoryLens::before {
+	top: 50%;
+	right: -14px;
+	left: -14px;
+	height: 1px;
+}
+
+.observatoryLens::after {
+	top: -14px;
+	bottom: -14px;
+	left: 50%;
+	width: 1px;
+}
+
+.observatoryLens div {
+	display: grid;
+	gap: 5px;
+	padding: 14px;
+	border-radius: 10px;
+	background: color-mix(in srgb, var(--portal-canvas) 88%, transparent);
+	text-align: center;
+}
+
+.observatoryLens span,
+.observatoryLens small {
+	color: var(--portal-subtle);
+	font: 700 0.48rem/1 var(--portal-font-mono);
+	letter-spacing: 0.1em;
+}
+
+.observatoryLens strong {
+	color: var(--portal-success);
+	font: 760 0.68rem/1 var(--portal-font-mono);
+}
+
+.evidenceConsole {
+	position: absolute;
+	right: 24px;
+	bottom: 54px;
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 6px 12px;
+	width: 230px;
+	padding: 14px;
+	border: 1px solid color-mix(in srgb, var(--portal-success) 30%, var(--portal-border));
+	border-radius: 10px;
+	background: color-mix(in srgb, var(--portal-canvas) 84%, transparent);
+}
+
+.evidenceConsole span,
+.evidenceConsole strong {
+	grid-column: 1 / -1;
+	color: var(--portal-subtle);
+	font: 700 0.5rem/1 var(--portal-font-mono);
+	letter-spacing: 0.1em;
+}
+
+.evidenceConsole strong {
+	color: var(--portal-success);
+}
+
+.evidenceConsole i {
+	grid-column: 1 / -1;
+	height: 2px;
+	background: linear-gradient(90deg, var(--portal-success), transparent);
+}
+
+/* --------------------------------------------------------------------------
+ * Full-screen transition foundation · visual choreography remains per tool
+ * -------------------------------------------------------------------------- */
+
+.transitionPortal {
+	--transition-duration: 6000ms;
+	position: fixed;
+	z-index: 10000;
+	inset: 0;
+	overflow: hidden;
+	background: var(--portal-canvas);
+	color: var(--portal-ink);
+}
+
+.transition {
+	position: absolute;
+	display: grid;
+	inset: 0;
+	overflow: hidden;
+	background: var(--portal-canvas);
+}
+
+.transitionHeader {
+	position: absolute;
+	top: 26px;
+	right: 30px;
+	left: 30px;
+	z-index: 50;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20px;
+	opacity: 0;
+	animation: transitionHeader var(--transition-duration) linear forwards;
+}
+
+.transitionHeader span {
+	display: inline-flex;
+	align-items: center;
+	gap: 9px;
+	color: var(--portal-success);
+	font: 760 0.62rem/1 var(--portal-font-mono);
+	letter-spacing: 0.2em;
+}
+
+.transitionHeader span i {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: currentcolor;
+	box-shadow: 0 0 14px currentcolor;
+	animation: signalPulse 1s ease-in-out infinite;
+}
+
+.transitionHeader strong {
+	color: var(--portal-muted);
+	font: 720 0.7rem/1 var(--portal-font-mono);
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+}
+
+.transitionPhases {
+	position: absolute;
+	right: 30px;
+	bottom: 25px;
+	left: 30px;
+	z-index: 50;
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.transitionPhases span {
+	position: relative;
+	display: grid;
+	gap: 7px;
+	padding-top: 10px;
+	border-top: 1px solid color-mix(in srgb, var(--portal-accent) 24%, var(--portal-border));
+	color: var(--portal-subtle);
+	font: 680 0.58rem/1.3 var(--portal-font-mono);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	opacity: 0.28;
+	animation: phaseIlluminate var(--transition-duration) linear forwards;
+}
+
+.transitionPhases span::before {
+	position: absolute;
+	top: -1px;
+	left: 0;
+	width: 0;
+	height: 1px;
+	background: var(--portal-accent);
+	box-shadow: 0 0 12px var(--portal-accent);
+	content: '';
+	animation: phaseProgress var(--transition-duration) linear forwards;
+}
+
+.transitionPhases span:nth-child(2),
+.transitionPhases span:nth-child(2)::before {
+	animation-delay: calc(var(--transition-duration) * 0.2);
+}
+
+.transitionPhases span:nth-child(3),
+.transitionPhases span:nth-child(3)::before {
+	animation-delay: calc(var(--transition-duration) * 0.4);
+}
+
+.transitionPhases span:nth-child(4),
+.transitionPhases span:nth-child(4)::before {
+	animation-delay: calc(var(--transition-duration) * 0.6);
+}
+
+.transitionPhases small {
+	color: var(--portal-accent);
+	font: inherit;
+}
+
+.skipTransition {
+	position: fixed;
+	right: 28px;
+	bottom: 74px;
+	z-index: 10020;
+	padding: 9px 12px;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 36%, var(--portal-border));
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--portal-canvas) 82%, transparent);
+	color: var(--portal-muted);
+	cursor: pointer;
+	font: 700 0.58rem/1 var(--portal-font-mono);
+	letter-spacing: 0.11em;
+	opacity: 0;
+	backdrop-filter: blur(10px);
+	animation: revealSkip 700ms 900ms ease forwards;
+}
+
+/* Component Forge transition */
+
+.forgeTransition {
+	background:
+		linear-gradient(color-mix(in srgb, var(--portal-accent) 8%, transparent) 1px, transparent 1px),
+		linear-gradient(90deg, color-mix(in srgb, var(--portal-accent) 8%, transparent) 1px, transparent 1px),
+		radial-gradient(circle at center, color-mix(in srgb, var(--portal-accent) 14%, transparent), transparent 44%),
+		var(--portal-canvas);
+	background-size:
+		46px 46px,
+		46px 46px,
+		auto,
+		auto;
+}
+
+.forgeTransitionBay {
+	position: absolute;
+	inset: 68px 5% 92px;
+}
+
+.forgePressTop,
+.forgePressBottom {
+	position: absolute;
+	right: 18%;
+	left: 18%;
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 18px;
+	height: 72px;
+	transform: translateY(-120%);
+	animation: pressTop var(--transition-duration) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.forgePressTop {
+	top: 0;
+}
+
+.forgePressBottom {
+	bottom: 0;
+	transform: translateY(120%);
+	animation-name: pressBottom;
+}
+
+.forgePressTop span,
+.forgePressBottom span {
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 52%, transparent);
+	background:
+		linear-gradient(90deg, transparent, color-mix(in srgb, var(--portal-accent) 20%, transparent), transparent),
+		var(--portal-surface);
+	box-shadow: 0 0 24px color-mix(in srgb, var(--portal-accent) 16%, transparent);
+}
+
+.forgeAssembly {
+	position: absolute;
+	inset: 0;
+}
+
+.forgeModule {
+	position: absolute;
+	display: grid;
+	width: 130px;
+	height: 76px;
+	place-items: center;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 66%, transparent);
+	border-radius: 13px;
+	background: var(--portal-surface-raised);
+	box-shadow: 0 18px 40px rgb(0 0 0 / 30%);
+	color: var(--portal-accent);
+	font: 720 0.58rem/1 var(--portal-font-mono);
+	letter-spacing: 0.12em;
+	opacity: 0;
+	animation: moduleCapture var(--transition-duration) cubic-bezier(0.18, 0.86, 0.22, 1) forwards;
+}
+
+.forgeModule[data-index='1'] {
+	top: 8%;
+	left: 5%;
+	--module-x: 39vw;
+	--module-y: 28vh;
+}
+
+.forgeModule[data-index='2'] {
+	top: 44%;
+	left: 2%;
+	--module-x: 42vw;
+	--module-y: 0vh;
+	animation-delay: 90ms;
+}
+
+.forgeModule[data-index='3'] {
+	bottom: 5%;
+	left: 14%;
+	--module-x: 31vw;
+	--module-y: -24vh;
+	animation-delay: 180ms;
+}
+
+.forgeModule[data-index='4'] {
+	top: 8%;
+	right: 5%;
+	--module-x: -39vw;
+	--module-y: 28vh;
+	animation-delay: 130ms;
+}
+
+.forgeModule[data-index='5'] {
+	top: 44%;
+	right: 2%;
+	--module-x: -42vw;
+	--module-y: 0vh;
+	animation-delay: 220ms;
+}
+
+.forgeModule[data-index='6'] {
+	right: 14%;
+	bottom: 5%;
+	--module-x: -31vw;
+	--module-y: -24vh;
+	animation-delay: 310ms;
+}
+
+.assembledBlock {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	width: 190px;
+	height: 190px;
+	padding: 18px;
+	border: 2px solid var(--portal-accent);
+	border-radius: 26px;
+	background: var(--portal-surface-raised);
+	box-shadow:
+		0 0 70px color-mix(in srgb, var(--portal-accent) 34%, transparent),
+		inset 0 0 44px color-mix(in srgb, var(--portal-accent) 12%, transparent);
+	opacity: 0;
+	transform: translate(-50%, -50%) scale(0.5);
+	animation: blockAssemble var(--transition-duration) cubic-bezier(0.18, 0.86, 0.22, 1) forwards;
+}
+
+.assembledBlock div {
+	margin: 4px;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 44%, transparent);
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--portal-accent) 8%, transparent);
+}
+
+.assembledBlock strong {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	color: var(--portal-ink);
+	font: 820 2rem/1 var(--portal-font-mono);
+}
+
+.tokenInfusion {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	display: grid;
+	gap: 18px;
+	width: min(70vw, 720px);
+	transform: translate(-50%, -50%);
+}
+
+.tokenInfusion span {
+	height: 2px;
+	background: linear-gradient(
+		90deg,
+		transparent,
+		var(--portal-accent),
+		var(--portal-success),
+		var(--portal-warning),
+		transparent
+	);
+	box-shadow: 0 0 16px color-mix(in srgb, var(--portal-accent) 40%, transparent);
+	color: var(--portal-muted);
+	font: 650 0.5rem/1 var(--portal-font-mono);
+	letter-spacing: 0.1em;
+	opacity: 0;
+	animation: tokenInfuse var(--transition-duration) ease forwards;
+}
+
+.tokenInfusion span:nth-child(2) {
+	animation-delay: 90ms;
+}
+
+.tokenInfusion span:nth-child(3) {
+	animation-delay: 180ms;
+}
+
+.tokenInfusion span:nth-child(4) {
+	animation-delay: 270ms;
+}
+
+.storybookBlueprint {
+	position: absolute;
+	inset: 5% 8%;
+	display: grid;
+	grid-template-columns: 22% 1fr;
+	grid-template-rows: 1fr 24%;
+	border: 1px solid var(--portal-accent);
+	border-radius: 16px;
+	background: var(--portal-canvas);
+	box-shadow: 0 0 80px color-mix(in srgb, var(--portal-accent) 22%, transparent);
+	opacity: 0;
+	transform: scaleX(0.45);
+	transform-origin: center;
+	animation: blueprintDeploy var(--transition-duration) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.blueprintNav {
+	grid-row: 1 / 3;
+	display: grid;
+	align-content: start;
+	gap: 16px;
+	padding: 28px 20px;
+	border-right: 1px solid var(--portal-border);
+}
+
+.blueprintNav i,
+.blueprintCanvas i,
+.blueprintControls {
+	display: block;
+	height: 8px;
+	border-radius: 99px;
+	background: color-mix(in srgb, var(--portal-accent) 25%, var(--portal-surface-raised));
+}
+
+.blueprintCanvas {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 20px;
+	padding: 7%;
+}
+
+.blueprintCanvas i {
+	height: auto;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 38%, transparent);
+	border-radius: 14px;
+	background: color-mix(in srgb, var(--portal-accent) 7%, var(--portal-surface));
+}
+
+.blueprintControls {
+	margin: 2% 5%;
+	height: auto;
+	border-radius: 10px;
+}
+
+.forgeHandoff {
+	position: absolute;
+	z-index: 80;
+	inset: 0;
+	background: var(--portal-canvas);
+	opacity: 0;
+	animation: finalHandoff var(--transition-duration) linear forwards;
+}
+
+/* Type Lattice transition */
+
+.latticeTransition {
+	background:
+		linear-gradient(
+			30deg,
+			transparent 49.7%,
+			color-mix(in srgb, var(--portal-accent) 8%, transparent) 50%,
+			transparent 50.3%
+		),
+		linear-gradient(
+			-30deg,
+			transparent 49.7%,
+			color-mix(in srgb, var(--portal-warning) 7%, transparent) 50%,
+			transparent 50.3%
+		),
+		radial-gradient(circle at center, color-mix(in srgb, var(--portal-warning) 8%, transparent), transparent 42%),
+		var(--portal-canvas);
+	background-size:
+		90px 156px,
+		90px 156px,
+		auto,
+		auto;
+}
+
+.latticeTransitionField {
+	position: absolute;
+	inset: 66px 4% 90px;
+}
+
+.exportGlyphs span {
+	position: absolute;
+	padding: 8px 11px;
+	border-left: 1px solid var(--portal-warning);
+	background: color-mix(in srgb, var(--portal-canvas) 78%, transparent);
+	color: var(--portal-muted);
+	font: 700 0.7rem/1 var(--portal-font-mono);
+	opacity: 0;
+	animation: glyphResolve var(--transition-duration) cubic-bezier(0.18, 0.86, 0.22, 1) forwards;
+}
+
+.exportGlyphs span[data-index='1'] {
+	top: 12%;
+	left: 5%;
+	--glyph-x: 38vw;
+	--glyph-y: 24vh;
+}
+
+.exportGlyphs span[data-index='2'] {
+	top: 42%;
+	left: 2%;
+	--glyph-x: 40vw;
+	--glyph-y: 0vh;
+	animation-delay: 90ms;
+}
+
+.exportGlyphs span[data-index='3'] {
+	bottom: 10%;
+	left: 12%;
+	--glyph-x: 31vw;
+	--glyph-y: -25vh;
+	animation-delay: 180ms;
+}
+
+.exportGlyphs span[data-index='4'] {
+	top: 10%;
+	right: 7%;
+	--glyph-x: -36vw;
+	--glyph-y: 25vh;
+	animation-delay: 120ms;
+}
+
+.exportGlyphs span[data-index='5'] {
+	top: 44%;
+	right: 2%;
+	--glyph-x: -40vw;
+	--glyph-y: 0vh;
+	animation-delay: 210ms;
+}
+
+.exportGlyphs span[data-index='6'] {
+	right: 13%;
+	bottom: 8%;
+	--glyph-x: -31vw;
+	--glyph-y: -26vh;
+	animation-delay: 300ms;
+}
+
+.constraintGraph {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+}
+
+.constraintGraph path {
+	fill: none;
+	stroke: color-mix(in srgb, var(--portal-accent) 46%, transparent);
+	stroke-dasharray: 8 12;
+	stroke-width: 1.2;
+	animation: constraintDraw var(--transition-duration) linear forwards;
+}
+
+.crystalPrism {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 220px;
+	height: 250px;
+	filter: drop-shadow(0 0 32px color-mix(in srgb, var(--portal-accent) 46%, transparent));
+	opacity: 0;
+	transform: translate(-50%, -50%) scale(0.35);
+	animation: crystalForm var(--transition-duration) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.crystalFaceOne,
+.crystalFaceTwo,
+.crystalFaceThree {
+	position: absolute;
+	inset: 0;
+	clip-path: polygon(50% 0, 100% 28%, 100% 72%, 50% 100%, 0 72%, 0 28%);
+	background: linear-gradient(
+		145deg,
+		color-mix(in srgb, var(--portal-accent) 60%, transparent),
+		color-mix(in srgb, var(--portal-success) 24%, transparent)
+	);
+	border: 1px solid var(--portal-accent);
+}
+
+.crystalFaceTwo {
+	clip-path: polygon(50% 0, 100% 28%, 50% 52%, 0 28%);
+	background: color-mix(in srgb, var(--portal-warning) 22%, transparent);
+}
+
+.crystalFaceThree {
+	clip-path: polygon(50% 52%, 100% 28%, 100% 72%, 50% 100%);
+	background: color-mix(in srgb, var(--portal-success) 24%, transparent);
+}
+
+.crystalPrism strong {
+	position: absolute;
+	z-index: 3;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	color: var(--portal-ink);
+	font: 840 2.6rem/1 var(--portal-font-mono);
+}
+
+.prismRefractions {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 0;
+	height: 0;
+}
+
+.prismRefractions span {
+	position: absolute;
+	width: 180px;
+	padding: 10px;
+	border-bottom: 1px solid var(--portal-accent);
+	color: var(--portal-accent);
+	font: 720 0.58rem/1 var(--portal-font-mono);
+	letter-spacing: 0.1em;
+	opacity: 0;
+	animation: refractCategory var(--transition-duration) ease forwards;
+}
+
+.prismRefractions span:first-child {
+	--refraction-x: -38vw;
+	--refraction-y: -23vh;
+}
+
+.prismRefractions span:nth-child(2) {
+	--refraction-x: 24vw;
+	--refraction-y: -23vh;
+	animation-delay: 80ms;
+}
+
+.prismRefractions span:nth-child(3) {
+	--refraction-x: -38vw;
+	--refraction-y: 22vh;
+	animation-delay: 160ms;
+}
+
+.prismRefractions span:nth-child(4) {
+	--refraction-x: 24vw;
+	--refraction-y: 22vh;
+	animation-delay: 240ms;
+}
+
+.referencePlane {
+	position: absolute;
+	inset: 5% 7%;
+	display: grid;
+	grid-template-columns: 20% 1fr 22%;
+	gap: 1px;
+	background: var(--portal-border);
+	border: 1px solid var(--portal-accent);
+	border-radius: 14px;
+	box-shadow: 0 0 70px color-mix(in srgb, var(--portal-accent) 22%, transparent);
+	clip-path: polygon(50% 48%, 50% 48%, 50% 52%, 50% 52%);
+	opacity: 0;
+	animation: referenceUnfold var(--transition-duration) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.referenceTree,
+.referenceContent,
+.referenceIndex {
+	display: grid;
+	align-content: start;
+	gap: 15px;
+	padding: 26px 18px;
+	background: var(--portal-canvas);
+}
+
+.referenceTree i,
+.referenceContent i,
+.referenceIndex i {
+	display: block;
+	height: 8px;
+	border-radius: 99px;
+	background: color-mix(in srgb, var(--portal-accent) 23%, var(--portal-surface-raised));
+}
+
+.referenceContent i:first-child {
+	height: 38px;
+}
+
+.latticeHandoff {
+	position: absolute;
+	z-index: 80;
+	inset: 0;
+	background: linear-gradient(
+		135deg,
+		var(--portal-canvas),
+		color-mix(in srgb, var(--portal-accent) 8%, var(--portal-canvas))
+	);
+	clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+	animation: facetHandoff var(--transition-duration) ease forwards;
+}
+
+/* Request Wormhole transition */
+
+.wormholeTransition {
+	background:
+		linear-gradient(color-mix(in srgb, var(--portal-accent) 6%, transparent) 1px, transparent 1px),
+		linear-gradient(90deg, color-mix(in srgb, var(--portal-accent) 6%, transparent) 1px, transparent 1px),
+		linear-gradient(
+			90deg,
+			color-mix(in srgb, var(--portal-canvas) 96%, transparent),
+			color-mix(in srgb, var(--portal-warning) 5%, var(--portal-canvas)),
+			color-mix(in srgb, var(--portal-canvas) 96%, transparent)
+		);
+	background-size:
+		42px 42px,
+		42px 42px,
+		auto;
+}
+
+.wormholeTransitionField {
+	position: absolute;
+	inset: 68px 4% 92px;
+}
+
+.operationPacket,
+.responseSignal {
+	position: absolute;
+	top: 50%;
+	z-index: 8;
+	display: grid;
+	width: 210px;
+	padding: 18px;
+	border: 1px solid var(--portal-accent);
+	border-radius: 15px;
+	background: var(--portal-surface-raised);
+	box-shadow: 0 18px 46px rgb(0 0 0 / 36%);
+	opacity: 0;
+	transform: translateY(-50%);
+	animation: operationAssemble var(--transition-duration) cubic-bezier(0.18, 0.86, 0.22, 1) forwards;
+}
+
+.operationPacket {
+	left: 2%;
+}
+
+.operationPhoton {
+	position: absolute;
+	top: calc(50% - 18px);
+	left: 15%;
+	z-index: 12;
+	display: grid;
+	grid-template-columns: auto auto;
+	align-items: center;
+	gap: 7px;
+	width: 112px;
+	padding: 9px 12px;
+	overflow: hidden;
+	border: 1px solid var(--portal-accent);
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--portal-surface-raised) 96%, var(--portal-canvas));
+	box-shadow:
+		0 0 24px color-mix(in srgb, var(--portal-accent) 38%, transparent),
+		inset 0 0 18px color-mix(in srgb, var(--portal-accent) 9%, transparent);
+	opacity: 0;
+	animation: operationPhotonTravel var(--transition-duration) cubic-bezier(0.22, 0.75, 0.22, 1) forwards;
+}
+
+.operationPhoton::before {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: var(--portal-accent);
+	box-shadow:
+		0 0 16px var(--portal-accent),
+		0 0 34px var(--portal-success);
+	content: '';
+	opacity: 0;
+	transform: translate(-50%, -50%);
+	animation: operationPhotonCore var(--transition-duration) ease forwards;
+}
+
+.operationPhoton::after {
+	position: absolute;
+	top: 50%;
+	right: 100%;
+	width: 64px;
+	height: 1px;
+	background: linear-gradient(90deg, transparent, var(--portal-accent));
+	box-shadow: 0 0 10px var(--portal-accent);
+	content: '';
+}
+
+.operationPhoton strong {
+	color: var(--portal-accent);
+	font: 820 0.68rem/1 var(--portal-font-mono);
+}
+
+.operationPhoton span {
+	color: var(--portal-ink);
+	font: 700 0.58rem/1 var(--portal-font-mono);
+}
+
+.operationPhoton strong,
+.operationPhoton span {
+	animation: operationPhotonLabel var(--transition-duration) linear forwards;
+	white-space: nowrap;
+}
+
+.responseSignal {
+	right: 2%;
+	border-color: var(--portal-success);
+	animation-name: responseEmerge;
+}
+
+.operationPacket span,
+.responseSignal span {
+	color: var(--portal-subtle);
+	font: 700 0.53rem/1 var(--portal-font-mono);
+	letter-spacing: 0.13em;
+}
+
+.operationPacket strong,
+.responseSignal strong {
+	margin-top: 13px;
+	color: var(--portal-accent);
+	font: 840 1.55rem/1 var(--portal-font-mono);
+}
+
+.responseSignal strong {
+	color: var(--portal-success);
+}
+
+.operationPacket code,
+.responseSignal code {
+	margin-top: 6px;
+	color: var(--portal-ink);
+	font: 720 0.92rem/1 var(--portal-font-mono);
+}
+
+.operationPacket i,
+.responseSignal i {
+	margin-top: 13px;
+	color: var(--portal-warning);
+	font: 680 0.5rem/1 var(--portal-font-mono);
+	font-style: normal;
 	letter-spacing: 0.11em;
 }
 
-.gatewayLaunching .telescope {
-	transform: translate(38px, -32px) rotate(-22deg) scale(1.28);
+.clearanceTrack {
+	position: absolute;
+	top: calc(50% + 95px);
+	left: 16%;
+	z-index: 9;
+	display: flex;
+	width: 30%;
+	justify-content: space-between;
+	animation: clearanceTrackExit var(--transition-duration) linear forwards;
 }
 
-.gatewayLaunching .modelStars circle {
-	transform: scale(2.4);
+.clearanceTrack::before {
+	position: absolute;
+	top: 15px;
+	right: 0;
+	left: 0;
+	height: 1px;
+	background: color-mix(in srgb, var(--portal-warning) 32%, transparent);
+	content: '';
 }
+
+.clearanceTrack span {
+	z-index: 1;
+	display: grid;
+	gap: 8px;
+	justify-items: center;
+	color: var(--portal-subtle);
+	font: 680 0.45rem/1 var(--portal-font-mono);
+	opacity: 0.2;
+	animation: gateClear var(--transition-duration) linear forwards;
+}
+
+.clearanceTrack span:nth-child(2) {
+	animation-delay: 140ms;
+}
+
+.clearanceTrack span:nth-child(3) {
+	animation-delay: 280ms;
+}
+
+.clearanceTrack span:nth-child(4) {
+	animation-delay: 420ms;
+}
+
+.clearanceTrack span:nth-child(5) {
+	animation-delay: 560ms;
+}
+
+.clearanceTrack i {
+	display: block;
+	width: 30px;
+	height: 30px;
+	border: 1px solid var(--portal-warning);
+	border-radius: 8px;
+	background: var(--portal-canvas);
+}
+
+.contractMembrane {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	z-index: 6;
+	width: min(34vw, 430px);
+	height: min(72vh, 570px);
+	transform: translate(-50%, -50%);
+	animation: membraneExit var(--transition-duration) linear forwards;
+}
+
+.membraneGrid {
+	position: absolute;
+	inset: 5% 16%;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 42%, transparent);
+	border-radius: 50%;
+	background:
+		repeating-radial-gradient(
+			ellipse at center,
+			transparent 0 22px,
+			color-mix(in srgb, var(--portal-accent) 27%, transparent) 23px 24px
+		),
+		radial-gradient(
+			ellipse,
+			transparent 0 24%,
+			color-mix(in srgb, var(--portal-accent) 18%, transparent) 46%,
+			transparent 72%
+		);
+	box-shadow:
+		0 0 110px color-mix(in srgb, var(--portal-accent) 26%, transparent),
+		inset 0 0 70px color-mix(in srgb, var(--portal-warning) 12%, transparent);
+	animation: membraneCross var(--transition-duration) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.accretionDisk {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 112%;
+	height: 30%;
+	border: 2px solid color-mix(in srgb, var(--portal-warning) 62%, transparent);
+	border-radius: 50%;
+	background: linear-gradient(
+		90deg,
+		transparent,
+		color-mix(in srgb, var(--portal-accent) 58%, transparent) 28%,
+		color-mix(in srgb, var(--portal-warning) 72%, transparent) 50%,
+		color-mix(in srgb, var(--portal-accent) 42%, transparent) 72%,
+		transparent
+	);
+	box-shadow:
+		0 0 28px color-mix(in srgb, var(--portal-warning) 28%, transparent),
+		inset 0 0 24px color-mix(in srgb, var(--portal-accent) 22%, transparent);
+	filter: blur(0.3px);
+	opacity: 0;
+	transform: translate(-50%, -50%) rotate(-8deg) scaleX(0.82);
+	animation: accretionIgnite var(--transition-duration) ease forwards;
+}
+
+.lensingArc {
+	position: absolute;
+	inset: 17% 28%;
+	border: 2px solid color-mix(in srgb, var(--portal-accent) 54%, transparent);
+	border-right-color: color-mix(in srgb, var(--portal-warning) 70%, transparent);
+	border-left-color: color-mix(in srgb, var(--portal-success) 50%, transparent);
+	border-radius: 50%;
+	box-shadow:
+		0 0 34px color-mix(in srgb, var(--portal-accent) 34%, transparent),
+		inset 0 0 34px color-mix(in srgb, var(--portal-warning) 15%, transparent);
+	opacity: 0;
+	animation: lensingPulse var(--transition-duration) ease forwards;
+}
+
+.membraneEdge {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 50%;
+	width: 3px;
+	background: linear-gradient(transparent, var(--portal-accent), var(--portal-warning), transparent);
+	box-shadow: 0 0 28px var(--portal-accent);
+	transform: translateX(-50%);
+}
+
+.membraneCore {
+	position: absolute;
+	inset: 36% 26%;
+	display: grid;
+	place-content: center;
+	border-radius: 50%;
+	background: radial-gradient(circle at 46% 42%, rgb(255 255 255 / 3%), transparent 20%), #020304;
+	box-shadow:
+		0 0 0 8px rgb(0 0 0 / 26%),
+		0 0 60px rgb(0 0 0 / 96%);
+	text-align: center;
+}
+
+.membraneCore strong {
+	color: var(--portal-accent);
+	font: 840 0.9rem/1 var(--portal-font-mono);
+	letter-spacing: 0.14em;
+}
+
+.membraneCore span {
+	margin-top: 7px;
+	color: var(--portal-subtle);
+	font: 650 0.46rem/1 var(--portal-font-mono);
+	letter-spacing: 0.1em;
+}
+
+.requestBeam {
+	position: absolute;
+	top: 50%;
+	right: 15%;
+	left: 15%;
+	z-index: 5;
+	height: 3px;
+	background: linear-gradient(90deg, var(--portal-accent), var(--portal-warning) 50%, var(--portal-success));
+	box-shadow: 0 0 24px color-mix(in srgb, var(--portal-warning) 48%, transparent);
+	clip-path: inset(0 100% 0 0);
+	animation: requestCross var(--transition-duration) ease forwards;
+}
+
+.flightConsole {
+	position: absolute;
+	inset: 5% 3%;
+	display: grid;
+	grid-template-columns: 23% 43% 34%;
+	border: 1px solid var(--portal-accent);
+	border-radius: 14px;
+	background: var(--portal-canvas);
+	box-shadow: 0 0 80px color-mix(in srgb, var(--portal-accent) 22%, transparent);
+	opacity: 0;
+	transform: scaleY(0.5);
+	animation: consoleDeploy var(--transition-duration) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.flightOperation,
+.flightRequest,
+.flightResponse {
+	display: grid;
+	align-content: start;
+	gap: 13px;
+	padding: 26px 22px;
+	border-right: 1px solid var(--portal-border);
+	background: var(--portal-canvas);
+}
+
+.flightResponse {
+	border-right: 0;
+}
+
+.flightOperation strong,
+.flightRequest strong,
+.flightResponse strong {
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--portal-border);
+	color: var(--portal-subtle);
+	font: 760 0.58rem/1 var(--portal-font-mono);
+	letter-spacing: 0.14em;
+}
+
+.flightOperation span,
+.flightRequest span,
+.flightResponse span,
+.flightRequest small {
+	color: var(--portal-muted);
+	font: 650 0.6rem/1.4 var(--portal-font-mono);
+}
+
+.flightOperation b,
+.flightRequest b,
+.flightResponse b {
+	padding: 11px 12px;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 42%, var(--portal-border));
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--portal-accent) 8%, var(--portal-surface));
+	color: var(--portal-accent);
+	font: 760 0.62rem/1.2 var(--portal-font-mono);
+}
+
+.flightRequest code,
+.flightResponse code {
+	min-height: 90px;
+	padding: 14px;
+	border: 1px solid var(--portal-border);
+	border-radius: 8px;
+	background: var(--portal-surface);
+	color: var(--portal-ink);
+	font: 650 0.58rem/1.6 var(--portal-font-mono);
+	white-space: normal;
+}
+
+.flightRequest small {
+	color: var(--portal-success);
+	letter-spacing: 0.08em;
+}
+
+.flightRequest b {
+	align-self: end;
+	border-color: var(--portal-accent);
+	text-align: center;
+}
+
+.flightResponse b {
+	border-color: color-mix(in srgb, var(--portal-success) 58%, var(--portal-border));
+	background: color-mix(in srgb, var(--portal-success) 8%, var(--portal-surface));
+	color: var(--portal-success);
+}
+
+.wormholeHandoff {
+	position: absolute;
+	z-index: 80;
+	inset: 0;
+	background: var(--portal-canvas);
+	opacity: 0;
+	animation: finalHandoff var(--transition-duration) linear forwards;
+}
+
+/* Schema Observatory transition */
+
+.observatoryTransition {
+	background:
+		radial-gradient(circle at 72% 28%, color-mix(in srgb, var(--portal-success) 10%, transparent), transparent 38%),
+		linear-gradient(180deg, color-mix(in srgb, var(--portal-accent) 7%, var(--portal-canvas)), var(--portal-canvas));
+}
+
+.observatoryTransitionField {
+	position: absolute;
+	inset: 66px 4% 90px;
+}
+
+.transitionDome {
+	position: absolute;
+	bottom: -10%;
+	left: -3%;
+	width: 43%;
+	height: 54%;
+	overflow: visible;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 48%, var(--portal-border));
+	border-bottom: 0;
+	border-radius: 52% 52% 0 0;
+	background: var(--portal-surface);
+	box-shadow: 0 -18px 70px color-mix(in srgb, var(--portal-accent) 15%, transparent);
+}
+
+.transitionShutterLeft,
+.transitionShutterRight {
+	position: absolute;
+	top: 0;
+	width: 51%;
+	height: 100%;
+	background:
+		linear-gradient(110deg, color-mix(in srgb, var(--portal-accent) 12%, transparent), transparent 42%),
+		var(--portal-surface-raised);
+	border-right: 1px solid color-mix(in srgb, var(--portal-accent) 30%, transparent);
+	animation: shutterLeft var(--transition-duration) cubic-bezier(0.22, 0.8, 0.22, 1) forwards;
+}
+
+.transitionShutterLeft {
+	left: 0;
+}
+
+.transitionShutterRight {
+	right: 0;
+	border-right: 0;
+	border-left: 1px solid color-mix(in srgb, var(--portal-accent) 30%, transparent);
+	animation-name: shutterRight;
+}
+
+.transitionTelescope {
+	position: absolute;
+	z-index: 6;
+	top: 34%;
+	left: 26%;
+	width: 55%;
+	height: 18%;
+	border: 3px solid color-mix(in srgb, var(--portal-accent) 86%, white);
+	border-radius: 50px 12px 12px 50px;
+	background:
+		linear-gradient(90deg, color-mix(in srgb, var(--portal-accent) 22%, transparent), transparent 56%),
+		var(--portal-surface-raised);
+	box-shadow:
+		0 0 22px color-mix(in srgb, var(--portal-accent) 62%, transparent),
+		0 0 54px color-mix(in srgb, var(--portal-accent) 30%, transparent),
+		inset 0 0 0 7px color-mix(in srgb, var(--portal-canvas) 68%, transparent);
+	transform: rotate(-4deg);
+	transform-origin: 38% 50%;
+	animation: telescopeAcquire var(--transition-duration) cubic-bezier(0.22, 0.8, 0.22, 1) forwards;
+}
+
+.transitionTelescope span {
+	position: absolute;
+	z-index: 2;
+	top: -12%;
+	right: -8%;
+	width: 20%;
+	height: 124%;
+	border: 2px solid var(--portal-success);
+	border-radius: 9px;
+	background: var(--portal-canvas);
+	box-shadow: 0 0 24px color-mix(in srgb, var(--portal-success) 30%, transparent);
+}
+
+.transitionTelescope .focusBeam {
+	position: absolute;
+	top: 50%;
+	left: 100%;
+	z-index: 1;
+	display: block;
+	width: 40vw;
+	height: 4px;
+	background: linear-gradient(
+		90deg,
+		color-mix(in srgb, var(--portal-success) 86%, white),
+		color-mix(in srgb, var(--portal-accent) 88%, white) 68%,
+		transparent
+	);
+	box-shadow:
+		0 0 12px var(--portal-success),
+		0 0 30px color-mix(in srgb, var(--portal-accent) 60%, transparent);
+	clip-path: inset(0 100% 0 0);
+	opacity: 0;
+	transform: translateY(-50%);
+	transform-origin: left center;
+	animation: focusBeam var(--transition-duration) ease forwards;
+}
+
+.transitionTelescope .focusBeam b {
+	position: absolute;
+	z-index: 3;
+	top: 50%;
+	left: 0;
+	display: block;
+	width: 18px;
+	height: 18px;
+	border: 2px solid white;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--portal-success) 78%, white);
+	box-shadow:
+		0 0 22px var(--portal-success),
+		0 0 54px var(--portal-accent);
+	transform: translate(-50%, -50%);
+	animation: focusPhoton var(--transition-duration) ease forwards;
+}
+
+.transitionTelescopeStand {
+	position: absolute;
+	z-index: 5;
+	bottom: 16%;
+	left: 46%;
+	width: 44px;
+	height: 44px;
+	border: 2px solid var(--portal-accent);
+	border-radius: 50%;
+	background: radial-gradient(circle, var(--portal-success) 0 4px, var(--portal-surface-raised) 5px 100%);
+	box-shadow: 0 0 24px color-mix(in srgb, var(--portal-accent) 34%, transparent);
+}
+
+.transitionTelescopeStand::before,
+.transitionTelescopeStand::after {
+	position: absolute;
+	top: 36px;
+	left: 19px;
+	width: 3px;
+	height: 94px;
+	border-radius: 99px;
+	background: linear-gradient(var(--portal-accent), color-mix(in srgb, var(--portal-accent) 24%, transparent));
+	content: '';
+	transform-origin: top;
+}
+
+.transitionTelescopeStand::before {
+	box-shadow: 34px 0 0 -0.5px color-mix(in srgb, var(--portal-accent) 72%, transparent);
+	transform: rotate(20deg);
+}
+
+.transitionTelescopeStand::after {
+	transform: rotate(-20deg);
+}
+
+.transitionModelSky {
+	position: absolute;
+	top: 4%;
+	right: 4%;
+	width: 54%;
+	height: 72%;
+}
+
+.transitionModelSky svg {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	animation: constellationResolve var(--transition-duration) linear forwards;
+}
+
+.transitionModelSky path {
+	fill: none;
+	stroke: color-mix(in srgb, var(--portal-success) 54%, transparent);
+	stroke-dasharray: 5 10;
+	stroke-width: 1.2;
+}
+
+.transitionModelSky span {
+	position: absolute;
+	display: grid;
+	width: 34px;
+	height: 34px;
+	place-items: center;
+	border: 1px solid var(--portal-accent);
+	border-radius: 50%;
+	background: var(--portal-surface-raised);
+	box-shadow: 0 0 22px color-mix(in srgb, var(--portal-accent) 36%, transparent);
+	color: var(--portal-ink);
+	font: 720 0.6rem/1 var(--portal-font-mono);
+	filter: blur(7px);
+	opacity: 0;
+	animation: starFocus var(--transition-duration) ease forwards;
+}
+
+.transitionModelSky span[data-star='1'] {
+	top: 18%;
+	left: 16%;
+}
+
+.transitionModelSky span[data-star='2'] {
+	top: 7%;
+	left: 44%;
+	animation-delay: 80ms;
+}
+
+.transitionModelSky span[data-star='3'] {
+	top: 22%;
+	right: 13%;
+	animation-delay: 160ms;
+}
+
+.transitionModelSky span[data-star='4'] {
+	top: 56%;
+	right: 8%;
+	animation-delay: 240ms;
+}
+
+.transitionModelSky span[data-star='5'] {
+	right: 38%;
+	bottom: 2%;
+	animation-delay: 320ms;
+}
+
+.transitionModelSky span[data-star='6'] {
+	bottom: 11%;
+	left: 22%;
+	animation-delay: 400ms;
+}
+
+.transitionModelSky span[data-star='7'] {
+	top: 48%;
+	left: 4%;
+	animation-delay: 480ms;
+}
+
+.focusBeam {
+	position: absolute;
+	bottom: 30%;
+	left: 28%;
+	z-index: 4;
+	width: 48%;
+	height: 2px;
+	background: linear-gradient(90deg, var(--portal-accent), var(--portal-success), transparent);
+	box-shadow: 0 0 22px var(--portal-success);
+	clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+	transform: rotate(-24deg);
+	transform-origin: left;
+	animation: focusBeam var(--transition-duration) ease forwards;
+}
+
+.schemaResolution {
+	position: absolute;
+	top: 28%;
+	right: 12%;
+	z-index: 8;
+	display: grid;
+	width: 280px;
+	padding: 20px;
+	border: 1px solid var(--portal-success);
+	border-radius: 13px;
+	background: color-mix(in srgb, var(--portal-canvas) 92%, transparent);
+	box-shadow: 0 0 34px color-mix(in srgb, var(--portal-success) 22%, transparent);
+	opacity: 0;
+	transform: scale(0.7);
+	animation: schemaResolve var(--transition-duration) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.schemaResolution > span {
+	color: var(--portal-success);
+	font: 720 0.54rem/1 var(--portal-font-mono);
+	letter-spacing: 0.11em;
+}
+
+.schemaResolution strong {
+	margin-top: 10px;
+	color: var(--portal-ink);
+	font: 820 1.4rem/1 var(--portal-font-mono);
+}
+
+.schemaResolution div {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 6px;
+	margin-top: 18px;
+}
+
+.schemaResolution i {
+	padding: 7px 4px;
+	border: 1px solid var(--portal-border);
+	border-radius: 5px;
+	color: var(--portal-subtle);
+	font: 660 0.44rem/1 var(--portal-font-mono);
+	font-style: normal;
+	text-align: center;
+}
+
+.catalogueProjection {
+	position: absolute;
+	inset: 4% 4%;
+	display: grid;
+	grid-template-columns: 20% 1fr 26%;
+	gap: 1px;
+	border: 1px solid var(--portal-success);
+	border-radius: 14px;
+	background: var(--portal-border);
+	box-shadow: 0 0 70px color-mix(in srgb, var(--portal-success) 18%, transparent);
+	clip-path: inset(50% 0 50% 0);
+	opacity: 0;
+	animation: catalogueProject var(--transition-duration) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.catalogueNav,
+.catalogueModel,
+.catalogueEvidence {
+	display: grid;
+	align-content: start;
+	gap: 14px;
+	padding: 26px 20px;
+	background: var(--portal-canvas);
+}
+
+.catalogueNav i,
+.catalogueModel i,
+.catalogueEvidence i {
+	display: block;
+	height: 9px;
+	border-radius: 99px;
+	background: color-mix(in srgb, var(--portal-success) 20%, var(--portal-surface-raised));
+}
+
+.observatoryHandoff {
+	position: absolute;
+	z-index: 80;
+	inset: 0;
+	background: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--portal-success) 5%, var(--portal-canvas)),
+		var(--portal-canvas)
+	);
+	opacity: 0;
+	animation: finalHandoff var(--transition-duration) linear forwards;
+}
+
+/* --------------------------------------------------------------------------
+ * Bridge and transition keyframes
+ * -------------------------------------------------------------------------- */
 
 @keyframes starDrift {
 	to {
 		background-position:
-			170px 150px,
-			-230px 190px,
-			270px -210px,
-			-190px -240px;
+			170px 148px,
+			-238px 190px,
+			270px -224px,
+			-196px -246px;
 	}
 }
 
-@keyframes ambientOrbit {
-	50% {
-		opacity: 0.74;
-		transform: translate3d(24px, -18px, 0) scale(1.12);
-	}
-}
-
-@keyframes gatewayScan {
-	to {
-		transform: translateY(460%);
-	}
-}
-
-@keyframes livePulse {
+@keyframes signalPulse {
 	50% {
 		opacity: 0.36;
 		transform: scale(0.72);
 	}
 }
 
-@keyframes wormholeSpin {
-	to {
-		transform: rotate(360deg) scale(1.04);
-	}
-}
-
-@keyframes orbitSpin {
-	to {
-		transform: rotate(360deg);
-	}
-}
-
-@keyframes coreBreathe {
+@keyframes railCharge {
 	50% {
-		opacity: 0.58;
+		opacity: 0.95;
+		transform: scaleX(0.82);
+	}
+}
+
+@keyframes forgeField {
+	50% {
+		border-radius: 46%;
+		opacity: 0.62;
 		transform: scale(1.08);
-		transform-origin: 260px 150px;
 	}
 }
 
-@keyframes primitiveFloat {
+@keyframes zeroFloat {
 	50% {
-		transform: translateY(-7px);
+		transform: translate3d(var(--scene-shift-x), calc(var(--scene-shift-y) - 8px), 0);
 	}
 }
 
-@keyframes forgePulse {
-	to {
-		stroke-dashoffset: -12;
-	}
-}
-
-@keyframes latticeFlow {
-	to {
-		stroke-dashoffset: -52;
-	}
-}
-
-@keyframes nodeResolve {
+@keyframes tokenSignal {
 	50% {
-		opacity: 0.38;
-		r: 7px;
+		border-color: var(--portal-accent);
+		box-shadow: 0 0 18px color-mix(in srgb, var(--portal-accent) 24%, transparent);
+		color: var(--portal-ink);
 	}
 }
 
-@keyframes transitionSurface {
-	0% {
-		opacity: 0;
-	}
-	5%,
-	100% {
-		opacity: 1;
-	}
-}
-
-@keyframes cosmosRush {
-	0% {
-		opacity: 0.18;
-		transform: scale(0.25) rotate(0deg);
-	}
-	64% {
-		opacity: 0.66;
-		transform: scale(1.8) rotate(16deg);
-	}
-	100% {
-		opacity: 0;
-		transform: scale(4.8) rotate(34deg);
-	}
-}
-
-@keyframes geometryAwaken {
-	0% {
-		opacity: 0;
-		transform: rotate(0deg) scale(0.38);
-	}
-	12% {
-		opacity: 0.82;
-	}
-	68% {
-		opacity: 0.68;
-		transform: rotate(148deg) scale(1.08);
-	}
-	94% {
-		opacity: 0.14;
-		transform: rotate(230deg) scale(2.4);
-	}
-	100% {
-		opacity: 0;
-		transform: rotate(250deg) scale(3);
-	}
-}
-
-@keyframes irisOpen {
-	0% {
-		opacity: 0;
-		transform: scale(1.5);
-	}
-	10%,
-	72% {
-		opacity: 1;
-	}
-	72% {
-		transform: scale(0.88);
-	}
-	94% {
-		opacity: 1;
-		transform: scale(0.25);
-	}
-	100% {
-		opacity: 0;
-		transform: scale(0.04);
-	}
-}
-
-@keyframes personaAwaken {
-	0%,
-	8% {
-		opacity: 0;
-		transform: translateY(28px) scale(0.92);
-	}
-	18%,
-	76% {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-	}
-	94%,
-	100% {
-		opacity: 0;
-		transform: translateY(-18px) scale(1.12);
-	}
-}
-
-@keyframes glyphAwaken {
-	0%,
-	12% {
-		transform: rotate(-18deg) scale(0.62);
-	}
-	34% {
-		transform: rotate(7deg) scale(1.08);
-	}
-	70% {
-		transform: rotate(0deg) scale(1);
-	}
-	100% {
-		transform: rotate(28deg) scale(1.65);
-	}
-}
-
-@keyframes phaseOne {
-	0%,
-	12% {
-		opacity: 0;
-		transform: translateY(8px);
-	}
-	18%,
-	32% {
-		opacity: 1;
-		transform: translateY(0);
-	}
-	38%,
-	100% {
-		opacity: 0;
-		transform: translateY(-8px);
-	}
-}
-
-@keyframes phaseTwo {
-	0%,
-	34% {
-		opacity: 0;
-		transform: translateY(8px);
-	}
-	40%,
-	57% {
-		opacity: 1;
-		transform: translateY(0);
-	}
-	64%,
-	100% {
-		opacity: 0;
-		transform: translateY(-8px);
-	}
-}
-
-@keyframes phaseThree {
-	0%,
-	60% {
-		opacity: 0;
-		transform: translateY(8px);
-	}
-	67%,
-	82% {
-		opacity: 1;
-		transform: translateY(0);
-	}
-	90%,
-	100% {
-		opacity: 0;
-		transform: translateY(-8px);
-	}
-}
-
-@keyframes vitalsOnline {
-	0%,
-	10% {
-		opacity: 0;
-	}
-	18%,
-	88% {
-		opacity: 1;
-	}
-	100% {
-		opacity: 0;
-	}
-}
-
-@keyframes vitalBar {
+@keyframes edgeResolve {
 	to {
-		height: 5px;
+		stroke-dashoffset: -72;
+	}
+}
+
+@keyframes nodeEcho {
+	0% {
+		opacity: 0.7;
+		transform: scale(0.5);
+	}
+	100% {
+		opacity: 0;
+		transform: scale(1.8);
+	}
+}
+
+@keyframes membraneBreathe {
+	50% {
+		border-radius: 46% 54% 58% 42% / 55% 42% 58% 45%;
+		filter: brightness(1.2);
+		transform: skewY(var(--scene-angle)) scaleX(1.08);
+	}
+}
+
+@keyframes packetTraverse {
+	0%,
+	14% {
+		left: 0;
+		opacity: 0;
+	}
+	20% {
+		opacity: 1;
+	}
+	80% {
+		opacity: 1;
+	}
+	88%,
+	100% {
+		left: calc(100% - 12px);
+		opacity: 0;
+	}
+}
+
+@keyframes transitionHeader {
+	0%,
+	3% {
+		opacity: 0;
+		transform: translateY(-8px);
+	}
+	8%,
+	91% {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	96%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes phaseIlluminate {
+	0%,
+	4% {
+		opacity: 0.22;
+	}
+	9%,
+	25% {
+		opacity: 1;
+		color: var(--portal-ink);
+	}
+	31%,
+	100% {
 		opacity: 0.38;
 	}
 }
 
-@keyframes transitionBlackout {
-	0%,
-	90% {
-		opacity: 0;
+@keyframes phaseProgress {
+	0% {
+		width: 0;
 	}
+	25%,
 	100% {
-		opacity: 1;
-	}
-}
-
-@media (max-width: 996px) {
-	.gateway {
 		width: 100%;
 	}
 }
 
-@media (max-width: 760px) {
+@keyframes revealSkip {
+	to {
+		opacity: 0.82;
+	}
+}
+
+@keyframes pressTop {
+	0%,
+	4% {
+		transform: translateY(-120%);
+	}
+	12%,
+	66% {
+		transform: translateY(0);
+	}
+	74%,
+	100% {
+		transform: translateY(-120%);
+	}
+}
+
+@keyframes pressBottom {
+	0%,
+	4% {
+		transform: translateY(120%);
+	}
+	12%,
+	66% {
+		transform: translateY(0);
+	}
+	74%,
+	100% {
+		transform: translateY(120%);
+	}
+}
+
+@keyframes moduleCapture {
+	0%,
+	12% {
+		opacity: 0;
+		transform: translate(0, 0) scale(0.75);
+	}
+	18% {
+		opacity: 1;
+		transform: translate(0, 0) scale(1);
+	}
+	42%,
+	54% {
+		opacity: 1;
+		transform: translate(var(--module-x), var(--module-y)) scale(0.22);
+	}
+	60%,
+	100% {
+		opacity: 0;
+		transform: translate(var(--module-x), var(--module-y)) scale(0.08);
+	}
+}
+
+@keyframes blockAssemble {
+	0%,
+	34% {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(0.4);
+	}
+	46%,
+	68% {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+	}
+	76%,
+	100% {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(1.16);
+	}
+}
+
+@keyframes tokenInfuse {
+	0%,
+	44% {
+		clip-path: inset(0 100% 0 0);
+		opacity: 0;
+	}
+	50%,
+	66% {
+		clip-path: inset(0 0 0 0);
+		opacity: 1;
+	}
+	72%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes blueprintDeploy {
+	0%,
+	68% {
+		opacity: 0;
+		transform: scaleX(0.42);
+	}
+	80%,
+	94% {
+		opacity: 1;
+		transform: scaleX(1);
+	}
+	100% {
+		opacity: 0.9;
+		transform: scaleX(1.04);
+	}
+}
+
+@keyframes glyphResolve {
+	0%,
+	9% {
+		opacity: 0;
+		transform: translate(0, 0);
+	}
+	16%,
+	34% {
+		opacity: 1;
+		transform: translate(0, 0);
+	}
+	46%,
+	58% {
+		opacity: 0.15;
+		transform: translate(var(--glyph-x), var(--glyph-y)) scale(0.2);
+	}
+	64%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes constraintDraw {
+	0%,
+	16% {
+		opacity: 0;
+		stroke-dashoffset: 160;
+	}
+	27%,
+	58% {
+		opacity: 1;
+		stroke-dashoffset: 0;
+	}
+	67%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes crystalForm {
+	0%,
+	34% {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(0.35);
+	}
+	48%,
+	68% {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+	}
+	78%,
+	100% {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(1.24);
+	}
+}
+
+@keyframes refractCategory {
+	0%,
+	50% {
+		opacity: 0;
+		transform: translate(0, 0);
+	}
+	60%,
+	72% {
+		opacity: 1;
+		transform: translate(var(--refraction-x), var(--refraction-y));
+	}
+	78%,
+	100% {
+		opacity: 0;
+		transform: translate(var(--refraction-x), var(--refraction-y));
+	}
+}
+
+@keyframes referenceUnfold {
+	0%,
+	70% {
+		clip-path: polygon(50% 48%, 50% 48%, 50% 52%, 50% 52%);
+		opacity: 0;
+	}
+	83%,
+	100% {
+		clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+		opacity: 1;
+	}
+}
+
+@keyframes facetHandoff {
+	0%,
+	92% {
+		clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+	}
+	100% {
+		clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+	}
+}
+
+@keyframes operationAssemble {
+	0% {
+		opacity: 0;
+		transform: translateY(-50%) translateX(-80px);
+	}
+	10%,
+	24% {
+		opacity: 1;
+		transform: translateY(-50%) translateX(0);
+	}
+	30%,
+	100% {
+		opacity: 0;
+		transform: translateY(-50%) translateX(-12px);
+	}
+}
+
+@keyframes operationPhotonTravel {
+	0%,
+	34% {
+		opacity: 0;
+		transform: translateX(0) scale(0.78);
+		width: 112px;
+		padding: 9px 12px;
+	}
+	39% {
+		opacity: 1;
+		transform: translateX(0) scale(1);
+		width: 112px;
+		padding: 9px 12px;
+	}
+	48% {
+		opacity: 1;
+		transform: translateX(31vw) scale(0.92);
+		width: 112px;
+		padding: 9px 12px;
+	}
+	54% {
+		opacity: 1;
+		transform: translateX(35vw) scale(1);
+		width: 16px;
+		padding: 9px 0;
+	}
+	59% {
+		opacity: 0;
+		transform: translateX(35vw) scale(0.28);
+		width: 16px;
+		padding: 9px 0;
+	}
+	100% {
+		opacity: 0;
+		transform: translateX(35vw) scale(0.28);
+		width: 16px;
+		padding: 9px 0;
+	}
+}
+
+@keyframes operationPhotonLabel {
+	0%,
+	46% {
+		opacity: 1;
+	}
+	51%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes operationPhotonCore {
+	0%,
+	46% {
+		opacity: 0;
+	}
+	51%,
+	57% {
+		opacity: 1;
+	}
+	62%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes clearanceTrackExit {
+	0%,
+	48% {
+		opacity: 1;
+	}
+	55%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes gateClear {
+	0%,
+	18% {
+		opacity: 0.2;
+	}
+	24%,
+	44% {
+		opacity: 1;
+		color: var(--portal-success);
+		filter: drop-shadow(0 0 8px var(--portal-success));
+	}
+	55% {
+		opacity: 0;
+	}
+	56%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes membraneCross {
+	0%,
+	30% {
+		transform: scaleX(0.84);
+	}
+	48% {
+		transform: scaleX(1.08);
+	}
+	64% {
+		transform: scaleX(0.94);
+	}
+	72%,
+	100% {
+		opacity: 0;
+		transform: scaleX(1.16);
+	}
+}
+
+@keyframes membraneExit {
+	0%,
+	68% {
+		opacity: 1;
+	}
+	76%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes accretionIgnite {
+	0%,
+	28% {
+		opacity: 0;
+		transform: translate(-50%, -50%) rotate(-8deg) scaleX(0.45);
+	}
+	42%,
+	64% {
+		opacity: 0.86;
+		transform: translate(-50%, -50%) rotate(-8deg) scaleX(1);
+	}
+	72%,
+	100% {
+		opacity: 0;
+		transform: translate(-50%, -50%) rotate(-8deg) scaleX(1.18);
+	}
+}
+
+@keyframes lensingPulse {
+	0%,
+	30% {
+		opacity: 0;
+		transform: scale(0.72);
+	}
+	44%,
+	64% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	72%,
+	100% {
+		opacity: 0;
+		transform: scale(1.14);
+	}
+}
+
+@keyframes requestCross {
+	0%,
+	38% {
+		clip-path: inset(0 100% 0 0);
+	}
+	60%,
+	68% {
+		clip-path: inset(0 0 0 0);
+	}
+	72%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes responseEmerge {
+	0%,
+	52% {
+		opacity: 0;
+		transform: translateY(-50%) translateX(90px) scaleX(0.2);
+	}
+	66%,
+	72% {
+		opacity: 1;
+		transform: translateY(-50%) translateX(0) scaleX(1);
+	}
+	76%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes consoleDeploy {
+	0%,
+	78% {
+		opacity: 0;
+		transform: scaleY(0.45);
+	}
+	88%,
+	100% {
+		opacity: 1;
+		transform: scaleY(1);
+	}
+}
+
+@keyframes shutterLeft {
+	0%,
+	7% {
+		opacity: 1;
+		transform: translateX(0);
+	}
+	18% {
+		opacity: 1;
+		transform: translateX(-102%);
+	}
+	20%,
+	100% {
+		opacity: 0;
+		transform: translateX(-102%);
+	}
+}
+
+@keyframes shutterRight {
+	0%,
+	7% {
+		opacity: 1;
+		transform: translateX(0);
+	}
+	18% {
+		opacity: 1;
+		transform: translateX(102%);
+	}
+	20%,
+	100% {
+		opacity: 0;
+		transform: translateX(102%);
+	}
+}
+
+@keyframes telescopeAcquire {
+	0%,
+	16% {
+		opacity: 1;
+		transform: rotate(-4deg);
+	}
+	32%,
+	72% {
+		opacity: 1;
+		transform: rotate(-24deg);
+	}
+	80%,
+	100% {
+		opacity: 0;
+		transform: rotate(-24deg) translateX(-40px);
+	}
+}
+
+@keyframes constellationResolve {
+	0%,
+	18% {
+		opacity: 0;
+	}
+	34%,
+	74% {
+		opacity: 1;
+	}
+	82%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes starFocus {
+	0%,
+	20% {
+		filter: blur(7px);
+		opacity: 0;
+		transform: scale(0.65);
+	}
+	38%,
+	72% {
+		filter: blur(0);
+		opacity: 1;
+		transform: scale(1);
+	}
+	80%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes focusBeam {
+	0%,
+	34% {
+		clip-path: inset(0 100% 0 0);
+		opacity: 0;
+	}
+	38% {
+		clip-path: inset(0 100% 0 0);
+		opacity: 1;
+	}
+	60%,
+	68% {
+		clip-path: inset(0 0 0 0);
+		opacity: 1;
+	}
+	72%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes focusPhoton {
+	0%,
+	34% {
+		left: 0;
+		opacity: 0;
+	}
+	38% {
+		left: 0;
+		opacity: 1;
+	}
+	60% {
+		left: 96%;
+		opacity: 1;
+	}
+	68%,
+	100% {
+		left: 96%;
+		opacity: 0;
+	}
+}
+
+@keyframes schemaResolve {
+	0%,
+	60% {
+		opacity: 0;
+		transform: scale(0.7);
+	}
+	66%,
+	76% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	82%,
+	100% {
+		opacity: 0;
+		transform: scale(1.05);
+	}
+}
+
+@keyframes catalogueProject {
+	0%,
+	72% {
+		clip-path: inset(50% 0 50% 0);
+		opacity: 0;
+	}
+	86%,
+	100% {
+		clip-path: inset(0 0 0 0);
+		opacity: 1;
+	}
+}
+
+@keyframes finalHandoff {
+	0%,
+	94% {
+		opacity: 0;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+
+@media (max-width: 1060px) {
+	.gateway[data-symbol='request-wormhole'] .narrative {
+		grid-template-columns: 1fr 1fr;
+	}
+
+	.gateway[data-symbol='request-wormhole'] .personaRail,
+	.gateway[data-symbol='request-wormhole'] .eyebrow {
+		grid-column: 1;
+	}
+
+	.gateway[data-symbol='request-wormhole'] .narrative h2,
+	.gateway[data-symbol='request-wormhole'] .narrative > p:not(.eyebrow) {
+		grid-column: 2;
+	}
+
+	.gateway[data-symbol='request-wormhole'] .launchButton {
+		grid-column: 1 / -1;
+		grid-row: auto;
+	}
+}
+
+@media (max-width: 820px) {
 	.gateway {
-		grid-template-columns: 1fr;
 		min-height: 0;
 	}
 
-	.visual {
-		padding-bottom: 10px;
-		border-right: 0;
-		border-bottom: 1px solid color-mix(in srgb, var(--portal-accent) 22%, var(--portal-border));
+	.gateway[data-symbol='component-forge'],
+	.gateway[data-symbol='type-lattice'],
+	.gateway[data-symbol='schema-observatory'] {
+		grid-template-columns: 1fr;
+		grid-template-rows: minmax(430px, auto) auto;
 	}
 
-	.symbolStage {
-		min-height: 270px;
+	.gateway[data-symbol='component-forge'] .forgeScene,
+	.gateway[data-symbol='type-lattice'] .latticeScene,
+	.gateway[data-symbol='schema-observatory'] .observatoryScene {
+		grid-column: 1;
+		grid-row: 1;
+		min-height: 430px;
 	}
 
-	.copy {
-		padding-top: 28px;
+	.gateway[data-symbol='component-forge'] .narrative,
+	.gateway[data-symbol='type-lattice'] .narrative,
+	.gateway[data-symbol='schema-observatory'] .narrative {
+		grid-column: 1;
+		grid-row: 2;
+		width: auto;
+		margin: 0;
+		border: 0;
+		border-top: 1px solid var(--portal-border);
+		border-radius: 0;
 	}
 
-	.transitionCore {
-		padding: 28px 20px;
+	.gateway[data-symbol='component-forge'] .forgeModal,
+	.gateway[data-symbol='component-forge'] .forgeTokenStreams {
+		display: none;
 	}
 
-	.transitionGlyph {
-		width: 74px;
-		height: 74px;
-		border-radius: 22px;
+	.gateway[data-symbol='request-wormhole'] .narrative {
+		grid-template-columns: 1fr;
+	}
+
+	.gateway[data-symbol='request-wormhole'] .personaRail,
+	.gateway[data-symbol='request-wormhole'] .eyebrow,
+	.gateway[data-symbol='request-wormhole'] .narrative h2,
+	.gateway[data-symbol='request-wormhole'] .narrative > p:not(.eyebrow),
+	.gateway[data-symbol='request-wormhole'] .launchButton {
+		grid-column: 1;
+		grid-row: auto;
+	}
+
+	.requestOrigin,
+	.responseDestination {
+		width: 138px;
+	}
+
+	.securityGates {
+		display: none;
+	}
+
+	.eventHorizon {
+		width: 180px;
+	}
+
+	.transitionPhases {
+		grid-template-columns: 1fr 1fr;
+	}
+
+	.transitionPhases span:nth-child(n + 3) {
+		display: none;
+	}
+}
+
+@media (max-width: 560px) {
+	.gateway {
+		border-radius: var(--portal-radius-lg);
+	}
+
+	.narrative {
+		padding: 26px 22px;
+	}
+
+	.personaRail,
+	.sceneTelemetry {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.forgeCore {
+		left: 50%;
+		width: 220px;
+		height: 220px;
+	}
+
+	.forgeButton,
+	.forgeInput {
+		top: 8%;
+	}
+
+	.forgeCard,
+	.forgeNav {
+		bottom: 6%;
+	}
+
+	.forgePrimitive {
+		width: 92px;
+	}
+
+	.sourceColumn {
+		top: 20px;
+		left: 20px;
+		width: 170px;
+	}
+
+	.constraintLens,
+	.observatoryLens {
+		width: 120px;
+		height: 120px;
+	}
+
+	.requestOrigin,
+	.responseDestination {
+		top: 28%;
+		width: 118px;
+		padding: 11px;
+	}
+
+	.eventHorizon {
+		top: 58%;
+		width: 150px;
+		height: 180px;
+	}
+
+	.operationTrace {
+		top: 28%;
+		right: calc(5% + 118px);
+		left: calc(5% + 118px);
+	}
+
+	.observatoryDome {
+		width: 60%;
+	}
+
+	.modelSky {
+		width: 82%;
+	}
+
+	.evidenceConsole {
+		display: none;
+	}
+
+	.transitionHeader {
+		top: 18px;
+		right: 18px;
+		left: 18px;
+	}
+
+	.transitionHeader strong {
+		display: none;
+	}
+
+	.transitionPhases {
+		right: 18px;
+		bottom: 18px;
+		left: 18px;
+	}
+
+	.skipTransition {
+		right: 18px;
+		bottom: 90px;
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.starField,
-	.ambientBloom span,
-	.scanBeam,
-	.orbitalShell::before,
-	.orbitalShell::after,
-	.liveSignal span,
+	.gatewayStars,
 	.personaRail i,
-	.orbit,
-	.coreHalo,
-	.primitive,
-	.forgePulse,
-	.latticeLines,
-	.latticeNodes circle,
-	.wormholeRings,
-	.wormholeCore,
-	.requestTrajectory,
-	.observatoryOrbit,
-	.constellationPath {
-		animation: none;
+	.sceneTelemetry i,
+	.forgeRail span,
+	.forgeCorePulse,
+	.forgePrimitive,
+	.forgeTokenStreams span,
+	.latticeEdges path,
+	.nodeEcho,
+	.horizonMembrane,
+	.operationTrace i,
+	.skyConnections path,
+	.starHalo {
+		animation: none !important;
 	}
 
-	.gateway {
-		transition: none;
-	}
-
-	.visual {
-		transform: none;
+	.gateway::after,
+	.forgeCore,
+	.latticeMap,
+	.constraintLens,
+	.eventHorizon,
+	.telescopeBody,
+	.modelSky,
+	.observatoryLens {
 		transition: none;
 	}
 }

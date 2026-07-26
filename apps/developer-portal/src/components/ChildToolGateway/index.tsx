@@ -389,19 +389,20 @@ function RequestWormholeSymbol({ active }: { active: boolean }) {
 			/>
 			<path
 				className={styles.requestTrajectory}
-				d="M44 214C132 214 146 158 222 151s118-49 254-56"
+				d="M170 214C196 198 202 166 232 154s91-40 156-59"
 			/>
 			<g className={styles.requestPacket}>
 				<rect
-					x="48"
+					x="38"
 					y="194"
-					width="98"
+					width="132"
 					height="42"
 					rx="10"
 				/>
 				<text
-					x="67"
+					x="104"
 					y="220"
+					textAnchor="middle"
 				>
 					POST /orders
 				</text>
@@ -415,8 +416,9 @@ function RequestWormholeSymbol({ active }: { active: boolean }) {
 					rx="10"
 				/>
 				<text
-					x="411"
+					x="431"
 					y="100"
+					textAnchor="middle"
 				>
 					201
 				</text>
@@ -424,7 +426,7 @@ function RequestWormholeSymbol({ active }: { active: boolean }) {
 			<text
 				className={styles.openapiLabel}
 				x="217"
-				y="156"
+				y="176"
 			>
 				OPENAPI
 			</text>

@@ -3,11 +3,16 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { Title } from '../../../storefront/src/app/shared/ui/title/title';
 
 const meta = {
-	title: 'Storefront/Typography/Section Title',
+	title: 'Storefront/Foundation/Section Title',
 	component: Title,
 	tags: ['autodocs'],
 	parameters: {
 		application: 'storefront',
+		docs: {
+			description: {
+				component: 'Storefront section-heading typography using the real component and application stylesheet.',
+			},
+		},
 	},
 	args: {
 		class: 'title',

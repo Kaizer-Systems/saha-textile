@@ -17,6 +17,7 @@ const portalPackage = '@saha-textile/developer-portal';
 const storybookPackage = '@saha-textile/developer-portal-storybook';
 const typedocPackage = '@saha-textile/developer-portal-typedoc';
 const temporaryBuildRoot = join(tmpdir(), 'saha-textile-developer-portal-');
+const mountedChildRoots = new Set(['storybook', 'typedoc']);
 
 const watchTargets = [
 	'apps/developer-portal',
@@ -421,6 +422,16 @@ async function handleRequest(request, response) {
 	if (requestPath === undefined) {
 		response.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
 		response.end('Bad request');
+		return;
+	}
+
+	if (mountedChildRoots.has(requestPath)) {
+		const requestUrl = new URL(request.url ?? '/', `http://${host}:${port}`);
+		response.writeHead(308, {
+			'Cache-Control': 'no-store',
+			Location: `/${requestPath}/${requestUrl.search}`,
+		});
+		response.end();
 		return;
 	}
 

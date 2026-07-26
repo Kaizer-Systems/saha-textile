@@ -26,7 +26,7 @@ export class HasPermissionDirective {
 
 	private checkPermissions() {
 		const permission = this.permission();
-		if ((!Array.isArray(permission) && this.permissions?.includes(permission)) || !permission) {
+		if (!permission || (!Array.isArray(permission) && this.permissions.includes(permission))) {
 			if (!this.isViewCreated) {
 				this.viewContainerRef.createEmbeddedView(this.templateRef);
 				this.isViewCreated = true;

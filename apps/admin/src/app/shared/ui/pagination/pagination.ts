@@ -10,15 +10,15 @@ import { IPaginate } from '@data-access/interfaces/paginate.interface';
 export class Pagination {
 	// TODO:Component {kipped for migration because:
 	//  Your application code writes to the input. This prevents migration.
-	@Input() total: number = undefined;
+	@Input() total = 0;
 
 	// TODO: Skipped for migration because:
 	//  Your application code writes to the input. This prevents migration.
-	@Input() currentPage: number = undefined;
+	@Input() currentPage = 1;
 
 	// TODO: Skipped for migration because:
 	//  Your application code writes to the input. This prevents migration.
-	@Input() pageSize: number = undefined;
+	@Input() pageSize = 15;
 
 	readonly setPage = output<number>();
 

@@ -29,29 +29,29 @@
 name: saha-textile-mongo
 
 services:
-    mongo:
-        image: mongo:8.3
-        container_name: saha-textile-mongo
-        command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
-        ports:
-            - '127.0.0.1:${MONGO_HOST_PORT:-27017}:27017'
-        volumes:
-            - saha_textile_mongo_data:/data/db
-            - saha_textile_mongo_configdb:/data/configdb
-        healthcheck:
-            # Idempotent: initiates the replica set on first run, then reports
-            # healthy once rs.status() is ok. Host is 127.0.0.1 so host-side
-            # clients (API, MCP, mongosh) resolve the sole member directly.
-            test: |
-                mongosh --quiet --eval "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] }).ok }" | grep -q 1
-            interval: 5s
-            timeout: 10s
-            retries: 24
-            start_period: 15s
-        restart: unless-stopped
+  mongo:
+    image: mongo:8.3
+    container_name: saha-textile-mongo
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    ports:
+      - '127.0.0.1:${MONGO_HOST_PORT:-27017}:27017'
+    volumes:
+      - saha_textile_mongo_data:/data/db
+      - saha_textile_mongo_configdb:/data/configdb
+    healthcheck:
+      # Idempotent: initiates the replica set on first run, then reports
+      # healthy once rs.status() is ok. Host is 127.0.0.1 so host-side
+      # clients (API, MCP, mongosh) resolve the sole member directly.
+      test: |
+        mongosh --quiet --eval "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] }).ok }" | grep -q 1
+      interval: 5s
+      timeout: 10s
+      retries: 24
+      start_period: 15s
+    restart: unless-stopped
 
 volumes:
-    saha_textile_mongo_data:
-        name: saha_textile_mongo_data
-    saha_textile_mongo_configdb:
-        name: saha_textile_mongo_configdb
+  saha_textile_mongo_data:
+    name: saha_textile_mongo_data
+  saha_textile_mongo_configdb:
+    name: saha_textile_mongo_configdb

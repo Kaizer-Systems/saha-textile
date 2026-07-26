@@ -1,10 +1,10 @@
 ---
-title: "API and Database Development Roadmap"
-description: "Canonical A-J backend delivery plan, decision gates, and verification contract."
+title: 'API and Database Development Roadmap'
+description: 'Canonical A-J backend delivery plan, decision gates, and verification contract.'
 audience: [backend, operator, agent]
 document_role: canonical
 last_verified: 2026-07-25
-search_keywords: "api database roadmap backend chunks gates verification deployment"
+search_keywords: 'api database roadmap backend chunks gates verification deployment'
 ---
 
 # API + DB Development Roadmap
@@ -39,31 +39,31 @@ search_keywords: "api database roadmap backend chunks gates verification deploym
 
 ### Add by domain
 
-| Domain | Reference |
-| --- | --- |
-| Auth, cookies, OTP, PIN, privacy | `codex-auth-architecture-db-and-request-plan.mdx` |
+| Domain                                | Reference                                               |
+| ------------------------------------- | ------------------------------------------------------- |
+| Auth, cookies, OTP, PIN, privacy      | `codex-auth-architecture-db-and-request-plan.mdx`       |
 | Catalog, collections, search, content | `codex-catalog-db-architecture-assessment-and-plan.mdx` |
-| Whole-system invariants | `saha-textile-technical-knowledgebase.mdx` |
-| Whole-product sequencing | `execution-roadmap.mdx` |
-| Unanswered policy | `pending-decisions.mdx` |
+| Whole-system invariants               | `saha-textile-technical-knowledgebase.mdx`              |
+| Whole-product sequencing              | `execution-roadmap.mdx`                                 |
+| Unanswered policy                     | `pending-decisions.mdx`                                 |
 
 ## Markers
 
-| Marker | Meaning |
-| --- | --- |
-| **SAFE NOW** | Current locks are sufficient for final implementation. |
+| Marker       | Meaning                                                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| **SAFE NOW** | Current locks are sufficient for final implementation.                                                              |
 | **SEAM NOW** | Build contracts, ports, indexes, stubs, and reversible policy boundaries; final behavior waits for an owner answer. |
-| **BLOCKED** | Do not allocate irreversible identifiers or ship final policy behavior. |
+| **BLOCKED**  | Do not allocate irreversible identifiers or ship final policy behavior.                                             |
 
 ## Implementation gates
 
-| Gate | Decision source | Blocks |
-| --- | --- | --- |
-| **G-NUM-ORDER** — order/tax-invoice numbering | `DEC-NUMBERING` | Issuing customer-facing order/tax-invoice numbers and final invoice PDFs |
-| **G-NUM-PI** — purchase-invoice numbering | `DEC-NUMBERING` | Posting purchase invoices with final business numbers |
-| **G-CORE-CONTRACTS** — core/contracts direction — **RESOLVED** | owner decision: type-only coupling | Nothing; ESLint-enforced and unblocked |
-| **G-I18N-ROUTES** — canonical locale URL law | `DEC-I18N-ROUTES` | Final canonical/hreflang/redirect behavior |
-| **G-IMG-PX** — image dimensions and ingest limits | `DEC-IMG-PX`, `DEC-MEDIA-CAPS` | Final sharp presets, upload ceilings, and responsive-source enforcement |
+| Gate                                                           | Decision source                    | Blocks                                                                   |
+| -------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------ |
+| **G-NUM-ORDER** — order/tax-invoice numbering                  | `DEC-NUMBERING`                    | Issuing customer-facing order/tax-invoice numbers and final invoice PDFs |
+| **G-NUM-PI** — purchase-invoice numbering                      | `DEC-NUMBERING`                    | Posting purchase invoices with final business numbers                    |
+| **G-CORE-CONTRACTS** — core/contracts direction — **RESOLVED** | owner decision: type-only coupling | Nothing; ESLint-enforced and unblocked                                   |
+| **G-I18N-ROUTES** — canonical locale URL law                   | `DEC-I18N-ROUTES`                  | Final canonical/hreflang/redirect behavior                               |
+| **G-IMG-PX** — image dimensions and ingest limits              | `DEC-IMG-PX`, `DEC-MEDIA-CAPS`     | Final sharp presets, upload ceilings, and responsive-source enforcement  |
 
 Other open decisions block only their own final policy engine. Reversible schemas, contracts, ports, and seams may proceed.
 

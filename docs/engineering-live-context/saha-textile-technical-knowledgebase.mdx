@@ -1,10 +1,10 @@
 ---
-title: "Saha Textile Technical Knowledge Base"
-description: "Canonical retained whole-system technical reference and durable architecture invariants."
+title: 'Saha Textile Technical Knowledge Base'
+description: 'Canonical retained whole-system technical reference and durable architecture invariants.'
 audience: [engineering, operator, agent]
 document_role: canonical
 last_verified: 2026-07-25
-search_keywords: "technical knowledge base architecture invariants commerce platform"
+search_keywords: 'technical knowledge base architecture invariants commerce platform'
 ---
 
 # Saha Textile Technical Knowledge Base
@@ -51,21 +51,21 @@ Fastkart code is never forked.
 
 ## 2. Applications and pinned stack
 
-| Area | Technology | Role |
-| --- | --- | --- |
-| Monorepo | pnpm workspaces + Turborepo | Build/test orchestration |
-| Storefront | Angular 21 + AnalogJS | SSR/SSG public PWA |
-| Admin | Angular 21 | Private operations UI |
-| API | NestJS 11 + Fastify 5 | HTTP composition root |
-| Portal | Docusaurus | Private developer documentation |
-| Database | MongoDB 8.3 | Operational source of truth |
-| Search | Self-hosted Meilisearch | Derived searchable index |
-| Media | DigitalOcean Spaces, SGP | Object storage/CDN origin |
-| Styling | Bootstrap 5 + ng-bootstrap + SCSS | Shared UI foundation |
+| Area         | Technology                                                            | Role                                 |
+| ------------ | --------------------------------------------------------------------- | ------------------------------------ |
+| Monorepo     | pnpm workspaces + Turborepo                                           | Build/test orchestration             |
+| Storefront   | Angular 21 + AnalogJS                                                 | SSR/SSG public PWA                   |
+| Admin        | Angular 21                                                            | Private operations UI                |
+| API          | NestJS 11 + Fastify 5                                                 | HTTP composition root                |
+| Portal       | Docusaurus                                                            | Private developer documentation      |
+| Database     | MongoDB 8.3                                                           | Operational source of truth          |
+| Search       | Self-hosted Meilisearch                                               | Derived searchable index             |
+| Media        | DigitalOcean Spaces, SGP                                              | Object storage/CDN origin            |
+| Styling      | Bootstrap 5 + ng-bootstrap + SCSS                                     | Shared UI foundation                 |
 | Client state | TanStack Angular Query + signals/SignalStore + selective classic NgRx | Server, UI, and heavy mutation state |
-| i18n | Transloco plus DB-localized content | Runtime UI and authored content |
-| Validation | Zod | Every external boundary |
-| Tests | Vitest + Playwright | Unit/integration and browser |
+| i18n         | Transloco plus DB-localized content                                   | Runtime UI and authored content      |
+| Validation   | Zod                                                                   | Every external boundary              |
+| Tests        | Vitest + Playwright                                                   | Unit/integration and browser         |
 
 Pinned majors must not be silently upgraded. Use version-correct official
 documentation when implementing or upgrading a dependency.

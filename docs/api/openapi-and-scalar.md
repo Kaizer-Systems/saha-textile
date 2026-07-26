@@ -1,13 +1,15 @@
 ---
 title: OpenAPI and Scalar Reference
 wide: true
-description: OpenAPI source-of-truth rules, completeness gates, Scalar integration trigger, security, and future build topology.
-status: deferred
+description: OpenAPI source-of-truth rules, current Scalar scaffold, completeness gates, Test Request security, and build topology.
+status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
-    - apps/api/src/main.ts
+    - apps/api/src/openapi.ts
+    - apps/api/src/generate-openapi.ts
     - apps/api/src
+    - apps/developer-portal-scalar
     - packages/contracts/src
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
@@ -19,20 +21,20 @@ The decision is locked:
 
 - OpenAPI is the machine-readable API source of truth.
 - Scalar is the single human reference and approved interactive client.
-- Do not maintain parallel long-term Swagger UI, Redoc, or separate console surfaces.
+- Do not maintain parallel long-term API-reference or separate console surfaces.
 
 ## Current state
 
-NestJS creates an OpenAPI document and exposes it at `/openapi.json`. A transitional framework UI is mounted at `/docs`.
+NestJS creates one OpenAPI document through `apps/api/src/openapi.ts`. The API exposes it at `/openapi.json`, and the portal build now generates the same document without a MongoDB connection, publishes it at `/api/openapi.json`, and renders it through Scalar at `/api/reference/`.
 
-Scalar remains **deferred** because the current document is not yet a complete, reliable operation contract. Installing a polished viewer would not repair missing schemas, security semantics, errors, authorization, idempotency, or side-effect documentation.
+The surface is deliberately labelled **scaffolded**. It currently exposes 22 discovered paths, but many operations still lack reliable request/response components, security semantics, errors, authorization, idempotency, and side-effect documentation. Scalar makes the current evidence navigable; it does not repair or conceal those omissions.
 
-The new shared auth/session/consent/audit/notification schemas are useful inputs to this future pipeline, but they are not yet wired to controllers or emitted as complete OpenAPI operations/components. Their presence does not satisfy the Scalar integration trigger.
+Scalar’s **Test Request** control is enabled. Authentication is not persisted by Scalar, no external request proxy is configured, and the generated document declares only the approved local API server (`http://127.0.0.1:4000`). Normal API security controls remain in force.
 
 ## Target portal routes
 
 ```text
-/api/reference      Scalar reference + approved interactive requests
+/api/reference/     Scalar reference + approved interactive requests
 /api/openapi.json   Machine-readable OpenAPI contract
 ```
 
@@ -70,9 +72,9 @@ flowchart LR
 
 Do not manually maintain a second OpenAPI file that can drift from controllers/contracts.
 
-## Scalar integration trigger
+## Contract-completeness promotion gate
 
-Integrate Scalar only after all of these are true:
+The scaffold must not be promoted to an implemented/complete contract until all of these are true:
 
 1. the API emits OpenAPI during CI without requiring production secrets;
 2. core route families have explicit request/response schemas;
@@ -99,7 +101,7 @@ Private portal authentication does not replace API authorization.
 
 ## Environment selector policy
 
-When the reference becomes interactive, show an explicit environment badge/selector with safe base URLs. Prefer read-only or development fixtures by default. Dangerous operations require the same application permissions and should be visibly identified; the portal must not invent a separate superuser channel.
+The current scaffold shows its local-development server from the document itself. Before adding another environment, show an explicit badge/selector with an approved safe base URL. Prefer read-only or development fixtures by default. Dangerous operations require the same application permissions and should be visibly identified; the portal must not invent a separate superuser channel.
 
 ## Contract drift gates
 
@@ -110,7 +112,7 @@ When the reference becomes interactive, show an explicit environment badge/selec
 - Link operation changes to frontend/backend work.
 - Update human guidance for business semantics the schema cannot express alone.
 
-## Current limitations to fix before integration
+## Current limitations to fix before contract promotion
 
 - controller-local zod body schemas do not automatically become complete OpenAPI component schemas;
 - many response types are inferred from implementation rather than declared DTOs;
@@ -119,6 +121,6 @@ When the reference becomes interactive, show an explicit environment badge/selec
 - public versus admin tag/route segregation is incomplete;
 - current bearer security scheme is transitional.
 
-## Future umbrella placement
+## Umbrella placement
 
 Scalar is one generated surface under Docusaurus. The portal provides onboarding, architecture, workflows, failure recovery, database mappings, and operational context around it. Scalar owns operation-level API reading/execution; it does not replace those narrative responsibilities.

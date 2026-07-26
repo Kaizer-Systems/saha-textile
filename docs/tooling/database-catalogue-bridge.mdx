@@ -1,0 +1,31 @@
+---
+title: MongoDB Catalogue
+slug: /tools/database-catalogue
+description: Symbolic Docusaurus gateway to the generated current-model MongoDB catalogue.
+status: scaffolded
+audience: [beginner, backend, operator]
+last_verified: '2026-07-26'
+wide: true
+hide_table_of_contents: true
+source_of_truth:
+    - packages/adapters-db-mongo/src/models
+    - packages/adapters-db-mongo/scripts/generate-catalogue.ts
+    - apps/developer-portal/src/components/ChildToolGateway
+    - scripts/serve-developer-portal-persistent.mjs
+---
+
+import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
+
+# MongoDB catalogue
+
+<ChildToolGateway
+	toolName="MongoDB catalogue"
+	target="/database/catalogue/"
+	eyebrow="Schema Observatory · Current persistence evidence"
+	title="Focus the telescope on today’s implemented models."
+	description="Seven current-model constellations rotate into view; selecting one resolves its source-derived fields, defaults, enums, select policy, and indexes without touching a database."
+	launchLabel="Open Schema Observatory"
+	symbol="schema-observatory"
+/>
+
+This is a source-only catalogue of the Mongo models implemented today. It does not promote target-only Schema Nebula collections or temporary `Mixed` fields into a finished database design. The generator never connects to local, test, staging, or production data.

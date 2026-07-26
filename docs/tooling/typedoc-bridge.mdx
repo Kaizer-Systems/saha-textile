@@ -15,8 +15,6 @@ source_of_truth:
 
 import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
 
-# TypeScript reference
-
 <ChildToolGateway
 	toolName="TypeScript reference"
 	target="/typedoc/"
@@ -27,10 +25,4 @@ import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
 	symbol="type-lattice"
 />
 
-All portal navigation enters TypeDoc through this gateway. The launch succeeds when the complete atomic portal has generated and mounted TypeDoc:
-
-```bash
-corepack pnpm portal:persistent
-```
-
-Use the [generated surfaces and runtime guide](/tooling/generated-surfaces-and-runtime) for the intentionally narrow exported-symbol scope, shared-theme behavior, direct TypeDoc generation, and build topology.
+The Type Lattice focuses on exported contracts, signatures, schemas, interfaces, ports, and pricing utilities. Architecture narratives and operational guidance remain in the surrounding developer portal.

@@ -1,0 +1,36 @@
+---
+title: Angular Storybook
+slug: /storybook
+description: Symbolic Docusaurus gateway to the generated Angular Storybook child.
+status: implemented
+audience: [beginner, frontend]
+last_verified: '2026-07-26'
+wide: true
+hide_table_of_contents: true
+source_of_truth:
+    - apps/developer-portal-storybook
+    - apps/developer-portal/src/components/ChildToolGateway
+    - scripts/serve-developer-portal-persistent.mjs
+---
+
+import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
+
+# Angular Storybook
+
+<ChildToolGateway
+	toolName="Angular Storybook"
+	target="/storybook/"
+	eyebrow="Component Forge · Angular renderer"
+	title="Enter the project’s building blocks."
+	description="Interface primitives orbit the shared theme core, then align into one verified Angular surface for Storefront, Admin, and Shared contexts."
+	launchLabel="Assemble Storybook"
+	symbol="component-forge"
+/>
+
+This gateway remains useful when Docusaurus runs alone. The launch succeeds when the complete atomic portal has generated and mounted Storybook:
+
+```bash
+corepack pnpm portal:persistent
+```
+
+Use the [generated surfaces and runtime guide](/tooling/generated-surfaces-and-runtime) for application segregation, shared-theme behavior, direct Storybook development, and build topology.

@@ -3,7 +3,7 @@ title: Admin Contributor Recipes
 description: Beginner-safe recipes for routes, lists, forms, mutations, permissions, and operator verification.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
     - apps/admin/src/app/routes
     - apps/admin/src/app/features

@@ -60,31 +60,40 @@ Every tool has a unique Docusaurus bridge route. The Tools menu always enters th
 
 Tool-specific selectors remain in tool adapters. Shared token values must not be copied into those adapters.
 
-## Story coverage policy and staged expansion
+## Storybook coverage contract
 
 Storybook renders real Angular classes; it does not reproduce application components with Storybook-only HTML.
 
-The first expanded pass includes the real Storefront empty state, full-page loader, section title, and horizontal/vertical product-card skeleton states; the real Admin product and sidebar skeleton states; plus Shared Component Forge and theme-contract specimens. Every preview selects exactly one application stylesheet and the shared interaction adapter.
+The current catalogue contains 119 named story states across Storefront, Admin, and Shared. The automated coverage gate scans all 282 Angular components in both applications and accounts for every component classified as reusable:
+
+| Application | Reusable components accounted for | Application components reached directly by stories |
+| ----------- | --------------------------------- | -------------------------------------------------- |
+| Storefront  | 106 / 106                         | 107 / 155                                          |
+| Admin       | 33 / 33                           | 33 / 127                                           |
+| Combined    | 139 / 139                         | 140 / 282                                          |
+
+The extra directly reached component is an application-composition surface. The 142 application components not directly reached are route/page orchestration, not missing reusable-component specimens. Their navigation, resolver, live-service, and whole-application behavior belongs in integration and Playwright coverage.
+
+The coverage gate runs before Storybook development, typechecking, linting, and production builds:
+
+```bash
+corepack pnpm --filter @saha-textile/developer-portal-storybook check:coverage
+```
+
+It fails when a new reusable component is neither imported by a story nor explicitly classified as integration-only. This prevents the catalogue from silently drifting behind either Angular application.
+
+Coverage includes:
+
+- foundation controls, titles, icons, feedback, empty states, pagination, breadcrumbs, and skeletons;
+- Storefront commerce configuration, product cards, collection/filter surfaces, header/footer primitives, home widgets, application surfaces, and the reusable product-detail system;
+- Admin controls, forms, dropdowns, data/media surfaces, alerts, permission-aware links, pagination, cards, modal workflows, page wrappers, navigation, and application chrome; and
+- Shared theme-contract, modal-workflow, and Component Forge overview states.
+
+Every preview selects exactly one application stylesheet and the shared interaction adapter. Issuer-aware alias resolution keeps Storefront and Admin imports pointed at their own `@core`, `@data-access`, `@layout`, and `@shared` roots inside the single Angular renderer. Deterministic state/query shims provide catalogue, category, blog, notification, account, loader, menu, and settings data without reaching live services. Shared preview providers supply routing, translations, NgRx commerce states, TanStack Query, ng-bootstrap, HTTP fixtures, currency formatting, and no-op animations.
 
 Loading specimens are intentionally persistent because they represent the loading UI itself. They are now grouped under **Feedback** or **Skeletons**, their story names state that they are placeholders, and their Docs descriptions explicitly say Storybook is not awaiting data. A perpetual spinner in the Full-page Loader story is therefore expected component behavior; a spinner on an unrelated story is a rendering fault.
 
-Coverage expands in small passes:
-
-1. **Foundation and feedback:** dependency-light reusable UI, loading, empty, typography, focus, and translated states.
-2. **Commerce configuration:** product boxes, option swatches, variants, bundles, measurements, cart-line configuration, and useful stock/error combinations using deterministic product fixtures.
-3. **Admin operations:** buttons, alerts, pagination, dropdowns, tables, media, permission states, modals, and form validation using explicit store/query/service fixtures.
-4. **Application composition:** headers, footers, navigation, and bounded feature panels only after runtime configuration, router, i18n, and query providers can be represented honestly.
-
 Route shells and pages that only coordinate navigation or live server state are not useful isolated component stories. Their behavior belongs in application integration and Playwright coverage. A feature component receives a story when it exposes a meaningful visual or interactive state in isolation.
-
-The remaining coverage is deliberately pending rather than represented by empty stories. Current constraints are:
-
-- both applications use the same compile-time aliases (`@core`, `@shared`, `@data-access`, and `@layout`) for different roots, so the single renderer needs an issuer-aware resolution seam before importing both dependency graphs;
-- store/query/router/runtime-config/Transloco/modal dependencies need deterministic application-specific fixtures;
-- legacy components that do not pass the Storybook workspace's strict TypeScript boundary need source typing corrections rather than weaker Storybook checks; and
-- application assets need an isolated mount strategy so identical `assets/**` URLs cannot collide between Storefront and Admin.
-
-Each pass must add useful states, verify both portal themes and the correct application stylesheet, and update this section. Do not declare broad coverage complete from a generated filename inventory alone.
 
 ## Local commands
 
@@ -106,6 +115,12 @@ Build Storybook directly:
 
 ```bash
 corepack pnpm --filter @saha-textile/developer-portal-storybook build
+```
+
+Run the isolated Storybook development server:
+
+```bash
+corepack pnpm --filter @saha-textile/developer-portal-storybook dev
 ```
 
 Build TypeDoc directly:
@@ -160,7 +175,7 @@ While a replacement builds, the server continues serving the last successful com
 
 Running Docusaurus alone does **not** start or build the child tools. Use their direct commands for isolated work or `portal:persistent` for the complete umbrella.
 
-The production Storybook build and composite runtime are verified. The isolated `developer-portal-storybook dev` command remains pending: pinned Storybook 10.3.2 currently exits from both its Angular builder and CLI with `expected options to have a port`, even when the declared/CLI port is present. Do not weaken or replace the verified production build path to conceal that upstream/tooling incompatibility; resolve and verify the direct-development command in a focused tooling pass.
+The production Storybook build, standalone development server, and composite runtime are verified. A local execution environment must permit the declared loopback port to bind; a sandbox that denies local listening can surface Storybook's `expected options to have a port` fallback even though the repository configuration is valid.
 
 ## Scaffold limitations and promotion gates
 

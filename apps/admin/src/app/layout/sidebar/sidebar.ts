@@ -27,7 +27,7 @@ export class Sidebar {
 	private menuStore = inject(MenuStore);
 	private accountStore = inject(AccountStore);
 
-	readonly class = input<string>(undefined);
+	readonly class = input<string>('');
 
 	setting$: Observable<IValues | null> = toObservable(inject(SettingStore).setting);
 	readonly menu = this.menuStore.menu;

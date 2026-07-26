@@ -12,14 +12,14 @@ import { LoaderStore } from '@core/state/loader.store';
 export class Button {
 	readonly class = input<string>('btn btn-theme ms-auto mt-4');
 	readonly classData = input<string>('btn btn-theme ms-auto mt-4');
-	readonly iconClass = input<string | null>(undefined);
-	readonly id = input<string>(undefined);
+	readonly iconClass = input<string | null | undefined>();
+	readonly id = input<string | undefined>();
 	readonly label = input<string>('Submit');
 	readonly type = input<string>('submit');
 	readonly spinner = input<boolean>(true);
 	readonly disabled = input<boolean>(false);
 
-	public buttonId: string | null;
+	public buttonId: string | null = null;
 
 	readonly loader = inject(LoaderStore);
 

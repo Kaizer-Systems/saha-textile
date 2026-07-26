@@ -42,7 +42,7 @@ export class ImportCsvModal {
 
 	public files: File[] = [];
 
-	readonly module = input<string>(undefined);
+	readonly module = input<string>('');
 
 	readonly CSVModal = viewChild<TemplateRef<string>>('csvModal');
 

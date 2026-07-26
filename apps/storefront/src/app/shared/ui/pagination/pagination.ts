@@ -9,9 +9,9 @@ import { IPaginate } from '@data-access/interfaces/pagination.interface';
 	styleUrls: ['./pagination.scss'],
 })
 export class Pagination {
-	@Input() total: number;
-	@Input() currentPage: number;
-	@Input() pageSize: number;
+	@Input() total = 0;
+	@Input() currentPage = 1;
+	@Input() pageSize = 12;
 
 	readonly setPage = output<number>();
 

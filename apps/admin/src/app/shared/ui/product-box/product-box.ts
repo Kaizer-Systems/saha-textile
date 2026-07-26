@@ -25,7 +25,7 @@ export class ProductBox {
 	// TODO: Skipped for migration because:
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
 	//  and migrating would break narrowing currently.
-	readonly product = input<IProduct>(undefined);
+	readonly product = input<IProduct | undefined>();
 
 	cartItem$: Observable<ICart[]> = this.store.select(selectCartItems);
 	readonly addToCartModal = viewChild<Addtocart>('addToCartModal');
@@ -34,7 +34,8 @@ export class ProductBox {
 
 	ngOnInit() {
 		this.cartItem$.subscribe((items) => {
-			this.cartItem = items.find((item) => item.product.id == this.product().id)!;
+			const product = this.product();
+			this.cartItem = product ? (items.find((item) => item.product.id == product.id) ?? null) : null;
 		});
 	}
 

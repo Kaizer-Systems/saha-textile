@@ -31,8 +31,8 @@ export class PayoutModal {
 
 	setting$: Observable<IValues | null> = toObservable(inject(SettingStore).setting);
 
-	readonly label = input<string>(undefined);
-	readonly action = input<boolean>(undefined);
+	readonly label = input<string>('');
+	readonly action = input<boolean>(false);
 
 	readonly payout = output<IPayoutStatus>();
 	readonly PayoutModal = viewChild<TemplateRef<string>>('payoutModal');

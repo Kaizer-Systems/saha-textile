@@ -1,12 +1,14 @@
 ---
 title: Transactions and Generated Catalogue
 wide: true
-description: Atomic-write design, replica-set verification, migration and catalogue-generation requirements.
-status: planned
+description: Atomic-write design, replica-set verification, current source-generated catalogue, and target-completeness requirements.
+status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-07-26'
 source_of_truth:
     - packages/adapters-db-mongo/src
+    - packages/adapters-db-mongo/scripts/generate-catalogue.ts
+    - packages/adapters-db-mongo/catalogue
     - apps/api/src/orders/orders.service.ts
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh
@@ -98,9 +100,21 @@ Every persistent shape/index change should state:
 
 Never assume a Mongoose schema edit automatically migrates historical documents.
 
-## Generated catalogue trigger
+## Current generated catalogue
 
-The catalogue remains deferred until:
+The composite portal now publishes a source-only **Schema Observatory** at `/database/catalogue/`. Its generator imports the seven Mongoose models without opening a database connection and currently derives:
+
+- 7 current models;
+- 93 schema paths;
+- 19 indexes;
+- 11 paths whose `Mixed` or array-of-`Mixed` shape is explicitly marked temporary;
+- safe synthetic shape previews that omit the excluded `passwordHash` field.
+
+This is a truthful current-evidence scaffold, not the finished database dictionary. It does not promote any of Schema Nebula’s 57 target-only collections, and it does not yet claim stable DTO mappings, transaction participation, migration history, retention, or complete nested validators.
+
+## Target-complete catalogue gate
+
+The catalogue remains **scaffolded** until:
 
 1. persistence models reflect the reconciled backend phase rather than temporary simplified shapes;
 2. nested schemas/validators and indexes are explicit enough to generate useful output;
@@ -108,7 +122,7 @@ The catalogue remains deferred until:
 4. the generator can run deterministically without production access;
 5. generated files are clearly marked and pre-build freshness is enforced.
 
-## Generation pipeline
+## Target generation pipeline
 
 ```mermaid
 flowchart LR

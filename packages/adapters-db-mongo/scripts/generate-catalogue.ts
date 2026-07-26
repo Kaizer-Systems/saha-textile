@@ -1,0 +1,213 @@
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+import { type Schema, type SchemaType } from 'mongoose';
+
+import {
+	CartModel,
+	CategoryModel,
+	CurrencyModel,
+	OrderModel,
+	ProductModel,
+	PromotionModel,
+	UserModel,
+} from '../src/models/index';
+
+type CatalogueModel = {
+	modelName: string;
+	collection: { collectionName: string };
+	schema: Schema;
+};
+
+const packageRoot = resolve(process.cwd());
+const repositoryRoot = resolve(packageRoot, '../..');
+
+const modelSources: Array<{
+	model: CatalogueModel;
+	source: string;
+	context: string;
+	purpose: string;
+}> = [
+	{
+		model: CategoryModel,
+		source: 'packages/adapters-db-mongo/src/models/category.model.ts',
+		context: 'Catalogue',
+		purpose: 'Current category hierarchy and presentation metadata.',
+	},
+	{
+		model: ProductModel,
+		source: 'packages/adapters-db-mongo/src/models/product.model.ts',
+		context: 'Catalogue',
+		purpose: 'Current product, price, merchandising, and variation scaffold.',
+	},
+	{
+		model: PromotionModel,
+		source: 'packages/adapters-db-mongo/src/models/promotion.model.ts',
+		context: 'Commerce',
+		purpose: 'Current promotion eligibility and coupon scaffold.',
+	},
+	{
+		model: OrderModel,
+		source: 'packages/adapters-db-mongo/src/models/order.model.ts',
+		context: 'Orders',
+		purpose: 'Current order totals, lifecycle, and payment-gateway scaffold.',
+	},
+	{
+		model: CurrencyModel,
+		source: 'packages/adapters-db-mongo/src/models/currency.model.ts',
+		context: 'Currency',
+		purpose: 'Current INR-derived currency and PayPal gross-up configuration.',
+	},
+	{
+		model: CartModel,
+		source: 'packages/adapters-db-mongo/src/models/cart.model.ts',
+		context: 'Cart',
+		purpose: 'Current guest or user cart and line scaffold.',
+	},
+	{
+		model: UserModel,
+		source: 'packages/adapters-db-mongo/src/models/user.model.ts',
+		context: 'Identity',
+		purpose: 'Current user identity, role, consent, and address scaffold.',
+	},
+];
+
+function readArgument(name: string): string | undefined {
+	const index = process.argv.indexOf(name);
+	return index >= 0 ? process.argv[index + 1] : undefined;
+}
+
+function printableDefault(value: unknown): unknown {
+	if (typeof value === 'function') {
+		return '<generated>';
+	}
+	if (value instanceof Date) {
+		return value.toISOString();
+	}
+	return value;
+}
+
+function enumValues(options: Record<string, unknown>): unknown[] {
+	const values = options.enum;
+	return Array.isArray(values) ? values.filter((value) => typeof value !== 'undefined') : [];
+}
+
+function arrayElementType(schemaType: SchemaType): string | undefined {
+	const candidate = schemaType as SchemaType & { caster?: SchemaType };
+	return candidate.caster?.instance;
+}
+
+function syntheticValue(path: string, type: string, values: unknown[], defaultValue: unknown): unknown {
+	if (path === '_id') return '<document-id>';
+	if (typeof defaultValue !== 'undefined' && defaultValue !== '<generated>') return defaultValue;
+	if (values.length > 0) return values[0];
+	switch (type) {
+		case 'Array':
+			return [];
+		case 'Boolean':
+			return false;
+		case 'Date':
+			return '2026-01-01T00:00:00.000Z';
+		case 'Mixed':
+			return '<shape pending>';
+		case 'Number':
+			return 0;
+		default:
+			return `<${path}>`;
+	}
+}
+
+function compileModel(entry: (typeof modelSources)[number]) {
+	const fields = Object.entries(entry.model.schema.paths)
+		.filter(([path]) => path !== '__v')
+		.map(([path, schemaType]) => {
+			const options = schemaType.options as Record<string, unknown>;
+			const values = enumValues(options);
+			const defaultValue = printableDefault(options.default);
+			const elementType = arrayElementType(schemaType);
+			return {
+				path,
+				type: schemaType.instance,
+				elementType,
+				required: Boolean(options.required),
+				select: options.select === false ? 'excluded-by-default' : 'included',
+				default: defaultValue,
+				enum: values,
+				temporaryShape:
+					schemaType.instance === 'Mixed' || (schemaType.instance === 'Array' && elementType === 'Mixed'),
+				sensitive: path === 'passwordHash',
+			};
+		});
+
+	const example = Object.fromEntries(
+		fields
+			.filter((field) => !field.sensitive)
+			.map((field) => [field.path, syntheticValue(field.path, field.type, field.enum, field.default)]),
+	);
+
+	const indexes = entry.model.schema.indexes().map(([keys, options]) => ({
+		keys,
+		options,
+	}));
+
+	return {
+		model: entry.model.modelName,
+		collection: entry.model.collection.collectionName,
+		context: entry.context,
+		purpose: entry.purpose,
+		source: entry.source,
+		status: 'current-model',
+		fields,
+		indexes,
+		example,
+		limitations: [
+			...new Set(
+				fields
+					.filter((field) => field.temporaryShape)
+					.map((field) => `${field.path} uses a temporary Mixed shape.`),
+			),
+		],
+	};
+}
+
+async function generate(): Promise<void> {
+	const outputDirectory = resolve(readArgument('--output') ?? resolve(packageRoot, 'catalogue-dist'));
+	const assetDirectory = resolve(packageRoot, 'catalogue');
+	const sharedTheme = resolve(repositoryRoot, 'apps/developer-portal/src/css/nextgen-theme.css');
+	const models = modelSources.map(compileModel);
+	const payload = {
+		schemaVersion: 1,
+		generatedAt: new Date().toISOString().slice(0, 10),
+		status: 'scaffolded-current-evidence',
+		sourcePolicy: 'Mongoose source metadata only; no database connection or record access.',
+		counts: {
+			currentModels: models.length,
+			fields: models.reduce((total, model) => total + model.fields.length, 0),
+			indexes: models.reduce((total, model) => total + model.indexes.length, 0),
+			temporaryShapes: models.reduce(
+				(total, model) => total + model.fields.filter((field) => field.temporaryShape).length,
+				0,
+			),
+		},
+		models,
+	};
+
+	await mkdir(outputDirectory, { recursive: true });
+	await Promise.all([
+		cp(resolve(assetDirectory, 'index.html'), resolve(outputDirectory, 'index.html')),
+		cp(resolve(assetDirectory, 'app.js'), resolve(outputDirectory, 'app.js')),
+		cp(resolve(assetDirectory, 'styles.css'), resolve(outputDirectory, 'styles.css')),
+		cp(sharedTheme, resolve(outputDirectory, 'nextgen-theme.css')),
+		writeFile(resolve(outputDirectory, 'catalogue.json'), `${JSON.stringify(payload, null, 2)}\n`, 'utf8'),
+	]);
+
+	const generatedIndex = await readFile(resolve(outputDirectory, 'index.html'), 'utf8');
+	if (!generatedIndex.includes('Schema Observatory')) {
+		throw new Error('Generated catalogue shell is missing its Schema Observatory identity.');
+	}
+	process.stdout.write(
+		`Generated current-model MongoDB catalogue: ${payload.counts.currentModels} models, ${payload.counts.fields} fields, ${payload.counts.indexes} indexes\n`,
+	);
+}
+
+void generate();

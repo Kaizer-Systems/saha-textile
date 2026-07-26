@@ -6,6 +6,7 @@
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",
+    "generate:openapi": "nest build && node dist/generate-openapi.js",
     "start": "node dist/main.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",

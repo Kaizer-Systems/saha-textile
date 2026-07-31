@@ -457,6 +457,30 @@ swatch_image_v2` with pixel sizes deliberately left to config (`G-IMG-PX`);
 
 ## Auth & security
 
+- 2026-08-01 — [DONE] **Chunk C Pass 3 (cookie + double-submit CSRF foundation).**
+  Registered `@fastify/cookie` (unsigned — session integrity comes from the opaque
+  token's entropy and its server-side hash, not a cookie signature). New
+  `common/cookies.ts` centralizes attributes: session cookies are `httpOnly` +
+  `SameSite=Lax` + `Path=/`, `Secure` only in production, and the **`__Host-` prefix
+  is applied exactly when it is valid** — production AND no pinned `COOKIE_DOMAIN`,
+  because the browser rejects `__Host-` if `Domain` is present or the connection is
+  plain HTTP; a pinned domain therefore falls back to the compact `st_*` name (both
+  spellings are owner-allowed). The CSRF cookie is deliberately NOT `httpOnly`:
+  double-submit requires the app to read and echo it, and it authenticates nothing on
+  its own. New `CsrfGuard` registered via `APP_GUARD` so routes are protected by
+  DEFAULT rather than by remembering to opt in: safe methods pass; unsafe methods pass
+  when no session cookie is present (nothing to forge, and bearer clients are immune
+  by construction); otherwise the header must match the cookie under a constant-time
+  compare, and the rejection message is generic so it does not tell an attacker which
+  half was wrong. `GET /auth/csrf` issues a 32-byte CSPRNG token in the body and as the
+  readable cookie, matching the `CsrfTokenResponse` contract. **Live probe on a fresh
+  build:** `/auth/csrf` → 200 with a readable `st_csrf` cookie; POST with a session
+  cookie and no header → **403**; wrong header → **403**; matching pair → **201**;
+  no cookies at all → **201**; and the 403 body is the `ApiError` envelope
+  (`forbidden`, generic message, requestId). 15 new unit tests (28 in `apps/api`).
+  Gates: typecheck 13/13, lint 15/15, `pnpm test` 9/9, naming, format green.
+  Chunk D binds the token to `authSessions.csrfSecretHash` so a token from one session
+  cannot be replayed against another. Tool: claude-code.
 - 2026-07-24 — [PARTIAL] Target = httpOnly cookies + CSRF + rotating refresh; current API still bearer-oriented. Phase/Chunk D. Tool: cursor.
 - 2026-07-24 — [DONE] Admin PIN UX locked in owner log (2026-07-23). Tool: cursor.
 - _(append)_

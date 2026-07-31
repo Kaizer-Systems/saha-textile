@@ -27,11 +27,45 @@ The decision is locked:
 
 NestJS creates one OpenAPI document through `apps/api/src/openapi.ts`. The API exposes it at `/openapi.json`, and the portal build now generates the same document without a MongoDB connection, publishes it at `/api/openapi.json`, and renders it through Scalar at `/api/reference/`.
 
-The surface is deliberately labelled **scaffolded**. The source route set has moved since the last generated artifact: `/health/live`, `/health/ready`, and `/auth/csrf` now exist, while the public product-list operation no longer accepts a `status` query. Pass 2 regenerates and measures the document rather than carrying the former 22-path count. Many operations still lack reliable request/response components, security semantics, authorization, idempotency, and side-effect documentation. Scalar makes the current evidence navigable; it does not repair or conceal those omissions.
+The surface is deliberately labelled **scaffolded**. The document regenerated on 2026-08-01 contains **25 paths and 27 operations**. `/health/live`, `/health/ready`, and `/auth/csrf` are present, `/health` remains the backwards-compatible liveness alias, and the public `GET /catalog/products` operation has `page`, `pageSize`, `categoryId`, `tag`, and `search` query parameters—**not `status`**. Scalar makes the current evidence navigable; it does not repair or conceal its omissions.
 
-Scalar’s **Test Request** control is enabled. Authentication is not persisted by Scalar, no external request proxy is configured, and the generated document declares only the approved local API server (`http://127.0.0.1:4000`). Normal API security controls remain in force. When an unsafe request carries a session cookie, first call `GET /auth/csrf`, retain its readable CSRF cookie, and echo the returned token through `x-csrf-token`; missing or mismatched pairs fail with `403`.
+Scalar’s **Test Request** control is enabled. Authentication is not persisted by Scalar, no external request proxy is configured, and the generated document declares only the approved local API server (`http://127.0.0.1:4000`). Normal API security controls remain in force: Test Request does not bypass authentication, CSRF, CORS, role or ownership authorization, or rate limits.
 
-One completeness trigger has materially advanced: every API failure now uses the shared `ApiErrorResponse` envelope and carries the same request id emitted in `x-request-id`. This is runtime evidence, but Scalar remains scaffolded because operation-specific response components/examples, cookie-session and audience/permission semantics, idempotency and side effects, CI drift proof, and an approved non-production target remain incomplete.
+For an unsafe request carrying a session cookie:
+
+1. send `GET /auth/csrf` through the same API origin;
+2. retain the readable CSRF cookie set by that response;
+3. copy the returned `csrfToken` value into the `x-csrf-token` request header; and
+4. send the unsafe request with the session and CSRF cookies.
+
+Missing or mismatched double-submit values fail with `403`. The CSRF token does not create a session, grant a role, prove object ownership, or increase the caller’s rate-limit allowance.
+
+## Generated evidence snapshot
+
+| Measurement                              | Generated result                                        | Meaning                                                                                                                          |
+| ---------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Paths / operations                       | 25 / 27                                                 | The new health and CSRF routes are published; two paths expose two methods.                                                      |
+| Declared servers                         | One: `http://127.0.0.1:4000`                            | Test Request has no production target or proxy.                                                                                  |
+| Operation tags                           | 27 / 27 operations                                      | Operations are grouped for navigation.                                                                                           |
+| Explicit operation security              | 5 / 27 operations                                       | Transitional bearer metadata exists on order operations and `GET /auth/me`; complete cookie/audience/permission detail does not. |
+| Request bodies / component schemas       | 0 / 0                                                   | Controller-local zod bodies are not represented as reusable OpenAPI request contracts.                                           |
+| Responses with content schemas           | 0 / 27 operations                                       | Runtime response values—including `ApiErrorResponse`—are not yet represented as generated response schemas.                      |
+| Explicit non-success operation responses | 1 / 27 operations (`GET /health/ready` documents `503`) | Operation-specific error documentation is still almost entirely absent.                                                          |
+
+Two generation runs produced byte-identical output without opening a MongoDB connection. That proves the current source generator is deterministic in this environment; it is not yet the required CI generation and drift gate.
+
+## Promotion-gate status
+
+The stable portal publication path and source-only generation without production secrets are real. The runtime platform also now returns one safe `ApiErrorResponse` envelope for every failure and correlates it with the `x-request-id` response header. However, that runtime error behavior is not encoded into operation response components or examples in the generated document.
+
+Scalar therefore remains **scaffolded**. Promotion is still blocked by:
+
+- complete request and response schemas;
+- cookie-session, CSRF, audience, permission, ownership, and route-specific rate-limit semantics in the document;
+- operation-specific error and idempotency examples;
+- transactional, audit, outbox, notification, and provider side-effect documentation;
+- CI generation plus required-path/tag/security and breaking-drift tests; and
+- an owner-approved non-production interaction target and policy.
 
 ## Target portal routes
 

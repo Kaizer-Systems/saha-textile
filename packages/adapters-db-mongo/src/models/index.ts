@@ -5,3 +5,7 @@ export * from './promotion.model';
 export * from './cart.model';
 export * from './order.model';
 export * from './user.model';
+export * from './auth-session.model';
+export * from './auth-challenge.model';
+export * from './auth-token.model';
+export * from './auth-rate-limit.model';

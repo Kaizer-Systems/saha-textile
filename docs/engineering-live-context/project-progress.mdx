@@ -79,11 +79,11 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 ```json
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-07-31",
+	"lastVerified": "2026-08-01",
 	"chunks": {
 		"A": "done",
 		"B": "done",
-		"C": "partial",
+		"C": "done",
 		"D": "planned",
 		"E": "planned",
 		"F": "planned",
@@ -457,6 +457,16 @@ swatch_image_v2` with pixel sizes deliberately left to config (`G-IMG-PX`);
 
 ## Auth & security
 
+- 2026-08-01 — [DONE] **Chunk C closed out (config/docs alignment).** Added `LOG_LEVEL`
+  to `apps/api/.env.example` and the `environment-variables.mdx` catalogue so the new
+  pino level is documented rather than an undeclared knob; noted there that secret
+  headers/bodies are redacted at the logger regardless of level. Chunk C's Definition of
+  Done is now met end to end: API boots, `/health/live` and `/health/ready` behave
+  correctly (readiness proven to fail closed with Mongo stopped), transaction
+  commit/rollback runs against a real replica set, and no Atlas/Brevo/`blr1`/browser-secret
+  config remains. Portal-truth snapshot: chunk C `partial` → `done`. Remaining
+  rate-limit work is per-route-class tuning for auth/OTP/checkout/search, which belongs
+  with the Chunk D endpoints that need it. Tool: claude-code.
 - 2026-08-01 — [DONE] **Chunk C Pass 3 (cookie + double-submit CSRF foundation).**
   Registered `@fastify/cookie` (unsigned — session integrity comes from the opaque
   token's entropy and its server-side hash, not a cookie signature). New

@@ -82,7 +82,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 	"lastVerified": "2026-07-31",
 	"chunks": {
 		"A": "done",
-		"B": "partial",
+		"B": "done",
 		"C": "partial",
 		"D": "planned",
 		"E": "planned",
@@ -413,6 +413,26 @@ swatch_image_v2` with pixel sizes deliberately left to config (`G-IMG-PX`);
 
 ## DB / Mongo adapter (`packages/adapters-db-mongo`, Docker Mongo)
 
+- 2026-08-01 — [DONE] **Chunk C Pass 2 (Mongo transaction manager + replica-set commit/rollback proof).**
+  `MongoTransactionManager` implements `TransactionManagerPort` at the adapter edge:
+  it opens a driver session, exposes it through the opaque domain
+  `TransactionContext`, and uses `AsyncLocalStorage` so a NESTED `withTransaction`
+  JOINS the outer session instead of opening a second transaction (which is what the
+  port documents, so the contract is now true rather than aspirational). Errors
+  propagate unchanged so the global filter can classify them; `maxRetries` is
+  deliberately not forwarded because the driver's own transient/commit-unknown retry
+  loop governs — noted in the code rather than silently ignored. `sessionFrom()` is
+  the single extraction point for repositories. Bound in DI as `TRANSACTION_MANAGER`.
+  New `test/transaction.test.ts` (6 tests, `RUN_DB_IT=1` against rs0): commit persists
+  every write; a throw after a SUCCESSFUL write rolls that write back too; the original
+  error type survives; the work's return value is returned; a nested call observes the
+  same session object; and an inner failure rolls back the outer writes as well. These
+  are real proof rather than a tautology — the commit case shows the same code path
+  does persist, so the rollback case cannot be passing merely because nothing was
+  written. Adapter tests 7 → **13**. Gates: typecheck 13/13, lint 15/15,
+  `pnpm test` 9/9, naming, format green. Chunk C now has request-id/logging/errors/
+  proxy/CORS/health (Pass 1) and the transaction profile (Pass 2); the cookie/CSRF
+  foundation remains, and is where Chunk D picks up. Tool: claude-code.
 - 2026-07-24 — [PARTIAL] Mongo adapter present; self-hosted Docker Compose `rs0` profile + `pnpm mongo:*` scripts are **required SAFE NOW** deliverables — recreate if missing from tree. Tool: cursor.
 - 2026-07-24 — [N/A] Atlas is not the production plan. Tool: cursor.
 - 2026-07-24 — [DONE] Rewrote `packages/adapters-db-mongo/src/config.ts` to self-hosted `mongodb://` URI builder: `MONGODB_HOST/PORT/REPLICA_SET` (defaults 127.0.0.1:27017 rs0, `directConnection=true`), optional auth pair (local no-auth OK), `mongodb+srv`/`MONGODB_CLUSTER_HOST` Atlas shape removed; `MONGODB_URI` override retained. Package lint+typecheck green; URI assembly verified incl. `@`→`%40` encoding. Tool: claude-code. Notes: `docker/mongo` compose + `pnpm mongo:*` still missing (Pass 2).

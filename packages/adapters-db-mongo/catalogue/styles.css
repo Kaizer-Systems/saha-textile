@@ -1,6 +1,13 @@
 @import url('./nextgen-theme.css');
 
-/* NEXT-GEN-UI · MongoDB Schema Observatory adapter */
+/* ============================================================================
+ * NEXT-GEN-UI · MongoDB Schema Observatory adapter
+ * What: source-generated current-model catalogue layout and observatory skin.
+ * Why: preserve one responsive, evidence-first child identity without forking
+ * the shared portal palette or exposing database/runtime data.
+ * How: compose nextgen-theme.css tokens with catalogue-only grid and panel rules.
+ * Tuning knobs: 840px stack point, 520px single-column model rail, 1500px shell.
+ * ========================================================================= */
 
 html,
 body {
@@ -142,6 +149,13 @@ body::before {
 	align-items: start;
 }
 
+.observatory-main,
+.model-list,
+.model-detail,
+.model-button {
+	min-width: 0;
+}
+
 .model-list,
 .model-detail,
 .catalogue-panel {
@@ -194,6 +208,7 @@ body::before {
 
 .model-detail {
 	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	gap: 14px;
 	padding: 18px;
 }
@@ -365,6 +380,10 @@ pre {
 @media (max-width: 520px) {
 	.observatory-shell {
 		width: min(100% - 24px, 1500px);
+	}
+
+	.model-list {
+		grid-template-columns: minmax(0, 1fr);
 	}
 }
 

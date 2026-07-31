@@ -4,7 +4,7 @@ description: Verified Mongoose models, indexes, repositories, mappers, seed tool
 search_keywords: 'mongo rs0 replica set connection uri directConnection models indexes repositories'
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - packages/adapters-db-mongo/src/models
     - packages/adapters-db-mongo/src/repositories
@@ -24,15 +24,15 @@ The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps,
 
 ## Current model inventory
 
-| Model       | Primary durable purpose                           | Important indexes                          | Notable limitations                                                                                       |
-| ----------- | ------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `Category`  | Simplified taxonomy nodes                         | unique slug; parent; path; ancestors       | Locked target is multi-placement DAG, not one parent tree                                                 |
-| `Product`   | Product/variation/add-on catalogue shape          | unique slug/SKU; categoryIds; tags; status | Nested media/attributes/variations/add-ons use `Mixed`; target semantic model is richer                   |
-| `Currency`  | Enabled currencies and INR rate/PayPal inputs     | enabled                                    | No rate history/staleness/config-version records                                                          |
-| `Promotion` | Discount/coupon definition                        | coupon; scope; starts+ends                 | Coupon index not unique; incomplete usage/stacking/applicability engine                                   |
-| `Cart`      | User/guest-shaped cart lines                      | userId; guestToken                         | Guest token stored directly, no TTL, ownership model, unique active-cart guarantees, or nested validation |
-| `Order`     | Order snapshot/timeline scaffold                  | unique orderNumber; user+createdAt; status | Mixed lines/timeline; no separate payment/shipment/return/refund records or transaction                   |
-| `User`      | Public identity/profile plus hidden password hash | sparse unique email                        | Auth identity/session/challenge/role/audit responsibilities not separated                                 |
+| Model       | Primary durable purpose                              | Important indexes                                                                          | Notable limitations                                                                                       |
+| ----------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ---- | -------- | --------------------------------------------- |
+| `Category`  | Simplified taxonomy nodes                            | unique slug; parent; path; ancestors                                                       | Locked target is multi-placement DAG, not one parent tree                                                 |
+| `Product`   | Product/variation/add-on catalogue shape + lifecycle | unique slug/SKU; categoryIds; tags; status; status+category+created; status+discontinuedAt | Status is `draft                                                                                          | live | disabled | discontinued`; nested temporary shapes remain |
+| `Currency`  | Enabled currencies and INR rate/PayPal inputs        | enabled                                                                                    | No rate history/staleness/config-version records                                                          |
+| `Promotion` | Discount/coupon definition                           | coupon; scope; starts+ends                                                                 | Coupon index not unique; incomplete usage/stacking/applicability engine                                   |
+| `Cart`      | User/guest-shaped cart lines                         | userId; guestToken                                                                         | Guest token stored directly, no TTL, ownership model, unique active-cart guarantees, or nested validation |
+| `Order`     | Order snapshot/timeline scaffold                     | unique orderNumber; user+createdAt; status                                                 | Mixed lines/timeline; no separate payment/shipment/return/refund records or transaction                   |
+| `User`      | Public identity/profile plus hidden password hash    | sparse unique email                                                                        | Auth identity/session/challenge/role/audit responsibilities not separated                                 |
 
 These names refer to Mongoose models. Physical collection naming follows Mongoose configuration/conventions and must be confirmed by the generated catalogue rather than guessed.
 
@@ -49,7 +49,7 @@ save/upsert → strip public id → findByIdAndUpdate($set) → mapper
 
 ### Current query behavior
 
-- Product listing supports category, tag, status, regex search, pagination, and newest-first sort.
+- Product listing supports category, tag, status, regex search, pagination, newest-first sort, and a `CatalogAudience` that defaults to public. Public list and direct reads are centrally restricted to `live`; public callers cannot widen the filter.
 - Category tree returns a flat depth/display-order sort; hierarchy reconstruction is a consumer concern.
 - Active promotions use start/end-window filtering and priority sort.
 - User credential lookup explicitly selects the hidden password hash.
@@ -72,7 +72,7 @@ Current risks:
 - nested `Mixed` fields are type-cast, not runtime-parsed;
 - adapter values are often returned as broad public entity contracts rather than operation-specific response DTOs;
 - compatibility defaults can mask model/contract widening until the planned user-model migration lands;
-- no mapper receives transaction context or entity version;
+- current repository methods have not generally adopted the available transaction context or entity version;
 - no migration/version discriminator protects historical shapes.
 
 ## Current connection behavior
@@ -86,7 +86,7 @@ Local: Docker Desktop → MongoDB 8.3 single-node replica set (rs0)
 Production: private Docker network → MongoDB 8.3 single-node replica set (rs0)
 ```
 
-The `mongodb+srv`/hosted-cluster assumption has been removed. Remaining reconciliation is deploy-time only: authenticated credential/secret injection, connection pool/timeout tuning, private networking, a readiness split, resource caps, and a transaction-capable test profile.
+The `mongodb+srv`/hosted-cluster assumption has been removed. The liveness/readiness split and transaction-capable rs0 proof now exist. Remaining reconciliation includes authenticated deploy-time secret injection, connection-pool/timeout tuning, private networking, resource caps, backup/restore, and workflow-level transaction adoption.
 
 ### Local replica-set lifecycle
 
@@ -114,14 +114,14 @@ The seed is useful for early schema tests. It is not a complete locked-domain se
 
 ## Existing integration test
 
-The test connects, seeds, reads taxonomy, verifies a base variation, and filters published products by category. It runs only when `RUN_DB_IT=1` and Mongo configuration is present.
+The gated adapter suites connect to rs0, seed/read taxonomy, verify a base variation, prove public/admin product visibility, and exercise transaction-manager commit/rollback behavior. They run only when `RUN_DB_IT=1` and Mongo configuration is present.
 
 Limitations:
 
 - normal runs skip the suite (it requires `RUN_DB_IT=1` and Mongo configuration);
 - the suite does not start the replica set itself — bring it up first with `pnpm mongo:up`;
 - it does not exercise indexes/uniqueness broadly;
-- it does not prove transactions or rollback;
+- six transaction tests prove commit, rollback after a successful write, error propagation, return values, nested-session joining, and inner-failure rollback of outer writes;
 - it does not cover every repository/mapper.
 
 ## Model review checklist

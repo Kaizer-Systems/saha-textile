@@ -3,7 +3,7 @@ title: API Overview
 description: Current API application boundary, capability status, navigation, and generated reference.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - apps/api/src
     - packages/contracts/src
@@ -28,7 +28,7 @@ Start with the [Backend Platform Atlas](../backend/overview) when you need to un
 
 ## Current module snapshot
 
-The application currently exposes health, authentication, catalogue, cart, orders, currency and promotion modules. New shared auth/session/consent/audit/notification contract families are present, but they do not add routes or runtime behavior by themselves. Every module still needs to be evaluated against its roadmap definition of done before the overall API can be called implemented.
+The application currently exposes health, authentication, catalogue, cart, orders, currency and promotion modules. Its platform foundation now includes per-request correlation ids, redacted structured logs, the shared safe error envelope, trusted client-IP rate-limit keys, strict CORS, dependency-free liveness, dependency-aware readiness, cookie attributes, global double-submit CSRF enforcement, and `GET /auth/csrf`. The broader cookie-session lifecycle and new shared auth/session/consent/audit/notification contract families are not wired end to end. Every module still needs to be evaluated against its roadmap definition of done before the overall API can be called implemented.
 
 ## Interactive-request boundary
 
@@ -51,5 +51,5 @@ Every endpoint page or generated operation should identify authentication, autho
 - A JWT guard does not prove ownership authorization.
 - A controller route does not prove the Angular apps use it.
 - An adapter binding does not prove the dependency is ready.
-- A successful `/health` response does not prove MongoDB readiness.
+- A successful `/health` or `/health/live` response proves only process liveness; `/health/ready` is the dependency-aware signal.
 - An OpenAPI path does not make the transitional API UI the long-term portal.

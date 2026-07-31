@@ -4,17 +4,20 @@ wide: true
 description: Verification contract for storefront and admin changes, including current test-coverage honesty.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - apps/storefront/vite.config.ts
-    - apps/admin/src/app/app.component.spec.ts
+    - apps/admin/package.json
+    - apps/developer-portal-storybook/scripts/check-component-coverage.mjs
     - package.json
     - docs/engineering-live-context/execution-roadmap.mdx
 ---
 
 # Frontend quality and definition of done
 
-The frontend test foundation is not mature yet. The current snapshot contains one admin component spec and no comparable storefront spec inventory. Vitest and Playwright are the locked tools, but tool selection alone is not coverage.
+The frontend application-unit foundation is not mature yet. The stale admin scaffold spec was deleted on 2026-07-31 after verification that it referenced a nonexistent component name and asserted obsolete title markup. `apps/admin` now has **zero unit specs** and stays green through `vitest run --passWithNoTests`; the storefront likewise has no unit-spec inventory. This must not be described as unit coverage.
+
+Storybook is a separate component-rendering boundary: its automated inventory accounts for 139/139 reusable components across 282 Angular components. That does not cover the admin `App` shell or replace feature/integration/Playwright tests.
 
 This page defines the standard new work should move toward without misrepresenting today’s baseline.
 

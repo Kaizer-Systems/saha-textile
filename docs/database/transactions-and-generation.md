@@ -4,11 +4,15 @@ wide: true
 description: Atomic-write design, replica-set verification, current source-generated catalogue, and target-completeness requirements.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - packages/adapters-db-mongo/src
     - packages/adapters-db-mongo/scripts/generate-catalogue.ts
     - packages/adapters-db-mongo/catalogue
+    - packages/adapters-db-mongo/src/transaction-manager.ts
+    - packages/adapters-db-mongo/test/transaction.test.ts
+    - packages/core-domain/src/ports/transaction-manager.port.ts
+    - apps/api/src/infra/persistence.module.ts
     - apps/api/src/orders/orders.service.ts
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh
@@ -19,20 +23,20 @@ source_of_truth:
 
 # Transactions and generated catalogue
 
-The transaction **infrastructure now exists locally**, but the transaction **code does not yet**. The `rs0` single-node replica set is provisioned by the Docker profile (`docker/mongo/docker-compose.yml`, `pnpm mongo:up`), so multi-document transactions _can_ be exercised on a developer machine. What remains planned is the application side: there is no `UnitOfWorkPort`, no session-aware repository contract, and current repositories still perform individual writes. Order creation, for example, saves the order and then deletes the cart in two separate writes (`apps/api/src/orders/orders.service.ts`), which is not atomic.
+The transaction infrastructure **and the shared transaction capability now exist**. The `rs0` single-node replica set is provisioned by the Docker profile, `TransactionManagerPort` is implemented by `MongoTransactionManager`, nested calls join the outer `AsyncLocalStorage` session, the adapter is bound in API dependency injection, and six replica-set integration tests prove commit and rollback behavior. The order workflow has not adopted that capability: it still saves the order and then deletes the cart in separate writes, so order creation is not atomic.
 
 ## Why a replica set is required
 
-A standalone Mongo process does not provide the multi-document transaction behavior this architecture requires. Local and production use the same single-node replica-set profile (`rs0`) so transaction code is exercised before deployment. The replica set is already running locally; the transactional code paths below are the planned work it unblocks.
+A standalone Mongo process does not provide the multi-document transaction behavior this architecture requires. Local and production use the same single-node replica-set profile (`rs0`) so transaction code is exercised before deployment. The replica set and transaction manager are proven; workflow-level transactional boundaries remain adoption work.
 
 A single-node replica set provides transactions, not high availability. Backups, restore drills, resource monitoring, and a later redundancy plan remain necessary.
 
-## Unit of work target
+## Transaction capability and workflow target
 
 ```mermaid
 sequenceDiagram
     participant UseCase
-    participant UoW as UnitOfWorkPort
+    participant UoW as TransactionManagerPort
     participant Session as Mongo session
     participant Repos as Session-aware repositories
 
@@ -48,7 +52,7 @@ sequenceDiagram
     end
 ```
 
-The core port should describe an atomic unit without leaking a Mongoose `ClientSession`. The Mongo adapter translates the abstract transaction context into its session.
+The core port now describes an atomic unit without leaking a Mongoose `ClientSession`, and the Mongo adapter translates that boundary into its session. The remaining target is for multi-write use cases such as order placement to execute their repository calls inside it.
 
 ## Transactional workflows
 
@@ -102,7 +106,7 @@ Never assume a Mongoose schema edit automatically migrates historical documents.
 
 ## Current generated catalogue
 
-The composite portal now publishes a source-only **Schema Observatory** at `/database/catalogue/`. Its generator imports the seven Mongoose models without opening a database connection and currently derives:
+The composite portal publishes a source-only **Schema Observatory** at `/database/catalogue/`. Before the product lifecycle model landed, its generator derived:
 
 - 7 current models;
 - 93 schema paths;
@@ -110,7 +114,7 @@ The composite portal now publishes a source-only **Schema Observatory** at `/dat
 - 11 paths whose `Mixed` or array-of-`Mixed` shape is explicitly marked temporary;
 - safe synthetic shape previews that omit the excluded `passwordHash` field.
 
-This is a truthful current-evidence scaffold, not the finished database dictionary. It does not promote any of Schema Nebula’s 57 target-only collections, and it does not yet claim stable DTO mappings, transaction participation, migration history, retention, or complete nested validators.
+The field and index totals above are historical and must not be carried forward. The source-only catalogue will be regenerated in its dedicated pass from the same seven implemented models. It remains a current-evidence scaffold, not the finished database dictionary: it does not promote any of Schema Nebula’s 57 target-only collections or claim workflow transaction participation, migration history, retention, or complete nested validators.
 
 ## Target-complete catalogue gate
 

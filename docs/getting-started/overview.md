@@ -3,7 +3,7 @@ title: Overview
 description: Start here when maintaining the Saha Textile platform.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/execution-roadmap.mdx
@@ -23,8 +23,8 @@ This portal is the private operating manual for the Saha Textile platform. It sh
 ## What waits for implementation
 
 - Scalar renders the current generated OpenAPI at the locked route; the operation contract remains scaffolded until its completeness gates pass.
-- Generated database collection pages wait for the catalogue generator; models and indexes already exist in the Mongo adapter.
-- Storybook links wait until storefront/admin components and stories exist.
+- The source-generated database catalogue renders the seven current models, but stays scaffolded until its model, mapping, migration, retention, and validator gates pass.
+- Storybook is built with one Angular renderer and a green 139/139 reusable-component coverage gate; application-shell behavior remains integration-test scope.
 - Pagefind remains a deferred optional full-text layer. The current ⌘K palette already receives a build-generated index from every page's frontmatter, so new routes appear without maintaining a static command list.
 
 ## Source-of-truth rule

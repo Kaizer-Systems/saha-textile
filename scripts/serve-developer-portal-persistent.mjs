@@ -34,6 +34,8 @@ const watchTargets = [
 	'packages/contracts/src',
 	'packages/core-domain/src',
 	'packages/adapters-db-mongo/src',
+	'packages/adapters-db-mongo/catalogue',
+	'packages/adapters-db-mongo/scripts',
 	'docs',
 ];
 

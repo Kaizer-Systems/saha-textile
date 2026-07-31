@@ -3,7 +3,7 @@ title: 'Catalog and Commerce Database Architecture'
 description: 'Canonical catalog, category, product, search, commerce, and reporting data architecture.'
 audience: [backend, data, agent]
 document_role: canonical
-last_verified: 2026-07-25
+last_verified: 2026-07-31
 search_keywords: 'catalog category product variants search commerce reporting mongodb schema'
 ---
 
@@ -121,7 +121,7 @@ Atlas-specific capabilities such as Atlas Search, Atlas Data Federation, and Atl
 
 ## 5. Existing Repo Gaps
 
-- `ProductStatus` is only `draft | published | archived`; the KB also discusses disabled/discontinued. The final contract should include a richer lifecycle.
+- ~~`ProductStatus` is only `draft | published | archived`~~ — **CLOSED 2026-07-31.** The owner-locked lifecycle is exactly `draft | live | disabled | discontinued` (see `owner-decisions-log.mdx`), now implemented in `packages/contracts/src/product.ts` with a `lifecycle` timestamp block, enforced in the Mongo product repository through a `CatalogAudience`, and proved by replica-set integration tests. Every `draft | published | hidden | archived | discontinued` sketch below predates that lock and is superseded: `published` → `live`, `hidden`/`archived` → `disabled`, and `discontinued` keeps its meaning plus the 30-day rich-data purge to a tombstone.
 - `Category` has a single `parentId`; live behavior and future merchandising need multi-placement or category/collection separation.
 - Current product variants are embedded inside `products`. That is acceptable for the present catalog, but a first-class `productVariants` collection is cleaner for SKU uniqueness, stock changes, status changes, and search indexing.
 - Current `ProductRepository.list()` uses regex over slug/SKU/tags. This is not sufficient for typeahead, multilingual aliases/transliteration, typo tolerance, suggestions, or large archived catalogs.
@@ -436,6 +436,8 @@ Examples:
 ### 7.7 `products`
 
 Purpose: product identity, SEO, classification, option definitions, merchandising, lifecycle, and searchable summary.
+
+> **Status field superseded (2026-07-31).** The `status` and `lifecycle` keys in the shape below predate the owner lock. The implemented and authoritative values are `draft | live | disabled | discontinued` with a `lifecycle` block of `liveAt`, `disabledAt`, `discontinuedAt`, `richDataPurgedAt`, and `statusReason`. Only `live` is storefront-queryable. The rest of this shape remains target guidance.
 
 Recommended shape:
 

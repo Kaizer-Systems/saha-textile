@@ -1,12 +1,44 @@
 import { z } from 'zod';
 
-import { I18nString, Id, PriceINR, SeoMeta, Slug } from './common';
+import { I18nString, Id, IsoDateTime, PriceINR, SeoMeta, Slug } from './common';
 
 export const ProductType = z.enum(['simple', 'variable']);
 export type ProductType = z.infer<typeof ProductType>;
 
-export const ProductStatus = z.enum(['draft', 'published', 'archived']);
+/**
+ * Product lifecycle status (owner lock, catalog section).
+ *
+ * - `draft`        — never published; invisible to every storefront surface.
+ * - `live`         — the ONLY storefront-queryable status (listing, search, sitemap).
+ * - `disabled`     — hidden everywhere, full data and media retained; fully reversible.
+ * - `discontinued` — hidden everywhere and starts the retention window, after which rich
+ *                    data and Spaces media are purged down to a minimal tombstone
+ *                    (name, SKU, audit references). Order-line snapshots survive.
+ *
+ * Supersedes the earlier `draft|published|archived` enum and the 5-value
+ * `draft|published|hidden|archived|discontinued` sketch in the catalog architecture
+ * reference, which predates this lock.
+ */
+export const ProductStatus = z.enum(['draft', 'live', 'disabled', 'discontinued']);
 export type ProductStatus = z.infer<typeof ProductStatus>;
+
+/**
+ * Lifecycle timestamps behind the status. Nullable because a product only acquires
+ * them as it moves through the lifecycle; `richDataPurgedAt` is stamped by the
+ * retention job when a discontinued product has been reduced to its tombstone.
+ *
+ * The retention WINDOW itself is not stored here — it is configuration read by the
+ * retention job (locked at 30 days), so changing it never requires a data migration.
+ */
+export const ProductLifecycle = z.object({
+	liveAt: IsoDateTime.nullable().default(null),
+	disabledAt: IsoDateTime.nullable().default(null),
+	discontinuedAt: IsoDateTime.nullable().default(null),
+	richDataPurgedAt: IsoDateTime.nullable().default(null),
+	/** Free-text admin reason captured on disable/discontinue; audited separately. */
+	statusReason: z.string().max(500).nullable().default(null),
+});
+export type ProductLifecycle = z.infer<typeof ProductLifecycle>;
 
 /**
  * One selectable term of an attribute. `isBase` marks the material-only option
@@ -99,6 +131,13 @@ export const Product = z.object({
 	seo: SeoMeta.optional(),
 	ratingsSummary: RatingsSummary.default({ avg: 0, count: 0 }),
 	status: ProductStatus.default('draft'),
+	lifecycle: ProductLifecycle.default({
+		liveAt: null,
+		disabledAt: null,
+		discontinuedAt: null,
+		richDataPurgedAt: null,
+		statusReason: null,
+	}),
 	createdAt: z.string().optional(),
 	updatedAt: z.string().optional(),
 });

@@ -1,0 +1,15 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"rootDir": ".",
+		// Tests (not src) use Node builtins — the purity test shells out to `tsc` and reads
+		// the emitted files. Declared only here, so `src` stays free of Node globals.
+		"types": ["node"]
+	},
+	// The base config excludes `**/*.test.ts` so `build` emits src only. `exclude` wins
+	// over `include`, so it must be overridden here or the test files below are silently
+	// skipped — which would make the port-conformance check vacuous.
+	"exclude": ["node_modules", "dist"],
+	"include": ["src/**/*.ts", "test/**/*.ts"]
+}

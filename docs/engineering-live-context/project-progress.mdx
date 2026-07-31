@@ -190,6 +190,42 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 ## API (`apps/api`)
 
 - 2026-07-24 — [PARTIAL] NestJS/Fastify API scaffold + transitional bearer JWT; cookie/CSRF Phase D still pending. Tool: cursor.
+- 2026-08-01 — [DONE] **Chunk C Pass 1 (API platform: request id, redacted logging, error envelope, proxy/CORS, health split).**
+  (1) **Correlation id** on every request via Fastify `genReqId`, echoed back on every
+  response through an `onSend` hook. An inbound `x-request-id` is honoured ONLY when
+  `TRUST_PROXY` is on and it matches a strict charset/length pattern — otherwise any
+  client could collide ids or inject newlines into the log stream. (2) **Redacted
+  pino logging** at the adapter (`authorization`, `cookie`, `x-csrf-token`,
+  `set-cookie`, and body `password`/`newPassword`/`currentPassword`/`pin`/`code`/
+  `token`/`csrfToken`), so no call site can forget; level is config-driven and silent
+  under test. (3) **Global `HttpExceptionFilter`** maps every failure to the
+  `ApiErrorResponse` envelope added in Pass 1b, with a SAFE per-status message rather
+  than the exception text — a Mongo/driver/provider string can no longer escape — and
+  logs the real cause server-side against the same `requestId` the client receives.
+  Validation issues pass through deliberately (they describe the caller's own input).
+  (4) **`resolveClientIp`** reads the configured header only when the proxy chain is
+  trusted, and now KEYS THE RATE LIMITER — previously every request behind a proxy
+  shared the proxy's address, so one caller could exhaust the limit for everyone.
+  (5) **Strict CORS** with explicit methods/allowed/exposed headers alongside the
+  existing exact-origin allowlist and credentials. (6) **`/health/live` +
+  `/health/ready` split**: liveness is deliberately dependency-free (a Mongo blip must
+  not make the orchestrator crash-loop healthy containers); readiness reports each
+  dependency and fails closed with 503. `/health` kept as an alias.
+  **Two latent problems found and fixed:** `fastify` was never a declared dependency
+  of `apps/api` despite its types being imported (only transitive — pnpm's strict
+  layout surfaced it once tests were typechecked); and `apps/api` had no typecheck
+  config covering `test/`, so a new `tsconfig.typecheck.json` was added and
+  mutation-verified like the other two packages. **Live probe against a fresh build:**
+  `/health/live` 200 with a unique `x-request-id` per request; a spoofed inbound
+  `x-request-id` discarded (`TRUST_PROXY` off); `/health/ready` 200 with
+  `mongodb: up`; after `pnpm mongo:down`, `/health/ready` → **503 `readyState=0`**
+  while `/health/live` stayed **200**; a 404 returned
+  `{"error":{"code":"not_found","message":"The requested resource was not found.","issues":[],"requestId":"…"}}`
+  with no internal detail. Mongo restored to rs0 PRIMARY afterwards. New
+  `apps/api/test/platform.test.ts` = 13 tests. Gates: typecheck 13/13, lint 15/15,
+  `pnpm test` 9/9, naming, format green. Remaining in Chunk C: cookie/CSRF
+  foundation, rate-limit tuning per route class, and the Mongo `TransactionManagerPort`
+  adapter with commit/rollback tests against rs0. Tool: claude-code.
 - 2026-07-24 — [PARTIAL] `loadConfig()` / `.env.example` still show stale Atlas / Brevo / `blr1` shapes vs locked Docker Mongo + MSG91 + SGP — correction is an explicit Chunk C / env-sync task in the API/DB roadmap. Tool: cursor.
 - 2026-07-24 — [DONE] **Chunk A delta (API)**: inspected `apps/api/src` vs target. Keep (refactor-in-place): DI/composition (`app.module`, `infra/persistence.module`, `infra/tokens`, `config/`, zod pipe), 7 domain modules, argon2id hashing, `dotenv/config`. Must refactor: auth transport (JSON **bearer** → httpOnly cookie session + CSRF + rotation/reuse-detection + admin/storefront audiences + PIN + OTP — Chunk D), Fastify bootstrap (add cookie/CSRF/`trustProxy`+`CF-Connecting-IP`/request-id/error-filter/redacted-logger, `/health/live`+`/health/ready` split — Chunk C), narrow enums (`ProductStatus`, `OrderStatus`, `AuthProvider`), OpenAPI→Scalar. Missing modules: search, checkout, payments(+webhooks), shipping, inventory, pricing, content(faq/qna/reviews), privacy(consent), analytics, media; audience/permission/csrf guards; audit pipeline. Stale Brevo OTP comments left for the Chunk-D rewrite (logged). Full current detail is retained in the A–J roadmap and architecture references; the standalone delta is available in Git history. Tool: claude-code.
 - 2026-07-24 — [DONE] §0b env-sync Pass 1 (API env core): rewrote `apps/api/.env.example` (Docker Mongo RS parts, `NOTIFICATION_PROVIDER`/`MSG91_*` primary + optional email fallback, Spaces `sgp1`, CORS 4200/4300, `TRUST_PROXY`/`CLIENT_IP_HEADER`, cookie/CSRF placeholder names; Atlas/Brevo/`blr1` scrubbed) and `app-config.ts` zod shape to match (trustProxy, cookies, notifications, otp maxAttempts; Brevo removed). api lint+typecheck green. Tool: claude-code.

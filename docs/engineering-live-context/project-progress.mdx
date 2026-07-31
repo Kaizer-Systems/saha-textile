@@ -3,7 +3,7 @@ title: 'Project Progress'
 description: 'Canonical cross-tool checkpoint for current implementation status and verification evidence.'
 audience: [engineering, operator, agent]
 document_role: canonical
-last_verified: 2026-07-26
+last_verified: 2026-07-31
 search_keywords: 'project progress current status checkpoint verification evidence chunks gates'
 ---
 
@@ -79,7 +79,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 ```json
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-07-26",
+	"lastVerified": "2026-07-31",
 	"chunks": {
 		"A": "done",
 		"B": "partial",
@@ -114,6 +114,22 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
   whole-program roadmap, API/DB roadmap, auth architecture, and master technical
   KB as current-only references; retained the detailed catalog model after
   removing its duplicate question register and fixed-locale assumptions.
+- 2026-07-31 — [DONE] **Four owner decisions landed in the KB + two refinements
+  recorded.** Committed the previously uncommitted owner-log/pending-decisions
+  edit that locks `DEC-SKU` (admin prefix + per-prefix counter, globally unique,
+  immutable once published/ordered, HSN-style conflict workflow),
+  `DEC-PRODUCT-RELATIONS` (curated related/upsell; cross-sell + bought-together
+  from persisted weekly insight sets), `DEC-BUNDLE-NESTING` (no bundle inside a
+  bundle), `DEC-DELETE-RETENTION` (soft delete for durable business records, TTL
+  for transient security records, hard delete only for privacy/legal purge and
+  orphaned media), and the product status model `draft|live|disabled|discontinued`
+  with the 30-day discontinuation purge + tombstone. Open decisions 28 → 24.
+  Fixed a duplicated `**Last reconciled:**` line introduced by that edit. Two
+  refinements added to the owner log in the same change: option display styles are
+  eight (the canonical six plus `image_tile`/`radio_bar` for storefront/admin
+  parity — reconciled against `packages/contracts/src/attribute.ts`, owner-confirmed
+  2026-07-31), and the active locale set is configuration rather than a contract
+  constant. Tool: claude-code.
   Moved durable portal/tooling authority to `docs/`, portal manifest/code, and
   `.cursor/rules/mcp-tools.mdc`; updated repo-wide provenance/references; deleted
   24 superseded artifacts plus the dated worksheet with Git history as the sole
@@ -143,6 +159,12 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 ## Admin (`apps/admin`)
 
 - 2026-07-24 — [PARTIAL] Angular admin UI scaffolding exists; `.env.example` + runtime config alignment TBD vs locked model. Tool: cursor.
+- 2026-07-31 — [BLOCKED] **`apps/admin` unit tests are red on a stale scaffold spec — pre-existing, unrelated to API/DB work.**
+  `src/app/app.component.spec.ts` (untouched since the 2026-07-05 verbatim admin
+  port) imports `App` but calls `TestBed.createComponent(AppComponent)`, so all 3
+  tests fail with `ReferenceError: AppComponent is not defined`. This makes the
+  repo-wide `pnpm test` red even when every other package passes; scope it to an
+  admin-side fix, not to a contracts/core pass. Tool: claude-code.
 - 2026-07-24 — [DONE] §0b Pass 3 (admin runtime config): created `public/config.json` + `config.example.json` (apiUrl/adminUrl localhost defaults) + `core/config/runtime-config.ts` (`provideAppInitializer`) wired in `app.config.ts`; mutable `environment` gains `apiUrl` and is filled at init. `auth.interceptor` sends `withCredentials: true`; Bearer commented TRANSITIONAL until Chunk D. VERIFIED LIVE: dev server on :4300, `/config.json` 200 at boot, renders, no console errors. typecheck 0 errors; lint 0 errors (pre-existing warnings only). Tool: claude-code.
 - _(append)_
 
@@ -162,6 +184,48 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 
 - 2026-07-24 — [PARTIAL] Ports/repos exist for several domains; `NotificationPort` / full catalog target model still expanding per Chunk B. Tool: cursor.
 - 2026-07-25 — [DONE] **Chunk B Pass 1a (contracts: auth/session/consent/audit/notifications).** New files in `packages/contracts/src`: `session.ts` (SessionAudience, AccessTokenClaims w/ sid+token/permission versions, SessionInfo — no tokens in bodies, AuthSession server-internal entity w/ refresh-family + csrfSecretHash), `auth.ts` (Password min-12 lock, OtpCode/Purpose/Channel, storefront register/login/OTP/forgot/reset DTOs, GenericAcceptedResponse anti-enumeration, AuthSessionResponse, CsrfTokenResponse), `auth-internal.ts` (OtpChallenge per 2026-07-05 lock, OAuthState, PasswordResetToken, EmailVerificationToken, AdminInvite, AuthRateLimit — hashes only), `admin-auth.ts` (AdminPin 6-digit, PreferredLoginMethod, admin login/PIN-login/PIN-setup/invite/accept DTOs, sanitized AdminUserProfile + AdminMeResponse), `consent.ts` (granular ConsentCategories necessary/functional/analytics/targeting/marketing/promotional + ConsentEvent + update/state DTOs), `audit.ts` (AuditLog broad-admin-audit entity w/ retentionTier 7y/5y enum + diffs + list query), `notification.ts` (channel×category kill-switch settings, templates w/ DLT/WA ids, MessageOutbox w/ suppressed statuses, usage rows). Widened `user.ts`: UserStatus, phone/phoneVerified, AuthProvider +phone_otp/passkey, granular ConsentRecord; public shape stays sanitized. Minimal compat patch: `adapters-db-mongo/src/mappers.ts` toUser defaults phone/phoneVerified/status (model upgrade stays Chunk D/E). Gates: contracts+core-domain+adapters+api typecheck 0, contracts lint 0, contracts tests 12/12, naming OK. Tool: claude-code. Notes: tests for new families land in Pass 3.
+- 2026-07-31 — [DONE] **Chunk B Pass 1b (boundary enforcement + shared primitives + test backfill).**
+  (1) **G-CORE-CONTRACTS is now mechanically enforced, not just documented.** The
+  root `eslint.config.mjs` core-domain block moved to
+  `@typescript-eslint/no-restricted-imports` with three patterns: contracts is
+  `allowTypeImports: true` (value import rejected), `zod`/`zod/*` is rejected
+  outright, and the infrastructure/provider group is rejected in type **and** value
+  position (added `@fastify/*`, `bullmq`, `sharp`, `meilisearch`, `vidstack`,
+  `fluent-ffmpeg` per the owner-log media/video lock). (2) Added
+  `packages/core-domain/test/runtime-purity.test.ts`, which compiles the package to
+  a throwaway dir and asserts the emitted JS references no contracts/Zod/infra
+  specifier and imports nothing outside `node:*` and its own relative modules — so
+  the guarantee survives someone converting an `import type` into a value import.
+  **Negative proof executed:** a probe file with a contracts value import + a zod
+  import produced 2 ESLint errors, and a compiling contracts value import failed
+  the purity test on 2 assertions; the probe was removed and both went green.
+  (3) `attribute.ts` (semantic roles, display styles, attribute definitions/terms,
+  addon templates) was committed in Pass 1a but never exported — it is now in
+  `index.ts` and covered by tests. (4) Shared primitives added to `common.ts`:
+  `LocaleCode` + `ActiveLocaleConfig` + `PRIMARY_LOCALE` replacing the hardcoded
+  `Locale = ['en','bn']` enum (locale set is config — the pair already moved once,
+  en+bn → en+fr); `CurrencyCode` + `Money` (transport shape for a server-computed
+  amount, never an input to money math); `PageQuery`/`PageMeta`/`paginated()` +
+  `DEFAULT_PAGE_SIZE` 24 / `MAX_PAGE_SIZE` 200; and `ApiErrorCode`/`FieldIssue`/
+  `ApiError`/`ApiErrorResponse` for the Chunk C global error mapper. (5) Test
+  backfill promised by Pass 1a delivered: contracts tests 12 → 63 across
+  `common.test.ts`, `attribute.test.ts`, `auth-security.test.ts` (password floor,
+  OTP/PIN shape, no tokens/hashes in `SessionInfo`/`AuthSessionResponse`/
+  `AdminMeResponse`, consent `necessary` immutability, audit retention tiers,
+  notification kill-switch + suppression statuses + destination hashing);
+  core-domain 15 → 18. Gates: repo `pnpm typecheck` 13/13, `pnpm lint` 15/15
+  (0 errors) + `check:naming`, `pnpm format:check`, contracts 63/63, core-domain
+  18/18 all green. Tool: claude-code. Notes: `Locale` was removed (it had zero
+  consumers). Still open in Chunk B — catalog/media/inventory/checkout/pricing/
+  content contract families and the missing ports (`TransactionManagerPort`,
+  `NotificationPort`, `YouTubePort`, `VideoTranscodePort`, session/OTP/OAuth/media/
+  inventory repositories).
+- 2026-07-31 — [PARTIAL] **`ProductStatus` drift is now the top of the Chunk B/E queue.**
+  `packages/contracts/src/product.ts` still declares `draft|published|archived`
+  while the owner lock (recorded today) is `draft|live|disabled|discontinued` with
+  30-day discontinuation retention. Deliberately not changed in Pass 1b: it ripples
+  through `product.model.ts`, the product repository, `apps/api` catalog service,
+  and seed data, and belongs with the catalog contract family pass. Tool: claude-code.
 - _(append)_
 
 ---
@@ -289,6 +353,17 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 - 2026-07-26 — [DONE] **Four child bridges rebuilt as independent six-second symbolic systems — supersedes the shared visual choreography recorded by the earlier living-gateway pass.** Removed the common rotating geometry, iris, centre card, line-field rush, and depth-vanish sequence. Component Forge now presents a zero-gravity fabrication bay and transitions through primitive capture, shared-token infusion, assembled UI block, and Storybook blueprint; Type Lattice presents exported source, an interactive constraint field, a contract prism, and faceted TypeDoc plane; Request Wormhole presents operation construction, five visible security clearances, contract-membrane crossing, response emergence, and Scalar flight-console deployment; Schema Observatory presents a working dome/telescope, seven-model optical acquisition, source-evidence resolution, and MongoDB catalogue projection. Each bridge has an independent desktop composition and pointer response; only prefetch, navigation, reduced motion, skip/recovery, and accessibility remain shared. Owner truth now locks six seconds for all four and forbids generic shared visual choreography. Typecheck, 74-page/74-route validation, naming guard, diff check, Docusaurus production build, frame-by-frame browser review, and a fresh four-child atomic composite are green; six-second browser journeys reached `/storybook/index.html`, `/typedoc/index.html`, `/api/reference/index.html`, and `/database/catalogue/index.html`. Tool: codex.
 - 2026-07-26 — [DONE] **Owner-annotated child-gateway geometry and narrative defects corrected.** Component Forge now uses a true non-overlapping 60/40 scene-to-narrative composition, with all primitives and shared-theme tokens retained inside the visual chamber. Type Lattice and Schema Observatory pointer lenses now derive coordinates from their own scene bounds, track the tested cursor position to sub-pixel precision, and remain paint-confined to that chamber. The observatory bridge now uses a recognisable articulated telescope and mount; its transition photon is barrel-relative, fires only after the aiming movement settles, and remains aligned with the model constellation. Request Wormhole now hands a readable operation card to a distinct packet-photon, clears and removes the five security gates, crosses a recognisable accretion/lensing horizon, emits the 201 response, removes all obsolete layers, and deploys a labelled operations/Test Request/response console instead of placeholder bars. Portal TypeScript, the 74-page/74-route validator, whitespace checks, browser geometry/frame QA, and the Docusaurus production build are green. Tool: codex.
 - 2026-07-26 — [DONE] **Single Angular Storybook completed for the reusable Storefront, Admin, and Shared component system.** Added 119 deliberate story states and an automated source inventory that accounts for all 139/139 reusable components across 282 Angular components (Storefront 106/106; Admin 33/33). The single renderer now has issuer-aware application aliases, isolated Storefront/Admin assets and styles, shared portal-theme behavior, deterministic query/state fixtures, and the router/i18n/NgRx/TanStack/ng-bootstrap/HTTP composition needed by real component classes. Corrected strict component inputs at their source boundary rather than weakening Storybook, replaced misleading blank states with populated or explicitly documented empty contracts, and verified recent-purchase, catalogue/category, bundle, deal, modal, layout, loading, skeleton, and application-chrome surfaces. Coverage gate, Storybook typecheck, production build, standalone dev server, and an exhaustive browser sweep of all 119 production stories are green with zero console/render failures. The 142 application components not directly reached are route/page orchestration reserved for integration and Playwright coverage, not missing reusable stories. Tool: codex.
+- 2026-07-31 — [BLOCKED] **Portal freshness validator is red at 37 pages; the portal build is therefore blocked until a reconciliation pass.**
+  The strict `source_of_truth`-vs-Git-date rule counts working-tree evidence as
+  today, so today's canonical KB edits (owner log + pending decisions) and the
+  Chunk B Pass 1b contracts change age their dependent derived pages. 27 of the 37
+  cite only KB evidence and predate this pass (the uncommitted owner-log edit plus
+  the committed 2026-07-26 KB changes); 10 additionally cite
+  `packages/contracts/src`. **No `last_verified` stamp was bumped**, because that
+  date asserts a human/agent review actually happened — the pages must be read
+  against the moved evidence first, as in the 2026-07-25 reconciliation. Chunk B
+  gates (typecheck/lint/test/naming/format) are unaffected and green; the portal
+  validator is a Chunk J gate. Tool: claude-code.
 - 2026-07-26 — [DONE] **Repository-wide Prettier normalization completed on owner request.** Ran the root `pnpm format` workflow across the monorepo with the complete output preserved in a temporary error log; it exited successfully with code 0. The resulting diff is formatting-only across Scalar and MongoDB catalogue HTML, Docker Compose YAML, canonical engineering-context MDX, and the pnpm lockfile. `pnpm format:check` and whitespace validation are green. Tool: codex.
 - _(append)_
 
@@ -320,4 +395,5 @@ Track only status here; details stay in worksheet/umbrella/owner log.
 Use for “next agent should…” notes. Clear or archive when stale.
 
 - 2026-07-24 — Next: env/secrets sync per roadmap § Env architecture sync; recreate Docker Mongo profile if absent; update this file after each task. Tool: cursor.
+- 2026-07-31 — Chunk B Pass 1b is DONE and committed (boundary lint + purity test + shared primitives + attribute export + test backfill). Next candidates, in the order they reduce risk: (a) **Chunk B Pass 2 — catalog contract family** (categories/placements/products/first-class variants/option definitions + the `ProductStatus` `draft|live|disabled|discontinued` correction and its model/repository/API ripple); (b) **Chunk B Pass 3 — missing ports** (`TransactionManagerPort`, `NotificationPort`, `YouTubePort`, `VideoTranscodePort`, session/OTP/OAuth/media/inventory repositories); (c) **Chunk C Pass 1 — API platform** (request id, redacted logger, global error mapping onto the new `ApiError` envelope, `TRUST_PROXY`/`CLIENT_IP_HEADER`, strict CORS, cookie/CSRF + rate-limit foundations, `/health/live`+`/health/ready`). Two known reds that are NOT Chunk B regressions: the stale `apps/admin` `app.component.spec.ts`, and the 37-page portal freshness validator. Tool: claude-code.
 - 2026-07-24 — Roadmap §0b env/secrets sync is COMPLETE (all 9 deliverables; Passes 1–4 + brand naming law, all verified live). Next agent should pick up: Chunk A delta report, or §0d detailed deploy scripts when Infra is scheduled, or Chunk C security bootstrap (wire `TRUST_PROXY` into Fastify, CSRF scaffolding). Brand naming law is enforced via `pnpm check:naming` (part of root lint) — run it before finishing any task. Tool: claude-code.

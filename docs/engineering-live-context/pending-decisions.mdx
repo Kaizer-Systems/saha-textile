@@ -3,7 +3,7 @@ title: 'Pending Decisions'
 description: 'Canonical inbox of unresolved owner decisions and stable implementation gates.'
 audience: [engineering, product, operator, agent]
 document_role: canonical
-last_verified: 2026-07-25
+last_verified: 2026-07-27
 search_keywords: 'pending decisions owner questions implementation gates unresolved'
 ---
 
@@ -11,7 +11,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 
 **Status:** Sole owner-question inbox. Nothing in this file is locked until the owner answers it and the answer is recorded in `owner-decisions-log.mdx`.
 
-**Last reconciled:** 2026-07-26
+**Last reconciled:** 2026-07-27
 
 ## How this file works
 
@@ -38,14 +38,10 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-BACKORDER`             | Backorder/oversell policy                                            | Catalog, inventory, storefront                |
 | `DEC-ORDER-SNAPSHOT`        | Immutable order-line snapshot fields                                 | Orders, invoices, analytics, support          |
 | `DEC-ADDRESS`               | Address model and checkout phone requirements                        | Accounts, checkout, shipping                  |
-| `DEC-SKU`                   | Product and variant SKU policy                                       | Catalog, inventory, imports                   |
 | `DEC-VARIANT-OVERRIDES`     | Fields variants may override                                         | Catalog contracts and admin forms             |
 | `DEC-PRICE-DISPLAY`         | MRP, sale, and price-range behavior                                  | Catalog, pricing, storefront                  |
 | `DEC-ADDON-MEASUREMENTS`    | Add-on pricing and measurement validation                            | Product setup, cart, orders                   |
-| `DEC-PRODUCT-RELATIONS`     | Curated versus analytics-backed relations                            | Merchandising and analytics                   |
-| `DEC-BUNDLE-NESTING`        | Whether bundles can contain bundles                                  | Catalog and inventory validation              |
 | `DEC-CUSTOMER-CREDIT`       | Ledger, store credit, wallet, and points scope                       | Customers, refunds, checkout                  |
-| `DEC-DELETE-RETENTION`      | Soft delete, hard delete, and retention rules                        | All durable collections                       |
 | `DEC-ID-SLUG`               | IDs, business codes, slugs, and redirects                            | Catalog, SEO, orders                          |
 | `DEC-BADGES-RAILS`          | Storefront badge and rail taxonomy                                   | Analytics and merchandising                   |
 | `DEC-SCOPE-GAPS`            | Missing business flows and launch scope                              | Whole product                                 |
@@ -438,48 +434,7 @@ Notes:
 
 ---
 
-## 10. `DEC-SKU` — SKU generation
-
-### Decision needed
-
-Choose SKU generation, uniqueness, editability, and legacy-import policy.
-
-### Recommended route
-
-Generate globally unique product/variant SKUs with validated admin override.
-
-### Options
-
-#### Option A — Generated with admin override (recommended)
-
-- Pros: consistent while supporting legacy labels.
-- Cons: needs generation and collision rules.
-
-#### Option B — Admin-entered only
-
-- Pros: maximum business control.
-- Cons: slower and error-prone.
-
-#### Option C — System-only immutable
-
-- Pros: strongest consistency.
-- Cons: poor legacy/supplier flexibility.
-
-### Owner answer
-
-Choice:
-
-Prefix/format:
-
-Global uniqueness:
-
-Override allowed:
-
-Notes:
-
----
-
-## 11. `DEC-VARIANT-OVERRIDES` — Variant override fields
+## 10. `DEC-VARIANT-OVERRIDES` — Variant override fields
 
 ### Decision needed
 
@@ -518,7 +473,7 @@ Notes:
 
 ---
 
-## 12. `DEC-PRICE-DISPLAY` — MRP, sale, and ranges
+## 11. `DEC-PRICE-DISPLAY` — MRP, sale, and ranges
 
 ### Decision needed
 
@@ -559,7 +514,7 @@ Notes:
 
 ---
 
-## 13. `DEC-ADDON-MEASUREMENTS` — Add-ons and measurements
+## 12. `DEC-ADDON-MEASUREMENTS` — Add-ons and measurements
 
 ### Decision needed
 
@@ -602,83 +557,7 @@ Notes:
 
 ---
 
-## 14. `DEC-PRODUCT-RELATIONS` — Related products and rails
-
-### Decision needed
-
-Choose how related, cross-sell, upsell, substitute, and bought-together relationships are populated.
-
-### Recommended route
-
-Admin-curated relationships with analytics fallback when curated data is absent.
-
-### Options
-
-#### Option A — Curated plus analytics fallback (recommended)
-
-- Pros: boutique control with useful automation.
-- Cons: needs fallback ranking rules.
-
-#### Option B — Curated only
-
-- Pros: complete brand control.
-- Cons: manual work and empty new-product relations.
-
-#### Option C — Analytics only
-
-- Pros: automatic.
-- Cons: weak at low traffic and less controllable.
-
-### Owner answer
-
-Choice:
-
-Relations to launch:
-
-Fallback ranking:
-
-Notes:
-
----
-
-## 15. `DEC-BUNDLE-NESTING` — Nested bundles
-
-### Decision needed
-
-Decide whether bundle/composite products may contain another bundle.
-
-### Recommended route
-
-Disallow nested bundles at launch.
-
-### Options
-
-#### Option A — No nesting (recommended)
-
-- Pros: bounded pricing, stock, snapshots, and admin UX.
-- Cons: cannot model a set inside another set.
-
-#### Option B — Maximum depth two
-
-- Pros: limited flexibility.
-- Cons: more recursive validation.
-
-#### Option C — Unlimited
-
-- Pros: theoretical flexibility.
-- Cons: circularity and excessive complexity.
-
-### Owner answer
-
-Choice:
-
-Known product requiring nesting:
-
-Notes:
-
----
-
-## 16. `DEC-CUSTOMER-CREDIT` — Ledger, credit, wallet, and points
+## 13. `DEC-CUSTOMER-CREDIT` — Ledger, credit, wallet, and points
 
 ### Decision needed
 
@@ -719,46 +598,7 @@ Notes:
 
 ---
 
-## 17. `DEC-DELETE-RETENTION` — Deletion and retention
-
-### Decision needed
-
-Choose status-delete, soft-delete, hard-delete, TTL cleanup, and legal/privacy purge rules.
-
-### Recommended route
-
-Soft-delete durable business records; TTL-delete transient security/session records; hard-delete only explicit privacy/legal purges and orphaned media after grace.
-
-### Options
-
-#### Option A — Soft durable, TTL transient (recommended)
-
-- Pros: auditability and recovery.
-- Cons: query filtering and growing storage.
-
-#### Option B — Soft-delete only financial/catalog records
-
-- Pros: less storage.
-- Cons: inconsistent recovery.
-
-#### Option C — Broad hard deletion
-
-- Pros: simplest storage.
-- Cons: unacceptable historical/audit risk.
-
-### Owner answer
-
-Choice:
-
-Hard-delete exceptions:
-
-Privacy purge requirements:
-
-Notes:
-
----
-
-## 18. `DEC-ID-SLUG` — IDs, codes, slugs, and redirects
+## 14. `DEC-ID-SLUG` — IDs, codes, slugs, and redirects
 
 ### Decision needed
 
@@ -797,7 +637,7 @@ Notes:
 
 ---
 
-## 19. `DEC-BADGES-RAILS` — Badges and merchandising rails
+## 15. `DEC-BADGES-RAILS` — Badges and merchandising rails
 
 ### Decision needed
 
@@ -840,7 +680,7 @@ Notes:
 
 ---
 
-## 20. `DEC-SCOPE-GAPS` — Missing business flows
+## 16. `DEC-SCOPE-GAPS` — Missing business flows
 
 ### Decision needed
 
@@ -885,7 +725,7 @@ Notes:
 
 ---
 
-## 21. `DEC-I18N-ROUTES` — Canonical locale URLs
+## 17. `DEC-I18N-ROUTES` — Canonical locale URLs
 
 ### Decision needed
 
@@ -926,7 +766,7 @@ Notes:
 
 ---
 
-## 22. `DEC-IMG-PX` — Image derivative dimensions
+## 18. `DEC-IMG-PX` — Image derivative dimensions
 
 ### Decision needed
 
@@ -975,7 +815,7 @@ Notes:
 
 ---
 
-## 23. `DEC-MEDIA-CAPS` — Upload and ingest limits
+## 19. `DEC-MEDIA-CAPS` — Upload and ingest limits
 
 ### Decision needed
 
@@ -1020,7 +860,7 @@ Notes:
 
 ---
 
-## 24. `DEC-PAYPAL-FX` — PayPal FX-conversion markup
+## 20. `DEC-PAYPAL-FX` — PayPal FX-conversion markup
 
 ### Decision needed
 
@@ -1061,7 +901,7 @@ Notes:
 
 ---
 
-## 25. `DEC-INR-GATEWAY-TIMING` — INR gateway succession
+## 21. `DEC-INR-GATEWAY-TIMING` — INR gateway succession
 
 ### Decision needed
 
@@ -1102,7 +942,7 @@ Notes:
 
 ---
 
-## 26. `DEC-DOMAIN-TOPOLOGY` — Production hostname topology
+## 22. `DEC-DOMAIN-TOPOLOGY` — Production hostname topology
 
 ### Decision needed
 
@@ -1157,7 +997,7 @@ Notes:
 
 ---
 
-## 27. `DEC-TRANSLATION-QUALITY` — French translation acceptance
+## 23. `DEC-TRANSLATION-QUALITY` — French translation acceptance
 
 ### Decision needed
 
@@ -1208,7 +1048,7 @@ Notes:
 
 ---
 
-## 28. `DEC-PORTAL-PRIVATE-ACCESS` — Developer-portal private-access design
+## 24. `DEC-PORTAL-PRIVATE-ACCESS` — Developer-portal private-access design
 
 ### Decision needed
 

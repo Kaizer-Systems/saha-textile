@@ -413,6 +413,36 @@ swatch_image_v2` with pixel sizes deliberately left to config (`G-IMG-PX`);
 
 ## DB / Mongo adapter (`packages/adapters-db-mongo`, Docker Mongo)
 
+- 2026-08-01 — [DONE] **Chunk D Pass 1 (auth persistence: models, repositories, TTL policy).**
+  Six new collections behind the Pass-4 ports: `authSessions`, `otpChallenges`,
+  `oauthStates`, `passwordResetTokens`, `emailVerificationTokens`, `adminInvites`,
+  `authRateLimits`. Every credential-shaped field (`refreshTokenHash`,
+  `previousRefreshTokenHash`, `csrfSecretHash`, `codeHash`, every `tokenHash`,
+  `passwordHash`, `pinHash`) is `select: false`, so an unqualified `find()` cannot leak
+  it — asserted by test, not just by convention. `users` gained the auth fields the
+  contracts already defined: status, phone/phoneVerified, username, pinHash,
+  preferredLoginMethod, permissions, tokenVersion, permissionsVersion, failed-attempt
+  counters, pinLockedUntil, lastLoginAt, adminProfile, plus sparse-unique username/phone
+  indexes. **Concurrency-safe by construction:** rotation is one conditional update
+  (`_id` + current hash + not revoked) so a replayed refresh loses; OTP consume and
+  attempt counting are atomic; a partial unique index enforces ONE active challenge per
+  (identifier × purpose); single-use tokens consume via `findOneAndUpdate`. TTL indexes
+  on every transient collection, and deliberately NONE on `adminInvites` — an accepted
+  invite is admin-account audit evidence under the 7-year tier, not transient state.
+  **A real bug was caught by the new tests:** the rate-limit counter used a plain upsert,
+  and concurrent hits that all miss the row race to insert it — MongoDB raises E11000 for
+  the losers rather than converting them to updates. Five simultaneous login attempts
+  would have surfaced as 500s at exactly the moment the limiter is supposed to work.
+  Fixed with a duplicate-key retry (the row exists by then, so the retry takes the update
+  path); the test asserts five parallel hits observe five DISTINCT counts, which a
+  lost-update implementation cannot satisfy. New `test/auth-persistence.test.ts` = 18
+  tests against rs0 (adapter total 13 → 31): hash invisibility, rotation, replay refusal,
+  reuse-detection lookup, family revocation, audience-scoped active listing, one-active
+  OTP, single-consume races, atomic attempts, expiry, single-use tokens, invite
+  acceptance, and the TTL policy including the deliberate invite exception. Gates:
+  typecheck 13/13, lint 15/15, `pnpm test` 9/9, naming, format green. Next: D2 session
+  lifecycle (issue/refresh/revoke + reuse detection wired to cookies, CSRF bound to
+  `csrfSecretHash`, audience guards). Tool: claude-code.
 - 2026-08-01 — [DONE] **Chunk C Pass 2 (Mongo transaction manager + replica-set commit/rollback proof).**
   `MongoTransactionManager` implements `TransactionManagerPort` at the adapter edge:
   it opens a driver session, exposes it through the opaque domain

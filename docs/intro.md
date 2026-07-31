@@ -4,7 +4,7 @@ slug: /
 description: Private developer portal for Saha Textile.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - apps/developer-portal/src
@@ -43,15 +43,15 @@ import { MissionControl } from '@site/src/components/MissionControl';
 			</div>
 			<div>
 				<span>Guided onboarding</span>
-				<strong>Scaffolded</strong>
+				<strong>Implemented</strong>
 			</div>
 			<div>
 				<span>API reference</span>
-				<strong>Deferred</strong>
+				<strong>Scaffolded</strong>
 			</div>
 			<div>
 				<span>DB catalogue</span>
-				<strong>Deferred</strong>
+				<strong>Scaffolded</strong>
 			</div>
 		</div>
 	</div>
@@ -206,27 +206,27 @@ import { MissionControl } from '@site/src/components/MissionControl';
 		<a href="/database/overview" className="portalImplementationItem" role="listitem">
 			<span className="portalStatusPill" data-status="scaffolded">Scaffolded</span>
 			<strong>Mongo adapter</strong>
-			<p>Models, indexes, mappers and repositories exist; generated portal pages do not.</p>
+			<p>Seven models plus their fields and indexes are source-generated into the scaffolded current-model catalogue.</p>
 		</a>
 	</div>
 </section>
 
-<section className="portalSurfaceGrid" aria-label="Deferred generated documentation surfaces">
+<section className="portalSurfaceGrid" aria-label="Scaffolded generated documentation surfaces">
 	<div className="portalSurfaceNotice">
 		<div>
-			<span className="portalStatusPill" data-status="deferred">Deferred</span>
+			<span className="portalStatusPill" data-status="scaffolded">Scaffolded</span>
 			<h2>Scalar API Reference</h2>
 		</div>
-		<p>The API produces OpenAPI, but the locked portal route and interactive Scalar surface are not wired yet. The existing framework UI is transitional.</p>
-		<a href="/api/overview">See the exact boundary</a>
+		<p>The Request Wormhole publishes deterministic OpenAPI and Test Request, while complete operation semantics and promotion gates remain open.</p>
+		<a href="/tools/scalar">Enter the bridge</a>
 	</div>
 	<div className="portalSurfaceNotice">
 		<div>
-			<span className="portalStatusPill" data-status="deferred">Deferred</span>
+			<span className="portalStatusPill" data-status="scaffolded">Scaffolded</span>
 			<h2>Generated DB catalogue</h2>
 		</div>
-		<p>The Mongo adapter has real models and indexes. Automated collection, field, index and DTO mapping pages remain to be generated.</p>
-		<a href="/database/overview">See the generation trigger</a>
+		<p>The Schema Observatory source-generates current models, fields and indexes without database access; target-only collections remain excluded.</p>
+		<a href="/tools/database-catalogue">Enter the bridge</a>
 	</div>
 </section>
 

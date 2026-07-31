@@ -1,17 +1,23 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-07-26",
+	"lastVerified": "2026-08-01",
 	"sourceOfTruth": [
 		"apps/api/src/orders/orders.controller.ts",
 		"apps/api/src/orders/orders.service.ts",
+		"apps/api/src/common/request-context.ts",
+		"apps/api/src/common/http-exception.filter.ts",
+		"apps/api/src/infra/persistence.module.ts",
 		"packages/core-domain/src/pricing",
+		"packages/core-domain/src/ports/transaction-manager.port.ts",
+		"packages/adapters-db-mongo/src/transaction-manager.ts",
+		"packages/adapters-db-mongo/test/transaction.test.ts",
 		"packages/adapters-db-mongo/src/repositories/order.repository.ts",
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx"
 	],
 	"method": "POST",
 	"path": "/orders",
 	"title": "Place an order",
-	"summary": "Trace a place-order request across the six boundaries. Toggle Current vs Locked target to reveal the ghost stages — idempotency, transaction and atomic side effects — that flip solid as Chunks E and G land.",
+	"summary": "Trace a place-order request across its boundaries. Request correlation and the safe error envelope are real, and the transaction capability is bound and rollback-proven; idempotency, order-path transaction adoption, and atomic side effects remain ghosts.",
 	"stages": [
 		{
 			"id": "client",
@@ -42,6 +48,15 @@
 			"target": "The idempotency key is checked first; a replay returns the original order instead of creating a new one."
 		},
 		{
+			"id": "request-context",
+			"label": "Request context",
+			"sublabel": "Correlation + client IP",
+			"kind": "real",
+			"file": "apps/api/src/common/request-context.ts",
+			"current": "Every request receives a correlation id that is echoed as x-request-id; trusted proxy configuration controls inbound ids and real-client-IP rate-limit keys.",
+			"target": "The same correlation identity continues through audit, outbox, provider, and idempotency evidence."
+		},
+		{
 			"id": "application",
 			"label": "Application",
 			"sublabel": "OrdersService.createFromCart",
@@ -65,8 +80,8 @@
 			"sublabel": "Unit of work",
 			"kind": "ghost",
 			"chunk": "Chunk E",
-			"file": "planned — TransactionManagerPort",
-			"current": "Absent — the order is saved, then the cart is deleted in a separate write (non-atomic).",
+			"file": "planned — order-path adoption of the proven transaction capability",
+			"current": "TransactionManagerPort exists, MongoTransactionManager is bound, and rs0 tests prove commit plus rollback. OrdersService still does not use it: the order save and cart delete remain separate and non-atomic.",
 			"target": "withTransaction() spans order, payment, inventory, cart and audit; any failure rolls all of them back."
 		},
 		{
@@ -96,6 +111,15 @@
 			"file": "docker/mongo/docker-compose.yml",
 			"current": "The order document lands in the self-hosted single-node replica set.",
 			"target": "The whole set of records commits together, or none do."
+		},
+		{
+			"id": "error-response",
+			"label": "Error response",
+			"sublabel": "Safe envelope + correlation",
+			"kind": "real",
+			"file": "apps/api/src/common/http-exception.filter.ts",
+			"current": "Every failure returns the shared ApiErrorResponse envelope with a safe status message, validation issues when applicable, and the same request id used by server logs.",
+			"target": "Operation-specific OpenAPI responses enumerate the stable error codes and recovery semantics without exposing internal causes."
 		}
 	]
 }

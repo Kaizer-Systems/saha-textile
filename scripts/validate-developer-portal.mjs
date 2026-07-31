@@ -20,7 +20,12 @@ const allowedStatuses = new Set(['implemented', 'scaffolded', 'planned', 'deferr
 const blockedTerms = [['fast', 'kart'].join('')];
 const engineeringLiveContextPrefix = 'docs/engineering-live-context/';
 const scannedExtensions = new Set(['.css', '.js', '.jsx', '.json', '.md', '.mdx', '.ts', '.tsx']);
-const today = new Date().toISOString().slice(0, 10);
+const currentDate = new Date();
+const today = [
+	currentDate.getFullYear(),
+	String(currentDate.getMonth() + 1).padStart(2, '0'),
+	String(currentDate.getDate()).padStart(2, '0'),
+].join('-');
 
 function gitOutput(arguments_) {
 	try {

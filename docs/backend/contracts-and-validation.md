@@ -4,7 +4,7 @@ wide: true
 description: Zod contract ownership, request parsing, persistence mapping, response safety, and evolution rules.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - packages/contracts/src
     - packages/contracts/test
@@ -33,18 +33,20 @@ An API request for account registration should not accept `role`, `emailVerified
 
 ## Current contract families
 
-| File family                                         | Principal schemas                                                                 | Notable invariant                                                         |
-| --------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `common.ts`                                         | locale, localized text, id, slug, INR price, datetime, SEO                        | canonical price is non-negative INR                                       |
-| `category.ts`, `product.ts`, `promotion.ts`         | current catalogue, variation, add-on, and promotion shapes                        | current model remains simpler than the locked catalogue target            |
-| `cart.ts`, `order.ts`, `currency.ts`, `shipping.ts` | commerce aggregates, snapshots, FX inputs, and quote                              | value and currency travel together; canonical product price remains INR   |
-| `user.ts`                                           | sanitized public user, identities, addresses, consent snapshot                    | credential material is intentionally absent                               |
-| `session.ts`                                        | access claims, public session info, server-internal session/refresh-family entity | browser response metadata contains no token values                        |
-| `auth.ts`, `admin-auth.ts`                          | storefront/admin request and actor-safe response DTOs                             | 12-character password floor; six-digit admin PIN shape; no tokens in body |
-| `auth-internal.ts`                                  | OTP/OAuth/reset/invite/rate-limit persistence shapes                              | codes/tokens/IP/user-agent values are represented by hashes               |
-| `consent.ts`, `audit.ts`, `notification.ts`         | consent history, broad admin/security audit, notification settings/outbox         | append-only evidence and channel/category control are explicit            |
+| File family                                          | Principal schemas                                                                 | Notable invariant                                                           |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `common.ts`                                          | locale config, localized text, ids/slugs, money/currency, pagination, API errors  | locale set is configured; page size is bounded; failures share one envelope |
+| `catalog.ts`, `category.ts`, `category-placement.ts` | category lifecycle, multi-placement, facets and SEO policy                        | at most one canonical placement; arbitrary facets cannot be always-indexed  |
+| `attribute.ts`, `product*.ts`, `promotion.ts`        | semantic attributes, lifecycle, options, variants, bundles, relations, promotions | only `live` is public; option role is independent of eight display styles   |
+| `media.ts`, `inventory.ts`, `content.ts`             | assets/HLS, ledger/FIFO, FAQ, Q&A and verified reviews                            | locked media/inventory/content invariants are runtime-validated             |
+| `cart.ts`, `order.ts`, `currency.ts`, `shipping.ts`  | commerce aggregates, snapshots, FX inputs, and quote                              | value and currency travel together; canonical product price remains INR     |
+| `user.ts`                                            | sanitized public user, identities, addresses, consent snapshot                    | credential material is intentionally absent                                 |
+| `session.ts`                                         | access claims, public session info, server-internal session/refresh-family entity | browser response metadata contains no token values                          |
+| `auth.ts`, `admin-auth.ts`                           | storefront/admin request and actor-safe response DTOs                             | 12-character password floor; six-digit admin PIN shape; no tokens in body   |
+| `auth-internal.ts`                                   | OTP/OAuth/reset/invite/rate-limit persistence shapes                              | codes/tokens/IP/user-agent values are represented by hashes                 |
+| `consent.ts`, `audit.ts`, `notification.ts`          | consent history, broad admin/security audit, notification settings/outbox         | append-only evidence and channel/category control are explicit              |
 
-The new auth/session/consent/audit/notification families are **contract scaffolds**, not live endpoints or collections. Controllers, repositories, adapters, migrations, policy/use-case logic, OpenAPI mapping, and the planned contract tests still have to land in their roadmap chunks. The contracts still do not express the complete locked catalogue, checkout, payment, inventory, reporting, analytics, media, or database model.
+The auth/session/consent/audit/notification and expanded catalog/media/inventory/content families are **contract and port scaffolds**, not proof of endpoints or collections. Contract tests now total 140, and the matching core port surface is complete; controllers, adapters, models, policy/use-case logic, and OpenAPI mapping still land in their owning chunks. Checkout, payment, reporting, analytics, and target persistence remain incomplete.
 
 ## Boundary validation today
 
@@ -161,4 +163,4 @@ For every important schema, test:
 
 ## Current reconciliation warning
 
-The current product/category contracts reflect an earlier simplified model. Locked architecture now requires multi-placement categories, semantic option roles, true bundles, richer inventory and search-facet configuration. Do not extend the simplified shape ad hoc; implement the relevant backend phase from the reconciled catalogue plan.
+The expanded contracts encode multi-placement categories, semantic option roles, first-class variants, non-nested bundles, governed relations, media, inventory and content boundaries. Their presence does not make the corresponding Mongo collections or APIs real. Implement persistence and operations through the relevant roadmap chunk instead of treating contract coverage as runtime delivery.

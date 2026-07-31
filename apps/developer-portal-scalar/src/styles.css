@@ -4,6 +4,8 @@
  * Shared values come from nextgen-theme.css. This file maps Scalar's public
  * custom properties and supplies the tool-specific OpenAPI flight-console
  * atmosphere without copying the Docusaurus layout.
+ * Tuning knobs: 720px status-bar collapse; root overflow containment keeps
+ * Scalar's off-canvas client artwork from widening the document.
  * ========================================================================= */
 
 :root {
@@ -15,8 +17,10 @@
 html,
 body,
 #app {
+	max-width: 100%;
 	min-height: 100%;
 	margin: 0;
+	overflow-x: clip;
 	background: var(--portal-canvas);
 }
 

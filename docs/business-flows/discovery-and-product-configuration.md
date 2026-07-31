@@ -4,7 +4,7 @@ wide: true
 description: Category, search, product-detail, semantic option, variant, add-on, bundle, pricing, and stock journey.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-08-01'
 source_of_truth:
     - apps/storefront/src/app/pages/en/collections
     - apps/storefront/src/app/pages/en/product/[slug].page.ts
@@ -30,7 +30,7 @@ sequenceDiagram
 
     Shopper->>SF: Browse category or search
     SF->>Search: Query + locale + currency + filters
-    Search->>Mongo: Resolve published product identities/facts
+    Search->>Mongo: Resolve live product identities/facts
     Search-->>SF: Items + configured facets + counts + SEO
     Shopper->>SF: Open product
     SF->>Catalog: Request product configuration
@@ -96,7 +96,7 @@ Quantity is applied after identity matching and remains subject to current stock
 - The storefront may show returned display values and perform immediate interaction checks.
 - Canonical price, active sale price, promotion eligibility, add-on deltas, bundle totals, tax basis, and stock are server-authoritative.
 - The API revalidates the configuration before adding online, reading the cart, continuing checkout, and replaying a pending intent.
-- Retired, archived, disabled, or discontinued products must disappear from live discovery surfaces.
+- Draft, disabled, and discontinued products must disappear from public discovery surfaces. The API now enforces that fail-closed audience rule for both lists and slug reads; the 2026-07-31 fix closed a defect that had allowed hidden product states through public catalogue reads.
 
 ## Failure and edge cases
 

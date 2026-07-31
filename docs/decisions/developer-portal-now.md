@@ -3,7 +3,7 @@ title: Start Developer Portal Early
 description: ADR for starting the portal before all generated artifacts exist.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - docs/engineering-live-context/execution-roadmap.mdx
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -22,15 +22,13 @@ The roadmap says the Docusaurus developer portal should grow incrementally durin
 
 ## Decision
 
-Start the portal now with stable structure, navigation, source-of-truth rules, high-level architecture pages, business-flow templates, and placeholders for generated sections.
-
-Defer generated documentation integrations until their source artifacts exist.
+Start the portal with stable structure, navigation, source-of-truth rules, high-level architecture pages, business-flow templates, and evidence-gated generated sections. Integrate a generated surface only when its source artifact exists, and keep its lifecycle visibly scaffolded until the documented promotion gate passes.
 
 ## Consequences
 
 - Documentation habits start early.
 - Future PRs have a known place to update operator-facing and developer-facing behavior.
-- Generated API, database, and component docs are not hand-written prematurely.
+- Storybook and TypeDoc are generated from current source; Scalar and the database catalogue are generated but visibly scaffolded behind their evidence gates.
 - The portal can build before the full app surface is complete.
 
 ## Related

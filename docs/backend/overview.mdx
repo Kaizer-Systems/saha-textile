@@ -3,7 +3,7 @@ title: Backend Platform Atlas
 description: Interactive, evidence-backed map of API request paths, boundaries, risks, and proof obligations.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 wide: true
 source_of_truth:
     - apps/api/src
@@ -64,31 +64,31 @@ An implementation is incorrectly layered when a controller imports a provider SD
 
 ## Current capability radar
 
-| Boundary                 | What exists                                                                                                             | What is not yet proven                                                                                                     |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Fastify/NestJS bootstrap | Helmet, global rate limit, CORS, OpenAPI, shutdown hooks; `TRUST_PROXY`/`CLIENT_IP_HEADER` parsed in config             | Trusted proxy chain not yet applied to Fastify, real client IP, route-specific limits, secure CSP, sanitized global errors |
-| HTTP modules             | Health, auth, catalogue, currency, promotions, cart, orders                                                             | Public/admin segregation, complete DTO families, versioning, consistent errors                                             |
-| Authentication           | Argon2id, access/refresh JWT signing, bearer guard, role guard                                                          | Cookie sessions, CSRF, refresh rotation/reuse detection, audiences, permissions, admin PIN                                 |
-| Contracts                | Zod schemas for core catalogue/commerce plus auth/session/consent/audit/notification scaffolds                          | Runtime wiring, remaining domain families, planned tests, and complete OpenAPI mapping                                     |
-| Core domain              | Repository/provider ports, pure pricing helpers, and ratified type-only contracts coupling                              | Complete boundary lint, use cases, unit of work, notification/media ports, and policy coverage                             |
-| Mongo adapter            | Seven models, repositories, mappers, indexes, seed tool, self-hosted Docker `rs0` replica-set profile (`pnpm mongo:up`) | Transactional context, stronger nested validation, migrations, backups/restore                                             |
-| Tests                    | Contract/pricing tests and gated Mongo integration tests                                                                | API tests, mandatory transaction tests, auth/security tests, non-skipped CI evidence                                       |
-| Generated references     | API `/openapi.json`; portal OpenAPI + Scalar scaffold; seven-model source catalogue                                     | Complete OpenAPI operation metadata and target-complete database catalogue                                                 |
+| Boundary                 | What exists                                                                                                                                                                | What is not yet proven                                                                               |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Fastify/NestJS bootstrap | Helmet, trusted proxy/client IP, request ids, redacted pino logs, safe error envelope, strict CORS, global rate limit, cookies/CSRF, split health, OpenAPI, shutdown hooks | Route-specific limits, secure production CSP, complete session/audience policy and OpenAPI semantics |
+| HTTP modules             | Health, auth, catalogue, currency, promotions, cart, orders                                                                                                                | Public/admin segregation, complete DTO families, versioning, consistent errors                       |
+| Authentication           | Argon2id, access/refresh JWT signing, bearer guard, role guard                                                                                                             | Cookie sessions, CSRF, refresh rotation/reuse detection, audiences, permissions, admin PIN           |
+| Contracts                | Zod schemas for common/auth/catalog/media/inventory/content/commerce families; 140 tests                                                                                   | Runtime wiring and complete operation-level OpenAPI mapping                                          |
+| Core domain              | Repository/provider ports, pure pricing/visibility helpers, mechanically enforced type-only contract boundary; 36 tests                                                    | Use-case/state-machine adoption and remaining policy coverage                                        |
+| Mongo adapter            | Seven models, repositories, mappers, indexes, seed tool, `MongoTransactionManager`, self-hosted Docker `rs0` profile                                                       | Session-aware workflow adoption, stronger nested validation, migrations, backups/restore             |
+| Tests                    | Contract/core suites, 28 API platform/CSRF tests, gated repository plus six rs0 transaction tests                                                                          | Complete auth/ownership/idempotency/workflow coverage and CI execution of every DB-gated proof       |
+| Generated references     | API `/openapi.json`; portal OpenAPI + Scalar scaffold; seven-model source catalogue                                                                                        | Complete OpenAPI operation metadata and target-complete database catalogue                           |
 
 ## Stop-the-line findings
 
 These are documentation findings, not fixes made by Pass 4:
 
-1. Public catalogue listing does not force `published` status.
+1. **Resolved 2026-07-31:** public product reads now fail closed to `live`; the former list/direct-read visibility leak is covered by repository integration tests.
 2. Cart routes do not prove user/guest ownership.
 3. `GET /orders/:id` authenticates but does not enforce object ownership.
 4. Order creation is neither idempotent nor transactional and deletes the cart after a separate order save.
 5. Browser auth returns reusable tokens in JSON and has no refresh-family reuse detection.
 6. API configuration supplies development JWT defaults without a production fail-closed check.
-7. `/health` can report success while Mongo-backed routes are unavailable.
+7. **Resolved for probe semantics 2026-08-01:** `/health/live` is dependency-free and `/health/ready` fails closed when Mongo is unavailable; `/health` remains a liveness alias.
 8. Storefront search currently uses Mongo regular expressions even though the locked target is Meilisearch through `SearchPort`.
 9. Resolved (2026-07-24): the Mongo connection builder and `.env.example` now implement the self-hosted Docker `rs0` model; the former hosted-cluster/SRV assumptions are gone and a local replica set is available via `pnpm mongo:up`.
-10. API tests can pass with no tests, and the Mongo integration suite normally skips itself.
+10. API now has 28 platform/CSRF tests. Database integration remains explicitly gated by `RUN_DB_IT=1`; transaction commit/rollback has been run and proven against rs0 but must remain part of CI readiness work.
 
 Treat each finding as an explicit implementation and verification gate. Do not “solve” it by documenting the unsafe behavior as acceptable.
 
@@ -108,4 +108,4 @@ For any backend change, answer these questions in order:
 
 ## Pass 4 boundary
 
-Pass 4 changed documentation and portal interaction only. Later portal tooling now source-generates a scaffolded OpenAPI/Scalar surface and current-model catalogue; it still does not replace auth, create Mongo transactions, install Meilisearch, wire providers, or complete either generated contract.
+Portal work does not replace application implementation. The API now owns a reusable, proven transaction capability, but no order/auth workflow adoption follows from documenting it; Meilisearch, provider adapters, complete cookie sessions, and complete generated contracts remain unfinished.

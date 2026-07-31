@@ -5,7 +5,7 @@ slug: /database/schema-nebula
 wide: true
 status: implemented
 audience: [beginner, backend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 search_keywords: 'schema nebula collections database mongodb star map models ghosts graph relationships bounded context DEC'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -62,13 +62,13 @@ The authored inventory lives in `docs/_data/instruments/schema-nebula.json`. The
 2. the current files under `packages/adapters-db-mongo/src/models`;
 3. the catalog, auth, notification and roadmap sources;
 4. all collection-to-collection references;
-5. every `DEC-*` identifier in the open decision register;
+5. every remaining `DEC-*` blocker in the 24-item open decision register;
 6. the portal manifest, page provenance and verification date.
 
 Adding or removing a model therefore makes a stale constellation fail the portal build. The implementation change and its dataset state must be updated and reviewed together.
 
 ## What remains separate
 
-Schema Nebula answers **which physical collections are current or targeted and how they relate**. The field-level generated database catalogue—schema fields, indexes, nullable rules, sanitized examples and DTO mappings—remains deferred until its generator exists. Do not treat a target star as generated schema documentation or deployment proof.
+Schema Nebula answers **which physical collections are current or targeted and how they relate**. The separate source-only database catalogue now generates fields, indexes, defaults, enums, select policy and sanitized examples for the seven current models only; stable DTO/migration/retention coverage remains incomplete. Do not treat a target star as implemented schema documentation or deployment proof.
 
 Continue with the [current Mongo adapter map](./current-adapter-map) for implemented model/repository evidence, [transactions and generation](./transactions-and-generation) for the future catalogue contract, and [Mission Control](/mission-control) for roadmap ownership.

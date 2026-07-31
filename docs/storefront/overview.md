@@ -4,7 +4,7 @@ wide: true
 description: Start here before changing the public Angular and AnalogJS storefront.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - apps/storefront/src/app
     - apps/storefront/vite.config.ts
@@ -51,7 +51,7 @@ The page layer should stay thin. A route identifies the customer journey and com
 | Server data          | TanStack Angular Query functions exist across the data-access layer            | Scaffolded  | Many query functions still wrap JSON-backed services.                         |
 | Authentication       | Auth pages and a SignalStore session seam exist                                | Scaffolded  | The token/session behavior is a mock, not secure API authentication.          |
 | Checkout             | UI, address, totals, delivery, and payment-selection surfaces exist            | Scaffolded  | Order placement and payment execution are not connected.                      |
-| Internationalization | Transloco loader and switcher are wired                                        | Scaffolded  | Code currently advertises `en/fr`; the locked product target is `en/bn`.      |
+| Internationalization | Transloco loader and switcher are wired                                        | Scaffolded  | Code currently advertises `en/fr`; the active locale set is configuration.    |
 | PWA/offline          | Product requirement is locked                                                  | Planned     | The Vite PWA and Workbox integration is not present in current configuration. |
 
 ## Directory ownership

@@ -3,7 +3,7 @@ title: Monorepo Map
 description: Workspace package ownership and responsibilities.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - pnpm-workspace.yaml
     - turbo.json
@@ -28,7 +28,7 @@ source_of_truth:
 | `packages/config`                 | Shared TypeScript, lint, and style configuration                                           |
 | `docker/mongo`                    | Local Docker MongoDB 8.3 single-node replica-set (`rs0`) profile                           |
 | `scripts`                         | Repo lifecycle, naming, portal validation, and atomic persistent composite-runtime scripts |
-| `docs`                            | Human-authored portal content plus future generated documentation                          |
+| `docs`                            | Human-authored portal content plus governed data for generated documentation               |
 | `docs/engineering-live-context`   | Planning and architecture source material                                                  |
 
 ## Documentation ownership

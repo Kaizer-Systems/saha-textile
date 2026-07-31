@@ -4,7 +4,7 @@ wide: true
 description: OpenAPI source-of-truth rules, current Scalar scaffold, completeness gates, Test Request security, and build topology.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - apps/api/src/openapi.ts
     - apps/api/src/generate-openapi.ts
@@ -27,9 +27,11 @@ The decision is locked:
 
 NestJS creates one OpenAPI document through `apps/api/src/openapi.ts`. The API exposes it at `/openapi.json`, and the portal build now generates the same document without a MongoDB connection, publishes it at `/api/openapi.json`, and renders it through Scalar at `/api/reference/`.
 
-The surface is deliberately labelled **scaffolded**. It currently exposes 22 discovered paths, but many operations still lack reliable request/response components, security semantics, errors, authorization, idempotency, and side-effect documentation. Scalar makes the current evidence navigable; it does not repair or conceal those omissions.
+The surface is deliberately labelled **scaffolded**. The source route set has moved since the last generated artifact: `/health/live`, `/health/ready`, and `/auth/csrf` now exist, while the public product-list operation no longer accepts a `status` query. Pass 2 regenerates and measures the document rather than carrying the former 22-path count. Many operations still lack reliable request/response components, security semantics, authorization, idempotency, and side-effect documentation. Scalar makes the current evidence navigable; it does not repair or conceal those omissions.
 
-Scalar’s **Test Request** control is enabled. Authentication is not persisted by Scalar, no external request proxy is configured, and the generated document declares only the approved local API server (`http://127.0.0.1:4000`). Normal API security controls remain in force.
+Scalar’s **Test Request** control is enabled. Authentication is not persisted by Scalar, no external request proxy is configured, and the generated document declares only the approved local API server (`http://127.0.0.1:4000`). Normal API security controls remain in force. When an unsafe request carries a session cookie, first call `GET /auth/csrf`, retain its readable CSRF cookie, and echo the returned token through `x-csrf-token`; missing or mismatched pairs fail with `403`.
+
+One completeness trigger has materially advanced: every API failure now uses the shared `ApiErrorResponse` envelope and carries the same request id emitted in `x-request-id`. This is runtime evidence, but Scalar remains scaffolded because operation-specific response components/examples, cookie-session and audience/permission semantics, idempotency and side effects, CI drift proof, and an approved non-production target remain incomplete.
 
 ## Target portal routes
 
@@ -117,7 +119,7 @@ The current scaffold shows its local-development server from the document itself
 - controller-local zod body schemas do not automatically become complete OpenAPI component schemas;
 - many response types are inferred from implementation rather than declared DTOs;
 - query/path validation is incomplete;
-- errors, ownership, permissions, CSRF, rate limits, idempotency and side effects are sparsely represented;
+- the shared runtime error envelope exists, but operation-specific errors, ownership, permissions, CSRF, rate limits, idempotency and side effects are still sparsely represented in OpenAPI;
 - public versus admin tag/route segregation is incomplete;
 - current bearer security scheme is transitional.
 

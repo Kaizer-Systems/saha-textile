@@ -4,7 +4,7 @@ wide: true
 description: Item return, financial reversal, shipment consequences, and multi-channel communication boundaries.
 status: planned
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - apps/storefront/src/app/shared/ui/modal/refund-modal
     - apps/admin/src/app/features/refund
@@ -66,7 +66,7 @@ Partial refunds must never accidentally move an entire payment/order into a full
 
 ## Notifications
 
-Target customer messaging flows through `NotificationPort`, with SMS, WhatsApp, and email behind swappable adapters. The locked primary provider is **MSG91** (SMS / WhatsApp / Email, including auth OTP), with an optional email fallback (`resend`/`ses`/`smtp`) that is never primary. The API **configuration surface already exists** — `NOTIFICATION_PROVIDER` (`console` | `msg91`), `MSG91_*`, and `EMAIL_FALLBACK_PROVIDER` are validated in `app-config.ts`. Shared zod contracts now define channel/category settings, template metadata, usage rows, outbox states, consent events, and audit evidence. The `NotificationPort`, repositories, collections, use cases, and provider adapters are **not yet implemented**, so this remains planned architecture; local/test runs use the `console` provider (logs instead of sending). Transactional and marketing controls are separate.
+Target customer messaging flows through `NotificationPort`, with SMS, WhatsApp, and email behind swappable adapters. The locked primary provider is **MSG91** (SMS / WhatsApp / Email, including auth OTP), with an optional email fallback (`resend`/`ses`/`smtp`) that is never primary. The API **configuration surface already exists** — `NOTIFICATION_PROVIDER` (`console` | `msg91`), `MSG91_*`, and `EMAIL_FALLBACK_PROVIDER` are validated in `app-config.ts`. Shared zod contracts now define channel/category settings, template metadata, usage rows, outbox states, consent events, and audit evidence; `NotificationPort` plus governance and extended-catalogue repository interfaces now exist in core. Provider adapters, collections, and notification use cases remain planned, so the end-to-end messaging capability is not implemented. Transactional and marketing controls are separate.
 
 | Category              | Examples                                               | Consent/availability rule                                                             |
 | --------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------- |

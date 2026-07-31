@@ -1,8 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 
 /**
@@ -19,7 +18,18 @@ import { afterAll, describe, expect, it } from 'vitest';
  * disturbs, a previous `pnpm build` output.
  */
 
-const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+/**
+ * Vitest runs with the package directory as cwd (`pnpm --filter`, Turbo, and a bare
+ * `vitest` all do). `import.meta.url` is not usable here because the base tsconfig emits
+ * CommonJS, so the cwd is resolved instead — and then VERIFIED, since a test that
+ * silently compiles the wrong package would report a purity it never checked.
+ */
+const packageRoot = resolve(process.cwd());
+const packageName = (JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')) as { name?: string }).name;
+if (packageName !== '@saha-textile/core-domain') {
+	throw new Error(`runtime-purity must run from the core-domain package; cwd resolved to "${packageName}"`);
+}
+
 const outDir = mkdtempSync(join(tmpdir(), 'saha-textile-core-purity-'));
 
 /** Packages whose presence in emitted JS would break core's runtime purity. */
@@ -74,7 +84,7 @@ describe('core-domain runtime purity (G-CORE-CONTRACTS)', () => {
 		const offenders = emitted.flatMap(({ file, source }) =>
 			[...source.matchAll(externalImport)]
 				.map((match) => match[1])
-				.filter((specifier): specifier is string => Boolean(specifier) && !specifier.startsWith('node:'))
+				.filter((specifier): specifier is string => specifier !== undefined && !specifier.startsWith('node:'))
 				.map((specifier) => `${file} imports ${specifier}`),
 		);
 

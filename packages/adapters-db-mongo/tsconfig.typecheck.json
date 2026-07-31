@@ -4,5 +4,9 @@
 		"noEmit": true,
 		"rootDir": "."
 	},
+	// The base config excludes `**/*.test.ts` so `build` emits src only. `exclude` wins over
+	// `include`, so without this override the test files listed below were silently skipped
+	// and this config typechecked no more than the base one did.
+	"exclude": ["node_modules", "dist"],
 	"include": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"]
 }

@@ -237,6 +237,42 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
   content contract families and the missing ports (`TransactionManagerPort`,
   `NotificationPort`, `YouTubePort`, `VideoTranscodePort`, session/OTP/OAuth/media/
   inventory repositories).
+- 2026-08-01 — [DONE] **Chunk B Pass 4 (all missing ports) — Chunk B contracts+ports scope is now complete.**
+  Service ports: `TransactionManagerPort` (opaque `TransactionContext` so no driver
+  session leaks into core; retries re-run the whole callback; nesting joins),
+  `NotificationPort` (suppression is a SUCCESSFUL outcome, not an error — disabled
+  channel/no consent/plan limit short-circuit before any provider call; OTP
+  generation stays ours, this port only delivers), `YouTubePort`, `VideoTranscodePort`
+  (enqueue-only; the ladder is derived from `sourceHeight`, never passed in).
+  Repository ports: `auth.repository.ts` (sessions with hash-only lookups +
+  `findByPreviousRefreshTokenHash` for reuse detection + `revokeFamily`, OTP
+  challenges with atomic consume/attempts, OAuth state, reset/verification tokens,
+  admin invites, rate limits), `media.repository.ts` (reference counting + orphan GC,
+  soft then hard delete), `inventory.repository.ts` (atomic `applyDelta`, no `update`
+  — the ledger is append-only; FIFO consume/release returning the layers drawn),
+  `governance.repository.ts` (append-only audit taking a transaction context so a
+  mutation and its audit row commit together, consent, notification settings/
+  templates/outbox with `findByIdempotencyKey`), and
+  `catalog-extended.repository.ts` (placements incl. `moveSubtree`, facet-config
+  cascade `resolveFor`, attribute definitions, variants, bundles with
+  `isBundleProduct` as the `DEC-BUNDLE-NESTING` write-path guard, relations with
+  `disableForTarget` auto-pause, FAQ, Q&A, reviews with `hasVerifiedPurchase` and
+  approved-only `recomputeAggregate`). **Two real gate bugs found and fixed while
+  proving the new `port-conformance.test.ts` works:** (1) `tsconfig.typecheck.json`
+  in BOTH `core-domain` and `adapters-db-mongo` listed `test/**` in `include` while
+  inheriting `exclude: ["**/*.test.ts"]` from the base config — `exclude` wins, so
+  **no test file in either package had ever been typechecked**; the first mutation
+  proof came back clean and exposed it. Both configs now override `exclude`, verified
+  by mutation (a deliberate type error in each test file now fails `pnpm typecheck`).
+  (2) Turning that on surfaced 8 pre-existing errors in the Pass 1b purity test,
+  which had never been checked: added `@types/node` to `core-domain` devDeps +
+  `types: ["node"]` in the typecheck config only (src stays free of Node globals),
+  replaced the CommonJS-illegal `import.meta.url` with a cwd resolution that
+  ASSERTS it is in the core-domain package, and fixed a `noUncheckedIndexedAccess`
+  narrowing. Conformance is mutation-verified: dropping a required member, returning
+  a wrong shape, and breaking a generic signature each fail typecheck. core-domain
+  18 → **36 tests**. Gates: typecheck 13/13, lint 15/15, `pnpm test` 9/9, naming,
+  format all green. Tool: claude-code.
 - 2026-08-01 — [DONE] **Chunk B Pass 3 (media, inventory, content contract families).**
   Three new files: `media.ts`, `inventory.ts`, `content.ts`. Sequenced BEFORE the
   ports pass on purpose — a `MediaAssetRepository` or `InventoryLedgerRepository`

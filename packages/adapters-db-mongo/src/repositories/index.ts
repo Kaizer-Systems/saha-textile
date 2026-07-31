@@ -5,3 +5,4 @@ export * from './promotion.repository';
 export * from './cart.repository';
 export * from './order.repository';
 export * from './user.repository';
+export * from './auth.repository';

@@ -159,6 +159,23 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 ## Admin (`apps/admin`)
 
 - 2026-07-24 — [PARTIAL] Angular admin UI scaffolding exists; `.env.example` + runtime config alignment TBD vs locked model. Tool: cursor.
+- 2026-07-31 — [DONE] **Stale `apps/admin` scaffold spec deleted; repo-wide `pnpm test` is green again — resolves the BLOCKED bullet below.**
+  Checked `app.component.spec.ts` against the real component before removing it:
+  `App` has no `title` property, and `app.html` is `<ngx-loading-bar>` +
+  `<router-outlet>` with no `<h1>`, so the title and rendered-title assertions were
+  unreachable Angular-scaffold defaults, not admin behavior. The remaining
+  `should create the app` case needs a real DI harness — `SettingStore`
+  (`loadSetting()` issues HTTP), `TranslocoService`, `NgbNavConfig`, and an
+  `#appIcon` link element in the fixture DOM, because the constructor does
+  `this.favIcon!.href = …` and throws on null. Writing that harness is worthwhile
+  but is its own task; faking it here would have been worse than removing a spec
+  that asserted nothing. **Known consequence, stated plainly:** `apps/admin` now has
+  zero unit specs and stays green only through `vitest run --passWithNoTests`
+  (`apps/storefront` already had none). Admin component rendering is covered by the
+  33/33 reusable-component Storybook stories; the `App` shell itself is currently
+  covered by nothing. Verified: `pnpm --filter @saha-textile/admin test`,
+  repo-wide `pnpm test` 9/9 tasks, `pnpm lint` 15/15 + `check:naming`,
+  `pnpm format:check`. Tool: claude-code.
 - 2026-07-31 — [BLOCKED] **`apps/admin` unit tests are red on a stale scaffold spec — pre-existing, unrelated to API/DB work.**
   `src/app/app.component.spec.ts` (untouched since the 2026-07-05 verbatim admin
   port) imports `App` but calls `TestBed.createComponent(AppComponent)`, so all 3

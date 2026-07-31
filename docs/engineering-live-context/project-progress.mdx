@@ -220,6 +220,43 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
   content contract families and the missing ports (`TransactionManagerPort`,
   `NotificationPort`, `YouTubePort`, `VideoTranscodePort`, session/OTP/OAuth/media/
   inventory repositories).
+- 2026-07-31 — [DONE] **Chunk B Pass 2b (rest of the catalog contract family — contracts + tests only, no persistence).**
+  Six new files in `packages/contracts/src`: `catalog.ts` (`CatalogStatus` shared
+  lifecycle + `CategoryKind`), `category-placement.ts` (`CategoryPlacement`,
+  `CategoryPlacementSet`, `CategoryFacet`, `CategoryFacetConfig`, `FacetSource`,
+  `FacetSeoPolicy`), `product-options.ts` (`ProductOptionTerm`,
+  `ProductOptionGroup`, `ProductOptionGroupSet`, `variationAxisCodes`),
+  `product-variant.ts` (`ProductVariant`, `ProductVariantSet`, stock/shipping/tax/
+  sale-window blocks, `optionSelectionKey`), `product-bundle.ts`, and
+  `product-relation.ts`. **Locks encoded structurally, not just in prose:**
+  (a) `CatalogStatus` mirrors `ProductStatus` and a test asserts they stay identical,
+  killing the `active|hidden|archived` vs `draft|published|archived` vocabulary drift
+  the pre-lock sketches carried; (b) a category may hold many placements but at most
+  ONE canonical, and paths/depths/parents must agree and may not repeat a category
+  (cycle guard); (c) an enabled facet must be visible on some breakpoint, facet SEO
+  policy offers only `never_index`/`allow_curated_landing_only` — there is no
+  `always_index` to reach for; (d) a `named_add_on` group must own an opt-out base
+  term AND default to it (the locked `No Design` behavior), while `filter_only` is
+  left free; (e) variants reject two terms of one axis, a sale price above list,
+  duplicate combinations/SKUs, two base rows, and rows disagreeing about which axes
+  exist; (f) `ProductBundle` has NO `allowNestedBundles`/`maxDepth` knob at all
+  (`DEC-BUNDLE-NESTING` locked) plus a self-containment check — a test asserts the
+  knobs are absent so nesting cannot be re-enabled by flipping a flag; (g) relations
+  refuse `insight_set` as the source of `related`/`upsell` (owner lock: those are
+  curated manually), require an `insightSetId` for analytics-backed cross-sell/
+  bought-together so every rail traces to its weekly run, and forbid self-relations.
+  **Seams left explicitly open and annotated with their gate:** `DEC-PRICE-DISPLAY`
+  (compareAt/sale/saleWindow), `DEC-BACKORDER` (`allowBackorder`), `DEC-STOCK-RESERVE`,
+  `DEC-TAX-HSN` (`hsnCode`/`taxClassId` — structure only, never a rate),
+  `DEC-ADDON-MEASUREMENTS` (`priceDeltaINR`/`requiresMeasurements`/`addonTemplateIds`),
+  `DEC-VARIANT-OVERRIDES`, `DEC-I18N-ROUTES` (placement `pathSlugs` route is
+  provisional). Verified: contracts 68 → **110 tests**, 6 files; repo typecheck 13/13,
+  lint 15/15 (0 errors) + check:naming, format:check. Each key negative test was
+  additionally checked to fail for the INTENDED invariant (printed the actual Zod
+  issue) rather than incidentally on a missing field. Tool: claude-code. Notes:
+  repo-wide `pnpm test` is still red on this branch for the unrelated
+  `apps/admin` scaffold spec — that fix is committed on `fix/admin-app-spec`.
+  No persistence, model, repository, or API change in this pass.
 - 2026-07-31 — [DONE] **Chunk B Pass 2a (product lifecycle lock, end to end) — supersedes the `ProductStatus` drift bullet below.**
   `ProductStatus` is now the owner-locked `draft|live|disabled|discontinued`
   (was `draft|published|archived`), with a `ProductLifecycle` block
@@ -426,6 +463,6 @@ Track only status here; details stay in worksheet/umbrella/owner log.
 Use for “next agent should…” notes. Clear or archive when stale.
 
 - 2026-07-24 — Next: env/secrets sync per roadmap § Env architecture sync; recreate Docker Mongo profile if absent; update this file after each task. Tool: cursor.
-- 2026-07-31 — Chunk B Pass 2a (product lifecycle + public visibility) is DONE and committed. Next: **Pass 2b — the rest of the catalog contract family** (category placements/DAG + facet config, first-class `productVariants`, per-product option groups bound to `attributeDefinitions` semantic roles, `productBundles` with the no-nesting rule, `productRelations` curated-vs-insight-set). Then Pass 3 (missing ports) or Chunk C. Tool: claude-code.
+- 2026-07-31 — Chunk B Passes 1b, 2a and 2b are DONE and committed. Remaining in Chunk B: **Pass 3 — missing ports** (`TransactionManagerPort`, `NotificationPort`, `YouTubePort`, `VideoTranscodePort`, session/OTP/OAuth/media/inventory repositories) and the media/inventory/checkout/pricing/content contract families. Then **Chunk C — API platform** (request id, redacted logger, global error mapping onto the `ApiError` envelope added in Pass 1b, `TRUST_PROXY`/`CLIENT_IP_HEADER`, strict CORS, cookie/CSRF + rate-limit foundations, `/health/live`+`/health/ready`). Open cross-branch item: merge `fix/admin-app-spec` so repo-wide `pnpm test` is green here too. Portal freshness validator (37 pages) still needs its own reconciliation pass. Tool: claude-code.
 - 2026-07-31 — Chunk B Pass 1b is DONE and committed (boundary lint + purity test + shared primitives + attribute export + test backfill). Next candidates, in the order they reduce risk: (a) **Chunk B Pass 2 — catalog contract family** (categories/placements/products/first-class variants/option definitions + the `ProductStatus` `draft|live|disabled|discontinued` correction and its model/repository/API ripple); (b) **Chunk B Pass 3 — missing ports** (`TransactionManagerPort`, `NotificationPort`, `YouTubePort`, `VideoTranscodePort`, session/OTP/OAuth/media/inventory repositories); (c) **Chunk C Pass 1 — API platform** (request id, redacted logger, global error mapping onto the new `ApiError` envelope, `TRUST_PROXY`/`CLIENT_IP_HEADER`, strict CORS, cookie/CSRF + rate-limit foundations, `/health/live`+`/health/ready`). Two known reds that are NOT Chunk B regressions: the stale `apps/admin` `app.component.spec.ts`, and the 37-page portal freshness validator. Tool: claude-code.
 - 2026-07-24 — Roadmap §0b env/secrets sync is COMPLETE (all 9 deliverables; Passes 1–4 + brand naming law, all verified live). Next agent should pick up: Chunk A delta report, or §0d detailed deploy scripts when Infra is scheduled, or Chunk C security bootstrap (wire `TRUST_PROXY` into Fastify, CSRF scaffolding). Brand naming law is enforced via `pnpm check:naming` (part of root lint) — run it before finishing any task. Tool: claude-code.

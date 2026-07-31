@@ -4,7 +4,7 @@ wide: true
 description: Dependency direction, pure business logic, port contracts, swappability, and current gaps.
 status: scaffolded
 audience: [beginner, backend]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - packages/core-domain/src
     - packages/core-domain/test
@@ -49,23 +49,32 @@ These functions are tested. They are not a complete checkout pricing engine: tax
 
 ## Current port inventory
 
-| Port                  | Capability                            | Current adapter/binding        |
-| --------------------- | ------------------------------------- | ------------------------------ |
-| `ProductRepository`   | Product read/list/save/delete         | Mongo bound                    |
-| `CategoryRepository`  | Category read/tree/save/delete        | Mongo bound                    |
-| `CartRepository`      | Cart lookup/save/delete               | Mongo bound                    |
-| `OrderRepository`     | Order lookup/list/save/status         | Mongo bound                    |
-| `UserRepository`      | Public user and credential operations | Mongo bound                    |
-| `CurrencyRepository`  | Currency lookup/list/upsert           | Mongo bound                    |
-| `PromotionRepository` | Promotion lookup/list/save            | Mongo bound                    |
-| `AuthPort`            | Password hashing and JWT operations   | Argon2/JWT bound in API        |
-| `PaymentGatewayPort`  | Create/verify a gateway payment       | No provider adapter            |
-| `ShippingPort`        | Obtain shipping quotes                | No provider adapter            |
-| `FxRatePort`          | Fetch INR-derived exchange rates      | No provider adapter            |
-| `StoragePort`         | Object storage and signed upload      | No provider adapter            |
-| `SearchPort`          | Index/remove/search products          | No Meilisearch adapter/binding |
+| Port                          | Capability                                                                    | Current adapter/binding             |
+| ----------------------------- | ----------------------------------------------------------------------------- | ----------------------------------- |
+| `ProductRepository`           | Product read/list/save/delete                                                 | Mongo bound                         |
+| `CategoryRepository`          | Category read/tree/save/delete                                                | Mongo bound                         |
+| `CartRepository`              | Cart lookup/save/delete                                                       | Mongo bound                         |
+| `OrderRepository`             | Order lookup/list/save/status                                                 | Mongo bound                         |
+| `UserRepository`              | Public user and credential operations                                         | Mongo bound                         |
+| `CurrencyRepository`          | Currency lookup/list/upsert                                                   | Mongo bound                         |
+| `PromotionRepository`         | Promotion lookup/list/save                                                    | Mongo bound                         |
+| `AuthPort`                    | Password hashing and JWT operations                                           | Argon2/JWT bound in API             |
+| `PaymentGatewayPort`          | Create/verify a gateway payment                                               | No provider adapter                 |
+| `ShippingPort`                | Obtain shipping quotes                                                        | No provider adapter                 |
+| `FxRatePort`                  | Fetch INR-derived exchange rates                                              | No provider adapter                 |
+| `StoragePort`                 | Object storage and signed upload                                              | No provider adapter                 |
+| `SearchPort`                  | Index/remove/search products                                                  | No Meilisearch adapter/binding      |
+| `TransactionManagerPort`      | Opaque atomic-work boundary; nested work joins                                | Mongo bound and rs0 rollback-proven |
+| `NotificationPort`            | Deliver or deliberately suppress messaging                                    | No provider adapter                 |
+| `YouTubePort`                 | Discover channel-feed videos                                                  | No provider adapter                 |
+| `VideoTranscodePort`          | Enqueue edge-owned HLS transcoding                                            | No worker adapter                   |
+| Auth repositories             | Sessions, OTP, OAuth, reset, verification, invites, limits                    | Interfaces only                     |
+| Media repository              | References, orphan lifecycle and garbage collection                           | Interface only                      |
+| Inventory repository          | Atomic deltas and FIFO consume/release                                        | Interface only                      |
+| Governance repositories       | Audit, consent, notification settings/templates/outbox                        | Interfaces only                     |
+| Extended catalog repositories | Placements, facets, attributes, variants, bundles, relations, content/reviews | Interfaces only                     |
 
-Locked architecture also calls for transaction/unit-of-work, notification, email, audit, analytics/reporting, session/auth repository, YouTube, and video-transcode capabilities as their phases are implemented. Their absence must remain visible.
+Interfaces do not make an adapter, collection, or use case operational. Of the newly completed ports, only `TransactionManagerPort` has a current adapter and DI binding; the order service has not adopted it and remains non-atomic.
 
 ## What belongs in a port
 
@@ -117,7 +126,7 @@ The owner resolved `G-CORE-CONTRACTS` on 2026-07-25 with Option C:
 - the compiled core runtime must contain no contracts/zod import;
 - value imports from contracts and all framework, adapter, database, and provider-SDK imports remain forbidden.
 
-The current imports are type-only and the built JavaScript was verified runtime-pure. Mechanical enforcement is still incomplete: the current root ESLint rule blocks several infrastructure families, but it does not yet reject a value import from `@saha-textile/contracts`, and its provider-SDK denylist is not exhaustive. Treat that as remaining Chunk B/CI governance work, not as an unresolved architecture decision.
+The boundary is mechanically enforced in both positions. ESLint permits contracts only through `import type`, bans zod outright, and bans infrastructure/provider packages in type and value position. A runtime-purity test compiles the package and rejects emitted imports outside `node:` built-ins and the package’s own relative modules. Mutation probes proved both the lint and emitted-JavaScript directions fail when violated.
 
 ## Current search boundary
 

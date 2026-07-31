@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-07-26",
+	"lastVerified": "2026-08-01",
 	"route": "/database/schema-nebula",
 	"title": "Schema Nebula",
 	"summary": "A governed one-star-per-collection map of the 64 explicit MongoDB collection targets across the Saha Textile platform.",
@@ -192,13 +192,7 @@
 			"currentState": "existing",
 			"targetAction": "refactor",
 			"owningChunks": ["F"],
-			"blockingDecisions": [
-				"DEC-SKU",
-				"DEC-VARIANT-OVERRIDES",
-				"DEC-PRICE-DISPLAY",
-				"DEC-BACKORDER",
-				"DEC-ID-SLUG"
-			],
+			"blockingDecisions": ["DEC-VARIANT-OVERRIDES", "DEC-PRICE-DISPLAY", "DEC-BACKORDER", "DEC-ID-SLUG"],
 			"purpose": "Product identity, localized SEO, classification, option definitions, merchandising, lifecycle, and searchable summary.",
 			"source": "catalog §7.7",
 			"currentModel": "packages/adapters-db-mongo/src/models/product.model.ts",
@@ -211,7 +205,7 @@
 			"currentState": "planned",
 			"targetAction": "add",
 			"owningChunks": ["F"],
-			"blockingDecisions": ["DEC-SKU", "DEC-VARIANT-OVERRIDES", "DEC-BACKORDER"],
+			"blockingDecisions": ["DEC-VARIANT-OVERRIDES", "DEC-BACKORDER"],
 			"purpose": "First-class purchasable SKU rows, prices, stock, variant media, and option selections.",
 			"source": "catalog §7.8",
 			"references": ["products", "mediaAssets"]
@@ -223,7 +217,7 @@
 			"currentState": "planned",
 			"targetAction": "add",
 			"owningChunks": ["F"],
-			"blockingDecisions": ["DEC-BUNDLE-NESTING"],
+			"blockingDecisions": [],
 			"purpose": "True compound products, kits, sets, and grouped purchase composition.",
 			"source": "catalog §7.9",
 			"references": ["products", "productVariants"]
@@ -235,7 +229,7 @@
 			"currentState": "planned",
 			"targetAction": "add",
 			"owningChunks": ["F"],
-			"blockingDecisions": ["DEC-PRODUCT-RELATIONS"],
+			"blockingDecisions": [],
 			"purpose": "Explicit related, cross-sell, upsell, substitute, complete-the-look, and bought-together links.",
 			"source": "catalog §7.10",
 			"references": ["products"]
@@ -665,7 +659,7 @@
 			"currentState": "existing",
 			"targetAction": "refactor",
 			"owningChunks": ["D"],
-			"blockingDecisions": ["DEC-DELETE-RETENTION"],
+			"blockingDecisions": [],
 			"purpose": "Canonical customer, staff, and admin account profile without secret credential material.",
 			"source": "auth §7.1",
 			"currentModel": "packages/adapters-db-mongo/src/models/user.model.ts",
@@ -822,7 +816,7 @@
 			"currentState": "planned",
 			"targetAction": "add",
 			"owningChunks": ["D"],
-			"blockingDecisions": ["DEC-DELETE-RETENTION"],
+			"blockingDecisions": [],
 			"purpose": "Append-only, versioned granular privacy and communication-consent history for users or guests.",
 			"source": "auth §7.13",
 			"references": ["users"]
@@ -834,7 +828,7 @@
 			"currentState": "planned",
 			"targetAction": "add",
 			"owningChunks": ["D"],
-			"blockingDecisions": ["DEC-DELETE-RETENTION"],
+			"blockingDecisions": [],
 			"purpose": "Broad admin and security accountability with bounded field diffs and tiered retention.",
 			"source": "catalog §7.26 + decisions Audit and retention",
 			"references": ["users"]

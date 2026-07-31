@@ -3,7 +3,7 @@ title: Storefront Application Atlas
 description: Interactive, evidence-backed map of storefront capabilities and implementation boundaries.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - apps/storefront/src/app
     - apps/storefront/vite.config.ts
@@ -44,4 +44,4 @@ No. Dynamic SSR is enabled, but browser-dependent components still need `isPlatf
 
 ### “Language switching means Bengali is ready”
 
-No. Transloco is wired, but the present application configuration lists English and French. Bengali remains the locked product target and requires catalogue/content coverage plus validation before the status can advance.
+No. Transloco is wired, and the present application configuration lists English and French. Locale membership is configuration rather than a fixed contract enum; Bengali can be enabled only when its catalogue/content coverage and validation are ready.

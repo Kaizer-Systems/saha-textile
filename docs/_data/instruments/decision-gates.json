@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-07-26",
+	"lastVerified": "2026-08-01",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
 		"docs/engineering-live-context/owner-decisions-log.mdx",
@@ -40,7 +40,7 @@
 			"blocksCollections": [],
 			"blocksFeatures": [],
 			"seamsOk": "Cleared — Chunk B may expand contracts/ports under the rule below.",
-			"resolvedNote": "Option C: `import type`-only coupling (runtime-pure; enforcement remains visible in Chunk B progress)."
+			"resolvedNote": "Option C: `import type`-only coupling, mechanically enforced by restricted-import lint plus emitted-JavaScript runtime-purity tests."
 		},
 		{
 			"id": "G-I18N-ROUTES",
@@ -50,7 +50,7 @@
 			"blocksChunks": ["F"],
 			"blocksCollections": ["seoRoutes", "seoRedirects"],
 			"blocksFeatures": ["Final SEO route / hreflang canonical policy"],
-			"seamsOk": "Provisional /en and /bn route seams are fine."
+			"seamsOk": "Configured-locale route seams may proceed; the permanent prefix and canonical policy remains open."
 		},
 		{
 			"id": "G-IMG-PX",

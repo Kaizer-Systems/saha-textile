@@ -4,7 +4,7 @@ wide: true
 description: NestJS module wiring, dependency-injection tokens, adapter ownership, Mongo mappings, and provider seams.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - apps/api/src/app.module.ts
     - apps/api/src/config/app-config.ts
@@ -33,6 +33,7 @@ flowchart TD
     App --> Auth["AuthModule"]
 
     Persistence --> MongoRepos["Seven Mongo repositories"]
+    Persistence --> Transaction["MongoTransactionManager"]
     Persistence --> AuthAdapter["Argon2JwtAuth"]
     Persistence --> MongoConnection["Mongo connection lifecycle"]
 ```
@@ -50,6 +51,7 @@ The name `PersistenceModule` is currently broader than persistence because it al
 | `CART_REPOSITORY`      | `MongoCartRepository`                              |
 | `ORDER_REPOSITORY`     | `MongoOrderRepository`                             |
 | `USER_REPOSITORY`      | `MongoUserRepository`                              |
+| `TRANSACTION_MANAGER`  | `MongoTransactionManager`                          |
 | `AUTH_PORT`            | `Argon2JwtAuth` factory using validated app config |
 
 Unbound ports do not become operational merely because their interfaces exist.
@@ -62,6 +64,7 @@ The adapter currently owns:
 - seven models and indexes;
 - conversion from Mongoose documents to public contract-shaped values;
 - repository queries/upserts/deletes;
+- a transaction manager that exposes only the opaque core transaction context and uses `AsyncLocalStorage` so nested transactions join;
 - idempotent seed data for categories, products, currencies, and promotion;
 - a gated live integration test.
 
@@ -111,29 +114,29 @@ Seam-first provider work is locked: ports and stub/sandbox adapters can advance 
 
 `app-config.ts` validates API runtime values with zod, which is the right direction. The configuration **surface** has been reconciled to the locked model since these pages were first written:
 
-- proxy/client-IP settings (`TRUST_PROXY`, `CLIENT_IP_HEADER`) are now parsed;
-- cookie/session/CSRF names (`st_access`, `st_refresh`, `st_csrf`, `x-csrf-token`, `CSRF_SECRET`) are present as placeholders for Chunk D;
+- proxy/client-IP settings (`TRUST_PROXY`, `CLIENT_IP_HEADER`) are parsed and applied to trusted request-id/client-IP handling and rate-limit keys;
+- cookie/session/CSRF names (`st_access`, `st_refresh`, `st_csrf`, `x-csrf-token`, `CSRF_SECRET`) feed the shared cookie helpers and global CSRF foundation;
 - notification (`NOTIFICATION_PROVIDER`/MSG91 plus an optional email fallback) and self-hosted Mongo (`rs0`) settings are reconciled in `.env.example` and `app-config.ts`;
 - the Mongo config now assembles a self-hosted `mongodb://…replicaSet=rs0` URI (or accepts a pre-encoded `MONGODB_URI`); the SRV hosted-cluster path and the obsolete email provider are gone.
 
 Remaining configuration gaps:
 
 - development JWT secrets are still supplied as defaults (`?? 'dev-…-change-me'`) without a production rejection gate;
-- the proxy, cookie, CSRF, and notification settings are declared but not yet wired into request handling or a live adapter.
+- session issuance/rotation and notification provider adapters are not yet wired. The present CSRF token is not bound to a persisted session until Chunk D lands `authSessions.csrfSecretHash`.
 
 Production must fail closed when required secrets or security settings are absent. Never “helpfully” create predictable production secrets.
 
 ## Connection lifecycle and readiness
 
-Current startup catches Mongo connection failure and keeps the application alive. This is useful for liveness but dangerous if `/health` is interpreted as readiness.
-
-Target separation:
+Current startup catches Mongo connection failure and keeps the application alive. The API now exposes the required separation:
 
 - process can boot and serve `/health/live`;
 - `/health/ready` fails while required dependencies are unavailable;
 - deployment does not send traffic until readiness passes;
 - background jobs do not begin until their own dependencies are ready;
 - shutdown stops intake, completes bounded work, and closes adapters cleanly.
+
+The split is runtime-proven: with Mongo stopped, `/health/ready` returned `503` with the dependency down while `/health/live` remained `200`. This proves health semantics, not full deployment readiness.
 
 ## Adding an adapter safely
 

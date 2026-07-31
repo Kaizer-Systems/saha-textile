@@ -4,7 +4,7 @@ wide: true
 description: Gateway selection, hosted payment, idempotency, atomic order records, status transitions, and ownership.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-25'
+last_verified: '2026-08-01'
 source_of_truth:
     - apps/api/src/orders
     - packages/contracts/src/order.ts

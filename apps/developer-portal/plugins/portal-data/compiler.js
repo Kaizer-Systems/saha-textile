@@ -331,15 +331,17 @@ function validateProjectTruth(repositoryRoot, truth, failures) {
 	if (truth.chunks?.A !== 'done' || !progress.includes('[DONE] **Chunk A (roadmap)')) {
 		failures.push('Mission Control Chunk A must match the completed Chunk A progress bullet.');
 	}
-	if (truth.chunks?.B !== 'partial' || !progress.includes('[DONE] **Chunk B Pass 1a')) {
-		failures.push('Mission Control Chunk B must be partial while Pass 1a is complete but Chunk B is not.');
+	if (truth.chunks?.B !== 'done' || !progress.includes('[DONE] **Chunk B Pass 4')) {
+		failures.push('Mission Control Chunk B must be done when the completed Pass 4 progress evidence is present.');
 	}
 	if (
-		truth.chunks?.C !== 'partial' ||
-		!progress.includes('[DONE] §0b env-sync Pass 1') ||
-		!progress.includes('[DONE] §0b Pass 2 (Mongo infra)')
+		truth.chunks?.C !== 'done' ||
+		!progress.includes('[DONE] **Chunk C Pass 1') ||
+		!progress.includes('[DONE] **Chunk C Pass 2') ||
+		!progress.includes('[DONE] **Chunk C Pass 3') ||
+		!progress.includes('[DONE] **Chunk C closed out')
 	) {
-		failures.push('Mission Control Chunk C must reflect the partial security/env/Mongo implementation.');
+		failures.push('Mission Control Chunk C must be done only when all three passes and close-out evidence exist.');
 	}
 	for (const id of ['D', 'E', 'F', 'G', 'H', 'I', 'J']) {
 		const completedPattern = new RegExp(`\\[DONE\\][^\\n]{0,80}\\*\\*Chunk ${id}\\b`);

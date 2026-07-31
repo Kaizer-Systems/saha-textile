@@ -4,7 +4,7 @@ wide: true
 description: Liveness versus readiness, logging, metrics, testing layers, transaction proof, and backend definition of done.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - apps/api/src/health
     - apps/api/src/infra/persistence.module.ts
@@ -20,7 +20,7 @@ source_of_truth:
 
 # Readiness, observability, and verification
 
-A process that answers HTTP is live. A service that can correctly perform its required work is ready. The current API exposes only a simple `/health` response while Mongo failure is deliberately non-fatal, so boot success is not dependency readiness.
+A process that answers HTTP is live. A service that can correctly perform its required work is ready. The API now exposes dependency-free `/health/live`, Mongo-aware `/health/ready`, and `/health` as a backwards-compatible liveness alias. Mongo failure remains deliberately non-fatal to process boot, while readiness fails closed with `503`.
 
 ## Target health contract
 
@@ -48,7 +48,7 @@ This is conceptual. The final schema belongs in shared contracts and must not ex
 
 ## Request observability
 
-Every request should carry or receive a correlation id. Structured logs/metrics should answer:
+Every request now receives a correlation id, echoed through `x-request-id`; an inbound id is honoured only through a trusted proxy and strict pattern. Pino redacts authorization/cookie/CSRF headers and password/PIN/code/token body fields at the adapter. Structured logs/metrics should continue to answer:
 
 - which route/use case ran;
 - which actor class/audience was involved;
@@ -78,14 +78,14 @@ Avoid high-cardinality labels such as raw user id, order id, email, token, full 
 
 ## Current automated-test evidence
 
-| Package       | Present evidence                                                 | Limitation                                                                                     |
-| ------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `contracts`   | Schema tests for common/product/category/currency/promotion/user | Incomplete operation DTO and security injection coverage                                       |
-| `core-domain` | Pricing/discount/FX/gross-up unit tests                          | No use-case/state-machine/port contract suites                                                 |
-| Mongo adapter | Category/product/seed integration tests                          | Skips unless `RUN_DB_IT=1` and Mongo config is present (`pnpm mongo:up`); no transaction proof |
-| API           | Test script allows no tests                                      | No API unit/integration/security/OpenAPI tests present                                         |
+| Package       | Present evidence                                                                      | Limitation                                                               |
+| ------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `contracts`   | 140 schema tests across common/auth/catalog/media/inventory/content/commerce families | Complete operation DTO/OpenAPI wiring remains                            |
+| `core-domain` | 36 pricing, visibility, runtime-purity and port-conformance tests                     | No complete use-case/state-machine suites                                |
+| Mongo adapter | Seven repository integration tests plus six transaction-manager commit/rollback tests | Requires `RUN_DB_IT=1` and a real rs0 profile; workflow adoption remains |
+| API           | 28 platform and CSRF unit tests, with test files included in typecheck                | Full auth/ownership/idempotency/OpenAPI route coverage remains           |
 
-The locked gate explicitly rejects “pass with no tests” and permanently skipped transaction tests as a done state.
+The admin application separately has zero unit specs and passes through `--passWithNoTests`; that frontend limitation must not be confused with the real API suite. The backend gate still rejects permanently skipped transaction proof as a production-done state.
 
 ## Test pyramid for this backend
 

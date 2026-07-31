@@ -4,7 +4,7 @@ wide: true
 description: Shared decision rules for state, contracts, layers, reusable UI, and cross-application behavior.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/admin/src/app/app.config.ts
@@ -61,7 +61,7 @@ The auth interceptor sends `withCredentials: true` on every request so API-issue
 
 ## Contracts today
 
-`packages/contracts/src` contains zod-backed contract modules for cart, category, common pagination/problem shapes, currency, order, product, promotion, shipping, and user, plus scaffolded auth/session/admin-auth/consent/audit/notification families. The latter describe locked boundaries but are not yet wired into the Angular applications or current API lifecycle.
+`packages/contracts/src` contains zod-backed common locale/money/pagination/error primitives and families for catalogue placements/attributes/options/variants/bundles/relations, media, inventory, content, cart, order, currency, promotion, shipping, users, auth/session/admin auth, consent, audit, and notifications. The active locale set is runtime configuration, not a contract enum. Most expanded families describe validated boundaries but are not yet wired into Angular workflows or current API operations.
 
 These contracts are the preferred trust boundary as real endpoints replace fixtures. Existing application-local interfaces still describe many fixture/view shapes; migrate deliberately rather than renaming them “contracts.”
 

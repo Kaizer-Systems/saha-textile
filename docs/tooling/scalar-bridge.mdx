@@ -4,7 +4,7 @@ slug: /tools/scalar
 description: Symbolic Docusaurus gateway to the generated Scalar API reference child.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 wide: true
 hide_table_of_contents: true
 source_of_truth:
@@ -26,6 +26,6 @@ import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
 	symbol="request-wormhole"
 />
 
-This scaffold publishes the current generated OpenAPI evidence and keeps **Test Request** available. The document is still incomplete, so missing security, error, schema, and side-effect detail remains visibly flagged inside the child surface.
+This scaffold publishes the current generated OpenAPI evidence and keeps **Test Request** available. The uniform `ApiErrorResponse` envelope and request ID are now real platform behavior, but complete request/response schemas, cookie-session and authorization semantics, idempotency, side-effect examples, drift proof, and an approved non-production target remain open.
 
-Test requests never receive a privileged token or security bypass from the portal. They target only the server URLs present in the generated OpenAPI document and remain subject to normal CORS, authentication, CSRF, authorization, ownership, and rate-limit enforcement.
+Test requests never receive a privileged token or security bypass from the portal. They target only the server URLs present in the generated OpenAPI document and remain subject to normal CORS, authentication, CSRF, authorization, ownership, and rate-limit enforcement. When a session cookie accompanies a state-changing request, first call `GET /auth/csrf` and copy the issued token into the `x-csrf-token` header; the deliberately non-`httpOnly` CSRF cookie supplies the matching half of the double submit.

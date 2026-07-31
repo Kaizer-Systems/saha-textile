@@ -5,7 +5,7 @@ description: Current authentication scaffold, locked browser-session target, CSR
 search_keywords: 'cookies csrf st_access st_refresh otp msg91 jwt session bola audiences pin'
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - apps/api/src/auth
     - apps/api/src/infra/argon2-jwt.auth.ts
@@ -22,7 +22,7 @@ source_of_truth:
 
 # Security, sessions, and authorization
 
-Security status is **scaffolded**. Argon2id, signed JWTs, a bearer guard, a role decorator/guard, CORS, Helmet, and rate limiting exist. Zod contract scaffolds now describe the locked browser-session, CSRF, refresh-family, audience, admin PIN, OTP, consent, and audit shapes, but those contracts are not wired into the current API, repositories, or collections.
+Security status is **scaffolded**. Argon2id, signed JWTs, the transitional bearer/role guards, strict credentialed CORS, Helmet, trusted client-IP rate limiting, per-request correlation, adapter-level log redaction, and the shared safe error envelope exist. Cookie attribute helpers, global double-submit CSRF enforcement, and `GET /auth/csrf` now form a real foundation. The complete cookie-session, refresh-family, audience, admin PIN, OTP, consent, and audit lifecycles are not wired into current repositories or collections.
 
 ## Authentication versus authorization
 
@@ -56,7 +56,7 @@ Important current gaps:
 - refresh JWT without server-side token-family rotation/reuse detection;
 - no logout revocation;
 - no storefront/admin audience separation;
-- no CSRF boundary because cookie sessions do not exist yet;
+- no persisted cookie-session lifecycle yet; the global CSRF guard is already active whenever a session cookie is present;
 - the legacy controller-local registration schema still accepts eight characters; the new shared auth contract sets the locked 12-character floor, but it is not wired into that endpoint and the denylist policy is not implemented;
 - OTP endpoints are still explicit not-implemented stubs, though the provider and policy config now exist (MSG91 is the locked provider behind the notification abstraction; `OTP_TTL_SECONDS`/`OTP_MAX_ATTEMPTS` are parsed);
 - no admin PIN implementation;
@@ -92,17 +92,17 @@ sequenceDiagram
 | Guest cookie               |                No | Opaque authority for one guest cart only            |
 | Locale/currency preference |            May be | Non-secret presentation context                     |
 
-The locked cookie names are `st_access`, `st_refresh`, and the browser-readable `st_csrf` (CSRF header `x-csrf-token`), delivered with the `__Host-` prefix in deployed environments. These names, plus `CSRF_SECRET`, are already present as configuration placeholders in `app-config.ts` and `.env.example`, but cookie sessions themselves are not yet wired — the current API still returns bearer tokens in JSON.
+The locked cookie names are `st_access`, `st_refresh`, and the browser-readable `st_csrf` (CSRF header `x-csrf-token`). Session cookies use `httpOnly`, `SameSite=Lax`, `Path=/`, and `Secure` in production; the CSRF cookie is deliberately readable and is not a credential. The `__Host-` prefix is used exactly when valid: production and no pinned `COOKIE_DOMAIN`. A pinned domain or plain HTTP falls back to the allowed compact `st_*` name. Cookie sessions themselves are not yet issued by the auth flow—the current API still returns bearer tokens in JSON.
 
 ## CSRF rule
 
-For cookie-authenticated `POST`, `PUT`, `PATCH`, and `DELETE`:
+For cookie-authenticated `POST`, `PUT`, `PATCH`, and `DELETE`, the global guard currently:
 
-1. validate the authenticated session;
-2. require the matching `X-CSRF-Token` value;
-3. validate that it is signed/bound to the session;
-4. verify allowed origin/fetch metadata where practical;
-5. reject before business mutation.
+1. allows safe methods and unsafe requests with no session cookie;
+2. otherwise requires the readable CSRF cookie and matching `x-csrf-token` header;
+3. compares them in constant time and rejects generically before mutation.
+
+Obtain the pair through `GET /auth/csrf`, which returns a 32-byte CSPRNG token in the `CsrfTokenResponse` body and sets the readable cookie. Binding that token to `authSessions.csrfSecretHash`, plus complete session validation and origin/fetch-metadata policy, remains Chunk D work.
 
 Never use `GET` for a state-changing operation.
 

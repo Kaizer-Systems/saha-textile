@@ -3,17 +3,23 @@ title: Request Lifecycle and Boundary Tracing
 description: How a request enters the API, crosses application and domain boundaries, reaches an adapter, and returns safely.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 wide: true
 search_keywords: 'flight simulator photon post orders idempotency transaction ghost stages trace'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/app.module.ts
     - apps/api/src
+    - apps/api/src/common/request-context.ts
+    - apps/api/src/common/http-exception.filter.ts
+    - apps/api/src/infra/persistence.module.ts
     - apps/api/src/orders/orders.controller.ts
     - packages/core-domain/src
+    - packages/core-domain/src/ports/transaction-manager.port.ts
     - packages/core-domain/src/pricing
     - packages/adapters-db-mongo/src
+    - packages/adapters-db-mongo/src/transaction-manager.ts
+    - packages/adapters-db-mongo/test/transaction.test.ts
     - apps/api/src/orders/orders.service.ts
     - packages/adapters-db-mongo/src/repositories/order.repository.ts
     - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
@@ -37,6 +43,7 @@ sequenceDiagram
     autonumber
     participant Client
     participant Fastify as Fastify/Nest bootstrap
+    participant Context as Request context + global guards
     participant Pipe as ZodValidationPipe
     participant Guard as Optional guards
     participant Controller
@@ -45,6 +52,7 @@ sequenceDiagram
     participant Mongo as Mongo repository/model
 
     Client->>Fastify: HTTP request
+    Fastify->>Context: Resolve request id/client IP, CORS, rate limit, CSRF
     Fastify->>Guard: Authenticate/authorize when decorated
     Guard-->>Fastify: Claims or exception
     Fastify->>Pipe: Parse selected request bodies
@@ -54,6 +62,7 @@ sequenceDiagram
     Port->>Mongo: Mongoose query/write
     Mongo-->>Service: Contract-shaped mapped value
     Service-->>Client: Nest serializes return value
+    Context-->>Client: x-request-id; safe ApiErrorResponse on failure
 ```
 
 This path exists, but it is inconsistent:
@@ -61,9 +70,9 @@ This path exists, but it is inconsistent:
 - not every route uses guards;
 - body validation schemas usually live inside controllers rather than shared contract families;
 - query/path parameters are often parsed manually;
-- there is no global safe error envelope or explicit response serializer;
+- every failure has the global safe `ApiErrorResponse` envelope, but successful values still lack consistent explicit response serialization;
 - authorization is sometimes a role check and sometimes absent;
-- multi-record writes have no transaction context.
+- a transaction port/adapter/context exists and is rollback-proven, but current multi-record order writes do not use it.
 
 ## Target request path
 

@@ -3,7 +3,7 @@ title: Generated Surfaces and Persistent Portal Runtime
 description: Storybook, TypeDoc, Scalar, database-catalogue, shared-theme, and atomic local serving topology.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - apps/developer-portal
     - apps/developer-portal-storybook
@@ -103,7 +103,7 @@ Install the pinned workspace packages once:
 corepack pnpm install
 ```
 
-No vendor account or manual desktop download is required. Docusaurus, Storybook, TypeDoc, Scalar, and the Mongo generator are pinned repository dependencies or source tooling. Test Request still requires the API to be running at an approved document server and obeys its normal authentication, CSRF, CORS, authorization, and rate-limit configuration.
+No vendor account or manual desktop download is required. Docusaurus, Storybook, TypeDoc, Scalar, and the Mongo generator are pinned repository dependencies or source tooling. Test Request still requires the API to be running at an approved document server and obeys its normal authentication, CSRF, CORS, authorization, ownership, and rate-limit configuration. For a state-changing request with a session cookie, obtain a double-submit token from `GET /auth/csrf` and send it in `x-csrf-token`.
 
 Run only Docusaurus in development:
 
@@ -182,6 +182,6 @@ The production Storybook build, standalone development server, and composite run
 Scalar and the MongoDB catalogue are live as visibly scaffolded current-evidence surfaces:
 
 - Scalar must remain scaffolded until the real OpenAPI contract passes the documented completeness, drift, environment, CORS/CSRF, and interaction-safety gates.
-- The MongoDB catalogue must remain scaffolded while implemented schemas contain temporary shapes and stable mappings, migrations, retention, transactions, and nested validators are absent.
+- The MongoDB catalogue must remain scaffolded while implemented schemas contain temporary shapes and stable mappings, migrations, retention, workflow transaction participation, and nested validators are absent.
 
 The complete deployment—including Docusaurus HTML, JavaScript/CSS, search data, Engineering Live Context, Storybook, TypeDoc, Scalar, OpenAPI, and database catalogue assets—remains blocked on verified whole-host default-deny private access. `noindex` is not access control.

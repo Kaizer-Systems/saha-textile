@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-07-26",
+	"lastVerified": "2026-08-01",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
 		"docs/engineering-live-context/project-progress.mdx"
@@ -26,16 +26,16 @@
 			"title": "Contracts & core ports",
 			"deps": ["A"],
 			"blockingGates": [],
-			"summary": "Expand the zod contract families and core ports (TransactionManager, Notification, Search, Storage, Payment, Shipping, FX…). The type-only contract boundary keeps core runtime-pure; the remaining port/test/lint work continues.",
-			"dod": "Packages typecheck; boundary lint green; contract + port unit tests."
+			"summary": "The shared zod contract families and every planned core port now exist. Type-only contract coupling is mechanically linted, emitted runtime purity is tested, and contract plus port-conformance coverage is in place.",
+			"dod": "Complete: boundary lint and runtime-purity tests are green; contract and port suites cover the delivered surface."
 		},
 		{
 			"id": "C",
 			"title": "API security foundation, replica-set profile & env sync",
 			"deps": ["A"],
 			"blockingGates": [],
-			"summary": "Fastify security bootstrap (cookies, CSRF scaffold, CORS allowlist, rate-limit, request id, redacted logger, error filter, live/ready), env/secrets sync, and the Docker replica-set profile for CI transaction tests. §0b env sync + the rs0 profile are done; the security bootstrap remains.",
-			"dod": "API boots; security bootstrap tests; replica-set profile used in CI."
+			"summary": "Fastify now issues and echoes request ids, redacts sensitive logs, returns the shared safe error envelope, resolves trusted client IPs for rate limiting, applies strict CORS, splits liveness/readiness, and enforces the cookie/CSRF foundation. The Mongo transaction manager is bound and proven against rs0.",
+			"dod": "Complete: API boot and health probes, CSRF matrix, and replica-set commit/rollback proof are green."
 		},
 		{
 			"id": "D",
@@ -47,19 +47,19 @@
 		},
 		{
 			"id": "E",
-			"title": "Transaction manager & Mongo adapter upgrade",
+			"title": "Mongo persistence & transaction adoption",
 			"deps": ["C"],
 			"blockingGates": [],
-			"summary": "A withTransaction() manager; repositories accept session context; rollback-on-injected-failure integration tests.",
-			"dod": "Transaction tests green against the Chunk C replica-set profile."
+			"summary": "The reusable TransactionManagerPort and MongoTransactionManager capability landed in Chunk C and is rollback-proven. Chunk E still upgrades persistence models and makes session-aware repositories and real mutation workflows adopt that capability.",
+			"dod": "Persistence repositories accept transaction context and atomic workflows prove rollback/retry at their real write boundaries."
 		},
 		{
 			"id": "F",
 			"title": "Catalog, SEO, search & merchandising",
 			"deps": ["B", "C"],
 			"blockingGates": ["G-I18N-ROUTES"],
-			"summary": "Catalog + SEO + self-hosted Meilisearch behind SearchPort + merchandising; published-only public reads; search outbox. Locale route seams are provisional until the URL policy is locked.",
-			"dod": "Public + admin catalog CRUD; Meili index of published only; search/facet tests."
+			"summary": "Catalog + SEO + self-hosted Meilisearch behind SearchPort + merchandising; live-only public reads; search outbox. Locale route seams are provisional until the URL policy is locked.",
+			"dod": "Public + admin catalog CRUD; Meili indexes live products only; search/facet tests."
 		},
 		{
 			"id": "G",

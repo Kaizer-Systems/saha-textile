@@ -3,7 +3,7 @@ title: Database Overview
 description: Current Mongo adapter boundary, durable-data status, and future generated catalogue.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-07-26'
+last_verified: '2026-08-01'
 source_of_truth:
     - packages/adapters-db-mongo/src
     - packages/contracts/src
@@ -16,25 +16,23 @@ source_of_truth:
 
 # Database overview
 
-The Mongo adapter contains real connection configuration, models, indexes, mappers, repositories, seed tooling and an integration test. The adapter is scaffolded and partially implemented. The interactive [Schema Nebula](./schema-nebula) maps the governed 64-collection target without pretending the field-level generated catalogue described below exists.
+The Mongo adapter contains real connection configuration, seven models, indexes, mappers, repositories, seed tooling, gated integration tests, and a bound transaction manager. The adapter remains partial. The interactive [Schema Nebula](./schema-nebula) maps the governed 64-collection target, while the separate source-only catalogue documents only today’s seven model files.
 
 ## Current implementation boundary
 
 Models currently exist for users, categories, products, carts, orders, currencies and promotions. Their presence does not prove production migration, validator, backup, restore or operational readiness.
 
-## Deferred generated catalogue
+## Current-model generated catalogue
 
-| Section                      | Source                         | Portal status                                   |
-| ---------------------------- | ------------------------------ | ----------------------------------------------- |
-| Collection fields            | Mongo model definitions        | **Deferred** until the generator is implemented |
-| Required and nullable fields | Model and validation rules     | **Deferred**                                    |
-| Indexes                      | Adapter index declarations     | **Deferred**                                    |
-| Example documents            | Sanitised generated examples   | **Deferred**                                    |
-| DTO mappings                 | Contracts plus adapter mappers | **Deferred**                                    |
+| Section                      | Source                         | Portal status                                     |
+| ---------------------------- | ------------------------------ | ------------------------------------------------- |
+| Collection fields            | Mongo model definitions        | **Scaffolded** source-generated current evidence  |
+| Required/default/enum/select | Model and validation rules     | **Scaffolded**; temporary `Mixed` shapes flagged  |
+| Indexes                      | Adapter index declarations     | **Scaffolded** source-generated current evidence  |
+| Example documents            | Sanitised synthetic examples   | **Scaffolded**; sensitive excluded fields omitted |
+| Stable DTO/migration mapping | Contracts, mappers, migrations | **Deferred** until mappings and migrations mature |
 
-## Generation trigger
-
-Create the catalogue generator when the persistence model is stable enough that generated output will reduce drift instead of repeatedly documenting temporary schema shapes. Generated pages must link back to their model, index and contract sources.
+The catalogue generator imports model metadata without opening a database connection. It remains explicitly current-model-only and scaffolded; Pass 4 regenerates its measured field/index/temporary-shape counts after the product lifecycle change.
 
 Do not manually duplicate field tables once generation is available.
 
@@ -50,6 +48,6 @@ Do not manually duplicate field tables once generation is available.
 
 - Connection configuration and `.env.example` now implement the locked self-hosted Docker MongoDB 8.3 single-node replica set (`rs0`), with the same profile locally and in production; the previous hosted-cluster/SRV assumptions have been removed. Start the local set with `pnpm mongo:up` (see [current adapter map](./current-adapter-map#local-replica-set-lifecycle)).
 - Current models use multiple `Mixed` nested structures, which are weaker than the future generated validator/catalogue needs.
-- No unit-of-work/transaction port or session-aware repository contract exists.
+- `TransactionManagerPort` and `MongoTransactionManager` exist, are bound in API composition, and are commit/rollback-proven against rs0. The current order path and repositories have not adopted the capability for atomic workflow writes.
 - Order, payment, shipment, return, refund, inventory, auth-session, consent, notification, audit and search-outbox records are not represented by the current seven-model scaffold.
-- The live integration suite normally skips itself and does not prove transaction rollback.
+- DB integration suites remain opt-in through `RUN_DB_IT=1`; the transaction suite has real rs0 proof, while CI/workflow adoption remains a separate readiness requirement.

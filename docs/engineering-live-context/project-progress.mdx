@@ -237,6 +237,30 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
   content contract families and the missing ports (`TransactionManagerPort`,
   `NotificationPort`, `YouTubePort`, `VideoTranscodePort`, session/OTP/OAuth/media/
   inventory repositories).
+- 2026-08-01 — [DONE] **Chunk B Pass 3 (media, inventory, content contract families).**
+  Three new files: `media.ts`, `inventory.ts`, `content.ts`. Sequenced BEFORE the
+  ports pass on purpose — a `MediaAssetRepository` or `InventoryLedgerRepository`
+  cannot be typed against contracts that do not exist yet. **Locks encoded as
+  validation:** media role keys are exactly `thumb|card|gallery|zoom|swatch_image|
+swatch_image_v2` with pixel sizes deliberately left to config (`G-IMG-PX`);
+  `hlsRenditionsFor()` is the single implementation of the ladder rule — always
+  480/720/1080, +1440 only for a 1440p source, +2160 for a 2160p source **skipping
+  1440**; uploads accept JPEG/PNG only and derivatives are WebP-only (no AVIF, absent
+  on purpose); image and video shapes cannot bleed into each other; a null
+  `originalStorageKey` models the hot master deleted after transcode; attachments must
+  be contiguous from 1 with `#1` primary and no repeated asset; the ten inventory
+  reason codes are fixed, a manual adjustment requires one, and `other` requires a
+  note (enforced on both the ledger row and the adjustment request); FIFO cost layers
+  cannot have more remaining than received and are marked never-customer-facing; FAQ
+  targeting must match its scope (`mixed` needs both, `global` may target neither);
+  a product question accepts guests with name+email, keeps the identity for admin
+  while `toPublicQuestion()` is the single place anonymity and email suppression are
+  applied; reviews require BOTH `userId` and `orderId` (logged-in verified purchase),
+  1–5 whole stars, and start `pending` so moderation precedes display; rating buckets
+  must sum to the count. **Seams:** `DEC-IMG-PX`/`DEC-MEDIA-CAPS` (sizes and ceilings
+  stay config), `DEC-STOCK-RESERVE`/`DEC-BACKORDER` (`reserved`/`available`).
+  Contracts 110 → **140 tests**. typecheck 13/13, lint 15/15, naming, format green.
+  Tool: claude-code.
 - 2026-07-31 — [DONE] **Chunk B Pass 2b (rest of the catalog contract family — contracts + tests only, no persistence).**
   Six new files in `packages/contracts/src`: `catalog.ts` (`CatalogStatus` shared
   lifecycle + `CategoryKind`), `category-placement.ts` (`CategoryPlacement`,

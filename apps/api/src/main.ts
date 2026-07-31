@@ -7,6 +7,7 @@ import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 
+import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import { Logger } from '@nestjs/common';
@@ -74,6 +75,10 @@ async function bootstrap(): Promise<void> {
 		done();
 	});
 
+	// Parses cookies for the CSRF guard and (in Chunk D) the session cookies. No secret is
+	// configured: these cookies are not signed — session integrity comes from the opaque
+	// token's own entropy and its server-side hash, not from a cookie signature.
+	await app.register(cookie);
 	await app.register(helmet);
 	await app.register(rateLimit, {
 		max: config.rateLimitMax,

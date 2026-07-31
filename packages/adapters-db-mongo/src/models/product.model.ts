@@ -19,7 +19,15 @@ export interface ProductDoc {
 	upsellIds: string[];
 	seo?: Record<string, unknown>;
 	ratingsSummary: { avg: number; count: number };
-	status: 'draft' | 'published' | 'archived';
+	/** Owner lock: only `live` is storefront-queryable. See core-domain product-visibility. */
+	status: 'draft' | 'live' | 'disabled' | 'discontinued';
+	lifecycle?: {
+		liveAt?: Date | null;
+		disabledAt?: Date | null;
+		discontinuedAt?: Date | null;
+		richDataPurgedAt?: Date | null;
+		statusReason?: string | null;
+	};
 	createdAt?: Date;
 	updatedAt?: Date;
 }
@@ -44,7 +52,8 @@ const ProductSchema = new Schema<ProductDoc>(
 		upsellIds: { type: [String], default: [] },
 		seo: { type: Schema.Types.Mixed },
 		ratingsSummary: { type: Schema.Types.Mixed, default: { avg: 0, count: 0 } },
-		status: { type: String, enum: ['draft', 'published', 'archived'], default: 'draft' },
+		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
+		lifecycle: { type: Schema.Types.Mixed, default: {} },
 	},
 	{ timestamps: true },
 );
@@ -54,6 +63,10 @@ ProductSchema.index({ sku: 1 }, { unique: true });
 ProductSchema.index({ categoryIds: 1 });
 ProductSchema.index({ tags: 1 });
 ProductSchema.index({ status: 1 });
+// Public listings always filter on status first, then narrow by category/recency.
+ProductSchema.index({ status: 1, categoryIds: 1, createdAt: -1 });
+// Retention job: find discontinued products whose window has elapsed and that still hold rich data.
+ProductSchema.index({ status: 1, 'lifecycle.discontinuedAt': 1 });
 
 export const ProductModel: Model<ProductDoc> =
 	(models.Product as Model<ProductDoc>) ?? model<ProductDoc>('Product', ProductSchema);

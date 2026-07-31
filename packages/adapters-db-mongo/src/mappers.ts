@@ -6,6 +6,21 @@ function iso(d?: Date): string | undefined {
 	return d ? new Date(d).toISOString() : undefined;
 }
 
+function isoOrNull(d?: Date | null): string | null {
+	return d ? new Date(d).toISOString() : null;
+}
+
+/** Maps the persisted lifecycle sub-document to the contract shape, filling defaults. */
+function toProductLifecycle(doc: ProductDoc['lifecycle']): Product['lifecycle'] {
+	return {
+		liveAt: isoOrNull(doc?.liveAt),
+		disabledAt: isoOrNull(doc?.disabledAt),
+		discontinuedAt: isoOrNull(doc?.discontinuedAt),
+		richDataPurgedAt: isoOrNull(doc?.richDataPurgedAt),
+		statusReason: doc?.statusReason ?? null,
+	};
+}
+
 export function toCategory(doc: CategoryDoc): Category {
 	return {
 		id: doc._id,
@@ -43,6 +58,7 @@ export function toProduct(doc: ProductDoc): Product {
 		seo: doc.seo as Product['seo'],
 		ratingsSummary: doc.ratingsSummary ?? { avg: 0, count: 0 },
 		status: doc.status,
+		lifecycle: toProductLifecycle(doc.lifecycle),
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),
 	};

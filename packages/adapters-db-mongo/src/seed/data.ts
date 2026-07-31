@@ -137,7 +137,7 @@ export const seedProducts: Product[] = [
 			},
 		],
 		variations: buildVariations('SAR001', 4500, sareeDesigns, sareeColors),
-		status: 'published',
+		status: 'live',
 	}),
 	Product.parse({
 		id: 'prod_dm_002',
@@ -174,7 +174,7 @@ export const seedProducts: Product[] = [
 			{ code: 'waist', label: { en: 'Waist' }, type: 'number', unit: 'in' },
 			{ code: 'sleeve_length', label: { en: 'Sleeve Length' }, type: 'number', unit: 'in' },
 		],
-		status: 'published',
+		status: 'live',
 	}),
 	Product.parse({
 		id: 'prod_saree_003',
@@ -187,7 +187,7 @@ export const seedProducts: Product[] = [
 		tags: ['cotton', 'handloom', 'daily'],
 		basePriceINR: 1800,
 		media: { gallery: ['spaces://products/saree-003/1.webp'] },
-		status: 'published',
+		status: 'live',
 	}),
 ];
 

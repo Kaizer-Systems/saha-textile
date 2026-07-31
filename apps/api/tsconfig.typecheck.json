@@ -1,0 +1,12 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"rootDir": "."
+	},
+	// `tsconfig.json` includes `src` only so `nest build` emits src. Tests need checking
+	// too — without this they compile only under Vitest's type-stripping transform, which
+	// reports nothing.
+	"exclude": ["node_modules", "dist"],
+	"include": ["src/**/*.ts", "test/**/*.ts"]
+}

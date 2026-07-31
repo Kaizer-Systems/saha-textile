@@ -23,6 +23,8 @@ const ConfigSchema = z.object({
 	// real client IP from CLIENT_IP_HEADER (cf-connecting-ip) for rate-limit/audit.
 	trustProxy: boolString,
 	clientIpHeader: z.string().optional(),
+	/** Pino level for request/application logs. `silent` is used by tests. */
+	logLevel: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 	rateLimitMax: z.coerce.number().int().positive().default(100),
 	rateLimitWindow: z.string().default('1 minute'),
 	// Transitional bearer JWT until Chunk D moves auth to httpOnly cookie sessions.
@@ -71,6 +73,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 		corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS,
 		trustProxy: env.TRUST_PROXY,
 		clientIpHeader: env.CLIENT_IP_HEADER || undefined,
+		logLevel: env.LOG_LEVEL || undefined,
 		rateLimitMax: env.RATE_LIMIT_MAX,
 		rateLimitWindow: env.RATE_LIMIT_WINDOW,
 		jwt: {

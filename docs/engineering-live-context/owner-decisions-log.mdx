@@ -3,7 +3,7 @@ title: 'Owner Decisions'
 description: 'Authoritative record of currently locked Saha Textile owner decisions.'
 audience: [engineering, product, operator, agent]
 document_role: canonical
-last_verified: 2026-07-25
+last_verified: 2026-07-31
 search_keywords: 'owner decisions authoritative locked intent architecture product operations'
 ---
 
@@ -11,7 +11,7 @@ search_keywords: 'owner decisions authoritative locked intent architecture produ
 
 **Status:** Authoritative record of currently locked owner decisions.
 
-**Last reconciled:** 2026-07-26
+**Last reconciled:** 2026-07-31
 
 This file contains current decisions only. Superseded intermediate positions remain available in Git history, not inline where they can be mistaken for current direction.
 
@@ -90,19 +90,41 @@ Unanswered questions live only in `pending-decisions.mdx`. When an answer is con
     - `image_swatch`;
     - `color_swatch`;
     - `radio`;
-    - `dropdown`.
+    - `dropdown`;
+    - `image_tile` (“Image V2”);
+    - `radio_bar`.
+- `image_tile` and `radio_bar` were added for storefront/admin renderer parity and are part of the canonical set; the earlier “canonical six” wording predates them (confirmed 2026-07-31, reconciled against `packages/contracts/src/attribute.ts`).
 - Visual display style never determines business behavior.
 - A standalone blouse may use design as a variation axis.
 - A saree’s included blouse piece remains part of the base saree; `Blouse Design` is a named add-on group with `No Design` default and optional pricing/media/measurement requirements.
 - Multiple named add-on groups are supported.
-- Archived, disabled, and discontinued products remain in MongoDB at launch and disappear from public listing/search/sitemap surfaces.
-- A future compressed cold-archive seam may move rich historical catalog data to Spaces only when real disk pressure justifies it.
+- Bundle/composite products cannot contain another bundle; nesting is disallowed (`DEC-BUNDLE-NESTING`).
+- Product primary statuses are `draft`, `live`, `disabled`, and `discontinued`; only `live` products are storefront-queryable across listing, search, and sitemap.
+- `disabled` hides a product from all storefront surfaces while retaining its full data and media (reversible).
+- `discontinued` hides a product and starts a 30-day retention window; after it, rich data and Spaces media are purged, leaving a minimal tombstone (name, SKU, audit references).
+- Historical order lines keep their immutable purchase-time snapshot; purged product media falls back to a single global placeholder image in order views.
+- In order views, links to disabled, discontinued, or purged products are non-navigable: muted styling, no pointer cursor, and a reused theme tooltip reading “no longer available”.
 - Search uses self-hosted Meilisearch behind `SearchPort`.
 - MongoDB is source of truth; Meilisearch is a rebuildable denormalized index.
 - Launch search surface includes typo tolerance, aliases, transliteration support, suggestions, no-result analytics, and admin dictionary tuning.
 - Category/listing facets come from Meilisearch through `SearchPort`.
 - Category/placement facet configuration controls public filters, order, style, counts, and mobile/desktop visibility.
 - Arbitrary faceted URLs are `noindex,follow` and canonicalize to the base listing unless explicitly modeled as SEO landing pages.
+
+## SKU generation (`DEC-SKU` — locked)
+
+- Product and variant SKUs are globally unique.
+- A SKU is an admin-defined prefix plus a per-prefix auto-incrementing counter; variant SKUs are auto-suffixed from the product SKU.
+- A category may define an optional default SKU prefix that prefills the product SKU and is overridable per product.
+- On manual override, a multi-category prefix conflict, or any prefix validation failure, the product form blocks and requires resolution: if the entered prefix already exists, the admin confirms either a different prefix (its counter starts fresh) or continuation of the existing prefix's counter.
+- The same conflict/verify workflow covers products placed in multiple categories and categories with multiple DAG placements that carry differing prefixes; it mirrors the HSN mismatch workflow.
+- A SKU is immutable once its product/variant is published or referenced by any order; changes are audited.
+
+## Product relationships (`DEC-PRODUCT-RELATIONS` — locked)
+
+- Related and upsell links are curated manually in product setup.
+- Cross-sell and bought-together links derive from persisted weekly analytics insight sets, with optional manual additions in product setup.
+- The storefront reads persisted insight sets only and never runs live analytics joins.
 
 ## Pricing, inventory, and commerce records
 
@@ -243,6 +265,7 @@ Unanswered questions live only in `pending-decisions.mdx`. When an answer is con
 - English is the primary locale.
 - The active target locale pair is English and French.
 - Bengali is an illustrative likely next locale, not a currently locked launch pair.
+- The active locale set is **configuration, not a contract constant** (engineering refinement 2026-07-31). `packages/contracts` validates a locale-code shape (`LocaleCode`) and a configured set (`ActiveLocaleConfig`); it never hard-codes which locales are live, so adding, swapping, or retiring a locale is a configuration change rather than a contracts/API change. `en` must remain in the active set because `I18nString` requires it.
 - Machine 1: developer-owned UI chrome uses Transloco keys.
 - Machine 2: admin-authored catalog/CMS/media/measurement content uses DB-localized fields and is rendered raw after API locale resolution.
 - Never send Machine-2 values through Transloco.
@@ -345,6 +368,12 @@ Unanswered questions live only in `pending-decisions.mdx`. When an answer is con
 - Raw analytics events are retained for 90 days after aggregate rollup.
 - Never audit secrets, passwords, full tokens, card data, or gateway working keys.
 - Prefer bounded field diffs over unbounded before/after blobs.
+
+### Deletion and retention (`DEC-DELETE-RETENTION` — locked)
+
+- Durable business records (catalog, orders, invoices, payments, returns, credit notes, customer accounts, gift cards, ledgers) are soft-deleted — recoverable and filtered from active queries — never hard-deleted, subject to the financial/audit retention windows above.
+- Transient security and session records (sessions, OTP challenges, rate-limit counters, pending intents, guest-cart handles) use TTL expiry.
+- Hard deletion is reserved for explicit privacy/legal purge requests and for orphaned media after a grace period; the discontinued-product 30-day rich-data purge is a defined exception that still preserves a minimal tombstone plus order snapshots.
 
 ## Developer portal
 

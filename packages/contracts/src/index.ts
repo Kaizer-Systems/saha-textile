@@ -1,6 +1,7 @@
 export * from './common';
 export * from './currency';
 export * from './category';
+export * from './attribute';
 export * from './product';
 export * from './promotion';
 export * from './cart';

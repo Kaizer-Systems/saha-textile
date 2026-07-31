@@ -1,5 +1,5 @@
 import { Global, Logger, Module, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
-import { connectMongo, disconnectMongo } from '@saha-textile/adapters-db-mongo';
+import { MongoTransactionManager, connectMongo, disconnectMongo } from '@saha-textile/adapters-db-mongo';
 import {
 	MongoCartRepository,
 	MongoCategoryRepository,
@@ -20,6 +20,7 @@ import {
 	ORDER_REPOSITORY,
 	PRODUCT_REPOSITORY,
 	PROMOTION_REPOSITORY,
+	TRANSACTION_MANAGER,
 	USER_REPOSITORY,
 } from './tokens';
 
@@ -33,6 +34,8 @@ import {
 		{ provide: CART_REPOSITORY, useClass: MongoCartRepository },
 		{ provide: ORDER_REPOSITORY, useClass: MongoOrderRepository },
 		{ provide: USER_REPOSITORY, useClass: MongoUserRepository },
+		// Unit-of-work boundary: multi-document commerce writes commit or roll back together.
+		{ provide: TRANSACTION_MANAGER, useClass: MongoTransactionManager },
 		{
 			provide: AUTH_PORT,
 			useFactory: (config: AppConfig) => new Argon2JwtAuth(config),
@@ -47,6 +50,7 @@ import {
 		CART_REPOSITORY,
 		ORDER_REPOSITORY,
 		USER_REPOSITORY,
+		TRANSACTION_MANAGER,
 		AUTH_PORT,
 	],
 })

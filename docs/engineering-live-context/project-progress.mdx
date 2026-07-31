@@ -220,7 +220,38 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
   content contract families and the missing ports (`TransactionManagerPort`,
   `NotificationPort`, `YouTubePort`, `VideoTranscodePort`, session/OTP/OAuth/media/
   inventory repositories).
-- 2026-07-31 — [PARTIAL] **`ProductStatus` drift is now the top of the Chunk B/E queue.**
+- 2026-07-31 — [DONE] **Chunk B Pass 2a (product lifecycle lock, end to end) — supersedes the `ProductStatus` drift bullet below.**
+  `ProductStatus` is now the owner-locked `draft|live|disabled|discontinued`
+  (was `draft|published|archived`), with a `ProductLifecycle` block
+  (`liveAt`/`disabledAt`/`discontinuedAt`/`richDataPurgedAt`/`statusReason`) on
+  `Product`. The 30-day retention window is NOT stored — it is a parameter of the
+  new pure core-domain module `catalog/product-visibility.ts`
+  (`STOREFRONT_VISIBLE_PRODUCT_STATUSES`, `isStorefrontVisible`,
+  `isSearchIndexable`, `resolveProductStatusFilter`, `discontinuationPurgeDueAt`,
+  `isDiscontinuationPurgeDue`), so changing it is config, not a migration.
+  **Security fix in the same pass:** the public catalog previously applied a status
+  clause only when the caller supplied one, and `getProduct` applied none at all —
+  so `GET /catalog/products` returned drafts and disabled products, and any draft
+  was readable by slug. `ProductFilter`/`ProductRepository` now carry a
+  `CatalogAudience` that defaults to `public` (fails closed), the Mongo repository
+  resolves the allowed status set centrally (a public caller asking for `draft`
+  gets `$in: []`, never a widened result), the public controller no longer accepts
+  a `status` query param at all, and a hidden product is a 404 rather than an
+  "exists but hidden" signal. Mongo model enum + `lifecycle` sub-document + two new
+  indexes (`status+categoryIds+createdAt`, `status+lifecycle.discontinuedAt` for the
+  retention job); mapper fills lifecycle defaults; seed `published` → `live`.
+  **Verified:** repo typecheck 13/13, lint 15/15 (0 errors), check:naming, format:check;
+  contracts 68/68, core-domain 30/30; `pnpm mongo:up` (rs0 PRIMARY) + `RUN_DB_IT=1`
+  adapter integration 7/7 including new cases proving draft/disabled/discontinued
+  products are invisible to public `list`/`findById`/`findBySlug`, cannot be widened
+  by an explicit status, and ARE visible to `audience: 'admin'`. Live API probe
+  against a fresh build with 5 products (3 live, 1 draft, 1 disabled): public list
+  returned 3 live, `?status=draft` still returned the 3 live, `/catalog/products/probe-draft`
+  and `probe-disabled` returned 404, live slug returned 200; probe fixtures removed
+  afterwards (DB back to 3 live). Tool: claude-code. Notes: `apps/api`'s `pnpm start`
+  is `node dist/main.js` — an initial probe measured a 2026-07-26 `dist` and was
+  discarded; always `pnpm build` before probing the API.
+- 2026-07-31 — [REVERTED] **`ProductStatus` drift is now the top of the Chunk B/E queue.**
   `packages/contracts/src/product.ts` still declares `draft|published|archived`
   while the owner lock (recorded today) is `draft|live|disabled|discontinued` with
   30-day discontinuation retention. Deliberately not changed in Pass 1b: it ripples
@@ -395,5 +426,6 @@ Track only status here; details stay in worksheet/umbrella/owner log.
 Use for “next agent should…” notes. Clear or archive when stale.
 
 - 2026-07-24 — Next: env/secrets sync per roadmap § Env architecture sync; recreate Docker Mongo profile if absent; update this file after each task. Tool: cursor.
+- 2026-07-31 — Chunk B Pass 2a (product lifecycle + public visibility) is DONE and committed. Next: **Pass 2b — the rest of the catalog contract family** (category placements/DAG + facet config, first-class `productVariants`, per-product option groups bound to `attributeDefinitions` semantic roles, `productBundles` with the no-nesting rule, `productRelations` curated-vs-insight-set). Then Pass 3 (missing ports) or Chunk C. Tool: claude-code.
 - 2026-07-31 — Chunk B Pass 1b is DONE and committed (boundary lint + purity test + shared primitives + attribute export + test backfill). Next candidates, in the order they reduce risk: (a) **Chunk B Pass 2 — catalog contract family** (categories/placements/products/first-class variants/option definitions + the `ProductStatus` `draft|live|disabled|discontinued` correction and its model/repository/API ripple); (b) **Chunk B Pass 3 — missing ports** (`TransactionManagerPort`, `NotificationPort`, `YouTubePort`, `VideoTranscodePort`, session/OTP/OAuth/media/inventory repositories); (c) **Chunk C Pass 1 — API platform** (request id, redacted logger, global error mapping onto the new `ApiError` envelope, `TRUST_PROXY`/`CLIENT_IP_HEADER`, strict CORS, cookie/CSRF + rate-limit foundations, `/health/live`+`/health/ready`). Two known reds that are NOT Chunk B regressions: the stale `apps/admin` `app.component.spec.ts`, and the 37-page portal freshness validator. Tool: claude-code.
 - 2026-07-24 — Roadmap §0b env/secrets sync is COMPLETE (all 9 deliverables; Passes 1–4 + brand naming law, all verified live). Next agent should pick up: Chunk A delta report, or §0d detailed deploy scripts when Infra is scheduled, or Chunk C security bootstrap (wire `TRUST_PROXY` into Fastify, CSRF scaffolding). Brand naming law is enforced via `pnpm check:naming` (part of root lint) — run it before finishing any task. Tool: claude-code.

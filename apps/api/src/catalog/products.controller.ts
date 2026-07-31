@@ -1,39 +1,42 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { ProductStatus } from '@saha-textile/contracts';
 import type { ProductFilter } from '@saha-textile/core-domain';
 
 import { CatalogService } from './catalog.service';
 
+/**
+ * PUBLIC catalog surface. It never accepts a `status` filter: only `live` products
+ * are storefront-queryable (owner lock), and honouring a client-supplied status here
+ * would let anyone read drafts and disabled products. Admin status filtering belongs
+ * on the authenticated admin catalog surface (Chunk F), which passes `audience: 'admin'`.
+ */
 @ApiTags('catalog')
 @Controller('catalog/products')
 export class ProductsController {
 	constructor(private readonly catalog: CatalogService) {}
 
 	@Get()
-	@ApiOperation({ summary: 'List published products with filtering and pagination' })
+	@ApiOperation({ summary: 'List live products with filtering and pagination' })
 	@ApiQuery({ name: 'page', required: false, type: Number })
 	@ApiQuery({ name: 'pageSize', required: false, type: Number })
 	@ApiQuery({ name: 'categoryId', required: false })
 	@ApiQuery({ name: 'tag', required: false })
 	@ApiQuery({ name: 'search', required: false })
-	@ApiQuery({ name: 'status', required: false, enum: ProductStatus.options })
-	@ApiOkResponse({ description: 'Paginated list of products' })
+	@ApiOkResponse({ description: 'Paginated list of live products' })
 	list(
 		@Query('page') page?: string,
 		@Query('pageSize') pageSize?: string,
 		@Query('categoryId') categoryId?: string,
 		@Query('tag') tag?: string,
 		@Query('search') search?: string,
-		@Query('status') status?: string,
 	) {
 		const filter: ProductFilter = {
+			audience: 'public',
 			page: page ? Number(page) : undefined,
 			pageSize: pageSize ? Number(pageSize) : undefined,
 			categoryId,
 			tag,
 			search,
-			status: ProductStatus.safeParse(status).success ? (status as ProductFilter['status']) : undefined,
 		};
 		return this.catalog.listProducts(filter);
 	}

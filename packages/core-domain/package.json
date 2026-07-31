@@ -15,7 +15,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint .",
     "test": "vitest run"
   },
@@ -23,6 +23,7 @@
     "@saha-textile/contracts": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "24.13.3",
     "typescript": "6.0.3",
     "vitest": "4.1.9"
   }

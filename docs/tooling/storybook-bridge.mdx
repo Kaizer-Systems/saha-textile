@@ -15,6 +15,8 @@ source_of_truth:
 
 import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
 
+<!-- NEXT-GEN-UI · What: canonical Component Forge bridge copy and launch surface · Why: keep Storybook evidence and return navigation distinct from the child mount · How: governed prose composes the locked ChildToolGateway metaphor · Tuning knobs: evidence copy only; choreography stays in ChildToolGateway -->
+
 <ChildToolGateway
 	toolName="Angular Storybook"
 	target="/storybook/"
@@ -28,3 +30,5 @@ import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
 The Component Forge opens one application-segregated Angular renderer. Storefront, Admin, and Shared stories retain their own decorators while inheriting the portal’s common visual language.
 
 The current renderer contains 119 named states. Its compiler gate accounts for all 139 reusable components across 282 Angular components (Storefront 106/106; Admin 33/33), while route/page orchestration remains assigned to integration and Playwright coverage. The Storefront full-page Loader remains an intentionally permanent component specimen.
+
+Inside the child renderer, **Return to gateway** stays in Storybook’s right-hand toolbar and returns here without routing through a generated mount.

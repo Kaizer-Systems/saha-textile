@@ -97,10 +97,10 @@ const requestPaths: RequestPath[] = [
 		status: 'scaffolded',
 		risk: 'critical',
 		method: 'POST',
-		path: '/auth/login',
+		path: '/auth/storefront/login/password',
 		summary: 'Authenticate a browser without exposing reusable session credentials to Angular storage.',
 		current:
-			'Login/register return access and refresh JWTs in JSON, and the guard reads Authorization: Bearer only. D1 provides tested persisted refresh-family rotation/reuse repositories, but the current API flow does not bind or use them. The controller-local password minimum remains eight characters.',
+			'The API sets audience-bound httpOnly access and opaque refresh cookies, persists refresh families and a per-session CSRF hash, rotates atomically, revokes a family on reuse, and returns only sanitized user/session metadata. Angular interceptors still attach a legacy bearer value which SessionGuard ignores.',
 		target: 'The API sets audience-bound httpOnly Secure cookies, rotates opaque refresh tokens, validates signed double-submit CSRF, enforces the locked password/PIN policies, and separates storefront from admin authority.',
 		verify: 'Prove tokens never enter browser-readable storage, unsafe cookie-authenticated methods reject missing CSRF, refresh reuse revokes the family, and storefront identity cannot authorize admin routes.',
 		layers: [
@@ -109,7 +109,7 @@ const requestPaths: RequestPath[] = [
 			{ label: 'Application', detail: 'AuthService' },
 			{ label: 'Port', detail: 'AuthPort + user repo' },
 			{ label: 'Adapter', detail: 'Argon2 + JWT / Mongo' },
-			{ label: 'Session', detail: 'Current JSON tokens' },
+			{ label: 'Session', detail: 'Cookie + persisted family' },
 		],
 		sources: [
 			'apps/api/src/auth',
@@ -128,12 +128,12 @@ const requestPaths: RequestPath[] = [
 		path: '/orders/:id',
 		summary: 'Return an order only when the actor owns it or holds an explicitly authorized operator permission.',
 		current:
-			'The route requires a valid bearer token but passes only the requested id to OrdersService. The service and repository fetch by id without comparing order.userId to the authenticated subject.',
+			'The cookie-session route now compares order.userId with the authenticated subject and hides mismatches as not-found; staff/admin have an explicit support bypass. Cart routes remain @Public() for guests but enforce Principal or hashed st_guest proof.',
 		target: 'A storefront query is ownership-scoped by construction. Admin access uses a separate route/audience and explicit resource permission, with sensitive fields serialized according to actor.',
 		verify: 'Create two users and prove neither can read the other order by changing the id. Repeat for staff roles, disabled users, stale permissions, missing records, and fields excluded from storefront responses.',
 		layers: [
 			{ label: 'Identity', detail: 'Token claims' },
-			{ label: 'Guard', detail: 'JwtAuthGuard' },
+			{ label: 'Guard', detail: 'SessionGuard + ownership' },
 			{ label: 'Controller', detail: 'OrdersController' },
 			{ label: 'Application', detail: 'OrdersService' },
 			{ label: 'Port', detail: 'OrderRepository' },
@@ -156,7 +156,7 @@ const requestPaths: RequestPath[] = [
 		path: '/orders',
 		summary: 'Convert an owned, revalidated cart into one durable commerce outcome exactly once.',
 		current:
-			'The service reads products sequentially, calculates a partial subtotal/coupon result, saves one order, then deletes the cart. A transaction port and Mongo implementation are bound and rs0-proven, but this order path does not use them; cart ownership, idempotency, stock reservation, tax/shipping, payment, and atomic rollback remain absent.',
+			'The service validates cart ownership/adoption, prices lines, then commits order save + cart consumption inside TransactionManagerPort. Idempotency keys, stock reservation, tax/shipping and payment orchestration remain Chunk G seams.',
 		target: 'Checkout quote and place-order are separate. Place-order uses an idempotency key and Mongo transaction spanning immutable order snapshot, payment attempt, inventory, ledger, cart, and audit/event records.',
 		verify: 'Inject failure after each write, repeat identical requests, race stock, replay callbacks, and assert either one complete committed result or a full rollback—never a half-created order.',
 		layers: [

@@ -16,7 +16,7 @@ source_of_truth:
 
 # Database overview
 
-The Mongo adapter contains real connection configuration, 32 models, indexes, mappers, repositories, seed tooling, 77 gated integration tests, and a bound transaction manager. The adapter remains partial at the whole-roadmap level. The interactive [Schema Nebula](./schema-nebula) maps the governed 64-collection target, while the separate source-only catalogue documents all 32 current Mongoose models.
+The Mongo adapter contains real connection configuration, 32 models, indexes, mappers, repositories, seed tooling, 81 gated integration tests, and a bound transaction manager. The adapter remains partial at the whole-roadmap level. The interactive [Schema Nebula](./schema-nebula) maps the governed 64-collection target, while the separate source-only catalogue documents all 32 current Mongoose models.
 
 ## Current implementation boundary
 
@@ -51,4 +51,4 @@ Do not manually duplicate field tables once generation is available.
 - `TransactionManagerPort` and `MongoTransactionManager` exist, are bound in API composition, and are commit/rollback-proven against rs0. The current order path and repositories have not adopted the capability for atomic workflow writes.
 - Payment, shipment, return/refund and search-outbox records remain target-only. Inventory, consent, notifications and broad audit evidence now have current models.
 - Most new D/E multiword models resolve lowercase Mongoose collection names rather than the locked lower-camel Schema Nebula names; only `reviews` matches exactly and is promoted. `authratelimits` is intentionally outside the graph.
-- DB integration suites remain opt-in through `RUN_DB_IT=1`; all 77 adapter tests have recorded rs0 proof, while CI and HTTP/workflow adoption remain separate readiness requirements.
+- DB integration suites remain opt-in through `RUN_DB_IT=1`; all 81 adapter tests have recorded rs0 proof, while CI and HTTP/workflow adoption remain separate readiness requirements.

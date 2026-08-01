@@ -26,3 +26,5 @@ import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
 />
 
 The Component Forge opens one application-segregated Angular renderer. Storefront, Admin, and Shared stories retain their own decorators while inheriting the portal’s common visual language.
+
+The current renderer contains 119 named states. Its compiler gate accounts for all 139 reusable components across 282 Angular components (Storefront 106/106; Admin 33/33), while route/page orchestration remains assigned to integration and Playwright coverage. The Storefront full-page Loader remains an intentionally permanent component specimen.

@@ -67,9 +67,9 @@ This inventory describes controller code reviewed on 2026-08-01. It is not a pro
 
 Access and refresh credentials are cookie-only. The global `SessionGuard` protects by default, checks audience plus token/permission versions, and routes opt out explicitly with `@Public()`. Session establishment/refresh writes the readable CSRF cookie whose value must be echoed in `x-csrf-token` for unsafe cookie requests; the guard also verifies its hash belongs to that session.
 
-`GET /auth/csrf` returns a pre-session 32-byte token in the body and readable cookie. It does **not** update an existing session's `csrfSecretHash`; using it to replace an established session's CSRF cookie currently causes the next unsafe request to fail `403`. That active-session rebinding defect and the stale bearer-only OpenAPI scheme remain API-source work, not facts for the portal to conceal.
+`GET /auth/csrf` returns a 32-byte token in the body and readable cookie. For an active session it preserves a valid bound token or atomically rotates `csrfSecretHash` to recover a missing/desynchronized cookie; before login it issues an unbound acquisition token. The stale bearer-only OpenAPI scheme remains API-source work, not a runtime authentication claim.
 
-Chunk D is therefore partial: D2 is done; D3 lacks email-verification completion and OAuth verification; D4 lacks invite acceptance and idle quick-resume; D5 has consent/privacy and order BOLA but lacks cart ownership.
+Chunk D is therefore partial: D2 is done; D3 lacks email-verification completion and OAuth verification; D4 lacks invite acceptance and idle quick-resume; D5 has consent/privacy, order BOLA, cart Principal/`st_guest` ownership and order-create cart adoption, while guest→user merge remains Chunk G.
 
 ## Privacy routes
 
@@ -106,26 +106,26 @@ These endpoints must not be used as proof that client-calculated checkout totals
 
 ## Cart routes
 
-| Method   | Route                     | Present behavior                           | Critical missing guarantee                                         |
-| -------- | ------------------------- | ------------------------------------------ | ------------------------------------------------------------------ |
-| `POST`   | `/cart`                   | Creates user-id or guest-token-shaped cart | Trusts supplied ownership inputs; no cookie identity/token hashing |
-| `GET`    | `/cart/:id`               | Fetches by id                              | No authentication/guest proof/ownership check                      |
-| `POST`   | `/cart/:id/lines`         | Appends a line                             | No ownership, product/configuration/price/stock validation         |
-| `PATCH`  | `/cart/:id/lines/:lineId` | Updates positive quantity                  | No ownership/stock/version/concurrency policy                      |
-| `DELETE` | `/cart/:id/lines/:lineId` | Removes a line                             | No ownership/idempotency policy                                    |
+| Method   | Route                     | Present behavior                                            | Critical missing guarantee                      |
+| -------- | ------------------------- | ----------------------------------------------------------- | ----------------------------------------------- |
+| `POST`   | `/cart`                   | Creates a principal cart or mints a hashed `st_guest` proof | Guest→user merge is not implemented             |
+| `GET`    | `/cart/:id`               | Principal or guest-proof ownership; support read bypass     | OpenAPI omits ownership semantics               |
+| `POST`   | `/cart/:id/lines`         | Ownership check before append                               | No product/configuration/price/stock validation |
+| `PATCH`  | `/cart/:id/lines/:lineId` | Ownership check before positive-quantity update             | No stock/version/concurrency policy             |
+| `DELETE` | `/cart/:id/lines/:lineId` | Ownership check before removal                              | No explicit idempotency policy                  |
 
 Target cart routes resolve “my cart” from secure identity rather than accepting arbitrary ownership. Guest-cart merge and offline sync are separate transactional use cases.
 
 ## Order routes
 
-| Method  | Route                | Present control                                         | Critical missing guarantee                                                     |
-| ------- | -------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `POST`  | `/orders`            | Cookie session, zod body, principal user id             | No cart ownership, quote, idempotency, transaction, stock/payment/shipping/tax |
-| `GET`   | `/orders`            | Cookie session and principal-scoped list                | Pagination bounds/response DTO/OpenAPI security semantics                      |
-| `GET`   | `/orders/:id`        | Customer ownership; staff/admin bypass; 404 on mismatch | Automated HTTP BOLA coverage remains thin                                      |
-| `PATCH` | `/orders/:id/status` | Admin/staff role + cookie-session CSRF                  | No explicit admin audience, permission, transition policy, version or audit    |
+| Method  | Route                | Present control                                                                  | Critical missing guarantee                                                  |
+| ------- | -------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `POST`  | `/orders`            | Cookie session, cart ownership/adoption, transactional order save + cart consume | No quote, idempotency, stock/payment/shipping/tax side effects              |
+| `GET`   | `/orders`            | Cookie session and principal-scoped list                                         | Pagination bounds/response DTO/OpenAPI security semantics                   |
+| `GET`   | `/orders/:id`        | Customer ownership; staff/admin bypass; 404 on mismatch                          | Automated HTTP BOLA coverage remains thin                                   |
+| `PATCH` | `/orders/:id/status` | Admin/staff role + cookie-session CSRF                                           | No explicit admin audience, permission, transition policy, version or audit |
 
-The current order service deletes the cart after a separate order save. A failure between those operations can leave inconsistent state. This route must not be connected to live checkout as a production place-order operation.
+The order service now saves the order and consumes the proven-owned cart inside one `TransactionManagerPort` unit of work, with rs0 commit/rollback integration proof. That atomic pair does not yet make this a production checkout: retry deduplication, stock reservation, payment/shipping/tax work, immutable complete snapshots, audit and outbox side effects remain absent.
 
 ## Current global controls
 

@@ -43,7 +43,7 @@ Session establishment and refresh write a readable, session-bound CSRF cookie al
 
 Missing, mismatched, or cross-session values fail with `403`. The CSRF token does not create a session, grant a role, prove object ownership, or increase the caller’s rate-limit allowance.
 
-`GET /auth/csrf` still exists for pre-session double-submit acquisition and returns the token in its response body. **Do not call it to replace the CSRF cookie of an established session today:** the route does not update that session’s `csrfSecretHash`, while the guard correctly requires the unsafe request token to match that hash. The resulting active-session token cannot pass. This is a current API-source defect; the portal does not present the documented pre-session route as a valid session-rebinding mechanism.
+`GET /auth/csrf` works both before and during a session. For an active session, Policy B preserves a still-valid bound token; if the readable cookie is missing or desynchronized, the session service atomically rotates `csrfSecretHash` before issuing the replacement. Anonymous callers receive an unbound pre-session token. The route grants no identity or authorization by itself.
 
 ## Current Chunk D boundary
 
@@ -54,7 +54,7 @@ The remaining boundary is explicit:
 - **D2 is done:** issue/refresh/revoke through httpOnly cookies, reuse-triggered family revocation, session-bound CSRF, and storefront/admin audience guards;
 - **D3 is partial:** the storefront auth family and anti-enumeration responses are real, but email-verification completion and OAuth verification remain absent;
 - **D4 is partial:** PIN login/setup/lockout, RBAC and permission-version invalidation are real, while invite acceptance and idle quick-resume remain absent; and
-- **D5 is partial:** consent/privacy seams and order BOLA are real, while public cart routes still accept arbitrary cart ids without guest proof or user ownership.
+- **D5 is partial:** consent/privacy seams, order BOLA, cart Principal/`st_guest` ownership, and order-create cart adoption are real; guest→user merge, pending intents, and checkout idempotency remain Chunk G.
 
 Scalar must distinguish these active controls from the residual gaps. A route appearing in OpenAPI is not proof that its request/response/security semantics are fully documented.
 
@@ -72,11 +72,9 @@ Scalar must distinguish these active controls from the residual gaps. A route ap
 
 Two generation runs produced byte-identical output without opening a MongoDB connection. That proves the current source generator is deterministic in this environment; it is not yet the required CI generation and drift gate.
 
-:::warning Known source defects
+:::warning Known OpenAPI defect
 
 The document globally declares only a bearer scheme even though current browser authentication is cookie-only, and no operation attaches any security requirement. It therefore cannot teach Scalar which routes require a storefront/admin cookie audience, roles, ownership, or CSRF.
-
-Separately, `GET /auth/csrf` does not rebind its new token to an existing session. Its controller comment still describes that binding as future Chunk D work although the guard/session service now enforce it elsewhere. The API owner must reconcile the route before the portal can verify the prescribed GET-token → unsafe-request sequence for an active session.
 
 :::
 
@@ -89,13 +87,13 @@ Scalar therefore remains **scaffolded**. Promotion is still blocked by:
 - complete request and response schemas;
 - cookie-session, CSRF, storefront/admin audience, role and ownership semantics in the document;
 - completion and documentation of email verification, OAuth verification, admin invite acceptance and quick-resume;
-- cart guest/user ownership enforcement and documentation;
+- documentation of cart guest/user ownership, order-create adoption, and the remaining guest→user merge;
 - route-specific rate-limit semantics in the document;
 - operation-specific error and idempotency examples;
 - transactional, audit, outbox, notification, and provider side-effect documentation;
 - CI generation plus required-path/tag/security and breaking-drift tests; and
 - an owner-approved non-production interaction target and policy; and
-- correction of the stale bearer scheme and active-session `/auth/csrf` rebinding defect.
+- correction of the stale bearer scheme.
 
 ## Target portal routes
 

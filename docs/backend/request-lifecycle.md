@@ -17,12 +17,14 @@ source_of_truth:
     - apps/api/src/auth/ownership.ts
     - apps/api/src/infra/persistence.module.ts
     - apps/api/src/orders/orders.controller.ts
+    - apps/api/src/cart/cart.service.ts
     - packages/core-domain/src
     - packages/core-domain/src/ports/transaction-manager.port.ts
     - packages/core-domain/src/pricing
     - packages/adapters-db-mongo/src
     - packages/adapters-db-mongo/src/transaction-manager.ts
     - packages/adapters-db-mongo/test/transaction.test.ts
+    - packages/adapters-db-mongo/test/order-cart-transaction.test.ts
     - apps/api/src/orders/orders.service.ts
     - apps/storefront/src/app/features/shop/checkout
     - packages/adapters-db-mongo/src/repositories/order.repository.ts
@@ -75,8 +77,8 @@ This path exists, but it is inconsistent:
 - body validation schemas usually live inside controllers rather than shared contract families;
 - query/path parameters are often parsed manually;
 - every failure has the global safe `ApiErrorResponse` envelope, but successful values still lack consistent explicit response serialization;
-- order reads have 404-on-mismatch ownership, but cart routes and place-order cart loading still lack ownership proof;
-- a transaction port/adapter/context exists and is rollback-proven, but current multi-record order writes do not use it.
+- order reads have 404-on-mismatch ownership, and cart reads/mutations plus place-order loading enforce Principal or hashed `st_guest` proof;
+- the order service adopts the rollback-proven transaction port for order save plus cart consumption, while inventory/payment/audit side effects remain outside that unit of work.
 
 ## Target request path
 
@@ -131,15 +133,14 @@ The storefront checkout is currently a demo-data UI and does not call `POST /ord
 1. The global guard validates the httpOnly access cookie and establishes a principal.
 2. Because this is an unsafe cookie request, the CSRF guard requires the readable session-bound token in both cookie and `x-csrf-token` header.
 3. `CreateOrderSchema` validates `cartId`, optional currency/gateway/coupon and accepts no user id.
-4. The controller attaches the principal's user id, but the service does not verify cart ownership.
-5. Service loads the cart and each product.
+4. The service proves the cart belongs to the principal or is a guest cart backed by the caller's `st_guest` cookie before any write.
+5. Service loads the authorized cart and each product.
 6. Service computes a partial INR/conversion/coupon total.
-7. Service saves the order.
-8. Service deletes the cart in a separate write.
+7. Service opens `TransactionManagerPort.withTransaction`.
+8. Order save and cart consumption use the same transaction context; rs0 integration tests prove commit and rollback.
 
 What is missing before this can be a production place-order flow:
 
-- owned cart resolution;
 - server quote/version and expiry;
 - idempotency key;
 - purchase eligibility and stock reservation;
@@ -147,8 +148,8 @@ What is missing before this can be a production place-order flow:
 - provider/gateway policy;
 - separate payment attempt;
 - immutable complete snapshots;
-- one transaction across required records;
-- rollback and replay tests.
+- extension of the current order+cart transaction to every required inventory/payment/audit/outbox record;
+- idempotent replay and full workflow rollback tests.
 
 ## Error taxonomy
 

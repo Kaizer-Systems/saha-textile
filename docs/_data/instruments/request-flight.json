@@ -14,13 +14,15 @@
 		"packages/core-domain/src/ports/transaction-manager.port.ts",
 		"packages/adapters-db-mongo/src/transaction-manager.ts",
 		"packages/adapters-db-mongo/test/transaction.test.ts",
+		"packages/adapters-db-mongo/test/order-cart-transaction.test.ts",
+		"apps/api/src/cart/cart.service.ts",
 		"packages/adapters-db-mongo/src/repositories/order.repository.ts",
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx"
 	],
 	"method": "POST",
 	"path": "/orders",
 	"title": "Place an order",
-	"summary": "Trace a place-order request across its boundaries. Cookie-session authentication, session-bound CSRF, request correlation and the safe error envelope are real. Cart ownership, idempotency, order-path transaction adoption, and atomic side effects remain ghosts even though their persistence capabilities now exist.",
+	"summary": "Trace a place-order request across its boundaries. Cookie-session authentication, session-bound CSRF, request correlation, cart ownership, order-and-cart transaction adoption, and the safe error envelope are real. Idempotency and atomic inventory/payment/audit side effects remain ghosts.",
 	"stages": [
 		{
 			"id": "client",
@@ -44,10 +46,9 @@
 			"id": "ownership",
 			"label": "Ownership",
 			"sublabel": "Cart proof",
-			"kind": "ghost",
-			"chunk": "Chunk G",
-			"file": "planned — cart ownership adoption (current evidence: apps/api/src/cart/cart.controller.ts)",
-			"current": "The controller derives the order user id from the authenticated principal, but OrdersService loads the supplied cart id without proving that the same user or guest owns it. GET /orders/:id has separate 404-on-mismatch BOLA protection; that does not secure this cart boundary.",
+			"kind": "real",
+			"file": "apps/api/src/cart/cart.service.ts",
+			"current": "OrdersService resolves the cart through getCartForOrder before any write. A user cart must match the authenticated principal; a guest cart requires the httpOnly st_guest proof whose hash is stored server-side. Cross-owner failures return not-found.",
 			"target": "Resolve the caller's owned cart from session or guest proof before price, inventory or order work begins."
 		},
 		{
@@ -91,10 +92,9 @@
 			"id": "transaction",
 			"label": "Transaction",
 			"sublabel": "Unit of work",
-			"kind": "ghost",
-			"chunk": "Chunk G",
-			"file": "planned — order-path transaction adoption (current evidence: apps/api/src/orders/orders.service.ts)",
-			"current": "TransactionManagerPort exists, MongoTransactionManager is bound, and rs0 tests prove commit plus rollback. OrdersService still does not use it: the order save and cart delete remain separate and non-atomic.",
+			"kind": "real",
+			"file": "apps/api/src/orders/orders.service.ts",
+			"current": "OrdersService now calls TransactionManagerPort.withTransaction and passes one context to order save plus cart consumption. Mongo rs0 integration tests prove commit and rollback for this adopted order-and-cart boundary.",
 			"target": "withTransaction() spans order, payment, inventory, cart and audit; any failure rolls all of them back."
 		},
 		{
@@ -103,7 +103,7 @@
 			"sublabel": "Order/Cart repositories → Mongo",
 			"kind": "real",
 			"file": "packages/adapters-db-mongo/src/repositories/order.repository.ts",
-			"current": "MongoOrderRepository saves the order via findByIdAndUpdate; the cart is deleted afterward.",
+			"current": "MongoOrderRepository saves the order and MongoCartRepository consumes the cart with the same transaction context supplied by the order service.",
 			"target": "Session-aware repositories accept the transaction context and participate in the atomic write."
 		},
 		{

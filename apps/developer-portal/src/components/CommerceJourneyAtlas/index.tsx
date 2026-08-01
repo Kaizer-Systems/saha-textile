@@ -101,7 +101,7 @@ const journeys: Journey[] = [
 		status: 'scaffolded',
 		summary: 'Authenticate without losing the shopper’s origin, cart, or one account-bound action.',
 		current:
-			'Auth routes, UI stores, bearer-token API endpoints, OTP stubs, and guarded account/admin surfaces exist.',
+			'Cookie-session register/password/OTP login, refresh, logout, reset, PIN and version-aware RBAC routes are live, with cart/st_guest ownership and order ownership enforced. Frontend auth adoption, guest-cart merge, OAuth, email-verification completion, invite acceptance and quick-resume remain incomplete.',
 		target: 'API-set secure cookies, CSRF validation, rotating refresh sessions, guest-cart merge, and a single server-side pending intent restore the correct continuation.',
 		recovery:
 			'Expired or invalid intent is not replayed. Show a safe explanation and return the user to the most relevant valid screen.',

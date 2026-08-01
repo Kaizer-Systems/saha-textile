@@ -44,7 +44,7 @@ An API request for account registration should not accept `role`, `emailVerified
 | `common.ts`                                          | locale config, localized text, ids/slugs, money/currency, pagination, API errors  | locale set is configured; page size is bounded; failures share one envelope |
 | `catalog.ts`, `category.ts`, `category-placement.ts` | category lifecycle, multi-placement, facets and SEO policy                        | at most one canonical placement; arbitrary facets cannot be always-indexed  |
 | `attribute.ts`, `product*.ts`, `promotion.ts`        | semantic attributes, lifecycle, options, variants, bundles, relations, promotions | only `live` is public; option role is independent of eight display styles   |
-| `media.ts`, `inventory.ts`, `content.ts`             | assets/HLS, ledger/FIFO, FAQ, Q&A and verified reviews                            | locked media/inventory/content invariants are runtime-validated             |
+| `media.ts`, `inventory.ts`, `content.ts`             | assets/HLS, ledger/FIFO, FAQ, Q&A and verified reviews                            | ratified media/inventory/content invariants are runtime-validated           |
 | `cart.ts`, `order.ts`, `currency.ts`, `shipping.ts`  | commerce aggregates, snapshots, FX inputs, and quote                              | value and currency travel together; canonical product price remains INR     |
 | `user.ts`                                            | sanitized public user, identities, addresses, consent snapshot                    | credential material is intentionally absent                                 |
 | `session.ts`                                         | access claims, public session info, server-internal session/refresh-family entity | browser response metadata contains no token values                          |
@@ -52,7 +52,7 @@ An API request for account registration should not accept `role`, `emailVerified
 | `auth-internal.ts`                                   | OTP/OAuth/reset/invite/rate-limit persistence shapes                              | codes/tokens/IP/user-agent values are represented by hashes                 |
 | `consent.ts`, `audit.ts`, `notification.ts`          | consent history, broad admin/security audit, notification settings/outbox         | append-only evidence and channel/category control are explicit              |
 
-These contract families are not proof of end-to-end operations. Contract tests total 140, and the matching core port surface is complete. Auth/session, OTP, password reset, admin PIN/RBAC, consent/privacy, cart/`st_guest` ownership and order-ownership contracts now have meaningful HTTP adoption; email-verification completion, OAuth, admin invite/quick-resume and guest→user merge remain open. The Mongo adapter now implements current consent, audit, notification, catalogue, media, inventory, governance and content models/repositories, but most of those expanded families still lack complete HTTP workflows. Checkout, payment, reporting, analytics and the rest of the locked target persistence remain incomplete.
+These contract families are not proof of end-to-end operations. Contract tests total 140, and the matching core port surface is complete. Auth/session, OTP, password reset, admin PIN/RBAC, consent/privacy, cart/`st_guest` ownership and order-ownership contracts now have meaningful HTTP adoption; email-verification completion, OAuth, admin invite/quick-resume and guest→user merge remain open. The Mongo adapter now implements current consent, audit, notification, catalogue, media, inventory, governance and content models/repositories, but most of those expanded families still lack complete HTTP workflows. Checkout, payment, reporting, analytics and the rest of the ratified target persistence remain incomplete.
 
 ## Boundary validation today
 
@@ -167,6 +167,6 @@ For every important schema, test:
 9. safe serialization;
 10. compatibility fixture from the previous released contract.
 
-## Current reconciliation warning
+## Contracts do not imply runtime delivery
 
-The expanded contracts encode multi-placement categories, semantic option roles, first-class variants, non-nested bundles, governed relations, media, inventory and content boundaries. Their presence does not make the corresponding Mongo collections or APIs real. Implement persistence and operations through the relevant roadmap chunk instead of treating contract coverage as runtime delivery.
+The expanded contracts encode multi-placement categories, semantic option roles, first-class variants, non-nested bundles, governed relations, media, inventory, and content boundaries. Their presence does not make corresponding Mongo collections or API workflows operational. Persistence and operations advance through their roadmap chunks; contract coverage alone is not runtime delivery.

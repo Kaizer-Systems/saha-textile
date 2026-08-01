@@ -37,17 +37,17 @@ Schema Nebula is a **governed architecture map**, not a live database browser an
 | Signal             | Meaning                                                                                          |
 | ------------------ | ------------------------------------------------------------------------------------------------ |
 | Solid star         | A corresponding Mongo adapter model exists in the current repository.                            |
-| Dashed ghost       | The collection is part of the locked target architecture but has no adapter model yet.           |
+| Dashed ghost       | The collection is part of the ratified target architecture but has no adapter model yet.         |
 | Gravity well       | A visual bounded-context cluster. It never collapses several physical collections into one node. |
 | Cyan relationship  | The selected collection references that collection.                                              |
 | Amber relationship | Another collection references the selected collection.                                           |
-| Decision badge     | A stable `DEC-*` owner choice still affects the collection’s final policy or shape.              |
+| Decision badge     | A stable `DEC-*` decision still affects the collection’s final policy or shape.                  |
 
 The eight solid stars are `categories`, `products`, `promotions`, `orders`, `currencies`, `carts`, `users` and `reviews`. Every other star remains a target-only ghost until exact physical-name model evidence exists.
 
-Chunks D/E expanded the current adapter to 32 models. Source inspection on 2026-08-01 shows that Mongoose resolves most new multiword physical names through lowercase defaults (`authsessions`, `categoryplacements`, `inventoryledgers`, `auditlogs`, and so on) rather than the owner-locked lower-camel graph names. Those models belong in the current-source catalogue but cannot promote mismatched stars. `reviews` resolves exactly and is now solid; `authratelimits` remains outside the graph. Schema Nebula is therefore **64 / 8 / 56**.
+Chunks D/E expanded the current adapter to 32 models. Source inspection on 2026-08-01 shows that Mongoose resolves most new multiword physical names through lowercase defaults (`authsessions`, `categoryplacements`, `inventoryledgers`, `auditlogs`, and so on) rather than the ratified lower-camel graph names. Those models belong in the current-source catalogue but cannot promote mismatched stars. `reviews` resolves exactly and is now solid; `authratelimits` remains outside the graph. Schema Nebula is therefore **64 / 8 / 56**.
 
-## Beginner controls
+## Controls
 
 - Search by collection name, purpose, context, roadmap chunk or decision identifier.
 - Use **All**, **Solid** and **Ghost** to compare current implementation with the target.
@@ -60,7 +60,7 @@ Chunks D/E expanded the current adapter to 32 models. Source inspection on 2026-
 
 The authored inventory lives in `docs/_data/instruments/schema-nebula.json`. The shared build-time compiler refuses to publish it unless all of the following agree:
 
-1. the owner-locked route and **64 / 8 / 56** inventory;
+1. the ratified route and **64 / 8 / 56** inventory;
 2. the current files under `packages/adapters-db-mongo/src/models`, with grouped lowercase D/E model files held as non-target evidence until their physical names align, `reviews` mapped through its grouped content file, and `authRateLimits` excluded by canonical policy;
 3. the catalog, auth, notification and roadmap sources;
 4. all collection-to-collection references;

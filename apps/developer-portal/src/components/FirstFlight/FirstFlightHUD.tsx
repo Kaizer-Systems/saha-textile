@@ -43,7 +43,7 @@ const STATUS_LABEL: Record<PortalPageStatus, string> = {
 const STATUS_GUIDANCE: Record<PortalPageStatus, string> = {
 	implemented: 'Evidence-backed checkpoint. Confirm the linked source before changing behavior.',
 	scaffolded: 'Partial implementation. Separate working seams from guarantees that are still missing.',
-	planned: 'Locked intent only. Do not describe this checkpoint as working runtime behavior.',
+	planned: 'Ratified intent only. Do not describe this checkpoint as working runtime behavior.',
 	deferred: 'Approved but deliberately postponed. Do not implement it through this tour.',
 	deprecated: 'Historical or transitional surface. Follow its replacement guidance before editing.',
 };
@@ -530,7 +530,7 @@ export function FirstFlightHUD(): React.ReactNode {
 							aria-atomic="true"
 						>
 							{targetState === 'found'
-								? 'Target locked'
+								? 'Target ratified'
 								: targetState === 'missing'
 									? 'Target unavailable'
 									: 'Acquiring target'}

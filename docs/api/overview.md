@@ -30,7 +30,7 @@ Start with the [Backend Platform Atlas](../backend/overview) when you need to un
 
 ## Current module snapshot
 
-The application currently exposes health, storefront/admin authentication, privacy, catalogue, cart, orders, currency and promotion modules. Its platform foundation includes per-request correlation ids, redacted structured logs, the shared safe error envelope, trusted client-IP rate-limit keys, strict CORS, dependency-free liveness, dependency-aware readiness, cookie-only sessions, atomic refresh rotation/reuse revocation, global session-bound double-submit CSRF, storefront/admin audiences, PIN/RBAC/version invalidation, consent/privacy seams, and order ownership. Chunk D remains partial because email-verification completion, OAuth verification, admin invite acceptance, idle quick-resume and cart guest/user ownership are absent. The broader contract and persistence families are not all wired end to end. Every module still needs to be evaluated against its roadmap definition of done before the overall API can be called implemented.
+The application currently exposes health, storefront/admin authentication, privacy, catalogue, cart, orders, currency, and promotion modules. Its platform foundation includes per-request correlation ids, redacted structured logs, the shared safe error envelope, trusted client-IP rate-limit keys, strict CORS, dependency-free liveness, dependency-aware readiness, cookie-only sessions, atomic refresh rotation and reuse revocation, global session-bound double-submit CSRF, storefront/admin audiences, PIN/RBAC/version invalidation, consent and privacy seams, cart Principal/`st_guest` ownership, order ownership, and transactional order-save plus cart-consume. Authentication remains partial because email-verification completion, OAuth verification, admin invite acceptance, idle quick-resume, and guest-to-user merge are absent. The broader contract and persistence families are not all wired end to end; each module must satisfy its roadmap definition of done before the overall API can be classified as implemented.
 
 ## Interactive-request boundary
 
@@ -47,7 +47,7 @@ Every endpoint page or generated operation should identify authentication, autho
 - [OpenAPI and Scalar](./openapi-and-scalar) — machine contract, completeness gate, publication and interaction policy.
 - [Readiness and verification](../backend/readiness-testing-and-observability) — tests, probes and operational proof.
 
-## What not to infer
+## Interpretation boundaries
 
 - An `@ApiOperation` summary does not prove a complete request/response schema.
 - A session guard does not prove ownership authorization.

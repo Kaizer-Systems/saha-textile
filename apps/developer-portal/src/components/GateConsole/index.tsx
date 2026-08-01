@@ -1,14 +1,14 @@
 /* ============================================================================
  * NEXT-GEN-UI · Decision Gate Console
  * ----------------------------------------------------------------------------
- * The owner decision gates as a cockpit of sealed switches. Selecting/hovering a
+ * Governed decision gates as a cockpit of sealed switches. Selecting/hovering a
  * gate lights its blast radius — the roadmap chunks AND DB collections whose
  * FINAL behaviour it blocks — on the impact board, which ripples in warning.
  * Makes "decision debt" visceral. Data is compiled from governed docs/_data and
- * cross-checked against the roadmap + owner log before this component renders.
+ * cross-checked against the roadmap + decision log before this component renders.
  *
  * A switch is a STATUS indicator, not a control: open = sealed (amber, locked),
- * resolved = cleared (green). Selecting inspects; it never flips an owner decision.
+ * resolved = cleared (green). Selecting inspects; it never resolves a decision.
  * Educational notes:
  * - blast radius is pure data (blocksChunks / blocksCollections); the impact
  *   board reads data-blocked and animates via CSS.
@@ -50,17 +50,19 @@ export function GateConsole(): React.ReactNode {
 		>
 			<div className={styles.head}>
 				<p className={styles.eyebrow}>Decision Gate Console</p>
-				<h2>What the owner still has to decide.</h2>
+				<h2>Decisions that still constrain implementation.</h2>
 				<p className={styles.lede}>
-					Each switch is an owner decision gate. Sealed (amber) gates block a slice of the build until locked;
-					cleared (green) ones are resolved. Select a gate to light its blast radius — the roadmap chunks and
-					database collections whose final behaviour waits on it. Foundations and seams still proceed.
+					Each switch is a governed decision gate. Sealed (amber) gates block a slice of the build until
+					resolved; cleared (green) gates are complete. Select a gate to light its blast radius—the roadmap
+					chunks and database collections whose final behaviour waits on it. Foundations and seams still
+					proceed.
 				</p>
 				<p className={styles.summary}>
-					<strong>{openGateCount}</strong> of {gates.length} gates open · reflects the roadmap + owner log.
+					<strong>{openGateCount}</strong> of {gates.length} gates open · compiled from the roadmap and
+					decision log.
 				</p>
 				<p className={styles.summary}>
-					<strong>{decisionRegister.openCount}</strong> open owner decisions · newly locked:{' '}
+					<strong>{decisionRegister.openCount}</strong> open decisions · recently resolved:{' '}
 					{decisionRegister.newlyLocked.join(' · ')}.
 				</p>
 			</div>

@@ -1,7 +1,7 @@
 ---
 title: Business and Commerce Journey Atlas
 wide: true
-description: Interactive map connecting current application behavior, locked target flows, and failure recovery.
+description: Interactive map connecting current application behavior, ratified target flows, and failure recovery.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
 last_verified: '2026-08-01'
@@ -22,7 +22,7 @@ A business journey crosses more boundaries than a screen or endpoint. This secti
 Use the atlas to select a journey and switch between three evidence lenses:
 
 - **Current code** — what exists in this repository now.
-- **Locked target** — the authoritative intended behavior.
+- **Ratified target** — the authoritative intended behavior.
 - **Failure recovery** — how the system must remain safe and understandable when the happy path breaks.
 
 <CommerceJourneyAtlas />
@@ -63,7 +63,7 @@ Shared auth/session/consent/audit/notification contract scaffolds now describe s
 | ------------------------------------------ | -------------------------------------------------------------- |
 | What does the UI do now?                   | Tested route/component/state behavior                          |
 | What HTTP shape exists?                    | `packages/contracts`, controller validation, generated OpenAPI |
-| What must the business flow eventually do? | Owner decisions and reconciled technical KB                    |
+| What must the business flow eventually do? | Ratified decisions and the canonical technical knowledge base  |
 | What data is durable?                      | Adapter models, indexes, mappings, and verified transactions   |
 | What does an external provider do?         | Its adapter plus current official provider documentation       |
 
@@ -83,6 +83,6 @@ These rules apply across the deep dives:
 
 :::info Why target flows appear before implementation
 
-The portal may document a locked target before code exists, but the lifecycle status and **Current code** lens must make that distinction unmistakable.
+The portal may document a ratified target before code exists, but lifecycle status and the **Current code** lens make that distinction explicit.
 
 :::

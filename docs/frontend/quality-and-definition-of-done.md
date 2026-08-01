@@ -1,7 +1,7 @@
 ---
 title: Frontend Quality and Definition of Done
 wide: true
-description: Verification contract for storefront and admin changes, including current test-coverage honesty.
+description: Verification contract for storefront and admin changes, including the current test-coverage boundary.
 status: scaffolded
 audience: [beginner, frontend, operator]
 last_verified: '2026-08-01'
@@ -19,7 +19,7 @@ The frontend application-unit foundation is not mature yet. The stale admin scaf
 
 Storybook is a separate component-rendering boundary: its automated inventory accounts for 139/139 reusable components across 282 Angular components. That does not cover the admin `App` shell or replace feature/integration/Playwright tests.
 
-This page defines the standard new work should move toward without misrepresenting today’s baseline.
+This page defines the verification standard for new work while preserving an accurate baseline.
 
 ## Risk-based test pyramid
 

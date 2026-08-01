@@ -44,10 +44,10 @@ The repository is public. Private deployment access does not make committed
 source private, so confidential values and credentials must never be committed
 to portal content or browser-delivered indexes.
 
-## Locked runtime-config and secrets model
+## Runtime configuration and secrets model
 
 - **Secrets reach the API only.** GitHub Actions encrypted secrets are injected as root-owned env files / Docker Compose secrets into the **API container**. They never reach the Angular apps.
 - **Angular apps get public config.** The storefront and admin apps receive a deploy-time public `config.json` (API/site URLs, locales, public client IDs) loaded at boot — no secret is ever baked into a browser build.
 - **Same Mongo profile as local.** Deployments run the same self-hosted Docker MongoDB 8.3 single-node replica set (`rs0`) profile used locally, on a private Docker network with credentials injected at deploy time.
 
-The automated deploy workflow and detailed deploy scripts that perform this injection are **not yet written** — this section documents the locked target, not an available pipeline.
+The automated deploy workflow and detailed injection scripts are **not yet implemented**. This section documents the ratified target architecture, not an available deployment pipeline.

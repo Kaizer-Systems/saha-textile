@@ -1,6 +1,6 @@
 ---
 title: Decision Gate Console
-description: The owner decision gates as a cockpit of sealed switches, showing the roadmap chunks and collections each one blocks.
+description: Governed decision gates as a cockpit of sealed switches, showing the roadmap chunks and collections each one blocks.
 slug: /decisions/gate-console
 wide: true
 status: implemented
@@ -24,8 +24,8 @@ import { GateConsole } from '@site/src/components/GateConsole';
 
 ## How to read this
 
-A **gate** is an owner decision that must be locked before a slice of the build can finalize. Sealed (amber) gates are still open; cleared (green) ones are resolved. Selecting a gate lights its **blast radius** — the roadmap chunks (which link to [Mission Control](/mission-control)) and database collections whose _final_ behaviour waits on it. Crucially, foundations and seams still proceed: a sealed gate blocks the final policy, not all work.
+A **gate** is a governed decision that must be resolved before a slice of the build can finalize. Sealed (amber) gates are open; cleared (green) gates are resolved. Selecting a gate lights its **blast radius**—the roadmap chunks (linked to [Mission Control](/mission-control)) and database collections whose final behavior depends on it. Foundations and seams may continue while a gate is sealed; only the dependent policy remains blocked.
 
-Gate questions and blast radii live in `docs/_data/instruments/decision-gates.json`; their live state comes from the marked Portal truth snapshot in `project-progress.mdx`. The build-time compiler cross-checks that state against the roadmap gate table and resolved owner-log decisions before publishing the typed dataset to this console.
+Gate questions and blast radii live in `docs/_data/instruments/decision-gates.json`; live state comes from the marked Portal truth snapshot in `project-progress.mdx`. The build-time compiler cross-checks that state against the roadmap gate table and ratified decision log before publishing the typed dataset.
 
-The console also reports the wider decision register: **24 decisions remain open**, while `DEC-SKU`, `DEC-PRODUCT-RELATIONS`, `DEC-BUNDLE-NESTING`, and `DEC-DELETE-RETENTION` are the four decisions newly locked in this reconciliation. The compiler derives the open count from `pending-decisions.mdx` and rejects a newly locked id that remains in that inbox or lacks owner-log evidence.
+The wider decision register contains **24 open decisions**. The most recently resolved entries are `DEC-SKU`, `DEC-PRODUCT-RELATIONS`, `DEC-BUNDLE-NESTING`, and `DEC-DELETE-RETENTION`. The compiler derives the open count from `pending-decisions.mdx` and rejects a resolved id that remains in the pending register or lacks decision-log evidence.

@@ -30,7 +30,7 @@ This page documents the developer portal's own **next-gen interaction layer** �
 
 Unlike the rest of the portal (which documents the Saha Textile platform), this page documents the portal application itself, so contributors can learn from, extend, and iterate on the interaction layer.
 
-## What it is
+## Feature inventory
 
 Six self-contained, dependency-free features (pure Canvas / SVG / CSS / React), all theme-aware for light and dark and all `prefers-reduced-motion`-safe:
 
@@ -98,11 +98,11 @@ The HUD displays each destination’s compiler-injected lifecycle status and a m
 
 URL state remains distinct from progress persistence: it makes the active view shareable and browser-history-aware but is not a completion record.
 
-Pass 5.4 adds a separate device-local boundary with explicit per-persona opt-in. Its versioned payload contains only persona id, furthest governed stop id, completion state and an optional completion timestamp. Every read is narrowed against the current compiled persona and stop ids; malformed or stale payloads are ignored and surfaced for reset. Same-tab components synchronize through a portal-local event, while the browser’s storage event covers other tabs. Storage denial degrades to session-only guidance.
+Device-local resume uses an explicit per-persona opt-in. Its versioned payload contains only persona id, furthest governed stop id, completion state, and an optional completion timestamp. Every read is narrowed against the current compiled persona and stop ids; malformed or stale payloads are ignored and surfaced for reset. Same-tab components synchronize through a portal-local event, while the browser’s storage event covers other tabs. Storage denial degrades to session-only guidance.
 
 The final checkpoint opens Mission Debrief whether or not persistence was enabled. Its checkpoint count, lifecycle-state mix, evidence cautions, outcome and route manifest are derived from compiled data. Completion persists only for an opted-in persona, and the copy explicitly refuses to equate reaching the final checkpoint with studying every page, implementation approval, production readiness or mastery.
 
-The completion pass hardens that flow at the browser boundary: Launch Bay cannot navigate through a pre-hydration placeholder state; invalid saved payloads keep persistence disabled while exposing a recovery reset; HUD progress uses native progressbar semantics; minimize/restore preserves keyboard focus; and Mission Debrief blocks background interaction, moves focus into a labelled modal, cycles focus within it, and supports Escape. Reduced-motion and forced-colour treatments remain part of the shared visual contract.
+The browser boundary prevents Launch Bay from navigating through a pre-hydration placeholder state. Invalid saved payloads keep persistence disabled while exposing a recovery reset; HUD progress uses native progressbar semantics; minimize and restore preserve keyboard focus; and Mission Debrief blocks background interaction, moves focus into a labelled modal, cycles focus within it, and supports Escape. Reduced-motion and forced-colour treatments remain part of the shared visual contract.
 
 ## Command verbs
 
@@ -116,13 +116,13 @@ The palette now recognizes an exact **verb as the first token** and switches fro
 
 Try `trace checkout`, `gate numbering`, or `status api`. The chips below the input make the grammar discoverable without hiding normal fuzzy page search.
 
-This is deliberately **navigation-only**. A command cannot flip an owner gate, change project status, call an API, or mutate the repository. The compiler derives and validates every target route; React owns only the current query, active row, focus and open/closed state.
+This is deliberately **navigation-only**. A command cannot resolve a decision gate, change project status, call an API, or mutate the repository. The compiler derives and validates every target route; React owns only the current query, active row, focus, and open or closed state.
 
-## How the layering works
+## Layering model
 
 The trick worth internalising: the ambient canvas, the scanlines, and a single **uniform scrim** are all `position: fixed; z-index: -1`, so they paint above the page background but below all content. Content surfaces (`main-wrapper`, sidebar, footer) are **transparent**, so the field is dimmed exactly once — by the scrim — and therefore reads at one consistent strength everywhere, with no per-surface "cut line". Only the thin app bar keeps a glass fill.
 
-The **`.scrim` background alpha** (in `PortalExperience/styles.module.css`) is the master dial: lower = more vivid field, higher = calmer and more text-legible. (Dimming each surface separately instead of using one scrim is what previously produced visible seams — don't reintroduce that.)
+The **`.scrim` background alpha** (in `PortalExperience/styles.module.css`) is the master dial: lower values produce a more vivid field; higher values produce a calmer, more text-legible field. Per-surface dimming creates visible seams, so the interaction layer uses one uniform scrim.
 
 Two CSS gotchas recorded here:
 
@@ -136,10 +136,10 @@ Two CSS gotchas recorded here:
 - **Reduced-motion** — every animation is disabled or reduced to a static state under `prefers-reduced-motion`; JS effects check the media query too.
 - **No-JS safe** — the scroll-reveal hidden state is applied by JavaScript only, so pages stay fully visible without it.
 
-## Convention — keep next-gen stylings comment-marked
+## NEXT-GEN-UI source convention
 
 This interaction layer is intentionally kept as an educational reference. The standing rule for the developer portal:
 
-> Any next-generation / non-obvious styling or interaction work on the portal is marked with a `NEXT-GEN-UI` banner comment and explanatory notes describing **what**, **why**, and **how** — including the tuning knobs. Future passes and iterations preserve and extend these comments rather than stripping them.
+> Any next-generation or non-obvious styling and interaction work on the portal is marked with a `NEXT-GEN-UI` banner comment and explanatory notes describing **what**, **why**, and **how**, including the tuning knobs. Future changes preserve and extend these comments.
 
-This keeps the "wow" surfaces legible for learning and safe to evolve. When you add a new effect, tag it `NEXT-GEN-UI`, and add it to the code map above.
+This keeps the signature interaction surfaces legible for learning and safe to evolve. New effects carry the `NEXT-GEN-UI` marker and appear in the code map above.

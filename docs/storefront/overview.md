@@ -17,7 +17,7 @@ The storefront is the public, search-facing Saha Textile shopping experience. It
 
 This area is **scaffolded**, not production-complete. The customer-facing page and feature surface is broad, but its data sources are mixed: catalogue listing has a real API seam, many readers still load JSON fixtures, and important writes such as authentication, checkout, refunds, reviews, and server-cart reconciliation remain unconnected.
 
-## Read this section in order
+## Recommended reading sequence
 
 1. [Application atlas](./application-atlas) — discover what exists and filter it by implementation status.
 2. [Routing and rendering](./routing-and-rendering) — understand how a URL becomes an SSR-rendered Angular page.
@@ -52,7 +52,7 @@ The page layer should stay thin. A route identifies the customer journey and com
 | Authentication       | Auth pages and a SignalStore session seam exist                                | Scaffolded  | The token/session behavior is a mock, not secure API authentication.          |
 | Checkout             | UI, address, totals, delivery, and payment-selection surfaces exist            | Scaffolded  | Order placement and payment execution are not connected.                      |
 | Internationalization | Transloco loader and switcher are wired                                        | Scaffolded  | Code currently advertises `en/fr`; the active locale set is configuration.    |
-| PWA/offline          | Product requirement is locked                                                  | Planned     | The Vite PWA and Workbox integration is not present in current configuration. |
+| PWA/offline          | Product requirement is ratified                                                | Planned     | The Vite PWA and Workbox integration is not present in current configuration. |
 
 ## Directory ownership
 

@@ -19,7 +19,7 @@
 			"deps": [],
 			"blockingGates": [],
 			"summary": "Inspect the four packages, write the keep/refactor/missing delta report, and pin dependency versions.",
-			"dod": "Written delta + pinned versions; owner pause only on latest-together conflicts."
+			"dod": "Written delta + pinned versions; decision review only for latest-together conflicts."
 		},
 		{
 			"id": "B",
@@ -58,7 +58,7 @@
 			"title": "Catalog, SEO, search & merchandising",
 			"deps": ["B", "C"],
 			"blockingGates": ["G-I18N-ROUTES"],
-			"summary": "Catalog + SEO + self-hosted Meilisearch behind SearchPort + merchandising; live-only public reads; search outbox. Locale route seams are provisional until the URL policy is locked.",
+			"summary": "Catalog + SEO + self-hosted Meilisearch behind SearchPort + merchandising; live-only public reads; search outbox. Locale route seams are provisional until the URL policy is resolved.",
 			"dod": "Public + admin catalog CRUD; Meili indexes live products only; search/facet tests."
 		},
 		{

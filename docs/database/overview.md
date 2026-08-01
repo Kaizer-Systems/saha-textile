@@ -44,11 +44,11 @@ Do not manually duplicate field tables once generation is available.
 - [Contracts and validation](../backend/contracts-and-validation) — persistence versus request/domain/response shapes.
 - [Composition and adapters](../backend/composition-and-adapters) — how repositories are bound into the API.
 
-## Current reconciliation warnings
+## Current limitations and evidence boundaries
 
-- Connection configuration and `.env.example` now implement the locked self-hosted Docker MongoDB 8.3 single-node replica set (`rs0`), with the same profile locally and in production; the previous hosted-cluster/SRV assumptions have been removed. Start the local set with `pnpm mongo:up` (see [current adapter map](./current-adapter-map#local-replica-set-lifecycle)).
+- Connection configuration and `.env.example` implement the ratified self-hosted Docker MongoDB 8.3 single-node replica set (`rs0`), with the same profile locally and in production; previous hosted-cluster/SRV assumptions are removed. Start the local set with `pnpm mongo:up` (see [current adapter map](./current-adapter-map#local-replica-set-lifecycle)).
 - Current models use multiple `Mixed` nested structures, which are weaker than the future generated validator/catalogue needs.
-- `TransactionManagerPort` and `MongoTransactionManager` exist, are bound in API composition, and are commit/rollback-proven against rs0. The current order path and repositories have not adopted the capability for atomic workflow writes.
+- `TransactionManagerPort` and `MongoTransactionManager` are bound in API composition and commit/rollback-proven against rs0. Order creation adopts the capability for order save plus cart consumption; idempotency and the wider inventory, payment, audit, and outbox transaction boundary remain open.
 - Payment, shipment, return/refund and search-outbox records remain target-only. Inventory, consent, notifications and broad audit evidence now have current models.
-- Most new D/E multiword models resolve lowercase Mongoose collection names rather than the locked lower-camel Schema Nebula names; only `reviews` matches exactly and is promoted. `authratelimits` is intentionally outside the graph.
+- Most new D/E multiword models resolve lowercase Mongoose collection names rather than the ratified lower-camel Schema Nebula names; only `reviews` matches exactly and is promoted. `authratelimits` is intentionally outside the graph.
 - DB integration suites remain opt-in through `RUN_DB_IT=1`; all 81 adapter tests have recorded rs0 proof, while CI and HTTP/workflow adoption remain separate readiness requirements.

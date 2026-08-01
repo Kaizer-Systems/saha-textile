@@ -9,6 +9,7 @@ source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - apps/developer-portal/src
     - apps/developer-portal/plugins
+    - packages/adapters-db-mongo/src/models
     - docs/_data/portal-manifest.json
     - docs/_data/instruments/first-flight.json
 hide_title: true
@@ -65,7 +66,7 @@ import { MissionControl } from '@site/src/components/MissionControl';
 	<div className="portalDashboardSection__heading">
 		<p className="portalEyebrow">Backend platform atlas</p>
 		<h2>Follow trust through every request boundary.</h2>
-		<p>Compare current execution, locked target architecture and the proof required before a backend capability becomes production-ready.</p>
+		<p>Compare current execution, ratified target architecture, and the proof required before a backend capability becomes production-ready.</p>
 	</div>
 	<div className="portalPathGrid" aria-label="Backend platform documentation">
 		<a className="portalPathCard" href="/backend/overview">
@@ -95,7 +96,7 @@ import { MissionControl } from '@site/src/components/MissionControl';
 	<div className="portalDashboardSection__heading">
 		<p className="portalEyebrow">Business and commerce journeys</p>
 		<h2>Follow intent across every boundary.</h2>
-		<p>Compare current code, locked target behavior and failure recovery from discovery through fulfilment.</p>
+		<p>Compare current code, ratified target behavior, and failure recovery from discovery through fulfilment.</p>
 	</div>
 	<div className="portalPathGrid" aria-label="Business and commerce documentation">
 		<a className="portalPathCard" href="/business-flows/overview">
@@ -154,8 +155,8 @@ import { MissionControl } from '@site/src/components/MissionControl';
 <section className="portalDashboardSection">
 	<div className="portalDashboardSection__heading">
 		<p className="portalEyebrow">Role-based entry</p>
-		<h2>Start with the work in front of you.</h2>
-		<p>Each path narrows the portal into an ordered reading and verification sequence for one kind of maintainer.</p>
+		<h2>Choose a role-based onboarding route.</h2>
+		<p>Each route provides an ordered reading and verification sequence for a distinct engineering responsibility.</p>
 	</div>
 	<div className="portalPathGrid" aria-label="Developer portal entry paths">
 		<a className="portalPathCard" href="/getting-started/beginner-path">
@@ -184,7 +185,7 @@ import { MissionControl } from '@site/src/components/MissionControl';
 <section className="portalDashboardSection">
 	<div className="portalDashboardSection__heading">
 		<p className="portalEyebrow">Implementation radar</p>
-		<h2>What exists today.</h2>
+		<h2>Current implementation.</h2>
 		<p>Status describes repository evidence, not ambition. Open a page to see its verification date and source paths.</p>
 	</div>
 	<div className="portalImplementationGrid" role="list" aria-label="Platform implementation status">
@@ -206,7 +207,7 @@ import { MissionControl } from '@site/src/components/MissionControl';
 		<a href="/database/overview" className="portalImplementationItem" role="listitem">
 			<span className="portalStatusPill" data-status="scaffolded">Scaffolded</span>
 			<strong>Mongo adapter</strong>
-			<p>All 14 current Mongoose models plus their fields and indexes are source-generated into the scaffolded current-model catalogue.</p>
+			<p>All 32 current Mongoose models plus their fields and indexes are source-generated into the scaffolded current-model catalogue.</p>
 		</a>
 	</div>
 </section>
@@ -246,7 +247,7 @@ import { MissionControl } from '@site/src/components/MissionControl';
 		</div>
 		<div>
 			<span>Conflict handling</span>
-			<strong>Locked intent and tested behaviour are reconciled explicitly</strong>
+			<strong>Ratified intent and tested behaviour remain visibly distinct</strong>
 		</div>
 		<a href="/governance/source-of-truth-and-freshness">Read the source-of-truth rules</a>
 	</div>

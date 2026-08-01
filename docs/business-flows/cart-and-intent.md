@@ -15,7 +15,7 @@ source_of_truth:
 
 # Cart, pending intent, and offline reconciliation
 
-The current storefront has a capable browser cart implemented with classic NgRx. The API also exposes cart operations. The locked launch behavior goes further: the server cart is authoritative for both guests and users, while browser state provides immediate UI and an offline mutation queue.
+The current storefront has a capable browser cart implemented with classic NgRx. The API also exposes cart operations. The ratified launch architecture goes further: the server cart is authoritative for both guests and users, while browser state provides immediate UI and an offline mutation queue.
 
 ## Time and ownership model
 
@@ -97,7 +97,7 @@ Invalid lines are not silently dropped:
 
 ## Offline reconciliation
 
-Offline catalogue/cart support is planned but not wired in current Vite configuration. The locked reconnect flow is:
+Offline catalogue and cart support is planned but not wired in the current Vite configuration. The ratified reconnect flow is:
 
 1. Determine whether the session is still valid.
 2. Sync queued mutations to the guest or user cart.
@@ -108,7 +108,7 @@ Offline catalogue/cart support is planned but not wired in current Vite configur
 
 Never cache auth tokens, refresh tokens, payment data, account/order PII, admin responses, or secrets in the offline queue.
 
-## Current-versus-target warning
+## Current and target boundary
 
 Current NgRx effects perform useful client-side variation, quantity, stock-shaped, and configuration transitions. Current reducer IDs and totals can still be generated in the browser. These are UI behaviors—not proof that the server-authoritative merge, ownership, validation, TTL, or offline synchronization contract is complete.
 

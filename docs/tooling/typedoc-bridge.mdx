@@ -10,6 +10,8 @@ hide_table_of_contents: true
 source_of_truth:
     - apps/developer-portal-typedoc
     - apps/developer-portal/src/components/ChildToolGateway
+    - packages/contracts/src/index.ts
+    - packages/core-domain/src/index.ts
     - scripts/serve-developer-portal-persistent.mjs
 ---
 
@@ -26,3 +28,7 @@ import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
 />
 
 The Type Lattice focuses on exported contracts, signatures, schemas, interfaces, ports, and pricing utilities. Architecture narratives and operational guidance remain in the surrounding developer portal.
+
+The 2026-08-01 regeneration contains the expanded catalog surface (`catalog`, category placement/facets, the now-reachable attribute definitions, product options, variants, bundles, relations, media, inventory, and content), configurable locale/currency/money/pagination/error shapes, and the revised product lifecycle. It also emits interface pages for `TransactionManagerPort`, `NotificationPort`, `YouTubePort`, `VideoTranscodePort`, every auth repository, media/inventory/governance repositories, and the extended catalog repositories. Representative generation assertions covered 29 newly important symbols with none missing; the complete output contains 447 HTML pages.
+
+Scope remains intentionally narrow: the two entry points are exactly `packages/contracts/src/index.ts` and `packages/core-domain/src/index.ts`. TypeDoc does not absorb Docusaurus narrative ownership or Scalar's HTTP-operation reference. The generated adapter still encodes the centred `220px / flexible / 250px` desktop grid, a 15px root scale, one page `h1`, tablet two-column collapse, and mobile single-column layout. Production generation verified those structural assertions; browser console and live 1280/390 rendering remain unverified in this environment because no controllable browser instance was available.

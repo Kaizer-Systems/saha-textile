@@ -25,28 +25,21 @@ The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps,
 
 ## Current model inventory
 
-| Model                    | Physical collection       | Primary durable purpose                                          | Important index policy                                                  | Notable limitations                                                      |
-| ------------------------ | ------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `Category`               | `categories`              | Simplified taxonomy nodes                                        | unique slug; parent; path; ancestors                                    | Locked target is multi-placement DAG, not one parent tree                |
-| `Product`                | `products`                | Product/variation/add-on catalogue shape plus lifecycle          | unique slug/SKU; visibility/category/time; discontinuation purge lookup | Temporary nested shapes remain                                           |
-| `Currency`               | `currencies`              | Enabled currencies and INR rate/PayPal inputs                    | enabled                                                                 | No rate history/staleness/config-version records                         |
-| `Promotion`              | `promotions`              | Discount/coupon definition                                       | coupon; scope; starts+ends                                              | Incomplete usage/stacking/applicability engine                           |
-| `Cart`                   | `carts`                   | User/guest-shaped cart lines                                     | userId; guestToken                                                      | No ownership proof, active-cart uniqueness or nested validation          |
-| `Order`                  | `orders`                  | Order snapshot/timeline scaffold                                 | unique orderNumber; user+createdAt; status                              | Mixed lines/timeline; no workflow transaction adoption                   |
-| `User`                   | `users`                   | Identity, credential, role, permission, consent/address scaffold | unique sparse email/username/phone; role+status                         | D2–D5 still own runtime auth, consent/privacy and authorization adoption |
-| `AuthSession`            | `authsessions`            | Rotating refresh family and session-bound CSRF hashes            | current/previous token hash; family; user/audience/revocation; TTL      | Persistence capability only; D2 has not adopted it                       |
-| `OtpChallenge`           | `otpchallenges`           | Hash-only, single-active OTP challenges                          | active identifier+purpose uniqueness; TTL                               | D3 request/verify endpoints and anti-enumeration remain                  |
-| `OAuthState`             | `oauthstates`             | Hash-only OAuth state, nonce and PKCE verifier                   | unique state hash; TTL                                                  | Provider callback consumption remains                                    |
-| `PasswordResetToken`     | `passwordresettokens`     | Hash-only single-use password reset                              | unique token hash; user; TTL                                            | D3 endpoint adoption remains                                             |
-| `EmailVerificationToken` | `emailverificationtokens` | Hash-only single-use email verification                          | unique token hash; user; TTL                                            | D3 endpoint adoption remains                                             |
-| `AdminInvite`            | `admininvites`            | Hash-only admin invite plus acceptance audit                     | unique token hash; one outstanding invite per email                     | D4 acceptance and RBAC adoption remain                                   |
-| `AuthRateLimit`          | `authratelimits`          | Atomic expiring auth counters                                    | unique composite key; TTL                                               | Adapter mechanism is outside the locked Schema Nebula graph              |
+| Family                   | Physical collections                                                                                                               | Current evidence boundary                                                                                                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Original seven           | `categories`, `products`, `promotions`, `orders`, `currencies`, `carts`, `users`                                                   | Existing catalogue/commerce APIs; product lifecycle/indexes, cart/`st_guest` ownership and order+cart transactional create are current; checkout idempotency remains open |
+| Auth seven               | `authsessions`, `otpchallenges`, `oauthstates`, `passwordresettokens`, `emailverificationtokens`, `admininvites`, `authratelimits` | Session/OTP/reset/PIN/RBAC flows use these stores; OAuth callback, email-verification completion and invite acceptance remain open                                        |
+| Privacy                  | `consentevents`                                                                                                                    | Consent history and privacy request seams are API-bound                                                                                                                   |
+| Catalogue/merchandising  | `categoryplacements`, `categoryfacetconfigs`, `attributedefinitions`, `productvariants`, `productbundles`, `productrelations`      | Tested repositories exist; broad HTTP catalogue-management adoption remains open                                                                                          |
+| Media/inventory          | `mediaassets`, `inventoryledgers`, `inventorycostlayers`                                                                           | Tested repository/index behavior exists; business workflow adoption remains open                                                                                          |
+| Governance/notifications | `auditlogs`, `notificationchannelsettings`, `notificationtemplates`, `messageoutboxes`                                             | Tested durable evidence/outbox stores exist; provider delivery and complete side-effect orchestration remain open                                                         |
+| Content                  | `faqentries`, `productquestions`, `reviews`, `ratingaggregates`                                                                    | Tested repositories exist; public/admin content operations remain open                                                                                                    |
 
-The generated catalogue confirms these physical names directly from Mongoose metadata. Six D1 names are lowercase defaults rather than the owner-locked camelCase Schema Nebula targets, so their target stars remain ghosts. `authratelimits` is current adapter evidence but is intentionally not one of the locked 64 target nodes.
+The generated catalogue confirms all 32 physical names directly from Mongoose metadata: 406 fields, 89 indexes and 27 temporary shapes. Most new multiword Mongoose defaults do not exactly match the owner-locked Schema Nebula names, so exact-name evidence promotes only `reviews`; the governed graph remains 64 nodes / 8 current / 56 target. `authratelimits` is current adapter evidence but is intentionally outside the locked 64-node graph.
 
 ## Current repository inventory
 
-Fourteen repository adapters implement the seven original domain repositories plus D1’s seven auth repositories. The auth adapters cover session issue/find/rotate/family revocation, OTP challenge consumption, OAuth state, single-use reset/verification/invite tokens, and atomic rate-limit counters; they are not yet wired into D2–D5 HTTP flows.
+Repository adapters cover the original domain stores plus auth, consent, catalogue structure, merchandising, inventory, media, governance and content. Auth adapters are bound into session/OTP/reset/admin flows; catalogue/media/inventory/governance/content adapters are tested capabilities whose wider HTTP workflows remain incomplete.
 
 ### Common pattern
 
@@ -63,7 +56,7 @@ save/upsert → strip public id → findByIdAndUpdate($set) → mapper
 - User credential lookup explicitly selects the hidden password hash.
 - User credential lookups can explicitly request the otherwise hidden password/PIN hashes; public mapping returns neither.
 - Session/challenge/token repositories explicitly select hidden hashes only inside credential verification paths and never expose plaintext secrets.
-- Order listing scopes by `userId`, but single-order lookup does not.
+- Order listing scopes by `userId`; the controller applies customer ownership to single-order reads and gives staff/admin an explicit support bypass.
 - Order status update appends a timeline value but throws a generic adapter error when missing.
 
 ## Mapper boundary
@@ -122,7 +115,7 @@ The seed is useful for early schema tests. It is not a complete locked-domain se
 
 ## Existing integration test
 
-The gated adapter suites connect to rs0, seed/read taxonomy, verify a base variation, prove public/admin product visibility, exercise transaction-manager commit/rollback behavior, and test D1 auth persistence. They run only when `RUN_DB_IT=1` and Mongo configuration is present.
+The 81 gated adapter tests connect to rs0 and cover baseline repositories, transaction behavior, auth persistence, catalogue structure/merchandising, inventory/media, governance/content and order+cart transactional create. They run only when `RUN_DB_IT=1` and Mongo configuration is present.
 
 Limitations:
 
@@ -131,6 +124,8 @@ Limitations:
 - it does not exercise indexes/uniqueness broadly;
 - six transaction tests prove commit, rollback after a successful write, error propagation, return values, nested-session joining, and inner-failure rollback of outer writes;
 - 18 auth-persistence tests prove default secret exclusion, explicit credential reads, session rotation/reuse-family support, atomic single-use challenge/token consumption, TTL/index declarations and atomic rate-limit increments;
+- 15 catalogue tests, 15 inventory/media tests and 16 governance/content tests prove the newly implemented repository/index behavior;
+- 3 order+cart transaction tests prove commit and rollback of order save with cart consumption;
 - it does not cover every repository/mapper.
 
 ## Model review checklist

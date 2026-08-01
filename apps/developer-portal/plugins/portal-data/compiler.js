@@ -508,6 +508,41 @@ function compileDecisionGates(raw, truth, repositoryRoot, failures) {
 	}
 	requireUniqueIds(raw.gates, 'Decision gates', failures);
 	const gates = Array.isArray(raw.gates) ? raw.gates : [];
+	const decisionRegister =
+		raw.decisionRegister && typeof raw.decisionRegister === 'object' && !Array.isArray(raw.decisionRegister)
+			? raw.decisionRegister
+			: {};
+	const pendingDecisionPath = path.join(repositoryRoot, 'docs/engineering-live-context/pending-decisions.mdx');
+	const ownerLogPath = path.join(repositoryRoot, 'docs/engineering-live-context/owner-decisions-log.mdx');
+	const pendingDecisionText = fs.readFileSync(pendingDecisionPath, 'utf8');
+	const ownerLogText = fs.readFileSync(ownerLogPath, 'utf8');
+	const openDecisionIds = [...new Set(pendingDecisionText.match(/\bDEC-[A-Z0-9-]+\b/g) ?? [])];
+	if (decisionRegister.openCount !== openDecisionIds.length) {
+		failures.push(
+			`Decision Gate register openCount must match pending-decisions (${openDecisionIds.length}); found ${decisionRegister.openCount}.`,
+		);
+	}
+	const newlyLocked = requireUniqueStringArray(
+		decisionRegister.newlyLocked,
+		'Decision Gate register newlyLocked',
+		failures,
+	);
+	if (newlyLocked.length !== 4) {
+		failures.push(
+			`Decision Gate register must record exactly four newly locked decisions; found ${newlyLocked.length}.`,
+		);
+	}
+	for (const decisionId of newlyLocked) {
+		if (!/^DEC-[A-Z0-9-]+$/.test(decisionId)) {
+			failures.push(`Decision Gate register has invalid decision id ${decisionId}.`);
+		}
+		if (!ownerLogText.includes(decisionId)) {
+			failures.push(`Newly locked decision ${decisionId} is absent from the owner decision log.`);
+		}
+		if (openDecisionIds.includes(decisionId)) {
+			failures.push(`Newly locked decision ${decisionId} still appears in pending-decisions.`);
+		}
+	}
 	for (const gate of gates) {
 		for (const field of ['label', 'question', 'source', 'seamsOk']) {
 			requireString(gate[field], `Decision gate ${gate.id}.${field}`, failures);
@@ -526,6 +561,10 @@ function compileDecisionGates(raw, truth, repositoryRoot, failures) {
 	return {
 		lastVerified: raw.lastVerified,
 		sourceOfTruth: raw.sourceOfTruth,
+		decisionRegister: {
+			openCount: decisionRegister.openCount,
+			newlyLocked,
+		},
 		impactChunks: Object.keys(truth.chunks ?? {}),
 		impactCollections: [...new Set(gates.flatMap((gate) => gate.blocksCollections))],
 		gates: gates.map((gate) => ({ ...gate, status: truth.gates[gate.id] })),

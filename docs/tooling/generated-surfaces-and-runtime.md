@@ -27,7 +27,7 @@ Docusaurus remains the navigation, narrative, governance, search, and deployment
 | `/tools/storybook`          | `/storybook/`          | One Angular Storybook renderer | Built; Component Forge gateway                                               |
 | `/tools/typedoc`            | `/typedoc/`            | TypeDoc                        | Built; Type Lattice gateway                                                  |
 | `/tools/scalar`             | `/api/reference/`      | Scalar                         | Scaffolded current OpenAPI; Request Wormhole gateway; Test Request available |
-| `/tools/database-catalogue` | `/database/catalogue/` | Mongo catalogue generator      | Scaffolded 14-model current evidence; Schema Observatory gateway             |
+| `/tools/database-catalogue` | `/database/catalogue/` | Mongo catalogue generator      | Scaffolded 32-model current evidence; Schema Observatory gateway             |
 | n/a                         | `/api/openapi.json`    | OpenAPI artifact pipeline      | Scaffolded deterministic source-generated document                           |
 
 Storybook is not a React-only or view-only substitute. The selected `@storybook/angular` renderer compiles Angular templates, dependency injection, inputs/outputs, change detection, directives, and application providers. A React renderer cannot directly render Angular components as React components.
@@ -103,7 +103,7 @@ Install the pinned workspace packages once:
 corepack pnpm install
 ```
 
-No vendor account or manual desktop download is required. Docusaurus, Storybook, TypeDoc, Scalar, and the Mongo generator are pinned repository dependencies or source tooling. Test Request still requires the API to be running at an approved document server and obeys its normal authentication, CSRF, CORS, authorization, ownership, and rate-limit configuration. For a state-changing request with a session cookie, obtain a double-submit token from `GET /auth/csrf` and send it in `x-csrf-token`.
+No vendor account or manual desktop download is required. Docusaurus, Storybook, TypeDoc, Scalar, and the Mongo generator are pinned repository dependencies or source tooling. Test Request still requires the API to be running at an approved document server and obeys its normal authentication, CSRF, CORS, authorization, ownership, and rate-limit configuration. For a state-changing request with a session cookie, echo the readable CSRF cookie issued with login/OTP/refresh in `x-csrf-token`; the current `GET /auth/csrf` route does not rebind an active session and must not replace that cookie until the API defect is fixed.
 
 Run only Docusaurus in development:
 
@@ -163,7 +163,7 @@ corepack pnpm portal:persistent -- --port 3457
 4. builds Storybook and TypeDoc;
 5. builds the API and source-generates the scaffolded OpenAPI artifact without MongoDB;
 6. builds Scalar with Test Request available;
-7. source-generates the 14-model MongoDB catalogue without database access;
+7. source-generates the 32-model MongoDB catalogue without database access;
 8. builds Docusaurus;
 9. verifies that every enabled surface produced a non-empty entry page;
 10. copies child outputs under the Docusaurus composite tree;

@@ -43,9 +43,9 @@ Schema Nebula is a **governed architecture map**, not a live database browser an
 | Amber relationship | Another collection references the selected collection.                                           |
 | Decision badge     | A stable `DEC-*` owner choice still affects the collection’s final policy or shape.              |
 
-The seven solid stars are `categories`, `products`, `promotions`, `orders`, `currencies`, `carts` and `users`. Every other star remains a target-only ghost until model evidence exists.
+The eight solid stars are `categories`, `products`, `promotions`, `orders`, `currencies`, `carts`, `users` and `reviews`. Every other star remains a target-only ghost until exact physical-name model evidence exists.
 
-Chunk D1 added grouped auth Mongoose models, but they do not promote the six matching target stars yet. Source inspection on 2026-08-01 shows that Mongoose currently resolves their physical collection names through its lowercase defaults (`authsessions`, `otpchallenges`, `oauthstates`, `passwordresettokens`, `emailverificationtokens`, and `admininvites`) rather than the owner-locked camelCase graph names. `authratelimits` is also a current adapter mechanism, but the canonical auth architecture explicitly keeps that backing store outside the locked 64-node graph. The database catalogue may report all current models; Schema Nebula stays **64 / 7 / 57** until exact target-name evidence exists.
+Chunks D/E expanded the current adapter to 32 models. Source inspection on 2026-08-01 shows that Mongoose resolves most new multiword physical names through lowercase defaults (`authsessions`, `categoryplacements`, `inventoryledgers`, `auditlogs`, and so on) rather than the owner-locked lower-camel graph names. Those models belong in the current-source catalogue but cannot promote mismatched stars. `reviews` resolves exactly and is now solid; `authratelimits` remains outside the graph. Schema Nebula is therefore **64 / 8 / 56**.
 
 ## Beginner controls
 
@@ -60,8 +60,8 @@ Chunk D1 added grouped auth Mongoose models, but they do not promote the six mat
 
 The authored inventory lives in `docs/_data/instruments/schema-nebula.json`. The shared build-time compiler refuses to publish it unless all of the following agree:
 
-1. the owner-locked route and **64 / 7 / 57** inventory;
-2. the current files under `packages/adapters-db-mongo/src/models`, with D1 grouped auth files held as non-target evidence until their physical names align and `authRateLimits` excluded by canonical policy;
+1. the owner-locked route and **64 / 8 / 56** inventory;
+2. the current files under `packages/adapters-db-mongo/src/models`, with grouped lowercase D/E model files held as non-target evidence until their physical names align, `reviews` mapped through its grouped content file, and `authRateLimits` excluded by canonical policy;
 3. the catalog, auth, notification and roadmap sources;
 4. all collection-to-collection references;
 5. every remaining `DEC-*` blocker in the 24-item open decision register;
@@ -71,6 +71,6 @@ Adding or removing a model therefore makes a stale constellation fail the portal
 
 ## What remains separate
 
-Schema Nebula answers **which physical collections are current or targeted and how they relate**. The separate source-only database catalogue now generates fields, indexes, defaults, enums, select policy and sanitized examples for all 14 current Mongoose models, including D1’s seven identity-support models. That broader catalogue evidence does not change the locked constellation’s exact-name rule or its **64 / 7 / 57** state; stable DTO/migration/retention coverage remains incomplete. Do not treat a target star as implemented schema documentation or deployment proof.
+Schema Nebula answers **which physical collections are current or targeted and how they relate**. The separate source-only database catalogue now generates fields, indexes, defaults, enums, select policy and sanitized examples for all 32 current Mongoose models. That broader catalogue evidence does not change the constellation’s exact-name rule or its **64 / 8 / 56** state; stable DTO/migration/retention coverage remains incomplete. Do not treat a target star as implemented schema documentation or deployment proof.
 
 Continue with the [current Mongo adapter map](./current-adapter-map) for implemented model/repository evidence, [transactions and generation](./transactions-and-generation) for the future catalogue contract, and [Mission Control](/mission-control) for roadmap ownership.

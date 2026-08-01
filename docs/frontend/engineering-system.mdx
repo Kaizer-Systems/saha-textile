@@ -57,7 +57,7 @@ Both apps read their public, non-secret configuration at boot from `public/confi
 - The committed `config.json` holds localhost defaults; deployments overwrite or mount it at container start.
 - Under SSR (no browser `fetch`), the loader reads `SAHA_TEXTILE_PUBLIC_CONFIG` from the environment, else falls back to defaults. A failed fetch never blocks boot.
 
-The auth interceptor sends `withCredentials: true` on every request so API-issued session cookies flow — the locked target is httpOnly cookie sessions plus CSRF (Chunk D). A `localStorage` bearer token is a **transitional** fallback that is removed when the cookie-session refactor lands.
+The auth interceptor sends `withCredentials: true` on every request so the implemented httpOnly cookie sessions flow. It still attaches a legacy `localStorage` bearer token, but the API's `SessionGuard` deliberately ignores `Authorization`; this is stale frontend migration debt, not a supported authentication fallback.
 
 ## Contracts today
 

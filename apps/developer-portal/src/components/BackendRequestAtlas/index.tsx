@@ -1,3 +1,12 @@
+/* ============================================================================
+ * NEXT-GEN-UI · Backend request-path atlas
+ * ----------------------------------------------------------------------------
+ * WHAT: an interactive current/target/proof lens over representative backend paths.
+ * WHY: engineers need unsafe current boundaries separated visibly from locked intent.
+ * HOW: filterable request cards render evidence-linked path records without runtime deps.
+ * TUNING: keep path status, risk, lens labels, and evidence sources aligned with the KB.
+ * ========================================================================= */
+
 import React, { useMemo, useRef, useState } from 'react';
 
 import styles from './styles.module.css';
@@ -35,8 +44,8 @@ const requestPaths: RequestPath[] = [
 		summary:
 			'Read a public catalogue page without exposing non-public inventory or using Mongo as storefront search.',
 		current:
-			'The controller accepts an optional status query and the repository applies it only when supplied. A public request can therefore omit status or request draft/archived records. Search uses a Mongo regular expression over slug, SKU, and tags.',
-		target: 'Public catalogue reads force published and purchasable visibility server-side. Listing/search flows use SearchPort and self-hosted Meilisearch for configured facets while MongoDB remains the rebuildable source of truth.',
+			'The fixed public controller does not accept a status query. The repository defaults to the public audience, forces live visibility for list and direct reads, and returns no rows when a public caller requests a hidden status through another seam. Search still uses a Mongo regular expression over slug, SKU, and tags.',
+		target: 'Public catalogue reads continue to force live and purchasable visibility server-side. Listing/search flows use SearchPort and self-hosted Meilisearch for configured facets while MongoDB remains the rebuildable source of truth.',
 		verify: 'Test anonymous requests for every non-public status, confirm field-level response safety, probe category/facet combinations, and prove the public handler cannot select an admin-only visibility state.',
 		layers: [
 			{ label: 'Request', detail: 'Query parameters' },
@@ -91,7 +100,7 @@ const requestPaths: RequestPath[] = [
 		path: '/auth/login',
 		summary: 'Authenticate a browser without exposing reusable session credentials to Angular storage.',
 		current:
-			'Login/register return access and refresh JWTs in JSON. The guard reads Authorization: Bearer only; refresh tokens are signed JWTs with no persisted family, rotation record, or reuse detection. Password minimum is eight characters.',
+			'Login/register return access and refresh JWTs in JSON, and the guard reads Authorization: Bearer only. D1 provides tested persisted refresh-family rotation/reuse repositories, but the current API flow does not bind or use them. The controller-local password minimum remains eight characters.',
 		target: 'The API sets audience-bound httpOnly Secure cookies, rotates opaque refresh tokens, validates signed double-submit CSRF, enforces the locked password/PIN policies, and separates storefront from admin authority.',
 		verify: 'Prove tokens never enter browser-readable storage, unsafe cookie-authenticated methods reject missing CSRF, refresh reuse revokes the family, and storefront identity cannot authorize admin routes.',
 		layers: [
@@ -147,7 +156,7 @@ const requestPaths: RequestPath[] = [
 		path: '/orders',
 		summary: 'Convert an owned, revalidated cart into one durable commerce outcome exactly once.',
 		current:
-			'The service reads products sequentially, calculates a partial subtotal/coupon result, saves one order, then deletes the cart. There is no cart ownership check, idempotency key, transaction, stock reservation, tax/shipping quote, payment attempt, or rollback boundary.',
+			'The service reads products sequentially, calculates a partial subtotal/coupon result, saves one order, then deletes the cart. A transaction port and Mongo implementation are bound and rs0-proven, but this order path does not use them; cart ownership, idempotency, stock reservation, tax/shipping, payment, and atomic rollback remain absent.',
 		target: 'Checkout quote and place-order are separate. Place-order uses an idempotency key and Mongo transaction spanning immutable order snapshot, payment attempt, inventory, ledger, cart, and audit/event records.',
 		verify: 'Inject failure after each write, repeat identical requests, race stock, replay callbacks, and assert either one complete committed result or a full rollback—never a half-created order.',
 		layers: [
@@ -203,7 +212,7 @@ const requestPaths: RequestPath[] = [
 		path: '/search/typeahead',
 		summary: 'Serve typo-tolerant multilingual discovery without making a derived index authoritative.',
 		current:
-			'SearchPort exists but is not bound. ProductRepository currently implements an escaped Mongo regular-expression fallback, and its SearchPort comment still names a superseded hosted service.',
+			'SearchPort exists and documents the locked self-hosted Meilisearch target, but no Meilisearch adapter is bound. ProductRepository currently implements an escaped Mongo regular-expression fallback.',
 		target: 'Self-hosted Meilisearch implements SearchPort. Mongo changes enqueue an outbox, the index contains public derived data, facet configuration controls exposure, and a complete reindex rebuilds from Mongo.',
 		verify: 'Destroy and rebuild the index, test unpublished removal, Bengali/transliteration aliases, configured facets, no-result capture, stale outbox recovery, and graceful degraded behavior.',
 		layers: [
@@ -224,13 +233,13 @@ const requestPaths: RequestPath[] = [
 		id: 'readiness',
 		title: 'Prove runtime readiness',
 		area: 'platform',
-		status: 'planned',
+		status: 'implemented',
 		risk: 'high',
 		method: 'GET',
 		path: '/health/ready',
 		summary: 'Distinguish a live process from a backend that can safely serve dependency-backed requests.',
 		current:
-			'A single /health endpoint reports process status. Mongo connection failure is intentionally non-fatal, so the API may report ok while every persistence-backed route fails.',
+			'/health/live is dependency-free, /health/ready checks Mongo and fails with 503 when it is down, and /health remains a liveness alias. Readiness does not yet cover dependencies that have not landed, such as Meilisearch.',
 		target: '/health/live proves the process is alive. /health/ready separately checks Mongo, Meilisearch, required configuration, and other critical dependencies without leaking secrets.',
 		verify: 'Stop each dependency independently, corrupt safe test configuration, and confirm liveness remains truthful while readiness fails with sanitized component evidence and deployment health checks block promotion.',
 		layers: [
@@ -251,13 +260,13 @@ const requestPaths: RequestPath[] = [
 		id: 'api-reference',
 		title: 'Publish the API contract',
 		area: 'platform',
-		status: 'deferred',
+		status: 'scaffolded',
 		risk: 'observe',
 		method: 'GET',
 		path: '/api/reference',
 		summary: 'Generate one machine-readable contract and present it through one protected modern reference.',
 		current:
-			'NestJS generates /openapi.json and mounts a transitional framework UI at /docs. Local zod body schemas and limited decorators mean the document is not yet a complete endpoint contract.',
+			'NestJS generates /openapi.json and mounts a transitional framework UI at /docs. The portal regenerates the same source document for scaffolded Scalar at /api/reference. Local zod body schemas and limited decorators mean the document is not yet a complete endpoint contract.',
 		target: 'OpenAPI is generated and checked in CI, published at /api/openapi.json, and rendered once through protected Scalar at /api/reference for approved development/staging requests.',
 		verify: 'Assert operation coverage, auth/CSRF/role metadata, schemas, errors, idempotency and side effects. Confirm no production secret or unrestricted production execution target appears in the reference.',
 		layers: [

@@ -12,6 +12,7 @@ import {
 	PasswordResetRequest,
 	RegisterStorefrontRequest,
 } from '@saha-textile/contracts';
+import { z } from 'zod';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -276,5 +277,49 @@ export class StorefrontAuthController {
 	async me(@Principal() principal: AuthenticatedPrincipal | undefined) {
 		if (!principal) throw new UnauthorizedException('Authentication required');
 		return { user: await this.auth.publicUser(principal.userId) };
+	}
+
+	/**
+	 * Redeems an email-verification token.
+	 *
+	 * Public because the whole point is that the recipient may not be signed in when they
+	 * click the link. The token is single-use and consumed atomically, so a forwarded link
+	 * cannot verify the address twice.
+	 */
+	@Post('email/verify')
+	@Public()
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({ summary: 'Complete email verification with a token' })
+	async verifyEmail(
+		@Body(new ZodValidationPipe(z.object({ token: z.string().min(1) }))) body: { token: string },
+	): Promise<void> {
+		const verified = await this.auth.completeEmailVerification(body.token);
+		// Expired, already-used and unknown tokens are indistinguishable.
+		if (!verified) throw new UnauthorizedException('Invalid or expired verification token');
+	}
+
+	/**
+	 * Re-sends the verification email for the signed-in account.
+	 *
+	 * Requires a session rather than taking an address: an unauthenticated resend endpoint
+	 * that accepts any email is both an enumeration oracle and a way to have us mail
+	 * strangers on demand.
+	 */
+	@Post('email/verify/resend')
+	@HttpCode(HttpStatus.ACCEPTED)
+	@ApiOperation({ summary: 'Re-send the verification email for the current account' })
+	async resendVerification(
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<GenericAcceptedResponse> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+
+		const user = await this.auth.findAuthUserById(principal.userId);
+		// Already-verified and rate-limited callers get the same answer as a real send.
+		if (user?.email && !user.emailVerified) {
+			if (await this.auth.withinRateLimit('otp_request', 'email', user.email)) {
+				await this.auth.issueEmailVerification(user.id, user.email);
+			}
+		}
+		return ACCEPTED;
 	}
 }

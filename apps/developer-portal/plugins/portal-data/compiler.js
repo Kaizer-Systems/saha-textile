@@ -25,7 +25,8 @@ const VALID_SCHEMA_TARGET_ACTIONS = new Set(['refactor', 'add']);
 const VALID_COMMAND_TARGET_SOURCES = new Set(['journey-pages', 'decision-gates', 'document-status']);
 const SCHEMA_NEBULA_ROUTE = '/database/schema-nebula';
 const SCHEMA_NEBULA_NODE_COUNT = 64;
-const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 7;
+const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 8;
+const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([['reviews', 'content.model.ts']]);
 const SCHEMA_NEBULA_NON_TARGET_MODEL_FILES = new Set([
 	// D1 capability exists, but Mongoose currently resolves these grouped models to
 	// lowercase collection names (`authsessions`, `otpchallenges`, and so on), not
@@ -37,6 +38,16 @@ const SCHEMA_NEBULA_NON_TARGET_MODEL_FILES = new Set([
 	// The auth architecture explicitly keeps rate-limit storage outside the locked
 	// 64-node physical target graph; the adapter may change without inventing a star.
 	'auth-rate-limit.model.ts',
+	// Chunk D/E added tested models whose current Mongoose default names are
+	// lowercase/pluralized and therefore do not exactly match the locked lower-camel
+	// target graph. They remain current catalogue evidence, but not solid stars.
+	'catalog-structure.model.ts',
+	'consent.model.ts',
+	'governance.model.ts',
+	'inventory.model.ts',
+	'media.model.ts',
+	'merchandising.model.ts',
+	'product-variant.model.ts',
 ]);
 const COMMAND_VERBS_ROUTE = '/frontend/portal-experience-layer';
 const COMMAND_VERB_ORDER = ['trace', 'gate', 'status'];
@@ -760,7 +771,9 @@ function compileSchemaNebula(raw, truth, repositoryRoot, manifest, failures) {
 				if (!fs.existsSync(path.join(repositoryRoot, currentModel))) {
 					failures.push(`Schema Nebula ${collectionId} references missing model ${currentModel}.`);
 				}
-				const expectedModelFile = `${collectionIdToModelStem(collectionId)}.model.ts`;
+				const expectedModelFile =
+					SCHEMA_NEBULA_GROUPED_MODEL_FILES.get(collectionId) ??
+					`${collectionIdToModelStem(collectionId)}.model.ts`;
 				if (path.posix.basename(normalizeSlashes(currentModel)) !== expectedModelFile) {
 					failures.push(
 						`Schema Nebula ${collectionId} must map to ${expectedModelFile}, not ${currentModel}.`,

@@ -26,11 +26,11 @@ Start with the [Backend Platform Atlas](../backend/overview) when you need to un
 | Transitional API UI  | Temporary framework-provided reference                 | **Deprecated** | Existing `/docs` route; do not deepen it                                             |
 | Scalar API Reference | One readable reference and approved interactive client | **Scaffolded** | Current OpenAPI at `/api/reference/`; promote only after the completeness gates pass |
 | Portal OpenAPI route | Stable machine-readable portal path                    | **Scaffolded** | Source-generated during the atomic build at `/api/openapi.json`                      |
-| Auth/session guide   | Human-authored security and lifecycle guide            | **Scaffolded** | Auth controller, service, guards and infrastructure exist; full verification remains |
+| Auth/session guide   | Human-authored security and lifecycle guide            | **Scaffolded** | Cookie lifecycle, audiences, CSRF and D3–D5 residual gaps are evidence-backed        |
 
 ## Current module snapshot
 
-The application currently exposes health, authentication, catalogue, cart, orders, currency and promotion modules. Its platform foundation now includes per-request correlation ids, redacted structured logs, the shared safe error envelope, trusted client-IP rate-limit keys, strict CORS, dependency-free liveness, dependency-aware readiness, cookie attributes, global double-submit CSRF enforcement, and `GET /auth/csrf`. D1 adds tested auth/session/challenge/token/invite/rate-limit persistence, but those repositories are not bound into the API auth flow. D2–D5 still own cookie-session adoption, storefront/admin endpoint policy, RBAC, consent/privacy, and ownership authorization; the broader shared contract families are therefore not wired end to end. Every module still needs to be evaluated against its roadmap definition of done before the overall API can be called implemented.
+The application currently exposes health, storefront/admin authentication, privacy, catalogue, cart, orders, currency and promotion modules. Its platform foundation includes per-request correlation ids, redacted structured logs, the shared safe error envelope, trusted client-IP rate-limit keys, strict CORS, dependency-free liveness, dependency-aware readiness, cookie-only sessions, atomic refresh rotation/reuse revocation, global session-bound double-submit CSRF, storefront/admin audiences, PIN/RBAC/version invalidation, consent/privacy seams, and order ownership. Chunk D remains partial because email-verification completion, OAuth verification, admin invite acceptance, idle quick-resume and cart guest/user ownership are absent. The broader contract and persistence families are not all wired end to end. Every module still needs to be evaluated against its roadmap definition of done before the overall API can be called implemented.
 
 ## Interactive-request boundary
 
@@ -43,14 +43,14 @@ Every endpoint page or generated operation should identify authentication, autho
 - [Current route inventory](./route-inventory) — every controller path and its verified boundary.
 - [Request lifecycle](../backend/request-lifecycle) — how data and trust cross the stack.
 - [Contracts and validation](../backend/contracts-and-validation) — request/domain/persistence/response shapes.
-- [Security and identity](../backend/security-and-identity) — bearer scaffold versus locked cookie-session target.
+- [Security and identity](../backend/security-and-identity) — active cookie sessions, CSRF, audiences, PIN/RBAC and residual gaps.
 - [OpenAPI and Scalar](./openapi-and-scalar) — machine contract, completeness gate, publication and interaction policy.
 - [Readiness and verification](../backend/readiness-testing-and-observability) — tests, probes and operational proof.
 
 ## What not to infer
 
 - An `@ApiOperation` summary does not prove a complete request/response schema.
-- A JWT guard does not prove ownership authorization.
+- A session guard does not prove ownership authorization.
 - A controller route does not prove the Angular apps use it.
 - An adapter binding does not prove the dependency is ready.
 - A successful `/health` or `/health/live` response proves only process liveness; `/health/ready` is the dependency-aware signal.

@@ -206,7 +206,7 @@ import { MissionControl } from '@site/src/components/MissionControl';
 		<a href="/database/overview" className="portalImplementationItem" role="listitem">
 			<span className="portalStatusPill" data-status="scaffolded">Scaffolded</span>
 			<strong>Mongo adapter</strong>
-			<p>Seven models plus their fields and indexes are source-generated into the scaffolded current-model catalogue.</p>
+			<p>All 14 current Mongoose models plus their fields and indexes are source-generated into the scaffolded current-model catalogue.</p>
 		</a>
 	</div>
 </section>

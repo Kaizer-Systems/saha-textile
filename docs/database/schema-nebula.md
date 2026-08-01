@@ -71,6 +71,6 @@ Adding or removing a model therefore makes a stale constellation fail the portal
 
 ## What remains separate
 
-Schema Nebula answers **which physical collections are current or targeted and how they relate**. The separate source-only database catalogue now generates fields, indexes, defaults, enums, select policy and sanitized examples for the seven current models only; stable DTO/migration/retention coverage remains incomplete. Do not treat a target star as implemented schema documentation or deployment proof.
+Schema Nebula answers **which physical collections are current or targeted and how they relate**. The separate source-only database catalogue now generates fields, indexes, defaults, enums, select policy and sanitized examples for all 14 current Mongoose models, including D1’s seven identity-support models. That broader catalogue evidence does not change the locked constellation’s exact-name rule or its **64 / 7 / 57** state; stable DTO/migration/retention coverage remains incomplete. Do not treat a target star as implemented schema documentation or deployment proof.
 
 Continue with the [current Mongo adapter map](./current-adapter-map) for implemented model/repository evidence, [transactions and generation](./transactions-and-generation) for the future catalogue contract, and [Mission Control](/mission-control) for roadmap ownership.

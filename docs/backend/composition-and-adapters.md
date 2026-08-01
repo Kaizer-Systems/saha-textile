@@ -32,8 +32,9 @@ flowchart TD
     App --> Orders["OrdersModule"]
     App --> Auth["AuthModule"]
 
-    Persistence --> MongoRepos["Seven API-bound Mongo repositories"]
-    Persistence -. "D1 not bound" .-> AuthRepos["Seven auth repository adapters"]
+    Persistence --> MongoRepos["Original commerce repositories"]
+    Persistence --> AuthRepos["Auth + consent repositories"]
+    Persistence --> Notifications["ConsoleNotificationAdapter"]
     Persistence --> Transaction["MongoTransactionManager"]
     Persistence --> AuthAdapter["Argon2JwtAuth"]
     Persistence --> MongoConnection["Mongo connection lifecycle"]
@@ -41,21 +42,18 @@ flowchart TD
 
 The name `PersistenceModule` is currently broader than persistence because it also binds `AuthPort`. The target folder plan separates composition into persistence, search, and external-adapter modules so dependency ownership remains obvious.
 
-D1 added seven auth repository adapters and their Mongoose models, but `PersistenceModule` does not bind them yet. That composition and HTTP adoption belongs to D2–D5; model/repository presence alone does not make session lifecycle or auth endpoints operational.
+`PersistenceModule` now binds the auth session/user, OTP, OAuth state, reset, verification, invite, rate-limit and consent repositories. The auth/session/privacy services consume those bindings. The console notification adapter is an explicit development seam; it is not evidence of MSG91 provider readiness. Chunk E's additional repository adapters exist in the Mongo package but are not all API-bound workflows.
 
 ## Current DI bindings
 
-| Token                  | Concrete class                                     |
-| ---------------------- | -------------------------------------------------- |
-| `PRODUCT_REPOSITORY`   | `MongoProductRepository`                           |
-| `CATEGORY_REPOSITORY`  | `MongoCategoryRepository`                          |
-| `CURRENCY_REPOSITORY`  | `MongoCurrencyRepository`                          |
-| `PROMOTION_REPOSITORY` | `MongoPromotionRepository`                         |
-| `CART_REPOSITORY`      | `MongoCartRepository`                              |
-| `ORDER_REPOSITORY`     | `MongoOrderRepository`                             |
-| `USER_REPOSITORY`      | `MongoUserRepository`                              |
-| `TRANSACTION_MANAGER`  | `MongoTransactionManager`                          |
-| `AUTH_PORT`            | `Argon2JwtAuth` factory using validated app config |
+| Token family                    | Concrete implementation                                                                                                                                                          |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Catalogue/commerce repositories | `MongoProductRepository`, `MongoCategoryRepository`, `MongoCurrencyRepository`, `MongoPromotionRepository`, `MongoCartRepository`, `MongoOrderRepository`, `MongoUserRepository` |
+| Auth repositories               | Mongo session, auth-user, OTP, OAuth-state, reset, verification, invite and rate-limit repositories                                                                              |
+| Privacy repository              | `MongoConsentRepository`                                                                                                                                                         |
+| `TRANSACTION_MANAGER`           | `MongoTransactionManager`                                                                                                                                                        |
+| `NOTIFICATION_PORT`             | `ConsoleNotificationAdapter` development seam                                                                                                                                    |
+| `AUTH_PORT`                     | `Argon2JwtAuth` factory using validated app config                                                                                                                               |
 
 Unbound ports do not become operational merely because their interfaces exist.
 
@@ -125,7 +123,7 @@ Seam-first provider work is locked: ports and stub/sandbox adapters can advance 
 Remaining configuration gaps:
 
 - development JWT secrets are still supplied as defaults (`?? 'dev-…-change-me'`) without a production rejection gate;
-- session issuance/rotation and notification provider adapters are not yet wired. D1 persists `authSessions.csrfSecretHash`; D2 must bind the present CSRF issuance/guard flow to the active session.
+- cookie session issuance/rotation and session-bound CSRF are wired; a real MSG91 adapter, provider verification and production notification delivery remain open.
 
 Production must fail closed when required secrets or security settings are absent. Never “helpfully” create predictable production secrets.
 

@@ -8,6 +8,9 @@ audience: [beginner, backend, frontend, operator]
 last_verified: '2026-08-01'
 source_of_truth:
     - apps/api/src/auth
+    - apps/api/src/orders/orders.controller.ts
+    - apps/api/src/privacy/privacy.controller.ts
+    - apps/api/src/cart/cart.controller.ts
     - apps/api/src/common/cookies.ts
     - apps/api/src/common/csrf.guard.ts
     - apps/api/src/infra/argon2-jwt.auth.ts
@@ -30,14 +33,14 @@ source_of_truth:
 
 # Security, sessions, and authorization
 
-Security status is **scaffolded**. Argon2id, signed JWTs, the transitional bearer/role guards, strict credentialed CORS, Helmet, trusted client-IP rate limiting, per-request correlation, adapter-level log redaction, and the shared safe error envelope exist. Cookie attribute helpers, global double-submit CSRF enforcement, and `GET /auth/csrf` now form a real foundation. Chunk D1 also delivered tested MongoDB models and repositories for sessions, challenges, single-use tokens, admin invites, and rate limits. Those persistence capabilities are not bound into the current API auth flow: D2–D5 still own the cookie/session lifecycle, endpoint adoption, audience/RBAC policy, consent/privacy, and ownership authorization.
+Security status is **scaffolded** because the implemented session foundation is not yet a complete identity system. Browser auth now uses audience-bound httpOnly access/refresh cookies, opaque refresh rotation with reuse-triggered family revocation, AuthSession `sid` checks so logout/family revoke invalidate access JWTs immediately, session-bound double-submit CSRF (Policy B preserve-or-recover on `GET /auth/csrf`), current-user/version checks, role/permission enforcement, cart/`st_guest` ownership and order ownership. Strict credentialed CORS, Helmet, trusted client-IP rate limiting, per-request correlation, adapter-level log redaction, and the shared safe error envelope also exist. Remaining gaps include OAuth, email-verification completion, admin invite acceptance/quick-resume, guest→user merge, fail-closed production secret validation, and provider-backed delivery.
 
 ## Authentication versus authorization
 
 - **Authentication:** Who is the caller?
 - **Authorization:** May this caller perform this action on this resource now?
 
-A valid token proves neither order ownership nor permission to mutate an arbitrary cart.
+A valid token proves identity and live session membership; object-level cart/order ownership is enforced separately and fails closed as not-found on mismatch.
 
 ## Current browser auth
 
@@ -47,41 +50,38 @@ sequenceDiagram
     participant API
     participant UserRepo
     participant AuthPort
+    participant SessionStore
 
-    Browser->>API: POST /auth/login email + password
+    Browser->>API: POST /auth/storefront/login/password
     API->>UserRepo: findCredentialByEmail
     UserRepo-->>API: public user + selected password hash
     API->>AuthPort: verifyPassword
-    API->>AuthPort: sign access JWT + refresh JWT
-    API-->>Browser: JSON { user, accessToken, refreshToken }
-    Browser->>API: Authorization: Bearer accessToken
+    API->>SessionStore: persist refresh family + CSRF hash
+    API->>AuthPort: sign short-lived access JWT
+    API-->>Browser: httpOnly access/refresh + readable CSRF cookies; sanitized JSON
+    Browser->>API: cookies; X-CSRF-Token on unsafe requests
 ```
 
 Important current gaps:
 
-- browser-readable token response;
-- bearer-only guard;
-- refresh JWT without server-side token-family rotation/reuse detection;
-- no logout revocation;
-- no storefront/admin audience separation;
-- D1 can persist session families, but the current API does not bind or use those repositories; the global CSRF guard is already active whenever a session cookie is present;
-- the legacy controller-local registration schema still accepts eight characters; the new shared auth contract sets the locked 12-character floor, but it is not wired into that endpoint and the denylist policy is not implemented;
-- OTP endpoints are still explicit not-implemented stubs, though the provider and policy config now exist (MSG91 is the locked provider behind the notification abstraction; `OTP_TTL_SECONDS`/`OTP_MAX_ATTEMPTS` are parsed);
-- no admin PIN implementation;
-- credential lockout fields, session storage, and atomic rate-limit persistence now exist at the adapter layer, but no current HTTP flow enforces the locked account-lock/backoff policy and no broad audit collection exists.
+- the Angular interceptors still attach a legacy local-storage bearer token even though `SessionGuard` deliberately ignores `Authorization`; this is frontend migration debt, not a supported server fallback;
+- registration and password flows use shared 12-character schemas, but the common-password denylist remains absent;
+- OTP request/verify is live through `NotificationPort`, but the bound `ConsoleNotificationAdapter` is a safe development seam rather than MSG91 delivery;
+- email-verification issuance is live but no completion route consumes the token; OAuth state persistence exists without provider/callback routes;
+- admin password/PIN login, PIN setup/lockout, roles, permissions and version invalidation are live; invite acceptance and idle quick-resume are absent;
+- consent/privacy, order ownership, cart Principal/`st_guest` ownership and order-create cart adoption are live; guest→user merge and checkout idempotency remain Chunk G;
+- production configuration still needs a fail-closed secret check.
 
 ## Chunk D status boundary
 
-Chunk D1 is a persistence capability, not a browser-auth rollout. Its 18 gated rs0 tests prove atomic refresh rotation, replay lookup, family revocation, one-active OTP handling, single-use token consumption, concurrency-safe rate-limit counters, secret-field exclusion, and TTL policy. `PersistenceModule`, `AuthService`, and `AuthController` do not yet use those repositories.
+Chunk D1's tested stores are now bound into the HTTP flow. The 18 gated rs0 tests prove atomic refresh rotation, replay lookup, family revocation, one-active OTP handling, single-use token consumption, concurrency-safe rate-limit counters, secret-field exclusion, and TTL policy.
 
-The remaining passes belong to the API implementation worker after portal reconciliation:
-
-| Pass | Still required                                                                                                                                                       |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D2   | Issue, refresh, and revoke through httpOnly cookies; reuse-triggered family revocation; bind CSRF to `authSessions.csrfSecretHash`; storefront/admin audience guards |
-| D3   | Storefront register/login/logout/me/refresh, password reset, email verification, and OTP endpoints with generic anti-enumeration responses                           |
-| D4   | Admin invite acceptance, PIN setup/login/lockout/quick-resume, RBAC, and permission-version invalidation                                                             |
-| D5   | Consent and privacy seams plus ownership/BOLA authorization on carts and orders                                                                                      |
+| Pass | Current evidence                                                                                                                                                  | Remaining boundary                      |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| D2   | **Done:** cookie issue/refresh/revoke, sid-bound access invalidation, reuse-family revocation, session-bound CSRF (Policy B) and storefront/admin audience guards | None in the defined D2 scope            |
+| D3   | **Partial:** register, password login/logout/me/refresh, password reset, and email OTP request/verify use generic anti-enumeration where applicable               | Email-verification completion and OAuth |
+| D4   | **Partial:** admin password/PIN login, PIN setup/lockout, role/permission checks and permission-version invalidation                                              | Invite acceptance and idle quick-resume |
+| D5   | **Partial:** consent/privacy, order BOLA, cart/`st_guest` ownership and order-create cart adoption                                                                | Guest→user merge (Chunk G)              |
 
 ## Locked browser session
 
@@ -113,7 +113,7 @@ sequenceDiagram
 | Guest cookie               |                No | Opaque authority for one guest cart only            |
 | Locale/currency preference |            May be | Non-secret presentation context                     |
 
-The locked cookie names are `st_access`, `st_refresh`, and the browser-readable `st_csrf` (CSRF header `x-csrf-token`). Session cookies use `httpOnly`, `SameSite=Lax`, `Path=/`, and `Secure` in production; the CSRF cookie is deliberately readable and is not a credential. The `__Host-` prefix is used exactly when valid: production and no pinned `COOKIE_DOMAIN`. A pinned domain or plain HTTP falls back to the allowed compact `st_*` name. Cookie sessions themselves are not yet issued by the auth flow—the current API still returns bearer tokens in JSON.
+The cookie names are `st_access`, `st_refresh`, and the browser-readable `st_csrf` (CSRF header `x-csrf-token`). Session cookies use `httpOnly`, `SameSite=Lax`, `Path=/`, and `Secure` in production; the CSRF cookie is deliberately readable and is not a credential. The `__Host-` prefix is used exactly when valid: production and no pinned `COOKIE_DOMAIN`. A pinned domain or plain HTTP uses the allowed compact `st_*` name. Auth responses return sanitized user/session metadata, never reusable access or refresh credentials.
 
 ## CSRF rule
 
@@ -123,7 +123,7 @@ For cookie-authenticated `POST`, `PUT`, `PATCH`, and `DELETE`, the global guard 
 2. otherwise requires the readable CSRF cookie and matching `x-csrf-token` header;
 3. compares them in constant time and rejects generically before mutation.
 
-Obtain the pair through `GET /auth/csrf`, which returns a 32-byte CSPRNG token in the `CsrfTokenResponse` body and sets the readable cookie. D1 persists `authSessions.csrfSecretHash`; D2 must bind issuance and validation to that active session, then complete session validation and origin/fetch-metadata policy.
+Login, OTP verification, and refresh issue the readable CSRF cookie together with a matching `authSessions.csrfSecretHash`; copy that cookie value into the header for unsafe requests. `GET /auth/csrf` remains useful before a session exists. For an active session it follows Policy B: preserve the still-valid bound token, and only atomically rotate `csrfSecretHash` when the readable cookie is missing or desynced. Unsafe requests that carry session cookies fail closed when no live session resolves.
 
 Never use `GET` for a state-changing operation.
 
@@ -141,7 +141,7 @@ An admin session must not automatically become customer authority, and a storefr
 
 ## Object-level authorization
 
-The current `GET /orders/:id` is the clearest BOLA risk: it checks authentication but not whether `order.userId === actor.sub`.
+The former `GET /orders/:id` BOLA defect was fixed on 2026-08-01. Customer reads now compare `order.userId` with the authenticated subject and return not-found on a mismatch; staff/admin have an explicit support bypass. Cart routes remain `@Public()` for guest add-to-cart but enforce Principal ownership or the hashed `st_guest` proof, and order create validates ownership/adoption before any write.
 
 Prefer ownership-scoped repository methods/use cases:
 
@@ -156,7 +156,7 @@ Repeat this pattern for carts, addresses, returns, refunds, wishlist, saved item
 
 ## Role versus permission
 
-The current guard accepts `customer | staff | admin` role values. The target needs permissions for privileged actions and a permission version in admin sessions.
+The current guard accepts `customer | staff | admin` roles, enforces explicit permissions when a route declares them, and compares token/permission versions with current user state on each guarded request.
 
 - Role groups permissions.
 - Permission authorizes an action such as `orders.status.update`.
@@ -192,7 +192,7 @@ The current guard accepts `customer | staff | admin` role values. The target nee
 - Generic anti-enumeration responses.
 - Channel-direct delivery through locked notification abstraction/provider; no code/token logs.
 
-The PIN/OTP/session DTOs and internal persistence shapes exist in `packages/contracts`, and D1 implements their MongoDB persistence seams. The current HTTP lifecycle does not use them: D2–D4 still own cookie sessions, live OTP delivery/verification, and the admin PIN flow.
+The PIN/OTP/session DTOs and persistence shapes are active in the HTTP lifecycle. Email OTP request/verification and admin PIN setup/login/lockout are implemented; provider-backed MSG91 delivery, invite acceptance, OAuth and quick-resume remain outside the current proof.
 
 ## Configuration fail-closed rule
 

@@ -106,15 +106,15 @@ Never assume a Mongoose schema edit automatically migrates historical documents.
 
 ## Current generated catalogue
 
-The composite portal publishes a source-only **Schema Observatory** at `/database/catalogue/`. Before the product lifecycle model landed, its generator derived:
+The composite portal publishes a source-only **Schema Observatory** at `/database/catalogue/`. The 2026-08-01 regeneration imports every exported Mongoose model without opening a connection and measures:
 
-- 7 current models;
-- 93 schema paths;
-- 19 indexes;
-- 11 paths whose `Mixed` or array-of-`Mixed` shape is explicitly marked temporary;
-- safe synthetic shape previews that omit the excluded `passwordHash` field.
+- 14 current models;
+- 192 schema paths;
+- 43 indexes;
+- 13 paths whose `Mixed` or array-of-`Mixed` shape is explicitly marked temporary;
+- 12 excluded-by-default credential, PIN, token, code, state, nonce, PKCE and CSRF hash fields, all omitted from synthetic previews.
 
-The field and index totals above are historical and must not be carried forward. The source-only catalogue will be regenerated in its dedicated pass from the same seven implemented models. It remains a current-evidence scaffold, not the finished database dictionary: it does not promote any of Schema Nebula’s 57 target-only collections or claim workflow transaction participation, migration history, retention, or complete nested validators.
+The seven original commerce/catalogue models and seven D1 identity-support models are current adapter evidence. The grouped auth models currently resolve lowercase physical collection names, so they do not promote mismatched camelCase target stars in Schema Nebula; `authratelimits` is also outside its locked 64-node target graph. The catalogue remains a current-evidence scaffold, not the finished database dictionary: it does not claim HTTP-flow adoption, workflow transaction participation, migration history, retention completeness, or complete nested validators.
 
 ## Target-complete catalogue gate
 
@@ -170,7 +170,7 @@ Once generation exists, do not independently maintain a Mongoose schema, databas
 
 - Run against source code/metadata, never by dumping production records.
 - Examples are synthetic or rigorously sanitized.
-- Never emit hashes, tokens, credentials, addresses, provider payloads, or customer data.
+- Never emit hash values, tokens, credentials, addresses, provider payloads, or customer data. Field names and exclusion policy may be documented; excluded-by-default fields must not appear in synthetic previews.
 - Deterministic output keeps review diffs meaningful.
 - CI fails when checked-in generated pages are stale.
 - Generated pages show their generator version/source commit.

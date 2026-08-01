@@ -32,13 +32,16 @@ flowchart TD
     App --> Orders["OrdersModule"]
     App --> Auth["AuthModule"]
 
-    Persistence --> MongoRepos["Seven Mongo repositories"]
+    Persistence --> MongoRepos["Seven API-bound Mongo repositories"]
+    Persistence -. "D1 not bound" .-> AuthRepos["Seven auth repository adapters"]
     Persistence --> Transaction["MongoTransactionManager"]
     Persistence --> AuthAdapter["Argon2JwtAuth"]
     Persistence --> MongoConnection["Mongo connection lifecycle"]
 ```
 
 The name `PersistenceModule` is currently broader than persistence because it also binds `AuthPort`. The target folder plan separates composition into persistence, search, and external-adapter modules so dependency ownership remains obvious.
+
+D1 added seven auth repository adapters and their Mongoose models, but `PersistenceModule` does not bind them yet. That composition and HTTP adoption belongs to D2–D5; model/repository presence alone does not make session lifecycle or auth endpoints operational.
 
 ## Current DI bindings
 
@@ -61,9 +64,9 @@ Unbound ports do not become operational merely because their interfaces exist.
 The adapter currently owns:
 
 - connection configuration and Mongoose lifecycle;
-- seven models and indexes;
+- 14 models and indexes;
 - conversion from Mongoose documents to public contract-shaped values;
-- repository queries/upserts/deletes;
+- seven API-bound repository adapters plus seven currently unbound D1 auth repository adapters;
 - a transaction manager that exposes only the opaque core transaction context and uses `AsyncLocalStorage` so nested transactions join;
 - idempotent seed data for categories, products, currencies, and promotion;
 - a gated live integration test.
@@ -84,7 +87,7 @@ flowchart LR
     WriteMapper --> Model
 ```
 
-Current read mappers handle ids and dates explicitly, but nested `Mixed` values are cast. The widened public `User` contract now has `phone`, `phoneVerified`, and lifecycle `status`; until its model/repository upgrade lands, `toUser` deliberately supplies `null`, `false`, and `active` compatibility defaults. That keeps current code compiling but does not prove those fields are persisted. Future implementation should validate/marshal nested fields deliberately and keep secret fields, such as `passwordHash`, inside the adapter boundary.
+Current read mappers handle ids and dates explicitly, but nested `Mixed` values are cast. D1 expanded the user model to persist phone verification, account status, username, role/permission versions, credential lockout state, identities, consent and admin-profile seams. Public mapping still deliberately excludes credential hashes. Future implementation should validate/marshal nested fields deliberately and keep secret fields such as `passwordHash` and `pinHash` inside the adapter boundary.
 
 ## Provider adapter pattern
 

@@ -27,7 +27,7 @@ Docusaurus remains the navigation, narrative, governance, search, and deployment
 | `/tools/storybook`          | `/storybook/`          | One Angular Storybook renderer | Built; Component Forge gateway                                               |
 | `/tools/typedoc`            | `/typedoc/`            | TypeDoc                        | Built; Type Lattice gateway                                                  |
 | `/tools/scalar`             | `/api/reference/`      | Scalar                         | Scaffolded current OpenAPI; Request Wormhole gateway; Test Request available |
-| `/tools/database-catalogue` | `/database/catalogue/` | Mongo catalogue generator      | Scaffolded seven-model current evidence; Schema Observatory gateway          |
+| `/tools/database-catalogue` | `/database/catalogue/` | Mongo catalogue generator      | Scaffolded 14-model current evidence; Schema Observatory gateway             |
 | n/a                         | `/api/openapi.json`    | OpenAPI artifact pipeline      | Scaffolded deterministic source-generated document                           |
 
 Storybook is not a React-only or view-only substitute. The selected `@storybook/angular` renderer compiles Angular templates, dependency injection, inputs/outputs, change detection, directives, and application providers. A React renderer cannot directly render Angular components as React components.
@@ -163,7 +163,7 @@ corepack pnpm portal:persistent -- --port 3457
 4. builds Storybook and TypeDoc;
 5. builds the API and source-generates the scaffolded OpenAPI artifact without MongoDB;
 6. builds Scalar with Test Request available;
-7. source-generates the seven-model MongoDB catalogue without database access;
+7. source-generates the 14-model MongoDB catalogue without database access;
 8. builds Docusaurus;
 9. verifies that every enabled surface produced a non-empty entry page;
 10. copies child outputs under the Docusaurus composite tree;

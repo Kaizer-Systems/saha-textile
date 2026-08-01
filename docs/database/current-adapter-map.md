@@ -13,6 +13,7 @@ source_of_truth:
     - packages/adapters-db-mongo/src/connection.ts
     - packages/adapters-db-mongo/src/seed
     - packages/adapters-db-mongo/test/integration.test.ts
+    - packages/adapters-db-mongo/test/auth-persistence.test.ts
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -24,21 +25,28 @@ The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps,
 
 ## Current model inventory
 
-| Model       | Primary durable purpose                              | Important indexes                                                                          | Notable limitations                                                                                       |
-| ----------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ---- | -------- | --------------------------------------------- |
-| `Category`  | Simplified taxonomy nodes                            | unique slug; parent; path; ancestors                                                       | Locked target is multi-placement DAG, not one parent tree                                                 |
-| `Product`   | Product/variation/add-on catalogue shape + lifecycle | unique slug/SKU; categoryIds; tags; status; status+category+created; status+discontinuedAt | Status is `draft                                                                                          | live | disabled | discontinued`; nested temporary shapes remain |
-| `Currency`  | Enabled currencies and INR rate/PayPal inputs        | enabled                                                                                    | No rate history/staleness/config-version records                                                          |
-| `Promotion` | Discount/coupon definition                           | coupon; scope; starts+ends                                                                 | Coupon index not unique; incomplete usage/stacking/applicability engine                                   |
-| `Cart`      | User/guest-shaped cart lines                         | userId; guestToken                                                                         | Guest token stored directly, no TTL, ownership model, unique active-cart guarantees, or nested validation |
-| `Order`     | Order snapshot/timeline scaffold                     | unique orderNumber; user+createdAt; status                                                 | Mixed lines/timeline; no separate payment/shipment/return/refund records or transaction                   |
-| `User`      | Public identity/profile plus hidden password hash    | sparse unique email                                                                        | Auth identity/session/challenge/role/audit responsibilities not separated                                 |
+| Model                    | Physical collection       | Primary durable purpose                                          | Important index policy                                                  | Notable limitations                                                      |
+| ------------------------ | ------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `Category`               | `categories`              | Simplified taxonomy nodes                                        | unique slug; parent; path; ancestors                                    | Locked target is multi-placement DAG, not one parent tree                |
+| `Product`                | `products`                | Product/variation/add-on catalogue shape plus lifecycle          | unique slug/SKU; visibility/category/time; discontinuation purge lookup | Temporary nested shapes remain                                           |
+| `Currency`               | `currencies`              | Enabled currencies and INR rate/PayPal inputs                    | enabled                                                                 | No rate history/staleness/config-version records                         |
+| `Promotion`              | `promotions`              | Discount/coupon definition                                       | coupon; scope; starts+ends                                              | Incomplete usage/stacking/applicability engine                           |
+| `Cart`                   | `carts`                   | User/guest-shaped cart lines                                     | userId; guestToken                                                      | No ownership proof, active-cart uniqueness or nested validation          |
+| `Order`                  | `orders`                  | Order snapshot/timeline scaffold                                 | unique orderNumber; user+createdAt; status                              | Mixed lines/timeline; no workflow transaction adoption                   |
+| `User`                   | `users`                   | Identity, credential, role, permission, consent/address scaffold | unique sparse email/username/phone; role+status                         | D2–D5 still own runtime auth, consent/privacy and authorization adoption |
+| `AuthSession`            | `authsessions`            | Rotating refresh family and session-bound CSRF hashes            | current/previous token hash; family; user/audience/revocation; TTL      | Persistence capability only; D2 has not adopted it                       |
+| `OtpChallenge`           | `otpchallenges`           | Hash-only, single-active OTP challenges                          | active identifier+purpose uniqueness; TTL                               | D3 request/verify endpoints and anti-enumeration remain                  |
+| `OAuthState`             | `oauthstates`             | Hash-only OAuth state, nonce and PKCE verifier                   | unique state hash; TTL                                                  | Provider callback consumption remains                                    |
+| `PasswordResetToken`     | `passwordresettokens`     | Hash-only single-use password reset                              | unique token hash; user; TTL                                            | D3 endpoint adoption remains                                             |
+| `EmailVerificationToken` | `emailverificationtokens` | Hash-only single-use email verification                          | unique token hash; user; TTL                                            | D3 endpoint adoption remains                                             |
+| `AdminInvite`            | `admininvites`            | Hash-only admin invite plus acceptance audit                     | unique token hash; one outstanding invite per email                     | D4 acceptance and RBAC adoption remain                                   |
+| `AuthRateLimit`          | `authratelimits`          | Atomic expiring auth counters                                    | unique composite key; TTL                                               | Adapter mechanism is outside the locked Schema Nebula graph              |
 
-These names refer to Mongoose models. Physical collection naming follows Mongoose configuration/conventions and must be confirmed by the generated catalogue rather than guessed.
+The generated catalogue confirms these physical names directly from Mongoose metadata. Six D1 names are lowercase defaults rather than the owner-locked camelCase Schema Nebula targets, so their target stars remain ghosts. `authratelimits` is current adapter evidence but is intentionally not one of the locked 64 target nodes.
 
 ## Current repository inventory
 
-All seven repositories implement matching core ports and return mapped contract-shaped values.
+Fourteen repository adapters implement the seven original domain repositories plus D1’s seven auth repositories. The auth adapters cover session issue/find/rotate/family revocation, OTP challenge consumption, OAuth state, single-use reset/verification/invite tokens, and atomic rate-limit counters; they are not yet wired into D2–D5 HTTP flows.
 
 ### Common pattern
 
@@ -53,8 +61,8 @@ save/upsert → strip public id → findByIdAndUpdate($set) → mapper
 - Category tree returns a flat depth/display-order sort; hierarchy reconstruction is a consumer concern.
 - Active promotions use start/end-window filtering and priority sort.
 - User credential lookup explicitly selects the hidden password hash.
-- User mapping never returns `passwordHash`.
-- User mapping currently supplies compatibility defaults for the widened public contract (`phone: null`, `phoneVerified: false`, `status: active`); the model does not persist those fields yet.
+- User credential lookups can explicitly request the otherwise hidden password/PIN hashes; public mapping returns neither.
+- Session/challenge/token repositories explicitly select hidden hashes only inside credential verification paths and never expose plaintext secrets.
 - Order listing scopes by `userId`, but single-order lookup does not.
 - Order status update appends a timeline value but throws a generic adapter error when missing.
 
@@ -114,7 +122,7 @@ The seed is useful for early schema tests. It is not a complete locked-domain se
 
 ## Existing integration test
 
-The gated adapter suites connect to rs0, seed/read taxonomy, verify a base variation, prove public/admin product visibility, and exercise transaction-manager commit/rollback behavior. They run only when `RUN_DB_IT=1` and Mongo configuration is present.
+The gated adapter suites connect to rs0, seed/read taxonomy, verify a base variation, prove public/admin product visibility, exercise transaction-manager commit/rollback behavior, and test D1 auth persistence. They run only when `RUN_DB_IT=1` and Mongo configuration is present.
 
 Limitations:
 
@@ -122,6 +130,7 @@ Limitations:
 - the suite does not start the replica set itself — bring it up first with `pnpm mongo:up`;
 - it does not exercise indexes/uniqueness broadly;
 - six transaction tests prove commit, rollback after a successful write, error propagation, return values, nested-session joining, and inner-failure rollback of outer writes;
+- 18 auth-persistence tests prove default secret exclusion, explicit credential reads, session rotation/reuse-family support, atomic single-use challenge/token consumption, TTL/index declarations and atomic rate-limit increments;
 - it does not cover every repository/mapper.
 
 ## Model review checklist

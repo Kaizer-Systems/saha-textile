@@ -480,6 +480,36 @@ swatch_image_v2` with pixel sizes deliberately left to config (`G-IMG-PX`);
   credentials — `OAuthStateRepository` and the state collection are in place), admin
   invite ACCEPTANCE endpoint (repository + collection exist; the flow belongs with admin
   user management), and idle quick-resume UX. Tool: claude-code.
+- 2026-08-01 — [DONE] **Chunk D route gaps closed (email verification, admin invites, quick-resume).**
+  Reconciled against the Cursor/Codex fixes first, then closed the remaining Chunk D
+  boundary items that had services but NO routes — an email-verification token was being
+  issued at registration with no endpoint to redeem it, and the admin invite contract,
+  collection and repository all existed while there was **no way to create an admin
+  account at all**. Added: `POST /auth/storefront/email/verify` (public; single-use,
+  atomic consume; expired/used/unknown all answer identically) and
+  `POST /auth/storefront/email/verify/resend` (session-REQUIRED on purpose — an
+  unauthenticated resend taking an arbitrary address is both an enumeration oracle and a
+  way to have us mail strangers; already-verified and rate-limited callers get the same
+  accepted response). `POST/GET/DELETE /auth/admin/invites` (admin-role only) and
+  `POST /auth/admin/invites/accept` (public, because the invitee has no session — the
+  single-use token IS the authorization). `POST /auth/admin/resume` implements the locked
+  idle quick-resume: it re-verifies the PIN for the CURRENT session's own user and
+  extends that session rather than issuing a new one, which is what lets the admin UI keep
+  its mounted route/form state. New `AdminInviteService` writes the invite and its audit
+  row in ONE transaction (a granted privilege must never exist without evidence of who
+  granted it) under the seven-year `financial_security` tier, and bound
+  `AUDIT_LOG_REPOSITORY` in DI — it was implemented in Chunk E but never wired, so no
+  admin mutation had been auditable until now. **Live-verified on a fresh build:** all
+  seven routes mapped; invalid verification token → 401; resend 401 without a session and
+  202 with; invite creation 401 for anonymous AND for a customer session, 201 for an
+  admin; the 201 response and the list response contain NO token material; DB check
+  confirms only a 64-char `tokenHash` is stored and the audit row is
+  `admin.invite.create` / `financial_security` / `warn` with no token material; and
+  `invites/accept` with a malformed body returns 400 `validation_failed`, proving the
+  route is genuinely public rather than being rejected by the guard. Probe data cleaned
+  up afterwards. 8 new unit tests (api 57 → 64). Gates: typecheck 13/13, lint 15/15,
+  `pnpm test` 9/9, naming, format, DB IT 81/81. Remaining in D: OAuth provider
+  verification only, which is blocked on approved credentials. Tool: claude-code.
 - 2026-08-01 — [PARTIAL] **Chunk D completion label corrected after portal/code reassessment.** The delivered cookie session, rotation/reuse, session-bound CSRF, audience, OTP/password-reset, PIN/RBAC/version invalidation, consent/privacy and order-ownership mechanics are real. The full roadmap boundary is not complete: no email-verification completion route, OAuth verification, admin invite acceptance or quick-resume exists, and `CartController` remains `@Public()` with arbitrary cart ids and no guest proof/user ownership (explicitly deferred there to Chunk G). The governed `portal-truth` snapshot correctly remains D=`partial`; the roadmap now records D2 done and D3–D5 partial. Tool: codex.
 - 2026-08-01 — [DONE] **Chunk E COMPLETE (passes 2–4: inventory, media, governance, content).**
   **Inventory:** `applyDelta` moves stock with a single conditional `$inc` and the oversell

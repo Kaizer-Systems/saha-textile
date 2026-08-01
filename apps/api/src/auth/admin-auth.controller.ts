@@ -1,6 +1,20 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	HttpCode,
+	HttpStatus,
+	Param,
+	Post,
+	Req,
+	Res,
+	UnauthorizedException,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+	AdminInviteAcceptRequest,
+	AdminInviteRequest,
 	AdminLoginRequest,
 	type AdminMeResponse,
 	AdminPinLoginRequest,
@@ -10,6 +24,7 @@ import {
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { AdminInviteService } from './admin-invite.service';
 import { AuthService } from './auth.service';
 import { Principal } from './ownership';
 import { type AuthenticatedPrincipal, Audience, Public, RequireRoles } from './session.guard';
@@ -29,6 +44,7 @@ export class AdminAuthController {
 	constructor(
 		private readonly auth: AuthService,
 		private readonly sessions: SessionService,
+		private readonly adminInvites: AdminInviteService,
 	) {}
 
 	@Post('login')
@@ -204,6 +220,131 @@ export class AdminAuthController {
 				audience: 'admin',
 				expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
 				refreshExpiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+			},
+		};
+	}
+
+	/**
+	 * Invites a new staff/admin account.
+	 *
+	 * This is the entire privilege-granting surface — there is no admin self-registration —
+	 * so it is `admin`-role only and every call is audited under the seven-year tier.
+	 */
+	@Post('invites')
+	@RequireRoles('admin')
+	@HttpCode(HttpStatus.CREATED)
+	@ApiOperation({ summary: 'Invite a staff/admin account (admin only; audited)' })
+	async createInvite(
+		@Body(new ZodValidationPipe(AdminInviteRequest)) body: AdminInviteRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Req() request: FastifyRequest,
+	): Promise<{ id: string; emailNormalized: string; role: string; expiresAt: string }> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+
+		const invite = await this.adminInvites.create({
+			request: body,
+			invitedByUserId: principal.userId,
+			requestId: typeof request.id === 'string' ? request.id : null,
+		});
+
+		// The token is NOT returned: it exists only in the invitation email.
+		return {
+			id: invite.id,
+			emailNormalized: invite.emailNormalized,
+			role: invite.role,
+			expiresAt: invite.expiresAt,
+		};
+	}
+
+	@Get('invites')
+	@RequireRoles('admin')
+	@ApiOperation({ summary: 'List outstanding invites (admin only)' })
+	async listInvites(): Promise<{
+		items: Array<{ id: string; emailNormalized: string; role: string; expiresAt: string }>;
+	}> {
+		const invites = await this.adminInvites.listPending();
+		// Projected field-by-field: `tokenHash` must never reach a response.
+		return {
+			items: invites.map((invite) => ({
+				id: invite.id,
+				emailNormalized: invite.emailNormalized,
+				role: invite.role,
+				expiresAt: invite.expiresAt,
+			})),
+		};
+	}
+
+	@Delete('invites/:id')
+	@RequireRoles('admin')
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({ summary: 'Revoke an outstanding invite (admin only; audited)' })
+	async revokeInvite(
+		@Param('id') inviteId: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Req() request: FastifyRequest,
+	): Promise<void> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+		await this.adminInvites.revoke(inviteId, principal.userId, typeof request.id === 'string' ? request.id : null);
+	}
+
+	/**
+	 * Accepts an invite and creates the account. Public because the invitee has no session
+	 * yet; the single-use token IS the authorization, and consuming it is atomic so two
+	 * people racing the same link cannot both create an account.
+	 */
+	@Post('invites/accept')
+	@Public()
+	@HttpCode(HttpStatus.CREATED)
+	@ApiOperation({ summary: 'Accept an admin invitation and set credentials' })
+	async acceptInvite(
+		@Body(new ZodValidationPipe(AdminInviteAcceptRequest)) body: AdminInviteAcceptRequest,
+	): Promise<{ userId: string; role: string }> {
+		const user = await this.adminInvites.accept(body);
+		// No session is issued here: the new admin signs in explicitly, which exercises the
+		// credential they just set rather than trusting the invite link twice.
+		return { userId: user.id, role: user.role };
+	}
+
+	/**
+	 * Idle quick-resume.
+	 *
+	 * After the 15-minute soft lock the session still EXISTS — the operator just has to
+	 * prove presence again. This re-verifies the PIN for the current session's own user and
+	 * extends that session, rather than issuing a new one, which is what lets the admin UI
+	 * keep its mounted route and form state (owner lock 2026-07-23).
+	 */
+	@Post('resume')
+	@RequireRoles('staff', 'admin')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Quick-resume an idle admin session with the PIN' })
+	async resume(
+		@Body(new ZodValidationPipe(AdminPinLoginRequest.pick({ pin: true }))) body: { pin: string },
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Req() request: FastifyRequest,
+		@Res({ passthrough: true }) reply: FastifyReply,
+	): Promise<AuthSessionResponse> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+		if (!(await this.auth.withinRateLimit('pin_login', 'ip', request.ip))) {
+			throw new UnauthorizedException('Too many attempts');
+		}
+
+		const user = await this.auth.findAuthUserById(principal.userId);
+		if (!user || user.status !== 'active') throw new UnauthorizedException('Account is not active');
+
+		const outcome = await this.auth.verifyAdminPin(user, body.pin);
+		if (outcome === 'locked') {
+			throw new UnauthorizedException('PIN is temporarily locked; sign in with your password');
+		}
+		if (outcome !== 'ok') throw new UnauthorizedException('Invalid credentials');
+
+		// Rotates the refresh token and extends the idle window on the SAME session.
+		const { session } = await this.sessions.refresh({ request, reply, audience: 'admin' });
+		return {
+			user: await this.auth.publicUser(user.id),
+			session: {
+				audience: session.audience,
+				expiresAt: session.expiresAt,
+				refreshExpiresAt: session.absoluteExpiresAt,
 			},
 		};
 	}

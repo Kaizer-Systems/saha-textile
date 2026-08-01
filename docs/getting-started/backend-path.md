@@ -19,7 +19,7 @@ Use this path for NestJS controllers, contracts, domain use cases, persistence, 
 
 The repository already contains an API composition root, health/auth/catalog/cart/order/currency/promotion modules, OpenAPI generation, domain ports and a Mongo adapter with models, indexes and repositories. This is a working scaffold and partial implementation—not a finished production API.
 
-The portal now builds a human-facing Scalar scaffold and a source-only 14-model MongoDB catalogue. Both deliberately expose current evidence and limitations; neither is promoted to a complete contract. The existing framework API documentation UI remains transitional and deprecated by the portal decision.
+The portal now builds a human-facing Scalar scaffold and a source-only 32-model MongoDB catalogue. Both deliberately expose current evidence and limitations; neither is promoted to a complete contract. The existing framework API documentation UI remains transitional and deprecated by the portal decision.
 
 ## Read in this order
 

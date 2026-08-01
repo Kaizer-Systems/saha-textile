@@ -64,9 +64,9 @@ Unbound ports do not become operational merely because their interfaces exist.
 The adapter currently owns:
 
 - connection configuration and Mongoose lifecycle;
-- 14 models and indexes;
+- 32 models and indexes;
 - conversion from Mongoose documents to public contract-shaped values;
-- seven API-bound repository adapters plus seven currently unbound D1 auth repository adapters;
+- original API-bound repositories plus bound auth/consent and tested Chunk E catalogue, inventory, media, governance, notification and content adapters;
 - a transaction manager that exposes only the opaque core transaction context and uses `AsyncLocalStorage` so nested transactions join;
 - idempotent seed data for categories, products, currencies, and promotion;
 - a gated live integration test.

@@ -108,13 +108,13 @@ Never assume a Mongoose schema edit automatically migrates historical documents.
 
 The composite portal publishes a source-only **Schema Observatory** at `/database/catalogue/`. The 2026-08-01 regeneration imports every exported Mongoose model without opening a connection and measures:
 
-- 14 current models;
-- 192 schema paths;
-- 43 indexes;
-- 13 paths whose `Mixed` or array-of-`Mixed` shape is explicitly marked temporary;
-- 12 excluded-by-default credential, PIN, token, code, state, nonce, PKCE and CSRF hash fields, all omitted from synthetic previews.
+- 32 current models;
+- 406 schema paths;
+- 89 indexes;
+- 27 paths whose `Mixed` or array-of-`Mixed` shape is explicitly marked temporary;
+- 13 excluded-by-default credential, PIN, token, code, state, nonce, PKCE, CSRF and private-contact fields, all omitted from synthetic previews.
 
-The seven original commerce/catalogue models and seven D1 identity-support models are current adapter evidence. The grouped auth models currently resolve lowercase physical collection names, so they do not promote mismatched camelCase target stars in Schema Nebula; `authratelimits` is also outside its locked 64-node target graph. The catalogue remains a current-evidence scaffold, not the finished database dictionary: it does not claim HTTP-flow adoption, workflow transaction participation, migration history, retention completeness, or complete nested validators.
+The catalogue covers the seven original models plus the 25 D/E identity, consent, catalogue, variant, merchandising, media, inventory, governance, notification and content models. Only `reviews` among the new target-backed physical names resolves exactly to a locked Schema Nebula node; lowercase Mongoose defaults do not promote mismatched lower-camel stars, and `authratelimits` remains outside the 64-node graph. The catalogue remains a current-evidence scaffold, not the finished database dictionary: it does not claim complete HTTP/workflow adoption, migration history, retention completeness, or complete nested validators.
 
 ## Target-complete catalogue gate
 

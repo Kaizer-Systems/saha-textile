@@ -5,20 +5,39 @@ import { type Schema, type SchemaType } from 'mongoose';
 
 import {
 	AdminInviteModel,
+	AttributeDefinitionModel,
+	AuditLogModel,
 	AuthRateLimitModel,
 	AuthSessionModel,
 	CartModel,
+	CategoryFacetConfigModel,
 	CategoryModel,
+	CategoryPlacementModel,
+	ConsentEventModel,
 	CurrencyModel,
 	EmailVerificationTokenModel,
+	FaqEntryModel,
+	InventoryCostLayerModel,
+	InventoryLedgerModel,
+	MediaAssetModel,
+	MessageOutboxModel,
+	NotificationChannelSettingsModel,
+	NotificationTemplateModel,
 	OAuthStateModel,
 	OtpChallengeModel,
 	OrderModel,
 	PasswordResetTokenModel,
+	ProductBundleModel,
 	ProductModel,
+	ProductQuestionModel,
+	ProductRelationModel,
+	ProductVariantModel,
 	PromotionModel,
+	RatingAggregateModel,
+	ReviewModel,
 	UserModel,
 } from '../src/models/index';
+import * as modelExports from '../src/models/index';
 
 type CatalogueModel = {
 	modelName: string;
@@ -118,6 +137,114 @@ const modelSources: Array<{
 		source: 'packages/adapters-db-mongo/src/models/auth-rate-limit.model.ts',
 		context: 'Identity',
 		purpose: 'Current atomic, TTL-expiring auth rate-limit counter capability.',
+	},
+	{
+		model: ConsentEventModel,
+		source: 'packages/adapters-db-mongo/src/models/consent.model.ts',
+		context: 'Privacy',
+		purpose: 'Append-only user and guest consent history.',
+	},
+	{
+		model: CategoryPlacementModel,
+		source: 'packages/adapters-db-mongo/src/models/catalog-structure.model.ts',
+		context: 'Catalogue',
+		purpose: 'Category placement paths, canonical placement, and visibility.',
+	},
+	{
+		model: CategoryFacetConfigModel,
+		source: 'packages/adapters-db-mongo/src/models/catalog-structure.model.ts',
+		context: 'Catalogue',
+		purpose: 'Category-scoped storefront facet configuration.',
+	},
+	{
+		model: AttributeDefinitionModel,
+		source: 'packages/adapters-db-mongo/src/models/catalog-structure.model.ts',
+		context: 'Catalogue',
+		purpose: 'Canonical attribute definitions and option display policy.',
+	},
+	{
+		model: ProductVariantModel,
+		source: 'packages/adapters-db-mongo/src/models/product-variant.model.ts',
+		context: 'Catalogue',
+		purpose: 'First-class SKU variants and purchasable option combinations.',
+	},
+	{
+		model: ProductBundleModel,
+		source: 'packages/adapters-db-mongo/src/models/merchandising.model.ts',
+		context: 'Merchandising',
+		purpose: 'Bundle components and nesting evidence.',
+	},
+	{
+		model: ProductRelationModel,
+		source: 'packages/adapters-db-mongo/src/models/merchandising.model.ts',
+		context: 'Merchandising',
+		purpose: 'Typed product relations and automatic visibility pausing.',
+	},
+	{
+		model: MediaAssetModel,
+		source: 'packages/adapters-db-mongo/src/models/media.model.ts',
+		context: 'Media',
+		purpose: 'Reference-counted media assets and soft-delete lifecycle.',
+	},
+	{
+		model: InventoryLedgerModel,
+		source: 'packages/adapters-db-mongo/src/models/inventory.model.ts',
+		context: 'Inventory',
+		purpose: 'Atomic stock movements and immutable quantity evidence.',
+	},
+	{
+		model: InventoryCostLayerModel,
+		source: 'packages/adapters-db-mongo/src/models/inventory.model.ts',
+		context: 'Inventory',
+		purpose: 'FIFO receipt, consume, and release cost layers.',
+	},
+	{
+		model: AuditLogModel,
+		source: 'packages/adapters-db-mongo/src/models/governance.model.ts',
+		context: 'Governance',
+		purpose: 'Append-only operational and security audit evidence.',
+	},
+	{
+		model: NotificationChannelSettingsModel,
+		source: 'packages/adapters-db-mongo/src/models/governance.model.ts',
+		context: 'Notifications',
+		purpose: 'Per-channel and category notification policy.',
+	},
+	{
+		model: NotificationTemplateModel,
+		source: 'packages/adapters-db-mongo/src/models/governance.model.ts',
+		context: 'Notifications',
+		purpose: 'Versioned transactional and marketing message templates.',
+	},
+	{
+		model: MessageOutboxModel,
+		source: 'packages/adapters-db-mongo/src/models/governance.model.ts',
+		context: 'Notifications',
+		purpose: 'Idempotent notification delivery outbox and recorded result.',
+	},
+	{
+		model: FaqEntryModel,
+		source: 'packages/adapters-db-mongo/src/models/content.model.ts',
+		context: 'Content',
+		purpose: 'Scoped FAQ entries for product and category resolution.',
+	},
+	{
+		model: ProductQuestionModel,
+		source: 'packages/adapters-db-mongo/src/models/content.model.ts',
+		context: 'Content',
+		purpose: 'Moderated product questions with private asker contact.',
+	},
+	{
+		model: ReviewModel,
+		source: 'packages/adapters-db-mongo/src/models/content.model.ts',
+		context: 'Content',
+		purpose: 'Verified-purchase product reviews and moderation state.',
+	},
+	{
+		model: RatingAggregateModel,
+		source: 'packages/adapters-db-mongo/src/models/content.model.ts',
+		context: 'Content',
+		purpose: 'Approved-review rating totals and distribution.',
 	},
 ];
 
@@ -232,6 +359,19 @@ async function generate(): Promise<void> {
 	const assetDirectory = resolve(packageRoot, 'catalogue');
 	const sharedTheme = resolve(repositoryRoot, 'apps/developer-portal/src/css/nextgen-theme.css');
 	const models = modelSources.map(compileModel);
+	const exportedModelNames = Object.entries(modelExports)
+		.filter(
+			([name, value]) =>
+				name.endsWith('Model') && typeof value === 'function' && 'schema' in value && 'collection' in value,
+		)
+		.map(([, value]) => (value as CatalogueModel).modelName)
+		.sort();
+	const documentedModelNames = modelSources.map((entry) => entry.model.modelName).sort();
+	if (JSON.stringify(exportedModelNames) !== JSON.stringify(documentedModelNames)) {
+		throw new Error(
+			`Catalogue model coverage drift: exported=${exportedModelNames.join(', ')} documented=${documentedModelNames.join(', ')}`,
+		);
+	}
 	const payload = {
 		schemaVersion: 1,
 		generatedAt: new Date().toISOString().slice(0, 10),

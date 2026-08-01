@@ -18,3 +18,4 @@ export const AUTH_RATE_LIMIT_REPOSITORY = Symbol('AuthRateLimitRepository');
 export const OAUTH_STATE_REPOSITORY = Symbol('OauthStateRepository');
 export const NOTIFICATION_PORT = Symbol('NotificationPort');
 export const CONSENT_REPOSITORY = Symbol('ConsentRepository');
+export const AUDIT_LOG_REPOSITORY = Symbol('AuditLogRepository');

@@ -4,6 +4,7 @@ import {
 	MongoAdminInviteRepository,
 	MongoAuthRateLimitRepository,
 	MongoAuthSessionRepository,
+	MongoAuditLogRepository,
 	MongoAuthUserRepository,
 	MongoConsentRepository,
 	MongoEmailVerificationTokenRepository,
@@ -32,6 +33,7 @@ import {
 	ORDER_REPOSITORY,
 	PRODUCT_REPOSITORY,
 	ADMIN_INVITE_REPOSITORY,
+	AUDIT_LOG_REPOSITORY,
 	CONSENT_REPOSITORY,
 	AUTH_RATE_LIMIT_REPOSITORY,
 	AUTH_SESSION_REPOSITORY,
@@ -68,6 +70,8 @@ import {
 		{ provide: ADMIN_INVITE_REPOSITORY, useClass: MongoAdminInviteRepository },
 		{ provide: AUTH_RATE_LIMIT_REPOSITORY, useClass: MongoAuthRateLimitRepository },
 		{ provide: CONSENT_REPOSITORY, useClass: MongoConsentRepository },
+		// Owner lock: every admin mutation writes an audit record.
+		{ provide: AUDIT_LOG_REPOSITORY, useClass: MongoAuditLogRepository },
 		// Stub until approved MSG91 credentials/templates exist (owner lock: ports first).
 		{ provide: NOTIFICATION_PORT, useClass: ConsoleNotificationAdapter },
 		{
@@ -93,9 +97,11 @@ import {
 		PASSWORD_RESET_TOKEN_REPOSITORY,
 		EMAIL_VERIFICATION_TOKEN_REPOSITORY,
 		ADMIN_INVITE_REPOSITORY,
+		AUDIT_LOG_REPOSITORY,
 		CONSENT_REPOSITORY,
 		AUTH_RATE_LIMIT_REPOSITORY,
 		CONSENT_REPOSITORY,
+		AUDIT_LOG_REPOSITORY,
 		NOTIFICATION_PORT,
 		AUTH_PORT,
 	],

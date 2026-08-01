@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 
 import { AdminAuthController } from './admin-auth.controller';
+import { AdminInviteService } from './admin-invite.service';
 import { AuthService } from './auth.service';
 import { SessionService } from './session.service';
 import { StorefrontAuthController } from './storefront-auth.controller';
@@ -13,7 +14,7 @@ import { StorefrontAuthController } from './storefront-auth.controller';
 @Global()
 @Module({
 	controllers: [StorefrontAuthController, AdminAuthController],
-	providers: [AuthService, SessionService],
-	exports: [AuthService, SessionService],
+	providers: [AuthService, SessionService, AdminInviteService],
+	exports: [AuthService, SessionService, AdminInviteService],
 })
 export class AuthModule {}

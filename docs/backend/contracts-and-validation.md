@@ -11,6 +11,12 @@ source_of_truth:
     - apps/api/src/common/zod-validation.pipe.ts
     - apps/api/src
     - packages/adapters-db-mongo/src/mappers.ts
+    - packages/adapters-db-mongo/src/models/auth-session.model.ts
+    - packages/adapters-db-mongo/src/models/auth-challenge.model.ts
+    - packages/adapters-db-mongo/src/models/auth-token.model.ts
+    - packages/adapters-db-mongo/src/models/auth-rate-limit.model.ts
+    - packages/adapters-db-mongo/src/repositories/auth.repository.ts
+    - packages/adapters-db-mongo/test/auth-persistence.test.ts
     - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
 ---
 
@@ -46,7 +52,7 @@ An API request for account registration should not accept `role`, `emailVerified
 | `auth-internal.ts`                                   | OTP/OAuth/reset/invite/rate-limit persistence shapes                              | codes/tokens/IP/user-agent values are represented by hashes                 |
 | `consent.ts`, `audit.ts`, `notification.ts`          | consent history, broad admin/security audit, notification settings/outbox         | append-only evidence and channel/category control are explicit              |
 
-The auth/session/consent/audit/notification and expanded catalog/media/inventory/content families are **contract and port scaffolds**, not proof of endpoints or collections. Contract tests now total 140, and the matching core port surface is complete; controllers, adapters, models, policy/use-case logic, and OpenAPI mapping still land in their owning chunks. Checkout, payment, reporting, analytics, and target persistence remain incomplete.
+These contract families are not proof of end-to-end operations. Contract tests now total 140, and the matching core port surface is complete. D1 additionally delivered MongoDB models/repositories for auth sessions, challenges, OAuth state, single-use tokens, admin invites, and rate limits, but the API has not bound or adopted them. D2–D5 still own HTTP/session policy, endpoint, RBAC, consent/privacy, and ownership adoption; consent, audit, and notification collections also remain target-only. Expanded catalogue/media/inventory/content operations, checkout, payment, reporting, analytics, and target persistence remain incomplete.
 
 ## Boundary validation today
 

@@ -16,6 +16,12 @@ source_of_truth:
     - apps/api/src/orders
     - apps/api/src/currency
     - apps/api/src/promotions
+    - packages/adapters-db-mongo/src/models/auth-session.model.ts
+    - packages/adapters-db-mongo/src/models/auth-challenge.model.ts
+    - packages/adapters-db-mongo/src/models/auth-token.model.ts
+    - packages/adapters-db-mongo/src/models/auth-rate-limit.model.ts
+    - packages/adapters-db-mongo/src/repositories/auth.repository.ts
+    - packages/adapters-db-mongo/test/auth-persistence.test.ts
     - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
 ---
 
@@ -43,9 +49,13 @@ This inventory describes controller code reviewed on 2026-08-01. It is not a pro
 | `GET`  | `/auth/me`          | Bearer guard                                            | No cookie/audience/session-version model                                                                       |
 | `POST` | `/auth/otp/request` | Email body validation                                   | Always throws not implemented; provider/policy config now exists (MSG91, `OTP_TTL_SECONDS`/`OTP_MAX_ATTEMPTS`) |
 | `POST` | `/auth/otp/verify`  | Email/code validation                                   | Always throws not implemented; no challenge lifecycle                                                          |
-| `GET`  | `/auth/csrf`        | Issues a 32-byte CSPRNG token in body + readable cookie | Session-bound token hash lands with the Chunk D session store                                                  |
+| `GET`  | `/auth/csrf`        | Issues a 32-byte CSPRNG token in body + readable cookie | D1 stores `csrfSecretHash`; D2 must bind issuance/validation to the active session                             |
 
 The CSRF guard is registered globally: safe methods pass; an unsafe request with a session cookie must echo the matching token in `x-csrf-token`. Locked target route families still separate storefront/admin auth, add logout, and implement secure cookie sessions. OAuth remains an unexposed service stub.
+
+Chunk D1 added tested MongoDB persistence for sessions, challenges, OAuth state, password-reset/email-verification tokens, admin invites, and auth rate limits. It added no HTTP routes, and its repositories are not bound into the current auth service. D2–D5 still own cookie issuance/rotation/revocation, session-bound CSRF and audiences; storefront auth endpoints and anti-enumeration; admin invite/PIN/RBAC flows; and consent/privacy plus cart/order ownership authorization.
+
+The generated OTP operation summaries and matching service exceptions still say “pending Brevo credentials.” That is a current API-source defect: locked notification policy and active configuration use MSG91. The portal records the mismatch and does not rewrite generated machine truth; the owning Chunk D implementation must correct the controller metadata and runtime messages.
 
 ## Public catalogue routes
 

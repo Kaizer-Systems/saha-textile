@@ -7,6 +7,8 @@ last_verified: '2026-08-01'
 source_of_truth:
     - apps/api/src
     - packages/contracts/src
+    - packages/adapters-db-mongo/src/repositories/auth.repository.ts
+    - packages/adapters-db-mongo/test/auth-persistence.test.ts
     - docs/engineering-live-context/owner-decisions-log.mdx
 ---
 
@@ -28,7 +30,7 @@ Start with the [Backend Platform Atlas](../backend/overview) when you need to un
 
 ## Current module snapshot
 
-The application currently exposes health, authentication, catalogue, cart, orders, currency and promotion modules. Its platform foundation now includes per-request correlation ids, redacted structured logs, the shared safe error envelope, trusted client-IP rate-limit keys, strict CORS, dependency-free liveness, dependency-aware readiness, cookie attributes, global double-submit CSRF enforcement, and `GET /auth/csrf`. The broader cookie-session lifecycle and new shared auth/session/consent/audit/notification contract families are not wired end to end. Every module still needs to be evaluated against its roadmap definition of done before the overall API can be called implemented.
+The application currently exposes health, authentication, catalogue, cart, orders, currency and promotion modules. Its platform foundation now includes per-request correlation ids, redacted structured logs, the shared safe error envelope, trusted client-IP rate-limit keys, strict CORS, dependency-free liveness, dependency-aware readiness, cookie attributes, global double-submit CSRF enforcement, and `GET /auth/csrf`. D1 adds tested auth/session/challenge/token/invite/rate-limit persistence, but those repositories are not bound into the API auth flow. D2–D5 still own cookie-session adoption, storefront/admin endpoint policy, RBAC, consent/privacy, and ownership authorization; the broader shared contract families are therefore not wired end to end. Every module still needs to be evaluated against its roadmap definition of done before the overall API can be called implemented.
 
 ## Interactive-request boundary
 

@@ -125,7 +125,7 @@ Seam-first provider work is locked: ports and stub/sandbox adapters can advance 
 Remaining configuration gaps:
 
 - development JWT secrets are still supplied as defaults (`?? 'dev-…-change-me'`) without a production rejection gate;
-- session issuance/rotation and notification provider adapters are not yet wired. The present CSRF token is not bound to a persisted session until Chunk D lands `authSessions.csrfSecretHash`.
+- session issuance/rotation and notification provider adapters are not yet wired. D1 persists `authSessions.csrfSecretHash`; D2 must bind the present CSRF issuance/guard flow to the active session.
 
 Production must fail closed when required secrets or security settings are absent. Never “helpfully” create predictable production secrets.
 

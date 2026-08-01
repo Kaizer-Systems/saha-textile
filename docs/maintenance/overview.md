@@ -11,6 +11,6 @@ source_of_truth:
 
 # Maintenance overview
 
-Maintenance documentation should cover dependency upgrades, schema migrations, API compatibility, payment-provider changes, security patches, and release checklists.
+Planned maintenance coverage includes dependency upgrades, schema migrations, API compatibility, payment-provider changes, security patches, and release checklists.
 
-Any major dependency upgrade should include a portal note explaining what changed and how it was verified.
+Every major dependency upgrade requires a portal update describing the behavioral impact, compatibility boundary, and verification evidence.

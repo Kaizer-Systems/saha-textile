@@ -109,15 +109,15 @@ For payment, shipping, notifications, FX, storage, search, and media processing:
 | Sandbox adapter | Real provider sandbox protocol                         | Live credential/capture readiness           |
 | Live adapter    | Approved production integration                        | Permission to expose unsafe console actions |
 
-Seam-first provider work is locked: ports and stub/sandbox adapters can advance before live credentials. The live adapter requires official current provider documentation, credentials, webhook verification, reconciliation, failure testing, and owner-controlled rollout.
+Seam-first provider work is ratified: ports and stub or sandbox adapters can advance before live credentials. A live adapter requires current official provider documentation, credentials, webhook verification, reconciliation, failure testing, and an approved rollout.
 
 ## Configuration boundary
 
-`app-config.ts` validates API runtime values with zod, which is the right direction. The configuration **surface** has been reconciled to the locked model since these pages were first written:
+`app-config.ts` validates API runtime values with zod. The current configuration boundary includes:
 
 - proxy/client-IP settings (`TRUST_PROXY`, `CLIENT_IP_HEADER`) are parsed and applied to trusted request-id/client-IP handling and rate-limit keys;
 - cookie/session/CSRF names (`st_access`, `st_refresh`, `st_csrf`, `x-csrf-token`, `CSRF_SECRET`) feed the shared cookie helpers and global CSRF foundation;
-- notification (`NOTIFICATION_PROVIDER`/MSG91 plus an optional email fallback) and self-hosted Mongo (`rs0`) settings are reconciled in `.env.example` and `app-config.ts`;
+- notification (`NOTIFICATION_PROVIDER`/MSG91 plus an optional email fallback) and self-hosted Mongo (`rs0`) settings in `.env.example` and `app-config.ts`;
 - the Mongo config now assembles a self-hosted `mongodb://…replicaSet=rs0` URI (or accepts a pre-encoded `MONGODB_URI`); the SRV hosted-cluster path and the obsolete email provider are gone.
 
 Remaining configuration gaps:

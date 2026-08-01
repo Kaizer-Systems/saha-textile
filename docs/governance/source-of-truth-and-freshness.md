@@ -19,15 +19,15 @@ not allowed to become an independent version of the system.
 
 ## Authority by question
 
-| Question                               | Primary authority                                       |
-| -------------------------------------- | ------------------------------------------------------- |
-| What has the owner locked?             | `docs/engineering-live-context/owner-decisions-log.mdx` |
-| What architecture is intended?         | Current Angular knowledge-base documents and ADRs       |
-| What behaviour exists now?             | Tested code and observed runtime behaviour              |
-| What shape crosses an API boundary?    | zod contracts and generated OpenAPI                     |
-| What shape is persisted?               | Adapter models, validators, indexes and migrations      |
-| What must pass before delivery?        | `execution-roadmap.mdx`, tests and CI rules             |
-| How should a maintainer understand it? | Canonical Live Context plus derived portal guidance     |
+| Question                                               | Primary authority                                       |
+| ------------------------------------------------------ | ------------------------------------------------------- |
+| Which product and architecture decisions are ratified? | `docs/engineering-live-context/owner-decisions-log.mdx` |
+| What architecture is intended?                         | Current Angular knowledge-base documents and ADRs       |
+| What behaviour exists now?                             | Tested code and observed runtime behaviour              |
+| What shape crosses an API boundary?                    | zod contracts and generated OpenAPI                     |
+| What shape is persisted?                               | Adapter models, validators, indexes and migrations      |
+| What must pass before delivery?                        | `execution-roadmap.mdx`, tests and CI rules             |
+| How should a maintainer understand it?                 | Canonical Live Context plus derived portal guidance     |
 
 ## Conflict rule
 
@@ -35,7 +35,7 @@ When sources disagree:
 
 1. Do not silently choose the most convenient source.
 2. Determine whether the disagreement is intended design versus current implementation, or simple drift.
-3. Follow the owner decision for intended direction and tested code for claims about current behaviour.
+3. Follow the ratified decision for intended direction and tested code for claims about current behaviour.
 4. Label the gap explicitly as scaffolded, planned, deferred or deprecated.
 5. Reconcile the portal and affected source documents in the same coherent change.
 
@@ -49,7 +49,7 @@ A page must be reverified when any of the following changes:
 - a user or operator workflow;
 - an environment variable, deployment step or recovery procedure;
 - a third-party integration or security control;
-- a locked owner decision;
+- a ratified product or architecture decision;
 - a major dependency that changes documented behaviour.
 
 ## Review intervals

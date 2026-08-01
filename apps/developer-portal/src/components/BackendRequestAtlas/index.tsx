@@ -2,7 +2,7 @@
  * NEXT-GEN-UI · Backend request-path atlas
  * ----------------------------------------------------------------------------
  * WHAT: an interactive current/target/proof lens over representative backend paths.
- * WHY: engineers need unsafe current boundaries separated visibly from locked intent.
+ * WHY: engineers need unsafe current boundaries separated visibly from ratified intent.
  * HOW: filterable request cards render evidence-linked path records without runtime deps.
  * TUNING: keep path status, risk, lens labels, and evidence sources aligned with the KB.
  * ========================================================================= */
@@ -72,7 +72,7 @@ const requestPaths: RequestPath[] = [
 		path: '/cart/:id/lines',
 		summary: 'Change only the cart owned by the authenticated user or opaque guest identity.',
 		current:
-			'Cart routes accept a cart id without an authentication guard, guest-cookie proof, or ownership check. They append contract-shaped lines but do not validate product publication, selected variation, price, or stock.',
+			'Cart routes enforce Principal ownership for user carts or the hashed httpOnly st_guest proof for guest carts, and cross-owner access fails as not-found. Line mutations still do not fully validate product publication, selected variation, price, or stock.',
 		target: 'An httpOnly opaque guest cookie or authenticated session resolves the cart without trusting a caller-supplied owner id. Every mutation revalidates product, configuration, stock, and the line signature before persistence.',
 		verify: 'Attempt cross-cart reads and writes, forged guest tokens, retired variants, excessive quantities, and replayed offline mutations. Assert line-level safe errors and no silent data loss.',
 		layers: [
@@ -101,7 +101,7 @@ const requestPaths: RequestPath[] = [
 		summary: 'Authenticate a browser without exposing reusable session credentials to Angular storage.',
 		current:
 			'The API sets audience-bound httpOnly access and opaque refresh cookies, persists refresh families and a per-session CSRF hash, rotates atomically, revokes a family on reuse, and returns only sanitized user/session metadata. Angular interceptors still attach a legacy bearer value which SessionGuard ignores.',
-		target: 'The API sets audience-bound httpOnly Secure cookies, rotates opaque refresh tokens, validates signed double-submit CSRF, enforces the locked password/PIN policies, and separates storefront from admin authority.',
+		target: 'The API sets audience-bound httpOnly Secure cookies, rotates opaque refresh tokens, validates signed double-submit CSRF, enforces the ratified password and PIN policies, and separates storefront from admin authority.',
 		verify: 'Prove tokens never enter browser-readable storage, unsafe cookie-authenticated methods reject missing CSRF, refresh reuse revokes the family, and storefront identity cannot authorize admin routes.',
 		layers: [
 			{ label: 'Credentials', detail: 'Validated secret' },
@@ -184,7 +184,7 @@ const requestPaths: RequestPath[] = [
 		path: '/orders/:id/status',
 		summary: 'Authorize, validate, audit, and safely transition a privileged commerce state.',
 		current:
-			'JWT and role guards restrict the route to admin/staff, and the repository appends a timeline event. There is no admin audience, granular permission, transition policy, CSRF, entity version, or audit-log write.',
+			'The cookie-session route enforces CSRF plus admin/staff role and current permission-version checks, and the repository appends a timeline event. The route still lacks an explicit admin audience, declared granular permission, legal transition policy, entity version, and audit-log write.',
 		target: 'Admin routes are separately namespaced and audience-bound. A permission-aware use case validates legal transitions, concurrency, actor context, side effects, and an immutable audit event.',
 		verify: 'Test every illegal transition, stale version, customer token, downgraded role, missing CSRF, concurrent update, and provider-side-effect failure. Confirm the audit record explains who changed what and why.',
 		layers: [
@@ -212,7 +212,7 @@ const requestPaths: RequestPath[] = [
 		path: '/search/typeahead',
 		summary: 'Serve typo-tolerant multilingual discovery without making a derived index authoritative.',
 		current:
-			'SearchPort exists and documents the locked self-hosted Meilisearch target, but no Meilisearch adapter is bound. ProductRepository currently implements an escaped Mongo regular-expression fallback.',
+			'SearchPort names the ratified self-hosted Meilisearch target, but no Meilisearch adapter is bound. ProductRepository currently implements an escaped Mongo regular-expression fallback.',
 		target: 'Self-hosted Meilisearch implements SearchPort. Mongo changes enqueue an outbox, the index contains public derived data, facet configuration controls exposure, and a complete reindex rebuilds from Mongo.',
 		verify: 'Destroy and rebuild the index, test unpublished removal, Bengali/transliteration aliases, configured facets, no-result capture, stale outbox recovery, and graceful degraded behavior.',
 		layers: [
@@ -274,7 +274,7 @@ const requestPaths: RequestPath[] = [
 			{ label: 'Controllers', detail: 'Operation metadata' },
 			{ label: 'Generator', detail: 'OpenAPI document' },
 			{ label: 'CI', detail: 'Contract smoke test' },
-			{ label: 'Portal', detail: 'Scalar deferred' },
+			{ label: 'Portal', detail: 'Scalar scaffolded' },
 			{ label: 'Security', detail: 'Protected targets' },
 		],
 		sources: [
@@ -311,7 +311,7 @@ const riskLabels: Record<Risk | 'all', string> = {
 
 const lensLabels: Record<Lens, string> = {
 	current: 'Current execution',
-	target: 'Locked target',
+	target: 'Ratified target',
 	verify: 'How to prove it',
 };
 

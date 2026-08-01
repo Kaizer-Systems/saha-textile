@@ -31,7 +31,7 @@ Change a page status only when the underlying evidence changes:
 
 - **Planned → Scaffolded:** a real code, schema, workflow or automation surface lands.
 - **Scaffolded → Implemented:** the documented definition of done is verified.
-- **Any active state → Deferred:** the owner records a reason and a restart trigger.
+- **Any active state → Deferred:** the canonical decision record names a reason and restart trigger.
 - **Any active state → Deprecated:** a replacement is named and an exit path is recorded.
 - **Deprecated → removed:** references and routes are removed after the exit condition is satisfied.
 

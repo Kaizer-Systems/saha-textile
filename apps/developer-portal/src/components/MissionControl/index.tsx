@@ -142,8 +142,8 @@ export function MissionControl({ variant = 'full' }: { variant?: 'full' | 'tease
 				<h2>The build, in orbit.</h2>
 				<p className={styles.lede}>
 					Every API/DB roadmap chunk (A–J) as a station around the core. Colour is status; a ring pulse is
-					build flow; an amber halo means an open owner gate blocks part of the chunk. Hover, tap or arrow a
-					station to open its flight plan. Reflects the roadmap + progress log — never invented.
+					build flow; an amber halo means an open decision gate blocks part of the chunk. Hover, tap, or use
+					the arrow keys to open its flight plan. Status is compiled from the roadmap and progress log.
 				</p>
 				<div
 					className={styles.legend}
@@ -402,7 +402,7 @@ export function MissionControl({ variant = 'full' }: { variant?: 'full' | 'tease
 											{g!.id}
 										</Link>
 									))}{' '}
-									— foundations/seams may proceed; the final policy waits on the owner lock.
+									— foundations and seams may proceed; the final policy waits on the decision.
 								</span>
 							</div>
 						)}
@@ -419,7 +419,7 @@ export function MissionControl({ variant = 'full' }: { variant?: 'full' | 'tease
 				className={styles.gates}
 				id="gates"
 			>
-				<p className={styles.gatesHead}>Owner decision gates</p>
+				<p className={styles.gatesHead}>Governed decision gates</p>
 				<div className={styles.gateGrid}>
 					{gates.map((gate) => (
 						<div

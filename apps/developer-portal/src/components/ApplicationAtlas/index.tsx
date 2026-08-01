@@ -1,3 +1,11 @@
+/* ============================================================================
+ * NEXT-GEN-UI · Frontend application atlas
+ * What: filterable Storefront/Admin capability and state-ownership reference.
+ * Why: routed visual completeness must remain distinct from real data and writes.
+ * How: deterministic evidence cards render source-linked application facts.
+ * Tuning knobs: capability copy, status filters, caution text, and search labels.
+ * ========================================================================= */
+
 import React, { useMemo, useRef, useState } from 'react';
 
 import styles from './styles.module.css';
@@ -92,14 +100,15 @@ const atlases: Record<Application, AtlasItem[]> = {
 			summary: 'Transloco loading and runtime language switching are wired.',
 			status: 'scaffolded',
 			runtime: 'Transloco HTTP loader',
-			data: 'The current code advertises en/fr; the locked product language pair is en/bn.',
+			data: 'The current code advertises en/fr; the active locale set is deployment configuration, not a contract enum.',
 			sources: ['apps/storefront/src/app/app.config.ts', 'apps/storefront/src/app/core/i18n/transloco-loader.ts'],
-			caution: 'The language inventory must be reconciled before calling Bengali support implemented.',
+			caution:
+				'Runtime locale configuration and content coverage must enable Bengali before support is implemented.',
 		},
 		{
 			name: 'PWA and offline catalogue/cart',
 			summary:
-				'Offline catalogue and cart behavior remain a locked target, but the Vite PWA plugin is not wired in the current configuration.',
+				'Offline catalogue and cart behavior remain a ratified target, but the Vite PWA plugin is not wired in the current configuration.',
 			status: 'planned',
 			runtime: 'Target: Workbox through the Vite PWA integration',
 			data: 'Caching and update policies are not yet implemented.',

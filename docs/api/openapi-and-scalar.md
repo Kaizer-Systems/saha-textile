@@ -21,7 +21,7 @@ source_of_truth:
 
 # OpenAPI and Scalar reference
 
-The decision is locked:
+The API-reference standard is ratified:
 
 - OpenAPI is the machine-readable API source of truth.
 - Scalar is the single human reference and approved interactive client.
@@ -92,7 +92,7 @@ Scalar therefore remains **scaffolded**. Promotion is still blocked by:
 - operation-specific error and idempotency examples;
 - transactional, audit, outbox, notification, and provider side-effect documentation;
 - CI generation plus required-path/tag/security and breaking-drift tests; and
-- an owner-approved non-production interaction target and policy; and
+- an approved non-production interaction target and policy;
 - correction of the stale bearer scheme.
 
 ## Target portal routes

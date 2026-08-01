@@ -84,7 +84,7 @@ If classic NgRx is justified:
 2. Update every active locale file in the same change.
 3. Verify parameter interpolation and plural behavior.
 4. Test narrow layouts because translated strings expand.
-5. Do not mark Bengali implemented until the runtime locale inventory and content coverage match the locked `en/bn` decision.
+5. Do not mark Bengali implemented until the active runtime locale configuration and content coverage enable it.
 
 ## Pull-request checklist
 

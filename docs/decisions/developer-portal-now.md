@@ -33,4 +33,4 @@ Start the portal with stable structure, navigation, source-of-truth rules, high-
 
 ## Related
 
-- [Decision Gate Console](/decisions/gate-console) — the live cockpit of open owner gates and the roadmap chunks and collections each one blocks.
+- [Decision Gate Console](/decisions/gate-console) — the live cockpit of unresolved decision gates and the roadmap chunks and collections each one blocks.

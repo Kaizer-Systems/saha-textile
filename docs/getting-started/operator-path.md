@@ -14,9 +14,9 @@ source_of_truth:
 
 Use this path for local runtime readiness, deployment, rollback, monitoring, backup, restoration, incident response or third-party operational checks.
 
-## Current honesty boundary
+## Current scope
 
-The operations section is intentionally incomplete because production deployment, backup/restore verification and final monitoring are later roadmap phases. Treat this path as an approved runbook structure, not proof that production procedures have been exercised.
+Production deployment, backup and restore verification, and final monitoring remain later roadmap phases. This section defines the runbook structure and required evidence; it does not claim that production procedures have been exercised.
 
 ## Read in this order
 
@@ -37,6 +37,6 @@ The operations section is intentionally incomplete because production deployment
 - The procedure has been exercised in the appropriate environment.
 - The verification date and evidence source appear in the portal.
 
-## Never infer
+## Interpretation boundaries
 
 Do not infer production readiness from a successful build, a running API process or an unverified configuration file. Database connectivity, migrations, backups, external providers, secrets, network policy and recovery behaviour need independent evidence.

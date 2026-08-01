@@ -93,6 +93,6 @@ RBAC failures are not queued. A 403 remains blocked until permissions actually c
 
 Complex product/order/invoice forms need enough draft metadata to reconstruct conditional controls, including product type, option semantic roles, generated variant inputs, add-on groups, measurements, current step/tab, and unsaved media references. Draft restoration must never bypass normal validation.
 
-## Current-versus-target warning
+## Current and target boundary
 
 The API session lifecycle and cart/order ownership checks are real, while frontend adoption is incomplete. Legacy local-storage bearer state, permissive child guards, missing OAuth/email-verification completion, missing admin invite/quick-resume, and missing guest→user merge must not be presented as secure end-to-end completion.

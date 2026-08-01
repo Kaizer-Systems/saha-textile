@@ -2,9 +2,8 @@
  * NEXT-GEN-UI · Schema Nebula
  * ----------------------------------------------------------------------------
  * WHAT: the governed 64-collection target architecture rendered as an
- * interactive, zoomable constellation: bounded-context gravity wells, seven
- * solid current-model stars, 57 ghost target stars, and selected relationship
- * lines.
+ * interactive, zoomable constellation: bounded-context gravity wells, governed
+ * current-model and target-only states, and selected relationship lines.
  * WHY: a newcomer can see what exists, what is only intended, which roadmap
  * chunk owns it, and what evidence/decision still governs it without reading a
  * 64-row matrix first.

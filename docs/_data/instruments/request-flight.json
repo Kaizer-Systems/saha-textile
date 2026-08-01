@@ -4,6 +4,9 @@
 	"sourceOfTruth": [
 		"apps/api/src/orders/orders.controller.ts",
 		"apps/api/src/orders/orders.service.ts",
+		"apps/api/src/auth/session.guard.ts",
+		"apps/api/src/auth/ownership.ts",
+		"apps/api/src/common/csrf.guard.ts",
 		"apps/api/src/common/request-context.ts",
 		"apps/api/src/common/http-exception.filter.ts",
 		"apps/api/src/infra/persistence.module.ts",
@@ -17,7 +20,7 @@
 	"method": "POST",
 	"path": "/orders",
 	"title": "Place an order",
-	"summary": "Trace a place-order request across its boundaries. Request correlation and the safe error envelope are real, and the transaction capability is bound and rollback-proven; idempotency, order-path transaction adoption, and atomic side effects remain ghosts.",
+	"summary": "Trace a place-order request across its boundaries. Cookie-session authentication, session-bound CSRF, request correlation and the safe error envelope are real. Cart ownership, idempotency, order-path transaction adoption, and atomic side effects remain ghosts even though their persistence capabilities now exist.",
 	"stages": [
 		{
 			"id": "client",
@@ -34,8 +37,18 @@
 			"sublabel": "Fastify + NestJS",
 			"kind": "real",
 			"file": "apps/api/src/orders/orders.controller.ts",
-			"current": "OrdersController guards the route with a bearer JwtAuthGuard and validates the body with zod.",
-			"target": "An httpOnly cookie session + double-submit CSRF authenticate the storefront audience before anything runs."
+			"current": "The global SessionGuard authenticates from the httpOnly access cookie, and an unsafe request carrying session cookies must echo its session-bound readable CSRF cookie in x-csrf-token. The zod body never accepts a user id.",
+			"target": "Keep the cookie-only session and double-submit CSRF boundary, then document its storefront audience and security requirements in OpenAPI."
+		},
+		{
+			"id": "ownership",
+			"label": "Ownership",
+			"sublabel": "Cart proof",
+			"kind": "ghost",
+			"chunk": "Chunk G",
+			"file": "planned — cart ownership adoption (current evidence: apps/api/src/cart/cart.controller.ts)",
+			"current": "The controller derives the order user id from the authenticated principal, but OrdersService loads the supplied cart id without proving that the same user or guest owns it. GET /orders/:id has separate 404-on-mismatch BOLA protection; that does not secure this cart boundary.",
+			"target": "Resolve the caller's owned cart from session or guest proof before price, inventory or order work begins."
 		},
 		{
 			"id": "idempotency",
@@ -79,8 +92,8 @@
 			"label": "Transaction",
 			"sublabel": "Unit of work",
 			"kind": "ghost",
-			"chunk": "Chunk E",
-			"file": "planned — order-path adoption of the proven transaction capability",
+			"chunk": "Chunk G",
+			"file": "planned — order-path transaction adoption (current evidence: apps/api/src/orders/orders.service.ts)",
 			"current": "TransactionManagerPort exists, MongoTransactionManager is bound, and rs0 tests prove commit plus rollback. OrdersService still does not use it: the order save and cart delete remain separate and non-atomic.",
 			"target": "withTransaction() spans order, payment, inventory, cart and audit; any failure rolls all of them back."
 		},
@@ -99,8 +112,8 @@
 			"sublabel": "Payment · inventory · audit",
 			"kind": "ghost",
 			"chunk": "Chunk G",
-			"file": "planned — payment / inventory / audit",
-			"current": "Absent — no payment attempt, stock reservation or audit event is written.",
+			"file": "planned — order side-effect adoption (current evidence: apps/api/src/orders/orders.service.ts)",
+			"current": "Inventory ledgers, cost layers, audit logs and outbox persistence are implemented and transaction-proven, but this order service does not call them. No payment attempt, stock reservation or audit event is written for place-order today.",
 			"target": "A payment attempt, inventory reservation/ledger and an immutable audit event commit atomically with the order."
 		},
 		{

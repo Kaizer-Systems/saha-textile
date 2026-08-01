@@ -12,6 +12,9 @@ source_of_truth:
     - apps/api/src
     - apps/api/src/common/request-context.ts
     - apps/api/src/common/http-exception.filter.ts
+    - apps/api/src/common/csrf.guard.ts
+    - apps/api/src/auth/session.guard.ts
+    - apps/api/src/auth/ownership.ts
     - apps/api/src/infra/persistence.module.ts
     - apps/api/src/orders/orders.controller.ts
     - packages/core-domain/src
@@ -53,9 +56,9 @@ sequenceDiagram
     participant Mongo as Mongo repository/model
 
     Client->>Fastify: HTTP request
-    Fastify->>Context: Resolve request id/client IP, CORS, rate limit, CSRF
-    Fastify->>Guard: Authenticate/authorize when decorated
-    Guard-->>Fastify: Claims or exception
+    Fastify->>Context: Resolve request id/client IP, CORS, rate limit, session, CSRF
+    Fastify->>Guard: Enforce default auth, audience, role and ownership policy
+    Guard-->>Fastify: Principal or exception
     Fastify->>Pipe: Parse selected request bodies
     Pipe-->>Controller: Typed value or 400
     Controller->>Service: Application call
@@ -68,11 +71,11 @@ sequenceDiagram
 
 This path exists, but it is inconsistent:
 
-- not every route uses guards;
+- the global session guard protects by default, while public routes opt out explicitly;
 - body validation schemas usually live inside controllers rather than shared contract families;
 - query/path parameters are often parsed manually;
 - every failure has the global safe `ApiErrorResponse` envelope, but successful values still lack consistent explicit response serialization;
-- authorization is sometimes a role check and sometimes absent;
+- order reads have 404-on-mismatch ownership, but cart routes and place-order cart loading still lack ownership proof;
 - a transaction port/adapter/context exists and is rollback-proven, but current multi-record order writes do not use it.
 
 ## Target request path
@@ -125,13 +128,14 @@ Use this worksheet when debugging or documenting an endpoint.
 
 The storefront checkout is currently a demo-data UI and does not call `POST /orders`. For a direct client that calls the existing API operation, current execution is:
 
-1. Bearer guard validates an access JWT.
-2. `CreateOrderSchema` validates `cartId`, optional currency/gateway/coupon.
-3. Controller attaches `user.sub`, but the service does not verify cart ownership.
-4. Service loads the cart and each product.
-5. Service computes a partial INR/conversion/coupon total.
-6. Service saves the order.
-7. Service deletes the cart in a separate write.
+1. The global guard validates the httpOnly access cookie and establishes a principal.
+2. Because this is an unsafe cookie request, the CSRF guard requires the readable session-bound token in both cookie and `x-csrf-token` header.
+3. `CreateOrderSchema` validates `cartId`, optional currency/gateway/coupon and accepts no user id.
+4. The controller attaches the principal's user id, but the service does not verify cart ownership.
+5. Service loads the cart and each product.
+6. Service computes a partial INR/conversion/coupon total.
+7. Service saves the order.
+8. Service deletes the cart in a separate write.
 
 What is missing before this can be a production place-order flow:
 

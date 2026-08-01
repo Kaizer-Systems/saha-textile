@@ -171,9 +171,10 @@ Other open decisions block only their own final policy engine. Reversible schema
   permission-version invalidation exist. Admin invite acceptance and idle quick-resume
   remain deferred.
 - **D5 — consent, privacy, and ownership (partial):** consent history, export/erase
-  seams, and order BOLA are implemented. Cart routes remain public and accept arbitrary
-  cart ids without guest proof or user ownership; that residual ownership work belongs
-  to Chunk G according to the current controller.
+  seams, order-read BOLA, cart ownership/`st_guest` proof, and order-create cart
+  ownership/adoption are implemented. Cart routes remain `@Public()` for guest
+  add-to-cart but enforce Principal/guest-token proof in the service boundary. Guest→user
+  merge, pending intents, and checkout idempotency remain Chunk G.
 
 The 2026-08-01 portal reassessment therefore retains Chunk D as **partial**. The earlier
 “Chunk D complete” progress label describes the delivered session/auth core but does not

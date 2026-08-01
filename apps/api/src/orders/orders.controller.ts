@@ -1,11 +1,14 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Patch, Post, Query, Req, UnauthorizedException } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { OrderStatus, PaymentGateway } from '@saha-textile/contracts';
+import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
 import { Principal, assertOwnership } from '../auth/ownership';
 import { type AuthenticatedPrincipal, RequireRoles } from '../auth/session.guard';
+import { cookieNames } from '../common/cookies';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { OrdersService } from './orders.service';
 
 const CreateOrderSchema = z.object({
@@ -27,16 +30,26 @@ type UpdateStatusBody = z.infer<typeof UpdateStatusSchema>;
 @ApiTags('orders')
 @Controller('orders')
 export class OrdersController {
-	constructor(private readonly orders: OrdersService) {}
+	constructor(
+		private readonly orders: OrdersService,
+		@Inject(APP_CONFIG) private readonly config: AppConfig,
+	) {}
 
 	@Post()
 	@ApiOperation({ summary: 'Create an order from a cart' })
 	create(
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 		@Body(new ZodValidationPipe(CreateOrderSchema)) body: CreateOrderBody,
+		@Req() request: FastifyRequest,
 	) {
 		if (!principal) throw new UnauthorizedException();
-		return this.orders.createFromCart({ ...body, userId: principal.userId });
+		const names = cookieNames(this.config);
+		const cookies = (request as FastifyRequest & { cookies?: Record<string, string> }).cookies ?? {};
+		return this.orders.createFromCart({
+			...body,
+			principal,
+			guestToken: cookies[names.guest] ?? null,
+		});
 	}
 
 	@Get()

@@ -40,6 +40,7 @@ describe('cookie attributes', () => {
 			access: '__Host-st_access',
 			refresh: '__Host-st_refresh',
 			csrf: '__Host-st_csrf',
+			guest: '__Host-st_guest',
 		});
 	});
 
@@ -63,13 +64,13 @@ describe('CsrfGuard', () => {
 	const contextFor = (request: Partial<FastifyRequest> & { cookies?: Record<string, string> }) =>
 		({ switchToHttp: () => ({ getRequest: () => request }) }) as unknown as ExecutionContext;
 
-	/**
-	 * A session stub whose lookup returns null: with no server-side session the guard
-	 * exercises the cookie/header stage alone. The session-BINDING stage is covered by the
-	 * live probe, where a real session exists.
-	 */
+	const liveSession = {
+		id: 'sess_live',
+		csrfSecretHash: 'hash',
+	};
+
 	const sessionsStub = {
-		findByRefreshCookie: async () => null,
+		resolveLiveSessionFromRequest: async () => liveSession,
 		verifyCsrfForSession: () => true,
 	} as unknown as SessionService;
 
@@ -118,7 +119,7 @@ describe('CsrfGuard', () => {
 		).rejects.toThrow(ForbiddenException);
 	});
 
-	it('accepts a matching double-submit pair', async () => {
+	it('accepts a matching double-submit pair bound to a live session', async () => {
 		await expect(
 			guard.canActivate(
 				contextFor({
@@ -128,6 +129,40 @@ describe('CsrfGuard', () => {
 				}),
 			),
 		).resolves.toBe(true);
+	});
+
+	it('fails closed when session credentials are present but no live session resolves', async () => {
+		const failClosed = new CsrfGuard(dev, {
+			resolveLiveSessionFromRequest: async () => null,
+			verifyCsrfForSession: () => true,
+		} as unknown as SessionService);
+
+		await expect(
+			failClosed.canActivate(
+				contextFor({
+					method: 'POST',
+					headers: { 'x-csrf-token': 'matching-token' },
+					cookies: { [names.access]: 'session', [names.csrf]: 'matching-token' },
+				}),
+			),
+		).rejects.toThrow(ForbiddenException);
+	});
+
+	it('rejects a CSRF token that does not belong to the resolved session', async () => {
+		const rebound = new CsrfGuard(dev, {
+			resolveLiveSessionFromRequest: async () => liveSession,
+			verifyCsrfForSession: () => false,
+		} as unknown as SessionService);
+
+		await expect(
+			rebound.canActivate(
+				contextFor({
+					method: 'POST',
+					headers: { 'x-csrf-token': 'session-a-token' },
+					cookies: { [names.access]: 'session-b', [names.csrf]: 'session-a-token' },
+				}),
+			),
+		).rejects.toThrow(ForbiddenException);
 	});
 
 	it('enforces on every state-changing method, not just POST', async () => {

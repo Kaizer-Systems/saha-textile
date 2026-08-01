@@ -1,8 +1,9 @@
 import type { Order, OrderStatus } from '@saha-textile/contracts';
-import type { OrderRepository, PageQuery, Paginated } from '@saha-textile/core-domain';
+import type { OrderRepository, PageQuery, Paginated, TransactionContext } from '@saha-textile/core-domain';
 
 import { toOrder } from '../mappers';
 import { type OrderDoc, OrderModel } from '../models/index';
+import { sessionFrom } from '../transaction-manager';
 
 export class MongoOrderRepository implements OrderRepository {
 	async findById(id: string): Promise<Order | null> {
@@ -30,12 +31,12 @@ export class MongoOrderRepository implements OrderRepository {
 		return { items: docs.map(toOrder), total, page, pageSize };
 	}
 
-	async save(order: Order): Promise<Order> {
+	async save(order: Order, context?: TransactionContext): Promise<Order> {
 		const { id, ...rest } = order;
 		const doc = await OrderModel.findByIdAndUpdate(
 			id,
 			{ $set: rest },
-			{ upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
+			{ upsert: true, returnDocument: 'after', setDefaultsOnInsert: true, session: sessionFrom(context) },
 		)
 			.lean<OrderDoc>()
 			.exec();

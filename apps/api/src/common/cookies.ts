@@ -67,10 +67,16 @@ export function csrfCookieOptions(config: AppConfig): CookieSerializeOptions {
 }
 
 /** Every cookie name this API sets, resolved for the current environment. */
-export function cookieNames(config: AppConfig): { access: string; refresh: string; csrf: string } {
+export function cookieNames(config: AppConfig): {
+	access: string;
+	refresh: string;
+	csrf: string;
+	guest: string;
+} {
 	return {
 		access: cookieName(config.cookies.accessName, config),
 		refresh: cookieName(config.cookies.refreshName, config),
 		csrf: cookieName(config.cookies.csrfName, config),
+		guest: cookieName(config.cookies.guestName, config),
 	};
 }

@@ -125,6 +125,19 @@ describe.skipIf(!hasMongoEnv())('auth persistence (integration, rs0)', () => {
 			expect(rotated?.rotationCounter).toBe(1);
 		});
 
+		it('updates only the CSRF secret hash for an active session', async () => {
+			const session = sessionFixture();
+			await sessions.create(session);
+			const nextCsrf = `csrf_${randomUUID()}`;
+
+			const updated = await sessions.updateCsrfSecretHash(session.id, nextCsrf);
+			expect(updated?.csrfSecretHash).toBe(nextCsrf);
+			expect(updated?.refreshTokenHash).toBe(session.refreshTokenHash);
+
+			await sessions.revoke(session.id, 'logout', now());
+			expect(await sessions.updateCsrfSecretHash(session.id, `csrf_${randomUUID()}`)).toBeNull();
+		});
+
 		it('refuses a second rotation with the same token — the replay loses', async () => {
 			const session = sessionFixture();
 			await sessions.create(session);

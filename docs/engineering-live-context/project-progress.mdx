@@ -229,6 +229,28 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 - 2026-07-24 — [PARTIAL] `loadConfig()` / `.env.example` still show stale Atlas / Brevo / `blr1` shapes vs locked Docker Mongo + MSG91 + SGP — correction is an explicit Chunk C / env-sync task in the API/DB roadmap. Tool: cursor.
 - 2026-07-24 — [DONE] **Chunk A delta (API)**: inspected `apps/api/src` vs target. Keep (refactor-in-place): DI/composition (`app.module`, `infra/persistence.module`, `infra/tokens`, `config/`, zod pipe), 7 domain modules, argon2id hashing, `dotenv/config`. Must refactor: auth transport (JSON **bearer** → httpOnly cookie session + CSRF + rotation/reuse-detection + admin/storefront audiences + PIN + OTP — Chunk D), Fastify bootstrap (add cookie/CSRF/`trustProxy`+`CF-Connecting-IP`/request-id/error-filter/redacted-logger, `/health/live`+`/health/ready` split — Chunk C), narrow enums (`ProductStatus`, `OrderStatus`, `AuthProvider`), OpenAPI→Scalar. Missing modules: search, checkout, payments(+webhooks), shipping, inventory, pricing, content(faq/qna/reviews), privacy(consent), analytics, media; audience/permission/csrf guards; audit pipeline. Stale Brevo OTP comments left for the Chunk-D rewrite (logged). Full current detail is retained in the A–J roadmap and architecture references; the standalone delta is available in Git history. Tool: claude-code.
 - 2026-07-24 — [DONE] §0b env-sync Pass 1 (API env core): rewrote `apps/api/.env.example` (Docker Mongo RS parts, `NOTIFICATION_PROVIDER`/`MSG91_*` primary + optional email fallback, Spaces `sgp1`, CORS 4200/4300, `TRUST_PROXY`/`CLIENT_IP_HEADER`, cookie/CSRF placeholder names; Atlas/Brevo/`blr1` scrubbed) and `app-config.ts` zod shape to match (trustProxy, cookies, notifications, otp maxAttempts; Brevo removed). api lint+typecheck green. Tool: claude-code.
+- 2026-08-01 — [DONE] **Critical auth/CSRF/cart/order security + transaction defects fixed on `feat/api-db-env-secrets-sync`.**
+  (1) `SessionGuard` now loads `AuthSession` by JWT `sid` and fail-closes on missing/
+  revoked/idle-expired/absolute-expired/user-or-audience mismatch — logout and refresh-
+  family revocation take effect immediately without globally bumping `tokenVersion`.
+  Public routes still allow anonymous access but attach a principal when a live access
+  cookie is present. (2) `CsrfGuard` fails closed when session cookies are present but
+  no live session resolves; CSRF binding uses access-cookie `sid` (refresh fallback).
+  (3) `GET /auth/csrf` Policy B: preserve a still-valid session-bound token; recover by
+  atomic `csrfSecretHash` rotation only when the readable cookie is missing/desynced;
+  anonymous pre-session issuance unchanged. (4) Cart BOLA: derive user ownership from
+  Principal; guest carts require httpOnly `st_guest` whose HMAC hash is stored; public
+  responses null the hash; cross-owner → 404; staff/admin read-only bypass tested.
+  Order create validates ownership/guest adoption before any write. (5) Order create
+  adopts `TransactionManagerPort`; order save + cart consume join ALS Mongo sessions.
+  Idempotency remains an explicit Chunk G seam (retries without a key are not deduped).
+  **Tests:** API unit/guard coverage for session liveness, CSRF fail-closed/bind, CSRF
+  Policy B, cart ownership, order ownership+tx; adapter IT `order-cart-transaction` +
+  `updateCsrfSecretHash`. Gates: `pnpm typecheck`, `lint`, `test`, `format:check` green;
+  `MONGODB_PORT=27018 RUN_DB_IT=1` adapter tests **81/81**. Already-fixed items (public
+  catalogue visibility, order-read BOLA, refresh CSRF hash rotation, sparse null indexes,
+  auth-rate-limit E11000, MSG91 not Brevo) left untouched. Chunk D remains partial for
+  email-verification completion / OAuth / admin invite accept / quick-resume. Tool: cursor.
 - _(append)_
 
 ---
@@ -573,6 +595,12 @@ optionSelectionHash)`, globally unique variant SKU per `DEC-SKU`, unique bundle 
 - 2026-07-24 — [N/A] Atlas is not the production plan. Tool: cursor.
 - 2026-07-24 — [DONE] Rewrote `packages/adapters-db-mongo/src/config.ts` to self-hosted `mongodb://` URI builder: `MONGODB_HOST/PORT/REPLICA_SET` (defaults 127.0.0.1:27017 rs0, `directConnection=true`), optional auth pair (local no-auth OK), `mongodb+srv`/`MONGODB_CLUSTER_HOST` Atlas shape removed; `MONGODB_URI` override retained. Package lint+typecheck green; URI assembly verified incl. `@`→`%40` encoding. Tool: claude-code. Notes: `docker/mongo` compose + `pnpm mongo:*` still missing (Pass 2).
 - 2026-07-24 — [DONE] §0b Pass 2 (Mongo infra): created `docker/mongo/docker-compose.yml` (Mongo 8.3 single-node `rs0`, volume `saha_textile_mongo_data`, loopback publish, idempotent rs.initiate healthcheck) + `scripts/mongo-{up,down,status,wipe}.sh` + root `pnpm mongo:up|down|status|wipe`; `.env.mcp.example` LOCAL URI → local Docker rs0 (Atlas SRV shapes scrubbed). Host port parameterized `MONGO_HOST_PORT` (default 27017; this Mac overrides 27018 via gitignored `docker/mongo/.env` because a native mongod owns 27017 — canonical docs unchanged, prod unaffected). VERIFIED LIVE: rs0 PRIMARY healthy; `RUN_DB_IT=1` adapter integration tests 3/3 pass; API boots with `Connected to MongoDB` and sockets confirmed on 27018. Added `dotenv/config` to `apps/api` main.ts (Nest CLI does not load `.env`; without it the API silently used defaults). Tool: claude-code.
+- 2026-08-01 — [DONE] **Order+cart commerce writes join Mongo transactions.** `OrderRepository.save` /
+  `CartRepository.save|deleteById` accept optional `TransactionContext` and pass
+  `sessionFrom(context)` into Mongoose. New `test/order-cart-transaction.test.ts` proves
+  commit of order+cart-delete, rollback when consume fails after order write, and rollback
+  when a later step fails before cart consume. `AuthSessionRepository.updateCsrfSecretHash`
+  added for CSRF Policy B recovery. `MONGODB_PORT=27018 RUN_DB_IT=1` → **81/81**. Tool: cursor.
 - _(append)_
 
 ---
@@ -629,6 +657,11 @@ optionSelectionHash)`, globally unique variant SKU per `DEC-SKU`, unique bundle 
   cannot be replayed against another. Tool: claude-code.
 - 2026-07-24 — [PARTIAL] Target = httpOnly cookies + CSRF + rotating refresh; current API still bearer-oriented. Phase/Chunk D. Tool: cursor.
 - 2026-07-24 — [DONE] Admin PIN UX locked in owner log (2026-07-23). Tool: cursor.
+- 2026-08-01 — [DONE] **Session sid binding + CSRF fail-closed + CSRF Policy B + cart/order BOLA.**
+  Verified defects were real in source: access JWTs survived logout/family revoke until
+  JWT expiry; CSRF passed when session lookup was null; `GET /auth/csrf` desynced active
+  sessions; carts/orders accepted foreign cart ids; order create was non-atomic. Fixes
+  and tests recorded under API + DB sections above. Tool: cursor.
 - _(append)_
 
 ---
@@ -748,6 +781,7 @@ optionSelectionHash)`, globally unique variant SKU per `DEC-SKU`, unique bundle 
 - 2026-08-01 — [PARTIAL] **Developer portal post-Chunk-D/E Pass 3 — TypeDoc regeneration.** The narrow contracts/core-domain surface now generates **450 HTML pages** and exposes Chunk D's `UserAuthState`, `AuthUserRepository` and atomic `nextCsrfSecretHash` rotation alongside the previously verified contract/port families. Adapter Mongoose models/repositories remain absent by design. The entry page has one `h1`, and the generated theme retains the 15px root plus centred 220/flexible/250 grid. TypeDoc production generation, validator, root gates and formatting are green. Live 1280/390 layout and console checks remain unverified because no browser surface is available, so this pass is PARTIAL. Tool: codex.
 - 2026-08-01 — [PARTIAL] **Developer portal post-Chunk-D/E Pass 4 — 32-model MongoDB catalogue.** Expanded the source-only generator to every exported Mongoose model and added an exported-versus-documented coverage assertion. Two runs produced byte-identical JSON measuring **32 models / 406 fields / 89 indexes / 27 temporary shapes**. All **13** `select:false` fields remain visible as policy names but absent from every synthetic preview; no database connection was opened. Current database narratives now distinguish the full catalogue from Schema Nebula's exact-name **64 / 8 / 56** graph. Validator, root gates, Docusaurus build and persistent composite build 8 are green. Live catalogue interaction, console and 1280/390 overflow checks remain unverified because no browser surface is available, so this pass is PARTIAL. Tool: codex.
 - 2026-08-01 — [PARTIAL] **Developer portal post-Chunk-D/E Pass 5 — governed instrument reconciliation.** Mission Control now reports A/B/C/E done, D partial and F–J planned with the four unresolved gates. Request Flight now shows cookie-only session authentication, session-bound CSRF, request-id/error-envelope hops and separate order-read BOLA as real; cart ownership, idempotency, order-path transaction adoption and atomic order side effects stay ghosted under Chunk G while naming the proven persistence capabilities they have not adopted. Schema Nebula remains 64/8/56, Decision Gates remains 24 open with the same four newly locked ids, and compiler proof retains First Flight beginner/frontend/backend/operator counts at 6/6/7/7. React no longer embeds the old Schema Nebula counts. Validator/compiler, root gates and Docusaurus build are green; browser interaction/console/responsive checks remain unavailable, so this pass is PARTIAL. Tool: codex.
+- 2026-08-01 — [PARTIAL] **Developer portal post-Chunk-D/E Pass 6 — narrative and embedded-atlas reconciliation.** Supersedes the earlier Pass 6 D1-only snapshot: security, identity/resume, composition, contracts, readiness, backend overview, Mongo adapter, frontend runtime, notifications, Scalar bridge and both interactive atlases now distinguish D2 done; D3 missing email-verification completion/OAuth; D4 missing invite acceptance/quick-resume; and D5 missing cart ownership while consent/privacy and order BOLA are live. Recorded the fixed 2026-08-01 order-read defect, the still-public cart boundary, cookie-only API versus ignored legacy Angular bearer residue, session-bound CSRF acquisition plus the active-session `/auth/csrf` mismatch, 32-model/77-test persistence evidence and the console-only notification seam. Validator: **74 pages / 74 routes / 52 portal source files**. Root typecheck, lint+naming, tests and format check, Docusaurus production build and persistent composite build 19 are green; all four canonical bridges, all four child mounts and the 37-path/40-operation OpenAPI returned HTTP 200. Browser interaction, console and 1280/390 overflow checks remain unverified because no controllable browser instance is available, so the pass is PARTIAL. Tool: codex.
 - _(append)_
 
 ---

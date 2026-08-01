@@ -11,9 +11,11 @@ import {
 import type { ConsentRepository } from '@saha-textile/core-domain';
 import type { FastifyRequest } from 'fastify';
 
-import { ZodValidationPipe } from '../common/zod-validation.pipe';
-import { type AuthenticatedPrincipal, Public } from '../auth/session.guard';
 import { Principal } from '../auth/ownership';
+import { type AuthenticatedPrincipal, Public } from '../auth/session.guard';
+import { cookieNames } from '../common/cookies';
+import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { CONSENT_REPOSITORY } from '../infra/tokens';
 
 const DEFAULT_CATEGORIES = {
@@ -38,11 +40,14 @@ const DEFAULT_CATEGORIES = {
 @ApiTags('privacy')
 @Controller('privacy')
 export class PrivacyController {
-	constructor(@Inject(CONSENT_REPOSITORY) private readonly consent: ConsentRepository) {}
+	constructor(
+		@Inject(CONSENT_REPOSITORY) private readonly consent: ConsentRepository,
+		@Inject(APP_CONFIG) private readonly config: AppConfig,
+	) {}
 
 	private guestIdHash(request: FastifyRequest): string | null {
 		const cookies = (request as FastifyRequest & { cookies?: Record<string, string> }).cookies;
-		return cookies?.st_guest ?? null;
+		return cookies?.[cookieNames(this.config).guest] ?? null;
 	}
 
 	@Get('consent')

@@ -22,6 +22,10 @@ export type CartLine = z.infer<typeof CartLine>;
 /**
  * Server-persistent cart, keyed by userId (logged-in) or guestToken (guest).
  * On login the guest cart merges into the user cart and is deleted.
+ *
+ * `guestToken` holds the HMAC hash of the opaque `st_guest` cookie value — never the
+ * raw bearer. API responses must null this field so the hash is not broadly queryable
+ * client-side material.
  */
 export const Cart = z.object({
 	id: Id,

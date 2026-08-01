@@ -34,6 +34,11 @@ function safeEquals(a: string, b: string): boolean {
  *
  * `SameSite=lax` on the session cookie is the first line of defence; this is the second.
  * Neither is trusted alone.
+ *
+ * Fail-closed: when session credentials are present, a live AuthSession MUST resolve and
+ * the CSRF token MUST match that session's stored hash. Cookie/header agreement alone is
+ * not enough — otherwise a revoked/missing refresh session plus a still-accepted access
+ * cookie could forge state changes with any matching double-submit pair.
  */
 @Injectable()
 export class CsrfGuard implements CanActivate {
@@ -61,15 +66,8 @@ export class CsrfGuard implements CanActivate {
 			throw new ForbiddenException('CSRF validation failed');
 		}
 
-		/**
-		 * Second stage: the token must belong to THIS session.
-		 *
-		 * Cookie/header agreement alone stops cross-site forgery but not a token lifted
-		 * from another session and replayed with stolen session cookies. `csrfSecretHash`
-		 * is stored per session precisely so that pairing can be checked.
-		 */
-		const session = await this.sessions.findByRefreshCookie(request);
-		if (session && !this.sessions.verifyCsrfForSession(session, cookieToken)) {
+		const session = await this.sessions.resolveLiveSessionFromRequest(request);
+		if (!session || !this.sessions.verifyCsrfForSession(session, cookieToken)) {
 			throw new ForbiddenException('CSRF validation failed');
 		}
 

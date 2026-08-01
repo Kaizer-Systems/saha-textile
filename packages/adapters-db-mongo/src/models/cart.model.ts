@@ -14,6 +14,7 @@ const CartSchema = new Schema<CartDoc>(
 	{
 		_id: { type: String, required: true },
 		userId: { type: String, default: null },
+		/** HMAC hash of the opaque `st_guest` cookie — never the raw bearer. */
 		guestToken: { type: String, default: null },
 		currency: { type: String, default: 'INR' },
 		lines: { type: [Schema.Types.Mixed], default: [] },

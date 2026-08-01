@@ -102,7 +102,8 @@ const fakeAuthSessions = {
 	revokeFamily: notImplemented,
 	revokeAllForUser: notImplemented,
 	touch: notImplemented,
-} as unknown as AuthSessionRepository;
+	updateCsrfSecretHash: notImplemented,
+} as AuthSessionRepository;
 
 const fakes = {
 	otpChallenges: {} as OtpChallengeRepository,

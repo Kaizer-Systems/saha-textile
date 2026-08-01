@@ -49,6 +49,11 @@ export interface AuthSessionRepository {
 	revokeFamily(refreshFamilyId: string, reason: SessionRevokeReason, at: string): Promise<number>;
 	revokeAllForUser(userId: string, reason: SessionRevokeReason, at: string): Promise<number>;
 	touch(sessionId: string, lastSeenAt: string): Promise<void>;
+	/**
+	 * Rotates only the session-bound CSRF secret (recovery / explicit re-issue).
+	 * Returns null when the session is missing or already revoked.
+	 */
+	updateCsrfSecretHash(sessionId: string, nextCsrfSecretHash: string): Promise<AuthSession | null>;
 }
 
 /**

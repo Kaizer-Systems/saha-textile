@@ -186,6 +186,18 @@ export class MongoAuthSessionRepository implements AuthSessionRepository {
 	async touch(sessionId: string, lastSeenAt: string): Promise<void> {
 		await AuthSessionModel.updateOne({ _id: sessionId }, { $set: { lastSeenAt: new Date(lastSeenAt) } }).exec();
 	}
+
+	async updateCsrfSecretHash(sessionId: string, nextCsrfSecretHash: string): Promise<AuthSession | null> {
+		const doc = await AuthSessionModel.findOneAndUpdate(
+			{ _id: sessionId, revokedAt: null },
+			{ $set: { csrfSecretHash: nextCsrfSecretHash } },
+			{ returnDocument: 'after' },
+		)
+			.select(SESSION_SECRETS)
+			.lean<AuthSessionDoc>()
+			.exec();
+		return doc ? toSession(doc) : null;
+	}
 }
 
 function toChallenge(doc: OtpChallengeDoc): OtpChallenge {

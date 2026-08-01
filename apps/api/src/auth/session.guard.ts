@@ -15,6 +15,7 @@ import type { FastifyRequest } from 'fastify';
 import { cookieNames } from '../common/cookies';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { AUTH_PORT, AUTH_USER_REPOSITORY } from '../infra/tokens';
+import { SessionService } from './session.service';
 
 export const PUBLIC_ROUTE_KEY = 'auth:public';
 export const AUDIENCE_KEY = 'auth:audience';
@@ -52,8 +53,12 @@ export type RequestWithPrincipal = FastifyRequest & {
  * The access token is a short-lived JWT read from an httpOnly cookie — never from a
  * request body and never from a browser-supplied Authorization header. It carries
  * `tokenVersion` and `permissionsVersion`, which are compared against the user's CURRENT
- * values: that is what makes a password change, a role change, or reuse detection take
- * effect immediately instead of waiting for the token to expire.
+ * values so a password change or role change invalidates every token immediately.
+ *
+ * Logout and refresh-family revocation do NOT bump `tokenVersion` (that would kill every
+ * other device). Instead this guard loads the AuthSession identified by JWT `sid` and
+ * fail-closes when the session is missing, revoked, expired, or identity-mismatched —
+ * so reuse revocation and single-session logout take effect immediately.
  *
  * The audience check is the isolation the owner lock requires — an admin session cookie
  * cannot authorize a storefront-only route, and vice versa, even for the same person.
@@ -65,6 +70,7 @@ export class SessionGuard implements CanActivate {
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
 		@Inject(AUTH_PORT) private readonly auth: AuthPort,
 		@Inject(AUTH_USER_REPOSITORY) private readonly authUsers: AuthUserRepository,
+		private readonly sessions: SessionService,
 	) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -72,41 +78,62 @@ export class SessionGuard implements CanActivate {
 			context.getHandler(),
 			context.getClass(),
 		]);
-		if (isPublic) return true;
 
 		const request = context.switchToHttp().getRequest<RequestWithPrincipal>();
 		const token = request.cookies?.[cookieNames(this.config).access];
-		if (!token) throw new UnauthorizedException('Authentication required');
+
+		// Public routes remain reachable anonymously, but when an access cookie IS present
+		// we still resolve the principal so ownership checks (cart, consent) can bind to it.
+		if (!token) {
+			if (isPublic) return true;
+			throw new UnauthorizedException('Authentication required');
+		}
 
 		let claims: Record<string, unknown>;
 		try {
 			claims = (await this.auth.verifyToken(token)) as unknown as Record<string, unknown>;
 		} catch {
+			if (isPublic) return true;
 			throw new UnauthorizedException('Invalid or expired session');
 		}
 
 		const userId = String(claims.sub ?? '');
 		const sessionId = String(claims.sid ?? '');
 		const audience = claims.aud as SessionAudience | undefined;
-		if (!userId || !sessionId || !audience) throw new UnauthorizedException('Malformed session');
+		if (!userId || !sessionId || !audience) {
+			if (isPublic) return true;
+			throw new UnauthorizedException('Malformed session');
+		}
 
 		const requiredAudience = this.reflector.getAllAndOverride<SessionAudience | undefined>(AUDIENCE_KEY, [
 			context.getHandler(),
 			context.getClass(),
 		]);
 		if (requiredAudience && audience !== requiredAudience) {
+			if (isPublic) return true;
 			// Not a 403: to this surface the session simply does not exist.
 			throw new UnauthorizedException('Authentication required');
 		}
 
+		const session = await this.sessions.findLiveById(sessionId, { userId, audience });
+		if (!session) {
+			if (isPublic) return true;
+			throw new UnauthorizedException('Session is no longer valid');
+		}
+
 		const user = await this.authUsers.findAuthStateById(userId);
-		if (!user || user.status !== 'active') throw new UnauthorizedException('Account is not active');
+		if (!user || user.status !== 'active') {
+			if (isPublic) return true;
+			throw new UnauthorizedException('Account is not active');
+		}
 
 		// Stale-token rejection. A bumped counter invalidates every token minted before it.
 		if (Number(claims.tokenVersion ?? -1) !== user.tokenVersion) {
+			if (isPublic) return true;
 			throw new UnauthorizedException('Session is no longer valid');
 		}
 		if (Number(claims.permissionsVersion ?? -1) !== user.permissionsVersion) {
+			if (isPublic) return true;
 			throw new UnauthorizedException('Permissions changed; re-authentication required');
 		}
 
@@ -118,6 +145,8 @@ export class SessionGuard implements CanActivate {
 			permissions: user.permissions,
 		};
 		request.principal = principal;
+
+		if (isPublic) return true;
 
 		const requiredRoles = this.reflector.getAllAndOverride<UserRole[] | undefined>(ROLES_KEY_V2, [
 			context.getHandler(),

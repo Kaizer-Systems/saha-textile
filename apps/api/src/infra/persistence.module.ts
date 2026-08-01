@@ -1,6 +1,17 @@
 import { Global, Logger, Module, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
 import { MongoTransactionManager, connectMongo, disconnectMongo } from '@saha-textile/adapters-db-mongo';
 import {
+	MongoAdminInviteRepository,
+	MongoAuthRateLimitRepository,
+	MongoAuthSessionRepository,
+	MongoAuthUserRepository,
+	MongoConsentRepository,
+	MongoEmailVerificationTokenRepository,
+	MongoOAuthStateRepository,
+	MongoOtpChallengeRepository,
+	MongoPasswordResetTokenRepository,
+} from '@saha-textile/adapters-db-mongo';
+import {
 	MongoCartRepository,
 	MongoCategoryRepository,
 	MongoCurrencyRepository,
@@ -12,6 +23,7 @@ import {
 
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { Argon2JwtAuth } from './argon2-jwt.auth';
+import { ConsoleNotificationAdapter } from './console-notification.adapter';
 import {
 	AUTH_PORT,
 	CART_REPOSITORY,
@@ -19,6 +31,16 @@ import {
 	CURRENCY_REPOSITORY,
 	ORDER_REPOSITORY,
 	PRODUCT_REPOSITORY,
+	ADMIN_INVITE_REPOSITORY,
+	CONSENT_REPOSITORY,
+	AUTH_RATE_LIMIT_REPOSITORY,
+	AUTH_SESSION_REPOSITORY,
+	AUTH_USER_REPOSITORY,
+	EMAIL_VERIFICATION_TOKEN_REPOSITORY,
+	OAUTH_STATE_REPOSITORY,
+	NOTIFICATION_PORT,
+	OTP_CHALLENGE_REPOSITORY,
+	PASSWORD_RESET_TOKEN_REPOSITORY,
 	PROMOTION_REPOSITORY,
 	TRANSACTION_MANAGER,
 	USER_REPOSITORY,
@@ -36,6 +58,18 @@ import {
 		{ provide: USER_REPOSITORY, useClass: MongoUserRepository },
 		// Unit-of-work boundary: multi-document commerce writes commit or roll back together.
 		{ provide: TRANSACTION_MANAGER, useClass: MongoTransactionManager },
+		// Chunk D auth stores. Credential material lives behind these ports only.
+		{ provide: AUTH_SESSION_REPOSITORY, useClass: MongoAuthSessionRepository },
+		{ provide: AUTH_USER_REPOSITORY, useClass: MongoAuthUserRepository },
+		{ provide: OTP_CHALLENGE_REPOSITORY, useClass: MongoOtpChallengeRepository },
+		{ provide: OAUTH_STATE_REPOSITORY, useClass: MongoOAuthStateRepository },
+		{ provide: PASSWORD_RESET_TOKEN_REPOSITORY, useClass: MongoPasswordResetTokenRepository },
+		{ provide: EMAIL_VERIFICATION_TOKEN_REPOSITORY, useClass: MongoEmailVerificationTokenRepository },
+		{ provide: ADMIN_INVITE_REPOSITORY, useClass: MongoAdminInviteRepository },
+		{ provide: AUTH_RATE_LIMIT_REPOSITORY, useClass: MongoAuthRateLimitRepository },
+		{ provide: CONSENT_REPOSITORY, useClass: MongoConsentRepository },
+		// Stub until approved MSG91 credentials/templates exist (owner lock: ports first).
+		{ provide: NOTIFICATION_PORT, useClass: ConsoleNotificationAdapter },
 		{
 			provide: AUTH_PORT,
 			useFactory: (config: AppConfig) => new Argon2JwtAuth(config),
@@ -51,6 +85,18 @@ import {
 		ORDER_REPOSITORY,
 		USER_REPOSITORY,
 		TRANSACTION_MANAGER,
+		AUTH_SESSION_REPOSITORY,
+		AUTH_USER_REPOSITORY,
+		NOTIFICATION_PORT,
+		OTP_CHALLENGE_REPOSITORY,
+		OAUTH_STATE_REPOSITORY,
+		PASSWORD_RESET_TOKEN_REPOSITORY,
+		EMAIL_VERIFICATION_TOKEN_REPOSITORY,
+		ADMIN_INVITE_REPOSITORY,
+		CONSENT_REPOSITORY,
+		AUTH_RATE_LIMIT_REPOSITORY,
+		CONSENT_REPOSITORY,
+		NOTIFICATION_PORT,
 		AUTH_PORT,
 	],
 })

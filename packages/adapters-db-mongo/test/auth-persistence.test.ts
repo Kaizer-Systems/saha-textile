@@ -115,6 +115,7 @@ describe.skipIf(!hasMongoEnv())('auth persistence (integration, rs0)', () => {
 				sessionId: session.id,
 				nextRefreshTokenHash: nextHash,
 				previousRefreshTokenHash: session.refreshTokenHash,
+				nextCsrfSecretHash: `csrf_${randomUUID()}`,
 				expiresAt: future(15),
 				lastSeenAt: now(),
 			});
@@ -132,6 +133,7 @@ describe.skipIf(!hasMongoEnv())('auth persistence (integration, rs0)', () => {
 				sessionId: session.id,
 				nextRefreshTokenHash: `hash_${randomUUID()}`,
 				previousRefreshTokenHash: session.refreshTokenHash,
+				nextCsrfSecretHash: `csrf_${randomUUID()}`,
 				expiresAt: future(15),
 				lastSeenAt: now(),
 			});
@@ -139,6 +141,7 @@ describe.skipIf(!hasMongoEnv())('auth persistence (integration, rs0)', () => {
 				sessionId: session.id,
 				nextRefreshTokenHash: `hash_${randomUUID()}`,
 				previousRefreshTokenHash: session.refreshTokenHash,
+				nextCsrfSecretHash: `csrf_${randomUUID()}`,
 				expiresAt: future(15),
 				lastSeenAt: now(),
 			});
@@ -154,6 +157,7 @@ describe.skipIf(!hasMongoEnv())('auth persistence (integration, rs0)', () => {
 				sessionId: session.id,
 				nextRefreshTokenHash: `hash_${randomUUID()}`,
 				previousRefreshTokenHash: session.refreshTokenHash,
+				nextCsrfSecretHash: `csrf_${randomUUID()}`,
 				expiresAt: future(15),
 				lastSeenAt: now(),
 			});

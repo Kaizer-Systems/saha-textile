@@ -75,11 +75,20 @@ const UserSchema = new Schema<UserDoc>(
 	{ timestamps: true },
 );
 
-UserSchema.index({ email: 1 }, { unique: true, sparse: true });
-/** Admin username login; sparse because storefront customers have none. */
-UserSchema.index({ username: 1 }, { unique: true, sparse: true });
+/**
+ * PARTIAL, not sparse.
+ *
+ * A sparse unique index still indexes documents where the field is PRESENT with value
+ * null — and these fields are written as explicit nulls — so the second customer without
+ * a username would collide with the first. Filtering on `$type: 'string'` indexes only
+ * the rows that actually carry a value, which is the behaviour "unique when present"
+ * actually requires.
+ */
+UserSchema.index({ email: 1 }, { unique: true, partialFilterExpression: { email: { $type: 'string' } } });
+/** Admin username login; storefront customers have none. */
+UserSchema.index({ username: 1 }, { unique: true, partialFilterExpression: { username: { $type: 'string' } } });
 /** Phone is collected at checkout, so it is optional and only unique when present. */
-UserSchema.index({ phone: 1 }, { unique: true, sparse: true });
+UserSchema.index({ phone: 1 }, { unique: true, partialFilterExpression: { phone: { $type: 'string' } } });
 /** Admin user lists filter by role and status. */
 UserSchema.index({ role: 1, status: 1 });
 

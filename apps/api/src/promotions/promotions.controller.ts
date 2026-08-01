@@ -4,12 +4,15 @@ import { z } from 'zod';
 
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { PromotionsService } from './promotions.service';
+import { Public } from '../auth/session.guard';
 
 const ValidateCouponSchema = z.object({ couponCode: z.string().min(1) });
 type ValidateCouponInput = z.infer<typeof ValidateCouponSchema>;
 
 @ApiTags('promotions')
 @Controller('promotions')
+/** Public active promotions and coupon validation. */
+@Public()
 export class PromotionsController {
 	constructor(private readonly promotions: PromotionsService) {}
 

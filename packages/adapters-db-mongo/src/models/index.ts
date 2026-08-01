@@ -9,3 +9,4 @@ export * from './auth-session.model';
 export * from './auth-challenge.model';
 export * from './auth-token.model';
 export * from './auth-rate-limit.model';
+export * from './consent.model';

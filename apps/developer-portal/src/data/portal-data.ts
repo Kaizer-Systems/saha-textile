@@ -182,6 +182,10 @@ export type PortalData = {
 	decisionGates: {
 		lastVerified: string;
 		sourceOfTruth: string[];
+		decisionRegister: {
+			openCount: number;
+			newlyLocked: string[];
+		};
 		impactChunks: string[];
 		impactCollections: string[];
 		gates: DecisionGate[];

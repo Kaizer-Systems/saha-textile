@@ -25,8 +25,8 @@
 			"sublabel": "Storefront checkout",
 			"kind": "real",
 			"file": "apps/storefront/src/app/features/shop/checkout",
-			"current": "The checkout screen POSTs the cart id (plus chosen currency and coupon) with the session cookie.",
-			"target": "It also sends an Idempotency-Key and relies on an owned session — never a caller-supplied user id."
+			"current": "The storefront checkout remains a demo-data UI and does not call POST /orders. The API operation exists for direct clients, but no browser order-submission path is wired yet.",
+			"target": "The storefront sends an owned cart plus Idempotency-Key through the cookie session and never supplies a user id."
 		},
 		{
 			"id": "transport",

@@ -4,8 +4,13 @@
 	"sourceOfTruth": [
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
 		"docs/engineering-live-context/owner-decisions-log.mdx",
+		"docs/engineering-live-context/pending-decisions.mdx",
 		"docs/engineering-live-context/project-progress.mdx"
 	],
+	"decisionRegister": {
+		"openCount": 24,
+		"newlyLocked": ["DEC-SKU", "DEC-PRODUCT-RELATIONS", "DEC-BUNDLE-NESTING", "DEC-DELETE-RETENTION"]
+	},
 	"gates": [
 		{
 			"id": "G-NUM-ORDER",

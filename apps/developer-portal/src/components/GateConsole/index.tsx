@@ -24,7 +24,7 @@ import { useDecisionGateData, type Gate } from '@site/src/data/decision-gates';
 import styles from './styles.module.css';
 
 export function GateConsole(): React.ReactNode {
-	const { gates, impactChunks, impactCollections } = useDecisionGateData();
+	const { gates, decisionRegister, impactChunks, impactCollections } = useDecisionGateData();
 	const location = useLocation();
 	const openGateCount = useMemo(() => gates.filter((gate) => gate.status === 'open').length, [gates]);
 	const [selectedId, setSelectedId] = useState<string>(gates.find((g) => g.status === 'open')?.id ?? gates[0].id);
@@ -58,6 +58,10 @@ export function GateConsole(): React.ReactNode {
 				</p>
 				<p className={styles.summary}>
 					<strong>{openGateCount}</strong> of {gates.length} gates open · reflects the roadmap + owner log.
+				</p>
+				<p className={styles.summary}>
+					<strong>{decisionRegister.openCount}</strong> open owner decisions · newly locked:{' '}
+					{decisionRegister.newlyLocked.join(' · ')}.
 				</p>
 			</div>
 

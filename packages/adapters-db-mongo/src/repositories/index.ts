@@ -9,3 +9,5 @@ export * from './auth.repository';
 export * from './consent.repository';
 export * from './catalog-structure.repository';
 export * from './merchandising.repository';
+export * from './inventory.repository';
+export * from './media.repository';

@@ -13,3 +13,5 @@ export * from './consent.model';
 export * from './catalog-structure.model';
 export * from './product-variant.model';
 export * from './merchandising.model';
+export * from './media.model';
+export * from './inventory.model';

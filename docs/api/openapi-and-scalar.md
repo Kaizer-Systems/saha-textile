@@ -10,7 +10,11 @@ source_of_truth:
     - apps/api/src/generate-openapi.ts
     - apps/api/src
     - apps/developer-portal-scalar
+    - packages/adapters-db-mongo/src/repositories/auth.repository.ts
+    - packages/adapters-db-mongo/test/auth-persistence.test.ts
     - packages/contracts/src
+    - docs/engineering-live-context/project-progress.mdx
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
 ---
@@ -40,6 +44,19 @@ For an unsafe request carrying a session cookie:
 
 Missing or mismatched double-submit values fail with `403`. The CSRF token does not create a session, grant a role, prove object ownership, or increase the caller’s rate-limit allowance.
 
+## Current Chunk D boundary
+
+Chunk D is **partial**, not absent and not complete. D1 has delivered tested MongoDB persistence for auth sessions, challenges, single-use tokens, admin invites, and auth rate limits. Its repository tests prove atomic refresh rotation, replay lookup, family revocation, one-active OTP handling, single-use consumption, concurrency-safe rate-limit counts, secret-field exclusion, and TTL policy. The current API auth controller/service does **not** use those repositories yet: it still returns transitional bearer tokens in JSON, has no logout or password-reset/email-verification routes, and its OTP operations remain stubs.
+
+The remaining boundary is explicit:
+
+- **D2:** issue/refresh/revoke through httpOnly cookies, reuse-triggered family revocation, CSRF bound to `authSessions.csrfSecretHash`, and storefront/admin audience guards;
+- **D3:** storefront register/login/logout/me/refresh, password reset, email verification, and OTP with generic anti-enumeration responses;
+- **D4:** admin invite acceptance, PIN setup/login/lockout/quick-resume, and RBAC with permission-version invalidation; and
+- **D5:** consent/privacy seams plus cart/order ownership (BOLA) authorization.
+
+Those passes belong to the owning API worker after portal reconciliation. Scalar must not imply their semantics are already active merely because D1 persistence exists.
+
 ## Generated evidence snapshot
 
 | Measurement                              | Generated result                                        | Meaning                                                                                                                          |
@@ -54,6 +71,12 @@ Missing or mismatched double-submit values fail with `403`. The CSRF token does 
 
 Two generation runs produced byte-identical output without opening a MongoDB connection. That proves the current source generator is deterministic in this environment; it is not yet the required CI generation and drift gate.
 
+:::warning Known source defect
+
+The generated summaries for `POST /auth/otp/request` and `POST /auth/otp/verify` still say “pending Brevo credentials.” That text comes directly from the current auth controller, and the matching service exceptions carry the same stale provider name. It conflicts with the locked MSG91-primary notification design and active configuration. The portal generator does not rewrite machine truth to hide the defect; the API metadata/service text must be corrected by the owning Chunk D implementation.
+
+:::
+
 ## Promotion-gate status
 
 The stable portal publication path and source-only generation without production secrets are real. The runtime platform also now returns one safe `ApiErrorResponse` envelope for every failure and correlates it with the `x-request-id` response header. However, that runtime error behavior is not encoded into operation response components or examples in the generated document.
@@ -61,11 +84,15 @@ The stable portal publication path and source-only generation without production
 Scalar therefore remains **scaffolded**. Promotion is still blocked by:
 
 - complete request and response schemas;
-- cookie-session, CSRF, audience, permission, ownership, and route-specific rate-limit semantics in the document;
+- D2 cookie-session/reuse detection, session-bound CSRF, and storefront/admin audience semantics in runtime and in the document;
+- D3/D4 storefront/admin endpoint contracts, generic anti-enumeration behavior, RBAC, and permission-version invalidation;
+- D5 consent/privacy and cart/order ownership (BOLA) enforcement and documentation;
+- route-specific rate-limit semantics in the document;
 - operation-specific error and idempotency examples;
 - transactional, audit, outbox, notification, and provider side-effect documentation;
 - CI generation plus required-path/tag/security and breaking-drift tests; and
-- an owner-approved non-production interaction target and policy.
+- an owner-approved non-production interaction target and policy; and
+- removal of the stale Brevo OTP labels from API source metadata and runtime exceptions.
 
 ## Target portal routes
 

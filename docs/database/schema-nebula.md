@@ -45,6 +45,8 @@ Schema Nebula is a **governed architecture map**, not a live database browser an
 
 The seven solid stars are `categories`, `products`, `promotions`, `orders`, `currencies`, `carts` and `users`. Every other star remains a target-only ghost until model evidence exists.
 
+Chunk D1 added grouped auth Mongoose models, but they do not promote the six matching target stars yet. Source inspection on 2026-08-01 shows that Mongoose currently resolves their physical collection names through its lowercase defaults (`authsessions`, `otpchallenges`, `oauthstates`, `passwordresettokens`, `emailverificationtokens`, and `admininvites`) rather than the owner-locked camelCase graph names. `authratelimits` is also a current adapter mechanism, but the canonical auth architecture explicitly keeps that backing store outside the locked 64-node graph. The database catalogue may report all current models; Schema Nebula stays **64 / 7 / 57** until exact target-name evidence exists.
+
 ## Beginner controls
 
 - Search by collection name, purpose, context, roadmap chunk or decision identifier.
@@ -59,7 +61,7 @@ The seven solid stars are `categories`, `products`, `promotions`, `orders`, `cur
 The authored inventory lives in `docs/_data/instruments/schema-nebula.json`. The shared build-time compiler refuses to publish it unless all of the following agree:
 
 1. the owner-locked route and **64 / 7 / 57** inventory;
-2. the current files under `packages/adapters-db-mongo/src/models`;
+2. the current files under `packages/adapters-db-mongo/src/models`, with D1 grouped auth files held as non-target evidence until their physical names align and `authRateLimits` excluded by canonical policy;
 3. the catalog, auth, notification and roadmap sources;
 4. all collection-to-collection references;
 5. every remaining `DEC-*` blocker in the 24-item open decision register;

@@ -7,6 +7,7 @@ import type { FastifyReply } from 'fastify';
 
 import { cookieNames, csrfCookieOptions } from '../common/cookies';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { Public } from '../auth/session.guard';
 
 /** 32 bytes of CSPRNG entropy, base64url — not guessable, not a credential. */
 function generateCsrfToken(): string {
@@ -15,6 +16,8 @@ function generateCsrfToken(): string {
 
 @ApiTags('auth')
 @Controller('auth')
+/** CSRF token issuance must work before a session exists. */
+@Public()
 export class SecurityController {
 	constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {}
 

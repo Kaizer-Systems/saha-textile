@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
 import type { ProductFilter } from '@saha-textile/core-domain';
 
 import { CatalogService } from './catalog.service';
+import { Public } from '../auth/session.guard';
 
 /**
  * PUBLIC catalog surface. It never accepts a `status` filter: only `live` products
@@ -12,6 +13,8 @@ import { CatalogService } from './catalog.service';
  */
 @ApiTags('catalog')
 @Controller('catalog/products')
+/** Public catalog: browsing never requires an account (visibility is enforced by CatalogAudience). */
+@Public()
 export class ProductsController {
 	constructor(private readonly catalog: CatalogService) {}
 

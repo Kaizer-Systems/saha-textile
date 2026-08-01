@@ -115,3 +115,36 @@ export const AuthRateLimit = z.object({
 	blockedUntil: IsoDateTime.nullable().default(null),
 });
 export type AuthRateLimit = z.infer<typeof AuthRateLimit>;
+
+/**
+ * SERVER-INTERNAL authentication state for one user.
+ *
+ * This is the shape credential verification and session issuance need, and it is the
+ * reason it may never be returned by an endpoint: it carries the password/PIN hashes and
+ * the version counters. The public projection is `User` (`user.ts`); the sanitized admin
+ * projection is `AdminUserProfile` (`admin-auth.ts`).
+ *
+ * `tokenVersion` and `permissionsVersion` are the fast-invalidation counters: an access
+ * token embeds the values it was minted with, so bumping either makes every existing
+ * token stale immediately without scanning the session collection.
+ */
+export const UserAuthState = z.object({
+	id: Id,
+	email: z.string().nullable().default(null),
+	emailVerified: z.boolean().default(false),
+	username: z.string().nullable().default(null),
+	role: z.enum(['customer', 'staff', 'admin']),
+	status: z.enum(['active', 'pending', 'disabled', 'locked', 'deleted']),
+	/** argon2id hash, or null for an account that has only OAuth/OTP identities. */
+	passwordHash: z.string().nullable().default(null),
+	/** argon2id hash of the six-digit admin PIN. */
+	pinHash: z.string().nullable().default(null),
+	preferredLoginMethod: z.enum(['password', 'pin']).default('password'),
+	permissions: z.array(z.string()).default([]),
+	tokenVersion: z.number().int().nonnegative().default(0),
+	permissionsVersion: z.number().int().nonnegative().default(0),
+	failedLoginAttempts: z.number().int().nonnegative().default(0),
+	failedPinAttempts: z.number().int().nonnegative().default(0),
+	pinLockedUntil: IsoDateTime.nullable().default(null),
+});
+export type UserAuthState = z.infer<typeof UserAuthState>;

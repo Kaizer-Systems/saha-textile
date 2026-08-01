@@ -2,6 +2,7 @@ import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { getMongoose } from '@saha-textile/adapters-db-mongo';
 import type { FastifyReply } from 'fastify';
+import { Public } from '../auth/session.guard';
 
 interface LivenessStatus {
 	status: 'ok';
@@ -29,6 +30,8 @@ const MONGO_READY_STATE_CONNECTED = 1;
 
 @ApiTags('health')
 @Controller('health')
+/** Liveness and readiness must answer without a session — a probe has no cookies. */
+@Public()
 export class HealthController {
 	/**
 	 * Liveness: is the PROCESS alive? Deliberately dependency-free — if this checked

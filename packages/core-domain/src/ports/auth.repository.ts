@@ -8,6 +8,7 @@ import type {
 	PasswordResetToken,
 	SessionAudience,
 	SessionRevokeReason,
+	UserAuthState,
 } from '@saha-textile/contracts';
 
 /**
@@ -27,11 +28,19 @@ export interface AuthSessionRepository {
 	findByPreviousRefreshTokenHash(hash: string): Promise<AuthSession | null>;
 	listActiveForUser(userId: string, audience?: SessionAudience): Promise<AuthSession[]>;
 	create(session: AuthSession): Promise<AuthSession>;
-	/** Atomic rotation: consume the current token and issue the next one in the family. */
+	/**
+	 * Atomic rotation: consume the current token, issue the next one in the family, and
+	 * rotate the session-bound CSRF secret in the SAME update.
+	 *
+	 * The CSRF secret must move with the token: re-issuing a CSRF cookie without updating
+	 * the stored hash leaves the two permanently out of step, and every subsequent
+	 * state-changing request fails validation.
+	 */
 	rotate(input: {
 		sessionId: string;
 		nextRefreshTokenHash: string;
 		previousRefreshTokenHash: string;
+		nextCsrfSecretHash: string;
 		expiresAt: string;
 		lastSeenAt: string;
 	}): Promise<AuthSession | null>;
@@ -105,4 +114,32 @@ export interface AuthRateLimitRepository {
 	/** Increments the window counter and returns the count after this hit. */
 	hit(key: string, windowSeconds: number, now: string): Promise<number>;
 	reset(key: string): Promise<void>;
+}
+
+/**
+ * Auth-facing view of a user account.
+ *
+ * Deliberately separate from `UserRepository`, which deals in the PUBLIC `User` shape.
+ * Credential material and version counters are only reachable through this port, so a
+ * feature repository cannot accidentally load — or return — a password hash.
+ */
+export interface AuthUserRepository {
+	findAuthStateById(userId: string): Promise<UserAuthState | null>;
+	/** Normalized email lookup for storefront login/reset. */
+	findAuthStateByEmail(emailNormalized: string): Promise<UserAuthState | null>;
+	/** Admin login accepts email OR username in one field. */
+	findAuthStateByIdentifier(identifier: string): Promise<UserAuthState | null>;
+	setPasswordHash(userId: string, passwordHash: string): Promise<void>;
+	setPinHash(userId: string, pinHash: string | null): Promise<void>;
+	setPreferredLoginMethod(userId: string, method: 'password' | 'pin'): Promise<void>;
+	markEmailVerified(userId: string, emailNormalized: string): Promise<void>;
+	/** Invalidates every existing access token for this user. */
+	bumpTokenVersion(userId: string): Promise<number>;
+	/** Invalidates every existing token's cached permission set. */
+	bumpPermissionsVersion(userId: string): Promise<number>;
+	recordSuccessfulLogin(userId: string, at: string): Promise<void>;
+	/** Returns the new failure count so the caller can apply lockout policy. */
+	recordFailedPinAttempt(userId: string): Promise<number>;
+	lockPinUntil(userId: string, until: string): Promise<void>;
+	clearPinLock(userId: string): Promise<void>;
 }

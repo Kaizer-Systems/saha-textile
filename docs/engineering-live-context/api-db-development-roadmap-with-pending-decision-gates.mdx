@@ -160,19 +160,24 @@ Other open decisions block only their own final policy engine. Reversible schema
   rather than the locked camelCase Schema Nebula names; `authRateLimits` is not a
   locked node in that 64-collection graph. The adapter owner must align the six
   target-backed names before those stars become current evidence.
-- **D2 — session lifecycle (remaining):** issue, refresh, revoke, and refresh-reuse
-  family revocation wired to the httpOnly cookies; CSRF bound to
-  `authSessions.csrfSecretHash`; storefront/admin audience guards.
-- **D3 — storefront auth endpoints (remaining):** register, login, logout, me,
-  refresh, password reset, email verification, and OTP with generic
-  anti-enumeration responses.
-- **D4 — admin auth (remaining):** invite acceptance, PIN setup/login/lockout and
-  quick-resume, plus RBAC with permission-version invalidation.
-- **D5 — consent, privacy, and ownership (remaining):** consent/privacy seams and
-  BOLA authorization on carts and orders.
+- **D2 — session lifecycle (done):** issue, refresh, revoke, refresh-reuse family
+  revocation, session-bound CSRF, and storefront/admin audience guards are implemented
+  and live-proven through httpOnly cookies.
+- **D3 — storefront auth endpoints (partial):** register, password login, logout, me,
+  refresh, password reset, and OTP use generic anti-enumeration responses. Email
+  verification token persistence/issuance exists, but no completion route is exposed;
+  Google/Facebook token verification also remains deferred pending approved credentials.
+- **D4 — admin auth (partial):** password/PIN login, PIN setup/lockout, RBAC, and
+  permission-version invalidation exist. Admin invite acceptance and idle quick-resume
+  remain deferred.
+- **D5 — consent, privacy, and ownership (partial):** consent history, export/erase
+  seams, and order BOLA are implemented. Cart routes remain public and accept arbitrary
+  cart ids without guest proof or user ownership; that residual ownership work belongs
+  to Chunk G according to the current controller.
 
-Owner sequencing on 2026-08-01: D2–D5 resume after the developer portal has been
-reconciled with the current branch.
+The 2026-08-01 portal reassessment therefore retains Chunk D as **partial**. The earlier
+“Chunk D complete” progress label describes the delivered session/auth core but does not
+satisfy the full D3–D5 boundary above.
 
 #### Deliver
 

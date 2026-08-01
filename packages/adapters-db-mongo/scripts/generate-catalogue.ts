@@ -4,10 +4,17 @@ import { resolve } from 'node:path';
 import { type Schema, type SchemaType } from 'mongoose';
 
 import {
+	AdminInviteModel,
+	AuthRateLimitModel,
+	AuthSessionModel,
 	CartModel,
 	CategoryModel,
 	CurrencyModel,
+	EmailVerificationTokenModel,
+	OAuthStateModel,
+	OtpChallengeModel,
 	OrderModel,
+	PasswordResetTokenModel,
 	ProductModel,
 	PromotionModel,
 	UserModel,
@@ -68,7 +75,49 @@ const modelSources: Array<{
 		model: UserModel,
 		source: 'packages/adapters-db-mongo/src/models/user.model.ts',
 		context: 'Identity',
-		purpose: 'Current user identity, role, consent, and address scaffold.',
+		purpose: 'Current user identity, credentials, role, consent, and address scaffold.',
+	},
+	{
+		model: AuthSessionModel,
+		source: 'packages/adapters-db-mongo/src/models/auth-session.model.ts',
+		context: 'Identity',
+		purpose: 'Current rotating, session-bound refresh and CSRF persistence capability.',
+	},
+	{
+		model: OtpChallengeModel,
+		source: 'packages/adapters-db-mongo/src/models/auth-challenge.model.ts',
+		context: 'Identity',
+		purpose: 'Current hash-only, single-use OTP challenge persistence capability.',
+	},
+	{
+		model: OAuthStateModel,
+		source: 'packages/adapters-db-mongo/src/models/auth-challenge.model.ts',
+		context: 'Identity',
+		purpose: 'Current hash-only OAuth state, nonce, and PKCE persistence capability.',
+	},
+	{
+		model: PasswordResetTokenModel,
+		source: 'packages/adapters-db-mongo/src/models/auth-token.model.ts',
+		context: 'Identity',
+		purpose: 'Current hash-only, single-use password-reset token persistence capability.',
+	},
+	{
+		model: EmailVerificationTokenModel,
+		source: 'packages/adapters-db-mongo/src/models/auth-token.model.ts',
+		context: 'Identity',
+		purpose: 'Current hash-only, single-use email-verification token persistence capability.',
+	},
+	{
+		model: AdminInviteModel,
+		source: 'packages/adapters-db-mongo/src/models/auth-token.model.ts',
+		context: 'Identity',
+		purpose: 'Current hash-only admin-invite and acceptance-audit persistence capability.',
+	},
+	{
+		model: AuthRateLimitModel,
+		source: 'packages/adapters-db-mongo/src/models/auth-rate-limit.model.ts',
+		context: 'Identity',
+		purpose: 'Current atomic, TTL-expiring auth rate-limit counter capability.',
 	},
 ];
 
@@ -135,7 +184,7 @@ function compileModel(entry: (typeof modelSources)[number]) {
 				enum: values,
 				temporaryShape:
 					schemaType.instance === 'Mixed' || (schemaType.instance === 'Array' && elementType === 'Mixed'),
-				sensitive: path === 'passwordHash',
+				sensitive: options.select === false,
 			};
 		});
 
@@ -149,6 +198,14 @@ function compileModel(entry: (typeof modelSources)[number]) {
 		keys,
 		options,
 	}));
+	const leakedSensitivePaths = fields
+		.filter((field) => field.sensitive && Object.hasOwn(example, field.path))
+		.map((field) => field.path);
+	if (leakedSensitivePaths.length > 0) {
+		throw new Error(
+			`${entry.model.modelName} synthetic preview contains sensitive fields: ${leakedSensitivePaths.join(', ')}`,
+		);
+	}
 
 	return {
 		model: entry.model.modelName,

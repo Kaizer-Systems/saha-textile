@@ -2,11 +2,11 @@
  * NEXT-GEN-UI · Request Flight Simulator
  * ----------------------------------------------------------------------------
  * A photon steps through one request (POST /orders) across the six boundaries.
- * A "Current execution ↔ Locked target" toggle reveals GHOST stages (idempotency,
- * transaction, atomic side effects) that are absent today and flip solid in the
- * target — the page becomes "the request lifecycle, animated", and visibly fills
- * in as Chunks E/G land. Data comes from the governed build-time portal-data
- * compiler; this visual owns no current/target project facts.
+ * A "Current execution ↔ Locked target" toggle reveals GHOST stages. Idempotency
+ * and atomic side effects are absent; the transaction capability is implemented
+ * and proven but stays ghosted because the order path has not adopted it. The
+ * page visibly fills in as Chunks E/G land. Data comes from the governed
+ * build-time portal-data compiler; this visual owns no project facts.
  *
  * Interaction: auto-play (photon loops the flow) + manual step (←/→ or click a
  * stage pauses and jumps). Space toggles play/pause.

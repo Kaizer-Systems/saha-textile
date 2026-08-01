@@ -1,4 +1,12 @@
-/* TypeDoc-only layout adapter. Shared tokens are prepended at build time. */
+/* ============================================================================
+ * NEXT-GEN-UI · TypeDoc Type Lattice adapter
+ * What: responsive exported-symbol reference layout and child navigation skin.
+ * Why: TypeDoc owns source navigation but should remain visually continuous with
+ * the portal without importing Docusaurus layout selectors or duplicating tokens.
+ * How: compose the generated TypeDoc DOM with shared --portal-* variables.
+ * Tuning knobs: 220/flexible/250 desktop columns, 1120px/768px collapse points,
+ * 15px root scale, panel spacing and the toolbar gateway treatment.
+ * ========================================================================= */
 
 html,
 body {
@@ -136,6 +144,40 @@ footer .container {
 	vertical-align: middle;
 }
 
+#tsd-toolbar-links {
+	display: flex;
+	align-items: center;
+	margin-left: auto;
+}
+
+.portal-typedoc-gateway {
+	display: inline-flex;
+	align-items: center;
+	min-height: 30px;
+	padding: 5px 10px;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 42%, var(--portal-border));
+	border-radius: var(--portal-radius);
+	background: color-mix(in srgb, var(--portal-accent) 9%, transparent);
+	color: var(--portal-accent);
+	font: 700 0.68rem var(--portal-font-mono);
+	text-decoration: none;
+	white-space: nowrap;
+	transition:
+		border-color 160ms ease,
+		background 160ms ease,
+		box-shadow 160ms ease;
+}
+
+.portal-typedoc-gateway:hover {
+	border-color: var(--portal-accent);
+	background: var(--portal-accent-soft);
+	box-shadow: 0 0 22px color-mix(in srgb, var(--portal-accent) 18%, transparent);
+}
+
+.portal-typedoc-gateway__short {
+	display: none;
+}
+
 .tsd-panel,
 .col-content {
 	border-color: var(--portal-border);
@@ -163,6 +205,39 @@ footer .container {
 		0 20px 54px rgb(0 0 0 / 14%),
 		inset 0 1px 0 rgb(255 255 255 / 3%);
 	backdrop-filter: blur(14px);
+}
+
+.portal-typedoc-intro {
+	display: grid;
+	gap: 8px;
+	margin-bottom: 22px;
+	padding: clamp(18px, 2.3vw, 28px);
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 34%, var(--portal-border));
+	border-radius: var(--portal-radius-lg);
+	background:
+		linear-gradient(118deg, color-mix(in srgb, var(--portal-accent) 9%, transparent), transparent 64%),
+		color-mix(in srgb, var(--portal-surface) 82%, transparent);
+	box-shadow:
+		0 22px 58px rgb(0 0 0 / 16%),
+		inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+
+.portal-typedoc-intro__eyebrow {
+	color: var(--portal-success);
+	font: 700 0.68rem var(--portal-font-mono);
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+}
+
+.portal-typedoc-intro strong {
+	font-size: clamp(1.05rem, 1.7vw, 1.32rem);
+	letter-spacing: -0.035em;
+}
+
+.portal-typedoc-intro p {
+	max-width: 72ch;
+	margin: 0;
+	color: var(--portal-muted);
 }
 
 .tsd-typography :where(p, li) {
@@ -308,8 +383,23 @@ footer {
 		display: none;
 	}
 
+	.portal-typedoc-gateway__long {
+		display: none;
+	}
+
+	.portal-typedoc-gateway__short {
+		display: inline;
+	}
+
 	.tsd-panel {
 		padding: 20px;
+	}
+}
+
+@media (forced-colors: active) {
+	.portal-typedoc-gateway,
+	.portal-typedoc-intro {
+		border: 1px solid ButtonText;
 	}
 }
 

@@ -1,7 +1,10 @@
 /* ============================================================================
  * NEXT-GEN-UI · Storybook manager constellation adapter
- * Uses the shared --portal-* contract imported by manager.ts. Selectors remain
- * intentionally broad and shallow because Storybook owns the manager DOM.
+ * What: Storybook-owned manager atmosphere, state emphasis, and gateway control.
+ * Why: keep Component Forge parity without styling Angular previews as manager UI.
+ * How: use the shared --portal-* contract imported by manager.ts with broad,
+ * shallow selectors because Storybook owns the manager DOM.
+ * Tuning knobs: 24s ambient drift and the native-toolbar gateway spacing.
  * ========================================================================= */
 
 html,
@@ -66,6 +69,40 @@ a:hover {
 	box-shadow:
 		inset 2px 0 0 var(--portal-accent),
 		0 0 22px rgb(62 166 255 / 9%);
+}
+
+.portal-storybook-gateway {
+	display: inline-flex;
+	align-items: center;
+	min-height: 28px;
+	padding: 4px 9px;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 42%, var(--portal-border));
+	border-radius: var(--portal-radius);
+	background: color-mix(in srgb, var(--portal-accent) 9%, transparent);
+	color: var(--portal-accent) !important;
+	font: 700 11px var(--portal-font-mono);
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.portal-storybook-gateway:hover {
+	border-color: var(--portal-accent);
+	background: var(--portal-accent-soft);
+	box-shadow: 0 0 22px color-mix(in srgb, var(--portal-accent) 18%, transparent);
+}
+
+@media (max-width: 560px) {
+	.portal-storybook-gateway {
+		max-width: 72px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+}
+
+@media (forced-colors: active) {
+	.portal-storybook-gateway {
+		border: 1px solid ButtonText;
+	}
 }
 
 @keyframes managerStarDrift {

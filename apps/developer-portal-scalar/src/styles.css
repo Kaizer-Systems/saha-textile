@@ -1,9 +1,10 @@
 /* ============================================================================
  * NEXT-GEN-UI · Scalar Request Wormhole adapter
  * ----------------------------------------------------------------------------
- * Shared values come from nextgen-theme.css. This file maps Scalar's public
- * custom properties and supplies the tool-specific OpenAPI flight-console
- * atmosphere without copying the Docusaurus layout.
+ * What: Scalar's structural theme mapping and OpenAPI flight-console atmosphere.
+ * Why: the generated client needs shared portal parity without Docusaurus layout.
+ * How: map Scalar's public properties to nextgen-theme.css on both the document
+ * and Scalar's nested theme root; no palette values are copied here.
  * Tuning knobs: 720px status-bar collapse; root overflow containment keeps
  * Scalar's off-canvas client artwork from widening the document.
  * ========================================================================= */
@@ -24,7 +25,9 @@ body,
 	background: var(--portal-canvas);
 }
 
-body {
+body,
+.scalar-app,
+.scalar-app.dark-mode {
 	--scalar-font: var(--portal-font-sans);
 	--scalar-font-code: var(--portal-font-mono);
 	--scalar-background-1: var(--portal-canvas);
@@ -39,8 +42,22 @@ body {
 	--scalar-button-1: var(--portal-accent);
 	--scalar-button-1-color: var(--portal-canvas);
 	--scalar-button-1-hover: color-mix(in srgb, var(--portal-accent) 84%, white);
+	--scalar-sidebar-background-1: var(--portal-canvas);
+	--scalar-sidebar-color-1: var(--portal-ink);
+	--scalar-sidebar-color-2: var(--portal-muted);
+	--scalar-sidebar-border-color: var(--portal-border);
+	--scalar-sidebar-item-hover-background: var(--portal-accent-soft);
+	--scalar-sidebar-item-active-background: var(--portal-accent-soft);
+	--scalar-sidebar-color-active: var(--portal-ink);
+	--scalar-sidebar-indent-border: var(--portal-border);
+	--scalar-sidebar-search-background: var(--portal-surface);
+	--scalar-sidebar-search-color: var(--portal-muted);
+	--scalar-sidebar-search-border-color: var(--portal-border);
 	--scalar-radius: var(--portal-radius);
 	--scalar-radius-lg: var(--portal-radius-lg);
+}
+
+body {
 	position: relative;
 	background:
 		radial-gradient(circle at 76% 14%, color-mix(in srgb, var(--portal-accent) 12%, transparent), transparent 34%),
@@ -111,9 +128,28 @@ body::after {
 	font-size: 0.72rem;
 }
 
-.portal-scalar-status a {
+.portal-scalar-gateway {
+	justify-self: end;
+	padding: 7px 10px;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 42%, var(--portal-border));
+	border-radius: var(--portal-radius);
+	background: color-mix(in srgb, var(--portal-accent) 9%, transparent);
 	color: var(--portal-accent);
+	font-weight: 700;
 	text-decoration: none;
+	white-space: nowrap;
+	transition:
+		border-color 160ms ease,
+		background 160ms ease,
+		box-shadow 160ms ease,
+		color 160ms ease;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.portal-scalar-gateway:hover {
+	border-color: var(--portal-accent);
+	background: var(--portal-accent-soft);
+	box-shadow: 0 0 22px color-mix(in srgb, var(--portal-accent) 18%, transparent);
 }
 
 .portal-scalar-status__signal {
@@ -165,8 +201,15 @@ body::after {
 		grid-template-columns: auto 1fr;
 	}
 
-	.portal-scalar-status a {
+	.portal-scalar-gateway {
 		grid-column: 2;
+		justify-self: start;
+	}
+}
+
+@media (forced-colors: active) {
+	.portal-scalar-gateway {
+		border: 1px solid ButtonText;
 	}
 }
 

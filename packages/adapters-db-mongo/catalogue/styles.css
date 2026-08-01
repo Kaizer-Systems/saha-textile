@@ -74,14 +74,28 @@ body::before {
 	line-height: 1.6;
 }
 
-.observatory-header a {
+.observatory-gateway {
+	flex: 0 0 auto;
 	padding: 10px 13px;
 	border: 1px solid var(--portal-border);
 	border-radius: var(--portal-radius);
+	background: color-mix(in srgb, var(--portal-accent) 9%, transparent);
 	color: var(--portal-accent);
 	font-family: var(--portal-font-mono);
 	font-size: 0.72rem;
+	font-weight: 700;
 	text-decoration: none;
+	white-space: nowrap;
+	transition:
+		border-color 160ms ease,
+		background 160ms ease,
+		box-shadow 160ms ease;
+}
+
+.observatory-gateway:hover {
+	border-color: var(--portal-accent);
+	background: var(--portal-accent-soft);
+	box-shadow: 0 0 22px color-mix(in srgb, var(--portal-accent) 18%, transparent);
 }
 
 .eyebrow {
@@ -390,5 +404,11 @@ pre {
 @media (prefers-reduced-motion: reduce) {
 	body::before {
 		animation: none;
+	}
+}
+
+@media (forced-colors: active) {
+	.observatory-gateway {
+		border: 1px solid ButtonText;
 	}
 }

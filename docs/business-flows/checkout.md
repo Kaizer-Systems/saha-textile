@@ -95,7 +95,7 @@ G = (N + f) / (1 - p)
 
 ## Tax boundary
 
-Tax resolves at checkout from product/variant tax profile and applicable tax rules. The order line freezes the resolved result. The exact customer display policy remains an owner/accountant decision and must not be guessed in Angular.
+Tax resolves at checkout from the product or variant tax profile and applicable tax rules. The order line freezes the resolved result. The exact customer display policy remains an unresolved business and accounting decision and must not be guessed in Angular.
 
 ## Promotions and unsupported UI seams
 

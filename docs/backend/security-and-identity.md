@@ -1,7 +1,7 @@
 ---
 title: Security, Sessions, and Authorization
 wide: true
-description: Current authentication scaffold, locked browser-session target, CSRF, authorization, BOLA, and security verification.
+description: Current authentication scaffold, ratified browser-session architecture, CSRF, authorization, BOLA, and security verification.
 search_keywords: 'cookies csrf st_access st_refresh otp msg91 jwt session bola audiences pin'
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
@@ -83,7 +83,7 @@ Chunk D1's tested stores are now bound into the HTTP flow. The 18 gated rs0 test
 | D4   | **Partial:** admin password/PIN login, PIN setup/lockout, role/permission checks and permission-version invalidation                                              | Invite acceptance and idle quick-resume |
 | D5   | **Partial:** consent/privacy, order BOLA, cart/`st_guest` ownership and order-create cart adoption                                                                | Guest→user merge (Chunk G)              |
 
-## Locked browser session
+## Browser session architecture
 
 ```mermaid
 sequenceDiagram
@@ -190,7 +190,7 @@ The current guard accepts `customer | staff | admin` roles, enforces explicit pe
 - Ten-minute expiry, maximum five attempts, single active challenge per identifier/purpose.
 - Atomic constant-time verification and single-use consumption.
 - Generic anti-enumeration responses.
-- Channel-direct delivery through locked notification abstraction/provider; no code/token logs.
+- Channel-direct delivery through the ratified notification abstraction and provider; no code or token logs.
 
 The PIN/OTP/session DTOs and persistence shapes are active in the HTTP lifecycle. Email OTP request/verification and admin PIN setup/login/lockout are implemented; provider-backed MSG91 delivery, invite acceptance, OAuth and quick-resume remain outside the current proof.
 

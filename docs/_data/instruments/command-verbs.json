@@ -25,7 +25,7 @@
 			"id": "gate",
 			"token": "gate",
 			"label": "Inspect a decision gate",
-			"description": "Open a governed owner gate with its current sealed or cleared state selected.",
+			"description": "Open a governed decision gate with its current sealed or cleared state selected.",
 			"example": "gate numbering",
 			"targetSource": "decision-gates",
 			"emptyRoute": "/decisions/gate-console"

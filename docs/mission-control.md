@@ -1,6 +1,6 @@
 ---
 title: Mission Control
-description: The live orbital dashboard of the API/DB build — roadmap chunks A–J, their status, dependencies and blocking owner gates.
+description: Live API and database roadmap dashboard showing chunks A–J, dependencies, status, and blocking decision gates.
 slug: /mission-control
 wide: true
 status: implemented
@@ -20,8 +20,8 @@ import { MissionControl } from '@site/src/components/MissionControl';
 
 ## How to read this
 
-Mission Control is a **compiled view of the roadmap + progress log**, not an independent claim. Each station is one API/DB roadmap chunk (A–J); its colour is the current status, and an amber halo means an open [owner decision gate](/decisions/developer-portal-now) blocks part of that chunk (foundations and seams may still proceed).
+Mission Control is a **compiled view of the roadmap and progress log**, not an independent status source. Each station represents one API/database roadmap chunk (A–J); color indicates current status, and an amber halo indicates that an open [decision gate](/decisions/developer-portal-now) blocks part of the chunk while foundations and seams may continue.
 
-Authored structure lives in `docs/_data/instruments/mission-control.json`; live chunk and gate status comes from the marked Portal truth snapshot in `project-progress.mdx`. The shared build-time compiler validates the two against the roadmap and owner-log evidence before Docusaurus can build. The React component receives only that compiled dataset.
+Authored structure lives in `docs/_data/instruments/mission-control.json`; live chunk and gate status comes from the marked Portal truth snapshot in `project-progress.mdx`. The shared build-time compiler validates both against roadmap and decision-log evidence before Docusaurus builds. The React component receives only the compiled dataset.
 
 For the concept catalog of every interactive instrument the portal is growing, see [Interactive instruments](/frontend/interactive-instruments).

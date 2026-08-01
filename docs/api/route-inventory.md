@@ -82,12 +82,12 @@ Chunk D is therefore partial: D2 is done; D3 lacks email-verification completion
 
 ## Public catalogue routes
 
-| Method | Route                         | Present behavior                                         | Current boundary/gap                                               |
-| ------ | ----------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------ |
-| `GET`  | `/catalog/categories`         | Returns sorted category records                          | Current shape is simplified tree, not locked multi-placement model |
-| `GET`  | `/catalog/categories/:slug`   | Lookup by slug                                           | No SEO route/redirect/retired behavior contract                    |
-| `GET`  | `/catalog/products`           | Pagination/category/tag/search; repository forces `live` | Regex search remains transitional; no complete target response DTO |
-| `GET`  | `/catalog/products/:idOrSlug` | Lookup by id then slug; hidden statuses return 404       | No complete target public response DTO                             |
+| Method | Route                         | Present behavior                                         | Current boundary/gap                                                       |
+| ------ | ----------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `GET`  | `/catalog/categories`         | Returns sorted category records                          | Current shape is a simplified tree, not the ratified multi-placement model |
+| `GET`  | `/catalog/categories/:slug`   | Lookup by slug                                           | No SEO route/redirect/retired behavior contract                            |
+| `GET`  | `/catalog/products`           | Pagination/category/tag/search; repository forces `live` | Regex search remains transitional; no complete target response DTO         |
+| `GET`  | `/catalog/products/:idOrSlug` | Lookup by id then slug; hidden statuses return 404       | No complete target public response DTO                                     |
 
 ### Critical public-visibility rule
 

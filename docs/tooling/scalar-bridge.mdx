@@ -21,7 +21,7 @@ source_of_truth:
 
 import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
 
-<!-- NEXT-GEN-UI · What: canonical Request Wormhole bridge copy and launch surface · Why: keep Scalar's scaffold status and Test Request security visible before entry · How: governed prose composes the locked ChildToolGateway metaphor · Tuning knobs: evidence copy only; choreography stays in ChildToolGateway -->
+<!-- NEXT-GEN-UI · What: canonical Request Wormhole bridge copy and launch surface · Why: establish Scalar's contract scope and Test Request security before entry · How: concise reference copy composes the locked ChildToolGateway metaphor · Tuning knobs: evidence copy only; choreography stays in ChildToolGateway -->
 
 <ChildToolGateway
 	toolName="Scalar API reference"
@@ -33,10 +33,8 @@ import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
 	symbol="request-wormhole"
 />
 
-This scaffold publishes the current generated OpenAPI evidence and keeps **Test Request** available. The 2026-08-01 artifact contains 37 paths and 40 operations, including split health probes, the Chunk D auth/privacy routes and `GET /auth/csrf`; public product listing has no `status` query parameter. The uniform runtime `ApiErrorResponse` envelope and request ID are real platform behavior, but they are not yet represented as operation response schemas or examples. Complete request/response contracts, cookie-session/CSRF/audience/permission semantics, idempotency, side-effect examples, CI drift proof, and an approved non-production target remain open.
+This scaffold publishes the current generated OpenAPI evidence with **Test Request** enabled. The 2026-08-01 artifact contains 37 paths and 40 operations, including split health probes, authentication and privacy routes, and `GET /auth/csrf`; public product listing has no `status` query parameter. The uniform runtime `ApiErrorResponse` envelope and request ID are implemented platform behavior, but they are not yet represented as operation response schemas or examples. Complete request and response contracts, cookie-session, CSRF, audience and permission semantics, idempotency, side-effect examples, CI drift proof, and an approved non-production target remain open.
 
 Test requests never receive a privileged token or security bypass from the portal. They target only the server URLs present in the generated OpenAPI document and remain subject to normal CORS, authentication, CSRF, authorization, ownership, and rate-limit enforcement. Login, OTP verification, and refresh issue a session-bound readable CSRF cookie; copy its value into `x-csrf-token` for state-changing requests. For an active session, `GET /auth/csrf` follows Policy B (preserve a still-valid bound token; rotate only to recover a missing/desynced cookie).
 
-Chunk D remains partial with materially more live behavior: D2 is done; D3 has storefront register/password/OTP login, logout, refresh, reset and `me` but lacks email-verification completion and OAuth; D4 has admin password/PIN flows and version-aware RBAC but lacks invite acceptance and quick-resume; D5 has consent/privacy, order BOLA, cart Principal/`st_guest` ownership and transactional order-create cart adoption while guest→user merge remains Chunk G. Test Request exposes none of those capabilities as a bypass.
-
-Inside Scalar, the sticky contract-status bar keeps **Return to gateway** at the right edge so the generated client always has an explicit path back here.
+Authentication remains a partial capability. Session issue, refresh and revocation, session-bound CSRF, audience isolation, storefront password and OTP flows, admin password and PIN flows, version-aware RBAC, consent and privacy seams, order BOLA, cart Principal/`st_guest` ownership, and transactional order-create cart adoption are implemented. Email-verification completion, OAuth, invite acceptance, quick-resume, and guest-to-user merge remain incomplete. Test Request provides no bypass for any runtime control.

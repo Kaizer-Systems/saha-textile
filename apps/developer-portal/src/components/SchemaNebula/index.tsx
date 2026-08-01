@@ -278,8 +278,8 @@ export function SchemaNebula(): React.ReactNode {
 					<p className={styles.eyebrow}>Schema Nebula · Wave 2</p>
 					<h2>Every physical collection. No family-level fog.</h2>
 					<p className={styles.lede}>
-						Explore the owner-locked target as one star per MongoDB collection. Solid stars have adapter
-						model evidence today; ghost stars are architecture targets only. Select a star to reveal its
+						Explore the governed target as one star per MongoDB collection. Solid stars have adapter model
+						evidence today; ghost stars are architecture targets only. Select a star to reveal its
 						ownership, decisions, source and gravity links.
 					</p>
 				</div>

@@ -1,3 +1,11 @@
+/* ============================================================================
+ * NEXT-GEN-UI · Business and commerce journey atlas
+ * What: interactive current/target/recovery lenses across platform journeys.
+ * Why: onboarding requires end-to-end intent without overstating partial runtime.
+ * How: filterable evidence cards connect journey steps to precise source paths.
+ * Tuning knobs: journey copy, lifecycle filters, evidence lenses, and step labels.
+ * ========================================================================= */
+
 import React, { useMemo, useRef, useState } from 'react';
 
 import styles from './styles.module.css';
@@ -76,7 +84,7 @@ const journeys: Journey[] = [
 		status: 'scaffolded',
 		summary: 'Keep guest-friendly cart behavior fast while treating server validation as authoritative.',
 		current:
-			'Classic NgRx implements browser cart events, selectors, persistence, configuration replacement, and stock-shaped checks; the API exposes a cart scaffold.',
+			'Classic NgRx implements browser cart events, selectors, persistence, configuration replacement, and stock-shaped checks. The API enforces user or st_guest cart ownership, but frontend adoption, server validation, offline synchronization, and guest-to-user merge remain incomplete.',
 		target: 'An opaque guest cookie owns a 30-day sliding server cart. Login merges guest lines transactionally before any pending intent is replayed.',
 		recovery:
 			'Unavailable products are line errors, insufficient stock adjusts or blocks quantities, and invalid lines are reported rather than silently discarded.',
@@ -152,7 +160,7 @@ const journeys: Journey[] = [
 		status: 'scaffolded',
 		summary: 'Create a durable order and separate payment attempt without exposing gateway secrets to Angular.',
 		current:
-			'Order contracts/controller/service and a payment port exist; storefront payment execution and provider adapters are not wired.',
+			'Order contracts and operations exist, and order save plus cart consumption commit transactionally after ownership validation. Idempotency, inventory, payment-attempt persistence, storefront payment execution, and provider adapters are not wired.',
 		target: 'INR selects CCAvenue and non-INR selects PayPal server-side. Atomic writes snapshot order lines, prices, FX, tax, promotions, shipping, and payment attempt.',
 		recovery:
 			'Idempotency prevents duplicate orders. Failed, cancelled, pending, and callback-delayed payments remain distinct and recoverable.',
@@ -199,9 +207,10 @@ const journeys: Journey[] = [
 		id: 'admin-resume',
 		title: 'Authorize and resume admin work',
 		area: 'operations',
-		status: 'planned',
+		status: 'scaffolded',
 		summary: 'Protect privileged operations without destroying complex in-progress operator work.',
-		current: 'Admin guards, permission-shaped UI, routes, complex forms, and a demo persisted session exist.',
+		current:
+			'The API implements admin password and PIN sessions, PIN lockout, role and permission checks, and permission-version invalidation. Angular still uses demo session state, permissive child guards, and has no soft-lock or quick-resume orchestration.',
 		target: 'API authorization, audit events, permission-version checks, a 15-minute soft lock, quick resume, and feature-owned drafts protect operations and progress.',
 		recovery:
 			'Permission loss fails closed; stale drafts re-enter normal validation; blocked unsafe requests replay only after session, permission, and entity-version checks.',
@@ -234,7 +243,7 @@ const journeys: Journey[] = [
 			'Complete shipment events',
 			'Define privacy-safe lookup',
 			'Threat-model enumeration',
-			'Implement only after owner review',
+			'Implement only after governance review',
 		],
 		sources: ['docs/engineering-live-context/owner-decisions-log.mdx'],
 	},
@@ -258,7 +267,7 @@ const statusLabels: Record<JourneyStatus | 'all', string> = {
 
 const lensLabels: Record<Lens, string> = {
 	current: 'Current code',
-	target: 'Locked target',
+	target: 'Ratified target',
 	recovery: 'Failure recovery',
 };
 

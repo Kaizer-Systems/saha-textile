@@ -25,7 +25,7 @@ Use this path for work in the Angular storefront, Angular admin application, sha
 
 ## Choose by task
 
-| Your task                            | Start here                               |
+| Task                                 | Start here                               |
 | ------------------------------------ | ---------------------------------------- |
 | Add or change a customer URL         | Storefront routing and rendering         |
 | Change catalogue/cart/checkout state | Storefront state and data ownership      |
@@ -68,7 +68,7 @@ route or file-based page
 
 If the trace jumps directly from an Angular application into a persistence or infrastructure adapter, the dependency boundary is wrong.
 
-## Before handing off
+## Completion checklist
 
 - Verify desktop, tablet and mobile behaviour.
 - Verify keyboard focus, loading, empty, error and retry states.

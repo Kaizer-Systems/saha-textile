@@ -11,6 +11,6 @@ source_of_truth:
 
 # Troubleshooting overview
 
-Troubleshooting pages should be written as decision trees with observable symptoms, commands to run, expected output, and escalation paths.
+Troubleshooting guidance uses decision trees with observable symptoms, diagnostic commands, expected output, recovery steps, and escalation paths.
 
-Start with issues discovered during local verification and CI failures.
+Initial coverage prioritizes recurring local verification failures and CI diagnostics.

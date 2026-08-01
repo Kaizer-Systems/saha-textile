@@ -11,6 +11,7 @@ source_of_truth:
     - packages/adapters-db-mongo/catalogue
     - packages/adapters-db-mongo/src/transaction-manager.ts
     - packages/adapters-db-mongo/test/transaction.test.ts
+    - packages/adapters-db-mongo/test/order-cart-transaction.test.ts
     - packages/core-domain/src/ports/transaction-manager.port.ts
     - apps/api/src/infra/persistence.module.ts
     - apps/api/src/orders/orders.service.ts
@@ -23,11 +24,11 @@ source_of_truth:
 
 # Transactions and generated catalogue
 
-The transaction infrastructure **and the shared transaction capability now exist**. The `rs0` single-node replica set is provisioned by the Docker profile, `TransactionManagerPort` is implemented by `MongoTransactionManager`, nested calls join the outer `AsyncLocalStorage` session, the adapter is bound in API dependency injection, and six replica-set integration tests prove commit and rollback behavior. The order workflow has not adopted that capability: it still saves the order and then deletes the cart in separate writes, so order creation is not atomic.
+The transaction infrastructure and shared capability are implemented. The `rs0` single-node replica set is provisioned by the Docker profile, `TransactionManagerPort` is implemented by `MongoTransactionManager`, nested calls join the outer `AsyncLocalStorage` session, and the adapter is bound through API dependency injection. Six replica-set integration tests prove transaction-manager commit and rollback behavior, while three order-and-cart tests prove that order creation commits or rolls back order save and cart consumption as one unit.
 
 ## Why a replica set is required
 
-A standalone Mongo process does not provide the multi-document transaction behavior this architecture requires. Local and production use the same single-node replica-set profile (`rs0`) so transaction code is exercised before deployment. The replica set and transaction manager are proven; workflow-level transactional boundaries remain adoption work.
+A standalone Mongo process does not provide the multi-document transaction behavior this architecture requires. Local and production use the same single-node replica-set profile (`rs0`) so transaction code is exercised before deployment. The replica set, transaction manager, and order-and-cart atomic pair are proven; wider checkout transaction participation remains incomplete.
 
 A single-node replica set provides transactions, not high availability. Backups, restore drills, resource monitoring, and a later redundancy plan remain necessary.
 
@@ -52,7 +53,7 @@ sequenceDiagram
     end
 ```
 
-The core port now describes an atomic unit without leaking a Mongoose `ClientSession`, and the Mongo adapter translates that boundary into its session. The remaining target is for multi-write use cases such as order placement to execute their repository calls inside it.
+The core port describes an atomic unit without leaking a Mongoose `ClientSession`, and the Mongo adapter translates that boundary into its session. Order creation uses the unit for its current order-and-cart writes. The remaining target is to include idempotency, inventory, payment, audit, and outbox records as those workflows become operational.
 
 ## Transactional workflows
 
@@ -80,7 +81,7 @@ Do not wrap external network calls inside a long database transaction. Use durab
 
 ## Order-number gate
 
-Numbering is still an owner decision. Before implementing order, tax-invoice, purchase-invoice, or neighboring sequence behavior, stop and obtain:
+Numbering remains an unresolved governance gate. Before implementing order, tax-invoice, purchase-invoice, or neighboring sequence behavior, the decision register must define:
 
 - financial-year reset or perpetual mode;
 - company code, separators, and padding;
@@ -114,13 +115,13 @@ The composite portal publishes a source-only **Schema Observatory** at `/databas
 - 27 paths whose `Mixed` or array-of-`Mixed` shape is explicitly marked temporary;
 - 13 excluded-by-default credential, PIN, token, code, state, nonce, PKCE, CSRF and private-contact fields, all omitted from synthetic previews.
 
-The catalogue covers the seven original models plus the 25 D/E identity, consent, catalogue, variant, merchandising, media, inventory, governance, notification and content models. Only `reviews` among the new target-backed physical names resolves exactly to a locked Schema Nebula node; lowercase Mongoose defaults do not promote mismatched lower-camel stars, and `authratelimits` remains outside the 64-node graph. The catalogue remains a current-evidence scaffold, not the finished database dictionary: it does not claim complete HTTP/workflow adoption, migration history, retention completeness, or complete nested validators.
+The catalogue covers the seven original models plus the 25 D/E identity, consent, catalogue, variant, merchandising, media, inventory, governance, notification, and content models. Only `reviews` among the new target-backed physical names resolves exactly to a ratified Schema Nebula node; lowercase Mongoose defaults do not promote mismatched lower-camel stars, and `authratelimits` remains outside the 64-node graph. The catalogue remains a current-evidence scaffold, not the finished database dictionary: it does not claim complete HTTP or workflow adoption, migration history, retention completeness, or complete nested validators.
 
 ## Target-complete catalogue gate
 
 The catalogue remains **scaffolded** until:
 
-1. persistence models reflect the reconciled backend phase rather than temporary simplified shapes;
+1. persistence models reflect the intended backend phase rather than temporary simplified shapes;
 2. nested schemas/validators and indexes are explicit enough to generate useful output;
 3. DTO-to-persistence mappings are named and stable;
 4. the generator can run deterministically without production access;

@@ -13,7 +13,7 @@ source_of_truth:
 
 # Choose your path
 
-You do not need to read the portal from beginning to end. Start with the path that matches the work you are about to do. Each path gives you an ordered reading list, the files you should recognise, the commands you may need, and the point where you should stop and ask for clarification.
+The portal is organized around role-specific entry routes rather than a required front-to-back reading order. Each route provides an ordered reading list, relevant source areas, verification commands, and clear escalation boundaries.
 
 <section className="portalSurfaceNotice">
 	<div>
@@ -52,11 +52,11 @@ You do not need to read the portal from beginning to end. Start with the path th
 Regardless of role:
 
 1. Read the page status and provenance strip before trusting instructions.
-2. Confirm that the page's **Verified** date is appropriate for the risk of your task.
+2. Confirm that the page's **Verified** date is appropriate for the risk of the work.
 3. Follow links to source files rather than guessing implementation details.
 4. Treat a **Planned** or **Deferred** page as approved intent—not working software.
 5. If code, runtime behaviour and this portal disagree, stop and follow the conflict rule in [Source of Truth and Freshness](/governance/source-of-truth-and-freshness).
 
 ## What the portal does not do
 
-The portal explains the system; it does not replace source control, tests, runtime verification, generated OpenAPI, database validators or deployment evidence. Its job is to help you find and interpret those authorities quickly.
+The portal explains the system; it does not replace source control, tests, runtime verification, generated OpenAPI, database validators, or deployment evidence. It provides a structured path to those authorities and the context required to interpret them.

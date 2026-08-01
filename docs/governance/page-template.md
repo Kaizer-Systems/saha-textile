@@ -11,7 +11,7 @@ source_of_truth:
 
 # Documentation page template
 
-Use this template for a new human-authored page. Remove irrelevant optional sections, but keep the required metadata and honesty boundaries.
+Use this template for a new human-authored page. Remove irrelevant optional sections, but keep the required metadata and evidence boundaries.
 
 ```md
 ---

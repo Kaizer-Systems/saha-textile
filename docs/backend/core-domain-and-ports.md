@@ -65,16 +65,16 @@ These functions are tested. They are not a complete checkout pricing engine: tax
 | `StoragePort`                 | Object storage and signed upload                                              | No provider adapter                 |
 | `SearchPort`                  | Index/remove/search products                                                  | No Meilisearch adapter/binding      |
 | `TransactionManagerPort`      | Opaque atomic-work boundary; nested work joins                                | Mongo bound and rs0 rollback-proven |
-| `NotificationPort`            | Deliver or deliberately suppress messaging                                    | No provider adapter                 |
+| `NotificationPort`            | Deliver or deliberately suppress messaging                                    | Console development adapter bound   |
 | `YouTubePort`                 | Discover channel-feed videos                                                  | No provider adapter                 |
 | `VideoTranscodePort`          | Enqueue edge-owned HLS transcoding                                            | No worker adapter                   |
-| Auth repositories             | Sessions, OTP, OAuth, reset, verification, invites, limits                    | Interfaces only                     |
-| Media repository              | References, orphan lifecycle and garbage collection                           | Interface only                      |
-| Inventory repository          | Atomic deltas and FIFO consume/release                                        | Interface only                      |
-| Governance repositories       | Audit, consent, notification settings/templates/outbox                        | Interfaces only                     |
-| Extended catalog repositories | Placements, facets, attributes, variants, bundles, relations, content/reviews | Interfaces only                     |
+| Auth repositories             | Sessions, OTP, OAuth, reset, verification, invites, limits                    | Mongo adapters; HTTP flows partial  |
+| Media repository              | References, orphan lifecycle and garbage collection                           | Mongo adapter tested; workflow open |
+| Inventory repository          | Atomic deltas and FIFO consume/release                                        | Mongo adapter tested; workflow open |
+| Governance repositories       | Audit, consent, notification settings/templates/outbox                        | Mongo adapters; consent API-bound   |
+| Extended catalog repositories | Placements, facets, attributes, variants, bundles, relations, content/reviews | Mongo adapters tested; HTTP open    |
 
-Interfaces do not make an adapter, collection, or use case operational. Of the newly completed ports, only `TransactionManagerPort` has a current adapter and DI binding; the order service has not adopted it and remains non-atomic.
+An interface does not make an adapter, collection, or use case operational. Mongo implementations now exist for the expanded repository families, but most remain tested adapter capabilities rather than complete HTTP workflows. `TransactionManagerPort` is bound in API composition, and order creation uses it for the atomic order-save and cart-consume pair; idempotency and inventory, payment, audit, and outbox participation remain open.
 
 ## What belongs in a port
 
@@ -119,7 +119,7 @@ If controllers, Angular clients, checkout rules, or core pricing must be rewritt
 
 ## Ratified contracts boundary
 
-The owner resolved `G-CORE-CONTRACTS` on 2026-07-25 with Option C:
+`G-CORE-CONTRACTS` was ratified on 2026-07-25 with Option C:
 
 - `packages/contracts` remains the single zod-backed source of shared shapes;
 - core may consume those shapes with `import type` only;
@@ -130,7 +130,7 @@ The boundary is mechanically enforced in both positions. ESLint permits contract
 
 ## Current search boundary
 
-The `SearchPort` documentation now names the locked self-hosted Meilisearch target correctly. No Meilisearch adapter is bound yet; the current catalogue service still reaches an interim Mongo regular-expression search implementation. The interface is the durable seam, Mongo remains authoritative, and the future search index is derived and rebuildable.
+`SearchPort` names the ratified self-hosted Meilisearch target. No Meilisearch adapter is bound yet; the current catalogue service still reaches an interim Mongo regular-expression search implementation. The interface is the durable seam, Mongo remains authoritative, and the future search index is derived and rebuildable.
 
 ## Domain test strategy
 

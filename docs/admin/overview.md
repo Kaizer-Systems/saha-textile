@@ -16,13 +16,13 @@ The admin application is the private operator workspace for catalogue, orders, c
 
 The routed UI surface is substantial, but most domain reads still come from static JSON and most writes remain explicit mock seams. Treat the admin as a mature UI scaffold awaiting contract-backed operations—not as an operational commerce back office.
 
-## Read this section in order
+## Recommended reading sequence
 
 1. [Application atlas](./application-atlas) — filter features by current implementation status.
 2. [Routing and shell](./routing-and-shell) — follow a URL through guards, layouts, and lazy feature routes.
 3. [State and data](./state-and-data) — understand query, store, interceptor, and fixture ownership.
 4. [Forms, tables, and CRUD](./forms-tables-and-crud) — use the established admin interaction patterns safely.
-5. [Contributor recipes](./contributor-recipes) — add a feature without bypassing architecture or honesty boundaries.
+5. [Contributor recipes](./contributor-recipes) — add a feature without bypassing architecture or evidence boundaries.
 
 ## Mental model
 

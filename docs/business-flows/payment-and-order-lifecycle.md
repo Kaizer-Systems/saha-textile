@@ -15,7 +15,7 @@ source_of_truth:
 
 # Payment and order lifecycle
 
-The API currently has order creation/list/detail/status scaffolding and the core domain defines a payment gateway port. Provider adapters, customer payment execution, hosted handoff, callback/webhook verification, and full transactional persistence are not wired.
+The API currently provides order creation, list, detail, and status operations, and the core domain defines a payment gateway port. Order creation proves cart ownership and commits order save plus cart consumption transactionally. Provider adapters, customer payment execution, hosted handoff, callback or webhook verification, idempotency, and the wider inventory, payment, audit, and outbox transaction boundary are not wired.
 
 ## Gateway selection
 
@@ -104,13 +104,13 @@ Quote, label, pickup, transit, delivery, failure, and cancellation remain shipme
 
 ## Ownership and authorization
 
-Customer order list/detail operations must verify that the authenticated customer owns the resource. Admin/staff transitions require explicit permissions. A guarded route or a supplied order ID is never sufficient authorization.
+Customer order list and detail operations verify that the authenticated customer owns the resource. Cross-customer detail reads fail as not-found, while staff and admin support access uses an explicit bypass. Admin and staff transitions require an authenticated cookie session, CSRF, and role enforcement; complete permission, transition, version, and audit policy remains incomplete. A guarded route or supplied order id is never sufficient authorization.
 
-The current order controller is a scaffold. Its presence does not advance production readiness until object-level authorization, cookie-session/CSRF behavior, transactional persistence, provider confirmation, and tests are verified.
+The current controller proves cookie-session and CSRF enforcement, customer object ownership, and the order-and-cart atomic pair. Production readiness still requires idempotency, complete immutable snapshots, stock and payment orchestration, provider confirmation, legal transition policy, audit and outbox side effects, and broader HTTP proof.
 
 ## Mandatory numbering decision gate
 
-The contracts already reserve an `orderNumber`, but the legal/business numbering policy is not locked. Before implementing order, tax-invoice, purchase-invoice, or adjacent numbering behavior, stop and obtain the owner’s decisions on:
+The contracts reserve an `orderNumber`, but the legal and business numbering policy remains unresolved. Before implementing order, tax-invoice, purchase-invoice, or adjacent numbering behavior, the decision register must define:
 
 - financial-year reset versus perpetual sequence;
 - company code, separators, and zero-padding;

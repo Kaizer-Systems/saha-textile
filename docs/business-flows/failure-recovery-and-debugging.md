@@ -71,10 +71,10 @@ Never capture passwords, OTPs, access/refresh tokens, guest-token plaintext, car
 6. **Reconcile from authority.** Replace browser assumptions with validated server truth after reconnect, auth, or conflict.
 7. **Audit privileged/manual actions.** Operator overrides need reason, actor, time, and before/after evidence.
 
-## Beginner debugging checklist
+## Diagnostic checklist
 
 - [ ] Reproduce using the direct route, not only client navigation.
-- [ ] Identify current code versus locked target; do not debug an unimplemented integration as if it exists.
+- [ ] Identify current code versus ratified target; do not debug an unimplemented integration as if it exists.
 - [ ] Find the route/page, feature, query/store, service, contract, controller, use case, and port involved.
 - [ ] Inspect structured validation or business errors before logs.
 - [ ] Check ownership and state versions.

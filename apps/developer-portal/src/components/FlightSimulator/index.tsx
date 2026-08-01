@@ -2,11 +2,11 @@
  * NEXT-GEN-UI · Request Flight Simulator
  * ----------------------------------------------------------------------------
  * A photon steps through one request (POST /orders) across the six boundaries.
- * A "Current execution ↔ Locked target" toggle reveals GHOST stages. Idempotency
- * and atomic side effects are absent; the transaction capability is implemented
- * and proven but stays ghosted because the order path has not adopted it. The
- * page visibly fills in as Chunks E/G land. Data comes from the governed
- * build-time portal-data compiler; this visual owns no project facts.
+ * A "Current execution ↔ Ratified target" toggle reveals GHOST stages. Request
+ * correlation, error envelopes, cart ownership, and the order+cart transaction
+ * are real. Idempotency and atomic inventory/payment/audit side effects remain
+ * ghosts. Data comes from the governed build-time portal-data compiler; this
+ * visual owns no project facts.
  *
  * Interaction: auto-play (photon loops the flow) + manual step (←/→ or click a
  * stage pauses and jumps). Space toggles play/pause.
@@ -231,7 +231,7 @@ export function FlightSimulator(): React.ReactNode {
 							className={mode === m ? styles.modeActive : styles.mode}
 							onClick={() => setMode(m)}
 						>
-							{m === 'current' ? 'Current execution' : 'Locked target'}
+							{m === 'current' ? 'Current execution' : 'Ratified target'}
 						</button>
 					))}
 				</div>
@@ -344,7 +344,7 @@ export function FlightSimulator(): React.ReactNode {
 						<p>{selected.current}</p>
 					</div>
 					<div className={`${styles.lens} ${mode === 'target' ? styles.lensEmphasis : ''}`}>
-						<span className={styles.lensLabel}>Locked target</span>
+						<span className={styles.lensLabel}>Ratified target</span>
 						<p>{selected.target}</p>
 					</div>
 				</div>

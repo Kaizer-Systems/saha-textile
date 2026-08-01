@@ -40,7 +40,7 @@ sequenceDiagram
     Catalog-->>SF: Validated line identity + computed display values
 ```
 
-The current code implements the route and presentation surface, but it still mixes a catalogue API request with fixture-backed detail and adjacent readers. Treat the sequence above as the locked target unless a step is explicitly marked current.
+The current code implements the route and presentation surface, but it still mixes a catalogue API request with fixture-backed detail and adjacent readers. The sequence above is the ratified target unless a step is explicitly marked current.
 
 ## Semantic option decision
 

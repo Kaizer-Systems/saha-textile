@@ -35,7 +35,7 @@ The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps,
 | Governance/notifications | `auditlogs`, `notificationchannelsettings`, `notificationtemplates`, `messageoutboxes`                                             | Tested durable evidence/outbox stores exist; provider delivery and complete side-effect orchestration remain open                                                         |
 | Content                  | `faqentries`, `productquestions`, `reviews`, `ratingaggregates`                                                                    | Tested repositories exist; public/admin content operations remain open                                                                                                    |
 
-The generated catalogue confirms all 32 physical names directly from Mongoose metadata: 406 fields, 89 indexes and 27 temporary shapes. Most new multiword Mongoose defaults do not exactly match the owner-locked Schema Nebula names, so exact-name evidence promotes only `reviews`; the governed graph remains 64 nodes / 8 current / 56 target. `authratelimits` is current adapter evidence but is intentionally outside the locked 64-node graph.
+The generated catalogue confirms all 32 physical names directly from Mongoose metadata: 406 fields, 89 indexes, and 27 temporary shapes. Most new multiword Mongoose defaults do not exactly match the governed Schema Nebula names, so exact-name evidence promotes only `reviews`; the governed graph remains 64 nodes / 8 current / 56 target. `authratelimits` is current adapter evidence but is intentionally outside the ratified 64-node graph.
 
 ## Current repository inventory
 
@@ -73,21 +73,21 @@ Current risks:
 - nested `Mixed` fields are type-cast, not runtime-parsed;
 - adapter values are often returned as broad public entity contracts rather than operation-specific response DTOs;
 - compatibility defaults can mask model/contract widening until the planned user-model migration lands;
-- current repository methods have not generally adopted the available transaction context or entity version;
+- order save and cart consumption share the available transaction context; most other multi-record workflows and entity-version policies remain open;
 - no migration/version discriminator protects historical shapes.
 
 ## Current connection behavior
 
 `connectMongo` is idempotent while Mongoose reports a connected state. `buildMongoConfig` accepts a pre-encoded `MONGODB_URI` (which must already include `replicaSet=rs0`) or assembles a plain `mongodb://` URI from `MONGODB_HOST/PORT/REPLICA_SET/DB_NAME`. Raw credentials are percent-encoded at runtime (`@` becomes `%40`), and the query string always appends `replicaSet=rs0&directConnection=true&retryWrites=true&w=majority`. Local development runs the Docker replica set without auth; deployed profiles set both username and password (setting only one is rejected).
 
-This now implements the locked deployment model rather than conflicting with it:
+This implements the ratified deployment model:
 
 ```text
 Local: Docker Desktop → MongoDB 8.3 single-node replica set (rs0)
 Production: private Docker network → MongoDB 8.3 single-node replica set (rs0)
 ```
 
-The `mongodb+srv`/hosted-cluster assumption has been removed. The liveness/readiness split and transaction-capable rs0 proof now exist. Remaining reconciliation includes authenticated deploy-time secret injection, connection-pool/timeout tuning, private networking, resource caps, backup/restore, and workflow-level transaction adoption.
+The `mongodb+srv`/hosted-cluster assumption has been removed. The liveness/readiness split and transaction-capable rs0 proof now exist. Remaining operational work includes authenticated deploy-time secret injection, connection-pool and timeout tuning, private networking, resource caps, backup and restore, and transaction adoption across additional workflows.
 
 ### Local replica-set lifecycle
 
@@ -111,7 +111,7 @@ Definition in `docker/mongo/docker-compose.yml`. The canonical host port is `270
 - INR and USD currency records;
 - one color-scoped promotion.
 
-The seed is useful for early schema tests. It is not a complete locked-domain seed: multi-placement categories, semantic option roles, named add-on saree behavior, bundle/composite, search dictionary, admin bootstrap, sessions, payments, inventory, and operational records remain absent.
+The seed is useful for early schema tests. It is not a complete domain seed: multi-placement categories, semantic option roles, named add-on saree behavior, bundle/composite, search dictionary, admin bootstrap, sessions, payments, inventory, and operational records remain absent.
 
 ## Existing integration test
 

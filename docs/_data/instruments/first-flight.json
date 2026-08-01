@@ -53,12 +53,12 @@
 					"anchor": "the-universal-first-five-minutes",
 					"title": "Read truth before instructions",
 					"instruction": "Inspect lifecycle status, verification date, and provenance before trusting a procedure.",
-					"why": "The portal deliberately shows both current implementation and locked target intent."
+					"why": "The portal distinguishes current implementation from ratified target intent."
 				},
 				{
 					"id": "surface-map",
 					"route": "/getting-started/beginner-path",
-					"anchor": "what-you-are-looking-at",
+					"anchor": "repository-orientation",
 					"title": "Map the four surfaces",
 					"instruction": "Locate the storefront, admin, API, and developer portal responsibilities.",
 					"why": "A correct first change begins by identifying which application owns the behavior."
@@ -157,7 +157,7 @@
 		{
 			"id": "backend",
 			"label": "Backend developer",
-			"summary": "Trace a request from its validated contract through the domain ports, adapters, persistence evidence, and owner gates.",
+			"summary": "Trace a request from its validated contract through the domain ports, adapters, persistence evidence, and decision gates.",
 			"outcome": "You can place a backend change at the correct boundary and identify the runtime, schema, and decision evidence required to call it complete.",
 			"durationMinutes": 12,
 			"stops": [
@@ -198,7 +198,7 @@
 					"route": "/backend/request-lifecycle",
 					"anchor": "current-request-path",
 					"title": "Trace a real request",
-					"instruction": "Follow the current request path and compare it with the locked target before proposing missing stages.",
+					"instruction": "Follow the current request path and compare it with the ratified target before proposing missing stages.",
 					"why": "The request trace exposes which boundaries are real today and which remain planned."
 				},
 				{
@@ -206,32 +206,32 @@
 					"route": "/database/schema-nebula",
 					"anchor": "how-to-read-the-constellation",
 					"title": "Inspect persistence evidence",
-					"instruction": "Use the constellation to distinguish seven current Mongo models from target-only collection nodes.",
+					"instruction": "Use the constellation to distinguish eight exact-name current nodes from target-only ghosts and the separate 32-model source catalogue.",
 					"why": "An architecture plan does not make a collection implemented."
 				},
 				{
 					"id": "owner-gates",
 					"route": "/decisions/gate-console",
 					"anchor": "how-to-read-this",
-					"title": "Check owner decision gates",
+					"title": "Check governed decision gates",
 					"instruction": "Inspect unresolved decisions and their blast radius before crossing a blocked seam.",
-					"why": "A technically plausible default must not silently replace unresolved owner intent."
+					"why": "A technically plausible default must not silently replace an unresolved product or architecture decision."
 				}
 			]
 		},
 		{
 			"id": "operator",
 			"label": "Platform operator",
-			"summary": "Move from honest readiness boundaries through configuration, health evidence, local persistence, and recovery entry points.",
+			"summary": "Move from verified readiness boundaries through configuration, health evidence, local persistence, and recovery entry points.",
 			"outcome": "You can distinguish a successful build from operational readiness and identify the evidence required before running or documenting a production procedure.",
 			"durationMinutes": 12,
 			"stops": [
 				{
 					"id": "honesty-boundary",
 					"route": "/getting-started/operator-path",
-					"anchor": "current-honesty-boundary",
-					"title": "Start at the honesty boundary",
-					"instruction": "Identify which runbooks are approved structure and which procedures have actually been exercised.",
+					"anchor": "current-scope",
+					"title": "Start with the current scope",
+					"instruction": "Identify which runbooks define ratified structure and which procedures have been exercised.",
 					"why": "Planned operations content is not production evidence."
 				},
 				{
@@ -245,7 +245,7 @@
 				{
 					"id": "secrets-boundary",
 					"route": "/deployment/overview",
-					"anchor": "locked-runtime-config-and-secrets-model",
+					"anchor": "runtime-configuration-and-secrets-model",
 					"title": "Separate secrets from public config",
 					"instruction": "Trace server-only secrets and deploy-time browser configuration through their approved injection paths.",
 					"why": "Browser bundles must never receive server credentials or provider secrets."

@@ -1,6 +1,6 @@
 ---
 title: Beginner Path
-description: A hand-held first-day route through the project.
+description: First-day orientation for the repository, architecture, and contribution workflow.
 status: implemented
 audience: [beginner]
 last_verified: '2026-08-01'
@@ -14,7 +14,7 @@ source_of_truth:
 
 Use this path if the repository is unfamiliar, the architecture vocabulary is new, or you are unsure which application owns a behaviour.
 
-## What you are looking at
+## Repository orientation
 
 Saha Textile is one repository containing four application surfaces:
 
@@ -27,7 +27,7 @@ Saha Textile is one repository containing four application surfaces:
 
 Shared packages hold domain rules, contracts, configuration and edge adapters. The most important architectural rule is simple: dependencies point inward toward the domain. User interfaces call the API; they do not call database or payment adapters directly.
 
-## Your first reading session
+## Initial reading sequence
 
 Read these pages in order:
 
@@ -43,7 +43,7 @@ Do not begin by reading every directory. First identify the application, route, 
 
 ## A safe first change
 
-For your first contribution:
+For an initial contribution:
 
 1. Choose a small documentation or presentation-only change.
 2. Locate its source-of-truth files from the page provenance strip.
@@ -51,6 +51,6 @@ For your first contribution:
 4. Run the relevant formatter, type check and focused tests.
 5. Update the associated portal page in the same change when behaviour changed.
 
-## Stop and ask when
+## Escalation boundaries
 
 Stop before making assumptions about pricing, authentication, authorization, payment, inventory, persistence shape, customer data, production infrastructure or a page marked **Planned**, **Deferred** or **Deprecated**.

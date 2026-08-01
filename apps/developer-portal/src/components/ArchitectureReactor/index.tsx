@@ -39,7 +39,7 @@ const CORE = {
 	label: 'Domain core',
 	sub: 'Pure rules + ports',
 	doc: '/backend/core-domain-and-ports',
-	detail: 'The core domain holds entities, pricing and port interfaces and imports nothing external at runtime — contract shapes may be referenced via type-only imports (owner lock resolved 2026-07-25). Imports point inward; runtime calls flow outward only through a port supplied at composition.',
+	detail: 'The core domain holds entities, pricing and port interfaces and imports nothing external at runtime. A ratified 2026-07-25 decision permits contract shapes through type-only imports. Imports point inward; runtime calls flow outward only through a port supplied at composition.',
 };
 
 const BOUNDARIES: Boundary[] = [

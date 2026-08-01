@@ -46,7 +46,7 @@ Query keys commonly include the full parameter object. Preserve stable serializa
 
 Many feature list components contain explicit comments that status toggles, delete, bulk delete, approve, export, replicate, refund updates, or settings updates have no backend yet. Some forms load existing fixture records and then navigate without a real write.
 
-That honesty is valuable. When implementing a mutation, remove the mock seam deliberately rather than layering a toast on top of it.
+These explicit gaps prevent a mock interaction from being mistaken for a backend capability. When implementing a mutation, replace the seam deliberately rather than layering a success message over a no-op.
 
 ## Migrating a reader to the API
 
@@ -91,4 +91,4 @@ The admin loads `public/config.json` at boot (via `provideAppInitializer` in `co
 - Never ship secrets or privileged runtime configuration to the admin bundle.
 - Validate all API payloads with shared zod contracts.
 - Handle 401 and 403 differently: unauthenticated and unauthorized are not the same operator state.
-- Do not persist production access tokens in browser storage; the locked architecture uses secure API-issued cookie sessions.
+- Do not persist production access tokens in browser storage; the ratified architecture uses secure API-issued cookie sessions.

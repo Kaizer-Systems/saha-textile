@@ -83,7 +83,7 @@ Do not optimistically remove or approve records unless rollback behavior is defi
 
 ## Runtime configuration
 
-The admin loads `public/config.json` at boot (via `provideAppInitializer` in `core/config/runtime-config.ts`), filling the mutable `environment` object with `apiUrl` and other non-secret values. The committed file holds localhost defaults; deployments overwrite it. The auth interceptor sends `withCredentials: true` on every request so API-issued session cookies flow (locked cookie-session target), with a transitional bearer token until Chunk D. This is the concrete mechanism behind the security rule that only non-secret configuration reaches the admin bundle.
+The admin loads `public/config.json` at boot (via `provideAppInitializer` in `core/config/runtime-config.ts`), filling the mutable `environment` object with `apiUrl` and other non-secret values. The committed file holds localhost defaults; deployments overwrite it. The auth interceptor sends `withCredentials: true` for the implemented API cookie session. It also still attaches a legacy local-storage bearer value which the cookie-only API ignores; that is frontend migration debt, not a supported server path.
 
 ## Security boundary
 

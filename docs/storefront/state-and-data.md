@@ -75,7 +75,7 @@ Use it when:
 
 ## Runtime configuration
 
-The API base URL is not compiled into the bundle. `core/config/runtime-config.ts` loads `public/config.json` at boot (via `provideAppInitializer`) and fills a mutable `runtimeConfig` singleton plus the legacy `environment` object that services read for `apiUrl`. Only non-secret values live there; deployments overwrite the file. The auth interceptor sends `withCredentials: true` on every request (locked cookie-session target) alongside a transitional bearer token — which is why the server interceptor behavior below is still transitional and must be verified separately under SSR and in the browser.
+The API base URL is not compiled into the bundle. `core/config/runtime-config.ts` loads `public/config.json` at boot (via `provideAppInitializer`) and fills a mutable `runtimeConfig` singleton plus the legacy `environment` object that services read for `apiUrl`. Only non-secret values live there; deployments overwrite the file. The auth interceptor correctly sends `withCredentials: true` for the implemented cookie session, but also still attaches a legacy local-storage bearer token that the API ignores. That incompatible residue must be removed and the cookie/CSRF behavior verified under SSR and in the browser.
 
 ## Mixed-source catalogue warning
 

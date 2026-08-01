@@ -15,3 +15,5 @@ export * from './product-variant.model';
 export * from './merchandising.model';
 export * from './media.model';
 export * from './inventory.model';
+export * from './governance.model';
+export * from './content.model';

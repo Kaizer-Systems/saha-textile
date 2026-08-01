@@ -85,7 +85,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 		"B": "done",
 		"C": "done",
 		"D": "partial",
-		"E": "partial",
+		"E": "done",
 		"F": "planned",
 		"G": "planned",
 		"H": "planned",
@@ -458,6 +458,39 @@ swatch_image_v2` with pixel sizes deliberately left to config (`G-IMG-PX`);
   credentials — `OAuthStateRepository` and the state collection are in place), admin
   invite ACCEPTANCE endpoint (repository + collection exist; the flow belongs with admin
   user management), and idle quick-resume UX. Tool: claude-code.
+- 2026-08-01 — [DONE] **Chunk E COMPLETE (passes 2–4: inventory, media, governance, content).**
+  **Inventory:** `applyDelta` moves stock with a single conditional `$inc` and the oversell
+  guard INSIDE the query, so neither the update nor the check can be raced. Proven under
+  real concurrency: ten parallel decrements observe ten DISTINCT balances (a
+  read-then-write implementation repeats values), and eight concurrent buyers against
+  three units produce exactly three successes with stock landing at zero rather than
+  negative. FIFO consume draws oldest-first with a conditional decrement per layer and
+  REFUSES to cost more units than were received (silently costing the remainder at zero
+  would corrupt margin reporting); release reverses onto the same layers; both roll back
+  with their transaction. **Media:** assets are reference-counted across every owning
+  surface (product galleries, variant primaries, attribute swatches) so orphan collection
+  cannot delete bytes another owner still renders; soft delete plus a grace cutoff drives
+  the GC sweep; a partial unique index on the storage key allows many purged-master rows
+  while still preventing key reuse. **Governance:** `auditLogs` is append-only with no
+  update or delete path, and `append` joins the caller's transaction so a mutation and its
+  evidence commit together — tested by failing the transaction and asserting no orphan
+  audit row survives; retention purges one tier without touching the other. Notification
+  settings are unique per channel × category with atomic usage counting, and the outbox
+  enforces idempotency through a partial unique index so a retried OTP or order
+  confirmation returns the recorded result instead of sending twice. **Content:** FAQ
+  resolution dedupes a `mixed`-scope entry that matches through both its category and
+  product target; `askerEmail` is `select: false` and the public Q&A path never selects it
+  (not merely hides it downstream); reviews are unique per (product × user × order), and
+  `recomputeAggregate` reads APPROVED reviews only and runs in the same transaction as the
+  moderation decision, so the aggregate can never disagree with the reviews behind it.
+  **Mapper response-safety tests** (an explicit Chunk E DoD item): `toUser` is loaded with
+  `+passwordHash +pinHash` selected — the worst case — and the serialized result is
+  asserted to contain no hash, no `tokenVersion`/`permissionsVersion`, and to still parse
+  as the public `User` contract; `toProduct` is asserted to emit no `_id`/`__v`.
+  Adapter tests 46 → **77**. Gates: typecheck 13/13, lint 15/15, `pnpm test` 9/9, naming,
+  format, DB IT 77/77 green. Chunk E Definition of Done met: model/index tests cover
+  uniqueness, TTL, public visibility and ownership lookups; transaction rollback tests
+  prove atomic workflows; mapper tests prove response-safe shapes. Tool: claude-code.
 - 2026-08-01 — [DONE] **Chunk E Pass 1 (catalog persistence: structure, variants, merchandising).**
   Six new collections behind the Chunk B ports: `categoryPlacements`,
   `categoryFacetConfigs`, `attributeDefinitions`, `productVariants`, `productBundles`,

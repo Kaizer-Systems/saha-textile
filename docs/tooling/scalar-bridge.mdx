@@ -11,7 +11,12 @@ source_of_truth:
     - apps/developer-portal-scalar
     - apps/developer-portal/src/components/ChildToolGateway
     - apps/api/src
+    - packages/adapters-db-mongo/src/repositories/auth.repository.ts
+    - packages/adapters-db-mongo/test/auth-persistence.test.ts
     - scripts/serve-developer-portal-persistent.mjs
+    - docs/api/openapi-and-scalar.md
+    - docs/engineering-live-context/project-progress.mdx
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
 ---
 
 import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
@@ -29,3 +34,7 @@ import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
 This scaffold publishes the current generated OpenAPI evidence and keeps **Test Request** available. The 2026-08-01 artifact contains 25 paths and 27 operations, including split health probes and `GET /auth/csrf`; public product listing has no `status` query parameter. The uniform runtime `ApiErrorResponse` envelope and request ID are real platform behavior, but they are not yet represented as operation response schemas or examples. Complete request/response contracts, cookie-session and authorization semantics, idempotency, side-effect examples, CI drift proof, and an approved non-production target remain open.
 
 Test requests never receive a privileged token or security bypass from the portal. They target only the server URLs present in the generated OpenAPI document and remain subject to normal CORS, authentication, CSRF, authorization, ownership, and rate-limit enforcement. When a session cookie accompanies a state-changing request, first call `GET /auth/csrf` and copy the issued token into the `x-csrf-token` header; the deliberately non-`httpOnly` CSRF cookie supplies the matching half of the double submit.
+
+The current generated OTP summaries still expose a known stale “Brevo credentials” label from API source. Locked intent and active configuration use MSG91 as the primary notification provider; Scalar remains scaffolded and visibly carries that source defect until the owning API chunk corrects it.
+
+Chunk D is now partial because D1's tested auth-persistence capability exists. The current HTTP flow has not adopted it: D2 still owns cookie issue/refresh/revoke, reuse-triggered family revocation, session-bound CSRF and audience guards; D3 owns complete storefront auth and generic anti-enumeration; D4 owns admin invite/PIN/RBAC and permission-version invalidation; D5 owns consent/privacy and cart/order BOLA. Test Request exposes none of those planned capabilities as a bypass.

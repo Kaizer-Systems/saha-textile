@@ -26,6 +26,18 @@ const VALID_COMMAND_TARGET_SOURCES = new Set(['journey-pages', 'decision-gates',
 const SCHEMA_NEBULA_ROUTE = '/database/schema-nebula';
 const SCHEMA_NEBULA_NODE_COUNT = 64;
 const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 7;
+const SCHEMA_NEBULA_NON_TARGET_MODEL_FILES = new Set([
+	// D1 capability exists, but Mongoose currently resolves these grouped models to
+	// lowercase collection names (`authsessions`, `otpchallenges`, and so on), not
+	// the locked camelCase target names. They remain catalogue evidence but cannot
+	// make a target star solid until the owning adapter explicitly aligns names.
+	'auth-challenge.model.ts',
+	'auth-session.model.ts',
+	'auth-token.model.ts',
+	// The auth architecture explicitly keeps rate-limit storage outside the locked
+	// 64-node physical target graph; the adapter may change without inventing a star.
+	'auth-rate-limit.model.ts',
+]);
 const COMMAND_VERBS_ROUTE = '/frontend/portal-experience-layer';
 const COMMAND_VERB_ORDER = ['trace', 'gate', 'status'];
 const COMMAND_VERB_EXAMPLES = {
@@ -748,9 +760,14 @@ function compileSchemaNebula(raw, truth, repositoryRoot, manifest, failures) {
 	}
 
 	const modelDirectory = 'packages/adapters-db-mongo/src/models';
-	const discoveredModels = fs
-		.readdirSync(path.join(repositoryRoot, modelDirectory))
-		.filter((fileName) => fileName.endsWith('.model.ts'))
+	const modelFiles = fs.readdirSync(path.join(repositoryRoot, modelDirectory));
+	for (const excludedFile of SCHEMA_NEBULA_NON_TARGET_MODEL_FILES) {
+		if (!modelFiles.includes(excludedFile)) {
+			failures.push(`Schema Nebula non-target model exception is stale: ${excludedFile} no longer exists.`);
+		}
+	}
+	const discoveredModels = modelFiles
+		.filter((fileName) => fileName.endsWith('.model.ts') && !SCHEMA_NEBULA_NON_TARGET_MODEL_FILES.has(fileName))
 		.map((fileName) => `${modelDirectory}/${fileName}`)
 		.sort();
 	const declaredModels = [...declaredCurrentModels].sort();

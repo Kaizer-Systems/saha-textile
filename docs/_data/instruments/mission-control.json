@@ -42,8 +42,8 @@
 			"title": "Cookie-session auth, PIN, OTP & OAuth",
 			"deps": ["C"],
 			"blockingGates": [],
-			"summary": "Cookie access/refresh sessions + CSRF, admin PIN, channel-direct OTP via NotificationPort, Google/Facebook verify seams. Retire the transitional localStorage bearer.",
-			"dod": "login/register/refresh/logout/me + PIN + OTP tests; every admin write audited."
+			"summary": "D1 auth persistence is implemented and rs0-tested: session/challenge/token/invite/rate-limit repositories provide atomic rotation, consume, family-revocation and TTL seams. Its grouped auth models still resolve to lowercase Mongoose collection names rather than the locked camelCase graph names, and the current HTTP flow has not adopted them; D2–D5 remain.",
+			"dod": "Partial: D1 persistence proof is green. Remaining D2–D5 require the complete session lifecycle, storefront/admin auth, permission invalidation, consent/privacy and cart/order ownership tests."
 		},
 		{
 			"id": "E",

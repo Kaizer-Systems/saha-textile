@@ -26,10 +26,10 @@
 	},
 	"inventory": {
 		"nodeCount": 64,
-		"existingModelCount": 7,
-		"targetOnlyCount": 57,
+		"existingModelCount": 8,
+		"targetOnlyCount": 56,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
-		"statusPolicy": "A star becomes solid only when a current adapter model resolves to that exact locked physical collection name. D1's grouped auth models currently resolve to lowercase Mongoose defaults rather than the graph's camelCase names, so they remain catalogue evidence without promoting target stars; authRateLimits is explicitly outside the locked 64-node graph."
+		"statusPolicy": "A star becomes solid only when a tested current adapter model resolves to that exact locked physical collection name. Chunk D/E add 18 target-backed models, but Mongoose defaults lowercase their multiword physical names, so those remain catalogue evidence without promoting mismatched lower-camel stars; reviews resolves exactly and is promoted. authRateLimits remains outside the locked 64-node graph."
 	},
 	"clusters": [
 		{
@@ -323,12 +323,13 @@
 			"id": "reviews",
 			"label": "reviews",
 			"cluster": "content-seo-media",
-			"currentState": "planned",
-			"targetAction": "add",
+			"currentState": "existing",
+			"targetAction": "refactor",
 			"owningChunks": ["F"],
 			"blockingDecisions": [],
 			"purpose": "Verified-purchase product ratings and reviews with optional media and admin moderation.",
 			"source": "catalog §7.41",
+			"currentModel": "packages/adapters-db-mongo/src/models/content.model.ts",
 			"references": ["users", "products", "orders", "mediaAssets"]
 		},
 		{

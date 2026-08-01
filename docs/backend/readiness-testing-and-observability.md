@@ -78,12 +78,12 @@ Avoid high-cardinality labels such as raw user id, order id, email, token, full 
 
 ## Current automated-test evidence
 
-| Package       | Present evidence                                                                      | Limitation                                                               |
-| ------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `contracts`   | 140 schema tests across common/auth/catalog/media/inventory/content/commerce families | Complete operation DTO/OpenAPI wiring remains                            |
-| `core-domain` | 36 pricing, visibility, runtime-purity and port-conformance tests                     | No complete use-case/state-machine suites                                |
-| Mongo adapter | Seven repository integration tests plus six transaction-manager commit/rollback tests | Requires `RUN_DB_IT=1` and a real rs0 profile; workflow adoption remains |
-| API           | 28 platform and CSRF unit tests, with test files included in typecheck                | Full auth/ownership/idempotency/OpenAPI route coverage remains           |
+| Package       | Present evidence                                                                                 | Limitation                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| `contracts`   | 140 schema tests across common/auth/catalog/media/inventory/content/commerce families            | Complete operation DTO/OpenAPI wiring remains                                       |
+| `core-domain` | 36 pricing, visibility, runtime-purity and port-conformance tests                                | No complete use-case/state-machine suites                                           |
+| Mongo adapter | Seven original repository tests, six transaction-manager tests, and 18 D1 auth-persistence tests | All 31 require `RUN_DB_IT=1` and a real rs0 profile; HTTP/workflow adoption remains |
+| API           | 28 platform and CSRF unit tests, with test files included in typecheck                           | Full auth/ownership/idempotency/OpenAPI route coverage remains                      |
 
 The admin application separately has zero unit specs and passes through `--passWithNoTests`; that frontend limitation must not be confused with the real API suite. The backend gate still rejects permanently skipped transaction proof as a production-done state.
 

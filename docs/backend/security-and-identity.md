@@ -8,10 +8,18 @@ audience: [beginner, backend, frontend, operator]
 last_verified: '2026-08-01'
 source_of_truth:
     - apps/api/src/auth
+    - apps/api/src/common/cookies.ts
+    - apps/api/src/common/csrf.guard.ts
     - apps/api/src/infra/argon2-jwt.auth.ts
     - apps/api/src/config/app-config.ts
     - apps/api/.env.example
     - packages/adapters-db-mongo/src/models/user.model.ts
+    - packages/adapters-db-mongo/src/models/auth-session.model.ts
+    - packages/adapters-db-mongo/src/models/auth-challenge.model.ts
+    - packages/adapters-db-mongo/src/models/auth-token.model.ts
+    - packages/adapters-db-mongo/src/models/auth-rate-limit.model.ts
+    - packages/adapters-db-mongo/src/repositories/auth.repository.ts
+    - packages/adapters-db-mongo/test/auth-persistence.test.ts
     - packages/contracts/src/auth.ts
     - packages/contracts/src/auth-internal.ts
     - packages/contracts/src/admin-auth.ts
@@ -22,7 +30,7 @@ source_of_truth:
 
 # Security, sessions, and authorization
 
-Security status is **scaffolded**. Argon2id, signed JWTs, the transitional bearer/role guards, strict credentialed CORS, Helmet, trusted client-IP rate limiting, per-request correlation, adapter-level log redaction, and the shared safe error envelope exist. Cookie attribute helpers, global double-submit CSRF enforcement, and `GET /auth/csrf` now form a real foundation. The complete cookie-session, refresh-family, audience, admin PIN, OTP, consent, and audit lifecycles are not wired into current repositories or collections.
+Security status is **scaffolded**. Argon2id, signed JWTs, the transitional bearer/role guards, strict credentialed CORS, Helmet, trusted client-IP rate limiting, per-request correlation, adapter-level log redaction, and the shared safe error envelope exist. Cookie attribute helpers, global double-submit CSRF enforcement, and `GET /auth/csrf` now form a real foundation. Chunk D1 also delivered tested MongoDB models and repositories for sessions, challenges, single-use tokens, admin invites, and rate limits. Those persistence capabilities are not bound into the current API auth flow: D2–D5 still own the cookie/session lifecycle, endpoint adoption, audience/RBAC policy, consent/privacy, and ownership authorization.
 
 ## Authentication versus authorization
 
@@ -56,11 +64,24 @@ Important current gaps:
 - refresh JWT without server-side token-family rotation/reuse detection;
 - no logout revocation;
 - no storefront/admin audience separation;
-- no persisted cookie-session lifecycle yet; the global CSRF guard is already active whenever a session cookie is present;
+- D1 can persist session families, but the current API does not bind or use those repositories; the global CSRF guard is already active whenever a session cookie is present;
 - the legacy controller-local registration schema still accepts eight characters; the new shared auth contract sets the locked 12-character floor, but it is not wired into that endpoint and the denylist policy is not implemented;
 - OTP endpoints are still explicit not-implemented stubs, though the provider and policy config now exist (MSG91 is the locked provider behind the notification abstraction; `OTP_TTL_SECONDS`/`OTP_MAX_ATTEMPTS` are parsed);
 - no admin PIN implementation;
-- no account lock/backoff/session/audit collections.
+- credential lockout fields, session storage, and atomic rate-limit persistence now exist at the adapter layer, but no current HTTP flow enforces the locked account-lock/backoff policy and no broad audit collection exists.
+
+## Chunk D status boundary
+
+Chunk D1 is a persistence capability, not a browser-auth rollout. Its 18 gated rs0 tests prove atomic refresh rotation, replay lookup, family revocation, one-active OTP handling, single-use token consumption, concurrency-safe rate-limit counters, secret-field exclusion, and TTL policy. `PersistenceModule`, `AuthService`, and `AuthController` do not yet use those repositories.
+
+The remaining passes belong to the API implementation worker after portal reconciliation:
+
+| Pass | Still required                                                                                                                                                       |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D2   | Issue, refresh, and revoke through httpOnly cookies; reuse-triggered family revocation; bind CSRF to `authSessions.csrfSecretHash`; storefront/admin audience guards |
+| D3   | Storefront register/login/logout/me/refresh, password reset, email verification, and OTP endpoints with generic anti-enumeration responses                           |
+| D4   | Admin invite acceptance, PIN setup/login/lockout/quick-resume, RBAC, and permission-version invalidation                                                             |
+| D5   | Consent and privacy seams plus ownership/BOLA authorization on carts and orders                                                                                      |
 
 ## Locked browser session
 
@@ -102,7 +123,7 @@ For cookie-authenticated `POST`, `PUT`, `PATCH`, and `DELETE`, the global guard 
 2. otherwise requires the readable CSRF cookie and matching `x-csrf-token` header;
 3. compares them in constant time and rejects generically before mutation.
 
-Obtain the pair through `GET /auth/csrf`, which returns a 32-byte CSPRNG token in the `CsrfTokenResponse` body and sets the readable cookie. Binding that token to `authSessions.csrfSecretHash`, plus complete session validation and origin/fetch-metadata policy, remains Chunk D work.
+Obtain the pair through `GET /auth/csrf`, which returns a 32-byte CSPRNG token in the `CsrfTokenResponse` body and sets the readable cookie. D1 persists `authSessions.csrfSecretHash`; D2 must bind issuance and validation to that active session, then complete session validation and origin/fetch-metadata policy.
 
 Never use `GET` for a state-changing operation.
 
@@ -171,7 +192,7 @@ The current guard accepts `customer | staff | admin` role values. The target nee
 - Generic anti-enumeration responses.
 - Channel-direct delivery through locked notification abstraction/provider; no code/token logs.
 
-The PIN/OTP/session DTO and internal persistence shapes now exist in `packages/contracts`; none of the locked PIN/OTP/session lifecycle is currently implemented.
+The PIN/OTP/session DTOs and internal persistence shapes exist in `packages/contracts`, and D1 implements their MongoDB persistence seams. The current HTTP lifecycle does not use them: D2–D4 still own cookie sessions, live OTP delivery/verification, and the admin PIN flow.
 
 ## Configuration fail-closed rule
 

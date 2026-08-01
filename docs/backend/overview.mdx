@@ -83,7 +83,7 @@ These are documentation findings, not fixes made by Pass 4:
 2. Cart routes do not prove user/guest ownership.
 3. `GET /orders/:id` authenticates but does not enforce object ownership.
 4. Order creation is neither idempotent nor transactional and deletes the cart after a separate order save.
-5. Browser auth returns reusable tokens in JSON and has no refresh-family reuse detection.
+5. Browser auth still returns reusable tokens in JSON and has not adopted D1's refresh-family rotation/reuse persistence.
 6. API configuration supplies development JWT defaults without a production fail-closed check.
 7. **Resolved for probe semantics 2026-08-01:** `/health/live` is dependency-free and `/health/ready` fails closed when Mongo is unavailable; `/health` remains a liveness alias.
 8. Storefront search currently uses Mongo regular expressions even though the locked target is Meilisearch through `SearchPort`.

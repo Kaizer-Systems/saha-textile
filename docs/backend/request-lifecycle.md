@@ -21,6 +21,7 @@ source_of_truth:
     - packages/adapters-db-mongo/src/transaction-manager.ts
     - packages/adapters-db-mongo/test/transaction.test.ts
     - apps/api/src/orders/orders.service.ts
+    - apps/storefront/src/app/features/shop/checkout
     - packages/adapters-db-mongo/src/repositories/order.repository.ts
     - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
     - docs/_data/portal-manifest.json
@@ -122,7 +123,7 @@ Use this worksheet when debugging or documenting an endpoint.
 
 ## Example: current order creation
 
-Current execution:
+The storefront checkout is currently a demo-data UI and does not call `POST /orders`. For a direct client that calls the existing API operation, current execution is:
 
 1. Bearer guard validates an access JWT.
 2. `CreateOrderSchema` validates `cartId`, optional currency/gateway/coupon.

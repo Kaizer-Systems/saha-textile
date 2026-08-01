@@ -103,7 +103,7 @@ Install the pinned workspace packages once:
 corepack pnpm install
 ```
 
-No vendor account or manual desktop download is required. Docusaurus, Storybook, TypeDoc, Scalar, and the Mongo generator are pinned repository dependencies or source tooling. Test Request still requires the API to be running at an approved document server and obeys its normal authentication, CSRF, CORS, authorization, ownership, and rate-limit configuration. For a state-changing request with a session cookie, echo the readable CSRF cookie issued with login/OTP/refresh in `x-csrf-token`; the current `GET /auth/csrf` route does not rebind an active session and must not replace that cookie until the API defect is fixed.
+No vendor account or manual desktop download is required. Docusaurus, Storybook, TypeDoc, Scalar, and the Mongo generator are pinned repository dependencies or source tooling. Test Request still requires the API to be running at an approved document server and obeys its normal authentication, CSRF, CORS, authorization, ownership, and rate-limit configuration. For a state-changing request with a session cookie, echo the readable CSRF cookie issued with login/OTP/refresh in `x-csrf-token`; `GET /auth/csrf` preserves a valid active-session token or atomically recovers a missing/desynchronized one.
 
 Run only Docusaurus in development:
 

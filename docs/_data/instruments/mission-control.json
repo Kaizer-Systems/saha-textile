@@ -42,8 +42,8 @@
 			"title": "Cookie-session auth, PIN, OTP & OAuth",
 			"deps": ["C"],
 			"blockingGates": [],
-			"summary": "Cookie sessions, atomic refresh rotation/reuse revocation, session-bound CSRF, storefront/admin audiences, OTP, password reset, PIN lockout, version invalidation, consent/privacy seams and order ownership are implemented. The chunk remains partial because email-verification completion, OAuth verification, admin invite acceptance/quick-resume and cart guest/user ownership are still absent.",
-			"dod": "Partial: D2 is complete and most D3–D5 mechanics are live-proven. Finish the email-verification route, OAuth verification, admin invite acceptance/quick-resume, cart ownership/guest proof and automated HTTP authorization coverage."
+			"summary": "Cookie sessions, atomic refresh rotation/reuse revocation, session-bound CSRF, storefront/admin audiences, OTP, password reset, PIN lockout, version invalidation, consent/privacy seams, order ownership and cart Principal/st_guest proof are implemented. The chunk remains partial because email-verification completion, OAuth verification, admin invite acceptance/quick-resume and guest-to-user merge are still absent.",
+			"dod": "Partial: D2 is complete and most D3–D5 mechanics are live-proven. Finish the email-verification route, OAuth verification, admin invite acceptance/quick-resume, guest-to-user merge and broader automated HTTP authorization coverage."
 		},
 		{
 			"id": "E",
@@ -51,7 +51,7 @@
 			"deps": ["C"],
 			"blockingGates": [],
 			"summary": "Chunk E persistence is complete: 32 Mongoose models now cover the original surface plus identity, consent, catalogue structure, variants, bundles, relations, inventory, media, audit, notifications, FAQ, Q&A, reviews and rating aggregates. Atomic catalogue, inventory, governance and content workflows are rs0-proven.",
-			"dod": "Complete: 77 adapter tests cover uniqueness, TTL, visibility, concurrency, transaction rollback and response-safe mapping."
+			"dod": "Complete: 81 adapter tests cover uniqueness, TTL, visibility, concurrency, transaction rollback, order-and-cart atomicity and response-safe mapping."
 		},
 		{
 			"id": "F",

@@ -7,3 +7,5 @@ export * from './order.repository';
 export * from './user.repository';
 export * from './auth.repository';
 export * from './consent.repository';
+export * from './catalog-structure.repository';
+export * from './merchandising.repository';

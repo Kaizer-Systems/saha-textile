@@ -85,7 +85,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 		"B": "done",
 		"C": "done",
 		"D": "partial",
-		"E": "planned",
+		"E": "partial",
 		"F": "planned",
 		"G": "planned",
 		"H": "planned",
@@ -458,6 +458,32 @@ swatch_image_v2` with pixel sizes deliberately left to config (`G-IMG-PX`);
   credentials — `OAuthStateRepository` and the state collection are in place), admin
   invite ACCEPTANCE endpoint (repository + collection exist; the flow belongs with admin
   user management), and idle quick-resume UX. Tool: claude-code.
+- 2026-08-01 — [DONE] **Chunk E Pass 1 (catalog persistence: structure, variants, merchandising).**
+  Six new collections behind the Chunk B ports: `categoryPlacements`,
+  `categoryFacetConfigs`, `attributeDefinitions`, `productVariants`, `productBundles`,
+  `productRelations`, plus their repositories. Public reads reuse
+  `resolveProductStatusFilter`, so placements/variants/relations fail CLOSED to `live`
+  exactly like products. `moveSubtree` recomputes every descendant path inside the
+  caller's transaction and refuses a move that would make a placement its own ancestor;
+  `saveMany` writes a whole variant matrix atomically so a product is never left
+  half-migrated between axis sets; `replaceFromInsightSet` swaps a weekly analytics run
+  as a unit so a rail never renders a half-updated mix; `isBundleProduct` is deliberately
+  status-agnostic because a DRAFT bundle is still a bundle for `DEC-BUNDLE-NESTING`.
+  **A real index bug was caught by the new tests:** `{ pathSlugs: 1 }` unique on an ARRAY
+  is a MULTIKEY index — uniqueness applies per ELEMENT, so `['sarees']` and
+  `['sarees','pure-silk']` collided on the shared segment and no category could ever have
+  a child (`E11000 pathSlugs_1 dup key: "root"`). Replaced with a derived scalar
+  `pathKey` (`pathSlugs.join('/')`, computed on write so it cannot drift) carrying the
+  unique index; the stale index was dropped locally. Other indexes with explicit purpose:
+  partial-unique canonical placement per category, unique `(productId,
+optionSelectionHash)`, globally unique variant SKU per `DEC-SKU`, unique bundle per
+  product, and unique `(source, type, target)` relation. New
+  `test/catalog-persistence.test.ts` = 15 tests (adapter total 31 → 46) covering canonical
+  uniqueness, path uniqueness, public-visibility hiding, transactional subtree move,
+  cycle refusal, duplicate-combination and duplicate-SKU rejection, purchasable filtering,
+  atomic matrix rollback, the nesting guard on a draft bundle, relation auto-pause,
+  insight-set replacement, scheduling windows, and attribute-code uniqueness. Gates:
+  typecheck 13/13, lint 15/15, `pnpm test` 9/9, naming, format, DB IT 46/46. Tool: claude-code.
 - 2026-08-01 — [DONE] **Chunk D Pass 1 (auth persistence: models, repositories, TTL policy).**
   Six new collections behind the Pass-4 ports: `authSessions`, `otpChallenges`,
   `oauthStates`, `passwordResetTokens`, `emailVerificationTokens`, `adminInvites`,

@@ -19,11 +19,11 @@ source_of_truth:
 
 # Identity, account, and admin resume
 
-Current auth UI and API scaffolds exist, including password endpoints, bearer-token guards, OTP stubs, and demo frontend session stores. Shared zod contracts now model the locked storefront/admin requests, cookie-session metadata, refresh-family state, OTP/OAuth/reset/invite records, and sanitized responses. They are design/code seams only: the current API still returns browser-readable bearer tokens, and the new lifecycle is not persisted or executed.
+The API now executes cookie-session auth: storefront registration/password/OTP login, logout, refresh, password reset and `me`; admin password/PIN login, PIN setup/lockout, logout, refresh and `me`; audience separation; version-aware RBAC; and rotating persisted refresh families. Responses are sanitized and reusable credentials stay in httpOnly cookies. The Angular auth stores and route guards remain transitional, and their interceptors still attach legacy local-storage bearer values that the cookie-only API ignores.
 
 ## Storefront methods
 
-Launch target includes email/password, email OTP, Google, and Facebook login. Guest browsing/cart remains first-class. Phone OTP and other identity methods remain seams or later work according to owner decisions.
+Email/password and email OTP are implemented at the API boundary. Google/Facebook OAuth and email-verification completion remain open. Guest browsing/cart remains first-class: cart routes enforce Principal ownership or hashed `st_guest` proof, while guest→user merge remains Chunk G.
 
 ## Browser session model
 
@@ -61,7 +61,7 @@ Addresses, order history, wishlists, reviews, saved-for-later items, notificatio
 
 ## Admin authentication
 
-Admin/staff use invited accounts with email-or-username plus password. Self-registration and social login are not admin launch methods. Sensitive operations require explicit server-side permissions and may later require step-up authentication.
+Admin/staff password and PIN login accept email-or-username, and the global guard enforces audience, role, declared permissions, and current permission versions. Invite persistence exists but invite acceptance is not exposed; self-registration and social login are not admin launch methods.
 
 ## Admin deep-link and soft-lock flow
 
@@ -76,7 +76,7 @@ stateDiagram-v2
     Restoring --> Blocked: stale draft, changed permission, or changed entity
 ```
 
-The soft-lock overlay keeps the current component tree mounted so in-memory form state survives. Reload/crash/route-exit recovery requires feature-owned drafts or autosave.
+This is still target behavior. The API enforces a 15-minute admin session idle lifetime and PIN lockout, but the Angular soft-lock overlay and quick-resume orchestration are not implemented. Reload/crash/route-exit recovery still requires feature-owned drafts or autosave.
 
 ## Safe admin resume order
 
@@ -95,4 +95,4 @@ Complex product/order/invoice forms need enough draft metadata to reconstruct co
 
 ## Current-versus-target warning
 
-The current storefront/admin stores and API endpoints are scaffolds. Demo/local-storage tokens, bearer response bodies, permissive child guards, and OTP stubs must not be documented as the final secure session implementation.
+The API session lifecycle and cart/order ownership checks are real, while frontend adoption is incomplete. Legacy local-storage bearer state, permissive child guards, missing OAuth/email-verification completion, missing admin invite/quick-resume, and missing guest→user merge must not be presented as secure end-to-end completion.

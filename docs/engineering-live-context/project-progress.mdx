@@ -413,6 +413,51 @@ swatch_image_v2` with pixel sizes deliberately left to config (`G-IMG-PX`);
 
 ## DB / Mongo adapter (`packages/adapters-db-mongo`, Docker Mongo)
 
+- 2026-08-01 — [DONE] **Chunk D complete (sessions, OTP, PIN, RBAC, ownership, privacy).**
+  The transitional bearer-JWT auth is GONE; the browser happy path is cookie-only.
+  **Sessions:** `SessionService` is the single place a session is born or rotated —
+  opaque 256-bit refresh tokens (never JWTs), HMAC-peppered so a database dump cannot
+  verify guesses offline, storefront idle 30d/absolute 90d vs admin idle 15m/absolute
+  12h. Reuse detection is real: presenting a rotated-away token, or losing the rotation
+  race, revokes the whole `refreshFamilyId`. Every refresh re-reads the user, so a
+  disabled account cannot renew itself. **Guards:** `SessionGuard` is global — routes are
+  protected by DEFAULT and opt out with `@Public()`; it reads the access token from the
+  httpOnly cookie only, and compares the token's `tokenVersion`/`permissionsVersion`
+  against the user's current values so a password or role change invalidates immediately.
+  `@Audience('storefront'|'admin')` enforces the locked isolation. `assertOwnership()`
+  throws **404, not 403**, so an id cannot be probed for existence. **Endpoints:**
+  storefront register/login/OTP-request/OTP-verify/refresh/logout/forgot/reset/me and
+  admin login/PIN-login/PIN-setup/refresh/logout/me, plus privacy consent read/write and
+  export/erase seams. OTP is ours end to end (CSPRNG, HMAC-at-rest, single active
+  challenge, attempt-capped, atomic consume) — no provider widget. Anti-enumeration is
+  uniform: unknown address, wrong password and inactive account all return the same 401,
+  a dummy argon2 verify equalises timing, and forgot-password/OTP-request always return
+  the same accepted message. A password reset bumps `tokenVersion` AND revokes every
+  session. `ConsoleNotificationAdapter` satisfies `NotificationPort` and logs only a
+  hashed destination with the payload withheld — OTP codes and reset tokens travel in
+  `variables` and must never reach a log.
+  **Three real defects found and fixed during live verification:**
+  (1) **BOLA:** `GET /orders/:id` had NO ownership check — any authenticated customer
+  could read any order by id. Now ownership-checked with a 404 for non-owners and a
+  staff/admin support bypass. (2) **CSRF rotation:** `refresh()` issued a new CSRF token
+  but never updated the stored `csrfSecretHash`, so every state-changing request after a
+  refresh would 403 forever; the secret now rotates in the SAME atomic update as the
+  refresh token, and the port documents why. (3) **Sparse-index trap:** `username`/`phone`
+  used sparse unique indexes, but sparse still indexes an explicit `null`, so the SECOND
+  customer without a username collided (`E11000 username_1 dup key: null`). Switched to
+  partial indexes filtered on `$type: 'string'`; local indexes dropped and rebuilt.
+  **Live proof on a fresh build:** register 201 with cookies and NO tokens in the body;
+  `/auth/storefront/me` 200; `/auth/admin/me` **401 with a storefront session** (audience
+  isolation); `/orders` 401 without a session and 200 with one; refresh rotates the token;
+  replaying the old token → 401 plus the logged family revocation; a POST after refresh →
+  204 (the fixed CSRF bug); two usernameless registrations both 201 (the fixed index bug);
+  wrong password, unknown email and inactive all → 401; forgot-password byte-identical for
+  known and unknown addresses; and a log scan found zero OTP codes or tokens. Gates:
+  typecheck 13/13, lint 15/15, `pnpm test` 9/9, naming, format, DB IT 31/31 green.
+  Deferred with reasons: Google/Facebook token verification (needs approved provider
+  credentials — `OAuthStateRepository` and the state collection are in place), admin
+  invite ACCEPTANCE endpoint (repository + collection exist; the flow belongs with admin
+  user management), and idle quick-resume UX. Tool: claude-code.
 - 2026-08-01 — [DONE] **Chunk D Pass 1 (auth persistence: models, repositories, TTL policy).**
   Six new collections behind the Pass-4 ports: `authSessions`, `otpChallenges`,
   `oauthStates`, `passwordResetTokens`, `emailVerificationTokens`, `adminInvites`,

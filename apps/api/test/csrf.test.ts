@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { cookieName, cookieNames, csrfCookieOptions, sessionCookieOptions, useHostPrefix } from '../src/common/cookies';
 import { CsrfGuard } from '../src/common/csrf.guard';
+import type { SessionService } from '../src/auth/session.service';
 import { loadConfig } from '../src/config/app-config';
 
 const config = (overrides: NodeJS.ProcessEnv = {}) =>
@@ -62,29 +63,39 @@ describe('CsrfGuard', () => {
 	const contextFor = (request: Partial<FastifyRequest> & { cookies?: Record<string, string> }) =>
 		({ switchToHttp: () => ({ getRequest: () => request }) }) as unknown as ExecutionContext;
 
-	const guard = new CsrfGuard(dev);
+	/**
+	 * A session stub whose lookup returns null: with no server-side session the guard
+	 * exercises the cookie/header stage alone. The session-BINDING stage is covered by the
+	 * live probe, where a real session exists.
+	 */
+	const sessionsStub = {
+		findByRefreshCookie: async () => null,
+		verifyCsrfForSession: () => true,
+	} as unknown as SessionService;
+
+	const guard = new CsrfGuard(dev, sessionsStub);
 	const names = cookieNames(dev);
 
-	it('allows safe methods without a token', () => {
+	it('allows safe methods without a token', async () => {
 		for (const method of ['GET', 'HEAD', 'OPTIONS']) {
-			expect(guard.canActivate(contextFor({ method, headers: {}, cookies: { [names.access]: 'session' } }))).toBe(
-				true,
-			);
+			await expect(
+				guard.canActivate(contextFor({ method, headers: {}, cookies: { [names.access]: 'session' } })),
+			).resolves.toBe(true);
 		}
 	});
 
-	it('allows an unsafe method when there is no session to forge', () => {
-		expect(guard.canActivate(contextFor({ method: 'POST', headers: {}, cookies: {} }))).toBe(true);
+	it('allows an unsafe method when there is no session to forge', async () => {
+		await expect(guard.canActivate(contextFor({ method: 'POST', headers: {}, cookies: {} }))).resolves.toBe(true);
 	});
 
-	it('rejects a session-bearing unsafe request with no token at all', () => {
-		expect(() =>
+	it('rejects a session-bearing unsafe request with no token at all', async () => {
+		await expect(
 			guard.canActivate(contextFor({ method: 'POST', headers: {}, cookies: { [names.access]: 'session' } })),
-		).toThrow(ForbiddenException);
+		).rejects.toThrow(ForbiddenException);
 	});
 
-	it('rejects when the header is missing but the cookie is present', () => {
-		expect(() =>
+	it('rejects when the header is missing but the cookie is present', async () => {
+		await expect(
 			guard.canActivate(
 				contextFor({
 					method: 'POST',
@@ -92,11 +103,11 @@ describe('CsrfGuard', () => {
 					cookies: { [names.access]: 'session', [names.csrf]: 'token' },
 				}),
 			),
-		).toThrow(ForbiddenException);
+		).rejects.toThrow(ForbiddenException);
 	});
 
-	it('rejects when the header does not match the cookie', () => {
-		expect(() =>
+	it('rejects when the header does not match the cookie', async () => {
+		await expect(
 			guard.canActivate(
 				contextFor({
 					method: 'POST',
@@ -104,11 +115,11 @@ describe('CsrfGuard', () => {
 					cookies: { [names.access]: 'session', [names.csrf]: 'token' },
 				}),
 			),
-		).toThrow(ForbiddenException);
+		).rejects.toThrow(ForbiddenException);
 	});
 
-	it('accepts a matching double-submit pair', () => {
-		expect(
+	it('accepts a matching double-submit pair', async () => {
+		await expect(
 			guard.canActivate(
 				contextFor({
 					method: 'POST',
@@ -116,20 +127,20 @@ describe('CsrfGuard', () => {
 					cookies: { [names.access]: 'session', [names.csrf]: 'matching-token' },
 				}),
 			),
-		).toBe(true);
+		).resolves.toBe(true);
 	});
 
-	it('enforces on every state-changing method, not just POST', () => {
+	it('enforces on every state-changing method, not just POST', async () => {
 		for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
-			expect(() =>
+			await expect(
 				guard.canActivate(contextFor({ method, headers: {}, cookies: { [names.refresh]: 'session' } })),
-			).toThrow(ForbiddenException);
+			).rejects.toThrow(ForbiddenException);
 		}
 	});
 
-	it('treats a refresh cookie alone as a session worth protecting', () => {
-		expect(() =>
+	it('treats a refresh cookie alone as a session worth protecting', async () => {
+		await expect(
 			guard.canActivate(contextFor({ method: 'POST', headers: {}, cookies: { [names.refresh]: 'session' } })),
-		).toThrow(ForbiddenException);
+		).rejects.toThrow(ForbiddenException);
 	});
 });

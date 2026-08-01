@@ -2,9 +2,12 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { CurrencyService } from './currency.service';
+import { Public } from '../auth/session.guard';
 
 @ApiTags('currency')
 @Controller('currency')
+/** Public currency list/conversion for storefront price display. */
+@Public()
 export class CurrencyController {
 	constructor(private readonly currency: CurrencyService) {}
 

@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { CartService } from './cart.service';
+import { Public } from '../auth/session.guard';
 
 const CreateCartSchema = z.object({
 	userId: z.string().min(1).nullable().optional(),
@@ -25,6 +26,8 @@ type UpdateQtyBody = z.infer<typeof UpdateQtySchema>;
 
 @ApiTags('cart')
 @Controller('cart')
+/** Guest add-to-cart is an owner lock, so carts stay reachable without an account. Guest-token authorization and user-cart ownership land with Chunk G. */
+@Public()
 export class CartController {
 	constructor(private readonly cart: CartService) {}
 

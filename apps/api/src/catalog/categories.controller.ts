@@ -2,9 +2,12 @@ import { Controller, Get, Param } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { CatalogService } from './catalog.service';
+import { Public } from '../auth/session.guard';
 
 @ApiTags('catalog')
 @Controller('catalog/categories')
+/** Public taxonomy. */
+@Public()
 export class CategoriesController {
 	constructor(private readonly catalog: CatalogService) {}
 

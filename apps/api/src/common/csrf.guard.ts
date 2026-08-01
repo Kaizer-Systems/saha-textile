@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { type CanActivate, type ExecutionContext, ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 
+import { SessionService } from '../auth/session.service';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { cookieNames } from './cookies';
 
@@ -36,9 +37,12 @@ function safeEquals(a: string, b: string): boolean {
  */
 @Injectable()
 export class CsrfGuard implements CanActivate {
-	constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {}
+	constructor(
+		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly sessions: SessionService,
+	) {}
 
-	canActivate(context: ExecutionContext): boolean {
+	async canActivate(context: ExecutionContext): Promise<boolean> {
 		const request = context.switchToHttp().getRequest<FastifyRequest & { cookies?: Record<string, string> }>();
 
 		if (SAFE_METHODS.has(request.method.toUpperCase())) return true;
@@ -54,6 +58,18 @@ export class CsrfGuard implements CanActivate {
 
 		if (!cookieToken || !headerToken || !safeEquals(cookieToken, headerToken)) {
 			// Deliberately generic: naming which half was wrong tells an attacker where to aim.
+			throw new ForbiddenException('CSRF validation failed');
+		}
+
+		/**
+		 * Second stage: the token must belong to THIS session.
+		 *
+		 * Cookie/header agreement alone stops cross-site forgery but not a token lifted
+		 * from another session and replayed with stolen session cookies. `csrfSecretHash`
+		 * is stored per session precisely so that pairing can be checked.
+		 */
+		const session = await this.sessions.findByRefreshCookie(request);
+		if (session && !this.sessions.verifyCsrfForSession(session, cookieToken)) {
 			throw new ForbiddenException('CSRF validation failed');
 		}
 

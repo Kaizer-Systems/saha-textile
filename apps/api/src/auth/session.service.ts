@@ -28,6 +28,11 @@ interface SessionUser {
 	permissionsVersion: number;
 }
 
+export interface LiveSessionExpectation {
+	userId?: string;
+	audience?: SessionAudience;
+}
+
 /**
  * Session lifetimes. Admin idles out faster than storefront because an unattended admin
  * tab is a materially worse exposure; the absolute cap bounds a stolen refresh token
@@ -60,8 +65,12 @@ export class SessionService {
 	 * not let an attacker verify guesses offline. Opaque tokens carry 256 bits of entropy,
 	 * so no slow KDF is needed — there is nothing to brute force.
 	 */
-	private hash(value: string): string {
+	hashOpaqueToken(value: string): string {
 		return createHmac('sha256', this.tokenPepper()).update(value).digest('hex');
+	}
+
+	private hash(value: string): string {
+		return this.hashOpaqueToken(value);
 	}
 
 	private tokenPepper(): string {
@@ -71,6 +80,93 @@ export class SessionService {
 	/** 256 bits of CSPRNG entropy — refresh tokens are opaque, never JWTs. */
 	private opaqueToken(): string {
 		return randomBytes(32).toString('base64url');
+	}
+
+	/**
+	 * Fail-closed liveness check for an AuthSession row.
+	 *
+	 * Missing, revoked, idle-expired, absolute-expired, or identity-mismatched sessions
+	 * are all rejected. Callers must not fall open when this returns false.
+	 */
+	isLiveSession(session: AuthSession | null | undefined, expected?: LiveSessionExpectation): session is AuthSession {
+		if (!session) return false;
+		if (session.revokedAt) return false;
+		const nowMs = Date.now();
+		if (new Date(session.expiresAt).getTime() <= nowMs) return false;
+		if (new Date(session.absoluteExpiresAt).getTime() <= nowMs) return false;
+		if (expected?.userId && session.userId !== expected.userId) return false;
+		if (expected?.audience && session.audience !== expected.audience) return false;
+		return true;
+	}
+
+	async findLiveById(sessionId: string, expected?: LiveSessionExpectation): Promise<AuthSession | null> {
+		const session = await this.sessions.findById(sessionId);
+		return this.isLiveSession(session, expected) ? session : null;
+	}
+
+	/**
+	 * Resolves the live AuthSession for CSRF/session binding.
+	 *
+	 * Prefer the access-cookie `sid` (authenticated identity) so CSRF is bound to the
+	 * session the access token claims, not whichever refresh cookie happens to resolve.
+	 * Fall back to the refresh cookie when the access JWT is absent or unverifiable
+	 * (refresh / logout paths).
+	 */
+	async resolveLiveSessionFromRequest(request: FastifyRequest): Promise<AuthSession | null> {
+		const names = cookieNames(this.config);
+		const access = this.readCookie(request, names.access);
+		if (access) {
+			try {
+				const claims = (await this.auth.verifyToken(access)) as unknown as Record<string, unknown>;
+				const sessionId = String(claims.sid ?? '');
+				const userId = String(claims.sub ?? '');
+				const audience = claims.aud as SessionAudience | undefined;
+				if (sessionId && userId && audience) {
+					return this.findLiveById(sessionId, { userId, audience });
+				}
+			} catch {
+				// Access JWT expired/invalid — refresh may still identify a live session.
+			}
+		}
+
+		const refresh = this.readCookie(request, names.refresh);
+		if (!refresh) return null;
+		const session = await this.sessions.findByRefreshTokenHash(this.hash(refresh));
+		return this.isLiveSession(session) ? session : null;
+	}
+
+	/**
+	 * Issues or preserves a CSRF token.
+	 *
+	 * Policy B (active session): do not replace a still-valid session-bound token on GET —
+	 * cross-site top-level navigations send SameSite=lax cookies and must not become a
+	 * session DoS primitive. If the readable cookie is missing or no longer matches the
+	 * stored hash, recover by atomically rotating `csrfSecretHash` and issuing the new
+	 * value. Anonymous callers still receive an unbound pre-session token.
+	 */
+	async issueCsrfToken(request: FastifyRequest, reply: FastifyReply): Promise<string> {
+		const names = cookieNames(this.config);
+		const session = await this.resolveLiveSessionFromRequest(request);
+		const presented = this.readCookie(request, names.csrf);
+
+		if (session) {
+			if (presented && this.verifyCsrfForSession(session, presented)) {
+				void reply.setCookie(names.csrf, presented, csrfCookieOptions(this.config));
+				return presented;
+			}
+
+			const csrfToken = this.opaqueToken();
+			const updated = await this.sessions.updateCsrfSecretHash(session.id, this.hash(csrfToken));
+			if (!updated) {
+				throw new UnauthorizedException('Session is no longer valid');
+			}
+			void reply.setCookie(names.csrf, csrfToken, csrfCookieOptions(this.config));
+			return csrfToken;
+		}
+
+		const csrfToken = this.opaqueToken();
+		void reply.setCookie(names.csrf, csrfToken, csrfCookieOptions(this.config));
+		return csrfToken;
 	}
 
 	/**
@@ -221,6 +317,18 @@ export class SessionService {
 		if (presented) {
 			const session = await this.sessions.findByRefreshTokenHash(this.hash(presented));
 			if (session) await this.sessions.revoke(session.id, reason, new Date().toISOString());
+		} else {
+			// Access-only logout: still revoke the sid so the access JWT dies immediately.
+			const access = this.readCookie(request, cookieNames(this.config).access);
+			if (access) {
+				try {
+					const claims = (await this.auth.verifyToken(access)) as unknown as Record<string, unknown>;
+					const sessionId = String(claims.sid ?? '');
+					if (sessionId) await this.sessions.revoke(sessionId, reason, new Date().toISOString());
+				} catch {
+					// Invalid access token — nothing left to revoke server-side.
+				}
+			}
 		}
 		this.clearCookies(reply);
 	}
@@ -261,8 +369,9 @@ export class SessionService {
 	 * Writes the access, refresh, and CSRF cookies.
 	 *
 	 * The access token is a short-lived JWT carrying `sid`, `tokenVersion`, and
-	 * `permissionsVersion` so the guard can reject a stale token without a database read
-	 * on the hot path, while a password or role change still takes effect immediately.
+	 * `permissionsVersion`. SessionGuard still loads the AuthSession by `sid` so logout
+	 * and family revocation take effect immediately without bumping every other session's
+	 * tokenVersion.
 	 */
 	private async writeCookies(input: {
 		session: AuthSession;

@@ -1,4 +1,11 @@
 <!doctype html>
+<!--
+	NEXT-GEN-UI
+	What: Scalar's generated-reference entry shell and persistent status bar.
+	Why: keeps scaffold status and the return path visible outside Docusaurus routing.
+	How: Scalar mounts below a dependency-free, shared-token-themed child header.
+	Tuning knobs: status copy and responsive adapter rules in src/styles.css.
+-->
 <html
 	lang="en"
 	data-theme="dark"
@@ -28,7 +35,13 @@
 				<strong>Current-contract scaffold</strong>
 				<span>Test Request uses only servers declared by this generated OpenAPI document.</span>
 			</div>
-			<a href="/tools/scalar">Return to gateway</a>
+			<a
+				class="portal-scalar-gateway"
+				href="/tools/scalar"
+				aria-label="Return to the Scalar gateway"
+			>
+				Return to gateway
+			</a>
 		</div>
 		<div id="app"></div>
 		<script

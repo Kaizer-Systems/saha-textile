@@ -21,6 +21,8 @@ source_of_truth:
 
 import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
 
+<!-- NEXT-GEN-UI · What: canonical Request Wormhole bridge copy and launch surface · Why: keep Scalar's scaffold status and Test Request security visible before entry · How: governed prose composes the locked ChildToolGateway metaphor · Tuning knobs: evidence copy only; choreography stays in ChildToolGateway -->
+
 <ChildToolGateway
 	toolName="Scalar API reference"
 	target="/api/reference/"
@@ -36,3 +38,5 @@ This scaffold publishes the current generated OpenAPI evidence and keeps **Test 
 Test requests never receive a privileged token or security bypass from the portal. They target only the server URLs present in the generated OpenAPI document and remain subject to normal CORS, authentication, CSRF, authorization, ownership, and rate-limit enforcement. Login, OTP verification, and refresh issue a session-bound readable CSRF cookie; copy its value into `x-csrf-token` for state-changing requests. For an active session, `GET /auth/csrf` follows Policy B (preserve a still-valid bound token; rotate only to recover a missing/desynced cookie).
 
 Chunk D remains partial with materially more live behavior: D2 is done; D3 has storefront register/password/OTP login, logout, refresh, reset and `me` but lacks email-verification completion and OAuth; D4 has admin password/PIN flows and version-aware RBAC but lacks invite acceptance and quick-resume; D5 has consent/privacy, order BOLA, cart Principal/`st_guest` ownership and transactional order-create cart adoption while guest→user merge remains Chunk G. Test Request exposes none of those capabilities as a bypass.
+
+Inside Scalar, the sticky contract-status bar keeps **Return to gateway** at the right edge so the generated client always has an explicit path back here.

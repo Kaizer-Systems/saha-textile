@@ -11,3 +11,5 @@ export * from './catalog-structure.repository';
 export * from './merchandising.repository';
 export * from './inventory.repository';
 export * from './media.repository';
+export * from './governance.repository';
+export * from './content.repository';

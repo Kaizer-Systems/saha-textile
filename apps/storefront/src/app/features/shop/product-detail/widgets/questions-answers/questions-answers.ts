@@ -45,7 +45,9 @@ export class QuestionsAnswers {
 	user$: Observable<IAccountUser> = toObservable(this.accountStore.user) as Observable<IAccountUser>;
 
 	constructor() {
-		this.isLogin = !!this.authStore.access_token();
+		// Presentation only. Product Q&A does not require login (owner lock); this just
+		// decides whether the identity fields are prefilled.
+		this.isLogin = this.authStore.isAuthenticated();
 		if (this.isLogin) {
 			this.accountStore.loadUser();
 		}

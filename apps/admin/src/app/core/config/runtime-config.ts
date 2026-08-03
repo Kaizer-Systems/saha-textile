@@ -32,18 +32,36 @@ function applyConfig(loaded: Partial<RuntimeConfig>): void {
 	environment.URL = `${runtimeConfig.adminUrl}/assets/data`;
 }
 
+let markReady: () => void;
+
+/**
+ * Resolves once `apiUrl` holds its real value.
+ *
+ * Angular starts app initializers concurrently, so anything needing the API origin — the
+ * admin session bootstrap, for one — must await this rather than assume it ran second. It
+ * resolves from a `finally`, so a failed config fetch still unblocks boot with defaults
+ * instead of hanging the application.
+ */
+export const runtimeConfigReady: Promise<void> = new Promise<void>((resolve) => {
+	markReady = resolve;
+});
+
 export async function loadRuntimeConfig(): Promise<void> {
-	if (typeof window === 'undefined') {
-		// Admin is CSR-only today; guard kept for safety if SSR is ever added.
-		applyConfig({});
-		return;
-	}
 	try {
-		const res = await fetch('/config.json', { cache: 'no-store' });
-		applyConfig(res.ok ? ((await res.json()) as Partial<RuntimeConfig>) : {});
-	} catch {
-		// Config fetch must never block boot — fall back to localhost defaults.
-		applyConfig({});
+		if (typeof window === 'undefined') {
+			// Admin is CSR-only today; guard kept for safety if SSR is ever added.
+			applyConfig({});
+			return;
+		}
+		try {
+			const res = await fetch('/config.json', { cache: 'no-store' });
+			applyConfig(res.ok ? ((await res.json()) as Partial<RuntimeConfig>) : {});
+		} catch {
+			// Config fetch must never block boot — fall back to localhost defaults.
+			applyConfig({});
+		}
+	} finally {
+		markReady();
 	}
 }
 

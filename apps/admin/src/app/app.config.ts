@@ -10,6 +10,9 @@ import { provideStore } from '@ngrx/store';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { provideToastr } from 'ngx-toastr';
 
+import { AdminAuthGateway } from '@core/auth/auth-gateway';
+import { HttpAdminAuthGateway } from '@core/auth/http-auth.gateway';
+import { provideAdminSessionBootstrap } from '@core/auth/session-bootstrap';
 import { provideRuntimeConfig } from '@core/config/runtime-config';
 import { AuthInterceptor } from '@core/interceptors/auth.interceptor';
 import { GlobalErrorHandlerInterceptor } from '@core/interceptors/global-error-handler.interceptor';
@@ -26,6 +29,13 @@ export const appConfig: ApplicationConfig = {
 		// Public runtime config: fetches /config.json before the app starts and
 		// fills the mutable environment (no fileReplacements for deploy URLs).
 		provideRuntimeConfig(),
+		// The one binding that decides how this app talks to the auth API. Components,
+		// guards and stores depend on the abstract gateway, so swapping the transport (or
+		// faking it in a test) is this line, not a search across features.
+		{ provide: AdminAuthGateway, useClass: HttpAdminAuthGateway },
+		// Resolves the admin cookie session before routing, so the guard protecting the
+		// whole back office never runs against an undetermined session.
+		provideAdminSessionBootstrap(),
 		provideRouter(
 			routes,
 			withInMemoryScrolling({

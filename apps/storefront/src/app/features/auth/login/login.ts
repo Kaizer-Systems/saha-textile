@@ -26,22 +26,34 @@ export class Login {
 	public form: FormGroup;
 	public breadcrumb = translatedBreadcrumb('log_in');
 
+	/** Bound by the template so a failed sign-in is visible instead of silent. */
+	public readonly error = this.authStore.error;
+	public readonly pending = this.authStore.pending;
+
 	constructor() {
+		// Empty, not pre-filled. The demo pair that used to sit here made the form look
+		// like a working login while the store faked the session; worse, a copied demo
+		// credential is exactly the kind of thing that survives into a deployed build.
 		this.form = this.formBuilder.group({
-			email: new FormControl('john.customer@example.com', [Validators.required, Validators.email]),
-			password: new FormControl('123456789', [Validators.required]),
+			email: new FormControl('', [Validators.required, Validators.email]),
+			password: new FormControl('', [Validators.required]),
 		});
 	}
 
-	submit() {
+	async submit(): Promise<void> {
 		this.form.markAllAsTouched();
-		if (this.form.valid) {
-			this.authStore.login(this.form.value);
-			// Navigate to the intended URL after login (login() is a synchronous mock).
-			const redirectUrl = this.authService.redirectUrl || '/account/dashboard';
-			void this.router.navigateByUrl(redirectUrl);
-			// Clear the stored redirect URL
-			this.authService.redirectUrl = undefined;
-		}
+		if (!this.form.valid || this.pending()) return;
+
+		const signedIn = await this.authStore.loginWithPassword({
+			email: this.form.value.email as string,
+			password: this.form.value.password as string,
+		});
+		// Navigate only after the API confirms the session. The previous version routed to
+		// the account dashboard immediately, so a rejected login still looked successful.
+		if (!signedIn) return;
+
+		const redirectUrl = this.authService.redirectUrl || '/account/dashboard';
+		this.authService.redirectUrl = undefined;
+		await this.router.navigateByUrl(redirectUrl);
 	}
 }

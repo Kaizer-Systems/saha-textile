@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	AdminMeResponse,
+	AdminPasswordForgotRequest,
+	AdminPasswordResetRequest,
 	AdminPin,
 	AdminPinSetupRequest,
 	AuditLog,
@@ -201,5 +203,40 @@ describe('Notification kill-switches', () => {
 				createdAt: '2026-07-31T10:00:00.000Z',
 			}).success,
 		).toBe(false);
+	});
+});
+
+describe('admin password recovery contracts', () => {
+	it('accepts an email or a username as the recovery identifier', () => {
+		// Admin login takes either, so recovery must too — an operator who remembers only
+		// their username would otherwise have no way back in.
+		expect(AdminPasswordForgotRequest.safeParse({ identifier: 'operator@example.com' }).success).toBe(true);
+		expect(AdminPasswordForgotRequest.safeParse({ identifier: 'operator' }).success).toBe(true);
+	});
+
+	it('rejects an empty recovery identifier', () => {
+		expect(AdminPasswordForgotRequest.safeParse({ identifier: '' }).success).toBe(false);
+	});
+
+	it('carries no OTP code — recovery is a token, not a challenge', () => {
+		// Structural proof of the `DO NOT BUILD AS LOGIN` lock: there is no field here for
+		// a six-digit code, so this contract cannot quietly become an OTP login path.
+		expect(Object.keys(AdminPasswordForgotRequest.shape)).toEqual(['identifier']);
+		expect(Object.keys(AdminPasswordResetRequest.shape).sort()).toEqual(['newPassword', 'token']);
+	});
+
+	it('applies the 12-character password floor to the new admin password', () => {
+		const short = AdminPasswordResetRequest.safeParse({ token: 'reset-token', newPassword: 'Short1Pass!' });
+		expect(short.success).toBe(false);
+		expect(
+			AdminPasswordResetRequest.safeParse({ token: 'reset-token', newPassword: 'a-long-enough-password' })
+				.success,
+		).toBe(true);
+	});
+
+	it('requires a reset token', () => {
+		expect(AdminPasswordResetRequest.safeParse({ token: '', newPassword: 'a-long-enough-password' }).success).toBe(
+			false,
+		);
 	});
 });

@@ -79,6 +79,35 @@ export const AdminMeResponse = z.object({
 });
 export type AdminMeResponse = z.infer<typeof AdminMeResponse>;
 
+/**
+ * `POST /auth/admin/password/forgot` — response is ALWAYS generic (anti-enumeration).
+ *
+ * Recovery is a single-use, short-lived, hash-only token delivered by email. It is
+ * deliberately NOT an OTP challenge and must never become a routine admin login method
+ * (owner lock: admin OTP login is `DO NOT BUILD AS LOGIN`).
+ *
+ * The identifier is email-or-username, matching admin login, so an operator who remembers
+ * only their username can still start recovery.
+ */
+export const AdminPasswordForgotRequest = z.object({
+	identifier: z.string().min(1).max(320),
+});
+export type AdminPasswordForgotRequest = z.infer<typeof AdminPasswordForgotRequest>;
+
+/**
+ * `POST /auth/admin/password/reset` — consumes the token and re-secures the account.
+ *
+ * A successful privileged reset revokes every admin session and puts the PIN into an
+ * explicit revalidation state: PIN full-login and quick-resume stay unavailable until the
+ * administrator authenticates once with the new password. The PIN is never silently
+ * deleted — the transition is recorded and audited (owner security decision).
+ */
+export const AdminPasswordResetRequest = z.object({
+	token: z.string().min(1),
+	newPassword: Password,
+});
+export type AdminPasswordResetRequest = z.infer<typeof AdminPasswordResetRequest>;
+
 /** `POST /admin/users/invite` — no admin self-registration; invite-only (auth plan §7.9). */
 export const AdminInviteRequest = z.object({
 	email: z.email(),

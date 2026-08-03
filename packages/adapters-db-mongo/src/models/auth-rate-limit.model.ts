@@ -38,7 +38,7 @@ const AuthRateLimitSchema = new Schema<AuthRateLimitDoc>(
 		expiresAt: { type: Date, required: true },
 		blockedUntil: { type: Date, default: null },
 	},
-	{ timestamps: false },
+	{ collection: 'authRateLimits', timestamps: false },
 );
 
 /** The counter is looked up by its composite key; one row per key per window. */

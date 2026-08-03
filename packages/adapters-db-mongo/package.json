@@ -19,7 +19,8 @@
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
     "generate:catalogue": "node --import tsx scripts/generate-catalogue.ts",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "align:collections": "tsx scripts/align-collection-names.ts"
   },
   "dependencies": {
     "@saha-textile/contracts": "workspace:*",

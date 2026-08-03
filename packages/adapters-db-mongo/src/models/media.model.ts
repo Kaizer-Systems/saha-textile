@@ -46,7 +46,7 @@ const MediaAssetSchema = new Schema<MediaAssetDoc>(
 		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
 		deletedAt: { type: Date, default: null },
 	},
-	{ timestamps: true },
+	{ collection: 'mediaAssets', timestamps: true },
 );
 
 /** Admin media library browsing. */

@@ -605,6 +605,7 @@ type UserAuthLean = {
 	failedLoginAttempts: number;
 	failedPinAttempts: number;
 	pinLockedUntil: Date | null;
+	pinRevalidationRequiredAt: Date | null;
 };
 
 /** Credential material is `select: false`, so the auth paths must ask for it explicitly. */
@@ -626,6 +627,9 @@ const toAuthState = (doc: UserAuthLean): UserAuthState => ({
 	failedLoginAttempts: doc.failedLoginAttempts ?? 0,
 	failedPinAttempts: doc.failedPinAttempts ?? 0,
 	pinLockedUntil: doc.pinLockedUntil ? new Date(doc.pinLockedUntil).toISOString() : null,
+	pinRevalidationRequiredAt: doc.pinRevalidationRequiredAt
+		? new Date(doc.pinRevalidationRequiredAt).toISOString()
+		: null,
 });
 
 export class MongoAuthUserRepository implements AuthUserRepository {
@@ -702,7 +706,17 @@ export class MongoAuthUserRepository implements AuthUserRepository {
 	async recordSuccessfulLogin(userId: string, at: string): Promise<void> {
 		await UserModel.updateOne(
 			{ _id: userId },
-			{ $set: { lastLoginAt: new Date(at), failedLoginAttempts: 0, failedPinAttempts: 0, pinLockedUntil: null } },
+			// A successful password login is exactly the proof a post-reset PIN suspension
+			// waits for, so it clears here rather than in a separate call a caller could skip.
+			{
+				$set: {
+					lastLoginAt: new Date(at),
+					failedLoginAttempts: 0,
+					failedPinAttempts: 0,
+					pinLockedUntil: null,
+					pinRevalidationRequiredAt: null,
+				},
+			},
 		).exec();
 	}
 
@@ -723,5 +737,12 @@ export class MongoAuthUserRepository implements AuthUserRepository {
 
 	async clearPinLock(userId: string): Promise<void> {
 		await UserModel.updateOne({ _id: userId }, { $set: { pinLockedUntil: null, failedPinAttempts: 0 } }).exec();
+	}
+
+	async setPinRevalidationRequired(userId: string, at: string | null): Promise<void> {
+		await UserModel.updateOne(
+			{ _id: userId },
+			{ $set: { pinRevalidationRequiredAt: at ? new Date(at) : null } },
+		).exec();
 	}
 }

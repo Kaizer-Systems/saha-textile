@@ -49,7 +49,7 @@ const InventoryLedgerSchema = new Schema<InventoryLedgerDoc>(
 		referenceId: { type: String, default: null },
 		actorUserId: { type: String, default: null },
 	},
-	{ timestamps: { createdAt: true, updatedAt: false } },
+	{ collection: 'inventoryLedger', timestamps: { createdAt: true, updatedAt: false } },
 );
 
 /** The audit query: one variant's movements, newest first. */
@@ -91,7 +91,7 @@ const InventoryCostLayerSchema = new Schema<InventoryCostLayerDoc>(
 		quantityRemaining: { type: Number, required: true },
 		receivedAt: { type: Date, required: true },
 	},
-	{ timestamps: { createdAt: true, updatedAt: false } },
+	{ collection: 'inventoryCostLayers', timestamps: { createdAt: true, updatedAt: false } },
 );
 
 /**

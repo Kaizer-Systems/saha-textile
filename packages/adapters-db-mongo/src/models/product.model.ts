@@ -55,7 +55,7 @@ const ProductSchema = new Schema<ProductDoc>(
 		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
 		lifecycle: { type: Schema.Types.Mixed, default: {} },
 	},
-	{ timestamps: true },
+	{ collection: 'products', timestamps: true },
 );
 
 ProductSchema.index({ slug: 1 }, { unique: true });

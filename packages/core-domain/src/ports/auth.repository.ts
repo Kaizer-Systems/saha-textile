@@ -147,4 +147,13 @@ export interface AuthUserRepository {
 	recordFailedPinAttempt(userId: string): Promise<number>;
 	lockPinUntil(userId: string, until: string): Promise<void>;
 	clearPinLock(userId: string): Promise<void>;
+	/**
+	 * Suspends PIN use after a privileged password reset, and clears that suspension.
+	 *
+	 * Kept separate from `lockPinUntil`/`clearPinLock` on purpose: the brute-force lock is
+	 * time-bounded and self-healing, while this one persists until the administrator proves
+	 * the NEW password. Collapsing them would let a fifteen-minute timer silently restore a
+	 * credential that a suspected compromise had suspended.
+	 */
+	setPinRevalidationRequired(userId: string, at: string | null): Promise<void>;
 }

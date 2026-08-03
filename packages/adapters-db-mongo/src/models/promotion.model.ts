@@ -42,7 +42,7 @@ const PromotionSchema = new Schema<PromotionDoc>(
 		endsAt: { type: Date },
 		conditions: { type: Schema.Types.Mixed, default: { minCartINR: 0, firstOrderOnly: false } },
 	},
-	{ timestamps: true },
+	{ collection: 'promotions', timestamps: true },
 );
 
 PromotionSchema.index({ couponCode: 1 });

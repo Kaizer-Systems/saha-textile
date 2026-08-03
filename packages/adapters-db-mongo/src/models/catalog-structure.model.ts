@@ -42,7 +42,7 @@ const CategoryPlacementSchema = new Schema<CategoryPlacementDoc>(
 		displayOrder: { type: Number, default: 0 },
 		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
 	},
-	{ timestamps: true },
+	{ collection: 'categoryPlacements', timestamps: true },
 );
 
 /**
@@ -91,7 +91,7 @@ const CategoryFacetConfigSchema = new Schema<CategoryFacetConfigDoc>(
 		facets: { type: [Schema.Types.Mixed], default: [] },
 		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
 	},
-	{ timestamps: true },
+	{ collection: 'categoryFacetConfigs', timestamps: true },
 );
 
 // Resolution order at read time is placement → category → product group → global, so each
@@ -147,7 +147,7 @@ const AttributeDefinitionSchema = new Schema<AttributeDefinitionDoc>(
 		terms: { type: [Schema.Types.Mixed], default: [] },
 		filterConfig: { type: Schema.Types.Mixed },
 	},
-	{ timestamps: true },
+	{ collection: 'attributeDefinitions', timestamps: true },
 );
 
 AttributeDefinitionSchema.index({ code: 1 }, { unique: true });

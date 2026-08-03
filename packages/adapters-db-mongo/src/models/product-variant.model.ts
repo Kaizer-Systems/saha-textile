@@ -52,7 +52,7 @@ const ProductVariantSchema = new Schema<ProductVariantDoc>(
 		taxProfile: { type: Schema.Types.Mixed },
 		media: { type: Schema.Types.Mixed },
 	},
-	{ timestamps: true },
+	{ collection: 'productVariants', timestamps: true },
 );
 
 /** One row per option combination per product — the duplicate guard. */

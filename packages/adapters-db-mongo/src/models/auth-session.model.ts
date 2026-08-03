@@ -54,7 +54,7 @@ const AuthSessionSchema = new Schema<AuthSessionDoc>(
 		revokedAt: { type: Date, default: null },
 		revokeReason: { type: String, default: null },
 	},
-	{ timestamps: { createdAt: true, updatedAt: false } },
+	{ collection: 'authSessions', timestamps: { createdAt: true, updatedAt: false } },
 );
 
 // Rotation and reuse detection look sessions up by token hash.

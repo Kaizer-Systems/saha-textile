@@ -19,7 +19,7 @@ const CartSchema = new Schema<CartDoc>(
 		currency: { type: String, default: 'INR' },
 		lines: { type: [Schema.Types.Mixed], default: [] },
 	},
-	{ timestamps: true },
+	{ collection: 'carts', timestamps: true },
 );
 
 CartSchema.index({ userId: 1 });

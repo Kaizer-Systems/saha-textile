@@ -8,30 +8,48 @@
 						<h3>{{ 'welcome_to_fastkart' | transloco }}</h3>
 						<h4>{{ 'log_in_your_account' | transloco }}</h4>
 					</div>
+					@if (error()) {
+					<!--
+						One message for every credential failure. The API answers wrong password,
+						wrong PIN, unknown identifier and customer-role account identically so the
+						endpoint cannot be used to discover which accounts exist or which method
+						is configured; naming the case here would give that back.
+					-->
+					<div
+						class="alert alert-danger"
+						role="alert"
+					>
+						{{ error()! | transloco }}
+						<div class="small mt-1">
+							{{ 'if_your_pin_is_locked_sign_in_with_your_password' | transloco }}
+						</div>
+					</div>
+					}
 					<div class="input-box">
 						<form
 							class="row g-4"
 							[formGroup]="form"
-							(ngSubmit)="submit();"
+							(ngSubmit)="submit()"
 						>
 							<div class="col-12">
 								<div class="form-floating theme-form-floating log-in-form">
 									<input
-										type="email"
+										type="text"
 										class="form-control"
-										id="email"
-										formControlName="email"
-										placeholder="{{ 'email_address' | transloco }}"
+										id="identifier"
+										formControlName="identifier"
+										autocomplete="username"
+										placeholder="{{ 'email_or_username' | transloco }}"
 									/>
-									<label for="email">{{ 'email_address' | transloco }}</label>
-									@if (form.controls['email'].touched && form.controls['email'].errors?.['required'])
-									{
-									<div class="invalid-feedback">{{ 'email_is_required' | transloco }}</div>
-									} @if (form.controls['email'].touched && form.controls['email'].errors?.['email']) {
-									<div class="invalid-feedback">{{ 'invalid_email' | transloco }}</div>
+									<label for="identifier">{{ 'email_or_username' | transloco }}</label>
+									@if (form.controls['identifier'].touched &&
+									form.controls['identifier'].errors?.['required']) {
+									<div class="invalid-feedback d-block">{{ 'email_is_required' | transloco }}</div>
 									}
 								</div>
 							</div>
+
+							@if (method() === 'password') {
 							<div class="col-12">
 								<div class="form-floating theme-form-floating log-in-form">
 									<input
@@ -39,17 +57,57 @@
 										class="form-control"
 										id="password"
 										formControlName="password"
-										placeholder="{{ 'password' | transloco }} "
+										autocomplete="current-password"
+										placeholder="{{ 'password' | transloco }}"
 									/>
 									<label for="password">{{ 'password' | transloco }}</label>
-									@if (form.controls['password'].touched &&
-									form.controls['password'].errors?.['required']) {
-									<div class="invalid-feedback">{{ 'password_is_required' | transloco }}</div>
+									@if (form.controls['password'].touched && !form.controls['password'].value) {
+									<div class="invalid-feedback d-block">{{ 'password_is_required' | transloco }}</div>
 									}
 								</div>
 							</div>
+							} @else {
+							<div class="col-12">
+								<div class="form-floating theme-form-floating log-in-form">
+									<!--
+										Six digits. The PIN is a password-grade credential, never a
+										second factor, and must never be presented as one.
+									-->
+									<input
+										type="password"
+										class="form-control"
+										id="pin"
+										formControlName="pin"
+										inputmode="numeric"
+										autocomplete="off"
+										[maxlength]="pinLength"
+										placeholder="{{ 'pin' | transloco }}"
+										oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+									/>
+									<label for="pin">{{ 'pin' | transloco }}</label>
+								</div>
+							</div>
+							}
+
 							<div class="col-12">
 								<div class="forgot-box">
+									@if (method() === 'password') {
+									<button
+										type="button"
+										class="btn btn-link p-0"
+										(click)="useMethod('pin')"
+									>
+										{{ 'use_your_pin_instead' | transloco }}
+									</button>
+									} @else {
+									<button
+										type="button"
+										class="btn btn-link p-0"
+										(click)="useMethod('password')"
+									>
+										{{ 'use_your_password_instead' | transloco }}
+									</button>
+									}
 									<a
 										class="forgot-password"
 										[routerLink]="['/auth/forgot-password']"

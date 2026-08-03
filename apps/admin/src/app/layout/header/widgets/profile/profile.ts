@@ -32,6 +32,9 @@ export class Profile {
 	}
 
 	logout() {
-		this.authStore.logout();
+		// `logout()` is now async — it revokes the session server-side before clearing
+		// local state. It never rejects (the store swallows transport failures and clears
+		// regardless), so there is nothing for this click handler to await or handle.
+		void this.authStore.logout();
 	}
 }

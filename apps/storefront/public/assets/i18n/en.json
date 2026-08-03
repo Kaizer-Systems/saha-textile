@@ -540,5 +540,12 @@
 	"electronics_accessories": "Electronics & Accessories",
 	"pet_shop": "Pet Shop",
 	"milk_dairy_products": "Milk & Dairy Products",
-	"sports": "Sports"
+	"sports": "Sports",
+	"sign_in_failed": "We could not sign you in. Check your details and try again.",
+	"registration_failed": "We could not create the account. Check your details and try again.",
+	"something_went_wrong_please_try_again": "Something went wrong. Please try again.",
+	"invalid_or_expired_code": "That code is not valid or has expired.",
+	"invalid_or_expired_reset_link": "That reset link is not valid or has expired.",
+	"if_the_details_are_correct_we_have_sent_you_an_email": "If the details are correct, we have sent you an email.",
+	"password_must_be_at_least_12_characters": "Password must be at least 12 characters."
 }

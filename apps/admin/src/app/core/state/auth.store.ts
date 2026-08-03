@@ -1,75 +1,211 @@
-import { computed, effect, inject } from '@angular/core';
+import { computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { getState, patchState, signalStore, withComputed, withHooks, withMethods, withState } from '@ngrx/signals';
+import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
+import { firstValueFrom } from 'rxjs';
 
+import { AdminAuthGateway, type AdminUser } from '@core/auth/auth-gateway';
 import { AccountStore } from '@core/state/account.store';
 
-const STORAGE_KEY = 'auth_store';
-
-// Demo/mock session token — a real login will replace this with the API-issued token.
-const FAKE_TOKEN = '135|laravel_sanctum_BrxRCMTABu7vFDsa1CHnkKCkjKtYPcBHMguiUAha319c7ede';
+/**
+ * Admin session facade.
+ *
+ * ## What changed and why
+ *
+ * This store used to keep a hard-coded `FAKE_TOKEN` **and persist the whole state to
+ * `localStorage`**, which made it the worst of the two applications:
+ *
+ * 1. `isAuthenticated` was true before anyone signed in, so the entire back office
+ *    rendered without authentication.
+ * 2. A credential-shaped value was written to browser storage, where any script on the
+ *    page can read it. Even a fake one teaches the wrong pattern, and the security
+ *    baseline is explicit: no auth token in `localStorage`, `sessionStorage`, IndexedDB,
+ *    URLs, analytics or logs.
+ *
+ * Both are gone. There is **no persistence hook in this store at all** — the session lives
+ * in `httpOnly` cookies the browser cannot read, and `bootstrap()` re-reads it from
+ * `/auth/admin/me` after a reload.
+ *
+ * `permissions` is held here for UI shaping only. It is server-authoritative and re-checked
+ * on every request, so hiding a menu item is convenience; the API is what actually refuses.
+ */
+export type AdminSessionStatus = 'unknown' | 'anonymous' | 'authenticated';
 
 interface AuthStateModel {
-	email: string;
-	token: string | number;
-	access_token: string | null;
-	permissions: [];
+	status: AdminSessionStatus;
+	user: AdminUser | null;
+	permissions: string[];
+	/** Transloco key for the last failure, cleared on the next attempt. Never a raw sentence. */
+	error: string | null;
+	pending: boolean;
 }
 
-const initialState: AuthStateModel = {
-	email: 'admin@example.com',
-	token: '',
-	access_token: FAKE_TOKEN,
-	permissions: [],
-};
+const INITIAL: AuthStateModel = { status: 'unknown', user: null, permissions: [], error: null, pending: false };
+
+/**
+ * Failure states are Transloco keys, and one shared message covers password and PIN alike.
+ *
+ * That is not laziness: the API answers wrong password, wrong PIN, unknown identifier and
+ * customer-role account identically, so the endpoint cannot be used to discover which
+ * accounts exist or which login method is configured. A per-case message here would hand
+ * that distinction straight back.
+ *
+ * The PIN lock is the one case an operator genuinely needs told apart — they must know
+ * password login still works, or they are simply stuck. The API cannot express it yet: the
+ * controller throws a specific message, but the global error filter replaces every 401 with
+ * the generic `unauthorized` envelope, so nothing distinguishing survives the boundary.
+ * Rather than guess from a status code, the hint below is shown alongside every credential
+ * failure, and the missing stable sub-code is tracked for the admin pass.
+ */
+const ERROR_KEYS = {
+	credentials: 'invalid_credentials',
+	generic: 'something_went_wrong_please_try_again',
+	resetToken: 'invalid_or_expired_reset_link',
+} as const;
 
 export const AuthStore = signalStore(
 	{ providedIn: 'root' },
-	withState(initialState),
+	withState<AuthStateModel>(INITIAL),
 	withComputed((store) => ({
-		isAuthenticated: computed(() => !!store.access_token()),
+		isAuthenticated: computed(() => store.status() === 'authenticated'),
+		isResolving: computed(() => store.status() === 'unknown'),
+		email: computed(() => store.user()?.email ?? ''),
+		/** Drives the login screen's default tab; never a policy decision. */
+		preferredLoginMethod: computed(() => store.user()?.preferredLoginMethod ?? 'password'),
 	})),
-	withMethods((store, router = inject(Router), accountStore = inject(AccountStore)) => ({
-		login(payload?: { email?: string }) {
-			// Mock: a real API would return the token; here we (re)establish the demo session.
-			patchState(store, { email: payload?.email ?? store.email(), access_token: FAKE_TOKEN });
-		},
-		logout() {
-			patchState(store, { email: '', token: '', access_token: null, permissions: [] });
-			accountStore.clear();
-			void router.navigate(['/auth/login']);
-		},
-		clear() {
-			patchState(store, { email: '', token: '', access_token: null, permissions: [] });
-			accountStore.clear();
-		},
-		forgotPassword(_payload?: unknown) {
-			// Forgot password has no backend yet.
-		},
-		verifyEmailOtp(_payload?: unknown) {
-			// OTP verification has no backend yet.
-		},
-		updatePassword(_payload?: unknown) {
-			// Update password has no backend yet.
-		},
-	})),
-	withHooks({
-		onInit(store) {
-			if (typeof localStorage !== 'undefined') {
-				const raw = localStorage.getItem(STORAGE_KEY);
-				if (raw) {
-					try {
-						patchState(store, JSON.parse(raw));
-					} catch {
-						// ignore malformed persisted state
-					}
-				}
-				effect(() => {
-					const state = getState(store);
-					localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-				});
+	withMethods(
+		(store, gateway = inject(AdminAuthGateway), accountStore = inject(AccountStore), router = inject(Router)) => {
+			function applyAnonymous(error: string | null = null): void {
+				patchState(store, { status: 'anonymous', user: null, permissions: [], error, pending: false });
 			}
+
+			async function loadSession(): Promise<boolean> {
+				const me = await firstValueFrom(gateway.currentUser());
+				if (!me) {
+					applyAnonymous();
+					return false;
+				}
+				patchState(store, {
+					status: 'authenticated',
+					user: me.user,
+					permissions: me.permissions,
+					error: null,
+					pending: false,
+				});
+				return true;
+			}
+
+			return {
+				/** Resolves the admin session from cookies once per app load. */
+				async bootstrap(): Promise<void> {
+					await loadSession();
+					try {
+						await firstValueFrom(gateway.ensureCsrfToken());
+					} catch {
+						// A missing CSRF token must not block rendering; the first unsafe
+						// request fails closed and surfaces it, which is the safe order.
+					}
+				},
+
+				async loginWithPassword(input: { identifier: string; password: string }): Promise<boolean> {
+					patchState(store, { pending: true, error: null });
+					try {
+						await firstValueFrom(gateway.loginWithPassword(input));
+						await firstValueFrom(gateway.ensureCsrfToken());
+						// Re-read /me rather than trusting the login body: permissions and PIN
+						// state come from the server, and this is the shape the rest of the app
+						// consumes anyway.
+						return await loadSession();
+					} catch {
+						applyAnonymous(ERROR_KEYS.credentials);
+						return false;
+					}
+				},
+
+				async loginWithPin(input: { identifier: string; pin: string }): Promise<boolean> {
+					patchState(store, { pending: true, error: null });
+					try {
+						await firstValueFrom(gateway.loginWithPin(input));
+						await firstValueFrom(gateway.ensureCsrfToken());
+						return await loadSession();
+					} catch {
+						applyAnonymous(ERROR_KEYS.credentials);
+						return false;
+					}
+				},
+
+				/**
+				 * Quick-resume after the idle soft lock. Refreshes the CURRENT session rather
+				 * than creating one, so the mounted route and unsaved form state survive.
+				 */
+				async resumeWithPin(pin: string): Promise<boolean> {
+					patchState(store, { pending: true, error: null });
+					try {
+						await firstValueFrom(gateway.resumeWithPin(pin));
+						// The session may have been revoked, expired, or had its role or
+						// permissions changed while the overlay was up. Re-reading /me is what
+						// makes those cases fail instead of silently resuming stale authority.
+						return await loadSession();
+					} catch {
+						patchState(store, { pending: false, error: ERROR_KEYS.credentials });
+						return false;
+					}
+				},
+
+				/**
+				 * Starts recovery. Resolves true whether or not the account exists — the API's
+				 * answer is generic by design, and branching here would rebuild the
+				 * enumeration oracle it removes.
+				 */
+				async requestPasswordReset(identifier: string): Promise<boolean> {
+					patchState(store, { pending: true, error: null });
+					try {
+						await firstValueFrom(gateway.requestPasswordReset(identifier));
+						patchState(store, { pending: false });
+						return true;
+					} catch {
+						patchState(store, { pending: false, error: ERROR_KEYS.generic });
+						return false;
+					}
+				},
+
+				async resetPassword(input: { token: string; newPassword: string }): Promise<boolean> {
+					patchState(store, { pending: true, error: null });
+					try {
+						await firstValueFrom(gateway.resetPassword(input));
+						// The server revoked every admin session and suspended PIN use, so this
+						// browser is signed out by definition; local state must follow rather
+						// than linger and look authenticated.
+						applyAnonymous();
+						return true;
+					} catch {
+						patchState(store, { pending: false, error: ERROR_KEYS.resetToken });
+						return false;
+					}
+				},
+
+				async logout(): Promise<void> {
+					try {
+						await firstValueFrom(gateway.logout());
+					} finally {
+						// Clear locally even if the call failed: leaving a back office looking
+						// signed-in after the operator asked to leave is the worse outcome.
+						applyAnonymous();
+						accountStore.clear();
+						void router.navigate(['/auth/login']);
+					}
+				},
+
+				/** Drops local session state after the API reports the session is gone (401). */
+				clear(): void {
+					applyAnonymous();
+					accountStore.clear();
+				},
+
+				clearError(): void {
+					patchState(store, { error: null });
+				},
+			};
 		},
-	}),
+	),
 );

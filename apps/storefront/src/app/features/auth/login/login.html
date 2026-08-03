@@ -18,6 +18,20 @@
 						<h3>{{ 'welcome_to_fastkart' | transloco }}</h3>
 						<h4>{{ 'register_your_account' | transloco }}</h4>
 					</div>
+					@if (error()) {
+					<!--
+						One fixed message for every failure mode. The API answers wrong password,
+						unknown address and inactive account identically so responses cannot be
+						used to discover which addresses are registered; echoing a per-case
+						message here would hand that signal back.
+					-->
+					<div
+						class="alert alert-danger"
+						role="alert"
+					>
+						{{ error() }}
+					</div>
+					}
 					<div class="input-box">
 						<form
 							class="row g-4"

@@ -9,17 +9,20 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint && pnpm check:naming",
+    "lint": "turbo run lint && pnpm check:naming && pnpm check:browser-auth",
     "check:naming": "bash scripts/check-naming.sh",
+    "check:browser-auth": "node scripts/check-browser-auth.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "e2e:session-rotation": "pnpm --filter @saha-textile/api build && pnpm --filter @saha-textile/api e2e:session-rotation",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "portal:persistent": "node scripts/serve-developer-portal-persistent.mjs",
     "mongo:up": "bash scripts/mongo-up.sh",
     "mongo:down": "bash scripts/mongo-down.sh",
     "mongo:status": "bash scripts/mongo-status.sh",
-    "mongo:wipe": "bash scripts/mongo-wipe.sh"
+    "mongo:wipe": "bash scripts/mongo-wipe.sh",
+    "mongo:align-collections": "pnpm --filter @saha-textile/adapters-db-mongo align:collections"
   },
   "devDependencies": {
     "@saha-textile/config": "workspace:*",

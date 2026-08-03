@@ -1,5 +1,7 @@
 export * from './config';
 export * from './connection';
+export * from './collection-names';
+export * from './migrations/index';
 export * from './transaction-manager';
 export * from './models/index';
 export * from './mappers';

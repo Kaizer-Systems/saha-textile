@@ -22,7 +22,7 @@ const CurrencySchema = new Schema<CurrencyDoc>(
 		paypalPct: { type: Number, default: 0 },
 		paypalFixed: { type: Number, default: 0 },
 	},
-	{ timestamps: true },
+	{ collection: 'currencies', timestamps: true },
 );
 
 CurrencySchema.index({ enabled: 1 });

@@ -36,7 +36,7 @@ const OrderSchema = new Schema<OrderDoc>(
 		status: { type: String, default: 'pending' },
 		statusTimeline: { type: [Schema.Types.Mixed], default: [] },
 	},
-	{ timestamps: true },
+	{ collection: 'orders', timestamps: true },
 );
 
 OrderSchema.index({ orderNumber: 1 }, { unique: true });

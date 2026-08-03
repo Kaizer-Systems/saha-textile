@@ -28,7 +28,7 @@ const ConsentEventSchema = new Schema<ConsentEventDoc>(
 		ipHash: { type: String, default: null },
 		userAgentHash: { type: String, default: null },
 	},
-	{ timestamps: { createdAt: true, updatedAt: false } },
+	{ collection: 'consentEvents', timestamps: { createdAt: true, updatedAt: false } },
 );
 
 /** "Latest event for this subject" is the only hot query. */

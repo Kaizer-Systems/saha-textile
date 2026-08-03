@@ -29,7 +29,7 @@ const PasswordResetTokenSchema = new Schema<PasswordResetTokenDoc>(
 		expiresAt: { type: Date, required: true },
 		consumedAt: { type: Date, default: null },
 	},
-	{ timestamps: { createdAt: true, updatedAt: false } },
+	{ collection: 'passwordResetTokens', timestamps: { createdAt: true, updatedAt: false } },
 );
 
 PasswordResetTokenSchema.index({ tokenHash: 1 }, { unique: true });
@@ -59,7 +59,7 @@ const EmailVerificationTokenSchema = new Schema<EmailVerificationTokenDoc>(
 		expiresAt: { type: Date, required: true },
 		consumedAt: { type: Date, default: null },
 	},
-	{ timestamps: { createdAt: true, updatedAt: false } },
+	{ collection: 'emailVerificationTokens', timestamps: { createdAt: true, updatedAt: false } },
 );
 
 EmailVerificationTokenSchema.index({ tokenHash: 1 }, { unique: true });
@@ -99,7 +99,7 @@ const AdminInviteSchema = new Schema<AdminInviteDoc>(
 		acceptedAt: { type: Date, default: null },
 		revokedAt: { type: Date, default: null },
 	},
-	{ timestamps: { createdAt: true, updatedAt: false } },
+	{ collection: 'adminInvites', timestamps: { createdAt: true, updatedAt: false } },
 );
 
 AdminInviteSchema.index({ tokenHash: 1 }, { unique: true });

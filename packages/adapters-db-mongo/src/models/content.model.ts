@@ -25,7 +25,7 @@ const FaqEntrySchema = new Schema<FaqEntryDoc>(
 		displayOrder: { type: Number, default: 0 },
 		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
 	},
-	{ timestamps: true },
+	{ collection: 'faqEntries', timestamps: true },
 );
 
 /** Resolving a page's FAQ set hits these three lookups. */
@@ -72,7 +72,7 @@ const ProductQuestionSchema = new Schema<ProductQuestionDoc>(
 		answeredAt: { type: Date, default: null },
 		status: { type: String, enum: ['pending', 'answered', 'rejected'], default: 'pending' },
 	},
-	{ timestamps: { createdAt: true, updatedAt: false } },
+	{ collection: 'productQuestions', timestamps: { createdAt: true, updatedAt: false } },
 );
 
 /** The PDP read: answered questions for one product. */
@@ -116,7 +116,7 @@ const ReviewSchema = new Schema<ReviewDoc>(
 		moderatedAt: { type: Date, default: null },
 		moderationNote: { type: String, default: null },
 	},
-	{ timestamps: { createdAt: true, updatedAt: false } },
+	{ collection: 'reviews', timestamps: { createdAt: true, updatedAt: false } },
 );
 
 /** One review per customer per product per order — no review-bombing your own order. */
@@ -144,7 +144,7 @@ const RatingAggregateSchema = new Schema<RatingAggregateDoc>(
 		count: { type: Number, default: 0 },
 		buckets: { type: Schema.Types.Mixed, default: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } },
 	},
-	{ timestamps: { createdAt: false, updatedAt: true } },
+	{ collection: 'ratingAggregates', timestamps: { createdAt: false, updatedAt: true } },
 );
 
 export const RatingAggregateModel: Model<RatingAggregateDoc> =

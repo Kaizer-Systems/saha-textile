@@ -17,9 +17,12 @@ import {
 	AdminInviteRequest,
 	AdminLoginRequest,
 	type AdminMeResponse,
+	AdminPasswordForgotRequest,
+	AdminPasswordResetRequest,
 	AdminPinLoginRequest,
 	AdminPinSetupRequest,
 	type AuthSessionResponse,
+	type GenericAcceptedResponse,
 } from '@saha-textile/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
@@ -37,6 +40,16 @@ import { SessionService } from './session.service';
  * cookie can never satisfy these routes, and the admin session this issues can never
  * satisfy a storefront-only one — even for the same person holding both.
  */
+/**
+ * The one response admin recovery ever returns.
+ *
+ * Held as a constant so no future edit can accidentally make one branch answer differently
+ * from another — that difference is the whole enumeration risk.
+ */
+const ADMIN_RECOVERY_ACCEPTED: GenericAcceptedResponse = {
+	message: 'If the details are correct, we have sent you an email.',
+};
+
 @ApiTags('auth')
 @Controller('auth/admin')
 @Audience('admin')
@@ -112,6 +125,11 @@ export class AdminAuthController {
 		}
 
 		const outcome = await this.auth.verifyAdminPin(user, body.pin);
+		if (outcome === 'revalidation_required') {
+			// Named separately from the brute-force lock: this one does not expire, and the
+			// operator needs to know the password is the only way to clear it.
+			throw new UnauthorizedException('PIN use is suspended; sign in with your password to re-enable it');
+		}
 		if (outcome === 'locked') {
 			// Named explicitly: the operator needs to know password login still works.
 			throw new UnauthorizedException('PIN is temporarily locked; sign in with your password');
@@ -163,6 +181,72 @@ export class AdminAuthController {
 		if (body.preferredLoginMethod) {
 			await this.auth.authUserRepository.setPreferredLoginMethod(user.id, body.preferredLoginMethod);
 		}
+	}
+
+	/**
+	 * Starts admin password recovery.
+	 *
+	 * Public because an operator who cannot sign in has no session to authenticate with —
+	 * the emailed single-use token is the authorization for the reset that follows.
+	 *
+	 * The response is byte-identical for a known admin, an unknown identifier, a customer
+	 * account and a disabled one. Anything that varied here would turn this endpoint into a
+	 * directory of back-office accounts, which is worth more to an attacker than it is to a
+	 * forgetful administrator.
+	 *
+	 * This is recovery, never a login method: no session is issued and no OTP is involved.
+	 */
+	@Post('password/forgot')
+	@Public()
+	@HttpCode(HttpStatus.ACCEPTED)
+	@ApiOperation({ summary: 'Start admin password recovery (always answers generically)' })
+	async forgotPassword(
+		@Body(new ZodValidationPipe(AdminPasswordForgotRequest)) body: AdminPasswordForgotRequest,
+		@Req() request: FastifyRequest,
+	): Promise<GenericAcceptedResponse> {
+		const identifier = body.identifier.trim().toLowerCase();
+		// Limited by identifier AND source address: one throttles targeting a single
+		// administrator, the other throttles sweeping many. Exceeding either still returns
+		// the same accepted body, so probing the limiter reveals nothing either.
+		const underLimit =
+			(await this.auth.withinRateLimit('password_reset', 'email', identifier)) &&
+			(await this.auth.withinRateLimit('password_reset', 'ip', request.ip));
+		if (underLimit) await this.auth.startAdminPasswordReset(identifier);
+
+		return ADMIN_RECOVERY_ACCEPTED;
+	}
+
+	/**
+	 * Completes admin password recovery.
+	 *
+	 * Three things happen together because a reset answers a suspected compromise, and any
+	 * one of them alone would leave a way back in:
+	 *
+	 * 1. the token is consumed atomically and must carry the `admin` audience, so a
+	 *    storefront recovery link cannot reset a back-office password;
+	 * 2. `setPasswordHash` bumps `tokenVersion` and every admin session is revoked, so an
+	 *    attacker holding a live session loses it immediately;
+	 * 3. PIN use is suspended until the administrator signs in once with the new password —
+	 *    otherwise a known PIN would still open the account the reset was meant to secure.
+	 *
+	 * The PIN hash is kept. Deleting it silently would destroy the operator's second login
+	 * method with no record; the suspension is explicit and its transitions are auditable.
+	 */
+	@Post('password/reset')
+	@Public()
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({ summary: 'Complete admin recovery; revokes sessions and suspends PIN use' })
+	async resetPassword(
+		@Body(new ZodValidationPipe(AdminPasswordResetRequest)) body: AdminPasswordResetRequest,
+		@Res({ passthrough: true }) reply: FastifyReply,
+	): Promise<void> {
+		const result = await this.auth.completePasswordReset(body.token, body.newPassword, 'admin');
+		// Expired, already-used, unknown and wrong-audience tokens fail identically.
+		if (!result) throw new UnauthorizedException('Invalid or expired reset token');
+
+		await this.auth.requirePinRevalidation(result.userId);
+		await this.sessions.revokeAllForUser(result.userId, 'password_changed');
+		this.sessions.clearCookies(reply);
 	}
 
 	@Post('refresh')
@@ -332,6 +416,11 @@ export class AdminAuthController {
 		if (!user || user.status !== 'active') throw new UnauthorizedException('Account is not active');
 
 		const outcome = await this.auth.verifyAdminPin(user, body.pin);
+		if (outcome === 'revalidation_required') {
+			// Named separately from the brute-force lock: this one does not expire, and the
+			// operator needs to know the password is the only way to clear it.
+			throw new UnauthorizedException('PIN use is suspended; sign in with your password to re-enable it');
+		}
 		if (outcome === 'locked') {
 			throw new UnauthorizedException('PIN is temporarily locked; sign in with your password');
 		}

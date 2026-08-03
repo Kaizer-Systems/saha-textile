@@ -3,7 +3,7 @@ title: 'API and Database Local Environment Bootstrap'
 description: 'Canonical local MongoDB, API, tooling, and MCP readiness handoff.'
 audience: [backend, operator, agent]
 document_role: canonical
-last_verified: 2026-07-25
+last_verified: 2026-08-02
 search_keywords: 'local environment bootstrap mongodb replica set api mcp docker'
 ---
 
@@ -55,6 +55,23 @@ search_keywords: 'local environment bootstrap mongodb replica set api mcp docker
 6. Read `project-progress.mdx` before coding.
 
 URI shape: `mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directConnection=true`
+
+### MongoDB Compass
+
+Run `pnpm mongo:status` and copy the printed `URI:` value into MongoDB Compass. The
+script resolves the effective per-machine host-port override, so it is safer than
+assuming `27017`.
+
+| Local situation                               | Compass connection string                                                                       |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Canonical default host port                   | `mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directConnection=true`             |
+| This Mac (`MONGO_HOST_PORT=27018`)            | `mongodb://127.0.0.1:27018/saha_textile_local?replicaSet=rs0&directConnection=true`             |
+| Any other collision-free per-machine override | `mongodb://127.0.0.1:<MONGO_HOST_PORT>/saha_textile_local?replicaSet=rs0&directConnection=true` |
+
+The container and replica-set member remain on internal `27017`; only the loopback
+host doorway moves. Mirror `MONGO_HOST_PORT` into the API's gitignored `MONGODB_PORT`
+and `.env.mcp`. Never stop or reconfigure an unrelated native `mongod` merely to free
+the default port, and never expose production MongoDB publicly.
 
 ---
 

@@ -3,7 +3,7 @@ title: 'Project Progress'
 description: 'Canonical cross-tool checkpoint for current implementation status and verification evidence.'
 audience: [engineering, operator, agent]
 document_role: canonical
-last_verified: 2026-07-31
+last_verified: 2026-08-02
 search_keywords: 'project progress current status checkpoint verification evidence chunks gates'
 ---
 
@@ -79,7 +79,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 ```json
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-01",
+	"lastVerified": "2026-08-02",
 	"chunks": {
 		"A": "done",
 		"B": "done",
@@ -152,6 +152,13 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 
 - 2026-07-24 — [PARTIAL] Angular + Analog storefront port exists on branch work; runtime `public/config.json` + `APP_INITIALIZER` may still need re-verify after workspace resets. Tool: cursor. Notes: confirm before claiming DONE; never bake secrets into builds.
 - 2026-07-24 — [DONE] §0b Pass 3 (storefront runtime config): created `public/config.json` + `config.example.json` (localhost defaults; apiUrl/siteUrl/locales) + `core/config/runtime-config.ts` with `provideAppInitializer` wired in `app.config.ts`; loader fills the mutable legacy `environment` (apiUrl added; fileReplacements never used for deploy URLs; SSR branch reads optional `SAHA_TEXTILE_PUBLIC_CONFIG` env, else defaults). `auth.interceptor` now sends `withCredentials: true` on every request; Bearer commented TRANSITIONAL until Chunk D. VERIFIED LIVE: dev server boots, `/config.json` 200 fetched first at init, page renders, no console errors. typecheck 0 errors; lint 0 errors (pre-existing warnings only). Tool: claude-code.
+- 2026-08-02 — [DONE] **Cookie-first auth client landed (Auth Pass 2).** `FAKE_ACCESS_TOKEN`
+  and the bearer header removed; typed `StorefrontAuthGateway` + one HTTP adapter added;
+  login/register/email-OTP-login/forgot/reset wired to the real API; the template's
+  forgot → OTP → update-password chain reshaped to match the canonical token-based reset;
+  first 8 unit specs added. Live-verified in the browser: the session survives a reload from
+  cookies alone, `st_csrf` is the only readable cookie, and browser storage holds no session.
+  Full evidence under **Auth & security**. Tool: claude-code.
 - _(append new bullets below)_
 
 ---
@@ -183,6 +190,16 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
   repo-wide `pnpm test` red even when every other package passes; scope it to an
   admin-side fix, not to a contracts/core pass. Tool: claude-code.
 - 2026-07-24 — [DONE] §0b Pass 3 (admin runtime config): created `public/config.json` + `config.example.json` (apiUrl/adminUrl localhost defaults) + `core/config/runtime-config.ts` (`provideAppInitializer`) wired in `app.config.ts`; mutable `environment` gains `apiUrl` and is filled at init. `auth.interceptor` sends `withCredentials: true`; Bearer commented TRANSITIONAL until Chunk D. VERIFIED LIVE: dev server on :4300, `/config.json` 200 at boot, renders, no console errors. typecheck 0 errors; lint 0 errors (pre-existing warnings only). Tool: claude-code.
+- 2026-08-02 — [DONE] **Cookie-first auth client landed (Auth Pass 2).** `FAKE_TOKEN`, its
+  `localStorage` persistence and the bearer header removed; demo credentials and
+  before-the-API navigation removed; typed `AdminAuthGateway` + one HTTP adapter added;
+  login now offers the two locked methods (identifier + password, identifier + six-digit
+  PIN). The `otp`, `forgot-password` and `update-password` screens were **deleted** with
+  their routes — OTP is `DO NOT BUILD AS LOGIN`, and the other two had no
+  `/auth/admin/password/**` endpoints behind them. 9 unit specs added (the app's first since
+  the scaffold spec was removed). Admin browser E2E is still owed: the Browser pane failed
+  mid-session, and no first-administrator bootstrap exists yet to sign in with. Full
+  evidence under **Auth & security**. Tool: claude-code.
 - _(append)_
 
 ---
@@ -631,6 +648,78 @@ optionSelectionHash)`, globally unique variant SKU per `DEC-SKU`, unique bundle 
   commit of order+cart-delete, rollback when consume fails after order write, and rollback
   when a later step fails before cart consume. `AuthSessionRepository.updateCsrfSecretHash`
   added for CSRF Policy B recovery. `MONGODB_PORT=27018 RUN_DB_IT=1` → **81/81**. Tool: cursor.
+- 2026-08-02 — [DONE] **Auth/database implementation brief locked with scale-aware
+  Mongo rules.** Added the owner-approved auth delivery matrix and Claude Code execution
+  prompt covering explicit storefront/admin/shared route families, language-agnostic
+  contracts, per-app hexagonal API gateways, reviewed index manifests, bounded cursor
+  queries, deterministic 1,000-product/10,000-order/multi-year-audit explain-plan
+  fixtures, and no premature sharding/Redis/CQRS. Documentation only; no auth runtime or
+  collection/index implementation is claimed. Tool: codex. Notes: implementation remains
+  Chunk D partial and must prove every index against a real Docker `rs0` query shape.
+- 2026-08-02 — [DONE] **Auth Pass 1 — physical collection names reconciled with the
+  ratified Schema Nebula graph (closes the 2026-08-01 D1 BLOCKED bullet below).**
+  The auth matrix's **RECONCILE FIRST** row was understated: `grep "collection:"` across
+  `packages/adapters-db-mongo/src/models` returned **zero** matches, so _every_ model took
+  the Mongoose default, not only the six auth ones. Live `getCollectionNames()` on rs0
+  confirmed 24 divergent physical names — `authsessions`, `otpchallenges`, `oauthstates`,
+  `passwordresettokens`, `emailverificationtokens`, `admininvites`, plus `auditlogs` and
+  `consentevents` (both locked graph nodes), the whole Chunk-E catalog/media/inventory/
+  content set, and two the default also mis-pluralized: `inventoryledgers` and
+  `messageoutboxes` against the graph's singular `inventoryLedger` / `messageOutbox`.
+  All **32** schemas now pass `collection: '<name>'` explicitly, including the seven that
+  already matched — an implicit name is a name Mongoose may change for us during a future
+  model rename. New `src/collection-names.ts` is the single declaration those literals are
+  checked against, and records two things the list alone would blur: `authRateLimits` is
+  deliberately **not** a graph node (auth architecture §7 keeps rate-limit backing an
+  adapter/runtime concern), and `productQuestions` / `ratingAggregates` are implemented
+  models the ratified 64-node graph carries **no node for** — a portal/owner documentation
+  gap recorded rather than papered over by renaming working collections.
+  **Migration, not "new collections will just appear".** Changing `collection` moves where
+  the driver reads and writes; existing documents stay behind, invisible. For sessions that
+  silently signs everyone out, and for `auditLogs` it orphans retained security evidence the
+  retention lock does not permit dropping. `src/migrations/align-collection-names.ts` +
+  `pnpm mongo:align-collections [-- --dry-run]` therefore moves the data in the same
+  reviewed step: idempotent (a second run reports `already-aligned` and issues no command),
+  **refuses to merge** when both names exist (reports `conflict`; guessing a winner could
+  destroy audit rows), and omits `dropTarget` — the one flag that could delete data.
+  Rollback is the inverse rename; no document is modified. Deliberately **not** run at boot
+  (`AGENTS.md` + the index-lifecycle rule forbid uncontrolled startup schema mutation).
+  **Verified on the real rs0 (`mongodb://127.0.0.1:27018/saha_textile_local?replicaSet=rs0&directConnection=true`):**
+  dry run listed 24 pairs and changed nothing; the real run renamed **24/24, 0 conflicts**;
+  an immediate second run reported **renamed=0**; `getCollectionNames()` now returns 32
+  camelCase names with **no lowercase straggler**; and `getIndexes()` captured before and
+  after on `authSessions`/`otpChallenges`/`adminInvites`/`auditLogs`/`mediaAssets` is
+  **byte-identical** (rename carries indexes, so the catalogue the adapter suite proves
+  survives). **Live API probe on a fresh build**, which is what proves the running system
+  uses the new names rather than recreating the old ones: register → 201 with
+  `st_access`/`st_refresh`/`st_csrf` cookies and **no token material in the body**; `/me`
+  200; `/auth/admin/me` with a storefront cookie **401** (audience isolation); refresh
+  without the CSRF header **403** and with it **200**, after which the rotated session still
+  answers 200; and the resulting rows landed in `authSessions` / `emailVerificationTokens` /
+  `authRateLimits` with **zero lowercase collections recreated**. Probe user and its
+  session/token/counter rows deleted afterwards (`users` back to 0); an API log scan found
+  no OTP/code/token material (only two route-mapping lines naming the OTP endpoints).
+  New `test/collection-names.test.ts` (8 tests) binds the model literals to the governed
+  dataset: it discovers every exported model rather than listing them, asserts each resolves
+  to its ratified name, and reads `docs/_data/instruments/schema-nebula.json` directly so a
+  rename on either side must be reconciled instead of drifting. **Mutation-verified** —
+  deleting `collection: 'authSessions'` from the schema fails with
+  `expected 'AuthSession -> authsessions' to be 'AuthSession -> authSessions'`, i.e. the
+  test reproduces the original defect exactly; restored, green. The migration suite proves
+  documents travel, idempotency, the dry run, and the merge refusal. Adapter tests
+  **81 → 89**. Gates: `pnpm typecheck` 13/13, `pnpm lint` 15/15 (0 errors) + `check:naming`,
+  `pnpm format:check`, `pnpm turbo run test --force` 9/9, `git diff --check` clean,
+  `MONGODB_PORT=27018 RUN_DB_IT=1` adapter IT **89/89**. Tool: claude-code.
+  **Deliberately NOT changed, and why:** `apps/developer-portal/plugins/portal-data/compiler.js`
+  still carries `SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 8` and a
+  `SCHEMA_NEBULA_NON_TARGET_MODEL_FILES` exclusion list whose stated reason ("Mongoose
+  currently resolves these grouped models to lowercase collection names") is now factually
+  obsolete. Promoting those stars changes a governed headline count and the nebula
+  `statusPolicy` prose, which is a portal-truth decision rather than a persistence one, and
+  `docs/_data/instruments/schema-nebula.json` currently carries uncommitted owner edits.
+  **Next executable step:** portal reconciliation of the newly-aligned stars (count,
+  exclusion list, `currentState`/`currentModel` per node, `statusPolicy`), then Auth Pass 2 —
+  storefront/admin fake-token removal and the cookie-first Angular auth boundary.
 - _(append)_
 
 ---
@@ -692,6 +781,536 @@ optionSelectionHash)`, globally unique variant SKU per `DEC-SKU`, unique bundle 
   JWT expiry; CSRF passed when session lookup was null; `GET /auth/csrf` desynced active
   sessions; carts/orders accepted foreign cart ids; order create was non-atomic. Fixes
   and tests recorded under API + DB sections above. Tool: cursor.
+- 2026-08-02 — [DONE] **Storefront/admin authentication use-case and security contract
+  captured.** Added the verbatim approved touchpoint/status matrices plus ratified
+  boundaries for shared `/auth/csrf`, storefront `/auth/storefront/**`, admin
+  `/auth/admin/**`, admin-only RBAC, cookie-session security, provider credential gates,
+  negative tests, and staged Claude Code delivery. Documentation only: fake-token Angular
+  reconciliation, OAuth/MSG91 E2E, RBAC completion, and the remaining D3-D5 implementation
+  evidence are still pending. Tool: codex.
+- 2026-08-02 — [DONE] **Auth Pass 2 — T0 reconciliation: every fake/browser-stored token
+  removed and both Angular apps put on the cookie session (closes the matrix's two
+  `RECONCILE FIRST` client rows, one of them `SECURITY CRITICAL`).**
+  **What was actually wrong.** The storefront seeded a constant `FAKE_ACCESS_TOKEN` in the
+  store's `onInit`; the admin seeded `FAKE_TOKEN` **and persisted its whole state to
+  `localStorage` under `auth_store`**. Both forwarded it as `Authorization: Bearer`, and
+  both login forms shipped working demo credentials (`admin@example.com`/`123456789`,
+  `john.customer@example.com`/`123456789`) and navigated to the dashboard **before** any
+  API call. Worth stating precisely: the fake token granted **nothing** — `SessionGuard`
+  reads the access cookie only and the API ignores bearer entirely — so this was misleading
+  state and a wrong-shaped client, not an exploitable hole. It still had to go first,
+  because `isAuthenticated` was true before anyone signed in, which would have hidden any
+  real authorization defect behind it.
+  **Boundary now in place, one per app.** `core/auth/auth-gateway.ts` is an abstract class
+  used as the DI token; `core/auth/http-auth.gateway.ts` is the ONLY file in each app
+  holding auth route paths and wire DTOs. Components, guards and stores depend on the
+  gateway, never on `HttpClient`. No prototype mutation, no inheritance-heavy base service.
+  The stores became session facades holding **sanitized identity plus a three-valued status**
+  (`unknown`/`anonymous`/`authenticated`) — the third value matters: collapsing "not resolved
+  yet" into "anonymous" bounces a signed-in user to login during hydration.
+  `provideSessionBootstrap()` resolves `/me` before routing and awaits a new
+  `runtimeConfigReady` promise, because Angular starts app initializers CONCURRENTLY and the
+  gateway needs the real `apiUrl` — assuming registration order would have been a race. On
+  the storefront it is browser-only: SSR has no cookie jar, and rendering an account shell
+  server-side is what the no-per-user-SSR-cache rule forbids.
+  **Screens wired to real endpoints** (storefront): password login, registration, email-OTP
+  login, forgot-password, token-based reset. Two template flows were reshaped rather than
+  wired as found — the template chained forgot-password → OTP → update-password, conflating
+  a single-use emailed reset TOKEN with a purpose-bound OTP CHALLENGE. Recovery now
+  acknowledges and stops (generic, so it cannot be used to test whether an address exists),
+  `update-password` redeems `?token=` from the emailed link, and the OTP screen became what
+  the API actually offers: email-OTP **login**.
+  **Admin screens deleted, not stubbed.** `auth/otp`, `auth/forgot-password` and
+  `auth/update-password` are gone with their routes. The OTP screen is `DO NOT BUILD AS
+LOGIN` — leaving a reachable route that mints a session from an emailed code contradicts
+  the locked admin method list, and "it doesn't work yet" is not a control. The other two
+  implemented the template's OTP-token recovery against `/auth/admin/password/**`, which
+  **does not exist**; a recovery screen that cannot recover is worse than none because it
+  reads as supported. They return with the endpoints, in the canonical shape. Admin login
+  now offers the two locked methods (identifier + password, identifier + six-digit PIN) with
+  the identifier validated as a string, not an email, since usernames are valid.
+  **Mechanical guard added.** `scripts/check-browser-auth.mjs`, wired into `pnpm lint`
+  beside the naming law, enforces five rules across both apps: no fake/demo token, no bearer
+  header, no session in `localStorage`/`sessionStorage`/IndexedDB, auth paths only in the
+  one gateway, and **no cross-audience route** (storefront code cannot name `/auth/admin`,
+  and the reverse). It strips comments before matching — a checker that forbids documenting
+  the rule it enforces is a checker people delete. **Mutation-verified:** a probe file
+  containing all five violations produced 8 errors across all 5 rules; removing it went
+  green. A unit test could not host this (it needs Node's fs, and neither browser app has or
+  should have Node types).
+  **i18n:** failure states are Transloco KEYS, not English sentences in TypeScript — the
+  Machine-1 rule — and one generic key covers every credential failure so the UI cannot
+  re-leak the account existence the API's uniform 401 hides. 7 keys added to each app's
+  `en.json` by textual append (a `JSON.parse`/`stringify` round-trip reordered keys and
+  retabbed the file; that was reverted). French deliberately NOT authored — `DEC-TRANSLATION-QUALITY`
+  is unresolved and `fallbackLang: 'en'` renders English rather than a placeholder token.
+  **Two real defects found while testing.** (1) `logout()` used `try/finally`, which does
+  not swallow — the store cleared correctly but the promise still rejected into click
+  handlers; now caught explicitly, and three call sites `void` it. (2) The admin PIN-lock
+  message is **unreachable**: `AdminAuthController` throws "PIN is temporarily locked; sign
+  in with your password", but `HttpExceptionFilter` replaces every 401 with the generic
+  `unauthorized` envelope, so nothing distinguishing crosses the boundary. Client-side
+  detection was written, found dead, and removed rather than left as decoration; the login
+  screen shows a standing hint instead. **The API needs a stable machine-readable sub-code
+  for this — tracked for the admin pass.**
+  **Live browser verification (storefront, real dev server + real API on a fresh build).**
+  Login page renders with **empty** credential fields. Registered a real customer through
+  the UI: landed on `/account/dashboard`; `localStorage` held only `ngrx_cart`, `language`,
+  `site_config_session`; `sessionStorage` empty; `indexedDB.databases()` empty; and the
+  **only readable cookie was `st_csrf`** — `st_access`/`st_refresh` invisible to
+  `document.cookie`, which is the httpOnly proof. **Full page reload kept the session and
+  the protected route**, proving it is re-read from cookies via `/me` rather than restored
+  from storage. Logout → `/auth/login`; re-requesting `/account/dashboard` afterwards
+  redirected to login. Network trace, in order: `/me` **401** → `/auth/csrf` 200 → register
+  **201** (CORS preflight 204) → `/auth/csrf` 200 → after reload `/me` **200** → logout
+  **204** → `/me` **401**. The logout 204 is itself evidence the CSRF header injection works:
+  an unsafe cookie-authenticated request without a matching header is a 403.
+  **Admin browser E2E NOT run — stated plainly.** The Browser pane became unavailable
+  mid-session and would not composite frames; retries and a fresh tab did not recover it.
+  Admin is covered by unit tests, the lint guard, and a **built-bundle scan** instead, and
+  its in-browser run is owed. Independently, there is **no first-administrator bootstrap
+  anywhere in the repo**, so no admin account can exist yet to sign in with — that is Pass 6.
+  **Built-bundle scan (the matrix's explicit requirement), 74 admin + 416 storefront JS
+  files:** `laravel_sanctum`, `FAKE_ACCESS_TOKEN`, `FAKE_TOKEN`, `admin@example.com`,
+  `john.customer@example.com`, `Bearer ${` and `auth_store` are **all absent from both**;
+  the three deleted admin routes are absent; `/auth/admin/` appears in exactly one chunk. The
+  scan is not vacuous — the same patterns are still present in `git show HEAD` for those
+  files (4 matches in the admin store, 2 in the storefront store, 2 demo credentials in the
+  admin login).
+  **Tests:** storefront 0 → **8**, admin 0 → **9** (the first specs either app has had since
+  the scaffold spec was removed on 2026-07-31). Each asserts something the previous
+  implementation would fail, including "writes nothing to browser storage across a full
+  session lifecycle". **Mutation-verified:** flipping the admin store's initial status to
+  `authenticated` fails `starts unresolved rather than authenticated`; restored, green.
+  Gates: `pnpm typecheck` 13/13, `pnpm lint` 15/15 (0 errors) + `check:naming` +
+  `check:browser-auth`, `pnpm format:check`, `pnpm turbo run test --force` **9/9**
+  (contracts 140, core 36, api 64, admin 9, storefront 8), `MONGODB_PORT=27018 RUN_DB_IT=1`
+  adapter IT **89/89**, both Angular production builds, `git diff --check` clean. Probe user
+  and its session/token/counter rows deleted afterwards (`users` back to 0); API log scan
+  found no credential values, only route-mapping lines. Tool: claude-code.
+  **Known gaps this pass deliberately did NOT close:** refresh single-flight (concurrent
+  401s each rotate — `TODO(auth pass 3)` in both interceptors); the shared transport package
+  (the CSRF cookie reader is duplicated per app, and neither Angular app consumes
+  `@saha-textile/contracts` at all yet); protected deep-link continuation beyond the
+  storefront's existing `redirectUrl`; admin idle soft lock and quick-resume UX; and the
+  storefront's global error interceptor logging expected anonymous `/me` 401s as errors.
+  **Next executable step:** Pass 3 — the shared transport primitive as a workspace package,
+  contracts consumption in both apps, and refresh single-flight.
+- 2026-08-02 — [REVERTED] **Pass 2's deletion of the admin `forgot-password` and
+  `update-password` screens was wrong and has been undone.** The matrix marks
+  `Admin password recovery request` **GOOD TO GO — LOCAL SUBSTITUTE** and
+  `Admin password reset` **GOOD TO GO** — instructions to build, not to remove. Deleting
+  their UI exceeded what was approved; the reasoning behind it (a route with no endpoint
+  reads as supported when it is not) held only for the OTP screen, whose row genuinely does
+  say `DO NOT BUILD AS LOGIN`. Screens restored from git and rebuilt against real endpoints;
+  see the entry below. Owner raised this directly. Tool: claude-code.
+- 2026-08-02 — [DONE] **Admin password recovery built end to end (Auth Passes 2a–2f).**
+  Delivered in six small passes so each stayed independently verifiable.
+  **2a — contracts.** `AdminPasswordForgotRequest` (identifier only) and
+  `AdminPasswordResetRequest` (token + 12-char password floor). One test asserts the forgot
+  shape has EXACTLY one key, which is structural proof it cannot quietly grow an OTP code
+  field later. Contracts 140 → **145**.
+  **2b — `POST /auth/admin/password/forgot`.** Public (an operator who cannot sign in has no
+  session), rate-limited by identifier AND source IP, accepts email or username like admin
+  login. `startAdminPasswordReset` refuses unknown identifiers, customer accounts, disabled
+  accounts and admins with no email address — all silently, because the controller answers
+  generically either way. **Live-probed:** an unknown identifier and a real admin looked up
+  **by username** returned **byte-identical** bodies (`cmp` clean); malformed → 400. The DB
+  showed one `passwordResetTokens` row (`audience: admin`, 64-char hash, no plaintext field),
+  **0 OTP challenges** and **0 sessions** — the last two being the real proof this is
+  recovery and not a login path. API 64 → **71**.
+  **2c — `POST /auth/admin/password/reset` + the locked security behavior.** New
+  `users.pinRevalidationRequiredAt` threaded contract → model → port → adapter, kept separate
+  from `pinLockedUntil` on purpose: that one is the five-failure brute-force lock and
+  self-heals after fifteen minutes, while this one has no expiry and clears only on a
+  successful password login. Collapsing them would let a timer silently restore a credential
+  a suspected compromise had suspended. `recordSuccessfulLogin` clears it in the SAME write,
+  so no caller can skip it. The reset is audience-bound. **Live-probed against a real admin
+  account:** a storefront-audience token against the admin reset → **401** with the password
+  unchanged and sessions intact, yet the token still consumed so it cannot be retried on the
+  storefront; the admin-audience token → **204**; replay → **401**; after the reset the
+  password changed, **the PIN hash was KEPT not deleted**, revalidation was set,
+  `tokenVersion` went 0 → 1, live admin sessions **0** and revoked **1**; PIN login while
+  suspended → **401**; password login with the new password → **200** and the suspension
+  cleared with the PIN hash still present. A bonus finding: inserting a second reset row with
+  an identical hash failed `E11000 tokenHash_1`, confirming the unique index works. Log scan
+  found no token or password material. API 71 → **79**.
+  **2d — admin client.** Gateway gained `requestPasswordReset`/`resetPassword`; the HTTP
+  adapter gained both paths and remains the only file in the app holding them. A successful
+  reset clears local session state because the server has already revoked everything. Admin
+  tests 9 → **12**; 8 i18n keys appended textually so file order and tabs survived.
+  **2e — screens restored and rewired.** `forgot-password` → generic acknowledgement with no
+  branch on existence; `update-password` reads `?token=` so the emailed link and the paste
+  path converge; `otp` **repurposed** as the recovery-token step. The repurposing is
+  structural rather than documented: `otp.ts` does not inject `AuthStore` at all — the only
+  match for that name in the file is the comment explaining why — so it has no route to a
+  login, OTP-verify or session method. Its field is a free-form token, not a six-digit box,
+  so nobody is invited to wire it to a challenge. **Bundle-verified:** all three routes and
+  both recovery endpoints present, and **zero** `email-otp` references anywhere in the admin
+  bundle.
+  **2f — KB.** New matrix §2.5 records the disposition and the correction. §1 was left
+  untouched: it is the approved review preserved word for word, so an implementation
+  reconciliation belongs in the addendum, not in those tables.
+  Gates after each pass: `pnpm typecheck` 13/13, `pnpm lint` 15/15 (0 errors) +
+  `check:naming` + `check:browser-auth`, `pnpm format:check`, `pnpm turbo run test --force`
+  **9/9**, adapter IT **89/89**, admin production build. Probe admin and all its rows deleted
+  afterwards (`users` back to 0). Tool: claude-code.
+  **Known gaps.** The API still cannot tell a client WHY a PIN was refused — the controller
+  raises a specific message but the global filter replaces every 401 with the generic
+  `unauthorized` envelope, so the UI shows a standing hint instead of a precise reason; a
+  stable machine-readable sub-code is needed. No first-administrator bootstrap exists, so
+  recovery was probed against a directly-seeded account rather than an invited one. Admin
+  browser E2E is still owed from Pass 2. Real email delivery remains the console adapter.
+  Developer-portal derived pages were deliberately NOT touched in these passes at the owner's
+  instruction; a separate tool reconciles them, and the portal validator will flag the
+  affected pages until it runs.
+  **Next executable step:** Pass 3 — shared transport primitive as a workspace package,
+  contracts consumption in both Angular apps, and refresh single-flight.
+- 2026-08-02 — [DONE] **Auth Pass 3a — `@saha-textile/http-transport`, the shared transport
+  primitive, created and proven to integrate. Package only; no app consumes it yet (3b).**
+  **Why alone.** Neither Angular app depended on ANY workspace package before this
+  (verified: only `apps/api` had `workspace:*` entries), so the risk being isolated was not
+  the logic — it was whether a new package resolves, compiles and bundles through Analog/Vite
+  SSR and the admin builder under its `strict: false` tsconfig. Bundling that question with a
+  behaviour change would have made a failure ambiguous.
+  **What it owns** (auth matrix §2.2, minus what would have been dead code): the
+  double-submit CSRF contract (`CSRF_HEADER_NAME`, both accepted cookie spellings, a pure
+  `readCsrfTokenFrom(jar)` plus an SSR-safe ambient reader), `RefreshCoordinator`
+  single-flight, safe error mapping (`toTransportFailure` + `isUnauthorized`/`isForbidden`/
+  `isRetryable`), base-URL joining with an absolute/protocol-relative refusal, and request-id
+  reading. It owns NO business policy — no route paths, no audience, no store — because those
+  differ per app and a shared module holding them becomes the god service §2.2 forbids.
+  **Cancellation was deliberately NOT abstracted:** Angular cancels by unsubscribing, and a
+  framework-free `AbortSignal` wrapper nothing calls is exactly the dead client code the
+  continuation brief's rule 8 warns about. It stays in each app's HTTP adapter.
+  **Three decisions worth stating.** (1) **ESM output** (`"type": "module"`), unlike
+  `contracts`/`core-domain`, because both apps bundle this directly and a CJS workspace
+  dependency is the classic source of optimization-bailout warnings. (2) **No `DOM` lib** —
+  ambient `document` is reached through a narrow `globalThis` declaration, so every export is
+  unit-testable in Node and safe to evaluate under SSR rather than throwing. (3) **No runtime
+  dependency on `@saha-textile/contracts`.** The error envelope is declared structurally
+  here; a value import would pull Zod into both browser bundles as a side effect of adopting
+  the transport, pre-empting the bundle-size question pass 3d is supposed to decide
+  deliberately. `pnpm install` added/downloaded **0** packages — the package has zero
+  third-party dependencies.
+  **Guards, all mutation-verified.** A root ESLint block mirrors the core-domain rule:
+  contracts is `allowTypeImports`, Zod/Angular/RxJS/Analog/NestJS/Fastify/Mongoose/adapters
+  are refused outright. `test/runtime-purity.test.ts` compiles to a throwaway dir and asserts
+  the emitted JS imports **nothing at all** — not even a `node:` builtin, which is where it
+  differs from core's. `test/contract-alignment.test.ts` asserts the duplicated error shape
+  stays assignable to the contract **in both directions** and enumerates the code union as a
+  `Record<ContractApiErrorCode, true>`, so a code added to contracts and forgotten here fails
+  to compile. **Proofs run:** a value import of contracts appended to `errors.ts` produced 1
+  ESLint error AND 2 purity-test failures (`errors.js references/imports
+@saha-textile/contracts`); deleting `'conflict'` from the local union failed typecheck on
+  the alignment assertions naming exactly that member. Both probes reverted, green.
+  **Two real defects found and fixed while building.** (1) `*/` inside two doc comments
+  (`/;\s*/` and `POST /auth/*/refresh`) terminated the comment early and produced 14 parse
+  errors — the build caught it, not review. (2) The purity scanner matched the package's own
+  doc comments explaining why contracts/`document` are absent; it now strips comments first,
+  matching the `check-browser-auth.mjs` convention that a checker forbidding documentation of
+  its own rule is a checker people delete.
+  **Integration proof, then removed.** A temporary probe wired `toTransportFailure` into both
+  interceptors so tree-shaking could not drop it. Both production builds succeeded, and the
+  package's code is present in the admin bundle, the storefront **client** bundle, the Analog
+  **SSR renderer chunk** and `main.server.js` — with **zero** `ZodError` matches in either
+  client bundle. The probe was reverted and both interceptors verified **byte-identical** to
+  their pre-probe state by md5; `grep -rn http-transport apps/*/src` returns nothing.
+  The permanent app-side change is the `workspace:*` dependency declaration in both
+  `package.json` files (which also gives Turbo the right build order for 3b) — no app source
+  was changed.
+  **Tests:** new package **122** across 7 files; repo total 280 → **402**.
+  **Commands actually run:** `pnpm typecheck` 15/15 · `pnpm lint` 17/17 (0 errors, 6
+  pre-existing storefront warnings) + `check:naming` + `check:browser-auth` both OK ·
+  `pnpm format:check` **all files** · `pnpm turbo run test --force` **11/11** (contracts 145,
+  http-transport 122, core-domain 36, api 79, admin 12, storefront 8, adapters 89 with 85
+  skipped absent `RUN_DB_IT`) · `git diff --check` clean · both Angular production builds ·
+  `CI=true pnpm install` accepts the lockfile. Adapter DB integration was **not** re-run:
+  this pass touches no persistence. No browser E2E: nothing user-visible changed.
+  **One repo-hygiene fix:** `pnpm install` reformatted `pnpm-lock.yaml` away from Prettier
+  style. HEAD's lockfile was verified prettier-clean first, so this was new drift rather than
+  pre-existing debt; it was reformatted and `CI=true pnpm install` re-verified afterwards.
+  **Next executable step:** 3b — consume the package from both interceptors and delete the
+  duplicated `core/auth/csrf-cookie.ts` in each app, keeping `check:browser-auth` green.
+  Tool: claude-code.
+- 2026-08-02 — [DONE] **Auth Pass 3b — both Angular interceptors now consume
+  `@saha-textile/http-transport`; the duplicated `core/auth/csrf-cookie.ts` is deleted from
+  each app. Behaviour-preserving refactor.**
+  **Scope.** The two interceptors were the ONLY importers of `csrf-cookie.ts` in either app
+  (verified before touching anything), so the move is four edits and two deletions. Both now
+  import `readCsrfToken`, `isUnsafeMethod` and `CSRF_HEADER_NAME` from the package, and the
+  header name is the shared constant rather than a repeated `'x-csrf-token'` literal. What
+  stays app-side is app policy: storefront maintenance-mode routing and `authClear()`; admin
+  `clear()` plus the return to `/auth/login`. The removed files were byte-for-byte identical
+  across the two apps, so a change to the API's cookie naming previously had two places to be
+  remembered and only one would have failed visibly.
+  **Nothing else changed.** No 401 handling, no refresh wiring, no error mapping — those are
+  3c, and folding them in would have made a behaviour regression indistinguishable from a
+  wiring mistake. The `TODO(auth pass 3)` markers in both interceptors were re-pointed to
+  `3c` and now note that the coordinator and error mapping already exist in the package, so
+  only the wiring is outstanding.
+  **Evidence that "behaviour-preserving" is a claim and not an assertion.** Each app gained
+  an interceptor spec (8 cases each) written against the observable contract with the API
+  rather than the implementation, so the same cases pass before and after the move:
+  credentials on every request, the CSRF header echoed on unsafe methods only, the right
+  cookie found in a populated jar, nothing attached when no cookie exists, a 401 clearing
+  local state while the error still propagates, and a 500 leaving state alone. The cookie is
+  set through jsdom's real `document.cookie`, so these also exercise the package's ambient
+  `globalThis` reader in a browser-like environment rather than the pure jar-in/value-out
+  function its own unit tests cover. **Mutation-verified:** dropping the `isUnsafeMethod`
+  guard from the admin interceptor fails `does not attach the header on a safe method`;
+  restored and md5-verified identical, green.
+  **Two findings worth recording.** (1) The `__Host-st_csrf` spelling **cannot** be tested at
+  the app level: the prefix requires `Secure`, so jsdom's jar refuses it over the
+  `http://localhost` test origin exactly as a real browser would. It is covered by
+  `packages/http-transport/test/csrf.test.ts` against the pure reader, and both specs say so
+  where the case would otherwise be expected. (2) `check-browser-auth` correctly flagged the
+  first draft of both specs for naming `/auth/admin/me` and `/auth/storefront/me` — its
+  `auth-paths-live-in-one-gateway` rule does not exempt tests. The specs now use ordinary
+  routes (`/orders`, `/catalog/products`), which is truthful anyway since the interceptor is
+  path-agnostic; adding a `browser-auth:allow` marker would have spent the guard's credibility
+  on nothing.
+  **Bundle check after the move:** `__Host-st_csrf` — which now exists only inside the shared
+  package — is present in the admin bundle, the storefront client bundle AND
+  `dist/ssr/main.server.js`, proving the shared reader is what actually ships on both the
+  browser and SSR sides. The package's unused `errors.ts` strings are **absent** from the
+  admin bundle, so `sideEffects: false` tree-shaking works and adopting the package costs
+  only what is used. No `ZodError` in either client bundle.
+  **Tests:** admin 12 → **20**, storefront 8 → **16**; repo total 402 → **418**.
+  **Commands actually run:** `pnpm typecheck` 15/15 · `pnpm lint` 17/17 (0 errors) +
+  `check:naming` + `check:browser-auth` both OK · `pnpm format:check` all files ·
+  `pnpm turbo run test --force` **11/11** · `git diff --check` clean · both Angular production
+  builds · nothing staged. Adapter DB integration **not** re-run (no persistence touched). No
+  browser E2E: the refactor is behaviour-preserving and nothing user-visible changed; the
+  admin in-browser run owed since Pass 2 is still owed and still blocked on 6a.
+  **Next executable step:** 3c — refresh single-flight and 401 recovery, wiring
+  `RefreshCoordinator` and `toTransportFailure` into both interceptors so concurrent 401s
+  trigger ONE rotation instead of one per in-flight request. Tool: claude-code.
+- 2026-08-03 — [DONE] **Auth Pass 3c — refresh single-flight and 401 recovery wired into both
+  Angular apps. Closes the `TODO(auth pass 3)` markers carried since Pass 2.**
+  **What was actually broken.** A 401 dropped the session outright. That is worst on the
+  admin, whose access cookie lives **15 minutes** against a 12-hour absolute window: an
+  operator filling in a long form crossed that boundary routinely, and saving would fail and
+  bounce them to login with the work on screen and unsavable. A reload after the access
+  cookie lapsed also signed the user out even though the refresh cookie was valid for hours
+  (admin) or months (storefront), because `/me` answered 401 and nothing tried to recover.
+  **The recovery path.** A 401 on an ordinary request now rotates the session once and
+  replays the request. Four rules make that safe rather than a new failure mode:
+  (1) **One rotation, never one per request** — `RefreshCoordinator` from the transport
+  package. The API's rotation is atomic and reuse-detecting, so a losing concurrent rotation
+  presents a token that was just rotated away; the API cannot distinguish that from theft and
+  revokes the whole refresh family. Since one expired access cookie fails EVERY in-flight
+  request simultaneously, racing here is the normal case, not an edge case — the user would
+  be signed out for the crime of loading two requests at once. (2) **Never on a credential
+  endpoint** — a 401 from login/PIN/OTP/recovery means the credential was refused, and
+  rotating after a failed rotation would be infinite. (3) **The replay re-reads the CSRF
+  cookie** — rotation replaces `csrfSecretHash` server-side and issues a new `st_csrf`, so
+  replaying with the pre-rotation header would 403 and read as an auth failure.
+  (4) **One verdict per session** — a new opt-in `latchOnFailure` on the coordinator stops a
+  failed rotation being re-attempted on every later 401, which bounds an anonymous visitor to
+  a single refresh request rather than one per protected call. The latch clears when an
+  authentication call succeeds, observed from the interceptor rather than by touching stores.
+  Replaying the original request is safe because the API raises 401 in its global session
+  guard BEFORE any handler runs, so the first attempt had no effect to duplicate. That is a
+  different question from the package's `isRetryable`, which governs TRANSIENT retries and
+  refuses unsafe methods precisely because those may have landed; the distinction is recorded
+  in both interceptors so the two are not later "unified".
+  **Where the knowledge lives.** The gateway gained `refreshSession()` and
+  `isCredentialEndpoint(url)` — the classification belongs there because the gateway is the
+  one file that owns route paths, and the interceptor asks rather than pattern-matching URLs
+  it should not know. Matching is path-only, so a query string or the configured API origin
+  cannot change the answer and a path that merely CONTAINS a credential route is not mistaken
+  for one. A pre-check for a readable CSRF cookie skips rotation that could only 403, which
+  also makes the storefront interceptor inert under SSR where there is no cookie jar.
+  **Global error interceptor fixed in both apps (carried debt from Pass 2).** It logged and
+  toasted every 401, including the anonymous `/me` probe that answers 401 by design — so
+  every first page load looked broken. Worse after this pass: it sits downstream of the auth
+  interceptor and would have put an error toast on screen during a refresh that then
+  succeeded. 401 is now the auth layer's alone; an unrecoverable one is still visible because
+  the session is cleared and the user returns to login.
+  **Tests: repo 418 → 483.** http-transport 122 → **129** (latch semantics, including that
+  joined callers still see the real rejection and that the default stays unlatched, so 3a's
+  documented behaviour is unchanged). Admin 20 → **40**, storefront 16 → **37**: interceptor
+  specs covering rotate-and-replay, concurrent-401 single flight, CSRF re-read, credential
+  endpoints, rotation failure, the latch and its clearing, second-401 on replay, non-auth
+  replay failure, and no-CSRF-cookie; plus a new gateway spec per app.
+  **The gateway spec is worth describing.** It writes NO route literals. Each URL is captured
+  from the gateway's own request through `provideHttpClientTesting` and fed back into
+  `isCredentialEndpoint`, so the route table and the classification cannot drift apart — and
+  no credential path appears outside the one HTTP adapter, which `check-browser-auth`
+  enforces and specs are not exempt from.
+  **Mutation-verified, three ways.** Bypassing the coordinator failed the concurrency test AND
+  the latch test; replaying without re-preparing the request failed the CSRF re-read test;
+  classifying `/me` as a credential endpoint failed the gateway spec. All reverted and
+  md5-verified.
+  **One stale-scaffold fix.** `apps/storefront/tsconfig.spec.json` declared `types:
+["jasmine"]` — a leftover from the Angular scaffold describing a runner this repo does not
+  use. It also meant a spec importing the app's runtime config failed the Analog transform
+  with "Cannot find name 'process'" (the SSR branch's `process.env` lookup, which
+  `tsconfig.app.json` already declares `node` for). Changed to `["node"]`.
+  **Deliberately NOT wired: `toTransportFailure`.** The interceptors classify on
+  `error.status`, and the package's error mapping stays unused — bundle-verified, its strings
+  are absent from both apps. Nothing in the transport layer renders a message today; wiring
+  it would be decoration, and the sub-code the admin UI actually needs to tell "wrong PIN"
+  from "PIN locked" from "suspended pending revalidation" is an **API** gap (the global filter
+  collapses every 401 to the generic envelope), still tracked as carried debt for pass 4/6.
+  **Commands actually run:** `pnpm typecheck` 15/15 · `pnpm lint` 17/17 (0 errors) +
+  `check:naming` + `check:browser-auth` both OK · `pnpm format:check` all files ·
+  `pnpm turbo run test --force` **11/11** · `git diff --check` clean · both Angular production
+  builds · nothing staged. Bundle proof: the coordinator ships in the admin bundle, the
+  storefront client bundle and `dist/ssr/main.server.js`; no `ZodError` in either client
+  bundle. Adapter DB integration **not** re-run (no persistence touched).
+  **No browser E2E — stated plainly.** Rotation is now unit-proven at the interceptor
+  boundary, but the behaviour that matters (a real expired access cookie recovering against
+  the live API without the refresh family being revoked) has not been exercised in a browser.
+  For the storefront that is worth doing and is owed; for the admin it remains blocked on 6a,
+  since no first-administrator bootstrap exists to sign in with.
+  **Next executable step:** 3d — wire `@saha-textile/contracts` into both apps and replace the
+  hand-written wire DTOs in the gateways, checking the bundle-size impact since contracts
+  pulls Zod. Tool: claude-code.
+- 2026-08-03 — [DONE] **Auth Pass 3c.1 — three defects in 3c's own recovery path closed,
+  one of them a regression of the very bug 3c set out to fix.**
+  **1. A returning visitor was still logged out (the serious one).** 3c refused to rotate
+  when no CSRF cookie was readable, reasoning that the POST would 403. Checking that claim
+  against the API showed the reasoning was right and the conclusion wrong: `csrfCookieOptions`
+  in `apps/api/src/common/cookies.ts` sets **no `maxAge`**, so `st_csrf` is a browser-SESSION
+  cookie, while `sessionCookieOptions` gives access and refresh an explicit one. Close the
+  browser, come back tomorrow, and a storefront customer inside their 30-day refresh window —
+  or an operator inside their 12-hour one — arrives with a perfectly valid session and no
+  readable double-submit half. 3c dropped them for it. The interceptor now acquires a token
+  through the gateway's existing `ensureCsrfToken()` and then rotates, both inside the
+  coordinator so the acquisition is single-flighted too. The guard that remains is
+  `hasBrowserCookieJar()` — new in the transport package — which excludes server rendering
+  only, and for a different reason: there is no jar to populate and no user agent to carry
+  the result, so the requests could never help rather than merely lacking a value.
+  **2. Cross-tab rotation race (introduced by 3c).** Single-flight is per tab. Two tabs whose
+  access cookies lapse together could both rotate; the loser presents a token that was just
+  rotated away, which the API reads as theft — it revokes the whole family and records a
+  "reuse detected" security event that never happened. Closed with the **Web Locks API**
+  (owner-selected over a `BroadcastChannel` leader) via a new `withBrowserLock`. Reasons
+  recorded because the choice is not obvious: this is mutual exclusion, not messaging, and
+  the browser releases a lock automatically if the holding tab is closed mid-rotation —
+  a hand-rolled leader needs a timeout for that, and every value is either short enough to
+  permit the second rotation it was meant to prevent or long enough to hang every other tab.
+  Where Web Locks is unavailable (pre-15.4 Safari, insecure context, SSR) it falls through to
+  exactly the previous behaviour rather than refusing to rotate. A follower that waits and
+  then rotates again is accepted rather than optimised away: the leader has already set a new
+  cookie, so no reuse is detected. Lock names are audience-specific so a shared origin could
+  not serialise two unrelated sessions.
+  **3. Logout cleared the refresh latch.** The latch was reset on ANY 2xx from a credential
+  endpoint, and logout is one — so after signing out, the next 401 spent a pointless rotation.
+  The gateway gained `isSessionEstablishingEndpoint()`, a strict subset: logout succeeds by
+  ENDING a session, `password/forgot` only sends an email, `password/reset` revokes every
+  session by design, and an OTP REQUEST only issues a challenge — it is the verify that mints
+  the session. Admin `resume` does belong there: it extends the operator's existing session,
+  so its success is direct evidence that session is alive.
+  **Plus the trailing fix from the same review:** `apps/admin/tsconfig.spec.json` carried the
+  identical stale `types: ["jasmine"]` the storefront had, and `@types/jasmine` is **not
+  installed anywhere in the workspace** — the entry named a package that does not exist. It
+  had not bitten admin only because no admin spec had yet imported something needing Node
+  types. Aligned to `["node"]`.
+  **Tests: repo 483 → 512.** http-transport 129 → **142** (`withBrowserLock` incl. serialised
+  holders, failure release, and every ambient-detection fallback; `hasBrowserCookieJar`
+  including the distinction that an EMPTY jar is recoverable while no jar is not). Admin
+  43 → **50**, storefront 40 → **48**: CSRF acquire-then-rotate, its failure path, both latch
+  directions, the cross-tab lock (asserting the audience-specific name), and gateway coverage
+  proving every session-establishing route is also a credential route while the reverse is
+  not. **Mutation-verified three ways:** restoring the `readCsrfToken() !== null` guard failed
+  both acquire-then-rotate cases; removing `withBrowserLock` failed the lock case; adding
+  logout to the session-establishing list failed the gateway case. All reverted, md5-checked.
+  **Two limits stated rather than papered over.** The SSR branch cannot be reproduced at the
+  interceptor level — jsdom always provides a document — so it is covered in the package
+  against `hasBrowserCookieJar()`, and both specs say so where the case would be expected.
+  And a genuinely anonymous visitor now pays one CSRF acquisition plus one refused rotation on
+  first load before the latch settles; that is the deliberate price of not logging out
+  returning users, and it is bounded to one attempt per page load.
+  **Commands actually run:** `pnpm typecheck` 15/15 · `pnpm lint` 17/17 (0 errors) +
+  `check:naming` + `check:browser-auth` both OK · `pnpm format:check` all files ·
+  `pnpm turbo run test --force` **11/11** · `git diff --check` clean · both Angular production
+  builds · nothing staged. Bundle proof: the audience-specific lock names appear in the admin
+  bundle, the storefront client bundle and `dist/ssr/main.server.js`; no `ZodError` in either
+  client bundle. Adapter DB integration **not** re-run (no persistence touched). Still no
+  browser or live-API exercise of rotation — that is 3c.2.
+  **Next executable step:** 3c.2 — a deterministic cookie-jar test against the real API with a
+  short `JWT_ACCESS_TTL`: sign in, let the access cookie expire, hit a protected route, and
+  assert rotation, replay, the CSRF-recovery path, and that the refresh family is NOT revoked.
+  Tool: claude-code.
+- 2026-08-03 — [DONE] **Auth Pass 3c.2 — session rotation proven against the REAL API and a
+  real replica set. 7/7 cases pass; the client half was already unit-proven, this is the
+  server half.**
+  **What it proves.** Registration issues `st_access`/`st_refresh`/`st_csrf` with no token
+  material in the body; an access JWT that has genuinely expired makes `/me` answer 401 while
+  the refresh cookie is still valid; rotating recovers it and the replayed request succeeds;
+  three sequential rotations do **not** revoke the family (a false reuse detection would have
+  signed the user out — the exact failure the client's single-flight and cross-tab lock exist
+  to avoid); replaying a rotated-away token IS detected, with the family revoked and
+  `revokeReason: 'reuse_detected'` persisted; and a session missing only its CSRF half
+  recovers through `GET /auth/csrf` and then rotates.
+  **Command:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` (builds the API first). It is
+  deliberately outside `pnpm test`, like the adapter integration suite, because it needs a
+  live replica set.
+  **A production refactor was required first, and it is the interesting part.** `main.ts`
+  held composition AND startup, so the only way to exercise the real pipeline was to run the
+  real server — which is why no test ever had. Composition moved to `src/bootstrap.ts`
+  (`createApp`), leaving `main.ts` with exactly what a test must not do: read the ambient
+  environment and take a port. A harness that re-created the wiring itself would have been
+  worse than none, because it would prove an application production does not run. Verified by
+  booting the rebuilt API: `/health/live` 200, `/health/ready` 200 with `mongodb: up`,
+  `/openapi.json` 200, correlation ids and redacted pino logging intact.
+  **Why a script and not a Vitest suite — stated because it is a real constraint.** Nest
+  resolves constructor dependencies from `emitDecoratorMetadata`, which esbuild (and so
+  Vitest) cannot emit; booting `AppModule` under Vitest fails with `Nest can't resolve
+dependencies of the SessionGuard (?, …)`. The options were `unplugin-swc` + `@swc/core` —
+  two dependencies, one with a native binary, purely for test tooling — or driving the
+  compiled output, which `nest build` produces through tsc with full metadata. The compiled
+  output is also the artifact production runs, so it is the higher-fidelity option as well as
+  the cheaper one.
+  **Four things the run surfaced, three of them my own errors — recorded because the last one
+  nearly became a false report.**
+  (1) **A real trap in my own extraction:** `createApp(config)` shapes only the Fastify
+  adapter, CORS and rate limits. `ConfigModule` provides `APP_CONFIG` through its own
+  `loadConfig()` call, so every service reads `process.env` independently — the harness passed
+  `JWT_ACCESS_TTL=1s` and watched the access cookie refuse to expire. The parameter now
+  documents this loudly, and the harness sets `process.env`.
+  (2) **Reuse detection is shadowed by fail-closed CSRF** when only the refresh cookie is
+  presented: the guard cannot resolve a session for a rotated-away token, so the request is
+  refused 403 before the handler runs. Isolating the stale refresh token as the ONLY stale
+  value (keeping a valid access cookie and current CSRF) is what makes it a test of reuse
+  detection rather than of CSRF.
+  (3) **Registration is IP-rate-limited under the `login` action and answers 401, not 429**,
+  so the response confirms nothing. Injected requests share one synthetic address and the
+  counters persist, so a third consecutive run failed every case with a misleading
+  "registration failed: 401". The harness now clears `authRateLimits` per run — harness
+  hygiene, not a weakened control; the limiter has its own tests.
+  (4) **A defect I nearly reported and did not.** The assertion on the revocation reason
+  failed, and a case-sensitive grep for `reason` missed `revokeReason`, which led me toward
+  "Mongoose silently strips an undeclared field". Probing the raw persisted document showed
+  `revokeReason: "reuse_detected"` stored correctly — the field name in my assertion was
+  simply wrong. No defect; the inference was.
+  **Evidence captured for the pending 3c.3 decision.** The two refusal states ARE
+  distinguishable: session cookies present with the CSRF half missing → **403**; no cookies at
+  all → **401**. So the client can safely rotate FIRST and acquire a CSRF token only on a 403,
+  which would cut an anonymous visitor's first-load cost from two requests to one while
+  keeping the returning-visitor recovery intact. Recommended as 3c.3, now on evidence rather
+  than assumption.
+  **The SSR-wiring gap from 3c.1 is closed too.** That limit was stated generously: what was
+  untested was not SSR behaviour but whether the interceptor CONSULTS the guard at all — jsdom
+  always provides a jar, so deleting `canAttemptRefresh()` would have left every case green.
+  Both specs now shadow `document.cookie` with a non-string getter, reproducing exactly the
+  branch `hasBrowserCookieJar()` keys on. **Mutation-verified:** removing the guard now fails
+  that case, where before it failed nothing. Admin 50 → **51**, storefront 48 → **49**.
+  **Commands actually run:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` **7/7** ·
+  `pnpm typecheck` 15/15 · `pnpm lint` 17/17 (0 errors) + `check:naming` + `check:browser-auth`
+  · `pnpm format:check` all files · `pnpm turbo run test --force` **11/11** (repo 512 → 514) ·
+  `MONGODB_PORT=27018 RUN_DB_IT=1` adapter IT **89/89** · both Angular production builds ·
+  `git diff --check` clean · nothing staged. Probe accounts created 6, remaining after cleanup
+  **0**, in a dedicated `saha_textile_e2e` database so a failed run cannot leave debris in the
+  working one.
+  **Still not done:** no browser E2E. Rotation is now proven at both the interceptor boundary
+  and against the live API, but not through a real Angular app in a real browser; the
+  storefront run is worth doing opportunistically and the admin one remains blocked on 6a.
+  **Next executable step:** 3c.3 — reorder the client to rotate first and acquire a CSRF token
+  only on the 403 this pass documented, then 3d (contracts in both apps). Tool: claude-code.
 - _(append)_
 
 ---
@@ -815,6 +1434,23 @@ optionSelectionHash)`, globally unique variant SKU per `DEC-SKU`, unique bundle 
 - 2026-08-01 — [DONE] **Developer portal current-head Pass 1 — post-fix truth reconciliation.** Re-read the session/CSRF, cart ownership and order-create implementations plus their API and rs0 proofs after `6053360`. Supersedes the defect claims immediately above: active-session `GET /auth/csrf` now preserves or atomically recovers the session-bound token; cart reads/mutations and order creation enforce Principal or hashed `st_guest` proof; and order save plus cart consumption now share the adopted transaction context with commit/rollback proof. Request Flight promotes only those three evidenced hops while keeping idempotency and inventory/payment/audit side effects ghosted. Chunk D remains partial for email-verification completion, OAuth verification, invite acceptance, quick-resume and guest→user merge; Chunk E remains done. Reconciled all four bridge explanations, Mission Control, API/Scalar, route, request-lifecycle, database and instrument narratives; measured **81** gated Mongo adapter tests. Validator: **74 pages / 74 routes / 52 portal source files**. Root typecheck, lint+naming, 57 API tests, 140 contract tests, 36 core tests, naming and format checks are green; admin/storefront still have zero specs. Tool: codex. Notes: Prettier mechanically normalized the already-unformatted environment-variable catalogue required by the root format gate.
 - 2026-08-01 — [PARTIAL] **Developer portal current-head Pass 2 — child-tool parity and gateway returns.** Fixed the screenshot-confirmed Scalar failure by loading `@scalar/api-reference/style.css` before shared tokens and the Request Wormhole adapter; the production CSS now contains Scalar’s structural reset/layout and portal mappings instead of adapter-only styling. Added accessible top-right **Return to gateway** controls to Storybook’s native right-hand tool group, TypeDoc’s toolbar, Scalar’s sticky contract bar and the Mongo Observatory header, with every bridge documenting its child return. TypeDoc retains its locked 15px root, centred 220/flexible/250 grid and single entry-page `h1`, adds a source-scope intro panel, and still generates 450 pages. Deterministic OpenAPI regeneration remains **37 paths / 40 operations**, includes live/ready/CSRF, and exposes no public-product `status` parameter. Scalar, TypeDoc, Storybook, Mongo catalogue and Docusaurus production generation are green; Storybook coverage remains 139/139 reusable across 282 components. Validator: **74 pages / 74 routes / 52 portal source files**; root typecheck, lint+naming, tests and formatting are green. Tool: codex. Notes: the desktop approval service rejected the final `portal:persistent` restart with an internal request-schema error after an earlier watcher shutdown race, so current composite promotion, browser console/Test Request interaction and 1280/390 overflow checks remain unverified and this pass is PARTIAL.
 - 2026-08-01 — [DONE] **Developer portal audience-language and current-truth pass.** Audited all 64 rendered pages outside Engineering Live Context plus portal-owned instrument copy and navigation descriptions. Replaced requester-facing, reconciliation-log and owner-addressed phrasing with professional onboarding, reference, operations and governance language; removed bridge narration of the child return control while preserving the accessible control itself; and standardized current evidence versus ratified target terminology. Corrected additional drift found during the audit: the portal homepage now reports the generated 32-model catalogue, cart ownership and the order-plus-cart transaction boundary reflect current code, Chunk D/E repository evidence and configurable locales are explicit, and First Flight distinguishes eight exact-name Schema Nebula nodes from the 32-model catalogue. Validator: **74 pages / 74 routes / 52 portal source files**. Root typecheck, lint+naming, tests and format check plus Docusaurus production generation are green. A complete persistent composite served all four bridges and child mounts; browser checks across representative portal routes and every child found zero console errors and zero document-level horizontal overflow at 1280×720 and 390×844, and every child retained its accessible bridge return. Tool: codex.
+- 2026-08-02 — [DONE] **Two canonical auth execution pages added to Engineering Live
+  Context.** `authentication-use-case-delivery-and-security-matrix.mdx` preserves the
+  approved tables and adds route/client/index/Compass rules;
+  `claude-code-authentication-api-db-build-prompt.mdx` is the copy/paste implementation
+  brief. The local bootstrap now tells operators to use `pnpm mongo:status` and documents
+  default `27017`, this Mac's collision-free `27018`, and the parameterized Compass URI;
+  the container remains internally on `27017` and loopback-only. Tool: codex. Notes:
+  portal validation/build evidence is recorded after verification below.
+- 2026-08-02 — [DONE] **Auth KB/prompt portal verification completed.** Re-read and
+  reverified every derived page/dataset aged by the living progress update; governed
+  dates now agree without changing chunk/gate facts. Developer-portal validator passes
+  **76 pages / 76 routes / governed data / provenance / deep links / 52 portal source
+  files**; portal TypeScript, targeted Prettier, naming guard, whitespace, and the
+  Docusaurus production build are green. Tool: codex. Notes: `mongo-status.sh` was also
+  attempted outside the sandbox, but the local container was not running, so no live
+  replica-set/Compass connection claim is made; committed/gitignored config still resolves
+  this Mac's intended host port to `27018`.
 - _(append)_
 
 ---

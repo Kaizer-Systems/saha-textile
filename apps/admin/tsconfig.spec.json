@@ -4,7 +4,12 @@
 	"extends": "./tsconfig.json",
 	"compilerOptions": {
 		"outDir": "./out-tsc/spec",
-		"types": ["jasmine"]
+		// `node`, not `jasmine`. The runner is Vitest — specs import `describe`/`it`/`expect`
+		// from `vitest` explicitly — and `@types/jasmine` is not installed anywhere in the
+		// workspace, so this entry named a package that does not exist. Aligned with the
+		// storefront, where the same leftover broke any spec importing the app's runtime
+		// config with "Cannot find name 'process'".
+		"types": ["node"]
 	},
 	"include": ["src/**/*.spec.ts", "src/**/*.d.ts"]
 }

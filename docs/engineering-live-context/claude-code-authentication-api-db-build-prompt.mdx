@@ -1,0 +1,586 @@
+---
+title: 'Claude Code Authentication API and Database Build Prompt'
+description: 'Execution-grade prompt for completing storefront and admin authentication, authorization, persistence, client boundaries, security tests, and live progress evidence.'
+audience: [backend, frontend, security, agent]
+document_role: canonical
+last_verified: '2026-08-02'
+search_keywords: 'claude code prompt authentication api database storefront admin rbac oauth otp pin mongodb indexes hexagonal openapi'
+---
+
+# Claude Code authentication API and database build prompt
+
+**Status:** Owner-approved executable implementation brief
+**Use with:** `authentication-use-case-delivery-and-security-matrix.mdx`
+**Progress authority:** `project-progress.mdx`
+
+## Copy/paste prompt
+
+````text
+You are working in the Saha Textile monorepo. Act as a principal software architect,
+senior NestJS/Angular engineer, MongoDB performance engineer, application-security
+engineer, and penetration tester. Your task is to complete and properly integrate the
+authentication, session, recovery, identity, admin-access, and RBAC foundation for the
+storefront and admin applications without violating the repository's locked hexagonal
+architecture.
+
+Do not treat this as a greenfield rewrite. Inspect the current implementation, preserve
+verified behavior, repair target-alignment defects, and make small independently
+verifiable passes. Do not claim a check was run unless you ran it and captured the real
+result. Do not commit or push unless the human separately asks.
+
+## 0. Mandatory reading and authority order
+
+Before changing files, read these files completely, not only headings or excerpts:
+
+1. `AGENTS.md`
+2. `docs/engineering-live-context/project-progress.mdx`
+3. `docs/engineering-live-context/owner-decisions-log.mdx`
+4. `docs/engineering-live-context/authentication-use-case-delivery-and-security-matrix.mdx`
+5. `docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx`
+6. `docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx`
+7. `docs/engineering-live-context/api-db-local-environment-bootstrap.mdx`
+8. `docs/engineering-live-context/environment-variables.mdx`
+9. `docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx`
+10. `docs/engineering-live-context/execution-roadmap.mdx`
+11. `docs/engineering-live-context/pending-decisions.mdx`
+
+Then inspect the actual current contracts, controllers, guards, services, repositories,
+Mongoose models/indexes, tests, OpenAPI output, storefront auth code, admin auth code,
+runtime config and all uncommitted changes. Tested runtime and current source evidence
+override stale progress prose, but owner decisions override older architecture prose.
+Never touch `project-context/nextjs-context/**`.
+
+Use Context7 for version-correct documentation whenever library behavior is material.
+Pin each query to the installed major/version: Angular 21, NestJS 11, Fastify 5,
+MongoDB 8.3/Mongoose's installed version, NgRx Signals' installed version, TanStack
+Angular Query's installed version, Zod's installed version, Vitest and Playwright.
+Do not silently upgrade a major or add a dependency when an existing supported primitive
+is sufficient.
+
+Immediately report:
+
+- current branch and `git status --short`;
+- the current D1-D5 auth status from source and tests;
+- contradictions between the approved matrix, current code and current progress notes;
+- an ordered pass plan with one pass in progress at a time;
+- any owner decision that truly blocks irreversible behavior.
+
+External credentials are not a reason to stop. Implement full seams, adapters, fixtures,
+contracts and negative tests where the matrix says to proceed. Clearly mark genuine
+provider E2E as pending credentials. Never fabricate keys, provider responses or a
+successful E2E result.
+
+## 1. Locked product behavior
+
+### Storefront launch authentication
+
+Implement and integrate:
+
+- email/password registration and login;
+- email verification and resend;
+- email OTP registration/login generated and verified by Saha Textile;
+- password-forgot and password-reset flows;
+- Google and Facebook login/identity adapter paths, fully unit/contract tested with
+  fixtures while real E2E remains credential-gated;
+- collision-safe provider linking and safe unlinking;
+- cookie session bootstrap, refresh, logout, logout-all, session listing and revocation;
+- guest-cart merge and allowlisted post-auth continuation boundaries in cooperation with
+  the cart milestone; do not invent blocked commerce policy;
+- protected deep-link continuation and eligible bounded pending intents;
+- recent-auth/step-up primitives for sensitive credential/privacy operations;
+- privacy export/erasure seams and session revocation boundaries;
+- PWA/SSR behavior that never caches or leaks auth tokens/account PII.
+
+Storefront phone OTP is a future seam only. X/Twitter login is excluded. Phone is not
+collected at registration. Authentication never implies marketing consent.
+
+### Admin launch authentication
+
+The only launch login methods are:
+
+1. email OR username plus password;
+2. email OR username plus an already-configured six-digit PIN;
+3. six-digit PIN quick-resume for the same still-valid session after the 15-minute idle
+   soft lock.
+
+Admin account creation is invite-only. There is no public self-registration, Google or
+Facebook admin login, or normal admin email/SMS/WhatsApp OTP login. The existing
+template-derived admin OTP screen must not accidentally become an authentication method.
+If retained, it must be explicitly repurposed under the canonical recovery design.
+
+Implement:
+
+- a safe first-administrator bootstrap procedure that is operator-only, idempotency-
+  guarded, audited, unavailable through a public route, and impossible to run again after
+  a trusted administrator exists;
+- invite creation/list/revocation/acceptance with atomic single-use tokens;
+- password and PIN login;
+- weak PIN rejection, five-attempt/15-minute PIN lock, password recovery path, and audit;
+- PIN setup/change only after current-password proof;
+- preferred `password`/`pin` presentation without treating client preference as policy;
+- 15-minute idle soft lock that preserves mounted route/form state but prevents all
+  privileged background mutations;
+- quick-resume only against the same live admin session and current user;
+- password recovery that is not OTP login;
+- session list/revoke, forced revoke, offboarding and status changes;
+- protected admin deep-link continuation with fresh authorization;
+- Security Settings with recent password proof.
+
+Security decision: a successful privileged-account password reset must revoke all admin
+sessions and temporarily disable PIN full-login/quick-resume until the administrator
+successfully authenticates once with the new password. Do not delete the PIN silently;
+record explicit revalidation state and audit its transitions.
+
+Mandatory MFA is not a launch requirement, but preserve a provider-neutral future seam
+for passkeys/authenticator/security keys and recovery codes. Never describe the PIN as
+MFA.
+
+## 2. Backend route and module architecture
+
+Keep three explicit route/contract families:
+
+- shared browser-auth security: `/auth/csrf` and only genuinely identical shared
+  primitives;
+- storefront-only: `/auth/storefront/**`;
+- admin-only: `/auth/admin/**`;
+- place RBAC administration under a clearly admin-only family such as
+  `/admin/roles/**`, `/admin/permissions/**`, `/admin/users/**`, preserving compatible
+  existing routes where migration risk would otherwise be introduced.
+
+Use stable OpenAPI tags and operation IDs such as `Auth / Shared`,
+`Auth / Storefront`, `Auth / Admin`, and `Admin / Authorization`. Do not create a generic
+god controller or expose the same endpoint with ambiguous audience behavior.
+
+Controllers are thin transport adapters. They validate Zod contracts, translate HTTP
+context into use-case input, invoke one application/core use case, set/clear cookies, and
+map stable errors. They must not contain provider SDK logic, Mongoose query logic, role
+mutation logic or framework-independent policy.
+
+Core owns policies/use cases/ports. Adapters own Mongo, JWT/Argon2, Google, Meta, MSG91,
+clock/randomness and runtime details. Composition occurs in NestJS DI. Provider SDKs,
+Mongoose documents, Fastify requests/replies and raw OAuth payloads must never enter
+`packages/core-domain`.
+
+Prefer focused use cases over an ever-growing `AuthService`, for example:
+
+- register/login storefront;
+- request/verify OTP;
+- start/complete recovery;
+- verify/link/unlink social identity;
+- establish/refresh/revoke/list session;
+- invite/accept/offboard admin;
+- password/PIN login and configure/revalidate PIN;
+- resume admin session;
+- create/update/retire role and assign/revoke role;
+- authorize owned resource or permission.
+
+Do not force these exact filenames if the repository already has a cleaner compatible
+layout, but preserve the responsibility boundaries.
+
+## 3. Language-agnostic API contract
+
+The API must be consumable by Angular today and any future web/mobile/server client
+without rewriting backend logic:
+
+- JSON request/response bodies with documented nullability;
+- ISO-8601 UTC timestamps;
+- standard HTTP status semantics;
+- stable machine-readable error code plus safe human message and request ID;
+- explicit pagination/filter/sort contracts;
+- API-set cookie authentication for browsers;
+- no Angular, NestJS, Fastify, Mongoose or vendor-specific response types;
+- no access/refresh token in browser JSON;
+- no endpoint path duplicated as string literals throughout Angular features;
+- generated and validated OpenAPI that matches Zod contracts and runtime behavior;
+- additive evolution by default; breaking changes require an explicit version/migration
+  plan rather than silent field/route renames.
+
+Organize `packages/contracts` into clear shared/storefront/admin/internal auth modules
+with stable barrel exports. Public/storefront/admin/internal DTOs are explicit allowlists.
+The internal schemas may carry hashes/version counters; public schemas never can.
+
+## 4. Angular hexagonal consumption boundary
+
+Do not use JavaScript prototype mutation, monkey-patching, inheritance-heavy base
+services, or direct `HttpClient` calls from components/guards/stores.
+
+For each Angular app create or refine:
+
+- a typed auth gateway interface/abstract injection token owned by the app/core boundary;
+- one HTTP auth adapter that knows route paths and wire DTOs;
+- a session/auth facade or SignalStore that exposes application intent and sanitized
+  state;
+- guards and feature components that depend only on the facade/gateway;
+- a shared transport primitive for base URL, `withCredentials`, CSRF, refresh
+  single-flight, request IDs, safe error mapping and cancellation;
+- runtime public config for API URL and public OAuth client identifiers only.
+
+The shared transport primitive is reusable by both applications, but audience-specific
+methods are not mixed. Storefront code cannot import admin auth contracts/adapters;
+admin code cannot import storefront login methods. Shared session/CSRF behavior is
+composed underneath both.
+
+All endpoint paths and request/response mapping live at one adapter entry point per
+audience. If a contract changes, update `packages/contracts`, OpenAPI and the relevant
+adapter once; components and feature code must not require manual edits across the
+codebase.
+
+Remove all fake bearer tokens, demo credentials and browser persistence of authentication
+tokens. Use `withCredentials`; obtain and attach the session-bound CSRF value on unsafe
+requests. Implement refresh single-flight so concurrent 401/expiry events do not rotate
+the same refresh token multiple times. Prevent refresh loops and distinguish unauthenticated
+from forbidden UI outcomes.
+
+## 5. Session and browser security requirements
+
+- API-set `httpOnly`, `Secure` in HTTPS environments, correctly scoped `SameSite`
+  access/refresh cookies; readable CSRF cookie only where required by double submit.
+- Short-lived access state plus opaque rotating refresh tokens; persist hashes only.
+- Bind JWT `sid` to a live server session; logout/revoke/reuse detection must take effect
+  immediately rather than waiting for JWT expiry.
+- Rotate refresh token and CSRF secret atomically; detect replay and revoke the family.
+- Enforce storefront/admin audience separation in both claims and live session lookup.
+- Compare current `tokenVersion` and `permissionsVersion` on every protected request.
+- Exact credentialed CORS allowlist; no wildcard credentials.
+- Fail-closed CSRF on unsafe cookie-authenticated routes; test missing/mismatched/
+  cross-session tokens.
+- Never store tokens in localStorage, sessionStorage, IndexedDB, URLs, analytics, logs,
+  NgRx state persisted to disk, service-worker cache or SSR response cache.
+- Prevent authenticated/admin response caching by CDN, browser and service worker.
+- Preserve exact trusted-proxy boundaries; do not trust arbitrary forwarded client IP.
+- Stable `401` for absent/invalid session/audience and `403` for authenticated but
+  insufficient authorization.
+
+## 6. Password, OTP, OAuth and recovery rules
+
+Passwords:
+
+- minimum 12 characters when set/change occurs;
+- reject common passwords;
+- Argon2id with a current approved configuration;
+- accept legacy-length inputs for verification without weakening new-password policy;
+- generic login/recovery/registration-collision behavior that resists enumeration;
+- password reset atomically consumes the token, increments invalidation state and revokes
+  relevant sessions.
+
+Email OTP:
+
+- Saha Textile generates and verifies the OTP; MSG91 only delivers;
+- six-digit CSPRNG code;
+- HMAC-SHA256 with server pepper at rest;
+- 10-minute expiry, maximum five attempts;
+- one active challenge per normalized identifier and purpose;
+- atomic attempt increment, supersede and consume;
+- rate limits by identifier, IP, purpose and broader abuse signals;
+- no OTP/code in application logs, API responses, persistence plaintext, analytics or
+  audit metadata.
+
+The current console adapter must not log OTP values. Automated tests should use an
+injected in-memory notification spy. If a manual local/E2E notification inspection
+facility is necessary, make it test-only, loopback/test-environment gated, absent from
+production builds/startup configuration, incapable of exposing arbitrary users' messages,
+and covered by a production-fail-closed test.
+
+OAuth:
+
+- minimum scopes only;
+- backend verifies issuer, signature, audience/client, expiry, nonce and stable subject;
+- state/nonce/PKCE evidence is short-lived, hash-only and atomically consumed;
+- continuation is a strict allowlisted relative route, never arbitrary URL;
+- identity lookup uses unique `provider + providerSubject`, not mutable email;
+- never silently merge accounts only because email strings match;
+- linking requires an authenticated local session, recent proof, collision checks and
+  audit;
+- unlinking cannot remove the final usable credential;
+- provider failures fail closed and never bypass local session/RBAC policy;
+- fixture/contract tests proceed now; genuine browser E2E waits for credentials.
+
+## 7. RBAC and object authorization
+
+The coarse roles are `customer`, `staff`, and `admin`, but fine-grained permissions are
+authoritative. An `admin` role must not silently mean every permission.
+
+Implement or complete:
+
+- canonical permission registry with stable codes; no client-created free-form privilege
+  strings;
+- reusable `roles` and explicit `userRoleAssignments` collections;
+- unique active assignment constraints and auditable assignment lifecycle;
+- deny-by-default protection for admin routes;
+- server-side `RequireRoles`/`RequirePermissions` enforcement through one authoritative
+  guard path; remove or retire duplicate legacy guard paths safely;
+- field/action-level distinctions such as view/create/update/delete/export/approve where
+  the actual module risk requires them;
+- permission/version invalidation on grant, revoke, role edit, offboarding and account
+  state change;
+- last-admin protection;
+- no delegation of a permission the actor cannot grant;
+- forced session revoke and audited offboarding;
+- ownership predicates in repository queries for customer resources;
+- direct API, BOLA/IDOR, horizontal escalation, vertical escalation, bulk mixed-target,
+  multi-tab and TOCTOU tests.
+
+Angular route guards and permission directives are usability only. Prove that calling
+every hidden endpoint directly still fails server-side. RBAC failures and forbidden
+mutations must never be queued and replayed after login or soft-resume.
+
+## 8. MongoDB 8.3 persistence and scale contract
+
+MongoDB is self-hosted Docker MongoDB 8.3 with single-node `rs0` locally and in the
+current production topology so transactions are always exercised. Only the Mongo adapter
+knows Mongoose. The API and Angular apps depend on ports/contracts.
+
+First reconcile the known collection-name defect: explicit physical collection names
+must match the locked camelCase Schema Nebula names. Do not add `authRateLimits` as a
+locked Schema Nebula collection; its backing remains an adapter/runtime concern.
+
+Target boundaries include:
+
+- `users`;
+- `authIdentities`;
+- `passwordCredentials`;
+- `pinCredentials`;
+- `authSessions`;
+- `otpChallenges`;
+- `oauthStates`;
+- `passwordResetTokens`;
+- `emailVerificationTokens`;
+- `adminInvites`;
+- `roles`;
+- `userRoleAssignments`;
+- `auditLogs`;
+- `pendingIntents`;
+- `consentEvents`.
+
+Do not merely declare indexes in schema code. Produce an index manifest tying every
+index to a repository query and test it against MongoDB 8.3.
+
+Mandatory index/query rules:
+
+1. Normalize identity fields. Use partial unique indexes for optional normalized email,
+   phone and admin username.
+2. Unique compound index on OAuth provider plus provider subject.
+3. Unique cryptographic refresh fingerprint and bounded compound session indexes for
+   user/audience/active/expiry/family queries.
+4. Explicit expiry indexes for challenges/state/reset/verification/invite operational
+   data, while application code always checks expiry because TTL cleanup is asynchronous.
+5. Unique stable role code and unique active user-role assignment tuple.
+6. Audit indexes for actor+time, target+time, entity+time, action/outcome+time and
+   retention-tier+time. Do not TTL-delete legally retained security/financial audit.
+7. Stable cursor pagination with deterministic `_id` tie-breaker; no deep `skip` for
+   growing users/orders/audit/session data.
+8. Allowlisted filters/sorts, bounded page sizes, projections, lean read models where
+   safe, and no unbounded export/regex/aggregation.
+9. Equality-sort-range ordering for compound indexes where applicable. Avoid redundant
+   prefixes, low-selectivity standalone indexes, unbounded multikey indexes and indexing
+   every field.
+10. Disable uncontrolled production auto-index creation. Use reviewed, idempotent index
+    migration/ensure-index tooling with rollback/compatibility notes.
+11. Test `listIndexes` and `explain('executionStats')` for critical query families. At a
+    meaningful seeded scale, critical auth/RBAC/customer/order/audit lookup paths must use
+    the intended index rather than `COLLSCAN`.
+12. Create deterministic performance fixtures with at least 1,000 products, 10,000
+    orders, representative customers/sessions and multi-year audit records. This is a
+    validation floor, not a production maximum. Keep fixture generation bounded and out
+    of normal unit-test cost.
+13. Prefer materialized/rollup reporting data over full-history dashboard aggregation.
+14. Do not introduce sharding, Redis, CQRS, event sourcing or another database without
+    measured need and an approved architecture decision. Correct query shapes and indexes
+    are enough for the stated scale; ports preserve future swappability.
+
+For each critical repository method document:
+
+- query predicate;
+- authorization/ownership predicate;
+- sort order and pagination cursor;
+- projection;
+- supporting index name/key/options;
+- expected cardinality/selectivity;
+- explain-plan evidence at seeded scale.
+
+Treat indexes as part of the API performance contract. An index that does not serve a
+real query is a write/storage liability and must not be added merely to appear optimized.
+
+## 9. Local Mongo port collision and MongoDB Compass
+
+Preserve the current platform/host-port agnostic design:
+
+- container Mongo always listens internally on `27017`;
+- Docker publishes only loopback using
+  `127.0.0.1:${MONGO_HOST_PORT:-27017}:27017`;
+- per-machine override lives in gitignored `docker/mongo/.env`;
+- API uses the matching gitignored `apps/api/.env` `MONGODB_PORT`;
+- `.env.mcp` uses the same effective host port;
+- database remains `saha_textile_local`, replica set `rs0`, and local direct connection
+  remains enabled;
+- production Mongo is private-network-only and must never expose port 27017 publicly.
+
+Canonical default Compass URI:
+
+`mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directConnection=true`
+
+This Mac currently uses the collision-free override `MONGO_HOST_PORT=27018`, so its
+effective Compass URI is:
+
+`mongodb://127.0.0.1:27018/saha_textile_local?replicaSet=rs0&directConnection=true`
+
+Do not hard-code 27018 into committed runtime defaults. `pnpm mongo:status` must print
+the effective URI derived from the per-machine override. Add/retain a clear MongoDB
+Compass section in `api-db-local-environment-bootstrap.mdx` and the auth matrix. In your
+final chat response, print the effective local Compass URI actually verified in this run.
+Never print production credentials or a credential-bearing production URI.
+
+If native `mongod` already owns 27017, do not stop it, kill it or reconfigure it. Use the
+existing host-port override. Confirm Docker's bind is loopback-only.
+
+## 10. Audit, retention and privacy
+
+- Record actor, target, action, outcome, request correlation and bounded safe metadata.
+- Credential, PIN, invite, role, permission and session-security changes are audited.
+- Privilege grants/revocations and security/financial evidence follow the locked
+  long-retention tier; do not delete them through generic cleanup.
+- Never log/hash-as-display passwords, PINs, OTPs, cookies, access/refresh tokens,
+  provider tokens, reset tokens, invite tokens or provider secrets.
+- Minimize raw IP/user-agent storage; store only bounded hashes/derived metadata needed
+  for security.
+- Authentication never grants marketing consent. Consent events are versioned and
+  append-only.
+- Export/erasure stays reviewed, authorized and retention-aware; never issue a blind
+  `deleteMany` from an HTTP request.
+
+## 11. Required tests
+
+Implement and run proportionate tests in independently reviewable passes:
+
+### Contracts/unit
+
+- valid/invalid Zod cases and public/internal serialization boundaries;
+- password and weak-PIN policy;
+- OTP purpose/channel/expiry/attempt policy;
+- error-code mapping and anti-enumeration response equivalence;
+- OAuth claim/state/nonce/collision fixtures;
+- permission and ownership policies.
+
+### Mongo adapter integration against real `rs0`
+
+- exact physical collection names;
+- exact index catalogue;
+- unique/partial/TTL behavior;
+- atomic OTP/invite/reset/state consume;
+- concurrent refresh rotation/reuse family revoke;
+- role assignment and permission-version mutation transactions;
+- password reset/session revoke/PIN-revalidation transaction;
+- guest merge/pending-intent transaction where in current scope;
+- deterministic `explain('executionStats')` checks at scale-fixture volume.
+
+### API/security
+
+- register/login/OTP/recovery/verification success and negative paths;
+- cookies never returned as JSON tokens;
+- CSRF missing/mismatch/cross-session/recovery;
+- CORS and audience separation;
+- logout immediately invalidates access cookie through `sid` lookup;
+- refresh replay and concurrent refresh;
+- disabled/deleted/status/token-version/permission-version invalidation;
+- invite expiry/revoke/race and first-admin bootstrap closure;
+- PIN brute force, lock, password recovery and quick-resume invalidation;
+- direct API RBAC bypass, privilege escalation, last-admin and BOLA/IDOR;
+- open redirect and OAuth login-CSRF;
+- safe logs and cache headers.
+
+### Angular/browser
+
+- no token in browser storage or bundle;
+- credentialed cookie requests and CSRF injection;
+- refresh single-flight and loop prevention;
+- storefront/admin session audience isolation;
+- protected deep-link return;
+- idle soft lock, background mutation suppression and quick-resume;
+- permission-aware UI refresh after server grant removal;
+- SSR/service-worker authenticated-data cache isolation;
+- provider buttons fail gracefully when public IDs are absent.
+
+Provider tests without credentials are fixture/contract tests only. Mark live Google,
+Facebook and MSG91 E2E as pending; do not weaken or skip unrelated tests.
+
+## 12. Delivery passes and progress logging
+
+Work in these independently verifiable passes; adjust only when current source evidence
+requires a safer split:
+
+1. Baseline audit and remove fake-token/browser-storage behavior.
+2. Contract/error/module route categorization.
+3. Mongo collection-name/index/persistence alignment.
+4. Shared cookie/session/CSRF/refresh Angular integration.
+5. Storefront password, verification, recovery and console-sink OTP integration.
+6. Admin bootstrap/invite/password/PIN/recovery/soft-lock integration.
+7. Roles, permissions, assignments, offboarding and authorization tests.
+8. Guest continuation/session-management/privacy seams.
+9. Google/Meta adapters plus fixture tests; real E2E remains gated.
+10. MSG91 adapter plus fixture tests; real delivery remains gated.
+11. Scale/index explain-plan suite and security-negative campaign.
+12. OpenAPI/docs/progress reconciliation and final full verification.
+
+After every small completed pass, append a dated entry to the matching section of
+`docs/engineering-live-context/project-progress.mdx`. Use `[DONE]`, `[PARTIAL]`,
+`[BLOCKED]`, `[DEFERRED]` or `[N/A]` accurately. Record:
+
+- exact scope completed;
+- important files/boundaries changed;
+- tests/commands actually run with real counts/results;
+- unresolved gaps and the next executable pass;
+- external-credential E2E gates separately from completed local implementation;
+- tool name `claude-code`.
+
+Do not rewrite history or mark Chunk D complete until every D3-D5 Definition of Done
+applicable to this milestone is evidenced. Update current OpenAPI and canonical KB only
+when behavior is implemented/verified; do not bump `last_verified` speculatively.
+
+## 13. Verification gates
+
+Use the workspace's actual scripts after inspecting `package.json`. At minimum, run the
+focused tests after each pass and finish with the repository-equivalent of:
+
+```bash
+pnpm validate
+pnpm typecheck
+pnpm lint
+pnpm check:naming
+pnpm format:check
+pnpm turbo run test --force
+git diff --check
+```
+
+Run Mongo adapter integration tests against the real Docker `rs0` using the effective
+host-port override. Run API boot and probe:
+
+- `/health/live`;
+- `/health/ready`;
+- `/openapi.json`;
+- representative storefront login/CSRF/session paths;
+- representative admin password/PIN/RBAC paths;
+- invalid payload, wrong audience, CSRF rejection, forbidden permission and BOLA paths.
+
+Run the developer-portal validation/build because canonical `.mdx` and progress were
+changed. Run browser E2E for both Angular applications when their auth clients are wired.
+Never report a browser/provider E2E as passed if credentials or a test host were absent.
+
+## 14. Required final response
+
+Return a concise evidence report containing:
+
+1. implemented passes and remaining passes;
+2. changed architecture boundaries and why they are reusable;
+3. storefront routes/capabilities completed;
+4. admin routes/RBAC capabilities completed;
+5. Mongo collections/indexes/migrations and explain-plan evidence;
+6. security defects fixed and negative tests added;
+7. every command run with actual pass/fail result;
+8. external credentials still required and exactly which E2E they block;
+9. exact `project-progress.mdx` entries added;
+10. the effective local MongoDB Compass URI verified by `pnpm mongo:status`;
+11. the next safe executable step.
+
+Do not expose secrets. Do not claim “enterprise-ready,” “complete,” “secure,” or
+“optimized” without the corresponding test and query-plan evidence.
+````

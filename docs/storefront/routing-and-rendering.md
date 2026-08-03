@@ -4,7 +4,7 @@ wide: true
 description: How AnalogJS file routes, route metadata, dynamic SSR, and browser-only code fit together.
 status: implemented
 audience: [beginner, frontend]
-last_verified: '2026-07-25'
+last_verified: '2026-08-02'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/storefront/src/app/app.config.server.ts

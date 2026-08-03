@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-01",
+	"lastVerified": "2026-08-02",
 	"sourceOfTruth": [
 		"apps/api/src/orders/orders.controller.ts",
 		"apps/api/src/orders/orders.service.ts",

@@ -4,7 +4,7 @@ wide: true
 description: Shared decision rules for state, contracts, layers, reusable UI, and cross-application behavior.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-08-01'
+last_verified: '2026-08-02'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/admin/src/app/app.config.ts
@@ -57,7 +57,7 @@ Both apps read their public, non-secret configuration at boot from `public/confi
 - The committed `config.json` holds localhost defaults; deployments overwrite or mount it at container start.
 - Under SSR (no browser `fetch`), the loader reads `SAHA_TEXTILE_PUBLIC_CONFIG` from the environment, else falls back to defaults. A failed fetch never blocks boot.
 
-The auth interceptor sends `withCredentials: true` on every request so the implemented httpOnly cookie sessions flow. It still attaches a legacy `localStorage` bearer token, but the API's `SessionGuard` deliberately ignores `Authorization`; this is stale frontend migration debt, not a supported authentication fallback.
+The auth interceptor sends `withCredentials: true` on every request so the httpOnly cookie sessions flow, and echoes the readable `st_csrf` cookie as `x-csrf-token` on unsafe methods. It attaches no bearer token: the API's `SessionGuard` reads the access cookie only, and the client holds no credential to forward. `scripts/check-browser-auth.mjs` runs in `pnpm lint` and fails the build if a token, a bearer header or session state in browser storage reappears in either application.
 
 ## Contracts today
 

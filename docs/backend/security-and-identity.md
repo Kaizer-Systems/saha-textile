@@ -5,7 +5,7 @@ description: Current authentication scaffold, ratified browser-session architect
 search_keywords: 'cookies csrf st_access st_refresh otp msg91 jwt session bola audiences pin'
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-08-01'
+last_verified: '2026-08-02'
 source_of_truth:
     - apps/api/src/auth
     - apps/api/src/orders/orders.controller.ts

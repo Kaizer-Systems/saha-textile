@@ -4,7 +4,7 @@ wide: true
 description: NestJS module wiring, dependency-injection tokens, adapter ownership, Mongo mappings, and provider seams.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-01'
+last_verified: '2026-08-02'
 source_of_truth:
     - apps/api/src/app.module.ts
     - apps/api/src/config/app-config.ts
@@ -62,7 +62,7 @@ Unbound ports do not become operational merely because their interfaces exist.
 The adapter currently owns:
 
 - connection configuration and Mongoose lifecycle;
-- 32 models and indexes;
+- 32 models with explicitly declared physical collection names, plus indexes;
 - conversion from Mongoose documents to public contract-shaped values;
 - original API-bound repositories plus bound auth/consent and tested Chunk E catalogue, inventory, media, governance, notification and content adapters;
 - a transaction manager that exposes only the opaque core transaction context and uses `AsyncLocalStorage` so nested transactions join;

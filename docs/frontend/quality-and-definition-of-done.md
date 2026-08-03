@@ -4,7 +4,7 @@ wide: true
 description: Verification contract for storefront and admin changes, including the current test-coverage boundary.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-01'
+last_verified: '2026-08-02'
 source_of_truth:
     - apps/storefront/vite.config.ts
     - apps/admin/package.json

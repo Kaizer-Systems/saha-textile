@@ -4,7 +4,7 @@ wide: true
 description: Liveness versus readiness, logging, metrics, testing layers, transaction proof, and backend definition of done.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-01'
+last_verified: '2026-08-02'
 source_of_truth:
     - apps/api/src/health
     - apps/api/src/infra/persistence.module.ts
@@ -78,12 +78,12 @@ Avoid high-cardinality labels such as raw user id, order id, email, token, full 
 
 ## Current automated-test evidence
 
-| Package       | Present evidence                                                                                                                          | Limitation                                                                               |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `contracts`   | 140 schema tests across common/auth/catalog/media/inventory/content/commerce families                                                     | Complete operation DTO/OpenAPI wiring remains                                            |
-| `core-domain` | 36 pricing, visibility, runtime-purity and port-conformance tests                                                                         | No complete use-case/state-machine suites                                                |
-| Mongo adapter | 81 opt-in tests: 7 baseline, 6 transaction, 19 auth, 15 catalogue, 15 inventory/media, 16 governance/content and 3 order+cart transaction | All require `RUN_DB_IT=1` and a real rs0 profile; broader HTTP/workflow adoption remains |
-| API           | 57 platform, CSRF, session-liveness, cart-ownership and order-create unit/guard tests, with test files included in typecheck              | Full live HTTP matrix/idempotency/OpenAPI route coverage remains                         |
+| Package       | Present evidence                                                                                                                                                       | Limitation                                                                               |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `contracts`   | 140 schema tests across common/auth/catalog/media/inventory/content/commerce families                                                                                  | Complete operation DTO/OpenAPI wiring remains                                            |
+| `core-domain` | 36 pricing, visibility, runtime-purity and port-conformance tests                                                                                                      | No complete use-case/state-machine suites                                                |
+| Mongo adapter | 89 opt-in tests: 7 baseline, 6 transaction, 19 auth, 15 catalogue, 15 inventory/media, 16 governance/content, 3 order+cart transaction and 8 collection-name alignment | All require `RUN_DB_IT=1` and a real rs0 profile; broader HTTP/workflow adoption remains |
+| API           | 57 platform, CSRF, session-liveness, cart-ownership and order-create unit/guard tests, with test files included in typecheck                                           | Full live HTTP matrix/idempotency/OpenAPI route coverage remains                         |
 
 The admin application separately has zero unit specs and passes through `--passWithNoTests`; that frontend limitation must not be confused with the real API suite. The backend gate still rejects permanently skipped transaction proof as a production-done state.
 

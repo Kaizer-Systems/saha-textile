@@ -4,7 +4,7 @@ description: Local setup checklist for the monorepo and developer portal.
 search_keywords: 'mongo rs0 config.json env docker setup pnpm mongo:up check:naming replica set'
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-01'
+last_verified: '2026-08-02'
 source_of_truth:
     - package.json
     - pnpm-workspace.yaml
@@ -26,7 +26,7 @@ pnpm install
 pnpm turbo run lint typecheck test
 ```
 
-`pnpm lint` also runs `pnpm check:naming` (`scripts/check-naming.sh`), which enforces the Saha Textile brand-naming law. Run it before finishing any change.
+`pnpm lint` also runs two repository-policy guards. `pnpm check:naming` (`scripts/check-naming.sh`) enforces the Saha Textile brand-naming law. `pnpm check:browser-auth` (`scripts/check-browser-auth.mjs`) enforces the browser authentication rules across both Angular applications: no fake or demo session token, no `Authorization: Bearer` header, no session state in `localStorage`/`sessionStorage`/IndexedDB, auth route paths only inside each app's single HTTP gateway, and no cross-audience route reference. Add `browser-auth:allow` to a line to exempt it deliberately. Run both before finishing any change.
 
 ## Environment and services
 
@@ -50,6 +50,15 @@ pnpm mongo:status   # compose state + replica-set status
 pnpm mongo:down     # stop (data volume kept)
 pnpm mongo:wipe     # stop + DELETE the data volume (destructive)
 ```
+
+A database created before 2026-08-02 still holds data under the Mongoose-default collection names (`authsessions`, `inventoryledgers`, and so on). Move it onto the ratified names once:
+
+```bash
+pnpm mongo:align-collections -- --dry-run   # report only; changes nothing
+pnpm mongo:align-collections                # rename legacy collections onto ratified names
+```
+
+The migration is idempotent, so re-running it is safe; it refuses to merge when both the legacy and ratified collection hold data, and it is deliberately not run at application boot.
 
 The canonical host URI is `mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directConnection=true`. If a native `mongod` already owns port `27017`, set `MONGO_HOST_PORT` in a gitignored `docker/mongo/.env` and mirror it in `apps/api/.env` (`MONGODB_PORT`) — only the host-side port moves; the `rs0` name and URI shape stay identical.
 

@@ -35,6 +35,8 @@ export interface UserDoc {
 	failedPinAttempts: number;
 	/** Set when PIN use is locked after repeated failures; password login still works. */
 	pinLockedUntil: Date | null;
+	/** Set by a privileged password reset; cleared only by a successful password login. */
+	pinRevalidationRequiredAt: Date | null;
 	lastLoginAt: Date | null;
 	identities: unknown[];
 	addresses: unknown[];
@@ -65,6 +67,7 @@ const UserSchema = new Schema<UserDoc>(
 		failedLoginAttempts: { type: Number, default: 0 },
 		failedPinAttempts: { type: Number, default: 0 },
 		pinLockedUntil: { type: Date, default: null },
+		pinRevalidationRequiredAt: { type: Date, default: null },
 		lastLoginAt: { type: Date, default: null },
 		identities: { type: [Schema.Types.Mixed], default: [] },
 		addresses: { type: [Schema.Types.Mixed], default: [] },
@@ -72,7 +75,7 @@ const UserSchema = new Schema<UserDoc>(
 		consent: { type: Schema.Types.Mixed },
 		adminProfile: { type: Schema.Types.Mixed },
 	},
-	{ timestamps: true },
+	{ collection: 'users', timestamps: true },
 );
 
 /**

@@ -30,7 +30,7 @@ const CategorySchema = new Schema<CategoryDoc>(
 		seo: { type: Schema.Types.Mixed },
 		media: { type: Schema.Types.Mixed },
 	},
-	{ timestamps: true },
+	{ collection: 'categories', timestamps: true },
 );
 
 CategorySchema.index({ slug: 1 }, { unique: true });

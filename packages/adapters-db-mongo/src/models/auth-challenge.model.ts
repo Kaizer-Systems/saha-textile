@@ -56,7 +56,7 @@ const OtpChallengeSchema = new Schema<OtpChallengeDoc>(
 		consumedAt: { type: Date, default: null },
 		blockedAt: { type: Date, default: null },
 	},
-	{ timestamps: { createdAt: true, updatedAt: false } },
+	{ collection: 'otpChallenges', timestamps: { createdAt: true, updatedAt: false } },
 );
 
 /**
@@ -109,7 +109,7 @@ const OAuthStateSchema = new Schema<OAuthStateDoc>(
 		expiresAt: { type: Date, required: true },
 		consumedAt: { type: Date, default: null },
 	},
-	{ timestamps: { createdAt: true, updatedAt: false } },
+	{ collection: 'oauthStates', timestamps: { createdAt: true, updatedAt: false } },
 );
 
 OAuthStateSchema.index({ stateHash: 1 }, { unique: true });

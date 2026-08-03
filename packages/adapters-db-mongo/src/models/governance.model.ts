@@ -42,7 +42,7 @@ const AuditLogSchema = new Schema<AuditLogDoc>(
 		ipHash: { type: String, default: null },
 		userAgentHash: { type: String, default: null },
 	},
-	{ timestamps: { createdAt: true, updatedAt: false } },
+	{ collection: 'auditLogs', timestamps: { createdAt: true, updatedAt: false } },
 );
 
 /** "What did this admin do" and "what happened to this record" are the two audit reads. */
@@ -81,7 +81,7 @@ const NotificationChannelSettingsSchema = new Schema<NotificationChannelSettings
 		autoDisableAtLimit: { type: Boolean, default: false },
 		periodResetAt: { type: Date, default: null },
 	},
-	{ timestamps: { createdAt: false, updatedAt: true } },
+	{ collection: 'notificationChannelSettings', timestamps: { createdAt: false, updatedAt: true } },
 );
 
 /** Exactly one settings row per channel × category — the kill switch must be unambiguous. */
@@ -124,7 +124,7 @@ const NotificationTemplateSchema = new Schema<NotificationTemplateDoc>(
 		emailBody: { type: Schema.Types.Mixed },
 		status: { type: String, enum: ['draft', 'pending_approval', 'approved', 'disabled'], default: 'draft' },
 	},
-	{ timestamps: true },
+	{ collection: 'notificationTemplates', timestamps: true },
 );
 
 NotificationTemplateSchema.index({ key: 1 }, { unique: true });
@@ -183,7 +183,7 @@ const MessageOutboxSchema = new Schema<MessageOutboxDoc>(
 		idempotencyKey: { type: String, default: null },
 		sentAt: { type: Date, default: null },
 	},
-	{ timestamps: { createdAt: true, updatedAt: false } },
+	{ collection: 'messageOutbox', timestamps: { createdAt: true, updatedAt: false } },
 );
 
 /** Retry safety: one row per idempotency key. Partial, because most sends have none. */

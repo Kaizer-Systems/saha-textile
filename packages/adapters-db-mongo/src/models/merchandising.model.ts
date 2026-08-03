@@ -27,7 +27,7 @@ const ProductBundleSchema = new Schema<ProductBundleDoc>(
 		groups: { type: [Schema.Types.Mixed], default: [] },
 		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
 	},
-	{ timestamps: true },
+	{ collection: 'productBundles', timestamps: true },
 );
 
 /**
@@ -87,7 +87,7 @@ const ProductRelationSchema = new Schema<ProductRelationDoc>(
 		endsAt: { type: Date, default: null },
 		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
 	},
-	{ timestamps: true },
+	{ collection: 'productRelations', timestamps: true },
 );
 
 /** The rail query: relations of one type for one product, in display order. */

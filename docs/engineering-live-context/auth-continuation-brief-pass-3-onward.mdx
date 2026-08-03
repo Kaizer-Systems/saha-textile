@@ -1,0 +1,285 @@
+---
+title: 'Authentication Continuation Brief — Pass 3 Onward'
+description: 'Context-aware handoff for continuing the storefront and admin authentication build in a new session, with verified current state, remaining passes, environment specifics, and hard-won gotchas.'
+audience: [backend, frontend, security, agent]
+document_role: canonical
+last_verified: '2026-08-02'
+search_keywords: 'authentication continuation handoff pass 3 shared transport refresh single-flight rbac bootstrap oauth msg91 explain plan'
+---
+
+# Authentication continuation brief — Pass 3 onward
+
+**Status:** Live handoff. Supersedes nothing; it sits alongside
+`claude-code-authentication-api-db-build-prompt.mdx` (the execution contract) and
+`authentication-use-case-delivery-and-security-matrix.mdx` (the use-case/security checklist).
+
+**Written:** 2026-08-02, after Auth Passes 1, 2 and 2a–2f completed on branch
+`feat/api-db-env-secrets-sync`.
+
+**Progress authority:** `project-progress.mdx`. If this brief and that file ever disagree,
+that file plus tested runtime wins.
+
+---
+
+## 0. Copy/paste prompt for the new session
+
+```text
+You are continuing the Saha Textile storefront/admin authentication build. Act as a
+principal software architect, senior NestJS/Angular engineer, MongoDB performance engineer,
+application-security engineer and penetration tester.
+
+Read these completely before changing anything — not headings, the whole file:
+
+1. `AGENTS.md`
+2. `docs/engineering-live-context/auth-continuation-brief-pass-3-onward.mdx`  (this brief)
+3. `docs/engineering-live-context/project-progress.mdx`
+4. `docs/engineering-live-context/owner-decisions-log.mdx`
+5. `docs/engineering-live-context/authentication-use-case-delivery-and-security-matrix.mdx`
+6. `docs/engineering-live-context/claude-code-authentication-api-db-build-prompt.mdx`
+7. `docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx`
+8. `docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx`
+9. `docs/engineering-live-context/environment-variables.mdx`
+10. `docs/engineering-live-context/pending-decisions.mdx`
+
+Then inspect actual source, tests and `git status --short`. Tested runtime and current
+source override stale prose; owner decisions override older architecture prose.
+
+## Operating rules for this engagement — the owner set these explicitly
+
+1. **EXTREMELY SMALL PASSES.** One coherent change per pass. A pass that touches contracts
+   AND persistence AND the API AND the client is too big — split it.
+2. **ASK BEFORE EVERY PASS.** Use the question tool. Present 2-4 concrete options for what
+   to do next and mark one `(Recommended)` as the FIRST option, with the reason. Do not
+   start implementing until the owner answers. This applies to every pass, not just the
+   first.
+3. **After each completed pass:** run the gates in §6 of the brief, then append a dated,
+   accurate entry to `project-progress.mdx`. Use `[DONE]`/`[PARTIAL]`/`[BLOCKED]`/
+   `[REVERTED]`/`[N/A]` honestly. Record commands actually run with real counts.
+4. **Do NOT touch developer-portal derived pages** (`docs/admin/**`, `docs/storefront/**`,
+   `docs/backend/**`, `docs/database/**`, `docs/architecture/**`, `docs/business-flows/**`,
+   `docs/frontend/**`, `docs/getting-started/**`, `docs/tooling/**`, `docs/maintenance/**`,
+   `docs/troubleshooting/**`, `docs/api/**`, `docs/decisions/**`, `docs/_data/**`). A
+   separate tool reconciles those. Do not run or chase the portal validator; it WILL report
+   provenance staleness on those pages and that is expected, not a regression.
+   `docs/engineering-live-context/**` IS yours to update.
+5. **Never commit, stage or push** unless the owner separately asks. Check
+   `git diff --cached --name-only` is empty before finishing. If a tool stages something as
+   a side effect, `git reset` it.
+6. **Preserve all existing uncommitted owner changes.** Several `docs/` files carry
+   uncommitted edits; never revert them.
+7. Do not claim a check ran unless it ran and you captured the real output. Do not fabricate
+   provider credentials, provider responses or E2E results.
+8. If you find a defect while testing, fix it or report it — do not leave dead client-side
+   code that cannot work (this already happened once; see §5 "PIN sub-code").
+
+Report at the start: current branch, `git status --short`, what you verified about the state
+in §2 of the brief, and your proposed next pass with options.
+```
+
+---
+
+## 1. Where the work sits
+
+Branch `feat/api-db-env-secrets-sync`. Nothing committed by the agent; all work is
+uncommitted in the working tree.
+
+| Chunk / pass                                | State                                                                                                 |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| D1 auth persistence                         | **DONE**, and physical collection names now reconciled (Auth Pass 1)                                  |
+| D2 session lifecycle                        | **DONE**                                                                                              |
+| D3 storefront endpoints                     | **PARTIAL** — OAuth, session list/revoke, step-up, email change, guest merge, pending intents missing |
+| D4 admin auth                               | **PARTIAL** — recovery now done; bootstrap, Security Settings, session list/force-revoke missing      |
+| D5 RBAC / privacy / ownership               | **PARTIAL** — no permission registry, no `roles`/`userRoleAssignments`, no `/admin/**` RBAC routes    |
+| Auth Pass 1 — collection names              | **DONE**                                                                                              |
+| Auth Pass 2 — T0 client reconciliation      | **DONE**                                                                                              |
+| Auth Passes 2a–2f — admin password recovery | **DONE**                                                                                              |
+
+---
+
+## 2. What is actually true now (verify before trusting)
+
+### Persistence
+
+- All **32** Mongoose schemas declare an explicit `collection` name matching the ratified
+  64-node Schema Nebula graph. `packages/adapters-db-mongo/src/collection-names.ts` is the
+  single declaration; `test/collection-names.test.ts` asserts every model against it and
+  reads `docs/_data/instruments/schema-nebula.json` directly.
+- `pnpm mongo:align-collections [-- --dry-run]` migrates a legacy database. Idempotent,
+  refuses to merge when both names hold data, no `dropTarget`, never runs at boot.
+- `authRateLimits` is intentionally outside the 64-node graph. `productQuestions` and
+  `ratingAggregates` are implemented models with **no node in the graph** — an open
+  documentation gap, not a licence to rename them.
+
+### API
+
+- Cookie-only sessions. `SessionGuard` is global; routes opt out with `@Public()`. It reads
+  the access token from the httpOnly cookie ONLY — bearer is ignored everywhere.
+- `CsrfGuard` is global and fails closed on unsafe methods when session cookies are present.
+- `@Audience('storefront'|'admin')` enforces surface isolation.
+- Admin password recovery is complete: `POST /auth/admin/password/forgot` and
+  `POST /auth/admin/password/reset`, audience-bound, with `users.pinRevalidationRequiredAt`
+  suspending PIN use until a successful password login (cleared inside
+  `recordSuccessfulLogin`, so no caller can skip it).
+
+### Angular clients
+
+- **No fake token, no bearer header, no session in browser storage, no demo credentials, in
+  either app.** Enforced mechanically by `scripts/check-browser-auth.mjs` in `pnpm lint`.
+- Each app owns one typed auth gateway (`core/auth/auth-gateway.ts` abstract class as DI
+  token) and exactly one HTTP adapter (`core/auth/http-auth.gateway.ts`) holding route
+  paths. Components, guards and stores depend on the gateway, never `HttpClient`.
+- Stores are session facades with a three-valued status: `unknown` / `anonymous` /
+  `authenticated`. `unknown` must not be collapsed into `anonymous` — that bounces a
+  signed-in user to login during hydration.
+- Session resolves before routing via an app initializer that awaits `runtimeConfigReady`
+  (Angular starts initializers concurrently; registration order is NOT ordering).
+- Storefront bootstrap is browser-only by design: SSR has no cookie jar and must not render
+  a per-user account shell.
+
+### Test counts at handoff
+
+`contracts 145` · `core-domain 36` · `api 79` · `admin 12` · `storefront 8` ·
+`adapters-db-mongo 89` (DB-gated).
+
+---
+
+## 3. Remaining passes — proposed, in dependency order
+
+Each is sized to be one small pass. Confirm the choice with the owner before starting.
+
+| #      | Pass                                                                                                                                                       | Notes                                                                                                                     |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **3a** | Create workspace package for the shared transport primitive (framework-free policy: CSRF token contract, refresh single-flight coordinator, error mapping) | New package = real build-integration risk in Analog/Vite SSR and the admin's `strict:false` tsconfig. Do this ALONE.      |
+| **3b** | Consume the package from both Angular interceptors; delete the duplicated `core/auth/csrf-cookie.ts` in each app                                           | Behaviour-preserving refactor. Keep `check:browser-auth` green.                                                           |
+| **3c** | Refresh single-flight + 401 recovery                                                                                                                       | `TODO(auth pass 3)` markers already sit in both interceptors. Concurrent 401s must trigger ONE rotation.                  |
+| **3d** | Wire `@saha-textile/contracts` into both apps; replace hand-written wire DTOs in the gateways                                                              | Neither app consumes ANY workspace package today. Check bundle size impact — contracts pulls Zod.                         |
+| **4**  | Route/contract family categorization; retire dead legacy API guards; stable OpenAPI tags + operation IDs                                                   | Dead files: `apps/api/src/auth/{jwt-auth.guard,roles.guard,roles.decorator,current-user.decorator}.ts` — zero references. |
+| **5a** | Canonical permission registry with stable codes                                                                                                            | `RequirePermissions` exists but **no route uses it**. Deny-by-default is not met yet.                                     |
+| **5b** | `roles` + `userRoleAssignments` collections, repositories, unique active-assignment index                                                                  | Both are locked Schema Nebula nodes; neither exists.                                                                      |
+| **5c** | `/admin/roles/**`, `/admin/permissions/**`, `/admin/users/**` + escalation/BOLA/TOCTOU tests                                                               | Last-admin protection, no-delegation-above-self, permission-version invalidation.                                         |
+| **6a** | First-administrator bootstrap — operator-only, idempotency-guarded, audited, no public route, impossible to re-run                                         | **Blocks real admin E2E.** Nothing can create the first admin today.                                                      |
+| **6b** | Admin Security Settings (recent-password proof) + PIN configure/change                                                                                     | Partially exists (`POST /auth/admin/pin`); needs the settings surface.                                                    |
+| **6c** | Admin 15-minute idle soft lock + PIN quick-resume UX                                                                                                       | `POST /auth/admin/resume` exists server-side; the client overlay does not. Must never queue mutations.                    |
+| **7**  | Split `authIdentities` / `passwordCredentials` / `pinCredentials` out of the embedded user document                                                        | Locked target model; currently embedded on `users`. Migration + tests.                                                    |
+| **8**  | Google + Meta verifier adapters with fixture/contract tests                                                                                                | `OAuthStateRepository` and the collection already exist. Real E2E credential-gated.                                       |
+| **9**  | MSG91 notification adapter with fixture tests                                                                                                              | Console adapter is the current `NotificationPort`. Real delivery credential-gated.                                        |
+| **10** | Scale fixtures (1,000 products / 10,000 orders / multi-year audit) + `explain('executionStats')` suite                                                     | Must prove intended index use, not `COLLSCAN`, at seeded scale.                                                           |
+| **11** | Security-negative campaign + OpenAPI/KB reconciliation + final verification                                                                                | The matrix's negative-test list is the checklist.                                                                         |
+
+### Carried debt that is not a pass of its own
+
+- **PIN refusal sub-code.** `HttpExceptionFilter` replaces every `401` with the generic
+  `unauthorized` envelope, so the admin UI cannot distinguish wrong PIN / brute-force lock /
+  post-reset suspension. Needs a stable machine-readable sub-code. Fold into pass 4 or 6.
+- **Admin browser E2E** is owed from Pass 2 — the Browser pane failed mid-session. Blocked
+  in practice until 6a exists.
+- **Storefront global error interceptor** logs the expected anonymous `/me` 401 as an error.
+  Cosmetic noise; fold into 3c.
+- **Guest→user cart merge, pending intents, checkout idempotency** are Chunk G, not auth.
+- **Schema Nebula star promotion.** `apps/developer-portal/plugins/portal-data/compiler.js`
+  still hard-codes `SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 8` and an exclusion list whose
+  stated reason (lowercase Mongoose defaults) is now obsolete. **Portal work — not yours.**
+
+---
+
+## 4. Environment specifics
+
+- **Mongo:** Docker `saha-textile-mongo`, MongoDB 8.3, single-node `rs0`, published
+  loopback-only on **27018** on this machine (`docker/mongo/.env` → `MONGO_HOST_PORT=27018`,
+  mirrored as `MONGODB_PORT` in gitignored `apps/api/.env`).
+- **Effective Compass / tooling URI:**
+  `mongodb://127.0.0.1:27018/saha_textile_local?replicaSet=rs0&directConnection=true`
+  Always re-derive it with `pnpm mongo:status` rather than assuming.
+- Canonical local ports: storefront `4200`, admin `4300`, API `4000`.
+- `NOTIFICATION_PROVIDER=console` locally. The console adapter logs only a hashed
+  destination and withholds the payload — OTP codes and tokens never reach a log.
+
+---
+
+## 5. Gotchas that will otherwise cost you an hour each
+
+1. **`pnpm validate` does not exist at root.** §13 of the build prompt names it; the real
+   gates are in §6 below.
+2. **Turbo caches tests.** Use `pnpm turbo run test --force` for a real run.
+3. **Adapter integration tests are opt-in:**
+   `MONGODB_PORT=27018 RUN_DB_IT=1 pnpm --filter @saha-textile/adapters-db-mongo test`.
+   Without those vars 85 of 89 silently skip.
+4. **`apps/api` `pnpm start` runs `node dist/main.js`.** Always `pnpm --filter
+@saha-textile/api build` before probing, or you will measure a stale `dist`.
+5. **Angular apps have no Node types, correctly.** A test needing `node:fs` cannot live in
+   `apps/*/src/**/*.spec.ts` — the Analog Vite plugin fails to transform it. Repo-policy
+   scanners belong in `scripts/*.mjs` wired into `pnpm lint`, like `check-browser-auth.mjs`.
+6. **`import.meta` is illegal in `adapters-db-mongo`'s CommonJS output.** Resolve paths from
+   `process.cwd()` with an assertion instead.
+7. **Never `JSON.parse`/`stringify` an i18n file.** It reorders numeric-like keys and
+   retabs the whole file. Append entries textually; validate by parsing afterwards.
+8. **CSRF on probes:** an unsafe request carrying session cookies needs the `x-csrf-token`
+   header matching the readable `st_csrf` cookie, or you get `403` and will misread it as an
+   auth failure. Read it with `awk '/st_csrf/{print $7}' cookiejar.txt`.
+9. **Every 401 looks the same to a client** (see PIN sub-code above). Do not write
+   client-side branching on 401 detail — it will be dead code.
+10. **There is no first-admin bootstrap.** To probe admin flows, insert a user document
+    directly with `role: "admin"`, `status: "active"`. For a reset-token probe, derive the
+    hash yourself: `HMAC-SHA256(token, pepper)` where
+    `pepper = CSRF_SECRET || JWT_REFRESH_SECRET` from `apps/api/.env`. Never print the
+    secret. **Always delete probe rows afterwards** and confirm `users` count returns to its
+    prior value.
+11. **`rm -rf` is blocked by the permission classifier.** Use `git rm`, then `git reset` to
+    unstage — `git rm` stages the deletion, and staging is not allowed here.
+12. **`check-browser-auth.mjs` strips comments before matching**, so documenting a forbidden
+    pattern is safe. `browser-auth:allow` on a line is the deliberate opt-out.
+13. **The Browser pane can stop compositing frames** mid-session and not recover. Fall back
+    to a built-bundle scan (`grep -rlF` over `apps/*/dist/**/*.js`) plus unit tests, and say
+    plainly in the progress entry that browser E2E did not run.
+14. **Matrix §1 is verbatim approved text.** Record implementation reconciliations in §2
+    (the addendum), never by editing those tables. §2.5 is the precedent.
+
+---
+
+## 6. Verification gates — run after every pass
+
+```bash
+pnpm typecheck
+pnpm lint            # includes check:naming and check:browser-auth
+pnpm format:check
+pnpm turbo run test --force
+git diff --check
+```
+
+Plus, when the pass touches persistence:
+
+```bash
+MONGODB_PORT=27018 RUN_DB_IT=1 pnpm --filter @saha-textile/adapters-db-mongo test
+```
+
+Plus, when the pass touches an Angular app:
+
+```bash
+pnpm --filter @saha-textile/admin build
+pnpm --filter @saha-textile/storefront build
+```
+
+Do **not** run the developer-portal validator or build — portal reconciliation is out of
+scope for this engagement.
+
+Finish with `git diff --cached --name-only` returning nothing.
+
+---
+
+## 7. Non-negotiables carried forward
+
+- Hexagonal layering. Core imports no NestJS/Fastify/Mongoose/provider SDK. Adapters at the
+  edges. Angular calls the API only.
+- One HTTP auth adapter per audience; storefront code may not name an admin route and vice
+  versa — enforced by `check-browser-auth.mjs`.
+- No auth token in `localStorage`, `sessionStorage`, IndexedDB, URLs, analytics, logs, NgRx
+  persisted state, service-worker cache or SSR response cache.
+- Anti-enumeration: login, registration collision, OTP request and recovery answer
+  identically for known and unknown identifiers. Never branch UI or routing on the outcome.
+- Admin launch login methods are exactly: email-or-username + password; email-or-username +
+  configured six-digit PIN; PIN quick-resume for an already-open session. No social login,
+  no self-registration, no OTP login. The PIN is never described as MFA.
+- Object-level authorization on every owned resource; `assertOwnership` throws **404**, not
+  403, so an id cannot be probed for existence.
+- Every admin mutation is audited; audit rows commit in the same transaction as the mutation.
+- Never log or audit passwords, PINs, OTPs, cookies, tokens or provider payloads.

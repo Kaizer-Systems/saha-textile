@@ -146,5 +146,15 @@ export const UserAuthState = z.object({
 	failedLoginAttempts: z.number().int().nonnegative().default(0),
 	failedPinAttempts: z.number().int().nonnegative().default(0),
 	pinLockedUntil: IsoDateTime.nullable().default(null),
+	/**
+	 * Set when a privileged password reset has suspended PIN use.
+	 *
+	 * Distinct from `pinLockedUntil`, which is the five-failure brute-force lock and expires
+	 * on its own after fifteen minutes. This one has no expiry: it clears only when the
+	 * administrator authenticates once with the new password. The PIN hash is deliberately
+	 * NOT deleted — the owner decision requires an explicit, auditable revalidation state
+	 * rather than a silent credential removal.
+	 */
+	pinRevalidationRequiredAt: IsoDateTime.nullable().default(null),
 });
 export type UserAuthState = z.infer<typeof UserAuthState>;

@@ -13,39 +13,74 @@
 			</div>
 			<div class="col-xxl-4 col-xl-5 col-lg-6 col-sm-8 mx-auto">
 				<app-alert />
+				@if (error()) {
+				<div
+					class="alert alert-danger"
+					role="alert"
+				>
+					{{ error()! | transloco }}
+				</div>
+				}
 				<div class="log-in-box">
 					<div class="log-in-title">
 						<h3 class="text-title">
 							{{ 'please_enter_the_one_time_password_to_verify_your_account' | transloco }}
 						</h3>
+						@if (step() === 'verify') {
 						<h5 class="text-content">
 							{{ 'a_code_has_been_sent_to' | transloco }}
-							<span>{{ 'email' | transloco }}</span>
+							<span>{{ sentTo() }}</span>
 						</h5>
+						}
 					</div>
 					<form
 						[formGroup]="form"
 						(ngSubmit)="submit()"
 					>
+						@if (step() === 'request') {
+						<div class="form-floating theme-form-floating log-in-form">
+							<input
+								type="email"
+								class="form-control"
+								id="otp-email"
+								formControlName="email"
+								placeholder="{{ 'email_address' | transloco }}"
+							/>
+							<label for="otp-email">{{ 'email_address' | transloco }}</label>
+							@if (form.controls['email'].touched && form.controls['email'].errors?.['required']) {
+							<div class="invalid-feedback">{{ 'email_is_required' | transloco }}</div>
+							} @if (form.controls['email'].touched && form.controls['email'].errors?.['email']) {
+							<div class="invalid-feedback">{{ 'invalid_email' | transloco }}</div>
+							}
+						</div>
+						} @else {
 						<div class="outer-otp">
 							<div
 								id="otp"
 								class="inner-otp"
 							>
+								<!--
+									Six digits, matching the server-side challenge policy. Expiry
+									and the five-attempt cap are enforced by the API; this input
+									only keeps the expected shape obvious to the person typing.
+								-->
 								<input
 									type="text"
-									formControlName="otp"
-									maxlength="5"
-									oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')"
-									onKeyPress="if(this.value.length==5) return false;"
+									inputmode="numeric"
+									autocomplete="one-time-code"
+									formControlName="code"
+									[maxlength]="codeLength"
+									oninput="this.value = this.value.replace(/[^0-9]/g, '')"
 								/>
 							</div>
 						</div>
+						}
 						<app-button
 							[class]="'btn btn-animation w-100 mt-3'"
-							[id]="'forgot_btn'"
+							[id]="'otp_btn'"
 						>
-							{{ 'validate' | transloco }}
+							@if (step() === 'request') { {{ 'send' | transloco }} } @else { {{ 'validate' | transloco }}
+							}
 						</app-button>
 					</form>
 				</div>

@@ -39,6 +39,7 @@ export class ProductAction {
 		this.siteConfig$.subscribe((option) => {
 			this.policy = option?.product?.shipping_and_return;
 		});
-		this.isLogin = !!this.authStore.access_token();
+		// Presentation only — the API authorizes wishlist/notify actions independently.
+		this.isLogin = this.authStore.isAuthenticated();
 	}
 }

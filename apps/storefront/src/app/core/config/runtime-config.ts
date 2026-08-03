@@ -37,20 +37,38 @@ function applyConfig(loaded: Partial<RuntimeConfig>): void {
 	environment.URL = `${runtimeConfig.siteUrl}/assets/data`;
 }
 
+let markReady: () => void;
+
+/**
+ * Resolves once `apiUrl` and friends hold their real values.
+ *
+ * Angular starts app initializers concurrently, so anything that needs the API origin —
+ * the session bootstrap, for one — must await this rather than assume it ran second. It
+ * resolves from a `finally`, so a failed config fetch still unblocks boot with defaults
+ * instead of hanging the application.
+ */
+export const runtimeConfigReady: Promise<void> = new Promise<void>((resolve) => {
+	markReady = resolve;
+});
+
 export async function loadRuntimeConfig(): Promise<void> {
-	if (typeof window === 'undefined') {
-		// SSR (Analog/Nitro): no browser fetch of a relative URL. Deploys may
-		// inject the same JSON via env; otherwise localhost defaults apply.
-		const raw = process.env['SAHA_TEXTILE_PUBLIC_CONFIG'];
-		applyConfig(raw ? (JSON.parse(raw) as Partial<RuntimeConfig>) : {});
-		return;
-	}
 	try {
-		const res = await fetch('/config.json', { cache: 'no-store' });
-		applyConfig(res.ok ? ((await res.json()) as Partial<RuntimeConfig>) : {});
-	} catch {
-		// Config fetch must never block boot — fall back to localhost defaults.
-		applyConfig({});
+		if (typeof window === 'undefined') {
+			// SSR (Analog/Nitro): no browser fetch of a relative URL. Deploys may
+			// inject the same JSON via env; otherwise localhost defaults apply.
+			const raw = process.env['SAHA_TEXTILE_PUBLIC_CONFIG'];
+			applyConfig(raw ? (JSON.parse(raw) as Partial<RuntimeConfig>) : {});
+			return;
+		}
+		try {
+			const res = await fetch('/config.json', { cache: 'no-store' });
+			applyConfig(res.ok ? ((await res.json()) as Partial<RuntimeConfig>) : {});
+		} catch {
+			// Config fetch must never block boot — fall back to localhost defaults.
+			applyConfig({});
+		}
+	} finally {
+		markReady();
 	}
 }
 

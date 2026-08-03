@@ -14,6 +14,9 @@ import { CustomValidators } from '@shared/validators/password-match';
 
 import * as data from '../../../shared/data/country-code';
 
+/** Owner lock: minimum 12 characters for storefront and admin alike. */
+const PASSWORD_MIN_LENGTH = 12;
+
 @Component({
 	selector: 'app-register',
 	templateUrl: './register.html',
@@ -32,15 +35,23 @@ export class Register {
 	public tnc = new FormControl(false, [Validators.requiredTrue]);
 	public isBrowser: boolean;
 
+	public readonly error = this.authStore.error;
+	public readonly pending = this.authStore.pending;
+	public readonly passwordMinLength = PASSWORD_MIN_LENGTH;
+
 	constructor() {
 		this.isBrowser = isPlatformBrowser(this.platformId);
 		this.form = this.formBuilder.group(
 			{
 				name: new FormControl('', [Validators.required]),
 				email: new FormControl('', [Validators.required, Validators.email]),
-				phone: new FormControl('', [Validators.required, Validators.pattern(/^[0-9]*$/)]),
-				country_code: new FormControl('91', [Validators.required]),
-				password: new FormControl('', [Validators.required]),
+				// Phone is collected at checkout/address time rather than registration (owner
+				// lock), so these controls stay for template parity but are never sent.
+				phone: new FormControl('', [Validators.pattern(/^[0-9]*$/)]),
+				country_code: new FormControl('91'),
+				// Mirrors the server policy so the failure is visible before a round trip.
+				// The server remains the authority — this validator is convenience only.
+				password: new FormControl('', [Validators.required, Validators.minLength(PASSWORD_MIN_LENGTH)]),
 				password_confirmation: new FormControl('', [Validators.required]),
 			},
 			{ validator: CustomValidators.MatchValidator('password', 'password_confirmation') },
@@ -51,14 +62,20 @@ export class Register {
 		return this.form.getError('mismatch') && this.form.get('password_confirmation')?.touched;
 	}
 
-	submit() {
+	async submit(): Promise<void> {
 		this.form.markAllAsTouched();
-		if (this.tnc.invalid) {
-			return;
-		}
-		if (this.form.valid) {
-			this.authStore.register(this.form.value);
-			void this.router.navigateByUrl('/account/dashboard');
-		}
+		if (this.tnc.invalid || !this.form.valid || this.pending()) return;
+
+		const registered = await this.authStore.register({
+			email: this.form.value.email as string,
+			password: this.form.value.password as string,
+			displayName: (this.form.value.name as string) || undefined,
+		});
+		// Navigate only on a real 201; the previous version routed to the dashboard
+		// unconditionally, so a rejected registration still looked successful. The account
+		// also starts unverified — the API mails a verification token at registration.
+		if (!registered) return;
+
+		await this.router.navigateByUrl('/account/dashboard');
 	}
 }

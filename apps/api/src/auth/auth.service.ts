@@ -179,12 +179,38 @@ export class AuthService {
 		const user = await this.authUsers.findAuthStateByEmail(normalized);
 		if (!user || user.status !== 'active') return;
 
+		await this.issueResetToken(user.id, normalized, audience);
+	}
+
+	/**
+	 * Starts admin recovery from an email OR username, mirroring admin login.
+	 *
+	 * Deliberately NOT an OTP challenge: the owner lock marks admin OTP login
+	 * `DO NOT BUILD AS LOGIN`, so recovery issues a single-use, short-lived, hash-only
+	 * token delivered by email and nothing else.
+	 *
+	 * Every rejection returns silently, exactly like the success path, because the caller
+	 * answers generically either way. A customer account is refused here for the same
+	 * reason it cannot open an admin session at all.
+	 */
+	async startAdminPasswordReset(identifier: string): Promise<void> {
+		const user = await this.authUsers.findAuthStateByIdentifier(identifier.trim().toLowerCase());
+		if (!user || user.status !== 'active' || user.role === 'customer') return;
+		// The token travels by email. An admin without a recorded address has no recovery
+		// channel, and inventing one is not something an unauthenticated request may do.
+		if (!user.email) return;
+
+		await this.issueResetToken(user.id, this.normalizeEmail(user.email), 'admin');
+	}
+
+	/** Creates the hash-only reset token and dispatches it. The plaintext never persists. */
+	private async issueResetToken(userId: string, destination: string, audience: SessionAudience): Promise<void> {
 		const token = `${randomUUID()}${randomUUID()}`.replace(/-/g, '');
 		const nowMs = Date.now();
 
 		await this.resets.create({
 			id: `prt_${randomUUID()}`,
-			userId: user.id,
+			userId,
 			tokenHash: this.hash(token),
 			audience,
 			ipHash: null,
@@ -198,7 +224,7 @@ export class AuthService {
 			channel: 'email',
 			category: 'transactional',
 			templateKey: 'password_reset',
-			destination: normalized,
+			destination,
 			variables: { token },
 		});
 	}
@@ -208,13 +234,31 @@ export class AuthService {
 	 * and the caller revokes every session: a reset is the response to a suspected
 	 * compromise, so whoever else was signed in must be signed out.
 	 */
-	async completePasswordReset(token: string, newPassword: string): Promise<{ userId: string } | null> {
+	async completePasswordReset(
+		token: string,
+		newPassword: string,
+		expectedAudience?: SessionAudience,
+	): Promise<{ userId: string } | null> {
 		const consumed = await this.resets.consume(this.hash(token), new Date().toISOString());
 		if (!consumed) return null;
+
+		// A storefront recovery token must not reset an admin password, or vice versa. The
+		// token is consumed either way — it is single-use by construction, and returning it
+		// to the pool after an audience mismatch would let it be retried against the right
+		// surface.
+		if (expectedAudience && consumed.audience !== expectedAudience) return null;
 
 		const passwordHash = await this.auth.hashPassword(newPassword);
 		await this.authUsers.setPasswordHash(consumed.userId, passwordHash);
 		return { userId: consumed.userId };
+	}
+
+	/**
+	 * Suspends PIN use after a privileged reset. The hash is kept, not deleted: the owner
+	 * decision requires an explicit revalidation state whose transitions can be audited.
+	 */
+	async requirePinRevalidation(userId: string): Promise<void> {
+		await this.authUsers.setPinRevalidationRequired(userId, new Date().toISOString());
 	}
 
 	async issueEmailVerification(userId: string, email: string): Promise<void> {
@@ -253,7 +297,14 @@ export class AuthService {
 	 * minutes. Password login stays available throughout — the lock is on the METHOD, not
 	 * the account.
 	 */
-	async verifyAdminPin(user: UserAuthState, pin: string): Promise<'ok' | 'locked' | 'invalid'> {
+	async verifyAdminPin(
+		user: UserAuthState,
+		pin: string,
+	): Promise<'ok' | 'locked' | 'revalidation_required' | 'invalid'> {
+		// Checked BEFORE the brute-force lock and before the hash: a password reset answered
+		// a suspected compromise, so the PIN must not be usable again — for full login or for
+		// quick-resume — until the new password has actually been used once.
+		if (user.pinRevalidationRequiredAt) return 'revalidation_required';
 		if (user.pinLockedUntil && new Date(user.pinLockedUntil).getTime() > Date.now()) return 'locked';
 		if (!user.pinHash) return 'invalid';
 

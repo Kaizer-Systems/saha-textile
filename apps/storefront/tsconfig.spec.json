@@ -4,7 +4,14 @@
 	"extends": "./tsconfig.json",
 	"compilerOptions": {
 		"outDir": "./out-tsc/spec",
-		"types": ["jasmine"]
+		// `node`, not `jasmine`. Two corrections in one line: the runner is Vitest (specs
+		// import `describe`/`it`/`expect` from `vitest` explicitly), so the jasmine types
+		// were a leftover from the Angular scaffold and described nothing real; and a spec
+		// that imports the app's runtime config transitively reaches the SSR branch's
+		// `process.env` lookup, which `tsconfig.app.json` already declares `node` for.
+		// Without this the Analog Vite plugin fails the transform with "Cannot find name
+		// 'process'" — which reads as a broken test rather than a missing type declaration.
+		"types": ["node"]
 	},
 	"include": ["src/**/*.spec.ts", "src/**/*.d.ts"]
 }

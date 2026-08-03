@@ -1,0 +1,21 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		// ESM output, unlike `contracts`/`core-domain`. Both Angular apps bundle this
+		// package directly (Vite/Analog on the storefront, the Angular builder on admin);
+		// a CommonJS workspace dependency is the classic source of optimization-bailout
+		// warnings and interop surprises there, and nothing here needs CJS.
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"target": "ES2023",
+		// Deliberately NO "DOM": this package must compile without a browser lib so it can
+		// be unit-tested in Node and consumed under SSR. Ambient browser objects are read
+		// through narrow local declarations off `globalThis` instead (see `csrf.ts`).
+		"lib": ["ES2023"],
+		"outDir": "./dist",
+		"rootDir": "./src",
+		"types": []
+	},
+	"include": ["src/**/*.ts"],
+	"exclude": ["node_modules", "dist", "**/*.test.ts"]
+}

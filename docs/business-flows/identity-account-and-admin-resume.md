@@ -4,7 +4,7 @@ wide: true
 description: Storefront sessions, OTP/OAuth, account boundaries, admin authorization, soft lock, and draft recovery.
 status: planned
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-01'
+last_verified: '2026-08-02'
 source_of_truth:
     - apps/storefront/src/app/pages/auth
     - apps/admin/src/app/features/auth
@@ -19,7 +19,7 @@ source_of_truth:
 
 # Identity, account, and admin resume
 
-The API now executes cookie-session auth: storefront registration/password/OTP login, logout, refresh, password reset and `me`; admin password/PIN login, PIN setup/lockout, logout, refresh and `me`; audience separation; version-aware RBAC; and rotating persisted refresh families. Responses are sanitized and reusable credentials stay in httpOnly cookies. The Angular auth stores and route guards remain transitional, and their interceptors still attach legacy local-storage bearer values that the cookie-only API ignores.
+The API now executes cookie-session auth: storefront registration/password/OTP login, logout, refresh, password reset and `me`; admin password/PIN login, PIN setup/lockout, logout, refresh and `me`; audience separation; version-aware RBAC; and rotating persisted refresh families. Responses are sanitized and reusable credentials stay in httpOnly cookies. Both Angular applications now consume that session through one typed auth gateway each, with no browser-held token: the fake tokens, `localStorage` persistence, bearer headers and demo credentials were removed on 2026-08-02 and are held out by a lint-time guard. Refresh single-flight, admin idle soft-lock/quick-resume UX and protected deep-link continuation remain incomplete.
 
 ## Storefront methods
 
@@ -95,4 +95,4 @@ Complex product/order/invoice forms need enough draft metadata to reconstruct co
 
 ## Current and target boundary
 
-The API session lifecycle and cart/order ownership checks are real, while frontend adoption is incomplete. Legacy local-storage bearer state, permissive child guards, missing OAuth/email-verification completion, missing admin invite/quick-resume, and missing guest→user merge must not be presented as secure end-to-end completion.
+The API session lifecycle and cart/order ownership checks are real, while frontend adoption is incomplete. Missing OAuth verification, the absent first-administrator bootstrap, missing admin password recovery endpoints, missing refresh single-flight, missing admin quick-resume UX and missing guest→user merge must not be presented as secure end-to-end completion.

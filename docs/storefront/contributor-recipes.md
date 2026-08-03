@@ -3,7 +3,7 @@ title: Storefront Contributor Recipes
 description: Beginner-safe recipes for adding routes, server queries, client state, translations, and SSR-safe UI.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-07-26'
+last_verified: '2026-08-02'
 source_of_truth:
     - apps/storefront/src/app/pages
     - apps/storefront/src/app/features

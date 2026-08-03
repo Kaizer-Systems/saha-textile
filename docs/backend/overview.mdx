@@ -3,7 +3,7 @@ title: Backend Platform Atlas
 description: Interactive, evidence-backed map of API request paths, boundaries, risks, and proof obligations.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-08-01'
+last_verified: '2026-08-02'
 wide: true
 source_of_truth:
     - apps/api/src
@@ -71,8 +71,8 @@ An implementation is incorrectly layered when a controller imports a provider SD
 | Authentication           | Cookie-only access/opaque-refresh sessions, sid-bound logout revocation, session-bound CSRF (Policy B), audiences, storefront password/OTP/reset, admin PIN, roles/permissions, cart/`st_guest` ownership and order ownership | OAuth, email-verification completion, admin invite/quick-resume, guest→user merge and provider-backed OTP delivery |
 | Contracts                | Zod schemas for common/auth/catalog/media/inventory/content/commerce families; 140 tests                                                                                                                                      | Runtime wiring and complete operation-level OpenAPI mapping                                                        |
 | Core domain              | Repository/provider ports, pure pricing/visibility helpers, mechanically enforced type-only contract boundary; 36 tests                                                                                                       | Use-case/state-machine adoption and remaining policy coverage                                                      |
-| Mongo adapter            | 32 models, 81 opt-in adapter tests, mappers, indexes, seed tool, `MongoTransactionManager`, self-hosted Docker `rs0` profile                                                                                                  | Remaining HTTP/workflow adoption, stronger nested validation, migrations, backups/restore                          |
-| Tests                    | Contract/core suites, 57 API unit/guard tests and 81 opt-in Mongo adapter tests across baseline, transactions, auth, catalogue, inventory/media, governance/content and order+cart tx                                         | Full live HTTP matrix/idempotency/workflow coverage and CI execution of every DB-gated proof                       |
+| Mongo adapter            | 32 models with explicitly declared physical collection names, 89 opt-in adapter tests, mappers, indexes, seed tool, `MongoTransactionManager`, self-hosted Docker `rs0` profile                                               | Remaining HTTP/workflow adoption, stronger nested validation, migrations, backups/restore                          |
+| Tests                    | Contract/core suites, 64 API unit/guard tests and 89 opt-in Mongo adapter tests across baseline, transactions, auth, catalogue, inventory/media, governance/content, order+cart tx and collection-name alignment              | Full live HTTP matrix/idempotency/workflow coverage and CI execution of every DB-gated proof                       |
 | Generated references     | API `/openapi.json`; portal OpenAPI + Scalar scaffold; 32-model source catalogue                                                                                                                                              | Complete OpenAPI operation metadata and target-complete database catalogue                                         |
 
 ## Current implementation risks and resolved defects
@@ -86,7 +86,7 @@ An implementation is incorrectly layered when a controller imports a provider SD
 7. **Resolved for probe semantics 2026-08-01:** `/health/live` is dependency-free and `/health/ready` fails closed when Mongo is unavailable; `/health` remains a liveness alias.
 8. Storefront search currently uses Mongo regular expressions even though the ratified target is Meilisearch through `SearchPort`.
 9. **Resolved 2026-07-24:** the Mongo connection builder and `.env.example` implement the self-hosted Docker `rs0` model; former hosted-cluster/SRV assumptions are removed and a local replica set is available through `pnpm mongo:up`.
-10. API has 57 unit/guard tests. All 81 Mongo adapter tests remain explicitly gated by `RUN_DB_IT=1`; the transaction and repository suites have been proven against rs0 but must remain part of CI readiness work.
+10. API has 64 unit/guard tests. All 89 Mongo adapter tests remain explicitly gated by `RUN_DB_IT=1`; the transaction and repository suites have been proven against rs0 but must remain part of CI readiness work.
 
 Treat each finding as an explicit implementation and verification gate. Do not “solve” it by documenting the unsafe behavior as acceptable.
 

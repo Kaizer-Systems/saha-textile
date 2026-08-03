@@ -5,7 +5,7 @@ slug: /database/schema-nebula
 wide: true
 status: implemented
 audience: [beginner, backend, operator]
-last_verified: '2026-08-01'
+last_verified: '2026-08-02'
 search_keywords: 'schema nebula collections database mongodb star map models ghosts graph relationships bounded context DEC'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -45,7 +45,7 @@ Schema Nebula is a **governed architecture map**, not a live database browser an
 
 The eight solid stars are `categories`, `products`, `promotions`, `orders`, `currencies`, `carts`, `users` and `reviews`. Every other star remains a target-only ghost until exact physical-name model evidence exists.
 
-Chunks D/E expanded the current adapter to 32 models. Source inspection on 2026-08-01 shows that Mongoose resolves most new multiword physical names through lowercase defaults (`authsessions`, `categoryplacements`, `inventoryledgers`, `auditlogs`, and so on) rather than the ratified lower-camel graph names. Those models belong in the current-source catalogue but cannot promote mismatched stars. `reviews` resolves exactly and is now solid; `authratelimits` remains outside the graph. Schema Nebula is therefore **64 / 8 / 56**.
+Chunks D/E expanded the current adapter to 32 models. Source inspection on 2026-08-01 found that Mongoose resolved most new multiword physical names through lowercase defaults (`authsessions`, `categoryplacements`, `inventoryledgers`, `auditlogs`, and so on) rather than the ratified lower-camel graph names, so those models could not promote mismatched stars. On 2026-08-02 the adapter declared every physical name explicitly and migrated the local replica set, so all 32 models now resolve to their ratified names and `packages/adapters-db-mongo/test/collection-names.test.ts` asserts it against this dataset. Promoting the newly eligible stars changes a governed count and remains a separate, reviewed portal-truth reconciliation; `authRateLimits` stays outside the graph either way. Schema Nebula is therefore still published as **64 / 8 / 56**.
 
 ## Controls
 

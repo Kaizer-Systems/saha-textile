@@ -16,6 +16,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@saha-textile/http-transport": "workspace:*",
     "@analogjs/router": "^2.6.2",
     "@angular/animations": "^21.2.17",
     "@ngrx/effects": "^21.1.1",

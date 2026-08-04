@@ -118,6 +118,15 @@ export interface AdminInviteRepository {
 export interface AuthRateLimitRepository {
 	/** Increments the window counter and returns the count after this hit. */
 	hit(key: string, windowSeconds: number, now: string): Promise<number>;
+	/**
+	 * Current count in the window WITHOUT incrementing it, or 0 when nothing is recorded.
+	 *
+	 * Needed for failure counting: the decision to refuse has to be made before a credential
+	 * is checked, while the counter may only advance once that check has actually failed.
+	 * Using `hit` for the decision is what made every successful login spend budget it should
+	 * never have touched.
+	 */
+	peek(key: string, now: string): Promise<number>;
 	reset(key: string): Promise<void>;
 }
 

@@ -70,7 +70,7 @@ describe('admin AuthInterceptor', () => {
 	let notificationService: { notification: boolean };
 	let refreshCalls: number;
 	let csrfCalls: number;
-	let refreshResult: () => Observable<void>;
+	let refreshResult: (call: number) => Observable<void>;
 
 	beforeEach(() => {
 		handler = new StubHandler();
@@ -94,7 +94,7 @@ describe('admin AuthInterceptor', () => {
 			},
 			refreshSession: () => {
 				refreshCalls += 1;
-				return refreshResult();
+				return refreshResult(refreshCalls);
 			},
 		};
 
@@ -293,31 +293,49 @@ describe('admin AuthInterceptor', () => {
 		});
 	});
 
-	describe('without a readable CSRF cookie', () => {
-		// The regression this replaces: the interceptor used to REFUSE to rotate when no CSRF
-		// cookie was readable, on the reasoning that the POST would 403. But the API sets
-		// `st_csrf` without a `maxAge` — a browser-session cookie — while access and refresh
-		// are persistent. Closing the browser and returning therefore leaves a valid session
-		// with no readable double-submit half, and the old guard logged that user out for it.
-		it('acquires a CSRF token, then rotates and replays', async () => {
+	describe('when the rotation is refused for its CSRF token', () => {
+		// `st_csrf` is set without a maxAge, so it dies when the browser closes while the
+		// access and refresh cookies persist. A returning user therefore arrives with a valid
+		// session and no readable double-submit half. Acquiring a token BEFORE trying to
+		// rotate fixed that, but charged an extra round-trip to every anonymous visitor on
+		// first paint. Asking first works because the API's two refusals differ: 403 means the
+		// token was missing, 401 means there is no session — asserted end to end in
+		// `apps/api/e2e/session-rotation.mjs`.
+		it('acquires a token on a 403, then rotates and replays', async () => {
+			refreshResult = (call) =>
+				call === 1 ? throwError(() => new HttpErrorResponse({ status: 403 })) : of(undefined);
 			handler.responder = (_req, index) =>
 				index === 0 ? throwError(unauthorized) : of(new HttpResponse({ status: 200 }));
 
 			await firstValueFrom(run('GET'));
 
 			expect(csrfCalls).toBe(1);
-			expect(refreshCalls).toBe(1);
+			expect(refreshCalls).toBe(2);
 			expect(handler.forwarded()).toHaveLength(2);
 			expect(clear).not.toHaveBeenCalled();
 		});
 
-		it('still gives up when the rotation that follows is refused', async () => {
+		// The saving this ordering exists for: a visitor with no session pays ONE request, not
+		// a token fetch for a session they do not have followed by a rotation that cannot work.
+		it('does not fetch a token when the refusal is 401', async () => {
 			refreshResult = () => throwError(() => new HttpErrorResponse({ status: 401 }));
 			handler.responder = () => throwError(unauthorized);
 
 			await expect(firstValueFrom(run('GET'))).rejects.toMatchObject({ status: 401 });
 
+			expect(csrfCalls).toBe(0);
+			expect(refreshCalls).toBe(1);
+			expect(clear).toHaveBeenCalledOnce();
+		});
+
+		it('gives up when the rotation still fails after acquiring a token', async () => {
+			refreshResult = () => throwError(() => new HttpErrorResponse({ status: 403 }));
+			handler.responder = () => throwError(unauthorized);
+
+			await expect(firstValueFrom(run('GET'))).rejects.toMatchObject({ status: 401 });
+
 			expect(csrfCalls).toBe(1);
+			expect(refreshCalls).toBe(2);
 			expect(clear).toHaveBeenCalledOnce();
 		});
 

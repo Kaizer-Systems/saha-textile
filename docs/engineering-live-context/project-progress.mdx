@@ -1424,6 +1424,34 @@ dependencies of the SessionGuard (?, …)`. The options were `unplugin-swc` + `@
 function`. It now builds through Turbo so dependencies rebuild with it.
   **Next executable step:** 3c.3 — rotate first and acquire a CSRF token only on the 403 the
   harness documented, then a storefront browser E2E. Tool: claude-code.
+- 2026-08-04 — [DONE] **Auth Pass 3c.3 — the client asks before it fetches: rotate first,
+  acquire a CSRF token only on a 403.**
+  **What it costs today, and why it changed.** 3c.1 fixed the returning-visitor logout by
+  acquiring a CSRF token whenever none was readable, then rotating. Correct, but it charged
+  the cost to the wrong people: every anonymous first page load fired `/me` (401) →
+  `/auth/csrf` (200) → `refresh` (401), fetching a token for a session the visitor does not
+  have. On a storefront that is two avoidable round-trips on first paint for every SEO visitor.
+  **The reorder is safe because the API's refusals are distinguishable**, which 3c.2 asserted
+  rather than assumed: session cookies present with the CSRF half missing answers **403**, no
+  session at all answers **401**. So the client now rotates first; on 403 it fetches a token
+  and retries once, and on 401 it gives up and latches. An anonymous load costs ONE request
+  instead of two; a returning visitor pays three and still gets their session back. Both paths
+  stay inside the coordinator, so the whole sequence is single-flighted, and there is no
+  recursion risk because the refresh route is a credential endpoint whose own failures never
+  re-enter recovery.
+  **Tests:** admin 51 → **52**, storefront 49 → **50**. The two specs that encoded the old
+  order were rewritten rather than deleted, and a third case added for the saving itself — a
+  401 refusal must fetch NO token. **Mutation-verified:** restoring acquire-first fails all
+  three and nothing else.
+  **Commands actually run:** `pnpm typecheck` 15/15 · `pnpm lint` 17/17 + `check:naming` +
+  `check:browser-auth` · `pnpm format:check` all files · `pnpm turbo run test --force` 11/11
+  (contracts 145, http-transport 142, core-domain 87, api 83, storefront 50, admin 52) ·
+  `MONGODB_PORT=27018 pnpm e2e:session-rotation` **10/10** · both Angular production builds ·
+  `git diff --check` clean.
+  **Next executable step:** the storefront browser E2E — specifically the four things nothing
+  else can show: that `st_csrf` really is dropped on browser close while `st_refresh` survives,
+  the Web Locks path across two real tabs, recovery inside the real Angular DI and RxJS chain,
+  and SSR not attempting recovery. Admin browser E2E stays blocked on 6a. Tool: claude-code.
 - _(append)_
 
 ---

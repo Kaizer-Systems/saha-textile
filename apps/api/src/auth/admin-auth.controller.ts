@@ -30,6 +30,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AdminInviteService } from './admin-invite.service';
 import { AuthService } from './auth.service';
 import { Principal } from './ownership';
+import { tooManyRequests } from './rate-limit-response';
 import { RotatesSession } from './refresh-reuse.guard';
 import { type AuthenticatedPrincipal, Audience, Public, RequireRoles } from './session.guard';
 import { SessionService } from './session.service';
@@ -70,10 +71,15 @@ export class AdminAuthController {
 		@Req() request: FastifyRequest,
 		@Res({ passthrough: true }) reply: FastifyReply,
 	): Promise<AuthSessionResponse> {
-		const underLimit =
-			(await this.auth.withinRateLimit('login', 'ip', request.ip)) &&
-			(await this.auth.withinRateLimit('login', 'email', body.identifier.toLowerCase()));
-		if (!underLimit) throw new UnauthorizedException('Too many attempts');
+		// A bucket of its own, separate from the storefront's. They shared one, so a burst of
+		// customer traffic could exhaust the budget the back office depends on — staff locked
+		// out of admin by shoppers on the same office address.
+		const scopes = { identifier: body.identifier.toLowerCase(), ip: request.ip };
+		const limit = await this.auth.checkRateLimit('admin_login', scopes);
+		if (!limit.allowed) {
+			if (limit.scope === 'ip') throw tooManyRequests(limit, reply);
+			throw new UnauthorizedException('Invalid credentials');
+		}
 
 		const user = await this.auth.findAuthUserByIdentifier(body.identifier);
 		const valid = await this.auth.verifyPassword(user, body.password);
@@ -81,8 +87,11 @@ export class AdminAuthController {
 		// A customer account must not be able to open an admin session, and the refusal
 		// looks identical to a wrong password.
 		if (!user || !valid || user.status !== 'active' || user.role === 'customer') {
+			await this.auth.recordRateLimitFailure('admin_login', scopes);
 			throw new UnauthorizedException('Invalid credentials');
 		}
+
+		await this.auth.clearRateLimitIdentifier('admin_login', scopes.identifier);
 
 		await this.auth.authUserRepository.recordSuccessfulLogin(user.id, new Date().toISOString());
 		const { session } = await this.sessions.establish({
@@ -116,12 +125,17 @@ export class AdminAuthController {
 		@Req() request: FastifyRequest,
 		@Res({ passthrough: true }) reply: FastifyReply,
 	): Promise<AuthSessionResponse> {
-		if (!(await this.auth.withinRateLimit('pin_login', 'ip', request.ip))) {
-			throw new UnauthorizedException('Too many attempts');
-		}
+		// The owner-locked control is five failed attempts locking the PIN for fifteen minutes,
+		// and that is per ACCOUNT (`pinLockedUntil`). This address ceiling only makes
+		// distributed guessing expensive, and is deliberately far looser: the previous
+		// per-address five let any five failures lock PIN login for every operator sharing a
+		// carrier-grade NAT address.
+		const limit = await this.auth.checkRateLimit('admin_pin_login', { ip: request.ip });
+		if (!limit.allowed) throw tooManyRequests(limit, reply);
 
 		const user = await this.auth.findAuthUserByIdentifier(body.identifier);
 		if (!user || user.status !== 'active' || user.role === 'customer') {
+			await this.auth.recordRateLimitFailure('admin_pin_login', { ip: request.ip });
 			throw new UnauthorizedException('Invalid credentials');
 		}
 
@@ -135,7 +149,13 @@ export class AdminAuthController {
 			// Named explicitly: the operator needs to know password login still works.
 			throw new UnauthorizedException('PIN is temporarily locked; sign in with your password');
 		}
-		if (outcome !== 'ok') throw new UnauthorizedException('Invalid credentials');
+		if (outcome !== 'ok') {
+			// A wrong PIN is the failure this bucket exists to count. The lock and suspension
+			// above are already-decided states rather than fresh guesses, so they do not add
+			// to it.
+			await this.auth.recordRateLimitFailure('admin_pin_login', { ip: request.ip });
+			throw new UnauthorizedException('Invalid credentials');
+		}
 
 		await this.auth.authUserRepository.recordSuccessfulLogin(user.id, new Date().toISOString());
 		const { session } = await this.sessions.establish({
@@ -209,10 +229,8 @@ export class AdminAuthController {
 		// Limited by identifier AND source address: one throttles targeting a single
 		// administrator, the other throttles sweeping many. Exceeding either still returns
 		// the same accepted body, so probing the limiter reveals nothing either.
-		const underLimit =
-			(await this.auth.withinRateLimit('password_reset', 'email', identifier)) &&
-			(await this.auth.withinRateLimit('password_reset', 'ip', request.ip));
-		if (underLimit) await this.auth.startAdminPasswordReset(identifier);
+		const limit = await this.auth.consumeRateLimit('password_reset', { identifier, ip: request.ip });
+		if (limit.allowed) await this.auth.startAdminPasswordReset(identifier);
 
 		return ADMIN_RECOVERY_ACCEPTED;
 	}
@@ -410,9 +428,8 @@ export class AdminAuthController {
 		@Res({ passthrough: true }) reply: FastifyReply,
 	): Promise<AuthSessionResponse> {
 		if (!principal) throw new UnauthorizedException('Authentication required');
-		if (!(await this.auth.withinRateLimit('pin_login', 'ip', request.ip))) {
-			throw new UnauthorizedException('Too many attempts');
-		}
+		const limit = await this.auth.checkRateLimit('admin_pin_login', { ip: request.ip });
+		if (!limit.allowed) throw tooManyRequests(limit, reply);
 
 		const user = await this.auth.findAuthUserById(principal.userId);
 		if (!user || user.status !== 'active') throw new UnauthorizedException('Account is not active');
@@ -426,7 +443,13 @@ export class AdminAuthController {
 		if (outcome === 'locked') {
 			throw new UnauthorizedException('PIN is temporarily locked; sign in with your password');
 		}
-		if (outcome !== 'ok') throw new UnauthorizedException('Invalid credentials');
+		if (outcome !== 'ok') {
+			// A wrong PIN is the failure this bucket exists to count. The lock and suspension
+			// above are already-decided states rather than fresh guesses, so they do not add
+			// to it.
+			await this.auth.recordRateLimitFailure('admin_pin_login', { ip: request.ip });
+			throw new UnauthorizedException('Invalid credentials');
+		}
 
 		// Rotates the refresh token and extends the idle window on the SAME session.
 		const { session } = await this.sessions.refresh({ request, reply, audience: 'admin' });

@@ -2,6 +2,13 @@ import { createHmac, randomInt, randomUUID } from 'node:crypto';
 
 import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import type { OtpPurpose, SessionAudience, User, UserAuthState } from '@saha-textile/contracts';
+import {
+	AUTH_RATE_LIMIT_POLICY,
+	type AuthRateLimitAction,
+	type RateLimitDecision,
+	decideRateLimit,
+	rateLimitClientScope,
+} from '@saha-textile/core-domain';
 import type {
 	AuthPort,
 	AuthRateLimitRepository,
@@ -25,15 +32,6 @@ import {
 	USER_REPOSITORY,
 } from '../infra/tokens';
 
-/** Rate-limit windows for auth-sensitive actions (AGENTS §6: rate-limit auth/OTP). */
-const RATE_LIMITS = {
-	login: { max: 10, windowSeconds: 15 * 60 },
-	otp_request: { max: 5, windowSeconds: 15 * 60 },
-	otp_verify: { max: 10, windowSeconds: 15 * 60 },
-	password_reset: { max: 5, windowSeconds: 60 * 60 },
-	pin_login: { max: 5, windowSeconds: 15 * 60 },
-} as const;
-
 /** Owner lock: five failed PIN attempts lock PIN use for fifteen minutes. */
 export const PIN_MAX_ATTEMPTS = 5;
 export const PIN_LOCK_MINUTES = 15;
@@ -45,6 +43,12 @@ export const PIN_LOCK_MINUTES = 15;
  */
 const DUMMY_ARGON2_HASH =
 	'$argon2id$v=19$m=65536,t=3,p=4$c2FoYXRleHRpbGVkdW1teQ$2ZBQm5oWLMlqmZ0PBnVQAvUyEO0Zx8vJZ0Gz0k1p9dI';
+
+/** The two keys an auth action is counted against. `identifier` is absent where none exists. */
+export interface RateLimitScopes {
+	identifier?: string;
+	ip: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -77,19 +81,79 @@ export class AuthService {
 	}
 
 	/**
-	 * Applies a rate limit, returning whether the caller is still under it. Keyed by a
-	 * HASHED identifier so the counter collection never becomes a list of who tried to
-	 * sign in.
+	 * Reads the current standing WITHOUT consuming anything.
+	 *
+	 * For failure-counted actions: the decision to refuse has to be made before a credential
+	 * is verified, while the counter may only advance once that check has actually failed.
+	 * Consuming here is what made every successful login spend budget — and behind
+	 * carrier-grade NAT, where thousands of Indian subscribers share one IPv4 address, the
+	 * honest majority exhausted it long before an attacker would have.
 	 */
-	async withinRateLimit(
-		action: keyof typeof RATE_LIMITS,
-		scope: 'ip' | 'email',
-		identifier: string,
-	): Promise<boolean> {
-		const limit = RATE_LIMITS[action];
-		const key = `${scope}:${action}:${this.hash(identifier)}`;
-		const count = await this.rateLimits.hit(key, limit.windowSeconds, new Date().toISOString());
-		return count <= limit.max;
+	async checkRateLimit(action: AuthRateLimitAction, scopes: RateLimitScopes): Promise<RateLimitDecision> {
+		const policy = AUTH_RATE_LIMIT_POLICY[action];
+		const now = new Date().toISOString();
+
+		return decideRateLimit(policy, {
+			identifier:
+				policy.identifier && scopes.identifier !== undefined
+					? await this.rateLimits.peek(this.rateLimitKey('identifier', action, scopes.identifier), now)
+					: undefined,
+			ip: policy.ip ? await this.rateLimits.peek(this.rateLimitKey('ip', action, scopes.ip), now) : undefined,
+		});
+	}
+
+	/**
+	 * Checks and consumes in one step, for actions that spend a real resource on success —
+	 * an email sent, an account created. Failure counting cannot protect those, because the
+	 * cost lands whether or not the caller was honest.
+	 */
+	async consumeRateLimit(action: AuthRateLimitAction, scopes: RateLimitScopes): Promise<RateLimitDecision> {
+		const decision = await this.checkRateLimit(action, scopes);
+		if (!decision.allowed) return decision;
+		await this.recordRateLimitEvent(action, scopes);
+		return decision;
+	}
+
+	/** Records a refused credential attempt against both scopes. */
+	async recordRateLimitFailure(action: AuthRateLimitAction, scopes: RateLimitScopes): Promise<void> {
+		await this.recordRateLimitEvent(action, scopes);
+	}
+
+	/**
+	 * Clears the identifier's budget after a successful authentication.
+	 *
+	 * Deliberately NOT the address budget. Resetting that on success would let an attacker
+	 * interleave one login to an account they control and wipe the failure history they had
+	 * just accumulated against everyone else's.
+	 */
+	async clearRateLimitIdentifier(action: AuthRateLimitAction, identifier: string): Promise<void> {
+		if (!AUTH_RATE_LIMIT_POLICY[action].identifier) return;
+		await this.rateLimits.reset(this.rateLimitKey('identifier', action, identifier));
+	}
+
+	private async recordRateLimitEvent(action: AuthRateLimitAction, scopes: RateLimitScopes): Promise<void> {
+		const policy = AUTH_RATE_LIMIT_POLICY[action];
+		const now = new Date().toISOString();
+
+		if (policy.identifier && scopes.identifier !== undefined) {
+			await this.rateLimits.hit(
+				this.rateLimitKey('identifier', action, scopes.identifier),
+				policy.identifier.windowSeconds,
+				now,
+			);
+		}
+		if (policy.ip) {
+			await this.rateLimits.hit(this.rateLimitKey('ip', action, scopes.ip), policy.ip.windowSeconds, now);
+		}
+	}
+
+	/**
+	 * Keyed by a HASHED value so the counter collection never becomes a list of who tried to
+	 * sign in. The address is first reduced to its rate-limit scope, which collapses an IPv6
+	 * address to the /64 its subscriber owns.
+	 */
+	private rateLimitKey(scope: 'identifier' | 'ip', action: AuthRateLimitAction, value: string): string {
+		return `${scope}:${action}:${this.hash(scope === 'ip' ? rateLimitClientScope(value) : value)}`;
 	}
 
 	/** Verifies a password, spending equivalent time when the account has none. */

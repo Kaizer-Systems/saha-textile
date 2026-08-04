@@ -18,6 +18,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AuthService } from './auth.service';
 import { Principal } from './ownership';
+import { RotatesSession } from './refresh-reuse.guard';
 import { type AuthenticatedPrincipal, Audience, Public } from './session.guard';
 import { SessionService } from './session.service';
 
@@ -217,6 +218,7 @@ export class StorefrontAuthController {
 
 	@Post('refresh')
 	@Public()
+	@RotatesSession()
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Rotate the session (reuse of an old token revokes the family)' })
 	async refresh(

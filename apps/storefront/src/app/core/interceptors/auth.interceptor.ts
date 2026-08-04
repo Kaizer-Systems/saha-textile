@@ -15,6 +15,7 @@ import {
 	CSRF_HEADER_NAME,
 	RefreshCoordinator,
 	hasBrowserCookieJar,
+	isForbidden,
 	isUnsafeMethod,
 	readCsrfToken,
 	withBrowserLock,
@@ -92,6 +93,17 @@ const SESSION_REFRESH_LOCK = 'saha-textile-storefront-session-refresh';
  * different question from the transport package's `isRetryable`, which governs retrying
  * TRANSIENT failures and refuses unsafe methods precisely because those may have landed.
  */
+/**
+ * A rotation refused for the CSRF token specifically, rather than for the session.
+ *
+ * The API answers 403 only when session cookies are present and the double-submit half is
+ * missing or mismatched — which is precisely the recoverable case. A missing session answers
+ * 401 and must not be retried.
+ */
+function isCsrfRefusal(error: unknown): boolean {
+	return error instanceof HttpErrorResponse && isForbidden({ status: error.status });
+}
+
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
 	private router = inject(Router);
@@ -187,22 +199,40 @@ export class AuthInterceptor implements HttpInterceptor {
 	}
 
 	/**
-	 * The rotation, plus the CSRF acquisition it may need first.
+	 * Rotates the session, acquiring a CSRF token only if the API says that is what was
+	 * missing.
 	 *
-	 * Rotation is an unsafe, cookie-authenticated POST and cannot succeed without the readable
-	 * half of the double-submit pair. Refusing to rotate when that half is absent was wrong:
-	 * the API sets `st_csrf` WITHOUT a `maxAge`, making it a browser-session cookie, while the
-	 * access and refresh cookies are persistent. Closing the browser and returning therefore
-	 * leaves a perfectly valid session with no readable CSRF value — for a storefront customer
-	 * whose refresh window is 30 days, that is the normal way they come back — and treating it
-	 * as an unrecoverable session logged them out for it. Both calls sit inside the
-	 * coordinator, so the acquisition is single-flighted along with the rotation.
+	 * Rotation is an unsafe, cookie-authenticated POST, so it needs the readable half of the
+	 * double-submit pair — and `st_csrf` is set WITHOUT a `maxAge`, making it a browser-session
+	 * cookie while the access and refresh cookies persist. Closing the browser and returning
+	 * therefore leaves a valid session with no readable CSRF value, and refusing to rotate
+	 * there used to log that user out.
+	 *
+	 * Acquiring the token FIRST fixed that, but charged the cost to the wrong people: every
+	 * anonymous visitor paid an extra round-trip on first paint to fetch a token for a session
+	 * they do not have. Asking first is better because the API's two refusals are
+	 * distinguishable, which `apps/api/e2e/session-rotation.mjs` asserts rather than assumes:
+	 *
+	 * - **403** — session cookies present, CSRF half missing. Recoverable: fetch a token and
+	 *   retry once. The retry re-reads the cookie because the request is rebuilt by `prepare`.
+	 * - **401** — no session at all. Nothing to recover; let it fail and latch.
+	 *
+	 * So an anonymous first load costs one request instead of two, and a returning visitor
+	 * pays three and gets their session back. Both paths sit inside the coordinator, so the
+	 * whole sequence is single-flighted.
+	 *
+	 * No recursion risk: the refresh route is a credential endpoint, so its own failures never
+	 * re-enter recovery.
 	 */
 	private async rotate(): Promise<void> {
-		if (readCsrfToken() === null) {
+		try {
+			await firstValueFrom(this.gateway.refreshSession());
+		} catch (error) {
+			if (!isCsrfRefusal(error)) throw error;
+
 			await firstValueFrom(this.gateway.ensureCsrfToken());
+			await firstValueFrom(this.gateway.refreshSession());
 		}
-		await firstValueFrom(this.gateway.refreshSession());
 	}
 
 	/**

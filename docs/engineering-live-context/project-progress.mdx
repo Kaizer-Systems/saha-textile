@@ -1311,6 +1311,51 @@ dependencies of the SessionGuard (?, …)`. The options were `unplugin-swc` + `@
   storefront run is worth doing opportunistically and the admin one remains blocked on 6a.
   **Next executable step:** 3c.3 — reorder the client to rotate first and acquire a CSRF token
   only on the 403 this pass documented, then 3d (contracts in both apps). Tool: claude-code.
+- 2026-08-04 — [DONE] **Auth Pass 3c.2a — two follow-ups closed properly, one of them a real
+  security gap.**
+  **1. `createApp(config)` is now true end to end.** It previously shaped only the HTTP
+  adapter: `ConfigModule` provided `APP_CONFIG` through its own `loadConfig()` call, so every
+  service read `process.env` behind the caller's back. `ConfigModule.forRoot(config)` and
+  `AppModule.forRoot(config)` now thread an explicit config through DI, defaulting to
+  `loadConfig()` for process startup. The e2e harness passes `JWT_ACCESS_TTL` **only** as
+  config, which is what makes the expiry case proof rather than decoration. **Mutation-verified:**
+  restoring the internal `loadConfig()` fails "recovers an expired access cookie" — the exact
+  symptom that exposed it. One documented exception remains: the Mongo adapter reads its
+  connection settings from `process.env` at connect time, so redirecting the database still
+  needs `MONGODB_DB_NAME` in the environment.
+  **2. Refresh-token reuse detection no longer sits behind CSRF — the security fix.** Detection
+  lived inside the refresh use case, which runs after `CsrfGuard`. An attacker holding a
+  stolen refresh cookie and no CSRF token was refused with a 403 and the family was **never
+  revoked**: blocked, but silent — the legitimate session kept working and no security event
+  was recorded. Detection was effectively reachable only in the same-browser race. Extracted
+  to `SessionService.revokeFamilyIfRefreshReused` and run by a new `RefreshReuseGuard`
+  registered **before** `CsrfGuard`; `refresh()` still calls it so the use case is safe on its
+  own terms. The guard is opt-in through `@RotatesSession()` because the check costs a
+  database lookup — running it on every request carrying a session cookie would put it on the
+  hot path of the whole API to protect two routes. It is not a new denial-of-service vector:
+  a cross-site request carries whatever cookie the browser currently holds, which is the
+  CURRENT token, and reaching the branch requires a 256-bit value matching a stored
+  previous-token hash. **Mutation-verified:** moving the guard back behind `CsrfGuard` fails
+  the new case and nothing else.
+  **Tests:** e2e 7 → **8** (a stolen refresh cookie with no CSRF token now revokes the family
+  and the victim's session is gone, asserted against the database rather than a status code);
+  api 79 → **83** (`refresh-reuse.guard.test.ts`, including that a non-rotating handler
+  performs no lookup). Repo 514 → **518**.
+  **Two items reported rather than changed.** `revokeReason` needed nothing: it is declared on
+  the schema, mapped by the adapter and typed in contracts as `SessionRevokeReason` — the
+  earlier suspicion came from a case-sensitive grep and was wrong, and the e2e now asserts it.
+  Rate-limit bucket sharing is a tuning decision left for the owner: registration, storefront
+  login and admin login all consume one `login` bucket keyed by IP at 10 per 15 minutes, and
+  admin PIN login uses 5, so a NAT-shared address can lock out unrelated users across
+  audiences — and the refusal is a deliberate 401 that reads as "invalid credentials".
+  **Commands actually run:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` **8/8** ·
+  `pnpm typecheck` 15/15 · `pnpm lint` 17/17 + `check:naming` + `check:browser-auth` ·
+  `pnpm format:check` all files · `pnpm turbo run test --force` **11/11** ·
+  `MONGODB_PORT=27018 RUN_DB_IT=1` adapter IT **89/89** · real API boot re-probed after the DI
+  change (`/health/live` 200, `/health/ready` 200 with `mongodb: up`, `/openapi.json` 200) ·
+  probe accounts 7, remaining after cleanup **0**.
+  **Next executable step:** 3c.3 — rotate first and acquire a CSRF token only on the 403 the
+  harness documented, then a storefront browser E2E. Tool: claude-code.
 - _(append)_
 
 ---

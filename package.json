@@ -14,7 +14,7 @@
     "check:browser-auth": "node scripts/check-browser-auth.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "e2e:session-rotation": "pnpm --filter @saha-textile/api build && pnpm --filter @saha-textile/api e2e:session-rotation",
+    "e2e:session-rotation": "turbo run build --filter=@saha-textile/api && pnpm --filter @saha-textile/api e2e:session-rotation",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "portal:persistent": "node scripts/serve-developer-portal-persistent.mjs",

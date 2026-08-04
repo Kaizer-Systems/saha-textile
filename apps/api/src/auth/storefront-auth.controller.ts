@@ -18,6 +18,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AuthService } from './auth.service';
 import { Principal } from './ownership';
+import { tooManyRequests } from './rate-limit-response';
 import { RotatesSession } from './refresh-reuse.guard';
 import { type AuthenticatedPrincipal, Audience, Public } from './session.guard';
 import { SessionService } from './session.service';
@@ -51,9 +52,10 @@ export class StorefrontAuthController {
 		@Res({ passthrough: true }) reply: FastifyReply,
 	): Promise<AuthSessionResponse> {
 		const email = this.auth.normalizeEmail(body.email);
-		if (!(await this.auth.withinRateLimit('login', 'ip', request.ip))) {
-			throw new UnauthorizedException('Too many attempts');
-		}
+		// Attempt-counted: registration creates an account and sends a verification email, so
+		// the cost lands on success too and failure counting cannot protect it.
+		const limit = await this.auth.consumeRateLimit('storefront_register', { identifier: email, ip: request.ip });
+		if (!limit.allowed) throw tooManyRequests(limit, reply);
 
 		const existing = await this.auth.findAuthUserByEmail(email);
 		if (existing) {
@@ -113,17 +115,31 @@ export class StorefrontAuthController {
 		@Res({ passthrough: true }) reply: FastifyReply,
 	): Promise<AuthSessionResponse> {
 		const email = this.auth.normalizeEmail(body.email);
-		const underLimit =
-			(await this.auth.withinRateLimit('login', 'ip', request.ip)) &&
-			(await this.auth.withinRateLimit('login', 'email', email));
-		if (!underLimit) throw new UnauthorizedException('Too many attempts');
+		const scopes = { identifier: email, ip: request.ip };
+		const limit = await this.auth.checkRateLimit('storefront_login', scopes);
+		if (!limit.allowed) {
+			// An address-scoped refusal is about the network, so it may be stated plainly. An
+			// identifier-scoped one keeps the generic credential failure, so an attacker
+			// cannot read the response to learn when their budget resets.
+			if (limit.scope === 'ip') throw tooManyRequests(limit, reply);
+			throw new UnauthorizedException('Invalid credentials');
+		}
 
 		const user = await this.auth.findAuthUserByEmail(email);
 		const valid = await this.auth.verifyPassword(user, body.password);
 
 		// One message for every failure mode: unknown address, wrong password, and
 		// non-active account are indistinguishable to the caller.
-		if (!user || !valid || user.status !== 'active') throw new UnauthorizedException('Invalid credentials');
+		if (!user || !valid || user.status !== 'active') {
+			// Only failures are counted, so a signed-in customer never spends budget they
+			// share with thousands of others behind the same carrier-grade NAT address.
+			await this.auth.recordRateLimitFailure('storefront_login', scopes);
+			throw new UnauthorizedException('Invalid credentials');
+		}
+
+		// Success clears this account's budget — never the shared address budget, which an
+		// attacker could otherwise wipe by logging into an account they control.
+		await this.auth.clearRateLimitIdentifier('storefront_login', email);
 
 		// A storefront password login must never mint an admin session.
 		await this.auth.authUserRepository.recordSuccessfulLogin(user.id, new Date().toISOString());
@@ -159,8 +175,11 @@ export class StorefrontAuthController {
 		@Req() request: FastifyRequest,
 	): Promise<GenericAcceptedResponse> {
 		const email = this.auth.normalizeEmail(body.email);
-		if (!(await this.auth.withinRateLimit('otp_request', 'email', email))) return ACCEPTED;
-		if (!(await this.auth.withinRateLimit('otp_request', 'ip', request.ip))) return ACCEPTED;
+		// Refusal answers exactly like a real send. A 429 here would tell a caller which
+		// addresses have been asked for recently, which is the enumeration this endpoint
+		// exists to avoid.
+		const limit = await this.auth.consumeRateLimit('otp_request', { identifier: email, ip: request.ip });
+		if (!limit.allowed) return ACCEPTED;
 
 		const user = await this.auth.findAuthUserByEmail(email);
 		if (body.purpose === 'login' && (!user || user.status !== 'active')) return ACCEPTED;
@@ -184,12 +203,19 @@ export class StorefrontAuthController {
 		@Res({ passthrough: true }) reply: FastifyReply,
 	): Promise<AuthSessionResponse> {
 		const email = this.auth.normalizeEmail(body.email);
-		if (!(await this.auth.withinRateLimit('otp_verify', 'email', email))) {
-			throw new UnauthorizedException('Too many attempts');
+		const scopes = { identifier: email, ip: request.ip };
+		const limit = await this.auth.checkRateLimit('otp_verify', scopes);
+		if (!limit.allowed) {
+			if (limit.scope === 'ip') throw tooManyRequests(limit, reply);
+			throw new UnauthorizedException('Invalid or expired code');
 		}
 
 		const result = await this.auth.verifyOtp({ identifier: email, purpose: 'login', code: body.code });
-		if (!result?.userId) throw new UnauthorizedException('Invalid or expired code');
+		if (!result?.userId) {
+			await this.auth.recordRateLimitFailure('otp_verify', scopes);
+			throw new UnauthorizedException('Invalid or expired code');
+		}
+		await this.auth.clearRateLimitIdentifier('otp_verify', email);
 
 		const user = await this.auth.findAuthUserById(result.userId);
 		if (!user || user.status !== 'active') throw new UnauthorizedException('Invalid or expired code');
@@ -250,9 +276,13 @@ export class StorefrontAuthController {
 	@ApiOperation({ summary: 'Start a password reset (always answers generically)' })
 	async forgotPassword(
 		@Body(new ZodValidationPipe(PasswordForgotRequest)) body: PasswordForgotRequest,
+		@Req() request: FastifyRequest,
 	): Promise<GenericAcceptedResponse> {
 		const email = this.auth.normalizeEmail(body.email);
-		if (await this.auth.withinRateLimit('password_reset', 'email', email)) {
+		// Refused or not, the answer is identical: this endpoint must never confirm that an
+		// address is known, and a rate-limit response would do exactly that.
+		const limit = await this.auth.consumeRateLimit('password_reset', { identifier: email, ip: request.ip });
+		if (limit.allowed) {
 			await this.auth.startPasswordReset(email, 'storefront');
 		}
 		return ACCEPTED;
@@ -312,13 +342,15 @@ export class StorefrontAuthController {
 	@ApiOperation({ summary: 'Re-send the verification email for the current account' })
 	async resendVerification(
 		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Req() request: FastifyRequest,
 	): Promise<GenericAcceptedResponse> {
 		if (!principal) throw new UnauthorizedException('Authentication required');
 
 		const user = await this.auth.findAuthUserById(principal.userId);
 		// Already-verified and rate-limited callers get the same answer as a real send.
 		if (user?.email && !user.emailVerified) {
-			if (await this.auth.withinRateLimit('otp_request', 'email', user.email)) {
+			const limit = await this.auth.consumeRateLimit('otp_request', { identifier: user.email, ip: request.ip });
+			if (limit.allowed) {
 				await this.auth.issueEmailVerification(user.id, user.email);
 			}
 		}

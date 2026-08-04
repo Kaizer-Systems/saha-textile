@@ -91,25 +91,28 @@ async function check(name, run) {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function main() {
-	// Everything goes on `process.env`, not into a config object handed to `createApp`.
-	// `ConfigModule` provides `APP_CONFIG` through its own `loadConfig()` call, so the services
-	// — including the one that signs the access token with `JWT_ACCESS_TTL` — read the ambient
-	// environment. The first version of this harness passed the TTL to `createApp` and watched
-	// the access cookie stubbornly refuse to expire.
-	process.env.NODE_ENV = 'test';
+	// The Mongo adapter reads its connection settings from `process.env` at connect time, so
+	// the database name is the one value that still has to go through the environment.
 	process.env.MONGODB_DB_NAME = E2E_DB_NAME;
-	process.env.JWT_ACCESS_SECRET = 'e2e-access-secret-not-a-real-key';
-	process.env.JWT_REFRESH_SECRET = 'e2e-refresh-secret-not-a-real-key';
-	process.env.JWT_ACCESS_TTL = ACCESS_TTL;
-	// The limiter keys on client IP and every injected request shares one, so the default
-	// would throttle the run rather than the behaviour under test.
-	process.env.RATE_LIMIT_MAX = '10000';
 
 	const { createApp } = await import('../dist/bootstrap.js');
 	const { loadConfig } = await import('../dist/config/app-config.js');
 	const models = await import('@saha-textile/adapters-db-mongo');
 
-	const config = loadConfig();
+	// Everything else is passed as configuration, which is also the proof that
+	// `AppModule.forRoot` genuinely reaches the services: if `APP_CONFIG` still came from
+	// `loadConfig()` internally, `JWT_ACCESS_TTL` would fall back to fifteen minutes and the
+	// expiry case below would fail. It did exactly that before the config module took an
+	// explicit config.
+	const config = loadConfig({
+		NODE_ENV: 'test',
+		JWT_ACCESS_SECRET: 'e2e-access-secret-not-a-real-key',
+		JWT_REFRESH_SECRET: 'e2e-refresh-secret-not-a-real-key',
+		JWT_ACCESS_TTL: ACCESS_TTL,
+		// The limiter keys on client IP and every injected request shares one, so the default
+		// would throttle the run rather than the behaviour under test.
+		RATE_LIMIT_MAX: '10000',
+	});
 
 	const app = await createApp(config);
 	await app.init();
@@ -249,6 +252,32 @@ async function main() {
 			assert.ok(session.revokedAt, 'a session in the family survived reuse detection');
 			assert.equal(session.revokeReason, 'reuse_detected');
 		}
+	});
+
+	await check('revokes the family for a stolen refresh cookie with no CSRF token', async () => {
+		const jar = await registerCustomer();
+		const stolen = jar.get('st_refresh');
+		assert.equal((await request(jar, 'POST', '/auth/storefront/refresh', { payload: {} })).statusCode, 200);
+
+		// What an attacker who exfiltrated only the refresh cookie actually holds: no access
+		// cookie, no CSRF token. This used to be refused 403 by CsrfGuard BEFORE reuse
+		// detection ran — the request was blocked but the family survived, the legitimate
+		// session kept working, and nothing was recorded. Detection now runs first.
+		const attacker = new CookieJar();
+		attacker.set('st_refresh', stolen);
+		const attempt = await request(attacker, 'POST', '/auth/storefront/refresh', { payload: {} });
+		assert.equal(attempt.statusCode, 401, `expected the stolen token to be detected, got ${attempt.statusCode}`);
+
+		const user = await models.UserModel.findOne({ email: emails[emails.length - 1] }).lean();
+		const sessions = await models.AuthSessionModel.find({ userId: String(user._id) }).lean();
+		assert.ok(sessions.length > 0, 'no session rows found for the probe account');
+		for (const session of sessions) {
+			assert.ok(session.revokedAt, 'the family survived a stolen-token replay');
+			assert.equal(session.revokeReason, 'reuse_detected');
+		}
+
+		// And the victim's own session is genuinely gone, not merely flagged.
+		assert.notEqual((await request(jar, 'GET', '/auth/storefront/me')).statusCode, 200);
 	});
 
 	// Evidence for the pending 3c.3 decision: whether the client can rotate FIRST and only

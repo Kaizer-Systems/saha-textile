@@ -584,6 +584,20 @@ export class MongoAuthRateLimitRepository implements AuthRateLimitRepository {
 		}
 	}
 
+	/**
+	 * Reads the window counter without advancing it.
+	 *
+	 * The expiry is checked in application code as well as by the TTL index, because TTL
+	 * deletion is asynchronous — Mongo sweeps roughly once a minute — and a counter that
+	 * lingers past its window would keep refusing a caller whose budget has already reset.
+	 */
+	async peek(key: string, now: string): Promise<number> {
+		const doc = await AuthRateLimitModel.findById(key).lean<{ count: number; expiresAt: Date | null }>().exec();
+		if (!doc) return 0;
+		if (doc.expiresAt && doc.expiresAt.getTime() <= new Date(now).getTime()) return 0;
+		return doc.count;
+	}
+
 	async reset(key: string): Promise<void> {
 		await AuthRateLimitModel.deleteOne({ key }).exec();
 	}

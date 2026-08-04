@@ -30,6 +30,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AdminInviteService } from './admin-invite.service';
 import { AuthService } from './auth.service';
 import { Principal } from './ownership';
+import { RotatesSession } from './refresh-reuse.guard';
 import { type AuthenticatedPrincipal, Audience, Public, RequireRoles } from './session.guard';
 import { SessionService } from './session.service';
 
@@ -251,6 +252,7 @@ export class AdminAuthController {
 
 	@Post('refresh')
 	@Public()
+	@RotatesSession()
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Rotate the admin session' })
 	async refresh(

@@ -227,6 +227,45 @@ export class SessionService {
 	 * The conditional update in the repository is what makes two concurrent refreshes with
 	 * the same token safe: one wins, the loser is treated as reuse.
 	 */
+	/**
+	 * Revokes the whole refresh family when the presented token was already rotated away.
+	 *
+	 * Separated from `refresh()` so it can run BEFORE the CSRF check rather than after it.
+	 * Presenting a token that a previous rotation replaced is proof of compromise regardless
+	 * of how the request is shaped: only someone who captured that value can produce it,
+	 * because the browser holds the current one. Deciding that behind CSRF meant an attacker
+	 * with a stolen refresh cookie and no CSRF token received a quiet 403 while the
+	 * legitimate session carried on and nothing was recorded — the block held, the alarm did
+	 * not sound.
+	 *
+	 * This cannot be turned into a denial-of-service by a cross-site page: such a request
+	 * carries whatever cookie the browser currently holds, which is the CURRENT token, and a
+	 * current token is not a previous one. Reaching this branch requires a 256-bit value that
+	 * matches a stored previous-token hash.
+	 *
+	 * Returns `true` when reuse was detected and the family revoked; the caller decides how
+	 * to answer. Cookies are cleared either way, because the browser holding them is either
+	 * compromised or hopelessly stale.
+	 */
+	async revokeFamilyIfRefreshReused(request: FastifyRequest, reply: FastifyReply): Promise<boolean> {
+		const presented = this.readCookie(request, cookieNames(this.config).refresh);
+		if (!presented) return false;
+
+		const compromised = await this.sessions.findByPreviousRefreshTokenHash(this.hash(presented));
+		if (!compromised) return false;
+
+		const revoked = await this.sessions.revokeFamily(
+			compromised.refreshFamilyId,
+			'reuse_detected',
+			new Date().toISOString(),
+		);
+		this.logger.warn(
+			`Refresh token reuse detected for session ${compromised.id}; revoked ${revoked} session(s) in family ${compromised.refreshFamilyId}`,
+		);
+		this.clearCookies(reply);
+		return true;
+	}
+
 	async refresh(input: {
 		request: FastifyRequest;
 		reply: FastifyReply;
@@ -238,17 +277,10 @@ export class SessionService {
 
 		const presentedHash = this.hash(presented);
 
-		const compromised = await this.sessions.findByPreviousRefreshTokenHash(presentedHash);
-		if (compromised) {
-			const revoked = await this.sessions.revokeFamily(
-				compromised.refreshFamilyId,
-				'reuse_detected',
-				new Date().toISOString(),
-			);
-			this.logger.warn(
-				`Refresh token reuse detected for session ${compromised.id}; revoked ${revoked} session(s) in family ${compromised.refreshFamilyId}`,
-			);
-			this.clearCookies(input.reply);
+		// Normally already handled by `RefreshReuseGuard` before CSRF ran. Kept here so the
+		// use case is safe on its own terms: a caller that reaches this method by another
+		// path must not be able to rotate with a token that was already replaced.
+		if (await this.revokeFamilyIfRefreshReused(input.request, input.reply)) {
 			throw new UnauthorizedException('Session revoked');
 		}
 

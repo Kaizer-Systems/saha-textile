@@ -1452,6 +1452,54 @@ function`. It now builds through Turbo so dependencies rebuild with it.
   else can show: that `st_csrf` really is dropped on browser close while `st_refresh` survives,
   the Web Locks path across two real tabs, recovery inside the real Angular DI and RxJS chain,
   and SSR not attempting recovery. Admin browser E2E stays blocked on 6a. Tool: claude-code.
+- 2026-08-05 — [DONE] **Auth Pass 3c.4 — storefront browser E2E run. All four browser-only
+  claims verified against a real dev server and a real API; the admin run is no longer
+  described as blocked.**
+  **Correction first.** Earlier entries said admin browser E2E was blocked on 6a because "no
+  admin account can exist to sign in with". That was overstated: the continuation brief's
+  gotcha 10 explicitly sanctions seeding an admin row directly for probing, and passes 2b/2c
+  already did exactly that for the API probes. What 6a actually blocks is the **invite →
+  accept → first login journey**, not signing in. The admin run was deferred, not prevented.
+  **Setup:** API rebuilt and run with `JWT_ACCESS_TTL=30s` against rs0 on 27018, storefront
+  dev server on 4200 through `.claude/launch.json`, real registration through the UI form.
+  **1. The returning-visitor premise, confirmed from the wire.** `curl -D -` on register shows
+  `st_access` and `st_refresh` with `Max-Age=2591999; HttpOnly`, and **`st_csrf` with no
+  `Max-Age` and no `Expires`** — a browser-session cookie by definition. That is the whole
+  basis of the 3c.1 fix, and until now it had only been read off `csrfCookieOptions` in source
+  rather than observed. In the browser, `document.cookie` exposed ONLY `st_csrf`; storage held
+  `language`, `ngrx_cart`, `site_config_session` and nothing session-shaped.
+  **2. Expired-access recovery, in the real Angular runtime.** After the 30-second access
+  cookie lapsed, a reload produced `/me` **401** → `refresh` **200** → `/me` **200**, and the
+  browser stayed on `/account/dashboard` signed in. Before pass 3c this was a logout.
+  **3. The 3c.3 order, observed end to end.** Dropping `st_csrf` (what a browser restart does)
+  and reloading produced exactly the designed sequence: `/me` 401 → `refresh` **403** →
+  `/auth/csrf` 200 → `refresh` **200** → `/me` **200**. And for an anonymous visitor the
+  bootstrap is `/me` 401 → `refresh` 401 and then nothing — one recovery request, not two, which
+  is the saving 3c.3 exists for. (`/auth/csrf` also appears on the register page; that is the
+  page priming its own token, not recovery.)
+  **4. Web Locks proven across two real tabs, with timestamps.** `navigator.locks` is present
+  (`isSecureContext` true on localhost), so the real path is taken rather than the fallback —
+  and the fallback would be indistinguishable without forcing contention, so contention was
+  forced. A second tab held `saha-textile-storefront-session-refresh` from 1785879431580 to
+  1785879451847 while the first tab's session lapsed. The first tab issued `/me` 401 at
+  1785879441860 and its rotation at **1785879451857 — 10 ms after the lock released**, having
+  waited a full ten seconds. That is the cross-tab mutual exclusion working, not inferred.
+  **5. SSR does not attempt recovery.** A server-side fetch of `/account/dashboard` returned
+  200 with 72 KB of HTML containing no user data, and the API's authenticated-request count was
+  **unchanged across it (42 → 42)** — no `/me`, no rotation. jsdom cannot reproduce this branch,
+  which is why it was owed.
+  **Hygiene:** two probe accounts created (one through the UI, one by curl for the cookie
+  attributes) and both deleted with their sessions and verification tokens; `users` and
+  `authSessions` back to **0**; rate-limit counters cleared. An API log scan found **zero**
+  occurrences of the probe password, a refresh cookie value or a JWT.
+  **Honest limits.** A true browser restart is not reproducible in this pane, so the cookie
+  premise was established from the `Set-Cookie` attributes and the effect reproduced by clearing
+  that one cookie. Two tabs recovering simultaneously by chance was not forced either — the lock
+  was held deliberately, which is a stronger test than a race that may not occur.
+  **Next executable step:** admin browser E2E against a directly-seeded admin row (sanctioned by
+  gotcha 10, deleted afterwards with a count check), covering password and PIN login, the
+  15-minute idle window and rotation mid-form. The invite → accept journey stays with 6a.
+  Tool: claude-code.
 - _(append)_
 
 ---

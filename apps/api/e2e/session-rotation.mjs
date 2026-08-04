@@ -280,6 +280,58 @@ async function main() {
 		assert.notEqual((await request(jar, 'GET', '/auth/storefront/me')).statusCode, 200);
 	});
 
+	// The carrier-grade NAT case, which is the reason the counting model changed. Asserted
+	// against the COUNTERS rather than by driving traffic at the ceiling: with the address
+	// ceiling at a hundred, a handful of logins would pass under attempt counting too, and a
+	// test that cannot fail for the reason it claims is worse than none.
+	await check('successful logins consume no rate-limit budget at all', async () => {
+		await models.AuthRateLimitModel.deleteMany({ action: 'storefront_login' });
+		const jar = await registerCustomer();
+		const email = emails[emails.length - 1];
+		await request(jar, 'POST', '/auth/storefront/logout', { payload: {} });
+
+		for (let attempt = 1; attempt <= 5; attempt += 1) {
+			const response = await request(new CookieJar(), 'POST', '/auth/storefront/login/password', {
+				payload: { email, password: 'a-very-long-probe-password' },
+			});
+			assert.equal(response.statusCode, 200, `login ${attempt} answered ${response.statusCode}`);
+		}
+
+		// Under the previous attempt counting each of these spent one slot from a bucket
+		// shared with every other subscriber behind the same public address.
+		const counters = await models.AuthRateLimitModel.countDocuments({ action: 'storefront_login' });
+		assert.equal(counters, 0, `successful logins left ${counters} counter row(s)`);
+	});
+
+	await check('a success clears the account budget but never the shared address budget', async () => {
+		await models.AuthRateLimitModel.deleteMany({ action: 'storefront_login' });
+		const jar = await registerCustomer();
+		const email = emails[emails.length - 1];
+		await request(jar, 'POST', '/auth/storefront/logout', { payload: {} });
+
+		const attemptLogin = (password) =>
+			request(new CookieJar(), 'POST', '/auth/storefront/login/password', { payload: { email, password } });
+
+		for (let attempt = 1; attempt <= 4; attempt += 1) {
+			assert.equal((await attemptLogin('wrong-password-entirely')).statusCode, 401);
+		}
+		const failing = await models.AuthRateLimitModel.find({ action: 'storefront_login' }).lean();
+		assert.equal(failing.find((row) => row.scope === 'identifier')?.count, 4);
+		assert.equal(failing.find((row) => row.scope === 'ip')?.count, 4);
+
+		assert.equal((await attemptLogin('a-very-long-probe-password')).statusCode, 200);
+
+		const after = await models.AuthRateLimitModel.find({ action: 'storefront_login' }).lean();
+		assert.equal(
+			after.find((row) => row.scope === 'identifier'),
+			undefined,
+			'account budget was not cleared',
+		);
+		// Deliberately still counted. Resetting the shared address on success would let an
+		// attacker wipe their failure history by logging into an account they control.
+		assert.equal(after.find((row) => row.scope === 'ip')?.count, 4, 'the shared address budget was cleared');
+	});
+
 	// Evidence for the pending 3c.3 decision: whether the client can rotate FIRST and only
 	// acquire a CSRF token when the API says the token is what was missing. Today it acquires
 	// unconditionally when no CSRF cookie is readable, which costs an anonymous visitor two

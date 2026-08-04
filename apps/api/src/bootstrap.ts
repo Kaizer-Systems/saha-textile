@@ -75,16 +75,18 @@ export function buildAdapter(config: AppConfig): FastifyAdapter {
  * `init()` plus Fastify's `inject()` (tests), and initialising here would take that choice
  * away.
  *
- * **`config` shapes the HTTP adapter only** — the logger, proxy trust, correlation ids, CORS,
- * rate limits and the OpenAPI server URL. It does NOT configure the application's services:
- * `ConfigModule` provides `APP_CONFIG` through its own `loadConfig()` call, so everything
- * inside DI reads `process.env` independently. A caller that wants to override a value the
- * services use — a JWT TTL, a database name — must set it on `process.env` BEFORE calling
- * this. Passing it here alone silently does nothing, which is exactly the trap the first
- * version of the session-rotation harness fell into.
+ * `config` configures the whole application: the HTTP adapter AND, through
+ * `AppModule.forRoot`, every service that injects `APP_CONFIG`. It did not always — the
+ * config module used to call `loadConfig()` itself, so the argument shaped the adapter while
+ * the services read `process.env` behind it, and a harness that passed a one-second
+ * `JWT_ACCESS_TTL` watched the access cookie refuse to expire.
+ *
+ * One exception remains, and it is not ours to fix here: the Mongo adapter reads its own
+ * connection settings from `process.env` at connect time, so a caller redirecting the
+ * database must still set `MONGODB_DB_NAME` in the environment.
  */
 export async function createApp(config: AppConfig): Promise<NestFastifyApplication> {
-	const app = await NestFactory.create<NestFastifyApplication>(AppModule, buildAdapter(config));
+	const app = await NestFactory.create<NestFastifyApplication>(AppModule.forRoot(config), buildAdapter(config));
 	const instance = app.getHttpAdapter().getInstance();
 
 	// Echo the correlation id on every response, including successful ones, so a client

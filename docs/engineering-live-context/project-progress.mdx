@@ -1356,6 +1356,74 @@ dependencies of the SessionGuard (?, …)`. The options were `unplugin-swc` + `@
   probe accounts 7, remaining after cleanup **0**.
   **Next executable step:** 3c.3 — rotate first and acquire a CSRF token only on the 403 the
   harness documented, then a storefront browser E2E. Tool: claude-code.
+- 2026-08-04 — [DONE] **Auth Pass 3c.2b — authentication rate limiting rebuilt around
+  carrier-grade NAT. Owner-approved: failure counting, separate buckets, policy in core.**
+  **The problem was the counting model, not the ceiling.** `withinRateLimit` consumed a slot
+  BEFORE credentials were verified, so every successful login spent budget. Indian consumer
+  internet is overwhelmingly CGNAT — Jio and Airtel put thousands of subscribers behind one
+  public IPv4 — so ten honest logins from one carrier address locked out everyone else behind
+  it, and the refusal was a deliberate 401 that reads as "invalid credentials". Raising the
+  number would only have moved the cliff while weakening the control against real attackers.
+  **Failure counting inverts it.** An attacker's requests are all failures and all counted; a
+  success costs nothing and clears that account's budget. Actions that spend a real resource
+  on success — registration, OTP request, password reset — cannot use it, because the cost
+  lands whether or not the caller was honest, so those still count attempts and lean on the
+  per-identifier scope to stay fair. **The shared address budget is deliberately never cleared
+  on success:** an attacker could otherwise wipe accumulated failures by logging into an
+  account they control.
+  **Separate buckets.** Storefront login, admin login, registration, PIN login, OTP request,
+  OTP verify and password reset each have their own. They shared one `login` bucket, so a
+  burst of customer traffic could exhaust the budget the back office depends on — staff locked
+  out of admin by shoppers on the same office address.
+  **The PIN ceiling was the sharpest hazard.** The owner lock is five failed attempts locking
+  the PIN for fifteen minutes, and that is per ACCOUNT through `pinLockedUntil`. A _per-address_
+  ceiling of five was a different control wearing the same number: any five failures behind a
+  carrier address locked PIN login for every operator on it. The address ceiling is now 200 and
+  the account lock is untouched.
+  **Hexagonal, as asked.** Policy moved to `packages/core-domain/src/auth`: pure data
+  (`AUTH_RATE_LIMIT_POLICY`) plus a pure decision (`decideRateLimit`), with no clock, storage
+  or framework. The port stays the counter store, so Mongo → Redis later changes no number.
+  `peek(key, now)` was added to `AuthRateLimitRepository` because the refusal decision has to
+  be made before a credential check while the counter may only advance after it fails; the
+  adapter re-checks window expiry in code because TTL deletion is asynchronous.
+  **IPv6 is keyed by its `/64`.** A subscriber owns a whole /64 while privacy extensions rotate
+  the low bits, often hourly — so counting the full address would let one handset shed a limit
+  by ageing its address, and counting a shared IPv4 punishes strangers. Since Indian mobile
+  traffic is heavily IPv6, the address scope is now meaningfully accurate for most real users.
+  Pure string handling, no `node:net`, and an unparseable address falls back to its trimmed
+  form so malformed input cannot collapse into one shared bucket.
+  **Response semantics.** Address-scoped refusals answer **429 with `Retry-After`** — the limit
+  is a property of the network, not of any account, so it reveals nothing and gives an honest
+  user something actionable. Identifier-scoped refusals keep the generic 401 so an attacker
+  cannot read the response to pace themselves, and the anti-enumeration endpoints (OTP request,
+  both password-recovery requests) still answer with their generic accepted body either way.
+  **Numbers, all in one reviewable table:** storefront login 10/IP 100 per 15 min · admin login
+  10/IP 50 · admin PIN IP 200 (account lock unchanged at 5) · OTP verify 10/IP 100 · register
+  3 per address per hour/IP 30 · OTP request 5 per 15 min/IP 60 per hour · password reset 5/IP
+  30 per hour. Deliberately not environment variables: these are policy, not deployment
+  topology, and should not differ per environment.
+  **Tests.** core-domain 36 → **87** (decision boundaries, that the address ceiling is always
+  looser than the identifier one, that credential actions count failures while resource-spending
+  actions count attempts, and 30 address-scope cases including IPv4-mapped, zone identifiers,
+  and malformed input that must never throw inside an auth path). e2e 8 → **10**.
+  **Mutation-verified twice, and the first attempt was a bad test.** The e2e case originally
+  drove fourteen logins at a ceiling of 100 — it would have passed under attempt counting too,
+  proving the ceiling rather than the model. Rewritten to assert the COUNTERS: successful logins
+  leave zero rows, and after four failures a success clears the identifier row while the address
+  row stays at four. Reverting to `consumeRateLimit` fails both; also resetting the address
+  budget on success fails the second alone.
+  **Commands actually run:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` **10/10** ·
+  `pnpm typecheck` 15/15 · `pnpm lint` 17/17 + `check:naming` + `check:browser-auth` ·
+  `pnpm format:check` all files · `pnpm turbo run test --force` **11/11** (contracts 145,
+  http-transport 142, core-domain 87, api 83, storefront 49, admin 51) ·
+  `MONGODB_PORT=27018 RUN_DB_IT=1` adapter IT **89/89**. Per-package counts are quoted from
+  here on: the running repo total was ambiguous about the DB-gated suite, which reports 4 or 89
+  depending on whether it is enabled.
+  **One papercut fixed in passing:** `pnpm e2e:session-rotation` built only the API, so a
+  changed adapter left a stale `dist` and the run failed with `this.rateLimits.peek is not a
+function`. It now builds through Turbo so dependencies rebuild with it.
+  **Next executable step:** 3c.3 — rotate first and acquire a CSRF token only on the 403 the
+  harness documented, then a storefront browser E2E. Tool: claude-code.
 - _(append)_
 
 ---

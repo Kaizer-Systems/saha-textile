@@ -2,7 +2,7 @@ import { Component, HostListener, computed, input, model, output, signal } from 
 
 import { TranslocoModule } from '@jsverse/transloco';
 
-/** Digits laid out as a phone keypad: 1-9, then blank / 0 / delete. */
+/** Digits laid out as a phone keypad: 1-9, then clear / 0 / delete. */
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const;
 
 /** How long a key stays visually pressed. Long enough to see, short enough not to lag typing. */
@@ -25,16 +25,17 @@ const PRESS_FEEDBACK_MS = 140;
  *
  * ## Both pointer and physical keyboard
  *
- * Desktop operators should not have to reach for the mouse, so digits, Backspace and Enter
+ * Desktop operators should not have to reach for the mouse, so digits, Backspace and Escape
  * are handled from the physical keyboard too, and produce the SAME visual press as a click.
  * The listener ignores events originating in a text field, so typing an email address in the
  * identifier box never registers as PIN entry.
  *
- * ## Styling
+ * ## Why no key is ever `disabled`
  *
- * Theme classes only — `btn`, `btn-outline-secondary`, `form-control`, and Bootstrap's own
- * `.active` for the pressed state, which is exactly the inset/shadow treatment a pressed key
- * should have. Nothing here invents a look the rest of the back office does not already use.
+ * This theme paints `.btn:disabled` as a solid filled block with white text — for every
+ * variant, plain `.btn` included. On a keypad that reads as the primary action, the exact
+ * opposite of what an unavailable key should look like. Keys that cannot do anything are
+ * therefore marked `aria-disabled` and dimmed, and every handler guards itself instead.
  */
 @Component({
 	selector: 'app-pin-pad',
@@ -80,7 +81,9 @@ export class PinPad {
 		this.value.set(this.value().slice(0, -1));
 	}
 
+	/** Wipes the whole entry, for an operator who has lost track rather than mistyped once. */
 	clear(): void {
+		this.flash('Escape');
 		this.value.set('');
 	}
 
@@ -105,6 +108,11 @@ export class PinPad {
 		if (event.key === 'Backspace') {
 			event.preventDefault();
 			this.backspace();
+			return;
+		}
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			this.clear();
 		}
 	}
 

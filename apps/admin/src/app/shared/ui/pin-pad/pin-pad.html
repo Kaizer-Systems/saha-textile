@@ -2,6 +2,9 @@
 	<!--
 		The entered PIN, shown as filled dots rather than digits. Deliberately not an input:
 		nothing here is focusable, so no device keyboard can be summoned for it.
+
+		The dot is always rendered; only its colour changes. An empty cell used to hold no text
+		at all, which gave it no line box, so every cell grew the moment the first digit landed.
 	-->
 	<div
 		class="d-flex justify-content-center mb-4 gap-2"
@@ -14,7 +17,7 @@
 			[class.pin-pad-cell-filled]="filled"
 			aria-hidden="true"
 		>
-			{{ filled ? '•' : '' }}
+			&bull;
 		</span>
 		}
 	</div>
@@ -24,9 +27,9 @@
 		<div class="col-4">
 			<button
 				type="button"
-				class="btn btn-outline pin-pad-key w-100"
+				class="btn btn-outline-secondary pin-pad-key w-100"
 				[class.active]="isPressed(key)"
-				[disabled]="isComplete()"
+				[attr.aria-disabled]="isComplete() || null"
 				(click)="append(key)"
 			>
 				{{ key }}
@@ -34,15 +37,25 @@
 		</div>
 		}
 
-		<!-- Empty cell keeps 0 centred under 8, the way a phone keypad reads. -->
-		<div class="col-4"></div>
+		<div class="col-4">
+			<button
+				type="button"
+				class="btn btn-outline-secondary pin-pad-key pin-pad-key-word w-100"
+				[class.active]="isPressed('Escape')"
+				[attr.aria-disabled]="!value().length || null"
+				[attr.aria-label]="'clear_pin' | transloco"
+				(click)="clear()"
+			>
+				{{ 'clear' | transloco }}
+			</button>
+		</div>
 
 		<div class="col-4">
 			<button
 				type="button"
-				class="btn btn-outline pin-pad-key w-100"
+				class="btn btn-outline-secondary pin-pad-key w-100"
 				[class.active]="isPressed('0')"
-				[disabled]="isComplete()"
+				[attr.aria-disabled]="isComplete() || null"
 				(click)="append('0')"
 			>
 				0
@@ -52,9 +65,9 @@
 		<div class="col-4">
 			<button
 				type="button"
-				class="btn btn-outline pin-pad-key w-100"
+				class="btn btn-outline-secondary pin-pad-key w-100"
 				[class.active]="isPressed('Backspace')"
-				[disabled]="!value().length"
+				[attr.aria-disabled]="!value().length || null"
 				[attr.aria-label]="'delete_last_digit' | transloco"
 				(click)="backspace()"
 			>

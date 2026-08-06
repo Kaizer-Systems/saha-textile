@@ -840,5 +840,7 @@
 	"continue": "Continue",
 	"back_to_log_in": "Back to log in",
 	"pin_digits_entered": "{{entered}} of {{total}} PIN digits entered",
-	"delete_last_digit": "Delete last digit"
+	"delete_last_digit": "Delete last digit",
+	"clear": "Clear",
+	"clear_pin": "Clear the whole PIN"
 }

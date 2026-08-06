@@ -823,5 +823,9 @@
 	"total_product": "Produit Total",
 	"total_balance": "Solde total",
 	"cart_style": "Style de panier",
-	"save_page": "Sauvegarder la page"
+	"save_page": "Sauvegarder la page",
+	"pin_digits_entered": "{{entered}} chiffres du code PIN sur {{total}} saisis",
+	"delete_last_digit": "Supprimer le dernier chiffre",
+	"clear": "Effacer",
+	"clear_pin": "Effacer tout le code PIN"
 }

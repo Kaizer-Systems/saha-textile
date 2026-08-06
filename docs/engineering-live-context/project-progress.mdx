@@ -1557,6 +1557,58 @@ function`. It now builds through Turbo so dependencies rebuild with it.
   **Next executable step:** pass 4 — route/contract families, retire the dead legacy guards,
   stable OpenAPI tags and operation IDs, and the 401 sub-code for session-bound surfaces only.
   Tool: claude-code.
+- 2026-08-07 — [DONE] **Admin login UI — PIN entered on an on-screen keypad, and the method
+  toggle matched to the theme.** Owner-reported, outside the numbered auth passes.
+  **The toggle.** "Use your PIN instead" was a `btn btn-link`, so Bootstrap gave it the blue
+  underlined-hyperlink treatment beside the theme-styled "Forgot Password?". It now uses the
+  theme's own `.forgot-password` on an `a[role=button]` with Enter/Space handlers, since it
+  acts on the page rather than navigating. Verified by computed style rather than by eye: all
+  **14** text properties are identical to "Forgot Password?" — `Public Sans` 16px/500,
+  `letter-spacing: 1px`, `line-height: 24px`, `text-decoration: none`, `rgb(13, 164, 135)`.
+  No new CSS.
+  **The keypad (`shared/ui/pin-pad`).** There is **no `<input>` behind it** — that is the
+  mechanism, not a detail. Nothing is focusable, so no device keyboard, native or third-party,
+  browser or installed PWA, can be summoned on any platform. That is stronger than
+  `inputmode="numeric"`, which only _asks_ for a numeric layout and is routinely ignored, and
+  stronger than `readonly`, which suppresses the keyboard on some platforms and not others. It
+  also keeps the digits out of a DOM input's `value`, so they cannot be autofilled,
+  spell-checked or restored by form-restoration on back-navigation. This is the owner's stated
+  preference — on-screen pad everywhere, device keyboard disabled outright — chosen over
+  hiding the pad on small viewports. Digits, Backspace and Escape also work from a physical
+  keyboard and produce the SAME visual press as a tap. Placed in `shared/ui` because 6b
+  (Security Settings PIN change) and 6c (idle soft lock) will need it.
+  **Three corrections after the owner looked at it, all real.** (1) The slot left of `0` was
+  blank; it is now **Clear**, wiping the whole entry, with Escape as its keyboard equivalent.
+  (2) Empty cells rendered no text, so they had **no line box** — every cell jumped from 18px
+  to 47px the moment the first digit landed. The dot is now always in the markup and empty
+  cells simply do not paint it, holding all six at **47×44** whether filled or not. (3) The
+  keys had acquired a border: the theme's `.btn-outline` carries one, `.btn-outline-secondary`
+  does not. Reverted to borderless.
+  **Two theme facts worth recording, both found by measuring, not by guessing.**
+  `.btn-outline-secondary` renders **borderless** here, so the first version looked like bare
+  numerals rather than buttons. And this theme paints `.btn:disabled` as a **solid green fill
+  with white text for every variant, plain `.btn` included** — which is what made the delete
+  key a green blob. No keypad key is `disabled` any more; unavailable keys carry
+  `aria-disabled` and 0.4 opacity, and every handler guards itself. The pressed state is a
+  neutral wash plus `scale(0.96)` and an inset shadow rather than a colour change, because the
+  theme sets `.btn` colours with `!important`; reduced-motion keeps the wash and drops the
+  movement.
+  **Verified in a real browser at desktop, 768 and 375.** Cells constant at 47×44 across
+  empty/1-digit/3-digit; `inputsOnPage` is `["Email or username"]` at every viewport, so no
+  PIN field exists to summon a keyboard; tap and physical keypress produce the same flash
+  inside the window and clear after it; typing in the identifier does **not** leak into the
+  PIN; Clear empties from both pointer and Escape and goes inert at 0.4 opacity when empty; no
+  horizontal overflow. Re-verified after Prettier reflowed the cell markup, since that changed
+  the whitespace around the dot.
+  **Also:** added `pin-pad.stories.ts` (required by `check-component-coverage.mjs`) and the
+  four new strings to **both** `en.json` and `fr.json` — fr was already missing 19 keys before
+  this, a pre-existing gap left alone.
+  **Commands actually run:** admin tests **54/54** · `pnpm turbo run test --force` **11/11**
+  (contracts 145, core-domain 87, http-transport 142, api 83, storefront 50, admin 54) ·
+  admin production build · `pnpm format:check` clean · `pnpm --filter admin lint` **0 errors**
+  (63 pre-existing warnings). The `developer-portal-storybook` `@core/*` alias typecheck
+  failure recorded under 3c.5 is unchanged and still out of scope.
+  **Next executable step:** unchanged — pass 4. Tool: claude-code.
 - _(append)_
 
 ---

@@ -1,9 +1,8 @@
 /**
  * Deliberately small. Everything that can come from the theme does: the cells are
- * `.form-control`, the keys are the theme's own `.btn.btn-outline` — which carries the themed
- * border and the hover fill the rest of the back office uses — and the pressed state rides on
- * Bootstrap's `.active`. What remains is the geometry a keypad needs and no existing class
- * provides.
+ * `.form-control` and the keys are `.btn.btn-outline-secondary`, which this theme renders
+ * borderless — a keypad reads better as bare numerals than as a grid of boxed buttons.
+ * What remains is the geometry a keypad needs and no existing class provides.
  */
 .pin-pad {
 	max-width: 320px;
@@ -14,6 +13,13 @@
 		padding-inline: 0;
 		font-size: 24px;
 		line-height: 1.2;
+
+		/**
+		 * The dot is always present in the markup; empty cells simply do not paint it. Hiding
+		 * it with `visibility` or omitting the text would collapse the line box and every cell
+		 * would jump taller as soon as the first digit landed.
+		 */
+		color: transparent;
 	}
 
 	.pin-pad-cell-filled {
@@ -28,22 +34,39 @@
 		// A keypad is pointed at, not selected: a stray double-tap should not highlight text.
 		user-select: none;
 		transition:
+			background-color 0.08s ease-out,
 			transform 0.08s ease-out,
 			box-shadow 0.08s ease-out;
 
 		/**
-		 * The press. Expressed as indent plus inset shadow rather than a colour change, for
-		 * two reasons: it is what a physical key does, and the theme sets `.btn-outline`
-		 * colours with `!important`, so a colour-based press would have to fight it. This
-		 * reads identically whether the key was tapped or typed.
+		 * The press. A neutral wash plus indent, rather than a colour change: the theme sets
+		 * `.btn` colours with `!important`, and on a borderless key an inset shadow alone has
+		 * no surface to fall on. This reads identically whether the key was tapped or typed.
 		 */
 		&.active {
+			background-color: rgb(0 0 0 / 6%);
 			transform: scale(0.96);
-			box-shadow: inset 0 2px 6px rgb(0 0 0 / 18%);
+			box-shadow: inset 0 2px 6px rgb(0 0 0 / 10%);
+		}
+
+		/**
+		 * Inert rather than `disabled`, because this theme paints `.btn:disabled` as a solid
+		 * filled block — which on a keypad reads as the primary action, the exact opposite of
+		 * what an unavailable key should look like. `aria-disabled` states it for assistive
+		 * technology; the handlers themselves are guarded.
+		 */
+		&[aria-disabled='true'] {
+			opacity: 0.4;
+			cursor: default;
 		}
 	}
 
-	// Respect a reduced-motion preference: keep the shadow, drop the movement.
+	// "Clear" is a word among numerals, so it sits a size down to keep the grid even.
+	.pin-pad-key-word {
+		font-size: 15px;
+	}
+
+	// Respect a reduced-motion preference: keep the wash, drop the movement.
 	@media (prefers-reduced-motion: reduce) {
 		.pin-pad-key {
 			transition: none;

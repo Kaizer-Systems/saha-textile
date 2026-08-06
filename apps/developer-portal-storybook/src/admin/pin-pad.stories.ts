@@ -37,8 +37,8 @@ export const PartiallyEntered: Story = {
 };
 
 /**
- * Complete. The digit keys disable at length so a seventh press cannot silently overwrite,
- * while delete stays available to correct a mistake.
+ * Complete. The digit keys go inert at length so a seventh press cannot silently overwrite,
+ * while delete and clear stay available to correct a mistake.
  */
 export const Complete: Story = {
 	args: {

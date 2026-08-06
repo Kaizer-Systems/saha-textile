@@ -1,0 +1,56 @@
+/**
+ * Deliberately small. Everything that can come from the theme does: the cells are
+ * `.form-control`, the keys are the theme's own `.btn.btn-outline` — which carries the themed
+ * border and the hover fill the rest of the back office uses — and the pressed state rides on
+ * Bootstrap's `.active`. What remains is the geometry a keypad needs and no existing class
+ * provides.
+ */
+.pin-pad {
+	max-width: 320px;
+	margin-inline: auto;
+
+	.pin-pad-cell {
+		width: 44px;
+		padding-inline: 0;
+		font-size: 24px;
+		line-height: 1.2;
+	}
+
+	.pin-pad-cell-filled {
+		color: var(--theme-color);
+		border-color: var(--theme-color);
+	}
+
+	.pin-pad-key {
+		font-size: 20px;
+		font-weight: 500;
+		padding-block: 12px;
+		// A keypad is pointed at, not selected: a stray double-tap should not highlight text.
+		user-select: none;
+		transition:
+			transform 0.08s ease-out,
+			box-shadow 0.08s ease-out;
+
+		/**
+		 * The press. Expressed as indent plus inset shadow rather than a colour change, for
+		 * two reasons: it is what a physical key does, and the theme sets `.btn-outline`
+		 * colours with `!important`, so a colour-based press would have to fight it. This
+		 * reads identically whether the key was tapped or typed.
+		 */
+		&.active {
+			transform: scale(0.96);
+			box-shadow: inset 0 2px 6px rgb(0 0 0 / 18%);
+		}
+	}
+
+	// Respect a reduced-motion preference: keep the shadow, drop the movement.
+	@media (prefers-reduced-motion: reduce) {
+		.pin-pad-key {
+			transition: none;
+
+			&.active {
+				transform: none;
+			}
+		}
+	}
+}

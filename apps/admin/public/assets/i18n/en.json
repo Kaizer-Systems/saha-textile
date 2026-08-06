@@ -838,5 +838,7 @@
 	"paste_the_code_from_your_recovery_email": "Paste the code from your recovery email",
 	"recovery_code": "Recovery code",
 	"continue": "Continue",
-	"back_to_log_in": "Back to log in"
+	"back_to_log_in": "Back to log in",
+	"pin_digits_entered": "{{entered}} of {{total}} PIN digits entered",
+	"delete_last_digit": "Delete last digit"
 }

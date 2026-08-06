@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, linkedSignal, signal } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
@@ -7,6 +7,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { AuthStore } from '@core/state/auth.store';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
+import { PinPad } from '@shared/ui/pin-pad/pin-pad';
 
 /** Owner lock: exactly six digits, password-grade hashed, five failures lock PIN use. */
 const PIN_LENGTH = 6;
@@ -29,7 +30,7 @@ const PIN_LENGTH = 6;
 	selector: 'app-login',
 	templateUrl: './login.html',
 	styleUrls: ['./login.scss'],
-	imports: [Alert, ReactiveFormsModule, RouterLink, TranslocoModule, Button],
+	imports: [Alert, ReactiveFormsModule, RouterLink, TranslocoModule, Button, PinPad],
 })
 export class Login {
 	private authStore = inject(AuthStore);
@@ -44,12 +45,21 @@ export class Login {
 	public readonly pending = this.authStore.pending;
 	public readonly pinLength = PIN_LENGTH;
 
+	/**
+	 * The keypad's value, mirrored into the reactive form so the form stays the single source
+	 * of truth for submission. `linkedSignal` resets it whenever the method changes, so a
+	 * half-typed PIN never survives a switch to password entry and back.
+	 */
+	public readonly pin = linkedSignal<'password' | 'pin', string>({
+		source: this.method,
+		computation: () => '',
+	});
+
 	constructor() {
 		this.form = this.formBuilder.group({
 			// Email OR username: validated as present, not as an email address.
 			identifier: new FormControl('', [Validators.required]),
 			password: new FormControl(''),
-			pin: new FormControl('', [Validators.pattern(/^\d*$/)]),
 		});
 	}
 
@@ -78,8 +88,9 @@ export class Login {
 	}
 
 	private async submitPin(identifier: string): Promise<boolean> {
-		this.form.controls['pin'].markAsTouched();
-		const pin = (this.form.value.pin as string) ?? '';
+		// Read from the keypad rather than a form control: there is no PIN text field to
+		// touch, because a focusable one would let a device keyboard open.
+		const pin = this.pin();
 		// Length is checked here only to avoid spending a rate-limited attempt on input
 		// that cannot possibly match; the API enforces the real policy and the lockout.
 		if (pin.length !== PIN_LENGTH) return false;

@@ -1,0 +1,68 @@
+<div class="pin-pad">
+	<!--
+		The entered PIN, shown as filled dots rather than digits. Deliberately not an input:
+		nothing here is focusable, so no device keyboard can be summoned for it.
+	-->
+	<div
+		class="d-flex justify-content-center mb-4 gap-2"
+		role="status"
+		[attr.aria-label]="'pin_digits_entered' | transloco: { entered: value().length, total: length() }"
+	>
+		@for (filled of cells(); track $index) {
+		<span
+			class="form-control pin-pad-cell text-center"
+			[class.pin-pad-cell-filled]="filled"
+			aria-hidden="true"
+		>
+			{{ filled ? '•' : '' }}
+		</span>
+		}
+	</div>
+
+	<div class="row g-2">
+		@for (key of keys; track key) {
+		<div class="col-4">
+			<button
+				type="button"
+				class="btn btn-outline pin-pad-key w-100"
+				[class.active]="isPressed(key)"
+				[disabled]="isComplete()"
+				(click)="append(key)"
+			>
+				{{ key }}
+			</button>
+		</div>
+		}
+
+		<!-- Empty cell keeps 0 centred under 8, the way a phone keypad reads. -->
+		<div class="col-4"></div>
+
+		<div class="col-4">
+			<button
+				type="button"
+				class="btn btn-outline pin-pad-key w-100"
+				[class.active]="isPressed('0')"
+				[disabled]="isComplete()"
+				(click)="append('0')"
+			>
+				0
+			</button>
+		</div>
+
+		<div class="col-4">
+			<button
+				type="button"
+				class="btn btn-outline pin-pad-key w-100"
+				[class.active]="isPressed('Backspace')"
+				[disabled]="!value().length"
+				[attr.aria-label]="'delete_last_digit' | transloco"
+				(click)="backspace()"
+			>
+				<i
+					class="ri-delete-back-2-line"
+					aria-hidden="true"
+				></i>
+			</button>
+		</div>
+	</div>
+</div>

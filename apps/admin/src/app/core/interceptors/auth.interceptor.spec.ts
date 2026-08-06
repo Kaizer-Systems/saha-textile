@@ -242,7 +242,10 @@ describe('admin AuthInterceptor', () => {
 
 			expect(refreshCalls).toBe(0);
 			expect(clear).toHaveBeenCalledOnce();
-			expect(navigate).toHaveBeenCalledWith(['/auth/login']);
+			// Deliberately does NOT navigate: redirecting is AuthGuard's job, declaratively.
+			// Navigating from here fired during the app initializer, before the router had
+			// bootstrapped, and deadlocked admin startup into a blank page.
+			expect(navigate).not.toHaveBeenCalled();
 		});
 
 		it('clears the session and surfaces the original 401 when rotation fails', async () => {
@@ -254,7 +257,7 @@ describe('admin AuthInterceptor', () => {
 			expect(refreshCalls).toBe(1);
 			expect(handler.forwarded()).toHaveLength(1);
 			expect(clear).toHaveBeenCalledOnce();
-			expect(navigate).toHaveBeenCalledWith(['/auth/login']);
+			expect(navigate).not.toHaveBeenCalled();
 			expect(notificationService.notification).toBe(false);
 		});
 

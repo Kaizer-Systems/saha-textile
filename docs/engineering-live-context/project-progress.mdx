@@ -1500,6 +1500,63 @@ function`. It now builds through Turbo so dependencies rebuild with it.
   gotcha 10, deleted afterwards with a count check), covering password and PIN login, the
   15-minute idle window and rotation mid-form. The invite → accept journey stays with 6a.
   Tool: claude-code.
+- 2026-08-06 — [DONE] **Auth Pass 3c.5 — admin browser E2E run, after finding and fixing an
+  infinite router redirect loop that made the whole back office unusable.**
+  **The defect.** `app.routes.ts` applied `AuthGuard` as `canActivateChild` to the **`auth`**
+  routes and to nothing else — exactly inverted. An anonymous visit to `/auth/login` hit the
+  guard, which answers `createUrlTree(['/auth/login'])`, whose target is a child of the same
+  guarded route, which ran the guard again: the router span the main thread at **100.3% CPU**
+  on a blank page, with no console, no tab close and no further network traffic. `path: ''`
+  redirects to `auth/login`, so every entry point landed in it. The back office shells
+  (`content`, `full`) meanwhile carried **no guard at all**, so they were reachable while
+  signed out — presentation only, since every admin endpoint enforces audience, role and
+  permissions server-side, but an operator got an empty frame answering 401 rather than a
+  login screen.
+  **Why it surfaced only now, which is the part worth remembering.** It was masked by the
+  `FAKE_TOKEN` the admin used to seed into `localStorage`: `isAuthenticated()` answered true
+  before anyone signed in, so the guard always passed and never looped. Removing that token in
+  the cookie-session migration (Pass 2) is what exposed a misplacement that arrived with the
+  original template port in `f9233404`. The auth work did not cause it; it revealed it.
+  **Fix:** guard removed from `auth`, applied to both back-office shells, with
+  `app.routes.spec.ts` pinning both halves — the authentication screens must stay reachable
+  while signed out, and every shell with children must be guarded. Admin 52 → **54**.
+  **Diagnosis is worth recording because two hypotheses were wrong first.** A blank page plus
+  a dead console read as a rendering fault; it was a spin. The owner's Chrome Task Manager
+  reading (100.3% CPU, 27 MB) is what separated "infinite loop" from "awaiting forever" and
+  turned guesswork into a search. Before that I removed a `router.navigate` from the admin
+  interceptor on a startup-deadlock theory and **disproved it myself** with a TestBed
+  reproduction: when every request is answered the way the real API answers it, `bootstrap()`
+  settles cleanly. That change is kept as a cleanup on its own merits — an interceptor should
+  not drive routing when the guard already does it declaratively — and is labelled as such,
+  not as the fix.
+  **Every browser-only claim now verified on the admin surface.** Login screen renders;
+  **no token in `localStorage`** (only `setting_store`) and only `st_csrf` readable, which is
+  the historic admin defect confirmed gone in a real browser; password login reaches
+  `/dashboard`; a reload survives from cookies alone (`me` 200, no rotation); an expired access
+  cookie recovers as `me` 401 → `refresh` 200 → `me` 200 with the operator still on
+  `/dashboard`; dropping `st_csrf` reproduces the returning-visitor path exactly —
+  `me` 401 → `refresh` **403** → `csrf` → `refresh` **200** → `me` 200; after logout,
+  `/dashboard` redirects to a rendered login screen; and **PIN login** through
+  `/auth/admin/login/pin` reaches `/dashboard` with storage still clean.
+  **Honest limits.** Logout was performed through the endpoint from the page rather than the
+  menu button: synthetic clicks did not reach the anchor's handler inside its dropdown, which
+  is a harness limitation and not evidence of a defect. The 15-minute idle soft lock is not
+  built yet (pass 6c), so it was not exercised. The invite → accept → first-login journey
+  remains blocked on 6a.
+  **Also fixed in passing:** `pnpm e2e:session-rotation` built only the API, leaving a changed
+  adapter behind a stale `dist`; it now builds through Turbo. And a note on gate reporting —
+  earlier "typecheck 15/15" lines were partly Turbo cache hits, one of them stale; wiping
+  `.turbo` exposed a pre-existing `developer-portal-storybook` typecheck failure whose tsconfig
+  maps `@core/*` to storefront before admin while typechecking the admin's `auth.store.ts`.
+  Portal tooling, out of scope here, recorded rather than silently fixed.
+  **Commands actually run:** `pnpm turbo run test --force` **11/11** (contracts 145,
+  http-transport 142, core-domain 87, api 83, storefront 50, admin 54) · admin production
+  build · Prettier clean on every touched file · probe admin and its 3 sessions deleted with
+  `users` and `authSessions` back to **0** · API log scan found **zero** occurrences of the
+  probe password, the PIN or a refresh cookie.
+  **Next executable step:** pass 4 — route/contract families, retire the dead legacy guards,
+  stable OpenAPI tags and operation IDs, and the 401 sub-code for session-bound surfaces only.
+  Tool: claude-code.
 - _(append)_
 
 ---

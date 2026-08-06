@@ -7,7 +7,6 @@ import {
 	HttpRequest,
 } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Router } from '@angular/router';
 
 import { Observable, catchError, firstValueFrom, from, switchMap, tap, throwError } from 'rxjs';
 
@@ -103,7 +102,6 @@ function isCsrfRefusal(error: unknown): boolean {
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
-	private router = inject(Router);
 	private authStore = inject(AuthStore);
 	private notificationService = inject(NotificationService);
 	private gateway = inject(AdminAuthGateway);
@@ -225,9 +223,22 @@ export class AuthInterceptor implements HttpInterceptor {
 		return hasBrowserCookieJar();
 	}
 
+	/**
+	 * Clears local session state. It does NOT navigate, and that is the fix for a real defect.
+	 *
+	 * This used to call `router.navigate(['/auth/login'])`, inherited from the original
+	 * template port. Because `provideAdminSessionBootstrap` awaits `/me` inside an app
+	 * initializer, and an anonymous `/me` answers 401, that navigation fired from an HTTP
+	 * interceptor BEFORE the router had bootstrapped — deadlocking startup, so the back office
+	 * rendered a blank page and the tab stopped responding. The storefront never had the call,
+	 * which is why only the admin was affected.
+	 *
+	 * Redirecting is `AuthGuard`'s job and it already does it declaratively with
+	 * `createUrlTree(['/auth/login'])`, which is safe at any point in the lifecycle. An
+	 * interceptor deciding routes was the wrong layer for it regardless.
+	 */
 	private onSessionLost(): void {
 		this.notificationService.notification = false;
 		this.authStore.clear();
-		void this.router.navigate(['/auth/login']);
 	}
 }

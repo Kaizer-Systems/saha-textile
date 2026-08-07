@@ -19,7 +19,7 @@ import { SessionService } from './session.service';
 
 export const PUBLIC_ROUTE_KEY = 'auth:public';
 export const AUDIENCE_KEY = 'auth:audience';
-export const ROLES_KEY_V2 = 'auth:roles';
+export const ROLES_KEY = 'auth:roles';
 export const PERMISSIONS_KEY = 'auth:permissions';
 
 /** Marks a route as reachable without a session. */
@@ -28,7 +28,7 @@ export const Public = () => SetMetadata(PUBLIC_ROUTE_KEY, true);
 /** Restricts a route to one browser audience. Admin cookies must never drive storefront flows. */
 export const Audience = (audience: SessionAudience) => SetMetadata(AUDIENCE_KEY, audience);
 
-export const RequireRoles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY_V2, roles);
+export const RequireRoles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles);
 
 export const RequirePermissions = (...permissions: string[]) => SetMetadata(PERMISSIONS_KEY, permissions);
 
@@ -148,7 +148,7 @@ export class SessionGuard implements CanActivate {
 
 		if (isPublic) return true;
 
-		const requiredRoles = this.reflector.getAllAndOverride<UserRole[] | undefined>(ROLES_KEY_V2, [
+		const requiredRoles = this.reflector.getAllAndOverride<UserRole[] | undefined>(ROLES_KEY, [
 			context.getHandler(),
 			context.getClass(),
 		]);

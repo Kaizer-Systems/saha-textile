@@ -56,7 +56,6 @@
 	"avatar": "Avatar",
 	"created_at": "Created At",
 	"actions": "Actions",
-
 	"save": "Save",
 	"name": "Name",
 	"name_is_required": "Name is required",
@@ -137,7 +136,6 @@
 	"approved": "Approve",
 	"stock": "Stock",
 	"image": "Image",
-
 	"categories_is_required": "Categories is required",
 	"random_related_product": "Random Related Product",
 	"related_products": "Related Products",
@@ -150,7 +148,6 @@
 	"meta_description": "Meta Description",
 	"enter_meta_description": "Enter meta description",
 	"meta_image": "Meta Image",
-
 	"free_shipping": "Free Shipping",
 	"tax": "Tax",
 	"tax_is_required": "Tax is required",
@@ -163,14 +160,12 @@
 	"select_tax": "Select Tax",
 	"select_style": "Select Style",
 	"style": "Style",
-
 	"general": "General",
 	"inventory": "Inventory",
-	"Setup": "Setup",
+	"setup": "Setup",
 	"images": "Images",
 	"seo": "SEO",
 	"shipping_&_tax": "Shipping & Tax",
-
 	"add_category": "Add Category",
 	"edit_category": "Edit Category",
 	"create_category": "Create Category",
@@ -179,14 +174,12 @@
 	"icon": "Icon",
 	"save_category": "Save Category",
 	"update_category": "Update Category",
-
 	"edit_attribute": "Edit Attribute",
 	"attribute_name": "Attribute Name",
 	"attribute_name_is_required": "Attribute Name is required",
 	"value_is_required": "Value is required",
 	"attribute_value": "Attribute Value",
 	"add_value": "Add Value",
-
 	"add_tag": "Add Tag",
 	"edit_tag": "Edit Tag",
 	"create_tag": "Create Tag",
@@ -196,11 +189,9 @@
 	"enter_description": "Enter Description",
 	"update_tag": "Update Tag",
 	"save_tag": "Save Tag",
-
 	"logo": "Logo",
 	"store_name": "Store Name",
 	"edit_store": "Edit Store",
-
 	"store_description": "Store Description",
 	"enter_store_name": "Enter Store Name",
 	"store_name_is_required": "Store Name is required",
@@ -227,19 +218,16 @@
 	"store_cover": "Store Cover",
 	"hide_email": "Hide Email",
 	"hide_phone": "Hide Phone",
-
 	"select_vendor": "Select Vendor",
 	"wallet_balance": "Wallet Balance",
 	"add_withdraw_amount": "add/withdraw amount",
 	"transactions": "Transactions",
 	"remark": "Remark",
 	"amount": "Amount",
-
 	"commission": "Commission",
 	"order_id": "Order Id",
 	"admin_commission": "Admin Commission",
 	"vendor_commission": "Vendor Commission",
-
 	"bank": "Bank",
 	"paypal": "PayPal",
 	"bank_account_no": "Bank Account No",
@@ -255,7 +243,6 @@
 	"paypal_email": "Paypal email",
 	"enter_paypal_email": "Enter paypal email",
 	"please_enter_valid_email": "Please enter valid email",
-
 	"pending_balance": "Pending Balance",
 	"send_withdraw_request": "Send Withdraw Request",
 	"message": "Message",
@@ -274,14 +261,12 @@
 	"payment_type_is_required": "Payment type is required",
 	"enter_message": "Enter Message",
 	"message_is_required": "Message is required",
-
 	"add_order": "Add Order",
 	"order_number": "Order Number",
 	"order_date": "Order Date",
 	"customer_name": "Customer Name",
 	"total_amount": "Total Amount",
 	"payment_status": "Payment Status",
-
 	"cart": "Cart",
 	"cost_at_checkout": "Cost at checkout",
 	"total": "Total",
@@ -290,7 +275,6 @@
 	"search_here": "Search here",
 	"select_option": "Select Option",
 	"no_data_found": "No Data Found.",
-
 	"select_customer": "Select Customer",
 	"add_new": "Add New",
 	"shipping_address": "Shipping Address",
@@ -315,7 +299,6 @@
 	"title_is_required": "Title is required",
 	"checkout": "Checkout",
 	"place_order": "Place Order",
-
 	"media_library": "Media Library",
 	"selected": "selected",
 	"upload_new": "Upload New",
@@ -324,7 +307,6 @@
 	"search_your_files": "Search your files",
 	"delete": "Delete",
 	"drop_files_here": "Drop Files Here.",
-
 	"add_blog": "Add Blog",
 	"edit_blog": "Edit Blog",
 	"create_blog": "Create Blog",
@@ -337,13 +319,11 @@
 	"save_blog": "Save Blog",
 	"update_blog": "Update Blog",
 	"thumbnail_is_required": "Thumbnail is required",
-
 	"page": "Page",
 	"add_page": "Add Page",
 	"update_page": "Update Page",
 	"create_page": "Create Page",
 	"enter_title": "Enter title",
-
 	"add_tax": "Add Tax",
 	"edit_tax": "Edit Tax",
 	"rate": "Rate",
@@ -352,7 +332,6 @@
 	"enter_rate": "Enter Rate",
 	"save_tax": "Save Tax",
 	"update_tax": "Update Tax",
-
 	"add_shipping_rule": "Add Shipping Rule",
 	"back": "Back",
 	"rule_type": "Rule Type",
@@ -367,7 +346,6 @@
 	"shipping_type": "Shipping Type",
 	"select_shipping_type": "Select Shipping Type",
 	"enter_amount": "Enter Amount",
-
 	"code": "Code",
 	"add_coupon": "Add Coupon",
 	"create_coupon": "Create Coupon",
@@ -398,7 +376,6 @@
 	"enter_value": "Enter value",
 	"save_coupon": "Save Coupon",
 	"update_coupon": "Update Coupon",
-
 	"symbol": "Symbol",
 	"exchange_rate": "Exchange Rate",
 	"add_currency": "Add Currency",
@@ -416,25 +393,19 @@
 	"symbol_position_is_required": "Symbol Position is required",
 	"save_currency": "Save Currency",
 	"update_currency": "Update Currency",
-
 	"point": "Point",
 	"point_balance": "Point Balance",
 	"select_consumer": "Select Consumer",
-
 	"add": "Add",
 	"withdraw": "Withdraw",
-
 	"consumer_name": "Consumer Name",
-
 	"product_name": "Product Name",
 	"rating": "Rating",
-
 	"add_faq": "Add FAQ's",
 	"save_faq": "Save Faq",
 	"update_faq": "Update Faq",
 	"create_faq": "Create FAQ's",
 	"edit_faq": "Edit FAQ's",
-
 	"wallet_points": "Wallet Points",
 	"email_configuration": "Email Configuration",
 	"vendor_commissions": "Vendor Commissions",
@@ -538,7 +509,6 @@
 	"tracking_id": "Tracking Id",
 	"enter_tracking_id": "Enter tracking id",
 	"site_key": "Site Key",
-
 	"header": "Header",
 	"footer": "Footer",
 	"collection_layout": "Collection Layout",
@@ -573,7 +543,7 @@
 	"footer_content": "Footer Content",
 	"select_footer_pages": "Select Footer Pages",
 	"useful_link": "Useful Link",
-	"help_center": "Centre d'aide",
+	"help_center": "Help Center",
 	"select_useful_link": "Select Useful Link",
 	"play_store_url": "Play Store Url",
 	"app_store_url": "App Store Url",
@@ -603,7 +573,6 @@
 	"blog_style": "Blog Style",
 	"grid_view": "Grid View",
 	"list_view": "List View",
-
 	"home_banner": "Home Banner",
 	"main_banner": "Main Banner",
 	"sub_title": "Sub Title",
@@ -652,18 +621,13 @@
 	"coupon_banner": "Coupon Banner",
 	"submit": "Submit",
 	"cancel": "Cancel",
-
 	"no_records_found": "No Records Found",
-
 	"delete_item": "Delete Item ?",
 	"deleted_message": "This Item will be deleted permanently. You can't undo this action.",
-
 	"confirmation": "Confirmation",
 	"confirmation_massage": "Are you sure you want to proceed?",
 	"enter_password_confirmation": "Enter password confirmation",
-
 	"redirect_link": "Redirect Link",
-
 	"my_account": "My Account",
 	"profile_setting": "Profile Setting",
 	"add_customer": "Add Customer",
@@ -710,7 +674,6 @@
 	"save_store": "Save Store",
 	"update_store": "Update Store",
 	"select_file": "Select File",
-
 	"theme_berlin_settings": "Theme Berlin Settings",
 	"theme_denver_settings": "Theme Denver Settings",
 	"theme_madrid_settings": "Theme Madrid Settings",
@@ -778,7 +741,6 @@
 	"enter_footer_content": "Enter footer content",
 	"store_setting": "Store Setting",
 	"with_this_code": "with this code",
-
 	"total_revenue": "Total Revenue",
 	"total_orders": "Total Orders",
 	"total_stores": "Total Stores",
@@ -825,7 +787,6 @@
 	"cart_style": "Cart style",
 	"save_page": "Save page",
 	"email_or_username": "Email or username",
-	"pin": "PIN",
 	"use_your_pin_instead": "Use your PIN instead",
 	"use_your_password_instead": "Use your password instead",
 	"invalid_credentials": "Invalid credentials.",

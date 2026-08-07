@@ -1609,6 +1609,71 @@ function`. It now builds through Turbo so dependencies rebuild with it.
   (63 pre-existing warnings). The `developer-portal-storybook` `@core/*` alias typecheck
   failure recorded under 3c.5 is unchanged and still out of scope.
   **Next executable step:** unchanged — pass 4. Tool: claude-code.
+- 2026-08-08 — [DONE] **Admin translation catalogue brought back in step, and guarded.**
+  Owner-requested after the keypad pass flagged the gap.
+  **Why nothing had caught it.** Transloco runs with `fallbackLang: 'en'` and
+  `missingHandler: { useFallbackTranslation: true }`, so a missing French string renders the
+  English one. Excellent at runtime, invisible at build time — the gap could not be seen from
+  the screen or from the tests, which is precisely the shape of rule that belongs in a lint
+  guard.
+  **What the audit found, beyond the 17 absent keys.** Two keys could never resolve **at all**
+  because catalogue and template disagreed on case: `en` held `Setup` while the product form
+  asks for `setup`, and `fr` held `Message` while the payout modal asks for `message` — so
+  English showed a raw key on the product form and French did on the payout modal. Five
+  **Hungarian** strings sat in `fr.json` (`Termékek`, `Minden felhasználó`), vendor-theme
+  residue. Ten strings were never translated. Eight were the wrong sense of an English
+  homograph — `Ordres` for orders (a purchase is a `commande`), `Taper` for type (to strike a
+  key), `Lester` for weight (to add ballast), `Dos` for back (the body part), plus the typo
+  `Evoyer`. Two zero-width spaces hid inside `Prix de vente`. `help_center` in the **English**
+  catalogue read `Centre d'aide`. And `setup` was translated `Installation` though it labels a
+  product-form tab, not an install step.
+  **Also removed the dead `pin` key**, left from the FormControl the keypad replaced.
+  `fr.json` is rebuilt in `en.json`'s key order so the two stay line-comparable: **805 / 805**.
+  **The guard is the durable part.** `scripts/check-i18n-parity.mjs` holds key parity, case
+  collisions, placeholder preservation, wrong-language residue, zero-width characters and
+  untranslated strings, with a `SHARED_WORDS` allowance so legitimately identical values
+  ("Blog", "Total", "PayPal") do not cry wolf. **Verified it fails on all five regression
+  classes** before trusting it, then restored.
+  **One ordering change worth naming.** The three guards now run BEFORE `turbo run lint`
+  rather than after. They are fast and always correct, and chaining them behind a `turbo run
+lint` that is red for an unrelated pre-existing reason meant they never executed at all.
+  **An attempted fix that was reverted, recorded because the diagnosis matters.** The
+  `developer-portal-storybook` `@core/*` failure is NOT alias ordering. Mapping
+  `@core/auth/auth-gateway` explicitly at the admin merely moved the identical failure to the
+  storefront: both apps export different symbols from the same specifier, so one flat tsconfig
+  cannot satisfy both. It needs per-app tsconfigs or project references. Reverted rather than
+  left half-fixed; still portal tooling and still out of scope.
+  **Commands actually run:** `pnpm turbo run test` **11/11** · all three guards OK ·
+  `pnpm format:check` clean · French login and keypad screens driven in a real browser through
+  Transloco (`Bienvenue sur Fastkart`, `Utiliser plutôt votre code PIN`, keypad `Effacer` /
+  `Supprimer le dernier chiffre`, live region `2 chiffres du code PIN sur 6 saisis`).
+  Tool: claude-code.
+- 2026-08-08 — [DONE] **Auth Pass 4a — the dead legacy bearer guards retired, and their
+  behaviour pinned shut.**
+  **What went.** `jwt-auth.guard.ts`, `roles.guard.ts`, `roles.decorator.ts` and
+  `current-user.decorator.ts` — verified beforehand as a **closed cluster**: zero references
+  from anywhere outside, the only remaining edge being `roles.guard` importing `roles.decorator`,
+  i.e. each other. Not barrelled, no specs. `AuthPort.verifyToken` survives the deletion, as
+  `session.guard` and `session.service` are its real callers.
+  **Why it mattered more than tidiness.** `JwtAuthGuard` accepted `Authorization: Bearer`. The
+  locked model is API-set `httpOnly` cookie sessions; a bearer path reinstated by a future
+  template port or a copied snippet would sidestep the CSRF double-submit entirely.
+  **`ROLES_KEY_V2` is now `ROLES_KEY`.** The `_V2` suffix existed only to dodge a collision
+  with the file just deleted, so the four metadata keys finally read consistently
+  (`auth:public`, `auth:audience`, `auth:roles`, `auth:permissions`).
+  **Deletion proves nothing on its own, so the behaviour is now pinned.** A new e2e check
+  registers a customer, confirms the access token works as a cookie (**200**, so the token is
+  unquestionably valid), then replays the SAME token at the same instant as a bearer header
+  with no cookies and requires **401**. **Negative control run:** flipping the expectation to
+  200 fails with `NEGATIVE CONTROL: 401`, so the check is not vacuous and would catch a
+  regression.
+  **Commands actually run:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` **11/11** with
+  probe accounts created 10 / remaining after cleanup **0** · `pnpm turbo run test --force`
+  **11/11** (contracts 145, http-transport 142, core-domain 87, api 83, storefront 50,
+  admin 54) · API typecheck clean · all three guards OK · `pnpm format:check` clean.
+  **Next executable step:** pass 4b — owner to choose between the 401 sub-code for
+  session-bound surfaces, stable OpenAPI tags plus operation IDs, or the route/contract family
+  categorisation. Tool: claude-code.
 - _(append)_
 
 ---

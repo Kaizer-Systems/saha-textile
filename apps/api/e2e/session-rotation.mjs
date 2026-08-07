@@ -369,6 +369,27 @@ async function main() {
 		assert.equal(rotated.statusCode, 200, `rotation after CSRF recovery failed: ${rotated.statusCode}`);
 	});
 
+	await check('a valid access token presented as a bearer header authenticates nothing', async () => {
+		const jar = await registerCustomer();
+		const access = jar.get('st_access');
+		assert.ok(access, 'no access cookie to replay');
+
+		// It works as a cookie, so the token itself is unquestionably valid and unexpired.
+		const viaCookie = await request(jar, 'GET', '/auth/storefront/me');
+		assert.equal(viaCookie.statusCode, 200, `cookie session should work: ${viaCookie.statusCode}`);
+
+		// The SAME token, same instant, offered the other way: header only, no cookies. This
+		// is what the retired JwtAuthGuard used to accept. Deleting the file removes the code;
+		// this check is what keeps the behaviour from coming back, since a guard reinstated by
+		// a future template port or a copied snippet would turn this 401 into a 200.
+		const viaBearer = await app.inject({
+			method: 'GET',
+			url: '/auth/storefront/me',
+			headers: { authorization: `Bearer ${access}` },
+		});
+		assert.equal(viaBearer.statusCode, 401, `bearer header was accepted: ${viaBearer.statusCode}`);
+	});
+
 	// Probe rows are removed explicitly, not merely isolated in their own database.
 	await models.AuthRateLimitModel.deleteMany({});
 	let remaining = 0;

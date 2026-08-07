@@ -9,9 +9,10 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint && pnpm check:naming && pnpm check:browser-auth",
+    "lint": "pnpm check:naming && pnpm check:browser-auth && pnpm check:i18n-parity && turbo run lint",
     "check:naming": "bash scripts/check-naming.sh",
     "check:browser-auth": "node scripts/check-browser-auth.mjs",
+    "check:i18n-parity": "node scripts/check-i18n-parity.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "e2e:session-rotation": "turbo run build --filter=@saha-textile/api && pnpm --filter @saha-textile/api e2e:session-rotation",

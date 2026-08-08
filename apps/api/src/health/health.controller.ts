@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { getMongoose } from '@saha-textile/adapters-db-mongo';
 import type { FastifyReply } from 'fastify';
 import { Public } from '../auth/session.guard';
+import { API_TAGS } from '../openapi-tags';
 
 interface LivenessStatus {
 	status: 'ok';
@@ -28,7 +29,7 @@ const SERVICE = 'saha-textile-api';
 /** Mongoose `readyState`: 0 disconnected, 1 connected, 2 connecting, 3 disconnecting. */
 const MONGO_READY_STATE_CONNECTED = 1;
 
-@ApiTags('health')
+@ApiTags(API_TAGS.health)
 @Controller('health')
 /** Liveness and readiness must answer without a session — a probe has no cookies. */
 @Public()
@@ -39,7 +40,10 @@ export class HealthController {
 	 * containers, turning a recoverable outage into a crash loop.
 	 */
 	@Get('live')
-	@ApiOperation({ summary: 'Liveness probe — process is running (no dependency checks)' })
+	@ApiOperation({
+		operationId: 'checkLiveness',
+		summary: 'Liveness probe — process is running (no dependency checks)',
+	})
 	@ApiOkResponse({ description: 'Process is alive' })
 	live(): LivenessStatus {
 		return { status: 'ok', service: SERVICE, timestamp: new Date().toISOString() };
@@ -51,7 +55,7 @@ export class HealthController {
 	 * of the load balancer instead of serving errors.
 	 */
 	@Get('ready')
-	@ApiOperation({ summary: 'Readiness probe — required dependencies are usable' })
+	@ApiOperation({ operationId: 'checkReadiness', summary: 'Readiness probe — required dependencies are usable' })
 	@ApiOkResponse({ description: 'Ready to serve traffic' })
 	@ApiResponse({ status: 503, description: 'A required dependency is unavailable' })
 	ready(@Res() reply: FastifyReply): void {
@@ -78,7 +82,7 @@ export class HealthController {
 
 	/** Backwards-compatible alias for the original probe; prefer `/health/live`. */
 	@Get()
-	@ApiOperation({ summary: 'Legacy health probe (alias of /health/live)' })
+	@ApiOperation({ operationId: 'checkHealthLegacy', summary: 'Legacy health probe (alias of /health/live)' })
 	check(): LivenessStatus {
 		return this.live();
 	}

@@ -1774,6 +1774,54 @@ UnauthorizedException` carries the reason, and the global filter reads it from t
   `@core/*` alias cause recorded above.
   **Next executable step:** pass 4d — owner to choose between stable OpenAPI tags plus
   operation IDs, and the route/contract family categorisation. Tool: claude-code.
+- 2026-08-08 — [DONE] **Auth Pass 4d — stable OpenAPI operation IDs and a declared tag
+  vocabulary.**
+  **The baseline figure in the brief was stale.** It records 37 paths / 40 operations; the
+  document generates **45 paths / 49 operations** today. Measured before changing anything,
+  and used as the diff baseline.
+  **Every operation already HAD an operationId — that was the problem.** Nest derives one from
+  the class and method name when none is given (`ProductsController_list`), so the check "do
+  they have ids" answers yes while the contract is still unstable: renaming a handler, a pure
+  refactor with no contract meaning, silently renames the method on every generated client.
+  All **49** now carry an explicit lowerCamelCase id decoupled from internal naming
+  (`listProducts`, `loginAdminWithPin`, `resumeAdminSession`), applied by a script that
+  asserted exactly one match per edit so a drifted summary would fail loudly rather than skip.
+  **Tags are now a declared vocabulary**, `src/openapi-tags.ts`, referenced by all twelve
+  controllers instead of twelve free-form string literals. Tags become client NAMESPACES, so a
+  single `catalogue` beside `catalog` is a second namespace nobody meant. The eight existing
+  values were kept exactly — stability here means pinning what exists, not reorganising it —
+  and each now carries a description and a declared order, because an undeclared order makes
+  every regeneration a noisy diff and that is how real changes get missed in review.
+  **A real defect fixed in passing: the document advertised bearer auth.** `addBearerAuth()`
+  described an authentication method this API does not accept — the guard reading
+  `Authorization: Bearer` was retired in 4a, and the e2e proves a valid access token offered
+  as a bearer header authenticates nothing. Replaced with a `sessionCookie` apiKey scheme
+  describing the httpOnly cookie, its `__Host-` spelling and the `x-csrf-token` requirement on
+  unsafe methods. A contract documenting a scheme the server rejects sends every integrator
+  down a path that cannot work.
+  **The guard runs where it is affordable.** `apps/api/scripts/check-openapi.mjs` is wired into
+  `generate:openapi`, not `pnpm lint`, because it reads the GENERATED document and generating
+  one costs a full Nest build — lint would pay that on every run. So the document cannot be
+  produced without being checked. Also exposed as `pnpm --filter @saha-textile/api check:openapi`.
+  **All eight rules negative-controlled, one mutated document each:** framework-derived id,
+  missing id, duplicate id, non-camelCase id, undeclared tag, untagged operation, bearer
+  scheme, and a declared tag without a description — **8/8 caught**, each with the right
+  message, and the real document still passes. Recorded because the FIRST attempt at this was
+  invalid: all eight mutants wrote one shared file and raced, so every case read whichever
+  landed last and all eight "passed" with an identical message. Rerun sequentially with
+  distinct files.
+  **Contract diff is exactly the intended change:** 45 → 45 paths, 49 → 49 operations, **0**
+  routes added or removed, **0** tags or summaries changed, 49 operationIds changed,
+  securitySchemes `bearer` → `sessionCookie`, declared tags 0 → 8. Regeneration is
+  **byte-identical across runs** (sha256 `6011f8ca…`), and identical again after Prettier
+  reformatted the controllers.
+  **Commands actually run:** `generate:openapi` (build + generate + check) green ·
+  `pnpm turbo run test --force` **11/11** (api 97, http-transport 157, contracts 145,
+  core-domain 87, storefront 57, admin 61) · `MONGODB_PORT=27018 pnpm e2e:session-rotation`
+  **12/12** with 0 probe rows remaining · API lint 0 errors · all three lint guards OK ·
+  `pnpm format:check` clean. `pnpm typecheck` fails ONLY on `developer-portal-storybook`, the
+  same `@core/*` alias failure recorded above.
+  **Pass 4 now has one item left:** route/contract family categorisation. Tool: claude-code.
 - _(append)_
 
 ---

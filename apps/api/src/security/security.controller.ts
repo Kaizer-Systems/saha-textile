@@ -5,8 +5,9 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { SessionService } from '../auth/session.service';
 import { Public } from '../auth/session.guard';
+import { API_TAGS } from '../openapi-tags';
 
-@ApiTags('auth')
+@ApiTags(API_TAGS.auth)
 @Controller('auth')
 /** CSRF token issuance must work before a session exists. */
 @Public()
@@ -26,7 +27,10 @@ export class SecurityController {
 	 * (pre-session) callers still receive an unbound token.
 	 */
 	@Get('csrf')
-	@ApiOperation({ summary: 'Issue a double-submit CSRF token (also set as a readable cookie)' })
+	@ApiOperation({
+		operationId: 'issueCsrfToken',
+		summary: 'Issue a double-submit CSRF token (also set as a readable cookie)',
+	})
 	@ApiOkResponse({ description: 'CSRF token issued' })
 	async issueCsrfToken(@Req() request: FastifyRequest, @Res() reply: FastifyReply): Promise<void> {
 		const token = await this.sessions.issueCsrfToken(request, reply);

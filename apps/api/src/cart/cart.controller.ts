@@ -9,6 +9,7 @@ import { cookieNames, sessionCookieOptions } from '../common/cookies';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { CartService, toPublicCart } from './cart.service';
+import { API_TAGS } from '../openapi-tags';
 
 const CreateCartSchema = z.object({
 	currency: z.string().length(3).optional(),
@@ -28,7 +29,7 @@ type UpdateQtyBody = z.infer<typeof UpdateQtySchema>;
 
 const GUEST_TTL_SECONDS = 60 * 60 * 24 * 30;
 
-@ApiTags('cart')
+@ApiTags(API_TAGS.cart)
 @Controller('cart')
 /**
  * Guest add-to-cart is an owner lock, so create/read/mutate stay reachable without an
@@ -56,7 +57,7 @@ export class CartController {
 	}
 
 	@Post()
-	@ApiOperation({ summary: 'Create a new (guest or user) cart' })
+	@ApiOperation({ operationId: 'createCart', summary: 'Create a new (guest or user) cart' })
 	async create(
 		@Body(new ZodValidationPipe(CreateCartSchema)) body: CreateCartInput,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
@@ -74,7 +75,7 @@ export class CartController {
 	}
 
 	@Get(':id')
-	@ApiOperation({ summary: 'Get a cart by id' })
+	@ApiOperation({ operationId: 'getCart', summary: 'Get a cart by id' })
 	async get(
 		@Param('id') id: string,
 		@Req() request: FastifyRequest,
@@ -85,7 +86,7 @@ export class CartController {
 	}
 
 	@Post(':id/lines')
-	@ApiOperation({ summary: 'Add a line to a cart' })
+	@ApiOperation({ operationId: 'addCartLine', summary: 'Add a line to a cart' })
 	async addLine(
 		@Param('id') id: string,
 		@Body(new ZodValidationPipe(AddLineSchema)) body: AddLineBody,
@@ -97,7 +98,7 @@ export class CartController {
 	}
 
 	@Patch(':id/lines/:lineId')
-	@ApiOperation({ summary: 'Update the quantity of a cart line' })
+	@ApiOperation({ operationId: 'updateCartLine', summary: 'Update the quantity of a cart line' })
 	async updateLine(
 		@Param('id') id: string,
 		@Param('lineId') lineId: string,
@@ -110,7 +111,7 @@ export class CartController {
 	}
 
 	@Delete(':id/lines/:lineId')
-	@ApiOperation({ summary: 'Remove a line from a cart' })
+	@ApiOperation({ operationId: 'removeCartLine', summary: 'Remove a line from a cart' })
 	async removeLine(
 		@Param('id') id: string,
 		@Param('lineId') lineId: string,

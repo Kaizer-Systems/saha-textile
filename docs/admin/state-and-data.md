@@ -4,7 +4,7 @@ wide: true
 description: Ownership rules for TanStack Query, SignalStore, classic NgRx, services, interceptors, and transitional fixtures.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - apps/admin/src/app/app.config.ts
     - apps/admin/src/app/core/config/runtime-config.ts
@@ -83,7 +83,7 @@ Do not optimistically remove or approve records unless rollback behavior is defi
 
 ## Runtime configuration
 
-The admin loads `public/config.json` at boot (via `provideAppInitializer` in `core/config/runtime-config.ts`), filling the mutable `environment` object with `apiUrl` and other non-secret values. The committed file holds localhost defaults; deployments overwrite it. The auth interceptor sends `withCredentials: true` for the API cookie session and echoes the readable `st_csrf` cookie as `x-csrf-token` on unsafe methods. It holds no credential of its own: the `FAKE_TOKEN` seeded into the auth store, its `localStorage` persistence and the `Authorization: Bearer` header were all removed on 2026-08-02, and `scripts/check-browser-auth.mjs` fails `pnpm lint` if any of them returns. Refresh single-flight is not implemented yet — concurrent 401s each attempt a rotation.
+The admin loads `public/config.json` at boot (via `provideAppInitializer` in `core/config/runtime-config.ts`), filling the mutable `environment` object with `apiUrl` and other non-secret values. The committed file holds localhost defaults; deployments overwrite it. The auth interceptor sends `withCredentials: true` for the API cookie session and echoes the readable `st_csrf` cookie as `x-csrf-token` on unsafe methods. It holds no credential of its own. `@saha-textile/http-transport` supplies per-tab refresh single-flight, audience-specific Web Locks across tabs, fresh-CSRF replay, loop prevention, request-id/error mapping, and stable handling for unrecoverable session refusals. Repository lint guards fail if bearer/browser tokens, browser session persistence or cross-audience gateway calls return.
 
 ## Security boundary
 

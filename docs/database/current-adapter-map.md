@@ -4,7 +4,7 @@ description: Verified Mongoose models, indexes, repositories, mappers, seed tool
 search_keywords: 'mongo rs0 replica set connection uri directConnection models indexes repositories'
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - packages/adapters-db-mongo/src/models
     - packages/adapters-db-mongo/src/repositories
@@ -29,6 +29,7 @@ The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps,
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Original seven           | `categories`, `products`, `promotions`, `orders`, `currencies`, `carts`, `users`                                                   | Existing catalogue/commerce APIs; product lifecycle/indexes, cart/`st_guest` ownership and order+cart transactional create are current; checkout idempotency remains open |
 | Auth seven               | `authSessions`, `otpChallenges`, `oauthStates`, `passwordResetTokens`, `emailVerificationTokens`, `adminInvites`, `authRateLimits` | Session/OTP/reset/PIN/RBAC flows use these stores; OAuth callback and broader admin user management remain open                                                           |
+| Authorization            | `roles`, `userRoleAssignments`                                                                                                     | Repositories and unique active-assignment index are rs0-proven; API authorization has not adopted them                                                                    |
 | Privacy                  | `consentEvents`                                                                                                                    | Consent history and privacy request seams are API-bound                                                                                                                   |
 | Catalogue/merchandising  | `categoryPlacements`, `categoryFacetConfigs`, `attributeDefinitions`, `productVariants`, `productBundles`, `productRelations`      | Tested repositories exist; broad HTTP catalogue-management adoption remains open                                                                                          |
 | Media/inventory          | `mediaAssets`, `inventoryLedger`, `inventoryCostLayers`                                                                            | Tested repository/index behavior exists; business workflow adoption remains open                                                                                          |
@@ -39,11 +40,11 @@ The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps,
 
 Every schema passes an explicit `collection` option, and `packages/adapters-db-mongo/src/collection-names.ts` is the single declaration those literals are checked against by `test/collection-names.test.ts`. Before 2026-08-02 no schema declared one, so Mongoose derived each name from the model name and produced lowercase — and sometimes wrongly pluralized — physical names (`authsessions`, `inventoryledgers`, `messageoutboxes`). `pnpm mongo:align-collections` renames an existing database onto the ratified names; it is idempotent, refuses to merge when both names hold data, and is never run at application boot.
 
-The generated catalogue confirms all 32 physical names directly from Mongoose metadata: 406 fields, 89 indexes, and 27 temporary shapes. Two of these implemented models — `productQuestions` and `ratingAggregates` — have no node in the ratified 64-collection graph; that is an open documentation reconciliation, not a licence to rename them. `authRateLimits` is current adapter evidence that the auth architecture intentionally keeps outside the graph. The governed graph is still published as 64 nodes / 8 current / 56 target: name alignment is a precondition for promoting the remaining stars, and the promotion itself is a pending portal-truth reconciliation.
+The generated catalogue confirms all 34 physical names directly from Mongoose metadata: 424 fields, 94 indexes, and 27 temporary shapes. Thirty-one names map to ratified Schema Nebula nodes. The implemented `productQuestions`, `ratingAggregates`, and `authRateLimits` collections remain current catalogue evidence outside that fixed graph; this is not a licence to add or rename stars. The governed graph publishes 64 nodes / 31 current / 33 target.
 
 ## Current repository inventory
 
-Repository adapters cover the original domain stores plus auth, consent, catalogue structure, merchandising, inventory, media, governance and content. Auth adapters are bound into session/OTP/reset/admin flows; catalogue/media/inventory/governance/content adapters are tested capabilities whose wider HTTP workflows remain incomplete.
+Repository adapters cover the original domain stores plus auth, authorization roles/assignments, consent, catalogue structure, merchandising, inventory, media, governance and content. Auth adapters are bound into session/OTP/reset/verification/invite/admin flows; role-assignment and catalogue/media/inventory/governance/content adapters are tested capabilities whose wider HTTP workflows remain incomplete.
 
 ### Common pattern
 
@@ -119,7 +120,7 @@ The seed is useful for early schema tests. It is not a complete domain seed: mul
 
 ## Existing integration test
 
-The 81 gated adapter tests connect to rs0 and cover baseline repositories, transaction behavior, auth persistence, catalogue structure/merchandising, inventory/media, governance/content and order+cart transactional create. They run only when `RUN_DB_IT=1` and Mongo configuration is present.
+The 100 gated adapter tests connect to rs0 and cover baseline repositories, transaction behavior, auth and RBAC persistence, catalogue structure/merchandising, inventory/media, governance/content and order+cart transactional create. They run only when `RUN_DB_IT=1` and Mongo configuration is present.
 
 Limitations:
 
@@ -127,9 +128,10 @@ Limitations:
 - the suite does not start the replica set itself — bring it up first with `pnpm mongo:up`;
 - it does not exercise indexes/uniqueness broadly;
 - six transaction tests prove commit, rollback after a successful write, error propagation, return values, nested-session joining, and inner-failure rollback of outer writes;
-- 18 auth-persistence tests prove default secret exclusion, explicit credential reads, session rotation/reuse-family support, atomic single-use challenge/token consumption, TTL/index declarations and atomic rate-limit increments;
+- auth-persistence tests prove default secret exclusion, explicit credential reads, session rotation/reuse-family support, atomic single-use challenge/token consumption, TTL/index declarations and atomic rate-limit increments;
 - 15 catalogue tests, 15 inventory/media tests and 16 governance/content tests prove the newly implemented repository/index behavior;
 - 3 order+cart transaction tests prove commit and rollback of order save with cart consumption;
+- RBAC persistence tests prove role storage and the partial unique active-assignment index;
 - it does not cover every repository/mapper.
 
 ## Model review checklist

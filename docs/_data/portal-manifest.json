@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-02",
+	"lastVerified": "2026-08-09",
 	"datasets": {
 		"missionControl": {
 			"file": "docs/_data/instruments/mission-control.json",

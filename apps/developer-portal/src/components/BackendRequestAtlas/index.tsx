@@ -100,7 +100,7 @@ const requestPaths: RequestPath[] = [
 		path: '/auth/storefront/login/password',
 		summary: 'Authenticate a browser without exposing reusable session credentials to Angular storage.',
 		current:
-			'The API sets audience-bound httpOnly access and opaque refresh cookies, persists refresh families and a per-session CSRF hash, rotates atomically, revokes a family on reuse, and returns only sanitized user/session metadata. Angular interceptors still attach a legacy bearer value which SessionGuard ignores.',
+			'The API sets audience-bound httpOnly access and opaque refresh cookies, persists refresh families and a per-session CSRF hash, rotates atomically, revokes a family on reuse, and returns only sanitized user/session metadata. Both Angular clients use cookie-only typed gateways with CSRF acquisition, refresh single-flight, cross-tab exclusion and stable refusal handling.',
 		target: 'The API sets audience-bound httpOnly Secure cookies, rotates opaque refresh tokens, validates signed double-submit CSRF, enforces the ratified password and PIN policies, and separates storefront from admin authority.',
 		verify: 'Prove tokens never enter browser-readable storage, unsafe cookie-authenticated methods reject missing CSRF, refresh reuse revokes the family, and storefront identity cannot authorize admin routes.',
 		layers: [

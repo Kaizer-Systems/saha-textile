@@ -4,7 +4,7 @@ wide: true
 description: Shared decision rules for state, contracts, layers, reusable UI, and cross-application behavior.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/admin/src/app/app.config.ts
@@ -57,11 +57,11 @@ Both apps read their public, non-secret configuration at boot from `public/confi
 - The committed `config.json` holds localhost defaults; deployments overwrite or mount it at container start.
 - Under SSR (no browser `fetch`), the loader reads `SAHA_TEXTILE_PUBLIC_CONFIG` from the environment, else falls back to defaults. A failed fetch never blocks boot.
 
-The auth interceptor sends `withCredentials: true` on every request so the httpOnly cookie sessions flow, and echoes the readable `st_csrf` cookie as `x-csrf-token` on unsafe methods. It attaches no bearer token: the API's `SessionGuard` reads the access cookie only, and the client holds no credential to forward. `scripts/check-browser-auth.mjs` runs in `pnpm lint` and fails the build if a token, a bearer header or session state in browser storage reappears in either application.
+The auth interceptor sends `withCredentials: true` on every request so the httpOnly cookie sessions flow, and echoes the readable `st_csrf` cookie as `x-csrf-token` on unsafe methods. It attaches no bearer token: the API's `SessionGuard` reads the access cookie only, and the client holds no credential to forward. The framework-free `@saha-textile/http-transport` package owns the shared CSRF contract, refresh single-flight, audience-specific cross-tab locks, URL/request-id helpers and safe refusal mapping; each application gateway retains its own routes and business policy. Repository lint guards reject browser token storage, bearer headers and cross-audience auth calls.
 
 ## Contracts today
 
-`packages/contracts/src` contains zod-backed common locale/money/pagination/error primitives and families for catalogue placements/attributes/options/variants/bundles/relations, media, inventory, content, cart, order, currency, promotion, shipping, users, auth/session/admin auth, consent, audit, and notifications. The active locale set is runtime configuration, not a contract enum. Most expanded families describe validated boundaries but are not yet wired into Angular workflows or current API operations.
+`packages/contracts/src` contains zod-backed common locale/money/pagination/error primitives and families for catalogue placements/attributes/options/variants/bundles/relations, media, inventory, content, cart, order, currency, promotion, shipping, users, auth/session/admin auth, permissions, roles, consent, audit, and notifications. The active locale set is runtime configuration, not a contract enum. Most expanded families describe validated boundaries but are not yet wired into Angular workflows or current API operations.
 
 These contracts are the preferred trust boundary as real endpoints replace fixtures. Existing application-local interfaces still describe many fixture/view shapes; migrate deliberately rather than renaming them “contracts.”
 

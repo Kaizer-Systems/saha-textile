@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { Password } from './auth';
 import { Id, IsoDateTime } from './common';
+import { PermissionGrant } from './permission';
 import { SessionInfo } from './session';
 import { UserStatus } from './user';
 
@@ -112,7 +113,14 @@ export type AdminPasswordResetRequest = z.infer<typeof AdminPasswordResetRequest
 export const AdminInviteRequest = z.object({
 	email: z.email(),
 	role: z.enum(['staff', 'admin']),
-	permissions: z.array(z.string()).optional(),
+	/**
+	 * Validated against the canonical registry, so an unknown or mistyped code is refused
+	 * here rather than stored and silently authorizing nothing. Strict on the way IN only:
+	 * the persisted `AdminInvite` and `UserAuthState` keep a permissive `string[]`, because
+	 * rows written before this registry existed must still parse on read. Tightening those
+	 * would turn a historical grant into an unreadable document.
+	 */
+	permissions: PermissionGrant.optional(),
 });
 export type AdminInviteRequest = z.infer<typeof AdminInviteRequest>;
 

@@ -4,7 +4,7 @@ wide: true
 description: Atomic-write design, replica-set verification, current source-generated catalogue, and target-completeness requirements.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - packages/adapters-db-mongo/src
     - packages/adapters-db-mongo/scripts/generate-catalogue.ts
@@ -107,15 +107,15 @@ Never assume a Mongoose schema edit automatically migrates historical documents.
 
 ## Current generated catalogue
 
-The composite portal publishes a source-only **Schema Observatory** at `/database/catalogue/`. The 2026-08-01 regeneration imports every exported Mongoose model without opening a connection and measures:
+The composite portal publishes a source-only **Schema Observatory** at `/database/catalogue/`. The deterministic 2026-08-09 regeneration imports every exported Mongoose model without opening a connection and measures:
 
-- 32 current models;
-- 406 schema paths;
-- 89 indexes;
+- 34 current models;
+- 424 schema paths;
+- 94 indexes;
 - 27 paths whose `Mixed` or array-of-`Mixed` shape is explicitly marked temporary;
 - 13 excluded-by-default credential, PIN, token, code, state, nonce, PKCE, CSRF and private-contact fields, all omitted from synthetic previews.
 
-The catalogue covers the seven original models plus the 25 D/E identity, consent, catalogue, variant, merchandising, media, inventory, governance, notification, and content models. Only `reviews` among the new target-backed physical names resolves exactly to a ratified Schema Nebula node; lowercase Mongoose defaults do not promote mismatched lower-camel stars, and `authratelimits` remains outside the 64-node graph. The catalogue remains a current-evidence scaffold, not the finished database dictionary: it does not claim complete HTTP or workflow adoption, migration history, retention completeness, or complete nested validators.
+The catalogue covers the seven original models plus 27 identity, authorization, consent, catalogue, variant, merchandising, media, inventory, governance, notification, and content models. Thirty-one models map to ratified Schema Nebula nodes; `authRateLimits`, `productQuestions`, and `ratingAggregates` are current non-graph evidence. The catalogue remains a current-evidence scaffold, not the finished database dictionary: it does not claim complete HTTP or workflow adoption, migration history, retention completeness, or complete nested validators.
 
 ## Target-complete catalogue gate
 

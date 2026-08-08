@@ -3,7 +3,7 @@ title: API Overview
 description: Current API application boundary, capability status, navigation, and generated reference.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-08-01'
+last_verified: '2026-08-09'
 source_of_truth:
     - apps/api/src
     - packages/contracts/src
@@ -30,7 +30,7 @@ Start with the [Backend Platform Atlas](../backend/overview) when you need to un
 
 ## Current module snapshot
 
-The application currently exposes health, storefront/admin authentication, privacy, catalogue, cart, orders, currency, and promotion modules. Its platform foundation includes per-request correlation ids, redacted structured logs, the shared safe error envelope, trusted client-IP rate-limit keys, strict CORS, dependency-free liveness, dependency-aware readiness, cookie-only sessions, atomic refresh rotation and reuse revocation, global session-bound double-submit CSRF, storefront/admin audiences, PIN/RBAC/version invalidation, consent and privacy seams, cart Principal/`st_guest` ownership, order ownership, and transactional order-save plus cart-consume. Authentication remains partial because email-verification completion, OAuth verification, admin invite acceptance, idle quick-resume, and guest-to-user merge are absent. The broader contract and persistence families are not all wired end to end; each module must satisfy its roadmap definition of done before the overall API can be classified as implemented.
+The application currently exposes health, storefront/admin authentication, privacy, catalogue, cart, orders, currency, and promotion modules. Its platform foundation includes per-request correlation ids, redacted structured logs, the shared safe error envelope with stable session refusal reasons, trusted client-IP rate-limit keys, strict CORS, dependency-free liveness, dependency-aware readiness, cookie-only sessions, atomic refresh rotation and reuse revocation, global session-bound double-submit CSRF, storefront/admin audiences, email verification, admin recovery/invites/HTTP resume, PIN/version invalidation, consent and privacy seams, cart Principal/`st_guest` ownership, order ownership, and transactional order-save plus cart-consume. Authentication remains partial because OAuth verification, the admin idle-lock client, first-admin bootstrap, fine-grained role-assignment enforcement, and guest-to-user merge are absent. The broader contract and persistence families are not all wired end to end; each module must satisfy its roadmap definition of done before the overall API can be classified as implemented.
 
 ## Interactive-request boundary
 

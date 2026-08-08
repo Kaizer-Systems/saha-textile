@@ -15,6 +15,7 @@
 		"resolveJsonModule": true,
 		"baseUrl": ".",
 		"paths": {
+			"@core/auth/auth-gateway": ["src/type-shims/core/auth/auth-gateway.ts"],
 			"@core/state/account.store": ["src/type-shims/core/state/account.store.ts"],
 			"@core/state/loader.store": ["src/type-shims/core/state/loader.store.ts"],
 			"@core/state/menu.store": ["src/type-shims/core/state/menu.store.ts"],

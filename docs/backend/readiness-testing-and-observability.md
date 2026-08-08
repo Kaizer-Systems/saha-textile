@@ -4,7 +4,7 @@ wide: true
 description: Liveness versus readiness, logging, metrics, testing layers, transaction proof, and backend definition of done.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - apps/api/src/health
     - apps/api/src/infra/persistence.module.ts
@@ -78,14 +78,16 @@ Avoid high-cardinality labels such as raw user id, order id, email, token, full 
 
 ## Current automated-test evidence
 
-| Package       | Present evidence                                                                                                                                                       | Limitation                                                                               |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `contracts`   | 140 schema tests across common/auth/catalog/media/inventory/content/commerce families                                                                                  | Complete operation DTO/OpenAPI wiring remains                                            |
-| `core-domain` | 36 pricing, visibility, runtime-purity and port-conformance tests                                                                                                      | No complete use-case/state-machine suites                                                |
-| Mongo adapter | 89 opt-in tests: 7 baseline, 6 transaction, 19 auth, 15 catalogue, 15 inventory/media, 16 governance/content, 3 order+cart transaction and 8 collection-name alignment | All require `RUN_DB_IT=1` and a real rs0 profile; broader HTTP/workflow adoption remains |
-| API           | 57 platform, CSRF, session-liveness, cart-ownership and order-create unit/guard tests, with test files included in typecheck                                           | Full live HTTP matrix/idempotency/OpenAPI route coverage remains                         |
+| Package            | Present evidence                                                                                                                              | Limitation                                                                               |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `contracts`        | 154 schema tests across common/auth/permission/role/catalog/media/inventory/content/commerce families                                         | Complete operation DTO/OpenAPI wiring remains                                            |
+| `core-domain`      | 87 pricing, visibility, auth-policy, runtime-purity and port-conformance tests                                                                | No complete use-case/state-machine suites                                                |
+| Mongo adapter      | 100 opt-in integration tests across baseline, transactions, auth/RBAC, catalogue, inventory/media, governance/content and order+cart behavior | All require `RUN_DB_IT=1` and a real rs0 profile; broader HTTP/workflow adoption remains |
+| API                | 97 platform, route-contract, OpenAPI, CSRF/session, authorization and feature tests, with test files included in typecheck                    | Full live HTTP/idempotency workflow coverage remains                                     |
+| HTTP transport     | 157 framework-free policy tests for CSRF, refresh single-flight, cross-tab exclusion and refusal mapping                                      | Browser integration does not replace feature-flow coverage                               |
+| Storefront / Admin | 57 / 61 unit tests for gateways, interceptors, stores and admin routes                                                                        | Feature/page coverage remains incomplete                                                 |
 
-The admin application separately has zero unit specs and passes through `--passWithNoTests`; that frontend limitation must not be confused with the real API suite. The backend gate still rejects permanently skipped transaction proof as a production-done state.
+The former zero-spec Angular baseline has been superseded: both applications now test their cookie-session transport and state boundaries, and the admin also tests protected routing. These focused tests are not broad UI coverage. The backend gate still rejects permanently skipped transaction proof as a production-done state.
 
 ## Test pyramid for this backend
 

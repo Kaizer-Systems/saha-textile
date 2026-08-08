@@ -3,7 +3,7 @@ title: Monorepo Map
 description: Workspace package ownership and responsibilities.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - pnpm-workspace.yaml
     - turbo.json
@@ -24,6 +24,7 @@ source_of_truth:
 | `apps/developer-portal-typedoc`   | Narrow TypeDoc child for exported contracts and core-domain symbols                        |
 | `packages/contracts`              | Zod schemas and shared API request/response shapes                                         |
 | `packages/core-domain`            | Entities, value objects, use cases, and port interfaces                                    |
+| `packages/http-transport`         | Framework-free browser CSRF, refresh coordination, request-id and safe-error policy        |
 | `packages/adapters-db-mongo`      | Mongo persistence adapter and seed tooling                                                 |
 | `packages/config`                 | Shared TypeScript, lint, and style configuration                                           |
 | `docker/mongo`                    | Local Docker MongoDB 8.3 single-node replica-set (`rs0`) profile                           |

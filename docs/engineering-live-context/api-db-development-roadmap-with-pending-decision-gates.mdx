@@ -3,7 +3,7 @@ title: 'API and Database Development Roadmap'
 description: 'Canonical A-J backend delivery plan, decision gates, and verification contract.'
 audience: [backend, operator, agent]
 document_role: canonical
-last_verified: 2026-07-25
+last_verified: 2026-08-09
 search_keywords: 'api database roadmap backend chunks gates verification deployment'
 ---
 
@@ -15,7 +15,7 @@ search_keywords: 'api database roadmap backend chunks gates verification deploym
 
 **Open owner choices:** `pending-decisions.mdx`
 
-**Last reconciled:** 2026-07-25
+**Last reconciled:** 2026-08-09
 
 ## Authority order
 
@@ -152,31 +152,31 @@ Other open decisions block only their own final policy engine. Reversible schema
 #### Pass boundary
 
 - **D1 — auth persistence (done):** tested session, OTP, OAuth-state, reset-token,
-  verification-token, admin-invite, and auth-rate-limit repositories/models; secret
-  fields excluded by default; atomic consume/rotation/rate-limit mechanics and TTL
-  policy proven against rs0. These repositories are capability evidence, not proof
-  that the current HTTP auth flow uses them. **Known target-alignment defect:** the
-  grouped Mongoose models currently resolve to lowercase default collection names
-  rather than the locked camelCase Schema Nebula names; `authRateLimits` is not a
-  locked node in that 64-collection graph. The adapter owner must align the six
-  target-backed names before those stars become current evidence.
+  verification-token, admin-invite, role, user-role-assignment, and auth-rate-limit
+  repositories/models; secret fields excluded by default; atomic consume/rotation,
+  rate-limit and unique-active-assignment mechanics proven against rs0. Explicit
+  physical names now align every target-backed model with the locked camelCase Schema
+  Nebula graph. `authRateLimits` remains intentional current adapter evidence outside
+  that graph. Persistence capability alone does not prove HTTP adoption.
 - **D2 — session lifecycle (done):** issue, refresh, revoke, refresh-reuse family
   revocation, session-bound CSRF, and storefront/admin audience guards are implemented
   and live-proven through httpOnly cookies.
 - **D3 — storefront auth endpoints (partial):** register, password login, logout, me,
-  refresh, password reset, and OTP use generic anti-enumeration responses. Email
-  verification token persistence/issuance exists, but no completion route is exposed;
-  Google/Facebook token verification also remains deferred pending approved credentials.
-- **D4 — admin auth (partial):** password/PIN login, PIN setup/lockout, RBAC, and
-  permission-version invalidation exist. Admin invite acceptance and idle quick-resume
-  remain deferred.
+  refresh, password reset, email-verification completion/resend, and OTP use generic
+  anti-enumeration responses. Google/Facebook token verification remains deferred pending
+  approved credentials.
+- **D4 — admin auth (partial):** password/PIN login, password recovery, PIN
+  setup/lockout, invite create/list/revoke/acceptance, HTTP quick-resume, audience guards,
+  and permission-version invalidation exist. The admin idle-lock client experience,
+  first-administrator bootstrap, and fine-grained role-assignment API/enforcement remain
+  incomplete; the role and assignment persistence seam is not yet API wiring.
 - **D5 — consent, privacy, and ownership (partial):** consent history, export/erase
   seams, order-read BOLA, cart ownership/`st_guest` proof, and order-create cart
   ownership/adoption are implemented. Cart routes remain `@Public()` for guest
   add-to-cart but enforce Principal/guest-token proof in the service boundary. Guest→user
   merge, pending intents, and checkout idempotency remain Chunk G.
 
-The 2026-08-01 portal reassessment therefore retains Chunk D as **partial**. The earlier
+The 2026-08-09 portal reassessment therefore retains Chunk D as **partial**. The earlier
 “Chunk D complete” progress label describes the delivered session/auth core but does not
 satisfy the full D3–D5 boundary above.
 

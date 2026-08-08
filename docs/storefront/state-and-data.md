@@ -4,7 +4,7 @@ wide: true
 description: Practical rules for TanStack Query, SignalStore, classic NgRx, services, and local component state.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/storefront/src/app/core/config/runtime-config.ts
@@ -75,7 +75,7 @@ Use it when:
 
 ## Runtime configuration
 
-The API base URL is not compiled into the bundle. `core/config/runtime-config.ts` loads `public/config.json` at boot (via `provideAppInitializer`) and fills a mutable `runtimeConfig` singleton plus the legacy `environment` object that services read for `apiUrl`. Only non-secret values live there; deployments overwrite the file. The auth interceptor sends `withCredentials: true` for the cookie session and echoes the readable `st_csrf` cookie as `x-csrf-token` on unsafe methods; the `FAKE_ACCESS_TOKEN` and the bearer header were removed on 2026-08-02, enforced thereafter by `scripts/check-browser-auth.mjs` in `pnpm lint`. Session state comes from `/auth/storefront/me`, resolved by an app initializer before routing and never persisted to browser storage. Refresh single-flight is not implemented yet — concurrent 401s each attempt a rotation.
+The API base URL is not compiled into the bundle. `core/config/runtime-config.ts` loads `public/config.json` at boot (via `provideAppInitializer`) and fills a mutable `runtimeConfig` singleton plus the legacy `environment` object that services read for `apiUrl`. Only non-secret values live there; deployments overwrite the file. The auth interceptor sends `withCredentials: true` for the cookie session and echoes the readable `st_csrf` cookie as `x-csrf-token` on unsafe methods; the browser holds no reusable credential. Session state comes from `/auth/storefront/me`, resolved by an app initializer before routing and never persisted to browser storage. `@saha-textile/http-transport` supplies per-tab refresh single-flight, audience-specific Web Locks across tabs, fresh-CSRF replay, loop prevention, request-id/error mapping, and stable handling for unrecoverable session refusals. Repository lint guards reject bearer, browser-token and cross-audience gateway regressions.
 
 ## Catalogue source boundary
 

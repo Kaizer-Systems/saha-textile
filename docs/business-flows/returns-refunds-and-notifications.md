@@ -4,7 +4,7 @@ wide: true
 description: Item return, financial reversal, shipment consequences, and multi-channel communication boundaries.
 status: planned
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-01'
+last_verified: '2026-08-09'
 source_of_truth:
     - apps/storefront/src/app/shared/ui/modal/refund-modal
     - apps/admin/src/app/features/refund

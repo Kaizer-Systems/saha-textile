@@ -3,7 +3,7 @@ title: 'Project Progress'
 description: 'Canonical cross-tool checkpoint for current implementation status and verification evidence.'
 audience: [engineering, operator, agent]
 document_role: canonical
-last_verified: 2026-08-02
+last_verified: 2026-08-09
 search_keywords: 'project progress current status checkpoint verification evidence chunks gates'
 ---
 
@@ -79,7 +79,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 ```json
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-02",
+	"lastVerified": "2026-08-09",
 	"chunks": {
 		"A": "done",
 		"B": "done",
@@ -2121,6 +2121,9 @@ UnauthorizedException` carries the reason, and the global filter reads it from t
   attempted outside the sandbox, but the local container was not running, so no live
   replica-set/Compass connection claim is made; committed/gitignored config still resolves
   this Mac's intended host port to `27018`.
+- 2026-08-09 — [DONE] **Developer portal current-head Pass 1 — governed truth and freshness reconciliation.** Re-read post-baseline API, contracts, core, Mongo, Angular-client and portal evidence; reconciled Chunk D’s completed email-verification, admin recovery/invite/HTTP-resume work while retaining its partial status for OAuth, the admin idle-lock client, first-admin bootstrap, fine-grained role-assignment enforcement and guest-cart merge. The current adapter catalogue measures **34 models / 424 fields / 94 indexes / 27 temporary shapes**, with all 13 excluded fields absent from previews. Schema Nebula now publishes **64 / 31 / 33** from exact model/test evidence while keeping `authRateLimits`, `productQuestions` and `ratingAggregates` outside the fixed graph. OpenAPI publishes **45 paths / 49 operations** and a cookie scheme but remains scaffolded because operation security and request/response/error semantics are incomplete. Storybook evidence is **140 / 140 reusable across 283 components**; TypeDoc contains 498 HTML pages and the new permission/role exports. Reconciled all affected derived pages, governed datasets, bridges and embedded atlases without promoting gated surfaces. Developer-portal validation passes **77 pages / 77 routes / governed data / provenance / deep links / 52 portal source files**. Tool: codex.
+- 2026-08-09 — [DONE] **Developer portal current-head Passes 2–6 — generated surfaces, governed instruments and narratives reconciled.** Regenerated and deterministic-checked the 45-path/49-operation OpenAPI document and the 34-model/424-field/94-index/27-temporary-shape MongoDB catalogue; regenerated the 498-page TypeDoc surface; built the 122-state Angular Storybook with 140/140 reusable-component coverage; and promoted a complete persistent composite containing Docusaurus plus all four child mounts. Browser QA verified all four gateway/child pairs, their child-header return links, single-title and shared-theme behavior, zero document overflow at 1280/768/390, and zero page-load console errors. QA also found and fixed three portal-only defects: the Schema Observatory still displayed the historical seven-model label, the catalogue shell still said 32 models, and the request-lifecycle Mermaid sequence failed production parsing. Root typecheck, lint/naming/security/route/permission gates, tests, formatting, validator and child/composite production builds are green. Tool: codex.
+- 2026-08-09 — [PARTIAL] **Scalar Test Request live-send check is locally environment-blocked, not bypassed.** The Test Request client opens the generated `GET /health/live` operation and the API itself returns 200 with `x-request-id`, but the current gitignored `apps/api/.env` allowlist contains only the Storefront/Admin origins, so a request carrying the persistent portal origin receives no `Access-Control-Allow-Origin` header and Scalar reports `Failed to fetch`. The committed `.env.example` and code default already include both `http://127.0.0.1:3457` and `http://localhost:3457`; no API source, private environment file, or security control was changed during this portal pass. Tool: codex.
 - _(append)_
 
 ---

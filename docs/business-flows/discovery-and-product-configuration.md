@@ -4,7 +4,7 @@ wide: true
 description: Category, search, product-detail, semantic option, variant, add-on, bundle, pricing, and stock journey.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-01'
+last_verified: '2026-08-09'
 source_of_truth:
     - apps/storefront/src/app/pages/en/collections
     - apps/storefront/src/app/pages/en/product/[slug].page.ts

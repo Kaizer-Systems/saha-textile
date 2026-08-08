@@ -4,7 +4,7 @@ wide: true
 description: How admin guards, layouts, lazy routes, and feature families compose the operator workspace.
 status: implemented
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - apps/admin/src/app/app.routes.ts
     - apps/admin/src/app/routes/content.routes.ts
@@ -46,14 +46,14 @@ Used for full-page experiences such as authentication and errors where admin nav
 
 ## Guard behavior today
 
-`AuthGuard.canActivate()` checks whether `AuthStore` has an access token. On success it initializes menu badges and account details; otherwise it returns a redirect tree for `/auth/login`.
+`AuthGuard` checks the sanitized session state resolved from `/auth/admin/me`. The `/auth` family stays unguarded so login, PIN login and recovery are reachable; both back-office shells use `canActivate` and `canActivateChild`, redirecting anonymous navigation to `/auth/login`. On success the content shell initializes menu badges and account details.
 
-Important limitations:
+Important boundaries:
 
-- The stored token is a demo value.
-- `canActivateChild()` currently returns `true` without permission checks.
-- Loading account permissions is not the same as enforcing authorization.
-- Browser persistence of the demo session is transitional behavior.
+- The guard is presentation and navigation policy, not API authorization.
+- `canActivateChild()` inherits authentication from the protected shell; it does not implement route-level permissions.
+- Permissions held in the store shape UI only. The API rechecks audience, role, declared permission and current versions.
+- The admin idle-lock overlay is still absent even though the store and API expose PIN resume.
 
 ## Feature route convention
 

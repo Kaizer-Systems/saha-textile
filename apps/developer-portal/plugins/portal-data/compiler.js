@@ -25,29 +25,37 @@ const VALID_SCHEMA_TARGET_ACTIONS = new Set(['refactor', 'add']);
 const VALID_COMMAND_TARGET_SOURCES = new Set(['journey-pages', 'decision-gates', 'document-status']);
 const SCHEMA_NEBULA_ROUTE = '/database/schema-nebula';
 const SCHEMA_NEBULA_NODE_COUNT = 64;
-const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 8;
-const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([['reviews', 'content.model.ts']]);
+const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 31;
+const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
+	['categoryPlacements', 'catalog-structure.model.ts'],
+	['categoryFacetConfigs', 'catalog-structure.model.ts'],
+	['attributeDefinitions', 'catalog-structure.model.ts'],
+	['productVariants', 'product-variant.model.ts'],
+	['productBundles', 'merchandising.model.ts'],
+	['productRelations', 'merchandising.model.ts'],
+	['mediaAssets', 'media.model.ts'],
+	['faqEntries', 'content.model.ts'],
+	['reviews', 'content.model.ts'],
+	['inventoryLedger', 'inventory.model.ts'],
+	['inventoryCostLayers', 'inventory.model.ts'],
+	['authSessions', 'auth-session.model.ts'],
+	['otpChallenges', 'auth-challenge.model.ts'],
+	['oauthStates', 'auth-challenge.model.ts'],
+	['passwordResetTokens', 'auth-token.model.ts'],
+	['emailVerificationTokens', 'auth-token.model.ts'],
+	['adminInvites', 'auth-token.model.ts'],
+	['roles', 'rbac.model.ts'],
+	['userRoleAssignments', 'rbac.model.ts'],
+	['consentEvents', 'consent.model.ts'],
+	['auditLogs', 'governance.model.ts'],
+	['notificationChannelSettings', 'governance.model.ts'],
+	['notificationTemplates', 'governance.model.ts'],
+	['messageOutbox', 'governance.model.ts'],
+]);
 const SCHEMA_NEBULA_NON_TARGET_MODEL_FILES = new Set([
-	// D1 capability exists, but Mongoose currently resolves these grouped models to
-	// lowercase collection names (`authsessions`, `otpchallenges`, and so on), not
-	// the locked camelCase target names. They remain catalogue evidence but cannot
-	// make a target star solid until the owning adapter explicitly aligns names.
-	'auth-challenge.model.ts',
-	'auth-session.model.ts',
-	'auth-token.model.ts',
 	// The auth architecture explicitly keeps rate-limit storage outside the locked
 	// 64-node physical target graph; the adapter may change without inventing a star.
 	'auth-rate-limit.model.ts',
-	// Chunk D/E added tested models whose current Mongoose default names are
-	// lowercase/pluralized and therefore do not exactly match the locked lower-camel
-	// target graph. They remain current catalogue evidence, but not solid stars.
-	'catalog-structure.model.ts',
-	'consent.model.ts',
-	'governance.model.ts',
-	'inventory.model.ts',
-	'media.model.ts',
-	'merchandising.model.ts',
-	'product-variant.model.ts',
 ]);
 const COMMAND_VERBS_ROUTE = '/frontend/portal-experience-layer';
 const COMMAND_VERB_ORDER = ['trace', 'gate', 'status'];
@@ -807,10 +815,6 @@ function compileSchemaNebula(raw, truth, repositoryRoot, manifest, failures) {
 			} planned nodes; found ${plannedCollections.length}.`,
 		);
 	}
-	if (new Set(declaredCurrentModels).size !== declaredCurrentModels.length) {
-		failures.push('Schema Nebula currentModel paths must be unique.');
-	}
-
 	const modelDirectory = 'packages/adapters-db-mongo/src/models';
 	const modelFiles = fs.readdirSync(path.join(repositoryRoot, modelDirectory));
 	for (const excludedFile of SCHEMA_NEBULA_NON_TARGET_MODEL_FILES) {
@@ -822,7 +826,7 @@ function compileSchemaNebula(raw, truth, repositoryRoot, manifest, failures) {
 		.filter((fileName) => fileName.endsWith('.model.ts') && !SCHEMA_NEBULA_NON_TARGET_MODEL_FILES.has(fileName))
 		.map((fileName) => `${modelDirectory}/${fileName}`)
 		.sort();
-	const declaredModels = [...declaredCurrentModels].sort();
+	const declaredModels = [...new Set(declaredCurrentModels)].sort();
 	if (JSON.stringify(discoveredModels) !== JSON.stringify(declaredModels)) {
 		failures.push(
 			`Schema Nebula solid nodes must match current adapter models exactly; discovered ${discoveredModels.join(

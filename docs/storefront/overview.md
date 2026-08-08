@@ -4,7 +4,7 @@ wide: true
 description: Start here before changing the public Angular and AnalogJS storefront.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - apps/storefront/src/app
     - apps/storefront/vite.config.ts
@@ -42,17 +42,17 @@ The page layer should stay thin. A route identifies the customer journey and com
 
 ## Current implementation snapshot
 
-| Concern              | Current evidence                                                               | Status      | Important boundary                                                            |
-| -------------------- | ------------------------------------------------------------------------------ | ----------- | ----------------------------------------------------------------------------- |
-| Routing              | Approximately 40 page entry files, including dynamic slug and catch-all routes | Implemented | Routes are discovered from filenames, not a central route array.              |
-| Rendering            | Analog SSR enabled; Nitro emits a Node server                                  | Implemented | Static generation is disabled and no routes are prerendered.                  |
-| Catalogue list       | `ProductService.getCatalog()` calls `/api/products`                            | Scaffolded  | Product-detail and several related readers still use JSON data.               |
-| Cart                 | Classic NgRx reducer/effects/selectors plus browser persistence                | Implemented | This is the current client cart, not the future authenticated server cart.    |
-| Server data          | TanStack Angular Query functions exist across the data-access layer            | Scaffolded  | Many query functions still wrap JSON-backed services.                         |
-| Authentication       | Auth pages and a SignalStore session seam exist                                | Scaffolded  | The token/session behavior is a mock, not secure API authentication.          |
-| Checkout             | UI, address, totals, delivery, and payment-selection surfaces exist            | Scaffolded  | Order placement and payment execution are not connected.                      |
-| Internationalization | Transloco loader and switcher are wired                                        | Scaffolded  | Code currently advertises `en/fr`; the active locale set is configuration.    |
-| PWA/offline          | Product requirement is ratified                                                | Planned     | The Vite PWA and Workbox integration is not present in current configuration. |
+| Concern              | Current evidence                                                                               | Status      | Important boundary                                                                  |
+| -------------------- | ---------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------- |
+| Routing              | Approximately 40 page entry files, including dynamic slug and catch-all routes                 | Implemented | Routes are discovered from filenames, not a central route array.                    |
+| Rendering            | Analog SSR enabled; Nitro emits a Node server                                                  | Implemented | Static generation is disabled and no routes are prerendered.                        |
+| Catalogue list       | `ProductService.getCatalog()` calls `/api/products`                                            | Scaffolded  | Product-detail and several related readers still use JSON data.                     |
+| Cart                 | Classic NgRx reducer/effects/selectors plus browser persistence                                | Implemented | This is the current client cart, not the future authenticated server cart.          |
+| Server data          | TanStack Angular Query functions exist across the data-access layer                            | Scaffolded  | Many query functions still wrap JSON-backed services.                               |
+| Authentication       | Cookie-session gateway, bootstrap, recovery, guarded account routes and refresh recovery exist | Scaffolded  | OAuth, pending-intent/guest-cart merge and full account data migration remain open. |
+| Checkout             | UI, address, totals, delivery, and payment-selection surfaces exist                            | Scaffolded  | Order placement and payment execution are not connected.                            |
+| Internationalization | Transloco loader and switcher are wired                                                        | Scaffolded  | Code currently advertises `en/fr`; the active locale set is configuration.          |
+| PWA/offline          | Product requirement is ratified                                                                | Planned     | The Vite PWA and Workbox integration is not present in current configuration.       |
 
 ## Directory ownership
 

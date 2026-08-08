@@ -4,7 +4,7 @@ wide: true
 description: NestJS module wiring, dependency-injection tokens, adapter ownership, Mongo mappings, and provider seams.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - apps/api/src/app.module.ts
     - apps/api/src/config/app-config.ts
@@ -42,7 +42,7 @@ flowchart TD
 
 The name `PersistenceModule` is currently broader than persistence because it also binds `AuthPort`. The target folder plan separates composition into persistence, search, and external-adapter modules so dependency ownership remains obvious.
 
-`PersistenceModule` now binds the auth session/user, OTP, OAuth state, reset, verification, invite, rate-limit and consent repositories. The auth/session/privacy services consume those bindings. The console notification adapter is an explicit development seam; it is not evidence of MSG91 provider readiness. Chunk E's additional repository adapters exist in the Mongo package but are not all API-bound workflows.
+`PersistenceModule` binds the auth session/user, OTP, OAuth state, reset, verification, invite, rate-limit and consent repositories. The auth/session/privacy services consume those bindings. Role and user-role-assignment repositories now exist and are rs0-proven in the Mongo package, but are not bound into current API authorization. The console notification adapter is an explicit development seam; it is not evidence of MSG91 provider readiness. Chunk E's additional repository adapters exist in the Mongo package but are not all API-bound workflows.
 
 ## Current DI bindings
 
@@ -62,7 +62,7 @@ Unbound ports do not become operational merely because their interfaces exist.
 The adapter currently owns:
 
 - connection configuration and Mongoose lifecycle;
-- 32 models with explicitly declared physical collection names, plus indexes;
+- 34 models with explicitly declared physical collection names, plus indexes;
 - conversion from Mongoose documents to public contract-shaped values;
 - original API-bound repositories plus bound auth/consent and tested Chunk E catalogue, inventory, media, governance, notification and content adapters;
 - a transaction manager that exposes only the opaque core transaction context and uses `AsyncLocalStorage` so nested transactions join;

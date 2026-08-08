@@ -31,5 +31,20 @@ export { isRelativeApiPath, joinApiUrl } from './api-url.js';
 export { REQUEST_ID_HEADER, readRequestId } from './request-id.js';
 export { RefreshCoordinator } from './refresh-coordinator.js';
 export type { RefreshCoordinatorOptions, RefreshOperation } from './refresh-coordinator.js';
-export { isApiErrorEnvelope, isForbidden, isRetryable, isUnauthorized, toTransportFailure } from './errors.js';
-export type { ApiErrorBody, ApiErrorCode, ApiErrorEnvelope, ApiFieldIssue, TransportFailure } from './errors.js';
+export {
+	isApiErrorEnvelope,
+	isForbidden,
+	isRetryable,
+	isUnauthorized,
+	isUnrecoverableRefusal,
+	readRefusalReason,
+	toTransportFailure,
+} from './errors.js';
+export type {
+	ApiErrorBody,
+	ApiErrorCode,
+	ApiErrorEnvelope,
+	ApiFieldIssue,
+	AuthRefusalReason,
+	TransportFailure,
+} from './errors.js';

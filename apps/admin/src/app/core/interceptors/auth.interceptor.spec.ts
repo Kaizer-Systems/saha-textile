@@ -435,6 +435,78 @@ describe('admin AuthInterceptor', () => {
 		});
 	});
 
+	/**
+	 * Rule 7 (auth pass 4b/4c). The API now names WHY a session-bound request was refused,
+	 * and two of those reasons describe states rotation provably cannot fix: the act that
+	 * revoked the session invalidated the refresh token with it.
+	 *
+	 * The asymmetry is the point. Skipping a rotation that would have worked signs out a
+	 * recoverable operator; attempting one that cannot work costs a single request already
+	 * bounded by the failure latch. So the skip list stays as short as the evidence allows,
+	 * and anything unrecognised keeps the pre-4b behaviour.
+	 */
+	describe('refusal reasons (rule 7)', () => {
+		const refusedWith = (reason: string) =>
+			new HttpErrorResponse({
+				status: 401,
+				error: { error: { code: 'unauthorized', message: 'Authentication is required.', reason } },
+			});
+
+		it.each(['session_revoked', 'account_inactive'])('does not rotate after %s', async (reason) => {
+			setCookie('st_csrf=tok');
+			handler.responder = () => throwError(() => refusedWith(reason));
+
+			await expect(firstValueFrom(run('GET'))).rejects.toMatchObject({ status: 401 });
+
+			expect(refreshCalls).toBe(0);
+			expect(clear).toHaveBeenCalled();
+			// One attempt only: the original request, never a replay.
+			expect(handler.forwarded()).toHaveLength(1);
+		});
+
+		it.each(['session_expired', 'session_missing', 'permissions_changed'])(
+			'still rotates after %s',
+			async (reason) => {
+				setCookie('st_csrf=tok');
+				handler.responder = (_req, index) =>
+					index === 0 ? throwError(() => refusedWith(reason)) : of(new HttpResponse({ status: 200 }));
+
+				await firstValueFrom(run('GET'));
+
+				expect(refreshCalls).toBe(1);
+				expect(handler.forwarded()).toHaveLength(2);
+			},
+		);
+
+		// The pre-4b contract, and the reason absence must never be read as a verdict: an
+		// older API, a proxy-mangled body, or any endpoint that simply does not say.
+		it('still rotates when the refusal names no reason at all', async () => {
+			setCookie('st_csrf=tok');
+			handler.responder = (_req, index) =>
+				index === 0 ? throwError(unauthorized) : of(new HttpResponse({ status: 200 }));
+
+			await firstValueFrom(run('GET'));
+
+			expect(refreshCalls).toBe(1);
+		});
+
+		/**
+		 * Forward-compatibility, and the security property from 4b seen from the client side.
+		 * A credential refusal never carries a reason; if some future API grew one this client
+		 * did not recognise, it must fall back to rotating rather than treat an unknown string
+		 * as grounds to sign someone out.
+		 */
+		it('still rotates when the reason is one this client does not recognise', async () => {
+			setCookie('st_csrf=tok');
+			handler.responder = (_req, index) =>
+				index === 0 ? throwError(() => refusedWith('pin_locked')) : of(new HttpResponse({ status: 200 }));
+
+			await firstValueFrom(run('GET'));
+
+			expect(refreshCalls).toBe(1);
+		});
+	});
+
 	it('leaves session state alone on a non-401 failure', async () => {
 		handler.responder = () => throwError(() => new HttpErrorResponse({ status: 403 }));
 

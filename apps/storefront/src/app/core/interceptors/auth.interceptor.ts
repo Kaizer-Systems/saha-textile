@@ -16,8 +16,10 @@ import {
 	RefreshCoordinator,
 	hasBrowserCookieJar,
 	isForbidden,
+	isUnrecoverableRefusal,
 	isUnsafeMethod,
 	readCsrfToken,
+	readRefusalReason,
 	withBrowserLock,
 } from '@saha-textile/http-transport';
 
@@ -60,7 +62,7 @@ const SESSION_REFRESH_LOCK = 'saha-textile-storefront-session-refresh';
  * refresh cookie is very likely still good. Rather than dropping the user, the request is
  * rotated once and replayed.
  *
- * Six rules make that safe rather than a source of new failure modes:
+ * Seven rules make that safe rather than a source of new failure modes:
  *
  * 1. **One rotation per tab, never one per request.** An expired access cookie fails EVERY
  *    in-flight request at once. `RefreshCoordinator` makes the first 401 perform the rotation
@@ -87,6 +89,11 @@ const SESSION_REFRESH_LOCK = 'saha-textile-storefront-session-refresh';
  *    on every subsequent 401; a visitor who is simply anonymous pays one recovery attempt,
  *    not one per protected request. It clears only on a response that PROVES a session
  *    exists — not on logout or a password reset, both of which succeed by ending one.
+ * 7. **Believe the API when it says recovery is impossible.** A session-bound 401 may name a
+ *    `reason` (auth pass 4b). `session_revoked` and `account_inactive` describe states the
+ *    same act made unrotatable — the refresh token died with the session — so the round-trip
+ *    is skipped. Everything else, INCLUDING a refusal that names no reason, still rotates:
+ *    absence of a reason must never be read as a verdict.
  *
  * Replaying the original request is safe because a 401 is raised by the API's global session
  * guard BEFORE any handler runs, so the first attempt had no effect to duplicate. That is a
@@ -151,6 +158,14 @@ export class AuthInterceptor implements HttpInterceptor {
 				if (error.status !== 401) return throwError(() => error);
 
 				if (isCredentialCall || !this.canAttemptRefresh()) {
+					this.onSessionLost();
+					return throwError(() => error);
+				}
+
+				// Rule 7. A revoked session or a deactivated account cannot be rotated back
+				// into existence, so skip the round-trip. A refusal carrying no reason still
+				// rotates, which keeps every pre-4b behaviour exactly as it was.
+				if (isUnrecoverableRefusal(readRefusalReason(error.error))) {
 					this.onSessionLost();
 					return throwError(() => error);
 				}

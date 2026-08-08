@@ -2,12 +2,13 @@ import type {
 	ApiError,
 	ApiErrorCode as ContractApiErrorCode,
 	ApiErrorResponse,
+	AuthRefusalReason as ContractAuthRefusalReason,
 	FieldIssue,
 } from '@saha-textile/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { isApiErrorEnvelope } from '../src/errors.js';
-import type { ApiErrorBody, ApiErrorCode, ApiErrorEnvelope, ApiFieldIssue } from '../src/errors.js';
+import { isApiErrorEnvelope, readRefusalReason } from '../src/errors.js';
+import type { ApiErrorBody, ApiErrorCode, ApiErrorEnvelope, ApiFieldIssue, AuthRefusalReason } from '../src/errors.js';
 
 /**
  * Drift guard for the deliberately duplicated error shape.
@@ -88,6 +89,33 @@ describe('error shapes stay aligned with @saha-textile/contracts', () => {
 
 		for (const code of Object.keys(everyCode)) {
 			expect(isApiErrorEnvelope({ error: { code, message: 'x' } })).toBe(true);
+		}
+	});
+
+	it('the refusal-reason unions are identical in both directions', () => {
+		const fromContract = null as unknown as ContractAuthRefusalReason;
+		const fromTransport = null as unknown as AuthRefusalReason;
+
+		assignable<AuthRefusalReason>(fromContract);
+		assignable<ContractAuthRefusalReason>(fromTransport);
+
+		expect(true).toBe(true);
+	});
+
+	// Same Record-keyed trick as the codes above: a reason added to the contract and forgotten
+	// here fails to COMPILE, rather than silently becoming a value this client drops on the
+	// floor as "unrecognised" — which would look like the server declining to say why.
+	it('the reader recognises every reason in the contract union', () => {
+		const everyReason: Record<ContractAuthRefusalReason, true> = {
+			session_missing: true,
+			session_expired: true,
+			session_revoked: true,
+			permissions_changed: true,
+			account_inactive: true,
+		};
+
+		for (const reason of Object.keys(everyReason)) {
+			expect(readRefusalReason({ error: { code: 'unauthorized', message: 'x', reason } })).toBe(reason);
 		}
 	});
 });

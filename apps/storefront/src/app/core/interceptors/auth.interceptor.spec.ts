@@ -432,6 +432,65 @@ describe('storefront AuthInterceptor', () => {
 		});
 	});
 
+	/**
+	 * Rule 7 (auth pass 4b/4c). A session-bound 401 may name WHY, and two reasons describe
+	 * states rotation provably cannot fix — the act that revoked the session invalidated the
+	 * refresh token with it. Everything else, including silence, keeps the pre-4b behaviour,
+	 * because wrongly skipping a rotation signs out somebody who was recoverable.
+	 */
+	describe('refusal reasons (rule 7)', () => {
+		const refusedWith = (reason: string) =>
+			new HttpErrorResponse({
+				status: 401,
+				error: { error: { code: 'unauthorized', message: 'Authentication is required.', reason } },
+			});
+
+		it.each(['session_revoked', 'account_inactive'])('does not rotate after %s', async (reason) => {
+			setCookie('st_csrf=tok');
+			handler.responder = () => throwError(() => refusedWith(reason));
+
+			await expect(firstValueFrom(run('GET'))).rejects.toMatchObject({ status: 401 });
+
+			expect(refreshCalls).toBe(0);
+			expect(authClear).toHaveBeenCalled();
+			expect(handler.forwarded()).toHaveLength(1);
+		});
+
+		it.each(['session_expired', 'session_missing', 'permissions_changed'])(
+			'still rotates after %s',
+			async (reason) => {
+				setCookie('st_csrf=tok');
+				handler.responder = (_req, index) =>
+					index === 0 ? throwError(() => refusedWith(reason)) : of(new HttpResponse({ status: 200 }));
+
+				await firstValueFrom(run('GET'));
+
+				expect(refreshCalls).toBe(1);
+				expect(handler.forwarded()).toHaveLength(2);
+			},
+		);
+
+		it('still rotates when the refusal names no reason at all', async () => {
+			setCookie('st_csrf=tok');
+			handler.responder = (_req, index) =>
+				index === 0 ? throwError(unauthorized) : of(new HttpResponse({ status: 200 }));
+
+			await firstValueFrom(run('GET'));
+
+			expect(refreshCalls).toBe(1);
+		});
+
+		it('still rotates when the reason is one this client does not recognise', async () => {
+			setCookie('st_csrf=tok');
+			handler.responder = (_req, index) =>
+				index === 0 ? throwError(() => refusedWith('pin_locked')) : of(new HttpResponse({ status: 200 }));
+
+			await firstValueFrom(run('GET'));
+
+			expect(refreshCalls).toBe(1);
+		});
+	});
+
 	it('leaves session state alone on a non-401 failure', async () => {
 		handler.responder = () => throwError(() => new HttpErrorResponse({ status: 403 }));
 

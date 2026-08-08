@@ -42,6 +42,28 @@ const API_ERROR_CODES: readonly string[] = [
 	'internal',
 ];
 
+/**
+ * Why a session-bound request was refused. Mirrors `AuthRefusalReason` in contracts.
+ *
+ * Present only on refusals about the caller's OWN session. A refused credential — wrong
+ * password, wrong PIN, locked PIN — carries no reason at all, deliberately: naming it before
+ * the caller has proven who they are would confirm that a guessed account exists.
+ */
+export type AuthRefusalReason =
+	| 'session_missing'
+	| 'session_expired'
+	| 'session_revoked'
+	| 'permissions_changed'
+	| 'account_inactive';
+
+const AUTH_REFUSAL_REASONS: readonly string[] = [
+	'session_missing',
+	'session_expired',
+	'session_revoked',
+	'permissions_changed',
+	'account_inactive',
+];
+
 /** One field-level validation problem, flattened for transport. */
 export interface ApiFieldIssue {
 	path: (string | number)[];
@@ -55,6 +77,7 @@ export interface ApiErrorBody {
 	message: string;
 	issues: ApiFieldIssue[];
 	requestId: string | null;
+	reason?: AuthRefusalReason;
 }
 
 /** The full failure envelope: `{ "error": { ... } }`. */
@@ -77,6 +100,8 @@ export interface TransportFailure {
 	requestId: string | null;
 	/** True when the body parsed as the API's envelope rather than being reconstructed. */
 	fromApiEnvelope: boolean;
+	/** Set only for a session-bound refusal the client recognises. See `readRefusalReason`. */
+	reason?: AuthRefusalReason;
 }
 
 /** Narrowing guard for the API failure envelope. */
@@ -108,6 +133,7 @@ export function toTransportFailure(
 ): TransportFailure {
 	if (isApiErrorEnvelope(body)) {
 		const { code, message, issues, requestId } = body.error;
+		const reason = readRefusalReason(body);
 		return {
 			status,
 			code,
@@ -115,6 +141,7 @@ export function toTransportFailure(
 			issues: sanitizeIssues(issues),
 			requestId: requestId ?? fallbackRequestId,
 			fromApiEnvelope: true,
+			...(reason ? { reason } : {}),
 		};
 	}
 
@@ -131,13 +158,54 @@ export function toTransportFailure(
 /**
  * The session is absent, expired or revoked — the caller may attempt one refresh.
  *
- * Deliberately status-based rather than code-based: the API's global filter collapses every
- * `401` to the generic `unauthorized` envelope, so the code carries no extra information
- * today. Branching on a 401 sub-code would be dead client-side code until the API grows a
- * stable one (tracked as carried debt in the auth continuation brief).
+ * Stays status-based, and should. Whether a 401 happened is a transport fact; WHY it happened
+ * is optional detail the API attaches only to session-bound refusals, so a predicate that
+ * required it would answer `false` for every credential refusal — which is still a 401.
+ * Callers that want the reason ask for it separately via `readRefusalReason`.
  */
 export function isUnauthorized(failure: Pick<TransportFailure, 'status'>): boolean {
 	return failure.status === 401;
+}
+
+/**
+ * Reads the refusal reason from a response body, if it carries one this client understands.
+ *
+ * Unknown values answer `undefined` rather than being passed through. That is deliberate
+ * forward-compatibility: a deployed client will meet an API that has grown a new reason, and
+ * the safe reading of "I do not recognise this" is "the server declined to say", which every
+ * caller already handles. Passing an unrecognised string upward would instead let it fall
+ * through a policy check as neither-recoverable-nor-unrecoverable by accident.
+ */
+export function readRefusalReason(body: unknown): AuthRefusalReason | undefined {
+	if (typeof body !== 'object' || body === null) return undefined;
+	const error = (body as { error?: unknown }).error;
+	if (typeof error !== 'object' || error === null) return undefined;
+
+	const reason = (error as { reason?: unknown }).reason;
+	if (typeof reason !== 'string' || !AUTH_REFUSAL_REASONS.includes(reason)) return undefined;
+	return reason as AuthRefusalReason;
+}
+
+/**
+ * Whether a refusal is one that rotating the session provably cannot fix.
+ *
+ * Only two reasons qualify, and the list is short on purpose:
+ *
+ *   - `session_revoked` — logout elsewhere, refresh-family reuse detection, or a bumped token
+ *     version. The refresh token was invalidated by the same act, so rotation would fail too.
+ *   - `account_inactive` — the account is suspended, so no session can be re-established at
+ *     all until that changes.
+ *
+ * Everything else keeps attempting rotation, INCLUDING `session_missing`. That looks like it
+ * ought to qualify — no session, nothing to refresh — but the client cannot see the refresh
+ * cookie to check, because it is `httpOnly`. The costs are asymmetric: a needless rotation is
+ * one request, already bounded to one per session by the coordinator's failure latch, while
+ * wrongly skipping one signs out somebody who would have been recovered. `permissions_changed`
+ * likewise keeps rotating — rotation is precisely what mints a token carrying the new
+ * `permissionsVersion`.
+ */
+export function isUnrecoverableRefusal(reason: AuthRefusalReason | undefined): boolean {
+	return reason === 'session_revoked' || reason === 'account_inactive';
 }
 
 /** Authenticated, but not permitted. Never recoverable by refreshing — do not retry. */

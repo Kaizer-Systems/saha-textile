@@ -4,7 +4,7 @@ wide: true
 description: OpenAPI source-of-truth rules, current Scalar scaffold, completeness gates, Test Request security, and build topology.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - apps/api/src/openapi.ts
     - apps/api/src/generate-openapi.ts
@@ -31,7 +31,7 @@ The API-reference standard is ratified:
 
 NestJS creates one OpenAPI document through `apps/api/src/openapi.ts`. The API exposes it at `/openapi.json`, and the portal build now generates the same document without a MongoDB connection, publishes it at `/api/openapi.json`, and renders it through Scalar at `/api/reference/`.
 
-The surface is deliberately labelled **scaffolded**. The document regenerated on 2026-08-01 contains **37 paths and 40 operations**. It now includes the split storefront/admin cookie-auth families and privacy routes as well as `/health/live`, `/health/ready`, `/auth/csrf`, and the backwards-compatible `/health` alias. The public `GET /catalog/products` operation has `page`, `pageSize`, `categoryId`, `tag`, and `search` query parameters—**not `status`**. Scalar makes the current evidence navigable; it does not repair or conceal its omissions.
+The surface is deliberately labelled **scaffolded**. The document regenerated on 2026-08-09 contains **45 paths and 49 operations**. It includes split storefront/admin cookie-auth families, email verification, admin recovery/invites/resume, privacy routes, `/health/live`, `/health/ready`, `/auth/csrf`, and the backwards-compatible `/health` alias. The public `GET /catalog/products` operation has `page`, `pageSize`, `categoryId`, `tag`, and `search` query parameters—**not `status`**. Scalar makes the current evidence navigable; it does not repair or conceal its omissions.
 
 Scalar’s **Test Request** control is enabled. Authentication is not persisted by Scalar, no external request proxy is configured, and the generated document declares only the approved local API server (`http://127.0.0.1:4000`). Normal API security controls remain in force: Test Request does not bypass authentication, CSRF, CORS, role or ownership authorization, or rate limits.
 
@@ -47,34 +47,34 @@ Missing, mismatched, or cross-session values fail with `403`. The CSRF token doe
 
 ## Current Chunk D boundary
 
-Chunk D is **partial**, not absent and not complete. Cookie sessions now use the tested Mongo repositories; access and opaque rotating refresh tokens live only in httpOnly cookies, refresh reuse revokes the family, CSRF is checked against the current session, and storefront/admin audiences are isolated. Storefront register/password login/OTP/refresh/logout/password reset/me, admin password/PIN login/PIN setup/refresh/logout/me, consent/privacy seams, and order ownership are implemented.
+Chunk D is **partial**, not absent and not complete. Cookie sessions use the tested Mongo repositories; access and opaque rotating refresh tokens live only in httpOnly cookies, refresh reuse revokes the family, CSRF is checked against the current session, and storefront/admin audiences are isolated. Storefront register/password login/OTP/refresh/logout/password reset/email verification/me, admin password recovery/password/PIN login/PIN setup/refresh/logout/invite acceptance/HTTP resume/me, consent/privacy seams, and order ownership are implemented.
 
 The remaining boundary is explicit:
 
 - **D2 is done:** issue/refresh/revoke through httpOnly cookies, reuse-triggered family revocation, session-bound CSRF, and storefront/admin audience guards;
-- **D3 is partial:** the storefront auth family and anti-enumeration responses are real, but email-verification completion and OAuth verification remain absent;
-- **D4 is partial:** PIN login/setup/lockout, RBAC and permission-version invalidation are real, while invite acceptance and idle quick-resume remain absent; and
+- **D3 is partial:** the storefront auth family, email-verification completion/resend, and anti-enumeration responses are real, while OAuth verification remains absent;
+- **D4 is partial:** password recovery, PIN login/setup/lockout, invites, HTTP resume, audience guards, and permission-version invalidation are real; the admin idle-lock client, first-admin bootstrap, and fine-grained role-assignment API/enforcement remain absent; and
 - **D5 is partial:** consent/privacy seams, order BOLA, cart Principal/`st_guest` ownership, and order-create cart adoption are real; guest→user merge, pending intents, and checkout idempotency remain Chunk G.
 
 Scalar must distinguish these active controls from the residual gaps. A route appearing in OpenAPI is not proof that its request/response/security semantics are fully documented.
 
 ## Generated evidence snapshot
 
-| Measurement                              | Generated result                                        | Meaning                                                                                                                       |
-| ---------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Paths / operations                       | 37 / 40                                                 | Storefront/admin auth and privacy routes are now published; three paths expose two methods.                                   |
-| Declared servers                         | One: `http://127.0.0.1:4000`                            | Test Request has no production target or proxy.                                                                               |
-| Operation tags                           | 40 / 40 operations                                      | Operations are grouped for navigation.                                                                                        |
-| Explicit operation security              | 0 / 40 operations                                       | Runtime auth is cookie-session based, but no operation declares security; the only component scheme is stale bearer metadata. |
-| Request bodies / component schemas       | 0 / 0                                                   | Controller-local zod bodies are not represented as reusable OpenAPI request contracts.                                        |
-| Responses with content schemas           | 0 / 40 operations                                       | Runtime response values—including `ApiErrorResponse`—are not yet represented as generated response schemas.                   |
-| Explicit non-success operation responses | 1 / 40 operations (`GET /health/ready` documents `503`) | Operation-specific error documentation is still almost entirely absent.                                                       |
+| Measurement                              | Generated result                                        | Meaning                                                                                                     |
+| ---------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Paths / operations                       | 45 / 49                                                 | Current controller routes are published; four paths expose two methods.                                     |
+| Declared servers                         | One: `http://127.0.0.1:4000`                            | Test Request has no production target or proxy.                                                             |
+| Operation tags                           | 49 / 49 operations; 8 declared tags                     | Operations are grouped under the governed tag vocabulary.                                                   |
+| Explicit operation security              | 0 / 49 operations                                       | The document declares `sessionCookie`, but no operation attaches security or its audience/permission rules. |
+| Request bodies / component schemas       | 0 / 0                                                   | Controller-local zod bodies are not represented as reusable OpenAPI request contracts.                      |
+| Responses with content schemas           | 0 / 49 operations                                       | Runtime response values—including `ApiErrorResponse`—are not yet represented as generated response schemas. |
+| Explicit non-success operation responses | 1 / 49 operations (`GET /health/ready` documents `503`) | Operation-specific error documentation is still almost entirely absent.                                     |
 
 Two generation runs produced byte-identical output without opening a MongoDB connection. That proves the current source generator is deterministic in this environment; it is not yet the required CI generation and drift gate.
 
-:::warning Known OpenAPI defect
+:::warning OpenAPI security gap
 
-The document globally declares only a bearer scheme even though current browser authentication is cookie-only, and no operation attaches any security requirement. It therefore cannot teach Scalar which routes require a storefront/admin cookie audience, roles, ownership, or CSRF.
+The document declares the cookie-based `sessionCookie` scheme, but no operation attaches a security requirement. It therefore cannot teach Scalar which routes require a storefront/admin cookie audience, roles, ownership, or CSRF.
 
 :::
 
@@ -86,14 +86,13 @@ Scalar therefore remains **scaffolded**. Promotion is still blocked by:
 
 - complete request and response schemas;
 - cookie-session, CSRF, storefront/admin audience, role and ownership semantics in the document;
-- completion and documentation of email verification, OAuth verification, admin invite acceptance and quick-resume;
+- completion and documentation of OAuth verification, the admin idle-lock client, first-admin bootstrap, and fine-grained assignment enforcement;
 - documentation of cart guest/user ownership, order-create adoption, and the remaining guest→user merge;
 - route-specific rate-limit semantics in the document;
 - operation-specific error and idempotency examples;
 - transactional, audit, outbox, notification, and provider side-effect documentation;
 - CI generation plus required-path/tag/security and breaking-drift tests; and
-- an approved non-production interaction target and policy;
-- correction of the stale bearer scheme.
+- an approved non-production interaction target and policy.
 
 ## Target portal routes
 
@@ -183,7 +182,7 @@ The current scaffold shows its local-development server from the document itself
 - query/path validation is incomplete;
 - the shared runtime error envelope exists, but operation-specific errors, ownership, permissions, CSRF, rate limits, idempotency and side effects are still sparsely represented in OpenAPI;
 - public versus admin tag/route segregation is incomplete;
-- the current bearer component scheme is stale and no operation declares the real cookie-session requirements.
+- the cookie component exists, but no operation declares its cookie-session, audience, permission, ownership, or CSRF requirements.
 
 ## Umbrella placement
 

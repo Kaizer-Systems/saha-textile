@@ -87,8 +87,8 @@ const atlases: Record<Application, AtlasItem[]> = {
 			summary:
 				'Login, registration, OTP, recovery, account, address, order, wallet, and refund screens are routed.',
 			status: 'scaffolded',
-			runtime: 'SignalStore session seam + account pages',
-			data: 'Demo token and JSON account data; backend session flows are not connected.',
+			runtime: 'Cookie auth gateway + SignalStore + account pages',
+			data: 'Cookie-session login, OTP, recovery and email-verification flows are connected; several account readers remain JSON-backed.',
 			sources: [
 				'apps/storefront/src/app/core/state/auth.store.ts',
 				'apps/storefront/src/app/pages/auth',
@@ -164,10 +164,10 @@ const atlases: Record<Application, AtlasItem[]> = {
 		},
 		{
 			name: 'Users, roles, and administrative authentication',
-			summary: 'User and role management screens plus login, OTP, and recovery routes are present.',
+			summary: 'User and role management screens plus password/PIN login and recovery routes are present.',
 			status: 'scaffolded',
-			runtime: 'SignalStore session seam + routed forms',
-			data: 'Demo session state and JSON records; real authorization enforcement is not connected.',
+			runtime: 'Cookie auth gateway + guarded shells + routed forms',
+			data: 'Admin authentication and API authorization are connected; management records remain JSON-backed and role-assignment API wiring is incomplete.',
 			sources: [
 				'apps/admin/src/app/core/state/auth.store.ts',
 				'apps/admin/src/app/features/auth',

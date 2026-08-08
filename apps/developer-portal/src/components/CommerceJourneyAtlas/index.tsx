@@ -109,7 +109,7 @@ const journeys: Journey[] = [
 		status: 'scaffolded',
 		summary: 'Authenticate without losing the shopper’s origin, cart, or one account-bound action.',
 		current:
-			'Cookie-session register/password/OTP login, refresh, logout, reset, PIN and version-aware RBAC routes are live, with cart/st_guest ownership and order ownership enforced. Frontend auth adoption, guest-cart merge, OAuth, email-verification completion, invite acceptance and quick-resume remain incomplete.',
+			'Cookie-session register/password/OTP/email-verification, refresh, logout and reset routes are live. Admin recovery, password/PIN, invite and HTTP-resume flows are live. Both Angular clients use the shared cookie transport; guest-cart merge, OAuth, the admin idle-lock client and fine-grained assignment enforcement remain incomplete.',
 		target: 'API-set secure cookies, CSRF validation, rotating refresh sessions, guest-cart merge, and a single server-side pending intent restore the correct continuation.',
 		recovery:
 			'Expired or invalid intent is not replayed. Show a safe explanation and return the user to the most relevant valid screen.',
@@ -210,7 +210,7 @@ const journeys: Journey[] = [
 		status: 'scaffolded',
 		summary: 'Protect privileged operations without destroying complex in-progress operator work.',
 		current:
-			'The API implements admin password and PIN sessions, PIN lockout, role and permission checks, and permission-version invalidation. Angular still uses demo session state, permissive child guards, and has no soft-lock or quick-resume orchestration.',
+			'The API implements admin recovery, password and PIN sessions, PIN lockout, invites, HTTP resume, audience checks and permission-version invalidation. Angular resolves cookie session state and protects both work shells, but the soft-lock overlay/orchestration and fine-grained assignment adoption remain absent.',
 		target: 'API authorization, audit events, permission-version checks, a 15-minute soft lock, quick resume, and feature-owned drafts protect operations and progress.',
 		recovery:
 			'Permission loss fails closed; stale drafts re-enter normal validation; blocked unsafe requests replay only after session, permission, and entity-version checks.',

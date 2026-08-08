@@ -4,7 +4,7 @@ wide: true
 description: Verified controller routes, present controls, missing production guarantees, and target ownership.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts
@@ -28,7 +28,7 @@ source_of_truth:
 
 # Current API route inventory
 
-This inventory describes controller code reviewed on 2026-08-01. It is not a production API promise. “Present control” means code exists; “missing guarantee” names the proof still required.
+This inventory describes controller code reviewed on 2026-08-09. It is not a production API promise. “Present control” means code exists; “missing guarantee” names the proof still required.
 
 ## Runtime and contract routes
 
@@ -44,7 +44,7 @@ This inventory describes controller code reviewed on 2026-08-01. It is not a pro
 
 | Method | Route                                      | Present control                                                            | Current boundary/gap                                  |
 | ------ | ------------------------------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `POST` | `/auth/storefront/register`                | Generic duplicate response; argon2id; session cookies; verification issued | No email-verification completion route                |
+| `POST` | `/auth/storefront/register`                | Generic duplicate response; argon2id; session cookies; verification issued | Provider delivery remains an adapter seam             |
 | `POST` | `/auth/storefront/login/password`          | Generic credentials; rate limits; storefront cookie audience               | OpenAPI does not declare cookie security              |
 | `POST` | `/auth/storefront/login/email-otp/request` | Generic accepted response; rate limits; atomic challenge issuance          | Provider delivery still uses the current adapter seam |
 | `POST` | `/auth/storefront/login/email-otp/verify`  | Attempt-capped consume; storefront cookie session                          | OpenAPI omits request/response/security schemas       |
@@ -53,23 +53,32 @@ This inventory describes controller code reviewed on 2026-08-01. It is not a pro
 | `POST` | `/auth/storefront/password/forgot`         | Generic accepted response                                                  | No operation-specific rate-limit/error schema         |
 | `POST` | `/auth/storefront/password/reset`          | Single-use token; token-version bump; revokes all sessions                 | OpenAPI omits side effects                            |
 | `GET`  | `/auth/storefront/me`                      | Global session guard + storefront audience                                 | OpenAPI declares no security requirement              |
+| `POST` | `/auth/storefront/email/verify`            | Single-use token completion with generic outcome                           | OpenAPI omits body and side-effect schemas            |
+| `POST` | `/auth/storefront/email/verify/resend`     | Generic resend acknowledgement and token rotation                          | Provider delivery remains an adapter seam             |
 
 ## Admin authentication routes
 
-| Method | Route                   | Present control                                                              | Current boundary/gap                     |
-| ------ | ----------------------- | ---------------------------------------------------------------------------- | ---------------------------------------- |
-| `POST` | `/auth/admin/login`     | Generic password credentials; non-customer role; admin cookie audience       | Invite acceptance is absent              |
-| `POST` | `/auth/admin/login/pin` | Six-digit PIN; five-failure/15-minute lockout; password fallback             | Idle quick-resume UX is absent           |
-| `POST` | `/auth/admin/pin`       | Admin/staff session, current-password proof, optional preferred login method | OpenAPI omits role and CSRF requirements |
-| `POST` | `/auth/admin/refresh`   | Admin-audience rotation                                                      | OpenAPI omits cookie semantics           |
-| `POST` | `/auth/admin/logout`    | Revokes admin session                                                        | OpenAPI omits cookie/CSRF semantics      |
-| `GET`  | `/auth/admin/me`        | Admin audience, staff/admin role, sanitized response and current permissions | OpenAPI declares no security requirement |
+| Method   | Route                         | Present control                                                              | Current boundary/gap                      |
+| -------- | ----------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------- |
+| `POST`   | `/auth/admin/login`           | Generic password credentials; non-customer role; admin cookie audience       | OpenAPI omits cookie security             |
+| `POST`   | `/auth/admin/login/pin`       | Six-digit PIN; five-failure/15-minute lockout; password fallback             | Idle quick-resume UX is absent            |
+| `POST`   | `/auth/admin/pin`             | Admin/staff session, current-password proof, optional preferred login method | OpenAPI omits role and CSRF requirements  |
+| `POST`   | `/auth/admin/refresh`         | Admin-audience rotation                                                      | OpenAPI omits cookie semantics            |
+| `POST`   | `/auth/admin/logout`          | Revokes admin session                                                        | OpenAPI omits cookie/CSRF semantics       |
+| `GET`    | `/auth/admin/me`              | Admin audience, staff/admin role, sanitized response and current permissions | OpenAPI declares no security requirement  |
+| `POST`   | `/auth/admin/password/forgot` | Generic recovery acknowledgement                                             | Provider delivery remains an adapter seam |
+| `POST`   | `/auth/admin/password/reset`  | Single-use reset; version bump and session revocation                        | OpenAPI omits side effects                |
+| `POST`   | `/auth/admin/invites`         | Privileged invite issue with transactional audit evidence                    | Fine-grained assignment wiring is absent  |
+| `GET`    | `/auth/admin/invites`         | Privileged sanitized invite inventory                                        | Pagination is not yet represented         |
+| `DELETE` | `/auth/admin/invites/:id`     | Privileged revocation                                                        | OpenAPI omits permission/error schemas    |
+| `POST`   | `/auth/admin/invites/accept`  | Single-use invite acceptance and credential establishment                    | First-admin bootstrap remains absent      |
+| `POST`   | `/auth/admin/resume`          | Current admin session plus PIN revalidation                                  | Angular idle-lock orchestration is absent |
 
 Access and refresh credentials are cookie-only. The global `SessionGuard` protects by default, checks audience plus token/permission versions, and routes opt out explicitly with `@Public()`. Session establishment/refresh writes the readable CSRF cookie whose value must be echoed in `x-csrf-token` for unsafe cookie requests; the guard also verifies its hash belongs to that session.
 
-`GET /auth/csrf` returns a 32-byte token in the body and readable cookie. For an active session it preserves a valid bound token or atomically rotates `csrfSecretHash` to recover a missing/desynchronized cookie; before login it issues an unbound acquisition token. The stale bearer-only OpenAPI scheme remains API-source work, not a runtime authentication claim.
+`GET /auth/csrf` returns a 32-byte token in the body and readable cookie. For an active session it preserves a valid bound token or atomically rotates `csrfSecretHash` to recover a missing/desynchronized cookie; before login it issues an unbound acquisition token. OpenAPI declares the cookie scheme but still omits per-operation security requirements.
 
-Chunk D is therefore partial: D2 is done; D3 lacks email-verification completion and OAuth verification; D4 lacks invite acceptance and idle quick-resume; D5 has consent/privacy, order BOLA, cart Principal/`st_guest` ownership and order-create cart adoption, while guest→user merge remains Chunk G.
+Chunk D is therefore partial: D2 is done; D3 lacks OAuth verification; D4 lacks the admin idle-lock client, first-admin bootstrap and fine-grained assignment enforcement; D5 has consent/privacy, order BOLA, cart Principal/`st_guest` ownership and order-create cart adoption, while guest→user merge remains Chunk G.
 
 ## Privacy routes
 
@@ -139,7 +148,7 @@ The order service now saves the order and consumes the proven-owned cart inside 
 - the global shared `ApiErrorResponse` filter; and
 - cookie parsing plus a global double-submit CSRF guard;
 - shutdown hooks;
-- OpenAPI generation with a stale bearer component but no operation security declarations.
+- OpenAPI generation with a cookie component but no operation security declarations.
 
 Still required: route-class-specific limits, complete cookie/audience/permission/ownership OpenAPI metadata, consistent request and response schema mapping, production CSP policy verification, and OpenAPI completeness. Proxy trust, client-IP resolution, request ids, redaction, the safe error envelope, cookie sessions, session-bound CSRF, audience guards, permission-version invalidation and split health probes are present.
 

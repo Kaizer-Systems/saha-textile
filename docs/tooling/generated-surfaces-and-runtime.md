@@ -3,7 +3,7 @@ title: Generated Surfaces and Persistent Portal Runtime
 description: Storybook, TypeDoc, Scalar, database-catalogue, shared-theme, and atomic local serving topology.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-01'
+last_verified: '2026-08-09'
 source_of_truth:
     - apps/developer-portal
     - apps/developer-portal-storybook
@@ -27,7 +27,7 @@ Docusaurus remains the navigation, narrative, governance, search, and deployment
 | `/tools/storybook`          | `/storybook/`          | One Angular Storybook renderer | Built; Component Forge gateway                                               |
 | `/tools/typedoc`            | `/typedoc/`            | TypeDoc                        | Built; Type Lattice gateway                                                  |
 | `/tools/scalar`             | `/api/reference/`      | Scalar                         | Scaffolded current OpenAPI; Request Wormhole gateway; Test Request available |
-| `/tools/database-catalogue` | `/database/catalogue/` | Mongo catalogue generator      | Scaffolded 32-model current evidence; Schema Observatory gateway             |
+| `/tools/database-catalogue` | `/database/catalogue/` | Mongo catalogue generator      | Scaffolded 34-model current evidence; Schema Observatory gateway             |
 | n/a                         | `/api/openapi.json`    | OpenAPI artifact pipeline      | Scaffolded deterministic source-generated document                           |
 
 Storybook is not a React-only or view-only substitute. The selected `@storybook/angular` renderer compiles Angular templates, dependency injection, inputs/outputs, change detection, directives, and application providers. A React renderer cannot directly render Angular components as React components.
@@ -64,13 +64,13 @@ Tool-specific selectors remain in tool adapters. Shared token values must not be
 
 Storybook renders real Angular classes; it does not reproduce application components with Storybook-only HTML.
 
-The current catalogue contains 119 named story states across Storefront, Admin, and Shared. The automated coverage gate scans all 282 Angular components in both applications and accounts for every component classified as reusable:
+The production catalogue contains 122 story states across Storefront, Admin, and Shared, including three Admin PIN Pad states. The automated coverage gate scans all 283 Angular components in both applications and accounts for every component classified as reusable:
 
 | Application | Reusable components accounted for | Application components reached directly by stories |
 | ----------- | --------------------------------- | -------------------------------------------------- |
 | Storefront  | 106 / 106                         | 107 / 155                                          |
-| Admin       | 33 / 33                           | 33 / 127                                           |
-| Combined    | 139 / 139                         | 140 / 282                                          |
+| Admin       | 34 / 34                           | 34 / 128                                           |
+| Combined    | 140 / 140                         | 141 / 283                                          |
 
 The extra directly reached component is an application-composition surface. The 142 application components not directly reached are route/page orchestration, not missing reusable-component specimens. Their navigation, resolver, live-service, and whole-application behavior belongs in integration and Playwright coverage.
 
@@ -163,7 +163,7 @@ corepack pnpm portal:persistent -- --port 3457
 4. builds Storybook and TypeDoc;
 5. builds the API and source-generates the scaffolded OpenAPI artifact without MongoDB;
 6. builds Scalar with Test Request available;
-7. source-generates the 32-model MongoDB catalogue without database access;
+7. source-generates the 34-model MongoDB catalogue without database access;
 8. builds Docusaurus;
 9. verifies that every enabled surface produced a non-empty entry page;
 10. copies child outputs under the Docusaurus composite tree;

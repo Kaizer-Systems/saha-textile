@@ -384,7 +384,7 @@ function SchemaObservatoryScene() {
 				className={styles.modelSky}
 				viewBox="0 0 440 260"
 				role="img"
-				aria-label="A telescope resolving seven current MongoDB model constellations"
+				aria-label="A telescope resolving current MongoDB model constellations"
 			>
 				<g className={styles.skyConnections}>
 					<path d="M166 65 244 38 326 76 350 154 280 218 190 208 132 138 166 65M132 138l218 16M166 65l114 153" />
@@ -425,7 +425,7 @@ function SchemaObservatoryScene() {
 				<i />
 				<i />
 				<i />
-				<strong>7 CURRENT MODELS</strong>
+				<strong>CURRENT MODEL SET</strong>
 			</div>
 			<SceneTelemetry
 				left="OPTICAL ARRAY · TRACKING"

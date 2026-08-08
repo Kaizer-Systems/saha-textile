@@ -4,7 +4,7 @@ wide: true
 description: Zod contract ownership, request parsing, persistence mapping, response safety, and evolution rules.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - packages/contracts/src
     - packages/contracts/test
@@ -39,26 +39,27 @@ An API request for account registration should not accept `role`, `emailVerified
 
 ## Current contract families
 
-| File family                                          | Principal schemas                                                                 | Notable invariant                                                           |
-| ---------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `common.ts`                                          | locale config, localized text, ids/slugs, money/currency, pagination, API errors  | locale set is configured; page size is bounded; failures share one envelope |
-| `catalog.ts`, `category.ts`, `category-placement.ts` | category lifecycle, multi-placement, facets and SEO policy                        | at most one canonical placement; arbitrary facets cannot be always-indexed  |
-| `attribute.ts`, `product*.ts`, `promotion.ts`        | semantic attributes, lifecycle, options, variants, bundles, relations, promotions | only `live` is public; option role is independent of eight display styles   |
-| `media.ts`, `inventory.ts`, `content.ts`             | assets/HLS, ledger/FIFO, FAQ, Q&A and verified reviews                            | ratified media/inventory/content invariants are runtime-validated           |
-| `cart.ts`, `order.ts`, `currency.ts`, `shipping.ts`  | commerce aggregates, snapshots, FX inputs, and quote                              | value and currency travel together; canonical product price remains INR     |
-| `user.ts`                                            | sanitized public user, identities, addresses, consent snapshot                    | credential material is intentionally absent                                 |
-| `session.ts`                                         | access claims, public session info, server-internal session/refresh-family entity | browser response metadata contains no token values                          |
-| `auth.ts`, `admin-auth.ts`                           | storefront/admin request and actor-safe response DTOs                             | 12-character password floor; six-digit admin PIN shape; no tokens in body   |
-| `auth-internal.ts`                                   | OTP/OAuth/reset/invite/rate-limit persistence shapes                              | codes/tokens/IP/user-agent values are represented by hashes                 |
-| `consent.ts`, `audit.ts`, `notification.ts`          | consent history, broad admin/security audit, notification settings/outbox         | append-only evidence and channel/category control are explicit              |
+| File family                                          | Principal schemas                                                                 | Notable invariant                                                                         |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `common.ts`                                          | locale config, localized text, ids/slugs, money/currency, pagination, API errors  | locale set is configured; page size is bounded; failures share one envelope               |
+| `catalog.ts`, `category.ts`, `category-placement.ts` | category lifecycle, multi-placement, facets and SEO policy                        | at most one canonical placement; arbitrary facets cannot be always-indexed                |
+| `attribute.ts`, `product*.ts`, `promotion.ts`        | semantic attributes, lifecycle, options, variants, bundles, relations, promotions | only `live` is public; option role is independent of eight display styles                 |
+| `media.ts`, `inventory.ts`, `content.ts`             | assets/HLS, ledger/FIFO, FAQ, Q&A and verified reviews                            | ratified media/inventory/content invariants are runtime-validated                         |
+| `cart.ts`, `order.ts`, `currency.ts`, `shipping.ts`  | commerce aggregates, snapshots, FX inputs, and quote                              | value and currency travel together; canonical product price remains INR                   |
+| `user.ts`                                            | sanitized public user, identities, addresses, consent snapshot                    | credential material is intentionally absent                                               |
+| `session.ts`                                         | access claims, public session info, server-internal session/refresh-family entity | browser response metadata contains no token values                                        |
+| `auth.ts`, `admin-auth.ts`                           | storefront/admin request and actor-safe response DTOs                             | 12-character password floor; six-digit admin PIN shape; no tokens in body                 |
+| `auth-internal.ts`                                   | OTP/OAuth/reset/invite/rate-limit persistence shapes                              | codes/tokens/IP/user-agent values are represented by hashes                               |
+| `consent.ts`, `audit.ts`, `notification.ts`          | consent history, broad admin/security audit, notification settings/outbox         | append-only evidence and channel/category control are explicit                            |
+| `permission.ts`, `role.ts`                           | canonical permission registry/grants, roles and user-role assignments             | grants normalize against the registry; active assignment uniqueness is persistence policy |
 
-These contract families are not proof of end-to-end operations. Contract tests total 140, and the matching core port surface is complete. Auth/session, OTP, password reset, admin PIN/RBAC, consent/privacy, cart/`st_guest` ownership and order-ownership contracts now have meaningful HTTP adoption; email-verification completion, OAuth, admin invite/quick-resume and guest→user merge remain open. The Mongo adapter now implements current consent, audit, notification, catalogue, media, inventory, governance and content models/repositories, but most of those expanded families still lack complete HTTP workflows. Checkout, payment, reporting, analytics and the rest of the ratified target persistence remain incomplete.
+These contract families are not proof of end-to-end operations. Contract tests total 154, and the matching core port surface is complete. Auth/session, OTP, password reset, email verification, admin recovery/PIN/invite/resume, consent/privacy, cart/`st_guest` ownership and order-ownership contracts have meaningful HTTP adoption. OAuth, the admin idle-lock client, first-admin bootstrap, fine-grained role-assignment enforcement and guest→user merge remain open. The Mongo adapter implements the role/assignment seam plus consent, audit, notification, catalogue, media, inventory, governance and content models/repositories, but most expanded families still lack complete HTTP workflows. Checkout, payment, reporting, analytics and the rest of the ratified target persistence remain incomplete.
 
 ## Boundary validation today
 
 `ZodValidationPipe` correctly treats input as `unknown`, calls `safeParse`, and returns a sanitized `400` issue list. Current limitations:
 
-- controllers define many body schemas locally;
+- the route-contract guard has moved seven named body shapes into shared contracts, but complete operation-level request/response coverage is still absent;
 - path/query values are often plain strings or manually converted numbers;
 - there is no shared request/response schema naming system;
 - OpenAPI does not automatically receive complete zod shape information from the local pipe;

@@ -3,7 +3,7 @@ title: Request Lifecycle and Boundary Tracing
 description: How a request enters the API, crosses application and domain boundaries, reaches an adapter, and returns safely.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 wide: true
 search_keywords: 'flight simulator photon post orders idempotency transaction ghost stages trace'
 source_of_truth:
@@ -68,17 +68,18 @@ sequenceDiagram
     Port->>Mongo: Mongoose query/write
     Mongo-->>Service: Contract-shaped mapped value
     Service-->>Client: Nest serializes return value
-    Context-->>Client: x-request-id; safe ApiErrorResponse on failure
+    Context-->>Client: x-request-id and safe ApiErrorResponse on failure
 ```
 
 This path exists, but it is inconsistent:
 
 - the global session guard protects by default, while public routes opt out explicitly;
-- body validation schemas usually live inside controllers rather than shared contract families;
+- seven formerly controller-local body schemas now have shared named contracts and a lint guard; complete operation DTO coverage remains incomplete;
 - query/path parameters are often parsed manually;
 - every failure has the global safe `ApiErrorResponse` envelope, but successful values still lack consistent explicit response serialization;
 - order reads have 404-on-mismatch ownership, and cart reads/mutations plus place-order loading enforce Principal or hashed `st_guest` proof;
 - the order service adopts the rollback-proven transaction port for order save plus cart consumption, while inventory/payment/audit side effects remain outside that unit of work.
+- session failures may include a stable, optional refusal reason (`session_missing`, `session_expired`, `session_revoked`, `permissions_changed`, or `account_inactive`) without exposing internal causes; refresh rotation checks reuse before CSRF so a replay can revoke its family even when the old CSRF value is stale.
 
 ## Target request path
 

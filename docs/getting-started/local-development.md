@@ -4,7 +4,7 @@ description: Local setup checklist for the monorepo and developer portal.
 search_keywords: 'mongo rs0 config.json env docker setup pnpm mongo:up check:naming replica set'
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - package.json
     - pnpm-workspace.yaml
@@ -26,7 +26,7 @@ pnpm install
 pnpm turbo run lint typecheck test
 ```
 
-`pnpm lint` also runs two repository-policy guards. `pnpm check:naming` (`scripts/check-naming.sh`) enforces the Saha Textile brand-naming law. `pnpm check:browser-auth` (`scripts/check-browser-auth.mjs`) enforces the browser authentication rules across both Angular applications: no fake or demo session token, no `Authorization: Bearer` header, no session state in `localStorage`/`sessionStorage`/IndexedDB, auth route paths only inside each app's single HTTP gateway, and no cross-audience route reference. Add `browser-auth:allow` to a line to exempt it deliberately. Run both before finishing any change.
+`pnpm lint` runs repository-policy guards before package linting. `check:naming` enforces the brand law; `check:browser-auth` rejects browser tokens, bearer headers, browser session persistence and cross-audience gateway calls; `check:i18n-parity` keeps active translation keys aligned; `check:route-contracts` rejects unnamed controller-local request shapes and unstable operation identifiers; and `check:permission-registry` keeps declared permissions inside the canonical registry. Each script documents its narrow allow marker where a deliberate exception is valid. Run the root lint command before finishing any change.
 
 ## Environment and services
 

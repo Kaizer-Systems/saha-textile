@@ -35,7 +35,9 @@ import {
 	PromotionModel,
 	RatingAggregateModel,
 	ReviewModel,
+	RoleModel,
 	UserModel,
+	UserRoleAssignmentModel,
 } from '../src/models/index';
 import * as modelExports from '../src/models/index';
 
@@ -137,6 +139,18 @@ const modelSources: Array<{
 		source: 'packages/adapters-db-mongo/src/models/auth-rate-limit.model.ts',
 		context: 'Identity',
 		purpose: 'Current atomic, TTL-expiring auth rate-limit counter capability.',
+	},
+	{
+		model: RoleModel,
+		source: 'packages/adapters-db-mongo/src/models/rbac.model.ts',
+		context: 'Authorization',
+		purpose: 'Reusable permission bundles constrained to a coarse audience role.',
+	},
+	{
+		model: UserRoleAssignmentModel,
+		source: 'packages/adapters-db-mongo/src/models/rbac.model.ts',
+		context: 'Authorization',
+		purpose: 'Auditable user-to-role grants with one active assignment per role.',
 	},
 	{
 		model: ConsentEventModel,

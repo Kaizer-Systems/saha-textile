@@ -4,7 +4,7 @@ wide: true
 description: Start here before changing the Angular administration application.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-02'
+last_verified: '2026-08-09'
 source_of_truth:
     - apps/admin/src/app
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -41,16 +41,16 @@ flowchart LR
 
 ## Current implementation snapshot
 
-| Concern             | Current evidence                                                             | Status      | Important boundary                                                                        |
-| ------------------- | ---------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------- |
-| Route graph         | Authentication, two shells, fallback, and roughly 30 lazy feature families   | Implemented | A routed screen is not proof of a connected backend workflow.                             |
-| Admin shell         | Header, sidebar, footer, loader, and page wrapper exist                      | Implemented | Menu badges/account initialization still depend on transitional readers.                  |
-| Authentication      | Guard and SignalStore session seam exist                                     | Scaffolded  | A persisted demo token makes the shell accessible; real admin auth is not connected.      |
-| Server-state reads  | TanStack Query functions cover most feature lists/details                    | Scaffolded  | Services primarily request JSON fixtures.                                                 |
-| Cart/order creation | Classic NgRx cart and checkout composition exist                             | Scaffolded  | Order placement and authoritative totals are not connected.                               |
-| Forms               | Reactive forms exist for major catalogue/content/settings features           | Scaffolded  | Submission paths frequently stop at mock methods or navigation.                           |
-| Tables              | Shared search, pagination, selection, date, action, and permission UI exists | Scaffolded  | Backend filtering/bulk mutations are not generally operational.                           |
-| Authorization       | Permission-shaped UI directives and account permissions exist                | Scaffolded  | UI visibility is not a security boundary; API authorization must enforce every operation. |
+| Concern             | Current evidence                                                                                                | Status      | Important boundary                                                                         |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------ |
+| Route graph         | Authentication, two shells, fallback, and roughly 30 lazy feature families                                      | Implemented | A routed screen is not proof of a connected backend workflow.                              |
+| Admin shell         | Header, sidebar, footer, loader, and page wrapper exist                                                         | Implemented | Menu badges/account initialization still depend on transitional readers.                   |
+| Authentication      | Cookie-session gateway, bootstrap, guarded work shells, password/PIN/recovery state and API authorization exist | Scaffolded  | Idle soft lock, first-admin bootstrap and fine-grained assignment enforcement remain open. |
+| Server-state reads  | TanStack Query functions cover most feature lists/details                                                       | Scaffolded  | Services primarily request JSON fixtures.                                                  |
+| Cart/order creation | Classic NgRx cart and checkout composition exist                                                                | Scaffolded  | Order placement and authoritative totals are not connected.                                |
+| Forms               | Reactive forms exist for major catalogue/content/settings features                                              | Scaffolded  | Submission paths frequently stop at mock methods or navigation.                            |
+| Tables              | Shared search, pagination, selection, date, action, and permission UI exists                                    | Scaffolded  | Backend filtering/bulk mutations are not generally operational.                            |
+| Authorization       | Permission-shaped UI directives and account permissions exist                                                   | Scaffolded  | UI visibility is not a security boundary; API authorization must enforce every operation.  |
 
 ## Feature families
 

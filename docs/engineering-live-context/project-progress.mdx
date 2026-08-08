@@ -1674,6 +1674,58 @@ lint` that is red for an unrelated pre-existing reason meant they never executed
   **Next executable step:** pass 4b — owner to choose between the 401 sub-code for
   session-bound surfaces, stable OpenAPI tags plus operation IDs, or the route/contract family
   categorisation. Tool: claude-code.
+- 2026-08-08 — [DONE] **Auth Pass 4b — the 401 envelope can finally say WHY, on session-bound
+  surfaces only.** Closes the API gap carried since Pass 2 (see "Known gaps" above).
+  **The finding that shaped the pass, stated plainly.** The gap was originally written down as
+  "the admin UI needs to tell wrong PIN from PIN locked from suspended". That specific fix
+  **cannot be delivered at the login screen**, and building it would have been a security
+  regression. `/auth/admin/login/pin` reaches its `locked` and `revalidation_required`
+  outcomes only for an identifier that resolves to a real, active, non-customer account. So an
+  attacker who sends five wrong PINs at a guessed identifier would read `pin_locked` for a
+  genuine administrator and `invalid` for a stranger — a working account-enumeration oracle,
+  which today's uniformly generic 401 does not give them. The lock state is safe to surface
+  only once the operator has authenticated some other way (password login succeeding, then
+  being told the PIN is locked), which is a session-bound surface and belongs to 6b/6c.
+  **What shipped instead, and why it is the useful half.** `AuthRefusalReason` on the
+  `ApiError` envelope, optional and absent by default, with five values that all describe the
+  CALLER'S OWN session — proven by their own cookie, revealing nothing about anyone else:
+  `session_missing`, `session_expired`, `session_revoked`, `permissions_changed`,
+  `account_inactive`. The distinction a client actually needs is "expired, so rotate" versus
+  "revoked, so stop asking"; collapsing those either signs people out mid-session or spins an
+  anonymous visitor through one refresh per protected call.
+  **The mechanism is a type, not a convention.** A new `SessionRefusal extends
+UnauthorizedException` carries the reason, and the global filter reads it from the exception
+  TYPE — never inferred from status, message or payload. A credential endpoint raises a plain
+  `UnauthorizedException` and therefore cannot acquire a reason however its message is worded
+  or wherever it is copied from. All eight `SessionGuard` refusal sites were converted.
+  **The audience boundary was preserved deliberately.** A foreign-audience cookie answers
+  `session_missing` — byte-identical to presenting no cookie — because a distinct reason there
+  would rebuild the exact cross-audience probe the check exists to prevent. Pinned by a test
+  asserting the two are equal, not merely that each is right.
+  **One wrong expectation of mine, corrected by the run.** The logout tab does NOT read as
+  `session_revoked`: logout clears the cookies, so it presents nothing and correctly reads
+  `session_missing`. Reaching `revoked` needs a SECOND tab still holding a valid access cookie
+  for a session killed server-side — which is the case that actually matters, and is what the
+  check now exercises.
+  **Both new checks negative-controlled.** Making the PIN refusal specific (swapping its plain
+  401 for a `SessionRefusal`) fails the e2e with `a refused PIN must not name a reason`; the
+  controller was then restored and verified untouched by `git diff`. The unit suite
+  additionally asserts no reason attaches to a plain 401 carrying the **exact production
+  wording** of the locked and suspended PIN messages, nor to a hand-rolled payload that merely
+  contains the word.
+  **Not yet consumed — said plainly.** No client reads `reason` yet; the interceptors still
+  classify on `error.status`. This pass closes the API half only. Wiring the admin and
+  storefront interceptors to rotate on `session_expired` and stop on `session_revoked` is the
+  natural 4c.
+  **Commands actually run:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` **12/12** with
+  probe accounts created 12 / remaining after cleanup **0** · `pnpm turbo run test --force`
+  **11/11** with api **83 → 97** (contracts 145, http-transport 142, core-domain 87,
+  storefront 50, admin 54) · all three lint guards OK · `pnpm format:check` clean.
+  `pnpm typecheck` fails ONLY on `developer-portal-storybook`, byte-identical to the
+  pre-existing `@core/*` alias failure diagnosed above; every other package passes.
+  **Next executable step:** pass 4c — owner to choose between consuming `reason` in the two
+  interceptors, stable OpenAPI tags plus operation IDs, or the route/contract family
+  categorisation. Tool: claude-code.
 - _(append)_
 
 ---

@@ -2,6 +2,7 @@ import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException, HttpSta
 import { type ApiErrorCode, ApiErrorResponse, type FieldIssue } from '@saha-textile/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
+import { SessionRefusal } from '../auth/session-refusal';
 import { REQUEST_ID_HEADER } from './request-context';
 
 /** HTTP status → stable machine-readable error code. */
@@ -88,12 +89,19 @@ export class HttpExceptionFilter implements ExceptionFilter {
 			);
 		}
 
+		// Read from the exception TYPE, never inferred from status or message. A credential
+		// endpoint raises a plain `UnauthorizedException`, so it cannot pick up a reason
+		// however its message is worded — which is what keeps "wrong PIN" indistinguishable
+		// from "PIN locked" to an unauthenticated caller.
+		const reason = exception instanceof SessionRefusal ? exception.reason : undefined;
+
 		const body = ApiErrorResponse.parse({
 			error: {
 				code,
 				message: SAFE_MESSAGE[code] ?? SAFE_MESSAGE.internal,
 				issues,
 				requestId: typeof requestId === 'string' ? requestId : null,
+				...(reason ? { reason } : {}),
 			},
 		});
 

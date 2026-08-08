@@ -5,7 +5,6 @@ import {
 	Inject,
 	Injectable,
 	SetMetadata,
-	UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { SessionAudience, UserRole } from '@saha-textile/contracts';
@@ -15,6 +14,7 @@ import type { FastifyRequest } from 'fastify';
 import { cookieNames } from '../common/cookies';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { AUTH_PORT, AUTH_USER_REPOSITORY } from '../infra/tokens';
+import { SessionRefusal } from './session-refusal';
 import { SessionService } from './session.service';
 
 export const PUBLIC_ROUTE_KEY = 'auth:public';
@@ -86,7 +86,7 @@ export class SessionGuard implements CanActivate {
 		// we still resolve the principal so ownership checks (cart, consent) can bind to it.
 		if (!token) {
 			if (isPublic) return true;
-			throw new UnauthorizedException('Authentication required');
+			throw new SessionRefusal('session_missing', 'Authentication required');
 		}
 
 		let claims: Record<string, unknown>;
@@ -94,7 +94,7 @@ export class SessionGuard implements CanActivate {
 			claims = (await this.auth.verifyToken(token)) as unknown as Record<string, unknown>;
 		} catch {
 			if (isPublic) return true;
-			throw new UnauthorizedException('Invalid or expired session');
+			throw new SessionRefusal('session_expired', 'Invalid or expired session');
 		}
 
 		const userId = String(claims.sub ?? '');
@@ -102,7 +102,7 @@ export class SessionGuard implements CanActivate {
 		const audience = claims.aud as SessionAudience | undefined;
 		if (!userId || !sessionId || !audience) {
 			if (isPublic) return true;
-			throw new UnauthorizedException('Malformed session');
+			throw new SessionRefusal('session_expired', 'Malformed session');
 		}
 
 		const requiredAudience = this.reflector.getAllAndOverride<SessionAudience | undefined>(AUDIENCE_KEY, [
@@ -111,30 +111,32 @@ export class SessionGuard implements CanActivate {
 		]);
 		if (requiredAudience && audience !== requiredAudience) {
 			if (isPublic) return true;
-			// Not a 403: to this surface the session simply does not exist.
-			throw new UnauthorizedException('Authentication required');
+			// Not a 403, and deliberately the SAME refusal as presenting no cookie at all: an
+			// admin session must not be able to detect that a storefront surface exists, or
+			// vice versa. Giving this its own reason would rebuild exactly that probe.
+			throw new SessionRefusal('session_missing', 'Authentication required');
 		}
 
 		const session = await this.sessions.findLiveById(sessionId, { userId, audience });
 		if (!session) {
 			if (isPublic) return true;
-			throw new UnauthorizedException('Session is no longer valid');
+			throw new SessionRefusal('session_revoked', 'Session is no longer valid');
 		}
 
 		const user = await this.authUsers.findAuthStateById(userId);
 		if (!user || user.status !== 'active') {
 			if (isPublic) return true;
-			throw new UnauthorizedException('Account is not active');
+			throw new SessionRefusal('account_inactive', 'Account is not active');
 		}
 
 		// Stale-token rejection. A bumped counter invalidates every token minted before it.
 		if (Number(claims.tokenVersion ?? -1) !== user.tokenVersion) {
 			if (isPublic) return true;
-			throw new UnauthorizedException('Session is no longer valid');
+			throw new SessionRefusal('session_revoked', 'Session is no longer valid');
 		}
 		if (Number(claims.permissionsVersion ?? -1) !== user.permissionsVersion) {
 			if (isPublic) return true;
-			throw new UnauthorizedException('Permissions changed; re-authentication required');
+			throw new SessionRefusal('permissions_changed', 'Permissions changed; re-authentication required');
 		}
 
 		const principal: AuthenticatedPrincipal = {

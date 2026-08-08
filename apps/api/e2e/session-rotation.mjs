@@ -390,6 +390,60 @@ async function main() {
 		assert.equal(viaBearer.statusCode, 401, `bearer header was accepted: ${viaBearer.statusCode}`);
 	});
 
+	await check('session-bound refusals name a reason on the wire; credential refusals do not', async () => {
+		const reasonOf = (response) => {
+			const body = JSON.parse(response.body);
+			return body.error?.reason;
+		};
+
+		// No cookies at all.
+		const missing = await app.inject({ method: 'GET', url: '/auth/storefront/me' });
+		assert.equal(missing.statusCode, 401);
+		assert.equal(reasonOf(missing), 'session_missing');
+
+		// A live session whose access cookie has aged out. ACCESS_TTL is deliberately tiny.
+		const jar = await registerCustomer();
+		await sleep(ACCESS_EXPIRY_WAIT_MS);
+		const expired = await request(jar, 'GET', '/auth/storefront/me');
+		assert.equal(expired.statusCode, 401);
+		assert.equal(reasonOf(expired), 'session_expired', 'an aged access cookie must be distinguishable');
+
+		// Revoked is NOT reachable through the logging-out tab itself: logout clears the
+		// cookies, so that tab presents nothing and correctly reads as session_missing. It
+		// takes a second tab still holding a valid access cookie for a session killed
+		// server-side — which is the case that matters, because that tab must stop asking
+		// rather than try to rotate.
+		const live = await registerCustomer();
+		const otherTab = new CookieJar();
+		otherTab.set('st_access', live.get('st_access'));
+		otherTab.set('st_csrf', live.get('st_csrf'));
+
+		await request(live, 'POST', '/auth/storefront/logout', { payload: {} });
+
+		const revoked = await request(otherTab, 'GET', '/auth/storefront/me');
+		assert.equal(revoked.statusCode, 401);
+		assert.equal(reasonOf(revoked), 'session_revoked', 'a still-held cookie for a dead session must say revoked');
+
+		// The security property: a refused CREDENTIAL says nothing. If this ever carries a
+		// reason, "PIN locked" becomes distinguishable from "wrong PIN" to a stranger, which
+		// confirms a guessed account exists.
+		const wrongPassword = await app.inject({
+			method: 'POST',
+			url: '/auth/storefront/login/password',
+			payload: { email: 'nobody-here@example.test', password: 'not-the-right-password' },
+		});
+		assert.equal(wrongPassword.statusCode, 401);
+		assert.equal(reasonOf(wrongPassword), undefined, 'a credential refusal must not name a reason');
+
+		const wrongPin = await app.inject({
+			method: 'POST',
+			url: '/auth/admin/login/pin',
+			payload: { identifier: 'nobody-here@example.test', pin: '000000' },
+		});
+		assert.equal(wrongPin.statusCode, 401);
+		assert.equal(reasonOf(wrongPin), undefined, 'a refused PIN must not name a reason');
+	});
+
 	// Probe rows are removed explicitly, not merely isolated in their own database.
 	await models.AuthRateLimitModel.deleteMany({});
 	let remaining = 0;

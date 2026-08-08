@@ -157,6 +157,36 @@ export const ApiErrorCode = z.enum([
 ]);
 export type ApiErrorCode = z.infer<typeof ApiErrorCode>;
 
+/**
+ * Why a SESSION-BOUND request was refused, for clients that must react differently to
+ * different refusals — chiefly "rotate the access cookie" versus "sign out and stop asking".
+ *
+ * Every value here describes the CALLER'S OWN session, which they proved by presenting their
+ * own cookie. That is the property that makes the sub-code safe to publish, and it is the
+ * reason there is deliberately no value for a refused credential.
+ *
+ * A pre-authentication refusal — wrong password, wrong PIN, locked PIN, unknown account —
+ * MUST stay the bare `unauthorized` envelope with no reason attached. Distinguishing "wrong
+ * PIN" from "PIN locked" before the caller has proven who they are is an account-enumeration
+ * oracle: five wrong PINs against a guessed identifier would answer "locked" for a real
+ * administrator and "invalid" for a stranger, confirming the account exists. The lock state
+ * is safe to surface only AFTER the operator authenticates some other way, which is a
+ * session-bound surface and therefore belongs to the PIN-management work, not to login.
+ */
+export const AuthRefusalReason = z.enum([
+	/** No session cookie was presented, or it was for a different audience. */
+	'session_missing',
+	/** The access cookie is present but expired or unverifiable — rotation may recover it. */
+	'session_expired',
+	/** The session was revoked: logout, refresh-family reuse, or a bumped token version. */
+	'session_revoked',
+	/** The grant list changed underneath a live session; re-authentication is required. */
+	'permissions_changed',
+	/** The account itself is no longer active, so no session can be re-established. */
+	'account_inactive',
+]);
+export type AuthRefusalReason = z.infer<typeof AuthRefusalReason>;
+
 /** One field-level validation problem (Zod issue, flattened for transport). */
 export const FieldIssue = z.object({
 	path: z.array(z.union([z.string(), z.number()])).default([]),
@@ -177,6 +207,11 @@ export const ApiError = z.object({
 	message: z.string().min(1),
 	issues: z.array(FieldIssue).default([]),
 	requestId: z.string().nullable().default(null),
+	/**
+	 * Present only on session-bound refusals. Absent is the norm and carries meaning of its
+	 * own: the server declined to say more, so a client must not infer anything from silence.
+	 */
+	reason: AuthRefusalReason.optional(),
 });
 export type ApiError = z.infer<typeof ApiError>;
 

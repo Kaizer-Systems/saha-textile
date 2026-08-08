@@ -9,6 +9,7 @@ export * from './auth-session.model';
 export * from './auth-challenge.model';
 export * from './auth-token.model';
 export * from './auth-rate-limit.model';
+export * from './rbac.model';
 export * from './consent.model';
 export * from './catalog-structure.model';
 export * from './product-variant.model';

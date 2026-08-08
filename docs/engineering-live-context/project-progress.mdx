@@ -1874,6 +1874,58 @@ UnauthorizedException` carries the reason, and the global filter reads it from t
   **Pass 4 is complete.** Next executable step: pass 5a — canonical permission registry with
   stable codes. `RequirePermissions` exists but no route uses it, so deny-by-default is still
   unmet. Tool: claude-code.
+- 2026-08-08 — [DONE] **Auth Pass 5a — canonical permission registry with stable codes.**
+  Owner chose the scope after a sequencing hazard was surfaced.
+  **The hazard, raised BEFORE writing anything.** `SessionGuard` holds that grants are
+  authoritative and a role implies nothing ("An admin role does not imply every permission").
+  So the moment any live route gains `@RequirePermissions`, every existing administrator —
+  whose `permissions` array is empty — receives 403. With **6a** (first-admin bootstrap) and
+  **5c** (grant surface) both unbuilt, nothing can grant a permission, so enforcing now would
+  lock the back office with no route back in. Owner picked registry + grant validation, no
+  route enforcement; deny-by-default lands in 5c with its escalation tests.
+  **The codes are reconciled, not invented.** The admin application's navigation already gated
+  on a permission vocabulary the API had never heard of: **26 codes across 22 resources**
+  (`user.index`, `product.create`, `order.index`…). The registry is exactly that set. The API
+  meanwhile accepted `z.array(z.string())` everywhere, so an invite could grant
+  `prodcut.index` and the system would store it and authorize nothing.
+  **What now holds.** `PermissionCode` is a closed Zod enum in `packages/contracts`;
+  `PermissionGrant` validates a grant and NORMALIZES it (duplicates collapsed, sorted) so two
+  equivalent grants are byte-identical and an audit diff shows a real change rather than a
+  reordering; `AdminInviteRequest.permissions` uses it, so a mistyped code is refused at the
+  boundary; and `RequirePermissions` is typed to `PermissionCode`, so a mistyped code now
+  fails to COMPILE. Rejection is all-or-nothing per grant — partial acceptance would leave a
+  caller believing they granted three permissions while the account held two.
+  **Strict on the way in, permissive on the way out — deliberately.** The persisted
+  `AdminInvite.permissions` and `UserAuthState.permissions` keep `string[]`. Tightening those
+  would turn a row written before this registry existed into an unreadable document.
+  **Only `index` and `create` exist**, because only those are in use. No speculative
+  `product.update`/`destroy`: the routes needing them are not built, and 22 resources × 4
+  actions would make the registry mostly untested fiction. Adding an action is a deliberate
+  edit plus the route that consumes it, which is what "stable codes" should cost.
+  **`scripts/check-permission-registry.mjs` keeps the two lists identical in both directions**
+  — a menu code the server cannot grant means an invisible link forever; a registry code no
+  screen uses means a grant that authorizes nothing. It runs in `pnpm lint` (source-level, no
+  build) and needs no dependency between the packages, which is necessary because the admin
+  app does not consume contracts (3d is unbuilt).
+  **A defect in my own guard, found by negative-controlling it.** The first version only
+  counted menu strings whose resource AND action were already declared — which quietly
+  defeated the rule it existed for: a navigation entry gating on `user.destroy` was discarded
+  as "not a permission" instead of reported as one the server cannot grant. **The check failed
+  to fail.** Filtering by what is already known can only confirm what is already known. The
+  parser now takes every `resource.action`-shaped string, which is safe here because icons and
+  route paths do not match the shape and all 26 dotted strings in that file are permissions.
+  **7/7 rules proven to fail on violation** after the fix (menu code absent from registry,
+  menu code with an unknown resource, registry code no screen uses, unsorted registry,
+  undeclared resource, orphan resource, duplicate code), each restored and the menu verified
+  unchanged by `git diff`.
+  **Commands actually run:** `pnpm turbo run test --force` **11/11** with contracts
+  **145 → 154** (http-transport 157, core-domain 87, api 97, storefront 57, admin 61) ·
+  `MONGODB_PORT=27018 pnpm e2e:session-rotation` **12/12** with 0 probe rows remaining · all
+  **five** lint guards OK · `pnpm format:check` clean. `pnpm typecheck` fails ONLY on
+  `developer-portal-storybook`, the same `@core/*` alias failure recorded above.
+  **Next executable step:** pass 5b — `roles` and `userRoleAssignments` collections,
+  repositories and the unique active-assignment index. Both are locked Schema Nebula nodes and
+  neither exists. Tool: claude-code.
 - _(append)_
 
 ---

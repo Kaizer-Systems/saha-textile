@@ -1726,6 +1726,54 @@ UnauthorizedException` carries the reason, and the global filter reads it from t
   **Next executable step:** pass 4c — owner to choose between consuming `reason` in the two
   interceptors, stable OpenAPI tags plus operation IDs, or the route/contract family
   categorisation. Tool: claude-code.
+- 2026-08-08 — [DONE] **Auth Pass 4c — both interceptors now consume the refusal reason, so
+  4b is no longer decoration.**
+  **The rule added, as rule 7 in both interceptors.** A session-bound 401 may name a reason;
+  `session_revoked` and `account_inactive` describe states rotation provably cannot fix,
+  because the act that revoked the session invalidated the refresh token with it. Those skip
+  the rotation round-trip and end the session at once.
+  **The skip list is deliberately as short as the evidence allows, and `session_missing` is
+  NOT on it** even though "no session, nothing to refresh" reads like it should be. The client
+  cannot check whether a refresh cookie survived — it is `httpOnly` — and the costs are
+  asymmetric: a needless rotation is ONE request, already bounded per session by the
+  coordinator's failure latch, whereas wrongly skipping signs out somebody who would have been
+  recovered. `permissions_changed` also keeps rotating, because rotation is precisely what
+  mints a token carrying the new `permissionsVersion`.
+  **Absence of a reason is never read as a verdict.** A refusal with no reason, or one naming
+  a value this client does not recognise, takes the pre-4b path unchanged. That is deliberate
+  forward-compatibility: a deployed client will meet an API that has grown a new reason, and
+  an unknown string must not fall through a policy check as
+  neither-recoverable-nor-unrecoverable.
+  **Shared, not duplicated.** `readRefusalReason` and `isUnrecoverableRefusal` live in
+  `@saha-textile/http-transport`, which still has **no runtime dependency** on contracts —
+  the union is declared structurally and `contract-alignment.test.ts` now keeps the REASONS in
+  step too, with the same Record-keyed trick as the codes: a reason added to the contract and
+  forgotten here fails to COMPILE rather than silently becoming a value the client drops.
+  **Proven in a real browser, which unit tests could not do here.** The specs construct their
+  own `HttpErrorResponse`, so they assume rather than prove that Angular puts the parsed
+  envelope on `error.error` — and a wrong assumption would be SILENT, since `readRefusalReason`
+  would simply answer undefined and every behaviour would look pre-4b. So it was checked
+  against the live API: a storefront account was registered from the browser, its session
+  revoked directly in Mongo while the browser kept valid cookies, and the app reloaded.
+  Network log: **three `/auth/storefront/me` 401s and ZERO `POST /auth/storefront/refresh`**.
+  The contrast is the admin tab in the same session — anonymous, therefore `session_missing` —
+  which DID issue `POST /auth/admin/refresh`. Two reasons, two behaviours, both observed.
+  The probe account and its session were deleted afterwards, verified **0 remaining**.
+  **Also caught during that run:** the API process still listening on 4000 was a pre-4b build
+  and served no `reason` at all. Rebuilt and restarted before believing anything; recorded
+  because the first browser reading looked like a client defect and was not.
+  **Negative control on both apps.** Forcing rule 7's predicate to `false` fails exactly the
+  two skip tests in each application (admin 61 → 2 failed, storefront 57 → 2 failed) while the
+  "still rotates" cases stay green, which is correct — those assert unchanged behaviour.
+  Restored and verified clean by `git diff`.
+  **Commands actually run:** `pnpm turbo run test --force` **11/11** — http-transport
+  **142 → 157**, admin **54 → 61**, storefront **50 → 57**, api 97, contracts 145,
+  core-domain 87 · `MONGODB_PORT=27018 pnpm e2e:session-rotation` **12/12** with 0 probe rows
+  remaining · both Angular production builds · all three lint guards OK · `pnpm format:check`
+  clean. `pnpm typecheck` fails ONLY on `developer-portal-storybook`, same file and same
+  `@core/*` alias cause recorded above.
+  **Next executable step:** pass 4d — owner to choose between stable OpenAPI tags plus
+  operation IDs, and the route/contract family categorisation. Tool: claude-code.
 - _(append)_
 
 ---

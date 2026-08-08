@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { isApiErrorEnvelope, isForbidden, isRetryable, isUnauthorized, toTransportFailure } from '../src/errors.js';
+import {
+	isApiErrorEnvelope,
+	isForbidden,
+	isRetryable,
+	isUnauthorized,
+	isUnrecoverableRefusal,
+	readRefusalReason,
+	toTransportFailure,
+} from '../src/errors.js';
 
 const envelope = {
 	error: {
@@ -129,5 +137,70 @@ describe('classification', () => {
 
 	it.each([400, 403, 404, 409, 500])('does not retry a non-transient %i', (status) => {
 		expect(isRetryable(status, 'GET')).toBe(false);
+	});
+});
+
+describe('refusal reasons', () => {
+	const refusal = (reason: unknown) => ({
+		error: { code: 'unauthorized', message: 'Authentication is required.', reason },
+	});
+
+	it('reads a recognised reason', () => {
+		expect(readRefusalReason(refusal('session_expired'))).toBe('session_expired');
+	});
+
+	it('answers undefined when the API declined to say', () => {
+		expect(readRefusalReason({ error: { code: 'unauthorized', message: 'x' } })).toBeUndefined();
+	});
+
+	/**
+	 * Forward-compatibility. A deployed client WILL meet an API that has grown a new reason,
+	 * and "I do not recognise this" must read as "no reason given" — a state every caller
+	 * already handles — rather than leaking an unknown string into a policy check.
+	 */
+	it('treats an unknown reason as no reason at all', () => {
+		expect(readRefusalReason(refusal('pin_locked'))).toBeUndefined();
+		expect(readRefusalReason(refusal(''))).toBeUndefined();
+		expect(readRefusalReason(refusal(42))).toBeUndefined();
+		expect(readRefusalReason(refusal(null))).toBeUndefined();
+	});
+
+	it('survives bodies that are not the envelope', () => {
+		for (const body of [null, undefined, 'nope', 42, [], {}, { error: null }, { error: 'x' }]) {
+			expect(readRefusalReason(body)).toBeUndefined();
+		}
+	});
+
+	it('carries a recognised reason through toTransportFailure', () => {
+		expect(toTransportFailure(401, refusal('session_revoked')).reason).toBe('session_revoked');
+	});
+
+	it('omits the reason entirely when there is none', () => {
+		const failure = toTransportFailure(401, { error: { code: 'unauthorized', message: 'x' } });
+
+		expect(failure.reason).toBeUndefined();
+		expect(Object.keys(failure)).not.toContain('reason');
+	});
+
+	it('does not invent a reason for a body that never reached us', () => {
+		expect(toTransportFailure(401, '<html>gateway</html>').reason).toBeUndefined();
+	});
+
+	// Only refusals rotation provably cannot fix. `session_missing` is deliberately absent:
+	// the refresh cookie is httpOnly, so the client cannot check whether one survives, and a
+	// needless rotation is far cheaper than wrongly signing out a recoverable session.
+	it.each(['session_revoked', 'account_inactive'] as const)('treats %s as unrecoverable', (reason) => {
+		expect(isUnrecoverableRefusal(reason)).toBe(true);
+	});
+
+	it.each(['session_missing', 'session_expired', 'permissions_changed'] as const)(
+		'keeps attempting rotation for %s',
+		(reason) => {
+			expect(isUnrecoverableRefusal(reason)).toBe(false);
+		},
+	);
+
+	it('keeps attempting rotation when no reason was given', () => {
+		expect(isUnrecoverableRefusal(undefined)).toBe(false);
 	});
 });

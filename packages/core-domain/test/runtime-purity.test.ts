@@ -51,7 +51,18 @@ const collectJsFiles = (dir: string): string[] =>
 	});
 
 const tsc = join(packageRoot, 'node_modules', '.bin', 'tsc');
-execFileSync(tsc, ['-p', join(packageRoot, 'tsconfig.json'), '--outDir', outDir], {
+/**
+ * `--removeComments` is load-bearing, not tidiness.
+ *
+ * The scanners below match emitted text for `from '<specifier>'`, and TypeScript preserves
+ * comments by default. A doc comment containing an ordinary English phrase in quotes — say,
+ * distinguishing "already granted" from "the write failed" — therefore reads as an import and
+ * fails the suite, while a comment mentioning `zod` reads as a runtime reference to Zod.
+ *
+ * Stripping comments before scanning cannot hide a real violation: a runtime import is code,
+ * and code is never a comment. Matching them was the bug.
+ */
+execFileSync(tsc, ['-p', join(packageRoot, 'tsconfig.json'), '--outDir', outDir, '--removeComments'], {
 	cwd: packageRoot,
 	stdio: 'pipe',
 });

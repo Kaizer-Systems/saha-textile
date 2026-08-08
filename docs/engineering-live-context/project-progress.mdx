@@ -1926,6 +1926,61 @@ UnauthorizedException` carries the reason, and the global filter reads it from t
   **Next executable step:** pass 5b — `roles` and `userRoleAssignments` collections,
   repositories and the unique active-assignment index. Both are locked Schema Nebula nodes and
   neither exists. Tool: claude-code.
+- 2026-08-08 — [DONE] **Auth Pass 5b — the `roles` and `userRoleAssignments` collections, their
+  repositories, and the unique ACTIVE assignment index.** Both were Schema Nebula nodes marked
+  `planned` / `add`; both now exist.
+  **Built to the locked node definitions, not invented.** `roles` — "Reusable role definitions
+  and permission groupings for administrative authorization"; `userRoleAssignments` —
+  "Explicit user-to-role assignments with lifecycle and auditability", referencing `users` and
+  `roles`. Registered in `COLLECTION_NAMES`, so the physical names are reviewed rather than
+  left to Mongoose.
+  **Why roles are a collection when `UserRole` already exists.** The enum is the COARSE tier
+  and stays exactly as it is — it decides which audience a session may serve and is baked into
+  an access token. The collection is the fine-grained half: named, reusable permission bundles
+  an operator can define without a deployment. They are not alternatives, and a role carries a
+  `baseRole` so it can never grant an audience its own tier does not allow.
+  **The constraint this pass exists for.** A user may hold a role once at a time, and may hold
+  it again after revocation. A plain unique index on `(userId, roleId)` enforces the first
+  half and permanently breaks the second, because revocation keeps the row — re-granting would
+  collide with a record that no longer confers anything. It is therefore a PARTIAL unique
+  index over `revokedAt: null`, verified present in the live database as
+  `unique: true, partialFilterExpression: { revokedAt: null }`.
+  **Enforced by the database on purpose.** Two concurrent grants both read "no active
+  assignment" and both insert; no application check can arbitrate that. The adapter translates
+  MongoDB's 11000 into a named `AssignmentAlreadyActiveError`, so callers can tell "already
+  granted" from "the write failed" without reading driver error codes.
+  **Assignments are never hard-deleted**, which is what makes "who held this authority, and
+  when" answerable. Revocation is idempotent — the `revokedAt: null` filter means a second
+  revoke returns null rather than rewriting when the first one truly happened.
+  **12 new integration tests against the real rs0**, adapter **89 → 100**: round-trip, unique
+  key, mutable-half update, system roles refusing update and delete, grant/active listing,
+  named duplicate error, re-grant after revoke, idempotent revoke, two concurrent grants where
+  exactly one wins, and cross-user isolation. Probe rows verified **0 remaining**.
+  **Negative-controlled the constraint itself.** Dropping the partial filter fails exactly one
+  test — "allows re-granting a role after it was revoked" — and nothing else, so the suite is
+  sensitive to the partial-ness specifically rather than to uniqueness in general. Worth
+  recording that this mutation also wrote the WRONG index into the local database via
+  `syncIndexes`; the source was restored, the suite re-run to rebuild the index, and the live
+  shape re-verified.
+  **A real defect fixed in the core-domain purity scanner.** It matched emitted JavaScript for
+  `from '<specifier>'` with comments intact, so an ordinary English doc comment — distinguishing
+  `"already granted"` from `"the write failed"` — was read as an import and failed the suite.
+  Building with `--removeComments` fixes the whole class: a runtime import is code, and code is
+  never a comment, so stripping cannot hide a violation. **Negative-controlled after the fix:**
+  a contracts value import that is genuinely USED fails, while an `import type` still passes,
+  which is exactly the G-CORE-CONTRACTS lock. My first control run reported a miss and was
+  wrong — an unused import is erased by TypeScript, so it is not a runtime import at all.
+  **Commands actually run:** `MONGODB_PORT=27018 RUN_DB_IT=1` adapter suite **100/100** ·
+  `pnpm turbo run test --force` **11/11** (contracts 154, http-transport 157, core-domain 87,
+  api 97, storefront 57, admin 61) · `MONGODB_PORT=27018 pnpm e2e:session-rotation` **12/12**
+  with 0 probe rows · all five lint guards OK · `pnpm format:check` clean. `pnpm typecheck`
+  fails ONLY on `developer-portal-storybook`, the same `@core/*` alias failure recorded above.
+  **Not wired into the API.** No module provides these repositories and no route consumes
+  them, deliberately: `SessionGuard` still resolves permissions from `user.permissions`, and
+  moving it to assignments is a behaviour change that belongs with 5c's escalation tests.
+  **Next executable step:** pass 5c — `/admin/roles/**`, `/admin/permissions/**`,
+  `/admin/users/**` with last-admin protection, no-delegation-above-self, permission-version
+  invalidation, and the escalation/BOLA/TOCTOU tests. Tool: claude-code.
 - _(append)_
 
 ---

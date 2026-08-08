@@ -7,7 +7,7 @@ import {
 	SetMetadata,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { SessionAudience, UserRole } from '@saha-textile/contracts';
+import type { PermissionCode, SessionAudience, UserRole } from '@saha-textile/contracts';
 import type { AuthPort, AuthUserRepository } from '@saha-textile/core-domain';
 import type { FastifyRequest } from 'fastify';
 
@@ -30,7 +30,19 @@ export const Audience = (audience: SessionAudience) => SetMetadata(AUDIENCE_KEY,
 
 export const RequireRoles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles);
 
-export const RequirePermissions = (...permissions: string[]) => SetMetadata(PERMISSIONS_KEY, permissions);
+/**
+ * Restricts a route to holders of specific permissions.
+ *
+ * Typed to the canonical registry rather than `string[]`, so `@RequirePermissions('prodcut.index')`
+ * fails to COMPILE. A mistyped permission is otherwise the worst kind of bug in this position:
+ * the route keeps working for nobody, or — if the typo lands in the grant instead — for
+ * everybody, and neither shows up in a passing test suite.
+ *
+ * No route uses this yet. `SessionGuard` holds that grants are authoritative and a role
+ * implies nothing, so requiring a permission before one can be granted would 403 every
+ * administrator out of the back office (auth pass 5a; enforcement lands in 5c).
+ */
+export const RequirePermissions = (...permissions: PermissionCode[]) => SetMetadata(PERMISSIONS_KEY, permissions);
 
 /** What the guard attaches to the request for downstream handlers. */
 export interface AuthenticatedPrincipal {

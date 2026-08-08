@@ -6,12 +6,13 @@
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",
-    "generate:openapi": "nest build && node dist/generate-openapi.js",
+    "generate:openapi": "nest build && node dist/generate-openapi.js && node scripts/check-openapi.mjs",
     "start": "node dist/main.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "test": "vitest run --passWithNoTests",
-    "e2e:session-rotation": "node e2e/session-rotation.mjs"
+    "e2e:session-rotation": "node e2e/session-rotation.mjs",
+    "check:openapi": "node scripts/check-openapi.mjs"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.2",

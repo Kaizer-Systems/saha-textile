@@ -22,6 +22,7 @@ import { tooManyRequests } from './rate-limit-response';
 import { RotatesSession } from './refresh-reuse.guard';
 import { type AuthenticatedPrincipal, Audience, Public } from './session.guard';
 import { SessionService } from './session.service';
+import { API_TAGS } from '../openapi-tags';
 
 /**
  * The one response every enumeration-sensitive endpoint returns.
@@ -34,7 +35,7 @@ const ACCEPTED: GenericAcceptedResponse = {
 	message: 'If the details are correct, we have sent you an email.',
 };
 
-@ApiTags('auth')
+@ApiTags(API_TAGS.auth)
 @Controller('auth/storefront')
 @Audience('storefront')
 export class StorefrontAuthController {
@@ -45,7 +46,7 @@ export class StorefrontAuthController {
 
 	@Post('register')
 	@Public()
-	@ApiOperation({ summary: 'Register a storefront account and start a session' })
+	@ApiOperation({ operationId: 'registerCustomer', summary: 'Register a storefront account and start a session' })
 	async register(
 		@Body(new ZodValidationPipe(RegisterStorefrontRequest)) body: RegisterStorefrontRequest,
 		@Req() request: FastifyRequest,
@@ -108,7 +109,10 @@ export class StorefrontAuthController {
 	@Post('login/password')
 	@Public()
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Password login (sets httpOnly session cookies)' })
+	@ApiOperation({
+		operationId: 'loginCustomerWithPassword',
+		summary: 'Password login (sets httpOnly session cookies)',
+	})
 	async login(
 		@Body(new ZodValidationPipe(PasswordLoginRequest)) body: PasswordLoginRequest,
 		@Req() request: FastifyRequest,
@@ -168,7 +172,10 @@ export class StorefrontAuthController {
 	@Post('login/email-otp/request')
 	@Public()
 	@HttpCode(HttpStatus.ACCEPTED)
-	@ApiOperation({ summary: 'Request an email OTP (always answers generically)' })
+	@ApiOperation({
+		operationId: 'requestCustomerEmailOtp',
+		summary: 'Request an email OTP (always answers generically)',
+	})
 	@ApiOkResponse({ description: 'Accepted — identical whether or not the account exists' })
 	async requestOtp(
 		@Body(new ZodValidationPipe(EmailOtpRequest)) body: EmailOtpRequest,
@@ -196,7 +203,7 @@ export class StorefrontAuthController {
 	@Post('login/email-otp/verify')
 	@Public()
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Verify an email OTP and start a session' })
+	@ApiOperation({ operationId: 'verifyCustomerEmailOtp', summary: 'Verify an email OTP and start a session' })
 	async verifyOtp(
 		@Body(new ZodValidationPipe(EmailOtpVerifyRequest)) body: EmailOtpVerifyRequest,
 		@Req() request: FastifyRequest,
@@ -246,7 +253,10 @@ export class StorefrontAuthController {
 	@Public()
 	@RotatesSession()
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Rotate the session (reuse of an old token revokes the family)' })
+	@ApiOperation({
+		operationId: 'refreshCustomerSession',
+		summary: 'Rotate the session (reuse of an old token revokes the family)',
+	})
 	async refresh(
 		@Req() request: FastifyRequest,
 		@Res({ passthrough: true }) reply: FastifyReply,
@@ -265,7 +275,7 @@ export class StorefrontAuthController {
 	@Post('logout')
 	@Public()
 	@HttpCode(HttpStatus.NO_CONTENT)
-	@ApiOperation({ summary: 'Revoke the current session and clear cookies' })
+	@ApiOperation({ operationId: 'logoutCustomer', summary: 'Revoke the current session and clear cookies' })
 	async logout(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply): Promise<void> {
 		await this.sessions.revoke(request, reply, 'logout');
 	}
@@ -273,7 +283,10 @@ export class StorefrontAuthController {
 	@Post('password/forgot')
 	@Public()
 	@HttpCode(HttpStatus.ACCEPTED)
-	@ApiOperation({ summary: 'Start a password reset (always answers generically)' })
+	@ApiOperation({
+		operationId: 'requestCustomerPasswordReset',
+		summary: 'Start a password reset (always answers generically)',
+	})
 	async forgotPassword(
 		@Body(new ZodValidationPipe(PasswordForgotRequest)) body: PasswordForgotRequest,
 		@Req() request: FastifyRequest,
@@ -291,7 +304,10 @@ export class StorefrontAuthController {
 	@Post('password/reset')
 	@Public()
 	@HttpCode(HttpStatus.NO_CONTENT)
-	@ApiOperation({ summary: 'Complete a password reset; revokes every existing session' })
+	@ApiOperation({
+		operationId: 'resetCustomerPassword',
+		summary: 'Complete a password reset; revokes every existing session',
+	})
 	async resetPassword(
 		@Body(new ZodValidationPipe(PasswordResetRequest)) body: PasswordResetRequest,
 		@Res({ passthrough: true }) reply: FastifyReply,
@@ -305,7 +321,7 @@ export class StorefrontAuthController {
 	}
 
 	@Get('me')
-	@ApiOperation({ summary: 'Current storefront user (requires a session cookie)' })
+	@ApiOperation({ operationId: 'getCurrentCustomer', summary: 'Current storefront user (requires a session cookie)' })
 	async me(@Principal() principal: AuthenticatedPrincipal | undefined) {
 		if (!principal) throw new UnauthorizedException('Authentication required');
 		return { user: await this.auth.publicUser(principal.userId) };
@@ -321,7 +337,7 @@ export class StorefrontAuthController {
 	@Post('email/verify')
 	@Public()
 	@HttpCode(HttpStatus.NO_CONTENT)
-	@ApiOperation({ summary: 'Complete email verification with a token' })
+	@ApiOperation({ operationId: 'verifyCustomerEmail', summary: 'Complete email verification with a token' })
 	async verifyEmail(
 		@Body(new ZodValidationPipe(z.object({ token: z.string().min(1) }))) body: { token: string },
 	): Promise<void> {
@@ -339,7 +355,10 @@ export class StorefrontAuthController {
 	 */
 	@Post('email/verify/resend')
 	@HttpCode(HttpStatus.ACCEPTED)
-	@ApiOperation({ summary: 'Re-send the verification email for the current account' })
+	@ApiOperation({
+		operationId: 'resendCustomerEmailVerification',
+		summary: 'Re-send the verification email for the current account',
+	})
 	async resendVerification(
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 		@Req() request: FastifyRequest,

@@ -34,6 +34,7 @@ import { tooManyRequests } from './rate-limit-response';
 import { RotatesSession } from './refresh-reuse.guard';
 import { type AuthenticatedPrincipal, Audience, Public, RequireRoles } from './session.guard';
 import { SessionService } from './session.service';
+import { API_TAGS } from '../openapi-tags';
 
 /**
  * Admin authentication.
@@ -52,7 +53,7 @@ const ADMIN_RECOVERY_ACCEPTED: GenericAcceptedResponse = {
 	message: 'If the details are correct, we have sent you an email.',
 };
 
-@ApiTags('auth')
+@ApiTags(API_TAGS.auth)
 @Controller('auth/admin')
 @Audience('admin')
 export class AdminAuthController {
@@ -65,7 +66,7 @@ export class AdminAuthController {
 	@Post('login')
 	@Public()
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Admin password login by email or username' })
+	@ApiOperation({ operationId: 'loginAdminWithPassword', summary: 'Admin password login by email or username' })
 	async login(
 		@Body(new ZodValidationPipe(AdminLoginRequest)) body: AdminLoginRequest,
 		@Req() request: FastifyRequest,
@@ -119,7 +120,10 @@ export class AdminAuthController {
 	@Post('login/pin')
 	@Public()
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Admin PIN login (5 failures lock PIN use for 15 minutes)' })
+	@ApiOperation({
+		operationId: 'loginAdminWithPin',
+		summary: 'Admin PIN login (5 failures lock PIN use for 15 minutes)',
+	})
 	async pinLogin(
 		@Body(new ZodValidationPipe(AdminPinLoginRequest)) body: AdminPinLoginRequest,
 		@Req() request: FastifyRequest,
@@ -183,7 +187,10 @@ export class AdminAuthController {
 	@Post('pin')
 	@RequireRoles('staff', 'admin')
 	@HttpCode(HttpStatus.NO_CONTENT)
-	@ApiOperation({ summary: 'Set or change the admin PIN (always requires password proof)' })
+	@ApiOperation({
+		operationId: 'setAdminPin',
+		summary: 'Set or change the admin PIN (always requires password proof)',
+	})
 	async setPin(
 		@Body(new ZodValidationPipe(AdminPinSetupRequest)) body: AdminPinSetupRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
@@ -220,7 +227,10 @@ export class AdminAuthController {
 	@Post('password/forgot')
 	@Public()
 	@HttpCode(HttpStatus.ACCEPTED)
-	@ApiOperation({ summary: 'Start admin password recovery (always answers generically)' })
+	@ApiOperation({
+		operationId: 'requestAdminPasswordReset',
+		summary: 'Start admin password recovery (always answers generically)',
+	})
 	async forgotPassword(
 		@Body(new ZodValidationPipe(AdminPasswordForgotRequest)) body: AdminPasswordForgotRequest,
 		@Req() request: FastifyRequest,
@@ -254,7 +264,10 @@ export class AdminAuthController {
 	@Post('password/reset')
 	@Public()
 	@HttpCode(HttpStatus.NO_CONTENT)
-	@ApiOperation({ summary: 'Complete admin recovery; revokes sessions and suspends PIN use' })
+	@ApiOperation({
+		operationId: 'resetAdminPassword',
+		summary: 'Complete admin recovery; revokes sessions and suspends PIN use',
+	})
 	async resetPassword(
 		@Body(new ZodValidationPipe(AdminPasswordResetRequest)) body: AdminPasswordResetRequest,
 		@Res({ passthrough: true }) reply: FastifyReply,
@@ -272,7 +285,7 @@ export class AdminAuthController {
 	@Public()
 	@RotatesSession()
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Rotate the admin session' })
+	@ApiOperation({ operationId: 'refreshAdminSession', summary: 'Rotate the admin session' })
 	async refresh(
 		@Req() request: FastifyRequest,
 		@Res({ passthrough: true }) reply: FastifyReply,
@@ -291,14 +304,17 @@ export class AdminAuthController {
 	@Post('logout')
 	@Public()
 	@HttpCode(HttpStatus.NO_CONTENT)
-	@ApiOperation({ summary: 'Revoke the admin session' })
+	@ApiOperation({ operationId: 'logoutAdmin', summary: 'Revoke the admin session' })
 	async logout(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply): Promise<void> {
 		await this.sessions.revoke(request, reply, 'logout');
 	}
 
 	@Get('me')
 	@RequireRoles('staff', 'admin')
-	@ApiOperation({ summary: 'Current admin profile — sanitized, never credential material' })
+	@ApiOperation({
+		operationId: 'getCurrentAdmin',
+		summary: 'Current admin profile — sanitized, never credential material',
+	})
 	async me(@Principal() principal: AuthenticatedPrincipal | undefined): Promise<AdminMeResponse> {
 		if (!principal) throw new UnauthorizedException('Authentication required');
 
@@ -337,7 +353,7 @@ export class AdminAuthController {
 	@Post('invites')
 	@RequireRoles('admin')
 	@HttpCode(HttpStatus.CREATED)
-	@ApiOperation({ summary: 'Invite a staff/admin account (admin only; audited)' })
+	@ApiOperation({ operationId: 'createAdminInvite', summary: 'Invite a staff/admin account (admin only; audited)' })
 	async createInvite(
 		@Body(new ZodValidationPipe(AdminInviteRequest)) body: AdminInviteRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
@@ -362,7 +378,7 @@ export class AdminAuthController {
 
 	@Get('invites')
 	@RequireRoles('admin')
-	@ApiOperation({ summary: 'List outstanding invites (admin only)' })
+	@ApiOperation({ operationId: 'listAdminInvites', summary: 'List outstanding invites (admin only)' })
 	async listInvites(): Promise<{
 		items: Array<{ id: string; emailNormalized: string; role: string; expiresAt: string }>;
 	}> {
@@ -381,7 +397,7 @@ export class AdminAuthController {
 	@Delete('invites/:id')
 	@RequireRoles('admin')
 	@HttpCode(HttpStatus.NO_CONTENT)
-	@ApiOperation({ summary: 'Revoke an outstanding invite (admin only; audited)' })
+	@ApiOperation({ operationId: 'revokeAdminInvite', summary: 'Revoke an outstanding invite (admin only; audited)' })
 	async revokeInvite(
 		@Param('id') inviteId: string,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
@@ -399,7 +415,7 @@ export class AdminAuthController {
 	@Post('invites/accept')
 	@Public()
 	@HttpCode(HttpStatus.CREATED)
-	@ApiOperation({ summary: 'Accept an admin invitation and set credentials' })
+	@ApiOperation({ operationId: 'acceptAdminInvite', summary: 'Accept an admin invitation and set credentials' })
 	async acceptInvite(
 		@Body(new ZodValidationPipe(AdminInviteAcceptRequest)) body: AdminInviteAcceptRequest,
 	): Promise<{ userId: string; role: string }> {
@@ -420,7 +436,7 @@ export class AdminAuthController {
 	@Post('resume')
 	@RequireRoles('staff', 'admin')
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Quick-resume an idle admin session with the PIN' })
+	@ApiOperation({ operationId: 'resumeAdminSession', summary: 'Quick-resume an idle admin session with the PIN' })
 	async resume(
 		@Body(new ZodValidationPipe(AdminPinLoginRequest.pick({ pin: true }))) body: { pin: string },
 		@Principal() principal: AuthenticatedPrincipal | undefined,

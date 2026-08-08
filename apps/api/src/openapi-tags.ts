@@ -2,7 +2,7 @@
  * The API's tag vocabulary — one declaration, used by every controller and by the document
  * builder that describes them.
  *
- * Tags were free-form strings scattered across twelve controllers, which is fine until one is
+ * Tags were free-form strings scattered across eleven controllers, which is fine until one is
  * spelled `catalogue`, or a new controller invents `authentication` alongside `auth`. A
  * generated client turns tags into namespaces, so a typo there is a renamed namespace for
  * every consumer. `scripts/check-openapi.mjs` rejects any tag outside this object.

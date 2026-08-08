@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Inject, Param, Patch, Post, Req, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { AddCartLineRequest, CreateCartRequest, UpdateCartLineRequest } from '@saha-textile/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { z } from 'zod';
 
 import { Principal } from '../auth/ownership';
 import { type AuthenticatedPrincipal, Public } from '../auth/session.guard';
@@ -10,22 +10,6 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { CartService, toPublicCart } from './cart.service';
 import { API_TAGS } from '../openapi-tags';
-
-const CreateCartSchema = z.object({
-	currency: z.string().length(3).optional(),
-});
-type CreateCartInput = z.infer<typeof CreateCartSchema>;
-
-const AddLineSchema = z.object({
-	productId: z.string().min(1),
-	variationId: z.string().min(1).nullable().optional(),
-	quantity: z.number().int().positive(),
-	addons: z.array(z.object({ code: z.string().min(1), value: z.union([z.string(), z.number()]) })).optional(),
-});
-type AddLineBody = z.infer<typeof AddLineSchema>;
-
-const UpdateQtySchema = z.object({ quantity: z.number().int().positive() });
-type UpdateQtyBody = z.infer<typeof UpdateQtySchema>;
 
 const GUEST_TTL_SECONDS = 60 * 60 * 24 * 30;
 
@@ -59,7 +43,7 @@ export class CartController {
 	@Post()
 	@ApiOperation({ operationId: 'createCart', summary: 'Create a new (guest or user) cart' })
 	async create(
-		@Body(new ZodValidationPipe(CreateCartSchema)) body: CreateCartInput,
+		@Body(new ZodValidationPipe(CreateCartRequest)) body: CreateCartRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 		@Res({ passthrough: true }) reply: FastifyReply,
 	) {
@@ -89,7 +73,7 @@ export class CartController {
 	@ApiOperation({ operationId: 'addCartLine', summary: 'Add a line to a cart' })
 	async addLine(
 		@Param('id') id: string,
-		@Body(new ZodValidationPipe(AddLineSchema)) body: AddLineBody,
+		@Body(new ZodValidationPipe(AddCartLineRequest)) body: AddCartLineRequest,
 		@Req() request: FastifyRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	) {
@@ -102,7 +86,7 @@ export class CartController {
 	async updateLine(
 		@Param('id') id: string,
 		@Param('lineId') lineId: string,
-		@Body(new ZodValidationPipe(UpdateQtySchema)) body: UpdateQtyBody,
+		@Body(new ZodValidationPipe(UpdateCartLineRequest)) body: UpdateCartLineRequest,
 		@Req() request: FastifyRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	) {

@@ -37,3 +37,32 @@ export const Cart = z.object({
 	updatedAt: IsoDateTime.optional(),
 });
 export type Cart = z.infer<typeof Cart>;
+
+/**
+ * Request shapes for the cart routes.
+ *
+ * These lived as anonymous Zod objects inside `apps/api/src/cart/cart.controller.ts` until
+ * the route/contract reconciliation (auth pass 4e). A request shape declared in a controller
+ * is invisible to every other consumer: the Angular gateways cannot import it, the OpenAPI
+ * document cannot name it, and nothing stops it drifting from the entity it writes to. The
+ * add-on shape in particular was re-declared inline, character for character, beside the
+ * `CartAddonValue` above.
+ */
+export const CreateCartRequest = z.object({
+	currency: z.string().length(3).optional(),
+});
+export type CreateCartRequest = z.infer<typeof CreateCartRequest>;
+
+/** Mirrors `CartLine` minus the server-assigned `id`. */
+export const AddCartLineRequest = z.object({
+	productId: z.string().min(1),
+	variationId: z.string().min(1).nullable().optional(),
+	quantity: z.number().int().positive(),
+	addons: z.array(CartAddonValue).optional(),
+});
+export type AddCartLineRequest = z.infer<typeof AddCartLineRequest>;
+
+export const UpdateCartLineRequest = z.object({
+	quantity: z.number().int().positive(),
+});
+export type UpdateCartLineRequest = z.infer<typeof UpdateCartLineRequest>;

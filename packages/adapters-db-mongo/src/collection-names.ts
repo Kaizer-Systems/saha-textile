@@ -53,6 +53,8 @@ export const COLLECTION_NAMES = {
 	PasswordResetToken: 'passwordResetTokens',
 	EmailVerificationToken: 'emailVerificationTokens',
 	AdminInvite: 'adminInvites',
+	Role: 'roles',
+	UserRoleAssignment: 'userRoleAssignments',
 	/** Adapter/runtime abuse counters — intentionally NOT a Schema Nebula node. */
 	AuthRateLimit: 'authRateLimits',
 	// --- Governance, privacy, notifications ----------------------------------

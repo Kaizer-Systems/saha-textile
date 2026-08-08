@@ -17,6 +17,7 @@ export * from './cart';
 export * from './order';
 export * from './user';
 export * from './permission';
+export * from './role';
 export * from './shipping';
 export * from './session';
 export * from './auth';

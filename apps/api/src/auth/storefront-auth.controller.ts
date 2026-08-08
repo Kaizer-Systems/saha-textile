@@ -6,13 +6,13 @@ import {
 	type AuthSessionResponse,
 	EmailOtpRequest,
 	EmailOtpVerifyRequest,
+	EmailVerificationRequest,
 	type GenericAcceptedResponse,
 	PasswordForgotRequest,
 	PasswordLoginRequest,
 	PasswordResetRequest,
 	RegisterStorefrontRequest,
 } from '@saha-textile/contracts';
-import { z } from 'zod';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -339,7 +339,7 @@ export class StorefrontAuthController {
 	@HttpCode(HttpStatus.NO_CONTENT)
 	@ApiOperation({ operationId: 'verifyCustomerEmail', summary: 'Complete email verification with a token' })
 	async verifyEmail(
-		@Body(new ZodValidationPipe(z.object({ token: z.string().min(1) }))) body: { token: string },
+		@Body(new ZodValidationPipe(EmailVerificationRequest)) body: EmailVerificationRequest,
 	): Promise<void> {
 		const verified = await this.auth.completeEmailVerification(body.token);
 		// Expired, already-used and unknown tokens are indistinguishable.

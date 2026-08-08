@@ -73,3 +73,23 @@ export const Order = z.object({
 	updatedAt: IsoDateTime.optional(),
 });
 export type Order = z.infer<typeof Order>;
+
+/**
+ * Request shapes for the order routes. Previously declared inside
+ * `apps/api/src/orders/orders.controller.ts`; see the note on the cart requests for why that
+ * is a problem rather than a detail.
+ */
+export const CreateOrderRequest = z.object({
+	cartId: z.string().min(1),
+	currency: z.string().length(3).optional(),
+	gateway: PaymentGateway.optional(),
+	couponCode: z.string().min(1).optional(),
+});
+export type CreateOrderRequest = z.infer<typeof CreateOrderRequest>;
+
+/** Staff-only transition. `status` is the shared enum, so the two cannot drift apart. */
+export const UpdateOrderStatusRequest = z.object({
+	status: OrderStatus,
+	note: z.string().min(1).optional(),
+});
+export type UpdateOrderStatusRequest = z.infer<typeof UpdateOrderStatusRequest>;

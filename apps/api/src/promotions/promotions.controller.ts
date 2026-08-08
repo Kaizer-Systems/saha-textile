@@ -5,11 +5,12 @@ import { z } from 'zod';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { PromotionsService } from './promotions.service';
 import { Public } from '../auth/session.guard';
+import { API_TAGS } from '../openapi-tags';
 
 const ValidateCouponSchema = z.object({ couponCode: z.string().min(1) });
 type ValidateCouponInput = z.infer<typeof ValidateCouponSchema>;
 
-@ApiTags('promotions')
+@ApiTags(API_TAGS.promotions)
 @Controller('promotions')
 /** Public active promotions and coupon validation. */
 @Public()
@@ -17,13 +18,16 @@ export class PromotionsController {
 	constructor(private readonly promotions: PromotionsService) {}
 
 	@Get('active')
-	@ApiOperation({ summary: 'List currently active promotions' })
+	@ApiOperation({ operationId: 'listActivePromotions', summary: 'List currently active promotions' })
 	active() {
 		return this.promotions.listActive();
 	}
 
 	@Post('validate')
-	@ApiOperation({ summary: 'Validate a coupon code and return the matching promotion' })
+	@ApiOperation({
+		operationId: 'validatePromotion',
+		summary: 'Validate a coupon code and return the matching promotion',
+	})
 	validate(@Body(new ZodValidationPipe(ValidateCouponSchema)) body: ValidateCouponInput) {
 		return this.promotions.validateCoupon(body.couponCode);
 	}

@@ -17,6 +17,7 @@ import { cookieNames } from '../common/cookies';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { CONSENT_REPOSITORY } from '../infra/tokens';
+import { API_TAGS } from '../openapi-tags';
 
 const DEFAULT_CATEGORIES = {
 	necessary: true as const,
@@ -37,7 +38,7 @@ const DEFAULT_CATEGORIES = {
  * Guests can consent too (they are the ones seeing the banner before any account exists),
  * so these routes are public and identify a guest by the hashed guest cookie.
  */
-@ApiTags('privacy')
+@ApiTags(API_TAGS.privacy)
 @Controller('privacy')
 export class PrivacyController {
 	constructor(
@@ -52,7 +53,7 @@ export class PrivacyController {
 
 	@Get('consent')
 	@Public()
-	@ApiOperation({ summary: 'Current effective consent for the caller (user or guest)' })
+	@ApiOperation({ operationId: 'getConsent', summary: 'Current effective consent for the caller (user or guest)' })
 	async getConsent(
 		@Req() request: FastifyRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
@@ -71,7 +72,7 @@ export class PrivacyController {
 	@Post('consent')
 	@Public()
 	@HttpCode(HttpStatus.CREATED)
-	@ApiOperation({ summary: 'Record a consent decision (append-only)' })
+	@ApiOperation({ operationId: 'updateConsent', summary: 'Record a consent decision (append-only)' })
 	async updateConsent(
 		@Body(new ZodValidationPipe(ConsentUpdateRequest)) body: ConsentUpdateRequest,
 		@Req() request: FastifyRequest,
@@ -103,7 +104,7 @@ export class PrivacyController {
 	 */
 	@Post('export')
 	@HttpCode(HttpStatus.ACCEPTED)
-	@ApiOperation({ summary: 'Request a personal-data export (queued; seam)' })
+	@ApiOperation({ operationId: 'requestDataExport', summary: 'Request a personal-data export (queued; seam)' })
 	async requestExport(@Principal() principal: AuthenticatedPrincipal | undefined): Promise<GenericAcceptedResponse> {
 		if (!principal) throw new UnauthorizedException('Authentication required');
 		return { message: 'Your data export request has been received. We will email you when it is ready.' };
@@ -119,7 +120,7 @@ export class PrivacyController {
 	 */
 	@Post('erase')
 	@HttpCode(HttpStatus.ACCEPTED)
-	@ApiOperation({ summary: 'Request account erasure (reviewed workflow; seam)' })
+	@ApiOperation({ operationId: 'requestDataErasure', summary: 'Request account erasure (reviewed workflow; seam)' })
 	async requestErasure(@Principal() principal: AuthenticatedPrincipal | undefined): Promise<GenericAcceptedResponse> {
 		if (!principal) throw new UnauthorizedException('Authentication required');
 		return {

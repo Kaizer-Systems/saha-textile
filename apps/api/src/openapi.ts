@@ -1,10 +1,20 @@
 import { type INestApplication } from '@nestjs/common';
 import { DocumentBuilder, type OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 
+import { API_TAG_DESCRIPTIONS } from './openapi-tags';
+
 const DEFAULT_DOCUMENTATION_SERVER = 'http://127.0.0.1:4000';
 
+/**
+ * The session cookie a browser presents. Named here rather than imported from
+ * `common/cookies` because that resolves the `__Host-` prefix from runtime configuration,
+ * and a published contract must not change shape depending on which environment generated it.
+ * The prefixed spelling is described in the scheme text instead.
+ */
+const SESSION_COOKIE_SCHEME = 'sessionCookie';
+
 export function createOpenApiDocument(app: INestApplication, serverUrl = DEFAULT_DOCUMENTATION_SERVER): OpenAPIObject {
-	const configuration = new DocumentBuilder()
+	const builder = new DocumentBuilder()
 		.setTitle('Saha Textile API')
 		.setDescription(
 			[
@@ -14,10 +24,32 @@ export function createOpenApiDocument(app: INestApplication, serverUrl = DEFAULT
 		)
 		.setVersion('0.1.0')
 		.addServer(serverUrl, 'Approved local development')
-		.addBearerAuth()
-		.build();
+		/**
+		 * Cookie, not bearer. The document previously advertised `addBearerAuth()`, which
+		 * described an authentication method this API does not accept — the guard that read
+		 * `Authorization: Bearer` was retired in auth pass 4a, and `e2e/session-rotation.mjs`
+		 * asserts that a valid access token offered as a bearer header authenticates nothing.
+		 * A contract that documents a scheme the server rejects sends every integrator down a
+		 * path that cannot work.
+		 */
+		.addCookieAuth(
+			'st_access',
+			{
+				type: 'apiKey',
+				in: 'cookie',
+				name: 'st_access',
+				description: [
+					'httpOnly session cookie set by the API. It is never returned in a response body and cannot be read by client script.',
+					'Served as `__Host-st_access` wherever the response is HTTPS with no pinned cookie domain.',
+					'Unsafe methods additionally require the readable double-submit half echoed as the `x-csrf-token` header.',
+				].join(' '),
+			},
+			SESSION_COOKIE_SCHEME,
+		);
 
-	const document = SwaggerModule.createDocument(app, configuration);
+	for (const tag of API_TAG_DESCRIPTIONS) builder.addTag(tag.name, tag.description);
+
+	const document = SwaggerModule.createDocument(app, builder.build());
 	return Object.assign(document, {
 		'x-saha-textile-contract-status': 'scaffolded',
 		'x-saha-textile-test-request-policy':

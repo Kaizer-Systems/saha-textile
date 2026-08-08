@@ -4,6 +4,7 @@ import type { ProductFilter } from '@saha-textile/core-domain';
 
 import { CatalogService } from './catalog.service';
 import { Public } from '../auth/session.guard';
+import { API_TAGS } from '../openapi-tags';
 
 /**
  * PUBLIC catalog surface. It never accepts a `status` filter: only `live` products
@@ -11,7 +12,7 @@ import { Public } from '../auth/session.guard';
  * would let anyone read drafts and disabled products. Admin status filtering belongs
  * on the authenticated admin catalog surface (Chunk F), which passes `audience: 'admin'`.
  */
-@ApiTags('catalog')
+@ApiTags(API_TAGS.catalog)
 @Controller('catalog/products')
 /** Public catalog: browsing never requires an account (visibility is enforced by CatalogAudience). */
 @Public()
@@ -19,7 +20,7 @@ export class ProductsController {
 	constructor(private readonly catalog: CatalogService) {}
 
 	@Get()
-	@ApiOperation({ summary: 'List live products with filtering and pagination' })
+	@ApiOperation({ operationId: 'listProducts', summary: 'List live products with filtering and pagination' })
 	@ApiQuery({ name: 'page', required: false, type: Number })
 	@ApiQuery({ name: 'pageSize', required: false, type: Number })
 	@ApiQuery({ name: 'categoryId', required: false })
@@ -45,7 +46,7 @@ export class ProductsController {
 	}
 
 	@Get(':idOrSlug')
-	@ApiOperation({ summary: 'Get a single product by id or slug' })
+	@ApiOperation({ operationId: 'getProduct', summary: 'Get a single product by id or slug' })
 	get(@Param('idOrSlug') idOrSlug: string) {
 		return this.catalog.getProduct(idOrSlug);
 	}

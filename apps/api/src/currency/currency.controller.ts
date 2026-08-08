@@ -3,8 +3,9 @@ import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { CurrencyService } from './currency.service';
 import { Public } from '../auth/session.guard';
+import { API_TAGS } from '../openapi-tags';
 
-@ApiTags('currency')
+@ApiTags(API_TAGS.currency)
 @Controller('currency')
 /** Public currency list/conversion for storefront price display. */
 @Public()
@@ -12,13 +13,13 @@ export class CurrencyController {
 	constructor(private readonly currency: CurrencyService) {}
 
 	@Get()
-	@ApiOperation({ summary: 'List enabled currencies' })
+	@ApiOperation({ operationId: 'listCurrencies', summary: 'List enabled currencies' })
 	list() {
 		return this.currency.listEnabled();
 	}
 
 	@Get('convert')
-	@ApiOperation({ summary: 'Convert a canonical INR amount into a target currency' })
+	@ApiOperation({ operationId: 'convertCurrency', summary: 'Convert a canonical INR amount into a target currency' })
 	@ApiQuery({ name: 'amountINR', type: Number })
 	@ApiQuery({ name: 'code', description: 'ISO 4217 currency code, e.g. USD' })
 	convert(@Query('amountINR') amountINR: string, @Query('code') code: string) {

@@ -10,6 +10,7 @@ import { cookieNames } from '../common/cookies';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { OrdersService } from './orders.service';
+import { API_TAGS } from '../openapi-tags';
 
 const CreateOrderSchema = z.object({
 	cartId: z.string().min(1),
@@ -27,7 +28,7 @@ type UpdateStatusBody = z.infer<typeof UpdateStatusSchema>;
  * `SessionGuard` (there is no `@Public()`) AND object-level authorized: a role check alone
  * would let any signed-in customer read any other customer's order by guessing an id.
  */
-@ApiTags('orders')
+@ApiTags(API_TAGS.orders)
 @Controller('orders')
 export class OrdersController {
 	constructor(
@@ -36,7 +37,7 @@ export class OrdersController {
 	) {}
 
 	@Post()
-	@ApiOperation({ summary: 'Create an order from a cart' })
+	@ApiOperation({ operationId: 'createOrder', summary: 'Create an order from a cart' })
 	create(
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 		@Body(new ZodValidationPipe(CreateOrderSchema)) body: CreateOrderBody,
@@ -53,7 +54,7 @@ export class OrdersController {
 	}
 
 	@Get()
-	@ApiOperation({ summary: 'List the authenticated user’s orders' })
+	@ApiOperation({ operationId: 'listMyOrders', summary: 'List the authenticated user’s orders' })
 	listMine(
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 		@Query('page') page?: string,
@@ -67,7 +68,7 @@ export class OrdersController {
 	}
 
 	@Get(':id')
-	@ApiOperation({ summary: 'Get one of the caller’s own orders' })
+	@ApiOperation({ operationId: 'getOrder', summary: 'Get one of the caller’s own orders' })
 	async get(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined) {
 		const order = await this.orders.getOrder(id);
 		// Staff/admin may read any order for support; a customer may read only their own,
@@ -78,7 +79,7 @@ export class OrdersController {
 
 	@Patch(':id/status')
 	@RequireRoles('admin', 'staff')
-	@ApiOperation({ summary: 'Update an order’s status (admin/staff only)' })
+	@ApiOperation({ operationId: 'updateOrderStatus', summary: 'Update an order’s status (admin/staff only)' })
 	updateStatus(@Param('id') id: string, @Body(new ZodValidationPipe(UpdateStatusSchema)) body: UpdateStatusBody) {
 		return this.orders.updateStatus(id, body.status, body.note);
 	}

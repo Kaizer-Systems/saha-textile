@@ -96,3 +96,15 @@ export const CsrfTokenResponse = z.object({
 	csrfToken: z.string().min(1),
 });
 export type CsrfTokenResponse = z.infer<typeof CsrfTokenResponse>;
+
+/**
+ * Redeems an email-verification token.
+ *
+ * Previously an anonymous `z.object({ token })` inline in the route decorator — the only
+ * request in the auth family that was not already a named contract, and therefore the one
+ * shape no client could import.
+ */
+export const EmailVerificationRequest = z.object({
+	token: z.string().min(1),
+});
+export type EmailVerificationRequest = z.infer<typeof EmailVerificationRequest>;

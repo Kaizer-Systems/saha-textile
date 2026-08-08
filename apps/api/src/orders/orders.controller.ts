@@ -1,8 +1,7 @@
 import { Body, Controller, Get, Inject, Param, Patch, Post, Query, Req, UnauthorizedException } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { OrderStatus, PaymentGateway } from '@saha-textile/contracts';
+import { CreateOrderRequest, UpdateOrderStatusRequest } from '@saha-textile/contracts';
 import type { FastifyRequest } from 'fastify';
-import { z } from 'zod';
 
 import { Principal, assertOwnership } from '../auth/ownership';
 import { type AuthenticatedPrincipal, RequireRoles } from '../auth/session.guard';
@@ -11,17 +10,6 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { OrdersService } from './orders.service';
 import { API_TAGS } from '../openapi-tags';
-
-const CreateOrderSchema = z.object({
-	cartId: z.string().min(1),
-	currency: z.string().length(3).optional(),
-	gateway: PaymentGateway.optional(),
-	couponCode: z.string().min(1).optional(),
-});
-type CreateOrderBody = z.infer<typeof CreateOrderSchema>;
-
-const UpdateStatusSchema = z.object({ status: OrderStatus, note: z.string().min(1).optional() });
-type UpdateStatusBody = z.infer<typeof UpdateStatusSchema>;
 
 /**
  * Orders are owned resources, so every route here is authenticated by the global
@@ -40,7 +28,7 @@ export class OrdersController {
 	@ApiOperation({ operationId: 'createOrder', summary: 'Create an order from a cart' })
 	create(
 		@Principal() principal: AuthenticatedPrincipal | undefined,
-		@Body(new ZodValidationPipe(CreateOrderSchema)) body: CreateOrderBody,
+		@Body(new ZodValidationPipe(CreateOrderRequest)) body: CreateOrderRequest,
 		@Req() request: FastifyRequest,
 	) {
 		if (!principal) throw new UnauthorizedException();
@@ -80,7 +68,10 @@ export class OrdersController {
 	@Patch(':id/status')
 	@RequireRoles('admin', 'staff')
 	@ApiOperation({ operationId: 'updateOrderStatus', summary: 'Update an order’s status (admin/staff only)' })
-	updateStatus(@Param('id') id: string, @Body(new ZodValidationPipe(UpdateStatusSchema)) body: UpdateStatusBody) {
+	updateStatus(
+		@Param('id') id: string,
+		@Body(new ZodValidationPipe(UpdateOrderStatusRequest)) body: UpdateOrderStatusRequest,
+	) {
 		return this.orders.updateStatus(id, body.status, body.note);
 	}
 }

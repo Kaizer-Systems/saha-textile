@@ -1787,7 +1787,7 @@ UnauthorizedException` carries the reason, and the global filter reads it from t
   (`listProducts`, `loginAdminWithPin`, `resumeAdminSession`), applied by a script that
   asserted exactly one match per edit so a drifted summary would fail loudly rather than skip.
   **Tags are now a declared vocabulary**, `src/openapi-tags.ts`, referenced by all twelve
-  controllers instead of twelve free-form string literals. Tags become client NAMESPACES, so a
+  controllers instead of eleven free-form string literals. Tags become client NAMESPACES, so a
   single `catalogue` beside `catalog` is a second namespace nobody meant. The eight existing
   values were kept exactly — stability here means pinning what exists, not reorganising it —
   and each now carries a description and a declared order, because an undeclared order makes
@@ -1822,6 +1822,58 @@ UnauthorizedException` carries the reason, and the global filter reads it from t
   `pnpm format:check` clean. `pnpm typecheck` fails ONLY on `developer-portal-storybook`, the
   same `@core/*` alias failure recorded above.
   **Pass 4 now has one item left:** route/contract family categorisation. Tool: claude-code.
+  **Correction, made during 4e:** this entry originally said "twelve controllers". The repo has
+  **eleven**. The miscount came from `ls src/*/*.controller.ts | wc -l`, because `ls` in this
+  environment prints a header row — so the count was 11 files plus 1 header. `find` and the
+  4e guard both agree on eleven. Corrected here and in `openapi-tags.ts`; the 4d commit
+  message still carries the wrong figure and was left alone rather than rewriting history.
+- 2026-08-08 — [DONE] **Auth Pass 4e — route/contract family categorisation, and seven request
+  shapes brought back into the contracts package.** Completes pass 4.
+  **The reconciliation.** Every route was categorised by family and checked against
+  `@saha-textile/contracts`. The auth family was already clean — every request a named
+  contract. The rest were not: **seven** request shapes were declared as anonymous Zod objects
+  inside controllers — three on cart (`CreateCartSchema`, `AddLineSchema`, `UpdateQtySchema`),
+  two on orders (`CreateOrderSchema`, `UpdateStatusSchema`), one on promotions
+  (`ValidateCouponSchema`), and one written **inline in the route decorator** for email
+  verification, which was the only auth request that was not a named contract.
+  **Why that is a defect rather than a style preference.** A shape declared in a controller is
+  invisible to every other consumer: the Angular gateways cannot import it, the OpenAPI
+  document cannot name it, and nothing ties it to the entity it writes to. The drift was
+  already there to be found — `AddLineSchema.addons` re-declared, character for character, the
+  `CartAddonValue` sitting a few lines above it in `contracts/src/cart.ts`.
+  **All seven now live in their family file** (`cart.ts`, `order.ts`, `promotion.ts`,
+  `auth.ts`) as `CreateCartRequest`, `AddCartLineRequest`, `UpdateCartLineRequest`,
+  `CreateOrderRequest`, `UpdateOrderStatusRequest`, `ValidateCouponRequest` and
+  `EmailVerificationRequest`, reusing `CartAddonValue`, `OrderStatus` and `PaymentGateway`
+  rather than restating them. Zod is no longer imported by any of the four controllers.
+  **The categorisation is enforced, not written down.** `scripts/check-route-contracts.mjs`
+  runs in `pnpm lint` (source-level, so it costs no build) and holds five rules: every
+  controller declares a family through `API_TAGS`; the family is one of the declared eight;
+  every validated body names an identifier imported from the contracts package; no inline
+  `z.object` in a validation pipe; and no `@Body` is left unvalidated. A contract narrowing
+  such as `AdminPinLoginRequest.pick({ pin: true })` stays legal — the BASE identifier is what
+  must come from the package. On success it prints the family table, which is the
+  categorisation deliverable.
+  **The categorisation, as the guard reports it:** health 1/3, catalog 2/4, currency 1/2,
+  promotions 1/2, cart 1/5, orders 1/4, auth 3/25, privacy 1/4 — **11 controllers, 49 routes,
+  22 accepting a body**. The 49 cross-checks exactly against the OpenAPI document's 49
+  operations, which is the point of having both.
+  **All five rules negative-controlled** on a real controller, one mutation at a time —
+  local schema, inline `z.object`, undeclared family, missing family, unvalidated body —
+  **5/5 caught**, then restored and the file verified by `git diff` to hold only the intended
+  pass change. Run sequentially after the 4d race taught that lesson.
+  **The published contract did not move:** the regenerated OpenAPI document is byte-identical
+  to 4d's (sha256 `6011f8ca…`), which is the expected result — relocating where a shape is
+  declared must not change the wire.
+  **Commands actually run:** `pnpm turbo run test --force` **11/11** (contracts 145,
+  http-transport 157, core-domain 87, api 97, storefront 57, admin 61) ·
+  `MONGODB_PORT=27018 pnpm e2e:session-rotation` **12/12** with 0 probe rows remaining ·
+  `generate:openapi` green including `check-openapi` · all **four** lint guards OK ·
+  `pnpm format:check` clean · API lint 0 errors. `pnpm typecheck` fails ONLY on
+  `developer-portal-storybook`, the same `@core/*` alias failure recorded above.
+  **Pass 4 is complete.** Next executable step: pass 5a — canonical permission registry with
+  stable codes. `RequirePermissions` exists but no route uses it, so deny-by-default is still
+  unmet. Tool: claude-code.
 - _(append)_
 
 ---

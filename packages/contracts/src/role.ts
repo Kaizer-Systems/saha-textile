@@ -78,3 +78,43 @@ export type UserRoleAssignment = z.infer<typeof UserRoleAssignment>;
 export function isAssignmentActive(assignment: Pick<UserRoleAssignment, 'revokedAt'>): boolean {
 	return assignment.revokedAt === null;
 }
+
+/**
+ * Create a role (`POST /admin/roles`).
+ *
+ * `isSystem` is absent by design: a caller must never be able to mint a role the
+ * administration surface then refuses to delete, which is how an undeletable rogue role would
+ * be created through the very screen meant to control them. System roles come from seeding.
+ */
+export const RoleCreateRequest = z.object({
+	key: Role.shape.key,
+	label: Role.shape.label,
+	description: z.string().max(500).nullable().optional(),
+	baseRole: UserRole,
+	permissions: PermissionGrant.default([]),
+});
+export type RoleCreateRequest = z.infer<typeof RoleCreateRequest>;
+
+/**
+ * Edit a role (`PATCH /admin/roles/:id`).
+ *
+ * Neither `key` nor `baseRole` may change. The key is the stable identity seeds and operators
+ * refer to. `baseRole` is the tier ceiling that stops a role granting above its holder's own
+ * rank — editing it would silently re-rank everyone already holding the role, which is an
+ * escalation dressed as an edit. Retiring a role and granting a new one is the honest path.
+ */
+export const RoleUpdateRequest = z
+	.object({
+		label: Role.shape.label.optional(),
+		description: z.string().max(500).nullable().optional(),
+		permissions: PermissionGrant.optional(),
+	})
+	.refine((value) => Object.keys(value).length > 0, { message: 'at least one field must be provided' });
+export type RoleUpdateRequest = z.infer<typeof RoleUpdateRequest>;
+
+/** A role as returned to the administration surface. */
+export const RoleResponse = Role;
+export type RoleResponse = z.infer<typeof RoleResponse>;
+
+export const RoleListResponse = z.object({ items: z.array(Role) });
+export type RoleListResponse = z.infer<typeof RoleListResponse>;

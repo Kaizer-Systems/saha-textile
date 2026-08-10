@@ -1,6 +1,7 @@
 import { type DynamicModule, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 
+import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { CartModule } from './cart/cart.module';
 import { CsrfGuard } from './common/csrf.guard';
@@ -39,6 +40,7 @@ export class AppModule {
 				CartModule,
 				OrdersModule,
 				AuthModule,
+				AdminModule,
 				SecurityModule,
 				PrivacyModule,
 			],

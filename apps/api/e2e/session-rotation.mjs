@@ -126,6 +126,8 @@ async function main() {
 	await models.AuthRateLimitModel.deleteMany({});
 
 	const emails = [];
+	/** Users created directly rather than through registration, cleaned up by id. */
+	const probeUserIds = [];
 
 	/** Sends a request carrying the jar, echoing the CSRF value on unsafe methods. */
 	async function request(jar, method, url, options = {}) {
@@ -444,8 +446,85 @@ async function main() {
 		assert.equal(reasonOf(wrongPin), undefined, 'a refused PIN must not name a reason');
 	});
 
+	await check('admin role routes are deny-by-default: a role alone opens nothing', async () => {
+		const { AUTH_PORT } = await import('../dist/infra/tokens.js');
+		const { ensureSystemRoles, UserModel, RoleModel, UserRoleAssignmentModel } = models;
+		const auth = app.get(AUTH_PORT);
+
+		// A real administrator, created directly because no first-admin bootstrap exists yet
+		// (pass 6a). Deliberately granted NO permissions.
+		const email = `roles-probe-${randomUUID()}@example.test`;
+		emails.push(email);
+		const password = 'a-very-long-probe-password';
+		const userId = `user_${randomUUID()}`;
+		await UserModel.create([
+			{
+				_id: userId,
+				email,
+				emailNormalized: email,
+				passwordHash: await auth.hashPassword(password),
+				role: 'admin',
+				status: 'active',
+				permissions: [],
+				tokenVersion: 0,
+				permissionsVersion: 0,
+				emailVerifiedAt: new Date(),
+			},
+		]);
+		probeUserIds.push(userId);
+
+		// Anonymous: refused before any permission question is asked.
+		const anonymous = await app.inject({ method: 'GET', url: '/admin/roles' });
+		assert.equal(anonymous.statusCode, 401, `anonymous reached /admin/roles: ${anonymous.statusCode}`);
+
+		// A storefront customer, who has a perfectly valid session for the wrong audience.
+		const customer = await registerCustomer();
+		const wrongAudience = await request(customer, 'GET', '/admin/roles');
+		assert.equal(wrongAudience.statusCode, 401, 'a storefront session reached an admin surface');
+
+		const jar = new CookieJar();
+		const login = await request(jar, 'POST', '/auth/admin/login', {
+			payload: { identifier: email, password },
+		});
+		assert.equal(login.statusCode, 200, `admin login failed: ${login.statusCode} ${login.body}`);
+
+		// THE PROPERTY: an authenticated administrator, correct audience, admin role — and
+		// still refused, because the grant list is authoritative and this one is empty.
+		const ungranted = await request(jar, 'GET', '/admin/roles');
+		assert.equal(ungranted.statusCode, 403, `an ungranted admin was allowed in: ${ungranted.statusCode}`);
+
+		// Granting the seeded administrator role opens it, with no re-login: the guard resolves
+		// effective permissions per request rather than trusting what the token was minted with.
+		await ensureSystemRoles();
+		await UserRoleAssignmentModel.create([
+			{
+				_id: `ura_${randomUUID()}`,
+				userId,
+				roleId: 'role_system_administrator',
+				assignedByUserId: null,
+				assignedAt: new Date(),
+				revokedAt: null,
+				revokedByUserId: null,
+				revokeReason: null,
+			},
+		]);
+
+		const granted = await request(jar, 'GET', '/admin/roles');
+		assert.equal(granted.statusCode, 200, `a granted admin was refused: ${granted.statusCode} ${granted.body}`);
+		assert.ok(JSON.parse(granted.body).items.length >= 1, 'role list came back empty');
+
+		await Promise.all([
+			UserRoleAssignmentModel.deleteMany({ userId }).exec(),
+			RoleModel.deleteMany({ _id: 'role_system_administrator' }).exec(),
+		]);
+	});
+
 	// Probe rows are removed explicitly, not merely isolated in their own database.
 	await models.AuthRateLimitModel.deleteMany({});
+	for (const id of probeUserIds) {
+		await models.AuthSessionModel.deleteMany({ userId: id });
+		await models.UserModel.deleteOne({ _id: id });
+	}
 	let remaining = 0;
 	for (const email of emails) {
 		const user = await models.UserModel.findOne({ email }).lean();

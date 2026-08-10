@@ -2368,6 +2368,50 @@ e2e:session-rotation` **12/12** with 0 probe rows, which is also the proof the n
   **This unblocks the admin browser E2E owed since Pass 2**, and removes the seeded-probe
   workaround the RBAC suites rely on. Next executable step: pass 6b — admin Security Settings
   with recent-password proof and PIN configure/change. Tool: claude-code.
+- 2026-08-08 — [DONE] **Admin browser E2E — the run owed since Pass 2, finally possible.**
+  Driven against the real admin app on 4300 and the real API on 4000, signed in as the
+  administrator that 6a's CLI created. No seeded probe anywhere in it.
+  **Session and storage.** The login screen renders at `/auth/login`; `localStorage` holds only
+  `setting_store` with **no token and no JWT-shaped value anywhere**, and `st_csrf` is the only
+  readable cookie — the historic admin defect confirmed gone against a real browser. Password
+  login through the FORM reaches `/dashboard`, a reload survives on cookies alone, and the
+  dashboard renders fully.
+  **The 5c surfaces, from a browser session rather than `inject()`.** `/admin/roles`,
+  `/admin/permissions` and `/auth/admin/me` all answer **200**; the authority endpoint reports
+  the `administrator` role and **33** effective permissions.
+  **Last-administrator protection in a real browser: 409.** Revoking one's own administrator
+  role is refused with `The request conflicts with the current state.`
+  **The full write path, with CSRF.** Create a role → grant it to self → read it back → revoke
+  → delete, ending **201 / 201 / 200 / 204**, with the authority endpoint showing the role
+  appear and disappear.
+  **4b and 4c proven end to end by accident, which is the best kind.** Granting a role to
+  oneself bumps `permissionsVersion`, so the very next call returned **401 with
+  `reason: permissions_changed`** — the 4b sub-code, produced by a real grant rather than a
+  fixture — and rotating recovered it exactly as 4c specifies.
+  **Expired-access recovery, twice over.** With the API restarted at `JWT_ACCESS_TTL=5s`: a
+  genuine expiry answered **401 `session_expired`**, rotation returned 200 and the replay 200.
+  Then the same thing UNATTENDED — the Angular interceptor did `/me` 401 →
+  `POST /auth/admin/refresh` 200 → `/me` 200 by itself, landing on `/dashboard` with storage
+  still clean.
+  **Logout through the MENU, which Pass 3c.5 recorded as unverified.** Hovering the profile
+  menu and clicking Log out opens a confirmation modal; confirming redirects to `/auth/login`
+  and `/me` answers **401 `session_missing`** — not `session_expired`, so the session is
+  genuinely gone rather than merely aged. A signed-out visit to `/dashboard` redirects to a
+  rendered login screen, and `/admin/roles` answers 401.
+  **Two false alarms I raised and disproved before reporting them as defects.** A bodyless
+  `DELETE` carrying `content-type: application/json` returned **400** rather than 409; sending
+  it the way a browser naturally would gives 409, so the 400 was my own call — worth noting
+  that a client which sets that header on a bodyless DELETE gets a confusing 400, but not a
+  defect in this pass. And the Log out anchor appeared to be a dead control with no attributes
+  and no effect from `.click()`; the template shows
+  `(click)="confirmationModal.openModal('')"`, so it opens a modal rather than logging out
+  directly. **Checking the source beat reporting the symptom.**
+  **Local database after the run:** 1 user, 1 role, 2 assignment rows of which 1 is active, 5
+  audit events — the grant/revoke history from the browser cycle kept as designed, nothing
+  orphaned.
+  **Still owed:** PIN login was not exercised, because the bootstrapped administrator has no
+  PIN and setting one is 6b. The 15-minute idle soft lock is 6c and does not exist yet. Tool:
+  claude-code.
 - _(append)_
 
 ---

@@ -23,6 +23,7 @@ export * from './session';
 export * from './auth';
 export * from './auth-internal';
 export * from './admin-auth';
+export * from './admin-user';
 export * from './consent';
 export * from './audit';
 export * from './notification';

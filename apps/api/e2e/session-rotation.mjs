@@ -519,6 +519,99 @@ async function main() {
 		]);
 	});
 
+	await check('escalation rules hold on the wire: no delegation above self, last admin protected', async () => {
+		const { AUTH_PORT } = await import('../dist/infra/tokens.js');
+		const { ensureSystemRoles, UserModel, RoleModel, UserRoleAssignmentModel } = models;
+		const auth = app.get(AUTH_PORT);
+		await ensureSystemRoles();
+
+		const password = 'a-very-long-probe-password';
+		const makeAdmin = async (permissions) => {
+			const email = `escalation-probe-${randomUUID()}@example.test`;
+			emails.push(email);
+			const userId = `user_${randomUUID()}`;
+			await UserModel.create([
+				{
+					_id: userId,
+					email,
+					emailNormalized: email,
+					passwordHash: await auth.hashPassword(password),
+					role: 'admin',
+					status: 'active',
+					permissions,
+					tokenVersion: 0,
+					permissionsVersion: 0,
+					emailVerifiedAt: new Date(),
+				},
+			]);
+			probeUserIds.push(userId);
+			const jar = new CookieJar();
+			const login = await request(jar, 'POST', '/auth/admin/login', { payload: { identifier: email, password } });
+			assert.equal(login.statusCode, 200, `probe admin login failed: ${login.statusCode}`);
+			return { userId, jar };
+		};
+
+		// A limited operator: may assign roles, but holds nothing else.
+		const limited = await makeAdmin(['user_role.assign', 'user_role.revoke', 'user.index', 'role.create']);
+		const victim = await makeAdmin([]);
+
+		// A role carrying a permission the actor does NOT hold.
+		const created = await request(limited.jar, 'POST', '/admin/roles', {
+			payload: {
+				key: `escalation-${randomUUID().slice(0, 8)}`,
+				label: 'Escalation',
+				baseRole: 'staff',
+				permissions: ['role.destroy'],
+			},
+		});
+		assert.equal(created.statusCode, 201, `role create failed: ${created.statusCode} ${created.body}`);
+		const escalationRoleId = JSON.parse(created.body).id;
+
+		// THE PROPERTY: granting it would hand over authority the actor does not have.
+		const escalate = await request(limited.jar, 'POST', `/admin/users/${victim.userId}/roles`, {
+			payload: { roleId: escalationRoleId },
+		});
+		assert.equal(
+			escalate.statusCode,
+			403,
+			`privilege escalation was allowed: ${escalate.statusCode} ${escalate.body}`,
+		);
+		assert.ok(!escalate.body.includes('role.destroy'), 'the refusal named the missing permission');
+
+		// The administrator role is admin-tier; granting it is refused for the same reason.
+		const grantAdmin = await request(limited.jar, 'POST', `/admin/users/${victim.userId}/roles`, {
+			payload: { roleId: 'role_system_administrator' },
+		});
+		assert.equal(grantAdmin.statusCode, 403, `admin-tier grant was allowed: ${grantAdmin.statusCode}`);
+
+		// Last-administrator protection: seed the only admin assignment, then try to remove it.
+		await UserRoleAssignmentModel.create([
+			{
+				_id: `ura_${randomUUID()}`,
+				userId: victim.userId,
+				roleId: 'role_system_administrator',
+				assignedByUserId: null,
+				assignedAt: new Date(),
+				revokedAt: null,
+				revokedByUserId: null,
+				revokeReason: null,
+			},
+		]);
+
+		const revokeLast = await request(
+			limited.jar,
+			'DELETE',
+			`/admin/users/${victim.userId}/roles/role_system_administrator`,
+		);
+		assert.equal(revokeLast.statusCode, 409, `the last administrator was revocable: ${revokeLast.statusCode}`);
+
+		await Promise.all([
+			UserRoleAssignmentModel.deleteMany({ userId: victim.userId }).exec(),
+			RoleModel.deleteMany({ _id: escalationRoleId }).exec(),
+			RoleModel.deleteMany({ _id: 'role_system_administrator' }).exec(),
+		]);
+	});
+
 	// Probe rows are removed explicitly, not merely isolated in their own database.
 	await models.AuthRateLimitModel.deleteMany({});
 	for (const id of probeUserIds) {

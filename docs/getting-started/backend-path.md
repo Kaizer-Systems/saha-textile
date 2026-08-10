@@ -3,7 +3,7 @@ title: Backend Path
 description: Onboarding route for API, contracts, domain and adapter work.
 status: scaffolded
 audience: [backend]
-last_verified: '2026-08-09'
+last_verified: '2026-08-11'
 source_of_truth:
     - apps/api/src
     - packages/core-domain/src
@@ -17,7 +17,7 @@ Use this path for NestJS controllers, contracts, domain use cases, persistence, 
 
 ## Current implementation snapshot
 
-The repository already contains an API composition root, health/auth/catalog/cart/order/currency/promotion modules, OpenAPI generation, domain ports and a Mongo adapter with models, indexes and repositories. This is a working scaffold and partial implementation—not a finished production API.
+The repository already contains an API composition root, health/auth/admin-authorization/catalog/cart/order/currency/promotion modules, OpenAPI generation, domain ports and a Mongo adapter with models, indexes and repositories. Cookie-session auth, the closed permission registry, active role assignments, deny-by-default admin authority routes and operator-only first-admin bootstrap are real, while OAuth, the admin Security Settings/idle-lock clients, guest merge and later commerce/provider workflows remain incomplete. This is a working scaffold and partial implementation—not a finished production API.
 
 The portal publishes a human-facing Scalar scaffold and a source-only 34-model MongoDB catalogue. Both expose current evidence and limitations; neither represents a complete contract. The existing framework API documentation UI is transitional and deprecated.
 

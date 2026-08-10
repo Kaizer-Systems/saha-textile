@@ -4,7 +4,7 @@ wide: true
 description: Liveness versus readiness, logging, metrics, testing layers, transaction proof, and backend definition of done.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-11'
 source_of_truth:
     - apps/api/src/health
     - apps/api/src/infra/persistence.module.ts
@@ -78,14 +78,16 @@ Avoid high-cardinality labels such as raw user id, order id, email, token, full 
 
 ## Current automated-test evidence
 
-| Package            | Present evidence                                                                                                                              | Limitation                                                                               |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `contracts`        | 154 schema tests across common/auth/permission/role/catalog/media/inventory/content/commerce families                                         | Complete operation DTO/OpenAPI wiring remains                                            |
-| `core-domain`      | 87 pricing, visibility, auth-policy, runtime-purity and port-conformance tests                                                                | No complete use-case/state-machine suites                                                |
-| Mongo adapter      | 100 opt-in integration tests across baseline, transactions, auth/RBAC, catalogue, inventory/media, governance/content and order+cart behavior | All require `RUN_DB_IT=1` and a real rs0 profile; broader HTTP/workflow adoption remains |
-| API                | 97 platform, route-contract, OpenAPI, CSRF/session, authorization and feature tests, with test files included in typecheck                    | Full live HTTP/idempotency workflow coverage remains                                     |
-| HTTP transport     | 157 framework-free policy tests for CSRF, refresh single-flight, cross-tab exclusion and refusal mapping                                      | Browser integration does not replace feature-flow coverage                               |
-| Storefront / Admin | 57 / 61 unit tests for gateways, interceptors, stores and admin routes                                                                        | Feature/page coverage remains incomplete                                                 |
+| Package            | Present evidence                                                                                                                             | Limitation                                                                              |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `contracts`        | 160 schema tests across common/auth/permission/role/admin-user/catalog/media/inventory/content/commerce families                             | Complete operation DTO/OpenAPI wiring remains                                           |
+| `core-domain`      | 98 pricing, visibility, auth-policy, effective-permission, runtime-purity and port-conformance tests                                         | No complete use-case/state-machine suites                                               |
+| Mongo adapter      | 103 tests total: 4 source-only collection-name checks plus 99 rs0-gated integration tests across transactions, auth/RBAC and domain adapters | The 99 integration checks require `RUN_DB_IT=1`; broader HTTP/workflow adoption remains |
+| API                | 131 platform, route-contract, OpenAPI, CSRF/session, role/authority and feature tests, with test files included in typecheck                 | Full live HTTP/idempotency workflow coverage remains                                    |
+| HTTP transport     | 157 framework-free policy tests for CSRF, refresh single-flight, cross-tab exclusion and refusal mapping                                     | Browser integration does not replace feature-flow coverage                              |
+| Storefront / Admin | 57 / 61 unit tests for gateways, interceptors, stores and admin routes                                                                       | Feature/page coverage remains incomplete                                                |
+
+The dedicated live security campaign adds 22 end-to-end checks for bootstrap closure, cookie sessions, audience isolation, direct-API RBAC denial, role grant/revoke, last-admin protection, offboarding, permission-version invalidation, BOLA and related negative cases. The admin browser proof separately covers password login, cookie-only reload, expiry recovery, role mutation with CSRF, `permissions_changed` recovery and menu logout. PIN login and the absent idle-lock client are not part of that browser proof.
 
 The former zero-spec Angular baseline has been superseded: both applications now test their cookie-session transport and state boundaries, and the admin also tests protected routing. These focused tests are not broad UI coverage. The backend gate still rejects permanently skipped transaction proof as a production-done state.
 

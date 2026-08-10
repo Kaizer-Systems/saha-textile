@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-09",
+	"lastVerified": "2026-08-11",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
 		"docs/engineering-live-context/project-progress.mdx"
@@ -42,8 +42,8 @@
 			"title": "Cookie-session auth, PIN, OTP & OAuth",
 			"deps": ["C"],
 			"blockingGates": [],
-			"summary": "Cookie sessions, atomic refresh rotation/reuse revocation, session-bound CSRF, storefront/admin audiences, OTP, password reset, email verification, PIN lockout, admin invites and HTTP resume, version invalidation, consent/privacy seams, order ownership and cart Principal/st_guest proof are implemented. The chunk remains partial because OAuth verification, the admin idle-lock client experience, first-administrator bootstrap, fine-grained role-assignment enforcement and guest-to-user merge are still absent.",
-			"dod": "Partial: D2 is complete and most D3–D5 mechanics are live-proven. Finish OAuth verification, the admin idle-lock experience, first-administrator bootstrap, fine-grained assignment enforcement, guest-to-user merge and broader automated HTTP authorization coverage."
+			"summary": "Cookie sessions, atomic refresh rotation/reuse revocation, session-bound CSRF, storefront/admin audiences, OTP, password reset, email verification, PIN lockout, admin invites and HTTP resume, a closed 33-code permission registry, active role-assignment resolution, deny-by-default role/permission/user-authority routes, permission-version invalidation, no-delegation and last-administrator controls, audited offboarding, operator-only first-admin bootstrap, consent/privacy seams, order ownership and cart Principal/st_guest proof are implemented. The chunk remains partial because OAuth verification, the admin Security Settings and idle-lock client experiences, real-browser PIN proof, and guest-to-user merge are still absent.",
+			"dod": "Partial: D2 is complete and most D3–D5 mechanics are live-proven. Finish OAuth verification, the admin Security Settings and 15-minute idle-lock/PIN-resume experience, browser-prove PIN login, and implement guest-to-user merge plus pending-intent continuation."
 		},
 		{
 			"id": "E",

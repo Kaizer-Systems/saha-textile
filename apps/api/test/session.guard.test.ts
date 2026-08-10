@@ -1,7 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SessionRefusal } from '../src/auth/session-refusal';
 import { AUDIENCE_KEY, SessionGuard } from '../src/auth/session.guard';
@@ -37,6 +37,19 @@ describe('SessionGuard — AuthSession sid binding', () => {
 	};
 	const sessions = {
 		findLiveById: vi.fn(),
+	};
+	/**
+	 * No assignments by default, which is the state every existing account is in. That is what
+	 * makes these suites assert the EQUIVALENCE: with nothing assigned, the guard must behave
+	 * exactly as it did before assignments existed.
+	 */
+	const roles = {
+		findById: vi.fn(),
+	};
+	const assignments = {
+		// Typed explicitly: `async () => []` infers `never[]`, so a mocked assignment would
+		// fail typecheck while vitest ran it happily.
+		listActiveForUser: vi.fn(async (): Promise<unknown[]> => []),
 	};
 
 	const liveSession = {
@@ -74,6 +87,8 @@ describe('SessionGuard — AuthSession sid binding', () => {
 			config,
 			auth as never,
 			authUsers as never,
+			roles as never,
+			assignments as never,
 			sessions as unknown as SessionService,
 		);
 
@@ -88,6 +103,8 @@ describe('SessionGuard — AuthSession sid binding', () => {
 			config,
 			auth as never,
 			authUsers as never,
+			roles as never,
+			assignments as never,
 			sessions as unknown as SessionService,
 		);
 
@@ -102,6 +119,8 @@ describe('SessionGuard — AuthSession sid binding', () => {
 			config,
 			auth as never,
 			authUsers as never,
+			roles as never,
+			assignments as never,
 			sessions as unknown as SessionService,
 		);
 
@@ -121,6 +140,8 @@ describe('SessionGuard — AuthSession sid binding', () => {
 			config,
 			auth as never,
 			authUsers as never,
+			roles as never,
+			assignments as never,
 			sessions as unknown as SessionService,
 		);
 
@@ -140,6 +161,8 @@ describe('SessionGuard — AuthSession sid binding', () => {
 				config,
 				auth as never,
 				authUsers as never,
+				roles as never,
+				assignments as never,
 				sessions as unknown as SessionService,
 			);
 
@@ -221,6 +244,120 @@ describe('SessionGuard — AuthSession sid binding', () => {
 
 			expect(foreign).toBe('session_missing');
 			expect(foreign).toBe(await reasonFrom({}));
+		});
+	});
+
+	/**
+	 * Effective permissions (auth pass 5c.2). Two sources exist during the migration from
+	 * embedded grants to explicit assignments, and the union is what makes introducing
+	 * assignments incapable of taking access away.
+	 */
+	describe('effective permissions', () => {
+		const PERMISSION_KEY = 'auth:permissions';
+
+		const guardWith = () =>
+			new SessionGuard(
+				reflector,
+				config,
+				auth as never,
+				authUsers as never,
+				roles as never,
+				assignments as never,
+				sessions as unknown as SessionService,
+			);
+
+		/** Makes the route demand a permission; everything else stays unrequired. */
+		const requiring = (...permissions: string[]) => {
+			(reflector.getAllAndOverride as ReturnType<typeof vi.fn>).mockImplementation((key: string) =>
+				key === PERMISSION_KEY ? permissions : undefined,
+			);
+		};
+
+		const staffUser = (permissions: string[]) => ({
+			id: 'user_a',
+			status: 'active',
+			role: 'staff',
+			permissions,
+			tokenVersion: 1,
+			permissionsVersion: 1,
+		});
+
+		beforeEach(() => {
+			sessions.findLiveById.mockResolvedValue(liveSession);
+			assignments.listActiveForUser.mockResolvedValue([]);
+		});
+
+		afterEach(() => {
+			(reflector.getAllAndOverride as ReturnType<typeof vi.fn>).mockImplementation(() => undefined);
+		});
+
+		/**
+		 * The cost claim. No route requires a permission today, so the common path must not
+		 * have grown two queries — the resolution is conditional, not eager.
+		 */
+		it('does not touch roles or assignments when no permission is required', async () => {
+			authUsers.findAuthStateById.mockResolvedValue(staffUser(['user.index']));
+
+			await expect(guardWith().canActivate(contextFor({ [names.access]: 'jwt' }))).resolves.toBe(true);
+
+			expect(assignments.listActiveForUser).not.toHaveBeenCalled();
+			expect(roles.findById).not.toHaveBeenCalled();
+		});
+
+		/** Equivalence: with nothing assigned, the embedded grants decide exactly as before. */
+		it('honours an embedded grant with no assignments at all', async () => {
+			authUsers.findAuthStateById.mockResolvedValue(staffUser(['user.index']));
+			requiring('user.index');
+
+			await expect(guardWith().canActivate(contextFor({ [names.access]: 'jwt' }))).resolves.toBe(true);
+		});
+
+		it('refuses when neither source grants the permission', async () => {
+			authUsers.findAuthStateById.mockResolvedValue(staffUser([]));
+			requiring('user.index');
+
+			await expect(guardWith().canActivate(contextFor({ [names.access]: 'jwt' }))).rejects.toThrow(
+				'Insufficient permissions',
+			);
+		});
+
+		it('honours a permission that only an active assignment grants', async () => {
+			authUsers.findAuthStateById.mockResolvedValue(staffUser([]));
+			assignments.listActiveForUser.mockResolvedValue([
+				{ id: 'ura_1', userId: 'user_a', roleId: 'r1', revokedAt: null },
+			]);
+			roles.findById.mockResolvedValue({ id: 'r1', baseRole: 'staff', permissions: ['user.index'] });
+			requiring('user.index');
+
+			await expect(guardWith().canActivate(contextFor({ [names.access]: 'jwt' }))).resolves.toBe(true);
+		});
+
+		/**
+		 * The escalation guard, at the layer that enforces it. A surviving admin-tier
+		 * assignment must not hand a demoted operator their old authority back.
+		 */
+		it('refuses a permission from a role above the holder’s tier', async () => {
+			authUsers.findAuthStateById.mockResolvedValue(staffUser([]));
+			assignments.listActiveForUser.mockResolvedValue([
+				{ id: 'ura_1', userId: 'user_a', roleId: 'r1', revokedAt: null },
+			]);
+			roles.findById.mockResolvedValue({ id: 'r1', baseRole: 'admin', permissions: ['role.destroy'] });
+			requiring('role.destroy');
+
+			await expect(guardWith().canActivate(contextFor({ [names.access]: 'jwt' }))).rejects.toThrow(
+				'Insufficient permissions',
+			);
+		});
+
+		it('survives an assignment whose role has been deleted', async () => {
+			authUsers.findAuthStateById.mockResolvedValue(staffUser(['user.index']));
+			assignments.listActiveForUser.mockResolvedValue([
+				{ id: 'ura_1', userId: 'user_a', roleId: 'gone', revokedAt: null },
+			]);
+			roles.findById.mockResolvedValue(null);
+			requiring('user.index');
+
+			await expect(guardWith().canActivate(contextFor({ [names.access]: 'jwt' }))).resolves.toBe(true);
 		});
 	});
 });

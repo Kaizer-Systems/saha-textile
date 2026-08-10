@@ -19,3 +19,5 @@ export const OAUTH_STATE_REPOSITORY = Symbol('OauthStateRepository');
 export const NOTIFICATION_PORT = Symbol('NotificationPort');
 export const CONSENT_REPOSITORY = Symbol('ConsentRepository');
 export const AUDIT_LOG_REPOSITORY = Symbol('AuditLogRepository');
+export const ROLE_REPOSITORY = Symbol('RoleRepository');
+export const USER_ROLE_ASSIGNMENT_REPOSITORY = Symbol('UserRoleAssignmentRepository');

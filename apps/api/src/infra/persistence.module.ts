@@ -11,6 +11,8 @@ import {
 	MongoOAuthStateRepository,
 	MongoOtpChallengeRepository,
 	MongoPasswordResetTokenRepository,
+	MongoRoleRepository,
+	MongoUserRoleAssignmentRepository,
 } from '@saha-textile/adapters-db-mongo';
 import {
 	MongoCartRepository,
@@ -38,6 +40,8 @@ import {
 	AUTH_RATE_LIMIT_REPOSITORY,
 	AUTH_SESSION_REPOSITORY,
 	AUTH_USER_REPOSITORY,
+	ROLE_REPOSITORY,
+	USER_ROLE_ASSIGNMENT_REPOSITORY,
 	EMAIL_VERIFICATION_TOKEN_REPOSITORY,
 	OAUTH_STATE_REPOSITORY,
 	NOTIFICATION_PORT,
@@ -63,6 +67,8 @@ import {
 		// Chunk D auth stores. Credential material lives behind these ports only.
 		{ provide: AUTH_SESSION_REPOSITORY, useClass: MongoAuthSessionRepository },
 		{ provide: AUTH_USER_REPOSITORY, useClass: MongoAuthUserRepository },
+		{ provide: ROLE_REPOSITORY, useClass: MongoRoleRepository },
+		{ provide: USER_ROLE_ASSIGNMENT_REPOSITORY, useClass: MongoUserRoleAssignmentRepository },
 		{ provide: OTP_CHALLENGE_REPOSITORY, useClass: MongoOtpChallengeRepository },
 		{ provide: OAUTH_STATE_REPOSITORY, useClass: MongoOAuthStateRepository },
 		{ provide: PASSWORD_RESET_TOKEN_REPOSITORY, useClass: MongoPasswordResetTokenRepository },
@@ -91,6 +97,8 @@ import {
 		TRANSACTION_MANAGER,
 		AUTH_SESSION_REPOSITORY,
 		AUTH_USER_REPOSITORY,
+		ROLE_REPOSITORY,
+		USER_ROLE_ASSIGNMENT_REPOSITORY,
 		NOTIFICATION_PORT,
 		OTP_CHALLENGE_REPOSITORY,
 		OAUTH_STATE_REPOSITORY,

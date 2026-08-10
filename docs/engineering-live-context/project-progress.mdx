@@ -2266,6 +2266,45 @@ e2e:session-rotation` **12/12** with 0 probe rows, which is also the proof the n
   first-administrator bootstrap: operator-only, idempotency-guarded, audited, no public route,
   impossible to re-run. It is what every admin browser E2E has been owed since Pass 2, and it
   removes the seeded-probe workaround these suites rely on. Tool: claude-code.
+- 2026-08-08 — [DONE] **Auth Pass 5c.6a — 5c.5 and 5c.6 fully re-verified on a healthy
+  environment, and two more harness leaks closed.** The previous run's Mongo container had
+  stopped part-way, so several results were unusable; everything they touched was redone rather
+  than assumed.
+  **Environment first.** Mongo rs0 confirmed PRIMARY. The storefront and admin dev servers were
+  down but are NOT dependencies of these passes, which are API-plus-database only — starting
+  them would have proved nothing, so they were left alone and the fact is recorded instead of
+  quietly implied.
+  **Every negative control re-run, six of six CAUGHT**, each naming the check it should: the
+  5c.5 permissions route ungated; a role route ungated; a user route ungated; `@Audience`
+  dropped; the subset rule disabled; and both revocation filters removed. Restored to **20/20**
+  afterwards.
+  **Leak one: audit rows.** The teardown reported "0 remaining" while counting USERS only.
+  **35** audit rows had accumulated across runs. Now cleared and counted — a clean run removes
+  exactly **2**, matching the two role creations that succeed, since refused operations
+  correctly write none.
+  **Leak two: email-verification tokens.** **404** of them, written one per registered probe
+  and never cleaned. Rather than keep discovering these one at a time, the teardown now
+  enumerates every collection and FAILS the run naming any that is still populated. Two leaks
+  were found only because somebody looked; the third will fail loudly instead.
+  **A second, independent cause of the intermittent 19/20.** Debris was real, but not the whole
+  story: `JWT_ACCESS_TTL` is one second so the expiry case is genuine, and the suite has grown
+  long enough that admin sessions now age out MID-CHECK — the escalation check failed with
+  `session_expired` on its own role creation. Admin calls in the RBAC checks now rotate once
+  and replay, which is exactly what both Angular interceptors do in production (4c). A 401 for
+  any other reason, and every 403, still surfaces untouched. Stable at **20/20 across three
+  consecutive runs**, then again after the sweep.
+  **Commands actually run:** `pnpm turbo run test --force` **11/11** (contracts 160,
+  http-transport 157, core-domain 98, api 131, storefront 57, admin 61) · adapter **103/103**
+  with `RUN_DB_IT=1` · `MONGODB_PORT=27018 pnpm e2e:session-rotation` **20/20** with 24 probe
+  accounts, **0** remaining, 2 audit rows removed, and the e2e database verified EMPTY by
+  enumeration · `generate:openapi` green at **59 operations across 52 paths** ·
+  `pnpm typecheck` **15/15** · `pnpm lint` **17/17** with all five guards · `pnpm format:check`
+  clean.
+  **Environment left ready.** The `administrator` system role is re-seeded in
+  `saha_textile_local` (33 permissions, 0 assignments, 0 users), and the API on port 4000 was
+  rebuilt and restarted onto the current build — it had been serving a pre-5c.3 binary.
+  `GET /admin/roles` and `GET /admin/permissions` both answer **401** anonymously on that live
+  instance.
 - _(append)_
 
 ---

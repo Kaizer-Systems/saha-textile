@@ -9,6 +9,7 @@ import type {
 	SessionAudience,
 	SessionRevokeReason,
 	UserAuthState,
+	UserStatus,
 } from '@saha-textile/contracts';
 
 /**
@@ -147,6 +148,16 @@ export interface AuthUserRepository {
 	setPinHash(userId: string, pinHash: string | null): Promise<void>;
 	setPreferredLoginMethod(userId: string, method: 'password' | 'pin'): Promise<void>;
 	markEmailVerified(userId: string, emailNormalized: string): Promise<void>;
+	/**
+	 * Sets the account lifecycle status.
+	 *
+	 * Offboarding is a status change to `disabled`, never a delete: an audit trail that can
+	 * lose its subject is not an audit trail, and a deleted row would also free the email for
+	 * re-registration by somebody else. Callers are responsible for the session consequences —
+	 * `SessionGuard` refuses a non-active account on the next request, but existing sessions
+	 * must still be revoked so nothing survives on a cached decision.
+	 */
+	setStatus(userId: string, status: UserStatus): Promise<void>;
 	/** Invalidates every existing access token for this user. */
 	bumpTokenVersion(userId: string): Promise<number>;
 	/** Invalidates every existing token's cached permission set. */

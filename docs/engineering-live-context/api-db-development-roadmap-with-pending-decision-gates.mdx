@@ -167,16 +167,21 @@ Other open decisions block only their own final policy engine. Reversible schema
   approved credentials.
 - **D4 — admin auth (partial):** password/PIN login, password recovery, PIN
   setup/lockout, invite create/list/revoke/acceptance, HTTP quick-resume, audience guards,
-  and permission-version invalidation exist. The admin idle-lock client experience,
-  first-administrator bootstrap, and fine-grained role-assignment API/enforcement remain
-  incomplete; the role and assignment persistence seam is not yet API wiring.
+  and permission-version invalidation exist. The closed 33-code permission registry,
+  active role-assignment resolution, deny-by-default role/permission/user-authority routes,
+  no-delegation-above-self, last-administrator protection, audited offboarding, and the
+  operator-only first-administrator bootstrap are implemented and negative-tested. A real
+  browser has proven password login, cookie-only reload, refresh recovery, role grant/revoke,
+  permission invalidation, last-admin refusal, and logout. The admin Security Settings client
+  for PIN configure/change, real-browser PIN-login proof, and the 15-minute idle-lock/PIN-resume
+  orchestration remain incomplete.
 - **D5 — consent, privacy, and ownership (partial):** consent history, export/erase
   seams, order-read BOLA, cart ownership/`st_guest` proof, and order-create cart
   ownership/adoption are implemented. Cart routes remain `@Public()` for guest
   add-to-cart but enforce Principal/guest-token proof in the service boundary. Guest→user
   merge, pending intents, and checkout idempotency remain Chunk G.
 
-The 2026-08-09 portal reassessment therefore retains Chunk D as **partial**. The earlier
+The 2026-08-11 portal reassessment therefore retains Chunk D as **partial**. The earlier
 “Chunk D complete” progress label describes the delivered session/auth core but does not
 satisfy the full D3–D5 boundary above.
 

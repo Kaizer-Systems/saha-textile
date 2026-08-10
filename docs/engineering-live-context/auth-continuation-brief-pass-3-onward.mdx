@@ -3,7 +3,7 @@ title: 'Authentication Continuation Brief — Pass 3 Onward'
 description: 'Context-aware handoff for continuing the storefront and admin authentication build in a new session, with verified current state, remaining passes, environment specifics, and hard-won gotchas.'
 audience: [backend, frontend, security, agent]
 document_role: canonical
-last_verified: '2026-08-02'
+last_verified: '2026-08-11'
 search_keywords: 'authentication continuation handoff pass 3 shared transport refresh single-flight rbac bootstrap oauth msg91 explain plan'
 ---
 
@@ -13,8 +13,8 @@ search_keywords: 'authentication continuation handoff pass 3 shared transport re
 `claude-code-authentication-api-db-build-prompt.mdx` (the execution contract) and
 `authentication-use-case-delivery-and-security-matrix.mdx` (the use-case/security checklist).
 
-**Written:** 2026-08-02, after Auth Passes 1, 2 and 2a–2f completed on branch
-`feat/api-db-env-secrets-sync`.
+**Written:** 2026-08-02, and reconciled 2026-08-11 after Auth Passes 3a–5c, 6a and the
+admin browser E2E completed on branch `feat/api-db-env-secrets-sync`.
 
 **Progress authority:** `project-progress.mdx`. If this brief and that file ever disagree,
 that file plus tested runtime wins.
@@ -65,8 +65,8 @@ source override stale prose; owner decisions override older architecture prose.
 5. **Never commit, stage or push** unless the owner separately asks. Check
    `git diff --cached --name-only` is empty before finishing. If a tool stages something as
    a side effect, `git reset` it.
-6. **Preserve all existing uncommitted owner changes.** Several `docs/` files carry
-   uncommitted edits; never revert them.
+6. **Preserve all existing owner and tool changes.** Inspect the working tree at the start
+   of every pass and never revert work outside the selected scope.
 7. Do not claim a check ran unless it ran and you captured the real output. Do not fabricate
    provider credentials, provider responses or E2E results.
 8. If you find a defect while testing, fix it or report it — do not leave dead client-side
@@ -80,19 +80,20 @@ in §2 of the brief, and your proposed next pass with options.
 
 ## 1. Where the work sits
 
-Branch `feat/api-db-env-secrets-sync`. Nothing committed by the agent; all work is
-uncommitted in the working tree.
+Branch `feat/api-db-env-secrets-sync`. Inspect `git status` and recent commit bodies before
+each pass; this brief does not assert that the working tree is clean or that a specific commit
+is current.
 
-| Chunk / pass                                | State                                                                                                 |
-| ------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| D1 auth persistence                         | **DONE**, and physical collection names now reconciled (Auth Pass 1)                                  |
-| D2 session lifecycle                        | **DONE**                                                                                              |
-| D3 storefront endpoints                     | **PARTIAL** — OAuth, session list/revoke, step-up, email change, guest merge, pending intents missing |
-| D4 admin auth                               | **PARTIAL** — recovery now done; bootstrap, Security Settings, session list/force-revoke missing      |
-| D5 RBAC / privacy / ownership               | **PARTIAL** — no permission registry, no `roles`/`userRoleAssignments`, no `/admin/**` RBAC routes    |
-| Auth Pass 1 — collection names              | **DONE**                                                                                              |
-| Auth Pass 2 — T0 client reconciliation      | **DONE**                                                                                              |
-| Auth Passes 2a–2f — admin password recovery | **DONE**                                                                                              |
+| Chunk / pass                                | State                                                                                                     |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| D1 auth persistence                         | **DONE**, and physical collection names now reconciled (Auth Pass 1)                                      |
+| D2 session lifecycle                        | **DONE**                                                                                                  |
+| D3 storefront endpoints                     | **PARTIAL** — OAuth, session list/revoke, step-up, email change, guest merge, pending intents missing     |
+| D4 admin auth                               | **PARTIAL** — bootstrap/RBAC APIs done; Security Settings, browser PIN proof and idle-lock client missing |
+| D5 RBAC / privacy / ownership               | **PARTIAL** — registry/assignments/admin authority and BOLA done; guest merge/pending intents missing     |
+| Auth Pass 1 — collection names              | **DONE**                                                                                                  |
+| Auth Pass 2 — T0 client reconciliation      | **DONE**                                                                                                  |
+| Auth Passes 2a–2f — admin password recovery | **DONE**                                                                                                  |
 
 ---
 
@@ -100,7 +101,7 @@ uncommitted in the working tree.
 
 ### Persistence
 
-- All **32** Mongoose schemas declare an explicit `collection` name matching the ratified
+- All **34** Mongoose schemas declare an explicit `collection` name; 31 names match the ratified
   64-node Schema Nebula graph. `packages/adapters-db-mongo/src/collection-names.ts` is the
   single declaration; `test/collection-names.test.ts` asserts every model against it and
   reads `docs/_data/instruments/schema-nebula.json` directly.
@@ -120,6 +121,13 @@ uncommitted in the working tree.
   `POST /auth/admin/password/reset`, audience-bound, with `users.pinRevalidationRequiredAt`
   suspending PIN use until a successful password login (cleared inside
   `recordSuccessfulLogin`, so no caller can skip it).
+- A closed 33-code registry, active assignment resolution and deny-by-default
+  `/admin/roles`, `/admin/permissions` and `/admin/users/**` routes are implemented.
+  No-delegation-above-self, last-administrator protection, offboarding/session revocation,
+  audit evidence and permission-version invalidation are negative-tested.
+- First-administrator bootstrap is an operator-only CLI with no HTTP route. It generates the
+  password, stores only its Argon2 hash, writes a critical actorless audit record and refuses
+  once any administrative authority exists.
 
 ### Angular clients
 
@@ -138,47 +146,48 @@ uncommitted in the working tree.
 
 ### Test counts at handoff
 
-`contracts 145` · `core-domain 36` · `api 79` · `admin 12` · `storefront 8` ·
-`adapters-db-mongo 89` (DB-gated).
+`contracts 160` · `core-domain 98` · `api 131` · `http-transport 157` · `admin 61` ·
+`storefront 57` · `adapters-db-mongo 103` (4 source-only + 99 DB-gated).
 
 ---
 
-## 3. Remaining passes — proposed, in dependency order
+## 3. Pass status and remaining work — dependency order
 
 Each is sized to be one small pass. Confirm the choice with the owner before starting.
 
-| #      | Pass                                                                                                                                                       | Notes                                                                                                                     |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| **3a** | Create workspace package for the shared transport primitive (framework-free policy: CSRF token contract, refresh single-flight coordinator, error mapping) | New package = real build-integration risk in Analog/Vite SSR and the admin's `strict:false` tsconfig. Do this ALONE.      |
-| **3b** | Consume the package from both Angular interceptors; delete the duplicated `core/auth/csrf-cookie.ts` in each app                                           | Behaviour-preserving refactor. Keep `check:browser-auth` green.                                                           |
-| **3c** | Refresh single-flight + 401 recovery                                                                                                                       | `TODO(auth pass 3)` markers already sit in both interceptors. Concurrent 401s must trigger ONE rotation.                  |
-| **3d** | Wire `@saha-textile/contracts` into both apps; replace hand-written wire DTOs in the gateways                                                              | Neither app consumes ANY workspace package today. Check bundle size impact — contracts pulls Zod.                         |
-| **4**  | Route/contract family categorization; retire dead legacy API guards; stable OpenAPI tags + operation IDs                                                   | Dead files: `apps/api/src/auth/{jwt-auth.guard,roles.guard,roles.decorator,current-user.decorator}.ts` — zero references. |
-| **5a** | Canonical permission registry with stable codes                                                                                                            | `RequirePermissions` exists but **no route uses it**. Deny-by-default is not met yet.                                     |
-| **5b** | `roles` + `userRoleAssignments` collections, repositories, unique active-assignment index                                                                  | Both are locked Schema Nebula nodes; neither exists.                                                                      |
-| **5c** | `/admin/roles/**`, `/admin/permissions/**`, `/admin/users/**` + escalation/BOLA/TOCTOU tests                                                               | Last-admin protection, no-delegation-above-self, permission-version invalidation.                                         |
-| **6a** | First-administrator bootstrap — operator-only, idempotency-guarded, audited, no public route, impossible to re-run                                         | **Blocks real admin E2E.** Nothing can create the first admin today.                                                      |
-| **6b** | Admin Security Settings (recent-password proof) + PIN configure/change                                                                                     | Partially exists (`POST /auth/admin/pin`); needs the settings surface.                                                    |
-| **6c** | Admin 15-minute idle soft lock + PIN quick-resume UX                                                                                                       | `POST /auth/admin/resume` exists server-side; the client overlay does not. Must never queue mutations.                    |
-| **7**  | Split `authIdentities` / `passwordCredentials` / `pinCredentials` out of the embedded user document                                                        | Locked target model; currently embedded on `users`. Migration + tests.                                                    |
-| **8**  | Google + Meta verifier adapters with fixture/contract tests                                                                                                | `OAuthStateRepository` and the collection already exist. Real E2E credential-gated.                                       |
-| **9**  | MSG91 notification adapter with fixture tests                                                                                                              | Console adapter is the current `NotificationPort`. Real delivery credential-gated.                                        |
-| **10** | Scale fixtures (1,000 products / 10,000 orders / multi-year audit) + `explain('executionStats')` suite                                                     | Must prove intended index use, not `COLLSCAN`, at seeded scale.                                                           |
-| **11** | Security-negative campaign + OpenAPI/KB reconciliation + final verification                                                                                | The matrix's negative-test list is the checklist.                                                                         |
+| #      | Pass                                                                                                   | Notes                                                                                                              |
+| ------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| **3a** | Shared framework-free transport policy package                                                         | **DONE** — CSRF, refresh coordination, refusal and request policy shared by both clients.                          |
+| **3b** | Consume the shared transport from both Angular applications                                            | **DONE** — duplicated transport primitives retired.                                                                |
+| **3c** | Refresh single-flight + 401 recovery                                                                   | **DONE** — stable refusal mapping and cross-tab exclusion are implemented and tested.                              |
+| **3d** | Consume selected shared contracts in both client gateways                                              | **DONE** — contract alignment is mechanically checked without shipping server-only secrets.                        |
+| **4**  | Route/contract categorization, legacy-guard retirement, stable OpenAPI ids/tags and refusal reasons    | **DONE** — bearer guards retired and 59 operations have explicit stable ids.                                       |
+| **5a** | Canonical permission registry with stable codes                                                        | **DONE** — 33 codes, typed route declarations and a justified server-only subset.                                  |
+| **5b** | `roles` + `userRoleAssignments` collections, repositories and unique active-assignment index           | **DONE** — explicit physical names and rs0 proof.                                                                  |
+| **5c** | `/admin/roles/**`, `/admin/permissions/**`, `/admin/users/**` plus escalation/BOLA/TOCTOU tests        | **DONE** — effective assignments, deny-by-default, no-delegation, last-admin/offboarding and direct-API negatives. |
+| **6a** | First-administrator bootstrap — operator-only, audited, no public route, impossible to re-run          | **DONE** — CLI and real admin browser sign-in/authority proof.                                                     |
+| **6b** | Admin Security Settings (recent-password proof) + PIN configure/change                                 | Partially exists (`POST /auth/admin/pin`); needs the settings surface.                                             |
+| **6c** | Admin 15-minute idle soft lock + PIN quick-resume UX                                                   | `POST /auth/admin/resume` exists server-side; the client overlay does not. Must never queue mutations.             |
+| **7**  | Split `authIdentities` / `passwordCredentials` / `pinCredentials` out of the embedded user document    | Locked target model; currently embedded on `users`. Migration + tests.                                             |
+| **8**  | Google + Meta verifier adapters with fixture/contract tests                                            | `OAuthStateRepository` and the collection already exist. Real E2E credential-gated.                                |
+| **9**  | MSG91 notification adapter with fixture tests                                                          | Console adapter is the current `NotificationPort`. Real delivery credential-gated.                                 |
+| **10** | Scale fixtures (1,000 products / 10,000 orders / multi-year audit) + `explain('executionStats')` suite | Must prove intended index use, not `COLLSCAN`, at seeded scale.                                                    |
+| **11** | Security-negative campaign + OpenAPI/KB reconciliation + final verification                            | The matrix's negative-test list is the checklist.                                                                  |
 
 ### Carried debt that is not a pass of its own
 
 - **PIN refusal sub-code.** `HttpExceptionFilter` replaces every `401` with the generic
   `unauthorized` envelope, so the admin UI cannot distinguish wrong PIN / brute-force lock /
   post-reset suspension. Needs a stable machine-readable sub-code. Fold into pass 4 or 6.
-- **Admin browser E2E** is owed from Pass 2 — the Browser pane failed mid-session. Blocked
-  in practice until 6a exists.
+- **Admin browser E2E** is complete for password login, cookie-only reload, expiry recovery,
+  role mutation, permission invalidation, last-admin refusal and logout. PIN login remains
+  intentionally owed to 6b, and idle lock remains 6c.
 - **Storefront global error interceptor** logs the expected anonymous `/me` 401 as an error.
   Cosmetic noise; fold into 3c.
 - **Guest→user cart merge, pending intents, checkout idempotency** are Chunk G, not auth.
-- **Schema Nebula star promotion.** `apps/developer-portal/plugins/portal-data/compiler.js`
-  still hard-codes `SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 8` and an exclusion list whose
-  stated reason (lowercase Mongoose defaults) is now obsolete. **Portal work — not yours.**
+- **Schema Nebula reconciliation is complete.** It remains 64 nodes / 31 graph-backed
+  current / 33 target; `authRateLimits`, `productQuestions` and `ratingAggregates` stay
+  current catalogue evidence outside the fixed graph.
 
 ---
 
@@ -203,7 +212,7 @@ Each is sized to be one small pass. Confirm the choice with the owner before sta
 2. **Turbo caches tests.** Use `pnpm turbo run test --force` for a real run.
 3. **Adapter integration tests are opt-in:**
    `MONGODB_PORT=27018 RUN_DB_IT=1 pnpm --filter @saha-textile/adapters-db-mongo test`.
-   Without those vars 85 of 89 silently skip.
+   Without those vars the 99 rs0 tests skip; four source-only collection checks still run.
 4. **`apps/api` `pnpm start` runs `node dist/main.js`.** Always `pnpm --filter
 @saha-textile/api build` before probing, or you will measure a stale `dist`.
 5. **Angular apps have no Node types, correctly.** A test needing `node:fs` cannot live in
@@ -216,14 +225,13 @@ Each is sized to be one small pass. Confirm the choice with the owner before sta
 8. **CSRF on probes:** an unsafe request carrying session cookies needs the `x-csrf-token`
    header matching the readable `st_csrf` cookie, or you get `403` and will misread it as an
    auth failure. Read it with `awk '/st_csrf/{print $7}' cookiejar.txt`.
-9. **Every 401 looks the same to a client** (see PIN sub-code above). Do not write
-   client-side branching on 401 detail — it will be dead code.
-10. **There is no first-admin bootstrap.** To probe admin flows, insert a user document
-    directly with `role: "admin"`, `status: "active"`. For a reset-token probe, derive the
-    hash yourself: `HMAC-SHA256(token, pepper)` where
-    `pepper = CSRF_SECRET || JWT_REFRESH_SECRET` from `apps/api/.env`. Never print the
-    secret. **Always delete probe rows afterwards** and confirm `users` count returns to its
-    prior value.
+9. **Session 401s can carry a stable refusal reason.** Clients may recover only the documented
+   session states; credential failures such as a wrong PIN remain generic and must not become
+   an enumeration channel.
+10. **Use the first-admin operator CLI, never direct database inserts.** Run
+    `pnpm --filter @saha-textile/api bootstrap:first-admin -- --email <approved-address>`
+    from a trusted operator shell. It prints the generated password once and refuses when an
+    administrator already exists; do not capture the password in documentation, logs or source.
 11. **`rm -rf` is blocked by the permission classifier.** Use `git rm`, then `git reset` to
     unstage — `git rm` stages the deletion, and staging is not allowed here.
 12. **`check-browser-auth.mjs` strips comments before matching**, so documenting a forbidden

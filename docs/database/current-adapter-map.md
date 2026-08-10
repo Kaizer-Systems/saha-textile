@@ -4,7 +4,7 @@ description: Verified Mongoose models, indexes, repositories, mappers, seed tool
 search_keywords: 'mongo rs0 replica set connection uri directConnection models indexes repositories'
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-11'
 source_of_truth:
     - packages/adapters-db-mongo/src/models
     - packages/adapters-db-mongo/src/repositories
@@ -28,8 +28,8 @@ The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps,
 | Family                   | Physical collections                                                                                                               | Current evidence boundary                                                                                                                                                 |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Original seven           | `categories`, `products`, `promotions`, `orders`, `currencies`, `carts`, `users`                                                   | Existing catalogue/commerce APIs; product lifecycle/indexes, cart/`st_guest` ownership and order+cart transactional create are current; checkout idempotency remains open |
-| Auth seven               | `authSessions`, `otpChallenges`, `oauthStates`, `passwordResetTokens`, `emailVerificationTokens`, `adminInvites`, `authRateLimits` | Session/OTP/reset/PIN/RBAC flows use these stores; OAuth callback and broader admin user management remain open                                                           |
-| Authorization            | `roles`, `userRoleAssignments`                                                                                                     | Repositories and unique active-assignment index are rs0-proven; API authorization has not adopted them                                                                    |
+| Auth seven               | `authSessions`, `otpChallenges`, `oauthStates`, `passwordResetTokens`, `emailVerificationTokens`, `adminInvites`, `authRateLimits` | Session/OTP/reset/PIN/RBAC flows use these stores; OAuth callback remains open                                                                                            |
+| Authorization            | `roles`, `userRoleAssignments`                                                                                                     | Repositories/indexes are rs0-proven and API-bound for role/permission/user-authority administration                                                                       |
 | Privacy                  | `consentEvents`                                                                                                                    | Consent history and privacy request seams are API-bound                                                                                                                   |
 | Catalogue/merchandising  | `categoryPlacements`, `categoryFacetConfigs`, `attributeDefinitions`, `productVariants`, `productBundles`, `productRelations`      | Tested repositories exist; broad HTTP catalogue-management adoption remains open                                                                                          |
 | Media/inventory          | `mediaAssets`, `inventoryLedger`, `inventoryCostLayers`                                                                            | Tested repository/index behavior exists; business workflow adoption remains open                                                                                          |
@@ -44,7 +44,7 @@ The generated catalogue confirms all 34 physical names directly from Mongoose me
 
 ## Current repository inventory
 
-Repository adapters cover the original domain stores plus auth, authorization roles/assignments, consent, catalogue structure, merchandising, inventory, media, governance and content. Auth adapters are bound into session/OTP/reset/verification/invite/admin flows; role-assignment and catalogue/media/inventory/governance/content adapters are tested capabilities whose wider HTTP workflows remain incomplete.
+Repository adapters cover the original domain stores plus auth, authorization roles/assignments, consent, catalogue structure, merchandising, inventory, media, governance and content. Auth adapters are bound into session/OTP/reset/verification/invite/admin flows. Role and assignment adapters now drive effective-permission resolution and the deny-by-default admin role/authority APIs; catalogue/media/inventory/governance/content adapters remain tested capabilities whose wider HTTP workflows are incomplete.
 
 ### Common pattern
 
@@ -116,15 +116,15 @@ Definition in `docker/mongo/docker-compose.yml`. The canonical host port is `270
 - INR and USD currency records;
 - one color-scoped promotion.
 
-The seed is useful for early schema tests. It is not a complete domain seed: multi-placement categories, semantic option roles, named add-on saree behavior, bundle/composite, search dictionary, admin bootstrap, sessions, payments, inventory, and operational records remain absent.
+The seed is useful for early schema tests. It is not a complete domain seed: multi-placement categories, semantic option roles, named add-on saree behavior, bundle/composite, search dictionary, sessions, payments, inventory, and operational records remain absent. First-administrator creation deliberately lives in the separate operator-only bootstrap CLI rather than general seed data.
 
 ## Existing integration test
 
-The 100 gated adapter tests connect to rs0 and cover baseline repositories, transaction behavior, auth and RBAC persistence, catalogue structure/merchandising, inventory/media, governance/content and order+cart transactional create. They run only when `RUN_DB_IT=1` and Mongo configuration is present.
+The Mongo package has 103 tests: four source-only collection-name checks and 99 integration tests that connect to rs0 for baseline repositories, transaction behavior, auth and RBAC persistence, catalogue structure/merchandising, inventory/media, governance/content and order+cart transactional create. The integration group runs only when `RUN_DB_IT=1` and Mongo configuration is present.
 
 Limitations:
 
-- normal runs skip the suite (it requires `RUN_DB_IT=1` and Mongo configuration);
+- normal runs execute the four source-only checks and skip the 99 rs0 tests (they require `RUN_DB_IT=1` and Mongo configuration);
 - the suite does not start the replica set itself — bring it up first with `pnpm mongo:up`;
 - it does not exercise indexes/uniqueness broadly;
 - six transaction tests prove commit, rollback after a successful write, error propagation, return values, nested-session joining, and inner-failure rollback of outer writes;

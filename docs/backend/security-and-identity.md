@@ -5,9 +5,11 @@ description: Current authentication scaffold, ratified browser-session architect
 search_keywords: 'cookies csrf st_access st_refresh otp msg91 jwt session bola audiences pin'
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-11'
 source_of_truth:
     - apps/api/src/auth
+    - apps/api/src/admin
+    - apps/api/src/first-admin.ts
     - apps/api/src/orders/orders.controller.ts
     - apps/api/src/privacy/privacy.controller.ts
     - apps/api/src/cart/cart.controller.ts
@@ -33,7 +35,7 @@ source_of_truth:
 
 # Security, sessions, and authorization
 
-Security status is **scaffolded** because the implemented session foundation is not yet a complete identity system. Browser auth uses audience-bound httpOnly access/refresh cookies, opaque refresh rotation with reuse-triggered family revocation, AuthSession `sid` checks so logout/family revoke invalidate access JWTs immediately, session-bound double-submit CSRF (Policy B preserve-or-recover on `GET /auth/csrf`), current-user/version checks, role/permission enforcement, cart/`st_guest` ownership and order ownership. Strict credentialed CORS, Helmet, trusted client-IP rate limiting, per-request correlation, adapter-level log redaction, and the shared safe error envelope also exist. Remaining gaps include OAuth, the admin idle-lock client, first-administrator bootstrap, fine-grained role-assignment API/enforcement, guest→user merge, fail-closed production secret validation, and provider-backed delivery.
+Security status is **scaffolded** because the implemented session and authorization foundation is not yet a complete identity system. Browser auth uses audience-bound httpOnly access/refresh cookies, opaque refresh rotation with reuse-triggered family revocation, AuthSession `sid` checks so logout/family revoke invalidate access JWTs immediately, session-bound double-submit CSRF (Policy B preserve-or-recover on `GET /auth/csrf`), current-user/version checks, role/permission enforcement, cart/`st_guest` ownership and order ownership. The admin boundary now includes a closed 33-code registry, active assignment resolution, permission-gated role and user-authority routes, no-delegation-above-self, last-administrator protection, offboarding/session revocation and an operator-only first-admin bootstrap. Strict credentialed CORS, Helmet, trusted client-IP rate limiting, per-request correlation, adapter-level log redaction, and the shared safe error envelope also exist. Remaining gaps include OAuth, the admin Security Settings and idle-lock clients, browser PIN proof, guest→user merge, fail-closed production secret validation, provider-backed delivery, and granular-permission migration for older privileged routes.
 
 ## Authentication versus authorization
 
@@ -58,8 +60,8 @@ sequenceDiagram
     API->>AuthPort: verifyPassword
     API->>SessionStore: persist refresh family + CSRF hash
     API->>AuthPort: sign short-lived access JWT
-    API-->>Browser: httpOnly access/refresh + readable CSRF cookies; sanitized JSON
-    Browser->>API: cookies; X-CSRF-Token on unsafe requests
+    API-->>Browser: httpOnly access/refresh + readable CSRF cookies and sanitized JSON
+    Browser->>API: cookies and X-CSRF-Token on unsafe requests
 ```
 
 Important current gaps:
@@ -68,7 +70,7 @@ Important current gaps:
 - registration and password flows use shared 12-character schemas, but the common-password denylist remains absent;
 - OTP request/verify is live through `NotificationPort`, but the bound `ConsoleNotificationAdapter` is a safe development seam rather than MSG91 delivery;
 - email-verification issuance, completion and resend are live; OAuth state persistence exists without provider/callback verification routes;
-- admin password recovery, password/PIN login, PIN setup/lockout, invite lifecycle and HTTP resume are live; the idle-lock client, first-admin bootstrap and fine-grained role-assignment enforcement are absent;
+- admin password recovery, password/PIN login, PIN setup/lockout, invite lifecycle, HTTP resume, first-admin bootstrap and fine-grained assignment enforcement on the admin management surfaces are live; the Security Settings and idle-lock clients plus real-browser PIN proof are absent;
 - consent/privacy, order ownership, cart Principal/`st_guest` ownership and order-create cart adoption are live; guest→user merge and checkout idempotency remain Chunk G;
 - production configuration still needs a fail-closed secret check.
 
@@ -76,12 +78,12 @@ Important current gaps:
 
 Chunk D1's tested stores are bound into the HTTP flow. The current adapter suite also proves atomic refresh rotation, replay lookup, family revocation, one-active OTP handling, single-use token consumption, concurrency-safe rate-limit counters, role-assignment uniqueness, secret-field exclusion, and TTL policy against rs0.
 
-| Pass | Current evidence                                                                                                                                                               | Remaining boundary                                                              |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| D2   | **Done:** cookie issue/refresh/revoke, sid-bound access invalidation, reuse-family revocation, session-bound CSRF (Policy B) and storefront/admin audience guards              | None in the defined D2 scope                                                    |
-| D3   | **Partial:** register, password login/logout/me/refresh, password reset, email verification/resend, and email OTP request/verify use generic anti-enumeration where applicable | OAuth provider verification                                                     |
-| D4   | **Partial:** admin recovery, password/PIN login, PIN setup/lockout, invite lifecycle, HTTP resume, audience checks and permission-version invalidation                         | Idle-lock client, first-admin bootstrap and fine-grained assignment enforcement |
-| D5   | **Partial:** consent/privacy, order BOLA, cart/`st_guest` ownership and order-create cart adoption                                                                             | Guest→user merge (Chunk G)                                                      |
+| Pass | Current evidence                                                                                                                                                                                                                            | Remaining boundary                                                                                                                |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| D2   | **Done:** cookie issue/refresh/revoke, sid-bound access invalidation, reuse-family revocation, session-bound CSRF (Policy B) and storefront/admin audience guards                                                                           | None in the defined D2 scope                                                                                                      |
+| D3   | **Partial:** register, password login/logout/me/refresh, password reset, email verification/resend, and email OTP request/verify use generic anti-enumeration where applicable                                                              | OAuth provider verification                                                                                                       |
+| D4   | **Partial:** admin recovery, password/PIN login, PIN setup/lockout, invites, HTTP resume, bootstrap, registry-backed assignments, deny-by-default admin management, no-delegation, last-admin/offboarding controls and version invalidation | Security Settings client, browser PIN proof, idle-lock/PIN-resume orchestration and granular migration of older privileged routes |
+| D5   | **Partial:** consent/privacy, order BOLA, cart/`st_guest` ownership and order-create cart adoption                                                                                                                                          | Guest→user merge (Chunk G)                                                                                                        |
 
 ## Browser session architecture
 
@@ -94,12 +96,12 @@ sequenceDiagram
     Browser->>API: Login credentials / verified provider token
     API->>API: Validate policy and audience
     API->>SessionStore: Create session + refresh-family hash
-    API-->>Browser: Set httpOnly access + refresh cookies; readable bound CSRF cookie
+    API-->>Browser: Set httpOnly access + refresh cookies and readable bound CSRF cookie
     Browser->>API: Unsafe request + cookies + X-CSRF-Token
     API->>API: Check origin/fetch metadata, access audience, CSRF, permission, resource
     API-->>Browser: Actor-safe response
     Browser->>API: Refresh with opaque cookie
-    API->>SessionStore: Rotate atomically; detect reuse
+    API->>SessionStore: Rotate atomically and detect reuse
     API-->>Browser: New cookie pair or revoke family
 ```
 
@@ -156,13 +158,26 @@ Repeat this pattern for carts, addresses, returns, refunds, wishlist, saved item
 
 ## Role versus permission
 
-The current guard accepts `customer | staff | admin` roles, enforces explicit permissions when a route declares them, and compares token/permission versions with current user state on each guarded request.
+The current guard accepts `customer | staff | admin` roles, enforces explicit permissions when a route declares them, and compares token/permission versions with current user state on each guarded request. It resolves effective permissions from the user's transitional embedded grants and active role assignments, ignores revoked/dangling assignments, and refuses contributions above the user's coarse-role tier. Routes with no `@RequirePermissions` declaration do not trigger assignment resolution.
 
 - Role groups permissions.
 - Permission authorizes an action such as `orders.status.update`.
 - Resource policy checks the specific order/entity and legal transition.
 - UI hiding is convenience only.
 - Every privileged write produces an audit event.
+
+### Current admin authority controls
+
+- `GET /admin/permissions` publishes the compile-time closed 33-code registry; clients cannot mint free-form privileges.
+- `/admin/roles` CRUD is admin-audience and permission-gated; system roles cannot be edited or deleted.
+- `/admin/users/:userId/authority` returns server-resolved roles and effective permissions.
+- Role grants cannot exceed the actor's tier or permission set.
+- Revoking or disabling the last administrator is refused, as is self-disable.
+- Offboarding bumps token version and revokes every session.
+- Assignment/role mutations write security-retention audit evidence and invalidate affected permission versions.
+- The operator-only bootstrap creates the first administrator with a generated one-time password, records a critical actorless audit event, exposes no HTTP route, and refuses once administrative authority exists.
+
+The 22-check live security campaign proves direct-API denial, audience isolation, BOLA, no-delegation, last-admin protection, offboarding and permission-version behavior. A real admin browser separately proves password login, cookie-only reload, CSRF-protected role grant/revoke, `permissions_changed` recovery, expiry recovery and logout. It does not yet prove PIN login or the unimplemented idle-lock client.
 
 ## Password, PIN, and OTP policies
 

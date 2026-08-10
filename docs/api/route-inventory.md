@@ -4,13 +4,15 @@ wide: true
 description: Verified controller routes, present controls, missing production guarantees, and target ownership.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-11'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts
     - apps/api/src/config/app-config.ts
     - apps/api/src/health
     - apps/api/src/auth
+    - apps/api/src/admin
+    - apps/api/src/first-admin.ts
     - apps/api/src/privacy
     - apps/api/src/catalog
     - apps/api/src/cart
@@ -28,7 +30,7 @@ source_of_truth:
 
 # Current API route inventory
 
-This inventory describes controller code reviewed on 2026-08-09. It is not a production API promise. “Present control” means code exists; “missing guarantee” names the proof still required.
+This inventory describes controller code reviewed on 2026-08-11. It is not a production API promise. “Present control” means code exists; “missing guarantee” names the proof still required.
 
 ## Runtime and contract routes
 
@@ -68,17 +70,36 @@ This inventory describes controller code reviewed on 2026-08-09. It is not a pro
 | `GET`    | `/auth/admin/me`              | Admin audience, staff/admin role, sanitized response and current permissions | OpenAPI declares no security requirement  |
 | `POST`   | `/auth/admin/password/forgot` | Generic recovery acknowledgement                                             | Provider delivery remains an adapter seam |
 | `POST`   | `/auth/admin/password/reset`  | Single-use reset; version bump and session revocation                        | OpenAPI omits side effects                |
-| `POST`   | `/auth/admin/invites`         | Privileged invite issue with transactional audit evidence                    | Fine-grained assignment wiring is absent  |
+| `POST`   | `/auth/admin/invites`         | Privileged invite issue with transactional audit evidence                    | Still role-gated rather than granular     |
 | `GET`    | `/auth/admin/invites`         | Privileged sanitized invite inventory                                        | Pagination is not yet represented         |
 | `DELETE` | `/auth/admin/invites/:id`     | Privileged revocation                                                        | OpenAPI omits permission/error schemas    |
-| `POST`   | `/auth/admin/invites/accept`  | Single-use invite acceptance and credential establishment                    | First-admin bootstrap remains absent      |
+| `POST`   | `/auth/admin/invites/accept`  | Single-use invite acceptance and credential establishment                    | Provider delivery remains an adapter seam |
 | `POST`   | `/auth/admin/resume`          | Current admin session plus PIN revalidation                                  | Angular idle-lock orchestration is absent |
 
 Access and refresh credentials are cookie-only. The global `SessionGuard` protects by default, checks audience plus token/permission versions, and routes opt out explicitly with `@Public()`. Session establishment/refresh writes the readable CSRF cookie whose value must be echoed in `x-csrf-token` for unsafe cookie requests; the guard also verifies its hash belongs to that session.
 
 `GET /auth/csrf` returns a 32-byte token in the body and readable cookie. For an active session it preserves a valid bound token or atomically rotates `csrfSecretHash` to recover a missing/desynchronized cookie; before login it issues an unbound acquisition token. OpenAPI declares the cookie scheme but still omits per-operation security requirements.
 
-Chunk D is therefore partial: D2 is done; D3 lacks OAuth verification; D4 lacks the admin idle-lock client, first-admin bootstrap and fine-grained assignment enforcement; D5 has consent/privacy, order BOLA, cart Principal/`st_guest` ownership and order-create cart adoption, while guest→user merge remains Chunk G.
+### Admin authorization routes
+
+Every route below requires an admin-audience session and a named registry permission. Effective permissions are resolved from the transitional embedded grants plus active role assignments, capped by the account's coarse role tier.
+
+| Method   | Route                                | Present control                                                                  | Current boundary/gap                                 |
+| -------- | ------------------------------------ | -------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `GET`    | `/admin/permissions`                 | `permission.index`; publishes the closed 33-code registry                        | OpenAPI omits the permission requirement             |
+| `GET`    | `/admin/roles`                       | `role.index`; lists role definitions                                             | OpenAPI omits the permission requirement             |
+| `GET`    | `/admin/roles/:id`                   | `role.index`; reads one role                                                     | OpenAPI omits response/error schemas                 |
+| `POST`   | `/admin/roles`                       | `role.create`; validates registry grants and audits creation                     | OpenAPI omits body/CSRF/permission semantics         |
+| `PATCH`  | `/admin/roles/:id`                   | `role.update`; system roles immutable; permission edits invalidate holders       | Complete atomic invalidation policy remains explicit |
+| `DELETE` | `/admin/roles/:id`                   | `role.destroy`; system roles protected; holders invalidated; delete audited      | OpenAPI omits conflict/audit semantics               |
+| `GET`    | `/admin/users/:userId/authority`     | `user.index`; returns roles plus server-resolved effective permissions           | Admin management UI has not adopted the endpoint     |
+| `POST`   | `/admin/users/:userId/roles`         | `user_role.assign`; refuses tiers or grants above the actor; audited             | Admin management UI has not adopted the endpoint     |
+| `DELETE` | `/admin/users/:userId/roles/:roleId` | `user_role.revoke`; last-administrator protection; audited                       | Admin management UI has not adopted the endpoint     |
+| `PATCH`  | `/admin/users/:userId/status`        | `user.update`; refuses self-disable/last-admin loss; revokes offboarded sessions | Admin management UI has not adopted the endpoint     |
+
+The first administrator is created through an operator-only CLI, not HTTP. It generates a password once, stores only its Argon2 hash, writes a critical audit event with no fabricated actor, and refuses to run when any administrative authority already exists.
+
+Chunk D is therefore partial: D2 is done; D3 lacks OAuth verification; D4 now includes bootstrap and fine-grained assignment enforcement for the new admin management surfaces but still lacks the Security Settings client, real-browser PIN-login proof, and idle-lock/PIN-resume orchestration; D5 has consent/privacy, order BOLA, cart Principal/`st_guest` ownership and order-create cart adoption, while guest→user merge remains Chunk G.
 
 ## Privacy routes
 
@@ -131,7 +152,7 @@ Target cart routes resolve “my cart” from secure identity rather than accept
 | ------- | -------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | `POST`  | `/orders`            | Cookie session, cart ownership/adoption, transactional order save + cart consume | No quote, idempotency, stock/payment/shipping/tax side effects              |
 | `GET`   | `/orders`            | Cookie session and principal-scoped list                                         | Pagination bounds/response DTO/OpenAPI security semantics                   |
-| `GET`   | `/orders/:id`        | Customer ownership; staff/admin bypass; 404 on mismatch                          | Automated HTTP BOLA coverage remains thin                                   |
+| `GET`   | `/orders/:id`        | Customer ownership; staff/admin bypass; 404 on mismatch; direct API BOLA proof   | The wider owned-resource matrix remains incomplete                          |
 | `PATCH` | `/orders/:id/status` | Admin/staff role + cookie-session CSRF                                           | No explicit admin audience, permission, transition policy, version or audit |
 
 The order service now saves the order and consumes the proven-owned cart inside one `TransactionManagerPort` unit of work, with rs0 commit/rollback integration proof. That atomic pair does not yet make this a production checkout: retry deduplication, stock reservation, payment/shipping/tax work, immutable complete snapshots, audit and outbox side effects remain absent.

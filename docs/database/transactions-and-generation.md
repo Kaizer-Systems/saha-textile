@@ -4,7 +4,7 @@ wide: true
 description: Atomic-write design, replica-set verification, current source-generated catalogue, and target-completeness requirements.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-11'
 source_of_truth:
     - packages/adapters-db-mongo/src
     - packages/adapters-db-mongo/scripts/generate-catalogue.ts
@@ -107,7 +107,7 @@ Never assume a Mongoose schema edit automatically migrates historical documents.
 
 ## Current generated catalogue
 
-The composite portal publishes a source-only **Schema Observatory** at `/database/catalogue/`. The deterministic 2026-08-09 regeneration imports every exported Mongoose model without opening a connection and measures:
+The composite portal publishes a source-only **Schema Observatory** at `/database/catalogue/`. The deterministic 2026-08-11 regeneration imports every exported Mongoose model without opening a connection and measures:
 
 - 34 current models;
 - 424 schema paths;

@@ -4,11 +4,13 @@ wide: true
 description: Storefront sessions, OTP/OAuth, account boundaries, admin authorization, soft lock, and draft recovery.
 status: planned
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-11'
 source_of_truth:
     - apps/storefront/src/app/pages/auth
     - apps/admin/src/app/features/auth
     - apps/api/src/auth
+    - apps/api/src/admin
+    - apps/api/src/first-admin.ts
     - packages/contracts/src/auth.ts
     - packages/contracts/src/auth-internal.ts
     - packages/contracts/src/admin-auth.ts
@@ -19,7 +21,7 @@ source_of_truth:
 
 # Identity, account, and admin resume
 
-The API executes cookie-session auth: storefront registration/password/OTP login, logout, refresh, password reset, email verification and `me`; admin recovery, password/PIN login, PIN setup/lockout, invite lifecycle, HTTP resume, logout, refresh and `me`; audience separation; permission-version invalidation; and rotating persisted refresh families. Responses are sanitized and reusable credentials stay in httpOnly cookies. Both Angular applications consume that session through one typed auth gateway each, with no browser-held token. The shared transport implements CSRF acquisition, per-tab refresh single-flight, cross-tab rotation exclusion, deterministic refusal handling and loop prevention. The admin idle soft-lock overlay, first-admin bootstrap, fine-grained role assignment enforcement and protected deep-link continuation remain incomplete.
+The API executes cookie-session auth: storefront registration/password/OTP login, logout, refresh, password reset, email verification and `me`; admin recovery, password/PIN login, PIN setup/lockout, invite lifecycle, HTTP resume, logout, refresh and `me`; audience separation; permission-version invalidation; and rotating persisted refresh families. Admin authority additionally uses a closed permission registry, active role assignments, deny-by-default management routes, no-delegation/last-admin/offboarding controls and an operator-only first-admin bootstrap. Responses are sanitized and reusable credentials stay in httpOnly cookies. Both Angular applications consume the session through one typed auth gateway each, with no browser-held token. The shared transport implements CSRF acquisition, per-tab refresh single-flight, cross-tab rotation exclusion, deterministic refusal handling and loop prevention. The admin Security Settings and idle soft-lock clients, real-browser PIN proof, granular adoption by older privileged routes, and protected deep-link continuation remain incomplete.
 
 ## Storefront methods
 
@@ -61,7 +63,7 @@ Addresses, order history, wishlists, reviews, saved-for-later items, notificatio
 
 ## Admin authentication
 
-Admin/staff password and PIN login accept email-or-username, and the global guard enforces audience, role, declared permissions, and current permission versions. Password recovery, invite create/list/revoke/acceptance and authenticated HTTP resume are exposed. Self-registration and social login are not admin launch methods; role-assignment persistence exists but has not yet replaced the current user permission array in API authorization.
+Admin/staff password and PIN login accept email-or-username, and the global guard enforces audience, role, declared permissions, and current permission versions. Effective permissions combine transitional embedded grants with active assignments under a coarse-tier ceiling. Password recovery, invite create/list/revoke/acceptance and authenticated HTTP resume are exposed. The permission registry, role CRUD, authority inspection, role grant/revoke and account-status APIs are live with named permission checks, audit evidence, no-delegation-above-self, last-administrator protection and offboarding session revocation. Self-registration and social login are not admin launch methods; older privileged routes that declare only roles have not all migrated to granular permissions.
 
 ## Admin deep-link and soft-lock flow
 
@@ -95,4 +97,4 @@ Complex product/order/invoice forms need enough draft metadata to reconstruct co
 
 ## Current and target boundary
 
-The API session lifecycle, recovery/invite endpoints and cart/order ownership checks are real, and both Angular clients use the shared cookie transport. Missing OAuth verification, first-administrator bootstrap, fine-grained role-assignment enforcement, the admin idle-lock/quick-resume experience, protected deep-link continuation and guest→user merge keep the end-to-end capability incomplete.
+The API session lifecycle, recovery/invite endpoints, first-admin operator bootstrap, fine-grained admin management APIs and cart/order ownership checks are real, and both Angular clients use the shared cookie transport. Missing OAuth verification, the admin Security Settings and idle-lock/quick-resume clients, browser PIN proof, complete granular migration, protected deep-link continuation and guest→user merge keep the end-to-end capability incomplete.

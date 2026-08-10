@@ -3,7 +3,7 @@ title: Request Lifecycle and Boundary Tracing
 description: How a request enters the API, crosses application and domain boundaries, reaches an adapter, and returns safely.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-08-09'
+last_verified: '2026-08-11'
 wide: true
 search_keywords: 'flight simulator photon post orders idempotency transaction ghost stages trace'
 source_of_truth:
@@ -59,7 +59,7 @@ sequenceDiagram
 
     Client->>Fastify: HTTP request
     Fastify->>Context: Resolve request id/client IP, CORS, rate limit, session, CSRF
-    Fastify->>Guard: Enforce default auth, audience, role and ownership policy
+    Fastify->>Guard: Enforce default auth, audience, role, permission and ownership policy
     Guard-->>Fastify: Principal or exception
     Fastify->>Pipe: Parse selected request bodies
     Pipe-->>Controller: Typed value or 400
@@ -80,6 +80,7 @@ This path exists, but it is inconsistent:
 - order reads have 404-on-mismatch ownership, and cart reads/mutations plus place-order loading enforce Principal or hashed `st_guest` proof;
 - the order service adopts the rollback-proven transaction port for order save plus cart consumption, while inventory/payment/audit side effects remain outside that unit of work.
 - session failures may include a stable, optional refusal reason (`session_missing`, `session_expired`, `session_revoked`, `permissions_changed`, or `account_inactive`) without exposing internal causes; refresh rotation checks reuse before CSRF so a replay can revoke its family even when the old CSRF value is stale.
+- named admin permissions are resolved only for routes that declare them, using active role assignments plus transitional embedded grants under the holder's coarse-role ceiling; the new role, permission and user-authority routes fail closed when a required code is absent.
 
 ## Target request path
 

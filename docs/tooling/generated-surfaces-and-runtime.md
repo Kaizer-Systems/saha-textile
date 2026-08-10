@@ -3,7 +3,7 @@ title: Generated Surfaces and Persistent Portal Runtime
 description: Storybook, TypeDoc, Scalar, database-catalogue, shared-theme, and atomic local serving topology.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-11'
 source_of_truth:
     - apps/developer-portal
     - apps/developer-portal-storybook
@@ -28,7 +28,7 @@ Docusaurus remains the navigation, narrative, governance, search, and deployment
 | `/tools/typedoc`            | `/typedoc/`            | TypeDoc                        | Built; Type Lattice gateway                                                  |
 | `/tools/scalar`             | `/api/reference/`      | Scalar                         | Scaffolded current OpenAPI; Request Wormhole gateway; Test Request available |
 | `/tools/database-catalogue` | `/database/catalogue/` | Mongo catalogue generator      | Scaffolded 34-model current evidence; Schema Observatory gateway             |
-| n/a                         | `/api/openapi.json`    | OpenAPI artifact pipeline      | Scaffolded deterministic source-generated document                           |
+| n/a                         | `/api/openapi.json`    | OpenAPI artifact pipeline      | Scaffolded deterministic 52-path/59-operation document                       |
 
 Storybook is not a React-only or view-only substitute. The selected `@storybook/angular` renderer compiles Angular templates, dependency injection, inputs/outputs, change detection, directives, and application providers. A React renderer cannot directly render Angular components as React components.
 

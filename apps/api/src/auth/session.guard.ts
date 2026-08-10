@@ -7,13 +7,19 @@ import {
 	SetMetadata,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { PermissionCode, SessionAudience, UserRole } from '@saha-textile/contracts';
-import type { AuthPort, AuthUserRepository } from '@saha-textile/core-domain';
+import type { PermissionCode, Role, SessionAudience, UserRole } from '@saha-textile/contracts';
+import type {
+	AuthPort,
+	AuthUserRepository,
+	RoleRepository,
+	UserRoleAssignmentRepository,
+} from '@saha-textile/core-domain';
+import { resolveEffectivePermissions } from '@saha-textile/core-domain';
 import type { FastifyRequest } from 'fastify';
 
 import { cookieNames } from '../common/cookies';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
-import { AUTH_PORT, AUTH_USER_REPOSITORY } from '../infra/tokens';
+import { AUTH_PORT, AUTH_USER_REPOSITORY, ROLE_REPOSITORY, USER_ROLE_ASSIGNMENT_REPOSITORY } from '../infra/tokens';
 import { SessionRefusal } from './session-refusal';
 import { SessionService } from './session.service';
 
@@ -82,6 +88,8 @@ export class SessionGuard implements CanActivate {
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
 		@Inject(AUTH_PORT) private readonly auth: AuthPort,
 		@Inject(AUTH_USER_REPOSITORY) private readonly authUsers: AuthUserRepository,
+		@Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
+		@Inject(USER_ROLE_ASSIGNMENT_REPOSITORY) private readonly assignments: UserRoleAssignmentRepository,
 		private readonly sessions: SessionService,
 	) {}
 
@@ -175,11 +183,48 @@ export class SessionGuard implements CanActivate {
 			context.getClass(),
 		]);
 		if (requiredPermissions?.length) {
-			const missing = requiredPermissions.filter((permission) => !principal.permissions.includes(permission));
+			// Resolved ONLY when a route asks for a permission. Every authenticated request
+			// would otherwise pay two extra queries to answer a question nobody asked, and
+			// today no route asks — so the common path must stay exactly as cheap as it was.
+			const effective = await this.effectivePermissionsFor(user);
+			principal.permissions = effective;
+
+			const missing = requiredPermissions.filter((permission) => !effective.includes(permission));
 			// An admin role does not imply every permission — the grant list is authoritative.
 			if (missing.length > 0) throw new ForbiddenException('Insufficient permissions');
 		}
 
 		return true;
+	}
+
+	/**
+	 * The union of the user's embedded grants and the roles behind their ACTIVE assignments.
+	 *
+	 * Union, not replacement: the embedded array is transitional, and preferring assignments
+	 * over it would silently revoke working access the moment somebody received their first
+	 * assignment. `resolveEffectivePermissions` also caps each role at the holder's own coarse
+	 * tier, so a surviving admin-tier assignment cannot restore authority after a demotion.
+	 *
+	 * A failure to read assignments must not fail OPEN. If the roles cannot be resolved the
+	 * caller keeps only what the user document already granted, which is the smaller set.
+	 */
+	private async effectivePermissionsFor(user: {
+		id: string;
+		role: UserRole;
+		permissions: string[];
+	}): Promise<string[]> {
+		const assignments = await this.assignments.listActiveForUser(user.id);
+		if (assignments.length === 0) return user.permissions;
+
+		const roles = (await Promise.all(assignments.map((a) => this.roles.findById(a.roleId)))).filter(
+			(role): role is Role => role !== null,
+		);
+
+		return resolveEffectivePermissions({
+			role: user.role,
+			embedded: user.permissions,
+			assignments,
+			roles,
+		});
 	}
 }

@@ -2047,6 +2047,59 @@ UnauthorizedException` carries the reason, and the global filter reads it from t
   **Next executable step:** pass 5c.2 — wire the 5b repositories into the API, resolve
   effective permissions from active assignments with `user.permissions` as fallback, and seed
   the system roles. Behaviour-preserving by design; prove equivalence first. Tool: claude-code.
+- 2026-08-08 — [DONE] **Auth Pass 5c.2 — effective permissions resolved from active
+  assignments, and the administrator system role.** 5b's repositories are now reachable from
+  the API.
+  **Union, not fallback — a correction to the plan.** The sub-pass was scoped as "assignments
+  with `user.permissions` as fallback". Written that way it is NOT behaviour-preserving:
+  preferring assignments once any exist would silently revoke the embedded grants the moment
+  somebody received their first assignment. `resolveEffectivePermissions` therefore returns
+  the UNION, so an assignment can only ever ADD authority. The embedded array is transitional
+  and retires when assignments are the only writer.
+  **The tier ceiling is the escalation guard.** A role contributes nothing if its `baseRole`
+  sits above the holder's own coarse role. Demoting somebody from `admin` to `staff` while an
+  admin-tier assignment survives would otherwise restore their authority in full, and the
+  demotion would look applied while changing nothing. The hierarchy lives in one table because
+  `'admin' < 'customer' < 'staff'` alphabetically — a string comparison would invert the check
+  while still looking like one, and there is a test pinning exactly that.
+  **Resolution is conditional, and that is a cost decision.** The guard resolves effective
+  permissions ONLY when a route actually requires one. No route does today, so the common
+  authenticated path must not have grown two queries; a test asserts neither repository is
+  touched when nothing is required.
+  **Other properties encoded:** revoked assignments are filtered in the resolver as well as in
+  the repository query, so an audit view or a test fixture passing every assignment cannot
+  accidentally grant revoked authority; a dangling assignment whose role was deleted grants
+  nothing rather than failing the request, because failing would lock people out.
+  **The administrator system role is seeded, and it is the only one.** Composing a `staff`
+  role is a business decision, and seeding a guess would make it look ratified.
+  `administrator` is the only role whose content is not a judgement call — it holds every
+  registry code by definition, so it cannot fall behind as the registry grows — and it is
+  `isSystem`, which the repository refuses to update or delete.
+  **Seeding is an operator action, not a bootstrap step**
+  (`pnpm --filter @saha-textile/adapters-db-mongo seed:system-roles`). A write on every process
+  start races when instances start together and would let a registry change reach production
+  without anybody deciding to apply it. Verified idempotent against the live database: the
+  second run reported `updated` rather than `created`, one role, **33** permissions, with
+  `createdAt` preserved and `updatedAt` moved.
+  **Negative-controlled, four mutations, all caught:** removing the tier ceiling, replacing the
+  union with assignments-only, honouring revoked assignments, and making resolution eager. The
+  last is what proves the cost claim rather than asserting it.
+  **A defect the tests could not see.** The guard-test stub `vi.fn(async () => [])` infers
+  `never[]`, so mocking an assignment failed `tsc` while vitest ran it happily — 103 tests
+  green and typecheck red. Typed explicitly; recorded because a suite passing is not the same
+  as the suite being sound.
+  **Commands actually run:** `pnpm turbo run test --force` **11/11** — core-domain **87 → 98**,
+  api **97 → 103**, adapter **100 → 103** (contracts 157, http-transport 157, storefront 57,
+  admin 61) · `MONGODB_PORT=27018 RUN_DB_IT=1` adapter suite **103/103** · `pnpm typecheck`
+  **15/15** · `pnpm lint` with all five guards OK · `MONGODB_PORT=27018 pnpm
+e2e:session-rotation` **12/12** with 0 probe rows, which is also the proof the new DI
+  providers resolve in the real application · `pnpm format:check` clean.
+  **Local environment state:** the integration suite deletes the seeded role so it leaves
+  nothing behind; the seeder was run again afterwards, so the local database holds exactly one
+  role (`administrator`, 33 permissions) and no assignments, ready for 5c.4.
+  **Still no route requires a permission** — that remains 5c.3 onward.
+  **Next executable step:** pass 5c.3 — `/admin/roles/**` CRUD with deny-by-default,
+  system-role protection, permission-version invalidation and audit entries. Tool: claude-code.
 - _(append)_
 
 ---

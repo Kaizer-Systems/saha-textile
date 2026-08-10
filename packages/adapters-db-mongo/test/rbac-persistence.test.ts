@@ -2,12 +2,14 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { PERMISSION_CODES } from '@saha-textile/contracts';
 import { AssignmentAlreadyActiveError } from '@saha-textile/core-domain';
 
 import { buildMongoConfig } from '../src/config';
 import { connectMongo, disconnectMongo } from '../src/connection';
 import { RoleModel, UserRoleAssignmentModel } from '../src/models/index';
 import { MongoRoleRepository, MongoUserRoleAssignmentRepository } from '../src/repositories/role.repository';
+import { ensureSystemRoles } from '../src/seed/system-roles';
 
 /**
  * RBAC persistence against a REAL replica set.
@@ -69,6 +71,8 @@ describe.skipIf(!hasMongoEnv())('RBAC persistence (integration, rs0)', () => {
 	afterAll(async () => {
 		await Promise.all([
 			RoleModel.deleteMany({ _id: /^role_rbac_it/ }).exec(),
+			// Seeded by the system-role suite below; removed so the suite leaves nothing behind.
+			RoleModel.deleteMany({ _id: 'role_system_administrator' }).exec(),
 			UserRoleAssignmentModel.deleteMany({ _id: /^ura_rbac_it/ }).exec(),
 		]);
 		await disconnectMongo();
@@ -229,6 +233,44 @@ describe.skipIf(!hasMongoEnv())('RBAC persistence (integration, rs0)', () => {
 
 			expect(await assignments.listActiveForUser(theirs)).toEqual([]);
 			expect(await assignments.findActive(theirs, role.id)).toBeNull();
+		});
+	});
+
+	/**
+	 * The seeder is an operator action, not a bootstrap step, so its idempotency is the
+	 * property that matters: re-running it is how a registry addition reaches the role.
+	 */
+	describe('system roles', () => {
+		it('creates the administrator role holding every registry code', async () => {
+			await ensureSystemRoles();
+
+			const administrator = await roles.findByKey('administrator');
+			expect(administrator).not.toBeNull();
+			expect(administrator?.isSystem).toBe(true);
+			expect(administrator?.baseRole).toBe('admin');
+			expect(administrator?.permissions).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
+		});
+
+		it('is idempotent, and preserves when the role first appeared', async () => {
+			const first = await ensureSystemRoles('2026-01-01T00:00:00.000Z');
+			const before = await roles.findByKey('administrator');
+
+			const second = await ensureSystemRoles('2026-06-01T00:00:00.000Z');
+			const after = await roles.findByKey('administrator');
+
+			expect(first.created.concat(first.updated)).toContain('administrator');
+			expect(second.updated).toContain('administrator');
+			expect(after?.createdAt).toBe(before?.createdAt);
+			expect(after?.updatedAt).not.toBe(before?.updatedAt);
+		});
+
+		/** A seeded role must be exactly as unremovable as an authored system role. */
+		it('produces a role the admin surface cannot edit or delete', async () => {
+			await ensureSystemRoles();
+			const administrator = await roles.findByKey('administrator');
+
+			expect(await roles.update(administrator!.id, { label: 'Hijacked' })).toBeNull();
+			expect(await roles.deleteById(administrator!.id)).toBe(false);
 		});
 	});
 });

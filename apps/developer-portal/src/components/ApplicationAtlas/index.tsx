@@ -167,7 +167,7 @@ const atlases: Record<Application, AtlasItem[]> = {
 			summary: 'User and role management screens plus password/PIN login and recovery routes are present.',
 			status: 'scaffolded',
 			runtime: 'Cookie auth gateway + guarded shells + routed forms',
-			data: 'Admin authentication and API authorization are connected; management records remain JSON-backed and role-assignment API wiring is incomplete.',
+			data: 'Admin authentication and API authorization are connected; registry-backed role/authority APIs are live, while the existing management screens remain JSON-backed and have not adopted them.',
 			sources: [
 				'apps/admin/src/app/core/state/auth.store.ts',
 				'apps/admin/src/app/features/auth',

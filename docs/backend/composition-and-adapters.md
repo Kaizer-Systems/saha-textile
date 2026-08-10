@@ -4,7 +4,7 @@ wide: true
 description: NestJS module wiring, dependency-injection tokens, adapter ownership, Mongo mappings, and provider seams.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-11'
 source_of_truth:
     - apps/api/src/app.module.ts
     - apps/api/src/config/app-config.ts
@@ -31,6 +31,8 @@ flowchart TD
     App --> Cart["CartModule"]
     App --> Orders["OrdersModule"]
     App --> Auth["AuthModule"]
+    App --> Admin["AdminModule"]
+    App --> Privacy["PrivacyModule"]
 
     Persistence --> MongoRepos["Original commerce repositories"]
     Persistence --> AuthRepos["Auth + consent repositories"]
@@ -42,14 +44,15 @@ flowchart TD
 
 The name `PersistenceModule` is currently broader than persistence because it also binds `AuthPort`. The target folder plan separates composition into persistence, search, and external-adapter modules so dependency ownership remains obvious.
 
-`PersistenceModule` binds the auth session/user, OTP, OAuth state, reset, verification, invite, rate-limit and consent repositories. The auth/session/privacy services consume those bindings. Role and user-role-assignment repositories now exist and are rs0-proven in the Mongo package, but are not bound into current API authorization. The console notification adapter is an explicit development seam; it is not evidence of MSG91 provider readiness. Chunk E's additional repository adapters exist in the Mongo package but are not all API-bound workflows.
+`PersistenceModule` binds the auth session/user, OTP, OAuth state, reset, verification, invite, rate-limit, role, user-role-assignment, audit and consent repositories. The auth/session/privacy services and `AdminModule` consume those bindings. `SessionGuard` resolves effective permissions from transitional embedded grants plus active assignments, capped by the account's coarse role tier; the new role, permission and user-authority routes enforce named permissions deny-by-default. The console notification adapter is an explicit development seam; it is not evidence of MSG91 provider readiness. Chunk E's additional repository adapters exist in the Mongo package but are not all API-bound workflows.
 
 ## Current DI bindings
 
 | Token family                    | Concrete implementation                                                                                                                                                          |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Catalogue/commerce repositories | `MongoProductRepository`, `MongoCategoryRepository`, `MongoCurrencyRepository`, `MongoPromotionRepository`, `MongoCartRepository`, `MongoOrderRepository`, `MongoUserRepository` |
-| Auth repositories               | Mongo session, auth-user, OTP, OAuth-state, reset, verification, invite and rate-limit repositories                                                                              |
+| Auth/authorization repositories | Mongo session, auth-user, OTP, OAuth-state, reset, verification, invite, rate-limit, role and user-role-assignment repositories                                                  |
+| Audit repository                | `MongoAuditLogRepository`, used by admin role/authority/offboarding and first-admin bootstrap paths                                                                              |
 | Privacy repository              | `MongoConsentRepository`                                                                                                                                                         |
 | `TRANSACTION_MANAGER`           | `MongoTransactionManager`                                                                                                                                                        |
 | `NOTIFICATION_PORT`             | `ConsoleNotificationAdapter` development seam                                                                                                                                    |

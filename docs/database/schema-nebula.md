@@ -5,7 +5,7 @@ slug: /database/schema-nebula
 wide: true
 status: implemented
 audience: [beginner, backend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-11'
 search_keywords: 'schema nebula collections database mongodb star map models ghosts graph relationships bounded context DEC'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -48,7 +48,7 @@ Schema Nebula is a **governed architecture map**, not a live database browser an
 
 Thirty-one solid stars represent graph collections backed by exact physical-name model and test evidence. The remaining 33 stars stay target-only ghosts until equivalent adapter evidence exists.
 
-Chunks D/E and Auth Pass 5b expanded the current adapter to 34 models. Every model now declares an exact physical collection name, and the adapter tests assert those names. Thirty-one names match nodes in the ratified graph. `authRateLimits` is intentionally outside that graph, while the implemented `productQuestions` and `ratingAggregates` collections have no ratified node; the source-only catalogue reports all three without inventing new stars. Schema Nebula therefore publishes **64 / 31 / 33**.
+Chunks D/E and Auth Pass 5b expanded the current adapter to 34 models. Every model now declares an exact physical collection name, and the adapter tests assert those names. Thirty-one names match nodes in the ratified graph. `authRateLimits` is intentionally outside that graph, while the implemented `productQuestions` and `ratingAggregates` collections have no ratified node; the source-only catalogue reports all three without inventing new stars. Later API adoption of the existing `roles` and `userRoleAssignments` models changes their usage evidence, not the physical graph, so Schema Nebula remains **64 / 31 / 33**.
 
 ## Controls
 

@@ -3,7 +3,7 @@ title: Interactive Instruments
 description: Governed interactive references for architecture, delivery status, request flow, decisions, data, and onboarding.
 status: scaffolded
 audience: [frontend]
-last_verified: '2026-08-09'
+last_verified: '2026-08-11'
 source_of_truth:
     - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
     - docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx

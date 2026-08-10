@@ -4,7 +4,7 @@ wide: true
 description: Zod contract ownership, request parsing, persistence mapping, response safety, and evolution rules.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-08-09'
+last_verified: '2026-08-11'
 source_of_truth:
     - packages/contracts/src
     - packages/contracts/test
@@ -39,21 +39,21 @@ An API request for account registration should not accept `role`, `emailVerified
 
 ## Current contract families
 
-| File family                                          | Principal schemas                                                                 | Notable invariant                                                                         |
-| ---------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `common.ts`                                          | locale config, localized text, ids/slugs, money/currency, pagination, API errors  | locale set is configured; page size is bounded; failures share one envelope               |
-| `catalog.ts`, `category.ts`, `category-placement.ts` | category lifecycle, multi-placement, facets and SEO policy                        | at most one canonical placement; arbitrary facets cannot be always-indexed                |
-| `attribute.ts`, `product*.ts`, `promotion.ts`        | semantic attributes, lifecycle, options, variants, bundles, relations, promotions | only `live` is public; option role is independent of eight display styles                 |
-| `media.ts`, `inventory.ts`, `content.ts`             | assets/HLS, ledger/FIFO, FAQ, Q&A and verified reviews                            | ratified media/inventory/content invariants are runtime-validated                         |
-| `cart.ts`, `order.ts`, `currency.ts`, `shipping.ts`  | commerce aggregates, snapshots, FX inputs, and quote                              | value and currency travel together; canonical product price remains INR                   |
-| `user.ts`                                            | sanitized public user, identities, addresses, consent snapshot                    | credential material is intentionally absent                                               |
-| `session.ts`                                         | access claims, public session info, server-internal session/refresh-family entity | browser response metadata contains no token values                                        |
-| `auth.ts`, `admin-auth.ts`                           | storefront/admin request and actor-safe response DTOs                             | 12-character password floor; six-digit admin PIN shape; no tokens in body                 |
-| `auth-internal.ts`                                   | OTP/OAuth/reset/invite/rate-limit persistence shapes                              | codes/tokens/IP/user-agent values are represented by hashes                               |
-| `consent.ts`, `audit.ts`, `notification.ts`          | consent history, broad admin/security audit, notification settings/outbox         | append-only evidence and channel/category control are explicit                            |
-| `permission.ts`, `role.ts`                           | canonical permission registry/grants, roles and user-role assignments             | grants normalize against the registry; active assignment uniqueness is persistence policy |
+| File family                                          | Principal schemas                                                                 | Notable invariant                                                                        |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `common.ts`                                          | locale config, localized text, ids/slugs, money/currency, pagination, API errors  | locale set is configured; page size is bounded; failures share one envelope              |
+| `catalog.ts`, `category.ts`, `category-placement.ts` | category lifecycle, multi-placement, facets and SEO policy                        | at most one canonical placement; arbitrary facets cannot be always-indexed               |
+| `attribute.ts`, `product*.ts`, `promotion.ts`        | semantic attributes, lifecycle, options, variants, bundles, relations, promotions | only `live` is public; option role is independent of eight display styles                |
+| `media.ts`, `inventory.ts`, `content.ts`             | assets/HLS, ledger/FIFO, FAQ, Q&A and verified reviews                            | ratified media/inventory/content invariants are runtime-validated                        |
+| `cart.ts`, `order.ts`, `currency.ts`, `shipping.ts`  | commerce aggregates, snapshots, FX inputs, and quote                              | value and currency travel together; canonical product price remains INR                  |
+| `user.ts`                                            | sanitized public user, identities, addresses, consent snapshot                    | credential material is intentionally absent                                              |
+| `session.ts`                                         | access claims, public session info, server-internal session/refresh-family entity | browser response metadata contains no token values                                       |
+| `auth.ts`, `admin-auth.ts`                           | storefront/admin request and actor-safe response DTOs                             | 12-character password floor; six-digit admin PIN shape; no tokens in body                |
+| `auth-internal.ts`                                   | OTP/OAuth/reset/invite/rate-limit persistence shapes                              | codes/tokens/IP/user-agent values are represented by hashes                              |
+| `consent.ts`, `audit.ts`, `notification.ts`          | consent history, broad admin/security audit, notification settings/outbox         | append-only evidence and channel/category control are explicit                           |
+| `permission.ts`, `role.ts`, `admin-user.ts`          | 33-code permission registry, roles, assignments and admin authority operations    | grants normalize against the registry; server-only codes have a justified write boundary |
 
-These contract families are not proof of end-to-end operations. Contract tests total 154, and the matching core port surface is complete. Auth/session, OTP, password reset, email verification, admin recovery/PIN/invite/resume, consent/privacy, cart/`st_guest` ownership and order-ownership contracts have meaningful HTTP adoption. OAuth, the admin idle-lock client, first-admin bootstrap, fine-grained role-assignment enforcement and guest→user merge remain open. The Mongo adapter implements the role/assignment seam plus consent, audit, notification, catalogue, media, inventory, governance and content models/repositories, but most expanded families still lack complete HTTP workflows. Checkout, payment, reporting, analytics and the rest of the ratified target persistence remain incomplete.
+These contract families are not proof of end-to-end operations. Contract tests total 160, and the matching core port surface is complete. Auth/session, OTP, password reset, email verification, admin recovery/PIN/invite/resume, role/permission/user-authority administration, consent/privacy, cart/`st_guest` ownership and order-ownership contracts have meaningful HTTP adoption. The permission registry is compile-time closed; seven write/assignment actions expanded it to 33 codes, and only the explicitly identified server-only subset may cross the internal bootstrap/administration boundary. OAuth, the admin Security Settings and idle-lock clients, browser PIN proof and guest→user merge remain open. The Mongo adapter implements the role/assignment seam plus consent, audit, notification, catalogue, media, inventory, governance and content models/repositories, but most expanded families still lack complete HTTP workflows. Checkout, payment, reporting, analytics and the rest of the ratified target persistence remain incomplete.
 
 ## Boundary validation today
 

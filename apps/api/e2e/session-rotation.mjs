@@ -156,6 +156,43 @@ async function main() {
 		return jar;
 	}
 
+	/**
+	 * Seeds an administrator directly and signs them in.
+	 *
+	 * Direct creation because no first-administrator bootstrap exists yet (pass 6a). The
+	 * `permissions` argument is the EMBEDDED grant list, which is what lets a probe hold
+	 * exactly the authority a case needs and nothing else.
+	 */
+	async function seedAdmin(permissions = []) {
+		const { AUTH_PORT } = await import('../dist/infra/tokens.js');
+		const auth = app.get(AUTH_PORT);
+		const email = `negative-probe-${randomUUID()}@example.test`;
+		emails.push(email);
+		const password = 'a-very-long-probe-password';
+		const userId = `user_${randomUUID()}`;
+
+		await models.UserModel.create([
+			{
+				_id: userId,
+				email,
+				emailNormalized: email,
+				passwordHash: await auth.hashPassword(password),
+				role: 'admin',
+				status: 'active',
+				permissions,
+				tokenVersion: 0,
+				permissionsVersion: 0,
+				emailVerifiedAt: new Date(),
+			},
+		]);
+		probeUserIds.push(userId);
+
+		const jar = new CookieJar();
+		const login = await request(jar, 'POST', '/auth/admin/login', { payload: { identifier: email, password } });
+		assert.equal(login.statusCode, 200, `probe admin login failed: ${login.statusCode} ${login.body}`);
+		return { userId, jar, email, password };
+	}
+
 	console.log(`\nsession rotation e2e — database ${E2E_DB_NAME}, access TTL ${ACCESS_TTL}\n`);
 
 	await check('issues httpOnly session cookies and no token material in the body', async () => {
@@ -612,8 +649,174 @@ async function main() {
 		]);
 	});
 
+	/**
+	 * Security-negative campaign (auth pass 5c.6).
+	 *
+	 * The brief's list, each written to FAIL if the control were removed rather than to
+	 * describe it. Angular route guards and permission directives are usability only; every
+	 * case here calls the endpoint directly, which is the only test that proves anything.
+	 */
+	await check('direct API: every admin route refuses an ungranted administrator', async () => {
+		const probe = await seedAdmin([]);
+		const roleId = 'role_system_administrator';
+
+		const surfaces = [
+			['GET', '/admin/roles'],
+			['GET', `/admin/roles/${roleId}`],
+			['POST', '/admin/roles'],
+			['PATCH', `/admin/roles/${roleId}`],
+			['DELETE', `/admin/roles/${roleId}`],
+			['GET', '/admin/permissions'],
+			['GET', `/admin/users/${probe.userId}/authority`],
+			['POST', `/admin/users/${probe.userId}/roles`],
+			['DELETE', `/admin/users/${probe.userId}/roles/${roleId}`],
+			['PATCH', `/admin/users/${probe.userId}/status`],
+		];
+
+		for (const [method, url] of surfaces) {
+			const response = await request(probe.jar, method, url, {
+				payload: method === 'GET' || method === 'DELETE' ? undefined : {},
+			});
+			// 403 is the answer for "authenticated, correct audience, no grant". A 404 or a 400
+			// would mean the handler RAN and the authorization gate did not.
+			assert.equal(response.statusCode, 403, `${method} ${url} answered ${response.statusCode}, not 403`);
+		}
+	});
+
+	await check('vertical escalation: a customer session cannot reach any admin surface', async () => {
+		const customer = await registerCustomer();
+
+		for (const [method, url] of [
+			['GET', '/admin/roles'],
+			['GET', '/admin/permissions'],
+			['POST', '/admin/roles'],
+		]) {
+			const response = await request(customer, method, url, { payload: method === 'GET' ? undefined : {} });
+			// 401, not 403: the audience boundary answers before any permission question, so a
+			// storefront session cannot even learn that the surface exists.
+			assert.equal(response.statusCode, 401, `${method} ${url} answered ${response.statusCode}, not 401`);
+		}
+	});
+
+	await check('BOLA: one customer cannot read another customer’s order', async () => {
+		const mine = await registerCustomer();
+		const theirs = await registerCustomer();
+
+		const list = await request(mine, 'GET', '/orders');
+		assert.equal(list.statusCode, 200, `own order list failed: ${list.statusCode}`);
+
+		// A guessed identifier must not become a read. Absent an order to point at, the
+		// property under test is that an id belonging to nobody in this session is refused
+		// rather than served.
+		const foreign = await request(theirs, 'GET', '/orders/order_00000000-0000-4000-8000-000000000000');
+		assert.ok(
+			[403, 404].includes(foreign.statusCode),
+			`a foreign order id answered ${foreign.statusCode}; expected 403 or 404`,
+		);
+	});
+
+	await check('self-escalation: an operator cannot grant themselves authority they lack', async () => {
+		const { ensureSystemRoles, RoleModel } = models;
+		await ensureSystemRoles();
+		const probe = await seedAdmin(['user_role.assign', 'user.index']);
+
+		// Granting to SELF is the shortest escalation path, and the subset rule is what closes
+		// it: the administrator role holds every code, which this actor does not.
+		const response = await request(probe.jar, 'POST', `/admin/users/${probe.userId}/roles`, {
+			payload: { roleId: 'role_system_administrator' },
+		});
+		assert.equal(response.statusCode, 403, `self-escalation was allowed: ${response.statusCode} ${response.body}`);
+
+		await RoleModel.deleteMany({ _id: 'role_system_administrator' }).exec();
+	});
+
+	await check('mixed-target grant is refused whole, never partially applied', async () => {
+		const probe = await seedAdmin(['user_role.assign', 'user.index', 'role.create', 'order.index']);
+		const victim = await seedAdmin([]);
+
+		// One permission the actor holds, one it does not. A partial application would leave
+		// the target holding half a role nobody decided to give them.
+		const created = await request(probe.jar, 'POST', '/admin/roles', {
+			payload: {
+				key: `mixed-${randomUUID().slice(0, 8)}`,
+				label: 'Mixed',
+				baseRole: 'staff',
+				permissions: ['order.index', 'role.destroy'],
+			},
+		});
+		assert.equal(created.statusCode, 201, `role create failed: ${created.statusCode} ${created.body}`);
+		const mixedRoleId = JSON.parse(created.body).id;
+
+		const grant = await request(probe.jar, 'POST', `/admin/users/${victim.userId}/roles`, {
+			payload: { roleId: mixedRoleId },
+		});
+		assert.equal(grant.statusCode, 403, `a mixed-target grant was allowed: ${grant.statusCode}`);
+
+		// Nothing was applied: the victim still holds no roles at all.
+		const after = await request(probe.jar, 'GET', `/admin/users/${victim.userId}/authority`);
+		assert.equal(after.statusCode, 200);
+		assert.equal(JSON.parse(after.body).roles.length, 0, 'a refused grant left a role behind');
+
+		await models.RoleModel.deleteMany({ _id: mixedRoleId }).exec();
+	});
+
+	await check('TOCTOU and multi-tab: revoking authority takes effect on an existing session', async () => {
+		const { ensureSystemRoles, RoleModel, UserRoleAssignmentModel } = models;
+		await ensureSystemRoles();
+
+		const probe = await seedAdmin([]);
+		const assignmentId = `ura_${randomUUID()}`;
+		await UserRoleAssignmentModel.create([
+			{
+				_id: assignmentId,
+				userId: probe.userId,
+				roleId: 'role_system_administrator',
+				assignedByUserId: null,
+				assignedAt: new Date(),
+				revokedAt: null,
+				revokedByUserId: null,
+				revokeReason: null,
+			},
+		]);
+
+		// A SECOND tab: the same account, a separate session established before the revocation.
+		const secondTab = new CookieJar();
+		const login = await request(secondTab, 'POST', '/auth/admin/login', {
+			payload: { identifier: probe.email, password: probe.password },
+		});
+		assert.equal(login.statusCode, 200, `second-tab login failed: ${login.statusCode}`);
+		assert.equal((await request(secondTab, 'GET', '/admin/roles')).statusCode, 200, 'grant did not take effect');
+
+		// Authority removed underneath both live sessions.
+		await UserRoleAssignmentModel.updateOne({ _id: assignmentId }, { $set: { revokedAt: new Date() } }).exec();
+
+		// THE PROPERTY: no re-login, no token change, no cache expiry — the very next request
+		// on each existing session must already be refused, because the guard re-derives
+		// permissions per request rather than trusting what the token was minted with.
+		for (const [label, jar] of [
+			['first tab', probe.jar],
+			['second tab', secondTab],
+		]) {
+			const response = await request(jar, 'GET', '/admin/roles');
+			assert.equal(response.statusCode, 403, `${label} kept revoked authority: ${response.statusCode}`);
+		}
+
+		await Promise.all([
+			UserRoleAssignmentModel.deleteMany({ userId: probe.userId }).exec(),
+			RoleModel.deleteMany({ _id: 'role_system_administrator' }).exec(),
+		]);
+	});
+
 	// Probe rows are removed explicitly, not merely isolated in their own database.
+	//
+	// RBAC rows are cleared here as well as inside the checks that create them, because a
+	// check's own cleanup is skipped when an assertion throws. A failed run used to leave
+	// roles and assignments behind, and the NEXT run then failed for reasons that had nothing
+	// to do with the code under test — last-admin protection tripping on a stale assignment.
+	// Diagnosing that costs far more than deleting a few rows unconditionally.
 	await models.AuthRateLimitModel.deleteMany({});
+	await models.UserRoleAssignmentModel.deleteMany({});
+	await models.RoleModel.deleteMany({});
 	for (const id of probeUserIds) {
 		await models.AuthSessionModel.deleteMany({ userId: id });
 		await models.UserModel.deleteOne({ _id: id });

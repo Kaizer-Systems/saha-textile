@@ -2219,6 +2219,53 @@ e2e:session-rotation` **12/12** with 0 probe rows, which is also the proof the n
   **Next executable step:** pass 5c.6 — the security-negative campaign: direct-API, BOLA/IDOR,
   horizontal and vertical escalation, bulk mixed-target, multi-tab and TOCTOU. Tool:
   claude-code.
+- 2026-08-08 — [DONE] **Auth Pass 5c.6 — the security-negative campaign.** Six new e2e
+  checks, each written to FAIL if its control were removed rather than to describe it. Angular
+  route guards are usability only; every case calls the endpoint directly. **e2e 14 → 20.**
+  **Direct API.** All ten admin routes are swept for an authenticated administrator with an
+  EMPTY grant list and each must answer **403**. A 404 or 400 would mean the handler ran and
+  the authorization gate did not, so the assertion is on 403 specifically rather than on any
+  error.
+  **Vertical escalation.** A storefront customer session reaches no admin surface, and is
+  answered **401 rather than 403** — the audience boundary replies before any permission
+  question, so a customer cannot even learn the surface exists.
+  **BOLA.** One customer cannot read another's order by guessing an identifier.
+  **Self-escalation.** Granting to SELF is the shortest escalation path; an operator holding
+  `user_role.assign` still cannot give themselves the administrator role, because the subset
+  rule closes it.
+  **Bulk mixed-target.** A role carrying one permission the actor holds and one it does not is
+  refused WHOLE, and the target is then re-read to prove nothing was partially applied — a
+  half-applied grant would leave somebody holding authority nobody decided to give them.
+  **TOCTOU and multi-tab.** Two live sessions for one account, authority revoked underneath
+  both, and the very next request on EACH must already be refused — no re-login, no token
+  change, no cache expiry. This is what proves the guard re-derives permissions per request
+  rather than trusting what the token was minted with.
+  **Two harness defects found by trying to break the campaign rather than by running it.**
+  **First: my negative control lied.** Three mutation runs reported MISSED — including the
+  TOCTOU case, the most valuable one. The Mongo container had stopped, so the e2e never
+  executed, and the harness read "no failures" as "the control did not bite". The mutation
+  runner now refuses to interpret a run that produced no tally at all. With that fixed and both
+  revocation filters removed, the check fails exactly as intended:
+  `first tab kept revoked authority: 200`.
+  **Second: a failed run poisoned the next one.** Each check cleans up its own rows at the end
+  of its body, which an assertion throw skips. Aborted runs left 2 roles and 3 assignments in
+  the e2e database, and the following runs failed at 19/20 for reasons unrelated to the code —
+  last-admin protection tripping on a stale assignment. RBAC rows are now cleared
+  unconditionally in the global teardown, the same hygiene the rate-limit counters already had.
+  Confirmed stable at 20/20 across three consecutive runs afterwards.
+  **One mutation was absorbed rather than caught, and that is a good outcome.** Swapping the
+  guard's `listActiveForUser` for `listAllForUser` changed nothing, because
+  `resolveEffectivePermissions` filters revoked assignments itself. Both layers had to be
+  defeated before the TOCTOU check failed — which is the defence in depth 5c.2 was written for,
+  demonstrated rather than asserted.
+  **Commands actually run:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` **20/20** with 24
+  probe accounts and **0** remaining · `pnpm turbo run test --force` **11/11** · adapter
+  **103/103** with `RUN_DB_IT=1` · `pnpm typecheck` **15/15** · `pnpm lint` **17/17** ·
+  `pnpm format:check` clean.
+  **Pass 5c is complete**, and with it pass 5. Next executable step: pass 6a —
+  first-administrator bootstrap: operator-only, idempotency-guarded, audited, no public route,
+  impossible to re-run. It is what every admin browser E2E has been owed since Pass 2, and it
+  removes the seeded-probe workaround these suites rely on. Tool: claude-code.
 - _(append)_
 
 ---

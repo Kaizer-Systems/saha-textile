@@ -9,6 +9,7 @@ import type {
 	SessionAudience,
 	SessionRevokeReason,
 	UserAuthState,
+	UserStatus,
 } from '@saha-textile/contracts';
 import type {
 	AdminInviteRepository,
@@ -693,6 +694,10 @@ export class MongoAuthUserRepository implements AuthUserRepository {
 
 	async markEmailVerified(userId: string, emailNormalized: string): Promise<void> {
 		await UserModel.updateOne({ _id: userId }, { $set: { emailVerified: true, email: emailNormalized } }).exec();
+	}
+
+	async setStatus(userId: string, status: UserStatus): Promise<void> {
+		await UserModel.updateOne({ _id: userId }, { $set: { status } }).exec();
 	}
 
 	async bumpTokenVersion(userId: string): Promise<number> {

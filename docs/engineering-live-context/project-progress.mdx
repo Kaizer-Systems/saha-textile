@@ -2100,49 +2100,106 @@ e2e:session-rotation` **12/12** with 0 probe rows, which is also the proof the n
   **Still no route requires a permission** — that remains 5c.3 onward.
   **Next executable step:** pass 5c.3 — `/admin/roles/**` CRUD with deny-by-default,
   system-role protection, permission-version invalidation and audit entries. Tool: claude-code.
-- 2026-08-08 — [DONE] **Auth Pass 5c.3 — `/admin/roles/**`, the first deny-by-default surface
-in this API.** Five routes, each demanding a specific permission.
-**Deny-by-default is proven on the wire, not asserted.** A new e2e check seeds a real
-administrator — `role: 'admin'`, correct audience, valid session, and an EMPTY grant list —
-and requires **403**. The `admin`role alone opens nothing, which is the whole point of the
-registry. Granting the seeded administrator role then returns **200 with no re-login**,
-because the guard resolves effective permissions per request rather than trusting what the
-token was minted with. Anonymous gets 401, and a storefront session gets 401 rather than 403
-— the audience boundary answers before any permission question is asked.
-**Negative-controlled:** removing`@RequirePermissions`from the list route fails the check
-with`an ungranted admin was allowed in: 200`, then restored and verified by `git diff`.
-**These routes could be added safely precisely because they are new.** The lockout hazard
-raised in 5a was about adding requirements to EXISTING routes; a new surface that nobody can
-reach yet refuses nothing that worked before.
-**`@Audience('admin')`is not redundant beside the permission checks.** A storefront session
-that somehow held an administrative grant must still be unable to reach this surface: the
-audience boundary is about which browser context a cookie was minted for, not about what its
-holder may do.
-**The invalidation rule has two halves, and both are tested.** Changing a role's permissions
-bumps`permissionsVersion` for every LIVE holder, or their sessions keep running on the
-authority they held a moment ago. A label-only edit bumps NOBODY — forcing everyone through
-a token rotation for a cosmetic rename would be its own defect. Re-sending the same codes in
-a different order counts as no change. Deletion invalidates holders too, and does so FIRST:
-a dangling assignment already resolves to nothing, but a live session keeps its minted
-version until something forces a re-derive.
-**A partial-failure decision worth naming.** Bumps are per user, and a single failure is
-logged rather than thrown. Abandoning midway would leave the role changed with some holders
-invalidated and others not, and no record of which. The residual risk is bounded — one
-session keeps stale authority until it next rotates — and is strictly better than a
-half-applied write.
-**`key`and`baseRole`are immutable, and`isSystem`cannot come from a request.** Editing`baseRole`would silently re-rank everyone already holding the role, which is an escalation
-dressed as an edit; accepting`isSystem`would let a caller mint a role the administration
-surface then refuses to delete — an undeletable rogue role created through the screen meant
-to control them. System roles are refused with a stated 409 rather than the repository's
-silent null, so an operator learns why instead of watching a role appear to vanish on save.
-**Contract and route counts moved together:** 49 → **54 operations across 47 paths**, and`check-route-contracts`independently reports **54 routes across 12 controllers**, auth
-family 25 → 30. Two counts from two sources agreeing is the point of having both.
-**Commands actually run:**`pnpm turbo run test --force`**11/11** with api **103 → 115**
-(contracts 157, http-transport 157, core-domain 98, storefront 57, admin 61) ·`MONGODB_PORT=27018 pnpm e2e:session-rotation`**13/13** with 14 probe accounts and **0**
-remaining ·`generate:openapi`green including`check-openapi`·`pnpm typecheck`**15/15** ·`pnpm lint`**17/17** with all five guards ·`pnpm format:check`clean.
-**Next executable step:** pass 5c.4 —`/admin/users/\*\*` with grant/revoke, last-admin
-  protection, no-delegation-above-self and forced session revoke on offboarding. The
-  highest-risk sub-pass. Tool: claude-code.
+- 2026-08-08 — [DONE] **Auth Pass 5c.3 — the `/admin/roles` surface, first to be
+  deny-by-default in this API.** Five routes, each demanding a specific permission.
+  **Deny-by-default is proven on the wire, not asserted.** A new e2e check seeds a real
+  administrator — `role: 'admin'`, correct audience, valid session, and an EMPTY grant list —
+  and requires **403**. The `admin` role alone opens nothing, which is the whole point of the
+  registry. Granting the seeded administrator role then returns **200 with no re-login**,
+  because the guard resolves effective permissions per request rather than trusting what the
+  token was minted with. Anonymous gets 401, and a storefront session gets 401 rather than 403
+  — the audience boundary answers before any permission question is asked.
+  **Negative-controlled:** removing `@RequirePermissions` from the list route fails the check
+  with `an ungranted admin was allowed in: 200`, then restored and verified by `git diff`.
+  **These routes could be added safely precisely because they are new.** The lockout hazard
+  raised in 5a was about adding requirements to EXISTING routes; a new surface nobody can reach
+  yet refuses nothing that worked before.
+  **`@Audience('admin')` is not redundant beside the permission checks.** A storefront session
+  that somehow held an administrative grant must still be unable to reach this surface: the
+  audience boundary is about which browser context a cookie was minted for, not about what its
+  holder may do.
+  **The invalidation rule has two halves, and both are tested.** Changing a role's permissions
+  bumps `permissionsVersion` for every LIVE holder, or their sessions keep running on the
+  authority they held a moment ago. A label-only edit bumps NOBODY — forcing everyone through a
+  token rotation for a cosmetic rename would be its own defect. Re-sending the same codes in a
+  different order counts as no change. Deletion invalidates holders too, and does so FIRST: a
+  dangling assignment already resolves to nothing, but a live session keeps its minted version
+  until something forces a re-derive.
+  **A partial-failure decision worth naming.** Bumps are per user, and a single failure is
+  logged rather than thrown. Abandoning midway would leave the role changed with some holders
+  invalidated and others not, and no record of which. The residual risk is bounded and strictly
+  better than a half-applied write.
+  **`key` and `baseRole` are immutable, and `isSystem` cannot come from a request.** Editing
+  `baseRole` would silently re-rank everyone already holding the role, which is an escalation
+  dressed as an edit; accepting `isSystem` would let a caller mint a role the administration
+  surface then refuses to delete. System roles are refused with a stated 409 rather than the
+  repository's silent null, so an operator learns why instead of watching a role appear to
+  vanish on save.
+  **Contract and route counts moved together:** 49 → **54 operations across 47 paths**, and
+  `check-route-contracts` independently reports **54 routes across 12 controllers**, auth
+  family 25 → 30.
+  **Commands actually run:** `pnpm turbo run test --force` **11/11** with api **103 → 115** ·
+  e2e **13/13** with 14 probe accounts and **0** remaining · `generate:openapi` green ·
+  `pnpm typecheck` **15/15** · `pnpm lint` **17/17** with all five guards · `pnpm format:check`
+  clean.
+  **Formatting note, discovered while writing this entry.** An inline code span containing a
+  double asterisk collides with bold emphasis in Prettier's MDX parser: it strips the
+  surrounding spaces and the list indentation, which is what corrupted this entry when first
+  written. Route globs are therefore written without it here.
+- 2026-08-08 — [DONE] **Auth Pass 5c.4 — the `/admin/users` surface: role grant and revoke,
+  no-delegation-above-self, last-administrator protection, and audited offboarding.**
+  **No delegation above self is TWO conditions, and both are needed.** The role's `baseRole`
+  must sit within the actor's own tier, AND the role's permissions must be a SUBSET of what the
+  actor effectively holds. Tier alone would let a staff administrator hand out a staff-tier
+  role carrying permissions they do not have themselves — authority created from nothing.
+  Subset alone would let somebody grant an admin-tier role whenever its permission list
+  happened to be narrow, and tier is what governs what a holder may later be granted. Together,
+  nobody can create authority they do not already possess, which is what stops a compromised
+  mid-level account bootstrapping itself upward.
+  **The refusal does not name the missing permissions.** Echoing them would turn a 403 into a
+  map of the permission space for anyone probing it. Asserted in the unit suite and on the
+  wire.
+  **Last-administrator protection covers both ways out.** Revoking the final live admin-tier
+  assignment is refused, and so is disabling the last account holding one — otherwise the
+  surface that manages authority can remove the last authority able to manage it, and with no
+  first-administrator bootstrap (6a) nobody could get back in without direct database access.
+  The count is over ASSIGNMENTS, the authoritative model going forward; during the migration an
+  account could still hold power through embedded `permissions`, so this can refuse a
+  revocation that would in fact have been survivable. **Refusing too often is the safe
+  direction for this particular check**, and that is a deliberate choice rather than an
+  oversight.
+  **Offboarding revokes sessions outright, not just the token version.** `SessionGuard` already
+  refuses a non-active account on the next request, so the bump alone would be correct — but
+  revoking kills the refresh tokens too, so an offboarded operator's stolen cookie cannot be
+  replayed against a system that has merely not re-read their status yet. Re-enabling revokes
+  nothing, and an actor cannot disable their OWN account: it is the one action from which they
+  could not recover through this surface.
+  **`deleted` is not an offerable status.** Offboarding is `disabled`: the row survives so the
+  audit trail keeps its subject, and the email stays claimed rather than becoming
+  re-registerable by somebody else. `setStatus` was added to `AuthUserRepository` for this.
+  **Grants name only a role, never permissions.** Letting a caller attach permissions to a
+  grant would reintroduce the free-form privilege strings the registry abolished, and would
+  make two users holding the same role mean different things.
+  **Proven on the wire, then negative-controlled.** A new e2e seeds a LIMITED administrator
+  (may assign roles, holds little else), has it create a role carrying `role.destroy`, and
+  requires **403** when it tries to grant it; requires 403 on granting the admin-tier system
+  role; and requires **409** when revoking the only administrator assignment. Removing each
+  protection in turn fails that check with the exact symptom —
+  `privilege escalation was allowed: 201` and `the last administrator was revocable: 200` —
+  then restored and re-run.
+  **A test defect worth recording.** An assignment fixture omitted `revokedAt`, and
+  `undefined !== null` reads as revoked, so the resolver correctly ignored it and the
+  expectation failed. The fixture was wrong, not the resolver: treating a missing field as
+  revoked is failing CLOSED, which is the direction that check should be wrong in.
+  **Counts moved together again:** 54 → **58 operations across 51 paths**, and
+  `check-route-contracts` independently reports **58 routes across 13 controllers**.
+  **Commands actually run:** `pnpm turbo run test --force` **11/11** with api **115 → 131**
+  (contracts 157, http-transport 157, core-domain 98, storefront 57, admin 61) · adapter
+  **103/103** with `RUN_DB_IT=1` · e2e **14/14** with 16 probe accounts and **0** remaining ·
+  `generate:openapi` green · `pnpm typecheck` **15/15** · `pnpm lint` **17/17** with all five
+  guards · `pnpm format:check` clean.
+  **Next executable step:** pass 5c.5 — a read-only permission-registry listing for the grant
+  UI. Then 5c.6, the security-negative campaign. Tool: claude-code.
 - _(append)_
 
 ---

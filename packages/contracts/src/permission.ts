@@ -12,30 +12,20 @@ import { z } from 'zod';
  * `RequirePermissions` in the API takes this union, so a mistyped code fails to COMPILE
  * rather than failing open at runtime.
  *
- * ## Why exactly these codes
+ * ## Where the codes come from
  *
- * They are not invented. These are the codes the admin application's navigation already gates
- * on (`apps/admin/src/app/shared/data/menu.ts`), reconciled one-for-one:
- * **26 codes across 22 resources**. `scripts/check-permission-registry.mjs` asserts the two
- * lists stay identical in both directions, so a menu entry cannot start gating on a
- * permission the server has never heard of, and a code cannot be retired here while the
- * navigation still asks for it.
+ * **26** were reconciled from the admin application's navigation, which already gated on a
+ * vocabulary the API had never heard of (`apps/admin/src/app/shared/data/menu.ts`). **7** more
+ * were added for the administrative surfaces themselves — role editing and role assignment —
+ * and those have no navigation entry yet, so they are declared server-only below.
+ * `scripts/check-permission-registry.mjs` holds the whole arrangement together.
  *
  * ## What is deliberately absent
  *
- * Only `index` and `create` actions exist, because only those are in use. There is no
- * `product.update` or `product.destroy` yet — the routes that would need them are not built,
- * and inventing 22 resources × 4 actions of speculative codes would produce a registry whose
- * majority is untested fiction. Adding an action is a deliberate one-line edit here plus the
- * route that consumes it, which is what "stable codes" is meant to cost.
- *
- * ## What this does NOT do
- *
- * No route requires a permission yet (auth pass 5a, owner-chosen scope). `SessionGuard` holds
- * that grants are authoritative and a role implies nothing, so enforcing before grants can be
- * administered would 403 every existing administrator out of the back office — there is no
- * first-admin bootstrap (6a) and no grant surface (5c) to recover through. Enforcement lands
- * in 5c alongside its escalation tests.
+ * There is no `user.destroy`: accounts are deactivated, never deleted, because an audit trail
+ * that can lose its subject is not an audit trail. And there is no code for a resource whose
+ * administrative surface is not being built — the registry grows one route at a time, which is
+ * what makes "stable codes" mean anything.
  */
 export const PermissionCode = z.enum([
 	'attachment.index',
@@ -48,12 +38,16 @@ export const PermissionCode = z.enum([
 	'order.create',
 	'order.index',
 	'page.index',
+	'permission.index',
 	'point.index',
 	'product.create',
 	'product.index',
 	'refund.index',
 	'review.index',
+	'role.create',
+	'role.destroy',
 	'role.index',
+	'role.update',
 	'setting.index',
 	'shipping.index',
 	'store.create',
@@ -61,14 +55,43 @@ export const PermissionCode = z.enum([
 	'tag.index',
 	'tax.index',
 	'theme_option.index',
+	'user_role.assign',
+	'user_role.revoke',
 	'user.create',
 	'user.index',
+	'user.update',
 	'wallet.index',
 ]);
 export type PermissionCode = z.infer<typeof PermissionCode>;
 
 /** Every code, for building a grant UI or asserting completeness. Ordering is stable. */
 export const PERMISSION_CODES: readonly PermissionCode[] = PermissionCode.options;
+
+/**
+ * Codes the SERVER needs before any navigation entry gates on them, each with the reason.
+ *
+ * The registry and the admin navigation are otherwise held identical in both directions,
+ * because a code neither side uses is either a retired feature or a screen nobody gated. That
+ * rule is right, and it would also block every API surface built before its UI — which is the
+ * normal order of work here. This map is the escape hatch, and it is deliberately a map
+ * rather than a list: an entry has to carry a justification, so "why can nothing reach this?"
+ * is answered in the file rather than in somebody's memory.
+ *
+ * An entry is a promise to build the screen. It is not a parking space for codes nobody
+ * intends to use — `check-permission-registry.mjs` still requires every code to be declared
+ * here or reachable from the menu, so an abandoned entry stays visible in review forever.
+ */
+export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCode, string>>> = {
+	'permission.index': 'Enumerates this registry so a grant UI can render it; there is no screen of its own to gate.',
+	'role.create': 'Role management surface (auth pass 5c.3); the navigation gates only role.index today.',
+	'role.destroy': 'Role management surface (auth pass 5c.3); deleting a role is separate from editing one.',
+	'role.update': 'Role management surface (auth pass 5c.3); editing a role changes what everyone holding it can do.',
+	'user.update': 'Administrative user editing (auth pass 5c.4), distinct from inviting a new one.',
+	'user_role.assign':
+		'Granting authority (auth pass 5c.4). Deliberately not part of user.update: changing a display name and changing what somebody may do are not the same risk.',
+	'user_role.revoke':
+		'Removing authority (auth pass 5c.4). Separate from assigning it because offboarding must stay possible for operators who may not grant.',
+};
 
 /** The resource half of a code — the noun a permission is about. */
 export const PermissionResource = z.enum([
@@ -81,6 +104,7 @@ export const PermissionResource = z.enum([
 	'faq',
 	'order',
 	'page',
+	'permission',
 	'point',
 	'product',
 	'refund',
@@ -93,12 +117,20 @@ export const PermissionResource = z.enum([
 	'tax',
 	'theme_option',
 	'user',
+	'user_role',
 	'wallet',
 ]);
 export type PermissionResource = z.infer<typeof PermissionResource>;
 
-/** The action half. Extending this is a registry decision, not an implementation detail. */
-export const PermissionAction = z.enum(['index', 'create']);
+/**
+ * The action half. Extending this is a registry decision, not an implementation detail.
+ *
+ * `assign` and `revoke` are separate actions rather than one `manage`, because granting
+ * authority and removing it carry opposite risks: the dangerous direction is upward, and
+ * `no-delegation-above-self` constrains only granting. An operator who may offboard someone
+ * need not be an operator who may promote them.
+ */
+export const PermissionAction = z.enum(['assign', 'create', 'destroy', 'index', 'revoke', 'update']);
 export type PermissionAction = z.infer<typeof PermissionAction>;
 
 /**
@@ -116,6 +148,9 @@ export type PermissionGrant = z.infer<typeof PermissionGrant>;
 
 /** Splits a code into its parts. Total, because the union guarantees the shape. */
 export function parsePermission(code: PermissionCode): { resource: PermissionResource; action: PermissionAction } {
-	const [resource, action] = code.split('.');
-	return { resource: resource as PermissionResource, action: action as PermissionAction };
+	const separator = code.indexOf('.');
+	return {
+		resource: code.slice(0, separator) as PermissionResource,
+		action: code.slice(separator + 1) as PermissionAction,
+	};
 }

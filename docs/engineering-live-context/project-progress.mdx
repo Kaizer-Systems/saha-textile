@@ -1981,6 +1981,72 @@ UnauthorizedException` carries the reason, and the global filter reads it from t
   **Next executable step:** pass 5c — `/admin/roles/**`, `/admin/permissions/**`,
   `/admin/users/**` with last-admin protection, no-delegation-above-self, permission-version
   invalidation, and the escalation/BOLA/TOCTOU tests. Tool: claude-code.
+- 2026-08-08 — [SCOPE] **Pass 5c decomposed into six sub-passes**, after checking what already
+  exists so the sizing is real rather than assumed. Already present and therefore NOT in
+  scope: `permissionsVersion` invalidation works end to end (the repository has
+  `$inc: { permissionsVersion: 1 }` and `SessionGuard` already refuses a stale version with
+  `permissions_changed`, which 4c taught both clients to act on), and audit logging is wired
+  through `AUDIT_LOG_REPOSITORY`. The behaviour change 5c must make is that `SessionGuard`
+  reads `user.permissions`, never assignments. Sub-passes: **5c.1** registry write/assign
+  actions plus the server-only policy · **5c.2** effective permissions resolved from active
+  assignments, behaviour-preserving, with system-role seeding · **5c.3** `/admin/roles/**` ·
+  **5c.4** `/admin/users/**` with last-admin protection and no-delegation-above-self ·
+  **5c.5** `/admin/permissions/**` listing · **5c.6** the security-negative campaign.
+  Sequencing note: the first grant cannot come from a permission-gated route, so 5c.2 seeds
+  it; and 5c can be proven at the API level but still owes a browser run until 6a exists.
+  Tool: claude-code.
+- 2026-08-08 — [DONE] **Auth Pass 5c.1 — registry write/assign actions, and an honest escape
+  hatch for codes the server needs before the UI does.**
+  **The problem was one I created in 5a.** `check-permission-registry` holds the registry and
+  the admin navigation identical in BOTH directions, which is right — a code neither side uses
+  is either a retired feature or a screen nobody gated. It also blocks every API surface built
+  before its UI, which is the normal order of work here. 5c.3–5c.5 need codes the navigation
+  has never had, so the rule had to grow a deliberate exception before it blocked real work.
+  **Seven codes added, 26 → 33**, across two new resources (`permission`, `user_role`) and
+  four new actions (`update`, `destroy`, `assign`, `revoke`): `permission.index`,
+  `role.create`, `role.destroy`, `role.update`, `user.update`, `user_role.assign`,
+  `user_role.revoke`. Sorted with the same `localeCompare` the guard checks against, which is
+  why `user_role.*` precedes `user.create`.
+  **`assign` and `revoke` are separate actions, not one `manage`.** Granting authority and
+  removing it carry opposite risks: the dangerous direction is upward, and
+  no-delegation-above-self constrains only granting. An operator who may offboard someone need
+  not be one who may promote them. For the same reason assignment is its own resource rather
+  than part of `user.update` — changing a display name and changing what somebody may do are
+  not the same risk.
+  **No `user.destroy`**, deliberately: accounts are deactivated, never deleted, because an
+  audit trail that can lose its subject is not an audit trail.
+  **The escape hatch is a map, not a list.** `SERVER_ONLY_PERMISSION_CODES` requires a REASON
+  per code, so "why can nothing reach this?" is answered in the file rather than in someone's
+  memory, and an abandoned entry stays visible in review. The guard now enforces four further
+  rules: a server-only entry must name a real code, must carry a substantive reason, must not
+  ALSO be in the menu (that is a contradiction — the UI reaches it), and every registry code
+  must be reachable from the menu or declared here.
+  **Two defects in my own guard, both found by negative-controlling it rather than by a green
+  run.** (1) The server-only parser used an entry-terminator lookahead and silently dropped
+  the LAST entry, which surfaced as the final code looking undeclared; it now slices between
+  key positions. (2) The "has a reason" check tested that the value STARTED with a quote
+  followed by a non-space character — which `''` satisfies, because the closing quote is
+  itself non-space. The empty-reason rule therefore never fired. It now counts letters, which
+  also survives Prettier splitting a long reason across concatenated lines. **7/7 rules caught
+  after the fixes**, including both regressions, with the admin menu verified untouched.
+  **An old claim of mine is no longer true.** `pnpm typecheck` is now **15/15 successful,
+  0 cached** and `pnpm lint` **17/17** — the `developer-portal-storybook` `@core/*` failure I
+  reported under 3c.5, 4b, 4c, 4d, 4e, 5a and 5b is gone. `--traceResolution` shows
+  `@core/auth/auth-gateway` resolving to a TYPE-SHIM at
+  `apps/developer-portal-storybook/src/type-shims/core/auth/auth-gateway.ts`, mapped
+  explicitly in that tsconfig, both committed in `9e950c83` — which PREDATES this session. So
+  the alias never needed changing, and my 4e attempt to remap it was wrong in a way I did not
+  understand at the time. I cannot account for why the check failed repeatedly earlier in this
+  session and am not going to invent a reason; what is verified is that it passes now, both
+  uncached through Turbo and on a direct run of the package script.
+  **Commands actually run:** `pnpm turbo run test --force` **11/11** with contracts
+  **154 → 157** (http-transport 157, core-domain 87, api 97, storefront 57, admin 61) ·
+  `pnpm turbo run typecheck --force` **15/15, 0 cached** · `pnpm lint` **17/17** with all five
+  guards OK · `MONGODB_PORT=27018 pnpm e2e:session-rotation` **12/12** with 0 probe rows ·
+  `pnpm format:check` clean.
+  **Next executable step:** pass 5c.2 — wire the 5b repositories into the API, resolve
+  effective permissions from active assignments with `user.permissions` as fallback, and seed
+  the system roles. Behaviour-preserving by design; prove equivalence first. Tool: claude-code.
 - _(append)_
 
 ---

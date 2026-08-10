@@ -7,6 +7,7 @@ import {
 	PermissionCode,
 	PermissionGrant,
 	PermissionResource,
+	SERVER_ONLY_PERMISSION_CODES,
 	parsePermission,
 } from '../src/index';
 
@@ -19,8 +20,34 @@ describe('permission registry', () => {
 	});
 
 	it('exposes every code with a stable order', () => {
-		expect(PERMISSION_CODES).toHaveLength(26);
+		expect(PERMISSION_CODES).toHaveLength(33);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
+	});
+
+	it('has no duplicate codes', () => {
+		expect(new Set(PERMISSION_CODES).size).toBe(PERMISSION_CODES.length);
+	});
+
+	describe('server-only codes', () => {
+		const entries = Object.entries(SERVER_ONLY_PERMISSION_CODES);
+
+		it('names only real codes', () => {
+			for (const [code] of entries) {
+				expect(PermissionCode.safeParse(code).success).toBe(true);
+			}
+		});
+
+		/**
+		 * The escape hatch has to justify itself, or it becomes a parking space for codes
+		 * nobody intends to build a screen for.
+		 */
+		it('carries a substantive reason for each', () => {
+			expect(entries.length).toBeGreaterThan(0);
+			for (const [code, reason] of entries) {
+				expect(reason, code).toBeTruthy();
+				expect(reason!.length, code).toBeGreaterThan(20);
+			}
+		});
 	});
 
 	it('splits every code into declared halves', () => {

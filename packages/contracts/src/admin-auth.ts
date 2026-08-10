@@ -135,3 +135,54 @@ export const AdminInviteAcceptRequest = z.object({
 	preferredLoginMethod: PreferredLoginMethod.optional(),
 });
 export type AdminInviteAcceptRequest = z.infer<typeof AdminInviteAcceptRequest>;
+
+/**
+ * Read model for the admin Security Settings screen (`GET /auth/admin/security`).
+ *
+ * Deliberately says whether a PIN EXISTS, never anything about the PIN itself. A screen needs
+ * to render "change" rather than "set", and to explain why PIN login is currently refused —
+ * neither of which requires the value, its length, or its hash.
+ *
+ * The two suspension states are separate because they behave differently and an operator has
+ * to be told which one they are in: `pinLockedUntil` is the five-failure brute-force lock and
+ * clears itself after fifteen minutes, while `pinRevalidationRequiredAt` follows a privileged
+ * password reset and clears only when the new password is used once.
+ */
+export const AdminSecuritySettingsResponse = z.object({
+	hasPin: z.boolean(),
+	preferredLoginMethod: PreferredLoginMethod,
+	/** Non-null while the brute-force lock is in force. Self-clearing. */
+	pinLockedUntil: IsoDateTime.nullable(),
+	/** Non-null while PIN use is suspended after a privileged reset. Not self-clearing. */
+	pinRevalidationRequiredAt: IsoDateTime.nullable(),
+	emailVerified: z.boolean(),
+	/** How many sessions this account currently has live, across every device. */
+	activeSessions: z.number().int().nonnegative(),
+});
+export type AdminSecuritySettingsResponse = z.infer<typeof AdminSecuritySettingsResponse>;
+
+/**
+ * Change the signed-in administrator's password (`POST /auth/admin/password/change`).
+ *
+ * `currentPassword` is the recent-password proof: a hijacked session must not be able to
+ * change the credential it rode in on, which would lock the real owner out of their own
+ * account. Distinct from the RESET flow, which is for somebody who cannot sign in and is
+ * authorized by an emailed single-use token instead.
+ */
+export const AdminPasswordChangeRequest = z.object({
+	currentPassword: z.string().min(1).max(256),
+	newPassword: Password,
+});
+export type AdminPasswordChangeRequest = z.infer<typeof AdminPasswordChangeRequest>;
+
+/**
+ * Remove the PIN entirely (`DELETE /auth/admin/pin`).
+ *
+ * Password proof again, for the same reason it guards setting one: removing a credential is
+ * as sensitive as adding one, and an attacker who could clear the PIN could then set their
+ * own through the endpoint next door.
+ */
+export const AdminPinRemovalRequest = z.object({
+	currentPassword: z.string().min(1).max(256),
+});
+export type AdminPinRemovalRequest = z.infer<typeof AdminPinRemovalRequest>;

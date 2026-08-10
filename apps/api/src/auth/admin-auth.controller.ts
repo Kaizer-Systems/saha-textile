@@ -23,11 +23,15 @@ import {
 	AdminPinSetupRequest,
 	type AuthSessionResponse,
 	type GenericAcceptedResponse,
+	AdminPasswordChangeRequest,
+	AdminPinRemovalRequest,
+	type AdminSecuritySettingsResponse,
 } from '@saha-textile/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AdminInviteService } from './admin-invite.service';
+import { AdminSecurityService } from './admin-security.service';
 import { AuthService } from './auth.service';
 import { Principal } from './ownership';
 import { tooManyRequests } from './rate-limit-response';
@@ -61,6 +65,7 @@ export class AdminAuthController {
 		private readonly auth: AuthService,
 		private readonly sessions: SessionService,
 		private readonly adminInvites: AdminInviteService,
+		private readonly security: AdminSecurityService,
 	) {}
 
 	@Post('login')
@@ -194,21 +199,72 @@ export class AdminAuthController {
 	async setPin(
 		@Body(new ZodValidationPipe(AdminPinSetupRequest)) body: AdminPinSetupRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Req() request: FastifyRequest,
 	): Promise<void> {
 		if (!principal) throw new UnauthorizedException('Authentication required');
 
-		const user = await this.auth.findAuthUserById(principal.userId);
-		// Password proof on every PIN change: a hijacked session must not be able to mint
-		// a second, easier credential for itself.
-		if (!user || !(await this.auth.verifyPassword(user, body.currentPassword))) {
-			throw new UnauthorizedException('Invalid credentials');
-		}
+		// Password proof and auditing both live in the service, so setting a PIN and removing
+		// one cannot drift apart on either.
+		await this.security.setPin(principal.userId, body, requestIdOf(request));
+	}
 
-		const pinHash = await this.auth.hashPassword(body.pin);
-		await this.auth.authUserRepository.setPinHash(user.id, pinHash);
-		if (body.preferredLoginMethod) {
-			await this.auth.authUserRepository.setPreferredLoginMethod(user.id, body.preferredLoginMethod);
-		}
+	/**
+	 * What Security Settings renders.
+	 *
+	 * Reports that a PIN EXISTS and why it may currently be refused; never the PIN, its
+	 * length, or its hash. A screen needs "change" versus "set", and an explanation for a
+	 * lock — none of which requires the credential.
+	 */
+	@Get('security')
+	@RequireRoles('staff', 'admin')
+	@ApiOperation({ operationId: 'getAdminSecuritySettings', summary: 'Credential state for Security Settings' })
+	securitySettings(
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<AdminSecuritySettingsResponse> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+		return this.security.settings(principal.userId);
+	}
+
+	/**
+	 * Removes the PIN.
+	 *
+	 * A POST rather than a DELETE because it carries the password proof, and a bodyless
+	 * DELETE cannot. Removing a credential is as sensitive as adding one: an attacker able to
+	 * clear the PIN could set their own through the endpoint above.
+	 */
+	@Post('pin/remove')
+	@RequireRoles('staff', 'admin')
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({ operationId: 'removeAdminPin', summary: 'Remove the admin PIN (requires password proof)' })
+	async removePin(
+		@Body(new ZodValidationPipe(AdminPinRemovalRequest)) body: AdminPinRemovalRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Req() request: FastifyRequest,
+	): Promise<void> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+		await this.security.removePin(principal.userId, body.currentPassword, requestIdOf(request));
+	}
+
+	/**
+	 * Changes the password and ends every session, including this one.
+	 *
+	 * Distinct from the reset flow below, which is for somebody who CANNOT sign in and is
+	 * authorized by an emailed token instead. Here the old password is the authorization.
+	 */
+	@Post('password/change')
+	@RequireRoles('staff', 'admin')
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({
+		operationId: 'changeAdminPassword',
+		summary: 'Change the password; every session is revoked (audited)',
+	})
+	async changePassword(
+		@Body(new ZodValidationPipe(AdminPasswordChangeRequest)) body: AdminPasswordChangeRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Req() request: FastifyRequest,
+	): Promise<void> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+		await this.security.changePassword(principal.userId, body, requestIdOf(request));
 	}
 
 	/**
@@ -479,3 +535,5 @@ export class AdminAuthController {
 		};
 	}
 }
+
+const requestIdOf = (request: FastifyRequest): string | null => (typeof request.id === 'string' ? request.id : null);

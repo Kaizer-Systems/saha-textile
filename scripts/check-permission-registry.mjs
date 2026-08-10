@@ -96,15 +96,68 @@ const menuCodes = new Set([...menuSource.matchAll(/'([a-z_]+\.[a-z_]+)'/g)].map(
 
 if (menuCodes.size === 0) fail(`no permission codes found in ${ADMIN_MENU} — wrong path or changed shape?`);
 
+/**
+ * Codes the server needs before the UI gates on them, each carrying a reason.
+ *
+ * Parsed from the same file rather than duplicated here, so the guard cannot disagree with
+ * the declaration it is guarding. Only the KEYS and whether a non-empty reason follows are
+ * read — the prose itself is for humans.
+ */
+function serverOnlyCodes(source) {
+	const block = /SERVER_ONLY_PERMISSION_CODES[^=]*=\s*\{([\s\S]*?)\n\};/.exec(source);
+	if (!block) return null;
+
+	// Sliced between key positions rather than matched with a lookahead: an entry-terminator
+	// pattern has to special-case the LAST entry, and the first version of this silently
+	// dropped it — which showed up as the final code looking undeclared.
+	const body = block[1];
+	const keys = [...body.matchAll(/'([a-z_]+\.[a-z_]+)'\s*:/g)];
+	const entries = new Map();
+	for (const [index, key] of keys.entries()) {
+		const from = key.index + key[0].length;
+		const to = index + 1 < keys.length ? keys[index + 1].index : body.length;
+		const raw = body.slice(from, to).trim().replace(/,$/, '').trim();
+		/**
+		 * Measure the CONTENT, not the shape. An earlier version tested that the value began
+		 * with a quote followed by a non-space character — which `''` satisfies, because the
+		 * closing quote is itself non-space. The empty-reason rule silently never fired.
+		 * Counting letters also survives Prettier splitting a long reason across concatenated
+		 * lines, which the shape test would have had to special-case anyway.
+		 */
+		const letters = (raw.match(/[A-Za-z]/g) ?? []).length;
+		entries.set(key[1], letters >= 15 ? raw : '');
+	}
+	return entries;
+}
+
+const serverOnly = serverOnlyCodes(registrySource);
+if (!serverOnly) {
+	fail(`could not parse SERVER_ONLY_PERMISSION_CODES from ${REGISTRY}`);
+	process.exit(1);
+}
+
 const registrySet = new Set(codes);
+
+for (const [code, reason] of serverOnly) {
+	if (!registrySet.has(code)) fail(`server-only list names "${code}", which is not a registry code`);
+	if (!reason) fail(`server-only code "${code}" has no reason — an escape hatch must justify itself`);
+	// Both at once is a contradiction: the UI reaches it, so it is not server-only.
+	if (menuCodes.has(code)) {
+		fail(`"${code}" is declared server-only but the admin navigation gates on it — remove the server-only entry`);
+	}
+}
+
 for (const code of menuCodes) {
 	if (!registrySet.has(code)) {
 		fail(`${ADMIN_MENU} gates on "${code}", which the registry cannot grant — add it to ${REGISTRY}`);
 	}
 }
 for (const code of registrySet) {
-	if (!menuCodes.has(code)) {
-		fail(`registry grants "${code}", which no admin navigation entry uses — retire it or gate a screen with it`);
+	if (!menuCodes.has(code) && !serverOnly.has(code)) {
+		fail(
+			`registry grants "${code}", which no admin navigation entry uses — gate a screen with it, retire it, ` +
+				`or declare it in SERVER_ONLY_PERMISSION_CODES with a reason`,
+		);
 	}
 }
 
@@ -114,5 +167,6 @@ if (failures > 0) {
 }
 console.log(
 	`check-permission-registry: OK (${codes.length} codes across ${resources.length} resources, ` +
-		`${actions.length} actions, identical to the admin navigation)`,
+		`${actions.length} actions — ${menuCodes.size} reachable from the admin navigation, ` +
+		`${serverOnly.size} server-only with a stated reason)`,
 );

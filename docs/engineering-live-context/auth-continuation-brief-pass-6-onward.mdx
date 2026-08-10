@@ -1,0 +1,288 @@
+---
+title: Authentication continuation brief — Security Settings UI, pass 6c onward
+description: Handoff for the next session. Records what the 2026-08-08 session delivered, what it
+corrected, and every item left owed.
+---
+
+# Authentication continuation brief — Security Settings UI, pass 6c onward
+
+Written at the end of the 2026-08-08 session. It supplements, and does NOT replace,
+`auth-continuation-brief-pass-3-onward.mdx`; that document still holds the operating rules,
+the environment specifics and the gotchas, and its remaining-passes table is still the plan.
+
+## 0. Read these before touching anything
+
+Read completely, in this order. Do not skip on the grounds that this brief summarises them —
+it summarises one session, not the architecture.
+
+1. `docs/engineering-live-context/auth-continuation-brief-pass-3-onward.mdx` — operating
+   rules (section 0 and the rules section), environment, gotchas, verification gates.
+2. `docs/engineering-live-context/project-progress.mdx` — the dated log. Every pass below has
+   an entry with the real command output; the entries are longer and more precise than this
+   summary.
+3. `docs/engineering-live-context/claude-code-authentication-api-db-build-prompt.mdx` — the
+   authoritative architecture and security requirements, especially section 7 (RBAC) and the
+   locked security decisions.
+4. `docs/engineering-live-context/authentication-use-case-delivery-and-security-matrix.mdx` —
+   the negative-test checklist that pass 11 must satisfy.
+5. `docs/engineering-live-context/pending-decisions.mdx` and the owner-decisions log — never
+   invent an answer to anything recorded there as open.
+
+Then inspect the actual source and `git status --short` before believing any status claim,
+including the ones in this file.
+
+## 1. Operating rules still in force
+
+These were set by the owner and were honoured throughout the session. They still bind.
+
+- EXTREMELY SMALL PASSES. One coherent change per pass.
+- ASK BEFORE EVERY PASS, offering two to four concrete options with a recommendation first.
+  The owner relaxed this late in the session to "go ahead with further steps as needed, but
+  small passes as determined"; treat that as permission to continue an agreed sequence, not
+  as permission to start a new area of work unannounced.
+- Run the section 6 gates after every pass and append a dated, accurate entry to
+  `project-progress.mdx` with the real command output.
+- Do NOT touch developer-portal derived pages (`docs/admin`, `docs/storefront`, `docs/backend`
+  and siblings). A separate tool reconciles them, and it committed twice during this session
+  (`9e950c83`, `844f5ed5`). Do not chase the portal validator.
+- Never commit, stage or push unless the owner separately asks. The owner DID ask for commits
+  during this session and each pass was committed; confirm before assuming that still holds.
+- Do not claim a check ran unless it ran and its real output was captured. Do not fabricate
+  provider credentials, provider responses or E2E results.
+- Preserve existing uncommitted owner changes.
+
+## 2. Where the work sits now
+
+Branch `feat/api-db-env-secrets-sync`, working tree clean at `d11537d3`.
+
+Passes 3a through 6b are delivered. The remaining-passes table in the pass-3 brief has been
+updated by the portal tool and now marks 3a-3d, 4, 5a, 5b, 5c and 6a as DONE. See section 5
+for a discrepancy in the 3d row that the next session should resolve rather than inherit.
+
+Current suite sizes, from `pnpm turbo run test --force`:
+
+| Package           | Tests                                      |
+| ----------------- | ------------------------------------------ |
+| contracts         | 160                                        |
+| http-transport    | 157                                        |
+| core-domain       | 98                                         |
+| adapters-db-mongo | 103 (4 run, 99 gated behind `RUN_DB_IT=1`) |
+| api               | 131                                        |
+| storefront        | 57                                         |
+| admin             | 61                                         |
+
+Plus `apps/api/e2e/session-rotation.mjs` at 24 checks, which needs a live replica set and is
+deliberately not wired into `pnpm test`.
+
+`pnpm typecheck` is 15/15 and `pnpm lint` is 17/17. Five source-level guards run BEFORE
+`turbo run lint`, deliberately, so a red package cannot stop them executing:
+
+```
+pnpm check:naming && pnpm check:browser-auth && pnpm check:i18n-parity
+&& pnpm check:route-contracts && pnpm check:permission-registry && turbo run lint
+```
+
+The OpenAPI document is 62 operations across 55 paths, and `check-route-contracts` reports 62
+routes across 14 controllers independently. Two counts from two sources agreeing is the point
+of having both; if they diverge, something is wrong.
+
+## 3. What this session delivered
+
+Chronologically, each with its own progress-log entry.
+
+### Admin login UI (pre-numbered work)
+
+The PIN method toggle was restyled to the theme's own `forgot-password` class, verified by
+computed style rather than by eye — all fourteen text properties identical. The PIN is entered
+on an on-screen keypad with NO text input behind it, which is what makes a device keyboard
+impossible on every platform rather than merely discouraged. A follow-up fixed three
+owner-reported defects: a Clear key, cells that no longer change height when the first digit
+lands, and borderless keys. No keypad key is `disabled`, because this theme paints
+`.btn:disabled` as a solid filled block.
+
+### French catalogue repair and the i18n guard
+
+The French catalogue had drifted 17 keys behind English, invisible because Transloco falls
+back to English. The audit found more than absence: two keys that could never resolve because
+catalogue and template disagreed on case, five Hungarian strings, ten untranslated, eight
+wrong-sense translations, two zero-width spaces, and French text in the ENGLISH catalogue.
+`check-i18n-parity.mjs` now holds all of it.
+
+### Pass 4 — route and contract hygiene
+
+- 4a retired the dead legacy bearer guards, and pinned the behaviour with an e2e check that a
+  valid access token offered as a bearer header authenticates nothing.
+- 4b added `AuthRefusalReason` to the error envelope on SESSION-BOUND surfaces only. The
+  originally-requested fix — telling wrong PIN from locked PIN at the login screen — was
+  deliberately NOT built, because it is an account-enumeration oracle. That reasoning is in
+  the progress log and should not be quietly reversed.
+- 4c consumed the reason in both interceptors as rule 7.
+- 4d pinned 49 explicit operation ids and a declared tag vocabulary, and replaced a documented
+  bearer security scheme that the API does not accept.
+- 4e categorised every route by contract family and reclaimed seven request shapes that had
+  been declared inside controllers.
+
+### Pass 5 — RBAC
+
+- 5a built the canonical permission registry from the 26 codes the admin navigation already
+  used, plus grant validation.
+- 5b added the `roles` and `userRoleAssignments` collections with the partial unique index that
+  makes one-active-assignment enforceable without preventing a re-grant after revocation.
+- 5c.1 through 5c.6 delivered effective-permission resolution, the role surface, the user
+  authority surface with no-delegation-above-self and last-administrator protection, the
+  permission listing, and the security-negative campaign.
+
+### Pass 6a and the admin browser E2E
+
+6a is an operator CLI, not a route, and refuses to run a second time. The admin browser E2E
+owed since pass 2 was then run against the real app with that bootstrapped administrator.
+
+### Pass 6b — Security Settings API
+
+`GET /auth/admin/security`, PIN removal, and password change with recent-password proof. API
+only. The Angular screen does not exist.
+
+## 4. Corrections and wrong interpretations, so they are not repeated
+
+Every one of these was a claim that turned out to be wrong. They are recorded because the
+mistake is more instructive than the fix.
+
+1. `developer-portal-storybook` typecheck was reported as failing across seven passes. It is
+   NOT broken and the alias never needed changing: a type-shim with an explicit tsconfig
+   mapping, committed in `9e950c83` before the session, resolves it. The 4e attempt to remap
+   the alias was wrong. `pnpm typecheck` is 15/15 with 0 cached.
+2. A privilege-escalation vulnerability was reported to myself during 6a — registration
+   appearing to honour an injected `role: admin`. It does not. The handler hard-codes
+   `role: 'customer'`; the assertion had filtered on `emailNormalized`, which registration does
+   not reliably set, and matched a different account. No vulnerability existed.
+3. The Log out control looked like a dead element with no attributes and no effect from a
+   direct click. The template shows it opens a confirmation modal. Checking the source beat
+   reporting the symptom.
+4. A bodyless DELETE returning 400 instead of 409 was my own call setting a JSON content-type.
+5. 5c.2 was scoped as "assignments with `user.permissions` as fallback". Written that way it
+   is not behaviour-preserving, because the first assignment would silently revoke embedded
+   grants. It ships as a UNION.
+6. The 6a bootstrap check first sat at the end of the e2e and failed on its own success
+   criterion, because every earlier check seeds an administrator. Ordering was part of the test.
+7. A Prettier MDX parser collision destroyed a progress entry: an inline code span containing a
+   double asterisk collides with bold emphasis, stripping spacing and list indentation. Never
+   write a route glob that way in these documents.
+
+## 5. Owed, deferred and unverified
+
+This is the section to act on. Nothing here is blocked by anything except a decision or time.
+
+### Built but not usable from a browser
+
+- The admin Security Settings SCREEN does not exist. 6b delivered only the API. The PIN half
+  of the admin browser E2E is therefore still owed, and the idle soft lock in 6c will want the
+  same screen.
+- No admin screen consumes `/admin/roles`, `/admin/permissions` or `/admin/users`. The
+  permission registry is published for a grant UI that has not been built.
+
+### Security gaps found while working, not yet closed
+
+- WEAK-PIN POLICY IS NOT IMPLEMENTED. `AdminPin` validates only the six-digit shape, and the
+  contract comment states that denylist and sequential/repeated rejection belongs in
+  core-domain. No such module exists, so `000000` and `123456` are currently acceptable PINs.
+  This is the most security-relevant item in this list.
+- `setPinHash` clears `failedPinAttempts` and `pinLockedUntil` but NOT
+  `pinRevalidationRequiredAt`. Removing a PIN while suspended therefore leaves a stale
+  suspension flag on an account with no PIN. Decide whether that is correct before changing it;
+  the locked decision says the suspension clears only when the new password is used.
+- Deny-by-default covers only the NEW admin surfaces. Pre-existing privileged routes still use
+  role checks — `PATCH /orders/:id/status` is `@RequireRoles('admin','staff')` with no
+  permission. Converting them is a behaviour change that needs its own pass and its own
+  lockout analysis.
+- A bodyless DELETE carrying `content-type: application/json` answers 400 rather than the
+  intended status. Angular does not set that header on a bodyless request, so no client is
+  affected today, but other HTTP clients do.
+
+### Contract and model debt
+
+- Neither Angular app depends on `@saha-textile/contracts`. The gateways still hand-write their
+  wire DTOs. The pass-3 brief now marks 3d DONE with evidence describing the http-transport
+  contract-alignment test, which is a different thing from the row's own title. Resolve that
+  discrepancy explicitly rather than inheriting it.
+- The embedded `user.permissions` array is transitional. Effective permissions are the UNION of
+  it and role assignments; retiring it is unscheduled work, and until then
+  `AdminInvite.permissions` and `UserAuthState.permissions` stay permissive `string[]` on read.
+- Last-administrator protection counts ASSIGNMENTS only, so an account holding administrative
+  power through embedded permissions is not counted. It deliberately over-refuses.
+- `AuditLogListQuery` is documented in contracts as `GET /admin/audit-logs`. No such route
+  exists, so nothing can read the audit trail these passes have been writing.
+- The build prompt requires an admin session list and per-session revoke. Only a session COUNT
+  exists, added in 6b.
+- Registration-created user documents did not reliably expose `emailNormalized` in a lean read,
+  which is what produced correction 2 above. Worth a short investigation into which write paths
+  set it, because lookups elsewhere filter on it.
+
+### Never verified
+
+- The invite to acceptance to first-login journey has never been exercised end to end. It was
+  blocked on 6a; 6a now exists, so it is merely undone.
+- PIN login is unproven in a browser, because the bootstrapped administrator has no PIN and no
+  screen sets one.
+- The 15-minute idle soft lock (6c) does not exist. `POST /auth/admin/resume` exists
+  server-side; the client overlay does not.
+- The rate-limit ceilings chosen in an earlier session were implemented on my recommendation
+  and were never separately ratified by the owner.
+- The wider French translation quality was never audited. Eight wrong-sense translations were
+  corrected; a full review of all 805 strings by a French speaker has not happened, and the
+  guard cannot detect a plausible-but-wrong translation.
+
+### Operational
+
+- The bootstrapped administrator `owner@saha-textile.test` exists in `saha_textile_local` and
+  its generated password was printed into a chat transcript. Treat it as disclosed and rotate
+  it before that database is used for anything real.
+
+## 6. Harness lessons worth keeping
+
+The e2e suite grew from 10 checks to 24 and leaked three times. Each leak made its own
+"0 remaining" claim untrue.
+
+- Per-check cleanup is skipped when an assertion throws, so aborted runs poisoned later ones.
+  RBAC rows are now cleared unconditionally in teardown.
+- Audit rows and email-verification tokens accumulated silently. The teardown now enumerates
+  every collection and FAILS the run naming any that is still populated.
+- Refusal assertions create accounts nobody tracks when a refusal fails, so users are cleared
+  wholesale rather than by tracked id.
+- A negative-control runner reported MISSED for runs that never executed, because the Mongo
+  container had stopped. Any mutation runner must refuse to interpret a run that produced no
+  tally, and must restore the source in a `finally`.
+- `JWT_ACCESS_TTL` is one second in the e2e so the expiry case is genuine, which means admin
+  sessions age out mid-check. RBAC checks rotate once and replay, mirroring the interceptors.
+
+Two mutations were ABSORBED rather than caught, and both were correct outcomes demonstrating
+defence in depth: swapping the guard's active-assignment query changed nothing because the
+resolver filters revoked assignments itself, and removing either bootstrap refusal alone still
+left the bootstrap refusing.
+
+## 7. Verification gates
+
+Run all of these after every pass, and quote the real numbers.
+
+```
+pnpm turbo run test --force
+MONGODB_PORT=27018 RUN_DB_IT=1 pnpm --filter @saha-textile/adapters-db-mongo test
+MONGODB_PORT=27018 pnpm e2e:session-rotation
+pnpm --filter @saha-textile/api generate:openapi
+pnpm typecheck
+pnpm lint
+pnpm format:check
+```
+
+Prefer proving a control by breaking it. Every security property added this session was
+negative-controlled: the mutation was applied, the failing check and its message were captured,
+and the source was restored and re-verified. A green suite is not evidence that a check works.
+
+## 8. Suggested next steps, in dependency order
+
+1. The admin Security Settings screen, which closes 6b, unblocks the PIN half of the admin
+   browser E2E, and gives 6c somewhere to live.
+2. Weak-PIN policy in core-domain, because a six-digit credential with no denylist is a real
+   gap and the contract already promises the check exists.
+3. Pass 6c — the idle soft lock and PIN quick-resume overlay.
+4. The invite to first-login journey, now unblocked.
+5. Passes 7 through 11 as listed in the pass-3 brief.

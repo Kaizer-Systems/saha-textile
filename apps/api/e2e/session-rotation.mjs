@@ -145,6 +145,32 @@ async function main() {
 		return response;
 	}
 
+	/**
+	 * An admin request that survives the deliberately tiny access TTL.
+	 *
+	 * `JWT_ACCESS_TTL` is one second so the expiry case above is real, which means any check
+	 * doing more than a couple of admin calls will cross the boundary mid-way. Rotating once
+	 * on `session_expired` and replaying is exactly what both Angular interceptors do in
+	 * production (auth pass 4c), so this mirrors the client rather than weakening anything:
+	 * a 401 for any OTHER reason, and every 403, still surfaces untouched.
+	 */
+	async function adminRequest(jar, method, url, options = {}) {
+		const first = await request(jar, method, url, options);
+		if (first.statusCode !== 401) return first;
+
+		let reason;
+		try {
+			reason = JSON.parse(first.body).error?.reason;
+		} catch {
+			return first;
+		}
+		if (reason !== 'session_expired') return first;
+
+		const rotated = await request(jar, 'POST', '/auth/admin/refresh', { payload: {} });
+		if (rotated.statusCode !== 200) return first;
+		return request(jar, method, url, options);
+	}
+
 	async function registerCustomer() {
 		const email = `rotation-probe-${randomUUID()}@example.test`;
 		emails.push(email);
@@ -520,14 +546,14 @@ async function main() {
 		assert.equal(wrongAudience.statusCode, 401, 'a storefront session reached an admin surface');
 
 		const jar = new CookieJar();
-		const login = await request(jar, 'POST', '/auth/admin/login', {
+		const login = await adminRequest(jar, 'POST', '/auth/admin/login', {
 			payload: { identifier: email, password },
 		});
 		assert.equal(login.statusCode, 200, `admin login failed: ${login.statusCode} ${login.body}`);
 
 		// THE PROPERTY: an authenticated administrator, correct audience, admin role — and
 		// still refused, because the grant list is authoritative and this one is empty.
-		const ungranted = await request(jar, 'GET', '/admin/roles');
+		const ungranted = await adminRequest(jar, 'GET', '/admin/roles');
 		assert.equal(ungranted.statusCode, 403, `an ungranted admin was allowed in: ${ungranted.statusCode}`);
 
 		// Granting the seeded administrator role opens it, with no re-login: the guard resolves
@@ -546,7 +572,7 @@ async function main() {
 			},
 		]);
 
-		const granted = await request(jar, 'GET', '/admin/roles');
+		const granted = await adminRequest(jar, 'GET', '/admin/roles');
 		assert.equal(granted.statusCode, 200, `a granted admin was refused: ${granted.statusCode} ${granted.body}`);
 		assert.ok(JSON.parse(granted.body).items.length >= 1, 'role list came back empty');
 
@@ -583,7 +609,9 @@ async function main() {
 			]);
 			probeUserIds.push(userId);
 			const jar = new CookieJar();
-			const login = await request(jar, 'POST', '/auth/admin/login', { payload: { identifier: email, password } });
+			const login = await adminRequest(jar, 'POST', '/auth/admin/login', {
+				payload: { identifier: email, password },
+			});
 			assert.equal(login.statusCode, 200, `probe admin login failed: ${login.statusCode}`);
 			return { userId, jar };
 		};
@@ -593,7 +621,7 @@ async function main() {
 		const victim = await makeAdmin([]);
 
 		// A role carrying a permission the actor does NOT hold.
-		const created = await request(limited.jar, 'POST', '/admin/roles', {
+		const created = await adminRequest(limited.jar, 'POST', '/admin/roles', {
 			payload: {
 				key: `escalation-${randomUUID().slice(0, 8)}`,
 				label: 'Escalation',
@@ -605,7 +633,7 @@ async function main() {
 		const escalationRoleId = JSON.parse(created.body).id;
 
 		// THE PROPERTY: granting it would hand over authority the actor does not have.
-		const escalate = await request(limited.jar, 'POST', `/admin/users/${victim.userId}/roles`, {
+		const escalate = await adminRequest(limited.jar, 'POST', `/admin/users/${victim.userId}/roles`, {
 			payload: { roleId: escalationRoleId },
 		});
 		assert.equal(
@@ -616,7 +644,7 @@ async function main() {
 		assert.ok(!escalate.body.includes('role.destroy'), 'the refusal named the missing permission');
 
 		// The administrator role is admin-tier; granting it is refused for the same reason.
-		const grantAdmin = await request(limited.jar, 'POST', `/admin/users/${victim.userId}/roles`, {
+		const grantAdmin = await adminRequest(limited.jar, 'POST', `/admin/users/${victim.userId}/roles`, {
 			payload: { roleId: 'role_system_administrator' },
 		});
 		assert.equal(grantAdmin.statusCode, 403, `admin-tier grant was allowed: ${grantAdmin.statusCode}`);
@@ -635,7 +663,7 @@ async function main() {
 			},
 		]);
 
-		const revokeLast = await request(
+		const revokeLast = await adminRequest(
 			limited.jar,
 			'DELETE',
 			`/admin/users/${victim.userId}/roles/role_system_administrator`,
@@ -722,7 +750,7 @@ async function main() {
 
 		// Granting to SELF is the shortest escalation path, and the subset rule is what closes
 		// it: the administrator role holds every code, which this actor does not.
-		const response = await request(probe.jar, 'POST', `/admin/users/${probe.userId}/roles`, {
+		const response = await adminRequest(probe.jar, 'POST', `/admin/users/${probe.userId}/roles`, {
 			payload: { roleId: 'role_system_administrator' },
 		});
 		assert.equal(response.statusCode, 403, `self-escalation was allowed: ${response.statusCode} ${response.body}`);
@@ -736,7 +764,7 @@ async function main() {
 
 		// One permission the actor holds, one it does not. A partial application would leave
 		// the target holding half a role nobody decided to give them.
-		const created = await request(probe.jar, 'POST', '/admin/roles', {
+		const created = await adminRequest(probe.jar, 'POST', '/admin/roles', {
 			payload: {
 				key: `mixed-${randomUUID().slice(0, 8)}`,
 				label: 'Mixed',
@@ -747,13 +775,13 @@ async function main() {
 		assert.equal(created.statusCode, 201, `role create failed: ${created.statusCode} ${created.body}`);
 		const mixedRoleId = JSON.parse(created.body).id;
 
-		const grant = await request(probe.jar, 'POST', `/admin/users/${victim.userId}/roles`, {
+		const grant = await adminRequest(probe.jar, 'POST', `/admin/users/${victim.userId}/roles`, {
 			payload: { roleId: mixedRoleId },
 		});
 		assert.equal(grant.statusCode, 403, `a mixed-target grant was allowed: ${grant.statusCode}`);
 
 		// Nothing was applied: the victim still holds no roles at all.
-		const after = await request(probe.jar, 'GET', `/admin/users/${victim.userId}/authority`);
+		const after = await adminRequest(probe.jar, 'GET', `/admin/users/${victim.userId}/authority`);
 		assert.equal(after.statusCode, 200);
 		assert.equal(JSON.parse(after.body).roles.length, 0, 'a refused grant left a role behind');
 
@@ -781,11 +809,15 @@ async function main() {
 
 		// A SECOND tab: the same account, a separate session established before the revocation.
 		const secondTab = new CookieJar();
-		const login = await request(secondTab, 'POST', '/auth/admin/login', {
+		const login = await adminRequest(secondTab, 'POST', '/auth/admin/login', {
 			payload: { identifier: probe.email, password: probe.password },
 		});
 		assert.equal(login.statusCode, 200, `second-tab login failed: ${login.statusCode}`);
-		assert.equal((await request(secondTab, 'GET', '/admin/roles')).statusCode, 200, 'grant did not take effect');
+		assert.equal(
+			(await adminRequest(secondTab, 'GET', '/admin/roles')).statusCode,
+			200,
+			'grant did not take effect',
+		);
 
 		// Authority removed underneath both live sessions.
 		await UserRoleAssignmentModel.updateOne({ _id: assignmentId }, { $set: { revokedAt: new Date() } }).exec();
@@ -797,7 +829,7 @@ async function main() {
 			['first tab', probe.jar],
 			['second tab', secondTab],
 		]) {
-			const response = await request(jar, 'GET', '/admin/roles');
+			const response = await adminRequest(jar, 'GET', '/admin/roles');
 			assert.equal(response.statusCode, 403, `${label} kept revoked authority: ${response.statusCode}`);
 		}
 
@@ -817,6 +849,21 @@ async function main() {
 	await models.AuthRateLimitModel.deleteMany({});
 	await models.UserRoleAssignmentModel.deleteMany({});
 	await models.RoleModel.deleteMany({});
+	// Audit rows are written by the admin surfaces this run exercises. They are evidence in
+	// production and debris here, and they were silently accumulating across runs while the
+	// summary below reported "0 remaining" — which counted users only. Cleared and counted so
+	// the claim matches what is actually left.
+	const auditRemoved = (await models.AuditLogModel.deleteMany({})).deletedCount ?? 0;
+	// Registration issues a verification token per probe, and those were accumulating unseen —
+	// 404 of them, while the summary said "0 remaining". Every collection a run can write to is
+	// cleared, and the assertion below is what stops the next one being discovered by accident.
+	await Promise.all([
+		models.EmailVerificationTokenModel.deleteMany({}),
+		models.OtpChallengeModel.deleteMany({}),
+		models.PasswordResetTokenModel.deleteMany({}),
+		models.OAuthStateModel.deleteMany({}),
+		models.AdminInviteModel.deleteMany({}),
+	]);
 	for (const id of probeUserIds) {
 		await models.AuthSessionModel.deleteMany({ userId: id });
 		await models.UserModel.deleteOne({ _id: id });
@@ -831,17 +878,39 @@ async function main() {
 		remaining += await models.UserModel.countDocuments({ email });
 	}
 
+	/**
+	 * The claim, verified rather than asserted in prose.
+	 *
+	 * Enumerating the database beats listing what we think we wrote: two leaks (audit rows,
+	 * verification tokens) were found only because someone looked. A collection that survives
+	 * this is reported by name and fails the run.
+	 */
+	const leftovers = [];
+	// Reached through the adapter, which owns the mongoose dependency; the API does not have one.
+	const database = models.getMongoose().connection.db;
+	for (const collection of await database.listCollections().toArray()) {
+		const count = await database.collection(collection.name).countDocuments({});
+		if (count > 0) leftovers.push(`${collection.name}=${count}`);
+	}
+
 	await app.close();
 
 	console.log(
 		`\nrefusal codes: session-without-csrf=${refusalCodes.sessionWithoutCsrf} no-cookies=${refusalCodes.noCookies}`,
 	);
-	console.log(`probe accounts created ${emails.length}, remaining after cleanup ${remaining}`);
+	console.log(
+		`probe accounts created ${emails.length}, remaining after cleanup ${remaining}; ` +
+			`audit rows removed ${auditRemoved}`,
+	);
 
 	const failed = results.filter((r) => !r.ok);
 	console.log(`\n${results.length - failed.length}/${results.length} passed\n`);
 	if (remaining !== 0) {
 		console.error('cleanup incomplete — probe rows remain');
+		process.exitCode = 1;
+	}
+	if (leftovers.length > 0) {
+		console.error(`cleanup incomplete — collections still populated: ${leftovers.join(', ')}`);
 		process.exitCode = 1;
 	}
 	if (failed.length > 0) process.exitCode = 1;

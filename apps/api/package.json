@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "test": "vitest run --passWithNoTests",
     "e2e:session-rotation": "node e2e/session-rotation.mjs",
-    "check:openapi": "node scripts/check-openapi.mjs"
+    "check:openapi": "node scripts/check-openapi.mjs",
+    "bootstrap:first-admin": "nest build && node dist/create-first-admin.js"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.2",

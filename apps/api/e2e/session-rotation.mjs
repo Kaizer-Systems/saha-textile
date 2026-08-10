@@ -221,6 +221,105 @@ async function main() {
 
 	console.log(`\nsession rotation e2e — database ${E2E_DB_NAME}, access TTL ${ACCESS_TTL}\n`);
 
+	/**
+	 * Runs FIRST, and the ordering is part of the test.
+	 *
+	 * A bootstrap is what happens to a system that has no administrator, and every later check
+	 * seeds one directly — which is exactly the state this must refuse. Placed at the end, it
+	 * failed on its own success criterion, correctly.
+	 */
+	await check('first-administrator bootstrap: creates one, then refuses forever (pass 6a)', async () => {
+		const { bootstrapFirstAdmin, FirstAdminAlreadyExistsError } = await import('../dist/first-admin.js');
+		const { ADMINISTRATOR_ROLE_KEY, UserModel, ensureSystemRoles, AuditLogModel } = models;
+		const deps = { models: { UserModel }, ensureSystemRoles, administratorRoleKey: ADMINISTRATOR_ROLE_KEY };
+
+		const email = `first-admin-${randomUUID()}@example.test`;
+		emails.push(email);
+
+		const created = await bootstrapFirstAdmin(app, { email }, deps);
+		probeUserIds.push(created.userId);
+		assert.ok(created.password.length >= 12, 'generated password is below the policy floor');
+		assert.equal(created.roleKey, ADMINISTRATOR_ROLE_KEY);
+
+		// The bootstrap must produce a WORKING administrator, not merely rows: sign in with the
+		// generated credential and reach a deny-by-default surface.
+		const jar = new CookieJar();
+		const login = await request(jar, 'POST', '/auth/admin/login', {
+			payload: { identifier: created.email, password: created.password },
+		});
+		assert.equal(login.statusCode, 200, `bootstrapped administrator cannot sign in: ${login.statusCode}`);
+
+		const roles = await adminRequest(jar, 'GET', '/admin/roles');
+		assert.equal(roles.statusCode, 200, `bootstrapped administrator was refused: ${roles.statusCode}`);
+
+		// It is audited, at the highest severity, with no credential material anywhere in it.
+		const entry = await AuditLogModel.findOne({ action: 'admin.bootstrap.first_administrator' }).lean().exec();
+		assert.ok(entry, 'the bootstrap was not audited');
+		assert.equal(entry.severity, 'critical');
+		assert.equal(entry.actorUserId, null, 'nobody granted this; the actor must be null');
+		assert.ok(!JSON.stringify(entry).includes(created.password), 'the password reached the audit log');
+
+		// THE PROPERTY: refusal, not a silent no-op, and not a second administrator.
+		await assert.rejects(
+			() => bootstrapFirstAdmin(app, { email: `second-${randomUUID()}@example.test` }, deps),
+			(error) => error instanceof FirstAdminAlreadyExistsError,
+			'a second bootstrap was permitted',
+		);
+
+		/**
+		 * The assignment-holder refusal, ISOLATED.
+		 *
+		 * The two refusal checks overlap in every ordinary state, so removing either one alone
+		 * still leaves the bootstrap refusing — defence in depth, and untestable through the
+		 * happy path. This constructs the one state where only the holder check applies: an
+		 * admin-tier assignment held by an account that is NOT itself `role: 'admin'`.
+		 */
+		await models.UserModel.deleteMany({ role: 'admin' }).exec();
+		const staffId = `user_${randomUUID()}`;
+		await models.UserModel.create([
+			{
+				_id: staffId,
+				email: `staff-holder-${randomUUID()}@example.test`,
+				role: 'staff',
+				status: 'active',
+				permissions: [],
+				tokenVersion: 0,
+				permissionsVersion: 0,
+			},
+		]);
+		await models.UserRoleAssignmentModel.create([
+			{
+				_id: `ura_${randomUUID()}`,
+				userId: staffId,
+				roleId: (await models.RoleModel.findOne({ key: ADMINISTRATOR_ROLE_KEY }).lean().exec())._id,
+				assignedByUserId: null,
+				assignedAt: new Date(),
+				revokedAt: null,
+				revokedByUserId: null,
+				revokeReason: null,
+			},
+		]);
+		await assert.rejects(
+			() => bootstrapFirstAdmin(app, { email: `holder-${randomUUID()}@example.test` }, deps),
+			(error) => error instanceof FirstAdminAlreadyExistsError,
+			'bootstrap ran again despite a live administrator assignment',
+		);
+		await models.UserRoleAssignmentModel.deleteMany({ userId: staffId }).exec();
+		await models.UserModel.deleteOne({ _id: staffId }).exec();
+
+		// Refusal also holds for an account carrying the coarse role but no assignment yet,
+		// which is the state a partially-completed earlier attempt would leave behind.
+		await models.UserModel.create([
+			{ _id: created.userId, email: created.email, role: 'admin', status: 'active', permissions: [] },
+		]);
+		await models.UserRoleAssignmentModel.deleteMany({ userId: created.userId }).exec();
+		await assert.rejects(
+			() => bootstrapFirstAdmin(app, { email: `third-${randomUUID()}@example.test` }, deps),
+			(error) => error instanceof FirstAdminAlreadyExistsError,
+			'bootstrap ran again despite an existing admin account',
+		);
+	});
+
 	await check('issues httpOnly session cookies and no token material in the body', async () => {
 		const jar = await registerCustomer();
 		for (const name of ['st_access', 'st_refresh', 'st_csrf']) {
@@ -839,6 +938,40 @@ async function main() {
 		]);
 	});
 
+	await check('no HTTP route can create an administrator (pass 6a)', async () => {
+		// The bootstrap is an operator action precisely so the network cannot reach it. These
+		// are the shapes somebody would try if they assumed otherwise.
+		for (const url of [
+			'/auth/admin/bootstrap',
+			'/auth/admin/first-admin',
+			'/admin/bootstrap',
+			'/admin/users/bootstrap',
+		]) {
+			const response = await app.inject({ method: 'POST', url, payload: { email: 'x@example.test' } });
+			assert.equal(response.statusCode, 404, `${url} exists and answered ${response.statusCode}`);
+		}
+
+		// And self-registration cannot escalate: the storefront route ignores any role asked for.
+		const jar = new CookieJar();
+		const email = `role-injection-${randomUUID()}@example.test`;
+		emails.push(email);
+		const registered = await request(jar, 'POST', '/auth/storefront/register', {
+			payload: { email, password: 'a-very-long-probe-password', role: 'admin', permissions: ['role.destroy'] },
+		});
+		assert.equal(registered.statusCode, 201, `registration failed: ${registered.statusCode}`);
+
+		// Queried by `email`, and the document's own address is re-asserted before its role is
+		// read. An earlier version filtered on `emailNormalized`, which registration does not
+		// reliably set, so it matched a DIFFERENT account and reported a privilege-escalation
+		// vulnerability that does not exist. A probe against a clean database showed the
+		// handler hard-codes `role: 'customer'`.
+		const created = await models.UserModel.findOne({ email }).lean().exec();
+		assert.ok(created, 'the registered account was not found');
+		assert.equal(created.email, email, 'matched the wrong account');
+		assert.equal(created.role, 'customer', `registration honoured an injected role: ${created.role}`);
+		assert.deepEqual(created.permissions ?? [], [], 'registration honoured injected permissions');
+	});
+
 	// Probe rows are removed explicitly, not merely isolated in their own database.
 	//
 	// RBAC rows are cleared here as well as inside the checks that create them, because a
@@ -864,19 +997,19 @@ async function main() {
 		models.OAuthStateModel.deleteMany({}),
 		models.AdminInviteModel.deleteMany({}),
 	]);
-	for (const id of probeUserIds) {
-		await models.AuthSessionModel.deleteMany({ userId: id });
-		await models.UserModel.deleteOne({ _id: id });
-	}
-	let remaining = 0;
-	for (const email of emails) {
-		const user = await models.UserModel.findOne({ email }).lean();
-		if (user) {
-			await models.AuthSessionModel.deleteMany({ userId: String(user._id) });
-			await models.UserModel.deleteOne({ _id: user._id });
-		}
-		remaining += await models.UserModel.countDocuments({ email });
-	}
+	/**
+	 * Users are cleared WHOLESALE, not by tracked id or address.
+	 *
+	 * The refusal assertions call the bootstrap with addresses they expect to be rejected, so
+	 * those are never registered for cleanup — and when a refusal genuinely fails, the account
+	 * it should not have created survives into the next run and breaks it for an unrelated
+	 * reason. Tracking every address a check MIGHT create is a losing game in a database that
+	 * exists only for this suite.
+	 */
+	const probeAccounts = await models.UserModel.countDocuments({});
+	await models.AuthSessionModel.deleteMany({});
+	await models.UserModel.deleteMany({});
+	const remaining = await models.UserModel.countDocuments({});
 
 	/**
 	 * The claim, verified rather than asserted in prose.
@@ -899,7 +1032,7 @@ async function main() {
 		`\nrefusal codes: session-without-csrf=${refusalCodes.sessionWithoutCsrf} no-cookies=${refusalCodes.noCookies}`,
 	);
 	console.log(
-		`probe accounts created ${emails.length}, remaining after cleanup ${remaining}; ` +
+		`probe accounts created ${emails.length}, present at teardown ${probeAccounts}, remaining ${remaining}; ` +
 			`audit rows removed ${auditRemoved}`,
 	);
 

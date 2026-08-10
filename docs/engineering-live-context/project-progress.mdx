@@ -2305,6 +2305,69 @@ e2e:session-rotation` **12/12** with 0 probe rows, which is also the proof the n
   rebuilt and restarted onto the current build — it had been serving a pre-5c.3 binary.
   `GET /admin/roles` and `GET /admin/permissions` both answer **401** anonymously on that live
   instance.
+- 2026-08-08 — [DONE] **Auth Pass 6a — first-administrator bootstrap.** An operator CLI, not
+  a route. **e2e 20 → 22.**
+  **Why not a route.** Every other way in requires an administrator to already exist — invites
+  are admin-only, role assignment is deny-by-default — which is correct and leaves exactly one
+  hole: the first one. A public endpoint to fill it would be an unauthenticated route that
+  mints total authority, guarded by nothing but the hope it is disabled in production. This
+  needs a shell on the machine and the database credentials, a boundary the network cannot
+  cross.
+  **Impossible to re-run, not merely idempotent.** It refuses whenever administrative authority
+  already exists — a live admin-tier assignment, OR any account carrying the coarse `admin`
+  role. The second invocation is a refusal with a non-zero exit, never a quiet no-op that mints
+  a second unaccounted administrator.
+  **The password is generated, never supplied.** Taking one as an argument would put it in
+  shell history, the process table and quite possibly a CI log. 24 CSPRNG bytes as `base64url`,
+  printed once, stored only as an argon2 hash — and the e2e asserts it never reaches the audit
+  entry.
+  **Audited at `critical` with `actorUserId: null`.** Nobody granted this; the operator
+  bootstrapped it. Recording the new account as its own grantor would fabricate a delegation
+  that never happened.
+  **Proven as the operator would run it, not only as a function.**
+  `pnpm --filter @saha-textile/api bootstrap:first-admin -- --email …` created the
+  administrator, a second run refused, and that account then signed in against the LIVE API on
+  port 4000 and reached both `/admin/roles` and `/admin/permissions` — the deny-by-default
+  surfaces from 5c.3 and 5c.5.
+  **A vulnerability I reported to myself, and then disproved.** A new check asserted that
+  registration ignores an injected `role`, and it FAILED with
+  `registration honoured an injected role: admin`. Before claiming a privilege-escalation hole
+  I probed a clean database directly: the handler hard-codes `role: 'customer'` and the created
+  account is a customer. The assertion had queried `emailNormalized`, which registration does
+  not reliably set, so it matched a DIFFERENT account — the bootstrapped administrator. The
+  check now filters on `email` and re-asserts the document's own address before reading its
+  role. **No vulnerability existed.**
+  **Ordering turned out to be part of the test.** The bootstrap check first sat at the end of
+  the suite and failed on its own success criterion: every earlier check seeds an administrator
+  directly, which is exactly the state it must refuse. It now runs FIRST, which is also what a
+  bootstrap means.
+  **Two refusal paths, and the overlap had to be engineered around.** Removing either check
+  alone still leaves the bootstrap refusing, so neither was individually provable through the
+  happy path. The suite now constructs the one state where only the holder check applies — an
+  admin-tier assignment held by an account that is not itself `role: 'admin'`. **All five
+  controls now bite:** holders refusal, account refusal, both together, the audit write, and
+  the role grant.
+  **A third harness leak, caught by the assertion added earlier today.** The refusal assertions
+  call the bootstrap with addresses they expect to be REJECTED, so those are never registered
+  for cleanup — and when a refusal genuinely fails, the account it should not have created
+  survives into the next run and breaks it for an unrelated reason. Users are now cleared
+  wholesale in teardown rather than by tracked id or address; tracking every address a check
+  might create is a losing game in a database that exists only for this suite. Stable at
+  **22/22 across five consecutive runs**.
+  **And a defect in my own mutation runner.** One mutation broke the build; the runner
+  correctly refused to interpret a run that never happened, then exited WITHOUT restoring the
+  source. Restoration now sits in a `finally`.
+  **Commands actually run:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` **22/22**, e2e
+  database verified empty by enumeration · `pnpm turbo run test --force` **11/11** ·
+  `pnpm typecheck` **15/15** · `pnpm lint` **17/17** · `pnpm format:check` clean · the CLI
+  exercised for real in both directions.
+  **Local environment.** `saha_textile_local` now holds the bootstrapped administrator
+  `owner@saha-textile.test` and the `administrator` system role. The password was printed to
+  this session's transcript, so it should be treated as disclosed and changed before that
+  database is ever used for anything real.
+  **This unblocks the admin browser E2E owed since Pass 2**, and removes the seeded-probe
+  workaround the RBAC suites rely on. Next executable step: pass 6b — admin Security Settings
+  with recent-password proof and PIN configure/change. Tool: claude-code.
 - _(append)_
 
 ---

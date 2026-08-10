@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { AdminUsersController } from './admin-users.controller';
 import { AdminUsersService } from './admin-users.service';
+import { PermissionsController } from './permissions.controller';
 import { RolesController } from './roles.controller';
 import { RolesService } from './roles.service';
 
@@ -13,7 +14,7 @@ import { RolesService } from './roles.service';
  * privilege-editing routes beside the login routes would blur that.
  */
 @Module({
-	controllers: [RolesController, AdminUsersController],
+	controllers: [RolesController, AdminUsersController, PermissionsController],
 	providers: [RolesService, AdminUsersService],
 	exports: [RolesService, AdminUsersService],
 })

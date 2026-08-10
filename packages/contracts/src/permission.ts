@@ -154,3 +154,32 @@ export function parsePermission(code: PermissionCode): { resource: PermissionRes
 		action: code.slice(separator + 1) as PermissionAction,
 	};
 }
+
+/** One registry entry, as the grant UI needs to render it. */
+export const PermissionDescriptor = z.object({
+	code: PermissionCode,
+	resource: PermissionResource,
+	action: PermissionAction,
+	/**
+	 * True when no admin navigation entry gates on this code yet.
+	 *
+	 * Published so a grant screen can show it apart rather than presenting a permission that
+	 * unlocks nothing an operator can currently click. Hiding it instead would be worse: the
+	 * code IS grantable, and a screen that cannot show what was granted is a screen that
+	 * disagrees with the server.
+	 */
+	serverOnly: z.boolean(),
+});
+export type PermissionDescriptor = z.infer<typeof PermissionDescriptor>;
+
+export const PermissionListResponse = z.object({ items: z.array(PermissionDescriptor) });
+export type PermissionListResponse = z.infer<typeof PermissionListResponse>;
+
+/** The whole registry, described. Order follows `PERMISSION_CODES`, which is stable. */
+export function describePermissions(): PermissionDescriptor[] {
+	return PERMISSION_CODES.map((code) => ({
+		code,
+		...parsePermission(code),
+		serverOnly: code in SERVER_ONLY_PERMISSION_CODES,
+	}));
+}

@@ -8,6 +8,7 @@ import {
 	PermissionGrant,
 	PermissionResource,
 	SERVER_ONLY_PERMISSION_CODES,
+	describePermissions,
 	parsePermission,
 } from '../src/index';
 
@@ -97,6 +98,42 @@ describe('permission registry', () => {
 
 		it('still allows an invite with no permissions at all', () => {
 			expect(AdminInviteRequest.parse(base).permissions).toBeUndefined();
+		});
+	});
+
+	describe('describePermissions', () => {
+		it('describes every code exactly once, in registry order', () => {
+			const described = describePermissions();
+
+			expect(described).toHaveLength(PERMISSION_CODES.length);
+			expect(described.map((entry) => entry.code)).toEqual([...PERMISSION_CODES]);
+		});
+
+		it('splits each code and flags the server-only ones', () => {
+			const described = describePermissions();
+			const byCode = new Map(described.map((entry) => [entry.code, entry]));
+
+			expect(byCode.get('product.index')).toMatchObject({
+				resource: 'product',
+				action: 'index',
+				serverOnly: false,
+			});
+			// Grantable, but no navigation entry reaches it yet — a grant screen shows it apart
+			// rather than pretending it does not exist.
+			expect(byCode.get('user_role.assign')).toMatchObject({
+				resource: 'user_role',
+				action: 'assign',
+				serverOnly: true,
+			});
+		});
+
+		it('marks exactly the declared server-only set', () => {
+			const flagged = describePermissions()
+				.filter((entry) => entry.serverOnly)
+				.map((entry) => entry.code)
+				.sort();
+
+			expect(flagged).toEqual(Object.keys(SERVER_ONLY_PERMISSION_CODES).sort());
 		});
 	});
 });

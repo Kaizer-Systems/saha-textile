@@ -2200,6 +2200,25 @@ e2e:session-rotation` **12/12** with 0 probe rows, which is also the proof the n
   guards · `pnpm format:check` clean.
   **Next executable step:** pass 5c.5 — a read-only permission-registry listing for the grant
   UI. Then 5c.6, the security-negative campaign. Tool: claude-code.
+- 2026-08-08 — [DONE] **Auth Pass 5c.5 — the permission registry published for the grant
+  UI.** One read-only route, `GET /admin/permissions`, gated on `permission.index`.
+  **Read-only, deliberately.** The registry is a compile-time closed set, not data. A route
+  that could add a code would defeat the reason it is closed: an unknown permission would
+  become grantable again and `RequirePermissions` would stop being a compile-time check. Adding
+  a permission stays a code change plus the route that consumes it.
+  **`serverOnly` is published rather than filtered out.** Seven codes have no admin navigation
+  entry yet. Hiding them would be worse than showing them apart: the codes ARE grantable, so a
+  screen that cannot display what was granted is a screen that disagrees with the server.
+  **No service class.** The answer is a pure function over a constant; a class that only
+  forwarded to it would be indirection with nothing to hide.
+  **Commands actually run:** `pnpm turbo run test --force` **11/11** with contracts **157 →
+  160** · `generate:openapi` green at **59 operations across 52 paths**, matching
+  `check-route-contracts` at **59 routes across 14 controllers** ·
+  `MONGODB_PORT=27018 pnpm e2e:session-rotation` **14/14** with 0 probe rows · `pnpm typecheck`
+  **15/15** · `pnpm lint` **17/17** · `pnpm format:check` clean.
+  **Next executable step:** pass 5c.6 — the security-negative campaign: direct-API, BOLA/IDOR,
+  horizontal and vertical escalation, bulk mixed-target, multi-tab and TOCTOU. Tool:
+  claude-code.
 - _(append)_
 
 ---

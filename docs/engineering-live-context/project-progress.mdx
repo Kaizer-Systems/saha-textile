@@ -2412,6 +2412,48 @@ e2e:session-rotation` **12/12** with 0 probe rows, which is also the proof the n
   **Still owed:** PIN login was not exercised, because the bootstrapped administrator has no
   PIN and setting one is 6b. The 15-minute idle soft lock is 6c and does not exist yet. Tool:
   claude-code.
+- 2026-08-08 — [DONE] **Auth Pass 6b — admin Security Settings API: credential state, PIN
+  lifecycle, password change.** **e2e 22 → 24.**
+  **What already existed, and what did not.** `POST /auth/admin/pin` already required password
+  proof on every change, which is the strictest reading of recent-password proof. Missing were
+  the READ surface a screen needs, PIN REMOVAL, and password CHANGE — a self-service credential
+  path distinct from the emailed-token reset.
+  **`GET /auth/admin/security` reports state, never the credential.** `hasPin` rather than the
+  hash, so a screen can render change-versus-set; the two suspension states kept separate
+  because they behave differently and an operator must be told which they are in —
+  `pinLockedUntil` is the five-failure lock and self-clears, `pinRevalidationRequiredAt`
+  follows a privileged reset and clears only when the new password is used. Plus a live session
+  COUNT, deliberately not the rows: handing a controller session documents puts device
+  fingerprints and token hashes one careless serialization from a screen.
+  **PIN removal is a POST, not a DELETE**, because it carries the password proof and a bodyless
+  DELETE cannot. It also resets the preferred method to `password` in the same operation — left
+  on `pin`, an operator would meet a PIN screen for a credential that no longer exists, a login
+  they can neither complete nor explain.
+  **Password change ends every session, including the one that made it.** Signing the operator
+  out of their own browser is the intended cost; the alternative leaves whoever else was signed
+  in exactly where they were. The PIN is deliberately NOT suspended — that is the reset path
+  answering a suspected compromise, and a voluntary change by somebody who just proved the old
+  password is not the same event.
+  **A test that was weaker than its own claim, found by mutation rather than by running it.**
+  Removing `revokeAllForUser` from the password change left the suite at **24/24**.
+  `setPasswordHash` bumps `tokenVersion` in the same write, so ACCESS tokens die either way and
+  an assertion that only checks for 401 passes under both implementations — while the REFRESH
+  row survives, meaning a stolen cookie could rotate straight back into a live session and
+  outlive the credential it was obtained under. The check now requires the refresh itself to
+  fail, and the mutation is caught. **4/4 controls bite:** proof removed, sessions not revoked,
+  preferred method left on `pin`, and `hasPin` fabricated.
+  **Proven as credentials, not as fields.** The e2e sets a PIN and then signs in with it,
+  removes it and confirms the same PIN no longer authenticates, and confirms the old password
+  stops working while the new one starts.
+  **Commands actually run:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` **24/24** with 28
+  probe accounts, 0 remaining and the database verified empty · `pnpm turbo run test --force`
+  **11/11** · `generate:openapi` green at **62 operations across 55 paths**, matching
+  `check-route-contracts` at **62 routes across 14 controllers** · `pnpm typecheck` **15/15** ·
+  `pnpm lint` **17/17** · `pnpm format:check` clean.
+  **API only — the Angular screen is NOT built.** Security Settings has no UI yet, so the PIN
+  half of the admin browser E2E is still owed; the API it needs now exists. Next executable
+  step: either the Security Settings screen, or pass 6c — the 15-minute idle soft lock with PIN
+  quick-resume. Tool: claude-code.
 - _(append)_
 
 ---

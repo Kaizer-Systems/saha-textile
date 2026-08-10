@@ -972,6 +972,134 @@ async function main() {
 		assert.deepEqual(created.permissions ?? [], [], 'registration honoured injected permissions');
 	});
 
+	await check('admin Security Settings: PIN lifecycle and recent-password proof (pass 6b)', async () => {
+		const password = 'a-very-long-probe-password';
+		const probe = await seedAdmin(['user.index']);
+		const settings = () => adminRequest(probe.jar, 'GET', '/auth/admin/security');
+
+		const initial = await settings();
+		assert.equal(initial.statusCode, 200, `security settings unreachable: ${initial.statusCode}`);
+		const before = JSON.parse(initial.body);
+		assert.equal(before.hasPin, false, 'a fresh administrator should have no PIN');
+		assert.equal(before.preferredLoginMethod, 'password');
+		assert.ok(before.activeSessions >= 1, 'the calling session should be counted');
+		// The state exists, the credential never does.
+		assert.ok(!initial.body.includes('pinHash'), 'settings leaked the PIN hash field');
+
+		// Recent-password proof: the wrong password sets nothing.
+		const refused = await adminRequest(probe.jar, 'POST', '/auth/admin/pin', {
+			payload: { currentPassword: 'not-the-password', pin: '135790' },
+		});
+		assert.equal(refused.statusCode, 401, `a PIN was set without password proof: ${refused.statusCode}`);
+		assert.equal(JSON.parse((await settings()).body).hasPin, false, 'a refused attempt still set a PIN');
+
+		const set = await adminRequest(probe.jar, 'POST', '/auth/admin/pin', {
+			payload: { currentPassword: password, pin: '135790', preferredLoginMethod: 'pin' },
+		});
+		assert.equal(set.statusCode, 204, `setting a PIN failed: ${set.statusCode} ${set.body}`);
+		const afterSet = JSON.parse((await settings()).body);
+		assert.equal(afterSet.hasPin, true);
+		assert.equal(afterSet.preferredLoginMethod, 'pin');
+
+		// The PIN actually works as a credential, which is the only proof that matters.
+		const pinJar = new CookieJar();
+		const pinLogin = await request(pinJar, 'POST', '/auth/admin/login/pin', {
+			payload: { identifier: probe.email, pin: '135790' },
+		});
+		assert.equal(pinLogin.statusCode, 200, `PIN login failed after setup: ${pinLogin.statusCode}`);
+
+		// Removal needs the same proof, and takes the preferred method back with it.
+		const removeRefused = await adminRequest(probe.jar, 'POST', '/auth/admin/pin/remove', {
+			payload: { currentPassword: 'not-the-password' },
+		});
+		assert.equal(removeRefused.statusCode, 401, 'a PIN was removed without password proof');
+
+		const removed = await adminRequest(probe.jar, 'POST', '/auth/admin/pin/remove', {
+			payload: { currentPassword: password },
+		});
+		assert.equal(removed.statusCode, 204, `removing the PIN failed: ${removed.statusCode}`);
+		const afterRemove = JSON.parse((await settings()).body);
+		assert.equal(afterRemove.hasPin, false);
+		// Left on `pin`, an operator would be shown a PIN screen for a credential that no
+		// longer exists — a login they cannot complete and cannot explain.
+		assert.equal(afterRemove.preferredLoginMethod, 'password', 'preferred method survived PIN removal');
+
+		const pinAfterRemoval = await request(new CookieJar(), 'POST', '/auth/admin/login/pin', {
+			payload: { identifier: probe.email, pin: '135790' },
+		});
+		assert.equal(pinAfterRemoval.statusCode, 401, 'a removed PIN still authenticates');
+	});
+
+	await check('admin password change ends every session, including the one that changed it (pass 6b)', async () => {
+		const password = 'a-very-long-probe-password';
+		const next = 'an-even-longer-replacement-password';
+		const probe = await seedAdmin(['user.index']);
+
+		// A second tab, established before the change.
+		const otherTab = new CookieJar();
+		const secondLogin = await request(otherTab, 'POST', '/auth/admin/login', {
+			payload: { identifier: probe.email, password },
+		});
+		assert.equal(secondLogin.statusCode, 200);
+		assert.equal((await adminRequest(otherTab, 'GET', '/auth/admin/security')).statusCode, 200);
+
+		const wrongProof = await adminRequest(probe.jar, 'POST', '/auth/admin/password/change', {
+			payload: { currentPassword: 'not-the-password', newPassword: next },
+		});
+		assert.equal(wrongProof.statusCode, 401, 'the password changed without proof of the old one');
+
+		const changed = await adminRequest(probe.jar, 'POST', '/auth/admin/password/change', {
+			payload: { currentPassword: password, newPassword: next },
+		});
+		assert.equal(changed.statusCode, 204, `password change failed: ${changed.statusCode} ${changed.body}`);
+
+		// THE PROPERTY: a stolen cookie must not outlive the credential it was obtained under.
+		// Rotation must not rescue either tab — the refresh tokens died with the sessions.
+		for (const [label, jar] of [
+			['changing tab', probe.jar],
+			['other tab', otherTab],
+		]) {
+			const after = await adminRequest(jar, 'GET', '/auth/admin/security');
+			assert.equal(after.statusCode, 401, `${label} survived the password change: ${after.statusCode}`);
+		}
+
+		/**
+		 * The assertion that separates the two implementations.
+		 *
+		 * `setPasswordHash` bumps `tokenVersion`, so the ACCESS tokens die whether or not the
+		 * sessions are revoked — checking for a 401 alone passes either way, which it did
+		 * until a mutation run exposed it. What actually matters is that the REFRESH token
+		 * died too: otherwise a stolen cookie rotates straight back into a live session and
+		 * outlives the credential it was obtained under.
+		 */
+		for (const [label, jar] of [
+			['changing tab', probe.jar],
+			['other tab', otherTab],
+		]) {
+			const rotated = await request(jar, 'POST', '/auth/admin/refresh', { payload: {} });
+			assert.notEqual(rotated.statusCode, 200, `${label} rotated back in after the password change`);
+		}
+
+		assert.equal(
+			(
+				await request(new CookieJar(), 'POST', '/auth/admin/login', {
+					payload: { identifier: probe.email, password },
+				})
+			).statusCode,
+			401,
+			'the old password still works',
+		);
+		assert.equal(
+			(
+				await request(new CookieJar(), 'POST', '/auth/admin/login', {
+					payload: { identifier: probe.email, password: next },
+				})
+			).statusCode,
+			200,
+			'the new password does not work',
+		);
+	});
+
 	// Probe rows are removed explicitly, not merely isolated in their own database.
 	//
 	// RBAC rows are cleared here as well as inside the checks that create them, because a

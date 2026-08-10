@@ -366,6 +366,17 @@ export class SessionService {
 	}
 
 	/** Revokes every session a user holds — used by password change, disable, and logout-all. */
+	/**
+	 * How many sessions this account currently has live.
+	 *
+	 * Exposed as a COUNT rather than the session rows: Security Settings needs to tell an
+	 * operator "you are signed in on three devices", and handing a controller the rows would
+	 * put device fingerprints and token hashes one careless serialization away from a screen.
+	 */
+	async countActiveForUser(userId: string, audience?: SessionAudience): Promise<number> {
+		return (await this.sessions.listActiveForUser(userId, audience)).length;
+	}
+
 	async revokeAllForUser(userId: string, reason: SessionRevokeReason): Promise<number> {
 		return this.sessions.revokeAllForUser(userId, reason, new Date().toISOString());
 	}

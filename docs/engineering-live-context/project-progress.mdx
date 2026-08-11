@@ -2517,6 +2517,46 @@ e2e:session-rotation` **12/12** with 0 probe rows, which is also the proof the n
   a comment promising a core-domain common-password check that, exactly like the PIN one until
   today, does not exist. Next executable step: the admin Security Settings screen, which now
   has a policy to surface. Tool: claude-code.
+- 2026-08-11 — [DONE] **A failed recent-password proof answers 403, not 401.** **e2e 25 → 26.**
+  Found while wiring the Security Settings gateway, which is why the screen is not in this
+  entry: the defect had to be closed before a screen could call these endpoints.
+  **The defect.** `requireRecentPasswordProof` threw `UnauthorizedException`, and both Angular
+  interceptors read a 401 as "this session is gone". On a credential-classified route they
+  call `onSessionLost()` at once; on any other route they rotate, replay, receive the same
+  refusal and call it anyway. `onSessionLost()` runs `AuthStore.clear()` → `applyAnonymous()`,
+  and `AuthGuard` then bounces the next navigation to `/auth/login`. So a MISTYPED CURRENT
+  PASSWORD on the Security Settings form would have signed the operator out of a session the
+  server still considers perfectly alive. No route classification avoids it — both branches
+  reach the same call, because the status code was carrying a meaning the client could not
+  help but act on.
+  **Why 403 is the correction rather than a workaround.** The locked rule is `401` for an
+  absent or invalid session and `403` for a caller who is authenticated but insufficiently
+  authorized. Somebody reaching that line HAS a valid admin session — the global guard proved
+  it — and has failed a step-up for one operation. That is the second case. The 401 was
+  arguably always a violation of the rule; the client damage is what made it visible.
+  Owner-decided 2026-08-11 after the alternative (a third client-side route classification)
+  was put alongside it.
+  **Not a blanket downgrade, and the E2E says so.** The new check asserts 403 with code
+  `forbidden` and NO `reason` field on all three proof endpoints — a session-bound reason here
+  would be read by both interceptors as a verdict on the session, and there is no session
+  problem to report — then proves the session still works afterwards, and then proves the same
+  three routes still answer **401** when there is no session at all. The 401 raised inside
+  `settings()` for a missing account is untouched: that one really is an absent session.
+  **Negative-controlled.** Reverting the throw to `UnauthorizedException` fails three E2E
+  checks at **23/26**, naming `/auth/admin/pin answered 401 for a failed proof`. Source
+  restored from a byte-comparison backup and re-verified.
+  **Commands actually run:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` **26/26**, 30
+  probe accounts, 0 remaining, database verified empty · `pnpm turbo run test --force`
+  **11/11** (contracts 160, http-transport 157, core-domain 134, api 138, storefront 57,
+  admin 61) · `generate:openapi` green at **62 operations across 55 paths** · `pnpm typecheck`
+  **15/15** · `pnpm lint` **17/17** · `pnpm format:check` clean.
+  **A gate worth knowing about.** `pnpm e2e:session-rotation` at the ROOT runs
+  `turbo run build --filter=@saha-textile/api` first; the same script inside `apps/api` does
+  NOT. Run the root one, or the suite silently tests a stale `dist`.
+  **Still owed.** The Security Settings SCREEN, now unblocked — the gateway needs four methods
+  (`security`, `pin`, `pin/remove`, `password/change`), and none of them are credential routes
+  for transport purposes, because a 403 never enters 401 recovery. The same 401-for-a-proof
+  question will return for storefront step-up, email change and set-password. Tool: claude-code.
 - _(append)_
 
 ---

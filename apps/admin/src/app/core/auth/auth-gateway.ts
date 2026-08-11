@@ -63,6 +63,43 @@ export interface AdminPasswordResetInput {
 	newPassword: string;
 }
 
+/**
+ * What Security Settings renders.
+ *
+ * Says a PIN EXISTS, never anything about its value, its length or its hash. A screen needs
+ * to show "change" rather than "set", and to explain why PIN login is currently refused —
+ * neither of which requires the credential.
+ *
+ * The two suspension states are separate because they behave differently and an operator has
+ * to be told which one they are in: `pinLockedUntil` is the five-failure brute-force lock and
+ * clears itself after fifteen minutes, while `pinRevalidationRequiredAt` follows a privileged
+ * password reset and clears only once the new password has been used.
+ */
+export interface AdminSecurityState {
+	hasPin: boolean;
+	preferredLoginMethod: string;
+	/** Non-null while the brute-force lock is in force. Self-clearing. */
+	pinLockedUntil: string | null;
+	/** Non-null while PIN use is suspended after a privileged reset. Not self-clearing. */
+	pinRevalidationRequiredAt: string | null;
+	emailVerified: boolean;
+	/** How many sessions this account has live, across every device. A count, never the rows. */
+	activeSessions: number;
+}
+
+export interface AdminPinSetupInput {
+	/** Recent-password proof. Required on every change, not only the first. */
+	currentPassword: string;
+	pin: string;
+	/** Optionally flips the preferred method in the same call. */
+	preferredLoginMethod?: string;
+}
+
+export interface AdminPasswordChangeInput {
+	currentPassword: string;
+	newPassword: string;
+}
+
 export abstract class AdminAuthGateway {
 	/** Resolves the signed-in operator plus current permissions, or `null` when anonymous. */
 	abstract currentUser(): Observable<AdminMe | null>;
@@ -99,6 +136,44 @@ export abstract class AdminAuthGateway {
 	 * used once, so the caller is signed out by definition and must log in again.
 	 */
 	abstract resetPassword(input: AdminPasswordResetInput): Observable<void>;
+
+	/**
+	 * Reads the operator's own credential state for Security Settings.
+	 *
+	 * A plain authenticated GET. A `401` here means the session lapsed and the transport may
+	 * recover it by rotating, exactly as it does for `/me`.
+	 */
+	abstract securitySettings(): Observable<AdminSecurityState>;
+
+	/**
+	 * Sets or replaces the PIN, proving the current password every time.
+	 *
+	 * Weak PINs are refused by the server — repeats, runs and a denylist — as
+	 * `validation_failed` carrying a `pin_*` issue code. The rule is deliberately NOT
+	 * duplicated here: a client is the one place credential policy must never be enforced,
+	 * because a client can be bypassed. Render the server's refusal; do not pre-empt it.
+	 */
+	abstract setPin(input: AdminPinSetupInput): Observable<void>;
+
+	/**
+	 * Removes the PIN, proving the current password.
+	 *
+	 * The server resets the preferred method to `password` in the same operation, so callers
+	 * must re-read `securitySettings()` rather than assuming the local copy is still accurate.
+	 */
+	abstract removePin(currentPassword: string): Observable<void>;
+
+	/**
+	 * Changes the password, proving the old one.
+	 *
+	 * The server revokes EVERY admin session including this one, so a success signs the
+	 * operator out by definition. Callers must send them to the login screen rather than
+	 * leaving a shell mounted over a session that no longer exists.
+	 *
+	 * Distinct from `resetPassword`, which is for somebody who cannot sign in and is
+	 * authorized by an emailed token instead.
+	 */
+	abstract changePassword(input: AdminPasswordChangeInput): Observable<void>;
 
 	abstract logout(): Observable<void>;
 

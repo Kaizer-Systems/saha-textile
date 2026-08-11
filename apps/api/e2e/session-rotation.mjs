@@ -986,11 +986,13 @@ async function main() {
 		// The state exists, the credential never does.
 		assert.ok(!initial.body.includes('pinHash'), 'settings leaked the PIN hash field');
 
-		// Recent-password proof: the wrong password sets nothing.
+		// Recent-password proof: the wrong password sets nothing, and answers 403 rather than
+		// 401 because the caller IS authenticated — they have failed a step-up, not lost a
+		// session. See the check below, which is where that distinction is proven to matter.
 		const refused = await adminRequest(probe.jar, 'POST', '/auth/admin/pin', {
 			payload: { currentPassword: 'not-the-password', pin: '135790' },
 		});
-		assert.equal(refused.statusCode, 401, `a PIN was set without password proof: ${refused.statusCode}`);
+		assert.equal(refused.statusCode, 403, `a PIN was set without password proof: ${refused.statusCode}`);
 		assert.equal(JSON.parse((await settings()).body).hasPin, false, 'a refused attempt still set a PIN');
 
 		const set = await adminRequest(probe.jar, 'POST', '/auth/admin/pin', {
@@ -1012,7 +1014,7 @@ async function main() {
 		const removeRefused = await adminRequest(probe.jar, 'POST', '/auth/admin/pin/remove', {
 			payload: { currentPassword: 'not-the-password' },
 		});
-		assert.equal(removeRefused.statusCode, 401, 'a PIN was removed without password proof');
+		assert.equal(removeRefused.statusCode, 403, 'a PIN was removed without password proof');
 
 		const removed = await adminRequest(probe.jar, 'POST', '/auth/admin/pin/remove', {
 			payload: { currentPassword: password },
@@ -1078,6 +1080,47 @@ async function main() {
 		assert.equal(JSON.parse((await settings()).body).hasPin, true, 'an accepted PIN was not stored');
 	});
 
+	await check('a failed step-up proof is 403 and leaves the session usable; a missing one is still 401', async () => {
+		const probe = await seedAdmin(['user.index']);
+
+		const proofs = [
+			['/auth/admin/pin', { currentPassword: 'not-the-password', pin: '384917' }],
+			['/auth/admin/pin/remove', { currentPassword: 'not-the-password' }],
+			[
+				'/auth/admin/password/change',
+				{ currentPassword: 'not-the-password', newPassword: 'a-replacement-password' },
+			],
+		];
+
+		for (const [url, payload] of proofs) {
+			const refused = await adminRequest(probe.jar, 'POST', url, { payload });
+			assert.equal(refused.statusCode, 403, `${url} answered ${refused.statusCode} for a failed proof`);
+
+			const body = JSON.parse(refused.body);
+			assert.equal(body.error.code, 'forbidden', `${url} reported ${body.error.code}`);
+			// A session-bound refusal reason here would be read by both interceptors as a
+			// verdict on the session. There is no session problem to report.
+			assert.equal(body.error.reason, undefined, `${url} attached a session reason to a proof failure`);
+		}
+
+		/**
+		 * The whole point of the change. Before it, every one of those refusals was a 401, and
+		 * both Angular interceptors read a 401 as "this session is gone" — so a mistyped
+		 * current password signed the operator out of a session the server still considers
+		 * live. The session must survive all three.
+		 */
+		const stillAlive = await adminRequest(probe.jar, 'GET', '/auth/admin/security');
+		assert.equal(stillAlive.statusCode, 200, 'a failed password proof ended the session');
+		assert.equal(JSON.parse(stillAlive.body).hasPin, false, 'a refused proof still changed the credential');
+
+		// And this is NOT a blanket downgrade: with no session at all the same routes answer
+		// 401, which is the case a client may legitimately try to recover from.
+		for (const [url, payload] of proofs) {
+			const anonymous = await request(new CookieJar(), 'POST', url, { payload });
+			assert.equal(anonymous.statusCode, 401, `${url} answered ${anonymous.statusCode} with no session`);
+		}
+	});
+
 	await check('admin password change ends every session, including the one that changed it (pass 6b)', async () => {
 		const password = 'a-very-long-probe-password';
 		const next = 'an-even-longer-replacement-password';
@@ -1094,7 +1137,7 @@ async function main() {
 		const wrongProof = await adminRequest(probe.jar, 'POST', '/auth/admin/password/change', {
 			payload: { currentPassword: 'not-the-password', newPassword: next },
 		});
-		assert.equal(wrongProof.statusCode, 401, 'the password changed without proof of the old one');
+		assert.equal(wrongProof.statusCode, 403, 'the password changed without proof of the old one');
 
 		const changed = await adminRequest(probe.jar, 'POST', '/auth/admin/password/change', {
 			payload: { currentPassword: password, newPassword: next },

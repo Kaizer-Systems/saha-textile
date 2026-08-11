@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import type {
 	AdminPasswordChangeRequest,
 	AdminPinSetupRequest,
@@ -133,15 +133,33 @@ export class AdminSecurityService {
 	/**
 	 * The recent-password proof itself.
 	 *
-	 * Answers the same `Invalid credentials` whether the account is missing or the password is
-	 * wrong. These endpoints are reached with a session, so the account's existence is not a
-	 * secret — but keeping one message means a future caller cannot accidentally build an
-	 * oracle out of the difference.
+	 * Answers the same refusal whether the account is missing or the password is wrong. These
+	 * endpoints are reached with a session, so the account's existence is not a secret — but
+	 * keeping one answer means a future caller cannot accidentally build an oracle out of the
+	 * difference.
+	 *
+	 * ## Why 403 and not 401
+	 *
+	 * The locked rule is `401` for an absent or invalid session and `403` for a caller who is
+	 * authenticated but not sufficiently authorized. Somebody reaching this line HAS a valid
+	 * admin session — the global guard already proved it — and has failed a step-up proof for
+	 * one operation. That is the second case, not the first.
+	 *
+	 * It was 401, and that had a consequence beyond taxonomy. Both Angular interceptors read
+	 * a 401 as "this session is gone": on a credential-classified route they clear the session
+	 * store immediately, and on any other route they rotate, replay, receive the same refusal
+	 * and clear it anyway. Either way a mistyped current password on the Security Settings
+	 * form signed the operator out of a session the server considers perfectly alive. No route
+	 * classification avoids that, because both branches end in the same call — the status code
+	 * was carrying a meaning the client could not help but act on.
+	 *
+	 * The same reasoning will apply to storefront step-up, email change and set-password when
+	 * those are wired: a proof failure is not a session failure.
 	 */
 	private async requireRecentPasswordProof(userId: string, currentPassword: string) {
 		const user = await this.auth.findAuthUserById(userId);
 		if (!user || !(await this.auth.verifyPassword(user, currentPassword))) {
-			throw new UnauthorizedException('Invalid credentials');
+			throw new ForbiddenException('Invalid credentials');
 		}
 		return user;
 	}

@@ -2557,6 +2557,38 @@ e2e:session-rotation` **12/12** with 0 probe rows, which is also the proof the n
   (`security`, `pin`, `pin/remove`, `password/change`), and none of them are credential routes
   for transport purposes, because a 403 never enters 401 recovery. The same 401-for-a-proof
   question will return for storefront step-up, email change and set-password. Tool: claude-code.
+- 2026-08-11 — [DONE] **Admin Security Settings gateway boundary.** **admin 61 → 69.** The typed
+  boundary only; no screen, no route, no component. Split out deliberately so the classification
+  decision below could be pinned by tests before any UI depended on it.
+  **Four methods on `AdminAuthGateway`** — `securitySettings`, `setPin`, `removePin`,
+  `changePassword` — with `AdminSecurityState`, `AdminPinSetupInput` and
+  `AdminPasswordChangeInput`. Route paths live only in `http-auth.gateway.ts`, as
+  `check-browser-auth` requires.
+  **None of them is a credential route, and that is the decision worth recording.** Three carry
+  a recent-password proof, so the intuitive classification is "credential endpoint" — and it is
+  wrong. A failed proof now answers **403**, so it never enters 401 recovery at all; the only
+  `401` these routes can still produce is an ordinary lapsed access cookie, which rotation
+  SHOULD recover. Classifying them otherwise would drop an operator at the login screen halfway
+  through a credential change because fifteen minutes passed while they typed. Pinned by tests
+  rather than left to the next reader's intuition.
+  **The weak-PIN rule is deliberately NOT duplicated client-side.** The gateway documents that
+  the server refuses and the screen renders the refusal. A client is the one place credential
+  policy must never be enforced, because a client can be bypassed — and a second copy would
+  drift from the first.
+  **`check-browser-auth` caught my own test.** An audience assertion written as
+  `path.startsWith('/auth/admin/')` is an auth path literal outside the one HTTP adapter, and
+  the guard refused it. The prefix is now DERIVED from the gateway's own `/me` route, which is
+  both compliant and the stronger assertion: the two can only agree with each other, never with
+  a stale string.
+  **Negative-controlled.** Adding `ROUTES.pin` to `CREDENTIAL_ROUTES` fails
+  `does NOT treat PIN set as a credential endpoint` at 68/69. Source restored from a
+  byte-comparison backup.
+  **Commands actually run:** `pnpm turbo run test --force` **11/11** (admin **69**, others
+  unchanged) · `pnpm --filter @saha-textile/admin build` clean · the session-rotation E2E on
+  port 27018 at **26/26** (unchanged — this pass touches no server code) ·
+  `pnpm typecheck` **15/15** · `pnpm lint` **17/17** · `pnpm format:check` clean.
+  **Next executable step: the SCREEN itself** — a route, a component and its three forms. The
+  gateway it consumes now exists and is proven. Tool: claude-code.
 - _(append)_
 
 ---

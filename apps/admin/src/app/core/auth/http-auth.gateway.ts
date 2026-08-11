@@ -8,9 +8,12 @@ import { runtimeConfig } from '@core/config/runtime-config';
 import {
 	AdminAuthGateway,
 	type AdminMe,
+	type AdminPasswordChangeInput,
 	type AdminPasswordResetInput,
 	type AdminPasswordLoginInput,
 	type AdminPinLoginInput,
+	type AdminPinSetupInput,
+	type AdminSecurityState,
 	type AdminSessionResult,
 } from './auth-gateway';
 
@@ -31,6 +34,10 @@ const ROUTES = {
 	passwordReset: '/auth/admin/password/reset',
 	logout: '/auth/admin/logout',
 	refresh: '/auth/admin/refresh',
+	security: '/auth/admin/security',
+	pin: '/auth/admin/pin',
+	pinRemove: '/auth/admin/pin/remove',
+	passwordChange: '/auth/admin/password/change',
 } as const;
 
 /**
@@ -41,6 +48,13 @@ const ROUTES = {
  * because it is shared, public and cannot 401. `resume` IS listed: a wrong PIN at the soft
  * lock is a refused credential, and rotating the access cookie would neither help nor be
  * an answer to the presence question the overlay is asking.
+ *
+ * The four Security Settings routes are absent, and that is a decision rather than an
+ * omission. They carry a recent-password proof, so listing them looks right — but a FAILED
+ * proof answers `403` there, not `401`, precisely so it never enters 401 recovery. What
+ * remains of a `401` from one of them is the ordinary lapsed access cookie, which rotation
+ * should recover: an operator halfway through a credential change must not be dropped at the
+ * login screen because fifteen minutes passed while they typed.
  */
 const CREDENTIAL_ROUTES: readonly string[] = [
 	ROUTES.login,
@@ -101,6 +115,26 @@ export class HttpAdminAuthGateway extends AdminAuthGateway {
 
 	override resetPassword(input: AdminPasswordResetInput): Observable<void> {
 		return this.http.post<void>(this.url(ROUTES.passwordReset), input);
+	}
+
+	override securitySettings(): Observable<AdminSecurityState> {
+		return this.http.get<AdminSecurityState>(this.url(ROUTES.security));
+	}
+
+	override setPin(input: AdminPinSetupInput): Observable<void> {
+		return this.http.post<void>(this.url(ROUTES.pin), input);
+	}
+
+	/**
+	 * A POST rather than a DELETE because it carries the password proof in a body, and a
+	 * bodyless DELETE cannot.
+	 */
+	override removePin(currentPassword: string): Observable<void> {
+		return this.http.post<void>(this.url(ROUTES.pinRemove), { currentPassword });
+	}
+
+	override changePassword(input: AdminPasswordChangeInput): Observable<void> {
+		return this.http.post<void>(this.url(ROUTES.passwordChange), input);
 	}
 
 	override logout(): Observable<void> {

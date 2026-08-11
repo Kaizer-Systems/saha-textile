@@ -78,6 +78,61 @@ describe('HttpAdminAuthGateway credential classification', () => {
 		expect(gateway.isCredentialEndpoint(url)).toBe(false);
 	});
 
+	/**
+	 * Security Settings carries a recent-password proof on three of its four calls, so the
+	 * intuitive classification is "credential endpoint" — and it is wrong, which is why it is
+	 * pinned rather than left to the next reader's intuition.
+	 *
+	 * A FAILED proof answers `403`, deliberately, so it never enters 401 recovery at all. The
+	 * only `401` these routes can still produce is the ordinary lapsed access cookie. Marking
+	 * them credential routes would make the interceptor treat that as a lost session and drop
+	 * an operator at the login screen halfway through changing a credential — after fifteen
+	 * minutes of typing, which is exactly how long a long form takes.
+	 */
+	it.each([
+		['security settings read', () => gateway.securitySettings()],
+		['PIN set', () => gateway.setPin({ currentPassword: 'x'.repeat(12), pin: '384917' })],
+		['PIN removal', () => gateway.removePin('x'.repeat(12))],
+		[
+			'password change',
+			() => gateway.changePassword({ currentPassword: 'x'.repeat(12), newPassword: 'y'.repeat(12) }),
+		],
+	])('does NOT treat %s as a credential endpoint', (_label, call) => {
+		const url = urlUsedBy(() => call().subscribe({ error: () => undefined }));
+		expect(gateway.isCredentialEndpoint(url)).toBe(false);
+		// Nor session-establishing: none of them issues a session, and the password change
+		// ends every one the operator has.
+		expect(gateway.isSessionEstablishingEndpoint(url)).toBe(false);
+	});
+
+	/**
+	 * Every Security Settings route addresses the admin audience. A storefront path appearing
+	 * here would be an audience mistake no other test would catch, because both applications
+	 * talk to the same API and a storefront cookie is simply refused rather than misrouted.
+	 *
+	 * The expected prefix is derived from `/me` — a route this gateway already owns and whose
+	 * audience is not in question — rather than written out. Writing it would put an auth path
+	 * literal outside the one HTTP adapter, which `check-browser-auth` refuses, and it refused
+	 * this test on the first run. Deriving it is also the stronger assertion: the two can only
+	 * agree with each other, never with a stale string.
+	 */
+	it.each([
+		['security settings read', () => gateway.securitySettings()],
+		['PIN set', () => gateway.setPin({ currentPassword: 'x'.repeat(12), pin: '384917' })],
+		['PIN removal', () => gateway.removePin('x'.repeat(12))],
+		[
+			'password change',
+			() => gateway.changePassword({ currentPassword: 'x'.repeat(12), newPassword: 'y'.repeat(12) }),
+		],
+	])('addresses %s to the same audience as the current-user route', (_label, call) => {
+		const mePath = new URL(urlUsedBy(() => gateway.currentUser().subscribe())).pathname;
+		const audiencePrefix = mePath.replace(/[^/]+$/, '');
+		const path = new URL(urlUsedBy(() => call().subscribe({ error: () => undefined }))).pathname;
+
+		expect(audiencePrefix.length).toBeGreaterThan(1);
+		expect(path.startsWith(audiencePrefix)).toBe(true);
+	});
+
 	it('does not classify an unrelated business route as a credential endpoint', () => {
 		expect(gateway.isCredentialEndpoint('http://localhost:4000/orders')).toBe(false);
 		expect(gateway.isCredentialEndpoint('/orders')).toBe(false);

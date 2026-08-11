@@ -8,8 +8,13 @@ import { UserStatus } from './user';
 
 /**
  * 6-digit admin PIN (owner lock 2026-06-29 / UX lock 2026-07-23). Shape only —
- * weak-PIN rejection (denylist + sequential/repeated patterns) is a domain
- * policy check in core-domain, not a schema regex.
+ * weak-PIN rejection (denylist + sequential/repeated patterns) is a domain policy
+ * check, not a schema regex: `evaluateAdminPin` in
+ * `packages/core-domain/src/auth/pin-policy.ts`, enforced by the API on every path
+ * that sets a PIN. A refusal returns `validation_failed` with a `pin_*` issue code.
+ *
+ * Strength deliberately does NOT live here. This schema is shared with the browser,
+ * and a client is the one place the rule must never be enforced.
  */
 export const AdminPin = z.string().regex(/^\d{6}$/, 'must be a 6-digit PIN');
 export type AdminPin = z.infer<typeof AdminPin>;

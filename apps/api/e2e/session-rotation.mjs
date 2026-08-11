@@ -1030,6 +1030,54 @@ async function main() {
 		assert.equal(pinAfterRemoval.statusCode, 401, 'a removed PIN still authenticates');
 	});
 
+	await check('weak PINs are refused over HTTP, with a code a screen can act on (weak-PIN policy)', async () => {
+		const password = 'a-very-long-probe-password';
+		const probe = await seedAdmin(['user.index']);
+		const settings = () => adminRequest(probe.jar, 'GET', '/auth/admin/security');
+
+		// One per structural rule plus the denylist, because a policy that only caught
+		// `123456` would pass a test that only tried `123456`.
+		const weak = [
+			['123456', 'pin_sequential'],
+			['098765', 'pin_sequential'],
+			['000000', 'pin_repeated'],
+			['123123', 'pin_repeated'],
+			['147258', 'pin_denylisted'],
+		];
+
+		for (const [pin, expected] of weak) {
+			const refused = await adminRequest(probe.jar, 'POST', '/auth/admin/pin', {
+				payload: { currentPassword: password, pin },
+			});
+			assert.equal(refused.statusCode, 400, `weak PIN ${pin} was accepted: ${refused.statusCode}`);
+
+			const body = JSON.parse(refused.body);
+			assert.equal(body.error.code, 'validation_failed', `weak PIN ${pin} returned ${body.error.code}`);
+			// The generic filter message would leave an operator with nothing to act on, so the
+			// reason travels as a validation issue — the one channel the filter preserves.
+			assert.equal(body.error.issues?.[0]?.code, expected, `weak PIN ${pin} reported the wrong reason`);
+			assert.deepEqual(body.error.issues?.[0]?.path, ['pin'], 'the issue did not name the pin field');
+			// A refusal message carrying the PIN would put a live credential wherever this
+			// response is logged.
+			assert.ok(!refused.body.includes(pin), `the refusal echoed the PIN ${pin}`);
+		}
+
+		assert.equal(JSON.parse((await settings()).body).hasPin, false, 'a refused weak PIN was still stored');
+
+		// And the policy refuses only what it should: the same request with an acceptable PIN
+		// succeeds, which is what proves the five refusals above were the rule and not an
+		// endpoint that had simply stopped working.
+		const accepted = await adminRequest(probe.jar, 'POST', '/auth/admin/pin', {
+			payload: { currentPassword: password, pin: '384917' },
+		});
+		assert.equal(
+			accepted.statusCode,
+			204,
+			`an acceptable PIN was refused: ${accepted.statusCode} ${accepted.body}`,
+		);
+		assert.equal(JSON.parse((await settings()).body).hasPin, true, 'an accepted PIN was not stored');
+	});
+
 	await check('admin password change ends every session, including the one that changed it (pass 6b)', async () => {
 		const password = 'a-very-long-probe-password';
 		const next = 'an-even-longer-replacement-password';

@@ -2454,6 +2454,69 @@ e2e:session-rotation` **12/12** with 0 probe rows, which is also the proof the n
   half of the admin browser E2E is still owed; the API it needs now exists. Next executable
   step: either the Security Settings screen, or pass 6c — the 15-minute idle soft lock with PIN
   quick-resume. Tool: claude-code.
+- 2026-08-11 — [DONE] **Weak-PIN policy in core-domain.** **e2e 24 → 25**, core-domain
+  **98 → 134**, api **131 → 138**.
+  **What was actually missing.** `AdminPin` in contracts was a six-digit regex and nothing
+  else, and its own comment had named core-domain as the home of denylist/sequential/repeated
+  rejection since the schema was written. No such module existed, so `000000` and `123456`
+  were acceptable administrator PINs. The owner lock pairs the PIN with a five-failure account
+  lock precisely because a million values is a small keyspace; that lock is what stops online
+  guessing, and this policy removes what a guesser would try inside those five attempts.
+  **Three rules, and what each is worth.** REPEAT is written as "a unit whose length divides
+  six", so it catches `777777`, `121212` and `123123` in one rule rather than only
+  six-identical-digits — **1,090** PINs. SEQUENTIAL is a ±1 run counting around from 9 to 0;
+  the wraparound is deliberate, because `890123` is one finger motion exactly like `123456`
+  and treating the 9→0 boundary as a defence would draw a line the keypad does not have —
+  **20** PINs. The DENYLIST is **38** curated entries for what no structural rule catches:
+  keypad columns and diagonals, grouped pairs and triples, famous constants, round numbers.
+  Total **1,148 of 1,000,000**, about one in 871, and that number is asserted rather than
+  described — the policy's justification fails in both directions if nobody knows it.
+  **A test that earned its place before the code was finished.** A denylist entry a structural
+  rule already refuses is dead weight that reads as coverage, so the suite refuses one. It
+  immediately caught `696969` — `69` typed three times, already a repeat — and the same
+  reasoning removed `420420`. The two most-cited weak PINs are structurally weak; listing them
+  by name would only have made the list look longer.
+  **Deliberately NOT rejected: date-shaped PINs.** `DDMMYY`/`MMDDYY`/a doubled year are, in
+  every published analysis, the largest weak class. Rejecting all valid dates costs ~3.6% of
+  the keyspace, and more to the point the owner locked three named rules; a structural fourth
+  is the owner's decision, not this file's. Recorded in the module as a known omission with the
+  reasoning, so a later reader raises it as a question rather than rediscovering it as a gap.
+  **Two enforcement points, and the ordering at each is the interesting part.** In
+  `AdminSecurityService.setPin` the strength check runs BEFORE the recent-password proof: the
+  verdict is a fact about a string the caller just typed and reveals nothing about the account,
+  while Argon2 is deliberately expensive, so a caller cannot spend our CPU by submitting
+  `000000` in a loop. In `AdminInviteService.accept` it runs BEFORE `consume` — `consume` is
+  atomic and single-use, so refusing afterwards would spend the invitation on a failed request
+  and leave an invitee unable to accept because somebody typed a sequence.
+  **Why the refusal is shaped as a validation issue.** `HttpExceptionFilter` replaces every
+  message with a safe one chosen by status, so `BadRequestException('that PIN is sequential')`
+  reaches the operator as "The request could not be processed" — true, useless, guaranteed
+  support ticket. `issues` is the one channel the filter preserves, deliberately, because
+  issues describe the caller's own input. A weak-PIN refusal is exactly that, so it travels as
+  `validation_failed` with a stable `pin_sequential` / `pin_repeated` / `pin_denylisted` /
+  `pin_shape` code a screen can localize. Saying this much is safe because both surfaces are
+  AUTHORIZED — a live admin session, or possession of a single-use invite token. It changes
+  nothing at login, where a credential refusal stays the bare `unauthorized` envelope.
+  **Negative-controlled, five ways.** Removing the check from `setPin` → 3 unit failures;
+  removing it from invite acceptance → the non-consumption check fails; making the sequential
+  rule never fire → 12 failures; narrowing the repeat rule to six-identical-digits → 5
+  failures, including the keyspace count. Then the `setPin` mutation was replayed against the
+  E2E, which failed with `weak PIN 123456 was accepted: 204` at **24/25**. Every source was
+  restored from a byte-comparison backup and re-verified green.
+  **Commands actually run:** `pnpm turbo run test --force` **11/11** (contracts 160,
+  http-transport 157, core-domain **134**, api **138**, storefront 57, admin 61) · adapter
+  **103/103** with `RUN_DB_IT=1` on port 27018 · `MONGODB_PORT=27018 pnpm e2e:session-rotation`
+  **25/25**, 29 probe accounts, **0** remaining, 7 audit rows removed, database verified empty
+  by enumeration · `generate:openapi` green at **62 operations across 55 paths** — unchanged,
+  correctly, because this pass adds no route · `pnpm typecheck` **15/15** · `pnpm lint`
+  **17/17** with all five guards · `pnpm format:check` clean · `git diff --check` clean.
+  **Still owed, unchanged by this pass.** The Security Settings SCREEN does not exist, so the
+  PIN half of the admin browser E2E remains owed. The E2E covers the refusal at the Security
+  Settings surface only; invite acceptance with a weak PIN is proven at the service, not over
+  HTTP. And the PASSWORD denylist is still missing — `Password` in contracts is `min(12)` with
+  a comment promising a core-domain common-password check that, exactly like the PIN one until
+  today, does not exist. Next executable step: the admin Security Settings screen, which now
+  has a policy to surface. Tool: claude-code.
 - _(append)_
 
 ---

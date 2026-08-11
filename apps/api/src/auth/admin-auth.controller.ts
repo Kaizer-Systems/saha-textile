@@ -194,7 +194,7 @@ export class AdminAuthController {
 	@HttpCode(HttpStatus.NO_CONTENT)
 	@ApiOperation({
 		operationId: 'setAdminPin',
-		summary: 'Set or change the admin PIN (always requires password proof)',
+		summary: 'Set or change the admin PIN (requires password proof; weak PINs are refused)',
 	})
 	async setPin(
 		@Body(new ZodValidationPipe(AdminPinSetupRequest)) body: AdminPinSetupRequest,
@@ -471,7 +471,10 @@ export class AdminAuthController {
 	@Post('invites/accept')
 	@Public()
 	@HttpCode(HttpStatus.CREATED)
-	@ApiOperation({ operationId: 'acceptAdminInvite', summary: 'Accept an admin invitation and set credentials' })
+	@ApiOperation({
+		operationId: 'acceptAdminInvite',
+		summary: 'Accept an admin invitation and set credentials (optional PIN; weak PINs are refused)',
+	})
 	async acceptInvite(
 		@Body(new ZodValidationPipe(AdminInviteAcceptRequest)) body: AdminInviteAcceptRequest,
 	): Promise<{ userId: string; role: string }> {

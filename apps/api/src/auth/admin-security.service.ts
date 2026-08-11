@@ -11,6 +11,7 @@ import type { AuditLogRepository } from '@saha-textile/core-domain';
 
 import { AUDIT_LOG_REPOSITORY } from '../infra/tokens';
 import { AuthService } from './auth.service';
+import { assertPinAcceptable } from './pin-policy';
 import { SessionService } from './session.service';
 
 /**
@@ -52,8 +53,14 @@ export class AdminSecurityService {
 	 *
 	 * Password proof on every change, not only the first: a session that has been taken over
 	 * must not be able to add a six-digit credential that then unlocks the account on its own.
+	 *
+	 * Strength is checked BEFORE that proof, which inverts the usual order for a reason. The
+	 * verdict is a fact about a string the caller just typed and reveals nothing about the
+	 * account, while an Argon2 verify is deliberately expensive — checking the cheap,
+	 * non-secret condition first keeps a request that cannot succeed from costing a hash.
 	 */
 	async setPin(userId: string, request: AdminPinSetupRequest, requestId: string | null): Promise<void> {
+		assertPinAcceptable(request.pin);
 		const user = await this.requireRecentPasswordProof(userId, request.currentPassword);
 		const existed = user.pinHash !== null;
 

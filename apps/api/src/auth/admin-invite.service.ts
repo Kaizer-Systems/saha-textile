@@ -26,6 +26,7 @@ import {
 	USER_REPOSITORY,
 } from '../infra/tokens';
 import { AuthService } from './auth.service';
+import { assertPasswordAcceptable } from './password-policy';
 import { assertPinAcceptable } from './pin-policy';
 
 /** Invites expire after seven days — long enough to be actioned, short enough to matter. */
@@ -105,17 +106,17 @@ export class AdminInviteService {
 	/**
 	 * Redeems an invite and creates the staff/admin account.
 	 *
-	 * `consume` is atomic, so two people racing the same link cannot both create an
-	 * account. The password floor applies here exactly as it does on any other credential
-	 * set — the contract enforces it before this runs.
+	 * `consume` is atomic, so two people racing the same link cannot both create an account.
 	 *
-	 * The optional onboarding PIN is checked for strength FIRST, before the token is
-	 * consumed. `consume` is single-use and irreversible: refusing a weak PIN afterwards
-	 * would spend the invitation on a request that failed, leaving an invitee unable to
-	 * accept and an administrator having to issue a fresh link because somebody typed
-	 * `123456`.
+	 * BOTH credentials are judged for strength FIRST, before the token is consumed. `consume`
+	 * is single-use and irreversible: refusing afterwards would spend the invitation on a
+	 * request that failed, leaving an invitee unable to accept and an administrator having to
+	 * issue a fresh link because somebody typed `123456` or `Password1234`.
 	 */
 	async accept(request: AdminInviteAcceptRequest): Promise<User> {
+		// Both credentials are judged before the invitation is spent, for the reason spelled
+		// out above: `consume` is single-use and irreversible.
+		assertPasswordAcceptable(request.password);
 		if (request.pin) assertPinAcceptable(request.pin);
 
 		const invite = await this.invites.consume(this.auth.hash(request.token), new Date().toISOString());

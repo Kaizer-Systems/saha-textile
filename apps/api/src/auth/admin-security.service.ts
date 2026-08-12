@@ -11,6 +11,7 @@ import type { AuditLogRepository } from '@saha-textile/core-domain';
 
 import { AUDIT_LOG_REPOSITORY } from '../infra/tokens';
 import { AuthService } from './auth.service';
+import { assertPasswordAcceptable } from './password-policy';
 import { assertPinAcceptable } from './pin-policy';
 import { SessionService } from './session.service';
 
@@ -117,6 +118,10 @@ export class AdminSecurityService {
 		request: AdminPasswordChangeRequest,
 		requestId: string | null,
 	): Promise<{ revokedSessions: number }> {
+		// Strength before the proof, for the same reason `setPin` checks the PIN first: the
+		// verdict is cheap and reveals nothing about the account, while an Argon2 verify is
+		// deliberately expensive and should not be spent on a request that cannot succeed.
+		assertPasswordAcceptable(request.newPassword);
 		const user = await this.requireRecentPasswordProof(userId, request.currentPassword);
 
 		await this.auth.authUserRepository.setPasswordHash(user.id, await this.auth.hashPassword(request.newPassword));

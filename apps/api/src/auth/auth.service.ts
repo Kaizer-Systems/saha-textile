@@ -31,6 +31,7 @@ import {
 	PASSWORD_RESET_TOKEN_REPOSITORY,
 	USER_REPOSITORY,
 } from '../infra/tokens';
+import { assertPasswordAcceptable } from './password-policy';
 
 /** Owner lock: five failed PIN attempts lock PIN use for fifteen minutes. */
 export const PIN_MAX_ATTEMPTS = 5;
@@ -303,6 +304,19 @@ export class AuthService {
 		newPassword: string,
 		expectedAudience?: SessionAudience,
 	): Promise<{ userId: string } | null> {
+		/**
+		 * Strength BEFORE the token is consumed.
+		 *
+		 * `consume` is atomic and single-use. Refusing a weak password afterwards would spend
+		 * the recovery token on a request that failed, leaving somebody who cannot sign in
+		 * with no way back and a fresh email to request — the same trap the admin invite
+		 * flow has, and for the same reason.
+		 *
+		 * Safe to check first: the verdict is a fact about the string the caller just typed
+		 * and says nothing about whether the token was valid.
+		 */
+		assertPasswordAcceptable(newPassword);
+
 		const consumed = await this.resets.consume(this.hash(token), new Date().toISOString());
 		if (!consumed) return null;
 

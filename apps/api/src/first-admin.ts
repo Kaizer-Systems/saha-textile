@@ -2,11 +2,12 @@ import { randomBytes, randomUUID } from 'node:crypto';
 
 import type { INestApplicationContext } from '@nestjs/common';
 import type { AuditLog } from '@saha-textile/contracts';
-import type {
-	AuditLogRepository,
-	AuthPort,
-	RoleRepository,
-	UserRoleAssignmentRepository,
+import {
+	type AuditLogRepository,
+	type AuthPort,
+	type RoleRepository,
+	type UserRoleAssignmentRepository,
+	evaluatePassword,
 } from '@saha-textile/core-domain';
 
 import { AUDIT_LOG_REPOSITORY, AUTH_PORT, ROLE_REPOSITORY, USER_ROLE_ASSIGNMENT_REPOSITORY } from './infra/tokens';
@@ -58,9 +59,27 @@ export class FirstAdminAlreadyExistsError extends Error {
  * `base64url` so it survives copy-paste, shell quoting and a password manager without the
  * operator having to think about escaping — a bootstrap credential that gets mangled in
  * transit is a bootstrap credential that gets replaced by something weaker.
+ *
+ * ## The assertion, and what it is honestly worth
+ *
+ * Twenty-four CSPRNG bytes cannot fail `evaluatePassword` today: the output is far past the
+ * length floor, has no repeating unit, and cannot normalise onto a denylisted word. So this
+ * check will not fire, and a check that cannot fire earns its place only as a TRIPWIRE — if
+ * somebody later shortens the token, or swaps in a memorable-words generator, the account
+ * with the most authority in the system stops being the one account exempt from the policy
+ * every other account is held to. It sits inside the generator rather than at the call site
+ * so it travels with the thing it guards.
  */
 function generatePassword(): string {
-	return randomBytes(24).toString('base64url');
+	const password = randomBytes(24).toString('base64url');
+
+	const decision = evaluatePassword(password);
+	if (!decision.acceptable) {
+		// Never echo the password, not even into an operator's terminal on a failure path.
+		throw new Error(`The generated bootstrap password does not satisfy the password policy (${decision.refusal})`);
+	}
+
+	return password;
 }
 
 export interface FirstAdminDependencies {

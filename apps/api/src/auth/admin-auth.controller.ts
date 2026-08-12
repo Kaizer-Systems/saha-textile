@@ -26,6 +26,8 @@ import {
 	AdminPasswordChangeRequest,
 	AdminPinRemovalRequest,
 	type AdminSecuritySettingsResponse,
+	type SessionListResponse,
+	type SessionRevokeResponse,
 } from '@saha-textile/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
@@ -250,6 +252,24 @@ export class AdminAuthController {
 	 *
 	 * Distinct from the reset flow below, which is for somebody who CANNOT sign in and is
 	 * authorized by an emailed token instead. Here the old password is the authorization.
+	 *
+	 * ## Why the cookies must be cleared here, and what happened when they were not
+	 *
+	 * Revoking the sessions server-side is only half the operation. Without clearing the
+	 * reply cookies the browser keeps its httpOnly access and refresh cookies, and they now
+	 * point at sessions that no longer exist — which LOCKS THE OPERATOR OUT of the very
+	 * account they just re-credentialed.
+	 *
+	 * The mechanism is `CsrfGuard` behaving exactly as designed. It enforces only when a
+	 * session cookie is PRESENT, and a stale cookie is present; it then fails closed because
+	 * no live session resolves. So the next unsafe request — including the login POST itself —
+	 * is refused `403` before any credential is read, which is why `failedLoginAttempts` stays
+	 * at zero while the operator watches their correct password be rejected. A page reload
+	 * does not help; the tab stays wedged until the cookies expire or are cleared by hand.
+	 *
+	 * The guard is not the bug. The incomplete response was. `resetPassword` below has always
+	 * done this correctly, which is what made the omission here easy to miss: the same
+	 * `revokeAllForUser` call sits in both, and only one of them finished the job.
 	 */
 	@Post('password/change')
 	@RequireRoles('staff', 'admin')
@@ -262,9 +282,11 @@ export class AdminAuthController {
 		@Body(new ZodValidationPipe(AdminPasswordChangeRequest)) body: AdminPasswordChangeRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 		@Req() request: FastifyRequest,
+		@Res({ passthrough: true }) reply: FastifyReply,
 	): Promise<void> {
 		if (!principal) throw new UnauthorizedException('Authentication required');
 		await this.security.changePassword(principal.userId, body, requestIdOf(request));
+		this.sessions.clearCookies(reply);
 	}
 
 	/**
@@ -406,6 +428,64 @@ export class AdminAuthController {
 	 * This is the entire privilege-granting surface — there is no admin self-registration —
 	 * so it is `admin`-role only and every call is audited under the seven-year tier.
 	 */
+	/**
+	 * The caller's own live sessions.
+	 *
+	 * "Where am I signed in?" is a security control, not a convenience: it is how somebody
+	 * discovers a session they do not recognise. The rows are sanitized by
+	 * `toSessionSummary` — no refresh fingerprint, no CSRF secret, no device hashes — because
+	 * a device list that leaked the material reuse detection depends on would be worse than no
+	 * device list at all.
+	 */
+	@Get('sessions')
+	@RequireRoles('staff', 'admin')
+	@ApiOperation({ operationId: 'listAdminSessions', summary: 'List the caller’s own live sessions' })
+	listSessions(@Principal() principal: AuthenticatedPrincipal | undefined): Promise<SessionListResponse> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+		return this.sessions.listOwnSessions(principal);
+	}
+
+	/**
+	 * Ends one named session belonging to the caller.
+	 *
+	 * A session that is not theirs answers **404**, never 403 — the locked ownership rule, so
+	 * an id cannot be probed for existence. Revoking the CURRENT session is allowed and clears
+	 * this browser's cookies in the same response, because leaving a browser holding
+	 * credentials for a session that no longer exists is what wedged the password-change flow.
+	 */
+	@Delete('sessions/:id')
+	@RequireRoles('staff', 'admin')
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({ operationId: 'revokeAdminSession', summary: 'Revoke one of the caller’s own sessions' })
+	async revokeSession(
+		@Param('id') id: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Res({ passthrough: true }) reply: FastifyReply,
+	): Promise<void> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+
+		const { wasCurrent } = await this.sessions.revokeOwnSession(principal, id);
+		if (wasCurrent) this.sessions.clearCookies(reply);
+	}
+
+	/**
+	 * Ends every OTHER session, keeping this one alive.
+	 *
+	 * The "somebody else is signed in as me" control. It deliberately does not end the calling
+	 * session: signing the person out of the device they trust, while the suspected intruder
+	 * is what prompted the action, is precisely backwards.
+	 */
+	@Post('sessions/revoke-others')
+	@RequireRoles('staff', 'admin')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ operationId: 'revokeOtherAdminSessions', summary: 'Revoke every session except this one' })
+	async revokeOtherSessions(
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<SessionRevokeResponse> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+		return { revoked: await this.sessions.revokeOtherSessions(principal) };
+	}
+
 	@Post('invites')
 	@RequireRoles('admin')
 	@HttpCode(HttpStatus.CREATED)

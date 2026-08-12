@@ -9,6 +9,10 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:storefront": "pnpm --filter @saha-textile/storefront dev",
+    "dev:admin": "pnpm --filter @saha-textile/admin dev",
+    "start:storefront": "node scripts/serve-built-frontend.mjs --app storefront",
+    "start:admin": "node scripts/serve-built-frontend.mjs --app admin",
     "lint": "pnpm check:naming && pnpm check:browser-auth && pnpm check:i18n-parity && pnpm check:route-contracts && pnpm check:permission-registry && turbo run lint",
     "check:naming": "bash scripts/check-naming.sh",
     "check:browser-auth": "node scripts/check-browser-auth.mjs",

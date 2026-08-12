@@ -794,6 +794,7 @@ async function main() {
 			['PATCH', `/admin/roles/${roleId}`],
 			['DELETE', `/admin/roles/${roleId}`],
 			['GET', '/admin/permissions'],
+			['GET', '/admin/audit-logs'],
 			['GET', `/admin/users/${probe.userId}/authority`],
 			['POST', `/admin/users/${probe.userId}/roles`],
 			['DELETE', `/admin/users/${probe.userId}/roles/${roleId}`],
@@ -1032,6 +1033,228 @@ async function main() {
 		assert.equal(pinAfterRemoval.statusCode, 401, 'a removed PIN still authenticates');
 	});
 
+	await check('session list and per-session revoke: own devices only, no hashes, 404 for a stranger', async () => {
+		const password = 'a-very-long-probe-password';
+		const owner = await seedAdmin([]);
+
+		// Two more devices for the same operator, so the list has something to distinguish.
+		const second = new CookieJar();
+		const third = new CookieJar();
+		for (const jar of [second, third]) {
+			const login = await request(jar, 'POST', '/auth/admin/login', {
+				payload: { identifier: owner.email, password },
+			});
+			assert.equal(login.statusCode, 200, `second-device login failed: ${login.statusCode}`);
+		}
+
+		const listed = await adminRequest(owner.jar, 'GET', '/auth/admin/sessions');
+		assert.equal(listed.statusCode, 200, `session list unreachable: ${listed.statusCode} ${listed.body}`);
+		const items = JSON.parse(listed.body).items;
+		assert.ok(items.length >= 3, `expected at least three sessions, saw ${items.length}`);
+
+		// Exactly one row is the caller's own, and it is the one that says so.
+		const current = items.filter((item) => item.current);
+		assert.equal(current.length, 1, `${current.length} sessions claim to be the current one`);
+
+		/**
+		 * THE SUBTRACTION. A device list that leaked the refresh fingerprint or the CSRF
+		 * secret would publish the material reuse detection is built on — the list would be
+		 * more dangerous than having no list at all.
+		 */
+		for (const field of [
+			'refreshTokenHash',
+			'previousRefreshTokenHash',
+			'csrfSecretHash',
+			'ipHash',
+			'userAgentHash',
+		]) {
+			assert.ok(!listed.body.includes(field), `the session list published ${field}`);
+		}
+
+		// Ownership: somebody else's session id is NOT FOUND, never forbidden. A 403 would
+		// confirm the id exists and turn this into a probe for other people's sessions.
+		const stranger = await seedAdmin([]);
+		const strangerSessions = JSON.parse(
+			(await adminRequest(stranger.jar, 'GET', '/auth/admin/sessions')).body,
+		).items;
+		const strangerSessionId = strangerSessions[0].id;
+
+		const refused = await adminRequest(owner.jar, 'DELETE', `/auth/admin/sessions/${strangerSessionId}`);
+		assert.equal(refused.statusCode, 404, `another operator's session answered ${refused.statusCode}, not 404`);
+		assert.equal(
+			(await adminRequest(stranger.jar, 'GET', '/auth/admin/sessions')).statusCode,
+			200,
+			'the stranger lost a session to a request that should have found nothing',
+		);
+
+		// An id that never existed is indistinguishable from one that is simply not yours.
+		const missing = await adminRequest(owner.jar, 'DELETE', `/auth/admin/sessions/session_${randomUUID()}`);
+		assert.equal(missing.statusCode, 404, 'an unknown session id answered something other than 404');
+
+		// Revoking somebody else's device: allowed when it IS yours, and it really ends.
+		const target = items.find((item) => !item.current);
+		const revoked = await adminRequest(owner.jar, 'DELETE', `/auth/admin/sessions/${target.id}`);
+		assert.equal(revoked.statusCode, 204, `revoking an owned session failed: ${revoked.statusCode}`);
+		const afterRevoke = JSON.parse((await adminRequest(owner.jar, 'GET', '/auth/admin/sessions')).body).items;
+		assert.ok(!afterRevoke.some((item) => item.id === target.id), 'the revoked session is still listed as live');
+
+		// Revoke-others keeps the caller signed in — signing the person out of the device they
+		// trust, while the intruder that prompted it is elsewhere, would be backwards.
+		const others = await adminRequest(owner.jar, 'POST', '/auth/admin/sessions/revoke-others', { payload: {} });
+		assert.equal(others.statusCode, 200, `revoke-others failed: ${others.statusCode} ${others.body}`);
+		assert.ok(JSON.parse(others.body).revoked >= 1, 'revoke-others reported ending nothing');
+
+		const survivors = JSON.parse((await adminRequest(owner.jar, 'GET', '/auth/admin/sessions')).body).items;
+		assert.equal(survivors.length, 1, `${survivors.length} sessions survived revoke-others, not 1`);
+		assert.equal(survivors[0].current, true, 'the surviving session is not the caller’s own');
+
+		// Cross-audience isolation: the same human's storefront sessions are not admin devices.
+		const customer = await registerCustomer();
+		const customerList = await request(customer, 'GET', '/auth/storefront/sessions');
+		assert.equal(customerList.statusCode, 200, `storefront session list unreachable: ${customerList.statusCode}`);
+		for (const item of JSON.parse(customerList.body).items) {
+			assert.equal(item.audience, 'storefront', 'a storefront device list contained another audience');
+		}
+	});
+
+	await check('the audit trail is readable, bounded, and never publishes its hashes', async () => {
+		// A row this check can find again, written by a real mutation rather than inserted.
+		const author = await seedAdmin(['role.create', 'role.destroy', 'audit.index']);
+		const created = await adminRequest(author.jar, 'POST', '/admin/roles', {
+			payload: {
+				key: `audit-probe-${randomUUID().slice(0, 8)}`,
+				label: 'Audit probe',
+				baseRole: 'staff',
+				permissions: [],
+			},
+		});
+		assert.equal(created.statusCode, 201, `probe role creation failed: ${created.statusCode}`);
+		const roleId = JSON.parse(created.body).id;
+
+		const listed = await adminRequest(author.jar, 'GET', '/admin/audit-logs?pageSize=200');
+		assert.equal(listed.statusCode, 200, `audit trail unreadable: ${listed.statusCode} ${listed.body}`);
+
+		const page = JSON.parse(listed.body);
+		assert.ok(Array.isArray(page.items), 'the response is not a page of items');
+		assert.equal(page.page, 1);
+		assert.equal(page.pageSize, 200);
+		assert.ok(page.total >= 1, 'the trail reports no rows at all');
+
+		// The row the mutation above wrote, found through the same surface an operator uses.
+		const entry = page.items.find((item) => item.entityId === roleId && item.action === 'admin.role.create');
+		assert.ok(entry, 'the role creation this check performed is absent from the trail');
+		assert.equal(entry.actorUserId, author.userId, 'the trail attributes the change to the wrong actor');
+		assert.equal(
+			entry.retentionTier,
+			'financial_security',
+			'a privilege change was not filed as security evidence',
+		);
+
+		/**
+		 * THE SUBTRACTION. An IP hash is not one-way in any useful sense — IPv4 has under 2^32
+		 * values, so an unsalted digest falls to exhaustive search in seconds. Publishing it
+		 * would be publishing the address that storing a hash was meant to avoid.
+		 */
+		assert.ok(!('ipHash' in entry), 'the audit read model published ipHash');
+		assert.ok(!('userAgentHash' in entry), 'the audit read model published userAgentHash');
+		assert.ok(!listed.body.includes('ipHash'), 'ipHash appears somewhere in the response body');
+		assert.ok(!listed.body.includes('userAgentHash'), 'userAgentHash appears somewhere in the response body');
+
+		// Filters narrow rather than decorate.
+		const filtered = await adminRequest(
+			author.jar,
+			'GET',
+			`/admin/audit-logs?action=admin.role.create&entityId=${roleId}`,
+		);
+		assert.equal(filtered.statusCode, 200);
+		const narrowed = JSON.parse(filtered.body);
+		assert.equal(narrowed.items.length, 1, `filtering returned ${narrowed.items.length} rows, not 1`);
+		assert.equal(narrowed.items[0].entityId, roleId);
+
+		// The page bound is what stops this being an export of the whole security history.
+		const unbounded = await adminRequest(author.jar, 'GET', '/admin/audit-logs?pageSize=5000');
+		assert.equal(unbounded.statusCode, 400, `an oversized page was accepted: ${unbounded.statusCode}`);
+		assert.equal(JSON.parse(unbounded.body).error.code, 'validation_failed');
+
+		// Reading the trail is its OWN authority: administering a resource must not imply
+		// being able to read the history of everyone who touched it.
+		const neighbour = await seedAdmin(['user.index', 'role.index']);
+		const refused = await adminRequest(neighbour.jar, 'GET', '/admin/audit-logs');
+		assert.equal(refused.statusCode, 403, `an operator without audit.index read the trail: ${refused.statusCode}`);
+
+		await adminRequest(author.jar, 'DELETE', `/admin/roles/${roleId}`);
+	});
+
+	await check('weak passwords are refused, and the refusal does not reveal whether the account exists', async () => {
+		const known = `rotation-probe-${randomUUID()}@example.test`;
+		emails.push(known);
+		const unknown = `rotation-probe-${randomUUID()}@example.test`;
+		emails.push(unknown);
+
+		// A real account for the known address, so the two cases below genuinely differ.
+		const created = await request(new CookieJar(), 'POST', '/auth/storefront/register', {
+			payload: { email: known, password: 'a-very-long-probe-password' },
+		});
+		assert.equal(created.statusCode, 201, `probe registration failed: ${created.statusCode}`);
+
+		// One per rule, because a policy that only caught the denylist would pass a test that
+		// only tried the denylist.
+		for (const [password, expected] of [
+			['Password1234', 'password_common'],
+			['SahaTextile2026', 'password_common'],
+			['aaaaaaaaaaaa', 'password_repeated'],
+			['abcabcabcabc', 'password_repeated'],
+		]) {
+			const refused = await request(new CookieJar(), 'POST', '/auth/storefront/register', {
+				payload: { email: unknown, password },
+			});
+			assert.equal(refused.statusCode, 400, `weak password was accepted: ${refused.statusCode}`);
+
+			const body = JSON.parse(refused.body);
+			assert.equal(body.error.code, 'validation_failed', `weak password reported ${body.error.code}`);
+			assert.equal(body.error.issues?.[0]?.code, expected, 'the wrong refusal reason was reported');
+			assert.deepEqual(body.error.issues?.[0]?.path, ['password'], 'the issue did not name the password field');
+			assert.ok(!refused.body.includes(password), 'the refusal echoed the password');
+		}
+
+		/**
+		 * THE PROPERTY, and the reason the check is ordered the way it is in the handler.
+		 *
+		 * Registration answers a generic `401` for an address that already exists, so a
+		 * stranger cannot use it as a directory. If the password were judged only AFTER that
+		 * lookup, the same weak password would answer `400` for an unknown address and `401`
+		 * for a known one — and any weak password would become a probe that confirms whether
+		 * an account exists. Judged first, both answer identically.
+		 */
+		const weak = 'Password1234';
+		const [againstKnown, againstUnknown] = await Promise.all([
+			request(new CookieJar(), 'POST', '/auth/storefront/register', {
+				payload: { email: known, password: weak },
+			}),
+			request(new CookieJar(), 'POST', '/auth/storefront/register', {
+				payload: { email: unknown, password: weak },
+			}),
+		]);
+
+		assert.equal(
+			againstKnown.statusCode,
+			againstUnknown.statusCode,
+			`a weak password distinguishes a known address (${againstKnown.statusCode}) from an unknown one (${againstUnknown.statusCode})`,
+		);
+		assert.equal(
+			JSON.parse(againstKnown.body).error.issues?.[0]?.code,
+			JSON.parse(againstUnknown.body).error.issues?.[0]?.code,
+			'the refusal reason differs between a known and an unknown address',
+		);
+
+		// And the generic existing-account refusal is still in place for a password that the
+		// policy accepts, so this ordering has not weakened the anti-enumeration behaviour.
+		const strongAgainstKnown = await request(new CookieJar(), 'POST', '/auth/storefront/register', {
+			payload: { email: known, password: 'harbour-tram-19' },
+		});
+		assert.equal(strongAgainstKnown.statusCode, 401, 'the duplicate-address refusal changed');
+	});
+
 	await check('weak PINs are refused over HTTP, with a code a screen can act on (weak-PIN policy)', async () => {
 		const password = 'a-very-long-probe-password';
 		const probe = await seedAdmin(['user.index']);
@@ -1188,6 +1411,37 @@ async function main() {
 			).statusCode,
 			200,
 			'the new password does not work',
+		);
+
+		/**
+		 * The operator must be able to sign back in FROM THE TAB THEY JUST USED.
+		 *
+		 * Every login assertion above builds a fresh `CookieJar`, which is precisely why this
+		 * defect stayed invisible: it only appears when the browser still holds the cookies
+		 * the change was made with. Revoking the sessions server-side without clearing those
+		 * cookies leaves `CsrfGuard` enforcing (a session cookie is present) and then failing
+		 * closed (no live session resolves), so the login POST is refused 403 before any
+		 * credential is read — the operator watches their correct new password be rejected,
+		 * and a page reload does not help.
+		 */
+		assert.equal(
+			probe.jar.names().filter((name) => name === 'st_access' || name === 'st_refresh').length,
+			0,
+			'the password change left session cookies in the browser',
+		);
+
+		const sameTabLogin = await request(probe.jar, 'POST', '/auth/admin/login', {
+			payload: { identifier: probe.email, password: next },
+		});
+		assert.notEqual(
+			sameTabLogin.statusCode,
+			403,
+			'the tab that changed the password is locked out: CSRF fails closed on the stale cookie',
+		);
+		assert.equal(
+			sameTabLogin.statusCode,
+			200,
+			`signing back in from the changing tab failed: ${sameTabLogin.statusCode} ${sameTabLogin.body}`,
 		);
 	});
 

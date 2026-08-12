@@ -58,6 +58,30 @@ project-context/   nextjs-context/ (superseded — ignore)
 - **No secrets in code, logs, or the browser bundle.** Secrets live in server-side runtime env only; the Angular apps get non-secret config at runtime (not build-time inlining).
 - **Brand naming law (owner lock 2026-07-24): never bare `saha`.** Every identifier — containers, volumes, DB names, env values, service names, paths, mock-data strings — and all prose uses the full brand: `saha-textile` / `saha_textile` / "Saha Textile". Enforced by `scripts/check-naming.sh` in `pnpm lint`. Exceptions: geography data (Sahara/Saharsa/the town "Saha"), the 6-char TRAI DLT sender `SAHATX`, and compact `st_*` cookie names. See owner-decisions-log §2026-07-24. <!-- naming-law:allow -->
 
+## 5a. UI work — reuse first, and brief before building (owner lock 2026-08-11)
+
+**Never invent a UI element or CSS class when the repo already has one.** Assemble screens from
+what exists: the app's own `shared/ui` and feature templates first, then pruned/deleted pages
+(recoverable from git), then `vendor/` Fastkart — which still holds elements no live page uses.
+Three reuse modes are all allowed, chosen by fit: use as-is · copy under a new name prefix and
+modify the copy (when one shared component would serve neither caller well) · promote to a
+shared component (when several callers need it identically).
+
+**Before writing anything custom — proactively, every time, whether the custom work was
+requested or just follows from some other task — stop and hand the owner a brief:**
+
+- crisp bullets of what changes;
+- a wireframe (SVG / image / rendered mockup) of the layout;
+- the conditional logic the screen applies;
+- the inventory of existing elements and CSS classes being reused;
+- an explicit statement of what is genuinely custom — and "nothing is custom" said plainly when
+  that is the case, because it is exactly the claim being approved;
+- anything already in the codebase that this makes redundant.
+
+Then **wait for approval.** If custom work proves unavoidable mid-build, stop again and show it
+in the browser pane before it lands. A silently added class, element or component is the failure
+this rule exists to prevent. Full text: `owner-decisions-log.mdx` § `DEC-UI-REUSE`.
+
 ## 6. Security baseline (OWASP Top 10:2025)
 
 - Object-level authorization on every order/cart/user endpoint (BOLA is the #1 API risk).

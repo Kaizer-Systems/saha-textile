@@ -66,6 +66,35 @@ Unanswered questions live only in `pending-decisions.mdx`. When an answer is con
 - Forms use typed Angular reactive/signal forms.
 - Transloco owns runtime UI translations.
 
+### UI reuse and the pre-build brief (`DEC-UI-REUSE` — locked 2026-08-11)
+
+Reusing what already exists is a hard rule, not a preference. Every screen — new or existing —
+is assembled from elements and CSS classes the repository already has. Sources, in order:
+the app's own `shared/ui` and feature templates; pruned or deleted pages still recoverable
+from git; and `vendor/` (Fastkart), which carries elements no live page currently uses.
+
+Three ways to reuse, all permitted, chosen by fit:
+
+1. use the existing element unchanged;
+2. copy it under a different name prefix and modify the copy, when two callers need genuinely
+   different behaviour and one shared component would serve neither well;
+3. promote it to a shared component when several callers need it identically.
+
+**Before writing anything custom — always, proactively, and whether the custom work was asked
+for or merely follows from an unrelated task — stop and give the owner a brief containing:**
+
+- what changes, in crisp bullets;
+- a wireframe (SVG, image or rendered mockup) of the proposed layout;
+- the conditional logic the screen will apply;
+- an explicit inventory of the existing elements and CSS classes being reused;
+- an explicit statement of what, if anything, is genuinely custom — and if the answer is
+  "nothing", say that plainly, because it is the claim the owner is approving;
+- anything already built that the change makes redundant.
+
+Then wait for approval. If custom work turns out to be unavoidable once building has started,
+stop again and show it in the browser pane for verification before it lands. A silent new CSS
+class, element or component is the failure mode this rule exists to prevent.
+
 ## Catalog, products, categories, and search
 
 - Categories use a multi-placement DAG through category placements; do not force a strict single-parent tree.

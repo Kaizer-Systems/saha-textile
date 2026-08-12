@@ -1,0 +1,379 @@
+---
+title: 'Authentication Continuation Brief — Security Settings UI onward'
+description: 'Handoff for the session of 2026-08-11: weak-PIN policy, the 403 step-up correction, the Security Settings gateway and screen, the UI reuse lock, and everything left owed.'
+audience: [backend, frontend, security, agent]
+document_role: canonical
+last_verified: '2026-08-11'
+search_keywords: 'authentication handoff weak pin policy 403 step up security settings screen ui reuse dec-ui-reuse admin account'
+---
+
+# Authentication continuation brief — Security Settings UI onward
+
+Written at the end of the 2026-08-11 session, following
+`session-handoff-protocol.mdx`. It **supplements and does not replace**
+`auth-continuation-brief-pass-3-onward.mdx` (operating rules, environment, gotchas,
+remaining-passes table) or `auth-continuation-brief-pass-6-onward.mdx` (the previous
+session's record). Where this file and those disagree, this file is newer — but source
+and tested runtime beat all three.
+
+## 0. Read these before touching anything
+
+Completely, in this order. Do not skip on the grounds that this brief summarises them.
+
+1. `AGENTS.md` — the constitution. Note §5a, added this session.
+2. `docs/engineering-live-context/auth-continuation-brief-pass-3-onward.mdx`
+3. `docs/engineering-live-context/auth-continuation-brief-pass-6-onward.mdx`
+4. `docs/engineering-live-context/project-progress.mdx` — the dated log; longer and more
+   precise than any brief.
+5. `docs/engineering-live-context/owner-decisions-log.mdx` — locked decisions, including
+   `DEC-UI-REUSE` added this session.
+6. `docs/engineering-live-context/claude-code-authentication-api-db-build-prompt.mdx`
+7. `docs/engineering-live-context/authentication-use-case-delivery-and-security-matrix.mdx`
+8. `docs/engineering-live-context/pending-decisions.mdx`
+
+Then inspect actual source and `git status --short` before believing any status claim,
+including every claim below.
+
+## 1. Operating rules still in force
+
+Unchanged from the pass-3 brief, plus one addition.
+
+- EXTREMELY SMALL PASSES; one coherent change per pass.
+- ASK BEFORE EVERY PASS with 2–4 concrete options, recommendation first. The owner relaxed
+  this to "continue an agreed sequence"; it is not permission to open a new area unannounced.
+- Run the gates after every pass and append a dated, accurate `project-progress.mdx` entry
+  with real command output.
+- Do NOT touch developer-portal derived pages.
+- Never commit, stage or push unless separately asked. **The owner DID ask during this
+  session** ("commit and continue"); three passes were committed on that instruction.
+- Do not claim a check ran unless it ran and its output was captured.
+- **NEW — `DEC-UI-REUSE` (owner lock 2026-08-11).** Reuse existing elements and CSS classes;
+  brief the owner with bullets, a wireframe, conditional logic, a reuse inventory and an
+  explicit custom-or-nothing statement BEFORE writing any custom UI, proactively, every time.
+  Full text in `owner-decisions-log.mdx`; summary in `AGENTS.md` §5a; see §6 below for how it
+  came about.
+
+## 2. Where the work sits
+
+Branch `feat/api-db-env-secrets-sync`. HEAD `88e8b956`.
+
+**The working tree is NOT clean.** Ten files, deliberately uncommitted because the owner had
+not been asked at the point each session ended. The first seven are from the session this brief
+describes; the last three are the 2026-08-11 UX rework and its documentation. Two of the ten
+are untracked, this brief among them.
+
+| Path                                                                             | Contains                                                     |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `AGENTS.md`                                                                      | new §5a, the UI reuse and brief-before-custom rule           |
+| `docs/engineering-live-context/owner-decisions-log.mdx`                          | `DEC-UI-REUSE` under frontend foundations                    |
+| `apps/admin/src/app/features/account/account.ts`                                 | the Security tab's logic, plus the sub-view signal           |
+| `apps/admin/src/app/features/account/account.html`                               | the Security tab's markup, restructured into three sub-views |
+| `apps/admin/public/assets/i18n/en.json`                                          | 23 new keys; the rework added none                           |
+| `apps/admin/public/assets/i18n/fr.json`                                          | the same 23 keys                                             |
+| `apps/admin/src/app/shared/data/menu.ts`                                         | the `Q&A` → `questions_answers` key fix                      |
+| `docs/engineering-live-context/project-progress.mdx`                             | the dated entries, the rework's included                     |
+| `docs/engineering-live-context/auth-continuation-brief-security-settings-ui.mdx` | this brief — untracked                                       |
+| `docs/engineering-live-context/session-handoff-protocol.mdx`                     | untracked                                                    |
+
+Three commits landed earlier in the session:
+
+| SHA        | Pass                                               |
+| ---------- | -------------------------------------------------- |
+| `1d3aba94` | weak-PIN policy in core-domain                     |
+| `9e805553` | failed recent-password proof answers 403, not 401  |
+| `88e8b956` | typed gateway boundary for admin Security Settings |
+
+Suite sizes after the last full run: contracts 160 · http-transport 157 · **core-domain 134**
+(was 98) · **api 138** (was 131) · storefront 57 · **admin 69** (was 61) · adapters-db-mongo
+103 (4 source-only, 99 DB-gated). The session-rotation E2E is at **26 checks** (was 24).
+`pnpm typecheck` 15/15, `pnpm lint` 17/17, `pnpm format:check` clean, OpenAPI 62 operations
+across 55 paths — unchanged all session, correctly, because no pass added a route.
+
+## 3. What this session delivered
+
+### 3.1 Weak-PIN policy in core-domain — `1d3aba94`
+
+`AdminPin` in contracts was a six-digit regex and nothing more, and its own comment had named
+core-domain as the home of denylist/sequential/repeated rejection since the schema was written.
+No such module existed, so `000000` and `123456` were acceptable administrator PINs.
+
+`packages/core-domain/src/auth/pin-policy.ts` is pure and framework-free (the runtime-purity
+suite still passes). Three rules:
+
+- **repeat** — a repeating unit whose length divides six, so `777777`, `121212` and `123123`
+  all fall to it: **1,090** PINs;
+- **sequential** — a ±1 run counting around from 9 to 0, wraparound deliberate because
+  `890123` is one finger motion exactly like `123456`: **20** PINs;
+- **denylist** — **38** curated entries for what no structural rule catches: keypad columns and
+  diagonals, grouped pairs and triples, famous constants, round numbers.
+
+Total **1,148 of 1,000,000**, roughly one in 871. That number is asserted in the test suite
+rather than described, because the policy's justification fails in both directions if nobody
+knows it.
+
+Enforced at both surfaces that can create a PIN, and the ordering at each is deliberate:
+
+- `AdminSecurityService.setPin` checks strength BEFORE the recent-password proof — the verdict
+  is a fact about a string the caller just typed and reveals nothing about the account, while
+  Argon2 is deliberately expensive, so a caller cannot spend CPU by submitting `000000` in a
+  loop;
+- `AdminInviteService.accept` checks BEFORE `consume` — `consume` is atomic and single-use, so
+  refusing afterwards would spend the invitation on a failed request.
+
+The refusal travels as `validation_failed` with a stable `pin_sequential` / `pin_repeated` /
+`pin_denylisted` / `pin_shape` issue code. `issues` is the ONLY channel `HttpExceptionFilter`
+preserves — it replaces every message with a safe one chosen by status — and it is safe here
+because both surfaces are authorized.
+
+**Deliberately not rejected: date-shaped PINs** (`DDMMYY`, `MMDDYY`, a doubled year), the
+largest real-world weak class. Rejecting all valid dates costs ~3.6% of the keyspace, and the
+owner locked three named rules; a structural fourth is the owner's decision. Recorded as a
+known omission inside the module. **The owner was asked and chose "leave it open for now" on
+2026-08-11** — so it remains open, and the note in the module stays.
+
+### 3.2 A failed recent-password proof answers 403 — `9e805553`
+
+Found while wiring the gateway, and it had to be closed before any screen could call these
+endpoints.
+
+`requireRecentPasswordProof` threw `UnauthorizedException`. Both Angular interceptors read a
+401 as "this session is gone": on a credential-classified route they clear the session store at
+once; on any other route they rotate, replay, receive the same refusal and clear it anyway. So
+a **mistyped current password would have signed the operator out of a session the server still
+considers alive.** No route classification avoids it — both branches reach the same call.
+
+403 is the correction rather than a workaround: the locked rule is 401 for an absent or invalid
+session and 403 for a caller authenticated but insufficiently authorized, and somebody reaching
+that line has a valid admin session and has failed a step-up for one operation.
+
+The E2E asserts 403 with code `forbidden` and **no** `reason` field on all three proof
+endpoints, that the session still works afterwards, and — the part that stops it being a
+blanket downgrade — that the same routes still answer **401** with no session at all.
+
+**The same question returns for storefront step-up, email change and set-password**, which the
+matrix marks GOOD TO GO. It has not been applied there.
+
+### 3.3 Security Settings gateway boundary — `88e8b956`
+
+Four methods on `AdminAuthGateway` — `securitySettings`, `setPin`, `removePin`,
+`changePassword` — plus `AdminSecurityState`, `AdminPinSetupInput`, `AdminPasswordChangeInput`.
+Route paths live only in `http-auth.gateway.ts`, as `check-browser-auth` requires.
+
+**None of the four is a credential route**, and that is pinned by tests rather than left to
+intuition. Three carry a password proof, so the intuitive classification is "credential
+endpoint" and it is wrong: a failed proof now answers 403 and never enters 401 recovery, so the
+only 401 they can produce is a lapsed access cookie, which rotation SHOULD recover. Classifying
+them otherwise would drop an operator at the login screen halfway through a credential change
+because fifteen minutes passed while they typed.
+
+The weak-PIN rule is deliberately NOT duplicated client-side; the gateway documents that the
+server refuses and the screen renders the refusal.
+
+### 3.4 The Security tab — UNCOMMITTED, and its UX is rejected
+
+Built into the EXISTING `features/account` screen as a third ngbNav tab, on the owner's
+instruction, rather than as a new route.
+
+**The old "Change password" tab was dead code** and has been removed: `passwordFormSubmit()`
+marked the form touched and called `reset()`, with no API behind it and field names
+(`password_confirmation`) that do not match the contract. The password form in the Security tab
+is the first version of it that does anything.
+
+What the tab contains: a credential-status block (password, PIN, email verification, live
+session count, plus conditional PIN-locked and revalidation-required rows), a PIN block
+(password proof, entry keypad, confirmation keypad, prefer-PIN switch, remove-PIN behind the
+shared confirmation modal), and a password-change block.
+
+**Zero custom CSS, zero new components, zero copied elements.** Everything is `app-form-fields`,
+`form-control`, `invalid-feedback`, `form-check form-switch` with `.switch`/`.switch-state`,
+`app-button`, `app-pin-pad`, `app-confirmation-modal`, `NotificationService` toasts, Bootstrap
+utilities, and the `status-*` pill classes already in
+`apps/admin/public/assets/scss/components/_badge.scss`.
+
+**The owner has REJECTED this tab's UX** — see §5. The code is sound; the layout is not
+accepted. Do not treat it as done.
+
+### 3.5 The UI reuse lock — UNCOMMITTED
+
+`DEC-UI-REUSE`, locked 2026-08-11, recorded in `owner-decisions-log.mdx` and summarised in
+`AGENTS.md` §5a. Origin: the owner received a pre-build brief (bullets, wireframe, conditional
+logic, reuse inventory, explicit custom-or-nothing statement), liked it, and asked for it to
+become standing practice so it never has to be requested again.
+
+## 4. Owner decisions taken this session
+
+| Decision                      | Choice                                                                                             | Alternatives offered and rejected                                 |
+| ----------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Next pass after §0 reading    | Weak-PIN policy first                                                                              | Security Settings screen · pass 6c idle lock · clear small debt   |
+| Date-shaped PIN rejection     | **Leave open**                                                                                     | Add the rule · close it permanently                               |
+| Failed step-up proof          | **403 at the API**                                                                                 | Client-side classification · both in sequence · ship 401 and warn |
+| Where Security Settings lives | **Existing `account` feature, as a Security tab**, absorbing and replacing the change-password tab | A new `/settings/security` route (which was the recommendation)   |
+| PIN keypad                    | Extract to shared — **moot, already shared**                                                       | Plain inputs · copy the markup                                    |
+| Status pill treatment         | **Outlined `status-*`**                                                                            | Filled `badge rounded-pill badge-theme` · a mix                   |
+| UI reuse and pre-build brief  | **Locked as standing practice**                                                                    | —                                                                 |
+| Commits                       | Asked for explicitly mid-session                                                                   | —                                                                 |
+
+## 5. Owner feedback on the Security tab — ADDRESSED 2026-08-11
+
+Given after seeing the rendered tab, and closed by the rework in the same-dated
+`project-progress.mdx` entry. A pre-build brief with a wireframe was approved before any of it
+was written, per `DEC-UI-REUSE`.
+
+1. **The tab is too long and reads badly.** ~~Status, PIN and password are stacked in one
+   scrolling column.~~ **Closed.** Three vertical-pill sub-views — `credential_status` · `pin` ·
+   `password` — built from `.vertical-tabs` + `nav-pills` + `orientation="vertical"`, the same
+   markup `features/setting` uses. Pills rather than nested `inside-horizontal-tabs`, which
+   would have looked identical to the Account tabs directly above them.
+2. **Two Save buttons on one screen.** **Closed.** One primary action per view: none in the
+   read-only status view, Save plus the secondary Remove PIN in the PIN view, Save in the
+   password view.
+3. **The two PIN keypads run together visually.** **Closed.** Three theme-native candidates
+   were rendered in a live browser and the owner chose `.card .sub-title` — a named heading
+   with a rule under it above each keypad. The rejected candidates were `border-up-class` and a
+   themed `<hr>`. No new divider class was introduced.
+4. **Console must be clean.** **Closed and verified**, not merely code-complete: silent across
+   every pane and tab switch.
+
+Two further corrections the owner called during the review of the rework, both now in the tree:
+the sign-out notice had its label and content inverted beside a dead "Change Password" pill and
+is now a single-line `p.help-text`; and the Save / Remove PIN buttons were misaligned on
+separate lines by the button component's default `ms-auto`, and now share one flex row.
+
+## 6. Corrections, wrong turns and disproved theories
+
+Recorded because the mistake is more instructive than the fix.
+
+1. **The denylist redundancy test failed on its first run, correctly.** `696969` is `69` typed
+   three times — already caught by the repeat rule — and so is `420420`. Both were removed. The
+   two most-cited weak PINs are structurally weak; listing them would only have made the list
+   look longer.
+2. **`check-browser-auth` rejected my own test.** An audience assertion written as
+   `path.startsWith('/auth/admin/')` is an auth path literal outside the one HTTP adapter. The
+   prefix is now derived from the gateway's own `/me` route — compliant, and a stronger
+   assertion.
+3. **I asked the owner whether to extract the PIN keypad into a shared component. It was
+   already shared.** `shared/ui/pin-pad` existed and login consumed it. The question was based
+   on a wrong premise and wasted a decision.
+4. **Angular class bindings defeated the theme's status pills, twice.** The theme styles them
+   with `[class^='status-']` — a STARTS-WITH selector — and Angular writes static classes
+   before dynamic ones however the dynamic one is expressed. Both `[class.status-x]` and
+   `class="{{ … }}"` produced `class="d-inline-block me-2 status-pending"`, which never matches,
+   and the pill rendered as a square box. The fix is a fully static class attribute per `@if`
+   branch. **Only the browser caught this; no test would have.**
+5. **The running API was 15h33m stale.** It served 52 paths with no `/auth/admin/security`,
+   which produced a 404 and an error toast on the account screen while `dist` on disk was
+   current. The process, not the build, was old. Restarted; 55 paths.
+6. **I introduced a double toast.** `GlobalErrorHandlerInterceptor` already toasts every
+   non-401 response, and my handler added a second. The server's specific reason now renders
+   inline as `invalid-feedback` against the password field.
+7. **I fired `/auth/admin/security` on page load**, over the Profile tab, for operators who
+   never open Security. It now loads on tab activation.
+8. **`pnpm e2e:session-rotation` differs by location.** The ROOT script runs
+   `turbo run build --filter=@saha-textile/api` first; the same script inside `apps/api` does
+   NOT. I briefly believed I had tested a stale `dist` and had to check. Run the root one.
+9. **A `format:check` failure was masked by a pipe.** `pnpm format:check | tail -2` exits with
+   `tail`'s status, so an `&&` chain continued and an unformatted commit landed. It was
+   amended. Do not pipe a gate whose exit status you are relying on.
+10. **Prettier's MDX parser broke `project-progress.mdx` twice**, both times by de-indenting a
+    list continuation line — the generalisation of correction 7 in the pass-6 brief. Cause: an
+    inline code span wrapped across a line break. Never let a code span straddle a newline in
+    these documents.
+
+## 7. Everything owed
+
+### From this session
+
+- ~~The Security tab's UX is rejected~~ — **closed 2026-08-11**, see §5.
+- ~~Console fixes are code-complete but NOT browser-verified~~ — **closed 2026-08-11.** The
+  console is silent across every pane and tab switch.
+- ~~The Security tab has never been exercised~~ — **closed 2026-08-11.** PIN set, change and
+  removal were all driven through the screen against the correct password proof and confirmed
+  at the database (`pinHash` present after set, `null` after removal); the password change
+  signed every session out as designed; and both refusal paths render inline.
+- ~~A possible duplicate keypad~~ — **closed 2026-08-11.** The rendered DOM holds exactly two
+  `app-pin-pad` instances with complete 7-8-9 rows. It was a screenshot stitching artefact.
+- ~~**AFTER A PASSWORD CHANGE THE OPERATOR CANNOT SIGN BACK IN FROM THE SAME BROWSER.**~~
+  **FIXED 2026-08-11**, in the response as diagnosed: `changePassword` now takes
+  `@Res({ passthrough: true })` and calls `this.sessions.clearCookies(reply)` after the
+  service call, exactly as `resetPassword` two methods below has always done. An audit of
+  every `revokeAllForUser` call site confirmed this was the only unpaired one — storefront
+  password reset, admin password reset and the disabled-user path during rotation all already
+  clear. E2E extended and negative-controlled twice; see the progress log entry.
+- **Ten files uncommitted**, listed in §2 plus this pass's edits to `account.html`,
+  `account.ts`, `project-progress.mdx` and this brief.
+- **`preferPin` is never re-read after `loadSecurity`** other than at load; confirm the switch
+  reflects server state after a change.
+
+### Carried from earlier sessions, still open
+
+- **Weak PASSWORD policy does not exist.** `Password` in contracts is `z.string().min(12)` with
+  a comment promising a core-domain common-password denylist — exactly the situation the PIN
+  was in before this session. The matrix commits to "reject common passwords" in several rows.
+  **This is the most security-relevant open item.**
+- ~~`setPinHash` leaves a stale `pinRevalidationRequiredAt`~~ — **traced 2026-08-11 and NOT
+  REACHABLE.** The fact is true: `setPinHash` clears `failedPinAttempts` and `pinLockedUntil`
+  and not the revalidation flag. The scenario is not. Only `recordSuccessfulLogin` clears that
+  flag, and it runs on every password login for BOTH audiences
+  (`admin-auth.controller.ts:102`, `storefront-auth.controller.ts:165`). A privileged reset
+  sets the flag AND revokes every admin session, so reaching Security Settings afterwards
+  requires signing in again; PIN login is refused while the flag is set
+  (`verifyAdminPin` returns `revalidation_required` before it looks at anything else), so that
+  sign-in must be by password — which clears the flag. There is no HTTP path that arrives at
+  PIN removal with the flag still set. Left as an unenforced invariant rather than a defect:
+  worth tidying if `setPinHash` ever gains a second caller, not worth a pass now.
+- Deny-by-default covers only the new admin surfaces. `PATCH /orders/:id/status` is still
+  `@RequireRoles('admin','staff')` with no permission.
+- A bodyless DELETE carrying `content-type: application/json` answers 400 rather than the
+  intended status.
+- Neither Angular app depends on `@saha-textile/contracts`; the gateways hand-write wire DTOs.
+  The pass-3 brief marks 3d DONE with evidence describing a different thing. **Unresolved.**
+- `AuditLogListQuery` is documented as `GET /admin/audit-logs`. No such route exists, so
+  nothing can read the audit trail these passes have been writing.
+- The build prompt requires an admin session LIST and per-session revoke. Only a count exists.
+- No admin screen consumes `/admin/roles`, `/admin/permissions` or `/admin/users`.
+- Pass 6c — the 15-minute idle soft lock and PIN quick-resume overlay — does not exist.
+  `POST /auth/admin/resume` exists server-side.
+- The invite → acceptance → first-login journey has never been exercised end to end.
+- PIN login is unproven in a browser.
+- Rate-limit ceilings were implemented on agent recommendation and never ratified by the owner.
+- French translation QUALITY was never audited; the guard catches absence, not wrongness.
+- `owner@saha-textile.test` has had its password printed into a chat transcript more than once,
+  most recently on 2026-08-11 when the owner supplied it so the mutation paths could be
+  exercised. Treat as disclosed; rotate before that database is used for anything real. Local
+  development credentials only.
+- Registration-created users do not reliably set `emailNormalized`; worth an investigation into
+  which write paths set it.
+
+## 8. Verification gates
+
+```bash
+pnpm turbo run test --force
+MONGODB_PORT=27018 RUN_DB_IT=1 pnpm --filter @saha-textile/adapters-db-mongo test
+MONGODB_PORT=27018 pnpm e2e:session-rotation
+pnpm --filter @saha-textile/api generate:openapi
+pnpm typecheck
+pnpm lint
+pnpm format:check
+git diff --check
+```
+
+Plus, for an Angular change: `pnpm --filter @saha-textile/admin build`.
+
+Never pipe a gate into `tail`/`head` when relying on its exit status. Run the E2E from the
+repository ROOT. Restart a long-running API process before probing it.
+
+Prefer proving a control by breaking it. Every security property added this session was
+negative-controlled: the mutation applied, the failing check and its message captured, the
+source restored from a byte-comparison backup and re-verified.
+
+## 9. Next steps, in dependency order
+
+1. ~~Rework the Security tab's UX~~ and ~~browser-verify the whole tab~~ — both done 2026-08-11.
+2. ~~Clear the auth cookies in the password-change response~~ — done 2026-08-11, e2e 26 checks,
+   negative-controlled twice. **Not yet re-verified in a browser**: the fix is proven at the
+   HTTP layer, and the round trip through the admin screen has not been repeated since.
+3. **Commit the twelve outstanding files** once the owner agrees.
+4. **Weak PASSWORD policy in core-domain**, mirroring the PIN one.
+5. Pass 6c — the idle soft lock and PIN quick-resume overlay.
+6. The invite → first-login journey, now unblocked by 6a.
+7. Passes 7–11 as listed in the pass-3 brief.

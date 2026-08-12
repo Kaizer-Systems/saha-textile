@@ -4,6 +4,7 @@
 			ngbNav
 			#nav="ngbNav"
 			[(activeId)]="active"
+			(activeIdChange)="onTabChange($event)"
 			class="nav-tabs"
 		>
 			<li ngbNavItem="profile">
@@ -30,8 +31,13 @@
 									[helpText]="'*Upload image size 100x100px recommended'"
 								/>
 							</app-form-fields>
+							<!--
+								`app-form-fields` already pipes its label through Transloco, so
+								piping here too translated the RESULT — "Missing translation for
+								'Name'" on every load. Pass the key, not the translation.
+							-->
 							<app-form-fields
-								[label]="'name' | transloco"
+								[label]="'name'"
 								[for]="'name'"
 								[required]="true"
 							>
@@ -127,7 +133,7 @@
 					>
 						<div class="row">
 							<app-form-fields
-								[label]="'store_logo' | transloco"
+								[label]="'store_logo'"
 								[for]="'logo'"
 								[required]="false"
 							>
@@ -312,7 +318,7 @@
 								/>
 							</app-form-fields>
 							<app-form-fields
-								[label]="'hide_email' | transloco"
+								[label]="'hide_email'"
 								[for]="'hide_vendor_email'"
 								[required]="false"
 							>
@@ -328,7 +334,7 @@
 								</div>
 							</app-form-fields>
 							<app-form-fields
-								[label]="'hide_phone' | transloco"
+								[label]="'hide_phone'"
 								[for]="'hide_vendor_phone'"
 								[required]="false"
 							>
@@ -349,76 +355,477 @@
 				</ng-template>
 			</li>
 			}
-			<li ngbNavItem="password">
+			<li ngbNavItem="security">
 				<a ngbNavLink>
 					<i class="ri-phone-lock-line"></i>
-					{{ 'change_password' | transloco }}
+					{{ 'security' | transloco }}
 				</a>
 				<ng-template ngbNavContent>
-					<form
-						class="theme-form theme-form-2 mega-form"
-						[formGroup]="passwordForm"
-						(ngSubmit)="passwordFormSubmit()"
-					>
+					<!--
+						Three sub-views, not one scrolling column.
+
+						Status, PIN and password used to be stacked, which put two Save buttons
+						on screen at once and made the pane long enough to lose the operator in.
+						Owner feedback, 2026-08-11. Splitting them means exactly one primary
+						action is ever offered, and the pane the operator is not using is not
+						asking them for a password.
+
+						The nav is the theme's own `vertical-tabs` + `nav-pills`, used exactly as
+						the Settings screen uses it. Pills rather than a second row of
+						`inside-horizontal-tabs`: those are what the Account tabs above already
+						are, so nesting them would give two levels of navigation that look
+						identical. The pill nav also brings its own dashed divider between the
+						list and the pane, which is why nothing here draws one.
+					-->
+					<div class="vertical-tabs">
 						<div class="row">
-							<app-form-fields
-								[label]="'current_password'"
-								[for]="'current_password'"
-								[required]="true"
-							>
-								<input
-									class="form-control"
-									type="password"
-									placeholder="{{ 'enter_current_password' | transloco }}"
-									name="current_password"
-									formControlName="current_password"
-								/>
-								@if (passwordForm.controls['current_password'].touched &&
-								passwordForm.controls['current_password'].errors?.['required']) {
-								<div class="invalid-feedback">{{ 'current_password_is_required' | transloco }}</div>
-								}
-							</app-form-fields>
-							<app-form-fields
-								[label]="'new_password'"
-								[for]="'new_password'"
-								[required]="true"
-							>
-								<input
-									class="form-control"
-									type="password"
-									placeholder="{{ 'enter_new_password' | transloco }}"
-									name="password"
-									formControlName="password"
-								/>
-								@if (passwordForm.controls['password'].touched &&
-								passwordForm.controls['password'].errors?.['required']) {
-								<div class="invalid-feedback">{{ 'new_password_is_required' | transloco }}</div>
-								}
-							</app-form-fields>
-							<app-form-fields
-								[label]="'confirm_password'"
-								[for]="'confirm_password'"
-								[required]="true"
-							>
-								<input
-									class="form-control"
-									type="password"
-									placeholder="{{ 'enter_confirm_password' | transloco }}"
-									name="password_confirmation"
-									formControlName="password_confirmation"
-								/>
-								@if (passwordForm.controls['password_confirmation'].touched &&
-								passwordForm.controls['password_confirmation'].errors?.['required']) {
-								<div class="invalid-feedback">{{ 'confirm_password_is_required' | transloco }}</div>
-								} @else { @if (passwordMatchError) {
-								<div class="invalid-feedback">
-									{{ 'confirm_password_does_not_matched' | transloco }}
-								</div>
-								} }
-							</app-form-fields>
+							<div class="col-xl-3 col-lg-4">
+								<ul
+									ngbNav
+									#securityNav="ngbNav"
+									[activeId]="securityView()"
+									(activeIdChange)="onSecurityViewChange($event)"
+									class="nav-pills"
+									orientation="vertical"
+								>
+									<li ngbNavItem="credential_status">
+										<a ngbNavLink>
+											<i class="ri-shield-keyhole-line"></i>
+											{{ 'credential_status' | transloco }}
+										</a>
+										<ng-template ngbNavContent>
+											<!--
+												Read-only, and it never carries the credential itself —
+												`hasPin` rather than the hash, so a screen can render
+												"change" versus "set" without the value being anywhere near
+												the browser. No form element and no button: there is nothing
+												here to submit.
+
+												The outlined `status-*` family is used rather than the
+												filled `badge rounded-pill badge-theme`: both were rendered
+												side by side in a browser and the badge paints every state
+												in brand green, so "Not set" and "Not verified" read as
+												success. `status-*` colours BY state and already carries
+												`status-danger`, which the lock rows need. Owner choice,
+												2026-08-11.
+											-->
+											@if (security(); as state) {
+											<div class="row">
+												<app-form-fields
+													[label]="'password'"
+													[for]="'credential_status'"
+													[required]="false"
+												>
+													<div class="status-success d-inline-block me-2">
+														<span>{{ 'active' | transloco }}</span>
+													</div>
+												</app-form-fields>
+												<app-form-fields
+													[label]="'pin'"
+													[for]="'pin_status'"
+													[required]="false"
+												>
+													<!--
+														Two branches with FULLY STATIC class attributes, rather
+														than one element with a bound or interpolated class. That
+														is load-bearing, not verbosity.
+
+														The theme styles these through `[class^='status-']` — a
+														STARTS-WITH selector — and Angular's class binding writes
+														the static classes first whichever way the dynamic one is
+														expressed, producing
+														`class="d-inline-block me-2 status-pending"`. The selector
+														never matches it and the pill renders as a square box.
+														Both `[class.status-x]` and `class="{{ … }}"` were tried
+														in a browser and both failed this way.
+													-->
+													@if (state.hasPin) {
+													<div class="status-success d-inline-block me-2">
+														<span>{{ 'pin_configured' | transloco }}</span>
+													</div>
+													} @else {
+													<div class="status-pending d-inline-block me-2">
+														<span>{{ 'pin_not_set' | transloco }}</span>
+													</div>
+													}
+												</app-form-fields>
+												@if (pinLocked()) {
+												<app-form-fields
+													[label]="'pin_locked'"
+													[for]="'pin_locked'"
+													[required]="false"
+												>
+													<div class="status-danger d-inline-block me-2">
+														<span>{{ state.pinLockedUntil | date: 'short' }}</span>
+													</div>
+													<div class="form-label-title mb-2">
+														{{ 'pin_locked_hint' | transloco }}
+													</div>
+												</app-form-fields>
+												}
+												<!--
+													Deliberately a separate row from the lock above. The lock
+													expires on its own after fifteen minutes; this one clears
+													only when the new password is used. Collapsing them would
+													let a timer silently restore a credential a suspected
+													compromise had suspended.
+												-->
+												@if (pinSuspended()) {
+												<app-form-fields
+													[label]="'pin_revalidation_required'"
+													[for]="'pin_revalidation'"
+													[required]="false"
+												>
+													<div class="status-danger d-inline-block me-2">
+														<span>
+															{{ state.pinRevalidationRequiredAt | date: 'short' }}
+														</span>
+													</div>
+													<div class="form-label-title mb-2">
+														{{ 'pin_revalidation_hint' | transloco }}
+													</div>
+												</app-form-fields>
+												}
+												<app-form-fields
+													[label]="'email'"
+													[for]="'email_status'"
+													[required]="false"
+												>
+													<!-- Static class per branch, for the starts-with selector; see the PIN row. -->
+													@if (state.emailVerified) {
+													<div class="status-success d-inline-block me-2">
+														<span>{{ 'verified' | transloco }}</span>
+													</div>
+													} @else {
+													<div class="status-pending d-inline-block me-2">
+														<span>{{ 'not_verified' | transloco }}</span>
+													</div>
+													}
+												</app-form-fields>
+												<app-form-fields
+													[label]="'active_sessions'"
+													[for]="'active_sessions'"
+													[required]="false"
+												>
+													<div class="status-success d-inline-block me-2">
+														<span>{{ state.activeSessions }}</span>
+													</div>
+												</app-form-fields>
+											</div>
+											}
+										</ng-template>
+									</li>
+									<li ngbNavItem="pin">
+										<a ngbNavLink>
+											<i class="ri-lock-password-line"></i>
+											{{ 'pin' | transloco }}
+										</a>
+										<ng-template ngbNavContent>
+											<!--
+												The entry is the shared keypad with NO text field behind it, so
+												no device keyboard can be summoned for a PIN on any platform.
+												Two instances: entry and confirmation, because a mistyped PIN
+												that is only discovered at the next login is a lockout.
+
+												Weak-PIN rejection is NOT reproduced here. The server owns that
+												rule and its refusal message is rendered verbatim; a second copy
+												would drift.
+											-->
+											@if (security(); as state) {
+											<form
+												class="theme-form theme-form-2 mega-form"
+												[formGroup]="securityForm"
+												(ngSubmit)="savePin()"
+											>
+												<!--
+													Chrome asks every password form for an associated username
+													field so a password manager can attach the credential to the
+													right account. It is `readonly` and visually removed with the
+													theme's own `d-none` utility: the operator never edits it, and
+													its only job is to identify the account the password below
+													belongs to.
+												-->
+												<input
+													class="d-none"
+													type="text"
+													autocomplete="username"
+													name="username"
+													readonly
+													[value]="signedInEmail()"
+												/>
+												<div class="row">
+													<app-form-fields
+														[label]="'current_password'"
+														[for]="'security_current_password'"
+														[required]="true"
+													>
+														<input
+															class="form-control"
+															type="password"
+															autocomplete="current-password"
+															placeholder="{{ 'enter_current_password' | transloco }}"
+															name="security_current_password"
+															formControlName="current_password"
+														/>
+														@if (securityForm.controls['current_password'].touched &&
+														securityForm.controls['current_password'].errors?.['required'])
+														{
+														<div class="invalid-feedback d-block">
+															{{ 'current_password_is_required' | transloco }}
+														</div>
+														}
+														<!--
+															The server's refusal, against the field it is about. A
+															toast cannot carry it: the API's safe message is chosen by
+															status, so a weak PIN arrives as "The request could not be
+															processed" — and `GlobalErrorHandlerInterceptor` already
+															raises that toast, so adding a second one here put two on
+															screen for one failure.
+														-->
+														@if (securityError(); as message) {
+														<div class="invalid-feedback d-block">{{ message }}</div>
+														}
+													</app-form-fields>
+													<!--
+														Each keypad is headed by the theme's own `.card .sub-title`
+														— a named heading with a rule under it — instead of being
+														labelled from the left column. Two keypads with nothing
+														between them read as one control with twelve cells.
+
+														Chosen by the owner from three candidates rendered side by
+														side in a browser, 2026-08-11: this one, a plain
+														`border-up-class` rule, and a themed `hr`. It also gives the
+														left column back to the keypad, which is the pane-length
+														complaint from the same review.
+													-->
+													<div class="col-12 mb-4">
+														<h5 class="sub-title">
+															{{ (state.hasPin ? 'change_pin' : 'set_a_pin') | transloco
+															}}
+														</h5>
+														<app-pin-pad
+															[length]="pinLength"
+															[(value)]="pin"
+														/>
+													</div>
+													<div class="col-12 mb-4">
+														<h5 class="sub-title">{{ 'confirm_pin' | transloco }}</h5>
+														<app-pin-pad
+															[length]="pinLength"
+															[(value)]="confirmPin"
+														/>
+														@if (pinMismatch()) {
+														<div class="invalid-feedback d-block">
+															{{ 'pins_do_not_match' | transloco }}
+														</div>
+														}
+													</div>
+													<!--
+														Hidden without a PIN: `pin` is not a legal preference when
+														none exists, and offering it would produce a login the
+														operator can neither complete nor explain.
+													-->
+													@if (state.hasPin) {
+													<app-form-fields
+														[label]="'prefer_pin_at_login'"
+														[for]="'prefer_pin'"
+														[required]="false"
+													>
+														<div class="form-check form-switch ps-0">
+															<label class="switch">
+																<input
+																	type="checkbox"
+																	id="prefer_pin"
+																	[checked]="preferPin()"
+																	(change)="preferPin.set(!preferPin())"
+																/>
+																<span class="switch-state"></span>
+															</label>
+														</div>
+													</app-form-fields>
+													}
+												</div>
+												<!--
+													One flex row, because the button component's default
+													`ms-auto` right-aligns Save onto a line of its own and left
+													the Remove button stranded underneath it, misaligned. The
+													classes are overridden here rather than in the component so
+													no other screen's buttons move.
+												-->
+												<div class="d-flex justify-content-end align-items-center mt-4 gap-2">
+													<app-button
+														[class]="'btn btn-theme'"
+														[id]="'pin_btn'"
+														[disabled]="!pinReady() || securityBusy()"
+													>
+														{{ 'save' | transloco }}
+													</app-button>
+													<!--
+														Secondary and destructive, not a second Save. The one
+														primary action in this pane is the one beside it.
+													-->
+													@if (state.hasPin) {
+													<app-button
+														[class]="'btn-md fw-bold btn btn-secondary'"
+														[id]="'remove_pin_btn'"
+														[type]="'button'"
+														[disabled]="securityBusy()"
+														(click)="removePinModal.openModal('')"
+													>
+														{{ 'remove_pin' | transloco }}
+													</app-button>
+													}
+												</div>
+											</form>
+											<app-confirmation-modal
+												#removePinModal
+												(confirmed)="removePin()"
+											/>
+											}
+										</ng-template>
+									</li>
+									<li ngbNavItem="password">
+										<a ngbNavLink>
+											<i class="ri-key-2-line"></i>
+											{{ 'password' | transloco }}
+										</a>
+										<ng-template ngbNavContent>
+											<!--
+												Deliberately NOT behind `@if (security(); as state)`. Nothing in
+												this pane reads the credential state, and a failed status read
+												must not take the ability to change a password with it.
+											-->
+											<form
+												class="theme-form theme-form-2 mega-form"
+												[formGroup]="securityPasswordForm"
+												(ngSubmit)="changeAdminPassword()"
+											>
+												<!--
+													Chrome asks every password form for an associated username
+													field so a password manager can attach the credential to the
+													right account. It is `readonly` and visually removed with the
+													theme's own `d-none` utility: the operator never edits it, and
+													its only job is to identify the account the password below
+													belongs to.
+												-->
+												<input
+													class="d-none"
+													type="text"
+													autocomplete="username"
+													name="username"
+													readonly
+													[value]="signedInEmail()"
+												/>
+												<div class="row">
+													<app-form-fields
+														[label]="'current_password'"
+														[for]="'current_password'"
+														[required]="true"
+													>
+														<input
+															class="form-control"
+															type="password"
+															autocomplete="current-password"
+															placeholder="{{ 'enter_current_password' | transloco }}"
+															name="current_password"
+															formControlName="current_password"
+														/>
+														@if (securityPasswordForm.controls['current_password'].touched
+														&&
+														securityPasswordForm.controls['current_password'].errors?.['required'])
+														{
+														<div class="invalid-feedback d-block">
+															{{ 'current_password_is_required' | transloco }}
+														</div>
+														}
+														<!--
+															The same refusal channel the PIN pane uses, and for the
+															same reason. Without it a mistyped current password
+															answered 403 and the operator saw only the interceptor's
+															generic toast — a form that rejected them and would not
+															say what for.
+														-->
+														@if (securityError(); as message) {
+														<div class="invalid-feedback d-block">{{ message }}</div>
+														}
+													</app-form-fields>
+													<app-form-fields
+														[label]="'new_password'"
+														[for]="'new_password'"
+														[required]="true"
+													>
+														<input
+															class="form-control"
+															type="password"
+															autocomplete="new-password"
+															placeholder="{{ 'enter_new_password' | transloco }}"
+															name="password"
+															formControlName="password"
+														/>
+														@if (securityPasswordForm.controls['password'].touched &&
+														securityPasswordForm.controls['password'].errors?.['required'])
+														{
+														<div class="invalid-feedback">
+															{{ 'new_password_is_required' | transloco }}
+														</div>
+														}
+													</app-form-fields>
+													<app-form-fields
+														[label]="'confirm_password'"
+														[for]="'confirm_password'"
+														[required]="true"
+													>
+														<input
+															class="form-control"
+															type="password"
+															autocomplete="new-password"
+															placeholder="{{ 'enter_confirm_password' | transloco }}"
+															name="password_confirmation"
+															formControlName="password_confirmation"
+														/>
+														@if
+														(securityPasswordForm.controls['password_confirmation'].touched
+														&&
+														securityPasswordForm.controls['password_confirmation'].errors?.['required'])
+														{
+														<div class="invalid-feedback">
+															{{ 'confirm_password_is_required' | transloco }}
+														</div>
+														} @else { @if (securityPasswordMatchError) {
+														<div class="invalid-feedback">
+															{{ 'confirm_password_does_not_matched' | transloco }}
+														</div>
+														} }
+													</app-form-fields>
+												</div>
+												<!--
+													Stated before the operator commits, not after. The API revokes
+													every admin session including this one, so a success ends with
+													them at the login screen — surprising unless it was said first.
+
+													A one-line `help-text` note rather than a labelled row: it is
+													information, not a field. As a row its sentence became a
+													six-line label in the left column, sitting beside a pill that
+													said "Change Password" and did nothing at all. Owner call,
+													2026-08-11.
+												-->
+												<p class="help-text">*{{ 'password_change_signs_out' | transloco }}</p>
+												<app-button
+													[id]="'password_btn'"
+													[disabled]="securityBusy()"
+												>
+													{{ 'save' | transloco }}
+												</app-button>
+											</form>
+										</ng-template>
+									</li>
+								</ul>
+							</div>
+							<div class="col-xl-9 col-lg-8">
+								<div [ngbNavOutlet]="securityNav"></div>
+							</div>
 						</div>
-						<app-button [id]="'password_btn'">{{ 'save' | transloco }}</app-button>
-					</form>
+					</div>
 				</ng-template>
 			</li>
 		</ul>

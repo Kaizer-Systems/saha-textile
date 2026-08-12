@@ -84,3 +84,69 @@ export const AuthSession = z.object({
 	revokeReason: SessionRevokeReason.nullable().default(null),
 });
 export type AuthSession = z.infer<typeof AuthSession>;
+
+/**
+ * One row of "where am I signed in?" — what a device list may show its owner.
+ *
+ * A strict subtraction from `AuthSession`, and every omission is deliberate. The refresh
+ * hashes, the previous-token hash and the CSRF secret hash are credential material: publishing
+ * them would hand a reader the fingerprints reuse detection is built on. `device.userAgentHash`
+ * and `device.ipHash` go for the reason the audit read model drops the same pair — an unsalted
+ * digest of an IPv4 address falls to exhaustive search in seconds, so publishing the hash is
+ * publishing the address that hashing it was meant to avoid.
+ *
+ * What remains is what a person actually needs in order to recognise a session and decide
+ * whether to end it: a label, a country, when it started, when it was last used, and when it
+ * dies on its own.
+ */
+export const SessionSummary = z.object({
+	id: Id,
+	audience: SessionAudience,
+	/** Human-recognisable device hint. Null until a labelling strategy exists. */
+	label: z.string().nullable().default(null),
+	/** Coarse location only — never a raw address, and never its hash. */
+	country: z.string().nullable().default(null),
+	createdAt: IsoDateTime,
+	lastSeenAt: IsoDateTime,
+	/** Idle expiry. */
+	expiresAt: IsoDateTime,
+	/** Hard ceiling; a session cannot outlive this however active it is. */
+	absoluteExpiresAt: IsoDateTime,
+	/**
+	 * True for the session making the request.
+	 *
+	 * Without it a device list is a list of indistinguishable rows and the owner cannot tell
+	 * which one signing out will end the page they are looking at.
+	 */
+	current: z.boolean(),
+});
+export type SessionSummary = z.infer<typeof SessionSummary>;
+
+/** `GET /auth/{audience}/sessions` — the caller's own live sessions, newest first. */
+export const SessionListResponse = z.object({ items: z.array(SessionSummary) });
+export type SessionListResponse = z.infer<typeof SessionListResponse>;
+
+/** `POST /auth/{audience}/sessions/revoke-others` — how many were ended. */
+export const SessionRevokeResponse = z.object({ revoked: z.number().int().nonnegative() });
+export type SessionRevokeResponse = z.infer<typeof SessionRevokeResponse>;
+
+/**
+ * Projects a stored session onto the read model.
+ *
+ * Beside the schema on purpose, so the subtraction happens in the one place it is explained.
+ * A controller mapping this inline is a controller where the next field added to `AuthSession`
+ * — the next hash, most likely — silently becomes public.
+ */
+export function toSessionSummary(session: AuthSession, currentSessionId: string): SessionSummary {
+	return {
+		id: session.id,
+		audience: session.audience,
+		label: session.device.label,
+		country: session.device.country,
+		createdAt: session.createdAt,
+		lastSeenAt: session.lastSeenAt,
+		expiresAt: session.expiresAt,
+		absoluteExpiresAt: session.absoluteExpiresAt,
+		current: session.id === currentSessionId,
+	};
+}

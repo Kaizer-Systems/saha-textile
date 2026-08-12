@@ -30,6 +30,7 @@ import { z } from 'zod';
 export const PermissionCode = z.enum([
 	'attachment.index',
 	'attribute.index',
+	'audit.index',
 	'blog.index',
 	'category.index',
 	'coupon.index',
@@ -82,6 +83,8 @@ export const PERMISSION_CODES: readonly PermissionCode[] = PermissionCode.option
  * here or reachable from the menu, so an abandoned entry stays visible in review forever.
  */
 export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCode, string>>> = {
+	'audit.index':
+		'Reads the audit trail every admin mutation writes (GET /admin/audit-logs). Deliberately its own code rather than folded into user.index or setting.index: the trail records what every OTHER operator did, so being able to administer a resource must not imply being able to read the history of everyone who touched it. No screen gates it yet.',
 	'permission.index': 'Enumerates this registry so a grant UI can render it; there is no screen of its own to gate.',
 	'role.create': 'Role management surface (auth pass 5c.3); the navigation gates only role.index today.',
 	'role.destroy': 'Role management surface (auth pass 5c.3); deleting a role is separate from editing one.',
@@ -97,6 +100,7 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 export const PermissionResource = z.enum([
 	'attachment',
 	'attribute',
+	'audit',
 	'blog',
 	'category',
 	'coupon',

@@ -1,6 +1,18 @@
 import { randomUUID } from 'node:crypto';
 
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	HttpCode,
+	HttpStatus,
+	Param,
+	Post,
+	Req,
+	Res,
+	UnauthorizedException,
+} from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	type AuthSessionResponse,
@@ -12,11 +24,14 @@ import {
 	PasswordLoginRequest,
 	PasswordResetRequest,
 	RegisterStorefrontRequest,
+	type SessionListResponse,
+	type SessionRevokeResponse,
 } from '@saha-textile/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AuthService } from './auth.service';
+import { assertPasswordAcceptable } from './password-policy';
 import { Principal } from './ownership';
 import { tooManyRequests } from './rate-limit-response';
 import { RotatesSession } from './refresh-reuse.guard';
@@ -52,6 +67,21 @@ export class StorefrontAuthController {
 		@Req() request: FastifyRequest,
 		@Res({ passthrough: true }) reply: FastifyReply,
 	): Promise<AuthSessionResponse> {
+		/**
+		 * Password strength FIRST, before the rate limit and before the existence check.
+		 *
+		 * The ordering is anti-enumeration, not tidiness. This handler answers a generic
+		 * `401` when the address is already registered, so that a stranger learns nothing.
+		 * Refusing a weak password only AFTER that check would make the same submitted
+		 * password answer `400` for an unknown address and `401` for a known one — turning
+		 * any weak password into a probe that confirms whether an account exists. Checked
+		 * first, the response depends only on what the caller typed.
+		 *
+		 * It also spares the honest user a rate-limit slot: registration is attempt-counted at
+		 * three per hour per address, and a typo should not cost a third of that budget.
+		 */
+		assertPasswordAcceptable(body.password);
+
 		const email = this.auth.normalizeEmail(body.email);
 		// Attempt-counted: registration creates an account and sends a verification email, so
 		// the cost lands on success too and failure counting cannot protect it.
@@ -334,6 +364,61 @@ export class StorefrontAuthController {
 	 * click the link. The token is single-use and consumed atomically, so a forwarded link
 	 * cannot verify the address twice.
 	 */
+	/**
+	 * The caller's own live sessions.
+	 *
+	 * "Where am I signed in?" is a security control, not a convenience: it is how somebody
+	 * discovers a session they do not recognise. The rows are sanitized by
+	 * `toSessionSummary` — no refresh fingerprint, no CSRF secret, no device hashes — because
+	 * a device list that leaked the material reuse detection depends on would be worse than no
+	 * device list at all.
+	 */
+	@Get('sessions')
+	@ApiOperation({ operationId: 'listCustomerSessions', summary: 'List the caller’s own live sessions' })
+	listSessions(@Principal() principal: AuthenticatedPrincipal | undefined): Promise<SessionListResponse> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+		return this.sessions.listOwnSessions(principal);
+	}
+
+	/**
+	 * Ends one named session belonging to the caller.
+	 *
+	 * A session that is not theirs answers **404**, never 403 — the locked ownership rule, so
+	 * an id cannot be probed for existence. Revoking the CURRENT session is allowed and clears
+	 * this browser's cookies in the same response, because leaving a browser holding
+	 * credentials for a session that no longer exists is what wedged the password-change flow.
+	 */
+	@Delete('sessions/:id')
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({ operationId: 'revokeCustomerSession', summary: 'Revoke one of the caller’s own sessions' })
+	async revokeSession(
+		@Param('id') id: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Res({ passthrough: true }) reply: FastifyReply,
+	): Promise<void> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+
+		const { wasCurrent } = await this.sessions.revokeOwnSession(principal, id);
+		if (wasCurrent) this.sessions.clearCookies(reply);
+	}
+
+	/**
+	 * Ends every OTHER session, keeping this one alive.
+	 *
+	 * The "somebody else is signed in as me" control. It deliberately does not end the calling
+	 * session: signing the person out of the device they trust, while the suspected intruder
+	 * is what prompted the action, is precisely backwards.
+	 */
+	@Post('sessions/revoke-others')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ operationId: 'revokeOtherCustomerSessions', summary: 'Revoke every session except this one' })
+	async revokeOtherSessions(
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<SessionRevokeResponse> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+		return { revoked: await this.sessions.revokeOtherSessions(principal) };
+	}
+
 	@Post('email/verify')
 	@Public()
 	@HttpCode(HttpStatus.NO_CONTENT)

@@ -1,17 +1,20 @@
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 
-import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import type {
-	AccessTokenClaims,
-	AuthSession,
-	SessionAudience,
-	SessionRevokeReason,
-	UserRole,
+import { Inject, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+	type AccessTokenClaims,
+	type AuthSession,
+	type SessionAudience,
+	type SessionListResponse,
+	type SessionRevokeReason,
+	type UserRole,
+	toSessionSummary,
 } from '@saha-textile/contracts';
 import type { AuthPort, AuthSessionRepository, AuthUserRepository } from '@saha-textile/core-domain';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { cookieNames, csrfCookieOptions, sessionCookieOptions } from '../common/cookies';
+import type { AuthenticatedPrincipal } from './session.guard';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { AUTH_PORT, AUTH_SESSION_REPOSITORY, AUTH_USER_REPOSITORY } from '../infra/tokens';
 
@@ -379,6 +382,67 @@ export class SessionService {
 
 	async revokeAllForUser(userId: string, reason: SessionRevokeReason): Promise<number> {
 		return this.sessions.revokeAllForUser(userId, reason, new Date().toISOString());
+	}
+
+	/**
+	 * The caller's own live sessions, newest first, projected onto the read model.
+	 *
+	 * Scoped by audience as well as by user, deliberately: the same human may hold a storefront
+	 * session and an admin session, and showing one surface's devices on the other would leak
+	 * the existence of back-office access to a shop account that has no business knowing about
+	 * it. A device list is also an ownership surface, so it is derived from the PRINCIPAL and
+	 * never from an id the caller supplies.
+	 */
+	async listOwnSessions(principal: AuthenticatedPrincipal): Promise<SessionListResponse> {
+		const sessions = await this.sessions.listActiveForUser(principal.userId, principal.audience);
+		const items = sessions
+			.slice()
+			.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+			.map((session) => toSessionSummary(session, principal.sessionId));
+
+		return { items };
+	}
+
+	/**
+	 * Ends one named session belonging to the caller.
+	 *
+	 * A session that is not the caller's answers **404**, never 403, which is the locked
+	 * ownership rule: a 403 would confirm the id exists and turn this into a probe for other
+	 * people's session ids. The same 404 covers an id that never existed, one already revoked,
+	 * and one belonging to the caller's OTHER audience.
+	 *
+	 * Revoking the current session is allowed and is not a special case — it is what "sign this
+	 * device out" means when the device is this one. The cookies are cleared by the caller, so
+	 * the operator is not left holding credentials for a session that no longer exists.
+	 */
+	async revokeOwnSession(principal: AuthenticatedPrincipal, sessionId: string): Promise<{ wasCurrent: boolean }> {
+		const session = await this.sessions.findById(sessionId);
+		const owned =
+			session &&
+			!session.revokedAt &&
+			session.userId === principal.userId &&
+			session.audience === principal.audience;
+
+		if (!owned) throw new NotFoundException('Resource not found');
+
+		await this.sessions.revoke(session.id, 'logout', new Date().toISOString());
+		return { wasCurrent: session.id === principal.sessionId };
+	}
+
+	/**
+	 * Ends every OTHER session, keeping the caller signed in where they are.
+	 *
+	 * This is the "I think somebody else is signed in as me" control, so the one thing it must
+	 * not do is sign the person using it out — that would leave them re-authenticating on a
+	 * device they already trust while whatever prompted the panic is still live elsewhere.
+	 */
+	async revokeOtherSessions(principal: AuthenticatedPrincipal): Promise<number> {
+		const sessions = await this.sessions.listActiveForUser(principal.userId, principal.audience);
+		const others = sessions.filter((session) => session.id !== principal.sessionId);
+		const at = new Date().toISOString();
+
+		for (const session of others) await this.sessions.revoke(session.id, 'logout_all', at);
+		return others.length;
 	}
 
 	/**

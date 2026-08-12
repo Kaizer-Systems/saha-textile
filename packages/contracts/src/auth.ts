@@ -6,8 +6,14 @@ import { User } from './user';
 
 /**
  * Password policy floor (owner lock 2026-06-29): minimum 12 characters for BOTH
- * storefront and admin. The common-password denylist is a domain policy check
- * (core-domain), not a schema regex.
+ * storefront and admin. Length only — the common-password denylist is a domain
+ * policy check, not a schema regex: `evaluatePassword` in
+ * `packages/core-domain/src/auth/password-policy.ts`, enforced by the API on every
+ * path that sets a password. A refusal returns `validation_failed` with a
+ * `password_*` issue code.
+ *
+ * Strength deliberately does NOT live here. This schema is shared with the browser,
+ * and a client is the one place credential policy must never be enforced.
  */
 export const Password = z.string().min(12).max(256);
 export type Password = z.infer<typeof Password>;

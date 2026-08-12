@@ -55,7 +55,15 @@ export const AuditLog = z.object({
 });
 export type AuditLog = z.infer<typeof AuditLog>;
 
-/** `GET /admin/audit-logs` list filter (high-privilege RBAC; server-authorized). */
+/**
+ * `GET /admin/audit-logs` list filter (high-privilege RBAC; server-authorized).
+ *
+ * `page` and `pageSize` are `coerce`d because this schema validates a QUERY STRING, where
+ * every value arrives as text: without it `?page=2` fails as "expected number, received
+ * string" and the endpoint is unusable from a browser. Coercion does not loosen the bound —
+ * `pageSize` is still capped at 200, which is what keeps this from becoming an unbounded
+ * export of the security trail.
+ */
 export const AuditLogListQuery = z.object({
 	actorUserId: Id.optional(),
 	targetUserId: Id.optional(),
@@ -66,7 +74,49 @@ export const AuditLogListQuery = z.object({
 	audience: AuditAudience.optional(),
 	from: IsoDateTime.optional(),
 	to: IsoDateTime.optional(),
-	page: z.number().int().positive().default(1),
-	pageSize: z.number().int().positive().max(200).default(50),
+	page: z.coerce.number().int().positive().default(1),
+	pageSize: z.coerce.number().int().positive().max(200).default(50),
 });
 export type AuditLogListQuery = z.infer<typeof AuditLogListQuery>;
+
+/**
+ * What `GET /admin/audit-logs` returns — the entity MINUS its two hashes.
+ *
+ * `ipHash` and `userAgentHash` are omitted deliberately, and not merely for tidiness. The
+ * build prompt's contract rule is that internal schemas may carry hashes and public ones never
+ * can, and an IP hash is the case that shows why: IPv4 has fewer than 2^32 values, so an
+ * unsalted digest of an address is not a one-way function in any meaningful sense — it is
+ * reversible by exhaustive search in seconds on a laptop. Publishing it to a screen would be
+ * publishing the address, which is exactly what storing a hash instead of the address was
+ * meant to avoid.
+ *
+ * If correlating "the same actor from the same origin" is ever needed on this surface, the
+ * answer is a per-investigation derived token, not this field.
+ *
+ * Everything else is safe by construction rather than by filtering here: `diffs` and
+ * `metadata` are redacted before they are ever written (owner lock 2026-07-23 — secrets,
+ * tokens and PAN are never persisted), so the read model does not re-litigate that.
+ */
+export const AuditLogEntry = AuditLog.omit({ ipHash: true, userAgentHash: true });
+export type AuditLogEntry = z.infer<typeof AuditLogEntry>;
+
+/** `GET /admin/audit-logs` response. */
+export const AuditLogListResponse = z.object({
+	items: z.array(AuditLogEntry),
+	total: z.number().int().nonnegative(),
+	page: z.number().int().positive(),
+	pageSize: z.number().int().positive(),
+});
+export type AuditLogListResponse = z.infer<typeof AuditLogListResponse>;
+
+/**
+ * Projects a stored entry onto the read model.
+ *
+ * Declared beside the schema, so the two hashes are dropped in the one place the omission is
+ * explained. A controller doing this inline is a controller where the next field added to
+ * `AuditLog` silently becomes public.
+ */
+export function toAuditLogEntry(entry: AuditLog): AuditLogEntry {
+	const { ipHash: _ipHash, userAgentHash: _userAgentHash, ...safe } = entry;
+	return safe;
+}

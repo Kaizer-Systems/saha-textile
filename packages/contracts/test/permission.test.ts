@@ -20,8 +20,11 @@ describe('permission registry', () => {
 		expect(PermissionCode.safeParse('').success).toBe(false);
 	});
 
+	// The count is asserted so that adding a code is a deliberate act with a visible diff,
+	// rather than something that happens by accident alongside other work. 33 → 34 on
+	// 2026-08-11 with `audit.index`, for `GET /admin/audit-logs`.
 	it('exposes every code with a stable order', () => {
-		expect(PERMISSION_CODES).toHaveLength(33);
+		expect(PERMISSION_CODES).toHaveLength(34);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 

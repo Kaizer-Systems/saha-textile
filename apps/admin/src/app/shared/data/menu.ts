@@ -98,7 +98,9 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 3,
-				title: 'Q&A',
+				// Every other title here is a lowercase catalogue KEY; this one was the literal
+				// display string, which Transloco could not resolve and logged on every load.
+				title: 'questions_answers',
 				path: '/qna',
 				type: 'link',
 				level: 2,

@@ -159,6 +159,11 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
   first 8 unit specs added. Live-verified in the browser: the session survives a reload from
   cookies alone, `st_csrf` is the only readable cookie, and browser storage holds no session.
   Full evidence under **Auth & security**. Tool: claude-code.
+- 2026-08-11 — [DONE] Root scripts for two storefront start modes: `pnpm dev:storefront`
+  (Vite HMR) and `pnpm start:storefront` (full Analog/Nitro SSR `vite build` →
+  `node dist/analog/server/index.mjs`, then full rebuild+restart on source change via
+  `scripts/serve-built-frontend.mjs`). App alias: `pnpm --filter @saha-textile/storefront start:watch`.
+  Tool: cursor.
 - _(append new bullets below)_
 
 ---
@@ -200,6 +205,11 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
   the scaffold spec was removed). Admin browser E2E is still owed: the Browser pane failed
   mid-session, and no first-administrator bootstrap exists yet to sign in with. Full
   evidence under **Auth & security**. Tool: claude-code.
+- 2026-08-11 — [DONE] Root scripts for two admin start modes: `pnpm dev:admin` (Vite HMR)
+  and `pnpm start:admin` (full production `vite build` → `vite preview` on :4300, then full
+  rebuild+restart on source change via `scripts/serve-built-frontend.mjs`). Admin remains
+  SPA-only (no Nitro SSR by design — see `apps/admin/vite.config.ts`). App alias:
+  `pnpm --filter @saha-textile/admin start:watch`. Tool: cursor.
 - _(append)_
 
 ---
@@ -2589,6 +2599,356 @@ e2e:session-rotation` **12/12** with 0 probe rows, which is also the proof the n
   `pnpm typecheck` **15/15** · `pnpm lint` **17/17** · `pnpm format:check` clean.
   **Next executable step: the SCREEN itself** — a route, a component and its three forms. The
   gateway it consumes now exists and is proven. Tool: claude-code.
+- 2026-08-11 — [PARTIAL] **Admin Security Settings SCREEN, built into the existing account
+  feature — code complete, UX REJECTED by the owner, and UNCOMMITTED.**
+  **Where it went.** Owner instruction: not a new route, but a third ngbNav tab on
+  `features/account`, absorbing and replacing the change-password tab. That old tab was DEAD
+  CODE — `passwordFormSubmit()` marked the form touched and called `reset()`, with no API
+  behind it and field names that do not match the contract. The password form in the Security
+  tab is the first version of it that does anything.
+  **Zero custom CSS, zero new components, zero copied elements**, which was the claim the owner
+  approved in advance and it held. Everything is `app-form-fields`, `form-control`,
+  `invalid-feedback`, `form-check form-switch`, `app-button`, `app-pin-pad`,
+  `app-confirmation-modal`, `NotificationService` toasts, Bootstrap utilities and the `status-*`
+  pill classes already in `_badge.scss`.
+  **Two treatments were rendered side by side in a real browser** — outlined `status-*` against
+  filled `badge rounded-pill badge-theme` — and the owner chose OUTLINED. The badge paints every
+  state in brand green, so "Not set" and "Not verified" read as success; `status-*` colours by
+  state and already carries `status-danger`, which the lock rows need. The losing variant is
+  deleted.
+  **Four defects found in the browser, none of which a test would have caught.**
+  (1) The RUNNING API was 15h33m old — 52 paths, no `/auth/admin/security` — so the screen got a
+  404 while `dist` on disk was current. The process, not the build, was stale.
+  (2) `GlobalErrorHandlerInterceptor` already toasts every non-401, so this screen's own error
+  handler put a SECOND toast on screen for one failure. The server's specific reason now renders
+  inline as `invalid-feedback` against the field it is about — which is also the only place a
+  weak-PIN message can usefully go, since the API's safe message is chosen by status.
+  (3) The credential read fired on page load, over the Profile tab, for operators who never open
+  Security. It now loads on tab activation.
+  (4) **Angular class bindings defeat the theme's status pills.** They are styled with
+  `[class^='status-']`, a STARTS-WITH selector, and Angular writes static classes before dynamic
+  ones however the dynamic one is expressed — both `[class.status-x]` and `class="{{ … }}"`
+  produced `class="d-inline-block me-2 status-pending"` and rendered a square box instead of a
+  pill. The fix is a fully static class attribute per `@if` branch.
+  **Console noise addressed but NOT browser-verified.** `Q&A` in `menu.ts` was a literal display
+  string where every sibling is a catalogue key; `[label]="'name' | transloco"` double-translated
+  because `app-form-fields` already pipes its label, and the same bug was fixed on `store_logo`,
+  `hide_email` and `hide_phone`; `autocomplete` tokens and a hidden `autocomplete="username"`
+  field were added for the password forms. The admin session expired before a clean-console
+  screenshot could be taken, so these are code-complete only.
+  **OWNER REJECTED THE UX.** The tab is one long scrolling column; it needs conditional views or
+  a sub-level of tabs/switcher pills separating PIN from password; it presents TWO Save buttons
+  at once; and the two PIN keypads have no visual separation, for which the owner asked for a
+  theme-native answer rather than a new divider. Any rework needs a wireframe and approval first
+  per `DEC-UI-REUSE`.
+  **Commands actually run:** `pnpm typecheck` **15/15** · `pnpm lint` **17/17** including
+  `check:i18n-parity` · `pnpm format:check` clean · `pnpm --filter @saha-textile/admin test`
+  **69/69** · admin build clean · 23 new keys in BOTH catalogues, appended textually.
+  **Left uncommitted** pending owner agreement: seven files, listed in
+  `auth-continuation-brief-security-settings-ui.mdx` §2. Tool: claude-code.
+- 2026-08-11 — [DONE] **`DEC-UI-REUSE` locked, and a standing session-handoff protocol.**
+  **The UI rule.** Reuse existing elements and CSS classes — app `shared/ui` and feature
+  templates first, then pruned/deleted pages recoverable from git, then `vendor/` Fastkart which
+  still holds elements no live page uses. Three reuse modes: as-is, copy under a new name prefix
+  and modify, or promote to a shared component. Before writing ANYTHING custom — proactively,
+  every time, whether the custom work was requested or merely follows from another task — hand
+  the owner bullets, a wireframe, the conditional logic, a reuse inventory and an explicit
+  statement of what is custom, saying "nothing is custom" plainly when that is the claim being
+  approved. Then wait. Written to `owner-decisions-log.mdx` and summarised in `AGENTS.md` §5a.
+  **The handoff protocol.** `session-handoff-protocol.mdx` is a tool-agnostic, domain-neutral
+  standing instruction for generating a complete handoff at the end of any session — admin,
+  storefront, API, database, deployment, testing or portal alike. It exists because the owner
+  was re-typing the same context-transfer request every time a thread switched, and a
+  hand-written request necessarily under-specifies. It mandates deriving the handoff from
+  re-read documents and inspected source rather than recall, and requires a mandatory
+  corrections-and-wrong-turns section on the grounds that a handoff reading as an unbroken
+  series of successes has been edited for presentation. Tool: claude-code.
+- 2026-08-11 — [DONE] **Security tab UX rework — the three rejected items are closed, and the
+  screen is browser-proven for the first time. Still UNCOMMITTED.**
+  **The restructure.** The Security tab is now three vertical-pill sub-views —
+  `credential_status` · `pin` · `password` — using the theme's own `.vertical-tabs` +
+  `nav-pills` + `orientation="vertical"`, exactly as `features/setting` uses them. Pills rather
+  than a second row of `inside-horizontal-tabs`, because those are what the Account tabs above
+  already are and nesting them would give two identical-looking levels of navigation. Exactly
+  one primary action is now ever on screen: the status view has no button at all (it is
+  read-only, and its pointless `<form>` wrapper is gone), the PIN view has Save plus the
+  secondary Remove PIN, the password view has Save. Owner rejection items 1 and 2, closed.
+  **The keypad separator, item 3.** Three candidates were injected into a live page and
+  screenshotted without a single file save — `border-up-class`, `.card .sub-title` headings,
+  and a themed `<hr>` — and the owner chose **`.card .sub-title`**: each keypad gets a named
+  heading with a rule under it, and the labels leave the left column, which also shortens the
+  pane. The other two are not in the tree.
+  **Two further UI corrections the owner called during the same review.** The sign-out notice
+  was a labelled row with its label and content INVERTED — the whole sentence was the label,
+  wrapping to six lines, beside a `status-pending` pill reading "Change Password" that did
+  nothing at all. It is now a single-line `<p class="help-text">*…</p>`, matching the avatar
+  hint already on the Profile tab; the dead pill is deleted. Separately, the button component's
+  default `ms-auto` was right-aligning Save onto a line of its own and stranding Remove PIN
+  underneath it, misaligned; both now sit in one `d-flex justify-content-end` row with the
+  classes overridden at the call site so no other screen's buttons move.
+  **One defect fixed while in here.** The password form rendered `securityError()` NOWHERE, so
+  a 403 from a mistyped current password produced only the interceptor's generic toast. It now
+  renders as `invalid-feedback` against its own `current_password`, matching the PIN form.
+  Switching sub-view clears the shared error, the typed password proof and both keypads, so a
+  refusal raised by one pane cannot appear under the other.
+  **Still zero new CSS, zero new components, zero new i18n keys.** Every class used —
+  `vertical-tabs`, `nav-pills`, `tab-content`, `sub-title`, `help-text`, `status-*`,
+  `invalid-feedback`, Bootstrap grid and flex utilities — already existed.
+  **Commands actually run:** `pnpm typecheck` **15/15** · `pnpm lint` **17/17**, zero errors,
+  every warning pre-existing · `pnpm format:check` clean · `pnpm --filter @saha-textile/admin
+test` **69/69** · admin build clean · `git diff --check` clean. No API or DB source changed,
+  which is why the server suites and the OpenAPI count are untouched.
+  **Browser verification, finally done.** Console **completely silent** across every pane and
+  tab switch, which retires the previous entry's unverified translation fixes. At **520px** the
+  pills reflow into one horizontal row and the fields stack full width. The DOM holds **exactly
+  two** `app-pin-pad` instances, so the "three keypads" in the rejection screenshot was a
+  stitching artefact, not a render. A sequential PIN is refused inline with the server's own
+  words; a wrong current password is refused inline in BOTH panes with the session intact,
+  which is the 403 step-up correction proven in a browser for the first time. PIN set, change
+  and removal all succeeded against the correct proof and were confirmed at the database —
+  `pinHash` present after set, `null` after removal. The password change signed every session
+  out as designed.
+  **NEW DEFECT FOUND, not fixed, not in scope here: after a password change the operator cannot
+  sign back in from the same browser.** `changePassword` in `admin-auth.controller.ts` revokes
+  every session server-side but never clears the reply cookies — it takes no `@Res()` at all —
+  so the browser keeps its httpOnly `st_access`/`st_refresh`. `CsrfGuard` enforces only when a
+  session cookie is present and then FAILS CLOSED when no live `AuthSession` resolves, so the
+  next POST — including the login itself — is refused **403** before any credential is read
+  (`failedLoginAttempts` stays `0`, which is how it was diagnosed). Reproduced deterministically
+  outside the browser: the identical login request answers **200** with no session cookie and
+  **403** with a stale one. A full page reload does not clear it; the tab is wedged until the
+  cookies expire or are cleared by hand. The guard's fail-closed design is correct — the fix
+  belongs in the password-change response, which should clear the auth cookies the way logout
+  does. Logged rather than fixed because this is auth-flow code, not the Security tab UX.
+  **Housekeeping in the same pass.** `account.ts`'s one lint warning — an out-of-order
+  `@data-access` import introduced by the previous, still-uncommitted session — was reordered,
+  taking admin from 64 warnings to 63; every remaining warning belongs to a file this work never
+  touched. `auth-continuation-brief-security-settings-ui.mdx` was updated so its §5 rejection
+  list, its "everything owed" section and its next-steps order stop presenting closed work as
+  outstanding, and so the lock-out defect above leads the open items.
+  **Left uncommitted**, now ten files. Tool: cursor.
+- 2026-08-11 — [DONE] **Password change no longer locks the operator out of their own browser.**
+  The defect the previous entry found and deliberately left, fixed where it diagnosed it: in the
+  response.
+  **The fix is three tokens.** `changePassword` now takes `@Res({ passthrough: true })` and
+  calls `this.sessions.clearCookies(reply)` after the service call — which is exactly what
+  `resetPassword`, TWO METHODS BELOW IT in the same controller, has always done. That proximity
+  is why the omission survived review: both methods call the same `revokeAllForUser`, and only
+  one of them finished the job.
+  **Revoking server-side was only half the operation.** Without clearing the reply cookies the
+  browser keeps its httpOnly `st_access`/`st_refresh`, now pointing at sessions that no longer
+  exist. `CsrfGuard` then behaves exactly as designed and the combination wedges the tab: it
+  enforces only when a session cookie is PRESENT — a stale one is present — and then fails
+  closed because no live session resolves. So the next unsafe request, the LOGIN ITSELF
+  included, is refused **403 before any credential is read**, which is why `failedLoginAttempts`
+  stays at zero while the operator watches a correct password be rejected. The guard is not the
+  bug.
+  **Audited rather than assumed.** Every `revokeAllForUser` call site was checked for the same
+  omission: storefront password reset, admin password reset and the disabled-user path inside
+  rotation all already pair with `clearCookies`, and `admin-users.service` offboards a DIFFERENT
+  user, where there are no cookies on this reply to clear and not clearing is correct. This was
+  the only unpaired one.
+  **Why the E2E never caught it, which is the more useful lesson.** Both existing post-change
+  login assertions build a FRESH `CookieJar`. The defect only exists when the browser still
+  holds the cookies the change was made with, so a fresh jar could never see it — the suite was
+  asserting the credential changed, not that the operator could still use it. The check now
+  asserts the changing tab's own jar retains no `st_access`/`st_refresh`, and that signing back
+  in from that same jar answers **200** rather than 403.
+  **Negative-controlled twice, because the first control proved the wrong half.** Removing
+  `clearCookies` fails at **25/26**, naming the assertion about session cookies left in the
+  browser — but that one fires first, so the lock-out itself stayed unproven. A second mutation
+  removed the fix AND the cookie assertion, and the run then failed on the assertion about the
+  changing tab being locked out by CSRF failing closed on a stale cookie, confirming the 403
+  symptom independently rather than inheriting it from the previous session's diagnosis. Both
+  sources restored from byte-comparison backups and re-verified.
+  **Commands actually run:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` **26/26**, 30 probe
+  accounts, 0 remaining, database verified empty · `pnpm turbo run test --force` **11/11**
+  (contracts 160, http-transport 157, core-domain 134, api 138, storefront 57, admin 69) ·
+  `generate:openapi` green at **62 operations across 55 paths**, unchanged because no route was
+  added · `pnpm typecheck` **15/15** · `pnpm lint` **17/17** · `pnpm format:check` clean ·
+  `git diff --check` clean.
+  **Proven at the HTTP layer, NOT re-verified in a browser** — the round trip through the admin
+  screen has not been repeated since the fix. **Left uncommitted**, now twelve files. Tool:
+  claude-code.
+- 2026-08-11 — [DONE] **Weak-password policy in core-domain.** **e2e 26 → 27**, core-domain
+  **134 → 163**, api **138 → 146**. The gap the PIN had this morning, closed on the credential
+  that protects more.
+  **What was missing.** `Password` in contracts was `z.string().min(12).max(256)` with a comment
+  promising a core-domain common-password denylist that did not exist — the identical situation
+  the PIN was in. The owner lock is twelve characters plus a denylist, for both audiences; only
+  the first half was real, so `passwordpassword` and `SahaTextile2026` were acceptable.
+  **Why the denylist looks nothing like a leaked-password list.** The length floor has already
+  done most of that work: `123456`, `password`, `qwerty` — the entire head of every such list is
+  under twelve characters and cannot be submitted at all. Porting one verbatim would add a few
+  hundred entries that can never match, which reads as coverage and provides none. What actually
+  survives the floor is a common word DECORATED until it is long enough, so the list stores BASE
+  TERMS and the comparison normalises the candidate down to its base — lower-cased, stripped to
+  letters and digits, then stripped of a trailing digit run. `Password1234` and
+  `p-a-s-s-w-o-r-d-1` both reduce to `password`. Brand and locality terms are in the list
+  deliberately: an operator reaches for the business name first.
+  **One structural rule beyond the literal lock**, flagged rather than slipped in: `repeated`
+  refuses a short unit typed three or more times, because a twelve-character floor accepts
+  `aaaaaaaaaaaa` and `abcabcabcabc` and no denylist of WORDS will ever catch them.
+  **Deliberately NOT done:** comparing the password against the user's own email, username or
+  name. Genuinely valuable — `priya@example.com` passes everything here — but it needs the
+  identity threaded into all five call sites, and it is not part of the lock. Recorded as a known
+  omission in the module. Breached-password lookup stays a seam, as the build prompt says.
+  **Enforced at all five surfaces, and the ordering at each is the interesting part.** Invite
+  acceptance and password RESET check before their single-use token is consumed — refusing after
+  would strand somebody who by definition cannot sign in, holding a spent link. Admin password
+  change checks before the Argon2 proof, the same economy as `setPin`. And **storefront
+  registration checks before the rate limit AND before the existence lookup, which is
+  anti-enumeration rather than tidiness**: that handler answers a generic `401` for an address
+  that already exists, so judging the password afterwards would make the same weak password
+  answer `400` for an unknown address and `401` for a known one — turning any weak password into
+  a probe that confirms an account exists.
+  **Two test failures worth keeping.** The reachability test found `0123456789` UNREACHABLE:
+  every submittable password that could normalise onto a short all-digit entry must be padded
+  with digits, and the normaliser strips exactly those, so nothing can ever match it. Replaced
+  with a twelve-digit entry. And a cap test written as `'q7'.repeat(128)` failed because that is
+  a two-character unit repeated 128 times and the repeat rule refuses it, correctly — the test
+  was wrong, not the code.
+  **Negative-controlled, including the ordering claim.** Moving the registration check to AFTER
+  the existence lookup fails the anti-enumeration assertion at **26/27**, so that ordering is
+  pinned rather than merely commented. Removing the check from `completePasswordReset` fails two
+  unit tests. Sources restored from byte-comparison backups.
+  **Commands actually run:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` **27/27**, 32 probe
+  accounts, 0 remaining, database verified empty · `pnpm turbo run test --force` **11/11**
+  (contracts 160, http-transport 157, core-domain **163**, api **146**, storefront 57, admin 69)
+  · `generate:openapi` green at **62 operations across 55 paths**, unchanged because no route was
+  added · `pnpm typecheck` **15/15** · `pnpm lint` **17/17** · `pnpm format:check` clean ·
+  `git diff --check` clean.
+  **Not applied to the first-administrator CLI**, whose password is CSPRNG-generated rather than
+  chosen; asserting the generator's own output against the policy would be a reasonable
+  belt-and-braces addition and was left out of this pass. **Left uncommitted**, now eighteen
+  paths. Tool: claude-code.
+- 2026-08-11 — [DONE] **Bootstrap password asserted against the policy, and one owed item
+  disproved rather than fixed.**
+  **The assertion**, added inside `generatePassword()` in `first-admin.ts` so it travels with
+  the thing it guards. Honest about its worth: twenty-four CSPRNG bytes CANNOT fail
+  `evaluatePassword` today — far past the floor, no repeating unit, cannot normalise onto a
+  denylisted word — so it will not fire. It earns its place only as a tripwire: if somebody
+  later shortens the token or swaps in a memorable-words generator, the account with the most
+  authority in the system stops being the one account exempt from the policy every other
+  account is held to. The failure path never echoes the password.
+  **`setPinHash` leaving a stale `pinRevalidationRequiredAt` is NOT REACHABLE.** Carried as an
+  owed item since 6b and traced today rather than fixed. The fact is true — `setPinHash` clears
+  `failedPinAttempts` and `pinLockedUntil` and not the revalidation flag. The scenario is not:
+  only `recordSuccessfulLogin` clears that flag and it runs on every password login for both
+  audiences; a privileged reset sets the flag AND revokes every admin session; PIN login is
+  refused while the flag is set, because `verifyAdminPin` returns `revalidation_required`
+  before it consults the lock or the hash. So reaching Security Settings after a reset requires
+  a PASSWORD login, which clears the flag, and no HTTP path arrives at PIN removal with it
+  still set. Recorded as an unenforced invariant rather than a defect — worth tidying if
+  `setPinHash` ever gains a second caller, not worth a pass now. **The brief's "everything
+  owed" list is corrected accordingly**, so the next session does not spend an afternoon
+  chasing a bug that cannot happen.
+  **Commands actually run:** `pnpm typecheck` **15/15** · `pnpm lint` **17/17** ·
+  `pnpm --filter @saha-textile/api test` **146/146** · `pnpm format:check` clean.
+  Tool: claude-code.
+- 2026-08-12 — [DONE] **The audit trail is readable: `audit.index` and `GET /admin/audit-logs`.**
+  **e2e 27 → 28**, contracts **160 → 168**, registry **33 → 34 codes**, OpenAPI **62 → 63
+  operations across 56 paths**, route families **62 → 63 routes across 15 controllers**.
+  **The gap.** Every admin mutation has been writing audit rows under a seven-year retention
+  tier since the first RBAC pass, and nothing could read them. `AuditLogListQuery` had been
+  documented in contracts as `GET /admin/audit-logs` and `AuditLogRepository.list` had been
+  implemented in the Mongo adapter — only the route was missing, so the trail was write-only
+  and the question it exists to answer had no answer short of a database shell.
+  **`audit.index` is its own permission, and that is the design decision.** Folding it into
+  `user.index` or `setting.index` would have been less work and wrong: this trail records what
+  every OTHER operator did, so being able to administer a resource must not imply being able to
+  read the history of everyone who has touched it. Same reasoning that keeps `user_role.assign`
+  and `user_role.revoke` apart. Declared server-only with that justification, since no screen
+  gates it yet. Owner-approved before the registry was touched — 5a locked it as a closed set.
+  **The response is the entity MINUS its two hashes**, and the reason is specific rather than
+  hygienic. The build prompt's rule is that internal schemas may carry hashes and public ones
+  never can, and `ipHash` is the case that shows why: IPv4 has under 2^32 values, so an
+  unsalted digest of an address is reversible by exhaustive search in seconds — publishing it
+  would be publishing the address that storing a hash was meant to avoid. `toAuditLogEntry`
+  lives beside the schema so the omission is performed in the one place it is explained; a
+  controller doing it inline is a controller where the next field added to `AuditLog` silently
+  becomes public. `diffs` and `metadata` are safe by construction, redacted before they are
+  ever written, so the read model does not re-litigate that.
+  **`page`/`pageSize` needed `z.coerce`**, because the schema validates a QUERY STRING where
+  every value arrives as text — without it `?page=2` fails as "expected number, received
+  string" and the endpoint is unusable from a browser. Coercion does not loosen the 200 cap,
+  which is what stops this being an unbounded export of the security trail, and the suite
+  asserts the cap holds for `201` and `'201'` alike.
+  **Read-only, permanently.** No write, update or delete route, and there should never be one:
+  rows are appended in the same transaction as the mutation they describe and removed only by
+  the retention job, by tier and by age. A route that could edit an audit row would remove the
+  only property that makes the trail evidence rather than a log file.
+  **Negative-controlled three ways**, one per property. Making the projection a cast instead of
+  a destructure fails BOTH the contracts test and the E2E, on the assertion that the read model
+  never publishes a hash. Re-gating the route on `user.index` fails the separation-of-authority
+  assertion. Dropping the 200 cap is caught by the oversized-page assertion. Sources restored from
+  byte-comparison backups and re-verified.
+  **Two wrong guesses of mine, both caught by the check rather than by review.** The probe role
+  was created with `{ code, name }` when the contract is `{ key, label, baseRole }` — 400. Then
+  the trail was searched for `action: 'role.create'` when `RolesService` writes
+  `admin.role.create`; the row was there all along, and the audit count rising from 7 to 8
+  proved it before the assertion did.
+  **Commands actually run:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` **28/28**, 34 probe
+  accounts, 0 remaining, database verified empty · `pnpm turbo run test --force` **11/11**
+  (contracts **168**, http-transport 157, core-domain 163, api 146, storefront 57, admin 69) ·
+  `generate:openapi` green at **63 operations across 56 paths** · `check-permission-registry`
+  **34 codes across 25 resources, 8 server-only** · `check-route-contracts` **63 routes across
+  15 controllers** · `pnpm typecheck` **15/15** · `pnpm lint` **17/17** · `pnpm format:check`
+  clean · `git diff --check` clean.
+  **Still owed on this surface:** no admin SCREEN consumes it, so the trail is readable only by
+  API; the repository pages with `skip`, which the build prompt warns against for growing audit
+  data and which should become cursor pagination before the collection is large; and there is
+  no index-usage evidence for the filter combinations at seeded scale — that belongs to pass 10.
+  **Left uncommitted**, now thirty-one paths. Tool: claude-code.
+- 2026-08-12 — [DONE] **Session list and per-session revoke, both audiences.** **e2e 28 → 29**,
+  OpenAPI **63 → 69 operations across 62 paths**, route families **63 → 69 routes**. The build
+  prompt has required session list/revoke since D3; only a COUNT existed, which the Security
+  Settings screen was already displaying — so the surface was visibly half-built.
+  **Six routes, three per audience:** `GET /auth/{audience}/sessions`,
+  `DELETE /auth/{audience}/sessions/:id`, `POST /auth/{audience}/sessions/revoke-others`. One
+  service implementation serves both, because ownership is the same rule either way.
+  **The read model is a strict subtraction**, and every omission is deliberate.
+  `refreshTokenHash`, `previousRefreshTokenHash` and `csrfSecretHash` are credential material:
+  a device list that leaked them would publish the fingerprints reuse detection is built on,
+  making the list more dangerous than having none. `device.userAgentHash` and `device.ipHash`
+  go for the reason the audit read model drops the same pair — an unsalted digest of an IPv4
+  address falls to exhaustive search in seconds, so publishing the hash is publishing the
+  address. What remains is what a person needs in order to recognise a session and decide
+  whether to end it: label, country, created, last seen, idle expiry, absolute expiry, and
+  `current`. Without `current` a device list is indistinguishable rows and the owner cannot
+  tell which one signing out ends the page they are looking at.
+  **Ownership answers 404, never 403**, which is the locked rule: a 403 confirms the id exists
+  and turns the endpoint into a probe for other people's session ids. The same 404 covers an
+  unknown id, an already-revoked one, and one belonging to the caller's OTHER audience — and
+  the E2E asserts the stranger's session is still alive afterwards, so the refusal is proven to
+  be a refusal rather than a silent success.
+  **Scoped by audience as well as by user.** The same human may hold a storefront session and
+  an admin session; showing one surface's devices on the other would leak the existence of
+  back-office access to a shop account with no business knowing about it.
+  **Revoking the CURRENT session clears this browser's cookies** in the same response — the
+  lesson from the password-change lockout earlier today, applied before it could bite again.
+  **`revoke-others` deliberately spares the caller.** It is the "somebody else is signed in as
+  me" control, so signing the person out of the device they trust while the suspected intruder
+  is elsewhere would be exactly backwards.
+  **No new permission code, and no new revoke reason.** These are self-service over the
+  caller's own sessions, so they need no grant; `logout` and `logout_all` already existed in
+  `SessionRevokeReason`. Force-revoking ANOTHER operator stays out of scope — that needs its
+  own code and its own lockout analysis.
+  **Negative-controlled three ways.** Dropping the `session.userId === principal.userId` clause
+  fails with a stranger's session answering 204 instead of 404. Spreading the whole session
+  into the summary fails on the list publishing `refreshTokenHash`. Making `revoke-others`
+  revoke everything fails the surviving-session assertion. Sources restored from
+  byte-comparison backups.
+  **Commands actually run:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` **29/29**, 37 probe
+  accounts, 0 remaining, database verified empty · `pnpm turbo run test --force` **11/11**
+  (contracts 168, http-transport 157, core-domain 163, api 146, storefront 57, admin 69) ·
+  `generate:openapi` **69 operations across 62 paths**, matching `check-route-contracts` at
+  **69 routes across 15 controllers** · `pnpm typecheck` **15/15** · `pnpm lint` **17/17** ·
+  `pnpm format:check` clean · `git diff --check` clean.
+  **Still owed on this surface:** no screen consumes it on either app, so it is API-only; the
+  device `label` and `country` are always null because nothing populates them yet, which makes
+  the list harder to act on than it should be; and forced revoke of another operator's session
+  remains unbuilt. **Left uncommitted**, now thirty-four paths. Tool: claude-code.
 - _(append)_
 
 ---
@@ -2742,6 +3102,9 @@ e2e:session-rotation` **12/12** with 0 probe rows, which is also the proof the n
 
 - 2026-07-24 — [PARTIAL] `.env.mcp.example` exists; LOCAL = context7 + mongodb + postman; keep under ~40 tools. Tool: cursor.
 - 2026-07-24 — [DONE] `.env.mcp.example` scrubbed of Atlas `mongodb+srv` shapes: LOCAL → local Docker rs0 URI; TEST/PROD blocks → droplet Docker Mongo `mongodb://…replicaSet=rs0` templates. Real `.env.mcp` LOCAL string also repointed to Docker rs0 (27018 on this machine). Tool: claude-code.
+- 2026-08-11 — [DONE] Added `scripts/serve-built-frontend.mjs` + root `dev:storefront` /
+  `dev:admin` / `start:storefront` / `start:admin` for HMR vs full-dist rebuild serve loops.
+  Tool: cursor.
 - _(append)_
 
 ---

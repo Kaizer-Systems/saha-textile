@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "start": "vite preview --port 4300",
+    "start": "vite preview --host localhost --port 4300 --strictPort",
+    "start:watch": "node ../../scripts/serve-built-frontend.mjs --app admin",
     "build": "vite build",
     "watch": "vite build --watch",
     "lint": "eslint .",

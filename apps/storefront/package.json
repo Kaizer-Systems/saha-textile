@@ -12,6 +12,7 @@
     "predev": "pnpm run styles",
     "dev": "vite",
     "start": "node dist/analog/server/index.mjs",
+    "start:watch": "node ../../scripts/serve-built-frontend.mjs --app storefront",
     "prebuild": "pnpm run styles",
     "build": "vite build",
     "preview": "vite preview",

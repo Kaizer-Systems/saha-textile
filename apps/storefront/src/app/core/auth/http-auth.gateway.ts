@@ -31,6 +31,7 @@ const ROUTES = {
 	otpVerify: '/auth/storefront/login/email-otp/verify',
 	passwordForgot: '/auth/storefront/password/forgot',
 	passwordReset: '/auth/storefront/password/reset',
+	activate: '/auth/storefront/activate',
 	logout: '/auth/storefront/logout',
 	refresh: '/auth/storefront/refresh',
 } as const;
@@ -50,6 +51,7 @@ const CREDENTIAL_ROUTES: readonly string[] = [
 	ROUTES.otpVerify,
 	ROUTES.passwordForgot,
 	ROUTES.passwordReset,
+	ROUTES.activate,
 	ROUTES.logout,
 	ROUTES.refresh,
 ];
@@ -114,6 +116,10 @@ export class HttpStorefrontAuthGateway extends StorefrontAuthGateway {
 
 	override resetPassword(input: PasswordResetInput): Observable<void> {
 		return this.http.post<void>(this.url(ROUTES.passwordReset), input);
+	}
+
+	override activateAccount(input: PasswordResetInput): Observable<void> {
+		return this.http.post<void>(this.url(ROUTES.activate), input);
 	}
 
 	override logout(): Observable<void> {

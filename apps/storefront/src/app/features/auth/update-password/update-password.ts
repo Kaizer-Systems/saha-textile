@@ -38,8 +38,11 @@ export class UpdatePassword {
 	private route = inject(ActivatedRoute);
 	router = inject(Router);
 
+	/** Same screen for password-reset and admin-created account activation (DEC-UI-REUSE). */
+	private readonly isActivation = this.router.url.includes('/auth/activate');
+
 	public form: FormGroup;
-	public breadcrumb = translatedBreadcrumb('reset_password');
+	public breadcrumb = translatedBreadcrumb(this.isActivation ? 'create_password' : 'reset_password');
 
 	public readonly token = signal(this.route.snapshot.queryParamMap.get('token') ?? '');
 	public readonly error = this.authStore.error;
@@ -64,13 +67,16 @@ export class UpdatePassword {
 		this.form.markAllAsTouched();
 		if (!this.token() || !this.form.valid || this.pending()) return;
 
-		const reset = await this.authStore.resetPassword({
+		const input = {
 			token: this.token(),
 			newPassword: this.form.value.newPassword as string,
-		});
+		};
+		const ok = this.isActivation
+			? await this.authStore.activateAccount(input)
+			: await this.authStore.resetPassword(input);
 		// Navigate only on success. Expired, already-used and unknown tokens fail
 		// identically, so the caller learns the link is invalid but not which case it was.
-		if (!reset) return;
+		if (!ok) return;
 
 		await this.router.navigateByUrl('/auth/login');
 	}

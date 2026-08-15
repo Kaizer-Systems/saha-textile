@@ -1,6 +1,8 @@
 import type {
 	AdminInvite,
+	AdminUserAuthState,
 	AuthSession,
+	CustomerAuthState,
 	EmailVerificationToken,
 	OAuthState,
 	OtpChallenge,
@@ -8,7 +10,6 @@ import type {
 	PasswordResetToken,
 	SessionAudience,
 	SessionRevokeReason,
-	UserAuthState,
 	UserStatus,
 } from '@saha-textile/contracts';
 
@@ -21,6 +22,9 @@ import type {
  * `findByRefreshTokenHash` is what makes reuse detection possible: if a presented token
  * matches a session's PREVIOUS hash, the whole refresh family is compromised and
  * `revokeFamily` must revoke every session sharing `refreshFamilyId`.
+ *
+ * `userId` may be a `cus_…` or `adm_…` id; audience on the session disambiguates the
+ * population (`DEC-ACCOUNT-SEPARATION`).
  */
 export interface AuthSessionRepository {
 	findById(sessionId: string): Promise<AuthSession | null>;
@@ -50,6 +54,11 @@ export interface AuthSessionRepository {
 	revokeFamily(refreshFamilyId: string, reason: SessionRevokeReason, at: string): Promise<number>;
 	revokeAllForUser(userId: string, reason: SessionRevokeReason, at: string): Promise<number>;
 	touch(sessionId: string, lastSeenAt: string): Promise<void>;
+	/**
+	 * Persists a UA-derived device label (establish / refresh backfill).
+	 * Does not invent hardware IDs — callers pass {@link labelFromUserAgent} output only.
+	 */
+	updateDeviceLabel(sessionId: string, label: string): Promise<void>;
 	/**
 	 * Rotates only the session-bound CSRF secret (recovery / explicit re-issue).
 	 * Returns null when the session is missing or already revoked.
@@ -132,41 +141,54 @@ export interface AuthRateLimitRepository {
 }
 
 /**
- * Auth-facing view of a user account.
+ * Auth-facing view of a storefront customer (`DEC-ACCOUNT-SEPARATION`).
  *
- * Deliberately separate from `UserRepository`, which deals in the PUBLIC `User` shape.
- * Credential material and version counters are only reachable through this port, so a
- * feature repository cannot accidentally load — or return — a password hash.
+ * Deliberately separate from `CustomerRepository`, which deals in the PUBLIC `Customer`
+ * shape. Credential material and version counters are only reachable through this port.
+ * Operator credentials live on `AdminUserAuthRepository`.
  */
-export interface AuthUserRepository {
-	findAuthStateById(userId: string): Promise<UserAuthState | null>;
-	/** Normalized email lookup for storefront login/reset. */
-	findAuthStateByEmail(emailNormalized: string): Promise<UserAuthState | null>;
-	/** Admin login accepts email OR username in one field. */
-	findAuthStateByIdentifier(identifier: string): Promise<UserAuthState | null>;
-	setPasswordHash(userId: string, passwordHash: string): Promise<void>;
-	setPinHash(userId: string, pinHash: string | null): Promise<void>;
-	setPreferredLoginMethod(userId: string, method: 'password' | 'pin'): Promise<void>;
-	markEmailVerified(userId: string, emailNormalized: string): Promise<void>;
+export interface CustomerAuthRepository {
+	findAuthStateById(customerId: string): Promise<CustomerAuthState | null>;
+	/** Normalized email lookup for storefront login/reset. Population-scoped (D1). */
+	findAuthStateByEmail(emailNormalized: string): Promise<CustomerAuthState | null>;
+	setPasswordHash(customerId: string, passwordHash: string): Promise<void>;
+	markEmailVerified(customerId: string, emailNormalized: string): Promise<void>;
 	/**
 	 * Sets the account lifecycle status.
 	 *
 	 * Offboarding is a status change to `disabled`, never a delete: an audit trail that can
 	 * lose its subject is not an audit trail, and a deleted row would also free the email for
-	 * re-registration by somebody else. Callers are responsible for the session consequences —
-	 * `SessionGuard` refuses a non-active account on the next request, but existing sessions
-	 * must still be revoked so nothing survives on a cached decision.
+	 * re-registration by somebody else.
 	 */
-	setStatus(userId: string, status: UserStatus): Promise<void>;
-	/** Invalidates every existing access token for this user. */
-	bumpTokenVersion(userId: string): Promise<number>;
+	setStatus(customerId: string, status: UserStatus): Promise<void>;
+	/** Invalidates every existing access token for this customer. */
+	bumpTokenVersion(customerId: string): Promise<number>;
+	recordSuccessfulLogin(customerId: string, at: string): Promise<void>;
+}
+
+/**
+ * Auth-facing view of a back-office operator (`DEC-ACCOUNT-SEPARATION`).
+ *
+ * PIN, preferred login method, and permissions-version invalidation are operator-only.
+ * Identifier lookup is email OR username (admin login).
+ */
+export interface AdminUserAuthRepository {
+	findAuthStateById(adminUserId: string): Promise<AdminUserAuthState | null>;
+	/** Admin login accepts email OR username in one field. Population-scoped (D1). */
+	findAuthStateByIdentifier(identifier: string): Promise<AdminUserAuthState | null>;
+	setPasswordHash(adminUserId: string, passwordHash: string): Promise<void>;
+	setPinHash(adminUserId: string, pinHash: string | null): Promise<void>;
+	setPreferredLoginMethod(adminUserId: string, method: 'password' | 'pin'): Promise<void>;
+	markEmailVerified(adminUserId: string, emailNormalized: string): Promise<void>;
+	setStatus(adminUserId: string, status: UserStatus): Promise<void>;
+	bumpTokenVersion(adminUserId: string): Promise<number>;
 	/** Invalidates every existing token's cached permission set. */
-	bumpPermissionsVersion(userId: string): Promise<number>;
-	recordSuccessfulLogin(userId: string, at: string): Promise<void>;
+	bumpPermissionsVersion(adminUserId: string): Promise<number>;
+	recordSuccessfulLogin(adminUserId: string, at: string): Promise<void>;
 	/** Returns the new failure count so the caller can apply lockout policy. */
-	recordFailedPinAttempt(userId: string): Promise<number>;
-	lockPinUntil(userId: string, until: string): Promise<void>;
-	clearPinLock(userId: string): Promise<void>;
+	recordFailedPinAttempt(adminUserId: string): Promise<number>;
+	lockPinUntil(adminUserId: string, until: string): Promise<void>;
+	clearPinLock(adminUserId: string): Promise<void>;
 	/**
 	 * Suspends PIN use after a privileged password reset, and clears that suspension.
 	 *
@@ -175,5 +197,5 @@ export interface AuthUserRepository {
 	 * the NEW password. Collapsing them would let a fifteen-minute timer silently restore a
 	 * credential that a suspected compromise had suspended.
 	 */
-	setPinRevalidationRequired(userId: string, at: string | null): Promise<void>;
+	setPinRevalidationRequired(adminUserId: string, at: string | null): Promise<void>;
 }

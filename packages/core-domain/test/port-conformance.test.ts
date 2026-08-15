@@ -5,9 +5,13 @@ import type {
 	AuditLogRepository,
 	AuthRateLimitRepository,
 	AuthSessionRepository,
+	AdminUserAuthRepository,
+	AdminUserRepository,
 	CategoryFacetConfigRepository,
 	CategoryPlacementRepository,
 	ConsentRepository,
+	CustomerAuthRepository,
+	CustomerRepository,
 	FaqRepository,
 	InventoryCostLayerRepository,
 	InventoryRepository,
@@ -102,8 +106,59 @@ const fakeAuthSessions = {
 	revokeFamily: notImplemented,
 	revokeAllForUser: notImplemented,
 	touch: notImplemented,
+	updateDeviceLabel: notImplemented,
 	updateCsrfSecretHash: notImplemented,
 } as AuthSessionRepository;
+
+const fakeCustomers = {
+	findById: notImplemented,
+	findByEmail: notImplemented,
+	findCredentialByEmail: notImplemented,
+	list: notImplemented,
+	create: notImplemented,
+	update: notImplemented,
+	setStatus: notImplemented,
+	addAddress: notImplemented,
+	updateAddress: notImplemented,
+	deleteAddress: notImplemented,
+	save: notImplemented,
+	setPasswordHash: notImplemented,
+} as CustomerRepository;
+
+const fakeAdminUsers = {
+	findById: notImplemented,
+	findByEmail: notImplemented,
+	findByUsername: notImplemented,
+	list: notImplemented,
+	save: notImplemented,
+} as AdminUserRepository;
+
+const fakeCustomerAuth = {
+	findAuthStateById: notImplemented,
+	findAuthStateByEmail: notImplemented,
+	setPasswordHash: notImplemented,
+	markEmailVerified: notImplemented,
+	setStatus: notImplemented,
+	bumpTokenVersion: notImplemented,
+	recordSuccessfulLogin: notImplemented,
+} as CustomerAuthRepository;
+
+const fakeAdminUserAuth = {
+	findAuthStateById: notImplemented,
+	findAuthStateByIdentifier: notImplemented,
+	setPasswordHash: notImplemented,
+	setPinHash: notImplemented,
+	setPreferredLoginMethod: notImplemented,
+	markEmailVerified: notImplemented,
+	setStatus: notImplemented,
+	bumpTokenVersion: notImplemented,
+	bumpPermissionsVersion: notImplemented,
+	recordSuccessfulLogin: notImplemented,
+	recordFailedPinAttempt: notImplemented,
+	lockPinUntil: notImplemented,
+	clearPinLock: notImplemented,
+	setPinRevalidationRequired: notImplemented,
+} as AdminUserAuthRepository;
 
 const fakes = {
 	otpChallenges: {} as OtpChallengeRepository,
@@ -132,6 +187,10 @@ describe('port conformance (compile-time)', () => {
 	it('every port is implementable', () => {
 		expect(Object.keys(fakes)).toHaveLength(20);
 		expect(fakeAuthSessions).toBeDefined();
+		expect(fakeCustomers).toBeDefined();
+		expect(fakeAdminUsers).toBeDefined();
+		expect(fakeCustomerAuth).toBeDefined();
+		expect(fakeAdminUserAuth).toBeDefined();
 	});
 
 	it('withTransaction returns the work result', async () => {

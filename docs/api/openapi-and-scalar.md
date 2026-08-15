@@ -4,7 +4,7 @@ wide: true
 description: OpenAPI source-of-truth rules, current Scalar scaffold, completeness gates, Test Request security, and build topology.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 source_of_truth:
     - apps/api/src/openapi.ts
     - apps/api/src/generate-openapi.ts
@@ -31,7 +31,7 @@ The API-reference standard is ratified:
 
 NestJS creates one OpenAPI document through `apps/api/src/openapi.ts`. The API exposes it at `/openapi.json`, and the portal build now generates the same document without a MongoDB connection, publishes it at `/api/openapi.json`, and renders it through Scalar at `/api/reference/`.
 
-The surface is deliberately labelled **scaffolded**. The document regenerated on 2026-08-11 contains **52 paths and 59 operations**. It includes split storefront/admin cookie-auth families, email verification, admin recovery/invites/resume, privacy routes, the ten-operation admin role/permission/user-authority family, `/health/live`, `/health/ready`, `/auth/csrf`, and the backwards-compatible `/health` alias. The public `GET /catalog/products` operation has `page`, `pageSize`, `categoryId`, `tag`, and `search` query parameters—**not `status`**. Scalar makes the current evidence navigable; it does not repair or conceal its omissions.
+The surface is deliberately labelled **scaffolded**. The document contains the current controller routes; the evidence base includes split storefront/admin cookie-auth families, email verification, admin recovery/invites/resume, privacy routes, the admin role/permission/user-authority family, health probes, and the backwards-compatible `/health` alias. The public `GET /catalog/products` operation has `page`, `pageSize`, `categoryId`, `tag`, and `search` query parameters—**not `status`**. Scalar makes the current evidence navigable; it does not repair or conceal its omissions.
 
 Scalar’s **Test Request** control is enabled. Authentication is not persisted by Scalar, no external request proxy is configured, and the generated document declares only the approved local API server (`http://127.0.0.1:4000`). Normal API security controls remain in force: Test Request does not bypass authentication, CSRF, CORS, role or ownership authorization, or rate limits.
 
@@ -45,30 +45,30 @@ Missing, mismatched, or cross-session values fail with `403`. The CSRF token doe
 
 `GET /auth/csrf` works both before and during a session. For an active session, Policy B preserves a still-valid bound token; if the readable cookie is missing or desynchronized, the session service atomically rotates `csrfSecretHash` before issuing the replacement. Anonymous callers receive an unbound pre-session token. The route grants no identity or authorization by itself.
 
-## Current Chunk D boundary
+## Current authentication and authorization boundary
 
-Chunk D is **partial**, not absent and not complete. Cookie sessions use the tested Mongo repositories; access and opaque rotating refresh tokens live only in httpOnly cookies, refresh reuse revokes the family, CSRF is checked against the current session, and storefront/admin audiences are isolated. Storefront register/password login/OTP/refresh/logout/password reset/email verification/me, admin password recovery/password/PIN login/PIN setup/refresh/logout/invite acceptance/HTTP resume/me, the 33-code permission registry, active role-assignment resolution, deny-by-default role and user-authority administration, the operator-only first-admin bootstrap, consent/privacy seams, and order ownership are implemented.
+The authentication and authorization implementation is **partial**, not absent and not complete. Cookie sessions use the tested Mongo repositories backed by separated customer and operator populations; access and opaque rotating refresh tokens live only in httpOnly cookies, refresh reuse revokes the family, CSRF is checked against the current session, and storefront/admin audiences are isolated. Storefront register/password login/OTP/refresh/logout/password reset/email verification/me, admin password recovery/password/PIN login/PIN setup/refresh/logout/invite acceptance/HTTP resume/me, Account Security at `/account` (PIN/password/sessions), the 15-minute idle soft-lock with PIN-or-password resume, the closed **103-code** permission registry, active role-assignment resolution, deny-by-default role and user-authority administration, the operator-only first-admin bootstrap, admin CRM customers, consent/privacy seams, and order ownership are implemented.
 
 The remaining boundary is explicit:
 
-- **D2 is done:** issue/refresh/revoke through httpOnly cookies, reuse-triggered family revocation, session-bound CSRF, and storefront/admin audience guards;
-- **D3 is partial:** the storefront auth family, email-verification completion/resend, and anti-enumeration responses are real, while OAuth verification remains absent;
-- **D4 is partial:** password recovery, PIN login/setup/lockout, invites, HTTP resume, audience guards, active assignment-based permission resolution, role/permission/user-authority APIs, no-delegation, last-admin protection, offboarding, permission-version invalidation, and operator-only first-admin bootstrap are real; the admin Security Settings client, real-browser PIN-login proof, and 15-minute idle-lock/PIN-resume orchestration remain absent; and
-- **D5 is partial:** consent/privacy seams, order BOLA, cart Principal/`st_guest` ownership, and order-create cart adoption are real; guest→user merge, pending intents, and checkout idempotency remain Chunk G.
+- Cookie session issue/refresh/revoke is implemented, with reuse-triggered family revocation, session-bound CSRF, and storefront/admin audience guards.
+- The storefront authentication family, email-verification completion/resend, and anti-enumeration responses are implemented, while OAuth verification remains absent.
+- Admin password recovery, PIN login/setup/lockout, invites, HTTP resume, Account Security client, idle soft-lock orchestration, audience guards, active assignment-based permission resolution, role/permission/user-authority APIs, no-delegation, last-admin protection, offboarding, permission-version invalidation, and operator-only first-admin bootstrap are implemented; real-browser PIN-login proof coverage remains open.
+- Consent/privacy seams, order BOLA, cart Principal/`st_guest` ownership, and order-create cart adoption are implemented; guest→user merge, pending intents, and checkout idempotency remain open work. Soft-delete revive/ops rules remain gated by `DEC-CUSTOMER-SOFT-DELETE-OPS`.
 
 Scalar must distinguish these active controls from the residual gaps. A route appearing in OpenAPI is not proof that its request/response/security semantics are fully documented.
 
 ## Generated evidence snapshot
 
-| Measurement                              | Generated result                                        | Meaning                                                                                                     |
-| ---------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Paths / operations                       | 52 / 59                                                 | Current controller routes, including ten admin RBAC/authority operations, are published.                    |
-| Declared servers                         | One: `http://127.0.0.1:4000`                            | Test Request has no production target or proxy.                                                             |
-| Operation tags                           | 59 / 59 operations; 8 declared tags                     | Operations are grouped under the governed tag vocabulary.                                                   |
-| Explicit operation security              | 0 / 59 operations                                       | The document declares `sessionCookie`, but no operation attaches security or its audience/permission rules. |
-| Request bodies / component schemas       | 0 / 0                                                   | Controller-local zod bodies are not represented as reusable OpenAPI request contracts.                      |
-| Responses with content schemas           | 0 / 59 operations                                       | Runtime response values—including `ApiErrorResponse`—are not yet represented as generated response schemas. |
-| Explicit non-success operation responses | 1 / 59 operations (`GET /health/ready` documents `503`) | Operation-specific error documentation is still almost entirely absent.                                     |
+| Measurement                              | Generated result                                        | Meaning                                                                                                      |
+| ---------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Paths / operations                       | **75 paths / 88 operations**                            | Current controller routes, including admin CRM, notifications, and RBAC/authority operations, are published. |
+| Declared servers                         | One: `http://127.0.0.1:4000`                            | Test Request has no production target or proxy.                                                              |
+| Operation tags                           | 88 / 88 operations; 8 declared tags                     | Operations are grouped under the governed tag vocabulary.                                                    |
+| Explicit operation security              | 0 / 88 operations                                       | The document declares `sessionCookie`, but no operation attaches security or its audience/permission rules.  |
+| Request bodies / component schemas       | 0 / 0                                                   | Controller-local zod bodies are not represented as reusable OpenAPI request contracts.                       |
+| Responses with content schemas           | 0 / 88 operations                                       | Runtime response values—including `ApiErrorResponse`—are not yet represented as generated response schemas.  |
+| Explicit non-success operation responses | 1 / 88 operations (`GET /health/ready` documents `503`) | Operation-specific error documentation is still almost entirely absent.                                      |
 
 Two generation runs produced byte-identical output without opening a MongoDB connection. That proves the current source generator is deterministic in this environment; it is not yet the required CI generation and drift gate.
 
@@ -86,7 +86,7 @@ Scalar therefore remains **scaffolded**. Promotion is still blocked by:
 
 - complete request and response schemas;
 - cookie-session, CSRF, storefront/admin audience, role and ownership semantics in the document;
-- documentation of the implemented assignment, permission, no-delegation, last-admin, offboarding and bootstrap semantics, plus completion of OAuth verification and the admin Security Settings/idle-lock client;
+- documentation of the implemented assignment, permission, no-delegation, last-admin, offboarding, bootstrap, Account Security, and idle-lock/resume semantics, plus completion of OAuth verification and real-browser PIN-login proof coverage;
 - documentation of cart guest/user ownership, order-create adoption, and the remaining guest→user merge;
 - route-specific rate-limit semantics in the document;
 - operation-specific error and idempotency examples;

@@ -3,7 +3,7 @@ title: Generated Surfaces and Persistent Portal Runtime
 description: Storybook, TypeDoc, Scalar, database-catalogue, shared-theme, and atomic local serving topology.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 source_of_truth:
     - apps/developer-portal
     - apps/developer-portal-storybook
@@ -64,15 +64,15 @@ Tool-specific selectors remain in tool adapters. Shared token values must not be
 
 Storybook renders real Angular classes; it does not reproduce application components with Storybook-only HTML.
 
-The production catalogue contains 122 story states across Storefront, Admin, and Shared, including three Admin PIN Pad states. The automated coverage gate scans all 283 Angular components in both applications and accounts for every component classified as reusable:
+The production catalogue contains story states across Storefront, Admin, and Shared (including Admin PIN Pad and idle-lock modal specimens). The automated coverage gate scans all 289 Angular components in both applications and accounts for every component classified as reusable:
 
 | Application | Reusable components accounted for | Application components reached directly by stories |
 | ----------- | --------------------------------- | -------------------------------------------------- |
 | Storefront  | 106 / 106                         | 107 / 155                                          |
-| Admin       | 34 / 34                           | 34 / 128                                           |
-| Combined    | 140 / 140                         | 141 / 283                                          |
+| Admin       | 35 / 35                           | 35 / 134                                           |
+| Combined    | 141 / 141                         | 142 / 289                                          |
 
-The extra directly reached component is an application-composition surface. The 142 application components not directly reached are route/page orchestration, not missing reusable-component specimens. Their navigation, resolver, live-service, and whole-application behavior belongs in integration and Playwright coverage.
+The extra directly reached component is an application-composition surface. Application components not directly reached are route/page orchestration, not missing reusable-component specimens. Their navigation, resolver, live-service, and whole-application behavior belongs in integration and Playwright coverage.
 
 The coverage gate runs before Storybook development, typechecking, linting, and production builds:
 

@@ -4,7 +4,7 @@ wide: true
 description: How admin guards, layouts, lazy routes, and feature families compose the operator workspace.
 status: implemented
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-15'
 source_of_truth:
     - apps/admin/src/app/app.routes.ts
     - apps/admin/src/app/routes/content.routes.ts
@@ -53,7 +53,8 @@ Important boundaries:
 - The guard is presentation and navigation policy, not API authorization.
 - `canActivateChild()` inherits authentication from the protected shell; it does not implement route-level permissions.
 - Permissions held in the store shape UI only. The API rechecks audience, role, declared permission and current versions.
-- The admin idle-lock overlay is still absent even though the store and API expose PIN resume.
+- The admin idle-lock overlay is live: after 15 minutes of inactivity the shell opens a
+  theme-modal resume (PIN when configured, otherwise password) via `POST /auth/admin/resume`.
 
 ## Feature route convention
 

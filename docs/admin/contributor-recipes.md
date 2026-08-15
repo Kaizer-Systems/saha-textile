@@ -3,7 +3,7 @@ title: Admin Contributor Recipes
 description: Beginner-safe recipes for routes, lists, forms, mutations, permissions, and operator verification.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-15'
 source_of_truth:
     - apps/admin/src/app/routes
     - apps/admin/src/app/features
@@ -56,6 +56,14 @@ Search for the explicit mock comment before implementing. Then:
 6. Reconcile cache data.
 7. Remove obsolete mock comments and fixture assumptions.
 8. Advance portal status only after verification.
+
+Live CRM soft-delete already follows this path: the default list hides deleted customers; do not add revive/recycle-bin UI until `DEC-CUSTOMER-SOFT-DELETE-OPS` lands.
+
+## Recipe: phone dial with country flags
+
+1. Reuse `shared/data/country-code.ts` dial options (HTML labels with `.iti-flag` classes).
+2. Point flag sprites at local `/assets/images/flags/flags.png` (and `@2x`); do not invent a parallel flag asset.
+3. Prefer shared form-field / select2 templates already used on CRM and checkout address forms.
 
 ## Recipe: add permission-aware UI
 

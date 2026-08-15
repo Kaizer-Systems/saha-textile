@@ -24,8 +24,8 @@ const VALID_SCHEMA_COLLECTION_STATES = new Set(['existing', 'planned']);
 const VALID_SCHEMA_TARGET_ACTIONS = new Set(['refactor', 'add']);
 const VALID_COMMAND_TARGET_SOURCES = new Set(['journey-pages', 'decision-gates', 'document-status']);
 const SCHEMA_NEBULA_ROUTE = '/database/schema-nebula';
-const SCHEMA_NEBULA_NODE_COUNT = 64;
-const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 31;
+const SCHEMA_NEBULA_NODE_COUNT = 65;
+const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 35;
 const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 	['categoryPlacements', 'catalog-structure.model.ts'],
 	['categoryFacetConfigs', 'catalog-structure.model.ts'],
@@ -38,12 +38,16 @@ const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 	['reviews', 'content.model.ts'],
 	['inventoryLedger', 'inventory.model.ts'],
 	['inventoryCostLayers', 'inventory.model.ts'],
+	['adminUsers', 'admin-user.model.ts'],
 	['authSessions', 'auth-session.model.ts'],
 	['otpChallenges', 'auth-challenge.model.ts'],
 	['oauthStates', 'auth-challenge.model.ts'],
 	['passwordResetTokens', 'auth-token.model.ts'],
 	['emailVerificationTokens', 'auth-token.model.ts'],
 	['adminInvites', 'auth-token.model.ts'],
+	['authIdentities', 'credential.model.ts'],
+	['passwordCredentials', 'credential.model.ts'],
+	['pinCredentials', 'credential.model.ts'],
 	['roles', 'rbac.model.ts'],
 	['userRoleAssignments', 'rbac.model.ts'],
 	['consentEvents', 'consent.model.ts'],
@@ -54,7 +58,7 @@ const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 ]);
 const SCHEMA_NEBULA_NON_TARGET_MODEL_FILES = new Set([
 	// The auth architecture explicitly keeps rate-limit storage outside the locked
-	// 64-node physical target graph; the adapter may change without inventing a star.
+	// 65-node physical target graph; the adapter may change without inventing a star.
 	'auth-rate-limit.model.ts',
 ]);
 const COMMAND_VERBS_ROUTE = '/frontend/portal-experience-layer';

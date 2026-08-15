@@ -4,7 +4,7 @@ description: Verified Mongoose models, indexes, repositories, mappers, seed tool
 search_keywords: 'mongo rs0 replica set connection uri directConnection models indexes repositories'
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 source_of_truth:
     - packages/adapters-db-mongo/src/models
     - packages/adapters-db-mongo/src/repositories
@@ -27,7 +27,8 @@ The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps,
 
 | Family                   | Physical collections                                                                                                               | Current evidence boundary                                                                                                                                                 |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Original seven           | `categories`, `products`, `promotions`, `orders`, `currencies`, `carts`, `users`                                                   | Existing catalogue/commerce APIs; product lifecycle/indexes, cart/`st_guest` ownership and order+cart transactional create are current; checkout idempotency remains open |
+| Remaining original core  | `categories`, `products`, `promotions`, `orders`, `currencies`, `carts`                                                            | Existing catalogue/commerce APIs; product lifecycle/indexes, cart/`st_guest` ownership and order+cart transactional create are current; checkout idempotency remains open |
+| Separated populations    | `customers`, `adminUsers`                                                                                                          | Storefront shoppers and back-office operators are distinct collections and contracts (`DEC-ACCOUNT-SEPARATION`)                                                           |
 | Auth seven               | `authSessions`, `otpChallenges`, `oauthStates`, `passwordResetTokens`, `emailVerificationTokens`, `adminInvites`, `authRateLimits` | Session/OTP/reset/PIN/RBAC flows use these stores; OAuth callback remains open                                                                                            |
 | Authorization            | `roles`, `userRoleAssignments`                                                                                                     | Repositories/indexes are rs0-proven and API-bound for role/permission/user-authority administration                                                                       |
 | Privacy                  | `consentEvents`                                                                                                                    | Consent history and privacy request seams are API-bound                                                                                                                   |
@@ -40,7 +41,7 @@ The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps,
 
 Every schema passes an explicit `collection` option, and `packages/adapters-db-mongo/src/collection-names.ts` is the single declaration those literals are checked against by `test/collection-names.test.ts`. Before 2026-08-02 no schema declared one, so Mongoose derived each name from the model name and produced lowercase — and sometimes wrongly pluralized — physical names (`authsessions`, `inventoryledgers`, `messageoutboxes`). `pnpm mongo:align-collections` renames an existing database onto the ratified names; it is idempotent, refuses to merge when both names hold data, and is never run at application boot.
 
-The generated catalogue confirms all 34 physical names directly from Mongoose metadata: 424 fields, 94 indexes, and 27 temporary shapes. Thirty-one names map to ratified Schema Nebula nodes. The implemented `productQuestions`, `ratingAggregates`, and `authRateLimits` collections remain current catalogue evidence outside that fixed graph; this is not a licence to add or rename stars. The governed graph publishes 64 nodes / 31 current / 33 target.
+The generated catalogue confirms all 38 physical names directly from Mongoose metadata: 456 fields, 103 indexes. Credential extraction added `passwordCredentials`, `pinCredentials`, and `authIdentities`. Thirty-five names map to ratified Schema Nebula nodes (**65 / 35 / 30**); `productQuestions`, `ratingAggregates`, and `authRateLimits` remain current catalogue evidence outside that fixed graph.
 
 ## Current repository inventory
 
@@ -58,8 +59,7 @@ save/upsert → strip public id → findByIdAndUpdate($set) → mapper
 - Product listing supports category, tag, status, regex search, pagination, newest-first sort, and a `CatalogAudience` that defaults to public. Public list and direct reads are centrally restricted to `live`; public callers cannot widen the filter.
 - Category tree returns a flat depth/display-order sort; hierarchy reconstruction is a consumer concern.
 - Active promotions use start/end-window filtering and priority sort.
-- User credential lookup explicitly selects the hidden password hash.
-- User credential lookups can explicitly request the otherwise hidden password/PIN hashes; public mapping returns neither.
+- Customer and admin-user credential lookups can explicitly request the otherwise hidden password/PIN hashes; public mapping returns neither.
 - Session/challenge/token repositories explicitly select hidden hashes only inside credential verification paths and never expose plaintext secrets.
 - Order listing scopes by `userId`; the controller applies customer ownership to single-order reads and gives staff/admin an explicit support bypass.
 - Order status update appends a timeline value but throws a generic adapter error when missing.

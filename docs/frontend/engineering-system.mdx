@@ -4,7 +4,7 @@ wide: true
 description: Shared decision rules for state, contracts, layers, reusable UI, and cross-application behavior.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/admin/src/app/app.config.ts
@@ -61,7 +61,7 @@ The auth interceptor sends `withCredentials: true` on every request so the httpO
 
 ## Contracts today
 
-`packages/contracts/src` contains zod-backed common locale/money/pagination/error primitives and families for catalogue placements/attributes/options/variants/bundles/relations, media, inventory, content, cart, order, currency, promotion, shipping, users, auth/session/admin auth, admin-user authority, permissions, roles, consent, audit, and notifications. The active locale set is runtime configuration, not a contract enum. The 33-code permission registry and admin authority contracts now back API role/permission/user-authority routes, but the admin management screens have not adopted those routes. Most other expanded families describe validated boundaries without Angular workflow or current API-operation adoption.
+`packages/contracts/src` contains zod-backed common locale/money/pagination/error primitives and families for catalogue placements/attributes/options/variants/bundles/relations, media, inventory, content, cart, order, currency, promotion, shipping, customer, admin-user, auth/session/admin auth, customer and admin-user authority, permissions, roles, consent, audit, and notifications. The active locale set is runtime configuration, not a contract enum. The 103-code permission registry and admin authority contracts now back API role/permission/user-authority routes and `GET /auth/admin/me` effective permissions. Most other expanded families describe validated boundaries without Angular workflow or current API-operation adoption.
 
 These contracts are the preferred trust boundary as real endpoints replace fixtures. Existing application-local interfaces still describe many fixture/view shapes; migrate deliberately rather than renaming them “contracts.”
 

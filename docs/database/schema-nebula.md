@@ -1,14 +1,15 @@
 ---
 title: Schema Nebula
-description: Interactive governed map of all 64 explicit target MongoDB collections, their current evidence, bounded contexts, ownership, decisions and relationships.
+description: Interactive governed map of all 65 explicit target MongoDB collections, their current evidence, bounded contexts, ownership, decisions and relationships.
 slug: /database/schema-nebula
 wide: true
 status: implemented
 audience: [beginner, backend, operator]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 search_keywords: 'schema nebula collections database mongodb star map models ghosts graph relationships bounded context DEC'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
+    - docs/engineering-live-context/account-separation-task-handoff.mdx
     - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
     - docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx
     - docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx
@@ -35,7 +36,7 @@ import { SchemaNebula } from '@site/src/components/SchemaNebula';
 
 ## How to read the constellation
 
-Schema Nebula is a **governed architecture map**, not a live database browser and not a claim that all 64 collections exist.
+Schema Nebula is a **governed architecture map**, not a live database browser and not a claim that all 65 collections exist.
 
 | Signal             | Meaning                                                                                          |
 | ------------------ | ------------------------------------------------------------------------------------------------ |
@@ -46,9 +47,9 @@ Schema Nebula is a **governed architecture map**, not a live database browser an
 | Amber relationship | Another collection references the selected collection.                                           |
 | Decision badge     | A stable `DEC-*` decision still affects the collection’s final policy or shape.                  |
 
-Thirty-one solid stars represent graph collections backed by exact physical-name model and test evidence. The remaining 33 stars stay target-only ghosts until equivalent adapter evidence exists.
+Thirty-two solid stars represent graph collections backed by exact physical-name model and test evidence. The remaining 33 stars stay target-only ghosts until equivalent adapter evidence exists.
 
-Chunks D/E and Auth Pass 5b expanded the current adapter to 34 models. Every model now declares an exact physical collection name, and the adapter tests assert those names. Thirty-one names match nodes in the ratified graph. `authRateLimits` is intentionally outside that graph, while the implemented `productQuestions` and `ratingAggregates` collections have no ratified node; the source-only catalogue reports all three without inventing new stars. Later API adoption of the existing `roles` and `userRoleAssignments` models changes their usage evidence, not the physical graph, so Schema Nebula remains **64 / 31 / 33**.
+The current adapter now contains 38 exported Mongoose models. Every model declares an exact physical collection name, and the adapter tests assert those names. Credential extraction added `passwordCredentials`, `pinCredentials`, and `authIdentities` as current graph-backed models. `authRateLimits` is intentionally outside that graph, while the implemented `productQuestions` and `ratingAggregates` collections have no ratified node; the source-only catalogue reports all three non-graph collections without inventing new stars. The customer/operator account-separation work split the unified `users` collection into `customers` (shoppers) and `adminUsers` (operators). Schema Nebula stands at **65 / 35 / 30**.
 
 ## Controls
 
@@ -63,7 +64,7 @@ Chunks D/E and Auth Pass 5b expanded the current adapter to 34 models. Every mod
 
 The authored inventory lives in `docs/_data/instruments/schema-nebula.json`. The shared build-time compiler refuses to publish it unless all of the following agree:
 
-1. the ratified route and **64 / 31 / 33** inventory;
+1. the ratified route and **65 / 32 / 33** inventory;
 2. the current files under `packages/adapters-db-mongo/src/models`, including grouped files that implement several distinct physical collections, with the three current non-graph collections excluded from star promotion;
 3. the catalog, auth, notification and roadmap sources;
 4. all collection-to-collection references;
@@ -74,6 +75,6 @@ Adding or removing a model therefore makes a stale constellation fail the portal
 
 ## What remains separate
 
-Schema Nebula answers **which ratified physical collections are current or targeted and how they relate**. The separate source-only database catalogue generates fields, indexes, defaults, enums, select policy and sanitized examples for all 34 current Mongoose models, including the three current non-graph collections. That broader catalogue evidence does not change the constellation’s 64-node boundary or its **64 / 31 / 33** state; stable DTO/migration/retention coverage remains incomplete. Do not treat a target star as implemented schema documentation or deployment proof.
+Schema Nebula answers **which ratified physical collections are current or targeted and how they relate**. The separate source-only database catalogue generates fields, indexes, defaults, enums, select policy and sanitized examples for all 38 current Mongoose models, including the three current non-graph collections. That broader catalogue evidence does not change the constellation’s 65-node boundary; stable DTO/migration/retention coverage remains incomplete. Do not treat a target star as implemented schema documentation or deployment proof.
 
 Continue with the [current Mongo adapter map](./current-adapter-map) for implemented model/repository evidence, [transactions and generation](./transactions-and-generation) for the future catalogue contract, and [Mission Control](/mission-control) for roadmap ownership.

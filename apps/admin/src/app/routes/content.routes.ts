@@ -14,7 +14,9 @@ export const content: Routes = [
 		loadChildren: () => import('@features/role/role.routes'),
 	},
 	{
-		path: 'user',
+		// `admin-user`, not `user`: this app administers both populations, and `/customer`
+		// sits directly below. A bare `/user` here would be the one word that means either.
+		path: 'admin-user',
 		loadChildren: () => import('@features/user/user.routes'),
 	},
 	{

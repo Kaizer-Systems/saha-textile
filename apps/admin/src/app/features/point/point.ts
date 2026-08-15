@@ -9,7 +9,7 @@ import { Observable } from 'rxjs';
 
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITransactionsData } from '@data-access/interfaces/point.interface';
-import { injectUsersQuery } from '@data-access/queries/user.queries';
+import { injectMockCustomersQuery } from '@data-access/queries/user.queries';
 import { PointService } from '@data-access/services/point.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
@@ -41,7 +41,7 @@ export class Point {
 	private pointService = inject(PointService);
 	private formBuilder = inject(FormBuilder);
 
-	private readonly usersQuery = injectUsersQuery(() => ({ role: 'consumer', status: 1 }));
+	private readonly usersQuery = injectMockCustomersQuery(() => ({ role: 'consumer', status: 1 }));
 	users$: Observable<Select2Data> = toObservable(
 		computed(() => this.usersQuery.data()?.data.map((user) => ({ label: user.name, value: user.id })) ?? []),
 	);

@@ -43,7 +43,7 @@ export const Role = z.object({
 export type Role = z.infer<typeof Role>;
 
 /**
- * Explicit operator-to-role assignment (`userRoleAssignments`) — Schema Nebula node, auth §7.10.
+ * Explicit operator-to-role assignment (`adminUserRoleAssignments`) — Schema Nebula node, auth §7.10.
  *
  * ## Why assignments are their own documents
  *
@@ -61,7 +61,7 @@ export type Role = z.infer<typeof Role>;
  *
  * `userId` stays a generic `Id` until Pass 5b rewrites legacy `user_…` rows to `adm_…`.
  */
-export const UserRoleAssignment = z.object({
+export const AdminUserRoleAssignment = z.object({
 	id: Id,
 	userId: Id,
 	roleId: Id,
@@ -73,10 +73,10 @@ export const UserRoleAssignment = z.object({
 	revokedByUserId: Id.nullable().default(null),
 	revokeReason: z.string().max(200).nullable().default(null),
 });
-export type UserRoleAssignment = z.infer<typeof UserRoleAssignment>;
+export type AdminUserRoleAssignment = z.infer<typeof AdminUserRoleAssignment>;
 
 /** True when the assignment is currently in force. The single definition of "active". */
-export function isAssignmentActive(assignment: Pick<UserRoleAssignment, 'revokedAt'>): boolean {
+export function isAssignmentActive(assignment: Pick<AdminUserRoleAssignment, 'revokedAt'>): boolean {
 	return assignment.revokedAt === null;
 }
 

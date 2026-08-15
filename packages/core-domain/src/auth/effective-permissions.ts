@@ -1,4 +1,4 @@
-import type { AdminRole, Role, UserRoleAssignment } from '@saha-textile/contracts';
+import type { AdminRole, Role, AdminUserRoleAssignment } from '@saha-textile/contracts';
 
 /**
  * Coarse operator tier ordering (`DEC-ACCOUNT-SEPARATION` D2 / D7).
@@ -52,7 +52,7 @@ export function resolveEffectivePermissions(input: {
 	role: AdminRole;
 	/** Transitional embedded grants from the operator document. */
 	embedded: readonly string[];
-	assignments: readonly UserRoleAssignment[];
+	assignments: readonly AdminUserRoleAssignment[];
 	/** Role definitions for the assignments above. Missing roles contribute nothing. */
 	roles: readonly Role[];
 }): string[] {

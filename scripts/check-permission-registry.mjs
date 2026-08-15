@@ -81,13 +81,13 @@ for (const action of actions) {
  * with no filtering against the declared resources or actions — and that width is the point.
  *
  * An earlier version only counted strings whose halves were both already declared, which
- * quietly defeated the rule it was written for: a navigation entry gating on `user.destroy`
- * was discarded as "not a permission" rather than reported as one the server cannot grant.
- * The check failed to fail. Filtering by what is already known can only ever confirm what is
- * already known.
+ * quietly defeated the rule it was written for: a navigation entry gating on a code the
+ * registry did not carry was discarded as "not a permission" rather than reported as one the
+ * server cannot grant. The check failed to fail. Filtering by what is already known can only
+ * ever confirm what is already known.
  *
  * Safe to be this wide because the file is menu DATA: icons (`ri-user-line`) and route paths
- * (`/user/create`) do not match the shape, and all 26 dotted strings present are permissions.
+ * (`/user/create`) do not match the shape, and all 27 dotted strings present are permissions.
  * A future non-permission dotted string would fail here loudly, which is the right direction
  * for a guard to be wrong in.
  */

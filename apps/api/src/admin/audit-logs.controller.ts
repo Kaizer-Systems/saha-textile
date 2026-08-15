@@ -17,7 +17,7 @@ import { AuditLogsService } from './audit-logs.service';
  * changes, offboardings, refusals. Being able to administer a resource must not imply being
  * able to read the history of everyone who has touched it, because the two answer different
  * questions: one is "may you act here", the other is "may you watch your colleagues". They are
- * separated for the same reason `user_role.assign` and `user_role.revoke` are.
+ * separated for the same reason `admin_user_role.assign` and `admin_user_role.revoke` are.
  *
  * ## Read-only, permanently
  *

@@ -1,9 +1,8 @@
 import { z } from 'zod';
 
-import { AdminRole, AdminUserId } from './admin-role';
+import { AdminRole, AdminUserId, AdminUserStatus } from './admin-role';
 import { Password } from './auth';
 import { Id, IsoDateTime } from './common';
-import { UserStatus } from './customer';
 import { PermissionGrant } from './permission';
 import { SessionInfo } from './session';
 
@@ -86,7 +85,7 @@ export const AdminUserProfile = z.object({
 	displayName: z.string().optional(),
 	phone: z.string().min(1).max(32).nullable().optional(),
 	role: AdminRole,
-	status: UserStatus,
+	status: AdminUserStatus,
 	/** Whether a PIN credential is currently set (drives Security Settings UI). */
 	pinConfigured: z.boolean().default(false),
 	preferredLoginMethod: PreferredLoginMethod.default('password'),

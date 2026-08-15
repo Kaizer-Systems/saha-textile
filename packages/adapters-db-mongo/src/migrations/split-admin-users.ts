@@ -82,7 +82,7 @@ const CUSTOMER_DROP = [
 const FK_UPDATES: ReadonlyArray<{ collection: string; fields: readonly string[] }> = [
 	{ collection: COLLECTION_NAMES.AuthSession, fields: ['userId'] },
 	{
-		collection: COLLECTION_NAMES.UserRoleAssignment,
+		collection: COLLECTION_NAMES.AdminUserRoleAssignment,
 		fields: ['userId', 'assignedByUserId', 'revokedByUserId'],
 	},
 	{ collection: COLLECTION_NAMES.AdminInvite, fields: ['invitedByUserId'] },

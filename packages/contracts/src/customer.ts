@@ -3,11 +3,15 @@ import { z } from 'zod';
 import { Id, IsoDateTime } from './common';
 
 /**
- * Account lifecycle status (auth plan §7.1). Shared by customers and operators.
- * Non-`active` accounts cannot receive new sessions.
+ * Customer account lifecycle status (auth plan §7.1).
+ *
+ * `deleted` is a soft-delete tombstone, and is why this enum has five states where the
+ * operator's has four: a shopper's row is retained for order history while their email and
+ * phone are released for re-registration. Operator status is `AdminUserStatus` in
+ * `admin-role.ts`. Non-`active` accounts cannot receive new sessions.
  */
-export const UserStatus = z.enum(['active', 'pending', 'disabled', 'locked', 'deleted']);
-export type UserStatus = z.infer<typeof UserStatus>;
+export const CustomerStatus = z.enum(['active', 'pending', 'disabled', 'locked', 'deleted']);
+export type CustomerStatus = z.infer<typeof CustomerStatus>;
 
 /**
  * Customer primary key (`DEC-ACCOUNT-SEPARATION` D5).
@@ -119,7 +123,7 @@ export const Customer = z.object({
 	phone: z.string().nullable().default(null),
 	phoneVerified: z.boolean().default(false),
 	displayName: z.string().optional(),
-	status: UserStatus.default('active'),
+	status: CustomerStatus.default('active'),
 	identities: z.array(AuthIdentity).default([]),
 	addresses: z.array(Address).default([]),
 	/** Reserved; empty until a contacts surface writes them. */

@@ -1,9 +1,8 @@
 import { z } from 'zod';
 
 import { AdminUser } from './admin-auth';
-import { AdminRole, AdminUserId } from './admin-role';
+import { AdminRole, AdminUserId, AdminUserStatus } from './admin-role';
 import { Id, IsoDateTime, MAX_PAGE_SIZE, paginated } from './common';
-import { UserStatus } from './customer';
 import { PermissionCode } from './permission';
 
 /**
@@ -29,7 +28,7 @@ export type AssignRoleRequest = z.infer<typeof AssignRoleRequest>;
  * somebody else.
  */
 export const AdminUserStatusRequest = z.object({
-	status: UserStatus.exclude(['deleted']),
+	status: AdminUserStatus,
 	reason: z.string().min(1).max(200).optional(),
 });
 export type AdminUserStatusRequest = z.infer<typeof AdminUserStatusRequest>;
@@ -56,7 +55,7 @@ export type AdminUserRoleSummary = z.infer<typeof AdminUserRoleSummary>;
 export const AdminUserAuthorityResponse = z.object({
 	userId: AdminUserId,
 	role: AdminRole,
-	status: UserStatus,
+	status: AdminUserStatus,
 	roles: z.array(AdminUserRoleSummary),
 	effectivePermissions: z.array(PermissionCode),
 });

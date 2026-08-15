@@ -27,7 +27,7 @@ export const menu: IMenu[] = [
 			{
 				parent_id: 2,
 				title: 'add user',
-				path: '/user/create',
+				path: '/admin-user/create',
 				type: 'link',
 				level: 2,
 				permission: ['admin_user.create'],
@@ -35,7 +35,7 @@ export const menu: IMenu[] = [
 			{
 				parent_id: 2,
 				title: 'all users',
-				path: '/user',
+				path: '/admin-user',
 				type: 'link',
 				level: 2,
 				permission: ['admin_user.index'],

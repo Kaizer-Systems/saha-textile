@@ -3331,6 +3331,128 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
   `@RequireRoles('admin')`). Create/list/revoke now share the same permission. Deferred-plan
   Phase 0 KB: `DEC-PORTAL-PRIVATE-ACCESS` and storefront OAuth marked pending/non-blocking;
   handoff cross-links `DEC-UI-REUSE`. **No commit.** Tool: cursor.
+- 2026-08-15 — [DONE] **Both red gates cleared, and the account-separation naming debt closed.**
+  Every item below was owner-answered before implementation; no naming or authorization change
+  was inferred.
+  **The two reds from the handoff §9.3 are gone.** `typecheck` — `session-liveness.test.ts`
+  had a dynamic `import()` of a module the line above it already imported statically; folded
+  into the static import rather than adding the `.js` specifier, so the oddity is removed and
+  not merely satisfied. `lint` — the unawaited `openModal(...)` in `form-customer.ts` now uses
+  `void`, matching the two existing call sites in `questions-answers.ts` and `refund.ts`.
+  **Permission registry 103 → 89 codes, and the templated-justification problem is closed.** A
+  reachability sweep found 19 codes with zero references in any app; the owner retired 14 —
+  marketplace vocabulary a single-vendor business cannot use (`vendor_wallet.*`,
+  `commission_history.index`, `withdraw_request.{create,index}`, `wallet.*`), duplicates of
+  live codes (`role.edit`, `theme.{edit,index}`), and the ambiguous `user.{edit,destroy}` — and
+  KEPT the 5 with a real kept page awaiting an API (`question_and_answer.*`, `refund.action`,
+  `refund.create`, `review.create`), which now say so honestly. **All 64 templated
+  justifications were rewritten to name the file and control they guard; 0 templates remain.**
+  The registry doc comment no longer claims it "grows one route at a time" and now records
+  that it is a closed owner-locked set.
+  **Two authorization defects found by audit and fixed.** `PATCH /admin/notifications/channels`
+  and `PUT /admin/notifications/templates` — both audited mutations — were gated on
+  `setting.index`, a READ code, so a read-only settings grant could flip kill-switches and
+  repoint MSG91 template ids; both now require `setting.edit`, with a new decorator-level test
+  (`admin-notifications-authorization.test.ts`). And the Questions & Answers table row actions
+  gated on `store.edit`/`store.destroy` — a Fastkart copy-paste that let a Store grant carry
+  Q&A authority — now use `question_and_answer.{edit,destroy}`.
+  **`UserStatus` split per owner choice into `CustomerStatus` (5 states) and `AdminUserStatus`
+  (4 states, no `deleted`).** The enums genuinely differ: operators are deactivated, never
+  deleted, which the old shared enum expressed as `UserStatus.exclude(['deleted'])` repeated at
+  each admin call site — a rule every author had to remember rather than one the type knew.
+  `AdminUserStatus` lives in `admin-role.ts`, the existing cycle-free leaf.
+  **The `UserRoleAssignment` family renamed end to end** (the `user.*` → `admin_user.*` item
+  the handoff deferred; its precondition — CRM `customer.*` codes — was met). Types →
+  `AdminUserRoleAssignment*`; permission codes `user_role.{assign,revoke}` →
+  `admin_user_role.*`; OpenAPI operationIds → `assign/revokeAdminUserRole`; collection
+  `userRoleAssignments` → `adminUserRoleAssignments`. The admin SPA route moved `/user/**` →
+  `/admin-user/**` and its four components became `AdminUsers` / `Create|Edit|FormAdminUser`.
+  API routes `/admin/users/**` deliberately UNCHANGED — that family is what §1a leaned on when
+  choosing the name.
+  **Migrations reused, not rewritten, and run for real.** `LEGACY_ADMIN_USER_PERMISSION_MAP`
+  gained the two codes (new DB-IT case asserts the resulting array, not just the counter);
+  `LEGACY_COLLECTION_NAMES` gained both spellings of the retired collection. The aligner
+  correctly REFUSED the first run — the DB-IT suite had just created an empty
+  `adminUserRoleAssignments` while the 1 real doc sat in the old name — so the empty target was
+  verified at 0 docs and dropped, then: dry-run 1 rename, real run 1 rename, second run
+  `already-aligned` / `renamed=0`. `seed:system-roles` re-run; `role_system_administrator` now
+  holds exactly 89 codes, 0 legacy.
+  **Schema Nebula reconciled rather than worked around** (owner-approved, following §9.4's own
+  lesson): node id/label `userRoleAssignments` → `adminUserRoleAssignments`, purpose reworded
+  to "operator-to-role". **Still 65 nodes, no `NON_GRAPH_COLLECTIONS` exception added.**
+  **New guard `scripts/check-account-naming.mjs` in `pnpm lint`**, deliberately scoped to
+  DECLARATIONS and STORED NAMES only — a `User…` type/interface/class/enum, a `users`/`userX`
+  collection, a `user.`/`user_` permission code. Prose is not checked: ~242 backend occurrences
+  of "user" are ordinary English (`user input`, `user-facing`), and a guard needing a
+  permanently growing exception list is the failure this same session spent its time undoing.
+  The two legacy migration maps are exempt because their keys MUST spell the old names.
+  **Gates, all green and all re-run after the last edit:** `format:check` clean ·
+  `git diff --check` clean · all SEVEN lint guards OK (`check-account-naming` new;
+  `check-route-authorization` 88 routes — 32 permission-gated, 10 role-only, 19 public;
+  `check-permission-registry` 89 codes / 28 resources / 27 navigation-reachable / 62
+  server-only) · `turbo run lint` **0 errors** (71+8 pre-existing warnings) · `typecheck`
+  **17/17** · unit suites all pass (contracts 168, http-transport 157, core-domain 163, api
+  **180**, storefront 57, admin 72, msg91 3) · adapter DB-IT **108/108** with `RUN_DB_IT=1` ·
+  session-rotation E2E **34/34, exit 0** · `generate:openapi` OK (88 operations across 75
+  paths). Admin and storefront both build.
+  **Corrections made to my own earlier claims, recorded rather than quietly dropped.** (a) I
+  repeated §9.3's `pnpm-lock.yaml` concern before verifying it: `packageManager` pins
+  pnpm@11.9.0 and the installed pnpm IS 11.9.0, the 967 peer-dependency suffixes are intact
+  (not "stripped"), the commit carrying the claim changed 63 lines (not ~2,600 keys), and
+  `pnpm install --frozen-lockfile` returns "Already up to date" leaving the file untouched.
+  **No lockfile problem exists; the concern is withdrawn.** (b) The six notification-settings
+  rows are not seed debris — `ensureDefaultChannelSettings()` recreates any missing
+  channel × category on every load of the screen, so they are self-healing defaults and cannot
+  be "cleared"; only the "future test asserting an empty collection" caveat stands. (c) I told
+  the owner that moving the admin SPA route would reopen a settled decision; that was wrong —
+  §1a locked the API family, not the client-side path.
+  **Owed / not done:** the `IUser`/`IUserModel`/`IUserAddress` vendor mock cluster keeps the
+  bare noun (owner chose to rename only the service and query, to `MockCustomerService` /
+  `injectMockCustomersQuery`, since those types will likely be deleted rather than renamed when
+  the stub pages are wired); admin nav LABELS still read "Users" (i18n copy, user-visible, not
+  touched without a `DEC-UI-REUSE` brief); `apps/admin/public/assets/data/role.json` is unused
+  vendor mock ACL data that nothing imports — deletion candidate, same precedent as the removed
+  `account.json`; `DEC-CUSTOMER-SOFT-DELETE-OPS` remains unanswered and still blocks any
+  recycle-bin/restore CRM work. Committed as a SINGLE commit at the owner's request so the whole
+  correction can be reverted in one pass. Tool: claude-code.
+- 2026-08-15 — [DONE] **Live browser + API verification of that commit, and the two defects it
+  found.** Ran the real admin app against the running API rather than trusting the suites.
+  **Proven working:** `/admin-user` and `/admin-user/edit/:id` resolve and the retired `/user`
+  answers 404 — a clean rename with no dual routing; the operator list, edit screen, Roles,
+  Customer CRM, Customer Ledger, Q&A and Notification Settings screens all render with no
+  console error; role **assign returned 201 and the row landed in `adminUserRoleAssignments`**,
+  the renamed collection, proving the rename end to end through HTTP; revoke returned 200 and
+  deleting the role 204; revoking the ONLY administrator still answers **409**, so
+  last-administrator protection survived the rename (a 403 would have meant the permission gate
+  failed instead); the Ledger's Add/Withdraw and the Q&A row actions still render, so the
+  re-gated `point.*` and `question_and_answer.*` codes resolve rather than silently hiding
+  their controls — the exact failure mode a wrong code would cause, since `hasPermission` takes
+  a plain string and is not typed to the registry.
+  **The security fix negative-controlled on a live session.** An operator reduced to effective
+  permissions of exactly `["setting.index"]`: `GET /admin/notifications/channels` → **200**,
+  `PATCH /admin/notifications/channels` → **403**, `PUT /admin/notifications/templates` →
+  **403**. Before this commit that same grant returned 200 on both writes. Authority restored
+  and verified back at 89 effective permissions.
+  **Two defects found by this pass and fixed in the same commit.** (1) `GET /admin/roles`
+  **500'd** with `RangeError: Invalid time value` — the DB-IT migration test writes deliberately
+  minimal role fixtures (`_id` + `permissions`, no `createdAt`) into `saha_textile_local`, the
+  SAME database the dev app uses, and `beforeEach`-only cleanup left the last case's row behind
+  for `toRole` to choke on. The test now clears in `afterAll` as well. (2) The Mongoose
+  `adminUsers.status` enum still permitted `deleted` after the contract narrowed to four states,
+  so a write could reach a state no contract could describe; narrowed to match.
+  **Recorded, not fixed.** The DB-IT suite runs against `saha_textile_local` and its `beforeEach`
+  wipes `roles`, `adminUsers` and `adminInvites` — running it DESTROYS the local operator login
+  every time, which is why the account had to be re-bootstrapped mid-session. Pre-existing and
+  structural; the fix is a dedicated test database, and it is worth doing before someone loses
+  data they cared about. `set:local-credentials` also exits 1 with no message on stderr for an
+  operator that has no existing password credential, so it cannot currently provision a fresh
+  probe account. Neither is caused by this commit.
+  **Two observations that are NOT defects:** an apparent refetch loop on the admin screens is
+  TanStack's `refetchOnWindowFocus` re-firing every time the automation focused the tab — the
+  pages settle within seconds when left alone; and the "Something Went Wrong" toasts persist
+  across SPA navigation, so toasts raised during the deliberate 403 window kept showing on later
+  screens. Gates re-run green after both fixes: typecheck 17/17, all unit suites, DB-IT 108/108,
+  seven lint guards, `format:check` clean. Tool: claude-code.
 - _(append)_
 
 ---

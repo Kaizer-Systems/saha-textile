@@ -1,8 +1,13 @@
-import type { PermissionCode, Role, UserRoleAssignment } from '@saha-textile/contracts';
-import type { RoleRepository, UserRoleAssignmentRepository } from '@saha-textile/core-domain';
+import type { PermissionCode, Role, AdminUserRoleAssignment } from '@saha-textile/contracts';
+import type { RoleRepository, AdminUserRoleAssignmentRepository } from '@saha-textile/core-domain';
 import { AssignmentAlreadyActiveError } from '@saha-textile/core-domain';
 
-import { RoleModel, UserRoleAssignmentModel, type RoleDoc, type UserRoleAssignmentDoc } from '../models/index';
+import {
+	RoleModel,
+	AdminUserRoleAssignmentModel,
+	type RoleDoc,
+	type AdminUserRoleAssignmentDoc,
+} from '../models/index';
 
 /** MongoDB's duplicate-key error. The only collision the unique partial index can raise. */
 const DUPLICATE_KEY = 11000;
@@ -22,7 +27,7 @@ const toRole = (doc: RoleDoc): Role => ({
 	updatedAt: new Date(doc.updatedAt).toISOString(),
 });
 
-const toAssignment = (doc: UserRoleAssignmentDoc): UserRoleAssignment => ({
+const toAssignment = (doc: AdminUserRoleAssignmentDoc): AdminUserRoleAssignment => ({
 	id: doc._id,
 	userId: doc.userId,
 	roleId: doc.roleId,
@@ -77,34 +82,34 @@ export class MongoRoleRepository implements RoleRepository {
 	}
 }
 
-export class MongoUserRoleAssignmentRepository implements UserRoleAssignmentRepository {
-	async listActiveForUser(userId: string): Promise<UserRoleAssignment[]> {
-		const docs = await UserRoleAssignmentModel.find({ userId, revokedAt: null })
+export class MongoAdminUserRoleAssignmentRepository implements AdminUserRoleAssignmentRepository {
+	async listActiveForUser(userId: string): Promise<AdminUserRoleAssignment[]> {
+		const docs = await AdminUserRoleAssignmentModel.find({ userId, revokedAt: null })
 			.sort({ assignedAt: 1 })
-			.lean<UserRoleAssignmentDoc[]>()
+			.lean<AdminUserRoleAssignmentDoc[]>()
 			.exec();
 		return docs.map(toAssignment);
 	}
 
-	async listAllForUser(userId: string): Promise<UserRoleAssignment[]> {
-		const docs = await UserRoleAssignmentModel.find({ userId })
+	async listAllForUser(userId: string): Promise<AdminUserRoleAssignment[]> {
+		const docs = await AdminUserRoleAssignmentModel.find({ userId })
 			.sort({ assignedAt: 1 })
-			.lean<UserRoleAssignmentDoc[]>()
+			.lean<AdminUserRoleAssignmentDoc[]>()
 			.exec();
 		return docs.map(toAssignment);
 	}
 
-	async listActiveForRole(roleId: string): Promise<UserRoleAssignment[]> {
-		const docs = await UserRoleAssignmentModel.find({ roleId, revokedAt: null })
+	async listActiveForRole(roleId: string): Promise<AdminUserRoleAssignment[]> {
+		const docs = await AdminUserRoleAssignmentModel.find({ roleId, revokedAt: null })
 			.sort({ assignedAt: 1 })
-			.lean<UserRoleAssignmentDoc[]>()
+			.lean<AdminUserRoleAssignmentDoc[]>()
 			.exec();
 		return docs.map(toAssignment);
 	}
 
-	async findActive(userId: string, roleId: string): Promise<UserRoleAssignment | null> {
-		const doc = await UserRoleAssignmentModel.findOne({ userId, roleId, revokedAt: null })
-			.lean<UserRoleAssignmentDoc>()
+	async findActive(userId: string, roleId: string): Promise<AdminUserRoleAssignment | null> {
+		const doc = await AdminUserRoleAssignmentModel.findOne({ userId, roleId, revokedAt: null })
+			.lean<AdminUserRoleAssignmentDoc>()
 			.exec();
 		return doc ? toAssignment(doc) : null;
 	}
@@ -117,10 +122,10 @@ export class MongoUserRoleAssignmentRepository implements UserRoleAssignmentRepo
 	 * The driver's code 11000 is translated into a named domain error here so no layer above
 	 * the adapter has to know what a MongoDB error code is.
 	 */
-	async assign(assignment: UserRoleAssignment): Promise<UserRoleAssignment> {
+	async assign(assignment: AdminUserRoleAssignment): Promise<AdminUserRoleAssignment> {
 		const { id, assignedAt, revokedAt, ...rest } = assignment;
 		try {
-			await UserRoleAssignmentModel.create([
+			await AdminUserRoleAssignmentModel.create([
 				{
 					_id: id,
 					...rest,
@@ -147,8 +152,8 @@ export class MongoUserRoleAssignmentRepository implements UserRoleAssignmentRepo
 		revokedByUserId: string | null;
 		reason: string | null;
 		revokedAt: string;
-	}): Promise<UserRoleAssignment | null> {
-		const doc = await UserRoleAssignmentModel.findOneAndUpdate(
+	}): Promise<AdminUserRoleAssignment | null> {
+		const doc = await AdminUserRoleAssignmentModel.findOneAndUpdate(
 			{ userId: input.userId, roleId: input.roleId, revokedAt: null },
 			{
 				$set: {
@@ -159,7 +164,7 @@ export class MongoUserRoleAssignmentRepository implements UserRoleAssignmentRepo
 			},
 			{ new: true },
 		)
-			.lean<UserRoleAssignmentDoc>()
+			.lean<AdminUserRoleAssignmentDoc>()
 			.exec();
 		return doc ? toAssignment(doc) : null;
 	}

@@ -1,4 +1,4 @@
-import type { Role, UserRoleAssignment } from '@saha-textile/contracts';
+import type { Role, AdminUserRoleAssignment } from '@saha-textile/contracts';
 import { describe, expect, it } from 'vitest';
 
 import { isWithinTier, resolveEffectivePermissions } from '../src/auth/effective-permissions';
@@ -15,7 +15,7 @@ const role = (overrides: Partial<Role> & Pick<Role, 'id'>): Role => ({
 	...overrides,
 });
 
-const assignment = (roleId: string, overrides: Partial<UserRoleAssignment> = {}): UserRoleAssignment => ({
+const assignment = (roleId: string, overrides: Partial<AdminUserRoleAssignment> = {}): AdminUserRoleAssignment => ({
 	id: `ura_${roleId}`,
 	userId: 'adm_1',
 	roleId,
@@ -127,7 +127,11 @@ describe('resolveEffectivePermissions', () => {
 	 * somebody who has been demoted, or the demotion would look applied and change nothing.
 	 */
 	it('refuses to let a role grant above the holder’s own tier', () => {
-		const adminRole = role({ id: 'r1', baseRole: 'admin', permissions: ['role.destroy', 'user_role.assign'] });
+		const adminRole = role({
+			id: 'r1',
+			baseRole: 'admin',
+			permissions: ['role.destroy', 'admin_user_role.assign'],
+		});
 
 		expect(
 			resolveEffectivePermissions({

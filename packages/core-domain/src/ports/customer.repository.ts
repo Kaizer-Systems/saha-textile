@@ -1,4 +1,4 @@
-import type { Address, Customer, CustomerListQuery, Paginated, UserStatus } from '@saha-textile/contracts';
+import type { Address, Customer, CustomerListQuery, Paginated, CustomerStatus } from '@saha-textile/contracts';
 
 /** Credential bundle kept inside the infra boundary (hash never leaves it lightly). */
 export interface CustomerCredential {
@@ -11,7 +11,7 @@ export type CustomerUpdateInput = {
 	displayName?: string;
 	email?: string;
 	phone?: string | null;
-	status?: UserStatus;
+	status?: CustomerStatus;
 };
 
 /**
@@ -31,7 +31,7 @@ export interface CustomerRepository {
 	list(query: CustomerListQuery): Promise<Paginated<Customer>>;
 	create(customer: Customer): Promise<Customer>;
 	update(customerId: string, patch: CustomerUpdateInput): Promise<Customer | null>;
-	setStatus(customerId: string, status: UserStatus): Promise<Customer | null>;
+	setStatus(customerId: string, status: CustomerStatus): Promise<Customer | null>;
 	addAddress(customerId: string, address: Address): Promise<Customer | null>;
 	updateAddress(customerId: string, addressId: string, patch: Partial<Omit<Address, 'id'>>): Promise<Customer | null>;
 	deleteAddress(customerId: string, addressId: string): Promise<Customer | null>;

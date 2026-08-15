@@ -37,7 +37,11 @@ const AdminUserSchema = new Schema<AdminUserDoc>(
 		displayName: { type: String },
 		phone: { type: String, default: null },
 		role: { type: String, enum: ['staff', 'admin'], required: true },
-		status: { type: String, enum: ['active', 'pending', 'disabled', 'locked', 'deleted'], default: 'active' },
+		// Four states, matching `AdminUserStatus` — no `deleted`. An operator is deactivated
+		// (`disabled`), never deleted, so the audit trail keeps its subject and the email stays
+		// claimed. The contract narrowed on 2026-08-15; this enum had stayed at the customer's
+		// five, which would have let a write reach a state no contract could describe.
+		status: { type: String, enum: ['active', 'pending', 'disabled', 'locked'], default: 'active' },
 		preferredLoginMethod: { type: String, enum: ['password', 'pin'], default: 'password' },
 		permissions: { type: [String], default: [] },
 		tokenVersion: { type: Number, default: 0 },

@@ -11,7 +11,7 @@ import { environment } from '../../../../public/environments/environment';
 @Injectable({
 	providedIn: 'root',
 })
-export class UserService {
+export class MockCustomerService {
 	private http = inject(HttpClient);
 
 	getUsers(payload?: Params): Observable<IUserModel> {

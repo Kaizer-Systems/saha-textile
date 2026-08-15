@@ -25,9 +25,13 @@ describe('permission registry', () => {
 	// `audit.index`; 34 → 35 on 2026-08-12 with `order.update`; 35 → 36 on 2026-08-12 with
 	// `cart.index` (`DEC-ACCOUNT-SEPARATION` D4 support-read); 36 → 40 on 2026-08-13 with
 	// `customer.{index,create,update,destroy}` (Admin Customer CRM); 40 → 103 on 2026-08-14
-	// absorbing kept UI gates + former mock ACL names for AuthStore render parity.
+	// absorbing kept UI gates + former mock ACL names for AuthStore render parity; 103 → 89 on
+	// 2026-08-15, retiring 14 codes nothing in any app referenced — marketplace vocabulary
+	// (`vendor_wallet.*`, `commission_history.index`, `withdraw_request.{create,index}`,
+	// `wallet.*`) that a single-vendor business cannot use, duplicates of live codes
+	// (`role.edit`, `theme.{edit,index}`), and the ambiguous `user.{edit,destroy}`.
 	it('exposes every code with a stable order', () => {
-		expect(PERMISSION_CODES).toHaveLength(103);
+		expect(PERMISSION_CODES).toHaveLength(89);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 
@@ -129,8 +133,8 @@ describe('permission registry', () => {
 			});
 			// Grantable, but no navigation entry reaches it yet — a grant screen shows it apart
 			// rather than pretending it does not exist.
-			expect(byCode.get('user_role.assign')).toMatchObject({
-				resource: 'user_role',
+			expect(byCode.get('admin_user_role.assign')).toMatchObject({
+				resource: 'admin_user_role',
 				action: 'assign',
 				serverOnly: true,
 			});

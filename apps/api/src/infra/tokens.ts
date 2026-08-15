@@ -25,4 +25,4 @@ export const MESSAGE_OUTBOX_REPOSITORY = Symbol('MessageOutboxRepository');
 export const CONSENT_REPOSITORY = Symbol('ConsentRepository');
 export const AUDIT_LOG_REPOSITORY = Symbol('AuditLogRepository');
 export const ROLE_REPOSITORY = Symbol('RoleRepository');
-export const USER_ROLE_ASSIGNMENT_REPOSITORY = Symbol('UserRoleAssignmentRepository');
+export const ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY = Symbol('AdminUserRoleAssignmentRepository');

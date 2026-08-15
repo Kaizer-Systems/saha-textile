@@ -3,15 +3,24 @@ import type { Connection } from 'mongoose';
 import { COLLECTION_NAMES } from '../collection-names';
 
 /**
- * Remap retired operator permission codes `user.*` → `admin_user.*` in stored grants.
+ * Remap retired operator permission codes to their `admin_user*` names in stored grants.
  *
  * Targets role documents, admin-user embedded grants, and outstanding invite payloads.
  * Idempotent: a second run finds nothing to rewrite.
+ *
+ * The `user_role.*` pair joined this map on 2026-08-15, when the assignment family was
+ * renamed. Same defect as the `user.*` codes above it and therefore the same remedy: the
+ * join is operator-only, so a bare `user` prefix claimed a population it never addressed.
+ * Codes retired without a successor — the marketplace vocabulary and the ambiguous
+ * `user.edit` / `user.destroy` — are deliberately absent: they map to nothing, and a grant
+ * holding one is dropped by the registry's own validation rather than translated here.
  */
 export const LEGACY_ADMIN_USER_PERMISSION_MAP = {
 	'user.create': 'admin_user.create',
 	'user.index': 'admin_user.index',
 	'user.update': 'admin_user.update',
+	'user_role.assign': 'admin_user_role.assign',
+	'user_role.revoke': 'admin_user_role.revoke',
 } as const;
 
 export type RenameAdminUserPermissionsReport = {

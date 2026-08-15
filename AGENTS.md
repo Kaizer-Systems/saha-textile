@@ -26,8 +26,8 @@
 
 ## 3. Architecture — non-negotiable: hexagonal / ports & adapters
 
-- **`packages/core-domain` depends on NOTHING external.** It holds entities, value objects, use-cases, and **PORT interfaces**: repositories (`CatalogRepository`, `OrderRepository`, `CartRepository`, `UserRepository`, `CurrencyRepository`, `PromotionRepository`) plus `StoragePort`, `PaymentGatewayPort`, `ShippingPort`, `FxRatePort`, `SearchPort`, `AuthPort`, `NotificationPort` (MSG91), **`YouTubePort`** (channel-feed discovery), and **`VideoTranscodePort`** (HLS encode; ffmpeg worker via BullMQ at the edge — see owner-decisions-log 2026-07-18 video pipeline).
-- **Adapters** implement ports at the edges (`adapters-db-mongo`, `adapters-storage-spaces`, `adapters-payments`, `adapters-shipping`, `adapters-fx`, `adapters-search`, `adapters-auth`, plus YouTube / video-transcode adapters as built). Wire them to ports via **NestJS DI** at composition time in the API. The Angular apps never touch adapters — they consume the API over HTTP.
+- **`packages/core-domain` depends on NOTHING external.** It holds entities, value objects, use-cases, and **PORT interfaces**: repositories (`CatalogRepository`, `OrderRepository`, `CartRepository`, `CustomerRepository`, `AdminUserRepository`, `CurrencyRepository`, `PromotionRepository`) plus `StoragePort`, `PaymentGatewayPort`, `ShippingPort`, `FxRatePort`, `SearchPort`, `AuthPort`, `NotificationPort` (MSG91), **`YouTubePort`** (channel-feed discovery), and **`VideoTranscodePort`** (HLS encode; ffmpeg worker via BullMQ at the edge — see owner-decisions-log 2026-07-18 video pipeline).
+- **Adapters** implement ports at the edges (`adapters-db-mongo`, `adapters-notifications-msg91`, `adapters-storage-spaces`, `adapters-payments`, `adapters-shipping`, `adapters-fx`, `adapters-search`, `adapters-auth`, plus YouTube / video-transcode adapters as built). Wire them to ports via **NestJS DI** at composition time in the API. The Angular apps never touch adapters — they consume the API over HTTP.
 - **Dependency rule:** all imports point inward. Core never imports an adapter.
 - **Swappability test:** replacing MongoDB with PostgreSQL must touch only a new db adapter + one DI binding — never core, use-cases, or UI. If a task forces edits across layers to swap an edge concern, the layering is wrong: **stop and flag it.**
 - Adapters map persistence shapes ↔ domain entities (DTOs). **Never leak Mongoose docs / SQL rows into core.**
@@ -40,7 +40,7 @@
 apps/        storefront (Angular + AnalogJS PWA) · admin (Angular) ·
              api (NestJS + Fastify) · developer-portal (Docusaurus)
 packages/    core-domain · contracts · config · ui ·
-             adapters-db-mongo · adapters-storage-spaces · adapters-payments ·
+             adapters-db-mongo · adapters-notifications-msg91 · adapters-storage-spaces · adapters-payments ·
              adapters-shipping · adapters-fx · adapters-search · adapters-auth
 vendor/      Fastkart (Angular storefront + admin reference — UI/behaviour only, never forked)
 docs/        developer-portal content, including engineering-live-context/ (canonical live KB)

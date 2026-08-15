@@ -77,6 +77,7 @@ const SHARED_WORDS = new Set([
 	'stock',
 	'stripe',
 	'style',
+	'whatsapp',
 	'total',
 	'transactions',
 	'twitter',

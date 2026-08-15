@@ -7,6 +7,7 @@ import {
 	Get,
 	HttpCode,
 	HttpStatus,
+	Inject,
 	Param,
 	Post,
 	Req,
@@ -15,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+	ActivateCustomerRequest,
 	type AuthSessionResponse,
 	EmailOtpRequest,
 	EmailOtpVerifyRequest,
@@ -29,15 +31,18 @@ import {
 } from '@saha-textile/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
+import { CartService } from '../cart/cart.service';
+import { cookieNames, sessionCookieOptions } from '../common/cookies';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { API_TAGS } from '../openapi-tags';
 import { AuthService } from './auth.service';
-import { assertPasswordAcceptable } from './password-policy';
 import { Principal } from './ownership';
+import { assertPasswordAcceptable } from './password-policy';
 import { tooManyRequests } from './rate-limit-response';
 import { RotatesSession } from './refresh-reuse.guard';
 import { type AuthenticatedPrincipal, Audience, Public } from './session.guard';
 import { SessionService } from './session.service';
-import { API_TAGS } from '../openapi-tags';
 
 /**
  * The one response every enumeration-sensitive endpoint returns.
@@ -57,7 +62,19 @@ export class StorefrontAuthController {
 	constructor(
 		private readonly auth: AuthService,
 		private readonly sessions: SessionService,
+		private readonly carts: CartService,
+		@Inject(APP_CONFIG) private readonly config: AppConfig,
 	) {}
+
+	/** Merge a proven guest cart into the new session, then drop `st_guest`. */
+	private async adoptGuestCart(userId: string, request: FastifyRequest, reply: FastifyReply): Promise<void> {
+		const names = cookieNames(this.config);
+		const guestToken = request.cookies?.[names.guest] ?? null;
+		await this.carts.mergeGuestCartForUser(userId, guestToken);
+		if (guestToken) {
+			void reply.setCookie(names.guest, '', sessionCookieOptions(this.config, 0));
+		}
+	}
 
 	@Post('register')
 	@Public()
@@ -97,37 +114,40 @@ export class StorefrontAuthController {
 		}
 
 		const passwordHash = await this.auth.hashPassword(body.password);
-		const user = await this.auth.userRepository.save({
-			id: `user_${randomUUID()}`,
+		const user = await this.auth.customerRepository.save({
+			id: `cus_${randomUUID()}`,
 			email,
 			emailVerified: false,
 			phone: null,
 			phoneVerified: false,
 			displayName: body.displayName,
-			role: 'customer',
 			status: 'active',
 			identities: [{ provider: 'password', email }],
 			addresses: [],
+			contacts: [],
+			savedSizes: [],
+			measurementProfiles: [],
 			guestCartId: body.guestCartId ?? null,
 		});
-		await this.auth.authUserRepository.setPasswordHash(user.id, passwordHash);
+		await this.auth.customerAuthRepository.setPasswordHash(user.id, passwordHash);
 		await this.auth.issueEmailVerification(user.id, email);
 
-		const state = await this.auth.findAuthUserById(user.id);
+		const state = await this.auth.customerAuthRepository.findAuthStateById(user.id);
 		const { session } = await this.sessions.establish({
 			user: {
 				id: user.id,
-				role: 'customer',
+				role: null,
 				tokenVersion: state?.tokenVersion ?? 0,
-				permissionsVersion: state?.permissionsVersion ?? 0,
+				permissionsVersion: 0,
 			},
 			audience: 'storefront',
 			request,
 			reply,
 		});
+		await this.adoptGuestCart(user.id, request, reply);
 
 		return {
-			user: await this.auth.publicUser(user.id),
+			user: await this.auth.publicCustomer(user.id),
 			session: {
 				audience: session.audience,
 				expiresAt: session.expiresAt,
@@ -162,8 +182,9 @@ export class StorefrontAuthController {
 		const user = await this.auth.findAuthUserByEmail(email);
 		const valid = await this.auth.verifyPassword(user, body.password);
 
-		// One message for every failure mode: unknown address, wrong password, and
-		// non-active account are indistinguishable to the caller.
+		// One message for every failure mode: unknown address, wrong password,
+		// non-active account, and operator-only address (population-scoped lookup never
+		// resolves adminUsers here — `DEC-ACCOUNT-SEPARATION` D1 / storefront rejection).
 		if (!user || !valid || user.status !== 'active') {
 			// Only failures are counted, so a signed-in customer never spends budget they
 			// share with thousands of others behind the same carrier-grade NAT address.
@@ -176,21 +197,22 @@ export class StorefrontAuthController {
 		await this.auth.clearRateLimitIdentifier('storefront_login', email);
 
 		// A storefront password login must never mint an admin session.
-		await this.auth.authUserRepository.recordSuccessfulLogin(user.id, new Date().toISOString());
+		await this.auth.customerAuthRepository.recordSuccessfulLogin(user.id, new Date().toISOString());
 		const { session } = await this.sessions.establish({
 			user: {
 				id: user.id,
-				role: user.role,
+				role: null,
 				tokenVersion: user.tokenVersion,
-				permissionsVersion: user.permissionsVersion,
+				permissionsVersion: 0,
 			},
 			audience: 'storefront',
 			request,
 			reply,
 		});
+		await this.adoptGuestCart(user.id, request, reply);
 
 		return {
-			user: await this.auth.publicUser(user.id),
+			user: await this.auth.publicCustomer(user.id),
 			session: {
 				audience: session.audience,
 				expiresAt: session.expiresAt,
@@ -254,23 +276,24 @@ export class StorefrontAuthController {
 		}
 		await this.auth.clearRateLimitIdentifier('otp_verify', email);
 
-		const user = await this.auth.findAuthUserById(result.userId);
+		const user = await this.auth.customerAuthRepository.findAuthStateById(result.userId);
 		if (!user || user.status !== 'active') throw new UnauthorizedException('Invalid or expired code');
 
 		const { session } = await this.sessions.establish({
 			user: {
 				id: user.id,
-				role: user.role,
+				role: null,
 				tokenVersion: user.tokenVersion,
-				permissionsVersion: user.permissionsVersion,
+				permissionsVersion: 0,
 			},
 			audience: 'storefront',
 			request,
 			reply,
 		});
+		await this.adoptGuestCart(user.id, request, reply);
 
 		return {
-			user: await this.auth.publicUser(user.id),
+			user: await this.auth.publicCustomer(user.id),
 			session: {
 				audience: session.audience,
 				expiresAt: session.expiresAt,
@@ -293,7 +316,7 @@ export class StorefrontAuthController {
 	): Promise<AuthSessionResponse> {
 		const { session } = await this.sessions.refresh({ request, reply, audience: 'storefront' });
 		return {
-			user: await this.auth.publicUser(session.userId),
+			user: await this.auth.publicCustomer(session.userId),
 			session: {
 				audience: session.audience,
 				expiresAt: session.expiresAt,
@@ -350,11 +373,29 @@ export class StorefrontAuthController {
 		this.sessions.clearCookies(reply);
 	}
 
+	@Post('activate')
+	@Public()
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({
+		operationId: 'activateCustomer',
+		summary: 'Set the first password from an admin-minted activation token',
+	})
+	async activate(
+		@Body(new ZodValidationPipe(ActivateCustomerRequest)) body: ActivateCustomerRequest,
+		@Res({ passthrough: true }) reply: FastifyReply,
+	): Promise<void> {
+		const result = await this.auth.activateCustomer(body.token, body.newPassword);
+		if (!result) throw new UnauthorizedException('Invalid or expired activation token');
+
+		await this.sessions.revokeAllForUser(result.userId, 'password_changed');
+		this.sessions.clearCookies(reply);
+	}
+
 	@Get('me')
 	@ApiOperation({ operationId: 'getCurrentCustomer', summary: 'Current storefront user (requires a session cookie)' })
 	async me(@Principal() principal: AuthenticatedPrincipal | undefined) {
 		if (!principal) throw new UnauthorizedException('Authentication required');
-		return { user: await this.auth.publicUser(principal.userId) };
+		return { user: await this.auth.publicCustomer(principal.userId) };
 	}
 
 	/**
@@ -450,7 +491,7 @@ export class StorefrontAuthController {
 	): Promise<GenericAcceptedResponse> {
 		if (!principal) throw new UnauthorizedException('Authentication required');
 
-		const user = await this.auth.findAuthUserById(principal.userId);
+		const user = await this.auth.customerAuthRepository.findAuthStateById(principal.userId);
 		// Already-verified and rate-limited callers get the same answer as a real send.
 		if (user?.email && !user.emailVerified) {
 			const limit = await this.auth.consumeRateLimit('otp_request', { identifier: user.email, ip: request.ip });

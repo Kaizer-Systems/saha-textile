@@ -2,7 +2,7 @@ import 'dotenv/config';
 import 'reflect-metadata';
 
 import { NestFactory } from '@nestjs/core';
-import { ADMINISTRATOR_ROLE_KEY, UserModel, ensureSystemRoles } from '@saha-textile/adapters-db-mongo';
+import { ADMINISTRATOR_ROLE_KEY, AdminUserModel, ensureSystemRoles } from '@saha-textile/adapters-db-mongo';
 
 import { AppModule } from './app.module';
 import { FirstAdminAlreadyExistsError, bootstrapFirstAdmin } from './first-admin';
@@ -39,7 +39,7 @@ async function main(): Promise<void> {
 			app,
 			{ email },
 			{
-				models: { UserModel: UserModel as never },
+				models: { AdminUserModel: AdminUserModel as never },
 				ensureSystemRoles,
 				administratorRoleKey: ADMINISTRATOR_ROLE_KEY,
 			},

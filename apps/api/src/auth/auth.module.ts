@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 
+import { CartModule } from '../cart/cart.module';
 import { AdminAuthController } from './admin-auth.controller';
 import { AdminInviteService } from './admin-invite.service';
 import { AdminSecurityService } from './admin-security.service';
@@ -14,6 +15,7 @@ import { StorefrontAuthController } from './storefront-auth.controller';
  */
 @Global()
 @Module({
+	imports: [CartModule],
 	controllers: [StorefrontAuthController, AdminAuthController],
 	providers: [AuthService, SessionService, AdminInviteService, AdminSecurityService],
 	exports: [AuthService, SessionService, AdminInviteService, AdminSecurityService],

@@ -13,7 +13,8 @@
     "test": "vitest run --passWithNoTests",
     "e2e:session-rotation": "node e2e/session-rotation.mjs",
     "check:openapi": "node scripts/check-openapi.mjs",
-    "bootstrap:first-admin": "nest build && node dist/create-first-admin.js"
+    "bootstrap:first-admin": "nest build && node dist/create-first-admin.js",
+    "set:local-credentials": "node --import tsx src/set-local-test-credentials.ts"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.2",
@@ -25,6 +26,7 @@
     "@nestjs/platform-fastify": "11.1.27",
     "@nestjs/swagger": "11.4.5",
     "@saha-textile/adapters-db-mongo": "workspace:*",
+    "@saha-textile/adapters-notifications-msg91": "workspace:*",
     "@saha-textile/contracts": "workspace:*",
     "@saha-textile/core-domain": "workspace:*",
     "argon2": "0.44.0",
@@ -40,6 +42,7 @@
     "@nestjs/schematics": "11.1.0",
     "@nestjs/testing": "11.1.27",
     "@types/jsonwebtoken": "9.0.10",
+    "tsx": "4.22.4",
     "typescript": "6.0.3",
     "vitest": "4.1.9"
   }

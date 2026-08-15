@@ -17,7 +17,7 @@ const role = (overrides: Partial<Role> & Pick<Role, 'id'>): Role => ({
 
 const assignment = (roleId: string, overrides: Partial<UserRoleAssignment> = {}): UserRoleAssignment => ({
 	id: `ura_${roleId}`,
-	userId: 'user_1',
+	userId: 'adm_1',
 	roleId,
 	assignedByUserId: null,
 	assignedAt: '2026-01-01T00:00:00.000Z',
@@ -28,21 +28,20 @@ const assignment = (roleId: string, overrides: Partial<UserRoleAssignment> = {})
 });
 
 describe('tier ordering', () => {
-	it('ranks customer below staff below admin', () => {
-		expect(isWithinTier('customer', 'admin')).toBe(true);
+	it('ranks staff below admin', () => {
 		expect(isWithinTier('staff', 'admin')).toBe(true);
 		expect(isWithinTier('admin', 'admin')).toBe(true);
 		expect(isWithinTier('admin', 'staff')).toBe(false);
-		expect(isWithinTier('staff', 'customer')).toBe(false);
+		expect(isWithinTier('staff', 'staff')).toBe(true);
 	});
 
 	/**
-	 * Alphabetically `'admin' < 'customer' < 'staff'`, so a string comparison would invert
-	 * the hierarchy while still looking like a comparison. This pins the table instead.
+	 * Alphabetically `'admin' < 'staff'`, so a string comparison would invert the hierarchy
+	 * while still looking like a comparison. This pins the table instead.
 	 */
 	it('does not fall back to alphabetical order', () => {
-		expect(isWithinTier('admin', 'customer')).toBe(false);
-		expect(isWithinTier('customer', 'staff')).toBe(true);
+		expect(isWithinTier('admin', 'staff')).toBe(false);
+		expect(isWithinTier('staff', 'admin')).toBe(true);
 	});
 });
 
@@ -52,11 +51,11 @@ describe('resolveEffectivePermissions', () => {
 		expect(
 			resolveEffectivePermissions({
 				role: 'admin',
-				embedded: ['user.index', 'product.index'],
+				embedded: ['admin_user.index', 'product.index'],
 				assignments: [],
 				roles: [],
 			}),
-		).toEqual(['product.index', 'user.index']);
+		).toEqual(['admin_user.index', 'product.index']);
 	});
 
 	it('adds the permissions of an active assignment', () => {
@@ -65,11 +64,11 @@ describe('resolveEffectivePermissions', () => {
 		expect(
 			resolveEffectivePermissions({
 				role: 'staff',
-				embedded: ['user.index'],
+				embedded: ['admin_user.index'],
 				assignments: [assignment('r1')],
 				roles: [editor],
 			}),
-		).toEqual(['product.create', 'product.index', 'user.index']);
+		).toEqual(['admin_user.index', 'product.create', 'product.index']);
 	});
 
 	it('never removes an embedded grant — assignments only add', () => {
@@ -77,26 +76,26 @@ describe('resolveEffectivePermissions', () => {
 
 		const result = resolveEffectivePermissions({
 			role: 'staff',
-			embedded: ['user.index', 'order.index'],
+			embedded: ['admin_user.index', 'order.index'],
 			assignments: [assignment('r1')],
 			roles: [narrow],
 		});
 
-		expect(result).toContain('user.index');
+		expect(result).toContain('admin_user.index');
 		expect(result).toContain('order.index');
 	});
 
 	it('deduplicates and sorts, so two equivalent inputs give one answer', () => {
-		const overlapping = role({ id: 'r1', permissions: ['user.index', 'tag.index'] });
+		const overlapping = role({ id: 'r1', permissions: ['admin_user.index', 'tag.index'] });
 
 		expect(
 			resolveEffectivePermissions({
 				role: 'staff',
-				embedded: ['user.index'],
+				embedded: ['admin_user.index'],
 				assignments: [assignment('r1')],
 				roles: [overlapping],
 			}),
-		).toEqual(['tag.index', 'user.index']);
+		).toEqual(['admin_user.index', 'tag.index']);
 	});
 
 	it('ignores a revoked assignment even when it is handed one', () => {
@@ -116,11 +115,11 @@ describe('resolveEffectivePermissions', () => {
 		expect(
 			resolveEffectivePermissions({
 				role: 'admin',
-				embedded: ['user.index'],
+				embedded: ['admin_user.index'],
 				assignments: [assignment('deleted-role')],
 				roles: [],
 			}),
-		).toEqual(['user.index']);
+		).toEqual(['admin_user.index']);
 	});
 
 	/**
@@ -133,11 +132,11 @@ describe('resolveEffectivePermissions', () => {
 		expect(
 			resolveEffectivePermissions({
 				role: 'staff',
-				embedded: ['user.index'],
+				embedded: ['admin_user.index'],
 				assignments: [assignment('r1')],
 				roles: [adminRole],
 			}),
-		).toEqual(['user.index']);
+		).toEqual(['admin_user.index']);
 	});
 
 	it('allows a role at or below the holder’s tier', () => {

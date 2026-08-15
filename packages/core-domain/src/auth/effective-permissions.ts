@@ -1,31 +1,30 @@
-import type { Role, UserRole, UserRoleAssignment } from '@saha-textile/contracts';
+import type { AdminRole, Role, UserRoleAssignment } from '@saha-textile/contracts';
 
 /**
- * Coarse tier ordering. The only place the hierarchy is written down.
+ * Coarse operator tier ordering (`DEC-ACCOUNT-SEPARATION` D2 / D7).
  *
- * `customer` < `staff` < `admin`. Comparing tiers by this table rather than by string
- * comparison is deliberate: `'admin' < 'customer' < 'staff'` alphabetically, which is a
- * plausible-looking bug that would silently invert the check below.
+ * Customers have no role. `staff` < `admin`. Comparing tiers by this table rather than by
+ * string comparison is deliberate: alphabetically the order would not match the hierarchy.
  */
-const TIER_RANK: Readonly<Record<UserRole, number>> = { customer: 0, staff: 1, admin: 2 };
+const TIER_RANK: Readonly<Record<AdminRole, number>> = { staff: 1, admin: 2 };
 
-/** True when `role` sits at or below `ceiling` in the coarse hierarchy. */
-export function isWithinTier(role: UserRole, ceiling: UserRole): boolean {
-	return TIER_RANK[role] <= TIER_RANK[ceiling];
+/** True when `role` sits at or below `ceiling` in the coarse operator hierarchy. */
+export function isWithinTier(role: AdminRole, ceiling: AdminRole): boolean {
+	return (TIER_RANK[role] ?? 0) <= (TIER_RANK[ceiling] ?? 0);
 }
 
 /**
- * The permissions a principal actually holds right now.
+ * The permissions an operator actually holds right now.
  *
  * ## The union, and why it is a union
  *
  * Two sources exist during the migration from embedded grants to explicit assignments: the
- * `permissions` array on the user, which is what everything read before, and the role
- * definitions behind that user's ACTIVE assignments. Taking the union means an assignment can
- * only ever ADD authority, so introducing assignments cannot take away access that already
+ * `permissions` array on the operator, which is what everything read before, and the role
+ * definitions behind that operator's ACTIVE assignments. Taking the union means an assignment
+ * can only ever ADD authority, so introducing assignments cannot take away access that already
  * worked. The embedded array is transitional and retires once assignments are the only writer;
- * until then, preferring one over the other would silently revoke permissions the moment a
- * user received their first assignment.
+ * until then, preferring one over the other would silently revoke permissions the moment an
+ * operator received their first assignment.
  *
  * ## The tier ceiling
  *
@@ -49,9 +48,9 @@ export function isWithinTier(role: UserRole, ceiling: UserRole): boolean {
  * do (G-CORE-CONTRACTS: `import type` only).
  */
 export function resolveEffectivePermissions(input: {
-	/** The holder's coarse tier, which caps what any assignment may contribute. */
-	role: UserRole;
-	/** Transitional embedded grants from the user document. */
+	/** The holder's coarse operator tier, which caps what any assignment may contribute. */
+	role: AdminRole;
+	/** Transitional embedded grants from the operator document. */
 	embedded: readonly string[];
 	assignments: readonly UserRoleAssignment[];
 	/** Role definitions for the assignments above. Missing roles contribute nothing. */

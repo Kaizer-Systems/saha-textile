@@ -4,22 +4,6 @@
 	(ngSubmit)="submit()"
 >
 	<app-form-fields
-		[label]="'name'"
-		[for]="'name'"
-		[required]="true"
-	>
-		<input
-			class="form-control"
-			type="text"
-			placeholder="{{ 'enter_full_name' | transloco}}"
-			name="name"
-			formControlName="name"
-		/>
-		@if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
-		<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
-		}
-	</app-form-fields>
-	<app-form-fields
 		[label]="'email'"
 		[for]="'email'"
 		[required]="true"
@@ -38,98 +22,6 @@
 		}
 	</app-form-fields>
 	<app-form-fields
-		[label]="'phone'"
-		[for]="'phone'"
-		[required]="true"
-	>
-		@if(isBrowser) {
-		<select2
-			class="custom-select intl-tel-input"
-			[templates]="template"
-			[data]="codes"
-			formControlName="country_code"
-			noResultMessage="{{ 'no_data_found' | transloco }}"
-		>
-			<ng-template
-				#template
-				let-data="data"
-			>
-				<div class="country">
-					<div class="flag-box">
-						<div class="iti-flag {{ data?.class }}"></div>
-					</div>
-					<span class="dial-code">{{ data.code }}</span>
-				</div>
-			</ng-template>
-		</select2>
-		}
-		<input
-			type="number"
-			class="form-control intl-input-padding"
-			formControlName="phone"
-			placeholder="{{ 'enter_phone' | transloco }}"
-			name="phone"
-		/>
-		@if (form.controls['phone'].touched && form.controls['phone'].errors?.['required']) {
-		<div
-			class="invalid-feedback"
-			autocomplete="false"
-		>
-			{{ 'phone_number_is_required' | transloco }}
-		</div>
-		} @if (form.controls['phone'].touched && form.controls['phone'].errors?.['pattern']) {
-		<div class="invalid-feedback">{{ 'phone_number_is_invalid' | transloco }}</div>
-		}
-	</app-form-fields>
-	@if (type() !== 'edit') {
-	<app-form-fields
-		[label]="'password'"
-		[for]="'password'"
-		[required]="true"
-	>
-		<input
-			class="form-control"
-			type="password"
-			placeholder="{{ 'enter_password' | transloco}}"
-			name="password"
-			formControlName="password"
-		/>
-		@if (form.controls['password'].touched && form.controls['password'].errors?.['required']) {
-		<div
-			class="invalid-feedback"
-			autocomplete="false"
-		>
-			{{ 'password_is_required' | transloco }}
-		</div>
-		}
-	</app-form-fields>
-	} @if (type() !== 'edit') {
-	<app-form-fields
-		[label]="'confirm_password'"
-		[for]="'password_confirmation'"
-		[required]="true"
-	>
-		<input
-			class="form-control"
-			type="password"
-			placeholder="{{ 'enter_confirm_password' | transloco }}"
-			name="password_confirmation"
-			formControlName="password_confirmation"
-		/>
-		@if (form.controls['password_confirmation'].touched &&
-		form.controls['password_confirmation'].errors?.['required']) {
-		<div
-			class="invalid-feedback"
-			autocomplete="false"
-		>
-			{{ 'confirm_password_is_required' | transloco }}
-		</div>
-		} @else { @if (passwordMatchError) {
-		<div class="invalid-feedback">{{ 'confirm_password_does_not_matched' | transloco }}</div>
-		} }
-	</app-form-fields>
-	}
-	<app-form-fields
 		[label]="'role'"
 		[for]="'role'"
 		[required]="true"
@@ -137,15 +29,16 @@
 		@if(isBrowser) {
 		<select2
 			class="custom-select"
-			[data]="roles().length ? roles() : []"
+			[data]="coarseRoles"
 			[placeholder]="'select_role' | transloco"
-			formControlName="role_id"
+			formControlName="role"
 			noResultMessage="{{ 'no_data_found' | transloco }}"
 		/>
-		} @if (form.controls['role_id'].touched && form.controls['role_id'].errors?.['required']) {
+		} @if (form.controls['role'].touched && form.controls['role'].errors?.['required']) {
 		<div class="invalid-feedback">{{ 'role_is_required' | transloco }}</div>
 		}
 	</app-form-fields>
+	@if (type() === 'edit') {
 	<app-form-fields
 		[label]="'status'"
 		[for]="'status'"
@@ -162,5 +55,56 @@
 			</label>
 		</div>
 	</app-form-fields>
+	}
 	<app-button [id]="'user_btn'">{{ (type() === 'create' ? 'save_user' : 'update_user') | transloco }}</app-button>
 </form>
+
+@if (type() === 'edit') {
+<form
+	class="theme-form theme-form-2 mega-form mt-4"
+	[formGroup]="roleAssignForm"
+	(ngSubmit)="assignRole()"
+>
+	<h4 class="fw-semibold mb-3">{{ 'roles' | transloco }}</h4>
+
+	@if (assignedRoles().length === 0) {
+	<p class="text-content">{{ 'no_data_found' | transloco }}</p>
+	} @else {
+	<ul class="list-unstyled mb-4">
+		@for (role of assignedRoles(); track role.roleId) {
+		<li class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+			<span class="text-content">{{ role.label }} ({{ role.key }})</span>
+			<button
+				type="button"
+				class="btn btn-outline-primary btn-sm"
+				*hasPermission="'user_role.revoke'"
+				(click)="revokeRole(role.roleId)"
+			>
+				<i class="ri-delete-bin-line"></i>
+				{{ 'delete' | transloco }}
+			</button>
+		</li>
+		}
+	</ul>
+	}
+
+	<div *hasPermission="'user_role.assign'">
+		<app-form-fields
+			[label]="'role'"
+			[for]="'assign_role_id'"
+			[required]="true"
+		>
+			@if (isBrowser) {
+			<select2
+				class="custom-select"
+				[data]="assignableRoleOptions()"
+				[placeholder]="'select_role' | transloco"
+				formControlName="roleId"
+				noResultMessage="{{ 'no_data_found' | transloco }}"
+			/>
+			}
+		</app-form-fields>
+		<app-button [id]="'assign_role_btn'">{{ 'add' | transloco }}</app-button>
+	</div>
+</form>
+}

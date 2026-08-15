@@ -13,8 +13,11 @@ import {
 	type AdminPasswordLoginInput,
 	type AdminPinLoginInput,
 	type AdminPinSetupInput,
+	type AdminInviteInput,
 	type AdminSecurityState,
 	type AdminSessionResult,
+	type AdminSessionSummary,
+	type AdminUser,
 } from './auth-gateway';
 
 /**
@@ -38,6 +41,10 @@ const ROUTES = {
 	pin: '/auth/admin/pin',
 	pinRemove: '/auth/admin/pin/remove',
 	passwordChange: '/auth/admin/password/change',
+	profile: '/auth/admin/profile',
+	sessions: '/auth/admin/sessions',
+	revokeOthers: '/auth/admin/sessions/revoke-others',
+	invites: '/auth/admin/invites',
 } as const;
 
 /**
@@ -109,6 +116,10 @@ export class HttpAdminAuthGateway extends AdminAuthGateway {
 		return this.http.post<AdminSessionResult>(this.url(ROUTES.resume), { pin });
 	}
 
+	override resumeWithPassword(password: string): Observable<AdminSessionResult> {
+		return this.http.post<AdminSessionResult>(this.url(ROUTES.resume), { password });
+	}
+
 	override requestPasswordReset(identifier: string): Observable<void> {
 		return this.http.post<unknown>(this.url(ROUTES.passwordForgot), { identifier }).pipe(map(() => undefined));
 	}
@@ -119,6 +130,24 @@ export class HttpAdminAuthGateway extends AdminAuthGateway {
 
 	override securitySettings(): Observable<AdminSecurityState> {
 		return this.http.get<AdminSecurityState>(this.url(ROUTES.security));
+	}
+
+	override listSessions(): Observable<AdminSessionSummary[]> {
+		return this.http
+			.get<{ items: AdminSessionSummary[] }>(this.url(ROUTES.sessions))
+			.pipe(map((body) => body.items));
+	}
+
+	override revokeSession(sessionId: string): Observable<void> {
+		return this.http.delete<void>(this.url(`${ROUTES.sessions}/${encodeURIComponent(sessionId)}`));
+	}
+
+	override revokeOtherSessions(): Observable<{ revoked: number }> {
+		return this.http.post<{ revoked: number }>(this.url(ROUTES.revokeOthers), {});
+	}
+
+	override updateProfile(input: { displayName: string; phone?: string | null }): Observable<AdminUser> {
+		return this.http.patch<AdminUser>(this.url(ROUTES.profile), input);
 	}
 
 	override setPin(input: AdminPinSetupInput): Observable<void> {
@@ -135,6 +164,10 @@ export class HttpAdminAuthGateway extends AdminAuthGateway {
 
 	override changePassword(input: AdminPasswordChangeInput): Observable<void> {
 		return this.http.post<void>(this.url(ROUTES.passwordChange), input);
+	}
+
+	override createInvite(input: AdminInviteInput): Observable<void> {
+		return this.http.post<unknown>(this.url(ROUTES.invites), input).pipe(map(() => undefined));
 	}
 
 	override logout(): Observable<void> {

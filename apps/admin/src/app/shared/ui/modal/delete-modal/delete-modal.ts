@@ -56,7 +56,9 @@ export class DeleteModal {
 		}
 	}
 
-	delete(_modal: NgbModalRef) {
+	delete(modal: NgbModalRef) {
+		modal.close('delete');
+		this.modalOpen = false;
 		this.deleteItem.emit(this.userAction);
 	}
 

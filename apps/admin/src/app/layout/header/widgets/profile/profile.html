@@ -4,22 +4,14 @@
 		(click)="clickHeaderOnMobile()"
 	>
 		<div class="profile-img">
-			@if ((user$ | async)?.profile_image) {
-			<img
-				class="user-profile rounded-circle"
-				[src]="(user$ | async)?.profile_image?.original_url"
-				alt="profile"
-			/>
-			} @else {
 			<div class="user-round">
-				<h4>{{ (user$ | async)?.name?.charAt(0)?.toString()?.toUpperCase() }}</h4>
+				<h4>{{ displayInitial() }}</h4>
 			</div>
-			}
 		</div>
 		<div class="user-name-hide media-body">
-			<span>{{ (user$ | async)?.name }}</span>
+			<span>{{ displayName() }}</span>
 			<p class="font-roboto mb-0">
-				{{ (user$ | async)?.role?.name }}
+				{{ roleLabel() }}
 				<i class="middle ri-arrow-down-s-line"></i>
 			</p>
 		</div>

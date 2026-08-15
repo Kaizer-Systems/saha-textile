@@ -282,7 +282,8 @@
 							<a href="javascript:void(0)">
 								<i [class]="'ri-lock-line'"></i>
 							</a>
-							} @else { @for ( action of tableConfig?.rowActions; track action) {
+							} @else { @for ( action of tableConfig?.rowActions; track action) { @if
+							(columnData['status'] !== 'deleted') {
 							<ng-container *hasPermission="action.permission">
 								<li>
 									<a
@@ -295,7 +296,7 @@
 									</a>
 								</li>
 							</ng-container>
-							} }
+							} } }
 						</ul>
 					</td>
 					}

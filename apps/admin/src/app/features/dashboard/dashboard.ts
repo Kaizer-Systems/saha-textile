@@ -34,8 +34,7 @@ import {
 import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
-import { AccountStore } from '@core/state/account.store';
-import { IAccountUser } from '@data-access/interfaces/account.interface';
+import { AuthStore } from '@core/state/auth.store';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IRevenueChart, IStatisticsCount } from '@data-access/interfaces/dashboard.interface';
 import { IOrder, IOrderModel } from '@data-access/interfaces/order.interface';
@@ -95,7 +94,7 @@ export class Dashboard {
 	private platformId = inject(PLATFORM_ID);
 	private document = inject<Document>(DOCUMENT);
 	private router = inject(Router);
-	private accountStore = inject(AccountStore);
+	private authStore = inject(AuthStore);
 
 	private readonly statisticsQuery = injectStatisticsQuery();
 	statistics$: Observable<IStatisticsCount | undefined> = toObservable(this.statisticsQuery.data);
@@ -143,7 +142,8 @@ export class Dashboard {
 	readonly storesQuery = injectStoresQuery(() => this.sellerParams());
 	store$: Observable<IStoresModel | undefined> = toObservable(this.storesQuery.data);
 
-	user$: Observable<IAccountUser | null> = toObservable(this.accountStore.user);
+	/** Operators are never Fastkart vendors — keep template branches on live role. */
+	readonly isVendor = computed(() => this.authStore.user()?.role === 'vendor');
 	readonly chart = viewChild.required<ElementRef>('chart');
 	public chartOptions!: Partial<ChartOptions>;
 	// Revenue is no longer persisted, so it arrives asynchronously. We create the chart once BOTH the

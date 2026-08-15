@@ -1,6 +1,27 @@
-import { Select2Data } from 'ng-select2-component';
+import { Select2Data, Select2Option } from 'ng-select2-component';
 
-export const countryCodes: Select2Data = [
+/** Theme dial markup (reuses .country / .flag-box / .iti-flag / .dial-code). */
+function dialLabel(flagClass: string, code: string): string {
+	return `<div class="country"><div class="flag-box"><div class="iti-flag ${flagClass}"></div></div><span class="dial-code">${code}</span></div>`;
+}
+
+function withDialFlagLabels(options: Select2Data): Select2Data {
+	return options.map((option) => {
+		if ('options' in option) {
+			return option;
+		}
+		const item = option as Select2Option;
+		const data = item.data as { class?: string; code?: string } | undefined;
+		const flagClass = data?.class ?? '';
+		const code = (data?.code ?? String(item.label ?? '')).trim();
+		return {
+			...item,
+			label: dialLabel(flagClass, code),
+		};
+	});
+}
+
+const rawCountryCodes: Select2Data = [
 	{
 		label: '+971',
 		value: '971',
@@ -1994,3 +2015,5 @@ export const countryCodes: Select2Data = [
 		},
 	},
 ];
+
+export const countryCodes: Select2Data = withDialFlagLabels(rawCountryCodes);

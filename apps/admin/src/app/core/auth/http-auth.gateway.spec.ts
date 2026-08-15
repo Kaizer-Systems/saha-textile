@@ -63,6 +63,7 @@ describe('HttpAdminAuthGateway credential classification', () => {
 		['password login', () => gateway.loginWithPassword({ identifier: 'operator', password: 'x'.repeat(12) })],
 		['PIN login', () => gateway.loginWithPin({ identifier: 'operator', pin: '135790' })],
 		['PIN quick-resume', () => gateway.resumeWithPin('135790')],
+		['password quick-resume', () => gateway.resumeWithPassword('x'.repeat(12))],
 		['password recovery request', () => gateway.requestPasswordReset('operator')],
 		['password reset', () => gateway.resetPassword({ token: 'tok', newPassword: 'x'.repeat(12) })],
 		['logout', () => gateway.logout()],
@@ -155,6 +156,7 @@ describe('HttpAdminAuthGateway credential classification', () => {
 		// Resume extends the operator's existing session, so its success proves that session
 		// is alive — which is exactly what the latch needs to hear.
 		['PIN quick-resume', () => gateway.resumeWithPin('135790')],
+		['password quick-resume', () => gateway.resumeWithPassword('x'.repeat(12))],
 	];
 
 	const endingCalls: [string, () => Observable<unknown>][] = [

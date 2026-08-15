@@ -126,7 +126,7 @@
 			>
 				<select2
 					class="custom-select intl-tel-input"
-					[templates]="template"
+					[templates]="{ option: template, templateSelection: template }"
 					[data]="codes"
 					formControlName="country_code"
 				>

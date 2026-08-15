@@ -7,27 +7,29 @@ import { Router } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 import { Store } from '@ngrx/store';
 import { Select2, Select2Data, Select2Module, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
-import { debounceTime, Observable, Subject } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { debounceTime, lastValueFrom, Observable, Subject } from 'rxjs';
 
+import {
+	AdminCustomersGateway,
+	type AdminCustomer,
+	type AdminCustomerListParams,
+	type CustomerAddress,
+} from '@core/admin-customers/admin-customers.gateway';
 import { CartActions } from '@core/state/cart/cart.actions';
 import { selectCartItems } from '@core/state/cart/cart.selectors';
 import { LoaderStore } from '@core/state/loader.store';
 import { SettingStore } from '@core/state/setting.store';
 import { ICart } from '@data-access/interfaces/cart.interface';
-import { Params } from '@data-access/interfaces/core.interface';
 import { IOrderCheckout } from '@data-access/interfaces/order.interface';
 import { IDeliveryBlock, IValues } from '@data-access/interfaces/setting.interface';
-import { IUser } from '@data-access/interfaces/user.interface';
-import { injectUsersQuery } from '@data-access/queries/user.queries';
-import { UserService } from '@data-access/services/user.service';
+import { injectAdminCustomersQuery } from '@data-access/queries/admin-customers.queries';
 import { Loader } from '@layout/loader/loader';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { Button } from '@shared/ui/button/button';
 import { NoData } from '@shared/ui/no-data/no-data';
 
-import { AddressBlock } from './address-block/address-block';
+import { AddressBlock, type CheckoutAddressView } from './address-block/address-block';
 import { DeliveryBlock } from './delivery-block/delivery-block';
 import { AddAddressModal } from './modal/add-address-modal/add-address-modal';
 import { AddCustomerModal } from './modal/add-customer-modal/add-customer-modal';
@@ -49,6 +51,31 @@ const STATIC_CHECKOUT: IOrderCheckout = {
 		wallet_balance: 84.4,
 	},
 } as IOrderCheckout;
+
+interface CheckoutCustomerView {
+	id: string;
+	address: CheckoutAddressView[];
+}
+
+function mapAddress(address: CustomerAddress): CheckoutAddressView {
+	return {
+		id: address.id,
+		title: address.label || address.fullName,
+		street: address.line2 ? `${address.line1}, ${address.line2}` : address.line1,
+		city: address.city,
+		state: address.state ? { name: address.state } : null,
+		country: { name: address.country },
+		pincode: address.postalCode,
+		phone: address.phone,
+	};
+}
+
+function toCheckoutView(customer: AdminCustomer): CheckoutCustomerView {
+	return {
+		id: customer.id,
+		address: (customer.addresses ?? []).map(mapAddress),
+	};
+}
 
 @Component({
 	selector: 'app-checkout',
@@ -79,20 +106,28 @@ export class Checkout {
 	private store = inject(Store);
 	private settingStore = inject(SettingStore);
 	private formBuilder = inject(FormBuilder);
-	private userService = inject(UserService);
+	private readonly customersGateway = inject(AdminCustomersGateway);
 
 	readonly loader = inject(LoaderStore);
 
-	private readonly userParams = signal<Params>({ role: 'consumer', status: 1, paginate: 15 });
-	private readonly usersQuery = injectUsersQuery(() => this.userParams());
+	private readonly customerParams = signal<AdminCustomerListParams>({ pageSize: 15 });
+	private readonly customersQuery = injectAdminCustomersQuery(() => this.customerParams());
 	users$: Observable<Select2Data> = toObservable(
-		computed(() => this.usersQuery.data()?.data.map((user) => ({ label: user.name, value: user.id })) ?? []),
+		computed(() => {
+			const items = this.customersQuery.data()?.items ?? [];
+			return items
+				.filter((customer) => customer.status === 'active' || customer.status === 'pending')
+				.map((customer) => ({
+					label: customer.displayName || customer.email || customer.id,
+					value: customer.id,
+				}));
+		}),
 	);
 
 	cartItem$: Observable<ICart[]> = this.store.select(selectCartItems);
 
-	private readonly selectedUser = signal<IUser | null>(null);
-	selectedUser$: Observable<IUser | null> = toObservable(this.selectedUser);
+	private readonly selectedUser = signal<CheckoutCustomerView | null>(null);
+	selectedUser$: Observable<CheckoutCustomerView | null> = toObservable(this.selectedUser);
 	setting$: Observable<IValues | null> = toObservable(this.settingStore.setting);
 
 	readonly AddAddressModal = viewChild<AddAddressModal>('addAddressModal');
@@ -152,12 +187,12 @@ export class Checkout {
 			);
 		});
 
-		this.search
-			.pipe(debounceTime(300)) // Adjust the debounce time as needed (in milliseconds)
-			.subscribe((inputValue) => {
-				this.userParams.set({ role: 'consumer', status: 1, paginate: 15, search: inputValue });
-				this.renderer.addClass(this.document.body, 'loader-none');
-			});
+		this.search.pipe(debounceTime(300)).subscribe((inputValue) => {
+			const next: AdminCustomerListParams = { pageSize: 15 };
+			if (inputValue.trim()) next.q = inputValue.trim();
+			this.customerParams.set(next);
+			this.renderer.addClass(this.document.body, 'loader-none');
+		});
 	}
 
 	selectUser(data: Select2UpdateEvent) {
@@ -167,10 +202,9 @@ export class Checkout {
 			this.form.controls['points_amount'].reset();
 			this.form.controls['wallet_balance'].reset();
 			this.form.controls['coupon'].reset();
-			this.userService
-				.getUsers()
-				.pipe(map((res) => res.data.find((user) => user.id == Number(data?.value)) ?? null))
-				.subscribe((user) => this.selectedUser.set(user));
+			void lastValueFrom(this.customersGateway.get(String(data.value))).then((customer) => {
+				this.selectedUser.set(toCheckoutView(customer));
+			});
 		}
 	}
 
@@ -184,15 +218,19 @@ export class Checkout {
 		this.search.next(event.search);
 	}
 
-	selectShippingAddress(id: number) {
+	onCustomerCreated() {
+		this.customerParams.set({ ...this.customerParams() });
+	}
+
+	selectShippingAddress(id: string | number) {
 		if (id) {
-			this.form.controls['shipping_address_id'].setValue(Number(id));
+			this.form.controls['shipping_address_id'].setValue(id);
 		}
 	}
 
-	selectBillingAddress(id: number) {
+	selectBillingAddress(id: string | number) {
 		if (id) {
-			this.form.controls['billing_address_id'].setValue(Number(id));
+			this.form.controls['billing_address_id'].setValue(id);
 		}
 	}
 

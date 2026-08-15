@@ -24,7 +24,7 @@ import {
 } from '@ng-bootstrap/ng-bootstrap';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
-import { AccountStore } from '@core/state/account.store';
+import { AuthStore } from '@core/state/auth.store';
 import { LoaderStore } from '@core/state/loader.store';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableColumn, ITableConfig } from '@data-access/interfaces/table.interface';
@@ -62,7 +62,7 @@ export class Table {
 
 	readonly loader = inject(LoaderStore);
 	private readonly injector = inject(Injector);
-	private accountStore = inject(AccountStore);
+	private authStore = inject(AuthStore);
 
 	// TODO: Skipped for migration because:
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
@@ -117,11 +117,11 @@ export class Table {
 		this.tableChanged.emit(this.tableData);
 		effect(
 			() => {
-				const permissionList = this.accountStore.permissions();
+				const permissionList = this.authStore.permissions();
 				// Wait until permissions have actually loaded — deciding gating on an empty
 				// list would destructively wipe rowActions and never restore them.
 				if (!permissionList?.length) return;
-				this.permissions = permissionList.map((value) => value?.name);
+				this.permissions = permissionList;
 				const permissions = this.tableConfig?.rowActions
 					?.map((action) => action?.permission)
 					.filter((item) => item != undefined);
@@ -176,13 +176,17 @@ export class Table {
 			this.tableData['page'] = data;
 		} else if (type === 'search') {
 			this.tableData['search'] = data;
-		} else if ((type = 'daterange')) {
-			if (data) {
+			// New filter → always restart at page 1 so server skip/limit matches the new result set.
+			this.tableData['page'] = 1;
+		} else if (type === 'daterange') {
+			if (data?.start_date && data?.end_date && !String(data.end_date).includes('undefined')) {
 				this.tableData['start_date'] = data.start_date;
 				this.tableData['end_date'] = data.end_date;
 			} else {
 				delete this.tableData['start_date'];
 				delete this.tableData['end_date'];
+				// Incomplete range (only from-date picked) — do not emit yet.
+				if (data?.start_date && !data?.end_date) return;
 			}
 		}
 		this.renderer.addClass(this.document.body, 'loader-none');

@@ -4,9 +4,13 @@ import { TestBed } from '@angular/core/testing';
 import { Observable, of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AdminAuthGateway, type AdminMe, type AdminSessionResult } from '@core/auth/auth-gateway';
+import {
+	AdminAuthGateway,
+	type AdminMe,
+	type AdminSecurityState,
+	type AdminSessionResult,
+} from '@core/auth/auth-gateway';
 
-import { AccountStore } from './account.store';
 import { AuthStore } from './auth.store';
 
 /**
@@ -61,17 +65,52 @@ class FakeGateway extends AdminAuthGateway {
 	override resumeWithPin(): Observable<AdminSessionResult> {
 		return this.accept ? of(SESSION) : throwError(() => new Error('rejected'));
 	}
+	override resumeWithPassword(): Observable<AdminSessionResult> {
+		return this.accept ? of(SESSION) : throwError(() => new Error('rejected'));
+	}
 	override requestPasswordReset(): Observable<void> {
 		return this.accept ? of(undefined) : throwError(() => new Error('rejected'));
 	}
 	override resetPassword(): Observable<void> {
 		return this.accept ? of(undefined) : throwError(() => new Error('rejected'));
 	}
+	override securitySettings(): Observable<AdminSecurityState> {
+		return of({
+			hasPin: true,
+			preferredLoginMethod: 'pin',
+			pinLockedUntil: null,
+			pinRevalidationRequiredAt: null,
+			emailVerified: true,
+			activeSessions: 1,
+		});
+	}
+	override listSessions() {
+		return of([]);
+	}
+	override revokeSession() {
+		return of(undefined);
+	}
+	override revokeOtherSessions() {
+		return of({ revoked: 0 });
+	}
+	override updateProfile() {
+		return of(ME.user);
+	}
+	override setPin(): Observable<void> {
+		return of(undefined);
+	}
+	override removePin(): Observable<void> {
+		return of(undefined);
+	}
+	override changePassword(): Observable<void> {
+		return of(undefined);
+	}
+	override createInvite(): Observable<void> {
+		return of(undefined);
+	}
 	override logout(): Observable<void> {
 		return of(undefined);
 	}
-	// Transport-layer concerns. The store never calls either: rotation is the interceptor's
-	// recovery path, and the classification exists so it knows which 401s are recoverable.
 	override refreshSession(): Observable<void> {
 		return of(undefined);
 	}
@@ -96,7 +135,6 @@ describe('admin AuthStore', () => {
 		TestBed.configureTestingModule({
 			providers: [
 				{ provide: AdminAuthGateway, useValue: gateway },
-				{ provide: AccountStore, useValue: { clear: vi.fn() } },
 				{ provide: Router, useValue: { navigate } },
 			],
 		});
@@ -173,6 +211,19 @@ describe('admin AuthStore', () => {
 		expect(store.permissions()).toEqual([]);
 	});
 
+	it('clears the session when resume cannot rotate cookies (idle already dead)', async () => {
+		gateway.me = ME;
+		const store = TestBed.inject(AuthStore);
+		await store.bootstrap();
+		expect(store.isAuthenticated()).toBe(true);
+
+		gateway.refreshSession = () => throwError(() => new Error('session expired'));
+		const resumed = await store.resumeWithPin('135790');
+
+		expect(resumed).toBe(false);
+		expect(store.isAuthenticated()).toBe(false);
+	});
+
 	it('signs out locally and returns to login', async () => {
 		gateway.me = ME;
 		const store = TestBed.inject(AuthStore);
@@ -203,7 +254,6 @@ describe('admin password recovery', () => {
 		TestBed.configureTestingModule({
 			providers: [
 				{ provide: AdminAuthGateway, useValue: gateway },
-				{ provide: AccountStore, useValue: { clear: vi.fn() } },
 				{ provide: Router, useValue: { navigate: vi.fn() } },
 			],
 		});

@@ -18,6 +18,10 @@ export const content: Routes = [
 		loadChildren: () => import('@features/user/user.routes'),
 	},
 	{
+		path: 'customer',
+		loadChildren: () => import('@features/customer/customer.routes'),
+	},
+	{
 		path: 'attribute',
 		loadChildren: () => import('@features/attribute/attribute.routes'),
 	},

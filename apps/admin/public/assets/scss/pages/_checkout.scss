@@ -915,3 +915,26 @@
 		transform: translateX(0);
 	}
 }
+
+// Soft address tile chrome — same fill/radius/padding as nested checkout rules,
+// plus soft shadow so CRM (and any surface outside the full checkout nest) gets
+// the shadowy container without inventing a new class name.
+.checkout-detail .delivery-address-box {
+	border-radius: 8px;
+	padding: calc(12px + (24 - 12) * ((100vw - 320px) / (1920 - 320)));
+	background-color: #f9f9f6;
+	box-shadow: 0 0 8px #eee;
+
+	// $inner-bg === #f9f9f6 (same as this tile) — native inputs blend into the soft fill.
+	.form-control {
+		background-color: $white !important;
+	}
+
+	// Country/state select2 also need $white. Exclude .intl-tel-input — dial keeps #efefe7.
+	.custom-select:not(.intl-tel-input) {
+		.select2-container .select2-selection,
+		.select2-container .select2-selection__rendered {
+			background-color: $white !important;
+		}
+	}
+}

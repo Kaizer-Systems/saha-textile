@@ -1,3 +1,8 @@
+/**
+ * Canonical catalogue of admin pages kept after the Fastkart theme strip-down.
+ * Sidebar structure (paths / titles / icons) lives ONLY here — not in account.json.
+ * Visibility is filtered by live AuthStore permissions from `/auth/admin/me`.
+ */
 import { IMenu } from '@data-access/interfaces/menu.interface';
 
 export const menu: IMenu[] = [
@@ -17,7 +22,7 @@ export const menu: IMenu[] = [
 		icon: 'ri-contacts-line',
 		type: 'sub',
 		level: 1,
-		acl_permission: ['user.index', 'user.create', 'role.index'],
+		acl_permission: ['admin_user.index', 'admin_user.create', 'role.index'],
 		children: [
 			{
 				parent_id: 2,
@@ -25,7 +30,7 @@ export const menu: IMenu[] = [
 				path: '/user/create',
 				type: 'link',
 				level: 2,
-				permission: ['user.index', 'user.create'],
+				permission: ['admin_user.create'],
 			},
 			{
 				parent_id: 2,
@@ -33,7 +38,7 @@ export const menu: IMenu[] = [
 				path: '/user',
 				type: 'link',
 				level: 2,
-				permission: ['user.index'],
+				permission: ['admin_user.index'],
 			},
 			{
 				parent_id: 2,
@@ -42,6 +47,41 @@ export const menu: IMenu[] = [
 				type: 'link',
 				level: 2,
 				permission: ['role.index'],
+			},
+		],
+	},
+	{
+		id: 20,
+		title: 'customers',
+		active: false,
+		icon: 'ri-user-heart-line',
+		type: 'sub',
+		level: 1,
+		acl_permission: ['customer.index', 'customer.create'],
+		children: [
+			{
+				parent_id: 20,
+				title: 'add customer',
+				path: '/customer/create',
+				type: 'link',
+				level: 2,
+				permission: ['customer.create'],
+			},
+			{
+				parent_id: 20,
+				title: 'all customers',
+				path: '/customer',
+				type: 'link',
+				level: 2,
+				permission: ['customer.index'],
+			},
+			{
+				parent_id: 20,
+				title: 'customer ledger',
+				path: '/customer-ledger',
+				type: 'link',
+				level: 2,
+				permission: ['customer.index'],
 			},
 		],
 	},
@@ -60,7 +100,7 @@ export const menu: IMenu[] = [
 				path: '/product/create',
 				type: 'link',
 				level: 2,
-				permission: ['product.index', 'product.create'],
+				permission: ['product.create'],
 			},
 			{
 				parent_id: 3,
@@ -122,7 +162,7 @@ export const menu: IMenu[] = [
 				path: '/store/create',
 				type: 'link',
 				level: 2,
-				permission: ['store.index', 'store.create'],
+				permission: ['store.create'],
 			},
 			{
 				parent_id: 4,
@@ -133,14 +173,6 @@ export const menu: IMenu[] = [
 				badgeValue: 0,
 				level: 2,
 				permission: ['store.index'],
-			},
-			{
-				parent_id: 4,
-				title: 'customer ledger',
-				path: '/customer-ledger',
-				type: 'link',
-				level: 2,
-				permission: ['wallet.index'],
 			},
 		],
 	},
@@ -167,7 +199,7 @@ export const menu: IMenu[] = [
 				path: '/order/create',
 				type: 'link',
 				level: 2,
-				permission: ['order.index', 'order.create'],
+				permission: ['order.create'],
 			},
 		],
 	},
@@ -330,11 +362,28 @@ export const menu: IMenu[] = [
 	{
 		id: 19,
 		title: 'settings',
-		path: '/setting',
 		active: false,
 		icon: 'ri-settings-3-line',
 		type: 'sub',
 		level: 1,
-		permission: ['setting.index'],
+		acl_permission: ['setting.index'],
+		children: [
+			{
+				parent_id: 19,
+				title: 'general',
+				path: '/setting',
+				type: 'link',
+				level: 2,
+				permission: ['setting.index'],
+			},
+			{
+				parent_id: 19,
+				title: 'notification_settings',
+				path: '/setting/notifications',
+				type: 'link',
+				level: 2,
+				permission: ['setting.index'],
+			},
+		],
 	},
 ];

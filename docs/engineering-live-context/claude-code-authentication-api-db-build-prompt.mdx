@@ -297,7 +297,8 @@ OAuth:
 
 ## 7. RBAC and object authorization
 
-The coarse roles are `customer`, `staff`, and `admin`, but fine-grained permissions are
+The coarse roles are `staff` and `admin` on **operators only** (`adminUsers`). Customers
+have no role field (`DEC-ACCOUNT-SEPARATION`, 2026-08-12). Fine-grained permissions are
 authoritative. An `admin` role must not silently mean every permission.
 
 Implement or complete:
@@ -336,7 +337,8 @@ locked Schema Nebula collection; its backing remains an adapter/runtime concern.
 
 Target boundaries include:
 
-- `users`;
+- `customers` (storefront shoppers; id prefix `cus_`);
+- `adminUsers` (back-office operators; id prefix `adm_`);
 - `authIdentities`;
 - `passwordCredentials`;
 - `pinCredentials`;
@@ -351,6 +353,11 @@ Target boundaries include:
 - `auditLogs`;
 - `pendingIntents`;
 - `consentEvents`.
+
+The previously ratified single `users` collection is superseded by `DEC-ACCOUNT-SEPARATION`
+(2026-08-12). Schema Nebula still carries a `users` node; both `customers` and `adminUsers`
+are temporary `NON_GRAPH_COLLECTIONS` exceptions until the portal tool reconciles the graph
+(owed work — do not edit `docs/_data/**` from the account-separation task).
 
 Do not merely declare indexes in schema code. Produce an index manifest tying every
 index to a repository query and test it against MongoDB 8.3.

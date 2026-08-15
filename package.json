@@ -13,11 +13,12 @@
     "dev:admin": "pnpm --filter @saha-textile/admin dev",
     "start:storefront": "node scripts/serve-built-frontend.mjs --app storefront",
     "start:admin": "node scripts/serve-built-frontend.mjs --app admin",
-    "lint": "pnpm check:naming && pnpm check:browser-auth && pnpm check:i18n-parity && pnpm check:route-contracts && pnpm check:permission-registry && turbo run lint",
+    "lint": "pnpm check:naming && pnpm check:browser-auth && pnpm check:i18n-parity && pnpm check:route-contracts && pnpm check:route-authorization && pnpm check:permission-registry && turbo run lint",
     "check:naming": "bash scripts/check-naming.sh",
     "check:browser-auth": "node scripts/check-browser-auth.mjs",
     "check:i18n-parity": "node scripts/check-i18n-parity.mjs",
     "check:route-contracts": "node scripts/check-route-contracts.mjs",
+    "check:route-authorization": "node scripts/check-route-authorization.mjs",
     "check:permission-registry": "node scripts/check-permission-registry.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
@@ -29,7 +30,11 @@
     "mongo:down": "bash scripts/mongo-down.sh",
     "mongo:status": "bash scripts/mongo-status.sh",
     "mongo:wipe": "bash scripts/mongo-wipe.sh",
-    "mongo:align-collections": "pnpm --filter @saha-textile/adapters-db-mongo align:collections"
+    "mongo:align-collections": "pnpm --filter @saha-textile/adapters-db-mongo align:collections",
+    "mongo:split-admin-users": "pnpm --filter @saha-textile/adapters-db-mongo split:admin-users",
+    "mongo:rename-admin-user-permissions": "pnpm --filter @saha-textile/adapters-db-mongo rename:admin-user-permissions",
+    "mongo:extract-credentials": "pnpm --filter @saha-textile/adapters-db-mongo extract:credentials",
+    "auth:set-local-credentials": "pnpm --filter @saha-textile/api set:local-credentials"
   },
   "devDependencies": {
     "@saha-textile/config": "workspace:*",

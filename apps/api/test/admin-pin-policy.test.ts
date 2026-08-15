@@ -26,17 +26,21 @@ function buildSecurityService() {
 	const verifyPassword = vi.fn(async () => true);
 
 	const auth = {
-		findAuthUserById: async () => ({
-			id: 'user_admin',
-			pinHash: null,
-			preferredLoginMethod: 'password',
-			pinLockedUntil: null,
-			pinRevalidationRequiredAt: null,
-			emailVerified: true,
-		}),
 		verifyPassword,
 		hashPassword: async (value: string) => `argon2(${value})`,
-		authUserRepository: { setPinHash, setPreferredLoginMethod },
+		adminAuthRepository: {
+			setPinHash,
+			setPreferredLoginMethod,
+			findAuthStateById: async () => ({
+				id: 'adm_admin',
+				pinHash: null,
+				passwordHash: 'hash',
+				preferredLoginMethod: 'password',
+				pinLockedUntil: null,
+				pinRevalidationRequiredAt: null,
+				emailVerified: true,
+			}),
+		},
 	} as unknown as AuthService;
 
 	const sessions = { countActiveForUser: async () => 1, revokeAllForUser: async () => 0 };
@@ -76,7 +80,7 @@ function buildInviteService() {
 
 	const invites = { create: async (i: AdminInvite) => i, consume, listPending: async () => [], revoke: vi.fn() };
 	const authUsers = {
-		findAuthStateByEmail: async () => null,
+		findAuthStateByIdentifier: async () => null,
 		setPasswordHash: vi.fn(async () => undefined),
 		setPinHash,
 		setPreferredLoginMethod: vi.fn(async () => undefined),
@@ -138,8 +142,8 @@ describe('Security Settings — setPin', () => {
 	it('accepts a PIN that no rule refuses', async () => {
 		const { service, setPinHash } = buildSecurityService();
 
-		await service.setPin('user_admin', { currentPassword: 'pw', pin: STRONG }, null);
-		expect(setPinHash).toHaveBeenCalledWith('user_admin', `argon2(${STRONG})`);
+		await service.setPin('adm_admin', { currentPassword: 'pw', pin: STRONG }, null);
+		expect(setPinHash).toHaveBeenCalledWith('adm_admin', `argon2(${STRONG})`);
 	});
 });
 

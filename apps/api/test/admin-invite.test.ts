@@ -41,7 +41,8 @@ function buildService(overrides: Partial<Record<string, unknown>> = {}) {
 	};
 
 	const authUsers = {
-		findAuthStateByEmail: overrides.findAuthStateByEmail ?? (async () => null),
+		findAuthStateByIdentifier:
+			overrides.findAuthStateByIdentifier ?? overrides.findAuthStateByEmail ?? (async () => null),
 		setPasswordHash: vi.fn(async () => undefined),
 		setPinHash: vi.fn(async () => undefined),
 		setPreferredLoginMethod: vi.fn(async () => undefined),
@@ -110,7 +111,7 @@ describe('AdminInviteService.create', () => {
 	});
 
 	it('refuses to invite an address that already has an account', async () => {
-		const service = buildService({ findAuthStateByEmail: async () => ({ id: 'user_existing' }) });
+		const service = buildService({ findAuthStateByIdentifier: async () => ({ id: 'adm_existing' }) });
 		await expect(
 			service.create({ request: { email: 'taken@example.com', role: 'staff' }, invitedByUserId: 'user_admin' }),
 		).rejects.toBeInstanceOf(BadRequestException);

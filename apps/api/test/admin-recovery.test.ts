@@ -14,7 +14,11 @@ function buildService(authState: unknown, consumed: unknown = null) {
 	const resets = { create: vi.fn().mockResolvedValue(undefined), consume: vi.fn().mockResolvedValue(consumed) };
 	const notifications = { send: vi.fn().mockResolvedValue({ status: 'sent' }) };
 	const otps = { upsertActive: vi.fn() };
-	const authUsers = {
+	const customerAuth = {
+		findAuthStateByEmail: vi.fn(),
+		setPasswordHash: vi.fn().mockResolvedValue(undefined),
+	};
+	const adminAuth = {
 		findAuthStateByIdentifier: vi.fn().mockResolvedValue(authState),
 		setPasswordHash: vi.fn().mockResolvedValue(undefined),
 		setPinRevalidationRequired: vi.fn().mockResolvedValue(undefined),
@@ -32,7 +36,9 @@ function buildService(authState: unknown, consumed: unknown = null) {
 			otp: { ttlSeconds: 600, maxAttempts: 5 },
 		} as never,
 		authPort as never,
-		authUsers as never,
+		customerAuth as never,
+		adminAuth as never,
+		{} as never,
 		{} as never,
 		otps as never,
 		resets as never,
@@ -41,7 +47,7 @@ function buildService(authState: unknown, consumed: unknown = null) {
 		notifications as never,
 	);
 
-	return { service, resets, notifications, otps, authUsers, authPort };
+	return { service, resets, notifications, otps, customerAuth, adminAuth, authPort };
 }
 
 const ADMIN = { id: 'user_admin', email: 'Operator@Example.com', role: 'admin', status: 'active' };
@@ -82,7 +88,7 @@ describe('AuthService.startAdminPasswordReset', () => {
 
 	for (const [label, state] of [
 		['an unknown identifier', null],
-		['a customer account', { ...ADMIN, role: 'customer' }],
+		['a customer-only address', null],
 		['a disabled account', { ...ADMIN, status: 'disabled' }],
 		['an admin with no email address', { ...ADMIN, email: null }],
 	] as const) {
@@ -101,18 +107,18 @@ const ADMIN_TOKEN_ROW = { userId: 'user_admin', audience: 'admin', consumedAt: '
 
 describe('AuthService.completePasswordReset audience binding', () => {
 	it('accepts a token issued for the admin surface', async () => {
-		const { service, authUsers } = buildService(ADMIN, ADMIN_TOKEN_ROW);
+		const { service, adminAuth } = buildService(ADMIN, ADMIN_TOKEN_ROW);
 		await expect(service.completePasswordReset('tok', 'a-long-enough-password', 'admin')).resolves.toEqual({
 			userId: 'user_admin',
 		});
-		expect(authUsers.setPasswordHash).toHaveBeenCalledWith('user_admin', '$argon2id$hash');
+		expect(adminAuth.setPasswordHash).toHaveBeenCalledWith('user_admin', '$argon2id$hash');
 	});
 
 	it('refuses a storefront token presented to the admin surface, and changes nothing', async () => {
-		const { service, authUsers } = buildService(ADMIN, { ...ADMIN_TOKEN_ROW, audience: 'storefront' });
+		const { service, adminAuth } = buildService(ADMIN, { ...ADMIN_TOKEN_ROW, audience: 'storefront' });
 		await expect(service.completePasswordReset('tok', 'a-long-enough-password', 'admin')).resolves.toBeNull();
 		// The password must NOT have been changed — a cross-audience token is not authorization.
-		expect(authUsers.setPasswordHash).not.toHaveBeenCalled();
+		expect(adminAuth.setPasswordHash).not.toHaveBeenCalled();
 	});
 
 	it('still consumes a mismatched token so it cannot be retried elsewhere', async () => {
@@ -122,11 +128,11 @@ describe('AuthService.completePasswordReset audience binding', () => {
 	});
 
 	it('stays backward compatible when no audience is required', async () => {
-		const { service, authUsers } = buildService(ADMIN, { ...ADMIN_TOKEN_ROW, audience: 'storefront' });
+		const { service, customerAuth } = buildService(ADMIN, { ...ADMIN_TOKEN_ROW, audience: 'storefront' });
 		await expect(service.completePasswordReset('tok', 'a-long-enough-password')).resolves.toEqual({
 			userId: 'user_admin',
 		});
-		expect(authUsers.setPasswordHash).toHaveBeenCalled();
+		expect(customerAuth.setPasswordHash).toHaveBeenCalled();
 	});
 });
 
@@ -134,14 +140,14 @@ describe('PIN revalidation after a privileged reset', () => {
 	const pinned = { ...ADMIN, pinHash: '$argon2id$pin', pinLockedUntil: null, pinRevalidationRequiredAt: null };
 
 	it('records the suspension without deleting the PIN', async () => {
-		const { service, authUsers } = buildService(pinned);
+		const { service, adminAuth } = buildService(pinned);
 		await service.requirePinRevalidation('user_admin');
 
-		expect(authUsers.setPinRevalidationRequired).toHaveBeenCalledTimes(1);
+		expect(adminAuth.setPinRevalidationRequired).toHaveBeenCalledTimes(1);
 		// The hash is kept: the owner decision is an auditable state change, not a silent
 		// credential deletion. Clearing it here would destroy the operator's second login
 		// method with no record of why.
-		expect(authUsers.setPinHash).not.toHaveBeenCalled();
+		expect(adminAuth.setPinHash).not.toHaveBeenCalled();
 	});
 
 	it('refuses a correct PIN while revalidation is outstanding', async () => {

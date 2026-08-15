@@ -25,7 +25,7 @@ function liveSession(csrfToken: string): AuthSession {
 		id: 'sess_a',
 		userId: 'user_a',
 		audience: 'storefront',
-		roleAtLogin: 'customer',
+		roleAtLogin: null,
 		refreshTokenHash: 'r',
 		refreshFamilyId: 'fam_a',
 		rotationCounter: 0,
@@ -58,7 +58,7 @@ describe('GET /auth/csrf policy B — preserve active session token', () => {
 				aud: 'storefront',
 			})),
 		};
-		const service = new SessionService(config, auth as never, sessions as never, {} as never);
+		const service = new SessionService(config, auth as never, sessions as never, {} as never, {} as never);
 		const setCookie = vi.fn().mockReturnThis();
 		const reply = { setCookie } as never;
 		const request = {
@@ -88,7 +88,7 @@ describe('GET /auth/csrf policy B — preserve active session token', () => {
 				aud: 'storefront',
 			})),
 		};
-		const service = new SessionService(config, auth as never, sessions as never, {} as never);
+		const service = new SessionService(config, auth as never, sessions as never, {} as never, {} as never);
 		const setCookie = vi.fn().mockReturnThis();
 		const reply = { setCookie } as never;
 		const request = { cookies: { [names.access]: 'jwt' } } as never;
@@ -108,7 +108,7 @@ describe('GET /auth/csrf policy B — preserve active session token', () => {
 			updateCsrfSecretHash: vi.fn(),
 		};
 		const auth = { verifyToken: vi.fn() };
-		const service = new SessionService(config, auth as never, sessions as never, {} as never);
+		const service = new SessionService(config, auth as never, sessions as never, {} as never, {} as never);
 		const setCookie = vi.fn().mockReturnThis();
 		const reply = { setCookie } as never;
 		const request = { cookies: {} } as never;

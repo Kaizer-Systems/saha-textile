@@ -1,6 +1,8 @@
 import type {
 	AdminInvite,
+	AdminUserAuthState,
 	AuthSession,
+	CustomerAuthState,
 	EmailVerificationToken,
 	OAuthState,
 	OtpChallenge,
@@ -8,14 +10,14 @@ import type {
 	PasswordResetToken,
 	SessionAudience,
 	SessionRevokeReason,
-	UserAuthState,
 	UserStatus,
 } from '@saha-textile/contracts';
 import type {
 	AdminInviteRepository,
+	AdminUserAuthRepository,
 	AuthRateLimitRepository,
 	AuthSessionRepository,
-	AuthUserRepository,
+	CustomerAuthRepository,
 	EmailVerificationTokenRepository,
 	OAuthStateRepository,
 	OtpChallengeRepository,
@@ -24,16 +26,21 @@ import type {
 
 import {
 	AdminInviteModel,
+	AdminUserModel,
 	AuthRateLimitModel,
 	AuthSessionModel,
 	type AuthSessionDoc,
+	CustomerModel,
 	EmailVerificationTokenModel,
+	loadPasswordHash,
 	OAuthStateModel,
 	type OAuthStateDoc,
 	OtpChallengeModel,
 	type OtpChallengeDoc,
 	PasswordResetTokenModel,
-	UserModel,
+	PinCredentialModel,
+	pinCredentialId,
+	upsertPasswordCredential,
 } from '../models/index';
 
 const iso = (value?: Date | null): string | null => (value ? new Date(value).toISOString() : null);
@@ -46,11 +53,12 @@ const isoRequired = (value: Date): string => new Date(value).toISOString();
 const SESSION_SECRETS = '+refreshTokenHash +previousRefreshTokenHash +csrfSecretHash';
 
 function toSession(doc: AuthSessionDoc): AuthSession {
+	const roleAtLogin = doc.roleAtLogin === 'customer' || doc.roleAtLogin == null ? null : doc.roleAtLogin;
 	return {
 		id: doc._id,
 		userId: doc.userId,
 		audience: doc.audience,
-		roleAtLogin: doc.roleAtLogin,
+		roleAtLogin,
 		refreshTokenHash: doc.refreshTokenHash,
 		refreshFamilyId: doc.refreshFamilyId,
 		rotationCounter: doc.rotationCounter ?? 0,
@@ -186,6 +194,10 @@ export class MongoAuthSessionRepository implements AuthSessionRepository {
 
 	async touch(sessionId: string, lastSeenAt: string): Promise<void> {
 		await AuthSessionModel.updateOne({ _id: sessionId }, { $set: { lastSeenAt: new Date(lastSeenAt) } }).exec();
+	}
+
+	async updateDeviceLabel(sessionId: string, label: string): Promise<void> {
+		await AuthSessionModel.updateOne({ _id: sessionId }, { $set: { 'device.label': label } }).exec();
 	}
 
 	async updateCsrfSecretHash(sessionId: string, nextCsrfSecretHash: string): Promise<AuthSession | null> {
@@ -604,105 +616,116 @@ export class MongoAuthRateLimitRepository implements AuthRateLimitRepository {
 	}
 }
 
-type UserAuthLean = {
+type CustomerAuthLean = {
+	_id: string;
+	email: string | null;
+	emailVerified: boolean;
+	status: string;
+	tokenVersion: number;
+	failedLoginAttempts: number;
+};
+
+type AdminUserAuthLean = {
 	_id: string;
 	email: string | null;
 	emailVerified: boolean;
 	username: string | null;
 	role: string;
 	status: string;
-	passwordHash: string | null;
-	pinHash: string | null;
 	preferredLoginMethod: string;
 	permissions: string[];
 	tokenVersion: number;
 	permissionsVersion: number;
 	failedLoginAttempts: number;
+};
+
+type PinCredentialLean = {
+	pinHash: string | null;
 	failedPinAttempts: number;
 	pinLockedUntil: Date | null;
 	pinRevalidationRequiredAt: Date | null;
 };
 
-/** Credential material is `select: false`, so the auth paths must ask for it explicitly. */
-const AUTH_SECRETS = '+passwordHash +pinHash';
+const toCustomerAuthState = (doc: CustomerAuthLean, passwordHash: string | null): CustomerAuthState => ({
+	id: doc._id,
+	email: doc.email ?? null,
+	emailVerified: doc.emailVerified ?? false,
+	status: doc.status as CustomerAuthState['status'],
+	passwordHash,
+	tokenVersion: doc.tokenVersion ?? 0,
+	failedLoginAttempts: doc.failedLoginAttempts ?? 0,
+});
 
-const toAuthState = (doc: UserAuthLean): UserAuthState => ({
+const toAdminUserAuthState = (
+	doc: AdminUserAuthLean,
+	passwordHash: string | null,
+	pin: PinCredentialLean | null,
+): AdminUserAuthState => ({
 	id: doc._id,
 	email: doc.email ?? null,
 	emailVerified: doc.emailVerified ?? false,
 	username: doc.username ?? null,
-	role: doc.role as UserAuthState['role'],
-	status: doc.status as UserAuthState['status'],
-	passwordHash: doc.passwordHash ?? null,
-	pinHash: doc.pinHash ?? null,
-	preferredLoginMethod: (doc.preferredLoginMethod as UserAuthState['preferredLoginMethod']) ?? 'password',
+	role: doc.role as AdminUserAuthState['role'],
+	status: doc.status as AdminUserAuthState['status'],
+	passwordHash,
+	pinHash: pin?.pinHash ?? null,
+	preferredLoginMethod: (doc.preferredLoginMethod as AdminUserAuthState['preferredLoginMethod']) ?? 'password',
 	permissions: doc.permissions ?? [],
 	tokenVersion: doc.tokenVersion ?? 0,
 	permissionsVersion: doc.permissionsVersion ?? 0,
 	failedLoginAttempts: doc.failedLoginAttempts ?? 0,
-	failedPinAttempts: doc.failedPinAttempts ?? 0,
-	pinLockedUntil: doc.pinLockedUntil ? new Date(doc.pinLockedUntil).toISOString() : null,
-	pinRevalidationRequiredAt: doc.pinRevalidationRequiredAt
-		? new Date(doc.pinRevalidationRequiredAt).toISOString()
+	failedPinAttempts: pin?.failedPinAttempts ?? 0,
+	pinLockedUntil: pin?.pinLockedUntil ? new Date(pin.pinLockedUntil).toISOString() : null,
+	pinRevalidationRequiredAt: pin?.pinRevalidationRequiredAt
+		? new Date(pin.pinRevalidationRequiredAt).toISOString()
 		: null,
 });
 
-export class MongoAuthUserRepository implements AuthUserRepository {
-	async findAuthStateById(userId: string): Promise<UserAuthState | null> {
-		const doc = await UserModel.findById(userId).select(AUTH_SECRETS).lean<UserAuthLean>().exec();
-		return doc ? toAuthState(doc) : null;
+async function loadPinCredential(adminUserId: string): Promise<PinCredentialLean | null> {
+	const doc = await PinCredentialModel.findById(pinCredentialId(adminUserId))
+		.select('+pinHash')
+		.lean<PinCredentialLean>()
+		.exec();
+	return doc ?? null;
+}
+
+export class MongoCustomerAuthRepository implements CustomerAuthRepository {
+	async findAuthStateById(customerId: string): Promise<CustomerAuthState | null> {
+		const doc = await CustomerModel.findById(customerId).lean<CustomerAuthLean>().exec();
+		if (!doc) return null;
+		return toCustomerAuthState(doc, await loadPasswordHash('customer', customerId));
 	}
 
-	async findAuthStateByEmail(emailNormalized: string): Promise<UserAuthState | null> {
-		const doc = await UserModel.findOne({ email: emailNormalized })
-			.select(AUTH_SECRETS)
-			.lean<UserAuthLean>()
+	async findAuthStateByEmail(emailNormalized: string): Promise<CustomerAuthState | null> {
+		const doc = await CustomerModel.findOne({ email: emailNormalized, status: { $ne: 'deleted' } })
+			.lean<CustomerAuthLean>()
 			.exec();
-		return doc ? toAuthState(doc) : null;
+		if (!doc) return null;
+		return toCustomerAuthState(doc, await loadPasswordHash('customer', doc._id));
 	}
 
-	/** Admin login sends one field that may be either an email or a username. */
-	async findAuthStateByIdentifier(identifier: string): Promise<UserAuthState | null> {
-		const doc = await UserModel.findOne({ $or: [{ email: identifier }, { username: identifier }] })
-			.select(AUTH_SECRETS)
-			.lean<UserAuthLean>()
-			.exec();
-		return doc ? toAuthState(doc) : null;
-	}
-
-	/**
-	 * Changing a password invalidates every existing access token in the same write —
-	 * a stolen token must not outlive the credential it was minted from.
-	 */
-	async setPasswordHash(userId: string, passwordHash: string): Promise<void> {
-		await UserModel.updateOne(
-			{ _id: userId },
-			{ $set: { passwordHash, failedLoginAttempts: 0 }, $inc: { tokenVersion: 1 } },
+	async setPasswordHash(customerId: string, passwordHash: string): Promise<void> {
+		await upsertPasswordCredential('customer', customerId, passwordHash);
+		await CustomerModel.updateOne(
+			{ _id: customerId },
+			{ $set: { failedLoginAttempts: 0 }, $inc: { tokenVersion: 1 } },
 		).exec();
 	}
 
-	async setPinHash(userId: string, pinHash: string | null): Promise<void> {
-		await UserModel.updateOne(
-			{ _id: userId },
-			{ $set: { pinHash, failedPinAttempts: 0, pinLockedUntil: null } },
+	async markEmailVerified(customerId: string, emailNormalized: string): Promise<void> {
+		await CustomerModel.updateOne(
+			{ _id: customerId },
+			{ $set: { emailVerified: true, email: emailNormalized } },
 		).exec();
 	}
 
-	async setPreferredLoginMethod(userId: string, method: 'password' | 'pin'): Promise<void> {
-		await UserModel.updateOne({ _id: userId }, { $set: { preferredLoginMethod: method } }).exec();
+	async setStatus(customerId: string, status: UserStatus): Promise<void> {
+		await CustomerModel.updateOne({ _id: customerId }, { $set: { status } }).exec();
 	}
 
-	async markEmailVerified(userId: string, emailNormalized: string): Promise<void> {
-		await UserModel.updateOne({ _id: userId }, { $set: { emailVerified: true, email: emailNormalized } }).exec();
-	}
-
-	async setStatus(userId: string, status: UserStatus): Promise<void> {
-		await UserModel.updateOne({ _id: userId }, { $set: { status } }).exec();
-	}
-
-	async bumpTokenVersion(userId: string): Promise<number> {
-		const doc = await UserModel.findOneAndUpdate(
-			{ _id: userId },
+	async bumpTokenVersion(customerId: string): Promise<number> {
+		const doc = await CustomerModel.findOneAndUpdate(
+			{ _id: customerId },
 			{ $inc: { tokenVersion: 1 } },
 			{ returnDocument: 'after' },
 		)
@@ -711,9 +734,100 @@ export class MongoAuthUserRepository implements AuthUserRepository {
 		return doc?.tokenVersion ?? 0;
 	}
 
-	async bumpPermissionsVersion(userId: string): Promise<number> {
-		const doc = await UserModel.findOneAndUpdate(
-			{ _id: userId },
+	async recordSuccessfulLogin(customerId: string, at: string): Promise<void> {
+		await CustomerModel.updateOne(
+			{ _id: customerId },
+			{ $set: { lastLoginAt: new Date(at), failedLoginAttempts: 0 } },
+		).exec();
+	}
+}
+
+export class MongoAdminUserAuthRepository implements AdminUserAuthRepository {
+	async findAuthStateById(adminUserId: string): Promise<AdminUserAuthState | null> {
+		const doc = await AdminUserModel.findById(adminUserId).lean<AdminUserAuthLean>().exec();
+		if (!doc) return null;
+		const [passwordHash, pin] = await Promise.all([
+			loadPasswordHash('admin_user', adminUserId),
+			loadPinCredential(adminUserId),
+		]);
+		return toAdminUserAuthState(doc, passwordHash, pin);
+	}
+
+	/** Admin login sends one field that may be either an email or a username. */
+	async findAuthStateByIdentifier(identifier: string): Promise<AdminUserAuthState | null> {
+		const doc = await AdminUserModel.findOne({ $or: [{ email: identifier }, { username: identifier }] })
+			.lean<AdminUserAuthLean>()
+			.exec();
+		if (!doc) return null;
+		const [passwordHash, pin] = await Promise.all([
+			loadPasswordHash('admin_user', doc._id),
+			loadPinCredential(doc._id),
+		]);
+		return toAdminUserAuthState(doc, passwordHash, pin);
+	}
+
+	/**
+	 * Changing a password invalidates every existing access token in the same write —
+	 * a stolen token must not outlive the credential it was minted from.
+	 */
+	async setPasswordHash(adminUserId: string, passwordHash: string): Promise<void> {
+		await upsertPasswordCredential('admin_user', adminUserId, passwordHash);
+		await AdminUserModel.updateOne(
+			{ _id: adminUserId },
+			{ $set: { failedLoginAttempts: 0 }, $inc: { tokenVersion: 1 } },
+		).exec();
+	}
+
+	async setPinHash(adminUserId: string, pinHash: string | null): Promise<void> {
+		const id = pinCredentialId(adminUserId);
+		if (pinHash === null) {
+			await PinCredentialModel.deleteOne({ _id: id }).exec();
+			return;
+		}
+		await PinCredentialModel.updateOne(
+			{ _id: id },
+			{
+				$set: {
+					adminUserId,
+					pinHash,
+					failedPinAttempts: 0,
+					pinLockedUntil: null,
+				},
+				$setOnInsert: { _id: id, pinRevalidationRequiredAt: null },
+			},
+			{ upsert: true },
+		).exec();
+	}
+
+	async setPreferredLoginMethod(adminUserId: string, method: 'password' | 'pin'): Promise<void> {
+		await AdminUserModel.updateOne({ _id: adminUserId }, { $set: { preferredLoginMethod: method } }).exec();
+	}
+
+	async markEmailVerified(adminUserId: string, emailNormalized: string): Promise<void> {
+		await AdminUserModel.updateOne(
+			{ _id: adminUserId },
+			{ $set: { emailVerified: true, email: emailNormalized } },
+		).exec();
+	}
+
+	async setStatus(adminUserId: string, status: UserStatus): Promise<void> {
+		await AdminUserModel.updateOne({ _id: adminUserId }, { $set: { status } }).exec();
+	}
+
+	async bumpTokenVersion(adminUserId: string): Promise<number> {
+		const doc = await AdminUserModel.findOneAndUpdate(
+			{ _id: adminUserId },
+			{ $inc: { tokenVersion: 1 } },
+			{ returnDocument: 'after' },
+		)
+			.lean<{ tokenVersion: number }>()
+			.exec();
+		return doc?.tokenVersion ?? 0;
+	}
+
+	async bumpPermissionsVersion(adminUserId: string): Promise<number> {
+		const doc = await AdminUserModel.findOneAndUpdate(
+			{ _id: adminUserId },
 			{ $inc: { permissionsVersion: 1 } },
 			{ returnDocument: 'after' },
 		)
@@ -722,26 +836,21 @@ export class MongoAuthUserRepository implements AuthUserRepository {
 		return doc?.permissionsVersion ?? 0;
 	}
 
-	async recordSuccessfulLogin(userId: string, at: string): Promise<void> {
-		await UserModel.updateOne(
-			{ _id: userId },
-			// A successful password login is exactly the proof a post-reset PIN suspension
-			// waits for, so it clears here rather than in a separate call a caller could skip.
-			{
-				$set: {
-					lastLoginAt: new Date(at),
-					failedLoginAttempts: 0,
-					failedPinAttempts: 0,
-					pinLockedUntil: null,
-					pinRevalidationRequiredAt: null,
-				},
-			},
+	async recordSuccessfulLogin(adminUserId: string, at: string): Promise<void> {
+		await AdminUserModel.updateOne(
+			{ _id: adminUserId },
+			{ $set: { lastLoginAt: new Date(at), failedLoginAttempts: 0 } },
+		).exec();
+		// A successful password login is exactly the proof a post-reset PIN suspension waits for.
+		await PinCredentialModel.updateOne(
+			{ _id: pinCredentialId(adminUserId) },
+			{ $set: { failedPinAttempts: 0, pinLockedUntil: null, pinRevalidationRequiredAt: null } },
 		).exec();
 	}
 
-	async recordFailedPinAttempt(userId: string): Promise<number> {
-		const doc = await UserModel.findOneAndUpdate(
-			{ _id: userId },
+	async recordFailedPinAttempt(adminUserId: string): Promise<number> {
+		const doc = await PinCredentialModel.findOneAndUpdate(
+			{ _id: pinCredentialId(adminUserId) },
 			{ $inc: { failedPinAttempts: 1 } },
 			{ returnDocument: 'after' },
 		)
@@ -750,17 +859,23 @@ export class MongoAuthUserRepository implements AuthUserRepository {
 		return doc?.failedPinAttempts ?? 0;
 	}
 
-	async lockPinUntil(userId: string, until: string): Promise<void> {
-		await UserModel.updateOne({ _id: userId }, { $set: { pinLockedUntil: new Date(until) } }).exec();
+	async lockPinUntil(adminUserId: string, until: string): Promise<void> {
+		await PinCredentialModel.updateOne(
+			{ _id: pinCredentialId(adminUserId) },
+			{ $set: { pinLockedUntil: new Date(until) } },
+		).exec();
 	}
 
-	async clearPinLock(userId: string): Promise<void> {
-		await UserModel.updateOne({ _id: userId }, { $set: { pinLockedUntil: null, failedPinAttempts: 0 } }).exec();
+	async clearPinLock(adminUserId: string): Promise<void> {
+		await PinCredentialModel.updateOne(
+			{ _id: pinCredentialId(adminUserId) },
+			{ $set: { pinLockedUntil: null, failedPinAttempts: 0 } },
+		).exec();
 	}
 
-	async setPinRevalidationRequired(userId: string, at: string | null): Promise<void> {
-		await UserModel.updateOne(
-			{ _id: userId },
+	async setPinRevalidationRequired(adminUserId: string, at: string | null): Promise<void> {
+		await PinCredentialModel.updateOne(
+			{ _id: pinCredentialId(adminUserId) },
 			{ $set: { pinRevalidationRequiredAt: at ? new Date(at) : null } },
 		).exec();
 	}

@@ -45,7 +45,7 @@ const sessionFixture = (overrides: Record<string, unknown> = {}) => ({
 	id: `sess_${randomUUID()}`,
 	userId: 'user_auth_it',
 	audience: 'storefront' as const,
-	roleAtLogin: 'customer' as const,
+	roleAtLogin: null,
 	refreshTokenHash: `hash_${randomUUID()}`,
 	refreshFamilyId: `family_${randomUUID()}`,
 	rotationCounter: 0,

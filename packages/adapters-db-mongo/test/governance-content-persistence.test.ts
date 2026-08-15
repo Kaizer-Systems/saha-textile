@@ -1,20 +1,20 @@
 import { randomUUID } from 'node:crypto';
 
-import { User } from '@saha-textile/contracts';
+import { Customer } from '@saha-textile/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { buildMongoConfig } from '../src/config';
 import { connectMongo, disconnectMongo } from '../src/connection';
-import { toProduct, toUser } from '../src/mappers';
+import { toCustomer, toProduct } from '../src/mappers';
 import {
 	AuditLogModel,
+	CustomerModel,
 	FaqEntryModel,
 	MessageOutboxModel,
 	NotificationChannelSettingsModel,
 	ProductQuestionModel,
 	RatingAggregateModel,
 	ReviewModel,
-	UserModel,
 } from '../src/models/index';
 import {
 	MongoFaqRepository,
@@ -72,7 +72,7 @@ describe.skipIf(!hasMongoEnv())('governance and content persistence (integration
 			ProductQuestionModel.deleteMany(filter).exec(),
 			ReviewModel.deleteMany(filter).exec(),
 			RatingAggregateModel.deleteMany({ _id: new RegExp(`^${P}`) }).exec(),
-			UserModel.deleteMany(filter).exec(),
+			CustomerModel.deleteMany({ email: new RegExp(P) }).exec(),
 		]);
 		await disconnectMongo();
 	});
@@ -137,8 +137,21 @@ describe.skipIf(!hasMongoEnv())('governance and content persistence (integration
 				autoDisableAtLimit: false,
 				periodResetAt: null,
 			};
-			await settings.upsertSettings(base);
-			await expect(settings.upsertSettings({ ...base, id: `${P}notif_${randomUUID()}` })).rejects.toThrow();
+			const first = await settings.upsertSettings(base);
+			const second = await settings.upsertSettings({
+				...base,
+				id: `${P}notif_${randomUUID()}`,
+				enabled: false,
+			});
+			// Identity follows the unique (channel, category) row — a fresh id must not fork it.
+			expect(second.id).toBe(first.id);
+			expect(second.enabled).toBe(false);
+			expect(
+				await NotificationChannelSettingsModel.countDocuments({
+					channel: 'sms',
+					category: 'marketing',
+				}).exec(),
+			).toBe(1);
 		});
 
 		it('increments usage atomically', async () => {
@@ -371,35 +384,26 @@ describe.skipIf(!hasMongoEnv())('governance and content persistence (integration
 	});
 
 	describe('mapper response safety', () => {
-		it('never maps a password or PIN hash into the public user shape', async () => {
-			const userId = `${P}user_map_${randomUUID()}`;
-			await UserModel.create([
+		it('never maps a password hash into the public customer shape', async () => {
+			const customerId = `cus_${randomUUID()}`;
+			await CustomerModel.create([
 				{
-					_id: userId,
-					email: `${userId}@example.com`,
-					passwordHash: 'argon2id$super-secret',
-					pinHash: 'argon2id$pin-secret',
+					_id: customerId,
+					email: `${P}${customerId}@example.com`,
 					tokenVersion: 4,
-					permissionsVersion: 2,
-					permissions: ['catalog.write'],
 				},
 			]);
 
-			// Load WITH the secrets selected — the worst case for a mapper.
-			const doc = await UserModel.findById(userId).select('+passwordHash +pinHash').lean().exec();
-			const mapped = toUser(doc as never);
+			const doc = await CustomerModel.findById(customerId).lean().exec();
+			const mapped = toCustomer(doc as never);
 			const serialized = JSON.stringify(mapped);
 
-			expect(serialized).not.toContain('super-secret');
-			expect(serialized).not.toContain('pin-secret');
 			expect(serialized).not.toContain('passwordHash');
-			expect(serialized).not.toContain('pinHash');
 			// Version counters are internal too: they tell an attacker when to retry.
 			expect(serialized).not.toContain('tokenVersion');
-			expect(serialized).not.toContain('permissionsVersion');
 
 			// And the result is a valid public contract, not just a stripped object.
-			expect(User.safeParse(mapped).success).toBe(true);
+			expect(Customer.safeParse(mapped).success).toBe(true);
 		});
 
 		it('produces no Mongoose internals in a mapped product', () => {

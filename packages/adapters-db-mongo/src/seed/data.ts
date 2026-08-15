@@ -1,5 +1,7 @@
 import { Category, Currency, Product, Promotion } from '@saha-textile/contracts';
 
+export { seedCustomers } from './customer-seed-data';
+
 /**
  * Seed data validated through the zod contracts (so defaults are applied and the
  * shapes are guaranteed correct). Reflects the real taxonomy + the signature

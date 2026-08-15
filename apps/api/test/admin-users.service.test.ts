@@ -46,9 +46,26 @@ describe('AdminUsersService', () => {
 	};
 	const sessions = { revokeAllForUser: vi.fn(async () => 3) };
 	const audit = { append: vi.fn(async (entry: unknown) => entry) };
+	const adminUsers = {
+		list: vi.fn(async () => ({
+			items: [],
+			meta: { page: 1, pageSize: 24, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+		})),
+		findById: vi.fn(),
+		findByEmail: vi.fn(),
+		findByUsername: vi.fn(),
+		save: vi.fn(),
+	};
 
 	const service = () =>
-		new AdminUsersService(roles as never, assignments as never, users as never, sessions as never, audit as never);
+		new AdminUsersService(
+			roles as never,
+			assignments as never,
+			users as never,
+			adminUsers as never,
+			sessions as never,
+			audit as never,
+		);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -76,7 +93,7 @@ describe('AdminUsersService', () => {
 		 */
 		it('refuses to grant permissions the actor does not hold', async () => {
 			users.findAuthStateById.mockImplementation(async (id: string) =>
-				userFixture(id, { permissions: id === ACTOR ? ['user.index'] : [] }),
+				userFixture(id, { permissions: id === ACTOR ? ['admin_user.index'] : [] }),
 			);
 			roles.findById.mockResolvedValue(roleFixture({ id: 'r1', permissions: ['role.destroy'] }));
 
@@ -96,9 +113,9 @@ describe('AdminUsersService', () => {
 
 		it('allows a grant fully within the actor’s authority', async () => {
 			users.findAuthStateById.mockImplementation(async (id: string) =>
-				userFixture(id, { permissions: id === ACTOR ? ['user.index', 'role.index'] : [] }),
+				userFixture(id, { permissions: id === ACTOR ? ['admin_user.index', 'role.index'] : [] }),
 			);
-			roles.findById.mockResolvedValue(roleFixture({ id: 'r1', permissions: ['user.index'] }));
+			roles.findById.mockResolvedValue(roleFixture({ id: 'r1', permissions: ['admin_user.index'] }));
 
 			await service().assignRole(ACTOR, TARGET, 'r1', null);
 
@@ -228,7 +245,7 @@ describe('AdminUsersService', () => {
 
 		it('returns the resolved permission set, not just the roles', async () => {
 			users.findAuthStateById.mockImplementation(async (id: string) =>
-				userFixture(id, { permissions: ['user.index'] }),
+				userFixture(id, { permissions: ['admin_user.index'] }),
 			);
 			// `revokedAt: null` is not decoration: the resolver treats anything else — including a
 			// missing field — as revoked, which is the correct direction to fail in.
@@ -246,7 +263,7 @@ describe('AdminUsersService', () => {
 			const result = await service().authority(TARGET);
 
 			expect(result.roles).toHaveLength(1);
-			expect(result.effectivePermissions).toEqual(['order.index', 'user.index']);
+			expect(result.effectivePermissions).toEqual(['admin_user.index', 'order.index']);
 		});
 	});
 });

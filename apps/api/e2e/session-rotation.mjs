@@ -171,6 +171,24 @@ async function main() {
 		return request(jar, method, url, options);
 	}
 
+	/** Same 1s-access recovery as `adminRequest`, against the storefront refresh route. */
+	async function storefrontRequest(jar, method, url, options = {}) {
+		const first = await request(jar, method, url, options);
+		if (first.statusCode !== 401) return first;
+
+		let reason;
+		try {
+			reason = JSON.parse(first.body).error?.reason;
+		} catch {
+			return first;
+		}
+		if (reason !== 'session_expired') return first;
+
+		const rotated = await request(jar, 'POST', '/auth/storefront/refresh', { payload: {} });
+		if (rotated.statusCode !== 200) return first;
+		return request(jar, method, url, options);
+	}
+
 	async function registerCustomer() {
 		const email = `rotation-probe-${randomUUID()}@example.test`;
 		emails.push(email);
@@ -189,28 +207,39 @@ async function main() {
 	 * `permissions` argument is the EMBEDDED grant list, which is what lets a probe hold
 	 * exactly the authority a case needs and nothing else.
 	 */
-	async function seedAdmin(permissions = []) {
-		const { AUTH_PORT } = await import('../dist/infra/tokens.js');
+	async function setAdminPassword(userId, password) {
+		const { AUTH_PORT, ADMIN_USER_AUTH_REPOSITORY } = await import('../dist/infra/tokens.js');
 		const auth = app.get(AUTH_PORT);
+		const adminAuth = app.get(ADMIN_USER_AUTH_REPOSITORY);
+		await adminAuth.setPasswordHash(userId, await auth.hashPassword(password));
+	}
+
+	async function setCustomerPassword(customerId, password) {
+		const { AUTH_PORT, CUSTOMER_AUTH_REPOSITORY } = await import('../dist/infra/tokens.js');
+		const auth = app.get(AUTH_PORT);
+		const customerAuth = app.get(CUSTOMER_AUTH_REPOSITORY);
+		await customerAuth.setPasswordHash(customerId, await auth.hashPassword(password));
+	}
+
+	async function seedAdmin(permissions = []) {
 		const email = `negative-probe-${randomUUID()}@example.test`;
 		emails.push(email);
 		const password = 'a-very-long-probe-password';
-		const userId = `user_${randomUUID()}`;
+		const userId = `adm_${randomUUID()}`;
 
-		await models.UserModel.create([
+		await models.AdminUserModel.create([
 			{
 				_id: userId,
 				email,
-				emailNormalized: email,
-				passwordHash: await auth.hashPassword(password),
+				emailVerified: true,
 				role: 'admin',
 				status: 'active',
 				permissions,
 				tokenVersion: 0,
 				permissionsVersion: 0,
-				emailVerifiedAt: new Date(),
 			},
 		]);
+		await setAdminPassword(userId, password);
 		probeUserIds.push(userId);
 
 		const jar = new CookieJar();
@@ -230,8 +259,8 @@ async function main() {
 	 */
 	await check('first-administrator bootstrap: creates one, then refuses forever (pass 6a)', async () => {
 		const { bootstrapFirstAdmin, FirstAdminAlreadyExistsError } = await import('../dist/first-admin.js');
-		const { ADMINISTRATOR_ROLE_KEY, UserModel, ensureSystemRoles, AuditLogModel } = models;
-		const deps = { models: { UserModel }, ensureSystemRoles, administratorRoleKey: ADMINISTRATOR_ROLE_KEY };
+		const { ADMINISTRATOR_ROLE_KEY, AdminUserModel, ensureSystemRoles, AuditLogModel } = models;
+		const deps = { models: { AdminUserModel }, ensureSystemRoles, administratorRoleKey: ADMINISTRATOR_ROLE_KEY };
 
 		const email = `first-admin-${randomUUID()}@example.test`;
 		emails.push(email);
@@ -274,12 +303,13 @@ async function main() {
 		 * happy path. This constructs the one state where only the holder check applies: an
 		 * admin-tier assignment held by an account that is NOT itself `role: 'admin'`.
 		 */
-		await models.UserModel.deleteMany({ role: 'admin' }).exec();
-		const staffId = `user_${randomUUID()}`;
-		await models.UserModel.create([
+		await models.AdminUserModel.deleteMany({ role: 'admin' }).exec();
+		const staffId = `adm_${randomUUID()}`;
+		await models.AdminUserModel.create([
 			{
 				_id: staffId,
 				email: `staff-holder-${randomUUID()}@example.test`,
+				emailVerified: true,
 				role: 'staff',
 				status: 'active',
 				permissions: [],
@@ -305,12 +335,19 @@ async function main() {
 			'bootstrap ran again despite a live administrator assignment',
 		);
 		await models.UserRoleAssignmentModel.deleteMany({ userId: staffId }).exec();
-		await models.UserModel.deleteOne({ _id: staffId }).exec();
+		await models.AdminUserModel.deleteOne({ _id: staffId }).exec();
 
 		// Refusal also holds for an account carrying the coarse role but no assignment yet,
 		// which is the state a partially-completed earlier attempt would leave behind.
-		await models.UserModel.create([
-			{ _id: created.userId, email: created.email, role: 'admin', status: 'active', permissions: [] },
+		await models.AdminUserModel.create([
+			{
+				_id: created.userId,
+				email: created.email,
+				emailVerified: true,
+				role: 'admin',
+				status: 'active',
+				permissions: [],
+			},
 		]);
 		await models.UserRoleAssignmentModel.deleteMany({ userId: created.userId }).exec();
 		await assert.rejects(
@@ -409,7 +446,7 @@ async function main() {
 			`a revoked session was still accepted: ${afterRevocation.statusCode}`,
 		);
 
-		const user = await models.UserModel.findOne({ email: emails[emails.length - 1] }).lean();
+		const user = await models.CustomerModel.findOne({ email: emails[emails.length - 1] }).lean();
 		const sessions = await models.AuthSessionModel.find({ userId: String(user._id) }).lean();
 		assert.ok(sessions.length > 0, 'no session rows found for the probe account');
 		for (const session of sessions) {
@@ -432,7 +469,7 @@ async function main() {
 		const attempt = await request(attacker, 'POST', '/auth/storefront/refresh', { payload: {} });
 		assert.equal(attempt.statusCode, 401, `expected the stolen token to be detected, got ${attempt.statusCode}`);
 
-		const user = await models.UserModel.findOne({ email: emails[emails.length - 1] }).lean();
+		const user = await models.CustomerModel.findOne({ email: emails[emails.length - 1] }).lean();
 		const sessions = await models.AuthSessionModel.find({ userId: String(user._id) }).lean();
 		assert.ok(sessions.length > 0, 'no session rows found for the probe account');
 		for (const session of sessions) {
@@ -609,30 +646,27 @@ async function main() {
 	});
 
 	await check('admin role routes are deny-by-default: a role alone opens nothing', async () => {
-		const { AUTH_PORT } = await import('../dist/infra/tokens.js');
-		const { ensureSystemRoles, UserModel, RoleModel, UserRoleAssignmentModel } = models;
-		const auth = app.get(AUTH_PORT);
+		const { ensureSystemRoles, AdminUserModel, RoleModel, UserRoleAssignmentModel } = models;
 
 		// A real administrator, created directly because no first-admin bootstrap exists yet
 		// (pass 6a). Deliberately granted NO permissions.
 		const email = `roles-probe-${randomUUID()}@example.test`;
 		emails.push(email);
 		const password = 'a-very-long-probe-password';
-		const userId = `user_${randomUUID()}`;
-		await UserModel.create([
+		const userId = `adm_${randomUUID()}`;
+		await AdminUserModel.create([
 			{
 				_id: userId,
 				email,
-				emailNormalized: email,
-				passwordHash: await auth.hashPassword(password),
+				emailVerified: true,
 				role: 'admin',
 				status: 'active',
 				permissions: [],
 				tokenVersion: 0,
 				permissionsVersion: 0,
-				emailVerifiedAt: new Date(),
 			},
 		]);
+		await setAdminPassword(userId, password);
 		probeUserIds.push(userId);
 
 		// Anonymous: refused before any permission question is asked.
@@ -682,30 +716,27 @@ async function main() {
 	});
 
 	await check('escalation rules hold on the wire: no delegation above self, last admin protected', async () => {
-		const { AUTH_PORT } = await import('../dist/infra/tokens.js');
-		const { ensureSystemRoles, UserModel, RoleModel, UserRoleAssignmentModel } = models;
-		const auth = app.get(AUTH_PORT);
+		const { ensureSystemRoles, AdminUserModel, RoleModel, UserRoleAssignmentModel } = models;
 		await ensureSystemRoles();
 
 		const password = 'a-very-long-probe-password';
 		const makeAdmin = async (permissions) => {
 			const email = `escalation-probe-${randomUUID()}@example.test`;
 			emails.push(email);
-			const userId = `user_${randomUUID()}`;
-			await UserModel.create([
+			const userId = `adm_${randomUUID()}`;
+			await AdminUserModel.create([
 				{
 					_id: userId,
 					email,
-					emailNormalized: email,
-					passwordHash: await auth.hashPassword(password),
+					emailVerified: true,
 					role: 'admin',
 					status: 'active',
 					permissions,
 					tokenVersion: 0,
 					permissionsVersion: 0,
-					emailVerifiedAt: new Date(),
 				},
 			]);
+			await setAdminPassword(userId, password);
 			probeUserIds.push(userId);
 			const jar = new CookieJar();
 			const login = await adminRequest(jar, 'POST', '/auth/admin/login', {
@@ -716,7 +747,7 @@ async function main() {
 		};
 
 		// A limited operator: may assign roles, but holds nothing else.
-		const limited = await makeAdmin(['user_role.assign', 'user_role.revoke', 'user.index', 'role.create']);
+		const limited = await makeAdmin(['user_role.assign', 'user_role.revoke', 'admin_user.index', 'role.create']);
 		const victim = await makeAdmin([]);
 
 		// A role carrying a permission the actor does NOT hold.
@@ -795,6 +826,10 @@ async function main() {
 			['DELETE', `/admin/roles/${roleId}`],
 			['GET', '/admin/permissions'],
 			['GET', '/admin/audit-logs'],
+			['GET', '/admin/customers'],
+			['POST', '/admin/customers'],
+			['GET', '/admin/users'],
+			['GET', '/auth/admin/invites'],
 			['GET', `/admin/users/${probe.userId}/authority`],
 			['POST', `/admin/users/${probe.userId}/roles`],
 			['DELETE', `/admin/users/${probe.userId}/roles/${roleId}`],
@@ -818,6 +853,10 @@ async function main() {
 			['GET', '/admin/roles'],
 			['GET', '/admin/permissions'],
 			['POST', '/admin/roles'],
+			['GET', '/admin/customers'],
+			['POST', '/admin/customers'],
+			['GET', '/admin/users'],
+			['GET', '/auth/admin/invites'],
 		]) {
 			const response = await request(customer, method, url, { payload: method === 'GET' ? undefined : {} });
 			// 401, not 403: the audience boundary answers before any permission question, so a
@@ -826,17 +865,152 @@ async function main() {
 		}
 	});
 
+	await check('audience separation: admin credentials fail storefront login and vice versa', async () => {
+		const password = 'a-very-long-probe-password';
+		const admin = await seedAdmin([]);
+		const customerEmail = `audience-${randomUUID()}@example.test`;
+		emails.push(customerEmail);
+		const customerJar = new CookieJar();
+		const registered = await request(customerJar, 'POST', '/auth/storefront/register', {
+			payload: { email: customerEmail, password },
+		});
+		assert.equal(registered.statusCode, 201, `customer register failed: ${registered.statusCode}`);
+
+		const adminOnStorefront = await request(new CookieJar(), 'POST', '/auth/storefront/login/password', {
+			payload: { email: admin.email, password: admin.password },
+		});
+		assert.equal(
+			adminOnStorefront.statusCode,
+			401,
+			`admin credentials opened a storefront session: ${adminOnStorefront.statusCode}`,
+		);
+
+		const customerOnAdmin = await request(new CookieJar(), 'POST', '/auth/admin/login', {
+			payload: { identifier: customerEmail, password },
+		});
+		assert.equal(
+			customerOnAdmin.statusCode,
+			401,
+			`customer credentials opened an admin session: ${customerOnAdmin.statusCode}`,
+		);
+	});
+
+	await check('invite ACL: list/create require admin_user.create, not mere authentication', async () => {
+		const bare = await seedAdmin(['admin_user.index']);
+		const inviter = await seedAdmin(['admin_user.create']);
+
+		for (const [method, url, payload] of [
+			['GET', '/auth/admin/invites', undefined],
+			['POST', '/auth/admin/invites', { email: `invite-deny-${randomUUID()}@example.test`, role: 'staff' }],
+		]) {
+			const denied = await adminRequest(bare.jar, method, url, { payload });
+			assert.equal(denied.statusCode, 403, `${method} ${url} answered ${denied.statusCode}, not 403`);
+		}
+
+		const listed = await adminRequest(inviter.jar, 'GET', '/auth/admin/invites');
+		assert.equal(listed.statusCode, 200, `invite list failed for granter: ${listed.statusCode}`);
+	});
+
+	await check('CRM: ungranted operator cannot read customers; soft-delete blocks login', async () => {
+		const bare = await seedAdmin([]);
+		const crm = await seedAdmin(['customer.index', 'customer.create', 'customer.destroy', 'customer.update']);
+
+		assert.equal(
+			(await adminRequest(bare.jar, 'GET', '/admin/customers')).statusCode,
+			403,
+			'ungranted operator listed customers',
+		);
+
+		const created = await adminRequest(crm.jar, 'POST', '/admin/customers', {
+			payload: {
+				displayName: 'CRM Probe',
+				email: `crm-${randomUUID()}@example.test`,
+				phone: '+919999000001',
+				activationChannels: ['email'],
+			},
+		});
+		assert.equal(created.statusCode, 201, `customer create failed: ${created.statusCode} ${created.body}`);
+		const customer = JSON.parse(created.body);
+		emails.push(customer.email);
+
+		// Mint a password so login can be attempted after soft-delete.
+		await models.CustomerModel.updateOne({ _id: customer.id }, { $set: { status: 'active' } }).exec();
+		await setCustomerPassword(customer.id, 'a-very-long-probe-password');
+
+		const beforeDelete = await request(new CookieJar(), 'POST', '/auth/storefront/login/password', {
+			payload: { email: customer.email, password: 'a-very-long-probe-password' },
+		});
+		assert.equal(beforeDelete.statusCode, 200, `active customer login failed: ${beforeDelete.statusCode}`);
+
+		const deleted = await adminRequest(crm.jar, 'DELETE', `/admin/customers/${customer.id}`);
+		assert.equal(deleted.statusCode, 200, `soft-delete failed: ${deleted.statusCode} ${deleted.body}`);
+
+		const afterDelete = await request(new CookieJar(), 'POST', '/auth/storefront/login/password', {
+			payload: { email: customer.email, password: 'a-very-long-probe-password' },
+		});
+		assert.equal(afterDelete.statusCode, 401, `soft-deleted customer still signed in: ${afterDelete.statusCode}`);
+	});
+
+	await check('CRM BOLA: address mutation must target the owning customer path', async () => {
+		const crm = await seedAdmin(['customer.index', 'customer.create', 'customer.update']);
+		const mk = async () => {
+			const response = await adminRequest(crm.jar, 'POST', '/admin/customers', {
+				payload: {
+					displayName: 'BOLA Probe',
+					email: `bola-${randomUUID()}@example.test`,
+					phone: '+919999000002',
+					activationChannels: ['email'],
+				},
+			});
+			assert.equal(response.statusCode, 201, `customer create failed: ${response.statusCode}`);
+			const body = JSON.parse(response.body);
+			emails.push(body.email);
+			return body;
+		};
+		const a = await mk();
+		const b = await mk();
+
+		const added = await adminRequest(crm.jar, 'POST', `/admin/customers/${a.id}/addresses`, {
+			payload: {
+				label: 'Home',
+				fullName: 'BOLA Probe',
+				phone: '+919999000003',
+				line1: '1 Test Lane',
+				city: 'Kolkata',
+				state: 'WB',
+				postalCode: '700001',
+				country: 'IN',
+			},
+		});
+		assert.ok([200, 201].includes(added.statusCode), `add address failed: ${added.statusCode} ${added.body}`);
+		const addressId = JSON.parse(added.body).addresses?.[0]?.id;
+		assert.ok(addressId, 'created address id missing');
+
+		// Same address id under a different customer must not mutate A or invent a row on B.
+		const crossed = await adminRequest(crm.jar, 'PATCH', `/admin/customers/${b.id}/addresses/${addressId}`, {
+			payload: { line1: 'Hijacked' },
+		});
+		assert.ok(
+			[404, 400].includes(crossed.statusCode),
+			`cross-customer address patch answered ${crossed.statusCode}; expected 404 or 400`,
+		);
+
+		const stillA = await adminRequest(crm.jar, 'GET', `/admin/customers/${a.id}`);
+		assert.equal(stillA.statusCode, 200);
+		assert.equal(JSON.parse(stillA.body).addresses?.[0]?.line1, '1 Test Lane', 'foreign path rewrote address');
+	});
+
 	await check('BOLA: one customer cannot read another customer’s order', async () => {
 		const mine = await registerCustomer();
 		const theirs = await registerCustomer();
 
-		const list = await request(mine, 'GET', '/orders');
+		const list = await storefrontRequest(mine, 'GET', '/orders');
 		assert.equal(list.statusCode, 200, `own order list failed: ${list.statusCode}`);
 
 		// A guessed identifier must not become a read. Absent an order to point at, the
 		// property under test is that an id belonging to nobody in this session is refused
 		// rather than served.
-		const foreign = await request(theirs, 'GET', '/orders/order_00000000-0000-4000-8000-000000000000');
+		const foreign = await storefrontRequest(theirs, 'GET', '/orders/order_00000000-0000-4000-8000-000000000000');
 		assert.ok(
 			[403, 404].includes(foreign.statusCode),
 			`a foreign order id answered ${foreign.statusCode}; expected 403 or 404`,
@@ -846,7 +1020,7 @@ async function main() {
 	await check('self-escalation: an operator cannot grant themselves authority they lack', async () => {
 		const { ensureSystemRoles, RoleModel } = models;
 		await ensureSystemRoles();
-		const probe = await seedAdmin(['user_role.assign', 'user.index']);
+		const probe = await seedAdmin(['user_role.assign', 'admin_user.index']);
 
 		// Granting to SELF is the shortest escalation path, and the subset rule is what closes
 		// it: the administrator role holds every code, which this actor does not.
@@ -859,7 +1033,7 @@ async function main() {
 	});
 
 	await check('mixed-target grant is refused whole, never partially applied', async () => {
-		const probe = await seedAdmin(['user_role.assign', 'user.index', 'role.create', 'order.index']);
+		const probe = await seedAdmin(['user_role.assign', 'admin_user.index', 'role.create', 'order.index']);
 		const victim = await seedAdmin([]);
 
 		// One permission the actor holds, one it does not. A partial application would leave
@@ -965,17 +1139,17 @@ async function main() {
 		// read. An earlier version filtered on `emailNormalized`, which registration does not
 		// reliably set, so it matched a DIFFERENT account and reported a privilege-escalation
 		// vulnerability that does not exist. A probe against a clean database showed the
-		// handler hard-codes `role: 'customer'`.
-		const created = await models.UserModel.findOne({ email }).lean().exec();
+		// handler ignores injected operator fields — customers have no role field (D7).
+		const created = await models.CustomerModel.findOne({ email }).lean().exec();
 		assert.ok(created, 'the registered account was not found');
 		assert.equal(created.email, email, 'matched the wrong account');
-		assert.equal(created.role, 'customer', `registration honoured an injected role: ${created.role}`);
-		assert.deepEqual(created.permissions ?? [], [], 'registration honoured injected permissions');
+		assert.ok(!('role' in created), `registration stored an injected role: ${created.role}`);
+		assert.ok(!('permissions' in created), 'registration stored injected permissions');
 	});
 
 	await check('admin Security Settings: PIN lifecycle and recent-password proof (pass 6b)', async () => {
 		const password = 'a-very-long-probe-password';
-		const probe = await seedAdmin(['user.index']);
+		const probe = await seedAdmin(['admin_user.index']);
 		const settings = () => adminRequest(probe.jar, 'GET', '/auth/admin/security');
 
 		const initial = await settings();
@@ -1031,6 +1205,64 @@ async function main() {
 			payload: { identifier: probe.email, pin: '135790' },
 		});
 		assert.equal(pinAfterRemoval.statusCode, 401, 'a removed PIN still authenticates');
+	});
+
+	await check('order status is admin-audience and permission-gated, and was neither', async () => {
+		const password = 'a-very-long-probe-password';
+		const orderId = 'order_00000000-0000-4000-8000-000000000000';
+		const payload = { status: 'shipped' };
+
+		/**
+		 * THE HOLE THIS CLOSED, and it was real rather than theoretical.
+		 *
+		 * The route carried `@RequireRoles('admin', 'staff')` and NO audience. The guard only
+		 * enforces an audience when one is declared, and `OrdersController` declares none — its
+		 * other routes are a customer reading and placing their own orders. So a staff member
+		 * who also shops on the storefront reached this with their STOREFRONT cookie: the role
+		 * check passed and the handler RAN, as far as the repository. Probed against the real
+		 * application before the fix, which is how it was found.
+		 *
+		 * After `DEC-ACCOUNT-SEPARATION`, an operator account cannot obtain a storefront
+		 * session at all (population-scoped login). Cross-audience is therefore probed with a
+		 * real customer session, and operator→storefront login is asserted to fail first.
+		 *
+		 * 401 rather than 403, deliberately: an audience mismatch answers exactly as a missing
+		 * cookie does, so a storefront session cannot even learn the surface exists.
+		 */
+		const staff = await seedAdmin([]);
+		const operatorOnStorefront = await request(new CookieJar(), 'POST', '/auth/storefront/login/password', {
+			payload: { email: staff.email, password },
+		});
+		assert.equal(
+			operatorOnStorefront.statusCode,
+			401,
+			`an operator account signed in on the storefront: ${operatorOnStorefront.statusCode}`,
+		);
+
+		const customerJar = await registerCustomer();
+		const crossAudience = await request(customerJar, 'PATCH', `/orders/${orderId}/status`, { payload });
+		assert.equal(
+			crossAudience.statusCode,
+			401,
+			`a storefront cookie reached the admin order-status route: ${crossAudience.statusCode}`,
+		);
+
+		// Deny-by-default: the right audience is not enough without the grant.
+		const ungranted = await adminRequest(staff.jar, 'PATCH', `/orders/${orderId}/status`, { payload });
+		assert.equal(
+			ungranted.statusCode,
+			403,
+			`an operator without order.update was allowed: ${ungranted.statusCode}`,
+		);
+
+		/**
+		 * With the grant the handler runs — and a missing order is a 404, not the 500 it used
+		 * to be. An operator mistyping an order reference was being told the server had broken.
+		 */
+		const granted = await seedAdmin(['order.update']);
+		const allowed = await adminRequest(granted.jar, 'PATCH', `/orders/${orderId}/status`, { payload });
+		assert.equal(allowed.statusCode, 404, `an unknown order answered ${allowed.statusCode}, not 404`);
+		assert.equal(JSON.parse(allowed.body).error.code, 'not_found');
 	});
 
 	await check('session list and per-session revoke: own devices only, no hashes, 404 for a stranger', async () => {
@@ -1178,7 +1410,7 @@ async function main() {
 
 		// Reading the trail is its OWN authority: administering a resource must not imply
 		// being able to read the history of everyone who touched it.
-		const neighbour = await seedAdmin(['user.index', 'role.index']);
+		const neighbour = await seedAdmin(['admin_user.index', 'role.index']);
 		const refused = await adminRequest(neighbour.jar, 'GET', '/admin/audit-logs');
 		assert.equal(refused.statusCode, 403, `an operator without audit.index read the trail: ${refused.statusCode}`);
 
@@ -1257,7 +1489,7 @@ async function main() {
 
 	await check('weak PINs are refused over HTTP, with a code a screen can act on (weak-PIN policy)', async () => {
 		const password = 'a-very-long-probe-password';
-		const probe = await seedAdmin(['user.index']);
+		const probe = await seedAdmin(['admin_user.index']);
 		const settings = () => adminRequest(probe.jar, 'GET', '/auth/admin/security');
 
 		// One per structural rule plus the denylist, because a policy that only caught
@@ -1304,7 +1536,7 @@ async function main() {
 	});
 
 	await check('a failed step-up proof is 403 and leaves the session usable; a missing one is still 401', async () => {
-		const probe = await seedAdmin(['user.index']);
+		const probe = await seedAdmin(['admin_user.index']);
 
 		const proofs = [
 			['/auth/admin/pin', { currentPassword: 'not-the-password', pin: '384917' }],
@@ -1347,7 +1579,7 @@ async function main() {
 	await check('admin password change ends every session, including the one that changed it (pass 6b)', async () => {
 		const password = 'a-very-long-probe-password';
 		const next = 'an-even-longer-replacement-password';
-		const probe = await seedAdmin(['user.index']);
+		const probe = await seedAdmin(['admin_user.index']);
 
 		// A second tab, established before the change.
 		const otherTab = new CookieJar();
@@ -1469,6 +1701,16 @@ async function main() {
 		models.PasswordResetTokenModel.deleteMany({}),
 		models.OAuthStateModel.deleteMany({}),
 		models.AdminInviteModel.deleteMany({}),
+		models.PasswordCredentialModel?.deleteMany({}) ?? Promise.resolve(),
+		models.PinCredentialModel?.deleteMany({}) ?? Promise.resolve(),
+		models.AuthIdentityModel?.deleteMany({}) ?? Promise.resolve(),
+	]);
+	// Credential collections also wiped via raw driver so a stale adapters dist cannot leave debris.
+	const database = models.getMongoose().connection.db;
+	await Promise.all([
+		database.collection('passwordCredentials').deleteMany({}),
+		database.collection('pinCredentials').deleteMany({}),
+		database.collection('authIdentities').deleteMany({}),
 	]);
 	/**
 	 * Users are cleared WHOLESALE, not by tracked id or address.
@@ -1479,10 +1721,12 @@ async function main() {
 	 * reason. Tracking every address a check MIGHT create is a losing game in a database that
 	 * exists only for this suite.
 	 */
-	const probeAccounts = await models.UserModel.countDocuments({});
+	const probeAccounts =
+		(await models.AdminUserModel.countDocuments({})) + (await models.CustomerModel.countDocuments({}));
 	await models.AuthSessionModel.deleteMany({});
-	await models.UserModel.deleteMany({});
-	const remaining = await models.UserModel.countDocuments({});
+	await Promise.all([models.AdminUserModel.deleteMany({}), models.CustomerModel.deleteMany({})]);
+	const remaining =
+		(await models.AdminUserModel.countDocuments({})) + (await models.CustomerModel.countDocuments({}));
 
 	/**
 	 * The claim, verified rather than asserted in prose.
@@ -1493,7 +1737,6 @@ async function main() {
 	 */
 	const leftovers = [];
 	// Reached through the adapter, which owns the mongoose dependency; the API does not have one.
-	const database = models.getMongoose().connection.db;
 	for (const collection of await database.listCollections().toArray()) {
 		const count = await database.collection(collection.name).countDocuments({});
 		if (count > 0) leftovers.push(`${collection.name}=${count}`);

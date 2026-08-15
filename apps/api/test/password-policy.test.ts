@@ -25,7 +25,8 @@ const STRONG = 'harbour-tram-19';
 
 function buildAuthService(consumed: unknown = { userId: 'user_1', audience: 'admin' }) {
 	const resets = { create: vi.fn(), consume: vi.fn().mockResolvedValue(consumed) };
-	const authUsers = { setPasswordHash: vi.fn().mockResolvedValue(undefined) };
+	const customerAuth = { setPasswordHash: vi.fn().mockResolvedValue(undefined) };
+	const adminAuth = { setPasswordHash: vi.fn().mockResolvedValue(undefined) };
 	const authPort = { hashPassword: vi.fn().mockResolvedValue('$argon2id$hash') };
 
 	const service = new AuthService(
@@ -35,7 +36,9 @@ function buildAuthService(consumed: unknown = { userId: 'user_1', audience: 'adm
 			otp: { ttlSeconds: 600, maxAttempts: 5 },
 		} as never,
 		authPort as never,
-		authUsers as never,
+		customerAuth as never,
+		adminAuth as never,
+		{} as never,
 		{} as never,
 		{} as never,
 		resets as never,
@@ -44,7 +47,7 @@ function buildAuthService(consumed: unknown = { userId: 'user_1', audience: 'adm
 		{ send: vi.fn() } as never,
 	);
 
-	return { service, resets, authUsers };
+	return { service, resets, customerAuth, adminAuth };
 }
 
 const invite: AdminInvite = {
@@ -72,7 +75,7 @@ function buildInviteService() {
 		auth,
 		{ create: vi.fn(), consume, listPending: vi.fn(), revoke: vi.fn() } as never,
 		{
-			findAuthStateByEmail: async () => null,
+			findAuthStateByIdentifier: async () => null,
 			setPasswordHash: vi.fn(async () => undefined),
 			setPinHash: vi.fn(async () => undefined),
 			setPreferredLoginMethod: vi.fn(async () => undefined),
@@ -89,10 +92,12 @@ function buildSecurityService() {
 	const setPasswordHash = vi.fn(async () => undefined);
 	const verifyPassword = vi.fn(async () => true);
 	const auth = {
-		findAuthUserById: async () => ({ id: 'user_admin', pinHash: null }),
 		verifyPassword,
 		hashPassword: async (value: string) => `argon2(${value})`,
-		authUserRepository: { setPasswordHash },
+		adminAuthRepository: {
+			setPasswordHash,
+			findAuthStateById: async () => ({ id: 'user_admin', pinHash: null, passwordHash: 'hash' }),
+		},
 	} as unknown as AuthService;
 
 	const service = new AdminSecurityService(
@@ -113,11 +118,11 @@ describe('Password reset — completePasswordReset', () => {
 	 * strand them entirely: no session, and a spent link.
 	 */
 	it('refuses a weak password without consuming the recovery token', async () => {
-		const { service, resets, authUsers } = buildAuthService();
+		const { service, resets, adminAuth } = buildAuthService();
 
 		await expect(service.completePasswordReset('tok', WEAK, 'admin')).rejects.toBeInstanceOf(BadRequestException);
 		expect(resets.consume).not.toHaveBeenCalled();
-		expect(authUsers.setPasswordHash).not.toHaveBeenCalled();
+		expect(adminAuth.setPasswordHash).not.toHaveBeenCalled();
 	});
 
 	it('names the field and a stable machine-readable code, never the password', async () => {
@@ -129,11 +134,11 @@ describe('Password reset — completePasswordReset', () => {
 	});
 
 	it('consumes the token for a password the policy accepts', async () => {
-		const { service, resets, authUsers } = buildAuthService();
+		const { service, resets, adminAuth } = buildAuthService();
 
 		await service.completePasswordReset('tok', STRONG, 'admin');
 		expect(resets.consume).toHaveBeenCalledTimes(1);
-		expect(authUsers.setPasswordHash).toHaveBeenCalledTimes(1);
+		expect(adminAuth.setPasswordHash).toHaveBeenCalledTimes(1);
 	});
 });
 

@@ -1,5 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Cart } from '@saha-textile/contracts';
 
@@ -33,6 +33,11 @@ describe('CartService ownership / BOLA', () => {
 	};
 	const service = new CartService(repo as never, config);
 
+	beforeEach(() => {
+		vi.clearAllMocks();
+		repo.save.mockImplementation(async (c: Cart) => c);
+	});
+
 	it('lets user A read their own cart', async () => {
 		repo.findById.mockResolvedValueOnce(cart());
 		await expect(
@@ -41,7 +46,7 @@ describe('CartService ownership / BOLA', () => {
 					userId: 'user_a',
 					sessionId: 's',
 					audience: 'storefront',
-					role: 'customer',
+					role: null,
 					permissions: [],
 				},
 			}),
@@ -56,7 +61,7 @@ describe('CartService ownership / BOLA', () => {
 					userId: 'user_a',
 					sessionId: 's',
 					audience: 'storefront',
-					role: 'customer',
+					role: null,
 					permissions: [],
 				},
 			}),
@@ -76,6 +81,61 @@ describe('CartService ownership / BOLA', () => {
 		await expect(service.getCart('cart_1', { guestToken: guest.raw })).resolves.toMatchObject({ id: 'cart_1' });
 	});
 
+	it('adopts a guest cart when the user has none', async () => {
+		const guest = service.mintGuestToken();
+		repo.findByGuestToken.mockResolvedValueOnce(
+			cart({
+				id: 'cart_guest',
+				userId: null,
+				guestToken: guest.hash,
+				lines: [{ id: 'line_1', productId: 'p1', variationId: null, quantity: 1, addons: [] }],
+			}),
+		);
+		repo.findByUserId.mockResolvedValueOnce(null);
+		repo.save.mockImplementation(async (c: Cart) => c);
+
+		const merged = await service.mergeGuestCartForUser('cus_1', guest.raw);
+		expect(merged).toMatchObject({ id: 'cart_guest', userId: 'cus_1', guestToken: null });
+		expect(repo.deleteById).not.toHaveBeenCalled();
+	});
+
+	it('sums duplicate lines and deletes the guest cart', async () => {
+		const guest = service.mintGuestToken();
+		repo.findByGuestToken.mockResolvedValueOnce(
+			cart({
+				id: 'cart_guest',
+				userId: null,
+				guestToken: guest.hash,
+				lines: [{ id: 'line_g', productId: 'p1', variationId: null, quantity: 2, addons: [] }],
+			}),
+		);
+		repo.findByUserId.mockResolvedValueOnce(
+			cart({
+				id: 'cart_user',
+				userId: 'cus_1',
+				lines: [{ id: 'line_u', productId: 'p1', variationId: null, quantity: 1, addons: [] }],
+			}),
+		);
+
+		const merged = await service.mergeGuestCartForUser('cus_1', guest.raw);
+		expect(merged?.id).toBe('cart_user');
+		expect(merged?.lines).toEqual([{ id: 'line_u', productId: 'p1', variationId: null, quantity: 3, addons: [] }]);
+		expect(repo.deleteById).toHaveBeenCalledWith('cart_guest');
+	});
+
+	it('ignores a stolen guest cookie already bound to another user', async () => {
+		const guest = service.mintGuestToken();
+		repo.findByGuestToken.mockResolvedValueOnce(
+			cart({ id: 'cart_stolen', userId: 'cus_other', guestToken: guest.hash }),
+		);
+		repo.findByUserId.mockResolvedValueOnce(cart({ id: 'cart_user', userId: 'cus_1' }));
+
+		const merged = await service.mergeGuestCartForUser('cus_1', guest.raw);
+		expect(merged?.id).toBe('cart_user');
+		expect(repo.save).not.toHaveBeenCalled();
+		expect(repo.deleteById).not.toHaveBeenCalled();
+	});
+
 	it('rejects missing guest proof', async () => {
 		const guest = service.mintGuestToken();
 		repo.findById.mockResolvedValueOnce(cart({ userId: null, guestToken: guest.hash }));
@@ -85,7 +145,7 @@ describe('CartService ownership / BOLA', () => {
 	it('never lets caller-supplied userId claim another account on create', async () => {
 		repo.findByUserId.mockResolvedValueOnce(null);
 		const { cart: created } = await service.createCart({
-			principal: { userId: 'user_a', sessionId: 's', audience: 'storefront', role: 'customer', permissions: [] },
+			principal: { userId: 'user_a', sessionId: 's', audience: 'storefront', role: null, permissions: [] },
 		});
 		expect(created.userId).toBe('user_a');
 		expect(created.guestToken).toBeNull();
@@ -98,20 +158,26 @@ describe('CartService ownership / BOLA', () => {
 		expect(toPublicCart(created).guestToken).toBeNull();
 	});
 
-	it('allows staff/admin read bypass but not write', async () => {
-		repo.findById.mockResolvedValue(cart({ userId: 'user_b' }));
-		const staff = {
+	it('allows cart.index support-read but not write; role alone is not enough', async () => {
+		repo.findById.mockResolvedValue(cart({ userId: 'cus_b' }));
+		const staffNoPerm = {
 			principal: {
-				userId: 'staff_1',
+				userId: 'adm_1',
 				sessionId: 's',
 				audience: 'admin' as const,
 				role: 'staff' as const,
-				permissions: [],
+				permissions: [] as string[],
 			},
-			allowReadRoles: ['staff', 'admin'] as const,
+			allowReadPermissions: ['cart.index'] as const,
 		};
-		await expect(service.getCart('cart_1', staff)).resolves.toMatchObject({ id: 'cart_1' });
-		await expect(service.addLine('cart_1', { productId: 'p1', quantity: 1 }, staff)).rejects.toThrow(
+		await expect(service.getCart('cart_1', staffNoPerm)).rejects.toThrow(NotFoundException);
+
+		const staffWithPerm = {
+			...staffNoPerm,
+			principal: { ...staffNoPerm.principal, permissions: ['cart.index'] },
+		};
+		await expect(service.getCart('cart_1', staffWithPerm)).resolves.toMatchObject({ id: 'cart_1' });
+		await expect(service.addLine('cart_1', { productId: 'p1', quantity: 1 }, staffWithPerm)).rejects.toThrow(
 			NotFoundException,
 		);
 	});
@@ -124,7 +190,7 @@ describe('CartService ownership / BOLA', () => {
 					userId: 'user_a',
 					sessionId: 's',
 					audience: 'storefront',
-					role: 'customer',
+					role: null,
 					permissions: [],
 				},
 			}),

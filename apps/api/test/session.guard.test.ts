@@ -32,7 +32,10 @@ describe('SessionGuard — AuthSession sid binding', () => {
 	const auth = {
 		verifyToken: vi.fn(),
 	};
-	const authUsers = {
+	const customerAuth = {
+		findAuthStateById: vi.fn(),
+	};
+	const adminAuth = {
 		findAuthStateById: vi.fn(),
 	};
 	const sessions = {
@@ -54,96 +57,73 @@ describe('SessionGuard — AuthSession sid binding', () => {
 
 	const liveSession = {
 		id: 'sess_a',
-		userId: 'user_a',
+		userId: 'cus_a',
 		audience: 'storefront',
 		revokedAt: null,
 		expiresAt: new Date(Date.now() + 60_000).toISOString(),
 		absoluteExpiresAt: new Date(Date.now() + 3_600_000).toISOString(),
 	};
 
+	const guardWith = () =>
+		new SessionGuard(
+			reflector,
+			config,
+			auth as never,
+			customerAuth as never,
+			adminAuth as never,
+			roles as never,
+			assignments as never,
+			sessions as unknown as SessionService,
+		);
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		auth.verifyToken.mockResolvedValue({
-			sub: 'user_a',
+			sub: 'cus_a',
 			sid: 'sess_a',
 			aud: 'storefront',
 			tokenVersion: 1,
-			permissionsVersion: 1,
+			permissionsVersion: 0,
 		});
-		authUsers.findAuthStateById.mockResolvedValue({
-			id: 'user_a',
+		customerAuth.findAuthStateById.mockResolvedValue({
+			id: 'cus_a',
 			status: 'active',
-			role: 'customer',
-			permissions: [],
 			tokenVersion: 1,
-			permissionsVersion: 1,
 		});
 	});
 
 	it('accepts a live session matching the access-token sid/user/audience', async () => {
 		sessions.findLiveById.mockResolvedValue(liveSession);
-		const guard = new SessionGuard(
-			reflector,
-			config,
-			auth as never,
-			authUsers as never,
-			roles as never,
-			assignments as never,
-			sessions as unknown as SessionService,
-		);
+		const guard = guardWith();
 
 		await expect(guard.canActivate(contextFor({ [names.access]: 'jwt' }))).resolves.toBe(true);
-		expect(sessions.findLiveById).toHaveBeenCalledWith('sess_a', { userId: 'user_a', audience: 'storefront' });
+		expect(sessions.findLiveById).toHaveBeenCalledWith('sess_a', { userId: 'cus_a', audience: 'storefront' });
 	});
 
 	it('rejects immediately when the AuthSession is missing', async () => {
 		sessions.findLiveById.mockResolvedValue(null);
-		const guard = new SessionGuard(
-			reflector,
-			config,
-			auth as never,
-			authUsers as never,
-			roles as never,
-			assignments as never,
-			sessions as unknown as SessionService,
-		);
+		const guard = guardWith();
 
 		await expect(guard.canActivate(contextFor({ [names.access]: 'jwt' }))).rejects.toThrow(UnauthorizedException);
-		expect(authUsers.findAuthStateById).not.toHaveBeenCalled();
+		expect(customerAuth.findAuthStateById).not.toHaveBeenCalled();
 	});
 
 	it('rejects a revoked session without bumping tokenVersion', async () => {
 		sessions.findLiveById.mockResolvedValue(null);
-		const guard = new SessionGuard(
-			reflector,
-			config,
-			auth as never,
-			authUsers as never,
-			roles as never,
-			assignments as never,
-			sessions as unknown as SessionService,
-		);
+		const guard = guardWith();
 
 		await expect(guard.canActivate(contextFor({ [names.access]: 'jwt' }))).rejects.toThrow(
 			'Session is no longer valid',
 		);
-		expect(authUsers.findAuthStateById).not.toHaveBeenCalled();
+		expect(customerAuth.findAuthStateById).not.toHaveBeenCalled();
 	});
 
 	it('rejects sid/user/audience mismatch (findLiveById returns null)', async () => {
 		sessions.findLiveById.mockImplementation(async (_id, expected) => {
-			expect(expected).toEqual({ userId: 'user_a', audience: 'storefront' });
+			expect(expected).toEqual({ userId: 'cus_a', audience: 'storefront' });
 			return null;
 		});
-		const guard = new SessionGuard(
-			reflector,
-			config,
-			auth as never,
-			authUsers as never,
-			roles as never,
-			assignments as never,
-			sessions as unknown as SessionService,
-		);
+		const guard = guardWith();
 
 		await expect(guard.canActivate(contextFor({ [names.access]: 'jwt' }))).rejects.toThrow(UnauthorizedException);
 	});
@@ -155,17 +135,6 @@ describe('SessionGuard — AuthSession sid binding', () => {
 	 * sign people out mid-session or spin an anonymous visitor through a refresh per request.
 	 */
 	describe('refusal reasons', () => {
-		const guardWith = () =>
-			new SessionGuard(
-				reflector,
-				config,
-				auth as never,
-				authUsers as never,
-				roles as never,
-				assignments as never,
-				sessions as unknown as SessionService,
-			);
-
 		const reasonFrom = async (cookies: Record<string, string>) => {
 			try {
 				await guardWith().canActivate(contextFor(cookies));
@@ -191,23 +160,31 @@ describe('SessionGuard — AuthSession sid binding', () => {
 
 		it('reports session_revoked for a stale tokenVersion', async () => {
 			sessions.findLiveById.mockResolvedValue(liveSession);
-			authUsers.findAuthStateById.mockResolvedValue({
-				id: 'user_a',
+			customerAuth.findAuthStateById.mockResolvedValue({
+				id: 'cus_a',
 				status: 'active',
-				role: 'customer',
-				permissions: [],
 				tokenVersion: 2,
-				permissionsVersion: 1,
 			});
 			expect(await reasonFrom({ [names.access]: 'jwt' })).toBe('session_revoked');
 		});
 
-		it('reports permissions_changed for a stale permissionsVersion', async () => {
-			sessions.findLiveById.mockResolvedValue(liveSession);
-			authUsers.findAuthStateById.mockResolvedValue({
-				id: 'user_a',
+		it('reports permissions_changed for a stale permissionsVersion on admin sessions', async () => {
+			sessions.findLiveById.mockResolvedValue({
+				...liveSession,
+				userId: 'adm_a',
+				audience: 'admin',
+			});
+			auth.verifyToken.mockResolvedValue({
+				sub: 'adm_a',
+				sid: 'sess_a',
+				aud: 'admin',
+				tokenVersion: 1,
+				permissionsVersion: 1,
+			});
+			adminAuth.findAuthStateById.mockResolvedValue({
+				id: 'adm_a',
 				status: 'active',
-				role: 'customer',
+				role: 'staff',
 				permissions: [],
 				tokenVersion: 1,
 				permissionsVersion: 9,
@@ -217,13 +194,10 @@ describe('SessionGuard — AuthSession sid binding', () => {
 
 		it('reports account_inactive when the account is suspended', async () => {
 			sessions.findLiveById.mockResolvedValue(liveSession);
-			authUsers.findAuthStateById.mockResolvedValue({
-				id: 'user_a',
-				status: 'suspended',
-				role: 'customer',
-				permissions: [],
+			customerAuth.findAuthStateById.mockResolvedValue({
+				id: 'cus_a',
+				status: 'disabled',
 				tokenVersion: 1,
-				permissionsVersion: 1,
 			});
 			expect(await reasonFrom({ [names.access]: 'jwt' })).toBe('account_inactive');
 		});
@@ -255,17 +229,6 @@ describe('SessionGuard — AuthSession sid binding', () => {
 	describe('effective permissions', () => {
 		const PERMISSION_KEY = 'auth:permissions';
 
-		const guardWith = () =>
-			new SessionGuard(
-				reflector,
-				config,
-				auth as never,
-				authUsers as never,
-				roles as never,
-				assignments as never,
-				sessions as unknown as SessionService,
-			);
-
 		/** Makes the route demand a permission; everything else stays unrequired. */
 		const requiring = (...permissions: string[]) => {
 			(reflector.getAllAndOverride as ReturnType<typeof vi.fn>).mockImplementation((key: string) =>
@@ -274,7 +237,7 @@ describe('SessionGuard — AuthSession sid binding', () => {
 		};
 
 		const staffUser = (permissions: string[]) => ({
-			id: 'user_a',
+			id: 'adm_a',
 			status: 'active',
 			role: 'staff',
 			permissions,
@@ -283,7 +246,18 @@ describe('SessionGuard — AuthSession sid binding', () => {
 		});
 
 		beforeEach(() => {
-			sessions.findLiveById.mockResolvedValue(liveSession);
+			sessions.findLiveById.mockResolvedValue({
+				...liveSession,
+				userId: 'adm_a',
+				audience: 'admin',
+			});
+			auth.verifyToken.mockResolvedValue({
+				sub: 'adm_a',
+				sid: 'sess_a',
+				aud: 'admin',
+				tokenVersion: 1,
+				permissionsVersion: 1,
+			});
 			assignments.listActiveForUser.mockResolvedValue([]);
 		});
 
@@ -296,7 +270,8 @@ describe('SessionGuard — AuthSession sid binding', () => {
 		 * have grown two queries — the resolution is conditional, not eager.
 		 */
 		it('does not touch roles or assignments when no permission is required', async () => {
-			authUsers.findAuthStateById.mockResolvedValue(staffUser(['user.index']));
+			customerAuth.findAuthStateById.mockResolvedValue(undefined);
+			adminAuth.findAuthStateById.mockResolvedValue(staffUser(['admin_user.index']));
 
 			await expect(guardWith().canActivate(contextFor({ [names.access]: 'jwt' }))).resolves.toBe(true);
 
@@ -306,15 +281,15 @@ describe('SessionGuard — AuthSession sid binding', () => {
 
 		/** Equivalence: with nothing assigned, the embedded grants decide exactly as before. */
 		it('honours an embedded grant with no assignments at all', async () => {
-			authUsers.findAuthStateById.mockResolvedValue(staffUser(['user.index']));
-			requiring('user.index');
+			adminAuth.findAuthStateById.mockResolvedValue(staffUser(['admin_user.index']));
+			requiring('admin_user.index');
 
 			await expect(guardWith().canActivate(contextFor({ [names.access]: 'jwt' }))).resolves.toBe(true);
 		});
 
 		it('refuses when neither source grants the permission', async () => {
-			authUsers.findAuthStateById.mockResolvedValue(staffUser([]));
-			requiring('user.index');
+			adminAuth.findAuthStateById.mockResolvedValue(staffUser([]));
+			requiring('admin_user.index');
 
 			await expect(guardWith().canActivate(contextFor({ [names.access]: 'jwt' }))).rejects.toThrow(
 				'Insufficient permissions',
@@ -322,12 +297,12 @@ describe('SessionGuard — AuthSession sid binding', () => {
 		});
 
 		it('honours a permission that only an active assignment grants', async () => {
-			authUsers.findAuthStateById.mockResolvedValue(staffUser([]));
+			adminAuth.findAuthStateById.mockResolvedValue(staffUser([]));
 			assignments.listActiveForUser.mockResolvedValue([
-				{ id: 'ura_1', userId: 'user_a', roleId: 'r1', revokedAt: null },
+				{ id: 'ura_1', userId: 'adm_a', roleId: 'r1', revokedAt: null },
 			]);
-			roles.findById.mockResolvedValue({ id: 'r1', baseRole: 'staff', permissions: ['user.index'] });
-			requiring('user.index');
+			roles.findById.mockResolvedValue({ id: 'r1', baseRole: 'staff', permissions: ['admin_user.index'] });
+			requiring('admin_user.index');
 
 			await expect(guardWith().canActivate(contextFor({ [names.access]: 'jwt' }))).resolves.toBe(true);
 		});
@@ -337,9 +312,9 @@ describe('SessionGuard — AuthSession sid binding', () => {
 		 * assignment must not hand a demoted operator their old authority back.
 		 */
 		it('refuses a permission from a role above the holder’s tier', async () => {
-			authUsers.findAuthStateById.mockResolvedValue(staffUser([]));
+			adminAuth.findAuthStateById.mockResolvedValue(staffUser([]));
 			assignments.listActiveForUser.mockResolvedValue([
-				{ id: 'ura_1', userId: 'user_a', roleId: 'r1', revokedAt: null },
+				{ id: 'ura_1', userId: 'adm_a', roleId: 'r1', revokedAt: null },
 			]);
 			roles.findById.mockResolvedValue({ id: 'r1', baseRole: 'admin', permissions: ['role.destroy'] });
 			requiring('role.destroy');
@@ -350,12 +325,12 @@ describe('SessionGuard — AuthSession sid binding', () => {
 		});
 
 		it('survives an assignment whose role has been deleted', async () => {
-			authUsers.findAuthStateById.mockResolvedValue(staffUser(['user.index']));
+			adminAuth.findAuthStateById.mockResolvedValue(staffUser(['admin_user.index']));
 			assignments.listActiveForUser.mockResolvedValue([
-				{ id: 'ura_1', userId: 'user_a', roleId: 'gone', revokedAt: null },
+				{ id: 'ura_1', userId: 'adm_a', roleId: 'gone', revokedAt: null },
 			]);
 			roles.findById.mockResolvedValue(null);
-			requiring('user.index');
+			requiring('admin_user.index');
 
 			await expect(guardWith().canActivate(contextFor({ [names.access]: 'jwt' }))).resolves.toBe(true);
 		});

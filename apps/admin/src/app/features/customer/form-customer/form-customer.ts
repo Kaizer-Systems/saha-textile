@@ -647,7 +647,7 @@ export class FormCustomer {
 		const group = this.addressGroupAt(index);
 		const addressId = String(group.get('id')?.value ?? '');
 		if (!addressId) return;
-		this.DeleteModal()?.openModal('delete', { id: addressId, index });
+		void this.DeleteModal()?.openModal('delete', { id: addressId, index });
 	}
 
 	onDeleteConfirmed(action: ITableClickedAction) {

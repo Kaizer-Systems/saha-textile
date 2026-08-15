@@ -64,7 +64,7 @@ export const COLLECTION_NAMES = {
 	EmailVerificationToken: 'emailVerificationTokens',
 	AdminInvite: 'adminInvites',
 	Role: 'roles',
-	UserRoleAssignment: 'userRoleAssignments',
+	AdminUserRoleAssignment: 'adminUserRoleAssignments',
 	/** Adapter/runtime abuse counters — intentionally NOT a Schema Nebula node. */
 	AuthRateLimit: 'authRateLimits',
 	// --- Governance, privacy, notifications ----------------------------------
@@ -103,9 +103,17 @@ export const NON_GRAPH_COLLECTIONS: readonly string[] = ['authRateLimits', 'prod
  * Only entries whose Mongoose default DIFFERED from the ratified name appear here; that is
  * exactly the set a deployed or local database may still hold data under. Consumed by
  * `migrations/align-collection-names.ts`.
+ *
+ * `userRoleAssignments` is the one entry that is not a Mongoose default but a previously
+ * RATIFIED explicit name, retired on 2026-08-15: the join is operator-only, so the bare noun
+ * named a population it never held. Both spellings are listed because a database may hold
+ * either — the lowercase Mongoose default from before explicit naming, or the camelCase
+ * explicit name from after it.
  */
 export const LEGACY_COLLECTION_NAMES: Readonly<Record<string, string>> = {
 	users: 'customers',
+	userroleassignments: 'adminUserRoleAssignments',
+	userRoleAssignments: 'adminUserRoleAssignments',
 	authsessions: 'authSessions',
 	otpchallenges: 'otpChallenges',
 	oauthstates: 'oauthStates',

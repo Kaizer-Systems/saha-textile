@@ -1,4 +1,4 @@
-import type { Address, Customer, CustomerListQuery, Paginated, UserStatus } from '@saha-textile/contracts';
+import type { Address, Customer, CustomerListQuery, Paginated, CustomerStatus } from '@saha-textile/contracts';
 import type { CustomerCredential, CustomerRepository, CustomerUpdateInput } from '@saha-textile/core-domain';
 
 import { toCustomer } from '../mappers';
@@ -134,7 +134,7 @@ export class MongoCustomerRepository implements CustomerRepository {
 		return doc ? mapCustomer(doc) : null;
 	}
 
-	async setStatus(customerId: string, status: UserStatus): Promise<Customer | null> {
+	async setStatus(customerId: string, status: CustomerStatus): Promise<Customer | null> {
 		return this.update(customerId, { status });
 	}
 

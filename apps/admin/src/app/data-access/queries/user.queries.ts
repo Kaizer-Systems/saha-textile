@@ -4,12 +4,12 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import { Params } from '@data-access/interfaces/core.interface';
-import { UserService } from '@data-access/services/user.service';
+import { MockCustomerService } from '@data-access/services/user.service';
 
-export function injectUsersQuery(params: () => Params) {
-	const userService = inject(UserService);
+export function injectMockCustomersQuery(params: () => Params) {
+	const mockCustomerService = inject(MockCustomerService);
 	return injectQuery(() => ({
 		queryKey: ['users', params()],
-		queryFn: () => firstValueFrom(userService.getUsers(params())),
+		queryFn: () => firstValueFrom(mockCustomerService.getUsers(params())),
 	}));
 }

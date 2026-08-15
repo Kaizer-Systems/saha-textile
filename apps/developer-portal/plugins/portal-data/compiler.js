@@ -49,7 +49,7 @@ const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 	['passwordCredentials', 'credential.model.ts'],
 	['pinCredentials', 'credential.model.ts'],
 	['roles', 'rbac.model.ts'],
-	['userRoleAssignments', 'rbac.model.ts'],
+	['adminUserRoleAssignments', 'rbac.model.ts'],
 	['consentEvents', 'consent.model.ts'],
 	['auditLogs', 'governance.model.ts'],
 	['notificationChannelSettings', 'governance.model.ts'],

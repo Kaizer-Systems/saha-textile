@@ -20,7 +20,7 @@ import type {
 	AuthPort,
 	CustomerAuthRepository,
 	RoleRepository,
-	UserRoleAssignmentRepository,
+	AdminUserRoleAssignmentRepository,
 } from '@saha-textile/core-domain';
 import { resolveEffectivePermissions } from '@saha-textile/core-domain';
 import type { FastifyRequest } from 'fastify';
@@ -32,7 +32,7 @@ import {
 	AUTH_PORT,
 	CUSTOMER_AUTH_REPOSITORY,
 	ROLE_REPOSITORY,
-	USER_ROLE_ASSIGNMENT_REPOSITORY,
+	ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY,
 } from '../infra/tokens';
 import { SessionRefusal } from './session-refusal';
 import { SessionService } from './session.service';
@@ -104,7 +104,7 @@ export class SessionGuard implements CanActivate {
 		@Inject(CUSTOMER_AUTH_REPOSITORY) private readonly customerAuth: CustomerAuthRepository,
 		@Inject(ADMIN_USER_AUTH_REPOSITORY) private readonly adminAuth: AdminUserAuthRepository,
 		@Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
-		@Inject(USER_ROLE_ASSIGNMENT_REPOSITORY) private readonly assignments: UserRoleAssignmentRepository,
+		@Inject(ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY) private readonly assignments: AdminUserRoleAssignmentRepository,
 		private readonly sessions: SessionService,
 	) {}
 

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { Id, IsoDateTime, MAX_PAGE_SIZE, paginated } from './common';
-import { Address, Customer, UserStatus } from './customer';
+import { Address, Customer, CustomerStatus } from './customer';
 import { NotificationChannel } from './notification';
 
 /**
@@ -15,7 +15,7 @@ export const CustomerListQuery = z.object({
 	page: z.coerce.number().int().positive().default(1),
 	pageSize: z.coerce.number().int().positive().max(MAX_PAGE_SIZE).default(24),
 	q: z.string().trim().min(1).max(200).optional(),
-	status: UserStatus.optional(),
+	status: CustomerStatus.optional(),
 	sort: z.enum(['displayName', 'createdAt']).optional(),
 });
 export type CustomerListQuery = z.infer<typeof CustomerListQuery>;
@@ -62,7 +62,7 @@ export const CreateCustomerRequest = z.object({
 	email: z.email(),
 	/** Required for CRM create (operator always collects a reachable phone). */
 	phone: z.string().min(1).max(32),
-	status: UserStatus.exclude(['deleted']).optional(),
+	status: CustomerStatus.exclude(['deleted']).optional(),
 	activationChannels: z.array(NotificationChannel).min(1),
 });
 export type CreateCustomerRequest = z.infer<typeof CreateCustomerRequest>;
@@ -73,7 +73,7 @@ export const UpdateCustomerRequest = z.object({
 	email: z.email().optional(),
 	/** When present, must be a non-empty phone — CRM edit always sends it. */
 	phone: z.string().min(1).max(32).optional(),
-	status: UserStatus.exclude(['deleted']).optional(),
+	status: CustomerStatus.exclude(['deleted']).optional(),
 });
 export type UpdateCustomerRequest = z.infer<typeof UpdateCustomerRequest>;
 

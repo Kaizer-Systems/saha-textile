@@ -8,7 +8,7 @@ import type {
 	PageQuery,
 	PermissionCode,
 	Role,
-	UserStatus,
+	AdminUserStatus,
 } from '@saha-textile/contracts';
 import type {
 	AdminUserRepository,
@@ -16,7 +16,7 @@ import type {
 	AdminUserAuthRepository,
 	AuthSessionRepository,
 	RoleRepository,
-	UserRoleAssignmentRepository,
+	AdminUserRoleAssignmentRepository,
 } from '@saha-textile/core-domain';
 import { AssignmentAlreadyActiveError, isWithinTier, resolveEffectivePermissions } from '@saha-textile/core-domain';
 
@@ -26,7 +26,7 @@ import {
 	AUTH_SESSION_REPOSITORY,
 	ADMIN_USER_AUTH_REPOSITORY,
 	ROLE_REPOSITORY,
-	USER_ROLE_ASSIGNMENT_REPOSITORY,
+	ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY,
 } from '../infra/tokens';
 
 @Injectable()
@@ -35,7 +35,7 @@ export class AdminUsersService {
 
 	constructor(
 		@Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
-		@Inject(USER_ROLE_ASSIGNMENT_REPOSITORY) private readonly assignments: UserRoleAssignmentRepository,
+		@Inject(ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY) private readonly assignments: AdminUserRoleAssignmentRepository,
 		@Inject(ADMIN_USER_AUTH_REPOSITORY) private readonly users: AdminUserAuthRepository,
 		@Inject(ADMIN_USER_REPOSITORY) private readonly adminUsers: AdminUserRepository,
 		@Inject(AUTH_SESSION_REPOSITORY) private readonly sessions: AuthSessionRepository,
@@ -213,7 +213,7 @@ export class AdminUsersService {
 	async setStatus(
 		actorUserId: string,
 		targetUserId: string,
-		status: Exclude<UserStatus, 'deleted'>,
+		status: AdminUserStatus,
 		reason: string | null,
 		requestId: string | null,
 	): Promise<AdminUserAuthorityResponse> {
@@ -321,7 +321,7 @@ export class AdminUsersService {
 			targetUserId,
 			audience: 'admin',
 			action,
-			entityType: 'userRoleAssignment',
+			entityType: 'adminUserRoleAssignment',
 			entityId,
 			severity: 'warn',
 			retentionTier: 'financial_security',

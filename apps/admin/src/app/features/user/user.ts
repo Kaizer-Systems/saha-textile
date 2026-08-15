@@ -34,7 +34,7 @@ interface AdminUserRow extends IBaseRow {
 	styleUrls: ['./user.scss'],
 	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
 })
-export class User {
+export class AdminUsers {
 	private readonly router = inject(Router);
 	private readonly gateway = inject(AdminUsersGateway);
 	private readonly queryClient = injectQueryClient();
@@ -102,7 +102,7 @@ export class User {
 	}
 
 	edit(data: AdminUserRow) {
-		void this.router.navigateByUrl(`/user/edit/${data.id}`);
+		void this.router.navigateByUrl(`/admin-user/edit/${data.id}`);
 	}
 
 	status(data: AdminUserRow) {

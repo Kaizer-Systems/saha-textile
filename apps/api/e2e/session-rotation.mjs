@@ -317,7 +317,7 @@ async function main() {
 				permissionsVersion: 0,
 			},
 		]);
-		await models.UserRoleAssignmentModel.create([
+		await models.AdminUserRoleAssignmentModel.create([
 			{
 				_id: `ura_${randomUUID()}`,
 				userId: staffId,
@@ -334,7 +334,7 @@ async function main() {
 			(error) => error instanceof FirstAdminAlreadyExistsError,
 			'bootstrap ran again despite a live administrator assignment',
 		);
-		await models.UserRoleAssignmentModel.deleteMany({ userId: staffId }).exec();
+		await models.AdminUserRoleAssignmentModel.deleteMany({ userId: staffId }).exec();
 		await models.AdminUserModel.deleteOne({ _id: staffId }).exec();
 
 		// Refusal also holds for an account carrying the coarse role but no assignment yet,
@@ -349,7 +349,7 @@ async function main() {
 				permissions: [],
 			},
 		]);
-		await models.UserRoleAssignmentModel.deleteMany({ userId: created.userId }).exec();
+		await models.AdminUserRoleAssignmentModel.deleteMany({ userId: created.userId }).exec();
 		await assert.rejects(
 			() => bootstrapFirstAdmin(app, { email: `third-${randomUUID()}@example.test` }, deps),
 			(error) => error instanceof FirstAdminAlreadyExistsError,
@@ -646,7 +646,7 @@ async function main() {
 	});
 
 	await check('admin role routes are deny-by-default: a role alone opens nothing', async () => {
-		const { ensureSystemRoles, AdminUserModel, RoleModel, UserRoleAssignmentModel } = models;
+		const { ensureSystemRoles, AdminUserModel, RoleModel, AdminUserRoleAssignmentModel } = models;
 
 		// A real administrator, created directly because no first-admin bootstrap exists yet
 		// (pass 6a). Deliberately granted NO permissions.
@@ -692,7 +692,7 @@ async function main() {
 		// Granting the seeded administrator role opens it, with no re-login: the guard resolves
 		// effective permissions per request rather than trusting what the token was minted with.
 		await ensureSystemRoles();
-		await UserRoleAssignmentModel.create([
+		await AdminUserRoleAssignmentModel.create([
 			{
 				_id: `ura_${randomUUID()}`,
 				userId,
@@ -710,13 +710,13 @@ async function main() {
 		assert.ok(JSON.parse(granted.body).items.length >= 1, 'role list came back empty');
 
 		await Promise.all([
-			UserRoleAssignmentModel.deleteMany({ userId }).exec(),
+			AdminUserRoleAssignmentModel.deleteMany({ userId }).exec(),
 			RoleModel.deleteMany({ _id: 'role_system_administrator' }).exec(),
 		]);
 	});
 
 	await check('escalation rules hold on the wire: no delegation above self, last admin protected', async () => {
-		const { ensureSystemRoles, AdminUserModel, RoleModel, UserRoleAssignmentModel } = models;
+		const { ensureSystemRoles, AdminUserModel, RoleModel, AdminUserRoleAssignmentModel } = models;
 		await ensureSystemRoles();
 
 		const password = 'a-very-long-probe-password';
@@ -747,7 +747,12 @@ async function main() {
 		};
 
 		// A limited operator: may assign roles, but holds nothing else.
-		const limited = await makeAdmin(['user_role.assign', 'user_role.revoke', 'admin_user.index', 'role.create']);
+		const limited = await makeAdmin([
+			'admin_user_role.assign',
+			'admin_user_role.revoke',
+			'admin_user.index',
+			'role.create',
+		]);
 		const victim = await makeAdmin([]);
 
 		// A role carrying a permission the actor does NOT hold.
@@ -780,7 +785,7 @@ async function main() {
 		assert.equal(grantAdmin.statusCode, 403, `admin-tier grant was allowed: ${grantAdmin.statusCode}`);
 
 		// Last-administrator protection: seed the only admin assignment, then try to remove it.
-		await UserRoleAssignmentModel.create([
+		await AdminUserRoleAssignmentModel.create([
 			{
 				_id: `ura_${randomUUID()}`,
 				userId: victim.userId,
@@ -801,7 +806,7 @@ async function main() {
 		assert.equal(revokeLast.statusCode, 409, `the last administrator was revocable: ${revokeLast.statusCode}`);
 
 		await Promise.all([
-			UserRoleAssignmentModel.deleteMany({ userId: victim.userId }).exec(),
+			AdminUserRoleAssignmentModel.deleteMany({ userId: victim.userId }).exec(),
 			RoleModel.deleteMany({ _id: escalationRoleId }).exec(),
 			RoleModel.deleteMany({ _id: 'role_system_administrator' }).exec(),
 		]);
@@ -1020,7 +1025,7 @@ async function main() {
 	await check('self-escalation: an operator cannot grant themselves authority they lack', async () => {
 		const { ensureSystemRoles, RoleModel } = models;
 		await ensureSystemRoles();
-		const probe = await seedAdmin(['user_role.assign', 'admin_user.index']);
+		const probe = await seedAdmin(['admin_user_role.assign', 'admin_user.index']);
 
 		// Granting to SELF is the shortest escalation path, and the subset rule is what closes
 		// it: the administrator role holds every code, which this actor does not.
@@ -1033,7 +1038,7 @@ async function main() {
 	});
 
 	await check('mixed-target grant is refused whole, never partially applied', async () => {
-		const probe = await seedAdmin(['user_role.assign', 'admin_user.index', 'role.create', 'order.index']);
+		const probe = await seedAdmin(['admin_user_role.assign', 'admin_user.index', 'role.create', 'order.index']);
 		const victim = await seedAdmin([]);
 
 		// One permission the actor holds, one it does not. A partial application would leave
@@ -1063,12 +1068,12 @@ async function main() {
 	});
 
 	await check('TOCTOU and multi-tab: revoking authority takes effect on an existing session', async () => {
-		const { ensureSystemRoles, RoleModel, UserRoleAssignmentModel } = models;
+		const { ensureSystemRoles, RoleModel, AdminUserRoleAssignmentModel } = models;
 		await ensureSystemRoles();
 
 		const probe = await seedAdmin([]);
 		const assignmentId = `ura_${randomUUID()}`;
-		await UserRoleAssignmentModel.create([
+		await AdminUserRoleAssignmentModel.create([
 			{
 				_id: assignmentId,
 				userId: probe.userId,
@@ -1094,7 +1099,7 @@ async function main() {
 		);
 
 		// Authority removed underneath both live sessions.
-		await UserRoleAssignmentModel.updateOne({ _id: assignmentId }, { $set: { revokedAt: new Date() } }).exec();
+		await AdminUserRoleAssignmentModel.updateOne({ _id: assignmentId }, { $set: { revokedAt: new Date() } }).exec();
 
 		// THE PROPERTY: no re-login, no token change, no cache expiry — the very next request
 		// on each existing session must already be refused, because the guard re-derives
@@ -1108,7 +1113,7 @@ async function main() {
 		}
 
 		await Promise.all([
-			UserRoleAssignmentModel.deleteMany({ userId: probe.userId }).exec(),
+			AdminUserRoleAssignmentModel.deleteMany({ userId: probe.userId }).exec(),
 			RoleModel.deleteMany({ _id: 'role_system_administrator' }).exec(),
 		]);
 	});
@@ -1685,7 +1690,7 @@ async function main() {
 	// to do with the code under test — last-admin protection tripping on a stale assignment.
 	// Diagnosing that costs far more than deleting a few rows unconditionally.
 	await models.AuthRateLimitModel.deleteMany({});
-	await models.UserRoleAssignmentModel.deleteMany({});
+	await models.AdminUserRoleAssignmentModel.deleteMany({});
 	await models.RoleModel.deleteMany({});
 	// Audit rows are written by the admin surfaces this run exercises. They are evidence in
 	// production and debris here, and they were silently accumulating across runs while the

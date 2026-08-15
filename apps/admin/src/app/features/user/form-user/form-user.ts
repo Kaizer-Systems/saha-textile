@@ -25,7 +25,7 @@ import { FormFields } from '@shared/ui/form-fields/form-fields';
 	styleUrls: ['./form-user.scss'],
 	imports: [ReactiveFormsModule, FormFields, Select2Module, Button, TranslocoModule, HasPermissionDirective],
 })
-export class FormUser {
+export class FormAdminUser {
 	private readonly route = inject(ActivatedRoute);
 	private readonly router = inject(Router);
 	private readonly formBuilder = inject(FormBuilder);
@@ -63,7 +63,7 @@ export class FormUser {
 			lastValueFrom(this.authGateway.createInvite(vars)),
 		onSuccess: () => {
 			void this.queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-			void this.router.navigateByUrl('/user');
+			void this.router.navigateByUrl('/admin-user');
 		},
 	}));
 

@@ -2,6 +2,12 @@
 	"version": "0.0.1",
 	"configurations": [
 		{
+			"name": "api",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["--filter", "@saha-textile/api", "dev"],
+			"port": 4000
+		},
+		{
 			"name": "admin",
 			"runtimeExecutable": "pnpm",
 			"runtimeArgs": ["--filter", "@saha-textile/admin", "dev"],

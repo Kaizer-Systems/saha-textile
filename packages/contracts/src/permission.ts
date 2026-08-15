@@ -15,19 +15,33 @@ import { z } from 'zod';
  * ## Where the codes come from
  *
  * Navigation codes from `apps/admin/src/app/shared/data/menu.ts`, in-page UI gates
- * (`*hasPermission`, table actions), server-only administrative surfaces, and the former
- * mock `account.json` permission names needed for AuthStore render parity after mock ACL
- * removal. `scripts/check-permission-registry.mjs` holds menu ↔ registry agreement together.
+ * (`*hasPermission`, table row actions), and server-only administrative surfaces.
+ * `scripts/check-permission-registry.mjs` holds menu ↔ registry agreement together.
  *
  * ## What is deliberately absent
  *
  * There is no `admin_user.destroy` for operators: they are deactivated, never deleted, because an
  * audit trail that can lose its subject is not an audit trail. Storefront customers use
  * soft-delete via `customer.destroy` (`status: deleted`) so email/phone can be reclaimed.
- * The registry still grows one route at a time — that is what makes "stable codes" mean
- * anything.
+ *
+ * There is no bare `user.*` family. That noun meant two populations at once, which is the
+ * defect `DEC-ACCOUNT-SEPARATION` existed to remove; operators are `admin_user.*`, shoppers
+ * are `customer.*`. Nor is there marketplace vocabulary — `vendor_wallet.*`,
+ * `commission_history.*`, `wallet.*` — because this is a single-vendor business and a
+ * grantable code for a role that cannot exist is a grant screen lying to whoever reads it.
+ *
+ * ## How it is allowed to change
+ *
+ * This is a CLOSED, owner-locked set. Adding or removing a code is an owner decision, not an
+ * implementation detail, and every entry below carries a justification naming the surface it
+ * actually guards. An earlier revision of this comment claimed the registry "grows one route
+ * at a time"; it then grew by 63 codes in a single pass while 64 entries shared one generated
+ * justification. Both were corrected on 2026-08-15. If a justification you are about to write
+ * would fit any other code with the name swapped, the entry does not belong here yet.
  */
 export const PermissionCode = z.enum([
+	'admin_user_role.assign',
+	'admin_user_role.revoke',
 	'admin_user.create',
 	'admin_user.index',
 	'admin_user.update',
@@ -48,7 +62,6 @@ export const PermissionCode = z.enum([
 	'category.destroy',
 	'category.edit',
 	'category.index',
-	'commission_history.index',
 	'coupon.create',
 	'coupon.destroy',
 	'coupon.edit',
@@ -93,7 +106,6 @@ export const PermissionCode = z.enum([
 	'review.index',
 	'role.create',
 	'role.destroy',
-	'role.edit',
 	'role.index',
 	'role.update',
 	'setting.edit',
@@ -116,21 +128,7 @@ export const PermissionCode = z.enum([
 	'tax.index',
 	'theme_option.edit',
 	'theme_option.index',
-	'theme.edit',
-	'theme.index',
-	'user_role.assign',
-	'user_role.revoke',
-	'user.destroy',
-	'user.edit',
-	'vendor_wallet.credit',
-	'vendor_wallet.debit',
-	'vendor_wallet.index',
-	'wallet.credit',
-	'wallet.debit',
-	'wallet.index',
 	'withdraw_request.action',
-	'withdraw_request.create',
-	'withdraw_request.index',
 ]);
 export type PermissionCode = z.infer<typeof PermissionCode>;
 
@@ -138,163 +136,114 @@ export type PermissionCode = z.infer<typeof PermissionCode>;
 export const PERMISSION_CODES: readonly PermissionCode[] = PermissionCode.options;
 
 /**
- * Codes the SERVER needs before any navigation entry gates on them, each with the reason.
+ * Codes no navigation entry gates on, each with the reason it exists anyway.
  *
- * Also includes create/edit/destroy/credit/debit/action codes that templates and the former
- * mock ACL used for in-page chrome, while `menu.ts` only lists coarse index/create parents.
+ * Most are the finer half of a resource: `menu.ts` lists coarse index/create parents, while
+ * the create button, the table row action and the tree-node control live inside the page.
+ * A handful guard a server route with no screen at all (`audit.index`, `cart.index`,
+ * `permission.index`, `order.update`).
+ *
+ * Each justification must name the SURFACE — the file, the control — so the entry can be
+ * re-checked against reality later. A sentence that would read the same for any other code
+ * with the name substituted answers nothing; that is what this map looked like before
+ * 2026-08-15, and it let 64 entries pass a guard none of them satisfied. A few entries below
+ * honestly say "reserved, nothing gates this yet" for kept pages awaiting an API. That is a
+ * real answer. A template is not.
  */
 export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCode, string>>> = {
+	'admin_user_role.assign':
+		'Granting authority (auth pass 5c.4) on the operator edit screen (form-user.html). Deliberately not part of admin_user.update: editing a colleague and enlarging their authority are different risks.',
+	'admin_user_role.revoke':
+		'Removing authority on the operator edit screen (form-user.html). Separate from assigning it because offboarding must stay possible for an operator who may not grant.',
 	'admin_user.update':
 		'Administrative operator editing (auth pass 5c.4), distinct from inviting a new one. Navigation gates create/index only.',
 	'attachment.create':
-		'Kept admin UI and/or former mock ACL gated on attachment.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (attachment create).',
+		'Upload control on the Media library and on the media-picker modal (media.html, media-modal.html). menu.ts carries no Media entry, so this is reachable only in-page.',
 	'attachment.destroy':
-		'Kept admin UI and/or former mock ACL gated on attachment.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (attachment destroy).',
+		'Delete control on the Media library and on the media-box thumbnail (media.html, media-box.html). No Media navigation entry exists to gate.',
 	'attribute.create':
-		'Kept admin UI and/or former mock ACL gated on attribute.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (attribute create).',
+		'Add-attribute button on the Attributes page. menu.ts gates attribute.index beneath Products; creation is in-page only.',
 	'attribute.destroy':
-		'Kept admin UI and/or former mock ACL gated on attribute.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (attribute destroy).',
+		'Attributes table row Delete action, configured in attribute.ts. Row actions never appear in navigation.',
 	'attribute.edit':
-		'Kept admin UI and/or former mock ACL gated on attribute.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (attribute edit).',
+		'Attributes table row Edit action, configured in attribute.ts. The Fastkart-era .edit spelling is kept because the row action still sends it.',
 	'audit.index':
 		'Reads the audit trail every admin mutation writes (GET /admin/audit-logs). Deliberately its own code rather than folded into admin_user.index or setting.index. No screen gates it yet.',
-	'blog.create':
-		'Kept admin UI and/or former mock ACL gated on blog.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (blog create).',
-	'blog.destroy':
-		'Kept admin UI and/or former mock ACL gated on blog.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (blog destroy).',
-	'blog.edit':
-		'Kept admin UI and/or former mock ACL gated on blog.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (blog edit).',
+	'blog.create': 'Add-blog button on the Blog page. menu.ts gates blog.index only.',
+	'blog.destroy': 'Blog table row Delete action (blog.ts).',
+	'blog.edit': 'Blog table row Edit action (blog.ts).',
 	'cart.index':
 		'Support-read of a customer cart (DEC-ACCOUNT-SEPARATION D4). Coarse staff/admin role must not bypass ownership; this server-only code is the only support path. No navigation entry yet.',
 	'category.create':
-		'Kept admin UI and/or former mock ACL gated on category.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (category create).',
-	'category.destroy':
-		'Kept admin UI and/or former mock ACL gated on category.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (category destroy).',
-	'category.edit':
-		'Kept admin UI and/or former mock ACL gated on category.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (category edit).',
-	'commission_history.index':
-		'Kept admin UI and/or former mock ACL gated on commission_history.index; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (commission_history index).',
-	'coupon.create':
-		'Kept admin UI and/or former mock ACL gated on coupon.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (coupon create).',
-	'coupon.destroy':
-		'Kept admin UI and/or former mock ACL gated on coupon.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (coupon destroy).',
-	'coupon.edit':
-		'Kept admin UI and/or former mock ACL gated on coupon.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (coupon edit).',
-	'currency.create':
-		'Kept admin UI and/or former mock ACL gated on currency.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (currency create).',
-	'currency.destroy':
-		'Kept admin UI and/or former mock ACL gated on currency.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (currency destroy).',
-	'currency.edit':
-		'Kept admin UI and/or former mock ACL gated on currency.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (currency edit).',
+		'Add-category button on the Categories page, which is reached from Products rather than from its own navigation entry.',
+	'category.destroy': 'Delete control on a single category tree node (tree-node.html), not a page-level button.',
+	'category.edit': 'Edit control on a single category tree node (tree-node.html).',
+	'coupon.create': 'Add-coupon button on the Coupons page. No Coupon navigation entry exists.',
+	'coupon.destroy': 'Coupons table row Delete action (coupon.ts).',
+	'coupon.edit': 'Coupons table row Edit action (coupon.ts).',
+	'currency.create': 'Add-currency button on the Currency page, reached from Settings rather than from navigation.',
+	'currency.destroy': 'Currency table row Delete action (currency.ts).',
+	'currency.edit': 'Currency table row Edit action (currency.ts).',
 	'customer.destroy':
 		'Admin Customer CRM soft-delete (status deleted). Separate from update so directory editors need not hold irreversible offboarding. Menu gates create/index only.',
 	'customer.update':
 		'Admin Customer CRM profile/address edits and activation resend. Menu gates create/index only; edit screens check this code at the API.',
-	'faq.create':
-		'Kept admin UI and/or former mock ACL gated on faq.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (faq create).',
-	'faq.destroy':
-		'Kept admin UI and/or former mock ACL gated on faq.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (faq destroy).',
-	'faq.edit':
-		'Kept admin UI and/or former mock ACL gated on faq.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (faq edit).',
+	'faq.create': 'Add-FAQ button on the FAQ page. No FAQ navigation entry exists.',
+	'faq.destroy': 'FAQ table row Delete action (faq.ts).',
+	'faq.edit': 'FAQ table row Edit action (faq.ts).',
 	'order.edit':
-		'Kept admin UI and/or former mock ACL gated on order.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (order edit).',
+		"Order table row Edit action on both the Orders page and the dashboard's recent-orders table (order.ts, dashboard.ts). Navigation gates order.index and order.create only.",
 	'order.update':
 		'Changing an order status (PATCH /orders/:id/status). Navigation gates order.index and order.create only.',
-	'page.create':
-		'Kept admin UI and/or former mock ACL gated on page.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (page create).',
-	'page.destroy':
-		'Kept admin UI and/or former mock ACL gated on page.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (page destroy).',
-	'page.edit':
-		'Kept admin UI and/or former mock ACL gated on page.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (page edit).',
+	'page.create': 'Add-page button on the Pages screen. No Pages navigation entry exists.',
+	'page.destroy': 'Pages table row Delete action (page.ts).',
+	'page.edit': 'Pages table row Edit action (page.ts).',
 	'permission.index': 'Enumerates this registry so a grant UI can render it; there is no screen of its own to gate.',
 	'point.credit':
-		'Kept admin UI and/or former mock ACL gated on point.credit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (point credit).',
+		"Add-points control on the Points page and on the customer ledger's points panel (point.html, customer-ledger.html). Neither screen has an API yet; the gate is what will authorise it when they do.",
 	'point.debit':
-		'Kept admin UI and/or former mock ACL gated on point.debit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (point debit).',
-	'product.destroy':
-		'Kept admin UI and/or former mock ACL gated on product.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (product destroy).',
+		"Withdraw-points control on the Points page and on the customer ledger's points panel (point.html, customer-ledger.html). Inert until those screens are wired.",
+	'product.destroy': 'Products table row Delete action (product.ts).',
 	'product.edit':
-		'Kept admin UI and/or former mock ACL gated on product.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (product edit).',
+		"Product row Edit action on the Products page and on the dashboard's product tables (product.ts, dashboard.ts). Navigation gates product.index and product.create only.",
 	'question_and_answer.create':
-		'Kept admin UI and/or former mock ACL gated on question_and_answer.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (question_and_answer create).',
+		'Reserved for the kept Questions & Answers page, which has no create surface or API yet. Retained so the code exists when that page is wired; nothing gates on it today.',
 	'question_and_answer.destroy':
-		'Kept admin UI and/or former mock ACL gated on question_and_answer.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (question_and_answer destroy).',
+		'Questions & Answers table row Delete action (questions-answers.ts). Corrected from store.destroy, which had let a Store grant carry Q&A authority.',
 	'question_and_answer.edit':
-		'Kept admin UI and/or former mock ACL gated on question_and_answer.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (question_and_answer edit).',
+		'Questions & Answers table row Edit action (questions-answers.ts). Corrected from store.edit, which had let a Store grant carry Q&A authority.',
 	'question_and_answer.index':
-		'Kept admin UI and/or former mock ACL gated on question_and_answer.index; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (question_and_answer index).',
+		'Reserved for the kept Questions & Answers page. menu.ts has no Q&A entry and the page has no API yet; nothing gates on it today.',
 	'refund.action':
-		'Kept admin UI and/or former mock ACL gated on refund.action; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (refund action).',
-	'refund.create':
-		'Kept admin UI and/or former mock ACL gated on refund.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (refund create).',
+		'Reserved for the kept Refund page, which has no API yet. The payout modal that page opens gates on withdraw_request.action instead; nothing gates on this code today.',
+	'refund.create': 'Reserved for the kept Refund page. Nothing gates on it until that page is wired.',
 	'review.create':
-		'Kept admin UI and/or former mock ACL gated on review.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (review create).',
-	'review.destroy':
-		'Kept admin UI and/or former mock ACL gated on review.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (review destroy).',
+		'Reserved for the kept Reviews page, which exposes no create surface today; only review.destroy is gated there.',
+	'review.destroy': 'Reviews table row Delete action (review.ts).',
 	'role.create': 'Role management surface (auth pass 5c.3); the navigation gates only role.index today.',
 	'role.destroy': 'Role management surface (auth pass 5c.3); deleting a role is separate from editing one.',
-	'role.edit':
-		'Kept admin UI and/or former mock ACL gated on role.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (role edit).',
 	'role.update': 'Role management surface (auth pass 5c.3); editing a role changes what everyone holding it can do.',
 	'setting.edit':
-		'Kept admin UI and/or former mock ACL gated on setting.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (setting edit).',
-	'shipping.create':
-		'Kept admin UI and/or former mock ACL gated on shipping.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (shipping create).',
-	'shipping.destroy':
-		'Kept admin UI and/or former mock ACL gated on shipping.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (shipping destroy).',
-	'shipping.edit':
-		'Kept admin UI and/or former mock ACL gated on shipping.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (shipping edit).',
-	'store.destroy':
-		'Kept admin UI and/or former mock ACL gated on store.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (store destroy).',
-	'store.edit':
-		'Kept admin UI and/or former mock ACL gated on store.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (store edit).',
-	'tag.create':
-		'Kept admin UI and/or former mock ACL gated on tag.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (tag create).',
-	'tag.destroy':
-		'Kept admin UI and/or former mock ACL gated on tag.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (tag destroy).',
-	'tag.edit':
-		'Kept admin UI and/or former mock ACL gated on tag.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (tag edit).',
-	'tax.create':
-		'Kept admin UI and/or former mock ACL gated on tax.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (tax create).',
-	'tax.destroy':
-		'Kept admin UI and/or former mock ACL gated on tax.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (tax destroy).',
-	'tax.edit':
-		'Kept admin UI and/or former mock ACL gated on tax.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (tax edit).',
-	'theme_option.edit':
-		'Kept admin UI and/or former mock ACL gated on theme_option.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (theme_option edit).',
-	'theme.edit':
-		'Kept admin UI and/or former mock ACL gated on theme.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (theme edit).',
-	'theme.index':
-		'Kept admin UI and/or former mock ACL gated on theme.index; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (theme index).',
-	'user_role.assign': 'Granting authority (auth pass 5c.4). Deliberately not part of admin_user.update.',
-	'user_role.revoke':
-		'Removing authority (auth pass 5c.4). Separate from assigning it because offboarding must stay possible for operators who may not grant.',
-	'user.destroy':
-		'Kept admin UI and/or former mock ACL gated on user.destroy; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (user destroy).',
-	'user.edit':
-		'Kept admin UI and/or former mock ACL gated on user.edit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (user edit).',
-	'vendor_wallet.credit':
-		'Kept admin UI and/or former mock ACL gated on vendor_wallet.credit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (vendor_wallet credit).',
-	'vendor_wallet.debit':
-		'Kept admin UI and/or former mock ACL gated on vendor_wallet.debit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (vendor_wallet debit).',
-	'vendor_wallet.index':
-		'Kept admin UI and/or former mock ACL gated on vendor_wallet.index; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (vendor_wallet index).',
-	'wallet.credit':
-		'Kept admin UI and/or former mock ACL gated on wallet.credit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (wallet credit).',
-	'wallet.debit':
-		'Kept admin UI and/or former mock ACL gated on wallet.debit; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (wallet debit).',
-	'wallet.index':
-		'Kept admin UI and/or former mock ACL gated on wallet.index; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (wallet index).',
+		'Every write on the settings surfaces: the Save control on the main Settings page, and the two audited notification mutations (PATCH /admin/notifications/channels, PUT /admin/notifications/templates). Reads use setting.index, which is the navigation code; writes deliberately do not.',
+	'shipping.create': 'Add-shipping button on the Shipping page. No Shipping navigation entry exists.',
+	'shipping.destroy': 'Delete control on a shipping rule row (shipping.html).',
+	'shipping.edit': 'Edit control on a shipping rule row (shipping.html).',
+	'store.destroy': 'Stores table row Delete action (stores.ts). menu.ts gates store.index and store.create only.',
+	'store.edit': 'Stores table row Edit action (stores.ts).',
+	'tag.create': 'Add-tag button on the Tags page, reached from Products rather than from navigation.',
+	'tag.destroy': 'Tags table row Delete action (tag.ts).',
+	'tag.edit': 'Tags table row Edit action (tag.ts).',
+	'tax.create': 'Add-tax button on the Tax page, reached from Settings rather than from navigation.',
+	'tax.destroy': 'Tax table row Delete action (tax.ts).',
+	'tax.edit': 'Tax table row Edit action (tax.ts).',
+	'theme_option.edit': 'Save control on the Theme Options page. menu.ts gates theme_option.index only.',
 	'withdraw_request.action':
-		'Kept admin UI and/or former mock ACL gated on withdraw_request.action; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (withdraw_request action).',
-	'withdraw_request.create':
-		'Kept admin UI and/or former mock ACL gated on withdraw_request.create; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (withdraw_request create).',
-	'withdraw_request.index':
-		'Kept admin UI and/or former mock ACL gated on withdraw_request.index; not a menu.ts navigation acl_permission. Held in the registry so AuthStore/effective grants can restore render parity after mock ACL removal (withdraw_request index).',
+		'Approve/reject control inside the payout modal (payout-modal.html), which the Refund page opens. Not a page of its own, so it has no navigation entry.',
 };
 
 /** The resource half of a code — the noun a permission is about. */
 export const PermissionResource = z.enum([
+	'admin_user_role',
 	'admin_user',
 	'attachment',
 	'attribute',
@@ -302,7 +251,6 @@ export const PermissionResource = z.enum([
 	'blog',
 	'cart',
 	'category',
-	'commission_history',
 	'coupon',
 	'currency',
 	'customer',
@@ -321,12 +269,7 @@ export const PermissionResource = z.enum([
 	'store',
 	'tag',
 	'tax',
-	'theme',
 	'theme_option',
-	'user',
-	'user_role',
-	'vendor_wallet',
-	'wallet',
 	'withdraw_request',
 ]);
 export type PermissionResource = z.infer<typeof PermissionResource>;
@@ -335,9 +278,10 @@ export type PermissionResource = z.infer<typeof PermissionResource>;
  * The action half. Extending this is a registry decision, not an implementation detail.
  *
  * `assign` and `revoke` are separate actions rather than one `manage`, because granting
- * authority and removing it carry opposite risks. `edit` remains alongside `update` where the
- * kept admin UI / former mock ACL still gate on Fastkart-era `.edit` strings. `credit` /
- * `debit` / `action` cover points, wallet, and withdraw chrome.
+ * authority and removing it carry opposite risks. `edit` remains alongside `update` where a
+ * kept admin screen still sends the Fastkart-era `.edit` string from a table row action;
+ * `update` is what the API's own routes use. `credit` and `debit` cover the points controls,
+ * and `action` covers the payout approve/reject chrome.
  */
 export const PermissionAction = z.enum([
 	'action',

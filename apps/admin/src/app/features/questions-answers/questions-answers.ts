@@ -37,12 +37,12 @@ export class QuestionsAnswers {
 			},
 		],
 		rowActions: [
-			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'store.edit' },
+			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'question_and_answer.edit' },
 			{
 				label: 'Delete',
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
-				permission: 'store.destroy',
+				permission: 'question_and_answer.destroy',
 			},
 		],
 		data: [] as IQuestionAnswers[],

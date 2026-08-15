@@ -1,20 +1,20 @@
 import { Routes } from '@angular/router';
 
-import { CreateUser } from './create-user/create-user';
-import { EditUser } from './edit-user/edit-user';
-import { User } from './user';
+import { CreateAdminUser } from './create-user/create-user';
+import { EditAdminUser } from './edit-user/edit-user';
+import { AdminUsers } from './user';
 
 export default [
 	{
 		path: '',
-		component: User,
+		component: AdminUsers,
 	},
 	{
 		path: 'create',
-		component: CreateUser,
+		component: CreateAdminUser,
 	},
 	{
 		path: 'edit/:id',
-		component: EditUser,
+		component: EditAdminUser,
 	},
 ] as Routes;

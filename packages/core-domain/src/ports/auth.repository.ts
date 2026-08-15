@@ -10,7 +10,8 @@ import type {
 	PasswordResetToken,
 	SessionAudience,
 	SessionRevokeReason,
-	UserStatus,
+	AdminUserStatus,
+	CustomerStatus,
 } from '@saha-textile/contracts';
 
 /**
@@ -160,7 +161,7 @@ export interface CustomerAuthRepository {
 	 * lose its subject is not an audit trail, and a deleted row would also free the email for
 	 * re-registration by somebody else.
 	 */
-	setStatus(customerId: string, status: UserStatus): Promise<void>;
+	setStatus(customerId: string, status: CustomerStatus): Promise<void>;
 	/** Invalidates every existing access token for this customer. */
 	bumpTokenVersion(customerId: string): Promise<number>;
 	recordSuccessfulLogin(customerId: string, at: string): Promise<void>;
@@ -180,7 +181,7 @@ export interface AdminUserAuthRepository {
 	setPinHash(adminUserId: string, pinHash: string | null): Promise<void>;
 	setPreferredLoginMethod(adminUserId: string, method: 'password' | 'pin'): Promise<void>;
 	markEmailVerified(adminUserId: string, emailNormalized: string): Promise<void>;
-	setStatus(adminUserId: string, status: UserStatus): Promise<void>;
+	setStatus(adminUserId: string, status: AdminUserStatus): Promise<void>;
 	bumpTokenVersion(adminUserId: string): Promise<number>;
 	/** Invalidates every existing token's cached permission set. */
 	bumpPermissionsVersion(adminUserId: string): Promise<number>;

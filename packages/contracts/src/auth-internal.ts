@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-import { AdminRole, AdminUserId } from './admin-role';
+import { AdminRole, AdminUserId, AdminUserStatus } from './admin-role';
 import { OtpChannel, OtpPurpose } from './auth';
 import { Id, IsoDateTime } from './common';
-import { CustomerId, UserStatus } from './customer';
+import { CustomerId, CustomerStatus } from './customer';
 import { SessionAudience } from './session';
 
 /**
@@ -128,7 +128,7 @@ export const CustomerAuthState = z.object({
 	id: CustomerId,
 	email: z.string().nullable().default(null),
 	emailVerified: z.boolean().default(false),
-	status: UserStatus,
+	status: CustomerStatus,
 	/** argon2id hash, or null for an account that has only OAuth/OTP identities. */
 	passwordHash: z.string().nullable().default(null),
 	tokenVersion: z.number().int().nonnegative().default(0),
@@ -148,7 +148,7 @@ export const AdminUserAuthState = z.object({
 	emailVerified: z.boolean().default(false),
 	username: z.string().nullable().default(null),
 	role: AdminRole,
-	status: UserStatus,
+	status: AdminUserStatus,
 	/** argon2id hash, or null until invite acceptance sets a password. */
 	passwordHash: z.string().nullable().default(null),
 	/** argon2id hash of the six-digit admin PIN. */

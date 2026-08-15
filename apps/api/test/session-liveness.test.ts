@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AuthSession } from '@saha-textile/contracts';
 
-import { SessionService } from '../src/auth/session.service';
+import { ADMIN_IDLE_TTL_SECONDS, SessionService } from '../src/auth/session.service';
 import { loadConfig } from '../src/config/app-config';
 
 const config = loadConfig({
@@ -35,8 +35,7 @@ function session(overrides: Partial<AuthSession> = {}): AuthSession {
 }
 
 describe('admin idle vs soft-lock', () => {
-	it('keeps admin server idle longer than the 15-minute soft-lock UI window', async () => {
-		const { ADMIN_IDLE_TTL_SECONDS } = await import('../src/auth/session.service');
+	it('keeps admin server idle longer than the 15-minute soft-lock UI window', () => {
 		const softLockSeconds = 15 * 60;
 		expect(ADMIN_IDLE_TTL_SECONDS).toBeGreaterThan(softLockSeconds);
 		expect(ADMIN_IDLE_TTL_SECONDS).toBe(60 * 60);

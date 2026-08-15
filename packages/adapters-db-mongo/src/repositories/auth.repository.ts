@@ -10,7 +10,8 @@ import type {
 	PasswordResetToken,
 	SessionAudience,
 	SessionRevokeReason,
-	UserStatus,
+	AdminUserStatus,
+	CustomerStatus,
 } from '@saha-textile/contracts';
 import type {
 	AdminInviteRepository,
@@ -719,7 +720,7 @@ export class MongoCustomerAuthRepository implements CustomerAuthRepository {
 		).exec();
 	}
 
-	async setStatus(customerId: string, status: UserStatus): Promise<void> {
+	async setStatus(customerId: string, status: CustomerStatus): Promise<void> {
 		await CustomerModel.updateOne({ _id: customerId }, { $set: { status } }).exec();
 	}
 
@@ -810,7 +811,7 @@ export class MongoAdminUserAuthRepository implements AdminUserAuthRepository {
 		).exec();
 	}
 
-	async setStatus(adminUserId: string, status: UserStatus): Promise<void> {
+	async setStatus(adminUserId: string, status: AdminUserStatus): Promise<void> {
 		await AdminUserModel.updateOne({ _id: adminUserId }, { $set: { status } }).exec();
 	}
 

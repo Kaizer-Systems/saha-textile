@@ -172,7 +172,7 @@
 		@if(isBrowser) {
 		<select2
 			class="custom-select intl-tel-input"
-			[templates]="template"
+			[templates]="{ option: template, templateSelection: template }"
 			[data]="codes"
 			formControlName="country_code"
 			noResultMessage="{{ 'no_data_found' | transloco }}"

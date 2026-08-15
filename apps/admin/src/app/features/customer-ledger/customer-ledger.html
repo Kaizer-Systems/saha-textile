@@ -8,7 +8,7 @@
 				@if(isBrowser) {
 				<select2
 					class="custom-select"
-					[data]="(users$ | async)?.length ? (users$ | async) : []"
+					[data]="(customers$ | async)?.length ? (customers$ | async) : []"
 					[placeholder]="'select_consumer' | transloco "
 					formControlName="consumer_id"
 					noResultMessage="{{ 'no_data_found' | transloco }}"
@@ -21,16 +21,16 @@
 		<form [formGroup]="form">
 			<app-page-wrapper
 				[gridClass]="'col-sm-12'"
-				[title]="'wallet'"
+				[title]="'points'"
 			>
 				<div class="wallet-sec theme-form">
 					<div class="wallet-amount">
 						<div class="wallet-icon">
-							<i class="ri-wallet-line"></i>
+							<i class="ri-coins-line"></i>
 						</div>
 						<div>
 							<h2>{{ balance | currencySymbol }}</h2>
-							<h5>{{ 'wallet_balance' | transloco }}</h5>
+							<h5>{{ 'points_balance' | transloco }}</h5>
 						</div>
 					</div>
 					<input
@@ -69,7 +69,7 @@
 
 <app-page-wrapper
 	[gridClass]="'col-sm-12'"
-	[title]="'transactions'"
+	[title]="'orders'"
 >
 	<app-table
 		(tableChanged)="onTableChange($event)"

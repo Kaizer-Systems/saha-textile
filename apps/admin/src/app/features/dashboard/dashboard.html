@@ -1,7 +1,7 @@
 <!-- tiles section -->
 <section class="dashboard-tiles">
 	<div class="container-fluid">
-		@if (( user$ | async )?.role?.name !== 'vendor') {
+		@if (!isVendor()) {
 		<div class="row g-3">
 			<div class="col-xl-3 col-sm-6">
 				<div class="card-tiles">
@@ -48,7 +48,7 @@
 				</div>
 			</div>
 		</div>
-		} @if (( user$ | async )?.role?.name === 'vendor') {
+		} @if (isVendor()) {
 		<div class="row">
 			<div class="col-3">
 				<div class="card-tiles">
@@ -87,7 +87,7 @@
 				<div class="card-tiles">
 					<div>
 						<h6>{{ 'total_balance' | transloco }}</h6>
-						<h3>{{ ( user$ | async )?.vendor_wallet?.balance }}</h3>
+						<h3>0</h3>
 					</div>
 					<div class="icon-box">
 						<i class="ri-group-line"></i>

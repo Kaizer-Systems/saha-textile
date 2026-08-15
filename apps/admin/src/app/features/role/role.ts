@@ -2,7 +2,10 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
+import { injectMutation, injectQueryClient } from '@tanstack/angular-query-experimental';
+import { lastValueFrom } from 'rxjs';
 
+import { AdminRolesGateway } from '@core/admin-roles/admin-roles.gateway';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IRole } from '@data-access/interfaces/role.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
@@ -18,12 +21,21 @@ import { Table } from '@shared/ui/table/table';
 	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
 })
 export class Role {
-	private router = inject(Router);
+	private readonly router = inject(Router);
+	private readonly gateway = inject(AdminRolesGateway);
+	private readonly queryClient = injectQueryClient();
 
 	private readonly params = signal<Params>({});
 	readonly rolesQuery = injectRolesQuery(() => this.params());
 
-	public tableConfig: ITableConfig = {
+	private readonly deleteMutation = injectMutation(() => ({
+		mutationFn: (roleId: string) => lastValueFrom(this.gateway.remove(roleId)),
+		onSuccess: () => {
+			void this.queryClient.invalidateQueries({ queryKey: ['admin-roles'] });
+		},
+	}));
+
+	public tableConfig: ITableConfig<IRole> = {
 		columns: [
 			{ title: 'No.', dataField: 'no', type: 'no' },
 			{ title: 'name', dataField: 'name', sortable: true, sort_direction: 'desc' },
@@ -36,7 +48,7 @@ export class Role {
 			},
 		],
 		rowActions: [
-			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'role.edit' },
+			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'role.update' },
 			{
 				label: 'Delete',
 				actionToPerform: 'delete',
@@ -67,14 +79,20 @@ export class Role {
 	}
 
 	edit(data: IRole) {
+		if (data.isSystem || data.system_reserve === '1') return;
 		void this.router.navigateByUrl(`/role/edit/${data.id}`);
 	}
 
-	delete(_data: IRole) {
-		// Mock: delete has no backend yet.
+	delete(data: IRole) {
+		if (data.isSystem || data.system_reserve === '1') return;
+		this.deleteMutation.mutate(String(data.id));
 	}
 
-	deleteAll(_ids: number[]) {
-		// Mock: bulk delete has no backend yet.
+	deleteAll(ids: Array<string | number>) {
+		for (const id of ids ?? []) {
+			const row = this.tableConfig.data?.find((role) => role.id === id);
+			if (row?.isSystem || row?.system_reserve === '1') continue;
+			this.deleteMutation.mutate(String(id));
+		}
 	}
 }

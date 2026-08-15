@@ -3,37 +3,37 @@ import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@a
 
 import { Observable } from 'rxjs';
 
-import { AccountStore } from '@core/state/account.store';
+import { AuthStore } from '@core/state/auth.store';
 
 @Injectable({
 	providedIn: 'root',
 })
 export class PermissionGuard {
-	private accountStore = inject(AccountStore);
+	private authStore = inject(AuthStore);
 	router = inject(Router);
 
 	canActivate(
 		route: ActivatedRouteSnapshot,
 		_state: RouterStateSnapshot,
 	): Observable<boolean | UrlTree> | Promise<boolean | UrlTree> | boolean | UrlTree {
-		const permissions = this.accountStore.permissions()?.map((value) => value?.name);
+		const permissions = this.authStore.permissions();
 		const requiredPermission = route.data?.['permission'];
 
 		if (!requiredPermission) {
-			return true; // no permission required, allow access
+			return true;
 		}
 
-		if (!Array.isArray(requiredPermission) && permissions?.includes(requiredPermission)) {
+		if (!Array.isArray(requiredPermission) && permissions.includes(requiredPermission)) {
 			return true;
-		} else if (
+		}
+		if (
 			Array.isArray(requiredPermission) &&
-			requiredPermission?.length &&
-			requiredPermission.every((action) => permissions?.includes(action))
+			requiredPermission.length &&
+			requiredPermission.every((action: string) => permissions.includes(action))
 		) {
 			return true;
-		} else {
-			void this.router.navigate(['/error/403']);
-			return false;
 		}
+		void this.router.navigate(['/error/403']);
+		return false;
 	}
 }

@@ -7,6 +7,13 @@ import { IRole } from './role.interface';
 import { IStates } from './state.interface';
 import { IWallet } from './wallet.interface';
 
+/**
+ * Legacy Fastkart mock user for marketplace screens (checkout customer picker, orders,
+ * reviews). NOT the signed-in operator — that is {@link AdminUser} in `@core/auth/auth-gateway`.
+ *
+ * `/admin/users/**` will administer operators only (`DEC-ACCOUNT-SEPARATION` D3); this shape
+ * remains until those screens are wired to the real API and customer CRM lands separately.
+ */
 export interface IUserModel extends IPaginateModel {
 	data: IUser[];
 }

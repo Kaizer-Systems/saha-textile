@@ -12,7 +12,8 @@ export interface AuthSessionDoc {
 	_id: string;
 	userId: string;
 	audience: 'storefront' | 'admin';
-	roleAtLogin: 'customer' | 'staff' | 'admin';
+	/** Null on storefront; `staff` | `admin` on admin. Legacy `customer` is mapped to null. */
+	roleAtLogin: 'staff' | 'admin' | 'customer' | null;
 	refreshTokenHash: string;
 	refreshFamilyId: string;
 	rotationCounter: number;
@@ -34,7 +35,12 @@ const AuthSessionSchema = new Schema<AuthSessionDoc>(
 		_id: { type: String, required: true },
 		userId: { type: String, required: true },
 		audience: { type: String, enum: ['storefront', 'admin'], required: true },
-		roleAtLogin: { type: String, enum: ['customer', 'staff', 'admin'], required: true },
+		roleAtLogin: {
+			type: String,
+			enum: ['staff', 'admin', 'customer', null],
+			default: null,
+			required: false,
+		},
 		// Never selected by default: a stray `find()` must not hand back credential material.
 		refreshTokenHash: { type: String, required: true, select: false },
 		refreshFamilyId: { type: String, required: true },

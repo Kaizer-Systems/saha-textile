@@ -73,13 +73,13 @@ describe('physical collection names', () => {
 		}
 	});
 
-	it('keeps every graph-backed name inside the ratified 64-node Schema Nebula graph', () => {
+	it('keeps every graph-backed name inside the ratified 65-node Schema Nebula graph', () => {
 		// Reads the governed dataset rather than a copied list, so a rename on either side
 		// has to be reconciled instead of quietly diverging.
 		const nebulaPath = resolve(repositoryRoot(), 'docs/_data/instruments/schema-nebula.json');
 		const nebula = JSON.parse(readFileSync(nebulaPath, 'utf8')) as { collections: Array<{ id: string }> };
 		const nodeIds = new Set(nebula.collections.map((node) => node.id));
-		expect(nodeIds.size).toBe(64);
+		expect(nodeIds.size).toBe(65);
 
 		const graphBacked = Object.values(COLLECTION_NAMES).filter((name) => !NON_GRAPH_COLLECTIONS.includes(name));
 		const missing = graphBacked.filter((name) => !nodeIds.has(name));

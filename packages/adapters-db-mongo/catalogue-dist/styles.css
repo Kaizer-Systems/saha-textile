@@ -1,0 +1,414 @@
+@import url('./nextgen-theme.css');
+
+/* ============================================================================
+ * NEXT-GEN-UI · MongoDB Schema Observatory adapter
+ * What: source-generated current-model catalogue layout and observatory skin.
+ * Why: preserve one responsive, evidence-first child identity without forking
+ * the shared portal palette or exposing database/runtime data.
+ * How: compose nextgen-theme.css tokens with catalogue-only grid and panel rules.
+ * Tuning knobs: 840px stack point, 520px single-column model rail, 1500px shell.
+ * ========================================================================= */
+
+html,
+body {
+	min-height: 100%;
+	margin: 0;
+	background: var(--portal-canvas);
+}
+
+body {
+	background:
+		radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--portal-success) 12%, transparent), transparent 34%),
+		radial-gradient(circle at 18% 70%, color-mix(in srgb, var(--portal-accent) 10%, transparent), transparent 32%),
+		var(--portal-canvas);
+}
+
+body::before {
+	position: fixed;
+	z-index: 0;
+	inset: 0;
+	background-image:
+		radial-gradient(circle at 16% 18%, var(--portal-accent) 0 1px, transparent 1.7px),
+		radial-gradient(circle at 68% 26%, var(--portal-success) 0 1px, transparent 1.7px),
+		radial-gradient(circle at 88% 74%, var(--portal-accent) 0 1px, transparent 1.7px);
+	background-size:
+		180px 160px,
+		250px 210px,
+		310px 270px;
+	content: '';
+	opacity: 0.24;
+	pointer-events: none;
+	animation: observatoryDrift 26s linear infinite;
+}
+
+.observatory-shell {
+	position: relative;
+	z-index: 1;
+	width: min(1500px, calc(100% - 40px));
+	margin: 0 auto;
+	padding: 28px 0 56px;
+}
+
+.observatory-header {
+	display: flex;
+	align-items: end;
+	justify-content: space-between;
+	gap: 24px;
+	padding: 20px 0 24px;
+}
+
+.observatory-header h1,
+.observatory-header p {
+	margin: 0;
+}
+
+.observatory-header h1 {
+	font-size: clamp(2.2rem, 5vw, 4.2rem);
+	letter-spacing: -0.065em;
+}
+
+.observatory-header > div > p:last-child {
+	max-width: 760px;
+	margin-top: 10px;
+	color: var(--portal-muted);
+	line-height: 1.6;
+}
+
+.observatory-gateway {
+	flex: 0 0 auto;
+	padding: 10px 13px;
+	border: 1px solid var(--portal-border);
+	border-radius: var(--portal-radius);
+	background: color-mix(in srgb, var(--portal-accent) 9%, transparent);
+	color: var(--portal-accent);
+	font-family: var(--portal-font-mono);
+	font-size: 0.72rem;
+	font-weight: 700;
+	text-decoration: none;
+	white-space: nowrap;
+	transition:
+		border-color 160ms ease,
+		background 160ms ease,
+		box-shadow 160ms ease;
+}
+
+.observatory-gateway:hover {
+	border-color: var(--portal-accent);
+	background: var(--portal-accent-soft);
+	box-shadow: 0 0 22px color-mix(in srgb, var(--portal-accent) 18%, transparent);
+}
+
+.eyebrow {
+	color: var(--portal-success);
+	font-family: var(--portal-font-mono);
+	font-size: 0.7rem;
+	font-weight: 700;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+.truth-banner {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 16px;
+	padding: 13px 16px;
+	border: 1px solid color-mix(in srgb, var(--portal-warning) 38%, var(--portal-border));
+	border-radius: var(--portal-radius-lg);
+	background: color-mix(in srgb, var(--portal-surface) 88%, transparent);
+}
+
+.truth-banner strong {
+	color: var(--portal-warning);
+}
+
+.truth-banner span {
+	color: var(--portal-muted);
+}
+
+.observatory-controls {
+	display: grid;
+	grid-template-columns: minmax(260px, 1fr) auto;
+	align-items: end;
+	gap: 20px;
+	padding: 24px 0 16px;
+}
+
+.observatory-controls label {
+	display: grid;
+	gap: 7px;
+	color: var(--portal-muted);
+	font-family: var(--portal-font-mono);
+	font-size: 0.7rem;
+}
+
+.observatory-controls input {
+	padding: 12px 14px;
+	border: 1px solid var(--portal-border);
+	border-radius: var(--portal-radius);
+	background: color-mix(in srgb, var(--portal-surface) 92%, transparent);
+	color: var(--portal-ink);
+	font: inherit;
+}
+
+.catalogue-counts {
+	color: var(--portal-subtle);
+	font-family: var(--portal-font-mono);
+	font-size: 0.68rem;
+}
+
+.observatory-main {
+	display: grid;
+	grid-template-columns: minmax(220px, 0.25fr) minmax(0, 1fr);
+	gap: 18px;
+	align-items: start;
+}
+
+.observatory-main,
+.model-list,
+.model-detail,
+.model-button {
+	min-width: 0;
+}
+
+.model-list,
+.model-detail,
+.catalogue-panel {
+	border: 1px solid var(--portal-border);
+	border-radius: var(--portal-radius-lg);
+	background: color-mix(in srgb, var(--portal-canvas) 82%, transparent);
+	box-shadow:
+		0 22px 60px rgb(0 0 0 / 18%),
+		inset 0 1px 0 rgb(255 255 255 / 3%);
+	backdrop-filter: blur(14px);
+}
+
+.model-list {
+	position: sticky;
+	top: 16px;
+	display: grid;
+	gap: 6px;
+	padding: 8px;
+}
+
+.model-button {
+	display: grid;
+	gap: 4px;
+	padding: 13px;
+	border: 1px solid transparent;
+	border-radius: var(--portal-radius);
+	background: transparent;
+	color: var(--portal-ink);
+	cursor: pointer;
+	text-align: left;
+}
+
+.model-button:hover,
+.model-button[data-active='true'] {
+	border-color: color-mix(in srgb, var(--portal-accent) 56%, var(--portal-border));
+	background: var(--portal-accent-soft);
+	box-shadow: inset 3px 0 0 var(--portal-accent);
+}
+
+.model-button span {
+	color: var(--portal-subtle);
+	font-size: 0.68rem;
+}
+
+.model-button__context {
+	color: var(--portal-success) !important;
+	font-family: var(--portal-font-mono);
+	text-transform: uppercase;
+}
+
+.model-detail {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 14px;
+	padding: 18px;
+}
+
+.model-heading {
+	display: flex;
+	align-items: start;
+	justify-content: space-between;
+	gap: 24px;
+	padding: 6px;
+}
+
+.model-heading h2,
+.model-heading p {
+	margin: 0;
+}
+
+.model-heading h2 {
+	margin: 4px 0 8px;
+	font-size: 2rem;
+}
+
+.model-heading > div > p:last-child {
+	color: var(--portal-muted);
+}
+
+.source-path {
+	max-width: 48%;
+	color: var(--portal-subtle);
+	font-size: 0.68rem;
+	overflow-wrap: anywhere;
+}
+
+.limitation-panel {
+	display: grid;
+	gap: 6px;
+	padding: 13px 15px;
+	border: 1px solid color-mix(in srgb, var(--portal-warning) 38%, var(--portal-border));
+	border-radius: var(--portal-radius);
+	background: color-mix(in srgb, var(--portal-warning) 7%, transparent);
+}
+
+.limitation-panel strong {
+	color: var(--portal-warning);
+}
+
+.limitation-panel span {
+	color: var(--portal-muted);
+	font-size: 0.78rem;
+}
+
+.catalogue-panel {
+	padding: 16px;
+	background: color-mix(in srgb, var(--portal-surface) 76%, transparent);
+}
+
+.catalogue-panel h2 {
+	margin: 0 0 12px;
+	font-size: 1rem;
+}
+
+.table-wrap {
+	overflow-x: auto;
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.78rem;
+}
+
+th,
+td {
+	padding: 10px;
+	border-bottom: 1px solid var(--portal-border);
+	text-align: left;
+	vertical-align: top;
+}
+
+th {
+	color: var(--portal-subtle);
+	font-family: var(--portal-font-mono);
+	font-size: 0.65rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+tr[data-temporary='true'] {
+	background: color-mix(in srgb, var(--portal-warning) 6%, transparent);
+}
+
+.field-path {
+	color: var(--portal-accent);
+	font-family: var(--portal-font-mono);
+}
+
+.field-policy {
+	color: var(--portal-muted);
+}
+
+.index-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 8px;
+}
+
+.index-card {
+	display: grid;
+	gap: 6px;
+	padding: 11px;
+	border: 1px solid var(--portal-border);
+	border-radius: var(--portal-radius);
+	background: var(--portal-canvas);
+}
+
+.index-card code {
+	color: var(--portal-success);
+}
+
+.index-card span,
+.panel-note,
+.empty-state {
+	color: var(--portal-muted);
+	font-size: 0.76rem;
+}
+
+pre {
+	margin: 12px 0 0;
+	padding: 14px;
+	overflow: auto;
+	border: 1px solid var(--portal-border);
+	border-radius: var(--portal-radius);
+	background: var(--portal-canvas);
+	color: var(--portal-ink);
+	font: 0.75rem/1.6 var(--portal-font-mono);
+}
+
+@keyframes observatoryDrift {
+	to {
+		background-position:
+			180px 160px,
+			-250px 210px,
+			310px -270px;
+	}
+}
+
+@media (max-width: 840px) {
+	.observatory-header,
+	.model-heading {
+		align-items: start;
+		flex-direction: column;
+	}
+
+	.observatory-controls,
+	.observatory-main {
+		grid-template-columns: 1fr;
+	}
+
+	.model-list {
+		position: static;
+		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	}
+
+	.source-path {
+		max-width: none;
+	}
+}
+
+@media (max-width: 520px) {
+	.observatory-shell {
+		width: min(100% - 24px, 1500px);
+	}
+
+	.model-list {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body::before {
+		animation: none;
+	}
+}
+
+@media (forced-colors: active) {
+	.observatory-gateway {
+		border: 1px solid ButtonText;
+	}
+}

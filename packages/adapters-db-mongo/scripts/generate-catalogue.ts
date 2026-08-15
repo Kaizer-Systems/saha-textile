@@ -5,8 +5,10 @@ import { type Schema, type SchemaType } from 'mongoose';
 
 import {
 	AdminInviteModel,
+	AdminUserModel,
 	AttributeDefinitionModel,
 	AuditLogModel,
+	AuthIdentityModel,
 	AuthRateLimitModel,
 	AuthSessionModel,
 	CartModel,
@@ -15,6 +17,7 @@ import {
 	CategoryPlacementModel,
 	ConsentEventModel,
 	CurrencyModel,
+	CustomerModel,
 	EmailVerificationTokenModel,
 	FaqEntryModel,
 	InventoryCostLayerModel,
@@ -26,7 +29,9 @@ import {
 	OAuthStateModel,
 	OtpChallengeModel,
 	OrderModel,
+	PasswordCredentialModel,
 	PasswordResetTokenModel,
+	PinCredentialModel,
 	ProductBundleModel,
 	ProductModel,
 	ProductQuestionModel,
@@ -36,7 +41,6 @@ import {
 	RatingAggregateModel,
 	ReviewModel,
 	RoleModel,
-	UserModel,
 	UserRoleAssignmentModel,
 } from '../src/models/index';
 import * as modelExports from '../src/models/index';
@@ -93,10 +97,34 @@ const modelSources: Array<{
 		purpose: 'Current guest or user cart and line scaffold.',
 	},
 	{
-		model: UserModel,
-		source: 'packages/adapters-db-mongo/src/models/user.model.ts',
+		model: CustomerModel,
+		source: 'packages/adapters-db-mongo/src/models/customer.model.ts',
 		context: 'Identity',
-		purpose: 'Current user identity, credentials, role, consent, and address scaffold.',
+		purpose: 'Storefront customer profile, consent, and address scaffold (credentials extracted).',
+	},
+	{
+		model: AdminUserModel,
+		source: 'packages/adapters-db-mongo/src/models/admin-user.model.ts',
+		context: 'Identity',
+		purpose: 'Back-office operator profile and coarse role (credentials extracted).',
+	},
+	{
+		model: PasswordCredentialModel,
+		source: 'packages/adapters-db-mongo/src/models/credential.model.ts',
+		context: 'Identity',
+		purpose: 'Argon2id password hashes for customers and admin users (select:false secrets).',
+	},
+	{
+		model: PinCredentialModel,
+		source: 'packages/adapters-db-mongo/src/models/credential.model.ts',
+		context: 'Identity',
+		purpose: 'Admin PIN hashes and lockout counters (select:false secrets).',
+	},
+	{
+		model: AuthIdentityModel,
+		source: 'packages/adapters-db-mongo/src/models/credential.model.ts',
+		context: 'Identity',
+		purpose: 'External OAuth identity links for a subject (no provider secrets).',
 	},
 	{
 		model: AuthSessionModel,

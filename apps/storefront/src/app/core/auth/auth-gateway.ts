@@ -20,7 +20,6 @@ export interface AuthUser {
 	email: string | null;
 	emailVerified: boolean;
 	displayName?: string;
-	role: string;
 	status: string;
 }
 
@@ -84,6 +83,9 @@ export abstract class StorefrontAuthGateway {
 	abstract requestPasswordReset(email: string): Observable<void>;
 
 	abstract resetPassword(input: PasswordResetInput): Observable<void>;
+
+	/** First password for an admin-created customer (activation token). Same body shape as reset. */
+	abstract activateAccount(input: PasswordResetInput): Observable<void>;
 
 	abstract logout(): Observable<void>;
 

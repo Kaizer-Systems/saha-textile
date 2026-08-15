@@ -17,11 +17,10 @@ import { AuthStore } from './auth.store';
  * `access_token` to a constant in `onInit` — would fail it.
  */
 const USER: AuthUser = {
-	id: 'user_1',
+	id: 'cus_1',
 	email: 'customer@example.com',
 	emailVerified: false,
 	displayName: 'Customer',
-	role: 'customer',
 	status: 'active',
 };
 
@@ -61,6 +60,9 @@ class FakeGateway extends StorefrontAuthGateway {
 		return of(undefined);
 	}
 	override resetPassword(): Observable<void> {
+		return this.loginResult === 'ok' ? of(undefined) : throwError(() => new Error('rejected'));
+	}
+	override activateAccount(): Observable<void> {
 		return this.loginResult === 'ok' ? of(undefined) : throwError(() => new Error('rejected'));
 	}
 	override logout(): Observable<void> {

@@ -16,15 +16,18 @@ describe('permission registry', () => {
 	it('is a closed set — an unknown code is rejected, not stored', () => {
 		expect(PermissionCode.safeParse('product.index').success).toBe(true);
 		expect(PermissionCode.safeParse('prodcut.index').success).toBe(false);
-		expect(PermissionCode.safeParse('product.destroy').success).toBe(false);
+		expect(PermissionCode.safeParse('product.explode').success).toBe(false);
 		expect(PermissionCode.safeParse('').success).toBe(false);
 	});
 
-	// The count is asserted so that adding a code is a deliberate act with a visible diff,
-	// rather than something that happens by accident alongside other work. 33 → 34 on
-	// 2026-08-11 with `audit.index`, for `GET /admin/audit-logs`.
+	// The count is asserted so that adding a code is a deliberate act with a visible diff rather
+	// than something that happens by accident alongside other work. 33 → 34 on 2026-08-11 with
+	// `audit.index`; 34 → 35 on 2026-08-12 with `order.update`; 35 → 36 on 2026-08-12 with
+	// `cart.index` (`DEC-ACCOUNT-SEPARATION` D4 support-read); 36 → 40 on 2026-08-13 with
+	// `customer.{index,create,update,destroy}` (Admin Customer CRM); 40 → 103 on 2026-08-14
+	// absorbing kept UI gates + former mock ACL names for AuthStore render parity.
 	it('exposes every code with a stable order', () => {
-		expect(PERMISSION_CODES).toHaveLength(34);
+		expect(PERMISSION_CODES).toHaveLength(103);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 
@@ -65,17 +68,17 @@ describe('permission registry', () => {
 
 	describe('grants', () => {
 		it('normalizes duplicates away and sorts, so equal grants are byte-identical', () => {
-			const a = PermissionGrant.parse(['user.index', 'product.index', 'user.index']);
-			const b = PermissionGrant.parse(['product.index', 'user.index']);
+			const a = PermissionGrant.parse(['admin_user.index', 'product.index', 'admin_user.index']);
+			const b = PermissionGrant.parse(['admin_user.index', 'product.index']);
 
-			expect(a).toEqual(['product.index', 'user.index']);
+			expect(a).toEqual(['admin_user.index', 'product.index']);
 			expect(JSON.stringify(a)).toBe(JSON.stringify(b));
 		});
 
 		it('rejects the whole grant when any single code is unknown', () => {
 			// Partial acceptance would be the dangerous outcome: the caller believes they
 			// granted three permissions and the account silently holds two.
-			expect(PermissionGrant.safeParse(['user.index', 'user.destroy']).success).toBe(false);
+			expect(PermissionGrant.safeParse(['admin_user.index', 'not_a_real.permission']).success).toBe(false);
 		});
 
 		it('accepts an empty grant', () => {
@@ -87,8 +90,11 @@ describe('permission registry', () => {
 		const base = { email: 'someone@example.test', role: 'staff' as const };
 
 		it('accepts a grant drawn from the registry', () => {
-			const parsed = AdminInviteRequest.parse({ ...base, permissions: ['user.index', 'user.create'] });
-			expect(parsed.permissions).toEqual(['user.create', 'user.index']);
+			const parsed = AdminInviteRequest.parse({
+				...base,
+				permissions: ['admin_user.index', 'admin_user.create'],
+			});
+			expect(parsed.permissions).toEqual(['admin_user.create', 'admin_user.index']);
 		});
 
 		/**

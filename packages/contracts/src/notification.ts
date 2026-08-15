@@ -121,3 +121,50 @@ export const NotificationUsageRow = z.object({
 	nearLimit: z.boolean(),
 });
 export type NotificationUsageRow = z.infer<typeof NotificationUsageRow>;
+
+/**
+ * `GET /admin/notifications/provider` — non-secret provider status for admin Settings.
+ * Authkey never appears here (owner lock: env-only).
+ */
+export const NotificationProviderStatus = z.object({
+	provider: z.enum(['console', 'msg91']),
+	/** True when provider is msg91 and `MSG91_AUTH_KEY` is present in API env. */
+	configured: z.boolean(),
+	senderIdConfigured: z.boolean(),
+	emailFrom: z.string(),
+	emailDomainConfigured: z.boolean(),
+	whatsappNumberConfigured: z.boolean(),
+});
+export type NotificationProviderStatus = z.infer<typeof NotificationProviderStatus>;
+
+/** `PUT /admin/notifications/templates` — upsert template metadata / provider ids (no secrets). */
+export const NotificationTemplateUpsertRequest = z.object({
+	key: z.string().min(1),
+	channel: NotificationChannel,
+	category: NotificationCategory,
+	name: z.string().min(1),
+	description: z.string().optional(),
+	dltHeaderId: z.string().nullable().optional(),
+	/** SMS: MSG91 Flow id (DLT content lives in the Flow). */
+	dltTemplateId: z.string().nullable().optional(),
+	whatsappTemplateId: z.string().nullable().optional(),
+	emailSubject: z.record(z.string(), z.string()).optional(),
+	emailBody: z.record(z.string(), z.string()).optional(),
+	status: NotificationTemplateStatus.optional(),
+});
+export type NotificationTemplateUpsertRequest = z.infer<typeof NotificationTemplateUpsertRequest>;
+
+export const NotificationChannelSettingsListResponse = z.object({
+	items: z.array(NotificationChannelSettings),
+});
+export type NotificationChannelSettingsListResponse = z.infer<typeof NotificationChannelSettingsListResponse>;
+
+export const NotificationTemplateListResponse = z.object({
+	items: z.array(NotificationTemplate),
+});
+export type NotificationTemplateListResponse = z.infer<typeof NotificationTemplateListResponse>;
+
+export const NotificationUsageListResponse = z.object({
+	items: z.array(NotificationUsageRow),
+});
+export type NotificationUsageListResponse = z.infer<typeof NotificationUsageListResponse>;

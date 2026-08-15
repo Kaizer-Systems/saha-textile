@@ -1,11 +1,13 @@
 import { z } from 'zod';
 
+import { AdminRole, AdminUserId } from './admin-role';
 import { Password } from './auth';
 import { Id, IsoDateTime } from './common';
+import { UserStatus } from './customer';
 import { PermissionGrant } from './permission';
 import { SessionInfo } from './session';
-import { UserStatus } from './user';
 
+export { AdminRole, AdminUserId };
 /**
  * 6-digit admin PIN (owner lock 2026-06-29 / UX lock 2026-07-23). Shape only —
  * weak-PIN rejection (denylist + sequential/repeated patterns) is a domain policy
@@ -37,6 +39,16 @@ export const AdminPinLoginRequest = z.object({
 });
 export type AdminPinLoginRequest = z.infer<typeof AdminPinLoginRequest>;
 
+/**
+ * `POST /auth/admin/resume` — idle soft-lock presence proof on an existing session.
+ * PIN when configured; password when the operator has no PIN (L1).
+ */
+export const AdminResumeRequest = z.union([
+	z.object({ pin: AdminPin }),
+	z.object({ password: z.string().min(1).max(256) }),
+]);
+export type AdminResumeRequest = z.infer<typeof AdminResumeRequest>;
+
 /** Set/change the admin PIN from Security Settings or onboarding — always requires password proof. */
 export const AdminPinSetupRequest = z.object({
 	currentPassword: z.string().min(1).max(256),
@@ -55,18 +67,25 @@ export const AdminProfile = z.object({
 });
 export type AdminProfile = z.infer<typeof AdminProfile>;
 
+/** `PATCH /auth/admin/profile` — operator self-service profile fields only. */
+export const AdminSelfProfileUpdateRequest = z.object({
+	displayName: z.string().min(1).max(120),
+	phone: z.string().min(1).max(32).nullable().optional(),
+});
+export type AdminSelfProfileUpdateRequest = z.infer<typeof AdminSelfProfileUpdateRequest>;
+
 /**
- * Admin/staff user profile as returned by `GET /auth/admin/me`. Sanitized:
- * exposes preference/status fields but never credential material or
- * token/permission versions.
+ * Public AdminUser entity / `GET /auth/admin/me` profile (`DEC-ACCOUNT-SEPARATION`).
+ * Sanitized: preference/status fields only — never credential material or version counters.
  */
 export const AdminUserProfile = z.object({
-	id: Id,
+	id: AdminUserId,
 	email: z.email().nullable().default(null),
 	emailVerified: z.boolean().default(false),
 	username: z.string().nullable().default(null),
 	displayName: z.string().optional(),
-	role: z.enum(['staff', 'admin']),
+	phone: z.string().min(1).max(32).nullable().optional(),
+	role: AdminRole,
 	status: UserStatus,
 	/** Whether a PIN credential is currently set (drives Security Settings UI). */
 	pinConfigured: z.boolean().default(false),
@@ -76,6 +95,10 @@ export const AdminUserProfile = z.object({
 	createdAt: IsoDateTime.optional(),
 });
 export type AdminUserProfile = z.infer<typeof AdminUserProfile>;
+
+/** Canonical name for the operator account entity. Same shape as `AdminUserProfile`. */
+export const AdminUser = AdminUserProfile;
+export type AdminUser = AdminUserProfile;
 
 /** `GET /auth/admin/me` response. */
 export const AdminMeResponse = z.object({
@@ -117,13 +140,13 @@ export type AdminPasswordResetRequest = z.infer<typeof AdminPasswordResetRequest
 /** `POST /admin/users/invite` — no admin self-registration; invite-only (auth plan §7.9). */
 export const AdminInviteRequest = z.object({
 	email: z.email(),
-	role: z.enum(['staff', 'admin']),
+	role: AdminRole,
 	/**
 	 * Validated against the canonical registry, so an unknown or mistyped code is refused
 	 * here rather than stored and silently authorizing nothing. Strict on the way IN only:
-	 * the persisted `AdminInvite` and `UserAuthState` keep a permissive `string[]`, because
-	 * rows written before this registry existed must still parse on read. Tightening those
-	 * would turn a historical grant into an unreadable document.
+	 * the persisted `AdminInvite` and `AdminUserAuthState` keep a permissive `string[]`,
+	 * because rows written before this registry existed must still parse on read. Tightening
+	 * those would turn a historical grant into an unreadable document.
 	 */
 	permissions: PermissionGrant.optional(),
 });

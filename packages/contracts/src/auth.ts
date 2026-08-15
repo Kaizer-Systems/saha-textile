@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 import { Id } from './common';
+import { Customer } from './customer';
 import { SessionInfo } from './session';
-import { User } from './user';
 
 /**
  * Password policy floor (owner lock 2026-06-29): minimum 12 characters for BOTH
@@ -79,6 +79,15 @@ export const PasswordResetRequest = z.object({
 export type PasswordResetRequest = z.infer<typeof PasswordResetRequest>;
 
 /**
+ * `POST /auth/storefront/activate` — admin-minted activation token → first password.
+ *
+ * Same transport shape as password reset; the handler also promotes `pending` → `active`
+ * and marks email verified when an email is present.
+ */
+export const ActivateCustomerRequest = PasswordResetRequest;
+export type ActivateCustomerRequest = z.infer<typeof ActivateCustomerRequest>;
+
+/**
  * Generic accepted response for enumeration-safe endpoints (OTP request, forgot
  * password): identical whether or not the account exists (owner lock 2026-07-02).
  */
@@ -92,7 +101,7 @@ export type GenericAcceptedResponse = z.infer<typeof GenericAcceptedResponse>;
  * contains access or refresh tokens (cookie-session lock 2026-06-29).
  */
 export const AuthSessionResponse = z.object({
-	user: User,
+	user: Customer,
 	session: SessionInfo,
 });
 export type AuthSessionResponse = z.infer<typeof AuthSessionResponse>;

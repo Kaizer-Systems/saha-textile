@@ -32,6 +32,10 @@ export type AuditFieldDiff = z.infer<typeof AuditFieldDiff>;
  * 2026-07-23: EVERY admin mutating write creates a row (catalog, pricing,
  * stock, purchase invoices, order/payment/refund state, config, roles, auth
  * events). Append-only at application level; hashes only for IP/UA.
+ *
+ * `actorUserId` / `targetUserId` stay generic `Id`s (`DEC-ACCOUNT-SEPARATION` D5):
+ * after the split they carry `cus_` or `adm_` prefixes; pre-split `user_…` rows are
+ * tolerated as unknown-population by the read model.
  */
 export const AuditLog = z.object({
 	id: Id,

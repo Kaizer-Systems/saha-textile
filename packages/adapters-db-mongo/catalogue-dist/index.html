@@ -1,0 +1,91 @@
+<!doctype html>
+<!--
+	NEXT-GEN-UI
+	What: generated Schema Observatory entry shell.
+	Why: keeps current-model evidence visibly separate from the locked target constellation.
+	How: source metadata populates this dependency-free shell; the shared theme supplies visual tokens.
+	Tuning knobs: copy hierarchy, controls, catalogue panels, and responsive shell spacing.
+-->
+<html
+	lang="en"
+	data-portal-theme="dark"
+>
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0"
+		/>
+		<meta
+			name="robots"
+			content="noindex, nofollow, noarchive"
+		/>
+		<title>Saha Textile · MongoDB Schema Observatory</title>
+		<link
+			rel="stylesheet"
+			href="./styles.css"
+		/>
+	</head>
+	<body class="portalThemeCanvas">
+		<div class="observatory-shell">
+			<header class="observatory-header">
+				<div>
+					<p class="eyebrow">Schema Observatory · generated current evidence</p>
+					<h1>MongoDB catalogue</h1>
+					<p>Source-derived fields and indexes for the implemented models. No database is queried.</p>
+				</div>
+				<a
+					class="observatory-gateway"
+					href="/tools/database-catalogue"
+					aria-label="Return to the MongoDB catalogue gateway"
+				>
+					Return to gateway
+				</a>
+			</header>
+			<section
+				class="truth-banner"
+				role="note"
+			>
+				<strong>Scaffolded, not target-complete.</strong>
+				<span>
+					Temporary Mixed shapes remain explicitly marked; target-only Schema Nebula collections are not
+					promoted here.
+				</span>
+			</section>
+			<section
+				class="observatory-controls"
+				aria-label="Catalogue controls"
+			>
+				<label>
+					<span>Search models and fields</span>
+					<input
+						id="catalogue-search"
+						type="search"
+						placeholder="product, status, unique…"
+					/>
+				</label>
+				<div
+					id="catalogue-counts"
+					class="catalogue-counts"
+					aria-live="polite"
+				></div>
+			</section>
+			<main class="observatory-main">
+				<nav
+					id="model-list"
+					class="model-list"
+					aria-label="Current MongoDB models"
+				></nav>
+				<article
+					id="model-detail"
+					class="model-detail"
+					aria-live="polite"
+				></article>
+			</main>
+		</div>
+		<script
+			type="module"
+			src="./app.js"
+		></script>
+	</body>
+</html>

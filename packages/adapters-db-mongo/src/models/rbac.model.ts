@@ -8,7 +8,7 @@ export interface RoleDoc {
 	key: string;
 	label: string;
 	description: string | null;
-	baseRole: 'customer' | 'staff' | 'admin';
+	baseRole: 'staff' | 'admin';
 	permissions: string[];
 	isSystem: boolean;
 	createdAt: Date;
@@ -21,7 +21,7 @@ const RoleSchema = new Schema<RoleDoc>(
 		key: { type: String, required: true },
 		label: { type: String, required: true },
 		description: { type: String, default: null },
-		baseRole: { type: String, enum: ['customer', 'staff', 'admin'], required: true },
+		baseRole: { type: String, enum: ['staff', 'admin'], required: true },
 		/**
 		 * Stored as plain strings, validated against the canonical registry at the contract
 		 * boundary. Deliberately not a Mongoose enum: a role written before a code was retired

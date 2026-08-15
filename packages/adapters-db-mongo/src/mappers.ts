@@ -1,6 +1,15 @@
-import type { Cart, Category, Currency, Order, Product, Promotion, User } from '@saha-textile/contracts';
+import type { AdminUser, Cart, Category, Currency, Customer, Order, Product, Promotion } from '@saha-textile/contracts';
 
-import type { CartDoc, CategoryDoc, CurrencyDoc, OrderDoc, ProductDoc, PromotionDoc, UserDoc } from './models/index';
+import type {
+	AdminUserDoc,
+	CartDoc,
+	CategoryDoc,
+	CurrencyDoc,
+	CustomerDoc,
+	OrderDoc,
+	ProductDoc,
+	PromotionDoc,
+} from './models/index';
 
 function iso(d?: Date): string | undefined {
 	return d ? new Date(d).toISOString() : undefined;
@@ -128,23 +137,41 @@ export function toOrder(doc: OrderDoc): Order {
 	};
 }
 
-export function toUser(doc: UserDoc): User {
+export function toCustomer(doc: CustomerDoc, identities: Customer['identities'] = []): Customer {
 	return {
 		id: doc._id,
 		email: doc.email ?? null,
 		emailVerified: doc.emailVerified ?? false,
-		// Chunk B contract widening: fields not yet persisted by this model default
-		// safely here; the model/repo upgrade is Chunk D/E work.
-		phone: null,
-		phoneVerified: false,
-		status: 'active',
+		phone: doc.phone ?? null,
+		phoneVerified: doc.phoneVerified ?? false,
+		status: (doc.status as Customer['status']) ?? 'active',
 		displayName: doc.displayName,
-		role: doc.role as User['role'],
-		identities: (doc.identities ?? []) as User['identities'],
-		addresses: (doc.addresses ?? []) as User['addresses'],
+		identities,
+		addresses: (doc.addresses ?? []) as Customer['addresses'],
+		contacts: (doc.contacts ?? []) as Customer['contacts'],
+		savedSizes: (doc.savedSizes ?? []) as Customer['savedSizes'],
+		measurementProfiles: (doc.measurementProfiles ?? []) as Customer['measurementProfiles'],
 		guestCartId: doc.guestCartId ?? null,
-		consent: doc.consent as User['consent'],
+		consent: doc.consent as Customer['consent'],
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),
+	};
+}
+
+export function toAdminUser(doc: AdminUserDoc, pinConfigured = false): AdminUser {
+	return {
+		id: doc._id,
+		email: doc.email ?? null,
+		emailVerified: doc.emailVerified ?? false,
+		username: doc.username ?? null,
+		displayName: doc.displayName,
+		phone: doc.phone ?? null,
+		role: doc.role,
+		status: (doc.status as AdminUser['status']) ?? 'active',
+		pinConfigured,
+		preferredLoginMethod: (doc.preferredLoginMethod as AdminUser['preferredLoginMethod']) ?? 'password',
+		adminProfile: doc.adminProfile as AdminUser['adminProfile'],
+		lastLoginAt: doc.lastLoginAt ? new Date(doc.lastLoginAt).toISOString() : null,
+		createdAt: iso(doc.createdAt),
 	};
 }

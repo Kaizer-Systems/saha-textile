@@ -137,12 +137,18 @@ export class MongoNotificationSettingsRepository implements NotificationSettings
 
 	async upsertSettings(settings: NotificationChannelSettings): Promise<NotificationChannelSettings> {
 		const { id, periodResetAt, updatedAt: _updatedAt, ...rest } = settings;
-		await NotificationChannelSettingsModel.findByIdAndUpdate(
-			id,
-			{ $set: { ...rest, periodResetAt: periodResetAt ? new Date(periodResetAt) : null } },
+		// Unique key is (channel, category), not _id — upserting by a fresh id for an
+		// existing pair collides with E11000. Preserve the first _id via $setOnInsert.
+		await NotificationChannelSettingsModel.findOneAndUpdate(
+			{ channel: settings.channel, category: settings.category },
+			{
+				$set: { ...rest, periodResetAt: periodResetAt ? new Date(periodResetAt) : null },
+				$setOnInsert: { _id: id },
+			},
 			{ upsert: true, setDefaultsOnInsert: true },
 		).exec();
-		return settings;
+		const saved = await this.findSettings(settings.channel, settings.category);
+		return saved ?? settings;
 	}
 
 	/** Atomic: usage decides whether a plan limit has been hit, so it cannot be raced. */

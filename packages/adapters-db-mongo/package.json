@@ -21,6 +21,9 @@
     "generate:catalogue": "node --import tsx scripts/generate-catalogue.ts",
     "seed": "tsx scripts/seed.ts",
     "align:collections": "tsx scripts/align-collection-names.ts",
+    "split:admin-users": "tsx scripts/split-admin-users.ts",
+    "rename:admin-user-permissions": "tsx scripts/rename-admin-user-permissions.ts",
+    "extract:credentials": "tsx scripts/extract-credentials.ts",
     "seed:system-roles": "tsx scripts/seed-system-roles.ts"
   },
   "dependencies": {

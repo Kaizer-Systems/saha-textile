@@ -16,7 +16,7 @@ function session(overrides: Partial<AuthSession> = {}): AuthSession {
 		id: 'sess_1',
 		userId: 'user_1',
 		audience: 'storefront',
-		roleAtLogin: 'customer',
+		roleAtLogin: null,
 		refreshTokenHash: 'r',
 		refreshFamilyId: 'fam_1',
 		rotationCounter: 0,
@@ -34,8 +34,17 @@ function session(overrides: Partial<AuthSession> = {}): AuthSession {
 	};
 }
 
+describe('admin idle vs soft-lock', () => {
+	it('keeps admin server idle longer than the 15-minute soft-lock UI window', async () => {
+		const { ADMIN_IDLE_TTL_SECONDS } = await import('../src/auth/session.service');
+		const softLockSeconds = 15 * 60;
+		expect(ADMIN_IDLE_TTL_SECONDS).toBeGreaterThan(softLockSeconds);
+		expect(ADMIN_IDLE_TTL_SECONDS).toBe(60 * 60);
+	});
+});
+
 describe('SessionService.isLiveSession', () => {
-	const service = new SessionService(config, {} as never, {} as never, {} as never);
+	const service = new SessionService(config, {} as never, {} as never, {} as never, {} as never);
 
 	it('accepts a live matching session', () => {
 		expect(service.isLiveSession(session(), { userId: 'user_1', audience: 'storefront' })).toBe(true);

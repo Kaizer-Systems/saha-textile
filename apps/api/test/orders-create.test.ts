@@ -11,7 +11,7 @@ const principal = {
 	userId: 'user_a',
 	sessionId: 'sess_a',
 	audience: 'storefront' as const,
-	role: 'customer' as const,
+	role: null,
 	permissions: [] as string[],
 };
 

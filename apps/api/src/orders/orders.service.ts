@@ -135,8 +135,28 @@ export class OrdersService {
 		return this.orders.listByUser(userId, query);
 	}
 
-	updateStatus(id: string, status: OrderStatus, note?: string): Promise<Order> {
-		return this.orders.updateStatus(id, status, note);
+	/**
+	 * Advances an order's status.
+	 *
+	 * The repository throws a bare `Error` for an id it cannot find, which reached the client
+	 * as a **500** — an operator mistyping an order reference was told the server had broken.
+	 * A missing order is a 404: the caller's request was about something that is not there,
+	 * which is their problem to correct rather than an incident to page somebody about.
+	 *
+	 * Narrow on purpose. Any OTHER repository failure still propagates as a 500, because a
+	 * write that failed for a reason nobody has anticipated must not be reported as "no such
+	 * order" — that would turn a genuine outage into a message telling the operator to check
+	 * their typing.
+	 */
+	async updateStatus(id: string, status: OrderStatus, note?: string): Promise<Order> {
+		try {
+			return await this.orders.updateStatus(id, status, note);
+		} catch (error) {
+			if (error instanceof Error && error.message.startsWith('Order not found')) {
+				throw new NotFoundException('Order not found');
+			}
+			throw error;
+		}
 	}
 
 	private async resolveRate(currencyCode: string): Promise<number> {

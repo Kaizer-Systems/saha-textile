@@ -79,19 +79,20 @@ describe('Browser auth responses never carry tokens', () => {
 		expect('refreshToken' in parsed).toBe(false);
 	});
 
-	it('AuthSessionResponse returns only sanitized user plus session metadata', () => {
+	it('AuthSessionResponse returns only sanitized customer plus session metadata', () => {
 		const parsed = AuthSessionResponse.parse({
-			user: { id: 'user_1', email: 'customer@example.com', passwordHash: 'argon2id$leak' },
+			user: { id: 'cus_1', email: 'customer@example.com', passwordHash: 'argon2id$leak' },
 			session,
 		});
 		expect('passwordHash' in parsed.user).toBe(false);
+		expect('role' in parsed.user).toBe(false);
 		expect(parsed.session.audience).toBe('storefront');
 	});
 
 	it('AdminMeResponse exposes no credential material or version counters', () => {
 		const parsed = AdminMeResponse.parse({
 			user: {
-				id: 'user_admin',
+				id: 'adm_admin',
 				email: 'admin@example.com',
 				role: 'admin',
 				status: 'active',

@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
+import { AdminRole, AdminUserId } from './admin-role';
 import { OtpChannel, OtpPurpose } from './auth';
 import { Id, IsoDateTime } from './common';
+import { CustomerId, UserStatus } from './customer';
 import { SessionAudience } from './session';
 
 /**
@@ -87,7 +89,7 @@ export type EmailVerificationToken = z.infer<typeof EmailVerificationToken>;
 export const AdminInvite = z.object({
 	id: Id,
 	emailNormalized: z.string().min(1),
-	role: z.enum(['staff', 'admin']),
+	role: AdminRole,
 	permissions: z.array(z.string()).default([]),
 	invitedByUserId: Id,
 	tokenHash: z.string().min(1),
@@ -117,25 +119,37 @@ export const AuthRateLimit = z.object({
 export type AuthRateLimit = z.infer<typeof AuthRateLimit>;
 
 /**
- * SERVER-INTERNAL authentication state for one user.
+ * SERVER-INTERNAL authentication state for one storefront customer.
  *
- * This is the shape credential verification and session issuance need, and it is the
- * reason it may never be returned by an endpoint: it carries the password/PIN hashes and
- * the version counters. The public projection is `User` (`user.ts`); the sanitized admin
- * projection is `AdminUserProfile` (`admin-auth.ts`).
- *
- * `tokenVersion` and `permissionsVersion` are the fast-invalidation counters: an access
- * token embeds the values it was minted with, so bumping either makes every existing
- * token stale immediately without scanning the session collection.
+ * Never returned by an endpoint. Operator credential state is `AdminUserAuthState`.
+ * `passwordHash` is joined from `passwordCredentials` at the adapter boundary.
  */
-export const UserAuthState = z.object({
-	id: Id,
+export const CustomerAuthState = z.object({
+	id: CustomerId,
+	email: z.string().nullable().default(null),
+	emailVerified: z.boolean().default(false),
+	status: UserStatus,
+	/** argon2id hash, or null for an account that has only OAuth/OTP identities. */
+	passwordHash: z.string().nullable().default(null),
+	tokenVersion: z.number().int().nonnegative().default(0),
+	failedLoginAttempts: z.number().int().nonnegative().default(0),
+});
+export type CustomerAuthState = z.infer<typeof CustomerAuthState>;
+
+/**
+ * SERVER-INTERNAL authentication state for one back-office operator.
+ *
+ * The public projection is `AdminUser` / `AdminUserProfile`. `tokenVersion` and
+ * `permissionsVersion` are the fast-invalidation counters.
+ */
+export const AdminUserAuthState = z.object({
+	id: AdminUserId,
 	email: z.string().nullable().default(null),
 	emailVerified: z.boolean().default(false),
 	username: z.string().nullable().default(null),
-	role: z.enum(['customer', 'staff', 'admin']),
-	status: z.enum(['active', 'pending', 'disabled', 'locked', 'deleted']),
-	/** argon2id hash, or null for an account that has only OAuth/OTP identities. */
+	role: AdminRole,
+	status: UserStatus,
+	/** argon2id hash, or null until invite acceptance sets a password. */
 	passwordHash: z.string().nullable().default(null),
 	/** argon2id hash of the six-digit admin PIN. */
 	pinHash: z.string().nullable().default(null),
@@ -157,4 +171,4 @@ export const UserAuthState = z.object({
 	 */
 	pinRevalidationRequiredAt: IsoDateTime.nullable().default(null),
 });
-export type UserAuthState = z.infer<typeof UserAuthState>;
+export type AdminUserAuthState = z.infer<typeof AdminUserAuthState>;

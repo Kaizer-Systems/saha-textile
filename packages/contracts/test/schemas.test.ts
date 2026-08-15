@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { Category, Currency, I18nString, Product, ProductStatus, Promotion, Slug, User } from '../src/index';
+import { Category, Currency, Customer, I18nString, Product, ProductStatus, Promotion, Slug } from '../src/index';
 
 describe('common', () => {
 	it('I18nString requires en and allows other locales', () => {
@@ -173,17 +173,22 @@ describe('Promotion', () => {
 	});
 });
 
-describe('User', () => {
-	it('validates email identities', () => {
-		const user = User.parse({
-			id: 'user_1',
+describe('Customer', () => {
+	it('validates email identities and has no role', () => {
+		const customer = Customer.parse({
+			id: 'cus_1',
 			email: 'a@example.com',
 			identities: [{ provider: 'password', email: 'a@example.com' }],
 		});
-		expect(user.role).toBe('customer');
+		expect(customer.status).toBe('active');
+		expect(customer.contacts).toEqual([]);
+		expect(customer.savedSizes).toEqual([]);
+		expect(customer.measurementProfiles).toEqual([]);
+		expect('role' in customer).toBe(false);
 	});
 
-	it('rejects malformed email', () => {
-		expect(User.safeParse({ id: 'u', email: 'not-an-email' }).success).toBe(false);
+	it('rejects malformed email and non-cus_ ids', () => {
+		expect(Customer.safeParse({ id: 'cus_1', email: 'not-an-email' }).success).toBe(false);
+		expect(Customer.safeParse({ id: 'user_1', email: 'a@example.com' }).success).toBe(false);
 	});
 });

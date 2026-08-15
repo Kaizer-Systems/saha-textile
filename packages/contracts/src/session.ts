@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { AdminRole } from './admin-role';
 import { Id, IsoDateTime } from './common';
 
 /** Which browser app a session belongs to. Admin cookies must never authorize storefront-only flows and vice versa. */
@@ -22,6 +23,9 @@ export type SessionRevokeReason = z.infer<typeof SessionRevokeReason>;
 /**
  * Claims carried by the short-lived access JWT (httpOnly cookie).
  * `tokenVersion` / `permissionsVersion` let password/role changes invalidate old JWTs quickly.
+ *
+ * `role` is present only on admin-audience tokens (`DEC-ACCOUNT-SEPARATION` D7). Storefront
+ * sessions carry `audience` alone — customers have no role.
  */
 export const AccessTokenClaims = z.object({
 	iss: z.string().min(1),
@@ -29,7 +33,7 @@ export const AccessTokenClaims = z.object({
 	sub: Id,
 	/** Server-side session id (`authSessions`). */
 	sid: Id,
-	role: z.enum(['customer', 'staff', 'admin']),
+	role: AdminRole.nullable().default(null),
 	tokenVersion: z.number().int().nonnegative(),
 	permissionsVersion: z.number().int().nonnegative(),
 	jti: z.string().min(1),
@@ -59,12 +63,16 @@ export type SessionDeviceInfo = z.infer<typeof SessionDeviceInfo>;
  * Server-side session entity (`authSessions` collection) — SERVER-INTERNAL shape.
  * Refresh tokens are opaque high-entropy values; only their hashes are persisted.
  * Never expose this shape through a public endpoint.
+ *
+ * `roleAtLogin` is null on storefront sessions; admin sessions snapshot `staff` | `admin`
+ * (`DEC-ACCOUNT-SEPARATION` D7). `userId` stays a generic `Id` (prefix distinguishes
+ * population after D5; legacy `user_…` tolerated until the split migration).
  */
 export const AuthSession = z.object({
 	id: Id,
 	userId: Id,
 	audience: SessionAudience,
-	roleAtLogin: z.enum(['customer', 'staff', 'admin']),
+	roleAtLogin: AdminRole.nullable().default(null),
 	/** HMAC hash of the current opaque refresh token (never the token itself). */
 	refreshTokenHash: z.string().min(1),
 	/** Rotation family — reuse detection revokes every session sharing this id. */

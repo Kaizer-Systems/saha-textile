@@ -1,6 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UnauthorizedException } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { type AdminUserAuthorityResponse, AdminUserStatusRequest, AssignRoleRequest } from '@saha-textile/contracts';
+import {
+	type AdminUserAuthorityResponse,
+	type AdminUserListResponse,
+	AdminUserListQuery,
+	AdminUserStatusRequest,
+	AssignRoleRequest,
+} from '@saha-textile/contracts';
 import type { FastifyRequest } from 'fastify';
 
 import { Principal } from '../auth/ownership';
@@ -10,14 +16,16 @@ import { API_TAGS } from '../openapi-tags';
 import { AdminUsersService } from './admin-users.service';
 
 /**
- * User authority administration — granting and revoking roles, and offboarding.
+ * Operator administration — directory, authority, and offboarding.
  *
  * Deny-by-default like `/admin/roles`, but the permissions are split more finely on purpose.
  * Granting authority and removing it are separate codes because the dangerous direction is
  * upward: `no-delegation-above-self` constrains only granting, and an operator who may
- * offboard somebody need not be one who may promote them. Reading an account's authority is
- * gated by `user.index` rather than by either, since seeing who holds what is not itself a
- * privileged mutation.
+ * offboard somebody need not be one who may promote them. Reading the directory or an
+ * account's authority is gated by `admin_user.index` rather than by either, since seeing who holds
+ * what is not itself a privileged mutation.
+ *
+ * This surface administers operators only (`DEC-ACCOUNT-SEPARATION` D3).
  */
 @ApiTags(API_TAGS.auth)
 @Audience('admin')
@@ -25,8 +33,15 @@ import { AdminUsersService } from './admin-users.service';
 export class AdminUsersController {
 	constructor(private readonly users: AdminUsersService) {}
 
+	@Get()
+	@RequirePermissions('admin_user.index')
+	@ApiOperation({ operationId: 'listAdminUsers', summary: 'Paginated operator directory' })
+	list(@Query(new ZodValidationPipe(AdminUserListQuery)) query: AdminUserListQuery): Promise<AdminUserListResponse> {
+		return this.users.list(query);
+	}
+
 	@Get(':userId/authority')
-	@RequirePermissions('user.index')
+	@RequirePermissions('admin_user.index')
 	@ApiOperation({ operationId: 'getUserAuthority', summary: 'Roles held and the resolved permission set' })
 	authority(@Param('userId') userId: string): Promise<AdminUserAuthorityResponse> {
 		return this.users.authority(userId);
@@ -65,7 +80,7 @@ export class AdminUsersController {
 	}
 
 	@Patch(':userId/status')
-	@RequirePermissions('user.update')
+	@RequirePermissions('admin_user.update')
 	@ApiOperation({
 		operationId: 'setUserStatus',
 		summary: 'Enable or disable an account; disabling revokes every session (audited)',

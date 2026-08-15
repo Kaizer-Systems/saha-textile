@@ -4,14 +4,14 @@ import { ConflictException, Inject, Injectable, Logger, NotFoundException } from
 import type { AuditLog, Role, RoleCreateRequest, RoleUpdateRequest } from '@saha-textile/contracts';
 import type {
 	AuditLogRepository,
-	AuthUserRepository,
+	AdminUserAuthRepository,
 	RoleRepository,
 	UserRoleAssignmentRepository,
 } from '@saha-textile/core-domain';
 
 import {
 	AUDIT_LOG_REPOSITORY,
-	AUTH_USER_REPOSITORY,
+	ADMIN_USER_AUTH_REPOSITORY,
 	ROLE_REPOSITORY,
 	USER_ROLE_ASSIGNMENT_REPOSITORY,
 } from '../infra/tokens';
@@ -30,7 +30,7 @@ export class RolesService {
 	constructor(
 		@Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
 		@Inject(USER_ROLE_ASSIGNMENT_REPOSITORY) private readonly assignments: UserRoleAssignmentRepository,
-		@Inject(AUTH_USER_REPOSITORY) private readonly users: AuthUserRepository,
+		@Inject(ADMIN_USER_AUTH_REPOSITORY) private readonly users: AdminUserAuthRepository,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository,
 	) {}
 

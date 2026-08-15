@@ -26,7 +26,7 @@ interface CustomerRow extends IBaseRow {
 /**
  * Storefront customer CRM list (live API).
  *
- * Operators only — separate from `/user/**` operator management (`DEC-ACCOUNT-SEPARATION` D3).
+ * Operators only — separate from `/admin-user/**` operator management (`DEC-ACCOUNT-SEPARATION` D3).
  */
 @Component({
 	selector: 'app-customer',

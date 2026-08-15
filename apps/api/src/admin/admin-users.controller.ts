@@ -48,9 +48,9 @@ export class AdminUsersController {
 	}
 
 	@Post(':userId/roles')
-	@RequirePermissions('user_role.assign')
+	@RequirePermissions('admin_user_role.assign')
 	@ApiOperation({
-		operationId: 'assignUserRole',
+		operationId: 'assignAdminUserRole',
 		summary: 'Grant a role; refused above the actor’s own authority (audited)',
 	})
 	assign(
@@ -64,9 +64,9 @@ export class AdminUsersController {
 	}
 
 	@Delete(':userId/roles/:roleId')
-	@RequirePermissions('user_role.revoke')
+	@RequirePermissions('admin_user_role.revoke')
 	@ApiOperation({
-		operationId: 'revokeUserRole',
+		operationId: 'revokeAdminUserRole',
 		summary: 'Revoke a role; refused for the last administrator (audited)',
 	})
 	revoke(

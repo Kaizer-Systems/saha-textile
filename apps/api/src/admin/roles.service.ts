@@ -6,14 +6,14 @@ import type {
 	AuditLogRepository,
 	AdminUserAuthRepository,
 	RoleRepository,
-	UserRoleAssignmentRepository,
+	AdminUserRoleAssignmentRepository,
 } from '@saha-textile/core-domain';
 
 import {
 	AUDIT_LOG_REPOSITORY,
 	ADMIN_USER_AUTH_REPOSITORY,
 	ROLE_REPOSITORY,
-	USER_ROLE_ASSIGNMENT_REPOSITORY,
+	ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY,
 } from '../infra/tokens';
 
 /** What a mutation reports back, so the controller need not re-read to describe what happened. */
@@ -29,7 +29,7 @@ export class RolesService {
 
 	constructor(
 		@Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
-		@Inject(USER_ROLE_ASSIGNMENT_REPOSITORY) private readonly assignments: UserRoleAssignmentRepository,
+		@Inject(ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY) private readonly assignments: AdminUserRoleAssignmentRepository,
 		@Inject(ADMIN_USER_AUTH_REPOSITORY) private readonly users: AdminUserAuthRepository,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository,
 	) {}

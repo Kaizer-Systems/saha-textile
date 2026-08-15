@@ -14,7 +14,7 @@ const IDENTITY_COLLECTIONS = [
 	'emailVerificationTokens',
 	'adminInvites',
 	'authRateLimits',
-	'userRoleAssignments',
+	'adminUserRoleAssignments',
 ] as const;
 
 async function main(): Promise<void> {

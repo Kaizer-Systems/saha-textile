@@ -1,4 +1,4 @@
-import type { Role, UserRoleAssignment } from '@saha-textile/contracts';
+import type { Role, AdminUserRoleAssignment } from '@saha-textile/contracts';
 
 /** Reusable role definitions (`roles`). */
 export interface RoleRepository {
@@ -19,19 +19,19 @@ export interface RoleRepository {
 }
 
 /**
- * Explicit user-to-role assignments (`userRoleAssignments`).
+ * Explicit user-to-role assignments (`adminUserRoleAssignments`).
  *
  * Assignments are never hard-deleted. Revocation is a state change that keeps the row, which
  * is what makes "who held this authority, and when" answerable after the fact.
  */
-export interface UserRoleAssignmentRepository {
+export interface AdminUserRoleAssignmentRepository {
 	/** Live assignments only — the set that actually confers authority right now. */
-	listActiveForUser(userId: string): Promise<UserRoleAssignment[]>;
+	listActiveForUser(userId: string): Promise<AdminUserRoleAssignment[]>;
 	/** Everything ever granted to a user, revoked included. The audit view. */
-	listAllForUser(userId: string): Promise<UserRoleAssignment[]>;
+	listAllForUser(userId: string): Promise<AdminUserRoleAssignment[]>;
 	/** Live holders of a role. What a last-administrator check counts. */
-	listActiveForRole(roleId: string): Promise<UserRoleAssignment[]>;
-	findActive(userId: string, roleId: string): Promise<UserRoleAssignment | null>;
+	listActiveForRole(roleId: string): Promise<AdminUserRoleAssignment[]>;
+	findActive(userId: string, roleId: string): Promise<AdminUserRoleAssignment | null>;
 	/**
 	 * Grants a role.
 	 *
@@ -40,7 +40,7 @@ export interface UserRoleAssignmentRepository {
 	 * assignment" and both insert. Implementations must surface that collision as
 	 * `AssignmentAlreadyActiveError`, never as a raw driver error.
 	 */
-	assign(assignment: UserRoleAssignment): Promise<UserRoleAssignment>;
+	assign(assignment: AdminUserRoleAssignment): Promise<AdminUserRoleAssignment>;
 	/** Revokes a live assignment. Returns null when there was nothing live to revoke. */
 	revoke(input: {
 		userId: string;
@@ -48,7 +48,7 @@ export interface UserRoleAssignmentRepository {
 		revokedByUserId: string | null;
 		reason: string | null;
 		revokedAt: string;
-	}): Promise<UserRoleAssignment | null>;
+	}): Promise<AdminUserRoleAssignment | null>;
 }
 
 /**

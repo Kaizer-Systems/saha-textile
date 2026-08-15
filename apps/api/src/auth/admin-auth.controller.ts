@@ -36,13 +36,13 @@ import {
 	type SessionRevokeResponse,
 } from '@saha-textile/contracts';
 import { resolveEffectivePermissions } from '@saha-textile/core-domain';
-import type { RoleRepository, UserRoleAssignmentRepository } from '@saha-textile/core-domain';
+import type { RoleRepository, AdminUserRoleAssignmentRepository } from '@saha-textile/core-domain';
 
 type AdminAuthSessionResponse = { user: AdminUser; session: SessionInfo };
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
-import { ROLE_REPOSITORY, USER_ROLE_ASSIGNMENT_REPOSITORY } from '../infra/tokens';
+import { ROLE_REPOSITORY, ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY } from '../infra/tokens';
 import { AdminInviteService } from './admin-invite.service';
 import { AdminSecurityService } from './admin-security.service';
 import { AuthService } from './auth.service';
@@ -80,7 +80,7 @@ export class AdminAuthController {
 		private readonly adminInvites: AdminInviteService,
 		private readonly security: AdminSecurityService,
 		@Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
-		@Inject(USER_ROLE_ASSIGNMENT_REPOSITORY) private readonly assignments: UserRoleAssignmentRepository,
+		@Inject(ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY) private readonly assignments: AdminUserRoleAssignmentRepository,
 	) {}
 
 	@Post('login')

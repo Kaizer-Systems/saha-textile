@@ -77,7 +77,7 @@
 			<button
 				type="button"
 				class="btn btn-outline-primary btn-sm"
-				*hasPermission="'user_role.revoke'"
+				*hasPermission="'admin_user_role.revoke'"
 				(click)="revokeRole(role.roleId)"
 			>
 				<i class="ri-delete-bin-line"></i>
@@ -88,7 +88,7 @@
 	</ul>
 	}
 
-	<div *hasPermission="'user_role.assign'">
+	<div *hasPermission="'admin_user_role.assign'">
 		<app-form-fields
 			[label]="'role'"
 			[for]="'assign_role_id'"

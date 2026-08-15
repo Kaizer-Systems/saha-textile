@@ -41,7 +41,7 @@ import {
 	RatingAggregateModel,
 	ReviewModel,
 	RoleModel,
-	UserRoleAssignmentModel,
+	AdminUserRoleAssignmentModel,
 } from '../src/models/index';
 import * as modelExports from '../src/models/index';
 
@@ -175,7 +175,7 @@ const modelSources: Array<{
 		purpose: 'Reusable permission bundles constrained to a coarse audience role.',
 	},
 	{
-		model: UserRoleAssignmentModel,
+		model: AdminUserRoleAssignmentModel,
 		source: 'packages/adapters-db-mongo/src/models/rbac.model.ts',
 		context: 'Authorization',
 		purpose: 'Auditable user-to-role grants with one active assignment per role.',

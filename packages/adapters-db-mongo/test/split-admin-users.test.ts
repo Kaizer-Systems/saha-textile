@@ -56,7 +56,7 @@ describe.runIf(hasMongoEnv())('splitAdminUsers migration (rs0)', () => {
 			db.dropCollection(sourceCollection).catch(() => undefined),
 			db.dropCollection(targetCollection).catch(() => undefined),
 			db.collection(COLLECTION_NAMES.AuthSession).deleteMany({ _id: new RegExp(`^${P}`) }),
-			db.collection(COLLECTION_NAMES.UserRoleAssignment).deleteMany({ _id: new RegExp(`^${P}`) }),
+			db.collection(COLLECTION_NAMES.AdminUserRoleAssignment).deleteMany({ _id: new RegExp(`^${P}`) }),
 		]);
 		await disconnectMongo();
 	});
@@ -67,7 +67,7 @@ describe.runIf(hasMongoEnv())('splitAdminUsers migration (rs0)', () => {
 		const customers = coll(sourceCollection);
 		const admins = coll(targetCollection);
 		const sessions = coll(COLLECTION_NAMES.AuthSession);
-		const assignments = coll(COLLECTION_NAMES.UserRoleAssignment);
+		const assignments = coll(COLLECTION_NAMES.AdminUserRoleAssignment);
 
 		const operatorOld = `user_${P}op`;
 		const shopperOld = `user_${P}shop`;

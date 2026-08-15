@@ -40,8 +40,8 @@ RoleSchema.index({ baseRole: 1 });
 
 export const RoleModel: Model<RoleDoc> = (models.Role as Model<RoleDoc>) ?? model<RoleDoc>('Role', RoleSchema);
 
-/** Explicit user-to-role assignment (`userRoleAssignments`). */
-export interface UserRoleAssignmentDoc {
+/** Explicit user-to-role assignment (`adminUserRoleAssignments`). */
+export interface AdminUserRoleAssignmentDoc {
 	_id: string;
 	userId: string;
 	roleId: string;
@@ -52,7 +52,7 @@ export interface UserRoleAssignmentDoc {
 	revokeReason: string | null;
 }
 
-const UserRoleAssignmentSchema = new Schema<UserRoleAssignmentDoc>(
+const AdminUserRoleAssignmentSchema = new Schema<AdminUserRoleAssignmentDoc>(
 	{
 		_id: { type: String, required: true },
 		userId: { type: String, required: true },
@@ -63,7 +63,7 @@ const UserRoleAssignmentSchema = new Schema<UserRoleAssignmentDoc>(
 		revokedByUserId: { type: String, default: null },
 		revokeReason: { type: String, default: null },
 	},
-	{ collection: COLLECTION_NAMES.UserRoleAssignment, timestamps: false },
+	{ collection: COLLECTION_NAMES.AdminUserRoleAssignment, timestamps: false },
 );
 
 /**
@@ -80,15 +80,15 @@ const UserRoleAssignmentSchema = new Schema<UserRoleAssignmentDoc>(
  * insert. Only the database can decide that, and it does so by rejecting the second write
  * with a duplicate-key error.
  */
-UserRoleAssignmentSchema.index(
+AdminUserRoleAssignmentSchema.index(
 	{ userId: 1, roleId: 1 },
 	{ unique: true, partialFilterExpression: { revokedAt: null } },
 );
 /** Resolving a principal's authority: every live assignment for one user. */
-UserRoleAssignmentSchema.index({ userId: 1, revokedAt: 1 });
+AdminUserRoleAssignmentSchema.index({ userId: 1, revokedAt: 1 });
 /** Answering "who holds this role", and the last-admin check that 5c will need. */
-UserRoleAssignmentSchema.index({ roleId: 1, revokedAt: 1 });
+AdminUserRoleAssignmentSchema.index({ roleId: 1, revokedAt: 1 });
 
-export const UserRoleAssignmentModel: Model<UserRoleAssignmentDoc> =
-	(models.UserRoleAssignment as Model<UserRoleAssignmentDoc>) ??
-	model<UserRoleAssignmentDoc>('UserRoleAssignment', UserRoleAssignmentSchema);
+export const AdminUserRoleAssignmentModel: Model<AdminUserRoleAssignmentDoc> =
+	(models.AdminUserRoleAssignment as Model<AdminUserRoleAssignmentDoc>) ??
+	model<AdminUserRoleAssignmentDoc>('AdminUserRoleAssignment', AdminUserRoleAssignmentSchema);

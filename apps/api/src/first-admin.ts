@@ -7,7 +7,7 @@ import {
 	type AuditLogRepository,
 	type AuthPort,
 	type RoleRepository,
-	type UserRoleAssignmentRepository,
+	type AdminUserRoleAssignmentRepository,
 	evaluatePassword,
 } from '@saha-textile/core-domain';
 
@@ -16,7 +16,7 @@ import {
 	AUDIT_LOG_REPOSITORY,
 	AUTH_PORT,
 	ROLE_REPOSITORY,
-	USER_ROLE_ASSIGNMENT_REPOSITORY,
+	ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY,
 } from './infra/tokens';
 
 /**
@@ -114,7 +114,7 @@ export async function bootstrapFirstAdmin(
 	deps: FirstAdminDependencies,
 ): Promise<FirstAdminResult> {
 	const roles = app.get<RoleRepository>(ROLE_REPOSITORY);
-	const assignments = app.get<UserRoleAssignmentRepository>(USER_ROLE_ASSIGNMENT_REPOSITORY);
+	const assignments = app.get<AdminUserRoleAssignmentRepository>(ADMIN_USER_ROLE_ASSIGNMENT_REPOSITORY);
 	const audit = app.get<AuditLogRepository>(AUDIT_LOG_REPOSITORY);
 	const auth = app.get<AuthPort>(AUTH_PORT);
 

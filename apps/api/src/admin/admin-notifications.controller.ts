@@ -52,7 +52,7 @@ export class AdminNotificationsController {
 	}
 
 	@Patch('channels')
-	@RequirePermissions('setting.index')
+	@RequirePermissions('setting.edit')
 	@ApiOperation({
 		operationId: 'toggleNotificationChannel',
 		summary: 'Update a channel × category kill-switch / plan limit (audited)',
@@ -87,7 +87,7 @@ export class AdminNotificationsController {
 	}
 
 	@Put('templates')
-	@RequirePermissions('setting.index')
+	@RequirePermissions('setting.edit')
 	@ApiOperation({
 		operationId: 'upsertNotificationTemplate',
 		summary: 'Upsert template metadata and MSG91 Flow/WhatsApp ids (audited)',

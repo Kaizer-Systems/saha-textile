@@ -47,7 +47,7 @@
 							[disabled]="!form.valid"
 							[spinner]="false"
 							(click)="form.valid && ConfirmationModal().openModal('credit')"
-							*hasPermission="'wallet.credit'"
+							*hasPermission="'point.credit'"
 						>
 							{{ 'add' | transloco }}
 						</app-button>
@@ -56,7 +56,7 @@
 							[spinner]="false"
 							[disabled]="+balance < +bal.value || !bal.value"
 							(click)="+balance < +bal.value || !!bal.value && ConfirmationModal().openModal('debit')"
-							*hasPermission="'wallet.debit'"
+							*hasPermission="'point.debit'"
 						>
 							{{ 'withdraw' | transloco }}
 						</app-button>

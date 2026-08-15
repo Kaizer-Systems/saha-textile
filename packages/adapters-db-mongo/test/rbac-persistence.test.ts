@@ -7,8 +7,8 @@ import { AssignmentAlreadyActiveError } from '@saha-textile/core-domain';
 
 import { buildMongoConfig } from '../src/config';
 import { connectMongo, disconnectMongo } from '../src/connection';
-import { RoleModel, UserRoleAssignmentModel } from '../src/models/index';
-import { MongoRoleRepository, MongoUserRoleAssignmentRepository } from '../src/repositories/role.repository';
+import { RoleModel, AdminUserRoleAssignmentModel } from '../src/models/index';
+import { MongoRoleRepository, MongoAdminUserRoleAssignmentRepository } from '../src/repositories/role.repository';
 import { ensureSystemRoles } from '../src/seed/system-roles';
 
 /**
@@ -60,12 +60,12 @@ const assignmentFixture = (userId: string, roleId: string, overrides: Record<str
 
 describe.skipIf(!hasMongoEnv())('RBAC persistence (integration, rs0)', () => {
 	const roles = new MongoRoleRepository();
-	const assignments = new MongoUserRoleAssignmentRepository();
+	const assignments = new MongoAdminUserRoleAssignmentRepository();
 
 	beforeAll(async () => {
 		await connectMongo(buildMongoConfig());
 		// The constraint under test IS an index, so it must actually be built before asserting.
-		await Promise.all([RoleModel.syncIndexes(), UserRoleAssignmentModel.syncIndexes()]);
+		await Promise.all([RoleModel.syncIndexes(), AdminUserRoleAssignmentModel.syncIndexes()]);
 	});
 
 	afterAll(async () => {
@@ -73,7 +73,7 @@ describe.skipIf(!hasMongoEnv())('RBAC persistence (integration, rs0)', () => {
 			RoleModel.deleteMany({ _id: /^role_rbac_it/ }).exec(),
 			// Seeded by the system-role suite below; removed so the suite leaves nothing behind.
 			RoleModel.deleteMany({ _id: 'role_system_administrator' }).exec(),
-			UserRoleAssignmentModel.deleteMany({ _id: /^ura_rbac_it/ }).exec(),
+			AdminUserRoleAssignmentModel.deleteMany({ _id: /^ura_rbac_it/ }).exec(),
 		]);
 		await disconnectMongo();
 	});

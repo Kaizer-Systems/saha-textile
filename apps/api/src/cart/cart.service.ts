@@ -19,8 +19,8 @@ export interface CartActor {
 	principal?: AuthenticatedPrincipal;
 	/** Raw `st_guest` cookie value, when present. */
 	guestToken?: string | null;
-	/** Roles allowed to read (not mutate) any cart for support. */
-	allowReadRoles?: readonly string[];
+	/** Permissions that authorize support-read (not mutate) of any cart (`DEC-ACCOUNT-SEPARATION` D4). */
+	allowReadPermissions?: readonly string[];
 }
 
 /** API-facing cart: never expose the stored guest-token hash. */
@@ -53,7 +53,11 @@ export class CartService {
 	 * on the cart. Cross-owner failures are indistinguishable from missing resources.
 	 */
 	assertCartAccess(cart: Cart, actor: CartActor, mode: 'read' | 'write'): void {
-		if (mode === 'read' && actor.principal && actor.allowReadRoles?.includes(actor.principal.role)) {
+		if (
+			mode === 'read' &&
+			actor.principal?.audience === 'admin' &&
+			actor.allowReadPermissions?.some((code) => actor.principal!.permissions.includes(code))
+		) {
 			return;
 		}
 
@@ -159,10 +163,66 @@ export class CartService {
 		return this.carts.deleteById(cartId, context);
 	}
 
+	/**
+	 * Guest → authenticated cart merge on login/register (Chunk G seam).
+	 *
+	 * Requires the raw `st_guest` cookie — a guessed cart id alone is not enough.
+	 * Stolen cookies that already belong to another user are ignored (no leak, no merge).
+	 * Duplicate lines (same product/variation/addons) have quantities summed.
+	 */
+	async mergeGuestCartForUser(userId: string, guestTokenRaw: string | null | undefined): Promise<Cart | null> {
+		if (!guestTokenRaw) return this.carts.findByUserId(userId);
+
+		const guest = await this.carts.findByGuestToken(this.hashGuestToken(guestTokenRaw));
+		if (!guest || guest.userId) {
+			// Missing, already adopted, or bound to someone else — never leak which.
+			return this.carts.findByUserId(userId);
+		}
+
+		const owned = await this.carts.findByUserId(userId);
+		if (!owned) {
+			guest.userId = userId;
+			guest.guestToken = null;
+			return this.carts.save(guest);
+		}
+
+		owned.lines = mergeCartLines(owned.lines, guest.lines);
+		await this.carts.save(owned);
+		await this.carts.deleteById(guest.id);
+		return owned;
+	}
+
 	private async getAuthorizedCart(cartId: string, actor: CartActor, mode: 'read' | 'write'): Promise<Cart> {
 		const cart = await this.carts.findById(cartId);
 		if (!cart) throw new NotFoundException('Cart not found');
 		this.assertCartAccess(cart, actor, mode);
 		return cart;
 	}
+}
+
+function lineKey(line: CartLine): string {
+	const addons = [...(line.addons ?? [])]
+		.map((addon) => `${addon.code}=${String(addon.value)}`)
+		.sort()
+		.join('|');
+	return `${line.productId}\0${line.variationId ?? ''}\0${addons}`;
+}
+
+function mergeCartLines(into: CartLine[], from: CartLine[]): CartLine[] {
+	const merged = [...into];
+	const indexByKey = new Map(merged.map((line, index) => [lineKey(line), index]));
+	for (const line of from) {
+		const key = lineKey(line);
+		const existing = indexByKey.get(key);
+		if (existing === undefined) {
+			indexByKey.set(key, merged.length);
+			merged.push(line);
+			continue;
+		}
+		merged[existing] = {
+			...merged[existing]!,
+			quantity: merged[existing]!.quantity + line.quantity,
+		};
+	}
+	return merged;
 }

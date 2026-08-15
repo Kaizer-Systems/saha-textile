@@ -30,13 +30,13 @@ export class CartController {
 	private actor(
 		request: FastifyRequest,
 		principal: AuthenticatedPrincipal | undefined,
-	): { principal?: AuthenticatedPrincipal; guestToken: string | null; allowReadRoles: readonly string[] } {
+	): { principal?: AuthenticatedPrincipal; guestToken: string | null; allowReadPermissions: readonly string[] } {
 		const names = cookieNames(this.config);
 		const cookies = (request as FastifyRequest & { cookies?: Record<string, string> }).cookies ?? {};
 		return {
 			principal,
 			guestToken: cookies[names.guest] ?? null,
-			allowReadRoles: ['staff', 'admin'],
+			allowReadPermissions: ['cart.index'],
 		};
 	}
 

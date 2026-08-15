@@ -1,20 +1,30 @@
 import { randomUUID } from 'node:crypto';
 
 import { ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { AdminUserAuthorityResponse, AuditLog, PermissionCode, Role, UserStatus } from '@saha-textile/contracts';
 import type {
+	AdminUserListResponse,
+	AdminUserAuthorityResponse,
+	AuditLog,
+	PageQuery,
+	PermissionCode,
+	Role,
+	UserStatus,
+} from '@saha-textile/contracts';
+import type {
+	AdminUserRepository,
 	AuditLogRepository,
+	AdminUserAuthRepository,
 	AuthSessionRepository,
-	AuthUserRepository,
 	RoleRepository,
 	UserRoleAssignmentRepository,
 } from '@saha-textile/core-domain';
 import { AssignmentAlreadyActiveError, isWithinTier, resolveEffectivePermissions } from '@saha-textile/core-domain';
 
 import {
+	ADMIN_USER_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
 	AUTH_SESSION_REPOSITORY,
-	AUTH_USER_REPOSITORY,
+	ADMIN_USER_AUTH_REPOSITORY,
 	ROLE_REPOSITORY,
 	USER_ROLE_ASSIGNMENT_REPOSITORY,
 } from '../infra/tokens';
@@ -26,10 +36,16 @@ export class AdminUsersService {
 	constructor(
 		@Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
 		@Inject(USER_ROLE_ASSIGNMENT_REPOSITORY) private readonly assignments: UserRoleAssignmentRepository,
-		@Inject(AUTH_USER_REPOSITORY) private readonly users: AuthUserRepository,
+		@Inject(ADMIN_USER_AUTH_REPOSITORY) private readonly users: AdminUserAuthRepository,
+		@Inject(ADMIN_USER_REPOSITORY) private readonly adminUsers: AdminUserRepository,
 		@Inject(AUTH_SESSION_REPOSITORY) private readonly sessions: AuthSessionRepository,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository,
 	) {}
+
+	/** Paginated operator directory — sanitized public shape only. */
+	list(query: PageQuery): Promise<AdminUserListResponse> {
+		return this.adminUsers.list(query);
+	}
 
 	/** A user's roles plus the RESOLVED permission set, so a screen never re-derives the rules. */
 	async authority(userId: string): Promise<AdminUserAuthorityResponse> {

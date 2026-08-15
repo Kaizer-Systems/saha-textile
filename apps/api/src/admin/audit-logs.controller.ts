@@ -12,7 +12,7 @@ import { AuditLogsService } from './audit-logs.service';
  *
  * ## Why `audit.index` is its own permission
  *
- * It would have been less work to gate this on `user.index` or `setting.index`, and it would
+ * It would have been less work to gate this on `admin_user.index` or `setting.index`, and it would
  * have been wrong. This trail records what every OTHER operator did — role grants, credential
  * changes, offboardings, refusals. Being able to administer a resource must not imply being
  * able to read the history of everyone who has touched it, because the two answer different

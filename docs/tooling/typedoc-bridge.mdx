@@ -4,7 +4,7 @@ slug: /tools/typedoc
 description: Symbolic Docusaurus gateway to the generated TypeDoc child.
 status: implemented
 audience: [beginner, frontend, backend]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 wide: true
 hide_table_of_contents: true
 source_of_truth:
@@ -31,6 +31,6 @@ import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
 
 The Type Lattice focuses on exported contracts, signatures, schemas, interfaces, ports, and pricing utilities. Architecture narratives and operational guidance remain in the surrounding developer portal.
 
-The generated surface contains the expanded catalogue contracts (`catalog`, category placement and facets, attribute definitions, product options, variants, bundles, relations, media, inventory, and content), configurable locale, currency, money, pagination and error shapes, and the revised product lifecycle. It also publishes the closed 33-code permission registry, the justified server-only permission subset, role/user-role-assignment and admin-user-authority contracts, `RoleRepository`, `UserRoleAssignmentRepository`, `resolveEffectivePermissions`, `TransactionManagerPort`, `NotificationPort`, `YouTubePort`, `VideoTranscodePort`, the auth/media/inventory/governance/extended-catalogue repositories, `UserAuthState`, `AuthUserRepository`, and atomic `nextCsrfSecretHash` rotation. The complete output contains **522 HTML pages**; persistence models and repository implementations remain absent because adapters are intentionally outside the two entry points.
+The generated surface contains the expanded catalogue contracts (`catalog`, category placement and facets, attribute definitions, product options, variants, bundles, relations, media, inventory, and content), configurable locale, currency, money, pagination and error shapes, and the revised product lifecycle. It also publishes the closed 103-code permission registry, the justified server-only permission subset, role/user-role-assignment and admin-user-authority contracts, `RoleRepository`, `UserRoleAssignmentRepository`, `resolveEffectivePermissions`, `TransactionManagerPort`, `NotificationPort`, `YouTubePort`, `VideoTranscodePort`, the auth/media/inventory/governance/extended-catalogue repositories, `CustomerAuthState`, `AdminUserAuthState`, `CustomerAuthRepository`, `AdminUserAuthRepository`, and atomic `nextCsrfSecretHash` rotation. Persistence models and repository implementations remain absent because adapters are intentionally outside this boundary.
 
 Scope remains intentionally narrow: the two entry points are exactly `packages/contracts/src/index.ts` and `packages/core-domain/src/index.ts`. TypeDoc does not absorb Docusaurus narrative ownership or Scalar's HTTP-operation reference. The generated adapter uses a centred `220px / flexible / 250px` desktop grid, a 15px root scale, one page `h1`, a tablet two-column collapse, and a mobile single-column layout.

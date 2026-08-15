@@ -3,7 +3,7 @@ title: Maintenance Overview
 description: Maintenance and upgrade process.
 status: planned
 audience: [frontend, backend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-15'
 source_of_truth:
     - package.json
     - docs/engineering-live-context/execution-roadmap.mdx

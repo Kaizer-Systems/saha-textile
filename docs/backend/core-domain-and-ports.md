@@ -4,7 +4,7 @@ wide: true
 description: Dependency direction, pure business logic, port contracts, swappability, and current gaps.
 status: scaffolded
 audience: [beginner, backend]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 source_of_truth:
     - packages/core-domain/src
     - packages/core-domain/test
@@ -55,7 +55,8 @@ These functions are tested. They are not a complete checkout pricing engine: tax
 | `CategoryRepository`           | Category read/tree/save/delete                                                | Mongo bound                           |
 | `CartRepository`               | Cart lookup/save/delete                                                       | Mongo bound                           |
 | `OrderRepository`              | Order lookup/list/save/status                                                 | Mongo bound                           |
-| `UserRepository`               | Public user and credential operations                                         | Mongo bound                           |
+| `CustomerRepository`           | Customer (shopper) account and credential operations                          | Mongo bound                           |
+| `AdminUserRepository`          | Operator account and credential operations                                    | Mongo bound                           |
 | `CurrencyRepository`           | Currency lookup/list/upsert                                                   | Mongo bound                           |
 | `PromotionRepository`          | Promotion lookup/list/save                                                    | Mongo bound                           |
 | `AuthPort`                     | Password hashing and JWT operations                                           | Argon2/JWT bound in API               |
@@ -68,7 +69,8 @@ These functions are tested. They are not a complete checkout pricing engine: tax
 | `NotificationPort`             | Deliver or deliberately suppress messaging                                    | Console development adapter bound     |
 | `YouTubePort`                  | Discover channel-feed videos                                                  | No provider adapter                   |
 | `VideoTranscodePort`           | Enqueue edge-owned HLS transcoding                                            | No worker adapter                     |
-| Auth repositories              | Sessions, OTP, OAuth, reset, verification, invites, limits                    | Mongo adapters; HTTP flows partial    |
+| `CustomerAuthRepository`       | Customer-population sessions, OTP, reset, verification                        | Mongo adapter; HTTP flows partial     |
+| `AdminUserAuthRepository`      | Operator-population sessions, OTP, reset, verification, invites               | Mongo adapter; HTTP flows partial     |
 | `RoleRepository`               | Role definitions and normalized grants                                        | Mongo bound; admin CRUD API live      |
 | `UserRoleAssignmentRepository` | Active assignment grant/revoke/list capability                                | Mongo bound; admin authority API live |
 | Media repository               | References, orphan lifecycle and garbage collection                           | Mongo adapter tested; workflow open   |

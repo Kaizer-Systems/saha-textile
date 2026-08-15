@@ -4,7 +4,7 @@ wide: true
 description: Verified controller routes, present controls, missing production guarantees, and target ownership.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts
@@ -12,6 +12,7 @@ source_of_truth:
     - apps/api/src/health
     - apps/api/src/auth
     - apps/api/src/admin
+    - apps/api/src/admin/admin-customers.controller.ts
     - apps/api/src/first-admin.ts
     - apps/api/src/privacy
     - apps/api/src/catalog
@@ -60,21 +61,21 @@ This inventory describes controller code reviewed on 2026-08-11. It is not a pro
 
 ## Admin authentication routes
 
-| Method   | Route                         | Present control                                                              | Current boundary/gap                      |
-| -------- | ----------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------- |
-| `POST`   | `/auth/admin/login`           | Generic password credentials; non-customer role; admin cookie audience       | OpenAPI omits cookie security             |
-| `POST`   | `/auth/admin/login/pin`       | Six-digit PIN; five-failure/15-minute lockout; password fallback             | Idle quick-resume UX is absent            |
-| `POST`   | `/auth/admin/pin`             | Admin/staff session, current-password proof, optional preferred login method | OpenAPI omits role and CSRF requirements  |
-| `POST`   | `/auth/admin/refresh`         | Admin-audience rotation                                                      | OpenAPI omits cookie semantics            |
-| `POST`   | `/auth/admin/logout`          | Revokes admin session                                                        | OpenAPI omits cookie/CSRF semantics       |
-| `GET`    | `/auth/admin/me`              | Admin audience, staff/admin role, sanitized response and current permissions | OpenAPI declares no security requirement  |
-| `POST`   | `/auth/admin/password/forgot` | Generic recovery acknowledgement                                             | Provider delivery remains an adapter seam |
-| `POST`   | `/auth/admin/password/reset`  | Single-use reset; version bump and session revocation                        | OpenAPI omits side effects                |
-| `POST`   | `/auth/admin/invites`         | Privileged invite issue with transactional audit evidence                    | Still role-gated rather than granular     |
-| `GET`    | `/auth/admin/invites`         | Privileged sanitized invite inventory                                        | Pagination is not yet represented         |
-| `DELETE` | `/auth/admin/invites/:id`     | Privileged revocation                                                        | OpenAPI omits permission/error schemas    |
-| `POST`   | `/auth/admin/invites/accept`  | Single-use invite acceptance and credential establishment                    | Provider delivery remains an adapter seam |
-| `POST`   | `/auth/admin/resume`          | Current admin session plus PIN revalidation                                  | Angular idle-lock orchestration is absent |
+| Method   | Route                         | Present control                                                              | Current boundary/gap                               |
+| -------- | ----------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------- |
+| `POST`   | `/auth/admin/login`           | Generic password credentials; non-customer role; admin cookie audience       | OpenAPI omits cookie security                      |
+| `POST`   | `/auth/admin/login/pin`       | Six-digit PIN; five-failure/15-minute lockout; password fallback             | Real-browser PIN-login proof coverage remains open |
+| `POST`   | `/auth/admin/pin`             | Admin/staff session, current-password proof, optional preferred login method | OpenAPI omits role and CSRF requirements           |
+| `POST`   | `/auth/admin/refresh`         | Admin-audience rotation; session `device.label` from UA on establish/refresh | OpenAPI omits cookie semantics                     |
+| `POST`   | `/auth/admin/logout`          | Revokes admin session                                                        | OpenAPI omits cookie/CSRF semantics                |
+| `GET`    | `/auth/admin/me`              | Admin audience, staff/admin role, sanitized response and current permissions | OpenAPI declares no security requirement           |
+| `POST`   | `/auth/admin/password/forgot` | Generic recovery acknowledgement                                             | Provider delivery remains an adapter seam          |
+| `POST`   | `/auth/admin/password/reset`  | Single-use reset; version bump and session revocation                        | OpenAPI omits side effects                         |
+| `POST`   | `/auth/admin/invites`         | Privileged invite issue with transactional audit evidence                    | Still role-gated rather than granular              |
+| `GET`    | `/auth/admin/invites`         | Privileged sanitized invite inventory                                        | Pagination is not yet represented                  |
+| `DELETE` | `/auth/admin/invites/:id`     | Privileged revocation                                                        | OpenAPI omits permission/error schemas             |
+| `POST`   | `/auth/admin/invites/accept`  | Single-use invite acceptance and credential establishment                    | Provider delivery remains an adapter seam          |
+| `POST`   | `/auth/admin/resume`          | Current admin session plus PIN or password revalidation                      | Live admin idle-lock modal consumes this route     |
 
 Access and refresh credentials are cookie-only. The global `SessionGuard` protects by default, checks audience plus token/permission versions, and routes opt out explicitly with `@Public()`. Session establishment/refresh writes the readable CSRF cookie whose value must be echoed in `x-csrf-token` for unsafe cookie requests; the guard also verifies its hash belongs to that session.
 
@@ -86,7 +87,7 @@ Every route below requires an admin-audience session and a named registry permis
 
 | Method   | Route                                | Present control                                                                  | Current boundary/gap                                 |
 | -------- | ------------------------------------ | -------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `GET`    | `/admin/permissions`                 | `permission.index`; publishes the closed 33-code registry                        | OpenAPI omits the permission requirement             |
+| `GET`    | `/admin/permissions`                 | `permission.index`; publishes the closed 103-code registry                       | OpenAPI omits the permission requirement             |
 | `GET`    | `/admin/roles`                       | `role.index`; lists role definitions                                             | OpenAPI omits the permission requirement             |
 | `GET`    | `/admin/roles/:id`                   | `role.index`; reads one role                                                     | OpenAPI omits response/error schemas                 |
 | `POST`   | `/admin/roles`                       | `role.create`; validates registry grants and audits creation                     | OpenAPI omits body/CSRF/permission semantics         |
@@ -96,10 +97,33 @@ Every route below requires an admin-audience session and a named registry permis
 | `POST`   | `/admin/users/:userId/roles`         | `user_role.assign`; refuses tiers or grants above the actor; audited             | Admin management UI has not adopted the endpoint     |
 | `DELETE` | `/admin/users/:userId/roles/:roleId` | `user_role.revoke`; last-administrator protection; audited                       | Admin management UI has not adopted the endpoint     |
 | `PATCH`  | `/admin/users/:userId/status`        | `user.update`; refuses self-disable/last-admin loss; revokes offboarded sessions | Admin management UI has not adopted the endpoint     |
+| `GET`    | `/admin/notifications/provider`      | `setting.index`; non-secret MSG91/console status (Authkey never returned)        | Live sends still need Flow/WA/email templates in DB  |
+| `GET`    | `/admin/notifications/channels`      | `setting.index`; channel × category kill-switches                                | Defaults seeded on first read                        |
+| `PATCH`  | `/admin/notifications/channels`      | `setting.index`; toggle/plan limit; audited                                      | OpenAPI may lag regeneration                         |
+| `GET`    | `/admin/notifications/usage`         | `setting.index`; usage vs plan                                                   | —                                                    |
+| `GET`    | `/admin/notifications/templates`     | `setting.index`; template / Flow / WhatsApp ids                                  | —                                                    |
+| `PUT`    | `/admin/notifications/templates`     | `setting.index`; upsert template metadata; audited                               | Email uses template `key` as MSG91 `template_id`     |
+
+### Admin customer CRM routes
+
+Admin CRM list/detail/create/edit and soft-delete are live against `/admin/customers/**`. Soft-delete hides deleted customers from the default list; revive/ops rules remain open on `DEC-CUSTOMER-SOFT-DELETE-OPS`.
+
+| Method   | Route                                               | Present control                                             | Current boundary/gap                                        |
+| -------- | --------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------- |
+| `GET`    | `/admin/customers`                                  | Paginated list/search; deleted rows hidden by default       | Recycle/revive UI blocked on soft-delete ops decision       |
+| `POST`   | `/admin/customers`                                  | Create customer; uniqueness release after soft-delete       | OpenAPI may lag regeneration                                |
+| `GET`    | `/admin/customers/:customerId`                      | Detail; soft-deleted ids 404 to callers without revive path | Deep-link after delete remains an ops concern               |
+| `GET`    | `/admin/customers/:customerId/orders`               | Customer order summary for CRM                              | Wider ledger/reporting ownership still expands elsewhere    |
+| `PATCH`  | `/admin/customers/:customerId`                      | Profile update                                              | OpenAPI omits body/permission schemas                       |
+| `DELETE` | `/admin/customers/:customerId`                      | Soft-delete (durable retention)                             | Revive/access rules gated by `DEC-CUSTOMER-SOFT-DELETE-OPS` |
+| `POST`   | `/admin/customers/:customerId/activation/resend`    | Activation resend                                           | Provider delivery remains an adapter seam                   |
+| `POST`   | `/admin/customers/:customerId/addresses`            | Add address                                                 | OpenAPI may lag regeneration                                |
+| `PATCH`  | `/admin/customers/:customerId/addresses/:addressId` | Update address                                              | OpenAPI may lag regeneration                                |
+| `DELETE` | `/admin/customers/:customerId/addresses/:addressId` | Remove address                                              | OpenAPI may lag regeneration                                |
 
 The first administrator is created through an operator-only CLI, not HTTP. It generates a password once, stores only its Argon2 hash, writes a critical audit event with no fabricated actor, and refuses to run when any administrative authority already exists.
 
-Chunk D is therefore partial: D2 is done; D3 lacks OAuth verification; D4 now includes bootstrap and fine-grained assignment enforcement for the new admin management surfaces but still lacks the Security Settings client, real-browser PIN-login proof, and idle-lock/PIN-resume orchestration; D5 has consent/privacy, order BOLA, cart Principal/`st_guest` ownership and order-create cart adoption, while guest→user merge remains Chunk G.
+Authentication and authorization remain partial. **Current:** cookie session issue/refresh/revoke; storefront auth family and email verification; admin password recovery, PIN login/setup/lockout, invites, HTTP resume, Account Security at `/account` (PIN/password/sessions), 15-minute idle soft-lock with `POST /auth/admin/resume` (PIN or password), active assignment-based permission resolution against the closed **103-code** registry, role/permission/user-authority APIs, no-delegation, last-admin protection, offboarding, permission-version invalidation, first-admin bootstrap, consent/privacy, order BOLA, cart Principal/`st_guest` ownership, order-create cart adoption, and admin CRM customers. **Remaining:** OAuth verification; guest→user merge; real-browser PIN-login proof coverage; portal deploy private-access gate (`DEC-PORTAL-PRIVATE-ACCESS`); soft-delete ops revive (`DEC-CUSTOMER-SOFT-DELETE-OPS`).
 
 ## Privacy routes
 

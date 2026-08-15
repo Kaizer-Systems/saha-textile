@@ -4,7 +4,7 @@ wide: true
 description: Conventions for safe operator forms, data tables, validation, actions, and future API mutations.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-15'
 source_of_truth:
     - apps/admin/src/app/shared/ui/table
     - apps/admin/src/app/shared/ui/form-fields
@@ -104,3 +104,9 @@ Bulk delete, approval, publish, and status actions require more than a selected-
 - Avoid mutating table configuration objects as an authorization strategy.
 - Keep destructive actions recoverable or explicitly confirmed.
 - Do not add backend-looking success messages to no-op methods.
+
+## Live CRM and dial conventions
+
+Customer list/create/edit (`/customer`, `/customer/create`, `/customer/edit/:id`) and customer ledger are live against `/admin/customers/**`. Soft-delete hides deleted rows by default; revive/ops behavior is blocked on `DEC-CUSTOMER-SOFT-DELETE-OPS`—do not invent a recycle-bin path ahead of that gate.
+
+Phone dial selects reuse HTML labels from `shared/data/country-code.ts` and the local sprite `/assets/images/flags/flags.png` (with `flags@2x.png`). Prefer the shared `.country` / `.iti-flag` markup over custom flag markup.

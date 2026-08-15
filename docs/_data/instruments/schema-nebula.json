@@ -1,11 +1,12 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-11",
+	"lastVerified": "2026-08-15",
 	"route": "/database/schema-nebula",
 	"title": "Schema Nebula",
-	"summary": "A governed one-star-per-collection map of the 64 explicit MongoDB collection targets across the Saha Textile platform.",
+	"summary": "A governed one-star-per-collection map of the 65 explicit MongoDB collection targets across the Saha Textile platform.",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/owner-decisions-log.mdx",
+		"docs/engineering-live-context/account-separation-task-handoff.mdx",
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
 		"docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx",
 		"docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx",
@@ -28,11 +29,11 @@
 		"notifications": "packages/contracts/src/notification.ts"
 	},
 	"inventory": {
-		"nodeCount": 64,
-		"existingModelCount": 31,
-		"targetOnlyCount": 33,
+		"nodeCount": 65,
+		"existingModelCount": 35,
+		"targetOnlyCount": 30,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
-		"statusPolicy": "A star becomes solid only when a tested current adapter model resolves to that exact ratified physical collection name. All 34 exported models now declare explicit physical names; 31 match ratified graph nodes and are solid. authRateLimits, productQuestions, and ratingAggregates are implemented catalogue evidence but remain outside the ratified 64-node graph."
+		"statusPolicy": "A star becomes solid only when a tested current adapter model resolves to that exact ratified physical collection name. All 38 exported models declare explicit physical names; 35 match ratified graph nodes and are solid (including passwordCredentials, pinCredentials, authIdentities). authRateLimits, productQuestions, and ratingAggregates are implemented catalogue evidence but remain outside the ratified 65-node graph."
 	},
 	"clusters": [
 		{
@@ -341,7 +342,7 @@
 			"purpose": "Verified-purchase product ratings and reviews with optional media and admin moderation.",
 			"source": "catalog §7.41",
 			"currentModel": "packages/adapters-db-mongo/src/models/content.model.ts",
-			"references": ["users", "products", "orders", "mediaAssets"]
+			"references": ["customers", "products", "orders", "mediaAssets"]
 		},
 		{
 			"id": "searchDictionary",
@@ -390,7 +391,7 @@
 			"purpose": "Server-authoritative guest and user carts, merge state, selected configurations, and sliding guest expiry.",
 			"source": "roadmap Chunk G",
 			"currentModel": "packages/adapters-db-mongo/src/models/cart.model.ts",
-			"references": ["users", "products", "productVariants", "promotions"]
+			"references": ["customers", "products", "productVariants", "promotions"]
 		},
 		{
 			"id": "orders",
@@ -409,7 +410,7 @@
 			"purpose": "Commerce record with immutable purchase-time snapshots and customer-facing order lifecycle.",
 			"source": "catalog §7.20",
 			"currentModel": "packages/adapters-db-mongo/src/models/order.model.ts",
-			"references": ["users", "carts", "products", "productVariants", "promotions", "currencies", "sequences"]
+			"references": ["customers", "carts", "products", "productVariants", "promotions", "currencies", "sequences"]
 		},
 		{
 			"id": "payments",
@@ -616,7 +617,7 @@
 			"blockingDecisions": [],
 			"purpose": "Short-retention storefront and admin event capture for bounded reporting rollups.",
 			"source": "catalog §7.37",
-			"references": ["users", "products", "categories", "orders"]
+			"references": ["customers", "adminUsers", "products", "categories", "orders"]
 		},
 		{
 			"id": "analyticsDailyAggregates",
@@ -667,53 +668,69 @@
 			"references": ["products", "productInsightSets", "promotions"]
 		},
 		{
-			"id": "users",
-			"label": "users",
+			"id": "customers",
+			"label": "customers",
 			"cluster": "identity-access",
 			"currentState": "existing",
 			"targetAction": "refactor",
 			"owningChunks": ["D"],
 			"blockingDecisions": [],
-			"purpose": "Canonical customer, staff, and admin account profile without secret credential material.",
-			"source": "auth §7.1",
-			"currentModel": "packages/adapters-db-mongo/src/models/user.model.ts",
+			"purpose": "Storefront shopper accounts: public profile, status, and contact fields without secret credential material. Operators live in adminUsers.",
+			"source": "decisions DEC-ACCOUNT-SEPARATION + auth §7.1 (amended)",
+			"currentModel": "packages/adapters-db-mongo/src/models/customer.model.ts",
+			"references": []
+		},
+		{
+			"id": "adminUsers",
+			"label": "adminUsers",
+			"cluster": "identity-access",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["D"],
+			"blockingDecisions": [],
+			"purpose": "Back-office operator accounts (staff or admin coarse role) with profile and preferred login method; permissions remain authoritative via role assignments.",
+			"source": "decisions DEC-ACCOUNT-SEPARATION",
+			"currentModel": "packages/adapters-db-mongo/src/models/admin-user.model.ts",
 			"references": []
 		},
 		{
 			"id": "authIdentities",
 			"label": "authIdentities",
 			"cluster": "identity-access",
-			"currentState": "planned",
-			"targetAction": "add",
+			"currentState": "existing",
+			"targetAction": "refactor",
 			"owningChunks": ["D"],
 			"blockingDecisions": [],
 			"purpose": "Many-to-one login identities for password, OTP, OAuth, and future identity seams.",
 			"source": "auth §7.2",
-			"references": ["users"]
+			"currentModel": "packages/adapters-db-mongo/src/models/credential.model.ts",
+			"references": ["customers", "adminUsers"]
 		},
 		{
 			"id": "passwordCredentials",
 			"label": "passwordCredentials",
 			"cluster": "identity-access",
-			"currentState": "planned",
-			"targetAction": "add",
+			"currentState": "existing",
+			"targetAction": "refactor",
 			"owningChunks": ["D"],
 			"blockingDecisions": [],
 			"purpose": "Password hashes and credential policy state separated from the public user profile.",
 			"source": "auth §7.3",
-			"references": ["users"]
+			"currentModel": "packages/adapters-db-mongo/src/models/credential.model.ts",
+			"references": ["customers", "adminUsers"]
 		},
 		{
 			"id": "pinCredentials",
 			"label": "pinCredentials",
 			"cluster": "identity-access",
-			"currentState": "planned",
-			"targetAction": "add",
+			"currentState": "existing",
+			"targetAction": "refactor",
 			"owningChunks": ["D"],
 			"blockingDecisions": [],
 			"purpose": "Password-grade admin and staff PIN hashes, lockout state, and login preference evidence.",
 			"source": "auth §7.3A",
-			"references": ["users"]
+			"currentModel": "packages/adapters-db-mongo/src/models/credential.model.ts",
+			"references": ["adminUsers"]
 		},
 		{
 			"id": "authSessions",
@@ -723,10 +740,10 @@
 			"targetAction": "refactor",
 			"owningChunks": ["D"],
 			"blockingDecisions": [],
-			"purpose": "Server-side sessions, opaque refresh-token families, rotation, reuse detection, and CSRF binding.",
+			"purpose": "Server-side sessions, opaque refresh-token families, rotation, reuse detection, CSRF binding, and UA-derived device.label for operator/customer session lists.",
 			"source": "auth §7.4",
 			"currentModel": "packages/adapters-db-mongo/src/models/auth-session.model.ts",
-			"references": ["users"]
+			"references": ["customers", "adminUsers"]
 		},
 		{
 			"id": "otpChallenges",
@@ -739,7 +756,7 @@
 			"purpose": "Single-use, expiring, rate-limited OTP challenges stored as hashes rather than plaintext codes.",
 			"source": "auth §7.5",
 			"currentModel": "packages/adapters-db-mongo/src/models/auth-challenge.model.ts",
-			"references": ["users"]
+			"references": ["customers", "adminUsers"]
 		},
 		{
 			"id": "oauthStates",
@@ -765,7 +782,7 @@
 			"purpose": "Hashed, expiring, single-use password reset credentials.",
 			"source": "auth §7.7",
 			"currentModel": "packages/adapters-db-mongo/src/models/auth-token.model.ts",
-			"references": ["users"]
+			"references": ["customers", "adminUsers"]
 		},
 		{
 			"id": "emailVerificationTokens",
@@ -778,7 +795,7 @@
 			"purpose": "Hashed email-verification credentials kept separate from OTP login challenges.",
 			"source": "auth §7.8",
 			"currentModel": "packages/adapters-db-mongo/src/models/auth-token.model.ts",
-			"references": ["users"]
+			"references": ["customers", "adminUsers"]
 		},
 		{
 			"id": "adminInvites",
@@ -791,7 +808,7 @@
 			"purpose": "Controlled, expiring, auditable staff and admin invitation lifecycle.",
 			"source": "auth §7.9",
 			"currentModel": "packages/adapters-db-mongo/src/models/auth-token.model.ts",
-			"references": ["users"]
+			"references": ["adminUsers"]
 		},
 		{
 			"id": "roles",
@@ -817,7 +834,7 @@
 			"purpose": "Explicit user-to-role assignments with lifecycle and auditability.",
 			"source": "auth §7.10",
 			"currentModel": "packages/adapters-db-mongo/src/models/rbac.model.ts",
-			"references": ["users", "roles"]
+			"references": ["adminUsers", "roles"]
 		},
 		{
 			"id": "pendingIntents",
@@ -829,7 +846,7 @@
 			"blockingDecisions": [],
 			"purpose": "Short-lived, validated post-login continuation for a bounded guest or session action.",
 			"source": "auth §7.12",
-			"references": ["users", "carts", "authSessions"]
+			"references": ["customers", "adminUsers", "carts", "authSessions"]
 		},
 		{
 			"id": "consentEvents",
@@ -842,7 +859,7 @@
 			"purpose": "Append-only, versioned granular privacy and communication-consent history for users or guests.",
 			"source": "auth §7.13",
 			"currentModel": "packages/adapters-db-mongo/src/models/consent.model.ts",
-			"references": ["users"]
+			"references": ["customers"]
 		},
 		{
 			"id": "auditLogs",
@@ -855,7 +872,7 @@
 			"purpose": "Broad admin and security accountability with bounded field diffs and tiered retention.",
 			"source": "catalog §7.26 + decisions Audit and retention",
 			"currentModel": "packages/adapters-db-mongo/src/models/governance.model.ts",
-			"references": ["users"]
+			"references": ["customers", "adminUsers"]
 		},
 		{
 			"id": "notificationChannelSettings",
@@ -894,7 +911,7 @@
 			"purpose": "Durable notification delivery attempts, provider correlation, retries, and suppression outcomes.",
 			"source": "notifications MessageOutboxEntry",
 			"currentModel": "packages/adapters-db-mongo/src/models/governance.model.ts",
-			"references": ["users", "notificationTemplates"]
+			"references": ["customers", "adminUsers", "notificationTemplates"]
 		},
 		{
 			"id": "sequences",

@@ -3,7 +3,7 @@ title: API Overview
 description: Current API application boundary, capability status, navigation, and generated reference.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 source_of_truth:
     - apps/api/src
     - packages/contracts/src
@@ -30,7 +30,7 @@ Start with the [Backend Platform Atlas](../backend/overview) when you need to un
 
 ## Current module snapshot
 
-The application currently exposes health, storefront/admin authentication, admin authorization, privacy, catalogue, cart, orders, currency, and promotion modules. Its platform foundation includes per-request correlation ids, redacted structured logs, the shared safe error envelope with stable session refusal reasons, trusted client-IP rate-limit keys, strict CORS, dependency-free liveness, dependency-aware readiness, cookie-only sessions, atomic refresh rotation and reuse revocation, global session-bound double-submit CSRF, storefront/admin audiences, email verification, admin recovery/invites/HTTP resume, a closed 33-code permission registry, active role-assignment resolution, deny-by-default role and user-authority routes, no-delegation and last-administrator controls, audited offboarding, an operator-only first-admin bootstrap, PIN/version invalidation, consent and privacy seams, cart Principal/`st_guest` ownership, order ownership, and transactional order-save plus cart-consume. Authentication remains partial because OAuth verification, the admin Security Settings and idle-lock clients, browser PIN proof, and guest-to-user merge are absent. Some older privileged routes remain role-gated rather than migrated to granular permissions. The broader contract and persistence families are not all wired end to end; each module must satisfy its roadmap definition of done before the overall API can be classified as implemented.
+The application currently exposes health, storefront/admin authentication, admin authorization (including CRM customers and notification settings), privacy, catalogue, cart, orders, currency, and promotion modules. Its platform foundation includes per-request correlation ids, redacted structured logs, the shared safe error envelope with stable session refusal reasons, trusted client-IP rate-limit keys, strict CORS, dependency-free liveness, dependency-aware readiness, cookie-only sessions, atomic refresh rotation and reuse revocation, global session-bound double-submit CSRF, storefront/admin audiences, email verification, admin recovery/invites/HTTP resume, Account Security (PIN/password/sessions), 15-minute idle soft-lock resume, a closed **103-code** permission registry, active role-assignment resolution, deny-by-default role and user-authority routes, no-delegation and last-administrator controls, audited offboarding, an operator-only first-admin bootstrap, PIN/version invalidation, consent and privacy seams, cart Principal/`st_guest` ownership, order ownership, and transactional order-save plus cart-consume. Authentication remains partial because OAuth verification, guest-to-user merge, and real-browser PIN-login proof coverage are still open; portal private-access deploy and soft-delete revive ops remain decision-gated. Some older privileged routes remain role-gated rather than migrated to granular permissions. The broader contract and persistence families are not all wired end to end; each module must satisfy its roadmap definition of done before the overall API can be classified as implemented.
 
 ## Interactive-request boundary
 

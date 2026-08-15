@@ -191,6 +191,18 @@ export const AuthStore = signalStore(
 					}
 				},
 
+				async activateAccount(input: { token: string; newPassword: string }): Promise<boolean> {
+					patchState(store, { pending: true, error: null });
+					try {
+						await firstValueFrom(gateway.activateAccount(input));
+						applyAnonymous();
+						return true;
+					} catch {
+						patchState(store, { pending: false, error: ERROR_KEYS.resetToken });
+						return false;
+					}
+				},
+
 				async logout(): Promise<void> {
 					try {
 						await firstValueFrom(gateway.logout());

@@ -5,7 +5,9 @@ import {
 	Get,
 	HttpCode,
 	HttpStatus,
+	Inject,
 	Param,
+	Patch,
 	Post,
 	Req,
 	Res,
@@ -17,28 +19,37 @@ import {
 	AdminInviteRequest,
 	AdminLoginRequest,
 	type AdminMeResponse,
+	type AdminUser,
 	AdminPasswordForgotRequest,
 	AdminPasswordResetRequest,
 	AdminPinLoginRequest,
+	AdminResumeRequest,
 	AdminPinSetupRequest,
-	type AuthSessionResponse,
+	AdminSelfProfileUpdateRequest,
 	type GenericAcceptedResponse,
 	AdminPasswordChangeRequest,
 	AdminPinRemovalRequest,
 	type AdminSecuritySettingsResponse,
+	type Role,
+	type SessionInfo,
 	type SessionListResponse,
 	type SessionRevokeResponse,
 } from '@saha-textile/contracts';
+import { resolveEffectivePermissions } from '@saha-textile/core-domain';
+import type { RoleRepository, UserRoleAssignmentRepository } from '@saha-textile/core-domain';
+
+type AdminAuthSessionResponse = { user: AdminUser; session: SessionInfo };
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { ROLE_REPOSITORY, USER_ROLE_ASSIGNMENT_REPOSITORY } from '../infra/tokens';
 import { AdminInviteService } from './admin-invite.service';
 import { AdminSecurityService } from './admin-security.service';
 import { AuthService } from './auth.service';
 import { Principal } from './ownership';
 import { tooManyRequests } from './rate-limit-response';
 import { RotatesSession } from './refresh-reuse.guard';
-import { type AuthenticatedPrincipal, Audience, Public, RequireRoles } from './session.guard';
+import { type AuthenticatedPrincipal, Audience, Public, RequirePermissions, RequireRoles } from './session.guard';
 import { SessionService } from './session.service';
 import { API_TAGS } from '../openapi-tags';
 
@@ -68,6 +79,8 @@ export class AdminAuthController {
 		private readonly sessions: SessionService,
 		private readonly adminInvites: AdminInviteService,
 		private readonly security: AdminSecurityService,
+		@Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
+		@Inject(USER_ROLE_ASSIGNMENT_REPOSITORY) private readonly assignments: UserRoleAssignmentRepository,
 	) {}
 
 	@Post('login')
@@ -78,7 +91,7 @@ export class AdminAuthController {
 		@Body(new ZodValidationPipe(AdminLoginRequest)) body: AdminLoginRequest,
 		@Req() request: FastifyRequest,
 		@Res({ passthrough: true }) reply: FastifyReply,
-	): Promise<AuthSessionResponse> {
+	): Promise<AdminAuthSessionResponse> {
 		// A bucket of its own, separate from the storefront's. They shared one, so a burst of
 		// customer traffic could exhaust the budget the back office depends on — staff locked
 		// out of admin by shoppers on the same office address.
@@ -94,14 +107,14 @@ export class AdminAuthController {
 
 		// A customer account must not be able to open an admin session, and the refusal
 		// looks identical to a wrong password.
-		if (!user || !valid || user.status !== 'active' || user.role === 'customer') {
+		if (!user || !valid || user.status !== 'active') {
 			await this.auth.recordRateLimitFailure('admin_login', scopes);
 			throw new UnauthorizedException('Invalid credentials');
 		}
 
 		await this.auth.clearRateLimitIdentifier('admin_login', scopes.identifier);
 
-		await this.auth.authUserRepository.recordSuccessfulLogin(user.id, new Date().toISOString());
+		await this.auth.adminAuthRepository.recordSuccessfulLogin(user.id, new Date().toISOString());
 		const { session } = await this.sessions.establish({
 			user: {
 				id: user.id,
@@ -115,7 +128,7 @@ export class AdminAuthController {
 		});
 
 		return {
-			user: await this.auth.publicUser(user.id),
+			user: await this.auth.publicAdminUser(user.id),
 			session: {
 				audience: session.audience,
 				expiresAt: session.expiresAt,
@@ -135,7 +148,7 @@ export class AdminAuthController {
 		@Body(new ZodValidationPipe(AdminPinLoginRequest)) body: AdminPinLoginRequest,
 		@Req() request: FastifyRequest,
 		@Res({ passthrough: true }) reply: FastifyReply,
-	): Promise<AuthSessionResponse> {
+	): Promise<AdminAuthSessionResponse> {
 		// The owner-locked control is five failed attempts locking the PIN for fifteen minutes,
 		// and that is per ACCOUNT (`pinLockedUntil`). This address ceiling only makes
 		// distributed guessing expensive, and is deliberately far looser: the previous
@@ -145,7 +158,7 @@ export class AdminAuthController {
 		if (!limit.allowed) throw tooManyRequests(limit, reply);
 
 		const user = await this.auth.findAuthUserByIdentifier(body.identifier);
-		if (!user || user.status !== 'active' || user.role === 'customer') {
+		if (!user || user.status !== 'active') {
 			await this.auth.recordRateLimitFailure('admin_pin_login', { ip: request.ip });
 			throw new UnauthorizedException('Invalid credentials');
 		}
@@ -168,7 +181,7 @@ export class AdminAuthController {
 			throw new UnauthorizedException('Invalid credentials');
 		}
 
-		await this.auth.authUserRepository.recordSuccessfulLogin(user.id, new Date().toISOString());
+		await this.auth.adminAuthRepository.recordSuccessfulLogin(user.id, new Date().toISOString());
 		const { session } = await this.sessions.establish({
 			user: {
 				id: user.id,
@@ -182,7 +195,7 @@ export class AdminAuthController {
 		});
 
 		return {
-			user: await this.auth.publicUser(user.id),
+			user: await this.auth.publicAdminUser(user.id),
 			session: {
 				audience: session.audience,
 				expiresAt: session.expiresAt,
@@ -367,10 +380,10 @@ export class AdminAuthController {
 	async refresh(
 		@Req() request: FastifyRequest,
 		@Res({ passthrough: true }) reply: FastifyReply,
-	): Promise<AuthSessionResponse> {
+	): Promise<AdminAuthSessionResponse> {
 		const { session } = await this.sessions.refresh({ request, reply, audience: 'admin' });
 		return {
-			user: await this.auth.publicUser(session.userId),
+			user: await this.auth.publicAdminUser(session.userId),
 			session: {
 				audience: session.audience,
 				expiresAt: session.expiresAt,
@@ -396,38 +409,77 @@ export class AdminAuthController {
 	async me(@Principal() principal: AuthenticatedPrincipal | undefined): Promise<AdminMeResponse> {
 		if (!principal) throw new UnauthorizedException('Authentication required');
 
-		const user = await this.auth.findAuthUserById(principal.userId);
-		if (!user) throw new UnauthorizedException('Account not found');
+		const authState = await this.auth.adminAuthRepository.findAuthStateById(principal.userId);
+		if (!authState) throw new UnauthorizedException('Account not found');
 
-		// Built field-by-field on purpose: spreading the auth state here would leak the
-		// password and PIN hashes into an HTTP response.
+		const live = await this.sessions.findLiveById(principal.sessionId, {
+			userId: principal.userId,
+			audience: 'admin',
+		});
+
+		// Same union SessionGuard uses for RequirePermissions: embedded ∪ active role
+		// assignments. Returning only the embedded array hid the system-administrator grant
+		// when first-admin left permissions: [] and assigned the role instead.
+		const permissions = await this.effectivePermissionsFor(authState);
+
 		return {
-			user: {
-				id: user.id,
-				email: user.email,
-				emailVerified: user.emailVerified,
-				username: user.username,
-				role: user.role === 'customer' ? 'staff' : user.role,
-				status: user.status,
-				pinConfigured: Boolean(user.pinHash),
-				preferredLoginMethod: user.preferredLoginMethod,
-				lastLoginAt: null,
-			},
-			permissions: user.permissions,
+			user: await this.auth.publicAdminUser(principal.userId),
+			permissions,
 			session: {
 				audience: 'admin',
-				expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-				refreshExpiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+				expiresAt: live?.expiresAt ?? new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+				refreshExpiresAt: live?.absoluteExpiresAt ?? new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
 			},
 		};
 	}
 
+	@Patch('profile')
+	@RequireRoles('staff', 'admin')
+	@ApiOperation({
+		operationId: 'updateAdminSelfProfile',
+		summary: 'Update the signed-in operator’s display name and phone',
+	})
+	async updateProfile(
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Body(new ZodValidationPipe(AdminSelfProfileUpdateRequest)) body: AdminSelfProfileUpdateRequest,
+	): Promise<AdminUser> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+		const user = await this.auth.adminUserRepository.findById(principal.userId);
+		if (!user || user.status !== 'active') throw new UnauthorizedException('Account is not active');
+		const next: AdminUser = {
+			...user,
+			displayName: body.displayName,
+			...(body.phone !== undefined ? { phone: body.phone } : {}),
+		};
+		return this.auth.adminUserRepository.save(next);
+	}
+
 	/**
-	 * Invites a new staff/admin account.
-	 *
-	 * This is the entire privilege-granting surface — there is no admin self-registration —
-	 * so it is `admin`-role only and every call is audited under the seven-year tier.
+	 * Union of embedded grants and active role assignments (tier-capped), matching SessionGuard.
+	 * Fail closed to embedded-only if assignments cannot be resolved.
 	 */
+	private async effectivePermissionsFor(user: {
+		id: string;
+		role: AdminUser['role'];
+		permissions: string[];
+	}): Promise<string[]> {
+		try {
+			const assignments = await this.assignments.listActiveForUser(user.id);
+			if (assignments.length === 0) return user.permissions;
+			const roles = (await Promise.all(assignments.map((a) => this.roles.findById(a.roleId)))).filter(
+				(role): role is Role => role !== null,
+			);
+			return resolveEffectivePermissions({
+				role: user.role,
+				embedded: user.permissions,
+				assignments,
+				roles,
+			});
+		} catch {
+			return user.permissions;
+		}
+	}
+
 	/**
 	 * The caller's own live sessions.
 	 *
@@ -487,9 +539,12 @@ export class AdminAuthController {
 	}
 
 	@Post('invites')
-	@RequireRoles('admin')
+	@RequirePermissions('admin_user.create')
 	@HttpCode(HttpStatus.CREATED)
-	@ApiOperation({ operationId: 'createAdminInvite', summary: 'Invite a staff/admin account (admin only; audited)' })
+	@ApiOperation({
+		operationId: 'createAdminInvite',
+		summary: 'Invite a staff/admin account (admin_user.create; audited)',
+	})
 	async createInvite(
 		@Body(new ZodValidationPipe(AdminInviteRequest)) body: AdminInviteRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
@@ -513,8 +568,11 @@ export class AdminAuthController {
 	}
 
 	@Get('invites')
-	@RequireRoles('admin')
-	@ApiOperation({ operationId: 'listAdminInvites', summary: 'List outstanding invites (admin only)' })
+	@RequirePermissions('admin_user.create')
+	@ApiOperation({
+		operationId: 'listAdminInvites',
+		summary: 'List outstanding invites (admin_user.create; same ACL as invite create)',
+	})
 	async listInvites(): Promise<{
 		items: Array<{ id: string; emailNormalized: string; role: string; expiresAt: string }>;
 	}> {
@@ -531,9 +589,12 @@ export class AdminAuthController {
 	}
 
 	@Delete('invites/:id')
-	@RequireRoles('admin')
+	@RequirePermissions('admin_user.create')
 	@HttpCode(HttpStatus.NO_CONTENT)
-	@ApiOperation({ operationId: 'revokeAdminInvite', summary: 'Revoke an outstanding invite (admin only; audited)' })
+	@ApiOperation({
+		operationId: 'revokeAdminInvite',
+		summary: 'Revoke an outstanding invite (admin_user.create; audited)',
+	})
 	async revokeInvite(
 		@Param('id') inviteId: string,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
@@ -575,41 +636,52 @@ export class AdminAuthController {
 	@Post('resume')
 	@RequireRoles('staff', 'admin')
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ operationId: 'resumeAdminSession', summary: 'Quick-resume an idle admin session with the PIN' })
+	@ApiOperation({
+		operationId: 'resumeAdminSession',
+		summary: 'Quick-resume an idle admin session with PIN or password',
+	})
 	async resume(
-		@Body(new ZodValidationPipe(AdminPinLoginRequest.pick({ pin: true }))) body: { pin: string },
+		@Body(new ZodValidationPipe(AdminResumeRequest)) body: AdminResumeRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 		@Req() request: FastifyRequest,
 		@Res({ passthrough: true }) reply: FastifyReply,
-	): Promise<AuthSessionResponse> {
+	): Promise<AdminAuthSessionResponse> {
 		if (!principal) throw new UnauthorizedException('Authentication required');
-		const limit = await this.auth.checkRateLimit('admin_pin_login', { ip: request.ip });
-		if (!limit.allowed) throw tooManyRequests(limit, reply);
 
-		const user = await this.auth.findAuthUserById(principal.userId);
-		if (!user || user.status !== 'active') throw new UnauthorizedException('Account is not active');
+		const user = await this.auth.adminAuthRepository.findAuthStateById(principal.userId);
+		if (!user || user.status !== 'active') {
+			throw new UnauthorizedException('Account is not active');
+		}
 
-		const outcome = await this.auth.verifyAdminPin(user, body.pin);
-		if (outcome === 'revalidation_required') {
-			// Named separately from the brute-force lock: this one does not expire, and the
-			// operator needs to know the password is the only way to clear it.
-			throw new UnauthorizedException('PIN use is suspended; sign in with your password to re-enable it');
-		}
-		if (outcome === 'locked') {
-			throw new UnauthorizedException('PIN is temporarily locked; sign in with your password');
-		}
-		if (outcome !== 'ok') {
-			// A wrong PIN is the failure this bucket exists to count. The lock and suspension
-			// above are already-decided states rather than fresh guesses, so they do not add
-			// to it.
-			await this.auth.recordRateLimitFailure('admin_pin_login', { ip: request.ip });
-			throw new UnauthorizedException('Invalid credentials');
+		if ('pin' in body) {
+			const limit = await this.auth.checkRateLimit('admin_pin_login', { ip: request.ip });
+			if (!limit.allowed) throw tooManyRequests(limit, reply);
+
+			const outcome = await this.auth.verifyAdminPin(user, body.pin);
+			if (outcome === 'revalidation_required') {
+				throw new UnauthorizedException('PIN use is suspended; sign in with your password to re-enable it');
+			}
+			if (outcome === 'locked') {
+				throw new UnauthorizedException('PIN is temporarily locked; sign in with your password');
+			}
+			if (outcome !== 'ok') {
+				await this.auth.recordRateLimitFailure('admin_pin_login', { ip: request.ip });
+				throw new UnauthorizedException('Invalid credentials');
+			}
+		} else {
+			const limit = await this.auth.checkRateLimit('admin_login', { ip: request.ip });
+			if (!limit.allowed) throw tooManyRequests(limit, reply);
+			const ok = await this.auth.verifyPassword(user, body.password);
+			if (!ok) {
+				await this.auth.recordRateLimitFailure('admin_login', { ip: request.ip });
+				throw new UnauthorizedException('Invalid credentials');
+			}
 		}
 
 		// Rotates the refresh token and extends the idle window on the SAME session.
 		const { session } = await this.sessions.refresh({ request, reply, audience: 'admin' });
 		return {
-			user: await this.auth.publicUser(user.id),
+			user: await this.auth.publicAdminUser(user.id),
 			session: {
 				audience: session.audience,
 				expiresAt: session.expiresAt,

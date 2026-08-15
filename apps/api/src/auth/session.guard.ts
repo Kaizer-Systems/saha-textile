@@ -7,10 +7,18 @@ import {
 	SetMetadata,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { PermissionCode, Role, SessionAudience, UserRole } from '@saha-textile/contracts';
 import type {
+	AdminRole,
+	AdminUserAuthState,
+	CustomerAuthState,
+	PermissionCode,
+	Role,
+	SessionAudience,
+} from '@saha-textile/contracts';
+import type {
+	AdminUserAuthRepository,
 	AuthPort,
-	AuthUserRepository,
+	CustomerAuthRepository,
 	RoleRepository,
 	UserRoleAssignmentRepository,
 } from '@saha-textile/core-domain';
@@ -19,7 +27,13 @@ import type { FastifyRequest } from 'fastify';
 
 import { cookieNames } from '../common/cookies';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
-import { AUTH_PORT, AUTH_USER_REPOSITORY, ROLE_REPOSITORY, USER_ROLE_ASSIGNMENT_REPOSITORY } from '../infra/tokens';
+import {
+	ADMIN_USER_AUTH_REPOSITORY,
+	AUTH_PORT,
+	CUSTOMER_AUTH_REPOSITORY,
+	ROLE_REPOSITORY,
+	USER_ROLE_ASSIGNMENT_REPOSITORY,
+} from '../infra/tokens';
 import { SessionRefusal } from './session-refusal';
 import { SessionService } from './session.service';
 
@@ -34,7 +48,7 @@ export const Public = () => SetMetadata(PUBLIC_ROUTE_KEY, true);
 /** Restricts a route to one browser audience. Admin cookies must never drive storefront flows. */
 export const Audience = (audience: SessionAudience) => SetMetadata(AUDIENCE_KEY, audience);
 
-export const RequireRoles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles);
+export const RequireRoles = (...roles: AdminRole[]) => SetMetadata(ROLES_KEY, roles);
 
 /**
  * Restricts a route to holders of specific permissions.
@@ -55,7 +69,7 @@ export interface AuthenticatedPrincipal {
 	userId: string;
 	sessionId: string;
 	audience: SessionAudience;
-	role: UserRole;
+	role: AdminRole | null;
 	permissions: string[];
 }
 
@@ -87,7 +101,8 @@ export class SessionGuard implements CanActivate {
 		private readonly reflector: Reflector,
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
 		@Inject(AUTH_PORT) private readonly auth: AuthPort,
-		@Inject(AUTH_USER_REPOSITORY) private readonly authUsers: AuthUserRepository,
+		@Inject(CUSTOMER_AUTH_REPOSITORY) private readonly customerAuth: CustomerAuthRepository,
+		@Inject(ADMIN_USER_AUTH_REPOSITORY) private readonly adminAuth: AdminUserAuthRepository,
 		@Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
 		@Inject(USER_ROLE_ASSIGNMENT_REPOSITORY) private readonly assignments: UserRoleAssignmentRepository,
 		private readonly sessions: SessionService,
@@ -143,18 +158,21 @@ export class SessionGuard implements CanActivate {
 			throw new SessionRefusal('session_revoked', 'Session is no longer valid');
 		}
 
-		const user = await this.authUsers.findAuthStateById(userId);
-		if (!user || user.status !== 'active') {
+		const authState = await this.authStateForAudience(userId, audience);
+		if (!authState || authState.status !== 'active') {
 			if (isPublic) return true;
 			throw new SessionRefusal('account_inactive', 'Account is not active');
 		}
 
 		// Stale-token rejection. A bumped counter invalidates every token minted before it.
-		if (Number(claims.tokenVersion ?? -1) !== user.tokenVersion) {
+		if (Number(claims.tokenVersion ?? -1) !== authState.tokenVersion) {
 			if (isPublic) return true;
 			throw new SessionRefusal('session_revoked', 'Session is no longer valid');
 		}
-		if (Number(claims.permissionsVersion ?? -1) !== user.permissionsVersion) {
+		if (
+			audience === 'admin' &&
+			Number(claims.permissionsVersion ?? -1) !== (authState as AdminUserAuthState).permissionsVersion
+		) {
 			if (isPublic) return true;
 			throw new SessionRefusal('permissions_changed', 'Permissions changed; re-authentication required');
 		}
@@ -163,18 +181,18 @@ export class SessionGuard implements CanActivate {
 			userId,
 			sessionId,
 			audience,
-			role: user.role,
-			permissions: user.permissions,
+			role: audience === 'admin' ? (authState as AdminUserAuthState).role : null,
+			permissions: audience === 'admin' ? (authState as AdminUserAuthState).permissions : [],
 		};
 		request.principal = principal;
 
 		if (isPublic) return true;
 
-		const requiredRoles = this.reflector.getAllAndOverride<UserRole[] | undefined>(ROLES_KEY, [
+		const requiredRoles = this.reflector.getAllAndOverride<AdminRole[] | undefined>(ROLES_KEY, [
 			context.getHandler(),
 			context.getClass(),
 		]);
-		if (requiredRoles?.length && !requiredRoles.includes(principal.role)) {
+		if (requiredRoles?.length && (!principal.role || !requiredRoles.includes(principal.role))) {
 			throw new ForbiddenException('Insufficient role');
 		}
 
@@ -186,7 +204,7 @@ export class SessionGuard implements CanActivate {
 			// Resolved ONLY when a route asks for a permission. Every authenticated request
 			// would otherwise pay two extra queries to answer a question nobody asked, and
 			// today no route asks — so the common path must stay exactly as cheap as it was.
-			const effective = await this.effectivePermissionsFor(user);
+			const effective = await this.effectivePermissionsFor(authState as AdminUserAuthState);
 			principal.permissions = effective;
 
 			const missing = requiredPermissions.filter((permission) => !effective.includes(permission));
@@ -208,9 +226,18 @@ export class SessionGuard implements CanActivate {
 	 * A failure to read assignments must not fail OPEN. If the roles cannot be resolved the
 	 * caller keeps only what the user document already granted, which is the smaller set.
 	 */
+	private authStateForAudience(
+		userId: string,
+		audience: SessionAudience,
+	): Promise<CustomerAuthState | AdminUserAuthState | null> {
+		return audience === 'admin'
+			? this.adminAuth.findAuthStateById(userId)
+			: this.customerAuth.findAuthStateById(userId);
+	}
+
 	private async effectivePermissionsFor(user: {
 		id: string;
-		role: UserRole;
+		role: AdminRole;
 		permissions: string[];
 	}): Promise<string[]> {
 		const assignments = await this.assignments.listActiveForUser(user.id);

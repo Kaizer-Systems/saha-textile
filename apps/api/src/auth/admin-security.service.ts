@@ -36,7 +36,7 @@ export class AdminSecurityService {
 
 	/** What Security Settings renders. Says a PIN EXISTS, never anything about its value. */
 	async settings(userId: string): Promise<AdminSecuritySettingsResponse> {
-		const user = await this.auth.findAuthUserById(userId);
+		const user = await this.auth.adminAuthRepository.findAuthStateById(userId);
 		if (!user) throw new UnauthorizedException('Authentication required');
 
 		return {
@@ -65,9 +65,9 @@ export class AdminSecurityService {
 		const user = await this.requireRecentPasswordProof(userId, request.currentPassword);
 		const existed = user.pinHash !== null;
 
-		await this.auth.authUserRepository.setPinHash(user.id, await this.auth.hashPassword(request.pin));
+		await this.auth.adminAuthRepository.setPinHash(user.id, await this.auth.hashPassword(request.pin));
 		if (request.preferredLoginMethod) {
-			await this.auth.authUserRepository.setPreferredLoginMethod(user.id, request.preferredLoginMethod);
+			await this.auth.adminAuthRepository.setPreferredLoginMethod(user.id, request.preferredLoginMethod);
 		}
 
 		await this.audit.append(
@@ -90,8 +90,8 @@ export class AdminSecurityService {
 	async removePin(userId: string, currentPassword: string, requestId: string | null): Promise<void> {
 		const user = await this.requireRecentPasswordProof(userId, currentPassword);
 
-		await this.auth.authUserRepository.setPinHash(user.id, null);
-		await this.auth.authUserRepository.setPreferredLoginMethod(user.id, 'password');
+		await this.auth.adminAuthRepository.setPinHash(user.id, null);
+		await this.auth.adminAuthRepository.setPreferredLoginMethod(user.id, 'password');
 
 		await this.audit.append(
 			this.entry(user.id, 'admin.security.pin.remove', requestId, [
@@ -124,7 +124,7 @@ export class AdminSecurityService {
 		assertPasswordAcceptable(request.newPassword);
 		const user = await this.requireRecentPasswordProof(userId, request.currentPassword);
 
-		await this.auth.authUserRepository.setPasswordHash(user.id, await this.auth.hashPassword(request.newPassword));
+		await this.auth.adminAuthRepository.setPasswordHash(user.id, await this.auth.hashPassword(request.newPassword));
 		const revokedSessions = await this.sessions.revokeAllForUser(user.id, 'password_changed');
 
 		await this.audit.append(
@@ -162,7 +162,7 @@ export class AdminSecurityService {
 	 * those are wired: a proof failure is not a session failure.
 	 */
 	private async requireRecentPasswordProof(userId: string, currentPassword: string) {
-		const user = await this.auth.findAuthUserById(userId);
+		const user = await this.auth.adminAuthRepository.findAuthStateById(userId);
 		if (!user || !(await this.auth.verifyPassword(user, currentPassword))) {
 			throw new ForbiddenException('Invalid credentials');
 		}

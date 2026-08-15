@@ -1,7 +1,14 @@
 import { createHmac, randomInt, randomUUID } from 'node:crypto';
 
 import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import type { OtpPurpose, SessionAudience, User, UserAuthState } from '@saha-textile/contracts';
+import type {
+	AdminUser,
+	AdminUserAuthState,
+	Customer,
+	CustomerAuthState,
+	OtpPurpose,
+	SessionAudience,
+} from '@saha-textile/contracts';
 import {
 	AUTH_RATE_LIMIT_POLICY,
 	type AuthRateLimitAction,
@@ -10,26 +17,30 @@ import {
 	rateLimitClientScope,
 } from '@saha-textile/core-domain';
 import type {
+	AdminUserAuthRepository,
+	AdminUserRepository,
 	AuthPort,
 	AuthRateLimitRepository,
-	AuthUserRepository,
+	CustomerAuthRepository,
+	CustomerRepository,
 	EmailVerificationTokenRepository,
 	NotificationPort,
 	OtpChallengeRepository,
 	PasswordResetTokenRepository,
-	UserRepository,
 } from '@saha-textile/core-domain';
 
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import {
+	ADMIN_USER_AUTH_REPOSITORY,
+	ADMIN_USER_REPOSITORY,
 	AUTH_PORT,
 	AUTH_RATE_LIMIT_REPOSITORY,
-	AUTH_USER_REPOSITORY,
+	CUSTOMER_AUTH_REPOSITORY,
+	CUSTOMER_REPOSITORY,
 	EMAIL_VERIFICATION_TOKEN_REPOSITORY,
 	NOTIFICATION_PORT,
 	OTP_CHALLENGE_REPOSITORY,
 	PASSWORD_RESET_TOKEN_REPOSITORY,
-	USER_REPOSITORY,
 } from '../infra/tokens';
 import { assertPasswordAcceptable } from './password-policy';
 
@@ -58,8 +69,10 @@ export class AuthService {
 	constructor(
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
 		@Inject(AUTH_PORT) private readonly auth: AuthPort,
-		@Inject(AUTH_USER_REPOSITORY) private readonly authUsers: AuthUserRepository,
-		@Inject(USER_REPOSITORY) private readonly users: UserRepository,
+		@Inject(CUSTOMER_AUTH_REPOSITORY) private readonly customerAuth: CustomerAuthRepository,
+		@Inject(ADMIN_USER_AUTH_REPOSITORY) private readonly adminAuth: AdminUserAuthRepository,
+		@Inject(CUSTOMER_REPOSITORY) private readonly customers: CustomerRepository,
+		@Inject(ADMIN_USER_REPOSITORY) private readonly adminUsers: AdminUserRepository,
 		@Inject(OTP_CHALLENGE_REPOSITORY) private readonly otps: OtpChallengeRepository,
 		@Inject(PASSWORD_RESET_TOKEN_REPOSITORY) private readonly resets: PasswordResetTokenRepository,
 		@Inject(EMAIL_VERIFICATION_TOKEN_REPOSITORY) private readonly verifications: EmailVerificationTokenRepository,
@@ -158,7 +171,7 @@ export class AuthService {
 	}
 
 	/** Verifies a password, spending equivalent time when the account has none. */
-	async verifyPassword(user: UserAuthState | null, plain: string): Promise<boolean> {
+	async verifyPassword(user: CustomerAuthState | AdminUserAuthState | null, plain: string): Promise<boolean> {
 		if (!user?.passwordHash) {
 			await this.auth.verifyPassword(plain, DUMMY_ARGON2_HASH).catch(() => false);
 			return false;
@@ -241,7 +254,7 @@ export class AuthService {
 	 */
 	async startPasswordReset(email: string, audience: SessionAudience): Promise<void> {
 		const normalized = this.normalizeEmail(email);
-		const user = await this.authUsers.findAuthStateByEmail(normalized);
+		const user = await this.customerAuth.findAuthStateByEmail(normalized);
 		if (!user || user.status !== 'active') return;
 
 		await this.issueResetToken(user.id, normalized, audience);
@@ -255,12 +268,12 @@ export class AuthService {
 	 * token delivered by email and nothing else.
 	 *
 	 * Every rejection returns silently, exactly like the success path, because the caller
-	 * answers generically either way. A customer account is refused here for the same
-	 * reason it cannot open an admin session at all.
+	 * answers generically either way. A customer-only address is refused because the lookup
+	 * is population-scoped to `adminUsers` (D1).
 	 */
 	async startAdminPasswordReset(identifier: string): Promise<void> {
-		const user = await this.authUsers.findAuthStateByIdentifier(identifier.trim().toLowerCase());
-		if (!user || user.status !== 'active' || user.role === 'customer') return;
+		const user = await this.adminAuth.findAuthStateByIdentifier(identifier.trim().toLowerCase());
+		if (!user || user.status !== 'active') return;
 		// The token travels by email. An admin without a recorded address has no recovery
 		// channel, and inventing one is not something an unauthenticated request may do.
 		if (!user.email) return;
@@ -327,8 +340,34 @@ export class AuthService {
 		if (expectedAudience && consumed.audience !== expectedAudience) return null;
 
 		const passwordHash = await this.auth.hashPassword(newPassword);
-		await this.authUsers.setPasswordHash(consumed.userId, passwordHash);
+		if (consumed.audience === 'admin') {
+			await this.adminAuth.setPasswordHash(consumed.userId, passwordHash);
+		} else {
+			await this.customerAuth.setPasswordHash(consumed.userId, passwordHash);
+		}
 		return { userId: consumed.userId };
+	}
+
+	/**
+	 * Completes admin-minted customer activation (CRM).
+	 *
+	 * Reuses `passwordResetTokens` (same hash/TTL/consume path as password reset), then
+	 * promotes `pending` → `active` and marks email verified when an address is present.
+	 */
+	async activateCustomer(token: string, newPassword: string): Promise<{ userId: string } | null> {
+		const result = await this.completePasswordReset(token, newPassword, 'storefront');
+		if (!result) return null;
+
+		const state = await this.customerAuth.findAuthStateById(result.userId);
+		if (!state || state.status === 'deleted') return null;
+
+		if (state.status === 'pending' || state.status === 'disabled') {
+			await this.customerAuth.setStatus(result.userId, 'active');
+		}
+		if (state.email) {
+			await this.customerAuth.markEmailVerified(result.userId, this.normalizeEmail(state.email));
+		}
+		return result;
 	}
 
 	/**
@@ -336,7 +375,7 @@ export class AuthService {
 	 * decision requires an explicit revalidation state whose transitions can be audited.
 	 */
 	async requirePinRevalidation(userId: string): Promise<void> {
-		await this.authUsers.setPinRevalidationRequired(userId, new Date().toISOString());
+		await this.adminAuth.setPinRevalidationRequired(userId, new Date().toISOString());
 	}
 
 	async issueEmailVerification(userId: string, email: string): Promise<void> {
@@ -366,7 +405,10 @@ export class AuthService {
 	async completeEmailVerification(token: string): Promise<boolean> {
 		const consumed = await this.verifications.consume(this.hash(token), new Date().toISOString());
 		if (!consumed) return false;
-		await this.authUsers.markEmailVerified(consumed.userId, consumed.emailNormalized);
+		// Storefront-only: tokens are issued at customer registration. Fail closed if a row
+		// ever points at an operator id — email verification has no audience field.
+		if (consumed.userId.startsWith('adm_')) return false;
+		await this.customerAuth.markEmailVerified(consumed.userId, consumed.emailNormalized);
 		return true;
 	}
 
@@ -376,7 +418,7 @@ export class AuthService {
 	 * the account.
 	 */
 	async verifyAdminPin(
-		user: UserAuthState,
+		user: AdminUserAuthState,
 		pin: string,
 	): Promise<'ok' | 'locked' | 'revalidation_required' | 'invalid'> {
 		// Checked BEFORE the brute-force lock and before the hash: a password reset answered
@@ -387,46 +429,67 @@ export class AuthService {
 		if (!user.pinHash) return 'invalid';
 
 		if (await this.auth.verifyPassword(pin, user.pinHash)) {
-			await this.authUsers.clearPinLock(user.id);
+			await this.adminAuth.clearPinLock(user.id);
 			return 'ok';
 		}
 
-		const attempts = await this.authUsers.recordFailedPinAttempt(user.id);
+		const attempts = await this.adminAuth.recordFailedPinAttempt(user.id);
 		if (attempts >= PIN_MAX_ATTEMPTS) {
-			await this.authUsers.lockPinUntil(
+			await this.adminAuth.lockPinUntil(
 				user.id,
 				new Date(Date.now() + PIN_LOCK_MINUTES * 60 * 1000).toISOString(),
 			);
-			this.logger.warn(`PIN locked for user ${user.id} after ${attempts} failed attempts`);
+			this.logger.warn(`PIN locked for operator ${user.id} after ${attempts} failed attempts`);
 			return 'locked';
 		}
 		return 'invalid';
 	}
 
-	findAuthUserByEmail(email: string): Promise<UserAuthState | null> {
-		return this.authUsers.findAuthStateByEmail(this.normalizeEmail(email));
+	findAuthUserByEmail(email: string): Promise<CustomerAuthState | null> {
+		return this.customerAuth.findAuthStateByEmail(this.normalizeEmail(email));
 	}
 
-	findAuthUserByIdentifier(identifier: string): Promise<UserAuthState | null> {
-		return this.authUsers.findAuthStateByIdentifier(identifier.trim().toLowerCase());
+	findAuthUserByIdentifier(identifier: string): Promise<AdminUserAuthState | null> {
+		return this.adminAuth.findAuthStateByIdentifier(identifier.trim().toLowerCase());
 	}
 
-	findAuthUserById(userId: string): Promise<UserAuthState | null> {
-		return this.authUsers.findAuthStateById(userId);
+	findAuthUserById(userId: string): Promise<CustomerAuthState | AdminUserAuthState | null> {
+		if (userId.startsWith('adm_')) return this.adminAuth.findAuthStateById(userId);
+		return this.customerAuth.findAuthStateById(userId);
 	}
 
-	/** Loads the PUBLIC user projection for a response body — never the auth state. */
-	async publicUser(userId: string): Promise<User> {
-		const user = await this.users.findById(userId);
+	/** Loads the public customer projection for a storefront response body. */
+	async publicCustomer(userId: string): Promise<Customer> {
+		const user = await this.customers.findById(userId);
 		if (!user) throw new UnauthorizedException('Account not found');
 		return user;
 	}
 
-	get userRepository(): UserRepository {
-		return this.users;
+	/** Loads the public operator projection for an admin response body. */
+	async publicAdminUser(userId: string): Promise<AdminUser> {
+		const user = await this.adminUsers.findById(userId);
+		if (!user) throw new UnauthorizedException('Account not found');
+		return user;
 	}
 
-	get authUserRepository(): AuthUserRepository {
-		return this.authUsers;
+	/** Population-aware loader retained for callers that already know the id prefix. */
+	async publicUser(userId: string): Promise<Customer | AdminUser> {
+		return userId.startsWith('adm_') ? this.publicAdminUser(userId) : this.publicCustomer(userId);
+	}
+
+	get customerRepository(): CustomerRepository {
+		return this.customers;
+	}
+
+	get customerAuthRepository(): CustomerAuthRepository {
+		return this.customerAuth;
+	}
+
+	get adminAuthRepository(): AdminUserAuthRepository {
+		return this.adminAuth;
+	}
+
+	get adminUserRepository(): AdminUserRepository {
+		return this.adminUsers;
 	}
 }

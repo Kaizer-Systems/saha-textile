@@ -5,25 +5,25 @@ import type {
 	AdminInvite,
 	AdminInviteAcceptRequest,
 	AdminInviteRequest,
+	AdminUser,
 	AuditLog,
-	User,
 } from '@saha-textile/contracts';
 import type {
 	AdminInviteRepository,
+	AdminUserAuthRepository,
+	AdminUserRepository,
 	AuditLogRepository,
-	AuthUserRepository,
 	NotificationPort,
 	TransactionManagerPort,
-	UserRepository,
 } from '@saha-textile/core-domain';
 
 import {
 	ADMIN_INVITE_REPOSITORY,
+	ADMIN_USER_AUTH_REPOSITORY,
+	ADMIN_USER_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
-	AUTH_USER_REPOSITORY,
 	NOTIFICATION_PORT,
 	TRANSACTION_MANAGER,
-	USER_REPOSITORY,
 } from '../infra/tokens';
 import { AuthService } from './auth.service';
 import { assertPasswordAcceptable } from './password-policy';
@@ -39,8 +39,8 @@ export class AdminInviteService {
 	constructor(
 		private readonly auth: AuthService,
 		@Inject(ADMIN_INVITE_REPOSITORY) private readonly invites: AdminInviteRepository,
-		@Inject(AUTH_USER_REPOSITORY) private readonly authUsers: AuthUserRepository,
-		@Inject(USER_REPOSITORY) private readonly users: UserRepository,
+		@Inject(ADMIN_USER_AUTH_REPOSITORY) private readonly authUsers: AdminUserAuthRepository,
+		@Inject(ADMIN_USER_REPOSITORY) private readonly users: AdminUserRepository,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository,
 		@Inject(NOTIFICATION_PORT) private readonly notifications: NotificationPort,
 		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
@@ -61,9 +61,9 @@ export class AdminInviteService {
 	}): Promise<AdminInvite> {
 		const emailNormalized = this.auth.normalizeEmail(input.request.email);
 
-		// An existing account is not re-invited: changing an established user's role is a
-		// different, separately audited operation.
-		const existing = await this.authUsers.findAuthStateByEmail(emailNormalized);
+		// An existing operator account is not re-invited: changing an established user's role
+		// is a different, separately audited operation.
+		const existing = await this.authUsers.findAuthStateByIdentifier(emailNormalized);
 		if (existing) throw new BadRequestException('An account already exists for that address');
 
 		const token = `${randomUUID()}${randomUUID()}`.replace(/-/g, '');
@@ -113,7 +113,7 @@ export class AdminInviteService {
 	 * request that failed, leaving an invitee unable to accept and an administrator having to
 	 * issue a fresh link because somebody typed `123456` or `Password1234`.
 	 */
-	async accept(request: AdminInviteAcceptRequest): Promise<User> {
+	async accept(request: AdminInviteAcceptRequest): Promise<AdminUser> {
 		// Both credentials are judged before the invitation is spent, for the reason spelled
 		// out above: `consume` is single-use and irreversible.
 		assertPasswordAcceptable(request.password);
@@ -125,18 +125,23 @@ export class AdminInviteService {
 
 		const passwordHash = await this.auth.hashPassword(request.password);
 		const user = await this.users.save({
-			id: `user_${randomUUID()}`,
+			id: `adm_${randomUUID()}`,
 			email: invite.emailNormalized,
 			// Accepting the invite proves control of the mailbox it was sent to.
 			emailVerified: true,
-			phone: null,
-			phoneVerified: false,
+			username: request.username ?? null,
 			displayName: request.displayName,
 			role: invite.role,
 			status: 'active',
-			identities: [{ provider: 'password', email: invite.emailNormalized }],
-			addresses: [],
-			guestCartId: null,
+			pinConfigured: false,
+			preferredLoginMethod: request.preferredLoginMethod ?? 'password',
+			lastLoginAt: null,
+			adminProfile: {
+				employeeCode: null,
+				department: null,
+				invitedByUserId: invite.invitedByUserId,
+				acceptedInviteAt: new Date().toISOString(),
+			},
 		});
 
 		await this.authUsers.setPasswordHash(user.id, passwordHash);

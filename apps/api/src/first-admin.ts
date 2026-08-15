@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import type { INestApplicationContext } from '@nestjs/common';
 import type { AuditLog } from '@saha-textile/contracts';
 import {
+	type AdminUserAuthRepository,
 	type AuditLogRepository,
 	type AuthPort,
 	type RoleRepository,
@@ -10,7 +11,13 @@ import {
 	evaluatePassword,
 } from '@saha-textile/core-domain';
 
-import { AUDIT_LOG_REPOSITORY, AUTH_PORT, ROLE_REPOSITORY, USER_ROLE_ASSIGNMENT_REPOSITORY } from './infra/tokens';
+import {
+	ADMIN_USER_AUTH_REPOSITORY,
+	AUDIT_LOG_REPOSITORY,
+	AUTH_PORT,
+	ROLE_REPOSITORY,
+	USER_ROLE_ASSIGNMENT_REPOSITORY,
+} from './infra/tokens';
 
 /**
  * First-administrator bootstrap (auth pass 6a).
@@ -85,7 +92,7 @@ function generatePassword(): string {
 export interface FirstAdminDependencies {
 	/** Mongo models, injected so this file has no direct database dependency. */
 	models: {
-		UserModel: {
+		AdminUserModel: {
 			findOne(filter: Record<string, unknown>): { lean(): { exec(): Promise<unknown> } };
 			create(docs: unknown[]): Promise<unknown>;
 		};
@@ -129,33 +136,31 @@ export async function bootstrapFirstAdmin(
 	// It cannot reach the deny-by-default surfaces, but it CAN sign in to the admin audience,
 	// so treating it as "no administrator exists" would mint a second privileged account
 	// beside one somebody already created.
-	const existingAdmin = await deps.models.UserModel.findOne({ role: 'admin' }).lean().exec();
+	const existingAdmin = await deps.models.AdminUserModel.findOne({ role: 'admin' }).lean().exec();
 	if (existingAdmin) throw new FirstAdminAlreadyExistsError('an account already holds the admin role');
 
 	const emailNormalized = input.email.trim().toLowerCase();
 	const password = generatePassword();
-	const userId = `user_${randomUUID()}`;
+	const userId = `adm_${randomUUID()}`;
 	const now = new Date();
 
-	await deps.models.UserModel.create([
+	const passwordHash = await auth.hashPassword(password);
+	await deps.models.AdminUserModel.create([
 		{
 			_id: userId,
 			email: emailNormalized,
-			emailNormalized,
-			passwordHash: await auth.hashPassword(password),
+			emailVerified: true,
 			role: 'admin',
 			status: 'active',
 			permissions: [],
 			tokenVersion: 0,
 			permissionsVersion: 0,
-			// Verified on creation: the operator proved control of the machine, which is a
-			// stronger claim than clicking a link in an inbox, and an unverified first
-			// administrator could not complete verification without an administrator.
-			emailVerifiedAt: now,
 			createdAt: now,
 			updatedAt: now,
 		},
 	]);
+	const adminAuth = app.get<AdminUserAuthRepository>(ADMIN_USER_AUTH_REPOSITORY);
+	await adminAuth.setPasswordHash(userId, passwordHash);
 
 	await assignments.assign({
 		id: `ura_${randomUUID()}`,

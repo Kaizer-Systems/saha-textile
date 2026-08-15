@@ -3,20 +3,31 @@ import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypt
 import { Inject, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import {
 	type AccessTokenClaims,
+	type AdminRole,
 	type AuthSession,
 	type SessionAudience,
 	type SessionListResponse,
 	type SessionRevokeReason,
-	type UserRole,
 	toSessionSummary,
 } from '@saha-textile/contracts';
-import type { AuthPort, AuthSessionRepository, AuthUserRepository } from '@saha-textile/core-domain';
+import type {
+	AdminUserAuthRepository,
+	AuthPort,
+	AuthSessionRepository,
+	CustomerAuthRepository,
+} from '@saha-textile/core-domain';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { cookieNames, csrfCookieOptions, sessionCookieOptions } from '../common/cookies';
-import type { AuthenticatedPrincipal } from './session.guard';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
-import { AUTH_PORT, AUTH_SESSION_REPOSITORY, AUTH_USER_REPOSITORY } from '../infra/tokens';
+import { labelFromUserAgent, shouldBackfillDeviceLabel } from './device-label';
+import type { AuthenticatedPrincipal } from './session.guard';
+import {
+	ADMIN_USER_AUTH_REPOSITORY,
+	AUTH_PORT,
+	AUTH_SESSION_REPOSITORY,
+	CUSTOMER_AUTH_REPOSITORY,
+} from '../infra/tokens';
 
 /** Result of establishing or refreshing a session. Tokens go to COOKIES, never a body. */
 export interface EstablishedSession {
@@ -26,7 +37,7 @@ export interface EstablishedSession {
 
 interface SessionUser {
 	id: string;
-	role: UserRole;
+	role: AdminRole | null;
 	tokenVersion: number;
 	permissionsVersion: number;
 }
@@ -40,10 +51,17 @@ export interface LiveSessionExpectation {
  * Session lifetimes. Admin idles out faster than storefront because an unattended admin
  * tab is a materially worse exposure; the absolute cap bounds a stolen refresh token
  * even if it is used continuously.
+ *
+ * Admin idle must outlive the 15-minute soft-lock UI window so PIN resume can still call
+ * `refresh` on a live session (owner lock: soft lock preserves mounted route/form state).
+ * Soft-lock = presence proof; this idle TTL = hard kill.
  */
+export const ADMIN_IDLE_TTL_SECONDS = 60 * 60;
+export const STOREFRONT_IDLE_TTL_SECONDS = 60 * 60 * 24 * 30;
+
 const IDLE_TTL_SECONDS: Record<SessionAudience, number> = {
-	storefront: 60 * 60 * 24 * 30,
-	admin: 60 * 15,
+	storefront: STOREFRONT_IDLE_TTL_SECONDS,
+	admin: ADMIN_IDLE_TTL_SECONDS,
 };
 const ABSOLUTE_TTL_SECONDS: Record<SessionAudience, number> = {
 	storefront: 60 * 60 * 24 * 90,
@@ -58,7 +76,8 @@ export class SessionService {
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
 		@Inject(AUTH_PORT) private readonly auth: AuthPort,
 		@Inject(AUTH_SESSION_REPOSITORY) private readonly sessions: AuthSessionRepository,
-		@Inject(AUTH_USER_REPOSITORY) private readonly authUsers: AuthUserRepository,
+		@Inject(CUSTOMER_AUTH_REPOSITORY) private readonly customerAuth: CustomerAuthRepository,
+		@Inject(ADMIN_USER_AUTH_REPOSITORY) private readonly adminAuth: AdminUserAuthRepository,
 	) {}
 
 	/**
@@ -198,12 +217,17 @@ export class SessionService {
 			previousRefreshTokenHash: null,
 			replacedBySessionId: null,
 			csrfSecretHash: this.hash(csrfToken),
-			device: {
-				userAgentHash: this.hashHeader(input.request.headers['user-agent']),
-				ipHash: this.hashHeader(input.request.ip),
-				country: null,
-				label: null,
-			},
+			device: (() => {
+				const userAgentHeader = input.request.headers['user-agent'];
+				const userAgent = Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader;
+				const userAgentHash = this.hashHeader(userAgent);
+				return {
+					userAgentHash,
+					ipHash: this.hashHeader(input.request.ip),
+					country: null,
+					label: labelFromUserAgent(userAgent, userAgentHash),
+				};
+			})(),
 			createdAt: new Date(nowMs).toISOString(),
 			lastSeenAt: new Date(nowMs).toISOString(),
 			expiresAt: new Date(nowMs + IDLE_TTL_SECONDS[input.audience] * 1000).toISOString(),
@@ -325,26 +349,34 @@ export class SessionService {
 		 * account was disabled or its versions were bumped — minting a new token from stale
 		 * in-memory values would let a revoked account keep renewing itself indefinitely.
 		 */
-		const user = await this.authUsers.findAuthStateById(rotated.userId);
-		if (!user || user.status !== 'active') {
+		const sessionUser = await this.sessionUserForAudience(rotated.userId, rotated.audience);
+		if (!sessionUser) {
 			await this.sessions.revokeAllForUser(rotated.userId, 'disabled_user', new Date(nowMs).toISOString());
 			this.clearCookies(input.reply);
 			throw new UnauthorizedException('Account is not active');
 		}
 
+		const userAgentHeader = input.request.headers['user-agent'];
+		const userAgent = Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader;
+		const ua = typeof userAgent === 'string' ? userAgent : '';
+		let sessionForCookies = rotated;
+		if (shouldBackfillDeviceLabel(rotated.device.label, ua)) {
+			const nextLabel = labelFromUserAgent(ua, rotated.device.userAgentHash);
+			await this.sessions.updateDeviceLabel(rotated.id, nextLabel);
+			sessionForCookies = {
+				...rotated,
+				device: { ...rotated.device, label: nextLabel },
+			};
+		}
+
 		await this.writeCookies({
-			session: rotated,
+			session: sessionForCookies,
 			refreshToken: nextRefresh,
 			csrfToken,
-			user: {
-				id: user.id,
-				role: user.role,
-				tokenVersion: user.tokenVersion,
-				permissionsVersion: user.permissionsVersion,
-			},
+			user: sessionUser,
 			reply: input.reply,
 		});
-		return { session: rotated, csrfToken };
+		return { session: sessionForCookies, csrfToken };
 	}
 
 	async revoke(request: FastifyRequest, reply: FastifyReply, reason: SessionRevokeReason = 'logout'): Promise<void> {
@@ -398,7 +430,20 @@ export class SessionService {
 		const items = sessions
 			.slice()
 			.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
-			.map((session) => toSessionSummary(session, principal.sessionId));
+			.map((session) =>
+				toSessionSummary(
+					{
+						...session,
+						device: {
+							...session.device,
+							// Older sessions were stored with label:null — still distinguish devices
+							// via the UA hash suffix without inventing hardware IDs.
+							label: session.device.label ?? labelFromUserAgent(undefined, session.device.userAgentHash),
+						},
+					},
+					principal.sessionId,
+				),
+			);
 
 		return { items };
 	}
@@ -461,6 +506,28 @@ export class SessionService {
 	async findByRefreshCookie(request: FastifyRequest): Promise<AuthSession | null> {
 		const presented = this.readCookie(request, cookieNames(this.config).refresh);
 		return presented ? this.sessions.findByRefreshTokenHash(this.hash(presented)) : null;
+	}
+
+	private async sessionUserForAudience(userId: string, audience: SessionAudience): Promise<SessionUser | null> {
+		if (audience === 'admin') {
+			const user = await this.adminAuth.findAuthStateById(userId);
+			if (!user || user.status !== 'active') return null;
+			return {
+				id: user.id,
+				role: user.role,
+				tokenVersion: user.tokenVersion,
+				permissionsVersion: user.permissionsVersion,
+			};
+		}
+
+		const user = await this.customerAuth.findAuthStateById(userId);
+		if (!user || user.status !== 'active') return null;
+		return {
+			id: user.id,
+			role: null,
+			tokenVersion: user.tokenVersion,
+			permissionsVersion: 0,
+		};
 	}
 
 	private hashHeader(value: unknown): string | null {

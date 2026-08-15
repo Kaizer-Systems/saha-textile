@@ -3,5 +3,5 @@
 	"compilerOptions": {
 		"incremental": false
 	},
-	"exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "**/*.test.ts"]
+	"exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "**/*.test.ts", "src/set-local-test-credentials.ts"]
 }

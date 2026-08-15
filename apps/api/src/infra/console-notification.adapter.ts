@@ -8,10 +8,8 @@ import type { NotificationPort, NotificationMessage, NotificationResult } from '
 /**
  * Development/test implementation of `NotificationPort`.
  *
- * MSG91 is the locked primary provider, but the owner rule is that real providers are
- * wired only once approved credentials and templates exist — ports and stubs come first.
- * This adapter satisfies the port so the auth flows are complete and testable without
- * sending anything.
+ * Used when `NOTIFICATION_PROVIDER=console`, or when provider is `msg91` but
+ * `MSG91_AUTH_KEY` is unset (factory falls back here with a warn).
  *
  * It logs that a message WOULD be sent, with the destination hashed and the variables
  * omitted entirely: OTP codes and reset tokens travel in `variables`, and the one thing
@@ -35,9 +33,8 @@ export class ConsoleNotificationAdapter implements NotificationPort {
 	}
 
 	/**
-	 * Always enabled in this adapter. The real kill-switch reads
-	 * `notificationChannelSettings` and short-circuits before any provider call — that
-	 * lands with the MSG91 adapter in Chunk I.
+	 * Always enabled in this adapter. Kill-switches are enforced by
+	 * `Msg91NotificationAdapter` when the live provider is wired.
 	 */
 	async isChannelEnabled(_channel: NotificationChannel, _category: NotificationCategory): Promise<boolean> {
 		return true;

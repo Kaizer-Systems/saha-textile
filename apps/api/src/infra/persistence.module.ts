@@ -1,18 +1,26 @@
 import { Global, Logger, Module, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
-import { MongoTransactionManager, connectMongo, disconnectMongo } from '@saha-textile/adapters-db-mongo';
 import {
 	MongoAdminInviteRepository,
+	MongoAdminUserAuthRepository,
+	MongoAdminUserRepository,
 	MongoAuthRateLimitRepository,
 	MongoAuthSessionRepository,
 	MongoAuditLogRepository,
-	MongoAuthUserRepository,
 	MongoConsentRepository,
+	MongoCustomerAuthRepository,
+	MongoCustomerRepository,
 	MongoEmailVerificationTokenRepository,
+	MongoMessageOutboxRepository,
+	MongoNotificationSettingsRepository,
+	MongoNotificationTemplateRepository,
 	MongoOAuthStateRepository,
 	MongoOtpChallengeRepository,
 	MongoPasswordResetTokenRepository,
 	MongoRoleRepository,
+	MongoTransactionManager,
 	MongoUserRoleAssignmentRepository,
+	connectMongo,
+	disconnectMongo,
 } from '@saha-textile/adapters-db-mongo';
 import {
 	MongoCartRepository,
@@ -21,8 +29,14 @@ import {
 	MongoOrderRepository,
 	MongoProductRepository,
 	MongoPromotionRepository,
-	MongoUserRepository,
 } from '@saha-textile/adapters-db-mongo';
+import { Msg91NotificationAdapter } from '@saha-textile/adapters-notifications-msg91';
+import type {
+	ConsentRepository,
+	MessageOutboxRepository,
+	NotificationSettingsRepository,
+	NotificationTemplateRepository,
+} from '@saha-textile/core-domain';
 
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { Argon2JwtAuth } from './argon2-jwt.auth';
@@ -35,21 +49,26 @@ import {
 	ORDER_REPOSITORY,
 	PRODUCT_REPOSITORY,
 	ADMIN_INVITE_REPOSITORY,
+	ADMIN_USER_AUTH_REPOSITORY,
+	ADMIN_USER_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
 	CONSENT_REPOSITORY,
 	AUTH_RATE_LIMIT_REPOSITORY,
 	AUTH_SESSION_REPOSITORY,
-	AUTH_USER_REPOSITORY,
+	CUSTOMER_AUTH_REPOSITORY,
+	CUSTOMER_REPOSITORY,
 	ROLE_REPOSITORY,
 	USER_ROLE_ASSIGNMENT_REPOSITORY,
 	EMAIL_VERIFICATION_TOKEN_REPOSITORY,
 	OAUTH_STATE_REPOSITORY,
+	MESSAGE_OUTBOX_REPOSITORY,
 	NOTIFICATION_PORT,
+	NOTIFICATION_SETTINGS_REPOSITORY,
+	NOTIFICATION_TEMPLATE_REPOSITORY,
 	OTP_CHALLENGE_REPOSITORY,
 	PASSWORD_RESET_TOKEN_REPOSITORY,
 	PROMOTION_REPOSITORY,
 	TRANSACTION_MANAGER,
-	USER_REPOSITORY,
 } from './tokens';
 
 @Global()
@@ -61,12 +80,14 @@ import {
 		{ provide: PROMOTION_REPOSITORY, useClass: MongoPromotionRepository },
 		{ provide: CART_REPOSITORY, useClass: MongoCartRepository },
 		{ provide: ORDER_REPOSITORY, useClass: MongoOrderRepository },
-		{ provide: USER_REPOSITORY, useClass: MongoUserRepository },
+		{ provide: CUSTOMER_REPOSITORY, useClass: MongoCustomerRepository },
+		{ provide: ADMIN_USER_REPOSITORY, useClass: MongoAdminUserRepository },
 		// Unit-of-work boundary: multi-document commerce writes commit or roll back together.
 		{ provide: TRANSACTION_MANAGER, useClass: MongoTransactionManager },
 		// Chunk D auth stores. Credential material lives behind these ports only.
 		{ provide: AUTH_SESSION_REPOSITORY, useClass: MongoAuthSessionRepository },
-		{ provide: AUTH_USER_REPOSITORY, useClass: MongoAuthUserRepository },
+		{ provide: CUSTOMER_AUTH_REPOSITORY, useClass: MongoCustomerAuthRepository },
+		{ provide: ADMIN_USER_AUTH_REPOSITORY, useClass: MongoAdminUserAuthRepository },
 		{ provide: ROLE_REPOSITORY, useClass: MongoRoleRepository },
 		{ provide: USER_ROLE_ASSIGNMENT_REPOSITORY, useClass: MongoUserRoleAssignmentRepository },
 		{ provide: OTP_CHALLENGE_REPOSITORY, useClass: MongoOtpChallengeRepository },
@@ -78,8 +99,51 @@ import {
 		{ provide: CONSENT_REPOSITORY, useClass: MongoConsentRepository },
 		// Owner lock: every admin mutation writes an audit record.
 		{ provide: AUDIT_LOG_REPOSITORY, useClass: MongoAuditLogRepository },
-		// Stub until approved MSG91 credentials/templates exist (owner lock: ports first).
-		{ provide: NOTIFICATION_PORT, useClass: ConsoleNotificationAdapter },
+		{ provide: NOTIFICATION_SETTINGS_REPOSITORY, useClass: MongoNotificationSettingsRepository },
+		{ provide: NOTIFICATION_TEMPLATE_REPOSITORY, useClass: MongoNotificationTemplateRepository },
+		{ provide: MESSAGE_OUTBOX_REPOSITORY, useClass: MongoMessageOutboxRepository },
+		{
+			provide: NOTIFICATION_PORT,
+			useFactory: (
+				config: AppConfig,
+				settings: NotificationSettingsRepository,
+				templates: NotificationTemplateRepository,
+				outbox: MessageOutboxRepository,
+				consent: ConsentRepository,
+			) => {
+				const wantMsg91 = config.notifications.provider === 'msg91';
+				const authKey = config.notifications.msg91AuthKey;
+				if (wantMsg91 && authKey) {
+					return new Msg91NotificationAdapter({
+						config: {
+							authKey,
+							senderId: config.notifications.msg91SenderId,
+							emailFrom: config.notifications.msg91EmailFrom,
+							emailDomain: config.notifications.msg91EmailDomain,
+							whatsappNumber: config.notifications.msg91WhatsappNumber,
+						},
+						settings,
+						templates,
+						outbox,
+						consent,
+					});
+				}
+				if (wantMsg91 && !authKey) {
+					Logger.warn(
+						'NOTIFICATION_PROVIDER=msg91 but MSG91_AUTH_KEY is empty — falling back to console adapter',
+						'Notifications',
+					);
+				}
+				return new ConsoleNotificationAdapter();
+			},
+			inject: [
+				APP_CONFIG,
+				NOTIFICATION_SETTINGS_REPOSITORY,
+				NOTIFICATION_TEMPLATE_REPOSITORY,
+				MESSAGE_OUTBOX_REPOSITORY,
+				CONSENT_REPOSITORY,
+			],
+		},
 		{
 			provide: AUTH_PORT,
 			useFactory: (config: AppConfig) => new Argon2JwtAuth(config),
@@ -93,13 +157,18 @@ import {
 		PROMOTION_REPOSITORY,
 		CART_REPOSITORY,
 		ORDER_REPOSITORY,
-		USER_REPOSITORY,
+		CUSTOMER_REPOSITORY,
+		ADMIN_USER_REPOSITORY,
 		TRANSACTION_MANAGER,
 		AUTH_SESSION_REPOSITORY,
-		AUTH_USER_REPOSITORY,
+		CUSTOMER_AUTH_REPOSITORY,
+		ADMIN_USER_AUTH_REPOSITORY,
 		ROLE_REPOSITORY,
 		USER_ROLE_ASSIGNMENT_REPOSITORY,
 		NOTIFICATION_PORT,
+		NOTIFICATION_SETTINGS_REPOSITORY,
+		NOTIFICATION_TEMPLATE_REPOSITORY,
+		MESSAGE_OUTBOX_REPOSITORY,
 		OTP_CHALLENGE_REPOSITORY,
 		OAUTH_STATE_REPOSITORY,
 		PASSWORD_RESET_TOKEN_REPOSITORY,
@@ -108,9 +177,6 @@ import {
 		AUDIT_LOG_REPOSITORY,
 		CONSENT_REPOSITORY,
 		AUTH_RATE_LIMIT_REPOSITORY,
-		CONSENT_REPOSITORY,
-		AUDIT_LOG_REPOSITORY,
-		NOTIFICATION_PORT,
 		AUTH_PORT,
 	],
 })

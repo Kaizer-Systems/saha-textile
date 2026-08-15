@@ -1,0 +1,25 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'customers'"
+>
+	<div
+		class="d-flex flex-wrap gap-2"
+		*hasPermission="'customer.create'"
+		button
+	>
+		<a
+			[routerLink]="['/customer/create']"
+			class="align-items-center btn btn-theme"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'add_customer' | transloco }}
+		</a>
+	</div>
+	<app-table
+		[tableConfig]="tableConfig"
+		[hasCheckbox]="false"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="edit($event)"
+		(action)="onActionClicked($event)"
+	/>
+</app-page-wrapper>

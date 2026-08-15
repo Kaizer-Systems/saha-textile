@@ -20,6 +20,8 @@ export interface AdminUser {
 	email: string | null;
 	emailVerified: boolean;
 	username: string | null;
+	displayName?: string;
+	phone?: string | null;
 	role: string;
 	status: string;
 	/** Whether a PIN exists — never the PIN or its hash. */
@@ -87,6 +89,19 @@ export interface AdminSecurityState {
 	activeSessions: number;
 }
 
+/** Sanitized row from `GET /auth/admin/sessions`. */
+export interface AdminSessionSummary {
+	id: string;
+	audience: string;
+	label: string | null;
+	country: string | null;
+	createdAt: string;
+	lastSeenAt: string;
+	expiresAt: string;
+	absoluteExpiresAt: string;
+	current: boolean;
+}
+
 export interface AdminPinSetupInput {
 	/** Recent-password proof. Required on every change, not only the first. */
 	currentPassword: string;
@@ -98,6 +113,13 @@ export interface AdminPinSetupInput {
 export interface AdminPasswordChangeInput {
 	currentPassword: string;
 	newPassword: string;
+}
+
+/** Privileged invite issue — lives on the auth surface, not `/admin/users`. */
+export interface AdminInviteInput {
+	email: string;
+	role: 'staff' | 'admin';
+	permissions?: string[];
 }
 
 export abstract class AdminAuthGateway {
@@ -117,6 +139,9 @@ export abstract class AdminAuthGateway {
 	 * route and unsaved form state across the soft lock.
 	 */
 	abstract resumeWithPin(pin: string): Observable<AdminSessionResult>;
+
+	/** Idle resume when the operator has no PIN (or prefers password proof). */
+	abstract resumeWithPassword(password: string): Observable<AdminSessionResult>;
 
 	/**
 	 * Starts password recovery from an email or username.
@@ -144,6 +169,18 @@ export abstract class AdminAuthGateway {
 	 * recover it by rotating, exactly as it does for `/me`.
 	 */
 	abstract securitySettings(): Observable<AdminSecurityState>;
+
+	/** Live session rows for Credential Status (sanitized — no hashes). */
+	abstract listSessions(): Observable<AdminSessionSummary[]>;
+
+	/** Revoke one of the caller's sessions. If it is the current session, cookies are cleared. */
+	abstract revokeSession(sessionId: string): Observable<void>;
+
+	/** Revoke every other session; the current browser stays signed in. */
+	abstract revokeOtherSessions(): Observable<{ revoked: number }>;
+
+	/** Persist display name on the signed-in operator. */
+	abstract updateProfile(input: { displayName: string; phone?: string | null }): Observable<AdminUser>;
 
 	/**
 	 * Sets or replaces the PIN, proving the current password every time.
@@ -175,6 +212,9 @@ export abstract class AdminAuthGateway {
 	 */
 	abstract changePassword(input: AdminPasswordChangeInput): Observable<void>;
 
+	/** Issues a privileged admin invite (permission-gated on the API). */
+	abstract createInvite(input: AdminInviteInput): Observable<void>;
+
 	abstract logout(): Observable<void>;
 
 	/**
@@ -187,7 +227,7 @@ export abstract class AdminAuthGateway {
 	 * alive" — rotation is reuse-detecting, and two concurrent rotations look like a stolen
 	 * token and revoke the whole family.
 	 *
-	 * It is not the idle soft lock. That is a presence check with the PIN (`resumeWithPin`)
+	 * It is not the idle soft lock. That is a presence check (`resumeWithPin` / `resumeWithPassword`)
 	 * and is deliberately a separate decision from renewing an access cookie.
 	 */
 	abstract refreshSession(): Observable<void>;

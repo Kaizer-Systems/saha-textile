@@ -6,7 +6,7 @@ export interface ITableConfig<T extends IBaseRow = IBaseRow> {
 	permission?: string | string[];
 }
 export interface IBaseRow {
-	id: number;
+	id: number | string;
 }
 
 export interface ITableColumn {

@@ -373,7 +373,7 @@ $background-color_4: #dbdbdb;
 	width: 20px;
 	height: 15px;
 	box-shadow: 0px 0px 1px 0px #888;
-	background-image: url('https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/11.0.9/img/flags.png');
+	background-image: url('/assets/images/flags/flags.png');
 	background-repeat: no-repeat;
 	background-color: $background-color_4;
 	background-position: 20px 0;
@@ -1424,36 +1424,36 @@ $background-color_4: #dbdbdb;
 @media only screen and (-webkit-min-device-pixel-ratio: 2) {
 	.iti-flag {
 		background-size: 5630px 15px;
-		background-image: url('https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/11.0.9/img/flags@2x.png');
+		background-image: url('/assets/images/flags/flags@2x.png');
 	}
 }
 @media only screen and (min--moz-device-pixel-ratio: 2) {
 	.iti-flag {
 		background-size: 5630px 15px;
-		background-image: url('https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/11.0.9/img/flags@2x.png');
+		background-image: url('/assets/images/flags/flags@2x.png');
 	}
 }
 @media only screen and (-o-min-device-pixel-ratio: 2 / 1) {
 	.iti-flag {
 		background-size: 5630px 15px;
-		background-image: url('https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/11.0.9/img/flags@2x.png');
+		background-image: url('/assets/images/flags/flags@2x.png');
 	}
 }
 @media only screen and (min-device-pixel-ratio: 2) {
 	.iti-flag {
 		background-size: 5630px 15px;
-		background-image: url('https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/11.0.9/img/flags@2x.png');
+		background-image: url('/assets/images/flags/flags@2x.png');
 	}
 }
 @media only screen and (min-resolution: 192dpi) {
 	.iti-flag {
 		background-size: 5630px 15px;
-		background-image: url('https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/11.0.9/img/flags@2x.png');
+		background-image: url('/assets/images/flags/flags@2x.png');
 	}
 }
 @media only screen and (min-resolution: 2dppx) {
 	.iti-flag {
 		background-size: 5630px 15px;
-		background-image: url('https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/11.0.9/img/flags@2x.png');
+		background-image: url('/assets/images/flags/flags@2x.png');
 	}
 }

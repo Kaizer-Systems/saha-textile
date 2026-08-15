@@ -19,7 +19,7 @@
 											href="javascript:void(0)"
 											class="d-flex align-items-center fw-bold"
 											(click)="AddCustomerModal.openModal()"
-											*hasPermission="'user.create'"
+											*hasPermission="'customer.create'"
 										>
 											<i class="ri-add-line me-1"></i>
 											{{ 'add_new' | transloco }}
@@ -370,7 +370,10 @@
 		</div>
 	</div>
 </div>
-<app-customer-modal #AddCustomerModal />
+<app-customer-modal
+	#AddCustomerModal
+	(created)="onCustomerCreated()"
+/>
 <app-address-modal
 	#addAddressModal
 	[id]="form.controls['consumer_id'].value"

@@ -15,10 +15,58 @@
 				placeholder="{{ 'enter_name' | transloco }}"
 				name="name"
 				formControlName="name"
+				(blur)="onNameBlur()"
 			/>
 			@if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
 			<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
 			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'key'"
+			[for]="'key'"
+			[required]="true"
+		>
+			<input
+				class="form-control"
+				type="text"
+				placeholder="catalog-editor"
+				name="key"
+				formControlName="key"
+			/>
+			@if (form.controls['key'].touched && form.controls['key'].errors?.['required']) {
+			<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
+			} @if (form.controls['key'].touched && form.controls['key'].errors?.['pattern']) {
+			<div class="invalid-feedback">lowercase kebab-case (a-z, 0-9, -)</div>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'role'"
+			[for]="'baseRole'"
+			[required]="true"
+		>
+			@if (isBrowser) {
+			<select2
+				class="custom-select"
+				[data]="baseRoleOptions"
+				[placeholder]="'select_role' | transloco"
+				formControlName="baseRole"
+				noResultMessage="{{ 'no_data_found' | transloco }}"
+			/>
+			} @if (form.controls['baseRole'].touched && form.controls['baseRole'].errors?.['required']) {
+			<div class="invalid-feedback">{{ 'role_is_required' | transloco }}</div>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'description'"
+			[for]="'description'"
+			[required]="false"
+		>
+			<textarea
+				class="form-control"
+				rows="2"
+				name="description"
+				formControlName="description"
+			></textarea>
 		</app-form-fields>
 		<div class="d-flex mb-3">
 			<h4 class="form-label-title">

@@ -1,5 +1,5 @@
 import { TitleCasePipe, AsyncPipe } from '@angular/common';
-import { Component, Input, SimpleChanges, inject, output } from '@angular/core';
+import { Component, Input, SimpleChanges, output } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 
 import { Observable } from 'rxjs';
@@ -11,7 +11,7 @@ import { injectRoleModulesQuery } from '@data-access/queries/role.queries';
 	selector: 'app-permissions',
 	templateUrl: './permissions.html',
 	styleUrls: ['./permissions.scss'],
-	imports: [TitleCasePipe, AsyncPipe, TitleCasePipe],
+	imports: [TitleCasePipe, AsyncPipe],
 })
 export class Permissions {
 	private roleModulesQuery = injectRoleModulesQuery();
@@ -20,59 +20,63 @@ export class Permissions {
 
 	// TODO: Skipped for migration because:
 	//  Your application code writes to the input. This prevents migration.
-	@Input() selectedPermission: number[] = [];
+	@Input() selectedPermission: string[] = [];
 
-	readonly setPermissions = output<number[]>();
+	readonly setPermissions = output<string[]>();
 
 	ngOnChanges(changes: SimpleChanges) {
-		let ids = changes['selectedPermission']?.currentValue;
+		const ids = changes['selectedPermission']?.currentValue as string[] | undefined;
+		if (!ids) return;
 		this.modules$.subscribe((modules) => {
-			modules?.map((item) => {
-				item.module_permissions.map((permission) => {
-					permission.isChecked = ids.includes(permission.id);
+			modules?.forEach((item) => {
+				item.module_permissions.forEach((permission) => {
+					const code = String(permission.permission_id);
+					permission.isChecked = ids.includes(code);
 				});
-			});
-			modules?.filter((module) => {
-				this.updateCheckBoxStatus(module);
+				this.updateCheckBoxStatus(item);
 			});
 		});
 	}
 
 	checkUncheckAll(event: Event, module: IModule) {
+		const checked = (<HTMLInputElement>event.target).checked;
 		module.module_permissions.forEach((item) => {
-			item.isChecked = (<HTMLInputElement>event.target).checked;
-			this.addPermission((<HTMLInputElement>event.target).checked, item?.id, module);
+			item.isChecked = checked;
+			this.addPermission(checked, String(item.permission_id), module);
 		});
 	}
 
-	checkIndex(event: Event, module: IModule) {
+	checkIndex(_event: Event, module: IModule) {
 		module.module_permissions.forEach((item) => {
 			item.isChecked = false;
-			this.addPermission(false, item?.id, module);
+			this.addPermission(false, String(item.permission_id), module);
 		});
 	}
 
 	onPermissionChecked(event: Event, module: IModule) {
-		module.module_permissions.forEach((item) => {
-			item.isChecked = false;
-			if (item.name == 'index') {
-				item.isChecked = !item.isChecked ? true : false;
-				this.addPermission(true, +item.id, module);
-			}
-			this.addPermission(
-				(<HTMLInputElement>event.target)?.checked,
-				+(<HTMLInputElement>event?.target)?.value,
-				module,
-			);
-		});
+		const target = <HTMLInputElement>event.target;
+		const code = String(target.value);
+		const checked = target.checked;
+
+		// Selecting a non-index action still requires the resource's `index` grant.
+		if (checked) {
+			module.module_permissions.forEach((item) => {
+				if (item.name === 'index') {
+					item.isChecked = true;
+					this.addPermission(true, String(item.permission_id), module);
+				}
+			});
+		}
+
+		this.addPermission(checked, code, module);
 	}
 
-	addPermission(checked: Boolean, value: number, module: IModule) {
-		const index = this.selectedPermission.indexOf(Number(value));
+	addPermission(checked: boolean, value: string, module: IModule) {
+		const index = this.selectedPermission.indexOf(value);
 		if (checked) {
-			if (index == -1) this.selectedPermission.push(Number(value));
+			if (index === -1) this.selectedPermission.push(value);
 		} else {
-			this.selectedPermission = this.selectedPermission.filter((id) => id != Number(value));
+			this.selectedPermission = this.selectedPermission.filter((id) => id !== value);
 		}
 		this.setPermissions.emit(this.selectedPermission);
 		this.updateCheckBoxStatus(module);
@@ -80,12 +84,11 @@ export class Permissions {
 
 	updateCheckBoxStatus(module: IModule) {
 		let count = 0;
-		module.module_permissions.filter((permission) => {
-			if (this.selectedPermission.includes(permission.id!)) {
+		module.module_permissions.forEach((permission) => {
+			if (this.selectedPermission.includes(String(permission.permission_id))) {
 				count++;
 			}
-			if (module.module_permissions.length <= count) module.isChecked = true;
-			else module.isChecked = false;
 		});
+		module.isChecked = module.module_permissions.length > 0 && module.module_permissions.length <= count;
 	}
 }

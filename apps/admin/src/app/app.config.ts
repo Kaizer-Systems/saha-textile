@@ -13,6 +13,14 @@ import { provideToastr } from 'ngx-toastr';
 import { AdminAuthGateway } from '@core/auth/auth-gateway';
 import { HttpAdminAuthGateway } from '@core/auth/http-auth.gateway';
 import { provideAdminSessionBootstrap } from '@core/auth/session-bootstrap';
+import { AdminCustomersGateway } from '@core/admin-customers/admin-customers.gateway';
+import { HttpAdminCustomersGateway } from '@core/admin-customers/http-admin-customers.gateway';
+import { AdminNotificationsGateway } from '@core/admin-notifications/admin-notifications.gateway';
+import { HttpAdminNotificationsGateway } from '@core/admin-notifications/http-admin-notifications.gateway';
+import { AdminRolesGateway } from '@core/admin-roles/admin-roles.gateway';
+import { HttpAdminRolesGateway } from '@core/admin-roles/http-admin-roles.gateway';
+import { AdminUsersGateway } from '@core/admin-users/admin-users.gateway';
+import { HttpAdminUsersGateway } from '@core/admin-users/http-admin-users.gateway';
 import { provideRuntimeConfig } from '@core/config/runtime-config';
 import { AuthInterceptor } from '@core/interceptors/auth.interceptor';
 import { GlobalErrorHandlerInterceptor } from '@core/interceptors/global-error-handler.interceptor';
@@ -33,6 +41,14 @@ export const appConfig: ApplicationConfig = {
 		// guards and stores depend on the abstract gateway, so swapping the transport (or
 		// faking it in a test) is this line, not a search across features.
 		{ provide: AdminAuthGateway, useClass: HttpAdminAuthGateway },
+		// Admin user management gateway binding.
+		{ provide: AdminUsersGateway, useClass: HttpAdminUsersGateway },
+		// Admin customer CRM gateway binding (`DEC-ACCOUNT-SEPARATION` D3).
+		{ provide: AdminCustomersGateway, useClass: HttpAdminCustomersGateway },
+		// Non-secret notification Settings (MSG91 Authkey stays in API env).
+		{ provide: AdminNotificationsGateway, useClass: HttpAdminNotificationsGateway },
+		// Admin roles + permission registry gateway (auth pass 5c.3 UI wiring).
+		{ provide: AdminRolesGateway, useClass: HttpAdminRolesGateway },
 		// Resolves the admin cookie session before routing, so the guard protecting the
 		// whole back office never runs against an undetermined session.
 		provideAdminSessionBootstrap(),

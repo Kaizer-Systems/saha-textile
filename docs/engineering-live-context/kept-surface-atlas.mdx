@@ -1,0 +1,58 @@
+---
+title: Kept Surface Atlas
+description: Admin strip-down inventory and live permission wiring for kept surfaces.
+audience: [frontend, operator, agent]
+document_role: canonical
+last_verified: '2026-08-15'
+search_keywords: 'admin kept surfaces CRM customers soft-delete permissions account store'
+---
+
+# Kept Surface Atlas — Admin strip-down memory
+
+> Living inventory of what the admin app **kept** after theme strip-down, and how each
+> surface is classified under the **existing** permission architecture (`PERMISSION_CODES` →
+> roles → effective `GET /auth/admin/me` → AuthStore). **Not** mock `account.json` ACL.
+>
+> Recovery for keep-\* chrome: `vendor/` Fastkart or git history — never reintroduce mock ACL.
+
+Last updated: 2026-08-14
+
+## Classification legend
+
+| Tag           | Meaning                                                                  |
+| ------------- | ------------------------------------------------------------------------ |
+| **keep-live** | Route/chrome renders; wired to live API for primary data                 |
+| **keep-stub** | Route/chrome renders under ACL; data/API unfinished or intentional stub  |
+| **removed**   | Intentionally deleted (e.g. vendor Store Setting on operator `/account`) |
+
+## Route / major-block matrix (`menu.ts` + shell)
+
+| Path / surface                                                                                   | Class                    | Notes                                                                                 |
+| ------------------------------------------------------------------------------------------------ | ------------------------ | ------------------------------------------------------------------------------------- |
+| `/dashboard`                                                                                     | keep-stub                | Widgets gated by permissions; charts/mock data until dashboards API                   |
+| `/user`, `/user/create`, `/user/edit/:id`                                                        | keep-live                | Admin users + role assign                                                             |
+| `/role`, `/role/create`, `/role/edit/:id`, permissions                                           | keep-live                | Role CRUD + grant matrix                                                              |
+| `/customer`, `/customer/create`, `/customer/edit/:id`                                            | keep-live                | CRM; addresses = checkout-style cards + Insert-style modal → live nested address APIs |
+| `/customer/ledger` (Customer Ledger under Customers)                                             | keep-live                | Orders table live; Points balance/mutate deferred (`DEC-CUSTOMER-CREDIT`)             |
+| `/product*`                                                                                      | keep-stub                | Theme forms kept; catalog API incomplete                                              |
+| `/attribute*`, `/category*`, `/tag*`, `/coupon*`, `/currency*`, `/tax*`, `/shipping*`, `/store*` | keep-stub                | Kept chrome                                                                           |
+| `/order*`, checkout                                                                              | keep-stub / partial-live | Checkout customer create live; address modal still mixed                              |
+| `/media`                                                                                         | keep-stub                | Insert Media UI; Spaces persist deferred                                              |
+| `/blog*`, `/page*`, `/faq*`, `/point*`, `/refund*`, `/review*`                                   | keep-stub                | Kept chrome                                                                           |
+| `/theme-option*`                                                                                 | keep-stub                | Kept chrome                                                                           |
+| `/setting`, notification settings                                                                | keep-live / keep-stub    | Notification settings live kill-switches; other setting tabs stub                     |
+| `/account` Profile                                                                               | keep-live / keep-stub    | displayName + phone live; avatar = ImageUpload → Insert Media **UI only** (no Spaces) |
+| `/account` Security                                                                              | keep-live                | PIN/password + sessions list/revoke                                                   |
+| Vendor Store Setting tab on `/account`                                                           | **removed**              | Not a Saha Textile launch surface                                                     |
+
+## Permission / AuthStore
+
+- Registry expanded 2026-08-14 to **103** codes (menu ∪ in-page gates ∪ former mock permission names).
+- System administrator role seed = full `PERMISSION_CODES`; re-run `pnpm --filter @saha-textile/adapters-db-mongo seed:system-roles` after registry growth.
+- `GET /auth/admin/me` returns **effective** permissions (embedded ∪ active role assignments) so AuthStore matches what SessionGuard uses for API checks.
+- Do **not** restore `account.json` as ACL. File deleted when unused.
+
+## Deferred (documented, not Broken)
+
+- Operator avatar **persist** (DO Spaces + images architecture not in repo yet)
+- Customer points balance field + Add/Withdraw (`DEC-CUSTOMER-CREDIT`)

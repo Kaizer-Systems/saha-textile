@@ -3,14 +3,18 @@ title: 'Authentication Architecture, Data Model, and Request Plan'
 description: 'Canonical target authentication boundary, persistence model, and secure request plan.'
 audience: [backend, security, agent]
 document_role: canonical
-last_verified: 2026-07-25
+last_verified: '2026-08-13'
 search_keywords: 'authentication authorization cookies csrf oauth otp pin sessions database'
 ---
 
 # Authentication Architecture, Data Model, and Request Plan
 
+:::caution Superseded identity collections
+**`DEC-ACCOUNT-SEPARATION` (2026-08-12)** amends the single-`users` collection model described below. Live identity is split into `customers` (shoppers, `cus_` ids) and `adminUsers` (operators, `adm_` ids). Treat §7.1 `users` and any single-population `UserRepository` language in this document as historical target text superseded by that lock, the owner decisions log, and `account-separation-task-handoff.mdx`. Session, cookie, CSRF, OTP, and OAuth mechanics in later sections remain the architecture contract unless a newer lock amends them.
+:::
+
 **Status:** Target architecture and implementation contract
-**Last reconciled:** 2026-07-25
+**Last reconciled:** 2026-07-25 (identity collections amended 2026-08-12)
 **Authority:** `owner-decisions-log.mdx`; unresolved choices: `pending-decisions.mdx`
 
 This document defines the target authentication boundary. It does not claim that

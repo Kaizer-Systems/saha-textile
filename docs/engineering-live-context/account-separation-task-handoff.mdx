@@ -1,0 +1,557 @@
+---
+title: 'Task Handoff — Separating Storefront Customers from Admin Users'
+description: 'Complete, self-contained brief for splitting the single users collection into separate customer and admin-user populations across DB, contracts, core, API and both Angular apps.'
+audience: [backend, frontend, security, agent]
+document_role: canonical
+last_verified: '2026-08-13'
+search_keywords: 'account separation customers adminUsers collection split audience isolation handoff cursor task'
+---
+
+# Task handoff — separating storefront customers from admin users
+
+**Status:** Account-separation Passes 1–12 + Nebula + operator `/user/**` wiring landed on
+the dirty tree (2026-08-12/13). A follow-on deferred plan is in execution (CRM, roles UI,
+activation, MSG91 phase, etc.). **Do NOT commit** until owner review.
+
+**UI law:** every Angular screen follows `DEC-UI-REUSE` ([`owner-decisions-log.mdx`](./owner-decisions-log.mdx)
+§ UI reuse; `AGENTS.md` §5a) — reuse existing/theme/vendor elements, brief +
+wireframe before any custom HTML/CSS, wait for approval.
+
+Remaining follow-ups from the split itself: fine-grained role assign/revoke UI; optional
+`user.*` → `admin_user.*` rename (scheduled after CRM `customer.*` codes).
+
+**Executor:** Cursor. **Do NOT commit anything.** Leave the working tree dirty when finished;
+the originating chat will read the changed files back into its own context and continue.
+
+**Scope exclusion:** the developer portal. Do not touch `docs/admin/**`, `docs/storefront/**`,
+`docs/backend/**`, `docs/database/**`, `docs/architecture/**`, `docs/business-flows/**`,
+`docs/frontend/**`, `docs/getting-started/**`, `docs/tooling/**`, `docs/maintenance/**`,
+`docs/troubleshooting/**`, `docs/api/**`, `docs/decisions/**` or `docs/_data/**`. A separate
+tool reconciles those. `docs/engineering-live-context/**` IS in scope.
+
+---
+
+## 0. Read before touching anything
+
+Completely, in this order:
+
+1. `AGENTS.md` — the constitution, including §5a (UI reuse and brief-before-custom).
+2. `docs/engineering-live-context/auth-continuation-brief-pass-3-onward.mdx` — operating
+   rules, environment, gotchas, verification gates.
+3. `docs/engineering-live-context/auth-continuation-brief-security-settings-ui.mdx` — the most
+   recent state of the auth work.
+4. `docs/engineering-live-context/project-progress.mdx` — the dated log. Read at minimum every
+   Auth & security entry from 2026-08-08 onward.
+5. `docs/engineering-live-context/owner-decisions-log.mdx` — locked decisions.
+6. `docs/engineering-live-context/claude-code-authentication-api-db-build-prompt.mdx` — §7 RBAC
+   and §8 persistence are the ones this task contradicts and must therefore amend.
+7. `docs/engineering-live-context/authentication-use-case-delivery-and-security-matrix.mdx` —
+   §1 is verbatim approved text; record reconciliations in §2, never by editing §1 tables.
+8. `docs/engineering-live-context/pending-decisions.mdx`.
+
+Then inspect actual source and `git status --short`. Tested runtime beats every claim below,
+including these.
+
+---
+
+## 1. Why this task exists, stated accurately
+
+The system today has **one `users` collection** holding both storefront customers and
+back-office operators, discriminated by a `role` field of `customer | staff | admin`. That is
+not an accident or a regression: it is the ratified design. It appears in the build prompt's
+§8 target boundary list, in the security matrix's collection table, and as a single `users`
+node in the ratified 64-node Schema Nebula graph.
+
+The owner has since determined that this is wrong for this product, on two grounds:
+
+1. **Access.** A storefront account and a back-office account should not be interchangeable in
+   either direction. Today the block is one-directional — verified by probing a running
+   instance on 2026-08-12:
+
+    | Attempt                                            | Result                             |
+    | -------------------------------------------------- | ---------------------------------- |
+    | customer → `POST /auth/admin/login`                | **401** — blocked                  |
+    | staff → `POST /auth/admin/login`                   | 200                                |
+    | customer → `POST /auth/storefront/login/password`  | 200                                |
+    | **staff → `POST /auth/storefront/login/password`** | **200 — ALLOWED**                  |
+    | staff's storefront cookie → `GET /auth/admin/me`   | **401** — audience isolation holds |
+
+    So a back-office operator can hold a storefront session. Session-level audience isolation
+    does hold, which is what keeps that from being an immediate privilege escalation — but the
+    accounts themselves are not separated.
+
+2. **Shape.** A storefront customer accumulates saved addresses, contacts, sizes, measurement
+   profiles, wishlists, consent history and more; an operator carries a username, employee
+   code, department, inviter, PIN credential, lock counters and a preferred login method.
+   Carrying both on one document means every read of either drags the other's fields, and
+   every contract is a union of two unrelated things.
+
+**This is therefore a change to a ratified architecture, not a bug fix.** It requires owner
+sign-off on the decisions in §3 before implementation begins, and it amends canonical
+documents that currently say otherwise.
+
+---
+
+## 1a. Naming — locked by the owner 2026-08-12
+
+| Concept              | Physical collection | Contract entity | Id prefix (see D5) |
+| -------------------- | ------------------- | --------------- | ------------------ |
+| Storefront shopper   | `customers`         | `Customer`      | `cus_`             |
+| Back-office operator | `adminUsers`        | `AdminUser`     | `adm_`             |
+
+**`customers`, not `users`.** After the split, a collection called `users` holding only
+shoppers is actively misleading, and "user" is the exact word whose ambiguity produced this
+defect: it meant two populations at once, and nobody noticed because the name accommodated
+both readings. Renaming removes the ambiguity rather than documenting it.
+
+**`adminUsers`, not `operators`.** The codebase's own prose already calls these people
+operators — the comments are full of it — and `operators` is arguably the better English. It
+loses on consistency: `AdminUserProfile` already exists in contracts, `AdminUser` is already
+the admin app's gateway type, the route family is already `/admin/users/**`, and the Schema
+Nebula convention is camelCase nouns matching the domain object. Introducing a third word for
+the same population would trade one ambiguity for another. Keep "operator" as the word used in
+PROSE and comments; `adminUser` is the identifier.
+
+**The rename reuses machinery that already exists.** `LEGACY_COLLECTION_NAMES` in
+`collection-names.ts` maps an old physical name to its ratified one, and
+`pnpm mongo:align-collections [-- --dry-run]` performs the migration: idempotent, refuses to
+merge when both names hold data, never uses `dropTarget`, never runs at boot. Adding
+`users: 'customers'` to that map makes the rename a reviewed one-line change on a path that is
+already integration-tested. `test/collection-names.test.ts` additionally asserts that no legacy
+key equals its target and that every target is a declared name — both hold for this pair.
+
+**Do the rename and the split as SEPARATE sub-passes**, in that order (see passes 5a and 5b). The
+rename moves one collection wholesale and is reversible; the split extracts rows by role and is
+not. Combining them produces one migration that can fail halfway with no clean state to return
+to.
+
+**Cost to be honest about:** the Schema Nebula graph contains a `users` node and knows nothing
+of `customers` or `adminUsers`. Both new names therefore need the temporary
+`NON_GRAPH_COLLECTIONS` exception described in §2.1 — two, not one — taking the total number of
+non-graph collections from three to five until the portal tool reconciles the graph. That is a
+real, if temporary, weakening of a guard, and it must be recorded as owed work rather than
+absorbed silently.
+
+### A naming rule worth adopting at the same time
+
+The bare noun **"user"** should stop being used for either population once this lands: it is
+`customer` or `adminUser`, in identifiers, contracts, comments and prose alike. This is the same
+shape of rule as the brand naming law (`scripts/check-naming.sh`, owner lock 2026-07-24), and
+for the same reason — the failure was that one word quietly meant two things. Consider a
+`scripts/check-account-naming.mjs` guard in `pnpm lint` once the split is complete, with
+deliberate exceptions for the words that cannot change (`userId` on foreign keys until they are
+renamed, `userAgentHash`, third-party APIs). Proposed as a follow-up, not part of this task.
+
+---
+
+## 2. Blast radius — measured, not estimated
+
+Every path below was located by inspection on 2026-08-12. Counts are what the greps returned.
+
+### 2.1 Persistence — `packages/adapters-db-mongo`
+
+| Path                                                                                                                                             | What changes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/collection-names.ts`                                                                                                                        | Declares `User: 'users'`. Add an `AdminUser: 'adminUsers'` entry.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `src/models/user.model.ts`                                                                                                                       | One schema carrying BOTH populations. Split. Admin-only fields on it today: `username`, `pinHash`, `preferredLoginMethod`, `failedPinAttempts`, `pinLockedUntil`, `pinRevalidationRequiredAt`, `adminProfile`, and the `staff`/`admin` values of `role`. Customer-only: `addresses`, `guestCartId`, `consent`, `identities`. Shared: `email`, `emailVerified`, `phone`, `phoneVerified`, `displayName`, `status`, `passwordHash`, `permissions`, `tokenVersion`, `permissionsVersion`, `failedLoginAttempts`, `lastLoginAt`. |
+| `src/models/user.model.ts` indexes                                                                                                               | Four: unique-partial `email`, unique-partial `username`, unique-partial `phone`, compound `role + status`. `username` and `role+status` are admin-shaped; `phone` and `guestCartId` are customer-shaped. Each index must be re-sited, and uniqueness now scopes per collection — see decision D1.                                                                                                                                                                                                                            |
+| `src/repositories/auth.repository.ts`                                                                                                            | Implements `AuthUserRepository` for both populations. This is the largest single file to split.                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `src/repositories/user.repository.ts`                                                                                                            | `UserRepository` — customer-facing.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `src/seed/system-roles.ts`                                                                                                                       | Seeds `administrator` with every permission code. Unaffected in shape; re-run needed after migration.                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `scripts/generate-catalogue.ts`                                                                                                                  | Model catalogue counts change (currently 35 models / 438 fields / 97 indexes / 27 temporary shapes).                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **NEW** migration script                                                                                                                         | Split existing `users` rows by role into `users` + `adminUsers`. Must be idempotent, offer `--dry-run`, refuse to run when both are populated, and never `dropTarget` — mirror `pnpm mongo:align-collections` exactly.                                                                                                                                                                                                                                                                                                       |
+| `test/auth-persistence.test.ts`, `test/collection-names.test.ts`, `test/rbac-persistence.test.ts`, `test/governance-content-persistence.test.ts` | All touch users.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+
+**⚠ A HARD CONSTRAINT THAT WILL BREAK THE BUILD IF UNPLANNED.**
+`test/collection-names.test.ts:76` reads `docs/_data/instruments/schema-nebula.json`, asserts
+`nodeIds.size === 64`, and asserts every graph-backed collection name exists as a node. That
+file is portal-derived and **out of scope for this task**. Adding `adminUsers` to
+`COLLECTION_NAMES` therefore fails that test immediately.
+
+The only in-scope resolution is to add `adminUsers` to `NON_GRAPH_COLLECTIONS` in
+`collection-names.ts`, exactly as `authRateLimits`, `productQuestions` and `ratingAggregates`
+already are, with a comment stating that it is a TEMPORARY exception pending Schema Nebula
+reconciliation by the portal tool, after which the exception is removed and the node count
+becomes 65. Record this in the progress entry as owed work. Do not edit the graph.
+
+### 2.2 Contracts — `packages/contracts`
+
+| Path                                                                          | What changes                                                                                                                                                                                                                                         |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/user.ts`                                                                 | `User` is the shared shape today, with `role: UserRole`. Becomes the CUSTOMER entity. `UserRole` (`customer\|staff\|admin`) and `UserStatus` are consumed widely — see below.                                                                        |
+| `src/admin-user.ts`                                                           | Exists. Becomes the admin account entity's home.                                                                                                                                                                                                     |
+| `src/admin-auth.ts`                                                           | `AdminUserProfile` already models an operator (`username`, `role: staff\|admin`, `pinConfigured`, `preferredLoginMethod`, `adminProfile`). Promote to the admin entity's public shape.                                                               |
+| `src/session.ts`                                                              | `AuthSession.roleAtLogin` is `customer\|staff\|admin`; `SessionSummary` was added 2026-08-12. Sessions already carry `audience`, which disambiguates which population a `userId` belongs to — confirm that is sufficient rather than adding a field. |
+| `src/permission.ts`, `src/role.ts`                                            | RBAC applies to operators only. `role.ts` references `UserRole`.                                                                                                                                                                                     |
+| `src/auth.ts`                                                                 | Storefront auth contracts.                                                                                                                                                                                                                           |
+| `src/audit.ts`                                                                | `actorUserId` / `targetUserId` become AMBIGUOUS across two id spaces — see §4.1.                                                                                                                                                                     |
+| `test/auth-security.test.ts`, `test/permission.test.ts`, `test/audit.test.ts` | Affected.                                                                                                                                                                                                                                            |
+
+`UserRole` is imported by 13 files across contracts, core-domain, API and both Angular apps.
+
+### 2.3 Core domain — `packages/core-domain`
+
+| Path                                         | What changes                                                                                         |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `src/ports/user.repository.ts`               | Customer repository port.                                                                            |
+| `src/ports/auth.repository.ts`               | `AuthUserRepository` — the credential/state port serving both. Split, or parameterise by population. |
+| **NEW** `src/ports/admin-user.repository.ts` | Operator port.                                                                                       |
+| `src/auth/effective-permissions.ts`          | Operator-only.                                                                                       |
+| `src/ports/role.repository.ts`               | References `UserRole`.                                                                               |
+
+Core imports contracts by `import type` ONLY (gate `G-CORE-CONTRACTS`, owner lock 2026-07-25).
+`test/runtime-purity.test.ts` proves it in compiled output. Do not add a value import.
+
+### 2.4 API — `apps/api`
+
+| Path                                                             | What changes                                                                                                                                                                                                                              |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/auth/auth.service.ts`                                       | Identifier lookup, password/PIN verification, OTP, reset, verification. Line 263 discriminates on `role === 'customer'`.                                                                                                                  |
+| `src/auth/storefront-auth.controller.ts`                         | Customer registration, login, OTP, recovery, `/me`, sessions. **Must gain a rejection for operator accounts — this is the behaviour the owner wants.**                                                                                    |
+| `src/auth/admin-auth.controller.ts`                              | 12 role-gated routes; lines 97, 148 and 410 discriminate on `role === 'customer'`. Operator login, PIN, security, invites, resume, sessions.                                                                                              |
+| `src/auth/admin-invite.service.ts`                               | Creates operator accounts via `users.save`. Must write to `adminUsers`.                                                                                                                                                                   |
+| `src/auth/admin-security.service.ts`                             | Operator self-service credentials.                                                                                                                                                                                                        |
+| `src/auth/session.service.ts`                                    | `establish` takes `{ id, role, tokenVersion, permissionsVersion }`; `roleAtLogin` at line 194; principal rebuild at line 496; the session list/revoke methods added 2026-08-12.                                                           |
+| `src/auth/session.guard.ts`                                      | Resolves the principal and re-checks `tokenVersion`/`permissionsVersion` — must look in the right collection per audience.                                                                                                                |
+| `src/auth/ownership.ts`                                          | `assertOwnership({ allowRoles: ['staff','admin'] })`. With separate populations an operator's id can never equal a customer's, so the role bypass becomes the ONLY support path — restate the semantics rather than leaving them implied. |
+| `src/orders/orders.controller.ts`                                | Line 64 support-read bypass; `PATCH :id/status` is now `@Audience('admin')` + `@RequirePermissions('order.update')`.                                                                                                                      |
+| `src/cart/cart.controller.ts`                                    | Line 39 `allowReadRoles: ['staff','admin']`.                                                                                                                                                                                              |
+| `src/admin/admin-users.service.ts` + `admin-users.controller.ts` | `/admin/users/**` — decision D3 decides whether it administers operators, customers, or both.                                                                                                                                             |
+| `src/admin/roles.service.ts`                                     | Role assignment targets operators.                                                                                                                                                                                                        |
+| `src/first-admin.ts`, `src/create-first-admin.ts`                | Bootstrap CLI writes `UserModel` directly with `role: 'admin'`. Must write `adminUsers`.                                                                                                                                                  |
+| `src/infra/tokens.ts`, `src/infra/persistence.module.ts`         | New repository token and binding.                                                                                                                                                                                                         |
+| `e2e/session-rotation.mjs`                                       | 30 checks; `seedAdmin()` inserts into `UserModel`. Extensive.                                                                                                                                                                             |
+| `test/*.test.ts`                                                 | 15 files; at minimum `admin-invite`, `admin-recovery`, `admin-users.service`, `session.guard`, `cart-ownership`, `orders-create`, `password-policy`, `admin-pin-policy`, `roles.service`.                                                 |
+
+### 2.5 Angular — `apps/storefront` and `apps/admin`
+
+| Path                                                                                      | What changes                                                                       |
+| ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `apps/storefront/src/app/core/auth/auth-gateway.ts`                                       | Its user type carries `role: string` (line 23). A customer has no role after this. |
+| `apps/storefront/src/app/core/auth/http-auth.gateway.ts` + spec                           | Wire DTOs.                                                                         |
+| `apps/storefront` session store / guards                                                  | Anything reading `role`.                                                           |
+| `apps/admin/src/app/core/auth/auth-gateway.ts`                                            | `AdminUser` — already operator-shaped.                                             |
+| `apps/admin/src/app/data-access/interfaces/user.interface.ts`, `services/user.service.ts` | The admin app's own user-management types.                                         |
+| `apps/admin/src/app/features/user/**`, `features/role/**`                                 | Screens that administer users.                                                     |
+
+Neither Angular app depends on `@saha-textile/contracts` today — the gateways hand-write wire
+DTOs. That pre-existing gap (the unresolved pass-3d discrepancy) means both apps must be edited
+by hand and nothing will fail to compile if one is missed. **Grep both apps for `role`
+explicitly.**
+
+### 2.6 Documentation in scope
+
+`claude-code-authentication-api-db-build-prompt.mdx` (§8 target list, §7 RBAC),
+`authentication-use-case-delivery-and-security-matrix.mdx` (§1 collection table and admin-login
+rows are VERBATIM APPROVED — reconcile in §2 only), `codex-auth-architecture-db-and-request-plan.mdx`,
+`execution-roadmap.mdx`, `owner-decisions-log.mdx` (new lock), `pending-decisions.mdx`,
+the three auth continuation briefs, and `project-progress.mdx`.
+
+---
+
+## 3. Decisions the owner must make BEFORE implementation
+
+**Status:** D1–D10 answered by the owner on 2026-08-12 and locked as
+`DEC-ACCOUNT-SEPARATION` in `owner-decisions-log.mdx`. Do not re-ask or infer.
+
+| #       | Decision                                                            | Owner answer (2026-08-12)                                                                                                                                                                                                                               |
+| ------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **D1**  | May the same email exist in both collections?                       | **Yes.** Uniqueness is per collection. Lookups, reset, OTP and registration are population-scoped. Anti-enumeration treats “exists only in the other population” as unknown.                                                                            |
+| **D2**  | Coarse `staff`/`admin` on operators, or permissions only?           | **Keep** `staff` \| `admin` on operators. Permissions remain authoritative. Not an RBAC rewrite.                                                                                                                                                        |
+| **D3**  | Does `/admin/users/**` administer operators only, or customers too? | **Operators only.** Customer CRM is a later `/admin/customers/**` with new `customer.*` codes. Existing `user.*` codes keep meaning operators in this task.                                                                                             |
+| **D4**  | Support-read bypass on customer orders/carts?                       | **Permission, not role.** `assertOwnership` is id-equality only. Support-read needs admin audience + `order.index` / new server-only `cart.index`.                                                                                                      |
+| **D5**  | Id prefix scheme                                                    | **`cus_`** customers, **`adm_`** operators. Pass 5b rewrites moved ids and FKs. Audit tolerates leftover `user_` as unknown-population.                                                                                                                 |
+| **D6**  | Existing local data / disclosed owner password                      | **Wipe** local identity/auth collections and re-bootstrap. Do not migrate the disclosed password. IT the split script on fixtures. Catalog stays.                                                                                                       |
+| **D7**  | Does a customer document retain a `role` field?                     | **No.** `UserRole` becomes `AdminRole` = `staff` \| `admin`. Storefront sessions carry `audience` only.                                                                                                                                                 |
+| **D8**  | Operator personal storefront account, and linked?                   | **Unlinked** personal account allowed. Separate credentials, no foreign key.                                                                                                                                                                            |
+| **D9**  | Reshape customer now, or minimal split?                             | **Shape now:** typed named addresses (`Address` + `label`); reserve `contacts`, `savedSizes`, `measurementProfiles`. Do not close `DEC-ADDRESS` / `DEC-ADDON-MEASUREMENTS`. Do not embed wishlists, orders, carts, sessions, or a link to `adminUsers`. |
+| **D10** | `users` → `customers` rename?                                       | **Yes.** Pass 5a rename, Pass 5b split. Both names temporary `NON_GRAPH_COLLECTIONS` until Schema Nebula reconciliation.                                                                                                                                |
+
+Naming locked with D5/D10 (confirms §1a):
+
+| Concept              | Collection   | Entity      | Id prefix |
+| -------------------- | ------------ | ----------- | --------- |
+| Storefront shopper   | `customers`  | `Customer`  | `cus_`    |
+| Back-office operator | `adminUsers` | `AdminUser` | `adm_`    |
+
+---
+
+## 4. Cross-cutting hazards — the things that will bite
+
+### 4.1 Audit attribution becomes ambiguous
+
+`auditLogs.actorUserId` and `targetUserId` are bare ids. With two populations, an id alone no
+longer identifies a person. Every admin mutation writes one of these, and the audit read route
+(`GET /admin/audit-logs`, added 2026-08-12) publishes them. Options: prefix the ids (D5), or
+add an explicit actor/target population field. **Whichever is chosen, existing rows predate it**
+— decide whether the read model tolerates rows without it.
+
+### 4.2 Token and challenge collections
+
+`passwordResetTokens` carries an `audience` and `completePasswordReset` already refuses a
+mismatch. Verify the same for `emailVerificationTokens`, `otpChallenges` and `oauthStates`
+before assuming; any that lack it can address the wrong population.
+
+### 4.3 Rate limiting
+
+`AUTH_RATE_LIMIT_POLICY` separates `storefront_login` from `admin_login` deliberately so
+customer traffic cannot exhaust the back office's budget. Confirm the identifier scope is still
+correct when the same address may exist in both populations (D1).
+
+### 4.4 Session invalidation
+
+`tokenVersion` and `permissionsVersion` are re-checked on every request by `SessionGuard`
+against the user document. The guard must read the right collection for the session's audience,
+or a revoked operator keeps working.
+
+### 4.5 The last-administrator protection
+
+Counts active ASSIGNMENTS, not accounts. It must keep working across the split, and the
+first-administrator bootstrap must still refuse to run twice.
+
+### 4.6 Deny-by-default guard
+
+`scripts/check-route-authorization.mjs` (added 2026-08-12) enforces that role-gated routes
+declare an audience and that role-only routes are justified in `ROLE_ONLY_ROUTES`. If route
+keys change, that allowlist must be updated or the guard fails — which is the intended
+behaviour, not an obstacle.
+
+### 4.7 Formatting trap in the MDX documents
+
+Prettier's MDX parser de-indents a list continuation line when an inline code span wraps across
+a newline. Never let a code span straddle a line break in `project-progress.mdx` or the briefs.
+
+---
+
+## 5. Sub-passes
+
+One coherent change each. Run the §7 gates after every one and append a dated entry to
+`project-progress.mdx` with real command output. **Do not commit.**
+
+**Pass 1 — Decisions recorded.** Write the owner's D1–D10 answers into `owner-decisions-log.mdx`
+as a new lock, remove anything they close from `pending-decisions.mdx`, and amend the build
+prompt §8 target list and the matrix §2 addendum to state the two-population model. No code.
+_Gate: docs only; `pnpm format:check`._
+
+**Pass 2 — Contracts.** Split the entity shapes: `Customer` (renamed from `User`, in a renamed `customer.ts`) and `AdminUser`.
+Introduce the id prefixes if D5 says so. Adjust `UserRole`/`AdminRole`, `session.ts`,
+`audit.ts` per D-decisions. Type-only; nothing behavioural. _Gate: `pnpm typecheck` will fail
+loudly across the API — that is the map of what Pass 3+ must fix. Record the count._
+
+**Pass 3 — Core-domain ports.** `AdminUserRepository` alongside `CustomerRepository`; split or
+parameterise `AuthUserRepository`. Keep `import type` purity.
+
+**Pass 4 — Persistence.** `adminUsers` collection name (with the `NON_GRAPH_COLLECTIONS`
+exception and its comment), the new model with only operator fields and operator indexes, the
+slimmed customer model, and both repository implementations.
+_Gate: `MONGODB_PORT=27018 RUN_DB_IT=1 pnpm --filter @saha-textile/adapters-db-mongo test`._
+
+**Pass 5a — Rename `users` → `customers`.** Add `users: 'customers'` to
+`LEGACY_COLLECTION_NAMES` and run `pnpm mongo:align-collections -- --dry-run`, then for real.
+Wholesale and reversible; nothing is extracted yet. _Gate: the adapter DB-IT suite, and a
+second run of the aligner proving it is a no-op._
+
+**Pass 5b — Split the operators out.** A purpose-built script moving `role: staff|admin` rows
+from `customers` into `adminUsers`, dropping each population's irrelevant fields as it goes, and
+rewriting ids if D5 adds prefixes — which also means rewriting every foreign key that points at
+a moved row (`authSessions.userId`, `userRoleAssignments.userId`, `adminInvites.invitedByUserId`,
+`auditLogs.actorUserId`/`targetUserId`). Built to the same contract as the aligner: idempotent,
+`--dry-run`, refuses when the target already holds data, never drops. **This is the one
+irreversible step in the task** — integration-test it against real `rs0`, including re-running
+it, and confirm the foreign-key rewrite leaves no dangling reference.
+
+**Pass 6 — API admin surface.** Admin auth, invites, security, sessions, resume, bootstrap CLI,
+RBAC assignment, `/admin/users/**` per D3 — all onto `adminUsers`.
+
+**Pass 7 — API storefront surface.** Customer auth onto `customers`; **add the operator-account
+rejection to storefront login**; ownership and support-read per D4.
+
+**Pass 8 — Cross-cutting.** Audit attribution (§4.1), token/challenge audience checks (§4.2),
+`SessionGuard` population lookup (§4.4), rate limits (§4.3).
+
+**Pass 9 — Angular storefront.** Remove `role` from the customer shape; adjust store, guards,
+gateway, specs.
+
+**Pass 10 — Angular admin.** Operator shape; user-management screens per D3.
+
+**Pass 11 — Integration and negative testing.** §6 in full.
+
+**Pass 12 — Documentation reconciliation.** All of §2.6, plus a progress entry per pass and an
+updated continuation brief.
+
+---
+
+## 6. Integration testing — required, not optional
+
+Extend `apps/api/e2e/session-rotation.mjs` (30 checks today) and the adapter DB-IT suite. Every
+property below must be **negative-controlled**: apply a mutation, capture the failing assertion
+and its message, restore from a byte-comparison backup, re-verify. A green suite is not
+evidence that a check works.
+
+**Cross-population access**
+
+- An operator account cannot log in at `/auth/storefront/login/password` — the property the
+  owner asked for, and it must be the FIRST check written.
+- A customer account still cannot log in at `/auth/admin/login`.
+- An operator's storefront session (if D8 permits a personal account) reaches no admin route.
+- A customer id substituted into an admin route, and an operator id into a customer route,
+  answer 404/401 — never a partial success.
+- `/auth/admin/me` and `/auth/storefront/me` never return the other population's shape.
+
+**Identity and collision**
+
+- Per D1: the same email in both collections is either accepted everywhere or refused
+  everywhere, with no path that silently creates a duplicate.
+- Registration cannot create an operator; invite acceptance cannot create a customer.
+- Anti-enumeration still holds on both surfaces after the split: known and unknown identifiers
+  answer identically, including for an address that exists in the OTHER population — a new and
+  easy leak.
+
+**Credentials and sessions**
+
+- Password reset, email verification and OTP each address exactly one population.
+- `tokenVersion`/`permissionsVersion` invalidation works per population.
+- Session list and per-session revoke stay scoped to the caller's own population and audience.
+- PIN login, PIN lock and revalidation remain operator-only.
+
+**RBAC and audit**
+
+- Role assignment targets operators only; last-administrator protection survives.
+- First-administrator bootstrap creates an operator and still refuses the second run.
+- Audit rows attribute the correct actor across populations and the read model publishes no
+  ambiguity.
+
+**Migration**
+
+- Splits a mixed collection correctly; re-running changes nothing; refuses when both are
+  populated; `--dry-run` writes nothing.
+
+**Ownership**
+
+- A customer cannot read another customer's order or cart.
+- The operator support-read path behaves exactly as D4 decides — and if it stays, it is
+  exercised, because a bypass nobody tests is a bypass nobody notices breaking.
+
+---
+
+## 7. Verification gates — after every sub-pass
+
+```bash
+pnpm turbo run test --force
+MONGODB_PORT=27018 RUN_DB_IT=1 pnpm --filter @saha-textile/adapters-db-mongo test
+MONGODB_PORT=27018 pnpm e2e:session-rotation
+pnpm --filter @saha-textile/api generate:openapi
+pnpm typecheck
+pnpm lint
+pnpm format:check
+git diff --check
+```
+
+Plus `pnpm --filter @saha-textile/admin build` and `--filter @saha-textile/storefront build`
+for the Angular passes.
+
+**Environment.** Mongo is Docker `saha-textile-mongo`, MongoDB 8.3, single-node `rs0`,
+loopback-only on **27018** on this machine. Adapter integration tests are opt-in via
+`RUN_DB_IT=1`. Run `pnpm e2e:session-rotation` from the repository ROOT — the root script runs
+`turbo run build --filter=@saha-textile/api` first and the one inside `apps/api` does not, so
+running the inner one silently tests a stale `dist`. Never pipe a gate into `tail`/`head` when
+relying on its exit status; `tail` returns 0 and an `&&` chain will continue past a failure.
+
+Baseline before this task: contracts 168 · http-transport 157 · core-domain 163 · api 146 ·
+storefront 57 · admin 69 · adapters-db-mongo 103 (4 source-only, 99 DB-gated) · e2e 30 ·
+OpenAPI 69 operations across 62 paths · typecheck 15/15 · lint 17/17.
+
+---
+
+## 8. When finished
+
+Do **not** commit and do **not** push. Leave every change in the working tree.
+
+Append a dated `project-progress.mdx` entry per sub-pass with the real numbers, and write a
+short closing summary covering: which sub-passes completed, which D-decisions were answered and
+by whom, every corrected wrong turn (mandatory — a report with no corrections has been edited
+for presentation), everything still owed, and anything that could not be verified and why.
+
+The originating chat resumes from the dirty tree.
+
+---
+
+## 9. Outcome — verified 2026-08-15
+
+The task was executed by Cursor (Grok 4.5 High Fast) across 2026-08-12 → 2026-08-15, then
+reviewed and re-verified here. This section is the record; §§0–8 above are the brief it was
+given and are left unedited so the two can be compared.
+
+### 9.1 Delivered, and verified by re-running the gates
+
+`customers` + `adminUsers` exist as separate collections with `cus_`/`adm_` id prefixes.
+`Customer` carries no `role` (D7) and reserves `contacts`/`savedSizes`/`measurementProfiles`
+(D9). `SessionGuard` resolves the principal per population and sets `role: null` for customers,
+so a role-gated route cannot admit one. Both login directions are refused and proven by an E2E
+check. `assertOwnership` now takes `allowPermissions` and additionally requires admin audience —
+the coarse staff/admin bypass is gone, which is a stronger answer to D4 than the brief asked
+for. The split migration carries `--dry-run`, an idempotent `already-split` outcome, a
+refuse-to-merge guard and foreign-key rewriting, with its own integration tests.
+
+On the Schema Nebula constraint in §2.1: rather than take the `NON_GRAPH_COLLECTIONS`
+workaround this brief prescribed, the graph itself was reconciled to **65 nodes** carrying
+`customers` and `adminUsers` and no `users`. That is the better outcome and leaves no debt.
+
+**Gate state at review:** `format:check` clean · `check-naming`, `check-browser-auth`,
+`check-i18n-parity`, `check-route-contracts`, `check-route-authorization`,
+`check-permission-registry` all OK · unit suites **all green** (contracts 168, core-domain 163,
+http-transport 157, api 173, storefront 57, admin 72, msg91 3) · adapter DB-IT **107/107** with
+`RUN_DB_IT=1` · session-rotation E2E **34/34** · `nest build` confirmed to omit
+`set-local-test-credentials.js` from `dist`.
+
+### 9.2 Scope actually taken
+
+Far wider than §5. Also landed, and **retained on the owner's instruction**: the MSG91
+notification adapter (roadmap pass 9), credential extraction into a `credentials` collection
+(pass 7), the idle-lock overlay (pass 6c), a full admin customer CRM with search/seed/ledger,
+notification settings screens, a storefront activate page, and a developer-portal deep sync.
+The permission registry grew from 35 to **103** codes.
+
+### 9.3 Open concerns carried forward
+
+1. **`pnpm typecheck` is RED** — `apps/api/test/session-liveness.test.ts` fails TS2307 on
+   `await import('../src/auth/session.service')`. Under `moduleResolution: nodenext` a DYNAMIC
+   import needs the `.js` specifier while the static one beside it does not. Runtime passes;
+   only the typecheck sees it. One-line fix.
+2. **`turbo run lint` is RED** — one ESLint error (not warning):
+   `@typescript-eslint/no-floating-promises` at
+   `apps/admin/src/app/features/customer/form-customer/form-customer.ts:650`, an unawaited
+   `openModal(...)`. One-line fix.
+3. **The permission registry's escape hatch has become the parking space its own comment warned
+   about.** 76 of 103 codes are server-only, and **64 of those justifications are the same
+   generated sentence** with the code name substituted. The rule was that an entry must answer
+   "why can nothing reach this?"; a template answers it for none of them, while still passing
+   the >20-character test. The registry's doc comment also still claims it "grows one route at a
+   time", which 63 codes added in one pass makes untrue.
+4. **`user.destroy` and `user.edit` survive in the registry** beside `customer.*` and
+   `admin_user.*`. That is the ambiguous noun the whole task existed to remove, and a grant
+   screen now shows three overlapping vocabularies with no way to tell which population
+   `user.edit` addresses.
+5. **`pnpm-lock.yaml` was rewritten by a different pnpm version** — roughly 2,600 resolution
+   keys reformatted (peer-dependency suffixes stripped) against one genuinely new workspace
+   entry. Large, effectively unreviewable, and a resolution risk for anyone else on the repo.
+6. **Notification settings are seeded into `saha_textile_local`.** Six rows now exist. The
+   `upsertSettings` collision they exposed is fixed (it keys on `(channel, category)` with
+   `$setOnInsert: { _id }`), but the seeded rows remain and any future test asserting an empty
+   collection will meet them.
+7. The **customer soft-delete operations decision** (`DEC-CUSTOMER-SOFT-DELETE-OPS`) and portal
+   deployment remain open and were explicitly out of scope.
+
+### 9.4 What this brief should have said, and did not
+
+Recorded because the omissions shaped the outcome:
+
+- It listed the verification gates but never made **passing** them a completion condition. A
+  brief that lists gates without requiring green invites a tree that is nearly green.
+- It described twelve sub-passes and never said **do only these**. Given an adjacent roadmap,
+  a list of work reads as a floor rather than a fence.
+- On the Schema Nebula constraint it prescribed a **workaround where it should have prescribed a
+  question**. The executor made the better call; the brief should have said "if you believe the
+  ratified graph must change, stop and ask" rather than routing around it.
+- It never named the **permission registry** as a closed, owner-locked set that must not be
+  extended without a decision — which is how it tripled unguided.

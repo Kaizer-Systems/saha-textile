@@ -3,7 +3,7 @@ title: 'Project Progress'
 description: 'Canonical cross-tool checkpoint for current implementation status and verification evidence.'
 audience: [engineering, operator, agent]
 document_role: canonical
-last_verified: 2026-08-11
+last_verified: 2026-08-13
 search_keywords: 'project progress current status checkpoint verification evidence chunks gates'
 ---
 
@@ -79,7 +79,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 ```json
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-11",
+	"lastVerified": "2026-08-15",
 	"chunks": {
 		"A": "done",
 		"B": "done",
@@ -164,11 +164,35 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
   `node dist/analog/server/index.mjs`, then full rebuild+restart on source change via
   `scripts/serve-built-frontend.mjs`). App alias: `pnpm --filter @saha-textile/storefront start:watch`.
   Tool: cursor.
+- 2026-08-12 — [DONE] **Account separation (storefront client):** `AuthUser` no longer carries
+  `role`; storefront sessions are audience-only. Operator credentials cannot mint a
+  storefront session (`cus_*` / customer auth only). Evidence and gates under **Auth &
+  security** Passes 7–9 / 11. Tool: cursor.
+- 2026-08-13 — [DONE] **Customer activation UI reuses update-password screen.** Route
+  `/auth/activate?token=` → same FormFields/password chrome; gateway
+  `activateAccount` → `POST /auth/storefront/activate`. Custom CSS: none. Storefront
+  tests 57/57. **No commit.** Tool: cursor.
 - _(append new bullets below)_
 
 ---
 
 ## Admin (`apps/admin`)
+
+- 2026-08-14 — [DONE] **Dial flags + address input whites (browser-verified).** Root cause: closed dials used plain `label` (`+91`) when select2 templates did not paint; soft address tile `#f9f9f6` === `$inner-bg` so `.form-control` blended. Fix: enrich `countryCodes` labels with theme `.country`/`.flag-box`/`.iti-flag`/`.dial-code` HTML; vendor `flags.png` + `@2x` under `public/assets/images/flags/` and point `_country-flag.scss` at local URLs; force `$white` on `.delivery-address-box .form-control`. Verified on `localhost:4300` Edit Customer + Add Address modal via CDP (profile/address/modal `.iti-flag.in` w=20, sprite local; address inputs `rgb(255,255,255)`). Tool: cursor.
+
+- 2026-08-14 — [DONE] **Phone dial glitch fix.** Reverted intl-tel-input SCSS to pre-glitch; soft address tile white force excludes `.intl-tel-input`; dropped broad `theme-form` intl-input-padding (keep `.theme-form-2` only). CRM address + Add Address modal phones reuse `app-form-fields` like Edit Customer top; address cards wrap `theme-form theme-form-2` so dial padding applies. All admin dials use `[templates]="{ option, templateSelection }"`. Clean-reinstalled `apps/admin/node_modules` + `pnpm install` — restart `dev:admin` + hard-refresh to verify flags. Soft-delete ops DEC out of scope. Tool: cursor.
+
+- 2026-08-14 — [DONE] **Dial/select2 CRM polish + soft-delete ops KB.** Dial `templateSelection` wired admin-wide; address/modal phone uses profile overlay + `intl-input-padding`; country/state select2 forced `$white` on soft address tile; pinned **VERY IMPORTANT** `DEC-CUSTOMER-SOFT-DELETE-OPS` in pending-decisions. Tool: cursor.
+
+- 2026-08-14 — [DONE] **CRM address chrome + DeleteModal + dial flags + soft-delete list hygiene.** Flattened `.checkout-detail .delivery-address-box` soft fill+shadow for CRM; pin | content column layout; compact title; modal pin in header; `mark_as_default` italic; phone+state required on CRM addresses; admin `ng-select2` → v16 (selection flag); DeleteModal/ConfirmationModal close on Yes + success toasts; default customer list excludes `deleted`. Tool: cursor.
+
+- 2026-08-14 — [DONE] **CRM address polish + session label backfill.** Customer address sets use `checkout-detail` > `delivery-address-box`, Title + `ri-map-pin-line` identity row, country/state select2 (ISO country), theme pill Default beside Update/Add, larger delete. Session labels: Electron/Cursor detection, 8-hex UA hash, refresh backfill via `updateDeviceLabel`. i18n `untitled_address`. Tool: cursor.
+
+- 2026-08-14 — [DONE] **Customer form UX: validation placement, mandatory phone, columnar addresses.** Phone required (UI + `CreateCustomerRequest` + checkout add-customer modal). Activation channel errors use distinct i18n keys (no more "Email is required" under Activation). CRM dropped checkout `AddressBlock`; each address is an editable Bootstrap `row`/`col-*` form set with `form-check` default radio, table-style red `ri-delete-bin-line` + `DeleteModal`, and Update Address via gateway. Save/Resend aligned with `app-button`/`btn-theme`. Checkout AddressBlock unchanged. Tool: cursor.
+
+- 2026-08-14 — [DONE] **Customer QA unblock: seed 70 + list search/page + create addresses + session device labels.** Seed expanded to 70 `cus_seed_*` rows (pageSize 30 → 3 pages); re-seeded API Mongo `27018`. Table search change resets to page 1; page changes keep `q`; list starts at `pageSize: 30`. Add Customer drafts addresses (checkout `AddressBlock` + modal) and POSTs them after create. Session `device.label` from UA (`Chrome on macOS (Desktop) · a3f2`); no MAC (not available in browsers). Tool: cursor.
+
+- 2026-08-14 — [DONE] **Admin ACL render-parity + CRM leftovers.** `GET /auth/admin/me` returns effective permissions (embedded ∪ role assignments). `PERMISSION_CODES` expanded 40→103 (menu ∪ UI gates ∪ former mock names); administrator role re-seeded on API Mongo (`MONGODB_PORT` from `apps/api/.env`). AccountStore/Service/`account.json` deleted; AuthStore no longer clears mock account. Operator Profile: live phone + displayName; avatar `app-image-upload` Insert Media UI only (Spaces persist deferred). Customer edit: checkout-style `AddressBlock` + theme-modal add address → live address APIs. Kept Surface Atlas: `docs/engineering-live-context/kept-surface-atlas.mdx`. Live QA: owner `/me` 103 codes incl. `product.edit`/`setting.edit`/`wallet.credit`; profile phone PATCH; empty displayName 400; sessions list. Tool: cursor.
 
 - 2026-07-24 — [PARTIAL] Angular admin UI scaffolding exists; `.env.example` + runtime config alignment TBD vs locked model. Tool: cursor.
 - 2026-07-31 — [DONE] **Stale `apps/admin` scaffold spec deleted; repo-wide `pnpm test` is green again — resolves the BLOCKED bullet below.**
@@ -210,11 +234,80 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
   rebuild+restart on source change via `scripts/serve-built-frontend.mjs`). Admin remains
   SPA-only (no Nitro SSR by design — see `apps/admin/vite.config.ts`). App alias:
   `pnpm --filter @saha-textile/admin start:watch`. Tool: cursor.
+- 2026-08-12 — [DONE] **Account separation (admin client identity):** signed-in operator remains
+  `AdminUser` (`adm_*`); Fastkart `IUser` documented as commerce-fixture mock only until live
+  operator screens landed (next bullet). Tool: cursor.
+- 2026-08-13 — [DONE] **Admin operator User screens wired to the live API (operators only).**
+  `AdminUsersGateway` + HTTP impl + TanStack queries; list, status, and invite create reuse
+  existing PageWrapper / Table / FormFields (no new CSS — `DEC-UI-REUSE`). Create = invite via
+  `POST /auth/admin/invites` (gated `user.create`); status toggle uses
+  `PATCH /admin/users/:id/status`; delete / import / export removed (no `user.destroy`).
+  Fastkart `IUser` and `UserService` kept for checkout / orders / reviews fixtures. Role
+  assign/revoke UI on edit still deferred (API already exists). Admin typecheck green.
+  Cross-layer evidence under **API** / **Auth & security**. **No commit.** Tool: cursor.
+- 2026-08-13 — [DONE] **Operator edit: fine-grained role assign/revoke UI.** Reuses
+  `theme-form` / `FormFields` / `select2` / `btn btn-outline-primary btn-sm` /
+  `*hasPermission` (`user_role.assign` / `user_role.revoke`); gateway
+  `assignRole`/`revokeRole` → live API. Custom CSS: none. **No commit.** Tool: cursor.
+- 2026-08-13 — [DONE] **Admin Customer CRM UI wired to live `/admin/customers/**`.**
+`AdminCustomersGateway`+ HTTP impl + TanStack queries;`features/customer/**`
+  list/create/edit (activation channel checkboxes, resend, address FormFields —
+  not checkout address-block; shapes differ). Soft-delete via Table delete modal.
+  Separate menu **Customers** (`customer.*`). Checkout select + add-customer-modal
+  now use the gateway (`q`, status filtered to active|pending). Reuse-only UI
+  (`DEC-UI-REUSE`); empty SCSS. Admin typecheck green. **No commit.\*\* Tool: cursor.
+- 2026-08-13 — [DONE] **Admin Roles feature wired to live `/admin/roles` + `/admin/permissions`.**
+  `AdminRolesGateway` + HTTP impl; TanStack `role.queries` (list/detail/registry);
+  table `name` ← `label`, `system_reserve` ← `isSystem` (lock icon); create/update/delete
+  mutations; permission matrix from registry codes (grouped by resource — no new CSS);
+  `role.edit` → `role.update`. Reuses PageWrapper/Table/FormFields/Permissions.
+  Admin typecheck green. **No commit.** Tool: cursor.
+- 2026-08-13 — [DONE] **Admin idle soft-lock (6c / L1).** `IdleLockService` (15m) +
+  `IdleLockModal` on app shell (`theme-modal` + `pin-pad` / password FormFields /
+  Button). Resume via `resumeWithPin` or `resumeWithPassword` per `pinConfigured`.
+  Custom CSS: none (`DEC-UI-REUSE`). Auth gateway specs 40/40. **No commit.** Tool: cursor.
+- 2026-08-13 — [DONE] **Idle-lock page obscure.** Owner report: default modal backdrop left
+  Notification Settings text readable. Now `body.idle-lock-active` blurs/dims
+  `#pageWrapper` / `.page-wrapper` + darker `.idle-lock-backdrop` (theme `_modal.scss`);
+- 2026-08-14 — [DONE] **Idle/session blank-shell fix + blur revert.** Soft-lock restored to
+  15m; admin server `IDLE_TTL` raised to **60m** (soft-lock = presence; server idle = hard
+  kill). Resume refreshes cookies before PIN/password proof; visibility refresh while
+  unlocked; App redirects to login when a once-authenticated session becomes anonymous
+  (interceptor still does not navigate during bootstrap). Idle obscure reverted to first
+  backdrop-only (`rgba(15,35,35,0.55)` + `blur(14px)`). Tool: cursor.
+- 2026-08-14 — [DONE] **CRM polish tranche (menu ACL + account).**
+  Sidebar/HasPermission/PermissionGuard/table/header profile/dashboard read live
+  `AuthStore.permissions` / user (mock `account.json` ACL retired from shell). Customer
+  Ledger moved under Customers in `menu.ts`. `/account`: vendor Store Setting deleted;
+  Profile wired to `PATCH /auth/admin/profile` + AuthStore; Credential Status lists
+  sessions with revoke / revoke-others. Create customer navigates to edit for addresses.
+  Notification Save label fixed. Tool: cursor.
+
+    reduced-transparency media query falls back to heavy dim. Modal chrome unchanged.
+    **No commit.** Tool: cursor.
+
+- 2026-08-13 — [DONE] **Permission rename `user.*` → `admin_user.*` (R1).** Registry,
+  menu, `@RequirePermissions`, invites ACL, tests; Mongo migration
+  `pnpm mongo:rename-admin-user-permissions` (+ dry-run). Re-seed administrator via
+  `seed:system-roles` to refresh full grant set. **No commit.** Tool: cursor.
+- 2026-08-15 — [DONE] **Green-tree gate fixes (cross-tool assessment).** msg91 test
+  typecheck (Paginated + fetch mock casts); admin invite path moved onto
+  `HttpAdminAuthGateway` (`/auth/admin/invites`); `fr` `sessions`→`Connexions`,
+  `whatsapp` listed as shared brand; `PATCH profile` justified in `ROLE_ONLY_ROUTES`;
+  Prettier 57-file format; e2e CRM create/address payloads include required `phone`
+  (**34/34** session-rotation); `upsertSettings` keys on `(channel, category)` with
+  `$setOnInsert` `_id` (governance DB-IT **16/16**); `set-local-test-credentials`
+  excluded from `nest build` / run via `tsx` so it is **absent from `dist`**. **No
+  commit.** Tool: cursor.
 - _(append)_
 
 ---
 
 ## API (`apps/api`)
+
+- 2026-08-14 — **VERY IMPORTANT (open):** `DEC-CUSTOMER-SOFT-DELETE-OPS` — how staff find/revive soft-deleted customers, order/ledger/email-reclaim corner cases. Soft-delete itself stays locked (`DEC-DELETE-RETENTION`); no revive API until owner answers. Tool: cursor.
+
+- 2026-08-14 — [DONE] **Session device-label backfill on refresh.** `labelFromUserAgent` detects Cursor/Electron (not bare Chrome), uses 8-hex UA hash; `shouldBackfillDeviceLabel` + `AuthSessionRepository.updateDeviceLabel` rewrite null/Unknown/short/mis-Chrome labels on refresh. Unit tests in `device-label.test.ts`. Tool: cursor.
 
 - 2026-07-24 — [PARTIAL] NestJS/Fastify API scaffold + transitional bearer JWT; cookie/CSRF Phase D still pending. Tool: cursor.
 - 2026-08-01 — [DONE] **Chunk C Pass 1 (API platform: request id, redacted logging, error envelope, proxy/CORS, health split).**
@@ -278,12 +371,51 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
   catalogue visibility, order-read BOLA, refresh CSRF hash rotation, sparse null indexes,
   auth-rate-limit E11000, MSG91 not Brevo) left untouched. Chunk D remains partial for
   email-verification completion / OAuth / admin invite accept / quick-resume. Tool: cursor.
+- 2026-08-12 — [DONE] **Account separation (API):** DI tokens for Customer/AdminUser repos +
+  split auth repos; admin invite/security/users/roles/bootstrap write `adm_*`; session/guard
+  population-scoped; storefront login/OTP customer-scoped (operator→storefront **401**).
+  Ownership/support-read via permissions + admin audience (`order.index` / `cart.index`), not
+  coarse role bypass. Detail under **Auth & security** Passes 6–8. Tool: cursor.
+- 2026-08-13 — [DONE] **`GET /admin/users` operator directory + invite ACL alignment.**
+  `AdminUsersService.list` → paginated sanitized `AdminUser`; OpenAPI **63 paths / 70
+  operations**. `POST /auth/admin/invites` now `@RequirePermissions('user.create')` (was
+  coarse `@RequireRoles('admin')`) so menu ACL matches the registry. API typecheck +
+  `admin-users.service` tests **16/16**. **No commit.** Tool: cursor.
+- 2026-08-13 — [DONE] **Admin Customer CRM backend slice.** Permission registry
+  **36 → 40** with server-only `customer.{index,create,update,destroy}`;
+  contracts `CustomerListQuery/Response`, create/update/address/resend DTOs;
+  `CustomerRepository` list/create/update/setStatus/address ops; Mongo skip/limit + S1
+  prefix search + soft-delete partial unique indexes; `AdminCustomersController` at
+  `/admin/customers/**` + storefront `POST /auth/storefront/activate` (password-reset
+  token reuse, `customer_activation` via `NotificationPort` console). Unit tests for
+  list/create/search. Admin Angular CRM UI landed same day (see **Admin**). **No commit.**
+  Tool: cursor.
+- 2026-08-13 — [DONE] **e2e negatives expanded (Pass 11 / plan F).** `session-rotation.mjs`
+  adds CRM vertical + ungranted deny, invite `admin_user.create` ACL, audience
+  cross-login refuse, soft-delete login deny, address cross-customer BOLA; storefront
+  refresh helper for 1s access TTL. Live run **34/34**. **No commit.** Tool: cursor.
+- 2026-08-13 — [DONE] **Credential extraction (plan G).** New collections
+  `passwordCredentials` / `pinCredentials` / `authIdentities`; auth repos join them;
+  account docs no longer embed hashes/PIN lockout/`identities`. Migration
+  `pnpm mongo:extract-credentials`. Nebula nodes promoted planned→existing. e2e
+  **34/34**. **No commit.** Tool: cursor.
+- 2026-08-13 — [DONE] **Guest→user cart merge on storefront login/register/OTP.**
+  `CartService.mergeGuestCartForUser` (token proof, line coalesce, stolen-cookie
+  ignore); clears `st_guest`. Unit coverage in `cart-ownership.test.ts`. **No commit.**
+  Tool: cursor.
 - _(append)_
 
 ---
 
 ## Core domain & contracts (`packages/core-domain`, `packages/contracts`)
 
+- 2026-08-13 — [DONE] **Admin Customer CRM contracts + `CustomerRepository` port expansion.**
+  `admin-customer.ts` DTOs; permission registry **40** codes; port gains list/create/
+  update/setStatus/address ops. Administrator system role picks up new codes via
+  `PERMISSION_CODES`. **No commit.** Tool: cursor.
+- 2026-08-13 — [DONE] **`user.*` → `admin_user.*` permission codes (R1).** Resource
+  `admin_user`; `customer.create|index` left menu-reachable (dropped from server-only).
+  Contracts + core effective-permissions tests green. **No commit.** Tool: cursor.
 - 2026-07-24 — [PARTIAL] Ports/repos exist for several domains; `NotificationPort` / full catalog target model still expanding per Chunk B. Tool: cursor.
 - 2026-07-25 — [DONE] **Chunk B Pass 1a (contracts: auth/session/consent/audit/notifications).** New files in `packages/contracts/src`: `session.ts` (SessionAudience, AccessTokenClaims w/ sid+token/permission versions, SessionInfo — no tokens in bodies, AuthSession server-internal entity w/ refresh-family + csrfSecretHash), `auth.ts` (Password min-12 lock, OtpCode/Purpose/Channel, storefront register/login/OTP/forgot/reset DTOs, GenericAcceptedResponse anti-enumeration, AuthSessionResponse, CsrfTokenResponse), `auth-internal.ts` (OtpChallenge per 2026-07-05 lock, OAuthState, PasswordResetToken, EmailVerificationToken, AdminInvite, AuthRateLimit — hashes only), `admin-auth.ts` (AdminPin 6-digit, PreferredLoginMethod, admin login/PIN-login/PIN-setup/invite/accept DTOs, sanitized AdminUserProfile + AdminMeResponse), `consent.ts` (granular ConsentCategories necessary/functional/analytics/targeting/marketing/promotional + ConsentEvent + update/state DTOs), `audit.ts` (AuditLog broad-admin-audit entity w/ retentionTier 7y/5y enum + diffs + list query), `notification.ts` (channel×category kill-switch settings, templates w/ DLT/WA ids, MessageOutbox w/ suppressed statuses, usage rows). Widened `user.ts`: UserStatus, phone/phoneVerified, AuthProvider +phone_otp/passkey, granular ConsentRecord; public shape stays sanitized. Minimal compat patch: `adapters-db-mongo/src/mappers.ts` toUser defaults phone/phoneVerified/status (model upgrade stays Chunk D/E). Gates: contracts+core-domain+adapters+api typecheck 0, contracts lint 0, contracts tests 12/12, naming OK. Tool: claude-code. Notes: tests for new families land in Pass 3.
 - 2026-07-31 — [DONE] **Chunk B Pass 1b (boundary enforcement + shared primitives + test backfill).**
@@ -456,18 +588,35 @@ swatch_image_v2` with pixel sizes deliberately left to config (`G-IMG-PX`);
   30-day discontinuation retention. Deliberately not changed in Pass 1b: it ripples
   through `product.model.ts`, the product repository, `apps/api` catalog service,
   and seed data, and belongs with the catalog contract family pass. Tool: claude-code.
+- 2026-08-12 — [DONE] **Account separation (contracts + core ports):** deleted unified `User`;
+  added `Customer` / `AdminUser` / `AdminRole`; sessions `roleAtLogin` nullable; split
+  `CustomerRepository` + `AdminUserRepository` and customer/admin auth repos; effective
+  permissions operator-only. Permission registry grew to **36** codes (`cart` + `cart.index`
+  server-only). Detail under **Auth & security** Passes 2–3 / 7. Tool: cursor.
+- 2026-08-13 — [DONE] **`AdminUserListQuery` / `AdminUserListResponse`** (`paginated(AdminUser)`)
+  for `GET /admin/users`; `AdminUserRepository.list` on the core port + conformance fake.
+  Contracts tests **168**. Tool: cursor.
 - _(append)_
 
 ---
 
 ## DB / Mongo adapter (`packages/adapters-db-mongo`, Docker Mongo)
 
+- 2026-08-14 — [DONE] **Customer seed expanded to 70 for pagination QA.** `customer-seed-data.ts` now generates 70 varied customers (addresses on ~2/3); `pnpm --filter @saha-textile/adapters-db-mongo seed` with `MONGODB_PORT=27018` confirmed `customers: 70` / list meta total 70 across 3 pages at 30. Tool: cursor.
+
+- 2026-08-13 — [DONE] **Customer CRM persistence:** `MongoCustomerRepository` list
+  (skip/limit/count + S1 prefix `$or` on email/phone/displayName), create/update/
+  setStatus/address ops; indexes `createdAt`, `status+createdAt`; email/phone unique
+  partial filters now exclude `status: deleted`. Auth email lookup also skips deleted.
+  Existing DBs need `syncIndexes` (or equivalent) so the old unique indexes are replaced.
+  **No commit.** Tool: cursor.
+
 - 2026-08-01 — [DONE] **Chunk D complete (sessions, OTP, PIN, RBAC, ownership, privacy).**
   The transitional bearer-JWT auth is GONE; the browser happy path is cookie-only.
   **Sessions:** `SessionService` is the single place a session is born or rotated —
   opaque 256-bit refresh tokens (never JWTs), HMAC-peppered so a database dump cannot
-  verify guesses offline, storefront idle 30d/absolute 90d vs admin idle 15m/absolute
-  12h. Reuse detection is real: presenting a rotated-away token, or losing the rotation
+  verify guesses offline, storefront idle 30d/absolute 90d vs admin idle 60m/absolute
+  12h (soft-lock UI 15m; server idle must outlive it). Reuse detection is real: presenting a rotated-away token, or losing the rotation
   race, revokes the whole `refreshFamilyId`. Every refresh re-reads the user, so a
   disabled account cannot renew itself. **Guards:** `SessionGuard` is global — routes are
   protected by DEFAULT and opt out with `@Public()`; it reads the access token from the
@@ -730,6 +879,18 @@ optionSelectionHash)`, globally unique variant SKU per `DEC-SKU`, unique bundle 
   **Next executable step:** portal reconciliation of the newly-aligned stars (count,
   exclusion list, `currentState`/`currentModel` per node, `statusPolicy`), then Auth Pass 2 —
   storefront/admin fake-token removal and the cookie-first Angular auth boundary.
+- 2026-08-12 — [DONE] **Account separation (DB):** `CustomerModel` / `AdminUserModel`; physical
+  `customers` + `adminUsers`; Pass 5a aligner rename; Pass 5b split script + IT; local
+  identity wipe + role re-seed (D6 — no disclosed-password migration). Temporary
+  `NON_GRAPH` exceptions for both names until portal reconciliation (closed 2026-08-13).
+  Adapters **106** with DB-IT. Detail under **Auth & security** Passes 4–5b. Tool: cursor.
+- 2026-08-13 — [DONE] **Schema Nebula graph matches live collections:** `users`→`customers`,
+  solid `adminUsers`; inventory **65 / 32 / 33**; `NON_GRAPH` back to
+  `authRateLimits` / `productQuestions` / `ratingAggregates` only; catalogue **35 / 438 /
+  97 / 27**. Collection-names tests assert 65. Portal evidence under **Developer portal**.
+  Tool: cursor.
+- 2026-08-13 — [DONE] **`MongoAdminUserRepository.list`** paginated directory for
+  `GET /admin/users`. Tool: cursor.
 - _(append)_
 
 ---
@@ -744,6 +905,22 @@ optionSelectionHash)`, globally unique variant SKU per `DEC-SKU`, unique bundle 
 ## Notifications (`NotificationPort` / MSG91)
 
 - 2026-07-24 — [PARTIAL] Locked: MSG91 primary behind `NotificationPort`; adapter-swappable fallbacks. Code port/adapters may still be missing — Chunk B/C/I. Tool: cursor.
+- 2026-08-13 — [PARTIAL] **Deferred plan: CRM/activation consume `NotificationPort` first (console).**
+  Central MSG91 architecture (Authkey admin settings, email/SMS/WhatsApp tools, extensible
+  registry) is an **end phase** after feature work — not blocking CRM. Tool: cursor.
+- 2026-08-13 — [DONE] **Phase MSG91 (env-only Authkey).** Package
+  `@saha-textile/adapters-notifications-msg91` with email/SMS Flow/WhatsApp tool registry;
+  kill-switch / plan-limit / marketing-consent / outbox; DI selects MSG91 when
+  `NOTIFICATION_PROVIDER=msg91` + `MSG91_AUTH_KEY`, else console (+ warn if msg91 without key).
+  Admin `/setting/notifications` + `/admin/notifications/**` for non-secret settings only
+  (`setting.index`, audited). Adapter unit tests 3/3; API unit suite 157/157; permission
+  registry green. Tool: cursor.
+- 2026-08-13 — [DONE] **Agent local auth helper.** `pnpm auth:set-local-credentials -- --i-am-local
+--audience admin|storefront --email …` (optional `--password` / `--pin`); refuses non-loopback
+  Mongo and production. Smoke-rotated local admin without owner typing. Tool: cursor.
+- 2026-08-15 — [DONE] **Local-credentials helper no longer ships in Nest `dist`.** Script
+  excluded from `tsconfig.build.json`; `set:local-credentials` runs source via `tsx`.
+  Runtime `--i-am-local` / loopback / non-production guards unchanged. Tool: cursor.
 - _(append)_
 
 ---
@@ -2949,6 +3126,211 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
   device `label` and `country` are always null because nothing populates them yet, which makes
   the list harder to act on than it should be; and forced revoke of another operator's session
   remains unbuilt. **Left uncommitted**, now thirty-four paths. Tool: claude-code.
+- 2026-08-12 — [DONE] **The last role-gated route converted — and it was hiding an
+  audience-confusion hole.** **e2e 29 → 30**, registry **34 → 35 codes**. Set out to close a
+  deny-by-default gap; found a genuine cross-audience defect on the way, and a 500 beside it.
+  **THE HOLE, found by probing rather than by reading.** `PATCH /orders/:id/status` carried
+  `@RequireRoles('admin','staff')` and NO audience. `SessionGuard` enforces an audience only
+  when one is DECLARED, and `OrdersController` declares none — correctly, since its other
+  routes are a customer reading and placing their own orders. So a staff member who also shops
+  on the storefront could reach the back-office route with their STOREFRONT cookie: the role
+  check passed and the handler RAN. A throwaway probe against the real application returned a
+  **500 from `MongoOrderRepository.updateStatus`**, which is how far the request got — with a
+  real order id it would have changed the order's status. This is precisely the
+  "storefront cookie against admin endpoint" case the security matrix requires to be
+  impossible.
+  **`@Audience('admin')` is declared on the ROUTE, not the controller**, because the other
+  three routes must stay reachable from the storefront. The refusal is 401 rather than 403, so
+  a storefront session cannot even learn the surface exists.
+  **`order.update` replaces the coarse role.** The last route in the codebase authorizing by
+  role alone; `admin` must not silently mean every capability, and a fulfilment operator may
+  need to advance an order without being able to read or raise one. Declared server-only —
+  the navigation gates `order.index` and `order.create` only.
+  **THE LOCKOUT ANALYSIS the brief asked for, and it is not a formality.** `administrator`
+  holds `[...PERMISSION_CODES]`, but that grant is written by `ensureSystemRoles`, which is
+  DELIBERATELY not run at boot. So any role row seeded before this registry addition — every
+  existing deployment — does not hold `order.update` until an operator re-runs
+  `seed:system-roles`. **Whoever could change order status yesterday cannot today until that
+  seed runs.** Recorded in the route's own doc comment as an operator note, not only here.
+  **A second defect fixed in passing:** a missing order surfaced as **500**, because the
+  repository throws a bare `Error` and nothing mapped it. An operator mistyping an order
+  reference was told the server had broken. Now a 404, narrowly — any OTHER repository failure
+  still propagates as a 500, because a write that failed for an unanticipated reason must not
+  be reported as "no such order".
+  **Negative-controlled three ways, and one control taught something.** Removing `@Audience`
+  fails with a storefront cookie reaching the route — but with **403**, not 200, because the
+  permission gate catches it too. The two fixes are independent controls and the run proves
+  both are load-bearing: a granted staff member would still have crossed audiences with only
+  one of them. Reverting to `@RequireRoles` fails both the new check and the existing
+  every-admin-route-refuses-an-ungranted-administrator check at 28/30. Dropping the 404
+  mapping fails with `an unknown order answered 500, not 404`. Sources restored from
+  byte-comparison backups.
+  **Commands actually run:** `MONGODB_PORT=27018 pnpm e2e:session-rotation` **30/30** ·
+  `pnpm turbo run test --force` **11/11** (contracts 168, http-transport 157, core-domain 163,
+  api 146, storefront 57, admin 69) · `check-permission-registry` **35 codes across 25
+  resources, 9 server-only** · `generate:openapi` **69 operations across 62 paths**, unchanged
+  because no route was added · `pnpm typecheck` **15/15** · `pnpm lint` **17/17** ·
+  `pnpm format:check` clean.
+  **Deny-by-default is now complete**: no route in the codebase authorizes by coarse role
+  alone. **Worth a follow-up:** no guard asserts that, so a future controller could reintroduce
+  one silently — a source-level check in `pnpm lint`, beside the permission-registry guard,
+  would make the property permanent rather than currently-true. Tool: claude-code.
+- 2026-08-12 — [DONE] **`check-route-authorization.mjs` — deny-by-default is now enforced, not
+  merely true.** Sixth source-level guard in `pnpm lint`, beside naming, browser-auth,
+  i18n-parity, route-contracts and permission-registry.
+  **Two rules, one defect each.** (1) A role-gated route must declare an `@Audience`, because
+  `SessionGuard` enforces one only when declared — the exact shape of the order-status hole
+  found hours earlier, where a staff member's STOREFRONT cookie satisfied a back-office route.
+  (2) A route authorizing by role alone must be named in `ROLE_ONLY_ROUTES` with a reason, so
+  coarse-role authorization cannot be reintroduced silently.
+  **Twelve legitimate role-only routes, all self-service** — the caller's own PIN, password,
+  credential state, identity, sessions and quick-resume. There is no other resource involved,
+  so there is nothing to hold a permission against: the authority is "I am this person", which
+  the session proved, plus "I am back-office staff", which the role states.
+  **Three of the twelve are recorded as a KNOWN GAP rather than an endorsement.** The invite
+  routes — create, list, revoke — are gated on the coarse `admin` role, so every administrator
+  may issue invitations regardless of the permissions they hold, and invitation is the ENTIRE
+  privilege-granting surface. No-delegation-above-self constrains what may be granted, which is
+  why this is a gap and not a hole. Converting it needs its own pass, its own code and its own
+  lockout analysis. Writing the justification down is what turns an invisible gap into a
+  reviewed one.
+  **A stale exemption is itself a failure.** An entry naming a route that no longer exists
+  reads as a reviewed decision and would silently excuse a future route reusing the path.
+  **Comment stripping is load-bearing, not tidiness:** `orders.controller.ts` carries a doc
+  comment explaining why the route is no longer `@RequireRoles`, and matching it would make the
+  guard report the very defect it documents as still present.
+  **Negative-controlled three ways.** Reinstating the original defect fails BOTH rules by name.
+  A comment mentioning `@RequireRoles` on a route that has none does not trip it. A stale
+  allowlist entry fails. Sources restored from byte-comparison backups.
+  **Commands actually run:** `check-route-authorization` **69 routes — 12 permission-gated, 12
+  role-only and justified, 18 public, every role-gated route audience-bound**, matching
+  `check-route-contracts` at 69 · `pnpm lint` **17/17** · `pnpm typecheck` **15/15** ·
+  `pnpm turbo run test --force` **11/11** · `MONGODB_PORT=27018 pnpm e2e:session-rotation`
+  **30/30** · `pnpm format:check` clean.
+- 2026-08-12 — [N/A] **Account separation between the storefront and the admin: what is
+  actually true.** Probed against the running application rather than inferred, because the
+  owner asked and the answer is partly not what was hoped.
+  **There is ONE `users` collection and ONE `User` contract**, with `role` as the
+  discriminator. `collection-names.ts` declares `User: 'users'`; there is a single
+  `user.model.ts`. `AdminUserProfile` is an admin-scope EXTRA (employee code, department,
+  inviter), not a separate account. This is the locked design — the build prompt's target model
+  lists `users` once, and the separation it calls for is of CREDENTIALS
+  (`authIdentities`/`passwordCredentials`/`pinCredentials`, pass 7, not yet done), not of
+  people.
+  **Measured, on a real instance:** customer → admin login **401 blocked**; staff → admin login
+  **200**; customer → storefront login **200**; **staff → STOREFRONT login 200 — ALLOWED**; and
+  a staff member's storefront cookie against `/auth/admin/me` **401**, so session-level audience
+  isolation holds.
+  **So the two directions are not symmetric.** A customer can never obtain admin access, which
+  matches the matrix's explicit exclusion. A staff or admin account CAN sign in to the
+  storefront and shop, because storefront login checks only that the account is active. The
+  matrix never forbade that direction — it says only "Customer accounts cannot log into admin"
+  — so this is current design rather than a defect, but it is not what the owner expected and
+  it is now an open question rather than an assumption. **No change made; awaiting a decision.**
+- 2026-08-12 — [DONE] **Account separation sub-pass 1 — decisions recorded; no code.**
+  Owner locked `DEC-ACCOUNT-SEPARATION` (D1–D10) in `owner-decisions-log.mdx`. Build prompt
+  §7/§8 and matrix §2.6 amended to the two-population model (`customers` / `adminUsers`,
+  prefixes `cus_` / `adm_`). Handoff §3 marked answered. `DEC-ADDRESS` note only — not closed.
+  Docs only; pre-existing dirty auth files preserved. **No commit.**
+  Gates: `pnpm turbo run test --force` **11/11** (contracts 168 · http-transport 157 ·
+  core-domain 163 · api 146 · storefront 57 · admin 69 · adapters-db-mongo 4/99 skipped
+  without `RUN_DB_IT`); `MONGODB_PORT=27018 RUN_DB_IT=1` adapters-db-mongo **103/103**;
+  `MONGODB_PORT=27018 pnpm e2e:session-rotation` **30/30** (two earlier attempts in this
+  pass flaked on the 1s access TTL — rotation recovery once, then ungranted-admin 401 vs
+  403 — then passed after a forced API rebuild); OpenAPI **69 ops / 62 paths**;
+  `pnpm typecheck` **15/15**; `pnpm lint` **17/17**; `pnpm format:check` clean after
+  Prettier write on the three edited MDX files; `git diff --check` clean; staged empty.
+  Next: sub-pass 2 (contracts) waits for owner confirmation. Tool: cursor.
+- 2026-08-12 — [DONE] **Account separation sub-pass 2 — contracts split; typecheck map recorded.**
+  `User` / `UserRole` / `UserAuthState` removed. Added `Customer` (`customer.ts`, no
+  `role`, `Address.label`, reserved `contacts` / `savedSizes` / `measurementProfiles`,
+  id `cus_`), `AdminRole` / `AdminUserId` (`admin-role.ts`), `AdminUser` alias,
+  `CustomerAuthState` / `AdminUserAuthState`. Sessions: `role` / `roleAtLogin` are
+  nullable `AdminRole` (null on storefront). Audit ids stay generic `Id` (legacy
+  `user_` tolerated). Role `baseRole` is operator-only. **No commit.**
+  Corrected wrong turns: (1) circular `session` → `admin-auth` → `auth` → `session`
+  broken by extracting `admin-role.ts`; (2) duplicate `export` + `export type` of
+  `AdminRole`/`AdminUserId` in `admin-auth.ts` failed contracts build — fixed to a
+  single re-export.
+  Gates: contracts **168/168** + contracts typecheck clean + format/diff-check clean +
+  staged empty. Expected loud downstream (Pass 3+ map):
+  `pnpm typecheck` fails — core-domain **5** TS errors
+  (`UserRole`/`User`/`UserAuthState` in effective-permissions + ports);
+  adapters-db-mongo **18** TS errors (mappers, auth/user/role repos, 2 tests);
+  api **8** TS errors (invite/auth/session + 2 tests); OpenAPI/e2e/lint cascade on
+  core-domain build. DB-IT **102/103** (1 fail: `User.safeParse` undefined).
+  `pnpm turbo run test --force` stops at core-domain build after contracts 168 /
+  http-transport still green when run alone (157). Next: Pass 3 core-domain ports.
+  Tool: cursor.
+- 2026-08-12 — [DONE] **Account separation sub-pass 3 — core-domain ports split.**
+  Replaced `UserRepository` with `CustomerRepository`; added `AdminUserRepository`.
+  Split `AuthUserRepository` into `CustomerAuthRepository` + `AdminUserAuthRepository`
+  (population-scoped lookups per D1; PIN/permissionsVersion on operators only).
+  `resolveEffectivePermissions` / `isWithinTier` now use `AdminRole` only (no customer
+  tier). Port-conformance fakes updated. `import type` purity holds
+  (runtime-purity 10/10). **No commit.**
+  Gates: core-domain **163/163** + typecheck clean; contracts 168; http-transport 157;
+  format/diff-check clean; staged empty. Downstream map (Pass 4+): adapters **18** TS
+  errors (`User`/`AuthUserRepository`/`roleAtLogin` customer); api **8** TS errors
+  (`User`/`UserRole`/`UserAuthState`/`AuthUserRepository` + session fixtures with
+  `roleAtLogin: 'customer'`); OpenAPI reports more once nest sees missing
+  `AuthUserRepository`; DB-IT still **102/103** (`User.safeParse`); turbo test/lint
+  cascade on adapters-db-mongo build. Next: Pass 4 persistence. Tool: cursor.
+- 2026-08-12 — [DONE] **Account separation sub-pass 4 — persistence models + repos.**
+  `COLLECTION_NAMES.Customer` (then still physical `users`) + `AdminUser: 'adminUsers'`
+  with TEMPORARY `NON_GRAPH` exception. Slim `CustomerModel`; new `AdminUserModel`;
+  `MongoCustomerRepository` / `MongoAdminUserRepository`;
+  `MongoCustomerAuthRepository` / `MongoAdminUserAuthRepository`; `toCustomer` /
+  `toAdminUser`; `roleAtLogin` nullable + legacy `customer`→null; `Role.baseRole`
+  staff|admin only. Catalogue generator updated. **No commit.**
+  Gates: adapters DB-IT **103/103** + adapters typecheck clean; turbo test green
+  (contracts 168 · http 157 · core 163 · api 146 · storefront 57 · admin 69 ·
+  adapters source-only 4); lint 17/17; diff-check clean. Expected red until Pass 6:
+  api typecheck **17** errors; `e2e:session-rotation` blocked on api build;
+  format had 2 prettier files fixed after. Schema Nebula still 64; `adminUsers` NON_GRAPH.
+  Next: Pass 5a rename. Tool: cursor.
+- 2026-08-12 — [DONE] **Account separation sub-pass 5a — `users` → `customers`.**
+  `COLLECTION_NAMES.Customer: 'customers'`; `LEGACY_COLLECTION_NAMES.users: 'customers'`;
+  `customers` added to `NON_GRAPH_COLLECTIONS`. Aligner dry-run renamed 1 doc; real run
+  renamed=1; second run already-aligned renamed=0. **No commit.**
+  Gates: adapters DB-IT **103/103**. Local identity later wiped per D6 (not migrated).
+  Next: Pass 5b split. Tool: cursor.
+- 2026-08-12 — [DONE] **Account separation sub-pass 5b — operator split script.**
+  New `splitAdminUsers` migration + `pnpm mongo:split-admin-users` (`--dry-run`,
+  conflict when target populated + operators remain, never dropTarget). Moves
+  staff|admin → `adminUsers`, strips population-irrelevant fields, rewrites ids to
+  `adm_`/`cus_` and FKs (sessions, assignments, invites, audit, carts, orders, …).
+  DB-IT on isolated fixture collections (happy path + conflict + idempotent re-run).
+  Adapters tests **106/106**. Per D6: wiped local identity/auth collections (did **not**
+  migrate disclosed `owner@saha-textile.test` password); re-seeded system roles.
+  **No commit.** Next: Pass 6 API. Tool: cursor.
+- 2026-08-12 — [DONE] **Account separation sub-pass 6 — API admin surface on `adminUsers`.**
+  DI tokens/bindings for Customer/AdminUser repos + auth repos; admin invite/security/
+  users/roles/bootstrap write `adm_*` into `AdminUserModel`; session/guard
+  population-scoped; storefront minimum on `customers`/`cus_*`. API typecheck clean;
+  api build green; api unit tests **146/146**. E2E seed updated for new models.
+  **No commit.** Next: Pass 7 storefront rejection + D4. Tool: cursor (+ subagent).
+- 2026-08-12 — [DONE] **Account separation sub-passes 8–12 — cross-cutting, Angular, e2e, docs.**
+  Pass 8: audience-bound routes use population-scoped auth repos; email-verify fails closed
+  on `adm_*`. Pass 9: storefront `AuthUser` no longer carries `role` (57 tests). Pass 10:
+  admin `AdminUser` confirmed; Fastkart `IUser` documented as mock until `/admin/users/**`
+  API wiring. Pass 11: e2e already covers operator→storefront **401** + customer
+  cross-audience; full suite **30/30**. Pass 12: this progress block + handoff status flip;
+  Schema Nebula / portal still owed (NON_GRAPH exceptions remain). **No commit.**
+  Gates: turbo test green (contracts 168 · http 157 · core 163 · api 146 · storefront 57 ·
+  admin 69 · adapters 106 with DB-IT); e2e 30/30; permission registry 36 codes. Tool: cursor.
+- 2026-08-13 — [DONE] **Account-separation portal / Nebula owed item closed** (auth impact:
+  populations are now the governed graph truth). Layer detail under **DB / Mongo adapter**
+  and **Developer portal** (not repeated here). Schema Nebula **65 / 32 / 33**; temporary
+  `customers`/`adminUsers` `NON_GRAPH` exceptions cleared. Tool: cursor.
+- 2026-08-13 — [DONE] **Operator admin-users HTTP surface completed for directory + invite ACL.**
+  `GET /admin/users` + invite create on `user.create`. Admin Angular wiring recorded under
+  **Admin**; contracts/list port under **Core domain & contracts** / **API**. Role
+  assign/revoke UI still deferred (API routes already exist). **No commit.** Tool: cursor.
+- 2026-08-13 — [DONE] **Invite list + revoke ACL aligned to `user.create`** (was coarse
+  `@RequireRoles('admin')`). Create/list/revoke now share the same permission. Deferred-plan
+  Phase 0 KB: `DEC-PORTAL-PRIVATE-ACCESS` and storefront OAuth marked pending/non-blocking;
+  handoff cross-links `DEC-UI-REUSE`. **No commit.** Tool: cursor.
 - _(append)_
 
 ---
@@ -2979,6 +3361,7 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
 ## Integration (storefront ↔ API ↔ admin ↔ DB ↔ Meili ↔ Spaces)
 
 - 2026-07-24 — [PARTIAL] Frontends still largely mock/`assets/data`; live API wiring increases after Chunks D–F. Tool: cursor.
+- 2026-08-13 — [DONE] **Operator admin-users path is live end-to-end** (admin UI → `GET/PATCH /admin/users/**` + invite → `adminUsers`). Storefront remains customer-population-scoped. Broader catalogue/checkout Angular still fixture-heavy. Tool: cursor.
 - _(append)_
 
 ---
@@ -3094,6 +3477,40 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
 - 2026-08-09 — [PARTIAL] **Scalar Test Request live-send check is locally environment-blocked, not bypassed.** The Test Request client opens the generated `GET /health/live` operation and the API itself returns 200 with `x-request-id`, but the current gitignored `apps/api/.env` allowlist contains only the Storefront/Admin origins, so a request carrying the persistent portal origin receives no `Access-Control-Allow-Origin` header and Scalar reports `Failed to fetch`. The committed `.env.example` and code default already include both `http://127.0.0.1:3457` and `http://localhost:3457`; no API source, private environment file, or security control was changed during this portal pass. Tool: codex.
 - 2026-08-11 — [DONE] **Developer portal post-admin-authorization reconciliation completed.** Re-read the permission registry/effective-resolution, role CRUD, user-authority/assignment/offboarding, first-admin bootstrap and browser-E2E commits through `17ec0d2f`; Chunk D remains partial while D4 now records the implemented 33-code closed registry, active assignments, deny-by-default admin management routes, no-delegation/last-administrator controls, permission-version invalidation, operator-only bootstrap and current browser proof. Regenerated deterministic evidence measuring **52 paths / 59 operations**, **522 TypeDoc pages**, **34 Mongo models / 424 fields / 94 indexes / 27 temporary shapes**, and **140 / 140 reusable Storybook components across 283 components**. Reconciled canonical status, governed datasets, all four bridge pages, application atlases and affected Docusaurus narratives without promoting Scalar, the source-only catalogue or Schema Nebula beyond evidence. Validator: **77 pages / 77 routes / 52 portal source files**. Root typecheck, lint/naming/security/route/permission gates, tests, formatting, every touched child build, standalone Docusaurus and a fresh atomic composite promotion are green. Browser QA traversed every gateway, confirmed every child return control, covered the governed instruments and changed identity/admin narratives, and found zero horizontal overflow at 1280×720 and 390×844. It also found and fixed two production Mermaid parse failures; the rebuilt security page renders without console errors. Tool: codex.
 - 2026-08-11 — [PARTIAL] **Scalar Test Request live send remains correctly blocked by the current private local CORS environment.** Request Wormhole reaches the generated health operation and opens Test Request; the local API returns `200` with `x-request-id`, but the request from `http://127.0.0.1:3457` receives no `Access-Control-Allow-Origin`, so the browser reports `Failed to fetch`. No private environment value or security control was changed. Scalar remains scaffolded, and normal CORS/authentication/CSRF/authorization/ownership/rate-limit controls remain intact. Tool: codex.
+- 2026-08-13 — [DONE] **Developer portal deep sync after account separation.** Pass 0 ledger →
+  Nebula/compiler → sidebar-wide product-doc freshness + tool/docs voice (2nd/3rd person;
+  Chunk/Pass diary left in live context) → regenerated OpenAPI, Mongo catalogue, TypeDoc,
+  Scalar; Storybook coverage still **140 / 140 reusable across 283**. `portal-truth` + all
+  instrument `lastVerified` → **2026-08-13**. Auth architecture plan carries a supersession
+  banner for the old single-`users` §7.1. Validator: **81 pages / 81 routes**. After
+  `GET /admin/users` landed the same day, OpenAPI evidence is **63 paths / 70 operations**;
+  catalogue **35 / 438 / 97 / 27**. Scalar/catalogue remain scaffolded current-evidence;
+  `DEC-PORTAL-PRIVATE-ACCESS` still BLOCKED. **No commit.** Tool: cursor.
+- 2026-08-13 — [DONE] **Deferred-plan Phase Final portal sync.** OpenAPI **73 paths / 86
+  operations**; catalogue **38 models / 455 fields / 103 indexes** (credential collections
+  included); Schema Nebula inventory **65 / 35 / 30** with credential.model.ts grouping in
+  the portal-data compiler; Storybook coverage **141 / 141 reusable** (idle-lock story);
+  TypeDoc regenerated; validator **81 pages / 81 routes**; `portal:persistent` composite
+  promoted with HTTP 200 on `/`, `/api/reference/`, `/database/catalogue/`,
+  `/database/schema-nebula`, `/typedoc/`, `/storybook/`. Narratives updated for idle-lock,
+  CRM/auth gateways, MSG91 DI. `DEC-PORTAL-PRIVATE-ACCESS` + OAuth still pending. **No
+  commit.** Tool: cursor.
+- 2026-08-15 — [DONE] **Developer portal deep sync (post CRM/auth/flags).** Evidence pass
+  after account-separation CRM, idle-lock UI, effective permissions, customer addresses /
+  soft-delete list hygiene, dial flags + local sprites, session `device.label`, and open
+  `DEC-CUSTOMER-SOFT-DELETE-OPS`. `portal-truth` + manifest/instrument `lastVerified` →
+  **2026-08-15**; Chunk D stays `partial` (OAuth, guest→user merge, browser PIN proof) while
+  idle-lock + Account Security are CURRENT. Storybook dual-app `@core/state/auth.store`
+  type collision fixed with a compiler-only union shim (runtime issuer remapping unchanged).
+  Regenerated OpenAPI **75 paths / 88 operations**; catalogue **38 models / 456 fields /
+  103 indexes / 27 temporary**; TypeDoc **606** HTML pages; Storybook coverage **141 / 141
+  reusable across 289** components. Validator: **82 pages / 82 routes / 52 portal source
+  files**. `portal:persistent` on `127.0.0.1:3468` promoted; HTTP 200 on `/`,
+  `/mission-control`, `/decisions/gate-console`, `/database/schema-nebula`,
+  `/tools/{storybook,scalar,typedoc,database-catalogue}`, `/admin/overview`, and child mounts
+  `/storybook/`, `/typedoc/`, `/api/reference/`, `/database/catalogue/`, `/api/openapi.json`.
+  Derived narratives no longer claim idle-lock or admin CRM customers as absent.
+  `DEC-PORTAL-PRIVATE-ACCESS` still BLOCKED (no deploy). **No commit.** Tool: cursor.
 - _(append)_
 
 ---
@@ -3118,6 +3535,41 @@ Track only status here; details stay in worksheet/umbrella/owner log.
 - 2026-07-24 — [BLOCKED] G-I18N-ROUTES (locale URL law). Tool: cursor.
 - 2026-07-24 — [PARTIAL] G-CORE-CONTRACTS (state dependency rule early in Chunk B). Tool: cursor.
 - 2026-07-25 — [DONE] **G-CORE-CONTRACTS resolved (owner pick: Option C).** `core-domain` may reference contract shapes via `import type` ONLY (runtime-erased; dist verified zero runtime dep on contracts/zod); value imports of contracts + all Nest/Mongoose/Fastify/provider-SDK/adapter imports forbidden, ESLint-enforced in Chunk B. Contracts remain the single shape source of truth (no duplicate entity layer). Lock recorded: owner-decisions-log §2026-07-25 + roadmap gate table + §0 reconciliation note. Tool: claude-code.
+- 2026-08-13 — [BLOCKED] **`DEC-PORTAL-PRIVATE-ACCESS` still pending** (deploy-only; does not
+  block CRM/admin/API). **Storefront OAuth** pending credential-blocked (no Google Workspace /
+  Meta Business access). Tool: cursor.
+- 2026-08-15 — [DONE] **Review and re-verification of the account-separation tree, then the
+  first commit of it.** Read-only deep dive over the whole dirty tree (231 paths), every gate
+  re-run rather than taken on report, and the outcome written into
+  `account-separation-task-handoff.mdx` §9.
+  **Verified green:** `format:check` clean · all six lint guards OK, including
+  `check-route-authorization` at **88 routes — 32 permission-gated, 10 role-only and
+  justified, 19 public** · unit suites all pass (contracts 168, core-domain 163,
+  http-transport 157, api 173, storefront 57, admin 72, msg91 3) · adapter DB-IT **107/107**
+  with `RUN_DB_IT=1` · session-rotation E2E **34/34** · `nest build` confirmed to OMIT
+  `set-local-test-credentials.js` from `dist`, which is the build-prompt §6 requirement that a
+  test-only credential facility must be absent from production builds.
+  **Two bugs confirmed fixed at the source, not just in the report.** `upsertSettings` now does
+  `findOneAndUpdate({ channel, category })` with `$setOnInsert: { _id }` — it had upserted by
+  `_id` while the unique index is on the pair, so a fresh id for an existing pair threw E11000
+  instead of updating. And the CRM E2E create payloads now carry the `phone` their own contract
+  requires.
+  **Still RED, and committed knowingly at the owner's instruction.** `pnpm typecheck`:
+  `test/session-liveness.test.ts` fails TS2307 on `await import('../src/auth/session.service')`
+  — under `moduleResolution: nodenext` a DYNAMIC import needs the `.js` specifier while the
+  static import beside it does not; the test passes at runtime, so only the typechecker sees it.
+  `turbo run lint`: one ESLint ERROR, `no-floating-promises` at
+  `features/customer/form-customer/form-customer.ts:650`, an unawaited `openModal(...)`. Both
+  are one-line fixes and are recorded in the handoff §9.3 rather than silently carried.
+  **Concerns recorded rather than acted on:** the permission registry's server-only escape
+  hatch now holds 76 of 103 codes with **64 identical templated justifications**, which
+  satisfies the >20-character test while answering nothing — the parking space its own comment
+  warned against; `user.destroy` and `user.edit` survive beside `customer.*` and `admin_user.*`,
+  which is the ambiguous noun the task existed to remove; and `pnpm-lock.yaml` was rewritten by
+  a different pnpm version, reformatting ~2,600 resolution keys against one new workspace entry.
+  **The wider scope is retained on the owner's explicit instruction** — MSG91 adapter,
+  credential extraction, idle lock, admin CRM, notification settings and the portal sync all
+  stay. Tool: claude-code.
 - _(append)_
 
 ---
@@ -3126,6 +3578,11 @@ Track only status here; details stay in worksheet/umbrella/owner log.
 
 Use for “next agent should…” notes. Clear or archive when stale.
 
+- 2026-08-13 — Deferred auth/admin CRM plan **14/14 todos complete** (plan YAML synced).
+  Next ops-only: live MSG91 env + templates when ready; `DEC-PORTAL-PRIVATE-ACCESS` still
+  deploy-blocked; OAuth still credential-blocked. Uncommitted tree — commit when owner asks.
+  Local QA: `pnpm auth:set-local-credentials -- --i-am-local …`. Tool: cursor.
+- 2026-08-14 — [DONE] **CRM polish — customer search, seed data, and ledger wiring.** (A) Customer list search (`q`) changed from prefix-only to tokenized contains AND across displayName/email/phone (any order/partial); added optional `sort=displayName|createdAt` parameter to CustomerListQuery and repository. Updated contracts comment and repository list filter with MongoDB regex tokenization. (B) Created seed data for 15 dummy customers with varied profiles/addresses/statuses in `packages/adapters-db-mongo/src/seed/customer-seed-data.ts`; wired into `seedDatabase()` function (now returns `customers` count). (C) Customer Ledger: wired UI to live GET /admin/customers list (replaced mock `injectUsersQuery` with `injectAdminCustomersQuery`); added API endpoint GET /admin/customers/:customerId/orders with page/pageSize/q/startDate/endDate query support; extended admin-customers controller/service + contracts with `CustomerOrdersQuery` and `CustomerOrdersResponse`; wired ledger table to live orders API via `injectAdminCustomerOrdersQuery`; renamed Wallet→Points in UI (changed icon from `ri-wallet-line` to `ri-coins-line`, updated `wallet`→`points` and `wallet_balance`→`points_balance` in i18n en.json + fr.json); kept Add/Withdraw buttons inert as documented. Address management in form-customer already works for Edit mode (live API); Create mode adds addresses after customer exists, which is current behavior. Files: contracts admin-customer.ts, adapters-db-mongo customer.repository.ts + seed files, apps/api admin-customers controller/service, apps/admin customer-ledger component + queries + gateway, i18n en/fr. Tool: cursor.
 - 2026-07-24 — Next: env/secrets sync per roadmap § Env architecture sync; recreate Docker Mongo profile if absent; update this file after each task. Tool: cursor.
 - 2026-07-31 — Chunk B Passes 1b, 2a and 2b are DONE and committed. Remaining in Chunk B: **Pass 3 — missing ports** (`TransactionManagerPort`, `NotificationPort`, `YouTubePort`, `VideoTranscodePort`, session/OTP/OAuth/media/inventory repositories) and the media/inventory/checkout/pricing/content contract families. Then **Chunk C — API platform** (request id, redacted logger, global error mapping onto the `ApiError` envelope added in Pass 1b, `TRUST_PROXY`/`CLIENT_IP_HEADER`, strict CORS, cookie/CSRF + rate-limit foundations, `/health/live`+`/health/ready`). Open cross-branch item: merge `fix/admin-app-spec` so repo-wide `pnpm test` is green here too. Portal freshness validator (37 pages) still needs its own reconciliation pass. Tool: claude-code.
 - 2026-07-31 — Chunk B Pass 1b is DONE and committed (boundary lint + purity test + shared primitives + attribute export + test backfill). Next candidates, in the order they reduce risk: (a) **Chunk B Pass 2 — catalog contract family** (categories/placements/products/first-class variants/option definitions + the `ProductStatus` `draft|live|disabled|discontinued` correction and its model/repository/API ripple); (b) **Chunk B Pass 3 — missing ports** (`TransactionManagerPort`, `NotificationPort`, `YouTubePort`, `VideoTranscodePort`, session/OTP/OAuth/media/inventory repositories); (c) **Chunk C Pass 1 — API platform** (request id, redacted logger, global error mapping onto the new `ApiError` envelope, `TRUST_PROXY`/`CLIENT_IP_HEADER`, strict CORS, cookie/CSRF + rate-limit foundations, `/health/live`+`/health/ready`). Two known reds that are NOT Chunk B regressions: the stale `apps/admin` `app.component.spec.ts`, and the 37-page portal freshness validator. Tool: claude-code.

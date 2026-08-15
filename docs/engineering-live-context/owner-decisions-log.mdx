@@ -3,7 +3,7 @@ title: 'Owner Decisions'
 description: 'Authoritative record of currently locked Saha Textile owner decisions.'
 audience: [engineering, product, operator, agent]
 document_role: canonical
-last_verified: 2026-08-09
+last_verified: '2026-08-13'
 search_keywords: 'owner decisions authoritative locked intent architecture product operations'
 ---
 
@@ -11,7 +11,7 @@ search_keywords: 'owner decisions authoritative locked intent architecture produ
 
 **Status:** Authoritative record of currently locked owner decisions.
 
-**Last reconciled:** 2026-08-09
+**Last reconciled:** 2026-08-12
 
 This file contains current decisions only. Superseded intermediate positions remain available in Git history, not inline where they can be mistaken for current direction.
 
@@ -230,10 +230,71 @@ class, element or component is the failure mode this rule exists to prevent.
     - five failed PIN attempts lock PIN use for 15 minutes or until password login;
     - PIN is password-grade hashed and audited.
 - Admin inactivity uses a 15-minute soft lock while preserving the mounted route/form state.
+- Soft-lock is a **presence proof** (PIN/password resume). Admin **server session idle** is a
+  separate hard kill and must outlive soft-lock so resume can rotate a still-live session
+  (locked 2026-08-14: soft-lock 15m, admin idle TTL 60m, absolute 12h). Access JWT remains
+  short-lived; soft-lock/visibility refresh keeps cookies usable without unlocking the UI.
 - Password, role, permission, account-status, token-version, and reuse-detection changes invalidate quick resume.
 - Protected admin deep links resume after successful login.
 - RBAC failures are never queued or replayed.
 - Object-level authorization is mandatory for owned resources.
+
+### Account separation (`DEC-ACCOUNT-SEPARATION` — locked 2026-08-12)
+
+This lock **amends** the previously ratified single-`users` model in the auth build prompt
+§8 target list and the security matrix §1 collection table. Storefront customers and
+back-office operators are distinct populations. Implementation follows
+`account-separation-task-handoff.mdx`.
+
+| Concept              | Physical collection | Contract entity | Id prefix |
+| -------------------- | ------------------- | --------------- | --------- |
+| Storefront shopper   | `customers`         | `Customer`      | `cus_`    |
+| Back-office operator | `adminUsers`        | `AdminUser`     | `adm_`    |
+
+Prose and comments keep saying “operator”; identifiers say `adminUser`. The bare noun
+“user” must not name either population.
+
+- **D1** — The same email **may** exist in both collections. Uniqueness is **per
+  collection**. Every identifier lookup, password reset, OTP challenge and registration is
+  population-scoped. Anti-enumeration treats “exists only in the other population” as
+  unknown.
+- **D2** — Operators keep a coarse role of `staff` | `admin`. Fine-grained permissions
+  remain authoritative. This lock is account separation, not an RBAC rewrite.
+- **D3** — `/admin/users/**` and the admin User screens administer **operators only**.
+  Customer CRM is a later `/admin/customers/**` surface with new `customer.*` permission
+  codes. Existing `user.*` codes keep meaning operators for this task; renaming them to
+  `admin_user.*` is a follow-up with the account-naming lint, not part of the split.
+- **D4** — `assertOwnership` is **id-equality only**. Support-read of a customer order or
+  cart requires admin audience **and** a permission (`order.index` for orders; a new
+  server-only `cart.index` for carts). It is not a coarse-role bypass.
+- **D5** — Id prefixes are `cus_` (customers) and `adm_` (operators). The irreversible
+  split rewrites moved operator ids and every foreign key that pointed at them. The audit
+  read model tolerates leftover `user_` rows as unknown-population.
+- **D6** — Local identity/auth collections are wiped and the first administrator is
+  re-bootstrapped. The disclosed `owner@saha-textile.test` password is not migrated. The
+  split script is still built and integration-tested against fixtures. Catalog and commerce
+  data stay.
+- **D7** — A customer document has **no** `role` field. `UserRole` becomes `AdminRole` =
+  `staff` | `admin`. Storefront sessions carry `audience` only; `roleAtLogin` remains on
+  admin sessions.
+- **D8** — An operator **may** hold a personal storefront account. It is **unlinked**:
+  separate credentials, no foreign key. Combined with D1, the same email may exist on both
+  sides as two people in the system.
+- **D9** — Shape the customer document for known account data now: typed named addresses
+  (existing `Address` contract plus a `label`; do not add billing-vs-shipping policy flags
+  that would close `DEC-ADDRESS`), plus reserved empty typed arrays `contacts`,
+  `savedSizes` and `measurementProfiles` (no routes write them in this task; measurement
+  keys stay open under `DEC-ADDON-MEASUREMENTS`). Do **not** embed wishlists, orders,
+  carts, sessions, tokens, consent history, or a link to `adminUsers`. Embedded password
+  hashes remain until the already-ratified credential-collection extraction; freezing them
+  onto `customers` would cancel that security destination.
+- **D10** — Rename `users` → `customers` (reversible aligner), then split operators into
+  `adminUsers`. Both new names take a temporary `NON_GRAPH_COLLECTIONS` exception until the
+  portal tool reconciles Schema Nebula. The graph file and portal-derived docs stay out of
+  scope for the split task.
+  **Status 2026-08-13:** Schema Nebula reconciled (`customers` + solid `adminUsers`, graph
+  **65 / 32 / 33**); the temporary `NON_GRAPH` exceptions for those two names are cleared.
+  Remaining NON_GRAPH: `authRateLimits`, `productQuestions`, `ratingAggregates` only.
 
 ## OTP and notifications
 
@@ -257,6 +318,9 @@ class, element or component is the failure mode this rule exists to prevent.
 - Disabled channel/category combinations short-circuit before calling providers.
 - Marketing sends require consent and approved templates where applicable.
 - Usage thresholds, spend warnings, auto-disable behavior, RBAC, and audit are required.
+- **2026-08-13 owner lock (Authkey placement):** MSG91 Authkey lives in API env (`MSG91_AUTH_KEY`) only.
+  Admin Settings may manage kill-switches, plan limits, and non-secret template/Flow/WhatsApp ids —
+  never paste or display the Authkey. Sender/from/WhatsApp number remain env for now.
 
 ## Privacy and consent
 

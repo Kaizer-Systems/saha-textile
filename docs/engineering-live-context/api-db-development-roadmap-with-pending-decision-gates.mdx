@@ -167,14 +167,15 @@ Other open decisions block only their own final policy engine. Reversible schema
   approved credentials.
 - **D4 — admin auth (partial):** password/PIN login, password recovery, PIN
   setup/lockout, invite create/list/revoke/acceptance, HTTP quick-resume, audience guards,
-  and permission-version invalidation exist. The closed 33-code permission registry,
+  and permission-version invalidation exist. The closed **103-code** permission registry,
   active role-assignment resolution, deny-by-default role/permission/user-authority routes,
   no-delegation-above-self, last-administrator protection, audited offboarding, and the
-  operator-only first-administrator bootstrap are implemented and negative-tested. A real
-  browser has proven password login, cookie-only reload, refresh recovery, role grant/revoke,
-  permission invalidation, last-admin refusal, and logout. The admin Security Settings client
-  for PIN configure/change, real-browser PIN-login proof, and the 15-minute idle-lock/PIN-resume
-  orchestration remain incomplete.
+  operator-only first-administrator bootstrap are implemented and negative-tested. Account
+  Security at `/account` (PIN/password/sessions) and the 15-minute idle soft-lock
+  (`IdleLockService` + `idle-lock-modal` + `POST /auth/admin/resume` with PIN or password)
+  are live. A real browser has proven password login, cookie-only reload, refresh recovery,
+  role grant/revoke, permission invalidation, last-admin refusal, and logout. Real-browser
+  PIN-login proof coverage and granular migration of older privileged routes remain open.
 - **D5 — consent, privacy, and ownership (partial):** consent history, export/erase
   seams, order-read BOLA, cart ownership/`st_guest` proof, and order-create cart
   ownership/adoption are implemented. Cart routes remain `@Public()` for guest

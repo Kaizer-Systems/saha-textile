@@ -4,7 +4,7 @@ wide: true
 description: Liveness versus readiness, logging, metrics, testing layers, transaction proof, and backend definition of done.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 source_of_truth:
     - apps/api/src/health
     - apps/api/src/infra/persistence.module.ts
@@ -87,7 +87,7 @@ Avoid high-cardinality labels such as raw user id, order id, email, token, full 
 | HTTP transport     | 157 framework-free policy tests for CSRF, refresh single-flight, cross-tab exclusion and refusal mapping                                     | Browser integration does not replace feature-flow coverage                              |
 | Storefront / Admin | 57 / 61 unit tests for gateways, interceptors, stores and admin routes                                                                       | Feature/page coverage remains incomplete                                                |
 
-The dedicated live security campaign adds 22 end-to-end checks for bootstrap closure, cookie sessions, audience isolation, direct-API RBAC denial, role grant/revoke, last-admin protection, offboarding, permission-version invalidation, BOLA and related negative cases. The admin browser proof separately covers password login, cookie-only reload, expiry recovery, role mutation with CSRF, `permissions_changed` recovery and menu logout. PIN login and the absent idle-lock client are not part of that browser proof.
+The dedicated live security campaign adds 22 end-to-end checks for bootstrap closure, cookie sessions, audience isolation, direct-API RBAC denial, role grant/revoke, last-admin protection, offboarding, permission-version invalidation, BOLA and related negative cases. The admin browser proof separately covers password login, cookie-only reload, expiry recovery, role mutation with CSRF, `permissions_changed` recovery and menu logout. Real-browser PIN-login proof coverage remains open; the idle soft-lock client is live in product but is not yet part of that browser proof campaign.
 
 The former zero-spec Angular baseline has been superseded: both applications now test their cookie-session transport and state boundaries, and the admin also tests protected routing. These focused tests are not broad UI coverage. The backend gate still rejects permanently skipped transaction proof as a production-done state.
 

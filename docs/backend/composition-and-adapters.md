@@ -4,7 +4,7 @@ wide: true
 description: NestJS module wiring, dependency-injection tokens, adapter ownership, Mongo mappings, and provider seams.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 source_of_truth:
     - apps/api/src/app.module.ts
     - apps/api/src/config/app-config.ts
@@ -36,7 +36,7 @@ flowchart TD
 
     Persistence --> MongoRepos["Original commerce repositories"]
     Persistence --> AuthRepos["Auth + consent repositories"]
-    Persistence --> Notifications["ConsoleNotificationAdapter"]
+    Persistence --> Notifications["NotificationPort factory (MSG91 | console)"]
     Persistence --> Transaction["MongoTransactionManager"]
     Persistence --> AuthAdapter["Argon2JwtAuth"]
     Persistence --> MongoConnection["Mongo connection lifecycle"]
@@ -44,19 +44,20 @@ flowchart TD
 
 The name `PersistenceModule` is currently broader than persistence because it also binds `AuthPort`. The target folder plan separates composition into persistence, search, and external-adapter modules so dependency ownership remains obvious.
 
-`PersistenceModule` binds the auth session/user, OTP, OAuth state, reset, verification, invite, rate-limit, role, user-role-assignment, audit and consent repositories. The auth/session/privacy services and `AdminModule` consume those bindings. `SessionGuard` resolves effective permissions from transitional embedded grants plus active assignments, capped by the account's coarse role tier; the new role, permission and user-authority routes enforce named permissions deny-by-default. The console notification adapter is an explicit development seam; it is not evidence of MSG91 provider readiness. Chunk E's additional repository adapters exist in the Mongo package but are not all API-bound workflows.
+`PersistenceModule` binds the auth session/user, OTP, OAuth state, reset, verification, invite, rate-limit, role, user-role-assignment, audit, consent, and notification settings/template/outbox repositories. The auth/session/privacy services and `AdminModule` consume those bindings. `SessionGuard` resolves effective permissions from transitional embedded grants plus active assignments, capped by the account's coarse role tier; the new role, permission and user-authority routes enforce named permissions deny-by-default. `NOTIFICATION_PORT` is `Msg91NotificationAdapter` when `NOTIFICATION_PROVIDER=msg91` and `MSG91_AUTH_KEY` are set; otherwise `ConsoleNotificationAdapter` (with a warn if provider asks for msg91 without a key). Chunk E's additional repository adapters exist in the Mongo package but are not all API-bound workflows.
 
 ## Current DI bindings
 
-| Token family                    | Concrete implementation                                                                                                                                                          |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Catalogue/commerce repositories | `MongoProductRepository`, `MongoCategoryRepository`, `MongoCurrencyRepository`, `MongoPromotionRepository`, `MongoCartRepository`, `MongoOrderRepository`, `MongoUserRepository` |
-| Auth/authorization repositories | Mongo session, auth-user, OTP, OAuth-state, reset, verification, invite, rate-limit, role and user-role-assignment repositories                                                  |
-| Audit repository                | `MongoAuditLogRepository`, used by admin role/authority/offboarding and first-admin bootstrap paths                                                                              |
-| Privacy repository              | `MongoConsentRepository`                                                                                                                                                         |
-| `TRANSACTION_MANAGER`           | `MongoTransactionManager`                                                                                                                                                        |
-| `NOTIFICATION_PORT`             | `ConsoleNotificationAdapter` development seam                                                                                                                                    |
-| `AUTH_PORT`                     | `Argon2JwtAuth` factory using validated app config                                                                                                                               |
+| Token family                    | Concrete implementation                                                                                                                                                                                          |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Catalogue/commerce repositories | `MongoProductRepository`, `MongoCategoryRepository`, `MongoCurrencyRepository`, `MongoPromotionRepository`, `MongoCartRepository`, `MongoOrderRepository`, `MongoCustomerRepository`, `MongoAdminUserRepository` |
+| Auth/authorization repositories | Mongo session, auth-user, OTP, OAuth-state, reset, verification, invite, rate-limit, role and user-role-assignment repositories                                                                                  |
+| Audit repository                | `MongoAuditLogRepository`, used by admin role/authority/offboarding and first-admin bootstrap paths                                                                                                              |
+| Privacy repository              | `MongoConsentRepository`                                                                                                                                                                                         |
+| Notification repositories       | `MongoNotificationSettingsRepository`, `MongoNotificationTemplateRepository`, `MongoMessageOutboxRepository`                                                                                                     |
+| `TRANSACTION_MANAGER`           | `MongoTransactionManager`                                                                                                                                                                                        |
+| `NOTIFICATION_PORT`             | Factory: `Msg91NotificationAdapter` (`@saha-textile/adapters-notifications-msg91`) or `ConsoleNotificationAdapter`                                                                                               |
+| `AUTH_PORT`                     | `Argon2JwtAuth` factory using validated app config                                                                                                                                                               |
 
 Unbound ports do not become operational merely because their interfaces exist.
 
@@ -65,7 +66,7 @@ Unbound ports do not become operational merely because their interfaces exist.
 The adapter currently owns:
 
 - connection configuration and Mongoose lifecycle;
-- 34 models with explicitly declared physical collection names, plus indexes;
+- 38 models with explicitly declared physical collection names, plus indexes;
 - conversion from Mongoose documents to public contract-shaped values;
 - original API-bound repositories plus bound auth/consent and tested Chunk E catalogue, inventory, media, governance, notification and content adapters;
 - a transaction manager that exposes only the opaque core transaction context and uses `AsyncLocalStorage` so nested transactions join;
@@ -126,7 +127,7 @@ Seam-first provider work is ratified: ports and stub or sandbox adapters can adv
 Remaining configuration gaps:
 
 - development JWT secrets are still supplied as defaults (`?? 'dev-…-change-me'`) without a production rejection gate;
-- cookie session issuance/rotation and session-bound CSRF are wired; a real MSG91 adapter, provider verification and production notification delivery remain open.
+- cookie session issuance/rotation and session-bound CSRF are wired; MSG91 delivery is adapter-ready behind env Authkey + DB templates (console remains the default local provider).
 
 Production must fail closed when required secrets or security settings are absent. Never “helpfully” create predictable production secrets.
 

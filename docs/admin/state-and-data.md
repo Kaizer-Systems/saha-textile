@@ -4,7 +4,7 @@ wide: true
 description: Ownership rules for TanStack Query, SignalStore, classic NgRx, services, interceptors, and transitional fixtures.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-15'
 source_of_truth:
     - apps/admin/src/app/app.config.ts
     - apps/admin/src/app/core/config/runtime-config.ts
@@ -16,18 +16,18 @@ source_of_truth:
 
 # Admin state and data
 
-The admin combines server-state queries, application stores, a client cart workflow, and local reactive forms. Most current services read JSON fixtures, so the architectural seams are more mature than the integrations.
+The admin combines server-state queries, application stores, a client cart workflow, and local reactive forms. Auth, Account Security, roles/operators, notification settings, and CRM customers use live gateways; most other services still read JSON fixtures, so the architectural seams are more mature than every integration.
 
 ## Ownership map
 
-| Concern                      | Current owner                  | Examples                                                       |
-| ---------------------------- | ------------------------------ | -------------------------------------------------------------- |
-| Remote list/detail lifecycle | TanStack Angular Query         | Products, categories, orders, roles, users, dashboard data     |
-| Transport                    | Angular `HttpClient` service   | `ProductService`, `OrderService`, `DashboardService`           |
-| Session/shell state          | NgRx SignalStore               | Auth, account, menu, loader, settings                          |
-| Create-order cart            | Classic NgRx                   | Cart reducer and effects                                       |
-| Form interaction             | Angular reactive forms/signals | Product, coupon, user, role, blog, settings forms              |
-| Cross-cutting HTTP behavior  | Interceptors                   | Authentication header, loader, error handling, SSR placeholder |
+| Concern                      | Current owner                  | Examples                                                                                   |
+| ---------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------ |
+| Remote list/detail lifecycle | TanStack Angular Query         | Products, categories, orders, roles, users, customers, notifications                       |
+| Transport                    | Typed gateways / `HttpClient`  | Live admin gateways for roles, users, customers, notifications; fixture services elsewhere |
+| Session/shell state          | NgRx SignalStore               | Auth (incl. `/me` profile), menu, loader, settings                                         |
+| Create-order cart            | Classic NgRx                   | Cart reducer and effects                                                                   |
+| Form interaction             | Angular reactive forms/signals | Product, coupon, user, role, customer, account security forms                              |
+| Cross-cutting HTTP behavior  | Interceptors                   | Cookie credentials, CSRF, loader, error handling, SSR placeholder                          |
 
 ## Read path today
 
@@ -45,6 +45,8 @@ Query keys commonly include the full parameter object. Preserve stable serializa
 ## Write path today
 
 Many feature list components contain explicit comments that status toggles, delete, bulk delete, approve, export, replicate, refund updates, or settings updates have no backend yet. Some forms load existing fixture records and then navigate without a real write.
+
+Exceptions that are already live: Account Security mutations at `/account`, CRM customer create/edit/soft-delete (deleted hidden by default; revive blocked on `DEC-CUSTOMER-SOFT-DELETE-OPS`), role/user authority flows, and notification-settings channel/template updates.
 
 These explicit gaps prevent a mock interaction from being mistaken for a backend capability. When implementing a mutation, replace the seam deliberately rather than layering a success message over a no-op.
 

@@ -4,7 +4,7 @@ wide: true
 description: Atomic-write design, replica-set verification, current source-generated catalogue, and target-completeness requirements.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 source_of_truth:
     - packages/adapters-db-mongo/src
     - packages/adapters-db-mongo/scripts/generate-catalogue.ts
@@ -107,15 +107,15 @@ Never assume a Mongoose schema edit automatically migrates historical documents.
 
 ## Current generated catalogue
 
-The composite portal publishes a source-only **Schema Observatory** at `/database/catalogue/`. The deterministic 2026-08-11 regeneration imports every exported Mongoose model without opening a connection and measures:
+The composite portal publishes a source-only **Schema Observatory** at `/database/catalogue/`. The deterministic 2026-08-13 regeneration imports every exported Mongoose model without opening a connection and measures:
 
-- 34 current models;
-- 424 schema paths;
-- 94 indexes;
+- 35 current models;
+- 438 schema paths;
+- 97 indexes;
 - 27 paths whose `Mixed` or array-of-`Mixed` shape is explicitly marked temporary;
-- 13 excluded-by-default credential, PIN, token, code, state, nonce, PKCE, CSRF and private-contact fields, all omitted from synthetic previews.
+- 14 excluded-by-default credential, PIN, token, code, state, nonce, PKCE, CSRF and private-contact fields, all omitted from synthetic previews.
 
-The catalogue covers the seven original models plus 27 identity, authorization, consent, catalogue, variant, merchandising, media, inventory, governance, notification, and content models. Thirty-one models map to ratified Schema Nebula nodes; `authRateLimits`, `productQuestions`, and `ratingAggregates` are current non-graph evidence. The catalogue remains a current-evidence scaffold, not the finished database dictionary: it does not claim complete HTTP or workflow adoption, migration history, retention completeness, or complete nested validators.
+The catalogue covers the separated `customers` and `adminUsers` populations, extracted credential collections (`passwordCredentials`, `pinCredentials`, `authIdentities`), plus the remaining original core, identity, authorization, consent, catalogue, variant, merchandising, media, inventory, governance, notification, and content models — **38 models / 456 fields / 103 indexes** on the latest regeneration. `authRateLimits`, `productQuestions`, and `ratingAggregates` are current non-graph evidence. The catalogue remains a current-evidence scaffold, not the finished database dictionary: it does not claim complete HTTP or workflow adoption, migration history, retention completeness, or complete nested validators.
 
 ## Target-complete catalogue gate
 

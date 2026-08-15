@@ -4,7 +4,7 @@ slug: /
 description: Private developer portal for Saha Textile.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - apps/developer-portal/src
@@ -84,11 +84,11 @@ import { MissionControl } from '@site/src/components/MissionControl';
 			<h3>Current route inventory</h3>
 			<p>Every present controller route, existing control and missing production guarantee.</p>
 		</a>
-		<a className="portalPathCard" href="/database/schema-nebula">
-			<span>Data · Explore</span>
-			<h3>Schema Nebula</h3>
-			<p>Navigate 64 physical collection targets, current model evidence, context clusters and decision gravity.</p>
-		</a>
+	<a className="portalPathCard" href="/database/schema-nebula">
+		<span>Data · Explore</span>
+		<h3>Schema Nebula</h3>
+		<p>Navigate 65 physical collection targets, current model evidence, context clusters and decision gravity.</p>
+	</a>
 	</div>
 </section>
 
@@ -207,7 +207,7 @@ import { MissionControl } from '@site/src/components/MissionControl';
 		<a href="/database/overview" className="portalImplementationItem" role="listitem">
 			<span className="portalStatusPill" data-status="scaffolded">Scaffolded</span>
 			<strong>Mongo adapter</strong>
-			<p>All 34 current Mongoose models plus their fields and indexes are source-generated into the scaffolded current-model catalogue.</p>
+			<p>All 35 current Mongoose models plus their fields and indexes are source-generated into the scaffolded current-model catalogue.</p>
 		</a>
 	</div>
 </section>

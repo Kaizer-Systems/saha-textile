@@ -4,7 +4,7 @@ wide: true
 description: Zod contract ownership, request parsing, persistence mapping, response safety, and evolution rules.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 source_of_truth:
     - packages/contracts/src
     - packages/contracts/test
@@ -51,9 +51,9 @@ An API request for account registration should not accept `role`, `emailVerified
 | `auth.ts`, `admin-auth.ts`                           | storefront/admin request and actor-safe response DTOs                             | 12-character password floor; six-digit admin PIN shape; no tokens in body                |
 | `auth-internal.ts`                                   | OTP/OAuth/reset/invite/rate-limit persistence shapes                              | codes/tokens/IP/user-agent values are represented by hashes                              |
 | `consent.ts`, `audit.ts`, `notification.ts`          | consent history, broad admin/security audit, notification settings/outbox         | append-only evidence and channel/category control are explicit                           |
-| `permission.ts`, `role.ts`, `admin-user.ts`          | 33-code permission registry, roles, assignments and admin authority operations    | grants normalize against the registry; server-only codes have a justified write boundary |
+| `permission.ts`, `role.ts`, `admin-user.ts`          | 103-code permission registry, roles, assignments and admin authority operations   | grants normalize against the registry; server-only codes have a justified write boundary |
 
-These contract families are not proof of end-to-end operations. Contract tests total 160, and the matching core port surface is complete. Auth/session, OTP, password reset, email verification, admin recovery/PIN/invite/resume, role/permission/user-authority administration, consent/privacy, cart/`st_guest` ownership and order-ownership contracts have meaningful HTTP adoption. The permission registry is compile-time closed; seven write/assignment actions expanded it to 33 codes, and only the explicitly identified server-only subset may cross the internal bootstrap/administration boundary. OAuth, the admin Security Settings and idle-lock clients, browser PIN proof and guest→user merge remain open. The Mongo adapter implements the role/assignment seam plus consent, audit, notification, catalogue, media, inventory, governance and content models/repositories, but most expanded families still lack complete HTTP workflows. Checkout, payment, reporting, analytics and the rest of the ratified target persistence remain incomplete.
+These contract families are not proof of end-to-end operations. Contract tests total 160, and the matching core port surface is complete. Auth/session, OTP, password reset, email verification, admin recovery/PIN/invite/resume, Account Security and idle-lock resume, role/permission/user-authority administration, admin CRM customers, consent/privacy, cart/`st_guest` ownership and order-ownership contracts have meaningful HTTP adoption. The permission registry is compile-time closed at **103** codes (menu ∪ UI gates ∪ former mock names), and only the explicitly identified server-only subset may cross the internal bootstrap/administration boundary. OAuth verification, real-browser PIN-login proof coverage, and guest→user merge remain open; soft-delete revive ops remain gated by `DEC-CUSTOMER-SOFT-DELETE-OPS`. The Mongo adapter implements the role/assignment seam plus consent, audit, notification, catalogue, media, inventory, governance and content models/repositories, but most expanded families still lack complete HTTP workflows. Checkout, payment, reporting, analytics and the rest of the ratified target persistence remain incomplete.
 
 ## Boundary validation today
 

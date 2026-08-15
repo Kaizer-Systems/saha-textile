@@ -5,7 +5,7 @@ description: Current authentication scaffold, ratified browser-session architect
 search_keywords: 'cookies csrf st_access st_refresh otp msg91 jwt session bola audiences pin'
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 source_of_truth:
     - apps/api/src/auth
     - apps/api/src/admin
@@ -18,7 +18,8 @@ source_of_truth:
     - apps/api/src/infra/argon2-jwt.auth.ts
     - apps/api/src/config/app-config.ts
     - apps/api/.env.example
-    - packages/adapters-db-mongo/src/models/user.model.ts
+    - packages/adapters-db-mongo/src/models/customer.model.ts
+    - packages/adapters-db-mongo/src/models/admin-user.model.ts
     - packages/adapters-db-mongo/src/models/auth-session.model.ts
     - packages/adapters-db-mongo/src/models/auth-challenge.model.ts
     - packages/adapters-db-mongo/src/models/auth-token.model.ts
@@ -35,7 +36,7 @@ source_of_truth:
 
 # Security, sessions, and authorization
 
-Security status is **scaffolded** because the implemented session and authorization foundation is not yet a complete identity system. Browser auth uses audience-bound httpOnly access/refresh cookies, opaque refresh rotation with reuse-triggered family revocation, AuthSession `sid` checks so logout/family revoke invalidate access JWTs immediately, session-bound double-submit CSRF (Policy B preserve-or-recover on `GET /auth/csrf`), current-user/version checks, role/permission enforcement, cart/`st_guest` ownership and order ownership. The admin boundary now includes a closed 33-code registry, active assignment resolution, permission-gated role and user-authority routes, no-delegation-above-self, last-administrator protection, offboarding/session revocation and an operator-only first-admin bootstrap. Strict credentialed CORS, Helmet, trusted client-IP rate limiting, per-request correlation, adapter-level log redaction, and the shared safe error envelope also exist. Remaining gaps include OAuth, the admin Security Settings and idle-lock clients, browser PIN proof, guest→user merge, fail-closed production secret validation, provider-backed delivery, and granular-permission migration for older privileged routes.
+Security status is **scaffolded** because the implemented session and authorization foundation is not yet a complete identity system. Browser auth uses audience-bound httpOnly access/refresh cookies, opaque refresh rotation with reuse-triggered family revocation, AuthSession `sid` checks so logout/family revoke invalidate access JWTs immediately, session-bound double-submit CSRF (Policy B preserve-or-recover on `GET /auth/csrf`), current-user/version checks, role/permission enforcement, cart/`st_guest` ownership and order ownership. The admin boundary now includes a closed **103-code** registry, active assignment resolution, permission-gated role and user-authority routes, no-delegation-above-self, last-administrator protection, offboarding/session revocation, an operator-only first-admin bootstrap, Account Security at `/account` (PIN/password/sessions), and a 15-minute idle soft-lock that resumes via `POST /auth/admin/resume` (PIN or password). Strict credentialed CORS, Helmet, trusted client-IP rate limiting, per-request correlation, adapter-level log redaction, and the shared safe error envelope also exist. Remaining gaps include OAuth verification, real-browser PIN-login proof coverage, guest→user merge, fail-closed production secret validation, provider-backed delivery, granular-permission migration for older privileged routes, portal private-access deploy (`DEC-PORTAL-PRIVATE-ACCESS`), and soft-delete revive ops (`DEC-CUSTOMER-SOFT-DELETE-OPS`).
 
 ## Authentication versus authorization
 
@@ -50,13 +51,13 @@ A valid token proves identity and live session membership; object-level cart/ord
 sequenceDiagram
     participant Browser
     participant API
-    participant UserRepo
+    participant CustomerRepo
     participant AuthPort
     participant SessionStore
 
     Browser->>API: POST /auth/storefront/login/password
-    API->>UserRepo: findCredentialByEmail
-    UserRepo-->>API: public user + selected password hash
+    API->>CustomerRepo: findCredentialByEmail
+    CustomerRepo-->>API: public customer + selected password hash
     API->>AuthPort: verifyPassword
     API->>SessionStore: persist refresh family + CSRF hash
     API->>AuthPort: sign short-lived access JWT
@@ -68,22 +69,22 @@ Important current gaps:
 
 - both Angular applications use cookie-only typed auth gateways with no browser-held credential; the shared transport coordinates CSRF, one refresh attempt and cross-tab refresh exclusion;
 - registration and password flows use shared 12-character schemas, but the common-password denylist remains absent;
-- OTP request/verify is live through `NotificationPort`, but the bound `ConsoleNotificationAdapter` is a safe development seam rather than MSG91 delivery;
+- OTP request/verify is live through `NotificationPort`. DI selects `Msg91NotificationAdapter` when `NOTIFICATION_PROVIDER=msg91` and `MSG91_AUTH_KEY` is set; otherwise `ConsoleNotificationAdapter` (local/test / missing key fallback);
 - email-verification issuance, completion and resend are live; OAuth state persistence exists without provider/callback verification routes;
-- admin password recovery, password/PIN login, PIN setup/lockout, invite lifecycle, HTTP resume, first-admin bootstrap and fine-grained assignment enforcement on the admin management surfaces are live; the Security Settings and idle-lock clients plus real-browser PIN proof are absent;
-- consent/privacy, order ownership, cart Principal/`st_guest` ownership and order-create cart adoption are live; guest→user merge and checkout idempotency remain Chunk G;
+- admin password recovery, password/PIN login, PIN setup/lockout, invite lifecycle, HTTP resume, Account Security at `/account`, idle soft-lock PIN/password resume, first-admin bootstrap and fine-grained assignment enforcement on the admin management surfaces are live;
+- consent/privacy, order ownership, cart Principal/`st_guest` ownership, and order-create cart adoption are live; guest→user cart merge remains Chunk G; checkout idempotency remains Chunk G;
 - production configuration still needs a fail-closed secret check.
 
 ## Chunk D status boundary
 
 Chunk D1's tested stores are bound into the HTTP flow. The current adapter suite also proves atomic refresh rotation, replay lookup, family revocation, one-active OTP handling, single-use token consumption, concurrency-safe rate-limit counters, role-assignment uniqueness, secret-field exclusion, and TTL policy against rs0.
 
-| Pass | Current evidence                                                                                                                                                                                                                            | Remaining boundary                                                                                                                |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| D2   | **Done:** cookie issue/refresh/revoke, sid-bound access invalidation, reuse-family revocation, session-bound CSRF (Policy B) and storefront/admin audience guards                                                                           | None in the defined D2 scope                                                                                                      |
-| D3   | **Partial:** register, password login/logout/me/refresh, password reset, email verification/resend, and email OTP request/verify use generic anti-enumeration where applicable                                                              | OAuth provider verification                                                                                                       |
-| D4   | **Partial:** admin recovery, password/PIN login, PIN setup/lockout, invites, HTTP resume, bootstrap, registry-backed assignments, deny-by-default admin management, no-delegation, last-admin/offboarding controls and version invalidation | Security Settings client, browser PIN proof, idle-lock/PIN-resume orchestration and granular migration of older privileged routes |
-| D5   | **Partial:** consent/privacy, order BOLA, cart/`st_guest` ownership and order-create cart adoption                                                                                                                                          | Guest→user merge (Chunk G)                                                                                                        |
+| Pass | Current evidence                                                                                                                                                                                                                                                                                   | Remaining boundary                                                                      |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| D2   | **Done:** cookie issue/refresh/revoke, sid-bound access invalidation, reuse-family revocation, session-bound CSRF (Policy B) and storefront/admin audience guards                                                                                                                                  | None in the defined D2 scope                                                            |
+| D3   | **Partial:** register, password login/logout/me/refresh, password reset, email verification/resend, and email OTP request/verify use generic anti-enumeration where applicable                                                                                                                     | OAuth provider verification                                                             |
+| D4   | **Partial:** admin recovery, password/PIN login, PIN setup/lockout, invites, HTTP resume, Account Security client, idle soft-lock orchestration, bootstrap, registry-backed assignments, deny-by-default admin management, no-delegation, last-admin/offboarding controls and version invalidation | Real-browser PIN-login proof coverage and granular migration of older privileged routes |
+| D5   | **Partial:** consent/privacy, order BOLA, cart/`st_guest` ownership and order-create cart adoption                                                                                                                                                                                                 | Guest→user merge (Chunk G)                                                              |
 
 ## Browser session architecture
 
@@ -168,7 +169,7 @@ The current guard accepts `customer | staff | admin` roles, enforces explicit pe
 
 ### Current admin authority controls
 
-- `GET /admin/permissions` publishes the compile-time closed 33-code registry; clients cannot mint free-form privileges.
+- `GET /admin/permissions` publishes the compile-time closed **103-code** registry; clients cannot mint free-form privileges.
 - `/admin/roles` CRUD is admin-audience and permission-gated; system roles cannot be edited or deleted.
 - `/admin/users/:userId/authority` returns server-resolved roles and effective permissions.
 - Role grants cannot exceed the actor's tier or permission set.
@@ -177,7 +178,7 @@ The current guard accepts `customer | staff | admin` roles, enforces explicit pe
 - Assignment/role mutations write security-retention audit evidence and invalidate affected permission versions.
 - The operator-only bootstrap creates the first administrator with a generated one-time password, records a critical actorless audit event, exposes no HTTP route, and refuses once administrative authority exists.
 
-The 22-check live security campaign proves direct-API denial, audience isolation, BOLA, no-delegation, last-admin protection, offboarding and permission-version behavior. A real admin browser separately proves password login, cookie-only reload, CSRF-protected role grant/revoke, `permissions_changed` recovery, expiry recovery and logout. It does not yet prove PIN login or the unimplemented idle-lock client.
+The 22-check live security campaign proves direct-API denial, audience isolation, BOLA, no-delegation, last-admin protection, offboarding and permission-version behavior. A real admin browser separately proves password login, cookie-only reload, CSRF-protected role grant/revoke, `permissions_changed` recovery, expiry recovery and logout. It does not yet prove PIN login. The idle soft-lock client is live in the admin shell (`IdleLockService` + `idle-lock-modal` + `POST /auth/admin/resume`) but is not yet covered by that browser proof campaign.
 
 ## Password, PIN, and OTP policies
 
@@ -207,7 +208,7 @@ The 22-check live security campaign proves direct-API denial, audience isolation
 - Generic anti-enumeration responses.
 - Channel-direct delivery through the ratified notification abstraction and provider; no code or token logs.
 
-The PIN/OTP/session DTOs and persistence shapes are active in the HTTP lifecycle. Email OTP and email-verification flows, admin recovery, PIN setup/login/lockout, invite acceptance and the resume endpoint are implemented; provider-backed MSG91 delivery, OAuth verification and the idle-lock client remain outside the current proof.
+The PIN/OTP/session DTOs and persistence shapes are active in the HTTP lifecycle. Email OTP and email-verification flows, admin recovery, PIN setup/login/lockout, invite acceptance, Account Security, idle soft-lock resume and the resume endpoint are implemented; provider-backed MSG91 delivery and OAuth verification remain outside the current proof. Real-browser PIN-login proof coverage remains open.
 
 ## Configuration fail-closed rule
 

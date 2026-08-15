@@ -1,12 +1,12 @@
 /* ============================================================================
  * NEXT-GEN-UI · Schema Nebula
  * ----------------------------------------------------------------------------
- * WHAT: the governed 64-collection target architecture rendered as an
+ * WHAT: the governed 65-collection target architecture rendered as an
  * interactive, zoomable constellation: bounded-context gravity wells, governed
  * current-model and target-only states, and selected relationship lines.
  * WHY: a newcomer can see what exists, what is only intended, which roadmap
  * chunk owns it, and what evidence/decision still governs it without reading a
- * 64-row matrix first.
+ * 65-row matrix first.
  * HOW: deterministic SVG geometry keeps SSR stable; React owns only view state
  * (selection, lenses, search, zoom). Every project fact comes from the compiled
  * portal-data plugin. Zoom centres on the selected node without moving the

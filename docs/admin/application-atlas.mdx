@@ -3,7 +3,7 @@ title: Admin Application Atlas
 description: Interactive, evidence-backed map of admin capabilities and integration boundaries.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-11'
+last_verified: '2026-08-15'
 source_of_truth:
     - apps/admin/src/app/app.routes.ts
     - apps/admin/src/app/routes
@@ -31,6 +31,8 @@ For most admin feature families, scaffolded means:
 - the service reads a typed JSON fixture;
 - table/form interaction is present; and
 - create/update/delete/approve/bulk behavior is absent, mocked, or navigation-only.
+
+**Current exceptions (live, not fixture-only):** Account Security at `/account`; idle soft-lock resume; roles/operators authority; notification settings; CRM customers at `/customer`, `/customer/create`, `/customer/edit/:id` plus `/customer-ledger` against `/admin/customers/**` (soft-delete hides deleted by default; revive gated by `DEC-CUSTOMER-SOFT-DELETE-OPS`). Dial flags use HTML labels in `country-code.ts` and `/assets/images/flags/flags.png`.
 
 ## Operational readiness test
 

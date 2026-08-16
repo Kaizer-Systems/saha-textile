@@ -6,6 +6,6 @@
 
 export const environment = {
 	production: false,
-	apiUrl: 'http://localhost:4000',
-	URL: 'http://localhost:4300/assets/data',
+	apiUrl: 'https://localhost:4000',
+	URL: 'https://localhost:4300/assets/data',
 };

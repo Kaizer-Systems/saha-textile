@@ -1,10 +1,22 @@
 import { z } from 'zod';
 
-/** Parses 'true'/'false' env strings into a real boolean (z.coerce.boolean would treat 'false' as true). */
-const boolString = z
-	.string()
-	.default('false')
-	.transform((v) => v === 'true' || v === '1');
+/**
+ * Parses 'true'/'false' env strings into a real boolean.
+ *
+ * `z.coerce.boolean()` cannot be used: it applies JavaScript truthiness, under which the
+ * string `'false'` is `true` — so an operator disabling a flag would silently enable it.
+ */
+const boolStringWithDefault = (fallback: 'true' | 'false') =>
+	z
+		.string()
+		.default(fallback)
+		.transform((v) => v === 'true' || v === '1');
+
+/** Opt-IN flag: absent means off. */
+const boolString = boolStringWithDefault('false');
+
+/** Opt-OUT flag: absent means on, so a forgotten variable fails closed rather than open. */
+const secureBoolString = boolStringWithDefault('true');
 
 /** Runtime configuration, validated once at boot from process.env. */
 const ConfigSchema = z.object({
@@ -41,8 +53,42 @@ const ConfigSchema = z.object({
 		refreshName: z.string().default('st_refresh'),
 		csrfName: z.string().default('st_csrf'),
 		guestName: z.string().default('st_guest'),
+		/**
+		 * Ties an in-progress signup to one browser before any account exists.
+		 *
+		 * Needed because the pending-signup record is the SERVER's memory of what has been
+		 * proven, and it has to be findable without a session — there is no customer to
+		 * authenticate yet. httpOnly like the rest: a script that could read it could resume
+		 * somebody else's half-finished signup.
+		 */
+		signupName: z.string().default('st_signup'),
 		csrfHeader: z.string().default('x-csrf-token'),
 		csrfSecret: z.string().optional(),
+		/**
+		 * Whether session cookies carry `Secure` (and so may use the `__Host-` prefix).
+		 *
+		 * **Defaults to `true`, and that default is the point.** This used to be derived from
+		 * `nodeEnv === 'production'`, which meant local development silently ran a second,
+		 * weaker cookie model — no `Secure`, no `__Host-` — that no developer and no test
+		 * ever exercised. Now local development serves TLS (`pnpm setup:local-https`) and
+		 * gets the production attributes, so the two agree by default and opting out is an
+		 * explicit, visible `COOKIE_SECURE=false`.
+		 *
+		 * It is deliberately NOT inferred from whether this process terminates TLS: in
+		 * production Nginx does that, and the API speaks plain HTTP behind it while the
+		 * browser is still on HTTPS. Only the browser-facing scheme matters here.
+		 */
+		secure: secureBoolString,
+	}),
+	/**
+	 * Optional TLS for the API's own listener — local development only.
+	 *
+	 * Absent in deploys, where Nginx terminates TLS. Both must be set or neither; a
+	 * half-configured pair is a configuration error rather than a silent downgrade.
+	 */
+	tls: z.object({
+		certFile: z.string().optional(),
+		keyFile: z.string().optional(),
 	}),
 	// MSG91 is the primary provider behind NotificationPort (SMS/WhatsApp/Email).
 	// `console` logs instead of sending (local/test). Email fallback adapters are
@@ -56,6 +102,23 @@ const ConfigSchema = z.object({
 		msg91WhatsappNumber: z.string().optional(),
 		emailFallbackProvider: z.enum(['disabled', 'resend', 'ses', 'smtp']).default('disabled'),
 		resendApiKey: z.string().optional(),
+	}),
+	/**
+	 * Storefront social providers (`DEC-SIGNUP-VERIFICATION`).
+	 *
+	 * Every field optional, and that is deliberate: a provider is either fully configured or
+	 * unavailable. A half-configured one must never half-work — the verifiers throw
+	 * `OAuthProviderUnavailableError` rather than skipping a check they lack the material for.
+	 *
+	 * The client id and app id are PUBLIC and also reach the browser through `config.json`.
+	 * The secrets are API-only and must never appear in a bundle, a log or a response.
+	 * Admin has no social login and never will, so there is no admin equivalent here.
+	 */
+	oauth: z.object({
+		googleClientId: z.string().optional(),
+		googleClientSecret: z.string().optional(),
+		facebookAppId: z.string().optional(),
+		facebookAppSecret: z.string().optional(),
 	}),
 	otp: z.object({
 		ttlSeconds: z.coerce.number().int().positive().default(600),
@@ -89,8 +152,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 			refreshName: env.REFRESH_COOKIE_NAME,
 			csrfName: env.CSRF_COOKIE_NAME,
 			guestName: env.GUEST_COOKIE_NAME,
+			signupName: env.SIGNUP_COOKIE_NAME,
 			csrfHeader: env.CSRF_HEADER_NAME,
 			csrfSecret: env.CSRF_SECRET || undefined,
+			secure: env.COOKIE_SECURE,
+		},
+		tls: {
+			certFile: env.TLS_CERT_FILE || undefined,
+			keyFile: env.TLS_KEY_FILE || undefined,
 		},
 		notifications: {
 			provider: env.NOTIFICATION_PROVIDER || undefined,
@@ -101,6 +170,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 			msg91WhatsappNumber: env.MSG91_WHATSAPP_NUMBER || undefined,
 			emailFallbackProvider: env.EMAIL_FALLBACK_PROVIDER || undefined,
 			resendApiKey: env.RESEND_API_KEY || undefined,
+		},
+		oauth: {
+			googleClientId: env.GOOGLE_OAUTH_CLIENT_ID || undefined,
+			googleClientSecret: env.GOOGLE_OAUTH_CLIENT_SECRET || undefined,
+			facebookAppId: env.FACEBOOK_OAUTH_APP_ID || undefined,
+			facebookAppSecret: env.FACEBOOK_OAUTH_APP_SECRET || undefined,
 		},
 		otp: {
 			ttlSeconds: env.OTP_TTL_SECONDS || undefined,

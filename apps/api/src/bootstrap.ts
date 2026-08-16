@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import type { IncomingMessage } from 'node:http';
 
 import cookie from '@fastify/cookie';
@@ -50,8 +51,30 @@ const REDACTED_LOG_PATHS = [
 	'req.body.csrfToken',
 ];
 
+/**
+ * TLS material for the local development listener, or `null`.
+ *
+ * Local HTTPS exists to delete a branch rather than to add one: cookie attributes are the
+ * same here as in production, so `Secure` and the `__Host-` prefix are exercised by every
+ * developer instead of appearing for the first time on deploy. In production TLS terminates
+ * at Nginx/Cloudflare and the API speaks plain HTTP on the internal network — so this is
+ * read only when `TLS_CERT_FILE`/`TLS_KEY_FILE` are set, and its absence is not an error.
+ *
+ * Never falls back to a generated or bundled certificate: a server that silently serves TLS
+ * nobody verified is worse than one that serves none.
+ */
+function readTlsMaterial(config: AppConfig): { key: Buffer; cert: Buffer } | null {
+	if (!config.tls.certFile || !config.tls.keyFile) return null;
+	return {
+		key: readFileSync(config.tls.keyFile),
+		cert: readFileSync(config.tls.certFile),
+	};
+}
+
 export function buildAdapter(config: AppConfig): FastifyAdapter {
+	const tls = readTlsMaterial(config);
 	return new FastifyAdapter({
+		...(tls ? { https: tls } : {}),
 		// Required behind Cloudflare → Nginx so `request.ip` and the protocol are the
 		// client's, not the proxy's. Off by default: trusting proxy headers on a
 		// directly-exposed origin lets any caller forge their address.

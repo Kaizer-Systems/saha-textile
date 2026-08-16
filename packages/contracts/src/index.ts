@@ -23,6 +23,8 @@ export * from './shipping';
 export * from './session';
 export * from './auth';
 export * from './auth-internal';
+export * from './signup';
+export * from './oauth';
 export * from './admin-auth';
 export * from './admin-user';
 export * from './admin-customer';

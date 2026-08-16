@@ -1,6 +1,6 @@
 {
-	"apiUrl": "http://localhost:4000",
-	"siteUrl": "http://localhost:4200",
+	"apiUrl": "https://localhost:4000",
+	"siteUrl": "https://localhost:4200",
 	"defaultLocale": "en",
-	"supportedLocales": ["en", "bn"]
+	"supportedLocales": ["en", "fr"]
 }

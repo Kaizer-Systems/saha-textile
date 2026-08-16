@@ -22,3 +22,6 @@ export * from './transaction-manager.port';
 export * from './notification.port';
 export * from './youtube.port';
 export * from './video-transcode.port';
+export * from './oauth-verifier.port';
+export * from './pending-signup.repository';
+export * from './auth-identity.repository';

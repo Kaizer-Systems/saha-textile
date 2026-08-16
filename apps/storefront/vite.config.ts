@@ -1,11 +1,30 @@
 /// <reference types="vitest" />
 
+import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 
 import analog from '@analogjs/platform';
 import { defineConfig } from 'vite';
 
 const appPath = (p: string) => fileURLToPath(new URL(p, import.meta.url));
+
+/**
+ * The machine-local mkcert pair, or `null` when it has not been generated.
+ *
+ * Absent certificates degrade to HTTP rather than throwing, so `pnpm dev` still works on a
+ * fresh clone; `pnpm setup:local-https` is what upgrades it. The pair is gitignored — a
+ * private key stays private even when it is only trusted by one laptop.
+ */
+const localHttps = (() => {
+	try {
+		return {
+			key: readFileSync(appPath('../../certs/localhost-key.pem')),
+			cert: readFileSync(appPath('../../certs/localhost-cert.pem')),
+		};
+	} catch {
+		return null;
+	}
+})();
 
 // AnalogJS (Vite + Nitro) build for the storefront. Unlike the admin (SPA, no
 // SSR), the storefront keeps SSR — the Fastkart theme ships SSR-ready and SEO /
@@ -22,6 +41,12 @@ export default defineConfig(() => ({
 	server: {
 		port: 4200,
 		host: 'localhost',
+		// TLS locally so the browser treats this origin exactly as it treats production:
+		// `Secure` cookies are accepted, the `__Host-` prefix is valid, and Meta's JS SDK
+		// (which refuses plain HTTP) works without relaxing anything. Certificates come from
+		// the machine-local mkcert CA — `pnpm setup:local-https`. Missing certs fall back to
+		// HTTP rather than failing boot, so a fresh clone still starts.
+		...(localHttps ? { https: localHttps } : {}),
 		fs: {
 			// pnpm hoists node_modules to the workspace root; allow the app dir +
 			// workspace root so Vite can serve theme assets and hoisted packages.

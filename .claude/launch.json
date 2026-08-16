@@ -5,25 +5,33 @@
 			"name": "api",
 			"runtimeExecutable": "pnpm",
 			"runtimeArgs": ["--filter", "@saha-textile/api", "dev"],
-			"port": 4000
+			"port": 4000,
+			"autoPort": false,
+			"url": "https://localhost:4000"
 		},
 		{
 			"name": "admin",
 			"runtimeExecutable": "pnpm",
 			"runtimeArgs": ["--filter", "@saha-textile/admin", "dev"],
-			"port": 4300
+			"port": 4300,
+			"autoPort": false,
+			"url": "https://localhost:4300"
 		},
 		{
 			"name": "storefront",
 			"runtimeExecutable": "pnpm",
 			"runtimeArgs": ["--filter", "@saha-textile/storefront", "dev"],
-			"port": 4200
+			"port": 4200,
+			"autoPort": false,
+			"url": "https://localhost:4200"
 		},
 		{
 			"name": "storefront-prod",
 			"runtimeExecutable": "pnpm",
 			"runtimeArgs": ["--filter", "@saha-textile/storefront", "start"],
-			"port": 4200
+			"port": 4200,
+			"autoPort": false,
+			"url": "https://localhost:4200"
 		},
 		{
 			"name": "dev-portal",

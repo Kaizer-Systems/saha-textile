@@ -28,7 +28,7 @@
  * `pnpm test`: it needs a live replica set, exactly like the adapter integration suite.
  */
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 
 /** Short enough to expire inside a run, long enough for the requests before it. */
 const ACCESS_TTL = '1s';
@@ -114,6 +114,14 @@ async function main() {
 		RATE_LIMIT_MAX: '10000',
 	});
 
+	// Cookie names come from the SERVER's own resolver, never a literal.
+	// They are `__Host-` prefixed whenever cookies are Secure, which is now the default in
+	// every environment — a harness that hardcoded `st_access` would silently stop finding
+	// the cookie it asserts on, and would only ever exercise the unprefixed spelling that
+	// production does not use.
+	const { cookieNames } = await import('../dist/common/cookies.js');
+	const COOKIE = cookieNames(config);
+
 	const app = await createApp(config);
 	await app.init();
 
@@ -135,7 +143,7 @@ async function main() {
 		const cookie = jar.header();
 		if (cookie) headers.cookie = cookie;
 
-		const csrf = jar.get('st_csrf');
+		const csrf = jar.get(COOKIE.csrf);
 		// Mirrors the browser client: the header goes on unsafe methods only, and only when
 		// there is a readable value to echo.
 		if (csrf && options.csrf !== false && method !== 'GET') headers['x-csrf-token'] = csrf;
@@ -189,14 +197,69 @@ async function main() {
 		return request(jar, method, url, options);
 	}
 
-	async function registerCustomer() {
-		const email = `rotation-probe-${randomUUID()}@example.test`;
-		emails.push(email);
+	/**
+	 * Signs a probe customer up through the REAL verified-before-creation flow.
+	 *
+	 * `POST /auth/storefront/register` is gone: no account exists until its email AND phone are
+	 * proven, so a probe now walks start → verify email → verify phone → finalise.
+	 *
+	 * The code cannot be read back — challenges store an HMAC of it under a server pepper, which
+	 * is the point. So the harness OVERWRITES the stored hash with the hash of a code it chose,
+	 * using the same pepper the app was configured with. Everything downstream is the genuine
+	 * path: the real verify route, the real single-active-challenge rule, the real attempt cap and
+	 * the real consumption. Only the secret the test cannot know is substituted.
+	 */
+	const OTP_PEPPER = config.cookies.csrfSecret ?? config.jwt.refreshSecret;
+	const KNOWN_OTP = '123456';
+	const peppered = (value) => createHmac('sha256', OTP_PEPPER).update(value).digest('hex');
+	let phoneCounter = 0;
+
+	async function forceOtpCode(identifier) {
+		const updated = await models.OtpChallengeModel.updateOne(
+			{ identifier: peppered(identifier), purpose: 'register', consumedAt: null },
+			{ $set: { codeHash: peppered(KNOWN_OTP) } },
+		).exec();
+		assert.equal(updated.matchedCount, 1, `no live register challenge for ${identifier}`);
+	}
+
+	async function signUpCustomer(options = {}) {
+		const password = options.password ?? 'a-very-long-probe-password';
+		const email = options.email ?? `rotation-probe-${randomUUID()}@example.test`;
+		// Unique per probe: phone is a first-class credential now and carries a unique index.
+		const phone = options.phone ?? `+9190000${String(phoneCounter++).padStart(5, '0')}`;
+		if (!options.email) emails.push(email);
+
 		const jar = new CookieJar();
-		const response = await request(jar, 'POST', '/auth/storefront/register', {
-			payload: { email, password: 'a-very-long-probe-password' },
+		const started = await request(jar, 'POST', '/auth/storefront/signup/start', {
+			payload: { email, phone, marketingOptIn: false },
 		});
-		assert.equal(response.statusCode, 201, `registration failed: ${response.statusCode} ${response.body}`);
+		assert.ok(started.statusCode < 400, `signup start failed: ${started.statusCode} ${started.body}`);
+
+		for (const field of ['email', 'phone']) {
+			const sent = await request(jar, 'POST', '/auth/storefront/signup/otp/request', { payload: { field } });
+			assert.ok(sent.statusCode < 400, `otp request failed for ${field}: ${sent.statusCode} ${sent.body}`);
+			await forceOtpCode(field === 'email' ? email : phone);
+			const verified = await request(jar, 'POST', '/auth/storefront/signup/otp/verify', {
+				payload: { field, code: KNOWN_OTP },
+			});
+			assert.ok(
+				verified.statusCode < 400,
+				`otp verify failed for ${field}: ${verified.statusCode} ${verified.body}`,
+			);
+		}
+
+		// `extraFinalise` exists so a caller can attempt field injection on the REAL minting call
+		// rather than on a second, already-consumed one.
+		const finalised = await request(jar, 'POST', '/auth/storefront/signup/finalise', {
+			payload: { password, ...(options.extraFinalise ?? {}) },
+		});
+		return { jar, email, phone, response: finalised };
+	}
+
+	/** Backwards-compatible shape for the many cases that only need a signed-in customer jar. */
+	async function registerCustomer() {
+		const { jar, response } = await signUpCustomer();
+		assert.ok(response.statusCode < 400, `signup finalise failed: ${response.statusCode} ${response.body}`);
 		return jar;
 	}
 
@@ -359,13 +422,13 @@ async function main() {
 
 	await check('issues httpOnly session cookies and no token material in the body', async () => {
 		const jar = await registerCustomer();
-		for (const name of ['st_access', 'st_refresh', 'st_csrf']) {
+		for (const name of [COOKIE.access, COOKIE.refresh, COOKIE.csrf]) {
 			assert.ok(jar.names().includes(name), `missing cookie ${name}`);
 		}
 
 		const me = await request(jar, 'GET', '/auth/storefront/me');
 		assert.equal(me.statusCode, 200);
-		assert.ok(!me.body.includes(jar.get('st_refresh')), 'refresh token appeared in a response body');
+		assert.ok(!me.body.includes(jar.get(COOKIE.refresh)), 'refresh token appeared in a response body');
 	});
 
 	await check('recovers an expired access cookie by rotating, and the replay succeeds', async () => {
@@ -382,13 +445,13 @@ async function main() {
 			'access cookie did not expire',
 		);
 
-		const before = jar.get('st_refresh');
+		const before = jar.get(COOKIE.refresh);
 		const rotated = await request(jar, 'POST', '/auth/storefront/refresh', { payload: {} });
 		assert.equal(rotated.statusCode, 200, `rotation failed: ${rotated.statusCode} ${rotated.body}`);
-		assert.notEqual(jar.get('st_refresh'), before, 'refresh token was not rotated');
+		assert.notEqual(jar.get(COOKIE.refresh), before, 'refresh token was not rotated');
 		// Rotation replaces the CSRF secret too, which is why the client must re-read the
 		// cookie before replaying rather than reusing the header it already built.
-		assert.ok(jar.get('st_csrf'), 'no CSRF cookie after rotation');
+		assert.ok(jar.get(COOKIE.csrf), 'no CSRF cookie after rotation');
 
 		assert.equal(
 			(await request(jar, 'GET', '/auth/storefront/me')).statusCode,
@@ -414,7 +477,7 @@ async function main() {
 
 	await check('still revokes the family when a rotated-away token is replayed', async () => {
 		const jar = await registerCustomer();
-		const stolen = jar.get('st_refresh');
+		const stolen = jar.get(COOKIE.refresh);
 		assert.ok(stolen);
 
 		assert.equal((await request(jar, 'POST', '/auth/storefront/refresh', { payload: {} })).statusCode, 200);
@@ -425,9 +488,9 @@ async function main() {
 		// with a 403 before reuse detection can run. Isolating the rotated-away token as the
 		// ONLY stale value is what makes this a test of reuse detection rather than of CSRF.
 		const replayJar = new CookieJar();
-		replayJar.set('st_access', jar.get('st_access'));
-		replayJar.set('st_csrf', jar.get('st_csrf'));
-		replayJar.set('st_refresh', stolen);
+		replayJar.set(COOKIE.access, jar.get(COOKIE.access));
+		replayJar.set(COOKIE.csrf, jar.get(COOKIE.csrf));
+		replayJar.set(COOKIE.refresh, stolen);
 		const replayed = await request(replayJar, 'POST', '/auth/storefront/refresh', { payload: {} });
 		assert.equal(replayed.statusCode, 401, 'a rotated-away token was accepted');
 
@@ -457,7 +520,7 @@ async function main() {
 
 	await check('revokes the family for a stolen refresh cookie with no CSRF token', async () => {
 		const jar = await registerCustomer();
-		const stolen = jar.get('st_refresh');
+		const stolen = jar.get(COOKIE.refresh);
 		assert.equal((await request(jar, 'POST', '/auth/storefront/refresh', { payload: {} })).statusCode, 200);
 
 		// What an attacker who exfiltrated only the refresh cookie actually holds: no access
@@ -465,7 +528,7 @@ async function main() {
 		// detection ran — the request was blocked but the family survived, the legitimate
 		// session kept working, and nothing was recorded. Detection now runs first.
 		const attacker = new CookieJar();
-		attacker.set('st_refresh', stolen);
+		attacker.set(COOKIE.refresh, stolen);
 		const attempt = await request(attacker, 'POST', '/auth/storefront/refresh', { payload: {} });
 		assert.equal(attempt.statusCode, 401, `expected the stolen token to be detected, got ${attempt.statusCode}`);
 
@@ -543,7 +606,7 @@ async function main() {
 		const jar = await registerCustomer();
 		// Exactly the returning-visitor state: `st_csrf` has no maxAge, so closing the browser
 		// drops it while the persistent access/refresh cookies survive.
-		jar.drop('st_csrf');
+		jar.drop(COOKIE.csrf);
 
 		const response = await request(jar, 'POST', '/auth/storefront/refresh', { payload: {} });
 		refusalCodes.sessionWithoutCsrf = response.statusCode;
@@ -558,11 +621,11 @@ async function main() {
 
 	await check('recovers the missing CSRF half through the shared bootstrap endpoint', async () => {
 		const jar = await registerCustomer();
-		jar.drop('st_csrf');
+		jar.drop(COOKIE.csrf);
 
 		const issued = await request(jar, 'GET', '/auth/csrf');
 		assert.equal(issued.statusCode, 200);
-		assert.ok(jar.get('st_csrf'), 'no CSRF cookie issued');
+		assert.ok(jar.get(COOKIE.csrf), 'no CSRF cookie issued');
 
 		// The acquired token is bound to THIS session, so the rotation now succeeds — which is
 		// what makes the client's acquire-then-rotate path a real recovery rather than a retry.
@@ -572,7 +635,7 @@ async function main() {
 
 	await check('a valid access token presented as a bearer header authenticates nothing', async () => {
 		const jar = await registerCustomer();
-		const access = jar.get('st_access');
+		const access = jar.get(COOKIE.access);
 		assert.ok(access, 'no access cookie to replay');
 
 		// It works as a cookie, so the token itself is unquestionably valid and unexpired.
@@ -616,8 +679,8 @@ async function main() {
 		// rather than try to rotate.
 		const live = await registerCustomer();
 		const otherTab = new CookieJar();
-		otherTab.set('st_access', live.get('st_access'));
-		otherTab.set('st_csrf', live.get('st_csrf'));
+		otherTab.set(COOKIE.access, live.get(COOKIE.access));
+		otherTab.set(COOKIE.csrf, live.get(COOKIE.csrf));
 
 		await request(live, 'POST', '/auth/storefront/logout', { payload: {} });
 
@@ -875,11 +938,8 @@ async function main() {
 		const admin = await seedAdmin([]);
 		const customerEmail = `audience-${randomUUID()}@example.test`;
 		emails.push(customerEmail);
-		const customerJar = new CookieJar();
-		const registered = await request(customerJar, 'POST', '/auth/storefront/register', {
-			payload: { email: customerEmail, password },
-		});
-		assert.equal(registered.statusCode, 201, `customer register failed: ${registered.statusCode}`);
+		const signedUp = await signUpCustomer({ email: customerEmail, password });
+		assert.ok(signedUp.response.statusCode < 400, `customer signup failed: ${signedUp.response.statusCode}`);
 
 		const adminOnStorefront = await request(new CookieJar(), 'POST', '/auth/storefront/login/password', {
 			payload: { email: admin.email, password: admin.password },
@@ -1132,13 +1192,16 @@ async function main() {
 		}
 
 		// And self-registration cannot escalate: the storefront route ignores any role asked for.
-		const jar = new CookieJar();
 		const email = `role-injection-${randomUUID()}@example.test`;
 		emails.push(email);
-		const registered = await request(jar, 'POST', '/auth/storefront/register', {
-			payload: { email, password: 'a-very-long-probe-password', role: 'admin', permissions: ['role.destroy'] },
+		// Injected on FINALISE, which is the moment an account is minted. The contract accepts
+		// only an optional password there, so a role, a permission list — or, more dangerously,
+		// somebody else's email — cannot ride along.
+		const injected = await signUpCustomer({
+			email,
+			extraFinalise: { role: 'admin', permissions: ['role.destroy'] },
 		});
-		assert.equal(registered.statusCode, 201, `registration failed: ${registered.statusCode}`);
+		assert.ok(injected.response.statusCode < 400, `signup failed: ${injected.response.statusCode}`);
 
 		// Queried by `email`, and the document's own address is re-asserted before its role is
 		// read. An earlier version filtered on `emailNormalized`, which registration does not
@@ -1422,74 +1485,88 @@ async function main() {
 		await adminRequest(author.jar, 'DELETE', `/admin/roles/${roleId}`);
 	});
 
-	await check('weak passwords are refused, and the refusal does not reveal whether the account exists', async () => {
-		const known = `rotation-probe-${randomUUID()}@example.test`;
-		emails.push(known);
-		const unknown = `rotation-probe-${randomUUID()}@example.test`;
-		emails.push(unknown);
+	await check('weak passwords are refused at finalisation, before the one-shot proof is spent', async () => {
+		/**
+		 * The property moved with the flow, and got stronger.
+		 *
+		 * Registration used to answer a generic 401 for an address that already existed, so the
+		 * password had to be judged FIRST or a weak password became a probe for whether an account
+		 * existed. There is no such lookup at signup any more — nothing about an address is revealed
+		 * until its owner proves control by OTP — so enumeration cannot happen here at all.
+		 *
+		 * What must still hold is the ORDERING: the policy is applied before the pending record is
+		 * consumed, so a rejected password leaves the proof intact and the person can simply try a
+		 * better one instead of walking the whole flow again.
+		 */
+		const probe = await signUpCustomer({ password: 'Password1234' });
+		assert.equal(probe.response.statusCode, 400, `weak password was accepted: ${probe.response.statusCode}`);
 
-		// A real account for the known address, so the two cases below genuinely differ.
-		const created = await request(new CookieJar(), 'POST', '/auth/storefront/register', {
-			payload: { email: known, password: 'a-very-long-probe-password' },
+		const body = JSON.parse(probe.response.body);
+		assert.equal(body.error.code, 'validation_failed', `weak password reported ${body.error.code}`);
+		assert.equal(body.error.issues?.[0]?.code, 'password_common', 'the wrong refusal reason was reported');
+		assert.deepEqual(body.error.issues?.[0]?.path, ['password'], 'the issue did not name the password field');
+		assert.ok(!probe.response.body.includes('Password1234'), 'the refusal echoed the password');
+
+		// THE ORDERING: the proof survived the refusal, so a good password still completes.
+		const retry = await request(probe.jar, 'POST', '/auth/storefront/signup/finalise', {
+			payload: { password: 'harbour-tram-19' },
 		});
-		assert.equal(created.statusCode, 201, `probe registration failed: ${created.statusCode}`);
+		assert.ok(retry.statusCode < 400, `a rejected password burned the proof: ${retry.statusCode} ${retry.body}`);
 
-		// One per rule, because a policy that only caught the denylist would pass a test that
-		// only tried the denylist.
+		// One per rule, because a policy that only caught the denylist would pass a test that only
+		// tried the denylist.
 		for (const [password, expected] of [
-			['Password1234', 'password_common'],
 			['SahaTextile2026', 'password_common'],
 			['aaaaaaaaaaaa', 'password_repeated'],
 			['abcabcabcabc', 'password_repeated'],
 		]) {
-			const refused = await request(new CookieJar(), 'POST', '/auth/storefront/register', {
-				payload: { email: unknown, password },
-			});
-			assert.equal(refused.statusCode, 400, `weak password was accepted: ${refused.statusCode}`);
-
-			const body = JSON.parse(refused.body);
-			assert.equal(body.error.code, 'validation_failed', `weak password reported ${body.error.code}`);
-			assert.equal(body.error.issues?.[0]?.code, expected, 'the wrong refusal reason was reported');
-			assert.deepEqual(body.error.issues?.[0]?.path, ['password'], 'the issue did not name the password field');
-			assert.ok(!refused.body.includes(password), 'the refusal echoed the password');
+			const refused = await signUpCustomer({ password });
+			assert.equal(refused.response.statusCode, 400, `weak password was accepted: ${password}`);
+			assert.equal(
+				JSON.parse(refused.response.body).error.issues?.[0]?.code,
+				expected,
+				`the wrong refusal reason was reported for ${password}`,
+			);
 		}
+	});
 
+	await check('an OTP request reveals nothing about whether an address is already registered', async () => {
 		/**
-		 * THE PROPERTY, and the reason the check is ordered the way it is in the handler.
+		 * The anti-enumeration property, at the place it now lives.
 		 *
-		 * Registration answers a generic `401` for an address that already exists, so a
-		 * stranger cannot use it as a directory. If the password were judged only AFTER that
-		 * lookup, the same weak password would answer `400` for an unknown address and `401`
-		 * for a known one — and any weak password would become a probe that confirms whether
-		 * an account exists. Judged first, both answer identically.
+		 * Requesting a code must answer identically for an address that has an account and one that
+		 * does not — otherwise the signup form becomes the directory that registration used to be.
 		 */
-		const weak = 'Password1234';
-		const [againstKnown, againstUnknown] = await Promise.all([
-			request(new CookieJar(), 'POST', '/auth/storefront/register', {
-				payload: { email: known, password: weak },
-			}),
-			request(new CookieJar(), 'POST', '/auth/storefront/register', {
-				payload: { email: unknown, password: weak },
-			}),
-		]);
+		const existing = await signUpCustomer();
+		assert.ok(existing.response.statusCode < 400, 'probe signup failed');
+
+		const knownProbe = await signUpCustomer({ password: null, email: existing.email });
+		void knownProbe;
+
+		const freshJar = new CookieJar();
+		await request(freshJar, 'POST', '/auth/storefront/signup/start', {
+			payload: {
+				email: `never-seen-${randomUUID()}@example.test`,
+				phone: `+9190000${String(90000).slice(0, 5)}`,
+			},
+		});
+		const againstUnknown = await request(freshJar, 'POST', '/auth/storefront/signup/otp/request', {
+			payload: { field: 'email' },
+		});
+
+		const knownJar = new CookieJar();
+		await request(knownJar, 'POST', '/auth/storefront/signup/start', {
+			payload: { email: existing.email, phone: `+9190000${String(90001).slice(0, 5)}` },
+		});
+		const againstKnown = await request(knownJar, 'POST', '/auth/storefront/signup/otp/request', {
+			payload: { field: 'email' },
+		});
 
 		assert.equal(
 			againstKnown.statusCode,
 			againstUnknown.statusCode,
-			`a weak password distinguishes a known address (${againstKnown.statusCode}) from an unknown one (${againstUnknown.statusCode})`,
+			`an OTP request distinguishes a known address (${againstKnown.statusCode}) from an unknown one (${againstUnknown.statusCode})`,
 		);
-		assert.equal(
-			JSON.parse(againstKnown.body).error.issues?.[0]?.code,
-			JSON.parse(againstUnknown.body).error.issues?.[0]?.code,
-			'the refusal reason differs between a known and an unknown address',
-		);
-
-		// And the generic existing-account refusal is still in place for a password that the
-		// policy accepts, so this ordering has not weakened the anti-enumeration behaviour.
-		const strongAgainstKnown = await request(new CookieJar(), 'POST', '/auth/storefront/register', {
-			payload: { email: known, password: 'harbour-tram-19' },
-		});
-		assert.equal(strongAgainstKnown.statusCode, 401, 'the duplicate-address refusal changed');
 	});
 
 	await check('weak PINs are refused over HTTP, with a code a screen can act on (weak-PIN policy)', async () => {
@@ -1662,7 +1739,7 @@ async function main() {
 		 * and a page reload does not help.
 		 */
 		assert.equal(
-			probe.jar.names().filter((name) => name === 'st_access' || name === 'st_refresh').length,
+			probe.jar.names().filter((name) => name === COOKIE.access || name === COOKIE.refresh).length,
 			0,
 			'the password change left session cookies in the browser',
 		);
@@ -1705,6 +1782,10 @@ async function main() {
 		models.OtpChallengeModel.deleteMany({}),
 		models.PasswordResetTokenModel.deleteMany({}),
 		models.OAuthStateModel.deleteMany({}),
+		// Every signup now leaves one of these until it finalises, and the weak-password cases
+		// deliberately never finalise. The leftovers assertion below caught them on the first
+		// run, which is exactly what it is for.
+		models.PendingSignupModel?.deleteMany({}) ?? Promise.resolve(),
 		models.AdminInviteModel.deleteMany({}),
 		models.PasswordCredentialModel?.deleteMany({}) ?? Promise.resolve(),
 		models.PinCredentialModel?.deleteMany({}) ?? Promise.resolve(),

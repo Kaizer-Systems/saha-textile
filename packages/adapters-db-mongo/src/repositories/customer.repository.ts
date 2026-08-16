@@ -49,6 +49,15 @@ export class MongoCustomerRepository implements CustomerRepository {
 		return doc ? mapCustomer(doc) : null;
 	}
 
+	async findByPhone(phone: string): Promise<Customer | null> {
+		// Excludes tombstones so a reclaimed number resolves to whoever holds it NOW, matching
+		// the partial unique index that released it.
+		const doc = await CustomerModel.findOne({ phone, status: { $ne: 'deleted' } })
+			.lean<CustomerDoc>()
+			.exec();
+		return doc ? mapCustomer(doc) : null;
+	}
+
 	async findByEmail(email: string): Promise<Customer | null> {
 		const doc = await CustomerModel.findOne({ email, ...NOT_DELETED })
 			.lean<CustomerDoc>()

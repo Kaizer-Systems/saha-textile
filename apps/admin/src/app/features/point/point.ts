@@ -9,7 +9,7 @@ import { Observable } from 'rxjs';
 
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITransactionsData } from '@data-access/interfaces/point.interface';
-import { injectMockCustomersQuery } from '@data-access/queries/user.queries';
+import { injectAdminCustomersQuery } from '@data-access/queries/admin-customers.queries';
 import { PointService } from '@data-access/services/point.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
@@ -41,9 +41,23 @@ export class Point {
 	private pointService = inject(PointService);
 	private formBuilder = inject(FormBuilder);
 
-	private readonly usersQuery = injectMockCustomersQuery(() => ({ role: 'consumer', status: 1 }));
+	/**
+	 * The live customer directory, not the Fastkart `user.json` fixture this page shipped with.
+	 *
+	 * Same query and same mapping the Customer Ledger already uses — the two pages pick a
+	 * customer for the same reason, so they read the same source. Retiring the fixture removed
+	 * the last caller of the mock service, and with it the second thing in this app named for
+	 * customers that was not the customer API.
+	 */
+	private readonly customersQuery = injectAdminCustomersQuery(() => ({ page: 1, pageSize: 100 }));
 	users$: Observable<Select2Data> = toObservable(
-		computed(() => this.usersQuery.data()?.data.map((user) => ({ label: user.name, value: user.id })) ?? []),
+		computed(
+			() =>
+				this.customersQuery.data()?.items.map((customer) => ({
+					label: customer.displayName ?? customer.email ?? customer.id,
+					value: customer.id,
+				})) ?? [],
+		),
 	);
 
 	readonly ConfirmationModal = viewChild<ConfirmationModal>('confirmationModal');

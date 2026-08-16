@@ -1,5 +1,4 @@
 import { IAttachment } from './attachment.interface';
-import { IPaginateModel } from './core.interface';
 import { ICountry } from './country.interface';
 import { IPaymentDetails } from './payment-details.interface';
 import { IPoint } from './point.interface';
@@ -8,16 +7,16 @@ import { IStates } from './state.interface';
 import { IWallet } from './wallet.interface';
 
 /**
- * Legacy Fastkart mock user for marketplace screens (checkout customer picker, orders,
- * reviews). NOT the signed-in operator — that is {@link AdminUser} in `@core/auth/auth-gateway`.
+ * Legacy Fastkart fixture shape, still imported by the order, review, store and refund
+ * interfaces of pages that have no API yet. NOT the signed-in operator — that is
+ * {@link AdminUser} in `@core/auth/auth-gateway` — and not a customer either, which is
+ * `Customer` in `@saha-textile/contracts`.
  *
- * `/admin/users/**` will administer operators only (`DEC-ACCOUNT-SEPARATION` D3); this shape
- * remains until those screens are wired to the real API and customer CRM lands separately.
+ * The paginated `IUserModel` wrapper that used to sit here was deleted on 2026-08-15 with
+ * the `user.json` mock service it existed for: the Points page, its last caller, now reads
+ * the live customer directory like the Customer Ledger beside it. What remains here goes
+ * when the pages importing it are wired.
  */
-export interface IUserModel extends IPaginateModel {
-	data: IUser[];
-}
-
 export interface IUser {
 	id: number;
 	name: string;

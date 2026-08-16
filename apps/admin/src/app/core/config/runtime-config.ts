@@ -10,15 +10,15 @@ import { environment } from '../../../../public/environments/environment';
  * only; deploys overwrite/mount it at container start (roadmap §0d).
  */
 export interface RuntimeConfig {
-	/** NestJS API origin, e.g. http://localhost:4000 */
+	/** NestJS API origin, e.g. https://localhost:4000 */
 	apiUrl: string;
-	/** Admin app origin, e.g. http://localhost:4300 */
+	/** Admin app origin, e.g. https://localhost:4300 */
 	adminUrl: string;
 }
 
 const DEFAULTS: RuntimeConfig = {
-	apiUrl: 'http://localhost:4000',
-	adminUrl: 'http://localhost:4300',
+	apiUrl: 'https://localhost:4000',
+	adminUrl: 'https://localhost:4300',
 };
 
 /** Mutable singleton — read this (or the legacy `environment`) after app init. */

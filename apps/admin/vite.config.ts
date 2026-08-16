@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
 
+import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 
 import angular from '@analogjs/vite-plugin-angular';
@@ -7,12 +8,27 @@ import { defineConfig } from 'vite';
 
 const appPath = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
+/** Machine-local mkcert pair, or `null` when absent — see the storefront config. */
+const localHttps = (() => {
+	try {
+		return {
+			key: readFileSync(appPath('../../certs/localhost-key.pem')),
+			cert: readFileSync(appPath('../../certs/localhost-cert.pem')),
+		};
+	} catch {
+		return null;
+	}
+})();
+
 // AnalogJS (Vite) build for the admin. Platform swap only — the app still uses
 // Angular Router config + NGXS + ngx-translate (those migrate in later phases).
 export default defineConfig(() => ({
 	server: {
 		port: 4300,
 		host: 'localhost',
+		// TLS locally so operator session cookies carry the same `Secure` + `__Host-`
+		// attributes here as in production. `pnpm setup:local-https`.
+		...(localHttps ? { https: localHttps } : {}),
 	},
 	css: {
 		preprocessorOptions: {

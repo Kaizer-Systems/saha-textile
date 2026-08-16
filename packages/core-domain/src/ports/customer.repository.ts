@@ -26,6 +26,14 @@ export type CustomerUpdateInput = {
 export interface CustomerRepository {
 	findById(id: string): Promise<Customer | null>;
 	findByEmail(email: string): Promise<Customer | null>;
+	/**
+	 * Resolves a customer by phone number.
+	 *
+	 * Phone became a first-class login credential under `DEC-SIGNUP-VERIFICATION`, so it must be
+	 * resolvable the same way an email is. Soft-deleted rows are excluded by the same partial
+	 * unique index that lets a released number be reclaimed.
+	 */
+	findByPhone(phone: string): Promise<Customer | null>;
 	findCredentialByEmail(email: string): Promise<CustomerCredential | null>;
 	/** Paginated CRM directory with optional status filter and S1 prefix search. */
 	list(query: CustomerListQuery): Promise<Paginated<Customer>>;

@@ -215,7 +215,10 @@ class, element or component is the failure mode this rule exists to prevent.
 - Password minimum is 12 characters for storefront and admin, with a common-password denylist.
 - Storefront auth supports email/password, Google, Facebook, and channel-direct email OTP.
 - X/Twitter login is excluded.
-- Phone is collected at checkout/address stage, not registration.
+- ~~Phone is collected at checkout/address stage, not registration.~~ **Superseded 2026-08-16 by
+  `DEC-SIGNUP-VERIFICATION`:** phone is now collected AND OTP-verified during registration, and
+  is a first-class login credential. The original lock predates the decision to make every
+  account carry two proven channels; it is struck rather than deleted so the reversal is visible.
 - Phone OTP remains a seam until enabled through the notification provider.
 - OAuth UI uses provider JS buttons/One Tap where appropriate; the backend verifies provider tokens and owns the Saha Textile session.
 - Minimum provider scopes only.
@@ -530,6 +533,78 @@ Prose and comments keep saying “operator”; identifiers say `adminUser`. The 
 - Resume returns to the furthest governed stop recorded for that persona. Reaching or saving a later stop does not prove that earlier checkpoints were studied. Users can forget one persona through its opt-in control or reset every saved flight from Launch Bay.
 - Mission Debrief appears at the final checkpoint and is derived from compiled persona, stop, and lifecycle data. It remains available for the current session without storage; completion persists only for a persona that explicitly opted in.
 - First Flight delivery remains incremental: contract/compiler → Launch Bay → route-spanning engine → resume/debrief → hardening. A governed dataset alone does not make the instrument live.
+
+## Storefront signup, social identity, and OTP (`DEC-SIGNUP-VERIFICATION` — locked 2026-08-16)
+
+Supersedes "phone is collected at checkout, not registration" (2026-06-29, struck above).
+
+**Nothing is created before it is proven.**
+
+- A customer row is created only after email AND phone are OTP-verified. There is no
+  unverified account state, which removes the pre-hijack takeover class outright: an attacker
+  cannot squat an address they do not control and wait for the real owner to arrive.
+- Verified state lives in a server-held **pending-signup document**, keyed to the session,
+  holding the exact verified values, the consent selections, the guest-cart token and any
+  social provider id. Final submit uses the STORED values and never the posted ones — a client
+  that could assert "this email is verified" is a forgery waiting to happen.
+- Sliding TTL: 15 minutes, extended on each verification or send, absolute cap 30 minutes.
+  Abandoned records expire and are deleted. A pending record does **not** reserve an email or
+  phone; uniqueness belongs to real customers only, so nobody can hold addresses hostage.
+- Fields stay editable after verification. Editing clears that field's verified flag and
+  re-arms its verify control. Locking a typo'd address in buys no security, because the
+  verification is bound server-side to the value.
+
+**Disclosure: prove control, then we'll talk.**
+
+- Requesting an OTP never varies its response and never reveals existence. Delivery is
+  enqueued to `messageOutbox` in every branch, so a non-existent account spends no credits
+  AND the response time is identical — skipping the send synchronously would leak in the
+  timing dimension what the message no longer leaks in words.
+- Once OTP succeeds — or Google asserts `email_verified` — the person has proven control, and
+  disclosure to them is safe and helpful. They are offered sign-in or start-over; sign-in is
+  granted directly, because the OTP already served as the proof.
+- Facebook's email is never proof on its own. The Facebook path always requires our own email
+  OTP, whether Meta supplied an address or not; prefill when given, blank when not.
+- Password login failure is one message, always — regardless of whether the account exists,
+  has no password, or has three providers linked.
+- Auto-sign-in is refused for `disabled`/`locked` accounts with a contact-support message.
+
+**Social identity.**
+
+- Identities are keyed on provider + stable subject: Google `sub`, Facebook app-scoped id.
+  **The Facebook id is scoped to the app** — the DEV app and a future production app issue
+  different ids for the same person, so development ASIDs do not survive to production.
+- Accounts are never auto-linked on a matching email. Linking is deliberate, from the profile,
+  and requires step-up: the password when one is set (free and stronger), otherwise an OTP
+  with the customer choosing email or phone.
+- Connecting an identity already linked to another customer is a clean refusal, not a
+  duplicate-key error.
+- Disconnect enforces that at least one usable credential remains.
+
+**Phone as a login credential.**
+
+- Phone OTP is a full login, equivalent to any other. **Accepted risk, owner-decided:** Indian
+  carriers reassign numbers after roughly 90 days, so whoever inherits a recycled number
+  inherits the account. Recorded rather than mitigated, deliberately.
+- Changing an email or a phone still requires recent credential proof and verification of the
+  new value before the old one is released (matrix row 84) — a separate control from what a
+  phone OTP may authenticate.
+
+**OTP abuse limits** — numbers live in `rate-limit-policy.ts`, windows configurable.
+
+- The sharp control is the DESTINATION address (the existing `identifier` scope), not the IP:
+  5 email + 5 SMS per pending signup; 5 combined per account for sign-in, forgot-password,
+  change-password and connect-social.
+- IP ceilings stay deliberately loose as a flood stop only, keyed through
+  `rateLimitClientScope` so IPv6 is counted per `/64` while IPv4 is treated as coarse —
+  Indian consumer internet is carrier-grade NAT, and a tight per-IP limit locks out a town.
+- Resends use progressive backoff rather than a hard cliff, so an honest mistake never costs a
+  full window.
+- Connect-social lets the customer choose the channel before generation, so a non-essential
+  action cannot silently spend SMS credits.
+
+**MSG91 delivery.** Unchanged and already locked: Saha Textile generates, stores and verifies
+every OTP; MSG91 is delivery only, never the OTP Widget or SendOTP.
 
 ## Open decisions
 

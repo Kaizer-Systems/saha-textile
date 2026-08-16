@@ -113,6 +113,7 @@ const fakeAuthSessions = {
 const fakeCustomers = {
 	findById: notImplemented,
 	findByEmail: notImplemented,
+	findByPhone: notImplemented,
 	findCredentialByEmail: notImplemented,
 	list: notImplemented,
 	create: notImplemented,

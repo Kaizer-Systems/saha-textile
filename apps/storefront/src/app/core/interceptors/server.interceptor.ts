@@ -10,11 +10,13 @@ export class ServerInterceptor implements HttpInterceptor {
 
 	intercept<T>(req: HttpRequest<T>, next: HttpHandler): Observable<HttpEvent<T>> {
 		if (isPlatformServer(this.platformId)) {
-			// Mock a response for SSR
-			const mockResponse = new HttpResponse({ body: {} as T, status: 200 });
-			return of(mockResponse);
+			// Short-circuits every HTTP call during server rendering: the render pass emits markup
+			// without waiting on the network, and the browser makes the real request after
+			// hydration. Not a mock — nothing is being stood in for. The response is genuinely
+			// empty because on the server there is deliberately no call.
+			const emptyResponse = new HttpResponse({ body: {} as T, status: 200 });
+			return of(emptyResponse);
 		} else {
-			// Pass the request to the next handler if not on the server
 			return next.handle(req);
 		}
 	}

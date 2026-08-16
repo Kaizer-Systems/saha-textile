@@ -67,6 +67,12 @@ export const COLLECTION_NAMES = {
 	AdminUserRoleAssignment: 'adminUserRoleAssignments',
 	/** Adapter/runtime abuse counters — intentionally NOT a Schema Nebula node. */
 	AuthRateLimit: 'authRateLimits',
+	/**
+	 * Verified-but-not-yet-created signups (`DEC-SIGNUP-VERIFICATION`) — intentionally NOT a
+	 * Schema Nebula node. A row lives 15–30 minutes, holds no business record, is referenced
+	 * by nothing, and is deleted by TTL; it exists so a real customer can be born.
+	 */
+	PendingSignup: 'pendingSignups',
 	// --- Governance, privacy, notifications ----------------------------------
 	AuditLog: 'auditLogs',
 	ConsentEvent: 'consentEvents',
@@ -87,15 +93,36 @@ export const COLLECTION_NAMES = {
 export type ModelName = keyof typeof COLLECTION_NAMES;
 
 /**
- * Collections whose ratified name is NOT one of the 65 Schema Nebula nodes.
+ * Collections deliberately outside the ratified data model.
  *
- * Keeping this explicit stops the list above from being read as "these are all locked
- * graph collections" — the portal's star evidence must not promote a runtime concern.
- * `productQuestions` and `ratingAggregates` are implemented models that the ratified
- * 65-node graph does not currently carry a node for; that gap is a documentation
- * reconciliation for the portal/owner, not a licence to rename the collections.
+ * MACHINERY, not domain data. A rate-limit counter and a half-finished signup are scaffolding
+ * that exists so real records can be written safely; putting either into the governed 65-node
+ * graph would make that graph LESS truthful, not more, by promoting a runtime concern to the
+ * same standing as an order or a customer.
+ *
+ * Absence from the graph is a classification here, never a shortcut. Anything that is genuinely
+ * part of the data model belongs in `GRAPH_RECONCILIATION_OWED` below and gets fixed.
  */
-export const NON_GRAPH_COLLECTIONS: readonly string[] = ['authRateLimits', 'productQuestions', 'ratingAggregates'];
+const RUNTIME_ONLY_COLLECTIONS = ['authRateLimits', 'pendingSignups'] as const;
+
+/**
+ * ⚠ OWED WORK — real domain models the ratified graph has not caught up with.
+ *
+ * These are NOT machinery. `productQuestions` and `ratingAggregates` are implemented, durable,
+ * business-meaningful collections that belong in the Schema Nebula graph and are missing from
+ * it. Every entry here is a documentation debt against the portal/owner, and clearing it means
+ * ADDING the node and removing the name from this list — never renaming the collection to fit.
+ *
+ * Kept separate from `RUNTIME_ONLY_COLLECTIONS` on purpose. One combined list let a deliberate
+ * exclusion and an unpaid debt look identical, so the debt could sit there indefinitely
+ * wearing the same clothes as a decision. Two lists mean this one can only shrink.
+ *
+ * Tracked in `project-progress.mdx` under the Developer portal section.
+ */
+export const GRAPH_RECONCILIATION_OWED = ['productQuestions', 'ratingAggregates'] as const;
+
+/** Every collection the Schema Nebula assertion must skip, whatever the reason. */
+export const NON_GRAPH_COLLECTIONS: readonly string[] = [...RUNTIME_ONLY_COLLECTIONS, ...GRAPH_RECONCILIATION_OWED];
 
 /**
  * Physical names these collections used to resolve to, before explicit naming.

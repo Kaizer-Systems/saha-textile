@@ -16,9 +16,18 @@ export function useHostPrefix(config: AppConfig): boolean {
 	return isSecureContext(config) && !config.cookies.domain;
 }
 
-/** Cookies are only marked `Secure` where the browser can actually deliver them. */
+/**
+ * Whether session cookies are marked `Secure` — and so whether `__Host-` may be used.
+ *
+ * Configuration, not environment. This read `config.nodeEnv === 'production'` until
+ * 2026-08-15, which meant local development ran a quietly different cookie model: no
+ * `Secure`, no `__Host-` prefix, and therefore a production-only code path that nothing
+ * outside production ever executed. Local development now serves TLS
+ * (`pnpm setup:local-https`), so the honest answer is the configured one, it defaults to
+ * `true`, and turning it off is a deliberate `COOKIE_SECURE=false` that shows up in a diff.
+ */
 export function isSecureContext(config: AppConfig): boolean {
-	return config.nodeEnv === 'production';
+	return config.cookies.secure;
 }
 
 /**
@@ -72,11 +81,13 @@ export function cookieNames(config: AppConfig): {
 	refresh: string;
 	csrf: string;
 	guest: string;
+	signup: string;
 } {
 	return {
 		access: cookieName(config.cookies.accessName, config),
 		refresh: cookieName(config.cookies.refreshName, config),
 		csrf: cookieName(config.cookies.csrfName, config),
 		guest: cookieName(config.cookies.guestName, config),
+		signup: cookieName(config.cookies.signupName, config),
 	};
 }

@@ -39,3 +39,7 @@ vendor
 
 # Generated: dart-sass precompiled theme css (analog SSR dev sass-importer workaround)
 apps/storefront/src/scss/app.gen.css
+
+# Local HTTPS certificates (mkcert). Regenerate with scripts/setup-local-https.sh —
+# never commit a private key, even a locally-trusted development one.
+certs/

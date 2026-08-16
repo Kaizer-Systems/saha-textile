@@ -14,6 +14,8 @@ const config = (overrides: NodeJS.ProcessEnv = {}) =>
 const dev = config();
 const prod = config({ NODE_ENV: 'production' });
 const prodWithDomain = config({ NODE_ENV: 'production', COOKIE_DOMAIN: '.sahatextile.com' });
+/** The only way to get insecure cookies now: an explicit, visible opt-out. */
+const insecureOptOut = config({ COOKIE_SECURE: 'false' });
 
 describe('cookie attributes', () => {
 	it('marks session cookies httpOnly and same-site lax', () => {
@@ -27,10 +29,34 @@ describe('cookie attributes', () => {
 		expect(csrfCookieOptions(dev).httpOnly).toBe(false);
 	});
 
-	it('marks cookies Secure only where the browser can deliver them', () => {
-		expect(sessionCookieOptions(dev).secure).toBe(false);
+	/**
+	 * The property that replaced "Secure in production only" on 2026-08-15.
+	 *
+	 * Deriving this from `NODE_ENV` meant development ran a second cookie model nobody
+	 * exercised — no `Secure`, no `__Host-` — so the production attributes were first
+	 * executed in production. Local development now serves TLS, and the default is `true`
+	 * everywhere: a forgotten variable fails CLOSED.
+	 */
+	it('marks cookies Secure by default, in every environment', () => {
+		expect(sessionCookieOptions(dev).secure).toBe(true);
 		expect(sessionCookieOptions(prod).secure).toBe(true);
+		expect(csrfCookieOptions(dev).secure).toBe(true);
 		expect(csrfCookieOptions(prod).secure).toBe(true);
+	});
+
+	it('drops Secure only for an explicit COOKIE_SECURE=false opt-out', () => {
+		expect(sessionCookieOptions(insecureOptOut).secure).toBe(false);
+		expect(csrfCookieOptions(insecureOptOut).secure).toBe(false);
+	});
+
+	/**
+	 * `z.coerce.boolean()` would make the STRING `'false'` truthy, so an operator disabling
+	 * the flag would have silently enabled it. Pinned because the failure is invisible.
+	 */
+	it('reads COOKIE_SECURE=false as false, not as a truthy string', () => {
+		expect(config({ COOKIE_SECURE: 'false' }).cookies.secure).toBe(false);
+		expect(config({ COOKIE_SECURE: 'true' }).cookies.secure).toBe(true);
+		expect(config({}).cookies.secure).toBe(true);
 	});
 
 	it('uses the __Host- prefix in production without a pinned domain', () => {
@@ -41,6 +67,10 @@ describe('cookie attributes', () => {
 			refresh: '__Host-st_refresh',
 			csrf: '__Host-st_csrf',
 			guest: '__Host-st_guest',
+			// Ties an in-progress signup to one browser before any account exists
+			// (`DEC-SIGNUP-VERIFICATION`). Prefixed like the rest: it locates the server's
+			// record of what a visitor has proven, so it must not be settable by a subdomain.
+			signup: '__Host-st_signup',
 		});
 	});
 
@@ -55,8 +85,15 @@ describe('cookie attributes', () => {
 		expect(csrfCookieOptions(prod).domain).toBeUndefined();
 	});
 
-	it('keeps the plain name in development, where __Host- would be rejected over HTTP', () => {
-		expect(cookieName('st_csrf', dev)).toBe('st_csrf');
+	/**
+	 * Development now gets the SAME prefixed names as production, because it serves TLS.
+	 * The plain spelling survives only for the explicit insecure opt-out, where `__Host-`
+	 * would be rejected by the browser outright.
+	 */
+	it('uses the prefixed name in development too, now that development is HTTPS', () => {
+		expect(cookieName('st_csrf', dev)).toBe('__Host-st_csrf');
+		expect(cookieName('st_csrf', insecureOptOut)).toBe('st_csrf');
+		expect(useHostPrefix(insecureOptOut)).toBe(false);
 	});
 });
 

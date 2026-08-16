@@ -6,7 +6,7 @@
 
 export const environment = {
 	production: false,
-	apiUrl: 'http://localhost:4000',
-	baseURL: 'http://localhost:4200/',
-	URL: 'http://localhost:4200/assets/data',
+	apiUrl: 'https://localhost:4000',
+	baseURL: 'https://localhost:4200/',
+	URL: 'https://localhost:4200/assets/data',
 };

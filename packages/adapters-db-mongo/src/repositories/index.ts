@@ -15,3 +15,5 @@ export * from './inventory.repository';
 export * from './media.repository';
 export * from './governance.repository';
 export * from './content.repository';
+export * from './pending-signup.repository';
+export * from './auth-identity.repository';

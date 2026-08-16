@@ -10,19 +10,23 @@ import { environment } from '../../../../public/environments/environment';
  * only; deploys overwrite/mount it at container start (roadmap §0d).
  */
 export interface RuntimeConfig {
-	/** NestJS API origin, e.g. http://localhost:4000 */
+	/** NestJS API origin, e.g. https://localhost:4000 */
 	apiUrl: string;
-	/** Public storefront origin, e.g. http://localhost:4200 */
+	/** Public storefront origin, e.g. https://localhost:4200 */
 	siteUrl: string;
 	defaultLocale: string;
 	supportedLocales: string[];
 }
 
 const DEFAULTS: RuntimeConfig = {
-	apiUrl: 'http://localhost:4000',
-	siteUrl: 'http://localhost:4200',
+	apiUrl: 'https://localhost:4000',
+	siteUrl: 'https://localhost:4200',
 	defaultLocale: 'en',
-	supportedLocales: ['en', 'bn'],
+	// en + fr for the whole development phase — Fastkart shipped both and they stay.
+	// Bengali is added once development is complete, deliberately: building against two
+	// live locales keeps the i18n seams exercised, so a third is a data change rather
+	// than an architecture change. Must agree with `availableLangs` in `app.config.ts`.
+	supportedLocales: ['en', 'fr'],
 };
 
 /** Mutable singleton — read this (or the legacy `environment`) after app init. */

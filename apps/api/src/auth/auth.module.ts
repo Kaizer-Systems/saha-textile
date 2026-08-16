@@ -6,6 +6,8 @@ import { AdminInviteService } from './admin-invite.service';
 import { AdminSecurityService } from './admin-security.service';
 import { AuthService } from './auth.service';
 import { SessionService } from './session.service';
+import { OAuthService } from './oauth.service';
+import { SignupService } from './signup.service';
 import { StorefrontAuthController } from './storefront-auth.controller';
 
 /**
@@ -17,7 +19,7 @@ import { StorefrontAuthController } from './storefront-auth.controller';
 @Module({
 	imports: [CartModule],
 	controllers: [StorefrontAuthController, AdminAuthController],
-	providers: [AuthService, SessionService, AdminInviteService, AdminSecurityService],
-	exports: [AuthService, SessionService, AdminInviteService, AdminSecurityService],
+	providers: [AuthService, SessionService, SignupService, OAuthService, AdminInviteService, AdminSecurityService],
+	exports: [AuthService, SessionService, SignupService, OAuthService, AdminInviteService, AdminSecurityService],
 })
 export class AuthModule {}

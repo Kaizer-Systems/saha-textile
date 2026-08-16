@@ -3453,6 +3453,162 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
   across SPA navigation, so toasts raised during the deliberate 403 window kept showing on later
   screens. Gates re-run green after both fixes: typecheck 17/17, all unit suites, DB-IT 108/108,
   seven lint guards, `format:check` clean. Tool: claude-code.
+- 2026-08-15 — [DONE] **Local development moved to HTTPS, deleting the development-only cookie
+  model.** Groundwork for Chunk D OAuth (Meta refuses a plain-HTTP origin) but the real gain is
+  independent of it. `isSecureContext()` returned `config.nodeEnv === 'production'`, so locally
+  session cookies were **not** `Secure` and **not** `__Host-` prefixed while production used
+  both — two security models, only one of them ever executed by a developer or a test. It is now
+  `config.cookies.secure`, a `COOKIE_SECURE` **opt-OUT defaulting to `true`**, so a forgotten
+  variable fails closed and turning it off is a visible diff. Verified live: the API now issues
+  `__Host-st_access` and `__Host-st_refresh` (httpOnly + Secure) and `__Host-st_csrf` (readable,
+  Secure) **on localhost**, and a full admin login → `/auth/admin/me` → `/admin/customers`
+  round-trip returns 200 over TLS.
+  **How.** `pnpm setup:local-https` (new) issues a certificate from the machine-local mkcert CA
+  into a gitignored `certs/`; storefront and admin Vite servers and the API's Fastify listener
+  read it, each degrading to HTTP when the pair is absent so a fresh clone still boots. The API
+  reads `TLS_CERT_FILE`/`TLS_KEY_FILE` and never falls back to a generated certificate — serving
+  TLS nobody verified would be worse than serving none. Deploys leave both unset; Nginx
+  terminates TLS there and the API speaks HTTP behind it, which is why `COOKIE_SECURE` is
+  deliberately NOT inferred from whether this process terminates TLS.
+  **Origins moved with it** so nothing broke: `CORS_ALLOWED_ORIGINS`, both apps' `config.json` +
+  `config.example.json`, both `runtime-config.ts` defaults, both legacy `environment.ts` objects,
+  and `.claude/launch.json` (which also gained `autoPort: false` on api/admin/storefront — all
+  three are origin-pinned by CORS, runtime config and, soon, the provider consoles, so a
+  wandering port is a broken app). `apps/api/.env.example` documents the pair.
+  **Two test-suite consequences, both fixed by testing the new truth rather than avoiding it.**
+  `csrf.test.ts` asserted "Secure in production only"; it now asserts Secure-by-default in every
+  environment, the explicit `COOKIE_SECURE=false` opt-out, and that the string `'false'` parses
+  as false (`z.coerce.boolean()` would make it truthy — an operator disabling the flag would
+  have enabled it). And `session-rotation.mjs` hardcoded `st_access`/`st_refresh`/`st_csrf` in 22
+  places, so it stopped finding its own cookies; it now derives them from the server's own
+  `cookieNames()`, which means **the E2E exercises the `__Host-` production spelling for the
+  first time**.
+  **Also in this pass, per owner decision:** the admin mock customer service is DELETED rather
+  than renamed — `user.service.ts` and `user.queries.ts` are gone and the Points page reads the
+  live `injectAdminCustomersQuery`, the same query the Customer Ledger beside it already used.
+  The owner's objection to `MockCustomerService` was correct: a name only defensible because the
+  code is temporary is an argument for removing the code. The orphaned `IUserModel` went with it.
+  **Locale correction, made permanent.** `AGENTS.md` claimed "runtime en↔bn" and three config
+  files advertised `supportedLocales: ["en","bn"]` while the app ships `en.json` + `fr.json`
+  with `availableLangs: ['en','fr']`. That stale claim is why agents keep "fixing" French into
+  Bengali. All four corrected to en+fr, each carrying the reason: **Bengali is added once
+  development is complete**, deliberately, so two live locales keep the i18n seams exercised and
+  the third is a data change rather than an architecture change.
+  **Gates:** typecheck **17/17** · unit suites all pass (contracts 168, http-transport 157,
+  core-domain 163, api **182**, storefront 57, admin 72, msg91 3) · DB-IT **108/108** ·
+  session-rotation E2E **34/34 exit 0** · seven lint guards OK, `turbo run lint` 0 errors ·
+  `format:check` clean · OpenAPI 88 operations / 75 paths · both Angular apps build · all three
+  servers verified serving trusted TLS (`curl` without `-k`).
+  **Owed, and now twice-proven:** the DB-IT suite runs against `saha_textile_local` and its
+  `beforeEach` wipes `roles`/`adminUsers`/`adminInvites`, so running it **destroys the local
+  operator login**. It did so twice in this session alone, each time requiring a re-bootstrap
+  mid-verification. The fix is a dedicated test database; until then, re-run
+  `bootstrap:first-admin` after any `RUN_DB_IT=1` run. Also unresolved: `set:local-credentials`
+  exits 1 with an empty stderr for an operator that has no existing password credential.
+  **Not started:** Chunk D OAuth itself. The approval gate is open — the collision policy (A)
+  and Facebook-without-email (B) are owner decisions still under discussion, and no OAuth code
+  was written. Tool: claude-code.
+- 2026-08-16 — [DONE] **Chunk D storefront identity — the whole BACKEND, verified-before-creation.**
+  Locked first as `DEC-SIGNUP-VERIFICATION` after a long design review in which the owner's
+  design was criticised, corrected in both directions, and several of my own claims withdrawn.
+  Everything below is API and below; no storefront UI was written.
+  **The idea the whole tranche enforces:** a customer row is created only after email AND phone
+  are OTP-verified, so there is no unverified-account state — which removes the pre-hijack
+  takeover class outright. An attacker cannot squat an address they do not control and wait for
+  the real owner to be handed their account.
+  **`POST /auth/storefront/register` is DELETED**, not deprecated. It created an account from an
+  email and a password with no verification; shipping the verified flow beside it would have
+  left the unverified door open next to the locked one, and an attacker uses whichever opens.
+  **Nine new routes:** `signup/{start,field,otp/request,otp/verify,finalise}`,
+  `oauth/{state,google,facebook}`, `oauth/{connect,disconnect}`, plus `login-methods` and
+  `step-up/request`. 99 routes total, 99 OpenAPI operations across 86 paths.
+  **Contracts (`signup.ts`, `oauth.ts`).** `FinaliseSignupRequest` accepts ONLY an optional
+  password — a test feeds it `email`, `phone` and `providerSubject` and asserts they are
+  stripped, so at the one moment an account is minted the request physically cannot name an
+  identifier. Thirteen stable refusal codes, pinned.
+  **Core.** `OAuthVerifierPort` (opaque string in, settled identity out — no SDK types, no raw
+  payloads) and `signup-policy.ts` as pure functions. `mayDiscloseExistence` takes ONLY
+  `proofOfControl`: not whether a password exists, not which providers are linked, because
+  varying the answer on those leaks the account's shape to whoever asks. `credentialsAfterRemoval`
+  counts a verified email or phone AS a credential, which is what makes disconnect safe for a
+  social signup with no password. Runtime purity (`G-CORE-CONTRACTS`) still holds.
+  **New package `packages/adapters-auth`** — `google-auth-library@11.0.2` pinned. The library
+  checks signature/iss/aud/exp; the adapter checks what it deliberately does not: the **nonce**
+  we minted (a token captured from another session passes every other check), `email_verified`,
+  and subject presence. An unverified address is DROPPED rather than carried with a false flag.
+  Facebook uses no SDK — Graph `debug_token` with a server-built app access token, checking
+  `is_valid` (catches revocation, which no expiry check would), `app_id` matching ours (the
+  substituted-app attack), expiry and `user_id`. **`emailVerified` is unconditionally false**
+  from the Meta adapter even when an address returns: Meta asserts nothing we can check, and
+  making it conditional would push a judgement call into every caller.
+  **Persistence.** `pendingSignups` — sliding 15m TTL capped at 30m absolute, unique on
+  `sessionKey` so a second tab JOINS a signup rather than racing it, and **deliberately no
+  unique index on email or phone**: reserving addresses would let one caller park thousands in
+  fifteen-minute blocks, a denial of service dressed as a safety feature. `authIdentities` port
+    - adapter (the model existed; nothing could reach it). `findByPhone` added to the customer
+      port — phone is a login credential now.
+      **Anti-enumeration, moved to where it belongs.** Nothing is revealed at signup start or OTP
+      request. Disclosure happens only AFTER proof of control, where it is safe and lets the flow
+      offer "sign in instead" rather than failing at the end. Delivery is enqueued so a
+      non-existent account spends no credits AND the response time is identical — skipping the send
+      synchronously would leak in the timing dimension what the message no longer leaks in words.
+      **Owner decisions recorded in the lock**, including two where the owner overruled me: phone
+      OTP is a full login equivalent (SIM-recycling risk accepted and written down), and the
+      `UserStatus` split into `CustomerStatus`/`AdminUserStatus` — which turned out BETTER than my
+      recommendation, since operators genuinely have four states to a customer's five.
+      **Contract simplified mid-build:** the specified `stepUpToken` was dropped. The step-up code
+      is presented directly on connect/disconnect; an intermediate token needed its own storage,
+      expiry and single-use rule to carry a proof across one extra round trip, and removing it
+      removed the replay window it would have opened.
+      **E2E rewritten** to walk the real flow (start → verify email → verify phone → finalise). The
+      code cannot be read back — challenges store an HMAC under a server pepper — so the harness
+      overwrites the stored hash with one it chose, using the same pepper. Everything downstream is
+      genuine; only the secret the test cannot know is substituted. **34 → 35 checks.** The weak
+      password case now proves the ORDERING (a rejected password leaves the proof intact and a good
+      one immediately after still completes), and a new check proves an OTP request answers
+      identically for known and unknown addresses.
+      **Four bugs found by the tests, three of them mine.** (1) The pending-signup upsert put `_id`
+      in `$set`, which Mongo rejects as immutable — a first signup succeeded and every RESTART
+      failed, i.e. "signup works, but not if you abandon and retry". (2) A `beforeEach` arrow
+      returned `mockReset()`'s value; Vitest treats a returned FUNCTION as a teardown hook and kept
+      invoking a throwing stand-in. (3) A stub hash of `h(${value})` embedded its input, so
+      "the row contains no plaintext" could never fail however the service behaved — replaced with
+      sha256. (4) The E2E teardown left `pendingSignups` behind and its own leftovers assertion
+      caught it.
+      **Gates:** typecheck **19/19** · contracts 176 · core-domain 177 · **adapters-auth 23** ·
+      http-transport 157 · api **197** · storefront 57 · admin 72 · msg91 3 · DB-IT **116/116** ·
+      session-rotation E2E **35/35 exit 0** · seven lint guards OK, `turbo run lint` **0 errors** ·
+      `format:check` clean · OpenAPI 99 operations / 86 paths, all ids unique.
+      **Owed:** MSG91 `template_id` vs `flow_id` — both are sent with the same value until a real
+      account confirms which the endpoint honours; OTP template ids are placeholders. Storefront UI
+      (four approved screens), gateway, auth store and en/fr copy are NOT started. Tool: claude-code.
+- 2026-08-16 — [DONE] **Local development moved to HTTPS, and the development-only cookie model
+  deleted.** `isSecureContext()` returned `nodeEnv === 'production'`, so locally session cookies
+  were **not** `Secure` and **not** `__Host-` prefixed while production used both — two security
+  models, only one ever executed by a developer or a test. Now `COOKIE_SECURE`, an opt-OUT
+  defaulting to `true`, so a forgotten variable fails closed. Verified live: the API issues
+  `__Host-st_access`/`__Host-st_refresh` (httpOnly + Secure) and `__Host-st_csrf` on localhost,
+  and a full admin round-trip returns 200 over TLS. `pnpm setup:local-https` issues the pair
+  from the machine-local mkcert CA into a gitignored `certs/`; deploys leave `TLS_*` unset
+  because Nginx terminates there. All local origins moved with it (CORS, both `config.json`,
+  both runtime-config defaults, `launch.json` with `autoPort: false` on the origin-pinned apps).
+  The E2E hardcoded `st_access` in 22 places and now derives names from the server's own
+  `cookieNames()` — so it exercises the `__Host-` production spelling for the first time.
+  **MongoDB TLS deliberately NOT added:** loopback-only, private network in production, and it
+  would put cert flags on every migration, script and healthcheck for no change in threat model.
+  Tool: claude-code.
+- 2026-08-16 — [DONE] **Two naming laws applied and made mechanical.** (a) The admin mock
+  customer service was DELETED rather than renamed — the owner's objection to `MockCustomerService`
+  was correct, and a name only defensible because code is temporary is an argument for removing
+  the code. The Points page now reads the live `injectAdminCustomersQuery`, the same query the
+  Customer Ledger beside it already used. **Zero mock-shaped identifiers remain in shipping
+  source**; the two `mockResponse` locals became `emptyResponse` (an SSR short-circuit — nothing
+  was being stood in for). New `AGENTS.md` lock, and the ~70 remaining mentions are accurate
+  COMMENTS about kept-stub pages, left alone pending an owner call. (b) Locales corrected to
+  **en + fr** in `AGENTS.md`, `runtime-config.ts` and both `config.json` files; the stale
+  "runtime en↔bn" claim is what kept causing agents to "fix" French into Bengali. Bengali lands
+  once development completes, deliberately, so two live locales keep the i18n seams exercised.
+  Tool: claude-code.
 - _(append)_
 
 ---
@@ -3489,6 +3645,26 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
 ---
 
 ## Developer portal / docs (`apps/developer-portal`, `docs/`)
+
+> ### ⚠ OWED: two collections are missing from the ratified Schema Nebula graph
+>
+> **`productQuestions` and `ratingAggregates` are real, durable, business-meaningful
+> collections that belong in the 65-node graph and are not in it.** They are implemented and
+> in use; the graph simply never caught up. This is a documentation debt, not a design
+> choice.
+>
+> They currently sit in `NON_GRAPH_COLLECTIONS` so the `collection-names.test.ts` assertion
+> passes, which is exactly what makes the debt easy to forget — an unpaid reconciliation and
+> a deliberate exclusion looked identical in one list. As of 2026-08-16 they no longer do:
+> `collection-names.ts` separates **`GRAPH_RECONCILIATION_OWED`** (this debt, which may only
+> ever shrink) from **`RUNTIME_ONLY_COLLECTIONS`** (`authRateLimits`, `pendingSignups` —
+> machinery with a TTL, correctly outside the data model and never to be added to it).
+>
+> **Clearing it means ADDING two nodes to `docs/_data/instruments/schema-nebula.json`,
+> taking it 65 → 67, and removing both names from `GRAPH_RECONCILIATION_OWED`.** It does not
+> mean renaming a collection to fit the graph, and it does not mean deleting the entry.
+> Until then the governed diagram is knowingly incomplete, and anyone reading it as the whole
+> database is being misled by two rows.
 
 - 2026-07-24 — [PARTIAL] Docs plan exists; keep env/deploy truth in sync with `environment-variables.mdx` when Infra lands. Tool: cursor.
 - 2026-07-24 — [DONE] **Next-gen UI pass** (owner-requested, Maximal intensity): added a self-contained, dependency-free futuristic interaction layer to `apps/developer-portal` — ambient Canvas constellation, holographic scanlines, ⌘K command palette (+ launcher), signature hexagonal **architecture reactor** (SMIL data pulses; embedded on the homepage AND `/architecture/system-overview`), living micro-interactions (cursor spotlight, magnetic buttons, scroll-reveal, read-progress beam), and glass chrome over the ambient field. Theme-aware (light/dark), `prefers-reduced-motion`-safe, SSR/no-JS safe. Every file tagged with a grep-able `NEXT-GEN-UI` banner + what/why/how + tuning-knob comments. **Convention locked**: next-gen portal stylings are ALWAYS comment-marked for education + future iterations — documented and maintained at `docs/frontend/portal-experience-layer.md`. typecheck + validator (54 pages) + check:naming + production build all green. Tool: claude-code. Notes: intensity dial = `.main-wrapper` alpha + scanline/pulse values; grep `NEXT-GEN-UI apps/developer-portal/src`.

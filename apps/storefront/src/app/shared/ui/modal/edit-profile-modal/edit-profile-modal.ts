@@ -84,11 +84,21 @@ export class EditProfileModal {
 		}
 	}
 
-	submit() {
-		this.form.markAllAsTouched();
-		if (this.form.valid) {
-			this.accountStore.updateProfile(this.form.value);
-		}
+	/**
+	 * Saves the display name.
+	 *
+	 * Only the name is sent. Email and phone are login credentials, and changing one needs recent
+	 * credential proof plus a verification round trip that keeps the old value live until the new
+	 * one is proven — so their fields are shown read-only rather than silently ignored, and the
+	 * API refuses them on this route regardless.
+	 */
+	async submit() {
+		this.form.controls['name'].markAsTouched();
+		if (this.form.controls['name'].invalid) return;
+
+		const saved = await this.accountStore.updateProfile(String(this.form.value.name ?? ''));
+		// Left open on failure so the edit is not lost; the interceptor has already said why.
+		if (saved) this.modalService.dismissAll();
 	}
 
 	ngOnDestroy() {

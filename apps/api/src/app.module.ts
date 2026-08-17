@@ -17,6 +17,7 @@ import { OrdersModule } from './orders/orders.module';
 import { PrivacyModule } from './privacy/privacy.module';
 import { PromotionsModule } from './promotions/promotions.module';
 import { SecurityModule } from './security/security.module';
+import { StorefrontModule } from './storefront/storefront.module';
 
 /**
  * Composition root.
@@ -42,6 +43,7 @@ export class AppModule {
 				AuthModule,
 				AdminModule,
 				SecurityModule,
+				StorefrontModule,
 				PrivacyModule,
 			],
 			providers: [

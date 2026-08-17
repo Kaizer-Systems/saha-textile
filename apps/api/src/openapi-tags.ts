@@ -18,6 +18,7 @@ export const API_TAGS = {
 	cart: 'cart',
 	orders: 'orders',
 	auth: 'auth',
+	storefrontAccount: 'storefront-account',
 	privacy: 'privacy',
 } as const;
 
@@ -39,6 +40,11 @@ export const API_TAG_DESCRIPTIONS: ReadonlyArray<{ name: ApiTag; description: st
 		name: API_TAGS.auth,
 		description:
 			'Session lifecycle for both audiences. Sessions are httpOnly cookies set by the API; no token is ever returned in a response body.',
+	},
+	{
+		name: API_TAGS.storefrontAccount,
+		description:
+			"A customer's own account data. Every route is scoped to the session principal — these carry no customer id, so one shopper cannot address another's account.",
 	},
 	{ name: API_TAGS.privacy, description: 'Consent, data export and erasure requests.' },
 ];

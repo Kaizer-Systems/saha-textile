@@ -12,7 +12,6 @@ import {
 	Post,
 	Req,
 	Res,
-	BadRequestException,
 	UnauthorizedException,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -26,6 +25,7 @@ import {
 	PasswordForgotRequest,
 	PasswordLoginRequest,
 	PasswordResetRequest,
+	SetPasswordRequest,
 	FinaliseSignupRequest,
 	SignupOtpRequestBody,
 	SignupOtpVerifyRequest,
@@ -54,6 +54,7 @@ import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { API_TAGS } from '../openapi-tags';
 import { AuthService } from './auth.service';
 import { Principal } from './ownership';
+import { domainRefusal } from './domain-refusal';
 import { assertPasswordAcceptable } from './password-policy';
 import { mayRemoveCredential, stepUpMethodFor } from '@saha-textile/core-domain';
 
@@ -88,6 +89,23 @@ export class StorefrontAuthController {
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
 	) {}
 
+	/**
+	 * Normalises whatever the person typed into the value the server looks up.
+	 *
+	 * Email and phone are both login credentials now, and both are verified before an account
+	 * exists — so either identifies its owner as well as the other. Emails are lowercased;
+	 * phone numbers are left as typed beyond trimming, because their normalisation belongs to
+	 * the E.164 rules the signup flow already applied when the number was proven.
+	 *
+	 * `email` is still accepted so an older client keeps working, and `identifier` wins when
+	 * both arrive — a caller must not be able to steer the lookup by claiming a value is one
+	 * kind rather than the other.
+	 */
+	private identifierOf(body: { identifier?: string; email?: string }): string {
+		const raw = (body.identifier ?? body.email ?? '').trim();
+		return raw.includes('@') ? this.auth.normalizeEmail(raw) : raw;
+	}
+
 	/** Reads the `st_signup` cookie that ties an in-progress signup to this browser. */
 	private signupKey(request: FastifyRequest): string | null {
 		return request.cookies?.[cookieNames(this.config).signup] ?? null;
@@ -103,24 +121,21 @@ export class StorefrontAuthController {
 	 */
 	private refuse(error: unknown): never {
 		if (error instanceof OAuthStateInvalidError) {
-			throw new BadRequestException({ code: 'oauth_state_invalid', message: 'Sign-in could not be completed' });
+			throw domainRefusal('oauth_state_invalid', 'Sign-in could not be completed');
 		}
 		if (error instanceof OAuthIdentityConflictError) {
-			throw new BadRequestException({
-				code: 'oauth_identity_conflict',
-				message: 'That account is already connected to a different customer',
-			});
+			throw domainRefusal('oauth_identity_conflict', 'That account is already connected to a different customer');
 		}
 		if (error instanceof Error && error.name === 'OAuthProviderUnavailableError') {
-			throw new BadRequestException({ code: 'oauth_provider_unavailable', message: 'Sign-in is unavailable' });
+			throw domainRefusal('oauth_provider_unavailable', 'Sign-in is unavailable');
 		}
 		// Verification failures name their reason for the LOG and never for the caller: somebody
 		// who learns why a token was rejected learns how to build a better one.
 		if (error instanceof Error && error.name === 'OAuthTokenInvalidError') {
-			throw new BadRequestException({ code: 'oauth_token_invalid', message: 'Sign-in could not be completed' });
+			throw domainRefusal('oauth_token_invalid', 'Sign-in could not be completed');
 		}
 		if (error instanceof SignupError) {
-			throw new BadRequestException({ code: error.code, message: 'Signup could not be completed' });
+			throw domainRefusal(error.code, 'Signup could not be completed');
 		}
 		throw error;
 	}
@@ -279,6 +294,10 @@ export class StorefrontAuthController {
 				audience: 'storefront',
 				request,
 				reply,
+				// The signup form carries no "remember me", and somebody who just proved two
+				// identifiers on this browser plainly intends to keep using it. Stated rather
+				// than defaulted, so adding the control later is a deliberate edit here.
+				persistent: true,
 			});
 			await this.adoptGuestCart(customer.id, request, reply);
 
@@ -368,6 +387,10 @@ export class StorefrontAuthController {
 					audience: 'storefront',
 					request,
 					reply,
+					// A provider button has nowhere to put a "remember me". Keeping the long
+					// session preserves the behaviour these sign-ins already had rather than
+					// quietly shortening them as a side effect of adding the control elsewhere.
+					persistent: true,
 				});
 				await this.adoptGuestCart(customerId, request, reply);
 				return {
@@ -456,8 +479,7 @@ export class StorefrontAuthController {
 		// social account is not essential work, so credits are not spent on their behalf.
 		const customer = await this.auth.publicCustomer(principal.userId);
 		const destination = body.channel === 'email' ? customer.email : customer.phone;
-		if (!destination)
-			throw new BadRequestException({ code: 'step_up_required', message: 'That channel is unavailable' });
+		if (!destination) throw domainRefusal('step_up_required', 'That channel is unavailable');
 
 		const limit = await this.auth.consumeRateLimit('otp_request', { identifier: destination, ip: request.ip });
 		if (!limit.allowed) throw tooManyRequests(limit, reply);
@@ -533,10 +555,7 @@ export class StorefrontAuthController {
 				removing: { kind: 'provider', provider: body.provider },
 			});
 			if (!allowed) {
-				throw new BadRequestException({
-					code: 'last_credential',
-					message: 'That is the only way left to sign in',
-				});
+				throw domainRefusal('last_credential', 'That is the only way left to sign in');
 			}
 
 			await this.oauth.unlink(principal.userId, body.provider);
@@ -555,7 +574,7 @@ export class StorefrontAuthController {
 	 */
 	private async requireStepUp(customerId: string, password?: string, otpCode?: string): Promise<void> {
 		const state = await this.auth.customerAuthRepository.findAuthStateById(customerId);
-		const stepUpFailed = new BadRequestException({ code: 'step_up_required', message: 'Confirm it is you' });
+		const stepUpFailed = domainRefusal('step_up_required', 'Confirm it is you');
 
 		if (state?.passwordHash) {
 			if (!password) throw stepUpFailed;
@@ -585,8 +604,8 @@ export class StorefrontAuthController {
 		@Req() request: FastifyRequest,
 		@Res({ passthrough: true }) reply: FastifyReply,
 	): Promise<AuthSessionResponse> {
-		const email = this.auth.normalizeEmail(body.email);
-		const scopes = { identifier: email, ip: request.ip };
+		const identifier = this.identifierOf(body);
+		const scopes = { identifier, ip: request.ip };
 		const limit = await this.auth.checkRateLimit('storefront_login', scopes);
 		if (!limit.allowed) {
 			// An address-scoped refusal is about the network, so it may be stated plainly. An
@@ -596,7 +615,7 @@ export class StorefrontAuthController {
 			throw new UnauthorizedException('Invalid credentials');
 		}
 
-		const user = await this.auth.findAuthUserByEmail(email);
+		const user = await this.auth.findCustomerByIdentifier(identifier);
 		const valid = await this.auth.verifyPassword(user, body.password);
 
 		// One message for every failure mode: unknown address, wrong password,
@@ -611,7 +630,7 @@ export class StorefrontAuthController {
 
 		// Success clears this account's budget — never the shared address budget, which an
 		// attacker could otherwise wipe by logging into an account they control.
-		await this.auth.clearRateLimitIdentifier('storefront_login', email);
+		await this.auth.clearRateLimitIdentifier('storefront_login', identifier);
 
 		// A storefront password login must never mint an admin session.
 		await this.auth.customerAuthRepository.recordSuccessfulLogin(user.id, new Date().toISOString());
@@ -625,6 +644,8 @@ export class StorefrontAuthController {
 			audience: 'storefront',
 			request,
 			reply,
+			// The one place the person actually answered the question.
+			persistent: body.rememberMe === true,
 		});
 		await this.adoptGuestCart(user.id, request, reply);
 
@@ -650,20 +671,22 @@ export class StorefrontAuthController {
 		@Body(new ZodValidationPipe(EmailOtpRequest)) body: EmailOtpRequest,
 		@Req() request: FastifyRequest,
 	): Promise<GenericAcceptedResponse> {
-		const email = this.auth.normalizeEmail(body.email);
+		const identifier = this.identifierOf(body);
 		// Refusal answers exactly like a real send. A 429 here would tell a caller which
 		// addresses have been asked for recently, which is the enumeration this endpoint
 		// exists to avoid.
-		const limit = await this.auth.consumeRateLimit('otp_request', { identifier: email, ip: request.ip });
+		const limit = await this.auth.consumeRateLimit('otp_request', { identifier, ip: request.ip });
 		if (!limit.allowed) return ACCEPTED;
 
-		const user = await this.auth.findAuthUserByEmail(email);
+		const user = await this.auth.findCustomerByIdentifier(identifier);
 		if (body.purpose === 'login' && (!user || user.status !== 'active')) return ACCEPTED;
 
 		await this.auth.issueOtp({
-			identifier: email,
+			identifier,
 			purpose: body.purpose,
-			channel: 'email',
+			// The code follows the identifier the person actually gave. Sending an email code to
+			// somebody who typed a phone number would tell them an address exists on the account.
+			channel: identifier.includes('@') ? 'email' : 'sms',
 			userId: user?.id ?? null,
 		});
 		return ACCEPTED;
@@ -678,20 +701,20 @@ export class StorefrontAuthController {
 		@Req() request: FastifyRequest,
 		@Res({ passthrough: true }) reply: FastifyReply,
 	): Promise<AuthSessionResponse> {
-		const email = this.auth.normalizeEmail(body.email);
-		const scopes = { identifier: email, ip: request.ip };
+		const identifier = this.identifierOf(body);
+		const scopes = { identifier, ip: request.ip };
 		const limit = await this.auth.checkRateLimit('otp_verify', scopes);
 		if (!limit.allowed) {
 			if (limit.scope === 'ip') throw tooManyRequests(limit, reply);
 			throw new UnauthorizedException('Invalid or expired code');
 		}
 
-		const result = await this.auth.verifyOtp({ identifier: email, purpose: 'login', code: body.code });
+		const result = await this.auth.verifyOtp({ identifier, purpose: 'login', code: body.code });
 		if (!result?.userId) {
 			await this.auth.recordRateLimitFailure('otp_verify', scopes);
 			throw new UnauthorizedException('Invalid or expired code');
 		}
-		await this.auth.clearRateLimitIdentifier('otp_verify', email);
+		await this.auth.clearRateLimitIdentifier('otp_verify', identifier);
 
 		const user = await this.auth.customerAuthRepository.findAuthStateById(result.userId);
 		if (!user || user.status !== 'active') throw new UnauthorizedException('Invalid or expired code');
@@ -706,6 +729,8 @@ export class StorefrontAuthController {
 			audience: 'storefront',
 			request,
 			reply,
+			// The login screen shows one checkbox for both proofs, so a code login honours it too.
+			persistent: body.rememberMe === true,
 		});
 		await this.adoptGuestCart(user.id, request, reply);
 
@@ -761,12 +786,12 @@ export class StorefrontAuthController {
 		@Body(new ZodValidationPipe(PasswordForgotRequest)) body: PasswordForgotRequest,
 		@Req() request: FastifyRequest,
 	): Promise<GenericAcceptedResponse> {
-		const email = this.auth.normalizeEmail(body.email);
+		const identifier = this.identifierOf(body);
 		// Refused or not, the answer is identical: this endpoint must never confirm that an
 		// address is known, and a rate-limit response would do exactly that.
-		const limit = await this.auth.consumeRateLimit('password_reset', { identifier: email, ip: request.ip });
+		const limit = await this.auth.consumeRateLimit('password_reset', { identifier, ip: request.ip });
 		if (limit.allowed) {
-			await this.auth.startPasswordReset(email, 'storefront');
+			await this.auth.startPasswordReset(identifier, 'storefront');
 		}
 		return ACCEPTED;
 	}
@@ -788,6 +813,57 @@ export class StorefrontAuthController {
 		// A reset answers a suspected compromise: every other signed-in device is signed out.
 		await this.sessions.revokeAllForUser(result.userId, 'password_changed');
 		this.sessions.clearCookies(reply);
+	}
+
+	/**
+	 * Sets the password of the signed-in account, whether or not one already exists.
+	 *
+	 * One route rather than separate "set" and "change" endpoints, because the difference is a
+	 * fact the server already knows and the caller should not be trusted to assert. Which proof
+	 * is required follows from that same fact, via `requireStepUp`.
+	 *
+	 * This is the route out of the social-only corner: an account with no password cannot
+	 * disconnect its only provider, and this is how it earns a second way in first.
+	 */
+	@Post('password/set')
+	@Audience('storefront')
+	@ApiOperation({
+		operationId: 'setCustomerPassword',
+		summary: 'Set or change the password for the current account; signs other devices out',
+	})
+	async setPassword(
+		@Body(new ZodValidationPipe(SetPasswordRequest)) body: SetPasswordRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+	): Promise<LoginMethodsResponse> {
+		if (!principal) throw new UnauthorizedException('Authentication required');
+		try {
+			await this.requireStepUp(principal.userId, body.password, body.otpCode);
+
+			/**
+			 * The shared helper, not an inline check. The contract's `Password` is a length bound;
+			 * this is the whole policy, and routing every surface through one function is what
+			 * stopped it being enforced on four of them and forgotten on the fifth.
+			 */
+			assertPasswordAcceptable(body.newPassword);
+
+			await this.auth.customerAuthRepository.setPasswordHash(
+				principal.userId,
+				await this.auth.hashPassword(body.newPassword),
+			);
+
+			/**
+			 * Other devices are signed out; THIS one is deliberately kept.
+			 *
+			 * A full revoke would log the person out of the screen they just used, which reads as a
+			 * failure. Unlike `password/reset` — which answers a suspected compromise and cannot
+			 * trust any session including the caller's — this request arrived on a session that
+			 * just proved itself.
+			 */
+			await this.sessions.revokeOtherSessions(principal);
+			return this.loginMethods(principal);
+		} catch (error) {
+			return this.refuse(error);
+		}
 	}
 
 	@Post('activate')

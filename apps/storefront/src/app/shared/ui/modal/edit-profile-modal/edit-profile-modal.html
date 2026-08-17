@@ -19,6 +19,22 @@
 		(ngSubmit)="submit()"
 	>
 		<div class="modal-body address-form">
+			@if (refusal()) {
+			<div
+				class="alert alert-danger"
+				role="alert"
+			>
+				{{ refusal()! | transloco }}
+			</div>
+			} @if (notice()) {
+			<div
+				class="alert alert-success"
+				role="status"
+				aria-live="polite"
+			>
+				{{ notice()! | transloco }}
+			</div>
+			}
 			<div class="row g-4">
 				<div class="col-xxl-12">
 					<div class="">
@@ -54,12 +70,22 @@
 							type="text"
 							placeholder="{{ 'enter_email_address' | transloco }}"
 							formControlName="email"
-							readonly
+							[readonly]="changingField() !== 'email'"
 						/>
 						@if (form.controls['email'].touched && form.controls['email'].errors?.['required']) {
 						<div class="invalid-feedback">{{ 'email_address_is_required' | transloco }}</div>
 						} @if (form.controls['email'].touched && form.controls['email'].errors?.['email']) {
 						<div class="invalid-feedback">{{ 'please_enter_valid_email' | transloco }}</div>
+						} @if (changingField() !== 'email') {
+						<app-button
+							[class]="'btn btn-sm add-button'"
+							[type]="'button'"
+							[spinner]="false"
+							[id]="'change_email_btn'"
+							(click)="beginChange('email')"
+						>
+							{{ 'change_email_address' | transloco }}
+						</app-button>
 						}
 					</div>
 				</div>
@@ -94,7 +120,7 @@
 							type="number"
 							class="form-control intl-input-padding"
 							formControlName="phone"
-							readonly
+							[readonly]="changingField() !== 'phone'"
 							placeholder="{{ 'enter_phone' | transloco }}"
 							name="phone"
 						/>
@@ -102,10 +128,169 @@
 						<div class="invalid-feedback">{{ 'phone_number_is_required' | transloco }}</div>
 						} @if (form.controls['phone'].touched && form.controls['phone'].errors?.['pattern']) {
 						<div class="invalid-feedback">{{ 'phone_number_is_invalid' | transloco }}</div>
+						} @if (changingField() !== 'phone') {
+						<app-button
+							[class]="'btn btn-sm add-button'"
+							[type]="'button'"
+							[spinner]="false"
+							[id]="'change_phone_btn'"
+							(click)="beginChange('phone')"
+						>
+							{{ 'change_phone_number' | transloco }}
+						</app-button>
 						}
 					</div>
 				</div>
 				}
+
+				<!--
+					Changing a login credential, in two steps.
+
+					Step one proves the account holder is at the keyboard; step two proves the NEW
+					value is theirs. Nothing on the account moves until the second one lands, which
+					is why the fields above still show the current values throughout.
+				-->
+				@if (changingField()) {
+				<div class="col-12">
+					<hr class="mt-2 mb-3" />
+					<p class="text-content">{{ 'contact_change_why' | transloco }}</p>
+				</div>
+				@if (!awaitingCode()) { @if (stepUpByCode()) {
+				<div class="col-12">
+					<label class="form-label">{{ 'confirm_it_is_you' | transloco }}</label>
+					<div class="d-flex mb-3 flex-wrap gap-2">
+						<app-button
+							[class]="'btn btn-sm add-button'"
+							[type]="'button'"
+							[spinner]="false"
+							[id]="'profile_step_up_email'"
+							(click)="sendStepUpCode('email')"
+						>
+							{{ 'send_code_to_email' | transloco }}
+						</app-button>
+						<app-button
+							[class]="'btn btn-sm add-button'"
+							[type]="'button'"
+							[spinner]="false"
+							[id]="'profile_step_up_sms'"
+							(click)="sendStepUpCode('sms')"
+						>
+							{{ 'send_code_to_phone' | transloco }}
+						</app-button>
+					</div>
+					<div class="outer-otp">
+						<div
+							id="profile_step_up_otp"
+							class="inner-otp"
+						>
+							<input
+								type="text"
+								inputmode="numeric"
+								autocomplete="one-time-code"
+								formControlName="stepUpCode"
+								[maxlength]="codeLength"
+								oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+							/>
+						</div>
+					</div>
+				</div>
+				} @else {
+				<div class="col-12">
+					<label
+						class="form-label"
+						for="profile_current_password"
+					>
+						{{ 'current_password' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="profile_current_password"
+						type="password"
+						autocomplete="current-password"
+						formControlName="currentPassword"
+						placeholder="{{ 'current_password' | transloco }}"
+					/>
+				</div>
+				}
+				<div class="d-flex col-12 flex-wrap gap-2">
+					<app-button
+						[class]="'btn btn-sm theme-bg-color text-light'"
+						[type]="'button'"
+						[spinner]="false"
+						[id]="'start_contact_change'"
+						(click)="startChange()"
+					>
+						{{ 'send_verification_code' | transloco }}
+					</app-button>
+					<app-button
+						[class]="'btn btn-sm btn-theme-outline'"
+						[type]="'button'"
+						[spinner]="false"
+						[id]="'cancel_contact_change'"
+						(click)="cancelChange()"
+					>
+						{{ 'cancel' | transloco }}
+					</app-button>
+				</div>
+				} @else {
+				<div class="col-12">
+					<label class="form-label">
+						{{ 'enter_code_sent_to' | transloco: { value: pendingChange()!.newValue } }}
+					</label>
+					<div class="outer-otp">
+						<div
+							id="contact_change_otp"
+							class="inner-otp"
+						>
+							<input
+								type="text"
+								inputmode="numeric"
+								autocomplete="one-time-code"
+								formControlName="confirmationCode"
+								[maxlength]="codeLength"
+								oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+							/>
+						</div>
+					</div>
+					<!-- The counter leaves the DOM at zero rather than sitting there reading "0". -->
+					@if (resend.waiting) {
+					<small class="text-content">
+						{{ 'resend_available_in' | transloco: { seconds: resend.secondsRemaining() } }}
+					</small>
+					}
+				</div>
+				<div class="d-flex col-12 flex-wrap gap-2">
+					<app-button
+						[class]="'btn btn-sm theme-bg-color text-light'"
+						[type]="'button'"
+						[spinner]="false"
+						[id]="'confirm_contact_change'"
+						(click)="confirmChange()"
+					>
+						{{ 'confirm' | transloco }}
+					</app-button>
+					@if (!resend.waiting) {
+					<app-button
+						[class]="'btn btn-sm add-button'"
+						[type]="'button'"
+						[spinner]="false"
+						[id]="'resend_contact_change'"
+						(click)="resendCode()"
+					>
+						{{ 'resend_otp' | transloco }}
+					</app-button>
+					}
+					<app-button
+						[class]="'btn btn-sm btn-theme-outline'"
+						[type]="'button'"
+						[spinner]="false"
+						[id]="'abandon_contact_change'"
+						(click)="cancelChange()"
+					>
+						{{ 'cancel' | transloco }}
+					</app-button>
+				</div>
+				} }
 			</div>
 			<div class="modal-footer">
 				<app-button

@@ -45,7 +45,8 @@ export class AccountAddressService {
 	 * Changes the display name — and only that.
 	 *
 	 * Email and phone are login credentials; moving one needs proof and a verification round trip
-	 * rather than a patch field, so the API refuses them here.
+	 * rather than a patch field, so the API refuses them here. `ContactChangeService` is that
+	 * round trip.
 	 */
 	updateProfile(displayName: string): Observable<IAccountUser> {
 		return this.http

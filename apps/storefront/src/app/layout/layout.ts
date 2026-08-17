@@ -7,6 +7,7 @@ import { LoadingBarModule } from '@ngx-loading-bar/core';
 import { Observable } from 'rxjs';
 
 import { AccountStore } from '@core/state/account.store';
+import { AuthStore } from '@core/state/auth.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { SiteConfigService } from '@data-access/services/site-config.service';
@@ -46,6 +47,7 @@ export class Layout {
 	siteConfigService = inject(SiteConfigService);
 	private siteConfigStore = inject(SiteConfigStore);
 	private accountStore = inject(AccountStore);
+	private authStore = inject(AuthStore);
 
 	siteConfig$: Observable<ISiteConfig> = toObservable(this.siteConfigStore.siteConfig) as Observable<ISiteConfig>;
 	cookies$: Observable<boolean> = toObservable(this.siteConfigStore.cookies);
@@ -70,7 +72,9 @@ export class Layout {
 		this.cookies$.subscribe((res) => (this.cookies = res));
 		this.exit$.subscribe((res) => (this.exit = res));
 		this.siteConfigService.preloader.set(true);
-		this.accountStore.loadUser();
+		// Only when there IS a session. `/auth/storefront/me` answers 401 otherwise, and asking on
+		// every anonymous page view is both a guaranteed-failing request and a pointless one.
+		if (this.authStore.isAuthenticated()) this.accountStore.loadUser();
 		// Categories, blogs and deal products load on-demand via TanStack queries in
 		// each consumer (footer/filters/sidebar, menu/blog pages, header/menu deals);
 		// no Layout prefetch remains. Route components own their own loading skeletons,

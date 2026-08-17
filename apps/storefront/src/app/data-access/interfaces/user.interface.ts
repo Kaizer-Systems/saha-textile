@@ -32,6 +32,14 @@ export interface IUser {
 
 export interface IUserAddress {
 	id: number;
+	/**
+	 * The REAL server id (`adr_…`).
+	 *
+	 * `id` above is a numeric hash, because the ported templates and their `track` expressions
+	 * type it as a number. That hash is display-only and must never be sent back — every write
+	 * goes out with this one.
+	 */
+	address_id?: string;
 	user_id: number;
 	title: string;
 	street: string;

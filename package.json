@@ -36,7 +36,8 @@
     "mongo:split-admin-users": "pnpm --filter @saha-textile/adapters-db-mongo split:admin-users",
     "mongo:rename-admin-user-permissions": "pnpm --filter @saha-textile/adapters-db-mongo rename:admin-user-permissions",
     "mongo:extract-credentials": "pnpm --filter @saha-textile/adapters-db-mongo extract:credentials",
-    "auth:set-local-credentials": "pnpm --filter @saha-textile/api set:local-credentials"
+    "auth:set-local-credentials": "pnpm --filter @saha-textile/api set:local-credentials",
+    "mongo:reconcile-indexes": "pnpm --filter @saha-textile/adapters-db-mongo reconcile:indexes"
   },
   "devDependencies": {
     "@saha-textile/config": "workspace:*",

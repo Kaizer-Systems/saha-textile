@@ -1,6 +1,21 @@
+import { CustomerStatus } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 import { COLLECTION_NAMES } from '../collection-names';
+
+/**
+ * Every status that still HOLDS an email/phone, derived from the contract enum.
+ *
+ * Spelled as `$in` over the live statuses rather than the obvious `$ne: 'deleted'`, because
+ * MongoDB does not accept `$ne` in a partial index filter — it refuses the whole specification
+ * with "Expression not supported in partial index: $not". That refusal is silent under
+ * mongoose's `autoIndex`, so the index simply stayed at its older definition while the source
+ * read as though soft delete released the address. It did not.
+ *
+ * Derived from the enum, so a status added later is covered without anybody remembering to
+ * come back here.
+ */
+const UNIQUENESS_HOLDING_STATUSES = CustomerStatus.options.filter((status) => status !== 'deleted');
 
 /**
  * Storefront customer (`customers`).
@@ -56,11 +71,17 @@ const CustomerSchema = new Schema<CustomerDoc>(
 // Soft-deleted rows release email/phone uniqueness so a reclaimed address can be re-created.
 CustomerSchema.index(
 	{ email: 1 },
-	{ unique: true, partialFilterExpression: { email: { $type: 'string' }, status: { $ne: 'deleted' } } },
+	{
+		unique: true,
+		partialFilterExpression: { email: { $type: 'string' }, status: { $in: UNIQUENESS_HOLDING_STATUSES } },
+	},
 );
 CustomerSchema.index(
 	{ phone: 1 },
-	{ unique: true, partialFilterExpression: { phone: { $type: 'string' }, status: { $ne: 'deleted' } } },
+	{
+		unique: true,
+		partialFilterExpression: { phone: { $type: 'string' }, status: { $in: UNIQUENESS_HOLDING_STATUSES } },
+	},
 );
 CustomerSchema.index({ guestCartId: 1 }, { partialFilterExpression: { guestCartId: { $type: 'string' } } });
 CustomerSchema.index({ status: 1 });

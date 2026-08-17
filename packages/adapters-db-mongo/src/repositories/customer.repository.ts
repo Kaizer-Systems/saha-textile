@@ -203,9 +203,20 @@ export class MongoCustomerRepository implements CustomerRepository {
 		return doc ? mapCustomer(doc) : null;
 	}
 
+	/**
+	 * Removes one saved address, and answers `null` when there was nothing to remove.
+	 *
+	 * The `$pull` alone cannot tell "removed it" from "there was no such address" — it reports
+	 * success either way — so this matched on the address id as well as the customer id. Both
+	 * callers were already written for null-on-missing and were therefore reporting 200 for a
+	 * delete that did nothing, including for an id belonging to somebody else's account.
+	 *
+	 * Matching on both ids in ONE query also keeps the ownership check atomic: there is no window
+	 * between reading the address and pulling it.
+	 */
 	async deleteAddress(customerId: string, addressId: string): Promise<Customer | null> {
-		const doc = await CustomerModel.findByIdAndUpdate(
-			customerId,
+		const doc = await CustomerModel.findOneAndUpdate(
+			{ _id: customerId, 'addresses.id': addressId },
 			{ $pull: { addresses: { id: addressId } } },
 			{ returnDocument: 'after' },
 		)

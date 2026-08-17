@@ -1,0 +1,477 @@
+---
+title: 'Storefront Account & Auth UI — Session Handoff'
+description: 'Continuation brief for the storefront sign-in, account-security and account-data work: what shipped uncommitted, what broke, what is owed.'
+audience: [engineering, operator, agent]
+document_role: canonical
+last_verified: '2026-08-18'
+search_keywords: 'storefront auth ui login methods addresses account.json toast remember me otp handoff continuation'
+---
+
+# Storefront account & auth UI — session handoff
+
+**Status:** Continuation brief. Written 2026-08-18. **Nothing in this session is committed.**
+
+Supplements — does not replace — `auth-continuation-brief-pass-6-onward.mdx` and
+`account-separation-task-handoff.mdx`. Where this document and those disagree, this one is
+newer; the superseded statements are named in §7.
+
+---
+
+## 1. Where the work sits
+
+- **Branch:** `feat/api-db-env-secrets-sync`
+- **HEAD:** `e43fa760` — _unchanged all session._ No commit, no amend, no revert, no force.
+- **Staged:** nothing (`git diff --cached --name-only` is empty).
+- **Working tree:** dirty. ~72 modified, 4 deleted, ~20 untracked paths.
+
+Deletions are deliberate and are the only destructive changes:
+
+| Deleted                                                                     | Why                                                                          |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `apps/storefront/public/assets/data/account.json`                           | Replaced by the real API. §2.7                                               |
+| `apps/storefront/src/app/shared/ui/modal/change-password-modal/*` (3 files) | Called a no-op store method; superseded by the account-security screen. §2.4 |
+
+`dist/` churn under `apps/api` and `packages/adapters-db-mongo` is build output, not source.
+
+---
+
+## 2. What was delivered, in order
+
+Every pass below is **uncommitted**.
+
+### 2.1 Phone as a login credential (API + login screen)
+
+Login, one-time code and password recovery now accept an email **or** a phone.
+
+- `findAuthStateByIdentifier` on `CustomerAuthRepository` + Mongo adapter. **One query against
+  whichever column the value is shaped like** (`@` decides). Querying both would let somebody
+  discover a number is registered by typing it into the email box.
+- Named `findCustomerByIdentifier` on `AuthService`, deliberately **not** sharing
+  `findAuthUserByIdentifier` with the operator lookup — one name over two populations is the
+  ambiguity `DEC-ACCOUNT-SEPARATION` removed, and the two return different shapes.
+- OTP channel follows the identifier: phone → `sms`. Verified live (`channel: 'sms'` on the row).
+- Password reset takes an identifier for **lookup only**; delivery always goes to the address on
+  the account, so a reset cannot be steered.
+- Storefront gateway renamed off `EmailOtp` → `requestLoginOtp` / `verifyLoginOtp` /
+  `LoginOtpVerifyInput`, since the code can now travel by SMS.
+
+### 2.2 Remember me (contract → cookie → rotation)
+
+`rememberMe` existed on the contract and was **unused**; storefront sessions were unconditionally
+30-day persistent.
+
+- New `persistent` on `AuthSession` (contract, Mongo model, mapper), defaulting `true` so rows
+  written before the field keep the behaviour they were created with.
+- Checked → dated cookie + 30-day idle. Unchecked → **session cookie + 1-day idle**
+  (`STOREFRONT_TRANSIENT_IDLE_TTL_SECONDS`). Both halves move; shortening only the cookie is
+  theatre, because a captured refresh token would still be honoured for a month.
+- `refresh()` carries the choice forward. Without that, the first rotation silently promotes a
+  browser-session login to a remembered one.
+- All six `establish()` call sites state their answer explicitly, so the only behaviour change is
+  the intended one — signup, social and admin keep what they had.
+
+Tests: `apps/api/test/remember-me.test.ts`, 6 cases, **mutation-checked** (ignoring the flag in
+the TTL fails 3; always dating the cookie fails 2).
+
+### 2.3 Account security screen — `/account/login-methods`
+
+New page listing every way in: one-time code, password, Google, Facebook. Route
+`apps/storefront/src/app/pages/account/login-methods.page.ts`, component under
+`features/account/login-methods/`, sidebar entry added.
+
+- Each mutation returns the **whole** method list and the view is replaced with it. Nothing is
+  patched optimistically — a security screen that guessed could show a provider as disconnected
+  while it is still attached.
+- Step-up proof is the **server's** decision (`stepUpMethod`): password where one exists, code
+  where none does.
+- The screen hides nothing on the grounds that it "would fail" — it sends the request and shows
+  the refusal, because the last-credential rule lives in the domain.
+
+### 2.4 `POST /auth/storefront/password/set` — the missing endpoint
+
+There was **no authenticated set/change-password route**. The contract's own comment said the
+screen offers "Set" when `passwordSet` is false, and the disconnect refusal told social-only users
+to set a password — but nothing could.
+
+One route for set and change, because whether a password exists is the server's fact. Signs
+**other** devices out and keeps the caller's session (unlike `password/reset`, which revokes
+everything because it answers a suspected compromise).
+
+Tests: `apps/api/test/set-password.test.ts`, 9 cases, mutation-checked twice.
+
+**Also deleted** the dashboard's change-password modal: it called
+`updatePassword(_payload): void {}` — a no-op. The form submitted and nothing happened, silently,
+and it could not have worked (no step-up field; `●●●●●●` is a lie for an account with no password).
+
+### 2.5 Stable error codes reaching the client
+
+`HttpExceptionFilter` derives the envelope `code` from HTTP **status** and discards whatever the
+handler threw. **Every stable code in the auth surface was unreachable** — all thirteen
+`SignupErrorCode` values, `oauth_state_invalid`, `step_up_required`, and worst,
+`last_credential`. Somebody disconnecting their only way in was told "Something went wrong".
+
+Two parts:
+
+- **Server:** `apps/api/src/auth/domain-refusal.ts` routes domain codes through `issues[].code`,
+  the one channel the filter preserves (and which `assertPasswordAcceptable` already used).
+  `ApiErrorCode` was **not** widened — it is a closed transport enum; domain vocabulary does not
+  belong in the envelope.
+- **Client:** the envelope is nested **twice** — `HttpErrorResponse.error` is the body, the
+  payload is `body.error`. Every existing reader used `error.error.code`, which is always
+  `undefined`. `core/auth/refusal-code.ts` handles both depths. 6 tests.
+
+### 2.6 Toasts — both halves were broken, in both apps
+
+- **Content.** Storefront `getClientErrorMessage()` returned `''` unconditionally (real body
+  commented out) → `toastr.error('')` → an empty outlined box, several at once. Admin read
+  `.message` off the response **body**, which is `undefined` for every response this API sends →
+  always "Something Went Wrong", never the reason.
+- **Icons.** `.ngx-toastr` repaints every toast white while ngx-toastr's own icon is a **white
+  SVG background-image** — white on white. Only `.toast-success` cleared it and drew a `::before`
+  glyph; error, warning and info kept the invisible one. All four now come from one mixin in
+  `scss/base/_reset.scss`, so a fifth cannot be added with the icon left out.
+- Both notifiers refuse to toast an empty string.
+
+**The parser is now genuinely shared:** `readApiErrorMessage` in
+`packages/http-transport/src/errors.ts`, beside the `ApiErrorEnvelope` it reads and
+`readRefusalReason`. Each app's `ErrorService` is a thin wrapper adding only its platform concern.
+It accepts a message **only** from a payload carrying `code`/`issues`, so the browser's
+"Failed to fetch" and Angular's "Http failure response for …" cannot leak into a toast.
+
+### 2.7 `account.json` retired
+
+`AccountService.GetUserDetails()` read a shipped fixture that answered with the same invented
+person ("John Doe", ₹300 balance, 8 orders) to **whoever was signed in**, on every account screen,
+in the header and at checkout.
+
+- Now reads `/auth/storefront/me` through one adapter
+  (`data-access/adapters/customer-to-account-user.ts`) into the shape the ported views expect.
+  Translating once keeps vendor vocabulary out of eleven components and leaves one file to delete
+  when those screens are rewritten.
+- `wallet`, `point`, `orders_count`, `payment_account`, `profile_image` are **zeroed, not carried
+  over** — they are separate features that do not exist. A zero is true; the fixture's numbers were
+  somebody else's. They were deliberately **not** modelled onto the customer: a balance is the
+  closing position of a ledger.
+- **Permissions removed from the storefront store.** A sweep of every page, guard and template
+  found _nothing_ gated on a permission, and the list was always empty anyway (the fixture has no
+  `permission` key — only a `role` whose own `permission` is not an array).
+
+### 2.8 Storefront self-service routes
+
+New `apps/api/src/storefront/` module — **first storefront-owned API folder**.
+
+| Route                                             | Operation id       |
+| ------------------------------------------------- | ------------------ |
+| `GET /storefront/account/addresses`               | `listOwnAddresses` |
+| `POST /storefront/account/addresses`              | `addOwnAddress`    |
+| `PATCH /storefront/account/addresses/:addressId`  | `updateOwnAddress` |
+| `DELETE /storefront/account/addresses/:addressId` | `deleteOwnAddress` |
+| `PATCH /storefront/account/profile`               | `updateOwnProfile` |
+
+**Ownership is structural, not a check.** No `:customerId` anywhere — the owner comes from the
+session principal, so a caller cannot even _name_ another account. That is why these are separate
+from `admin/customers/:customerId/addresses` rather than the same handlers behind a permission:
+the "guard added to three routes, forgotten on the fourth" bug is not available.
+`@Audience('storefront')` closes the other direction.
+
+Contracts in `packages/contracts/src/storefront-account.ts`, kept apart from the admin bodies
+because the CRM insists on a reachable phone and state (an operator typing a half-address is a
+support call later) while a shopper may legitimately have neither to hand.
+
+`updateOwnProfile` takes **`displayName` only** — see §4.
+
+### 2.9 Country-first address resolution
+
+`shared/util/address-location.ts` + 7 tests.
+
+Editing an address left Country, State and the dial code empty: the pickers are keyed by **id**,
+a saved address stores **names**. Resolution is now strictly **country → state → dial code**, and
+never any other order.
+
+Our own `country.json` has **American Samoa (16), US Minor Outlying Islands (581) and United
+States (840) all with `calling_code: "1"`**, American Samoa first in id order — so a
+dial-code-first lookup shows an American Samoa flag to somebody in mainland USA. (Owner reported
+hitting exactly this on Air India's site.) State lookup is scoped to the resolved country, because
+"Georgia" is both a US state and a country.
+
+### 2.10 UI corrections
+
+- **OTP slots.** Root cause was the gradient: it runs `to left`, so its 70% stop measures from the
+  **right** — each 50px tile is blank for 15px then inked for 35px (verified by rasterising a tile
+  and reading the alpha channel). Also the theme sets digits **proportionally** (`0` = 8.48px,
+  `1` = 5.70px), so no fixed letter-spacing can align arbitrary digits. Fixed with
+  `font-variant-numeric: tabular-nums` plus geometry derived from the stride. Measured after: digit
+  centres `32.5, 82.5, 132.5, 182.5, 232.5, 282.5` — **identical** to ink centres, no scroll, no
+  stub slot, same for `123456` / `111111` / `000000`.
+- **Channel tabs.** Bootstrap `btn-outline-primary` hovered to Bootstrap's primary blue, a colour
+  this theme never uses. Replaced with `.auth-channel-tabs`, applying the theme's own
+  `.btn-theme-outline` behaviour to the reddish family the active tab already uses.
+- **Provider buttons.** Google's SDK button (`renderButton`, `continue_with` on the account
+  screen) and a Facebook button built to Meta's guidance (`#1877F2`, their mark) — Meta publishes
+  no drawable button; theirs is XFBML needing a second page parse. Both capped to Google's own
+  400px ceiling so they are the same length. This also fixed login/register, where Facebook was a
+  plain outline button.
+- **Resend countdown.** Disabled with the wait beside it; the counter leaves the DOM at zero.
+- **Logout was `#1aa488` green.** Fastkart ships several colour themes in one stylesheet and
+  several rules bypass `var(--theme-color)` with a literal from the default green theme. Fixed the
+  logout button plus four more of the same leak (offer divider, product spinner arc, product icon,
+  nav-tab underline).
+- **Remove button** hovered to the same `var(--theme-color)` as Edit, so the destructive action
+  had no contrast at the moment it mattered. Now the theme reddish, matching Logout.
+
+### 2.11 Local data
+
+`apps/api/src/seed-local-auth-accounts.ts` (`pnpm --filter @saha-textile/api
+seed:local-auth-accounts -- --i-am-local`). Seven accounts, one per login shape, written through
+the **real** repositories and argon2 — password-only, password+google, **google-only** (the
+lockout case), google+facebook, all-methods, disabled, locked. Two carry saved addresses.
+
+Provider subjects are synthetic `local-…` values and **cannot** be signed into with a provider
+button; they populate the linked-identity list.
+
+Shared local password is printed by the script. **Not recorded here** (no secrets in docs).
+
+---
+
+## 3. Decisions taken
+
+### 3.1 Owner decisions (do not re-open)
+
+| Decision                                                                  | Owner's words / substance                                                                                                   |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Bring "Remember me" back and wire it                                      | _"yes bring back remember me and wire its functionality"_                                                                   |
+| Provider buttons must be the SDK/branded ones                             | _"those connect buttons should be the SDK provided ones with the logo and color like we normally see"_                      |
+| Storefront customers need **no** permissions                              | _"yes a storefront customer doesnt need permission true"_ — delete or adapt anything gated                                  |
+| `account.json` → adapt into our shape, verify every dependency, then drop | _"make sure all instances of account.json's data dependency in the entire storefront is first met with, then only drop it"_ |
+| Build the storefront address CRUD                                         | _"moulik says yes do them"_                                                                                                 |
+| Country must be the **first** filter, then state and dial code            | Air India precedent, quoted in §2.9                                                                                         |
+| Fix the profile route; avatar explicitly out of scope                     | _"avatar upload not for now since we havent started anything on the image related stuff"_                                   |
+| Do not commit                                                             | Standing all session                                                                                                        |
+
+### 3.2 Agent decisions (a later reader may overturn)
+
+- **Adapter rather than rewriting eleven components** to our `Customer` shape (§2.7).
+- **Zeroing** wallet/points/orders rather than hiding the tiles or inventing values.
+- **`issues[].code`** as the domain-refusal channel rather than widening `ApiErrorCode`.
+- **Numeric hash** for ids the ported templates type as numbers, with the real id carried
+  alongside as `address_id`.
+- **`line2` explicitly emptied** on address write, because the form has one combined field.
+- **Login-screen resend countdown is client-side.** A server countdown there would exist only for
+  accounts that exist, turning the timer into the enumeration oracle the generic response removes.
+  The schedule is mirrored from `signup-policy.ts` because core-domain is type-only toward
+  contracts (`G-CORE-CONTRACTS`) and the storefront does not depend on core-domain at all.
+- **`.delete-button` modifier added** to the theme SCSS — the theme had no destructive-button class
+  for that context. This _is_ new CSS, following the theme's own `.privacy-button`/`.ok-button`
+  precedent.
+
+### 3.3 Deferred
+
+| Deferred                                  | Blocked on                                       |
+| ----------------------------------------- | ------------------------------------------------ |
+| Email / phone change flow                 | Owner scheduling; needs the §4 design            |
+| Avatar upload                             | Owner: image handling not started                |
+| `_home.scss:468` five-stop green gradient | A design decision about Denver's equivalent ramp |
+| `DEC-CUSTOMER-SOFT-DELETE-OPS`            | Unanswered from earlier sessions                 |
+
+---
+
+## 4. The remaining profile pass — instructions
+
+`PATCH /storefront/account/profile` accepts **`displayName` only**, deliberately. The
+`edit-profile-modal` shows email and phone **read-only** rather than silently ignoring them.
+
+**Why it is not a patch field.** Both are login credentials under `DEC-SIGNUP-VERIFICATION`, and
+the security matrix (row 84, `authentication-use-case-delivery-and-security-matrix.mdx`) requires
+an email change to _"require recent credential proof; create separate verification token; retain
+old address until new one is verified; audit"_. Accepting either on this route would let a stolen
+session move an account's recovery channel in one request — the first move an attacker makes.
+
+### 4.1 What to build
+
+1. **Contracts** — `packages/contracts/src/storefront-account.ts`:
+    - `StartEmailChangeRequest { newEmail, password? , otpCode? }` (step-up proof, same shape as
+      `ConnectIdentityRequest`).
+    - `StartPhoneChangeRequest { newPhone, password?, otpCode? }`.
+    - `ConfirmContactChangeRequest { code }`.
+    - Reuse `SignupErrorCode`-style stable codes; throw them via `domainRefusal()` so they reach
+      the client (§2.5).
+2. **Pending-change record.** Model it on `pendingSignups`: a short-lived row holding the _new_
+   value, its OTP hash, send count and expiry, keyed to the customer. **The customer row must not
+   change until the new value is proven** — that is the matrix's "retain old address until
+   verified".
+3. **Routes** in `apps/api/src/storefront/` (new controller, `@Audience('storefront')`, no
+   customer id in the path):
+    - `POST /storefront/account/contact/email` → step-up, then send a code to the **new** address.
+    - `POST /storefront/account/contact/email/confirm` → verify, swap, revoke other sessions, audit.
+    - Same pair for `phone`, code by SMS.
+4. **Uniqueness.** The new value must not already belong to another account. Refuse with a stable
+   code — and note the anti-enumeration tension: refusing "already in use" _is_ a disclosure.
+   Prefer accepting the request and simply never delivering, matching the signup flow's posture.
+5. **Notify the OLD address** that a change was requested (matrix: "old email notification").
+6. **Audit** the change.
+7. **Client:** un-read-only the fields in `edit-profile-modal`, add the code step, reuse
+   `ResendCountdown` and the OTP field (`.outer-otp`).
+
+### 4.2 Tests that must exist
+
+- Refuses without step-up proof; refuses proof of the wrong kind (OTP when a password exists).
+- Old value still works for sign-in until confirmation.
+- Confirmation with a wrong/expired code leaves the old value intact.
+- A second account cannot claim a value already verified elsewhere.
+- Other sessions revoked on success, caller's kept.
+
+---
+
+## 5. Corrections, wrong turns and disproved theories
+
+**Mandatory section. Not flattering.**
+
+### 5.1 I destroyed data
+
+Running cleanup I issued `AuthIdentityModel.deleteMany({ customerId: '<id>' })`.
+`AuthIdentityModel` has **no `customerId`** field (it uses `subjectId`), and the connection sets
+`strictQuery: true`, which **strips unknown paths from a filter rather than erroring**. The filter
+became `{}` and deleted **all 71 rows** in `authIdentities` in `saha_textile_local`.
+
+Not recoverable from the DB: the `extract-credentials` migration that created them read
+`customer.identities`, and the same migration `$unset` that field.
+
+Mitigating fact, verified after: **zero** of the 70 seeded customers had a password credential, so
+those rows claimed a login method that did not exist. Restoring them would have restored fiction.
+Authentication was unaffected (`auth.repository.ts` never reads `loadPublicIdentities`).
+
+**Lesson for the next session: `strictQuery: true` makes a typo'd filter match everything.**
+
+### 5.2 Claims I made that were wrong
+
+| I said                                                                                             | Actually                                                                                                                                    |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Both apps share one resolver"                                                                     | They were **two copies**, one per app. Owner caught it. Now genuinely shared in `http-transport` (§2.6).                                    |
+| Forgot-password should stay email-only because a phone box "collects an identifier we then ignore" | Wrong — the identifier is used for **lookup**, which is exactly what a phone-first customer needs. Owner pushed back; phone added.          |
+| OTP ink is the **left** 35px of each tile                                                          | It is the **right** 35px. This single wrong assumption caused both the mis-alignment and the stub slot. Proved by rasterising the gradient. |
+| `1ch` would give the digit advance                                                                 | `ch` is the **proportional** `0` width (8.56px), not the tabular advance (9.8px).                                                           |
+| The Google button had regressed                                                                    | The API process was dead. Both symptoms had one cause.                                                                                      |
+
+### 5.3 Bugs I introduced and then fixed
+
+- **SSR crash.** `/me` answers 401 for anonymous visitors; the unhandled error escaped the
+  `rxMethod` stream and **took the whole SSR render down** — a logged-out visitor would have got no
+  page. Caught because the dev server refused to start. Fixed with a guarded call site and
+  `catchError`.
+- **Address line duplication.** The form has one combined field, so a PATCH omitting `line2` kept
+  the stored one and appended it every save.
+- **Invented `rotateForTest`** on the production class while writing a test; replaced with driving
+  the real `refresh()`.
+- **Duplicate `readonly`** attribute from a careless string replace.
+- **`+91` alone** returned `'91'` as the subscriber number — caught by my own new test.
+
+### 5.4 Pre-existing bugs found
+
+| Bug                                                                                                                                                                                                                                 | Severity |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `customers.email_1` / `phone_1` declared `status: { $ne: 'deleted' }` — **MongoDB rejects `$ne` in a partial index**, silently under `autoIndex`. The model's promise that soft delete releases an address **had never been true**. | High     |
+| Stale `username_1`, `role_1_status_1` on `customers` from before the admin split                                                                                                                                                    | Medium   |
+| `deleteAddress` used `$pull` and returned 200 for an address that never existed — **also affected the admin route**                                                                                                                 | Medium   |
+| Storefront `isSecureContext()` keyed on `NODE_ENV`, so local dev ran a weaker cookie model no test exercised                                                                                                                        | Medium   |
+| `sign_in_failed` and 4 other error keys missing from `fr.json`                                                                                                                                                                      | Low      |
+| `login.html` rendered `{{ error() }}` raw (showed the key)                                                                                                                                                                          | Low      |
+
+### 5.5 Near-misses (caught by guards)
+
+- `port-conformance.test.ts` caught every missing repository method as it was added.
+- `check:route-contracts` and `check:openapi` both refused the new `storefront-account` family
+  until declared — **each keeps its own literal mirror**, one keyed by tag _value_, the other by
+  API*TAGS \_property name*.
+- My own `remember-me` and `set-password` tests were mutation-checked and both caught the mutation.
+
+---
+
+## 6. Everything owed
+
+| Owed                                                         | Kind             | Severity | Notes                                                                          |
+| ------------------------------------------------------------ | ---------------- | -------- | ------------------------------------------------------------------------------ |
+| Email / phone change flow                                    | Deferred feature | High     | §4 has the full instruction                                                    |
+| Avatar upload                                                | Deferred (owner) | —        | Image handling not started                                                     |
+| `_home.scss:468` green gradient                              | Design decision  | Low      | Only remaining hardcoded theme leak                                            |
+| Wallet / points / orders tiles show `0`                      | Open question    | Low      | Hide until the features exist, or leave honest zeros?                          |
+| `/auth/otp` duplicates the login code flow                   | Cleanup          | Low      | Live route; not removed unilaterally                                           |
+| Soft-deleted customers keep social identity links            | Product question | Medium   | That provider subject can never be reused                                      |
+| `saha_textile_probe` DB                                      | Unattributed     | Low      | Empty 34-collection scaffold, 1 doc, unreferenced. **Left alone deliberately** |
+| Nothing committed                                            | Process          | High     | 90+ paths dirty                                                                |
+| `check:browser-auth` passes but no E2E covers the new routes | Test gap         | Medium   | `session-rotation.mjs` untouched                                               |
+| Admin toasts verified by code + shared tests only            | Verification gap | Low      | Not exercised in a browser this session                                        |
+| Storefront address routes have **no** API test               | Test gap         | Medium   | Verified in browser only                                                       |
+
+---
+
+## 7. Superseded statements in older docs
+
+- `account-separation-task-handoff.mdx` — anything implying `POST /auth/storefront/register`
+  exists. It was removed; signup is start → verify → finalise.
+- Any statement that customer `phone` is "collected at checkout, not at registration"
+  (2026-06-29 lock). Superseded by `DEC-SIGNUP-VERIFICATION`; the contract comment is updated.
+- Any statement that the storefront has permissions. It does not (§2.7).
+
+---
+
+## 8. How to verify
+
+```bash
+pnpm mongo:up                                   # Mongo rs0 on 27018
+pnpm --filter @saha-textile/api dev             # https://localhost:4000
+pnpm --filter @saha-textile/storefront dev      # https://localhost:4200
+
+pnpm typecheck        # 19/19
+pnpm test             # 15/15 tasks; api 212, storefront 90, http-transport 157,
+                      # core-domain 177, contracts 176, admin 72, adapters-auth 23
+pnpm lint             # 21/21, 0 errors (warnings only)
+pnpm check:naming; pnpm check:account-naming; pnpm check:i18n-parity
+pnpm check:route-contracts; pnpm check:route-authorization
+pnpm check:permission-registry; pnpm check:browser-auth
+pnpm --filter @saha-textile/api generate:openapi   # 105 operations, 90 paths, 9 tags
+
+# Local accounts (writes known passwords — refuses without the flag)
+pnpm --filter @saha-textile/api seed:local-auth-accounts -- --i-am-local
+```
+
+All numbers above were re-run at the time of writing.
+
+---
+
+## 9. Traps — these cost time this session
+
+1. **`strictQuery: true` strips unknown filter paths.** A typo'd field name makes `deleteMany`
+   match everything. This deleted 71 rows (§5.1).
+2. **Vite keeps serving a stale build after a hard compile error.** A change looks like it has
+   not applied. Check the dev-server log for a prior `RunnerError` and restart.
+3. **`pnpm typecheck` passes while the dev server breaks** when you add an export to a workspace
+   package — typecheck resolves via source paths, Vite resolves the built `dist`.
+   Run `pnpm --filter @saha-textile/http-transport build`.
+4. **`nest build` kills the running API dev server.** The seeder runs it. Two symptoms with one
+   cause; restart the API.
+5. **The storefront binds IPv6-only** (`[::1]:4200`), so `preview_start`'s health check loses it.
+   It is serving; check with `curl`.
+6. **SCSS is compiled by `pnpm run styles`, not watched.** Edit `.scss` → run it → hard reload.
+7. **`check:openapi` and `check:route-contracts` each keep their own literal tag mirror**, keyed
+   differently. A new family must be added in three places.
+8. **Re-seeding invalidates browser sessions** — accounts are recreated with new ids.
+9. **The theme's `.address-box > div` is `display: flex`.** A form nested there becomes flex
+   siblings; three stacked fields render as a squashed two-column grid.
+10. **`.button-group button` beats a component class on specificity** and repainted Meta's blue in
+    the card's grey.
+
+---
+
+## 10. The next step, in dependency order
+
+1. **Decide whether to commit.** 90+ paths are dirty and every gate is green. Nothing below
+   should start on top of an uncommitted tree this large.
+2. **Run `pnpm mongo:reconcile-indexes -- --dry-run`, then apply.** New in this session; the
+   `customers` unique indexes were wrong (§5.4). Needs `MONGODB_*` env — it prints its target
+   database, so check that line.
+3. **Add API tests for the storefront address routes** (§6). They were verified in a browser only.
+   Ownership deserves a test that another customer's id cannot be reached.
+4. **Email / phone change flow** — §4 is the instruction. Needs no owner decision to start; the
+   design is settled by the security matrix.
+5. **Answer the open questions in §6** — zero tiles, `/auth/otp` duplication, soft-delete identity
+   links, the home gradient.

@@ -606,6 +606,40 @@ Supersedes "phone is collected at checkout, not registration" (2026-06-29, struc
 **MSG91 delivery.** Unchanged and already locked: Saha Textile generates, stores and verifies
 every OTP; MSG91 is delivery only, never the OTP Widget or SendOTP.
 
+## Storefront account & auth UI (owner lock 2026-08-18)
+
+**Remember me is real, not decoration.** Ticked → dated cookie plus the 30-day idle TTL;
+unticked → a session cookie plus a ONE-DAY idle TTL. Both halves move together: shortening only
+the cookie leaves a captured refresh token honoured for the full month. Rotation carries the
+choice, so a refresh never silently promotes a browser session to a remembered one. Operators get
+no such control — the hour-long admin idle bounds them either way.
+
+**Provider buttons are the providers' own.** Google's `renderButton()` (never a hand-drawn
+imitation), and a Facebook button built to Meta's published guidance because Meta ships no
+drawable widget. Both capped to Google's 400px ceiling so the pair is the same length.
+
+**A storefront customer has no permissions.** Permissions are operator vocabulary that arrived
+with the vendor port. A customer's access follows from owning the account. The storefront store's
+`permissions` state is deleted rather than left empty, so nobody starts gating on it.
+
+**`account.json` is retired.** Account screens read the signed-in customer from
+`/auth/storefront/me`. Wallet, loyalty points, order count, payout details and avatar are shown as
+zero/absent rather than carried over — they are separate features that do not exist, and a balance
+is the closing position of a ledger, not a number on the account row.
+
+**Self-service routes never name another account.** Everything under `storefront/account/*`
+takes its owner from the session; there is no `:customerId` in any path. Operator equivalents stay
+under `admin/customers/:customerId/*` and are authorised per permission. Two surfaces, and neither
+can be mistaken for the other.
+
+**Address pickers resolve country FIRST**, then state within that country, then the dial code from
+the country record. A dial code does not identify a country (`+1` is the USA, Canada, American
+Samoa and most of the Caribbean) and neither does a state code (`TN` is Tamil Nadu and Tennessee).
+
+**Profile self-service is display name only.** Email and phone are login credentials; changing one
+requires the security matrix's row-84 flow rather than a patch field, so a stolen session cannot
+move an account's recovery channel in one request.
+
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

@@ -1224,3 +1224,71 @@ Token + session revoke on soft-delete? (yes/no)
 Reports include tombstones? (yes/no / toggle)
 
 Notes:
+
+---
+
+## 25. `DEC-ACCOUNT-EMPTY-TILES` — Wallet / points / orders tiles on the account dashboard
+
+**Opened 2026-08-18** (storefront `account.json` retirement).
+
+The dashboard shows Balance, Total Points and Total Orders. Their source was a shipped fixture
+that gave every account the same invented numbers (₹300, 8 orders), including brand-new ones.
+Those numbers are gone; the tiles now render honest zeros.
+
+There is no store-credit ledger, no loyalty ledger and no order count wired to the storefront yet.
+
+Choice:
+
+- **A — leave the zeros.** Truthful, and the tiles light up for free when the features land.
+- **B — hide each tile until its feature exists.** No dead furniture, but the dashboard looks
+  sparse and the layout changes twice.
+- **C — hide the section entirely** until at least one of the three is real.
+
+Choice (A / B / C):
+
+Notes:
+
+---
+
+## 26. `DEC-SOFT-DELETED-IDENTITY-REUSE` — Provider links on a soft-deleted customer
+
+**Opened 2026-08-18** (found while making the local seeder re-runnable).
+
+Soft-deleting a customer releases their email and phone — the unique indexes are partial on the
+non-deleted statuses. It does **not** release their linked provider identities: `authIdentities`
+is unique on `(provider, providerSubject)` and the rows stay attached to the tombstone. So a
+person whose account was deleted can never sign up again with the same Google or Facebook
+account.
+
+Choice:
+
+- **A — unlink identities on soft delete.** Symmetrical with email/phone. Loses the record of
+  which provider the deleted account used.
+- **B — keep them, and let re-signup adopt the tombstone's subject.** Preserves history, but
+  needs a rule for what "adopt" means.
+- **C — deliberate**: deletion is final for provider sign-up; they may re-register by email/phone.
+
+Choice (A / B / C):
+
+Notes:
+
+---
+
+## 27. `DEC-DENVER-HOME-GRADIENT` — Home-search background ramp
+
+**Opened 2026-08-18** (theme-colour leak sweep).
+
+`apps/storefront/src/scss/layout/_home.scss:468` paints the home-search background with a
+five-stop gradient hardcoded to the default green theme (`#0da487` …). Four other leaks of the
+same kind were mechanically replaced with `var(--theme-color)`; this one cannot be, because a
+five-stop ramp is a design choice rather than a single accent.
+
+Choice:
+
+- **A — supply Denver's equivalent five-stop ramp** (owner or designer provides the stops).
+- **B — collapse it to a flat `var(--theme-color)` fill.**
+- **C — leave the green** as a deliberate accent on that one surface.
+
+Choice (A / B / C), stops if A:
+
+Notes:

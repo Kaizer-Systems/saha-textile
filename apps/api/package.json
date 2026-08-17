@@ -14,7 +14,8 @@
     "e2e:session-rotation": "node e2e/session-rotation.mjs",
     "check:openapi": "node scripts/check-openapi.mjs",
     "bootstrap:first-admin": "nest build && node dist/create-first-admin.js",
-    "set:local-credentials": "node --import tsx src/set-local-test-credentials.ts"
+    "set:local-credentials": "node --import tsx src/set-local-test-credentials.ts",
+    "seed:local-auth-accounts": "nest build && node dist/seed-local-auth-accounts.js"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.2",

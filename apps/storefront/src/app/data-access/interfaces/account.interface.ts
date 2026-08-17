@@ -29,9 +29,3 @@ export interface IAccountUser {
 	updated_at?: string;
 	deleted_at?: string;
 }
-
-export interface IAccountUserUpdatePassword {
-	current_password: string;
-	new_password: string;
-	confirm_password: string;
-}

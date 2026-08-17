@@ -29,6 +29,7 @@ export class Adresses {
 	readonly DeleteModal = viewChild<DeleteModal>('deleteModal');
 
 	delete(action: string, data: IUserAddress) {
-		if (action == 'delete') this.accountStore.deleteAddress(data.id);
+		// `address_id` is the server's own id; `id` beside it is a display-only numeric hash.
+		if (action === 'delete' && data.address_id) void this.accountStore.deleteAddress(data.address_id);
 	}
 }

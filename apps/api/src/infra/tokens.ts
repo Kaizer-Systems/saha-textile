@@ -12,6 +12,7 @@ export const TRANSACTION_MANAGER = Symbol('TransactionManagerPort');
 export const AUTH_SESSION_REPOSITORY = Symbol('AuthSessionRepository');
 export const CUSTOMER_AUTH_REPOSITORY = Symbol('CustomerAuthRepository');
 export const PENDING_SIGNUP_REPOSITORY = Symbol('PendingSignupRepository');
+export const PENDING_CONTACT_CHANGE_REPOSITORY = Symbol('PendingContactChangeRepository');
 export const AUTH_IDENTITY_REPOSITORY = Symbol('AuthIdentityRepository');
 export const ADMIN_USER_AUTH_REPOSITORY = Symbol('AdminUserAuthRepository');
 export const OTP_CHALLENGE_REPOSITORY = Symbol('OtpChallengeRepository');

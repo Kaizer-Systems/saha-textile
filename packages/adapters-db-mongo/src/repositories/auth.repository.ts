@@ -740,6 +740,16 @@ export class MongoCustomerAuthRepository implements CustomerAuthRepository {
 		).exec();
 	}
 
+	/**
+	 * Value and flag in ONE update, like its email counterpart.
+	 *
+	 * Two statements would leave a window in which the account carried a number nobody had proven
+	 * — and a number on the account is a way in, so that window is a login.
+	 */
+	async markPhoneVerified(customerId: string, phone: string): Promise<void> {
+		await CustomerModel.updateOne({ _id: customerId }, { $set: { phoneVerified: true, phone } }).exec();
+	}
+
 	async setStatus(customerId: string, status: CustomerStatus): Promise<void> {
 		await CustomerModel.updateOne({ _id: customerId }, { $set: { status } }).exec();
 	}

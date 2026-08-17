@@ -163,6 +163,14 @@ export interface CustomerAuthRepository {
 	setPasswordHash(customerId: string, passwordHash: string): Promise<void>;
 	markEmailVerified(customerId: string, emailNormalized: string): Promise<void>;
 	/**
+	 * Writes a proven phone number and flags it verified, in one update.
+	 *
+	 * The counterpart to `markEmailVerified`, and it has to be one write for the same reason: a
+	 * value set in one statement and flagged in another leaves a window where the account carries
+	 * an unproven number that logs somebody in.
+	 */
+	markPhoneVerified(customerId: string, phone: string): Promise<void>;
+	/**
 	 * Sets the account lifecycle status.
 	 *
 	 * Offboarding is a status change to `disabled`, never a delete: an audit trail that can

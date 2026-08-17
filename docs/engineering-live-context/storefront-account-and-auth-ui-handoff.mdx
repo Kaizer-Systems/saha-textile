@@ -9,7 +9,8 @@ search_keywords: 'storefront auth ui login methods addresses account.json toast 
 
 # Storefront account & auth UI — session handoff
 
-**Status:** Continuation brief. Written 2026-08-18. **Nothing in this session is committed.**
+**Status:** Continuation brief, **executed 2026-08-18**. Everything below is now committed, and
+§10's dependency-ordered next steps are done. See §11 for what the execution pass changed.
 
 Supplements — does not replace — `auth-continuation-brief-pass-6-onward.mdx` and
 `account-separation-task-handoff.mdx`. Where this document and those disagree, this one is
@@ -20,9 +21,11 @@ newer; the superseded statements are named in §7.
 ## 1. Where the work sits
 
 - **Branch:** `feat/api-db-env-secrets-sync`
-- **HEAD:** `e43fa760` — _unchanged all session._ No commit, no amend, no revert, no force.
-- **Staged:** nothing (`git diff --cached --name-only` is empty).
-- **Working tree:** dirty. ~72 modified, 4 deleted, ~20 untracked paths.
+- **HEAD:** `18993fa4`. The tree described below was committed in seventeen themed chunks on top
+  of `e43fa760`; the working tree is clean.
+- **Superseded:** the original text of this section read "HEAD `e43fa760` — unchanged all
+  session, nothing staged, working tree dirty (~72 modified, 4 deleted, ~20 untracked)". That was
+  true when it was written and is kept here so the two states can be told apart.
 
 Deletions are deliberate and are the only destructive changes:
 
@@ -37,7 +40,7 @@ Deletions are deliberate and are the only destructive changes:
 
 ## 2. What was delivered, in order
 
-Every pass below is **uncommitted**.
+Every pass below is now committed; §11 names the commit each landed in.
 
 ### 2.1 Phone as a login credential (API + login screen)
 
@@ -277,6 +280,9 @@ Shared local password is printed by the script. **Not recorded here** (no secret
 
 ## 4. The remaining profile pass — instructions
 
+> **Built 2026-08-18.** This section is kept as the record of what was asked for; §11.2 names
+> the two places the implementation deliberately departs from it, and why.
+
 `PATCH /storefront/account/profile` accepts **`displayName` only**, deliberately. The
 `edit-profile-modal` shows email and phone **read-only** rather than silently ignoring them.
 
@@ -388,19 +394,21 @@ Authentication was unaffected (`auth.repository.ts` never reads `loadPublicIdent
 
 ## 6. Everything owed
 
-| Owed                                                         | Kind             | Severity | Notes                                                                          |
-| ------------------------------------------------------------ | ---------------- | -------- | ------------------------------------------------------------------------------ |
-| Email / phone change flow                                    | Deferred feature | High     | §4 has the full instruction                                                    |
-| Avatar upload                                                | Deferred (owner) | —        | Image handling not started                                                     |
-| `_home.scss:468` green gradient                              | Design decision  | Low      | Only remaining hardcoded theme leak                                            |
-| Wallet / points / orders tiles show `0`                      | Open question    | Low      | Hide until the features exist, or leave honest zeros?                          |
-| `/auth/otp` duplicates the login code flow                   | Cleanup          | Low      | Live route; not removed unilaterally                                           |
-| Soft-deleted customers keep social identity links            | Product question | Medium   | That provider subject can never be reused                                      |
-| `saha_textile_probe` DB                                      | Unattributed     | Low      | Empty 34-collection scaffold, 1 doc, unreferenced. **Left alone deliberately** |
-| Nothing committed                                            | Process          | High     | 90+ paths dirty                                                                |
-| `check:browser-auth` passes but no E2E covers the new routes | Test gap         | Medium   | `session-rotation.mjs` untouched                                               |
-| Admin toasts verified by code + shared tests only            | Verification gap | Low      | Not exercised in a browser this session                                        |
-| Storefront address routes have **no** API test               | Test gap         | Medium   | Verified in browser only                                                       |
+| Owed                                                         | Kind             | Severity | Notes                                                                                             |
+| ------------------------------------------------------------ | ---------------- | -------- | ------------------------------------------------------------------------------------------------- |
+| ~~Email / phone change flow~~                                | Deferred feature | —        | **Done.** §4 built and verified end to end; see §11                                               |
+| Avatar upload                                                | Deferred (owner) | —        | Image handling not started                                                                        |
+| `_home.scss:468` green gradient                              | Design decision  | Low      | Only remaining hardcoded theme leak                                                               |
+| Wallet / points / orders tiles show `0`                      | Open question    | Low      | Hide until the features exist, or leave honest zeros?                                             |
+| `/auth/otp` duplicates the login code flow                   | Cleanup          | Low      | Live route; not removed unilaterally                                                              |
+| Soft-deleted customers keep social identity links            | Product question | Medium   | That provider subject can never be reused                                                         |
+| `saha_textile_probe` DB                                      | Unattributed     | Low      | Empty 34-collection scaffold, 1 doc, unreferenced. **Left alone deliberately**                    |
+| ~~Nothing committed~~                                        | Process          | —        | **Done.** Seventeen commits; tree clean                                                           |
+| `check:browser-auth` passes but no E2E covers the new routes | Test gap         | Medium   | `session-rotation.mjs` untouched                                                                  |
+| Admin toasts verified by code + shared tests only            | Verification gap | Low      | Not exercised in a browser this session                                                           |
+| ~~Storefront address routes have **no** API test~~           | Test gap         | —        | **Done.** 18 cases, mutation-checked five ways                                                    |
+| Mongoose models re-list contract enums by hand               | Drift risk       | Medium   | One had already gone stale (§11). Only `otpChallenges` was derived; the rest are untouched        |
+| Notification templates for the contact-change flow           | Content          | Medium   | `contact_change_requested` and `otp_change_contact` are referenced but not authored provider-side |
 
 ---
 
@@ -464,14 +472,90 @@ All numbers above were re-run at the time of writing.
 
 ## 10. The next step, in dependency order
 
-1. **Decide whether to commit.** 90+ paths are dirty and every gate is green. Nothing below
-   should start on top of an uncommitted tree this large.
-2. **Run `pnpm mongo:reconcile-indexes -- --dry-run`, then apply.** New in this session; the
-   `customers` unique indexes were wrong (§5.4). Needs `MONGODB_*` env — it prints its target
-   database, so check that line.
-3. **Add API tests for the storefront address routes** (§6). They were verified in a browser only.
-   Ownership deserves a test that another customer's id cannot be reached.
-4. **Email / phone change flow** — §4 is the instruction. Needs no owner decision to start; the
-   design is settled by the security matrix.
+Items 1–4 are **done**; see §11. What is left:
+
+1. ~~Decide whether to commit.~~ Committed in seventeen themed chunks.
+2. ~~Reconcile the indexes.~~ Dry run reported 39 collections aligned, nothing to rebuild — the
+   `$in` filters and the dropped stale indexes were already live on `saha_textile_local`.
+3. ~~API tests for the storefront address routes.~~ 18 cases, mutation-checked five ways.
+4. ~~Email / phone change flow.~~ Built to §4 and verified end to end in a browser.
 5. **Answer the open questions in §6** — zero tiles, `/auth/otp` duplication, soft-delete identity
-   links, the home gradient.
+   links, the home gradient. **These need the owner, not an engineer.**
+6. **Author the two notification templates** the contact-change flow sends
+   (`contact_change_requested`, `otp_change_contact`). The code paths reference them; nothing has
+   been created provider-side.
+7. **Decide whether to sweep the remaining hand-copied Mongoose enums** (§11).
+
+---
+
+## 11. The execution pass — 2026-08-18
+
+### 11.1 Committing
+
+Seventeen commits on top of `e43fa760`, grouped by theme rather than by file order: persistence
+fixes, phone-as-identifier, remember me, domain refusals plus set-password, the storefront account
+routes, the shared error parsing and toasts, the sign-in screens, the account-data pass, the theme
+colour fixes, the seeder, i18n, and the docs. Where a file spanned two passes it landed in the
+commit for its larger half and the message says so.
+
+**Two regressions were in the tree and were fixed before committing:** all three `package.json`
+files had been re-indented to tabs, which `.prettierrc` explicitly overrides to two spaces for
+`package.json`; and `config.example.json` had its em dash and section sign escaped to `—` and
+`§`. Both were reverted so the committed diffs are only the intended one-line additions.
+
+### 11.2 The contact-change flow (§4), as built
+
+Built as specified, with two deliberate departures, both narrowing what a caller can assert:
+
+- **One confirm route, not one per field.** §4.3 sketched `…/email/confirm` and `…/phone/confirm`.
+  Which credential is moving and to what are facts the server is already holding, so
+  `POST …/contact/confirm` takes a code and nothing else — the same absence that makes
+  `FinaliseSignupRequest` safe.
+- **`change_contact` is its own `OtpPurpose`.** Purpose is part of the challenge lookup key.
+  Borrowing `register` would have let a signup code confirm a contact change and let a
+  contact-change send overwrite a live signup challenge.
+
+Also added beyond the brief: `GET …/contact` so a change in flight survives a reload, `POST
+…/contact/resend` (no step-up — the destination is already fixed server-side, so a second password
+prompt would be ceremony), and `DELETE …/contact` to abandon one.
+
+Step-up moved from a private method on `StorefrontAuthController` to `AuthService.assertStepUp`,
+because these routes need the identical rule. `set-password.test.ts` now borrows the real function
+rather than a stub; mutating the rule fails four of its cases, which is how that was checked.
+
+### 11.3 A bug only the browser could find
+
+`otpChallenges.purpose` was a **hand-copied enum** in the Mongoose schema. Adding `change_contact`
+to the contract left the copy stale, so every contact-change send failed schema validation and
+surfaced as a 500 — while the contract, the service and all 22 of its unit tests agreed the value
+was legitimate. **Nothing in the suite could have caught it: the tests fake the repository, which
+is exactly the layer that was refusing.**
+
+Fixed by deriving the enum from `OtpPurpose.options`, as `customer.model.ts` already does for its
+status filter. Roughly thirty other `enum: [...]` literals across the models are still hand-copied
+and were deliberately left alone — some may differ from their contracts on purpose.
+
+### 11.4 Verified end to end
+
+Against the local replica set and a seeded account, in a browser: start with the password proof,
+a wrong code refused as _"That code is not right"_ (the §2.5 refusal machinery, not "Something went
+wrong"), the change still in flight after that refusal, then confirm — email swapped,
+`emailVerified` true, pending record and challenge both consumed, and an audit row carrying
+before/after on the `financial_security` tier. Other devices signed out, the caller's session kept.
+
+**Reading the code without the API's stdout:** the OTP is only ever stored as an HMAC, and the
+dev server was not under this session's control at first. It is recoverable locally by brute-forcing
+the six digits against `otpChallenges.codeHash` with the pepper from `apps/api/.env`
+(`COOKIE_CSRF_SECRET`, falling back to `JWT_REFRESH_SECRET`) — a second, faster than fighting for
+log access. Only viable because the pepper is a local dev value.
+
+### 11.5 Two more found in passing
+
+- **`pnpm mongo:reconcile-indexes` printed only the database NAME.** The default port is 27017
+  while local dev runs on 27018, so an unset `MONGODB_PORT` reaches a different server answering to
+  the same name — and the line meant to catch exactly that would have looked right. It now prints
+  host and port too.
+- **`check:i18n-parity` passes with keys missing from `fr.json`.** Two (`…sent_you_an_email`,
+  `password_must_be_at_least_12_characters`) existed only in `en.json`. French was added, but the
+  check itself still does not catch this class — the same gap that let the five error keys in §5.4
+  go missing.

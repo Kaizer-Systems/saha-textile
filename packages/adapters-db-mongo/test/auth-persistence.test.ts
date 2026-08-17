@@ -53,6 +53,7 @@ const sessionFixture = (overrides: Record<string, unknown> = {}) => ({
 	replacedBySessionId: null,
 	csrfSecretHash: `csrf_${randomUUID()}`,
 	device: { userAgentHash: null, ipHash: null, country: null, label: null },
+	persistent: true,
 	createdAt: now(),
 	lastSeenAt: now(),
 	expiresAt: future(15),

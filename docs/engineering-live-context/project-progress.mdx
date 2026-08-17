@@ -172,6 +172,11 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
   `/auth/activate?token=` → same FormFields/password chrome; gateway
   `activateAccount` → `POST /auth/storefront/activate`. Custom CSS: none. Storefront
   tests 57/57. **No commit.** Tool: cursor.
+- 2026-08-18 — [DONE] **Sign-in accepts phone; remember-me wired; account-security screen shipped.** Login/forgot-password gained an email↔phone toggle (`.auth-channel-tabs`, theme reddish — the Bootstrap `btn-outline-primary` hover was Bootstrap blue). New `/account/login-methods` lists one-time code, password, Google, Facebook; step-up in the theme modal. Provider buttons are now Google's rendered button + a Meta-guidance Facebook button, both capped to Google's 400px so they match (also fixed login/register). Storefront tests 90/90. **No commit.** Tool: claude-code.
+- 2026-08-18 — [DONE] **`account.json` fixture retired.** `AccountService` now reads `/auth/storefront/me` through `data-access/adapters/customer-to-account-user.ts`; every account screen, the header and checkout render the signed-in customer. wallet/points/orders/payment/avatar are zeroed — separate features that do not exist, and the fixture's numbers were somebody else's. Storefront **permissions state deleted**: a sweep found nothing gated on one, and the list was always empty. **No commit.** Tool: claude-code.
+- 2026-08-18 — [DONE] **Address CRUD + profile name wired.** `createAddress`/`updateAddress`/`deleteAddress`/`updateProfile` were empty function bodies — Add/Edit/Remove submitted and silently did nothing. Country→state→dial-code resolution added (`shared/util/address-location.ts`, 7 tests): `country.json` has three countries sharing `calling_code: "1"` with American Samoa first, so a dial-code-first lookup showed the wrong flag. **No commit.** Tool: claude-code.
+- 2026-08-18 — [DONE] **Toast rendering fixed (storefront + admin).** `getClientErrorMessage` returned `''` (empty toast box); admin read the wrong envelope nesting (always "Something Went Wrong"). Parser moved to `@saha-textile/http-transport` as `readApiErrorMessage`. Error/warning/info toasts had an invisible white-on-white icon; all four variants now share one mixin. **No commit.** Tool: claude-code.
+- 2026-08-18 — [DONE] **OTP slot geometry corrected.** The gradient inks the RIGHT 35px of each tile (verified by rasterising) and the theme sets digits proportionally — fixed with `tabular-nums` plus stride-derived geometry; digit centres now identical to ink centres and the cut-off leading slot is gone. Also de-greened the logout button and four more `#1aa488` leaks. **No commit.** Tool: claude-code.
 - _(append new bullets below)_
 
 ---
@@ -403,6 +408,10 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
   `CartService.mergeGuestCartForUser` (token proof, line coalesce, stolen-cookie
   ignore); clears `st_guest`. Unit coverage in `cart-ownership.test.ts`. **No commit.**
   Tool: cursor.
+- 2026-08-18 — [DONE] **`POST /auth/storefront/password/set`** — the missing authenticated set/change-password route. Same step-up rule as connect/disconnect; revokes other sessions and keeps the caller's. 9 tests, mutation-checked. **No commit.** Tool: claude-code.
+- 2026-08-18 — [DONE] **First storefront-owned API folder** — `apps/api/src/storefront/` with address CRUD and the profile-name route under `storefront/account/*`. **No `:customerId` in any path**: the owner comes from the session, so a caller cannot name another account. New `storefront-account` OpenAPI family. OpenAPI now 105 operations / 90 paths. **No commit.** Tool: claude-code.
+- 2026-08-18 — [DONE] **Stable domain refusal codes now reach clients.** `HttpExceptionFilter` derives `code` from HTTP status and discarded handler codes, so all 13 `SignupErrorCode` values plus `last_credential` and `step_up_required` were unreachable. Routed through `issues[].code` via `auth/domain-refusal.ts`; `ApiErrorCode` deliberately NOT widened. **No commit.** Tool: claude-code.
+- 2026-08-18 — [DONE] **Remember-me honoured end to end.** `persistent` on `AuthSession`; checked → dated cookie + 30-day idle, unchecked → session cookie + 1-day idle; rotation carries the choice forward. 6 tests, mutation-checked. **No commit.** Tool: claude-code.
 - _(append)_
 
 ---
@@ -596,6 +605,9 @@ swatch_image_v2` with pixel sizes deliberately left to config (`G-IMG-PX`);
 - 2026-08-13 — [DONE] **`AdminUserListQuery` / `AdminUserListResponse`** (`paginated(AdminUser)`)
   for `GET /admin/users`; `AdminUserRepository.list` on the core port + conformance fake.
   Contracts tests **168**. Tool: cursor.
+- 2026-08-18 — [DONE] **`pnpm mongo:reconcile-indexes`** added (`--dry-run` supported). Mongoose never alters an existing index's options. **Root cause found: MongoDB rejects `$ne` in a partial index**, so `customers`' `status: { $ne: 'deleted' }` had NEVER been buildable and soft delete never released an address or phone. Rewritten as `$in` over the non-deleted statuses; stale `username_1` and `role_1_status_1` dropped. **No commit.** Tool: claude-code.
+- 2026-08-18 — [DONE] **`deleteAddress` reports a missing address.** It used `$pull` and returned the customer either way, so deleting a non-existent id answered 200 — **the admin route had the same bug**. Now matches customer id AND address id in one query, which also makes the ownership check atomic. **No commit.** Tool: claude-code.
+- 2026-08-18 — [REVERTED] **71 `authIdentities` rows deleted by mistake** in `saha_textile_local`: `deleteMany({ customerId })` — the model uses `subjectId`, and `strictQuery: true` STRIPS unknown paths, so the filter became `{}`. Not recoverable. Verified afterwards that zero seeded customers had a password credential, so those rows claimed a login method that did not exist and the empty state is more correct. Authentication unaffected. Tool: claude-code.
 - _(append)_
 
 ---
@@ -921,6 +933,8 @@ optionSelectionHash)`, globally unique variant SKU per `DEC-SKU`, unique bundle 
 - 2026-08-15 — [DONE] **Local-credentials helper no longer ships in Nest `dist`.** Script
   excluded from `tsconfig.build.json`; `set:local-credentials` runs source via `tsx`.
   Runtime `--i-am-local` / loopback / non-production guards unchanged. Tool: cursor.
+- 2026-08-18 — [DONE] **Local auth fixtures** — `pnpm --filter @saha-textile/api seed:local-auth-accounts -- --i-am-local` writes 7 accounts, one per login shape (password-only, password+google, google-only, google+facebook, all-methods, disabled, locked) through the real repositories and argon2. Two carry saved addresses. Provider subjects are synthetic `local-…` and cannot be signed into with a provider button. **No commit.** Tool: claude-code.
+- 2026-08-18 — [PARTIAL] **Profile self-service is display-name only.** `PATCH /storefront/account/profile` accepts `displayName`; email and phone are shown read-only. Changing either needs security-matrix row 84's flow (recent credential proof, separate verification token, old value retained until the new one is proven, audit) — full instructions in `storefront-account-and-auth-ui-handoff.mdx` §4. Tool: claude-code.
 - _(append)_
 
 ---

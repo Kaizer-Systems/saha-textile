@@ -2,5 +2,7 @@
 	"apiUrl": "https://localhost:4000",
 	"siteUrl": "https://localhost:4200",
 	"defaultLocale": "en",
-	"supportedLocales": ["en", "fr"]
+	"supportedLocales": ["en", "fr"],
+	"googleClientId": "299882631375-mhponecb5kuo82u6t4m1q9e61e69uuke.apps.googleusercontent.com",
+	"facebookAppId": "1060035146432998"
 }

@@ -65,7 +65,7 @@ export class Otp {
 		if (this.form.controls['email'].invalid || this.pending()) return;
 
 		const address = this.form.value.email as string;
-		await this.authStore.requestEmailOtp(address, 'login');
+		await this.authStore.requestLoginOtp(address, 'login');
 		// Always advance. The API accepts the request identically for a registered and an
 		// unregistered address, so stopping here for unknown ones would disclose which is
 		// which; a caller who is not registered simply never receives a code.
@@ -83,7 +83,7 @@ export class Otp {
 		const code = (this.form.value.code as string) ?? '';
 		if (code.length !== OTP_CODE_LENGTH || this.pending()) return;
 
-		const signedIn = await this.authStore.verifyEmailOtp({ email: this.sentTo(), code });
+		const signedIn = await this.authStore.verifyLoginOtp({ identifier: this.sentTo(), code });
 		if (!signedIn) return;
 
 		const redirectUrl = this.authService.redirectUrl || '/account/dashboard';

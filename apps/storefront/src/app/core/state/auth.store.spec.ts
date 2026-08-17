@@ -44,16 +44,60 @@ class FakeGateway extends StorefrontAuthGateway {
 	override ensureCsrfToken(): Observable<void> {
 		return of(undefined);
 	}
-	override register(): Observable<AuthSessionResult> {
+	override finaliseSignup(): Observable<AuthSessionResult> {
 		return this.loginResult === 'ok' ? of(SESSION) : throwError(() => new Error('rejected'));
+	}
+
+	/**
+	 * The rest of the signup and social surface, unused by these cases.
+	 *
+	 * Present because the gateway is an ABSTRACT CLASS, so a fake must satisfy all of it — which
+	 * is the point: adding a method to the boundary makes every implementation declare an answer
+	 * rather than silently inheriting `undefined`.
+	 */
+	override startSignup(): Observable<never> {
+		return throwError(() => new Error('not used'));
+	}
+	override updateSignupField(): Observable<never> {
+		return throwError(() => new Error('not used'));
+	}
+	override requestSignupOtp(): Observable<never> {
+		return throwError(() => new Error('not used'));
+	}
+	override verifySignupOtp(): Observable<never> {
+		return throwError(() => new Error('not used'));
+	}
+	override startOAuth(): Observable<never> {
+		return throwError(() => new Error('not used'));
+	}
+	override verifyGoogle(): Observable<never> {
+		return throwError(() => new Error('not used'));
+	}
+	override verifyFacebook(): Observable<never> {
+		return throwError(() => new Error('not used'));
+	}
+	override loginMethods(): Observable<never> {
+		return throwError(() => new Error('not used'));
+	}
+	override requestStepUp(): Observable<never> {
+		return throwError(() => new Error('not used'));
+	}
+	override connectIdentity(): Observable<never> {
+		return throwError(() => new Error('not used'));
+	}
+	override disconnectIdentity(): Observable<never> {
+		return throwError(() => new Error('not used'));
+	}
+	override setPassword(): Observable<never> {
+		return throwError(() => new Error('not used'));
 	}
 	override loginWithPassword(): Observable<AuthSessionResult> {
 		return this.loginResult === 'ok' ? of(SESSION) : throwError(() => new Error('rejected'));
 	}
-	override requestEmailOtp(): Observable<void> {
+	override requestLoginOtp(): Observable<void> {
 		return of(undefined);
 	}
-	override verifyEmailOtp(): Observable<AuthSessionResult> {
+	override verifyLoginOtp(): Observable<AuthSessionResult> {
 		return this.loginResult === 'ok' ? of(SESSION) : throwError(() => new Error('rejected'));
 	}
 	override requestPasswordReset(): Observable<void> {
@@ -131,7 +175,7 @@ describe('storefront AuthStore', () => {
 		gateway.loginResult = 'fail';
 		const store = TestBed.inject(AuthStore);
 
-		const signedIn = await store.loginWithPassword({ email: 'a@b.com', password: 'wrong-password' });
+		const signedIn = await store.loginWithPassword({ identifier: 'a@b.com', password: 'wrong-password' });
 
 		expect(signedIn).toBe(false);
 		expect(store.isAuthenticated()).toBe(false);
@@ -141,7 +185,7 @@ describe('storefront AuthStore', () => {
 
 	it('authenticates only after the API confirms', async () => {
 		const store = TestBed.inject(AuthStore);
-		const signedIn = await store.loginWithPassword({ email: 'a@b.com', password: 'correct-password' });
+		const signedIn = await store.loginWithPassword({ identifier: 'a@b.com', password: 'correct-password' });
 
 		expect(signedIn).toBe(true);
 		expect(store.isAuthenticated()).toBe(true);
@@ -177,7 +221,7 @@ describe('storefront AuthStore', () => {
 		const store = TestBed.inject(AuthStore);
 
 		await store.bootstrap();
-		await store.loginWithPassword({ email: 'a@b.com', password: 'correct-password' });
+		await store.loginWithPassword({ identifier: 'a@b.com', password: 'correct-password' });
 		await store.logout();
 
 		// The credential lives in httpOnly cookies; nothing about it may be readable here.

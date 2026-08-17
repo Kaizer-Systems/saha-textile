@@ -62,13 +62,13 @@ describe('HttpStorefrontAuthGateway credential classification', () => {
 	// Typed explicitly: the methods return differently-shaped observables, and an inferred
 	// union of their `subscribe` signatures is not callable.
 	const credentialCalls: [string, () => Observable<unknown>][] = [
-		['registration', () => gateway.register({ email: 'customer@example.test', password: 'x'.repeat(12) })],
+		['registration', () => gateway.finaliseSignup('x'.repeat(12))],
 		[
 			'password login',
-			() => gateway.loginWithPassword({ email: 'customer@example.test', password: 'x'.repeat(12) }),
+			() => gateway.loginWithPassword({ identifier: 'customer@example.test', password: 'x'.repeat(12) }),
 		],
-		['OTP request', () => gateway.requestEmailOtp('customer@example.test', 'login')],
-		['OTP verification', () => gateway.verifyEmailOtp({ email: 'customer@example.test', code: '123456' })],
+		['OTP request', () => gateway.requestLoginOtp('customer@example.test', 'login')],
+		['OTP verification', () => gateway.verifyLoginOtp({ identifier: 'customer@example.test', code: '123456' })],
 		['password recovery request', () => gateway.requestPasswordReset('customer@example.test')],
 		['password reset', () => gateway.resetPassword({ token: 'tok', newPassword: 'x'.repeat(12) })],
 		['logout', () => gateway.logout()],
@@ -103,12 +103,12 @@ describe('HttpStorefrontAuthGateway credential classification', () => {
 	});
 
 	const establishingCalls: [string, () => Observable<unknown>][] = [
-		['registration', () => gateway.register({ email: 'customer@example.test', password: 'x'.repeat(12) })],
+		['registration', () => gateway.finaliseSignup('x'.repeat(12))],
 		[
 			'password login',
-			() => gateway.loginWithPassword({ email: 'customer@example.test', password: 'x'.repeat(12) }),
+			() => gateway.loginWithPassword({ identifier: 'customer@example.test', password: 'x'.repeat(12) }),
 		],
-		['OTP verification', () => gateway.verifyEmailOtp({ email: 'customer@example.test', code: '123456' })],
+		['OTP verification', () => gateway.verifyLoginOtp({ identifier: 'customer@example.test', code: '123456' })],
 	];
 
 	const endingCalls: [string, () => Observable<unknown>][] = [
@@ -117,7 +117,7 @@ describe('HttpStorefrontAuthGateway credential classification', () => {
 		// A reset revokes every session for the account by design.
 		['password reset', () => gateway.resetPassword({ token: 'tok', newPassword: 'x'.repeat(12) })],
 		// Requesting a code only issues a challenge; verification is what mints the session.
-		['OTP request', () => gateway.requestEmailOtp('customer@example.test', 'login')],
+		['OTP request', () => gateway.requestLoginOtp('customer@example.test', 'login')],
 	];
 
 	// The latch that stops a failed rotation being re-attempted clears only on proof that a

@@ -29,7 +29,17 @@ const CONTROLLER_ROOT = 'apps/api/src';
 const CONTRACTS_PACKAGE = '@saha-textile/contracts';
 
 /** Mirrors `apps/api/src/openapi-tags.ts`. */
-const DECLARED_FAMILIES = ['health', 'catalog', 'currency', 'promotions', 'cart', 'orders', 'auth', 'privacy'];
+const DECLARED_FAMILIES = [
+	'health',
+	'catalog',
+	'currency',
+	'promotions',
+	'cart',
+	'orders',
+	'auth',
+	'storefrontAccount',
+	'privacy',
+];
 
 const ROUTE_DECORATOR = /@(Get|Post|Put|Patch|Delete)\s*\(/g;
 const VALIDATION_PIPE = /new\s+ZodValidationPipe\s*\(\s*([^)]*)/g;

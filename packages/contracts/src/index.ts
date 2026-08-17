@@ -21,6 +21,7 @@ export * from './permission';
 export * from './role';
 export * from './shipping';
 export * from './session';
+export * from './storefront-account';
 export * from './auth';
 export * from './auth-internal';
 export * from './signup';

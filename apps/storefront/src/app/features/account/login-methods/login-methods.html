@@ -1,0 +1,303 @@
+<!--
+	Account security.
+
+	The method rows reuse the theme's saved-address card; the step-up form lives in the theme's
+	own modal instead, because `.address-box > div` is `display: flex` — a form nested there is
+	laid out as flex SIBLINGS, which turned three stacked fields into a squashed two-column grid.
+-->
+<div class="dashboard-address">
+	<div class="title-header">
+		<div class="d-flex align-items-center">
+			<h5>{{ 'sign_in_methods' | transloco }}</h5>
+		</div>
+	</div>
+
+	@if (refusal()) {
+	<div
+		class="alert alert-danger"
+		role="alert"
+	>
+		{{ refusal()! | transloco }}
+	</div>
+	} @if (notice()) {
+	<div
+		class="alert alert-success"
+		role="status"
+		aria-live="polite"
+	>
+		{{ notice()! | transloco }}
+	</div>
+	} @if (loading()) {
+	<p class="text-content">{{ 'loading' | transloco }}</p>
+	} @else if (methods(); as view) {
+	<p class="text-content mb-4">{{ 'sign_in_methods_description' | transloco }}</p>
+
+	<div class="row g-sm-4 g-3">
+		<!--
+			The one-time code, listed FIRST because it is the method that is always there.
+
+			Not decoration: it is why disconnecting a last provider is allowed at all. Every
+			account carries a verified email and phone, so a code can always be sent, and a screen
+			that showed only password and providers would look empty right after a disconnect and
+			read as "I have no way back in" — the opposite of the truth.
+		-->
+		<div class="col-12">
+			<div class="address-box">
+				<div>
+					<div class="label">
+						<label>{{ 'one_time_code' | transloco }}</label>
+					</div>
+					<p class="text-content mb-0">{{ oneTimeCodeChannels() | transloco }}</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Password -->
+		<div class="col-12">
+			<div class="address-box">
+				<div>
+					<div class="label">
+						<label>{{ 'password' | transloco }}</label>
+					</div>
+					<p class="text-content mb-0">
+						@if (view.passwordSet) { {{ 'password_is_set' | transloco }} } @else {
+						<!--
+							Said plainly rather than hidden: this is the state that stops somebody
+							disconnecting their only provider, so they need to know it is why.
+						-->
+						{{ 'password_not_set' | transloco }} }
+					</p>
+				</div>
+				<div class="button-group">
+					<app-button
+						[class]="'btn btn-sm add-button'"
+						[type]="'button'"
+						[spinner]="false"
+						[id]="'set_password'"
+						(click)="begin({ kind: 'password' })"
+					>
+						{{ (view.passwordSet ? 'change_password' : 'set_password') | transloco }}
+					</app-button>
+				</div>
+			</div>
+		</div>
+
+		<!-- One row per provider, always both, so an unconnected one is visibly available. -->
+		@for (identity of view.identities; track identity.provider) {
+		<div class="col-12">
+			<div class="address-box">
+				<div>
+					<div class="label">
+						<label>{{ ('provider_' + identity.provider) | transloco }}</label>
+					</div>
+					@if (identity.connected) {
+					<p class="text-content mb-0">
+						<span class="badge text-bg-success me-2">{{ 'connected' | transloco }}</span>
+						<!--
+							The provider's own email, shown for recognition only. It is never what
+							matches an account — identities key on the provider's stable subject.
+						-->
+						{{ identity.email ?? '' }}
+					</p>
+					} @else {
+					<p class="text-content mb-0">{{ 'not_connected' | transloco }}</p>
+					}
+				</div>
+				@if (identity.connected) {
+				<div class="button-group">
+					<app-button
+						[class]="'btn btn-sm add-button'"
+						[type]="'button'"
+						[spinner]="false"
+						[id]="'disconnect_' + identity.provider"
+						(click)="begin({ kind: 'disconnect', provider: identity.provider })"
+					>
+						{{ 'disconnect' | transloco }}
+					</app-button>
+				</div>
+				} @else {
+				<!--
+					The provider's OWN button, not a themed "Connect": Google renders theirs and
+					Meta's is built to their brand guidance. `[providers]` narrows it to this row so
+					each card offers exactly the one it is about.
+
+					Deliberately NOT inside `.button-group`. That class is for the theme's own card
+					actions and carries `background-color: #f8f8f8` at a specificity that beats
+					Meta's blue — which rendered white text on pale grey and looked disabled.
+
+					Step-up is asked for AFTER the dialog — Google's button owns its click, so there
+					is no moment to interrupt beforehand.
+				-->
+				<div class="provider-connect">
+					<app-social-sign-in
+						[mode]="'connect'"
+						[providers]="[identity.provider]"
+						(credential)="onCredential($event)"
+					/>
+				</div>
+				}
+			</div>
+		</div>
+		}
+	</div>
+	}
+</div>
+
+<!--
+	Step-up, in the theme's own modal — same structure as the saved-address dialog, so the fields
+	stack at full width with the theme's own spacing.
+-->
+<ng-template
+	#stepUpModal
+	let-modal
+>
+	<div class="modal-header">
+		<h3 class="fw-semibold">{{ stepUpTitle() | transloco }}</h3>
+		<app-button
+			[class]="'btn btn-close'"
+			[spinner]="false"
+			[id]="'step_up_close'"
+			(click)="modal.dismiss('Cross click')"
+		>
+			<i class="ri-close-line"></i>
+		</app-button>
+	</div>
+	<form
+		[formGroup]="form"
+		(ngSubmit)="confirm()"
+	>
+		<div class="modal-body">
+			<p class="text-content">{{ 'step_up_why' | transloco }}</p>
+
+			@if (refusal()) {
+			<div
+				class="alert alert-danger"
+				role="alert"
+			>
+				{{ refusal()! | transloco }}
+			</div>
+			} @if (notice()) {
+			<div
+				class="alert alert-success"
+				role="status"
+				aria-live="polite"
+			>
+				{{ notice()! | transloco }}
+			</div>
+			}
+
+			<div class="row g-4">
+				<!--
+					Proof FIRST, then what is being set. It reads in the order the person is
+					thinking: prove who you are, then say what you want changed.
+				-->
+				@if (stepUpByCode()) {
+				<div class="col-12">
+					<label class="form-label">{{ 'confirm_it_is_you' | transloco }}</label>
+					<div class="d-flex mb-3 flex-wrap gap-2">
+						<app-button
+							[class]="'btn btn-sm add-button'"
+							[type]="'button'"
+							[spinner]="false"
+							[id]="'step_up_email'"
+							(click)="sendCode('email')"
+						>
+							{{ 'send_code_to_email' | transloco }}
+						</app-button>
+						<app-button
+							[class]="'btn btn-sm add-button'"
+							[type]="'button'"
+							[spinner]="false"
+							[id]="'step_up_sms'"
+							(click)="sendCode('sms')"
+						>
+							{{ 'send_code_to_phone' | transloco }}
+						</app-button>
+					</div>
+					@if (codeSent()) {
+					<div class="outer-otp">
+						<div
+							id="step_up_otp"
+							class="inner-otp"
+						>
+							<input
+								type="text"
+								inputmode="numeric"
+								autocomplete="one-time-code"
+								formControlName="code"
+								[maxlength]="codeLength"
+								oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+							/>
+						</div>
+					</div>
+					}
+				</div>
+				} @else {
+				<div class="col-12">
+					<label
+						class="form-label"
+						for="current_password"
+					>
+						{{ 'current_password' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="current_password"
+						type="password"
+						autocomplete="current-password"
+						formControlName="currentPassword"
+						placeholder="{{ 'current_password' | transloco }}"
+					/>
+				</div>
+				} @if (pending()?.kind === 'password') {
+				<div class="col-12">
+					<label
+						class="form-label"
+						for="new_password"
+					>
+						{{ 'new_password' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="new_password"
+						type="password"
+						autocomplete="new-password"
+						formControlName="newPassword"
+						placeholder="{{ 'new_password' | transloco }}"
+					/>
+					<small class="text-content">
+						{{ 'password_minimum_length' | transloco: { count: passwordMinLength } }}
+					</small>
+				</div>
+				<div class="col-12">
+					<label
+						class="form-label"
+						for="confirm_password"
+					>
+						{{ 'password_confirmation' | transloco }}
+					</label>
+					<input
+						class="form-control"
+						id="confirm_password"
+						type="password"
+						autocomplete="new-password"
+						formControlName="confirmation"
+						placeholder="{{ 'password_confirmation' | transloco }}"
+					/>
+					@if (passwordMatchError) {
+					<div class="invalid-feedback">{{ 'passwords_do_not_match' | transloco }}</div>
+					}
+				</div>
+				}
+			</div>
+		</div>
+		<div class="modal-footer">
+			<app-button
+				[class]="'btn btn-animation'"
+				[id]="'confirm_step_up'"
+			>
+				{{ 'confirm' | transloco }}
+			</app-button>
+		</div>
+	</form>
+</ng-template>

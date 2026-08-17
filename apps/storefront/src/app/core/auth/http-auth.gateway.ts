@@ -8,10 +8,17 @@ import { runtimeConfig } from '@core/config/runtime-config';
 import {
 	type AuthSessionResult,
 	type AuthUser,
-	type EmailOtpVerifyInput,
+	type LoginOtpVerifyInput,
 	type PasswordLoginInput,
 	type PasswordResetInput,
-	type RegisterInput,
+	type LoginMethodsView,
+	type OAuthStartResult,
+	type OAuthVerifyResult,
+	type PendingSignupView,
+	type SignupOtpVerifyResult,
+	type SocialProvider,
+	type StartSignupInput,
+	type StepUpProof,
 	StorefrontAuthGateway,
 } from './auth-gateway';
 
@@ -25,12 +32,24 @@ import {
 const ROUTES = {
 	csrf: '/auth/csrf',
 	me: '/auth/storefront/me',
-	register: '/auth/storefront/register',
+	signupStart: '/auth/storefront/signup/start',
+	signupField: '/auth/storefront/signup/field',
+	signupOtpRequest: '/auth/storefront/signup/otp/request',
+	signupOtpVerify: '/auth/storefront/signup/otp/verify',
+	signupFinalise: '/auth/storefront/signup/finalise',
+	oauthState: '/auth/storefront/oauth/state',
+	oauthGoogle: '/auth/storefront/oauth/google',
+	oauthFacebook: '/auth/storefront/oauth/facebook',
+	oauthConnect: '/auth/storefront/oauth/connect',
+	oauthDisconnect: '/auth/storefront/oauth/disconnect',
+	loginMethods: '/auth/storefront/login-methods',
+	stepUpRequest: '/auth/storefront/step-up/request',
 	passwordLogin: '/auth/storefront/login/password',
 	otpRequest: '/auth/storefront/login/email-otp/request',
 	otpVerify: '/auth/storefront/login/email-otp/verify',
 	passwordForgot: '/auth/storefront/password/forgot',
 	passwordReset: '/auth/storefront/password/reset',
+	passwordSet: '/auth/storefront/password/set',
 	activate: '/auth/storefront/activate',
 	logout: '/auth/storefront/logout',
 	refresh: '/auth/storefront/refresh',
@@ -45,7 +64,22 @@ const ROUTES = {
  * failed rotation with another rotation is the loop this list prevents.
  */
 const CREDENTIAL_ROUTES: readonly string[] = [
-	ROUTES.register,
+	/**
+	 * The whole signup and social surface.
+	 *
+	 * A 401 on ANY of these means the submitted credential — a code, a password, a provider
+	 * token — was refused, never that a session lapsed. Omitting one would let the transport
+	 * answer a refused code by rotating a session that does not exist yet and retrying, which
+	 * is a loop rather than a recovery.
+	 */
+	ROUTES.signupStart,
+	ROUTES.signupField,
+	ROUTES.signupOtpRequest,
+	ROUTES.signupOtpVerify,
+	ROUTES.signupFinalise,
+	ROUTES.oauthState,
+	ROUTES.oauthGoogle,
+	ROUTES.oauthFacebook,
 	ROUTES.passwordLogin,
 	ROUTES.otpRequest,
 	ROUTES.otpVerify,
@@ -64,7 +98,17 @@ const CREDENTIAL_ROUTES: readonly string[] = [
  * that mints the session. Treating any of those as proof would un-latch the transport and
  * buy one pointless rotation per later 401.
  */
-const SESSION_ESTABLISHING_ROUTES: readonly string[] = [ROUTES.register, ROUTES.passwordLogin, ROUTES.otpVerify];
+const SESSION_ESTABLISHING_ROUTES: readonly string[] = [
+	ROUTES.passwordLogin,
+	ROUTES.otpVerify,
+	// Only FINALISE mints a session. Starting a signup, editing a field, requesting a code and
+	// verifying one all leave the customer signed out — treating any of them as proof would
+	// un-latch the transport and buy one pointless rotation per later 401.
+	ROUTES.signupFinalise,
+	// A provider token may sign an existing customer in, so this one CAN establish a session.
+	ROUTES.oauthGoogle,
+	ROUTES.oauthFacebook,
+];
 
 /** Wire shape of the API's `/me`. Declared here so no other file depends on it. */
 interface MeResponse {
@@ -94,24 +138,80 @@ export class HttpStorefrontAuthGateway extends StorefrontAuthGateway {
 		return this.http.get<{ csrfToken: string }>(this.url(ROUTES.csrf)).pipe(map(() => undefined));
 	}
 
-	override register(input: RegisterInput): Observable<AuthSessionResult> {
-		return this.http.post<AuthSessionResult>(this.url(ROUTES.register), input);
+	override startSignup(input: StartSignupInput): Observable<PendingSignupView> {
+		return this.http.post<PendingSignupView>(this.url(ROUTES.signupStart), input);
+	}
+
+	override updateSignupField(field: 'email' | 'phone', value: string): Observable<PendingSignupView> {
+		return this.http.post<PendingSignupView>(this.url(ROUTES.signupField), { field, value });
+	}
+
+	override requestSignupOtp(field: 'email' | 'phone'): Observable<PendingSignupView> {
+		return this.http.post<PendingSignupView>(this.url(ROUTES.signupOtpRequest), { field });
+	}
+
+	override verifySignupOtp(field: 'email' | 'phone', code: string): Observable<SignupOtpVerifyResult> {
+		return this.http.post<SignupOtpVerifyResult>(this.url(ROUTES.signupOtpVerify), { field, code });
+	}
+
+	override finaliseSignup(password?: string): Observable<AuthSessionResult> {
+		// No identifiers. The server finalises from what it verified, so there is nothing here
+		// for a tampered form to substitute.
+		return this.http.post<AuthSessionResult>(this.url(ROUTES.signupFinalise), password ? { password } : {});
+	}
+
+	override startOAuth(provider: SocialProvider): Observable<OAuthStartResult> {
+		return this.http.post<OAuthStartResult>(this.url(ROUTES.oauthState), { provider });
+	}
+
+	override verifyGoogle(input: {
+		stateId: string;
+		credential: string;
+		nonce: string | null;
+	}): Observable<OAuthVerifyResult> {
+		return this.http.post<OAuthVerifyResult>(this.url(ROUTES.oauthGoogle), input);
+	}
+
+	override verifyFacebook(input: { stateId: string; accessToken: string }): Observable<OAuthVerifyResult> {
+		return this.http.post<OAuthVerifyResult>(this.url(ROUTES.oauthFacebook), input);
+	}
+
+	override loginMethods(): Observable<LoginMethodsView> {
+		return this.http.get<LoginMethodsView>(this.url(ROUTES.loginMethods));
+	}
+
+	override requestStepUp(channel: 'email' | 'sms'): Observable<void> {
+		return this.http.post<unknown>(this.url(ROUTES.stepUpRequest), { channel }).pipe(map(() => undefined));
+	}
+
+	override connectIdentity(
+		input: { provider: SocialProvider; stateId: string; credential: string; nonce: string | null } & StepUpProof,
+	): Observable<LoginMethodsView> {
+		return this.http.post<LoginMethodsView>(this.url(ROUTES.oauthConnect), input);
+	}
+
+	override setPassword(input: { newPassword: string } & StepUpProof): Observable<LoginMethodsView> {
+		return this.http.post<LoginMethodsView>(this.url(ROUTES.passwordSet), input);
+	}
+
+	override disconnectIdentity(input: { provider: SocialProvider } & StepUpProof): Observable<LoginMethodsView> {
+		return this.http.post<LoginMethodsView>(this.url(ROUTES.oauthDisconnect), input);
 	}
 
 	override loginWithPassword(input: PasswordLoginInput): Observable<AuthSessionResult> {
 		return this.http.post<AuthSessionResult>(this.url(ROUTES.passwordLogin), input);
 	}
 
-	override requestEmailOtp(email: string, purpose: 'login' | 'register'): Observable<void> {
-		return this.http.post<unknown>(this.url(ROUTES.otpRequest), { email, purpose }).pipe(map(() => undefined));
+	override requestLoginOtp(identifier: string, purpose: 'login' | 'register'): Observable<void> {
+		return this.http.post<unknown>(this.url(ROUTES.otpRequest), { identifier, purpose }).pipe(map(() => undefined));
 	}
 
-	override verifyEmailOtp(input: EmailOtpVerifyInput): Observable<AuthSessionResult> {
+	override verifyLoginOtp(input: LoginOtpVerifyInput): Observable<AuthSessionResult> {
 		return this.http.post<AuthSessionResult>(this.url(ROUTES.otpVerify), input);
 	}
 
-	override requestPasswordReset(email: string): Observable<void> {
-		return this.http.post<unknown>(this.url(ROUTES.passwordForgot), { email }).pipe(map(() => undefined));
+	override requestPasswordReset(identifier: string): Observable<void> {
+		return this.http.post<unknown>(this.url(ROUTES.passwordForgot), { identifier }).pipe(map(() => undefined));
 	}
 
 	override resetPassword(input: PasswordResetInput): Observable<void> {

@@ -504,6 +504,60 @@ a {
 	}
 }
 
+/**
+ * Toasts.
+ *
+ * The theme repaints every toast white and draws its own coloured bar and glyph, so ngx-toastr's
+ * built-in icon — a WHITE svg delivered as `background-image` — becomes a white mark on a white
+ * card. `.toast-success` cleared it and supplied a `::before` glyph; error, warning and info were
+ * never given the same treatment, so they kept the invisible one. Together with the empty message
+ * (see `error.service.ts`) that is why an error toast arrived as an empty outlined box.
+ *
+ * The variants below are generated from one mixin so a fourth cannot be added later with the
+ * icon left out again. The 60px left padding on `.ngx-toastr` is the space they sit in.
+ */
+@mixin toast-variant($colour, $glyph) {
+	// Clears ngx-toastr's own white-on-white icon before drawing ours.
+	background-image: none;
+	border: 1px solid $colour !important;
+
+	&::after {
+		@include pos;
+		left: 0;
+		background-color: $colour;
+		height: 32px;
+		width: 2px;
+		top: 50%;
+		transform: translateY(-50%);
+		border-radius: 2px;
+
+		body.rtl & {
+			left: unset;
+			right: 0;
+		}
+	}
+
+	&::before {
+		@include pos($pos: absolute, $content: $glyph);
+		@include remixicon;
+		left: 22px;
+		width: 25px;
+		height: 25px;
+		border-radius: 100%;
+		background-color: $colour;
+		color: #ffffff;
+		@include flex_common;
+		font-size: 20px;
+		top: 50%;
+		transform: translateY(-50%);
+
+		body.rtl & {
+			left: unset;
+			right: 22px;
+		}
+	}
+}
+
 // toaster
 .ngx-toastr {
 	border: none;
@@ -532,53 +586,19 @@ a {
 }
 
 .toast-success {
-	background-image: none;
-	border: 1px solid #0d462c !important;
-
-	&::after {
-		@include pos;
-		left: 0;
-		background-color: #0d462c;
-		height: 32px;
-		width: 2px;
-		top: 50%;
-		transform: translateY(-50%);
-		border-radius: 2px;
-	}
-
-	&::before {
-		@include pos($pos: absolute, $content: '\eb7b');
-		@include remixicon;
-		left: 22px;
-		width: 25px;
-		height: 25px;
-		border-radius: 100%;
-		background-color: #0d462c;
-		color: $white;
-		@include flex_common;
-		font-size: 20px;
-		top: 50%;
-		transform: translateY(-50%);
-	}
+	@include toast-variant(#0d462c, '\eb7b');
 }
 
 .toast-error {
-	border: 1px solid #721c2485 !important;
+	@include toast-variant(#721c24, '\eb97');
+}
 
-	&::after {
-		@include pos;
-		left: 0;
-		background-color: #721c24;
-		height: 32px;
-		width: 2px;
-		top: 50%;
-		transform: translateY(-50%);
-		border-radius: 2px;
-		body.rtl & {
-			left: unset;
-			right: 0;
-		}
-	}
+.toast-warning {
+	@include toast-variant(#8a6d3b, '\eb95');
+}
+
+.toast-info {
+	@include toast-variant(#31708f, '\ee59');
 }
 
 .owl-carousel {

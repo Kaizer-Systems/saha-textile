@@ -29,10 +29,15 @@ async function main(): Promise<void> {
 	try {
 		/**
 		 * Named out loud, because the connection comes from MONGODB_* in the environment and an
-		 * unset variable falls back to a DEFAULT database rather than failing. A migration that
-		 * quietly reconciles the wrong database reports success and changes nothing that matters.
+		 * unset variable falls back to a DEFAULT rather than failing. A migration that quietly
+		 * reconciles the wrong database reports success and changes nothing that matters.
+		 *
+		 * HOST AND PORT, not just the name. The default port is 27017 while local dev runs on
+		 * 27018, so an unset `MONGODB_PORT` reaches a different server that answers to the same
+		 * database name — and a line printing only the name would look exactly right.
 		 */
-		console.log(`[reconcile-indexes] database: ${getMongoose().connection.name}`);
+		const { host, port, name } = getMongoose().connection;
+		console.log(`[reconcile-indexes] database: ${name} at ${host}:${port}`);
 
 		const report = await reconcileIndexes(allModels(), { dryRun });
 

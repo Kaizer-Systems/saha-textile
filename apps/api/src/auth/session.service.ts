@@ -59,10 +59,31 @@ export interface LiveSessionExpectation {
 export const ADMIN_IDLE_TTL_SECONDS = 60 * 60;
 export const STOREFRONT_IDLE_TTL_SECONDS = 60 * 60 * 24 * 30;
 
+/**
+ * Idle TTL for a storefront session the person did NOT ask to be remembered.
+ *
+ * Long enough to survive a reload, a lunch break or a checkout detour; short enough that a
+ * refresh token captured from a shared machine is worth far less than one from a remembered
+ * session. Admin has no "remember me" — it keeps its own hour either way.
+ */
+export const STOREFRONT_TRANSIENT_IDLE_TTL_SECONDS = 60 * 60 * 24;
+
 const IDLE_TTL_SECONDS: Record<SessionAudience, number> = {
 	storefront: STOREFRONT_IDLE_TTL_SECONDS,
 	admin: ADMIN_IDLE_TTL_SECONDS,
 };
+
+/**
+ * The idle TTL a session actually gets, honouring "remember me".
+ *
+ * Both halves of the promise move together. Shortening only the cookie would be theatre: the
+ * browser would forget the session, but a refresh token lifted off the wire would still be
+ * accepted for the full thirty days.
+ */
+function idleTtlSeconds(audience: SessionAudience, persistent: boolean): number {
+	if (audience === 'admin' || persistent) return IDLE_TTL_SECONDS[audience];
+	return STOREFRONT_TRANSIENT_IDLE_TTL_SECONDS;
+}
 const ABSOLUTE_TTL_SECONDS: Record<SessionAudience, number> = {
 	storefront: 60 * 60 * 24 * 90,
 	admin: 60 * 60 * 12,
@@ -201,8 +222,15 @@ export class SessionService {
 		audience: SessionAudience;
 		reply: FastifyReply;
 		request: FastifyRequest;
+		/**
+		 * "Remember me". Defaults to FALSE — the safe reading of an absent answer is that
+		 * nobody asked to stay signed in, so a caller that forgets to pass it gets a session
+		 * cookie rather than a month on someone else's machine.
+		 */
+		persistent?: boolean;
 	}): Promise<EstablishedSession> {
 		const nowMs = Date.now();
+		const persistent = input.persistent ?? false;
 		const refreshToken = this.opaqueToken();
 		const csrfToken = this.opaqueToken();
 
@@ -228,9 +256,10 @@ export class SessionService {
 					label: labelFromUserAgent(userAgent, userAgentHash),
 				};
 			})(),
+			persistent,
 			createdAt: new Date(nowMs).toISOString(),
 			lastSeenAt: new Date(nowMs).toISOString(),
-			expiresAt: new Date(nowMs + IDLE_TTL_SECONDS[input.audience] * 1000).toISOString(),
+			expiresAt: new Date(nowMs + idleTtlSeconds(input.audience, persistent) * 1000).toISOString(),
 			absoluteExpiresAt: new Date(nowMs + ABSOLUTE_TTL_SECONDS[input.audience] * 1000).toISOString(),
 			revokedAt: null,
 			revokeReason: null,
@@ -333,7 +362,9 @@ export class SessionService {
 			// Rotated in the same update as the refresh token, so cookie and stored hash
 			// can never drift apart.
 			nextCsrfSecretHash: this.hash(csrfToken),
-			expiresAt: new Date(nowMs + IDLE_TTL_SECONDS[current.audience] * 1000).toISOString(),
+			// Carries the original choice forward: rotating must never quietly upgrade a
+			// browser-session login into a remembered one.
+			expiresAt: new Date(nowMs + idleTtlSeconds(current.audience, current.persistent) * 1000).toISOString(),
 			lastSeenAt: new Date(nowMs).toISOString(),
 		});
 
@@ -569,11 +600,18 @@ export class SessionService {
 		const accessToken = await this.auth.signAccessToken(
 			claims as unknown as Parameters<AuthPort['signAccessToken']>[0],
 		);
-		const idleSeconds = Math.max(1, Math.floor((new Date(input.session.expiresAt).getTime() - Date.now()) / 1000));
+		/**
+		 * `undefined` rather than a number makes these SESSION cookies — no `Max-Age`, no
+		 * `Expires` — so the browser drops them when it closes. That is the visible half of
+		 * "remember me"; the server-side idle TTL above is the half that actually matters.
+		 */
+		const maxAgeSeconds = input.session.persistent
+			? Math.max(1, Math.floor((new Date(input.session.expiresAt).getTime() - Date.now()) / 1000))
+			: undefined;
 
 		void input.reply
-			.setCookie(names.access, accessToken, sessionCookieOptions(this.config, idleSeconds))
-			.setCookie(names.refresh, input.refreshToken, sessionCookieOptions(this.config, idleSeconds))
+			.setCookie(names.access, accessToken, sessionCookieOptions(this.config, maxAgeSeconds))
+			.setCookie(names.refresh, input.refreshToken, sessionCookieOptions(this.config, maxAgeSeconds))
 			.setCookie(names.csrf, input.csrfToken, csrfCookieOptions(this.config));
 	}
 

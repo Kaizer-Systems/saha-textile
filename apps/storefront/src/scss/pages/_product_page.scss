@@ -1550,7 +1550,7 @@
 			transition: none;
 			.spinning {
 				&::before {
-					border-right: 3px solid #1aa488;
+					border-right: 3px solid var(--theme-color);
 				}
 			}
 		}
@@ -2169,7 +2169,7 @@
 			}
 
 			i {
-				color: #1aa488;
+				color: var(--theme-color);
 				font-size: 20px;
 			}
 		}

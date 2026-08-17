@@ -24,7 +24,8 @@
     "split:admin-users": "tsx scripts/split-admin-users.ts",
     "rename:admin-user-permissions": "tsx scripts/rename-admin-user-permissions.ts",
     "extract:credentials": "tsx scripts/extract-credentials.ts",
-    "seed:system-roles": "tsx scripts/seed-system-roles.ts"
+    "seed:system-roles": "tsx scripts/seed-system-roles.ts",
+    "reconcile:indexes": "tsx scripts/reconcile-indexes.ts"
   },
   "dependencies": {
     "@saha-textile/contracts": "workspace:*",

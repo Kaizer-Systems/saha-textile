@@ -239,8 +239,18 @@
 				border-top: 1px solid #ddd;
 
 				.btn {
-					background-color: #1aa488;
-					color: white;
+					/**
+					 * The theme's own accent, not the `#1aa488` green this shipped with.
+					 *
+					 * Fastkart ships several colour themes in one stylesheet and this rule carried a
+					 * literal from a different one, so the sidebar's only coloured button disagreed
+					 * with every other button in the app. Using `btn-animation`'s gradient keeps it
+					 * with them, and there is no longer a hex here to drift out of step again.
+					 */
+					background: linear-gradient(90deg, #ff6b6b 0%, $danger-color 100%);
+					// Literal for the same reason as the channel tabs: the dark build redefines
+					// `$white`, and this gradient is the same colour in both themes.
+					color: #ffffff;
 					padding: 10px;
 				}
 			}
@@ -831,6 +841,25 @@
 						&:hover {
 							background-color: var(--theme-color);
 							color: $white;
+						}
+
+						/**
+						 * The destructive one.
+						 *
+						 * Both buttons in this group hovered to `--theme-color`, so "Edit" and
+						 * "Remove" became the same blue and the pair lost all contrast at the
+						 * moment it mattered most — the hover before a delete.
+						 *
+						 * Follows the theme's own way of differentiating buttons inside a
+						 * `.button-group` (`.privacy-button` / `.ok-button` on the cookie bar) and
+						 * uses the same accent as the sidebar's logout, which is the other
+						 * destructive action in this layout.
+						 */
+						&.delete-button:hover {
+							background: linear-gradient(90deg, #ff6b6b 0%, $danger-color 100%);
+							// Literal, not `$white`: the dark stylesheet recompiles this file with
+							// `$white` redefined, and this gradient is the same in both themes.
+							color: #ffffff;
 						}
 
 						.feather {

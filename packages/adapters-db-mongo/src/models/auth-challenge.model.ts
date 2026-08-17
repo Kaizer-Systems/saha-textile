@@ -1,3 +1,4 @@
+import { OtpChannel, OtpPurpose } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 /**
@@ -37,12 +38,12 @@ const OtpChallengeSchema = new Schema<OtpChallengeDoc>(
 	{
 		_id: { type: String, required: true },
 		identifier: { type: String, required: true },
-		purpose: {
-			type: String,
-			enum: ['login', 'register', 'verify_email', 'reset_password', 'step_up'],
-			required: true,
-		},
-		channel: { type: String, enum: ['email', 'sms', 'whatsapp'], required: true },
+		// Derived from the contract, never re-listed. The hand-copied version silently went stale
+		// the moment `change_contact` was added: every send for a contact change failed schema
+		// validation and surfaced as a 500, while the contract, the service and its unit tests
+		// all agreed the value was legitimate. A mirror that has to be remembered will not be.
+		purpose: { type: String, enum: OtpPurpose.options, required: true },
+		channel: { type: String, enum: OtpChannel.options, required: true },
 		// The code itself is never stored; only its HMAC, and never selected by default.
 		codeHash: { type: String, required: true, select: false },
 		userId: { type: String, default: null },

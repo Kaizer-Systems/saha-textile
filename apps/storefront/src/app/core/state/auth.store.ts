@@ -107,7 +107,11 @@ export const AuthStore = signalStore(
 					}
 				},
 
-				async loginWithPassword(input: { email: string; password: string }): Promise<boolean> {
+				async loginWithPassword(input: {
+					identifier: string;
+					password: string;
+					rememberMe?: boolean;
+				}): Promise<boolean> {
 					patchState(store, { pending: true, error: null });
 					try {
 						const result = await firstValueFrom(gateway.loginWithPassword(input));
@@ -121,27 +125,50 @@ export const AuthStore = signalStore(
 					}
 				},
 
-				async register(input: { email: string; password: string; displayName?: string }): Promise<boolean> {
+				/**
+				 * Completes a signup that the SERVER already verified.
+				 *
+				 * Takes only a password, and only when the signup began with one — the social
+				 * paths set one later from the account page. There are no identifiers here
+				 * because there are none in the request: the API finalises from the values it
+				 * proved, so nothing the form holds can be substituted at the moment an
+				 * account is minted.
+				 */
+				async finaliseSignup(password?: string): Promise<boolean> {
 					patchState(store, { pending: true, error: null });
 					try {
-						const result = await firstValueFrom(gateway.register(input));
+						const result = await firstValueFrom(gateway.finaliseSignup(password));
 						applySession(result.user);
 						accountStore.loadUser();
 						await firstValueFrom(gateway.ensureCsrfToken());
 						return true;
 					} catch {
-						// Includes the deliberate collision path: the API refuses generically
-						// rather than confirming the address is already registered.
+						// Covers every refusal the flow can end on — an expired pending record, an
+						// identifier that turned out to be taken, a conflict between two proven
+						// identifiers. The screen reads the stable code; the store only needs to
+						// know it did not become a session.
 						applyAnonymous(ERROR_KEYS.registration);
 						return false;
 					}
 				},
 
+				/**
+				 * Adopts a session minted by a verified provider token.
+				 *
+				 * The social routes may sign an EXISTING customer in, so the store has to be
+				 * told about a session it did not create through a credential form.
+				 */
+				async adoptSocialSession(user: AuthUser): Promise<void> {
+					applySession(user);
+					accountStore.loadUser();
+					await firstValueFrom(gateway.ensureCsrfToken());
+				},
+
 				/** Always resolves true — the API's answer is generic by design. */
-				async requestEmailOtp(email: string, purpose: 'login' | 'register' = 'login'): Promise<boolean> {
+				async requestLoginOtp(identifier: string, purpose: 'login' | 'register' = 'login'): Promise<boolean> {
 					patchState(store, { pending: true, error: null });
 					try {
-						await firstValueFrom(gateway.requestEmailOtp(email, purpose));
+						await firstValueFrom(gateway.requestLoginOtp(identifier, purpose));
 						patchState(store, { pending: false });
 						return true;
 					} catch {
@@ -150,10 +177,14 @@ export const AuthStore = signalStore(
 					}
 				},
 
-				async verifyEmailOtp(input: { email: string; code: string }): Promise<boolean> {
+				async verifyLoginOtp(input: {
+					identifier: string;
+					code: string;
+					rememberMe?: boolean;
+				}): Promise<boolean> {
 					patchState(store, { pending: true, error: null });
 					try {
-						const result = await firstValueFrom(gateway.verifyEmailOtp(input));
+						const result = await firstValueFrom(gateway.verifyLoginOtp(input));
 						applySession(result.user);
 						accountStore.loadUser();
 						await firstValueFrom(gateway.ensureCsrfToken());
@@ -164,11 +195,11 @@ export const AuthStore = signalStore(
 					}
 				},
 
-				/** Generic by design: success never confirms the address is registered. */
-				async requestPasswordReset(email: string): Promise<boolean> {
+				/** Generic by design: success never confirms the identifier is registered. */
+				async requestPasswordReset(identifier: string): Promise<boolean> {
 					patchState(store, { pending: true, error: null });
 					try {
-						await firstValueFrom(gateway.requestPasswordReset(email));
+						await firstValueFrom(gateway.requestPasswordReset(identifier));
 						patchState(store, { pending: false });
 						return true;
 					} catch {

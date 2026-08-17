@@ -21,15 +21,16 @@
 					@if (error()) {
 					<!--
 						One fixed message for every failure mode. The API answers wrong password,
-						unknown address and inactive account identically so responses cannot be
-						used to discover which addresses are registered; echoing a per-case
+						unknown identifier and inactive account identically so responses cannot be
+						used to discover which identifiers are registered; echoing a per-case
 						message here would hand that signal back.
 					-->
 					<div
 						class="alert alert-danger"
 						role="alert"
 					>
-						{{ error() }}
+						<!-- `error()` is a translation KEY, not a sentence — the other auth screens pipe it too. -->
+						{{ error()! | transloco }}
 					</div>
 					}
 					<div class="input-box">
@@ -38,14 +39,47 @@
 							[formGroup]="form"
 							(ngSubmit)="submit()"
 						>
+							<!--
+								Channel toggle. Bootstrap's `btn-group` for the grouping, but the colours
+								come from `.auth-channel-tabs` — `btn-outline-primary` used to sit here and
+								its hover is Bootstrap's primary blue, a colour this theme never uses.
+							-->
+							<div class="col-12">
+								<div
+									class="btn-group auth-channel-tabs w-100"
+									role="group"
+									[attr.aria-label]="'log_in' | transloco"
+								>
+									<button
+										type="button"
+										class="btn"
+										[class.btn-animation]="channel() === 'email'"
+										[attr.aria-pressed]="channel() === 'email'"
+										(click)="selectChannel('email')"
+									>
+										{{ 'email_address' | transloco }}
+									</button>
+									<button
+										type="button"
+										class="btn"
+										[class.btn-animation]="channel() === 'phone'"
+										[attr.aria-pressed]="channel() === 'phone'"
+										(click)="selectChannel('phone')"
+									>
+										{{ 'phone_number' | transloco }}
+									</button>
+								</div>
+							</div>
+
+							@if (channel() === 'email') {
 							<div class="col-12">
 								<div class="form-floating log-in-form">
 									<input
 										type="email"
 										class="form-control"
 										id="email"
-										id="email"
 										formControlName="email"
+										autocomplete="email"
 										placeholder="{{ 'email_address' | transloco}}"
 									/>
 									<label for="email">{{ 'email_address' | transloco}}</label>
@@ -57,6 +91,49 @@
 									}
 								</div>
 							</div>
+							} @else {
+							<!--
+								`phone-field` is the theme's own wrapper, used identically on the registration
+								screen. It is what anchors `.custom-select.intl-tel-input` inside the field and
+								pads the input's left edge to clear the flag; without it the picker falls below
+								the field and lands on whatever follows.
+							-->
+							<div class="phone-field col-12">
+								<div class="form-floating log-in-form">
+									<input
+										type="tel"
+										class="form-control"
+										id="phone"
+										formControlName="phone"
+										autocomplete="tel-national"
+										placeholder="{{ 'phone' | transloco }}"
+									/>
+									<label for="phone">{{ 'phone_number' | transloco }}</label>
+									@if (form.controls['phone'].touched && form.controls['phone'].errors?.['required'])
+									{
+									<div class="invalid-feedback">{{ 'phone_number_is_required' | transloco }}</div>
+									}
+									<select2
+										class="custom-select intl-tel-input"
+										[data]="codes"
+										[templates]="template"
+										formControlName="country_code"
+									>
+										<ng-template
+											#template
+											let-data="data"
+										>
+											<div class="country">
+												<div class="flag-box">
+													<div class="iti-flag {{data?.class}}"></div>
+												</div>
+												<span class="dial-code">{{data.code}}</span>
+											</div>
+										</ng-template>
+									</select2>
+								</div>
+							</div>
+							} @if (method() === 'password') {
 							<div class="col-12">
 								<div class="form-floating theme-form-floating log-in-form">
 									<input
@@ -64,6 +141,7 @@
 										class="form-control"
 										id="password"
 										formControlName="password"
+										autocomplete="current-password"
 										placeholder="{{ 'password' | transloco }}"
 									/>
 									<label for="password">{{ 'password' | transloco }}</label>
@@ -73,37 +151,125 @@
 									}
 								</div>
 							</div>
+							} @else if (codeSent()) {
+							<div class="col-12">
+								<!--
+									Deliberately unconditional wording: it says a code was sent IF the
+									identifier is registered, because the screen genuinely does not know.
+									Naming the destination back would confirm it exists.
+								-->
+								<p
+									class="text-content mb-2"
+									role="status"
+									aria-live="polite"
+								>
+									{{ 'otp_sent_if_registered' | transloco }}
+								</p>
+								<div class="outer-otp">
+									<div
+										id="otp"
+										class="inner-otp"
+									>
+										<!--
+											Six digits, matching the server-side challenge policy. Expiry
+											and the five-attempt cap are enforced by the API; this input
+											only keeps the expected shape obvious to the person typing.
+										-->
+										<input
+											type="text"
+											inputmode="numeric"
+											autocomplete="one-time-code"
+											formControlName="code"
+											[maxlength]="codeLength"
+											oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+										/>
+									</div>
+								</div>
+								<!--
+									Disabled until the backoff elapses, with the wait beside it so the
+									block is explained rather than just felt. The counter is removed from
+									the DOM at zero rather than left showing "0s".
+								-->
+								<div class="d-flex align-items-center mt-2 gap-2">
+									<button
+										type="button"
+										class="btn btn-link btn-sm p-0"
+										[disabled]="pending() || resend.waiting"
+										(click)="requestCode()"
+									>
+										{{ 'resend_otp' | transloco }}
+									</button>
+									@if (resend.secondsRemaining(); as seconds) {
+									<span
+										class="text-content"
+										role="timer"
+										aria-live="off"
+									>
+										{{ 'resend_available_in' | transloco: { seconds } }}
+									</span>
+									}
+								</div>
+							</div>
+							}
+
+							<!--
+								"Remember me" sits above the method switch rather than inside it: the answer
+								governs a password login and a one-time-code login alike, so it must survive
+								toggling between them. The theme's own `remember-box` markup, unchanged.
+							-->
+							<div class="col-12">
+								<div class="form-check remember-box m-0 ps-0">
+									<input
+										class="checkbox_animated check-box"
+										type="checkbox"
+										id="remember_me"
+										[formControl]="rememberMe"
+									/>
+									<label
+										class="form-check-label"
+										for="remember_me"
+									>
+										{{ 'remember_me' | transloco }}
+									</label>
+								</div>
+							</div>
 							<div class="col-12">
 								<div class="forgot-box">
-									<div class="form-check remember-box m-0 ps-0">
-										<input
-											class="checkbox_animated check-box"
-											type="checkbox"
-											id="remeberme"
-										/>
-										<label
-											class="form-check-label"
-											for="remeberme"
-										>
-											{{ 'remember_me' | transloco }}
-										</label>
-									</div>
+									<!--
+										Swaps the proof rather than the identifier, so whatever was typed
+										above survives the switch.
+									-->
+									<button
+										type="button"
+										class="btn btn-link forgot-password p-0"
+										(click)="selectMethod(method() === 'password' ? 'code' : 'password')"
+									>
+										@if (method() === 'password') { {{ 'use_one_time_code' | transloco }} } @else {
+										{{ 'use_password' | transloco }} }
+									</button>
+									@if (method() === 'password') {
 									<a
 										[routerLink]="['/auth/forgot-password']"
 										class="forgot-password"
 									>
 										{{ 'forgot_password' | transloco }}?
 									</a>
+									}
 								</div>
 							</div>
 							<div class="col-12">
-								<app-button [id]="'login_btn'">{{ 'log_in' | transloco }}</app-button>
+								<app-button [id]="'login_btn'">
+									@if (method() === 'code' && !codeSent()) { {{ 'send' | transloco }} } @else if
+									(method() === 'code') { {{ 'validate' | transloco }} } @else { {{ 'log_in' |
+									transloco }} }
+								</app-button>
 							</div>
 						</form>
 					</div>
 					<div class="other-log-in">
 						<h6>{{ 'or'| transloco}}</h6>
 					</div>
+					<app-social-sign-in />
 					<div class="sign-up-box">
 						<h4>{{ "don't_have_an_account"| transloco}}?</h4>
 						<a [routerLink]="['/auth/register']">{{ 'sign_up'| transloco}}</a>

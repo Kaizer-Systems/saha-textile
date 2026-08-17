@@ -16,6 +16,19 @@ export interface RuntimeConfig {
 	siteUrl: string;
 	defaultLocale: string;
 	supportedLocales: string[];
+	/**
+	 * Public provider identifiers for the social sign-in buttons.
+	 *
+	 * PUBLIC by design — a Google client id and a Meta app id are meant to be visible in the
+	 * page, which is why they may live in runtime config at all. The corresponding SECRETS are
+	 * API-only and must never reach a bundle, local storage or a log; nothing here is a
+	 * credential.
+	 *
+	 * Empty means "not configured", and the button is simply not rendered. A half-configured
+	 * provider must never present a button that cannot work.
+	 */
+	googleClientId: string;
+	facebookAppId: string;
 }
 
 const DEFAULTS: RuntimeConfig = {
@@ -27,6 +40,8 @@ const DEFAULTS: RuntimeConfig = {
 	// live locales keeps the i18n seams exercised, so a third is a data change rather
 	// than an architecture change. Must agree with `availableLangs` in `app.config.ts`.
 	supportedLocales: ['en', 'fr'],
+	googleClientId: '',
+	facebookAppId: '',
 };
 
 /** Mutable singleton — read this (or the legacy `environment`) after app init. */

@@ -294,8 +294,55 @@ input[type='number'] {
 	}
 }
 
+/**
+ * One-time-code entry: a single input drawn as six underlined slots.
+ *
+ * The slots are a repeating background rather than real boxes. One underline is painted every
+ * `$otp-slot-stride`, and `letter-spacing` is what pushes each digit along to the next one — so
+ * the digits line up with their slots only if the letter advance and the background stride are
+ * the SAME number.
+ *
+ * In the shipped theme they were not, and the underlying reason is that Public Sans sets digits
+ * PROPORTIONALLY: `0` advances 8.48px at 14px while `1` advances 5.70px. No single
+ * `letter-spacing` can hold six arbitrary digits on fixed slots when the digits are different
+ * widths — `111111` and `000000` land in different places. `letter-spacing: 41px` averaged out
+ * near 46.7px against a 50px stride, so digits drifted left about 3px each, the row sat well
+ * left of its underlines, the sixth slot stayed empty and a stub of a seventh appeared. On top
+ * of that the window was 235px and the field 300px, both narrower than the row, and with
+ * `overflow: hidden` plus the caret at the end the browser scrolled the field — so a complete
+ * six-digit code lost its first digit as well as its last, here and on the standalone OTP page
+ * alike.
+ *
+ * `font-variant-numeric: tabular-nums` is what makes the trick sound at all: it puts every digit
+ * on one advance, so the code `000000` and the code `111111` sit identically. Everything else is
+ * derived from the stride and that advance.
+ *
+ * The other half of the geometry is WHERE the ink sits inside each tile. The gradient runs
+ * `to left`, so its 70% stop is measured from the RIGHT: each 50px tile is blank for 15px and
+ * then inked for 35px, verified by rasterising one tile and reading the alpha channel. An
+ * earlier fix assumed the ink was on the left, which put every digit a full 33px left of its
+ * own underline and exposed a stub of the PREVIOUS tile's ink at x=0 — the cut-off slot before
+ * the first real one, which could not be typed into because it was never a slot.
+ */
+$otp-slots: 6;
+$otp-slot-stride: 50px;
+/** The drawn part of each slot: the gradient inks 70% of the tile and leaves the rest clear. */
+$otp-underline: $otp-slot-stride * 0.7;
+/**
+ * One tabular digit, as a fraction of the font size — 9.8px at 14px in Public Sans.
+ *
+ * Deliberately NOT `1ch`: `ch` reports the advance of `0` in the PROPORTIONAL face (8.56px),
+ * which is not the tabular advance the input actually renders with. Re-derive by measuring a
+ * run of digits with `font-variant-numeric: tabular-nums` applied if the theme font changes.
+ */
+$otp-digit-advance: 0.7em;
+$otp-width: $otp-slot-stride * $otp-slots;
+
 .outer-otp {
-	width: 235px;
+	width: $otp-width;
+	// Never wider than its column: the login card is narrower than this on small phones, and a
+	// fixed width there would push the card sideways.
+	max-width: 100%;
 	overflow: hidden;
 	margin-bottom: 40px;
 
@@ -304,17 +351,169 @@ input[type='number'] {
 		position: sticky;
 
 		input {
-			padding-left: 15px;
-			letter-spacing: 41px;
+			// Every digit one width, so any code aligns the same way.
+			font-variant-numeric: tabular-nums;
+			// Advance = digit + letter-spacing, so this makes it exactly one stride.
+			letter-spacing: calc(#{$otp-slot-stride} - #{$otp-digit-advance});
+			/**
+			 * Puts each digit's centre on its underline's centre.
+			 *
+			 * The ink sits at the tile's RIGHT end, so its centre is `stride - underline / 2`
+			 * from the tile's start — 32.5px here — and the digit is nudged right by half its
+			 * own advance to land on it.
+			 */
+			padding-left: calc(#{$otp-slot-stride} - #{$otp-underline} / 2 - #{$otp-digit-advance} / 2);
 			border: 0;
 			background-image: linear-gradient(to left, rgb(189, 189, 189) 70%, rgba(255, 255, 255, 0) 0%);
 			background-position: bottom;
-			background-size: 50px 1px;
+			background-size: $otp-slot-stride 1px;
 			background-repeat: repeat-x;
-			background-position-x: 35px;
-			width: 300px;
-			min-width: 300px;
+			/**
+			 * Zero, so the first tile starts exactly at the field's left edge. `repeat-x` tiles
+			 * backwards too, and any positive offset drags the previous tile's ink into view as a
+			 * partial underline before the first real slot.
+			 */
+			background-position-x: 0;
+			/**
+			 * Wider than the window on purpose. `letter-spacing` also applies AFTER the last digit,
+			 * so the content box is one stride longer than the six slots; sizing the field to the
+			 * slots alone would make it scrollable again and hide the first digit. The window above
+			 * clips the surplus, which is empty space and a seventh underline nobody sees.
+			 */
+			width: $otp-width + $otp-slot-stride;
+			min-width: $otp-width + $otp-slot-stride;
 			background-color: transparent;
+		}
+	}
+}
+
+/**
+ * Provider sign-in buttons.
+ *
+ * Google renders its own button and is untouched by any of this. Meta publishes no equivalent —
+ * their SDK widget is XFBML, which would need `xfbml: true` and a second parse pass over the
+ * page — so their button is built here to their published guidance: their blue, their mark,
+ * their wording.
+ *
+ * Sized to sit level with Google's rendered button, which is 40px tall at `size: 'large'`. The
+ * two appear side by side in the same list, and a pair of provider buttons at different heights
+ * is the detail that makes a sign-in card look unfinished.
+ */
+$social-provider-height: 40px;
+/**
+ * Google's rendered button is capped at 400px by their SDK however wide the slot is, so in a
+ * wider card Meta's stretched past it and the pair looked ragged. Capping BOTH to Google's own
+ * ceiling is what makes them the same length; the container centres whatever is left over.
+ */
+$social-provider-max-width: 400px;
+$facebook-blue: #1877f2;
+$facebook-blue-hover: #166fe5;
+
+/**
+ * The provider button inside an account card.
+ *
+ * Sits outside `.button-group` on purpose — that class styles the theme's own card actions and
+ * would repaint a provider button in the card's grey. This just gives it the same width the
+ * card's buttons have.
+ */
+.provider-connect {
+	width: 100%;
+
+	.log-in-button {
+		margin-top: 0;
+	}
+}
+
+/**
+ * Where Google draws its button.
+ *
+ * Google caps its own button at 400px however wide the container is, so in a wider slot it
+ * would sit hard against the left edge while Meta's stretches full width — a visibly ragged
+ * pair. Centring the mount fixes the alignment without touching what Google renders inside it,
+ * which must stay exactly as they draw it.
+ */
+.social-provider-mount {
+	display: flex;
+	justify-content: center;
+	max-width: $social-provider-max-width;
+	margin-inline: auto;
+}
+
+.social-provider-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	height: $social-provider-height;
+	padding: 0 16px;
+	border: 0;
+	border-radius: 4px;
+	// Google's button uses Roboto at 14px/500; matching it keeps the pair looking like a set.
+	font-size: 14px;
+	font-weight: 500;
+	line-height: 1;
+
+	&__mark {
+		width: 18px;
+		height: 18px;
+		flex-shrink: 0;
+	}
+
+	&:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	// Matches Google's ceiling so the two buttons are the same length side by side.
+	max-width: $social-provider-max-width;
+	margin-inline: auto;
+
+	&--facebook {
+		background-color: $facebook-blue;
+		color: #ffffff;
+
+		&:hover:not(:disabled),
+		&:focus-visible {
+			background-color: $facebook-blue-hover;
+			color: #ffffff;
+		}
+	}
+}
+
+/**
+ * Email / phone channel toggle on the sign-in and recovery cards.
+ *
+ * Bootstrap's `btn-outline-primary` was standing in here, and its hover is Bootstrap's own
+ * primary blue — a colour that appears nowhere else in this theme and clashed with the reddish
+ * active tab right beside it.
+ *
+ * This is the theme's own `.btn-theme-outline` behaviour (soft tone with the colour as text,
+ * hover flips to the solid tone with white text) applied to the reddish family the active tab
+ * already uses, rather than to `--theme-color`, so both halves of the control belong to one
+ * palette. The solid values are `btn-animation`'s own gradient endpoints.
+ */
+$auth-accent: #ff6b6b;
+$auth-accent-strong: $danger-color;
+
+.auth-channel-tabs {
+	.btn {
+		font-weight: 600;
+		transition: all 0.3s ease;
+	}
+
+	// The inactive half: the colour at low opacity, with the full tone as the label.
+	.btn:not(.btn-animation) {
+		background-color: rgba($auth-accent, 0.1);
+		color: $auth-accent-strong;
+		border: none;
+
+		&:hover,
+		&:focus-visible {
+			background: linear-gradient(90deg, $auth-accent 0%, $auth-accent-strong 100%);
+			// Literal, not `$white`: the dark stylesheet recompiles this whole file with `$white`
+			// redefined to a near-black, which would put dark text on the red gradient. The
+			// gradient itself is identical in both themes, so its label is too.
+			color: #ffffff;
 		}
 	}
 }

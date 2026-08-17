@@ -249,15 +249,21 @@ export class AuthService {
 	}
 
 	/**
-	 * Starts a password reset. Behaves identically whether or not the address exists —
-	 * the caller returns the same generic response either way.
+	 * Starts a password reset from an email OR phone. Behaves identically whether or not the
+	 * identifier exists — the caller returns the same generic response either way.
+	 *
+	 * The identifier only LOOKS THE ACCOUNT UP. Delivery always goes to the address recorded on
+	 * that account, never to whatever was typed, so a reset can never be steered somewhere the
+	 * account does not already own. Under `DEC-SIGNUP-VERIFICATION` every customer has a
+	 * verified address, but the guard stays: a row without one has no recovery channel, and
+	 * inventing one is not something an unauthenticated request may do.
 	 */
-	async startPasswordReset(email: string, audience: SessionAudience): Promise<void> {
-		const normalized = this.normalizeEmail(email);
-		const user = await this.customerAuth.findAuthStateByEmail(normalized);
+	async startPasswordReset(identifier: string, audience: SessionAudience): Promise<void> {
+		const user = await this.customerAuth.findAuthStateByIdentifier(identifier.trim());
 		if (!user || user.status !== 'active') return;
+		if (!user.email) return;
 
-		await this.issueResetToken(user.id, normalized, audience);
+		await this.issueResetToken(user.id, this.normalizeEmail(user.email), audience);
 	}
 
 	/**
@@ -449,6 +455,21 @@ export class AuthService {
 		return this.customerAuth.findAuthStateByEmail(this.normalizeEmail(email));
 	}
 
+	/**
+	 * Resolves a CUSTOMER by email or phone.
+	 *
+	 * Both are login credentials under `DEC-SIGNUP-VERIFICATION`, so the storefront login paths
+	 * take whatever the person typed rather than insisting on an address.
+	 *
+	 * Named for its population rather than sharing `findAuthUserByIdentifier` with the operator
+	 * lookup below. One name serving two populations is precisely the ambiguity
+	 * `DEC-ACCOUNT-SEPARATION` existed to remove, and the two return different shapes.
+	 */
+	findCustomerByIdentifier(identifier: string): Promise<CustomerAuthState | null> {
+		return this.customerAuth.findAuthStateByIdentifier(identifier.trim());
+	}
+
+	/** Resolves an OPERATOR by email or username. */
 	findAuthUserByIdentifier(identifier: string): Promise<AdminUserAuthState | null> {
 		return this.adminAuth.findAuthStateByIdentifier(identifier.trim().toLowerCase());
 	}

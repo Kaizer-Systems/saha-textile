@@ -22,6 +22,8 @@ export interface AuthSessionDoc {
 	/** Session-bound CSRF secret hash — binds a double-submit token to THIS session. */
 	csrfSecretHash: string;
 	device: { userAgentHash: string | null; ipHash: string | null; country: string | null; label: string | null };
+	/** "Remember me": dated cookie + long idle TTL when true, session cookie + short when false. */
+	persistent: boolean;
 	createdAt: Date;
 	lastSeenAt: Date;
 	expiresAt: Date;
@@ -54,6 +56,8 @@ const AuthSessionSchema = new Schema<AuthSessionDoc>(
 			country: { type: String, default: null },
 			label: { type: String, default: null },
 		},
+		// Default true: rows written before this field existed were all persistent.
+		persistent: { type: Boolean, default: true },
 		lastSeenAt: { type: Date, required: true },
 		expiresAt: { type: Date, required: true },
 		absoluteExpiresAt: { type: Date, required: true },

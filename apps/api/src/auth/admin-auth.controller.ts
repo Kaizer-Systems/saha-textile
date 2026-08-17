@@ -125,6 +125,10 @@ export class AdminAuthController {
 			audience: 'admin',
 			request,
 			reply,
+			// Operators get no "remember me": the hour-long idle TTL bounds the session either
+			// way, and a dated cookie is what admin had before the flag existed. Stated so this
+			// is a decision rather than a default nobody looked at.
+			persistent: true,
 		});
 
 		return {
@@ -192,6 +196,10 @@ export class AdminAuthController {
 			audience: 'admin',
 			request,
 			reply,
+			// Operators get no "remember me": the hour-long idle TTL bounds the session either
+			// way, and a dated cookie is what admin had before the flag existed. Stated so this
+			// is a decision rather than a default nobody looked at.
+			persistent: true,
 		});
 
 		return {

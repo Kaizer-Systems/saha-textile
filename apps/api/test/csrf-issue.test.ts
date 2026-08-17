@@ -33,6 +33,7 @@ function liveSession(csrfToken: string): AuthSession {
 		replacedBySessionId: null,
 		csrfSecretHash: hash(csrfToken),
 		device: { userAgentHash: null, ipHash: null, country: null, label: null },
+		persistent: true,
 		createdAt: new Date(now).toISOString(),
 		lastSeenAt: new Date(now).toISOString(),
 		expiresAt: new Date(now + 60_000).toISOString(),

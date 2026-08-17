@@ -83,6 +83,18 @@ export const AuthSession = z.object({
 	/** Session-bound CSRF secret hash (double-submit validation). */
 	csrfSecretHash: z.string().min(1),
 	device: SessionDeviceInfo.default({ userAgentHash: null, ipHash: null, country: null, label: null }),
+	/**
+	 * Whether the person asked to stay signed in ("remember me").
+	 *
+	 * Drives BOTH halves of the promise: a persistent session gets a dated cookie the browser
+	 * keeps across restarts and the long idle TTL; a non-persistent one gets a session cookie
+	 * and a short idle TTL. Shortening only the cookie would be theatre — a stolen refresh
+	 * token would still be honoured for the full period.
+	 *
+	 * Defaults to `true` so rows written before this field existed keep the behaviour they
+	 * were created with rather than silently expiring early.
+	 */
+	persistent: z.boolean().default(true),
 	createdAt: IsoDateTime,
 	lastSeenAt: IsoDateTime,
 	/** Idle expiry (admin shorter than storefront). */

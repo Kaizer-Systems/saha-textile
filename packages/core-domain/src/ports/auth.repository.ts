@@ -152,6 +152,14 @@ export interface CustomerAuthRepository {
 	findAuthStateById(customerId: string): Promise<CustomerAuthState | null>;
 	/** Normalized email lookup for storefront login/reset. Population-scoped (D1). */
 	findAuthStateByEmail(emailNormalized: string): Promise<CustomerAuthState | null>;
+	/**
+	 * Resolves a customer by an email OR a phone number.
+	 *
+	 * Both are login credentials under `DEC-SIGNUP-VERIFICATION`, and both are verified before
+	 * an account exists — so either identifies its owner exactly as well as the other. The
+	 * caller passes what the person typed; the shape of the value decides which column is read.
+	 */
+	findAuthStateByIdentifier(identifier: string): Promise<CustomerAuthState | null>;
 	setPasswordHash(customerId: string, passwordHash: string): Promise<void>;
 	markEmailVerified(customerId: string, emailNormalized: string): Promise<void>;
 	/**

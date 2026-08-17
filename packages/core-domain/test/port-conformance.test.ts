@@ -137,6 +137,7 @@ const fakeAdminUsers = {
 const fakeCustomerAuth = {
 	findAuthStateById: notImplemented,
 	findAuthStateByEmail: notImplemented,
+	findAuthStateByIdentifier: notImplemented,
 	setPasswordHash: notImplemented,
 	markEmailVerified: notImplemented,
 	setStatus: notImplemented,

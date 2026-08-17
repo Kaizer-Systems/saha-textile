@@ -5,7 +5,7 @@ slug: /database/schema-nebula
 wide: true
 status: implemented
 audience: [beginner, backend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 search_keywords: 'schema nebula collections database mongodb star map models ghosts graph relationships bounded context DEC'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -47,9 +47,9 @@ Schema Nebula is a **governed architecture map**, not a live database browser an
 | Amber relationship | Another collection references the selected collection.                                           |
 | Decision badge     | A stable `DEC-*` decision still affects the collection’s final policy or shape.                  |
 
-Thirty-two solid stars represent graph collections backed by exact physical-name model and test evidence. The remaining 33 stars stay target-only ghosts until equivalent adapter evidence exists.
+Thirty-five solid stars represent graph collections backed by exact physical-name model and test evidence. The remaining 30 stars stay target-only ghosts until equivalent adapter evidence exists.
 
-The current adapter now contains 38 exported Mongoose models. Every model declares an exact physical collection name, and the adapter tests assert those names. Credential extraction added `passwordCredentials`, `pinCredentials`, and `authIdentities` as current graph-backed models. `authRateLimits` is intentionally outside that graph, while the implemented `productQuestions` and `ratingAggregates` collections have no ratified node; the source-only catalogue reports all three non-graph collections without inventing new stars. The customer/operator account-separation work split the unified `users` collection into `customers` (shoppers) and `adminUsers` (operators). Schema Nebula stands at **65 / 35 / 30**.
+The current adapter contains 40 exported Mongoose models. Every model declares an exact physical collection name, and adapter tests assert those names. Thirty-five models resolve to graph nodes. `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime machinery deliberately outside the graph. `productQuestions` and `ratingAggregates` are durable implemented collections awaiting graph reconciliation; the catalogue reports them without inventing stars. Schema Nebula stands at **65 / 35 / 30**.
 
 ## Controls
 
@@ -64,17 +64,17 @@ The current adapter now contains 38 exported Mongoose models. Every model declar
 
 The authored inventory lives in `docs/_data/instruments/schema-nebula.json`. The shared build-time compiler refuses to publish it unless all of the following agree:
 
-1. the ratified route and **65 / 32 / 33** inventory;
-2. the current files under `packages/adapters-db-mongo/src/models`, including grouped files that implement several distinct physical collections, with the three current non-graph collections excluded from star promotion;
+1. the ratified route and **65 / 35 / 30** inventory;
+2. the current files under `packages/adapters-db-mongo/src/models`, including grouped files that implement several distinct physical collections, with five non-graph collections excluded from star promotion;
 3. the catalog, auth, notification and roadmap sources;
 4. all collection-to-collection references;
-5. every remaining `DEC-*` blocker in the 24-item open decision register;
+5. every remaining `DEC-*` blocker in the 28-item open decision register;
 6. the portal manifest, page provenance and verification date.
 
 Adding or removing a model therefore makes a stale constellation fail the portal build. The implementation change and its dataset state must be updated and reviewed together.
 
 ## What remains separate
 
-Schema Nebula answers **which ratified physical collections are current or targeted and how they relate**. The separate source-only database catalogue generates fields, indexes, defaults, enums, select policy and sanitized examples for all 38 current Mongoose models, including the three current non-graph collections. That broader catalogue evidence does not change the constellation’s 65-node boundary; stable DTO/migration/retention coverage remains incomplete. Do not treat a target star as implemented schema documentation or deployment proof.
+Schema Nebula answers **which ratified physical collections are current or targeted and how they relate**. The separate source-only database catalogue generates fields, indexes, defaults, enums, select policy, and sanitized examples for all 40 current Mongoose models, including the five current non-graph collections. That broader catalogue evidence does not change the constellation’s 65-node boundary; stable DTO, migration, and retention coverage remains incomplete. Do not treat a target star as implemented schema documentation or deployment proof.
 
 Continue with the [current Mongo adapter map](./current-adapter-map) for implemented model/repository evidence, [transactions and generation](./transactions-and-generation) for the future catalogue contract, and [Mission Control](/mission-control) for roadmap ownership.

@@ -4,7 +4,7 @@ description: Verified Mongoose models, indexes, repositories, mappers, seed tool
 search_keywords: 'mongo rs0 replica set connection uri directConnection models indexes repositories'
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - packages/adapters-db-mongo/src/models
     - packages/adapters-db-mongo/src/repositories
@@ -25,27 +25,28 @@ The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps,
 
 ## Current model inventory
 
-| Family                   | Physical collections                                                                                                               | Current evidence boundary                                                                                                                                                 |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Remaining original core  | `categories`, `products`, `promotions`, `orders`, `currencies`, `carts`                                                            | Existing catalogue/commerce APIs; product lifecycle/indexes, cart/`st_guest` ownership and order+cart transactional create are current; checkout idempotency remains open |
-| Separated populations    | `customers`, `adminUsers`                                                                                                          | Storefront shoppers and back-office operators are distinct collections and contracts (`DEC-ACCOUNT-SEPARATION`)                                                           |
-| Auth seven               | `authSessions`, `otpChallenges`, `oauthStates`, `passwordResetTokens`, `emailVerificationTokens`, `adminInvites`, `authRateLimits` | Session/OTP/reset/PIN/RBAC flows use these stores; OAuth callback remains open                                                                                            |
-| Authorization            | `roles`, `userRoleAssignments`                                                                                                     | Repositories/indexes are rs0-proven and API-bound for role/permission/user-authority administration                                                                       |
-| Privacy                  | `consentEvents`                                                                                                                    | Consent history and privacy request seams are API-bound                                                                                                                   |
-| Catalogue/merchandising  | `categoryPlacements`, `categoryFacetConfigs`, `attributeDefinitions`, `productVariants`, `productBundles`, `productRelations`      | Tested repositories exist; broad HTTP catalogue-management adoption remains open                                                                                          |
-| Media/inventory          | `mediaAssets`, `inventoryLedger`, `inventoryCostLayers`                                                                            | Tested repository/index behavior exists; business workflow adoption remains open                                                                                          |
-| Governance/notifications | `auditLogs`, `notificationChannelSettings`, `notificationTemplates`, `messageOutbox`                                               | Tested durable evidence/outbox stores exist; provider delivery and complete side-effect orchestration remain open                                                         |
-| Content                  | `faqEntries`, `productQuestions`, `reviews`, `ratingAggregates`                                                                    | Tested repositories exist; public/admin content operations remain open                                                                                                    |
+| Family                   | Physical collections                                                                                                                                                          | Current evidence boundary                                                                                                                                                 |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Remaining original core  | `categories`, `products`, `promotions`, `orders`, `currencies`, `carts`                                                                                                       | Existing catalogue/commerce APIs; product lifecycle/indexes, cart/`st_guest` ownership and order+cart transactional create are current; checkout idempotency remains open |
+| Separated populations    | `customers`, `adminUsers`                                                                                                                                                     | Storefront shoppers and back-office operators are distinct collections and contracts (`DEC-ACCOUNT-SEPARATION`)                                                           |
+| Credentials and identity | `passwordCredentials`, `pinCredentials`, `authIdentities`                                                                                                                     | Credential material stays selected-out by default; provider-neutral identity links serve storefront flows                                                                 |
+| Auth runtime             | `authSessions`, `otpChallenges`, `oauthStates`, `passwordResetTokens`, `emailVerificationTokens`, `adminInvites`, `authRateLimits`, `pendingSignups`, `pendingContactChanges` | Sessions, recovery, verified signup, identity and contact-change flows use these stores; transient proof/counters are TTL-bound                                           |
+| Authorization            | `roles`, `adminUserRoleAssignments`                                                                                                                                           | Repositories/indexes are rs0-proven and API-bound for role/permission/operator-authority administration                                                                   |
+| Privacy                  | `consentEvents`                                                                                                                                                               | Consent history and privacy request seams are API-bound                                                                                                                   |
+| Catalogue/merchandising  | `categoryPlacements`, `categoryFacetConfigs`, `attributeDefinitions`, `productVariants`, `productBundles`, `productRelations`                                                 | Tested repositories exist; broad HTTP catalogue-management adoption remains open                                                                                          |
+| Media/inventory          | `mediaAssets`, `inventoryLedger`, `inventoryCostLayers`                                                                                                                       | Tested repository/index behavior exists; business workflow adoption remains open                                                                                          |
+| Governance/notifications | `auditLogs`, `notificationChannelSettings`, `notificationTemplates`, `messageOutbox`                                                                                          | Tested durable evidence/outbox stores exist; provider delivery and complete side-effect orchestration remain open                                                         |
+| Content                  | `faqEntries`, `productQuestions`, `reviews`, `ratingAggregates`                                                                                                               | Tested repositories exist; public/admin content operations remain open                                                                                                    |
 
 ### Physical names are declared, not inferred
 
-Every schema passes an explicit `collection` option, and `packages/adapters-db-mongo/src/collection-names.ts` is the single declaration those literals are checked against by `test/collection-names.test.ts`. Before 2026-08-02 no schema declared one, so Mongoose derived each name from the model name and produced lowercase — and sometimes wrongly pluralized — physical names (`authsessions`, `inventoryledgers`, `messageoutboxes`). `pnpm mongo:align-collections` renames an existing database onto the ratified names; it is idempotent, refuses to merge when both names hold data, and is never run at application boot.
+Every schema passes an explicit `collection` option, and `packages/adapters-db-mongo/src/collection-names.ts` is the single declaration checked by `test/collection-names.test.ts`. `pnpm mongo:align-collections` aligns legacy inferred names with the ratified names; it is idempotent, refuses to merge when both names hold data, and never runs at application boot.
 
-The generated catalogue confirms all 38 physical names directly from Mongoose metadata: 456 fields, 103 indexes. Credential extraction added `passwordCredentials`, `pinCredentials`, and `authIdentities`. Thirty-five names map to ratified Schema Nebula nodes (**65 / 35 / 30**); `productQuestions`, `ratingAggregates`, and `authRateLimits` remain current catalogue evidence outside that fixed graph.
+The generated catalogue confirms all 40 physical names directly from Mongoose metadata: 479 fields and 107 indexes. Thirty-five names map to ratified Schema Nebula nodes (**65 / 35 / 30**). `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime collections outside the graph; `productQuestions` and `ratingAggregates` are durable current collections awaiting graph reconciliation.
 
 ## Current repository inventory
 
-Repository adapters cover the original domain stores plus auth, authorization roles/assignments, consent, catalogue structure, merchandising, inventory, media, governance and content. Auth adapters are bound into session/OTP/reset/verification/invite/admin flows. Role and assignment adapters now drive effective-permission resolution and the deny-by-default admin role/authority APIs; catalogue/media/inventory/governance/content adapters remain tested capabilities whose wider HTTP workflows are incomplete.
+Repository adapters cover the original domain stores plus customer/operator auth, provider identities, pending proof, authorization roles/assignments, consent, catalogue structure, merchandising, inventory, media, governance and content. Identity adapters are bound into session, OTP, signup, provider, password, contact-change, recovery, verification, invite, and admin flows. Role and assignment adapters drive effective-permission resolution and deny-by-default admin authority APIs; catalogue/media/inventory/governance/content adapters remain tested capabilities whose wider HTTP workflows are incomplete.
 
 ### Common pattern
 
@@ -59,7 +60,7 @@ save/upsert → strip public id → findByIdAndUpdate($set) → mapper
 - Product listing supports category, tag, status, regex search, pagination, newest-first sort, and a `CatalogAudience` that defaults to public. Public list and direct reads are centrally restricted to `live`; public callers cannot widen the filter.
 - Category tree returns a flat depth/display-order sort; hierarchy reconstruction is a consumer concern.
 - Active promotions use start/end-window filtering and priority sort.
-- Customer and admin-user credential lookups can explicitly request the otherwise hidden password/PIN hashes; public mapping returns neither.
+- Customer and admin-user credential lookups explicitly request otherwise hidden password/PIN hashes; public mapping returns neither. Password and provider identity records are stored outside account documents.
 - Session/challenge/token repositories explicitly select hidden hashes only inside credential verification paths and never expose plaintext secrets.
 - Order listing scopes by `userId`; the controller applies customer ownership to single-order reads and gives staff/admin an explicit support bypass.
 - Order status update appends a timeline value but throws a generic adapter error when missing.
@@ -118,19 +119,19 @@ Definition in `docker/mongo/docker-compose.yml`. The canonical host port is `270
 
 The seed is useful for early schema tests. It is not a complete domain seed: multi-placement categories, semantic option roles, named add-on saree behavior, bundle/composite, search dictionary, sessions, payments, inventory, and operational records remain absent. First-administrator creation deliberately lives in the separate operator-only bootstrap CLI rather than general seed data.
 
-## Existing integration test
+## Integration-test boundary
 
-The Mongo package has 103 tests: four source-only collection-name checks and 99 integration tests that connect to rs0 for baseline repositories, transaction behavior, auth and RBAC persistence, catalogue structure/merchandising, inventory/media, governance/content and order+cart transactional create. The integration group runs only when `RUN_DB_IT=1` and Mongo configuration is present.
+The Mongo package has source-only collection-name checks and integration suites that connect to rs0 for baseline repositories, transaction behavior, identity/authority persistence, catalogue structure/merchandising, inventory/media, governance/content, and transactional order/cart work. The integration group runs only when `RUN_DB_IT=1` and Mongo configuration is present.
 
 Limitations:
 
-- normal runs execute the four source-only checks and skip the 99 rs0 tests (they require `RUN_DB_IT=1` and Mongo configuration);
+- normal runs execute source-only checks and skip rs0 integration tests unless `RUN_DB_IT=1` and Mongo configuration are present;
 - the suite does not start the replica set itself — bring it up first with `pnpm mongo:up`;
 - it does not exercise indexes/uniqueness broadly;
 - six transaction tests prove commit, rollback after a successful write, error propagation, return values, nested-session joining, and inner-failure rollback of outer writes;
 - auth-persistence tests prove default secret exclusion, explicit credential reads, session rotation/reuse-family support, atomic single-use challenge/token consumption, TTL/index declarations and atomic rate-limit increments;
-- 15 catalogue tests, 15 inventory/media tests and 16 governance/content tests prove the newly implemented repository/index behavior;
-- 3 order+cart transaction tests prove commit and rollback of order save with cart consumption;
+- dedicated catalogue, inventory/media, governance/content, identity, and contact-change suites cover repository/index behavior;
+- order/cart transaction checks cover commit and rollback of order save with cart consumption;
 - RBAC persistence tests prove role storage and the partial unique active-assignment index;
 - it does not cover every repository/mapper.
 

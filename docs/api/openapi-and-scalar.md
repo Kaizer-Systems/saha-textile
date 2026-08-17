@@ -4,7 +4,7 @@ wide: true
 description: OpenAPI source-of-truth rules, current Scalar scaffold, completeness gates, Test Request security, and build topology.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/api/src/openapi.ts
     - apps/api/src/generate-openapi.ts
@@ -33,11 +33,11 @@ NestJS creates one OpenAPI document through `apps/api/src/openapi.ts`. The API e
 
 The surface is deliberately labelled **scaffolded**. The document contains the current controller routes; the evidence base includes split storefront/admin cookie-auth families, email verification, admin recovery/invites/resume, privacy routes, the admin role/permission/user-authority family, health probes, and the backwards-compatible `/health` alias. The public `GET /catalog/products` operation has `page`, `pageSize`, `categoryId`, `tag`, and `search` query parameters—**not `status`**. Scalar makes the current evidence navigable; it does not repair or conceal its omissions.
 
-Scalar’s **Test Request** control is enabled. Authentication is not persisted by Scalar, no external request proxy is configured, and the generated document declares only the approved local API server (`http://127.0.0.1:4000`). Normal API security controls remain in force: Test Request does not bypass authentication, CSRF, CORS, role or ownership authorization, or rate limits.
+Scalar’s **Test Request** control is enabled. Authentication is not persisted by Scalar, no external request proxy is configured, and the generated document currently declares `http://127.0.0.1:4000`. The local applications use `https://localhost:4000` with Secure `__Host-` cookies, so authenticated Test Request is not a verified local workflow until the generated server URL and approved CORS origin use the same HTTPS topology. Normal API security controls remain in force: Test Request does not bypass authentication, CSRF, CORS, role or ownership authorization, or rate limits.
 
 Session establishment and refresh write a readable, session-bound CSRF cookie alongside the httpOnly access and refresh cookies. For an unsafe request carrying that session:
 
-1. retain the readable CSRF cookie written by register, login, OTP verification, or refresh;
+1. retain the readable CSRF cookie written by signup finalisation, login, OTP verification, or refresh;
 2. copy that cookie value into the `x-csrf-token` request header; and
 3. send the unsafe request with the access/refresh and CSRF cookies.
 
@@ -47,28 +47,28 @@ Missing, mismatched, or cross-session values fail with `403`. The CSRF token doe
 
 ## Current authentication and authorization boundary
 
-The authentication and authorization implementation is **partial**, not absent and not complete. Cookie sessions use the tested Mongo repositories backed by separated customer and operator populations; access and opaque rotating refresh tokens live only in httpOnly cookies, refresh reuse revokes the family, CSRF is checked against the current session, and storefront/admin audiences are isolated. Storefront register/password login/OTP/refresh/logout/password reset/email verification/me, admin password recovery/password/PIN login/PIN setup/refresh/logout/invite acceptance/HTTP resume/me, Account Security at `/account` (PIN/password/sessions), the 15-minute idle soft-lock with PIN-or-password resume, the closed **103-code** permission registry, active role-assignment resolution, deny-by-default role and user-authority administration, the operator-only first-admin bootstrap, admin CRM customers, consent/privacy seams, and order ownership are implemented.
+The authentication and authorization implementation is **partial**, not absent and not complete. Cookie sessions use tested Mongo repositories backed by separated customer and operator populations; access and opaque rotating refresh tokens live only in httpOnly cookies, refresh reuse revokes the family, CSRF is checked against the current session, and storefront/admin audiences are isolated. Storefront verified-before-creation signup, password and OTP login by email or phone, Google and Facebook token verification, identity linking, password management, sessions, profile/address/contact self-service, guest-cart adoption, and `me` are implemented. Admin recovery, password/PIN login, PIN setup, invites, HTTP resume, Account Security, the 15-minute idle soft-lock, the closed **89-code** permission registry, assignment resolution, deny-by-default administration, operator bootstrap, CRM, consent/privacy, and ownership checks are also implemented.
 
 The remaining boundary is explicit:
 
 - Cookie session issue/refresh/revoke is implemented, with reuse-triggered family revocation, session-bound CSRF, and storefront/admin audience guards.
-- The storefront authentication family, email-verification completion/resend, and anti-enumeration responses are implemented, while OAuth verification remains absent.
+- Storefront signup creates no customer until both email and phone are verified. Google and Facebook verifier adapters, provider-neutral identity links, step-up connect/disconnect, login-method discovery, session management, and authenticated password setup are implemented. Real provider use still depends on credentials, approved origins, provider-console configuration, and browser proof.
 - Admin password recovery, PIN login/setup/lockout, invites, HTTP resume, Account Security client, idle soft-lock orchestration, audience guards, active assignment-based permission resolution, role/permission/user-authority APIs, no-delegation, last-admin protection, offboarding, permission-version invalidation, and operator-only first-admin bootstrap are implemented; real-browser PIN-login proof coverage remains open.
-- Consent/privacy seams, order BOLA, cart Principal/`st_guest` ownership, and order-create cart adoption are implemented; guest→user merge, pending intents, and checkout idempotency remain open work. Soft-delete revive/ops rules remain gated by `DEC-CUSTOMER-SOFT-DELETE-OPS`.
+- Consent/privacy seams, order BOLA, cart Principal/`st_guest` ownership, order-create cart adoption, and signup/social-login guest-cart adoption are implemented; pending-intent continuation and checkout idempotency remain open work. Soft-delete revive/ops rules remain gated by `DEC-CUSTOMER-SOFT-DELETE-OPS`.
 
 Scalar must distinguish these active controls from the residual gaps. A route appearing in OpenAPI is not proof that its request/response/security semantics are fully documented.
 
 ## Generated evidence snapshot
 
-| Measurement                              | Generated result                                        | Meaning                                                                                                      |
-| ---------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Paths / operations                       | **75 paths / 88 operations**                            | Current controller routes, including admin CRM, notifications, and RBAC/authority operations, are published. |
-| Declared servers                         | One: `http://127.0.0.1:4000`                            | Test Request has no production target or proxy.                                                              |
-| Operation tags                           | 88 / 88 operations; 8 declared tags                     | Operations are grouped under the governed tag vocabulary.                                                    |
-| Explicit operation security              | 0 / 88 operations                                       | The document declares `sessionCookie`, but no operation attaches security or its audience/permission rules.  |
-| Request bodies / component schemas       | 0 / 0                                                   | Controller-local zod bodies are not represented as reusable OpenAPI request contracts.                       |
-| Responses with content schemas           | 0 / 88 operations                                       | Runtime response values—including `ApiErrorResponse`—are not yet represented as generated response schemas.  |
-| Explicit non-success operation responses | 1 / 88 operations (`GET /health/ready` documents `503`) | Operation-specific error documentation is still almost entirely absent.                                      |
+| Measurement                              | Generated result                                         | Meaning                                                                                                            |
+| ---------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Paths / operations                       | **95 paths / 111 operations**                            | Current controller routes, including storefront identity/account self-service and admin operations, are published. |
+| Declared servers                         | One: `http://127.0.0.1:4000`                             | Test Request has no production target or proxy.                                                                    |
+| Operation tags                           | 111 / 111 operations; 9 declared tags                    | Operations are grouped under the governed tag vocabulary.                                                          |
+| Explicit operation security              | 0 / 111 operations                                       | The document declares `sessionCookie`, but no operation attaches security or its audience/permission rules.        |
+| Request bodies / component schemas       | 0 / 0                                                    | Controller-local zod bodies are not represented as reusable OpenAPI request contracts.                             |
+| Responses with content schemas           | 0 / 111 operations                                       | Runtime response values—including `ApiErrorResponse`—are not yet represented as generated response schemas.        |
+| Explicit non-success operation responses | 1 / 111 operations (`GET /health/ready` documents `503`) | Operation-specific error documentation is still almost entirely absent.                                            |
 
 Two generation runs produced byte-identical output without opening a MongoDB connection. That proves the current source generator is deterministic in this environment; it is not yet the required CI generation and drift gate.
 
@@ -86,8 +86,8 @@ Scalar therefore remains **scaffolded**. Promotion is still blocked by:
 
 - complete request and response schemas;
 - cookie-session, CSRF, storefront/admin audience, role and ownership semantics in the document;
-- documentation of the implemented assignment, permission, no-delegation, last-admin, offboarding, bootstrap, Account Security, and idle-lock/resume semantics, plus completion of OAuth verification and real-browser PIN-login proof coverage;
-- documentation of cart guest/user ownership, order-create adoption, and the remaining guest→user merge;
+- documentation of the implemented assignment, permission, no-delegation, last-admin, offboarding, bootstrap, Account Security, storefront identity/account, and idle-lock/resume semantics, plus real-browser provider and PIN-login proof coverage;
+- documentation of cart guest/user ownership, order-create adoption, guest-cart adoption during authentication, and pending-intent continuation;
 - route-specific rate-limit semantics in the document;
 - operation-specific error and idempotency examples;
 - transactional, audit, outbox, notification, and provider side-effect documentation;

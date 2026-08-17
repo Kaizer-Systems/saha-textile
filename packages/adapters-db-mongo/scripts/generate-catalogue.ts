@@ -31,6 +31,8 @@ import {
 	OrderModel,
 	PasswordCredentialModel,
 	PasswordResetTokenModel,
+	PendingContactChangeModel,
+	PendingSignupModel,
 	PinCredentialModel,
 	ProductBundleModel,
 	ProductModel,
@@ -167,6 +169,18 @@ const modelSources: Array<{
 		source: 'packages/adapters-db-mongo/src/models/auth-rate-limit.model.ts',
 		context: 'Identity',
 		purpose: 'Current atomic, TTL-expiring auth rate-limit counter capability.',
+	},
+	{
+		model: PendingSignupModel,
+		source: 'packages/adapters-db-mongo/src/models/pending-signup.model.ts',
+		context: 'Identity',
+		purpose: 'Short-lived server-held verification state used before a customer account is created.',
+	},
+	{
+		model: PendingContactChangeModel,
+		source: 'packages/adapters-db-mongo/src/models/pending-contact-change.model.ts',
+		context: 'Identity',
+		purpose: 'Short-lived server-held verification state for a customer email or phone change.',
 	},
 	{
 		model: RoleModel,

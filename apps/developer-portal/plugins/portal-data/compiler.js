@@ -57,9 +57,11 @@ const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 	['messageOutbox', 'governance.model.ts'],
 ]);
 const SCHEMA_NEBULA_NON_TARGET_MODEL_FILES = new Set([
-	// The auth architecture explicitly keeps rate-limit storage outside the locked
-	// 65-node physical target graph; the adapter may change without inventing a star.
+	// The auth architecture keeps transient runtime machinery outside the locked
+	// 65-node physical target graph; an adapter model must not invent a domain star.
 	'auth-rate-limit.model.ts',
+	'pending-signup.model.ts',
+	'pending-contact-change.model.ts',
 ]);
 const COMMAND_VERBS_ROUTE = '/frontend/portal-experience-layer';
 const COMMAND_VERB_ORDER = ['trace', 'gate', 'status'];

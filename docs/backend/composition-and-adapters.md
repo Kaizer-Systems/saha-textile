@@ -4,7 +4,7 @@ wide: true
 description: NestJS module wiring, dependency-injection tokens, adapter ownership, Mongo mappings, and provider seams.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/api/src/app.module.ts
     - apps/api/src/config/app-config.ts
@@ -32,10 +32,12 @@ flowchart TD
     App --> Orders["OrdersModule"]
     App --> Auth["AuthModule"]
     App --> Admin["AdminModule"]
+    App --> Storefront["StorefrontModule"]
+    App --> Security["SecurityModule"]
     App --> Privacy["PrivacyModule"]
 
     Persistence --> MongoRepos["Original commerce repositories"]
-    Persistence --> AuthRepos["Auth + consent repositories"]
+	Persistence --> AuthRepos["Auth, pending-proof + consent repositories"]
     Persistence --> Notifications["NotificationPort factory (MSG91 | console)"]
     Persistence --> Transaction["MongoTransactionManager"]
     Persistence --> AuthAdapter["Argon2JwtAuth"]
@@ -44,20 +46,21 @@ flowchart TD
 
 The name `PersistenceModule` is currently broader than persistence because it also binds `AuthPort`. The target folder plan separates composition into persistence, search, and external-adapter modules so dependency ownership remains obvious.
 
-`PersistenceModule` binds the auth session/user, OTP, OAuth state, reset, verification, invite, rate-limit, role, user-role-assignment, audit, consent, and notification settings/template/outbox repositories. The auth/session/privacy services and `AdminModule` consume those bindings. `SessionGuard` resolves effective permissions from transitional embedded grants plus active assignments, capped by the account's coarse role tier; the new role, permission and user-authority routes enforce named permissions deny-by-default. `NOTIFICATION_PORT` is `Msg91NotificationAdapter` when `NOTIFICATION_PROVIDER=msg91` and `MSG91_AUTH_KEY` are set; otherwise `ConsoleNotificationAdapter` (with a warn if provider asks for msg91 without a key). Chunk E's additional repository adapters exist in the Mongo package but are not all API-bound workflows.
+`PersistenceModule` binds customer/operator auth, sessions, OTP, OAuth state, provider identities, pending signup/contact-change proof, reset, verification, invite, rate-limit, role, admin-user-role-assignment, audit, consent, and notification repositories. `AuthModule`, `StorefrontModule`, `AdminModule`, and privacy services consume those bindings. `OAuthService` composes the Google and Facebook verifier adapters from `@saha-textile/adapters-auth` at the API edge; provider SDK and payload types do not enter core. `SessionGuard` resolves effective permissions from transitional embedded grants plus active assignments under the account's coarse-role ceiling. `NOTIFICATION_PORT` selects `Msg91NotificationAdapter` when configured and otherwise uses `ConsoleNotificationAdapter`. Chunk E's additional repository adapters exist in the Mongo package but are not all API-bound workflows.
 
 ## Current DI bindings
 
 | Token family                    | Concrete implementation                                                                                                                                                                                          |
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Catalogue/commerce repositories | `MongoProductRepository`, `MongoCategoryRepository`, `MongoCurrencyRepository`, `MongoPromotionRepository`, `MongoCartRepository`, `MongoOrderRepository`, `MongoCustomerRepository`, `MongoAdminUserRepository` |
-| Auth/authorization repositories | Mongo session, auth-user, OTP, OAuth-state, reset, verification, invite, rate-limit, role and user-role-assignment repositories                                                                                  |
+| Auth/authorization repositories | Mongo customer/operator auth, session, OTP, OAuth-state, provider-identity, pending-signup, pending-contact-change, reset, verification, invite, rate-limit, role and admin-user-role-assignment repositories    |
 | Audit repository                | `MongoAuditLogRepository`, used by admin role/authority/offboarding and first-admin bootstrap paths                                                                                                              |
 | Privacy repository              | `MongoConsentRepository`                                                                                                                                                                                         |
 | Notification repositories       | `MongoNotificationSettingsRepository`, `MongoNotificationTemplateRepository`, `MongoMessageOutboxRepository`                                                                                                     |
 | `TRANSACTION_MANAGER`           | `MongoTransactionManager`                                                                                                                                                                                        |
 | `NOTIFICATION_PORT`             | Factory: `Msg91NotificationAdapter` (`@saha-textile/adapters-notifications-msg91`) or `ConsoleNotificationAdapter`                                                                                               |
 | `AUTH_PORT`                     | `Argon2JwtAuth` factory using validated app config                                                                                                                                                               |
+| OAuth verifier ports            | `GoogleIdTokenVerifier` and `FacebookTokenVerifier` from `@saha-textile/adapters-auth`, composed by `OAuthService`                                                                                               |
 
 Unbound ports do not become operational merely because their interfaces exist.
 
@@ -66,7 +69,7 @@ Unbound ports do not become operational merely because their interfaces exist.
 The adapter currently owns:
 
 - connection configuration and Mongoose lifecycle;
-- 38 models with explicitly declared physical collection names, plus indexes;
+- 40 models with explicitly declared physical collection names, plus indexes;
 - conversion from Mongoose documents to public contract-shaped values;
 - original API-bound repositories plus bound auth/consent and tested Chunk E catalogue, inventory, media, governance, notification and content adapters;
 - a transaction manager that exposes only the opaque core transaction context and uses `AsyncLocalStorage` so nested transactions join;
@@ -104,16 +107,16 @@ For payment, shipping, notifications, FX, storage, search, and media processing:
 7. persist correlation and version evidence required for reconciliation;
 8. bind the selected adapter in composition.
 
-## Stub versus fake versus sandbox
+## Development, sandbox, and live adapters
 
-| Kind            | Use                                                    | Must not be mistaken for                    |
-| --------------- | ------------------------------------------------------ | ------------------------------------------- |
-| Fake            | Deterministic test implementation                      | Provider compatibility evidence             |
-| Stub adapter    | Explicit not-configured or canned development behavior | Successful production integration           |
-| Sandbox adapter | Real provider sandbox protocol                         | Live credential/capture readiness           |
-| Live adapter    | Approved production integration                        | Permission to expose unsafe console actions |
+| Kind                       | Use                                           | Must not be mistaken for                    |
+| -------------------------- | --------------------------------------------- | ------------------------------------------- |
+| Test implementation        | Deterministic verification of a port contract | Provider compatibility evidence             |
+| Not-configured development | Explicitly unavailable or local-only behavior | Successful production integration           |
+| Sandbox adapter            | Real provider sandbox protocol                | Live credential/capture readiness           |
+| Live adapter               | Approved production integration               | Permission to expose unsafe console actions |
 
-Seam-first provider work is ratified: ports and stub or sandbox adapters can advance before live credentials. A live adapter requires current official provider documentation, credentials, webhook verification, reconciliation, failure testing, and an approved rollout.
+Seam-first provider work is ratified: ports and non-production adapters can advance before live credentials. A live adapter requires current official provider documentation, credentials, webhook verification, reconciliation, failure testing, and an approved rollout.
 
 ## Configuration boundary
 
@@ -149,7 +152,7 @@ The split is runtime-proven: with Mongo stopped, `/health/ready` returned `503` 
 2. Verify the current official provider protocol/version.
 3. Add provider config with zod and no browser exposure.
 4. Implement mapping and error translation inside the adapter package.
-5. Add unit tests with mocked transport.
+5. Add unit tests with a controlled transport implementation.
 6. Add sandbox/integration tests behind explicit environment gates.
 7. Add composition binding.
 8. Add readiness/metrics only for dependencies required to serve traffic.

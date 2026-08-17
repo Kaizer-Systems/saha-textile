@@ -4,7 +4,7 @@ wide: true
 description: Conventions for safe operator forms, data tables, validation, actions, and future API mutations.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/admin/src/app/shared/ui/table
     - apps/admin/src/app/shared/ui/form-fields
@@ -15,7 +15,7 @@ source_of_truth:
 
 # Admin forms, tables, and CRUD
 
-The admin already contains reusable primitives and large domain-shaped forms. Use those seams, but do not assume every current type or interaction is the final standard. Several components still carry permissive migration-era types and mock operations that should be tightened as real contracts arrive.
+The admin already contains reusable primitives and large domain-shaped forms. Use those seams, but do not assume every current type or interaction is the final standard. Several components still carry permissive migration-era types and unwired operations that should be tightened as real contracts arrive.
 
 ## Shared table responsibilities
 

@@ -3,7 +3,7 @@ title: Admin Contributor Recipes
 description: Beginner-safe recipes for routes, lists, forms, mutations, permissions, and operator verification.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/admin/src/app/routes
     - apps/admin/src/app/features
@@ -44,9 +44,9 @@ source_of_truth:
 7. Invalidate the exact list/detail queries after success.
 8. Handle invalid IDs, 403, conflict, and validation responses.
 
-## Recipe: replace a mock action
+## Recipe: connect an unwired action
 
-Search for the explicit mock comment before implementing. Then:
+Trace the explicit no-op, fixture-backed, or navigation-only boundary before implementing. Then:
 
 1. Confirm the API route and shared contract exist.
 2. Add a typed mutation at the data-access boundary.
@@ -54,7 +54,7 @@ Search for the explicit mock comment before implementing. Then:
 4. Add confirmation for destructive or high-impact actions.
 5. Add pending/success/failure states.
 6. Reconcile cache data.
-7. Remove obsolete mock comments and fixture assumptions.
+7. Remove obsolete no-op comments and fixture assumptions.
 8. Advance portal status only after verification.
 
 Live CRM soft-delete already follows this path: the default list hides deleted customers; do not add revive/recycle-bin UI until `DEC-CUSTOMER-SOFT-DELETE-OPS` lands.
@@ -86,7 +86,7 @@ Live CRM soft-delete already follows this path: the default list hides deleted c
 ## Operator verification checklist
 
 - [ ] Deep-link refresh reaches the correct shell and feature.
-- [ ] The screen does not imply a real write when the action is still mocked.
+- [ ] The screen does not imply a real write when the action remains unwired.
 - [ ] Keyboard users can reach and invoke every action.
 - [ ] Search, sorting, filters, pagination, and reset behavior agree.
 - [ ] Validation messages explain how to recover.

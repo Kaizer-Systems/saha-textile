@@ -4,13 +4,14 @@ wide: true
 description: Verified controller routes, present controls, missing production guarantees, and target ownership.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts
     - apps/api/src/config/app-config.ts
     - apps/api/src/health
     - apps/api/src/auth
+    - apps/api/src/storefront
     - apps/api/src/admin
     - apps/api/src/admin/admin-customers.controller.ts
     - apps/api/src/first-admin.ts
@@ -31,7 +32,7 @@ source_of_truth:
 
 # Current API route inventory
 
-This inventory describes controller code reviewed on 2026-08-11. It is not a production API promise. “Present control” means code exists; “missing guarantee” names the proof still required.
+This inventory describes controller code reviewed on 2026-08-18. It is not a production API promise. “Present control” means code exists; “missing guarantee” names the proof still required.
 
 ## Runtime and contract routes
 
@@ -45,37 +46,80 @@ This inventory describes controller code reviewed on 2026-08-11. It is not a pro
 
 ## Storefront authentication routes
 
-| Method | Route                                      | Present control                                                            | Current boundary/gap                                  |
-| ------ | ------------------------------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `POST` | `/auth/storefront/register`                | Generic duplicate response; argon2id; session cookies; verification issued | Provider delivery remains an adapter seam             |
-| `POST` | `/auth/storefront/login/password`          | Generic credentials; rate limits; storefront cookie audience               | OpenAPI does not declare cookie security              |
-| `POST` | `/auth/storefront/login/email-otp/request` | Generic accepted response; rate limits; atomic challenge issuance          | Provider delivery still uses the current adapter seam |
-| `POST` | `/auth/storefront/login/email-otp/verify`  | Attempt-capped consume; storefront cookie session                          | OpenAPI omits request/response/security schemas       |
-| `POST` | `/auth/storefront/refresh`                 | Atomic rotation; replay revokes refresh family; rotates CSRF               | OpenAPI omits cookie/CSRF semantics                   |
-| `POST` | `/auth/storefront/logout`                  | Revokes current session and clears cookies                                 | OpenAPI omits cookie/CSRF semantics                   |
-| `POST` | `/auth/storefront/password/forgot`         | Generic accepted response                                                  | No operation-specific rate-limit/error schema         |
-| `POST` | `/auth/storefront/password/reset`          | Single-use token; token-version bump; revokes all sessions                 | OpenAPI omits side effects                            |
-| `GET`  | `/auth/storefront/me`                      | Global session guard + storefront audience                                 | OpenAPI declares no security requirement              |
-| `POST` | `/auth/storefront/email/verify`            | Single-use token completion with generic outcome                           | OpenAPI omits body and side-effect schemas            |
-| `POST` | `/auth/storefront/email/verify/resend`     | Generic resend acknowledgement and token rotation                          | Provider delivery remains an adapter seam             |
+The former `POST /auth/storefront/register` route has been removed. Customer creation now occurs only through the server-held signup flow after both email and phone are verified.
+
+| Method   | Route                                      | Present control                                                               | Current boundary/gap                                     |
+| -------- | ------------------------------------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `POST`   | `/auth/storefront/signup/start`            | Begins or resumes one browser-bound pending signup; creates no customer       | OpenAPI omits request/response and cookie semantics      |
+| `POST`   | `/auth/storefront/signup/field`            | Updates email or phone and clears proof for the changed field                 | OpenAPI omits stable refusal codes                       |
+| `POST`   | `/auth/storefront/signup/otp/request`      | Rate-limited email/phone verification send with bounded resend policy         | Live delivery requires configured templates/provider     |
+| `POST`   | `/auth/storefront/signup/otp/verify`       | One-time proof; existence disclosure only after control is proven             | OpenAPI omits refusal and disclosure semantics           |
+| `POST`   | `/auth/storefront/signup/finalise`         | Creates a customer from server-held verified values and adopts a guest cart   | Pending-intent continuation remains open                 |
+| `POST`   | `/auth/storefront/oauth/state`             | Mints short-lived state/nonce and retains allowlisted continuation evidence   | Provider-console origin configuration remains external   |
+| `POST`   | `/auth/storefront/oauth/google`            | Verifies signature/audience/expiry/nonce and confirmed Google email           | Real credentials and supported-browser proof remain open |
+| `POST`   | `/auth/storefront/oauth/facebook`          | Verifies token validity, app id, expiry, and provider subject                 | Real credentials and supported-browser proof remain open |
+| `GET`    | `/auth/storefront/login-methods`           | Returns methods only after authenticated proof-of-control rules are satisfied | OpenAPI omits disclosure policy                          |
+| `POST`   | `/auth/storefront/step-up/request`         | Issues an email or phone step-up challenge for a signed-in customer           | Provider delivery remains configuration-dependent        |
+| `POST`   | `/auth/storefront/oauth/connect`           | Links a verified provider subject after step-up                               | Provider browser proof remains open                      |
+| `POST`   | `/auth/storefront/oauth/disconnect`        | Removes a provider link without allowing the last credential to disappear     | OpenAPI omits last-credential refusal semantics          |
+| `POST`   | `/auth/storefront/login/password`          | Accepts normalized email or phone, rate limits, and issues storefront cookies | OpenAPI does not declare cookie security                 |
+| `POST`   | `/auth/storefront/login/email-otp/request` | Generic response with atomic challenge issuance for email or phone            | Route name retains `email-otp`; contract accepts either  |
+| `POST`   | `/auth/storefront/login/email-otp/verify`  | Attempt-capped consume and storefront cookie session                          | OpenAPI omits request/response/security schemas          |
+| `POST`   | `/auth/storefront/refresh`                 | Atomic rotation; replay revokes refresh family; rotates CSRF                  | OpenAPI omits cookie/CSRF semantics                      |
+| `POST`   | `/auth/storefront/logout`                  | Revokes current session and clears cookies                                    | OpenAPI omits cookie/CSRF semantics                      |
+| `POST`   | `/auth/storefront/password/forgot`         | Generic recovery response for email or phone                                  | No operation-specific rate-limit/error schema            |
+| `POST`   | `/auth/storefront/password/reset`          | Single-use token; token-version bump; revokes all sessions                    | OpenAPI omits side effects                               |
+| `POST`   | `/auth/storefront/password/set`            | Step-up set/change; revokes other sessions and retains the caller             | OpenAPI omits step-up/refusal semantics                  |
+| `POST`   | `/auth/storefront/activate`                | Establishes credentials for an eligible admin-created customer                | Provider delivery remains configuration-dependent        |
+| `GET`    | `/auth/storefront/me`                      | Storefront audience with sanitized customer/session data                      | OpenAPI declares no security requirement                 |
+| `GET`    | `/auth/storefront/sessions`                | Lists the signed-in customer's sessions                                       | OpenAPI omits cookie security                            |
+| `DELETE` | `/auth/storefront/sessions/:id`            | Revokes one owned session                                                     | OpenAPI omits ownership and CSRF semantics               |
+| `POST`   | `/auth/storefront/sessions/revoke-others`  | Revokes every other owned session                                             | OpenAPI omits side effects                               |
+| `POST`   | `/auth/storefront/email/verify`            | Single-use email-verification completion                                      | OpenAPI omits body and side-effect schemas               |
+| `POST`   | `/auth/storefront/email/verify/resend`     | Generic resend acknowledgement and token rotation                             | Provider delivery remains configuration-dependent        |
+
+## Storefront account routes
+
+These routes derive the customer id from the storefront session. A caller cannot supply another customer's id in the path.
+
+| Method   | Route                                      | Present control                                               | Current boundary/gap                              |
+| -------- | ------------------------------------------ | ------------------------------------------------------------- | ------------------------------------------------- |
+| `PATCH`  | `/storefront/account/profile`              | Updates the signed-in customer's display name                 | Broader profile fields remain separate contracts  |
+| `GET`    | `/storefront/account/addresses`            | Lists owned addresses                                         | OpenAPI omits response/security schemas           |
+| `POST`   | `/storefront/account/addresses`            | Adds an owned address                                         | OpenAPI omits body/CSRF semantics                 |
+| `PATCH`  | `/storefront/account/addresses/:addressId` | Updates an address through session-scoped ownership           | OpenAPI omits ownership/error semantics           |
+| `DELETE` | `/storefront/account/addresses/:addressId` | Deletes an owned address and reports missing ids              | OpenAPI omits ownership/error semantics           |
+| `GET`    | `/storefront/account/contact`              | Returns the caller's pending email/phone change, if any       | OpenAPI omits response/security schemas           |
+| `POST`   | `/storefront/account/contact/email`        | Starts step-up and verification for a replacement email       | Old value remains active until confirmation       |
+| `POST`   | `/storefront/account/contact/phone`        | Starts step-up and verification for a replacement phone       | Old value remains active until confirmation       |
+| `POST`   | `/storefront/account/contact/resend`       | Resends the current contact-change code under bounded policy  | Provider delivery remains configuration-dependent |
+| `POST`   | `/storefront/account/contact/confirm`      | Confirms the new value, audits the change, and revokes others | OpenAPI omits transactional/side-effect semantics |
+| `DELETE` | `/storefront/account/contact`              | Cancels the caller's pending contact change                   | OpenAPI omits CSRF semantics                      |
 
 ## Admin authentication routes
 
-| Method   | Route                         | Present control                                                              | Current boundary/gap                               |
-| -------- | ----------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------- |
-| `POST`   | `/auth/admin/login`           | Generic password credentials; non-customer role; admin cookie audience       | OpenAPI omits cookie security                      |
-| `POST`   | `/auth/admin/login/pin`       | Six-digit PIN; five-failure/15-minute lockout; password fallback             | Real-browser PIN-login proof coverage remains open |
-| `POST`   | `/auth/admin/pin`             | Admin/staff session, current-password proof, optional preferred login method | OpenAPI omits role and CSRF requirements           |
-| `POST`   | `/auth/admin/refresh`         | Admin-audience rotation; session `device.label` from UA on establish/refresh | OpenAPI omits cookie semantics                     |
-| `POST`   | `/auth/admin/logout`          | Revokes admin session                                                        | OpenAPI omits cookie/CSRF semantics                |
-| `GET`    | `/auth/admin/me`              | Admin audience, staff/admin role, sanitized response and current permissions | OpenAPI declares no security requirement           |
-| `POST`   | `/auth/admin/password/forgot` | Generic recovery acknowledgement                                             | Provider delivery remains an adapter seam          |
-| `POST`   | `/auth/admin/password/reset`  | Single-use reset; version bump and session revocation                        | OpenAPI omits side effects                         |
-| `POST`   | `/auth/admin/invites`         | Privileged invite issue with transactional audit evidence                    | Still role-gated rather than granular              |
-| `GET`    | `/auth/admin/invites`         | Privileged sanitized invite inventory                                        | Pagination is not yet represented                  |
-| `DELETE` | `/auth/admin/invites/:id`     | Privileged revocation                                                        | OpenAPI omits permission/error schemas             |
-| `POST`   | `/auth/admin/invites/accept`  | Single-use invite acceptance and credential establishment                    | Provider delivery remains an adapter seam          |
-| `POST`   | `/auth/admin/resume`          | Current admin session plus PIN or password revalidation                      | Live admin idle-lock modal consumes this route     |
+| Method   | Route                                | Present control                                                              | Current boundary/gap                               |
+| -------- | ------------------------------------ | ---------------------------------------------------------------------------- | -------------------------------------------------- |
+| `POST`   | `/auth/admin/login`                  | Generic password credentials; non-customer role; admin cookie audience       | OpenAPI omits cookie security                      |
+| `POST`   | `/auth/admin/login/pin`              | Six-digit PIN; five-failure/15-minute lockout; password fallback             | Real-browser PIN-login proof coverage remains open |
+| `POST`   | `/auth/admin/pin`                    | Admin/staff session, current-password proof, optional preferred login method | OpenAPI omits role and CSRF requirements           |
+| `GET`    | `/auth/admin/security`               | Returns PIN/password/session security settings                               | OpenAPI omits response/security schemas            |
+| `POST`   | `/auth/admin/pin/remove`             | Removes PIN with password proof and safe preferred-method fallback           | OpenAPI omits refusal/side-effect semantics        |
+| `POST`   | `/auth/admin/password/change`        | Changes password, bumps version, and preserves only the caller               | OpenAPI omits side-effect semantics                |
+| `POST`   | `/auth/admin/refresh`                | Admin-audience rotation; session `device.label` from UA on establish/refresh | OpenAPI omits cookie semantics                     |
+| `POST`   | `/auth/admin/logout`                 | Revokes admin session                                                        | OpenAPI omits cookie/CSRF semantics                |
+| `GET`    | `/auth/admin/me`                     | Admin audience, staff/admin role, sanitized response and current permissions | OpenAPI declares no security requirement           |
+| `PATCH`  | `/auth/admin/profile`                | Updates the signed-in operator profile                                       | OpenAPI omits body/CSRF schemas                    |
+| `GET`    | `/auth/admin/sessions`               | Lists the signed-in operator's sessions                                      | OpenAPI omits response/security schemas            |
+| `DELETE` | `/auth/admin/sessions/:id`           | Revokes one owned operator session                                           | OpenAPI omits ownership/CSRF semantics             |
+| `POST`   | `/auth/admin/sessions/revoke-others` | Revokes all other owned operator sessions                                    | OpenAPI omits side effects                         |
+| `POST`   | `/auth/admin/password/forgot`        | Generic recovery acknowledgement                                             | Provider delivery remains an adapter seam          |
+| `POST`   | `/auth/admin/password/reset`         | Single-use reset; version bump and session revocation                        | OpenAPI omits side effects                         |
+| `POST`   | `/auth/admin/invites`                | Privileged invite issue with transactional audit evidence                    | Still role-gated rather than granular              |
+| `GET`    | `/auth/admin/invites`                | Privileged sanitized invite inventory                                        | Pagination is not yet represented                  |
+| `DELETE` | `/auth/admin/invites/:id`            | Privileged revocation                                                        | OpenAPI omits permission/error schemas             |
+| `POST`   | `/auth/admin/invites/accept`         | Single-use invite acceptance and credential establishment                    | Provider delivery remains an adapter seam          |
+| `POST`   | `/auth/admin/resume`                 | Current admin session plus PIN or password revalidation                      | Live admin idle-lock modal consumes this route     |
 
 Access and refresh credentials are cookie-only. The global `SessionGuard` protects by default, checks audience plus token/permission versions, and routes opt out explicitly with `@Public()`. Session establishment/refresh writes the readable CSRF cookie whose value must be echoed in `x-csrf-token` for unsafe cookie requests; the guard also verifies its hash belongs to that session.
 
@@ -87,12 +131,13 @@ Every route below requires an admin-audience session and a named registry permis
 
 | Method   | Route                                | Present control                                                                  | Current boundary/gap                                 |
 | -------- | ------------------------------------ | -------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `GET`    | `/admin/permissions`                 | `permission.index`; publishes the closed 103-code registry                       | OpenAPI omits the permission requirement             |
+| `GET`    | `/admin/permissions`                 | `permission.index`; publishes the closed 89-code registry                        | OpenAPI omits the permission requirement             |
 | `GET`    | `/admin/roles`                       | `role.index`; lists role definitions                                             | OpenAPI omits the permission requirement             |
 | `GET`    | `/admin/roles/:id`                   | `role.index`; reads one role                                                     | OpenAPI omits response/error schemas                 |
 | `POST`   | `/admin/roles`                       | `role.create`; validates registry grants and audits creation                     | OpenAPI omits body/CSRF/permission semantics         |
 | `PATCH`  | `/admin/roles/:id`                   | `role.update`; system roles immutable; permission edits invalidate holders       | Complete atomic invalidation policy remains explicit |
 | `DELETE` | `/admin/roles/:id`                   | `role.destroy`; system roles protected; holders invalidated; delete audited      | OpenAPI omits conflict/audit semantics               |
+| `GET`    | `/admin/users`                       | `user.index`; paginated operator list with authority-aware response              | OpenAPI omits response/permission schemas            |
 | `GET`    | `/admin/users/:userId/authority`     | `user.index`; returns roles plus server-resolved effective permissions           | Admin management UI has not adopted the endpoint     |
 | `POST`   | `/admin/users/:userId/roles`         | `user_role.assign`; refuses tiers or grants above the actor; audited             | Admin management UI has not adopted the endpoint     |
 | `DELETE` | `/admin/users/:userId/roles/:roleId` | `user_role.revoke`; last-administrator protection; audited                       | Admin management UI has not adopted the endpoint     |
@@ -123,7 +168,7 @@ Admin CRM list/detail/create/edit and soft-delete are live against `/admin/custo
 
 The first administrator is created through an operator-only CLI, not HTTP. It generates a password once, stores only its Argon2 hash, writes a critical audit event with no fabricated actor, and refuses to run when any administrative authority already exists.
 
-Authentication and authorization remain partial. **Current:** cookie session issue/refresh/revoke; storefront auth family and email verification; admin password recovery, PIN login/setup/lockout, invites, HTTP resume, Account Security at `/account` (PIN/password/sessions), 15-minute idle soft-lock with `POST /auth/admin/resume` (PIN or password), active assignment-based permission resolution against the closed **103-code** registry, role/permission/user-authority APIs, no-delegation, last-admin protection, offboarding, permission-version invalidation, first-admin bootstrap, consent/privacy, order BOLA, cart Principal/`st_guest` ownership, order-create cart adoption, and admin CRM customers. **Remaining:** OAuth verification; guest→user merge; real-browser PIN-login proof coverage; portal deploy private-access gate (`DEC-PORTAL-PRIVATE-ACCESS`); soft-delete ops revive (`DEC-CUSTOMER-SOFT-DELETE-OPS`).
+Authentication and authorization remain partial. **Current:** cookie session issue/refresh/revoke; verified-before-creation signup; password and OTP login by email or phone; Google/Facebook verifier adapters and provider-neutral identity management; password/session management; storefront account self-service; authentication-time guest-cart adoption; admin recovery, PIN management, invites, HTTP resume, Account Security and idle lock; active assignment-based permission resolution against the closed **89-code** registry; deny-by-default authority APIs; no-delegation, last-administrator protection, offboarding, version invalidation, operator bootstrap, consent/privacy, order and cart ownership, transactional order-create cart adoption, and admin CRM. **Remaining:** provider activation/browser proof; pending-intent continuation; real-browser PIN-login proof; portal private-access deployment (`DEC-PORTAL-PRIVATE-ACCESS`); and soft-delete operations (`DEC-CUSTOMER-SOFT-DELETE-OPS`).
 
 ## Privacy routes
 
@@ -145,7 +190,7 @@ Authentication and authorization remain partial. **Current:** cookie session iss
 
 ### Critical public-visibility rule
 
-The server, not the caller, enforces public visibility. **Fixed 2026-07-31:** the earlier implementation applied a status clause only when the list caller supplied one and applied none to single-product lookup, exposing drafts/disabled records. Public repository calls now default to the `public` audience, resolve visibility centrally to `live`, reject attempts to widen the status set, and return 404 for hidden direct reads. The public controller no longer accepts a `status` query parameter.
+The server, not the caller, enforces public visibility. Public repository calls default to the `public` audience, resolve visibility centrally to `live`, reject attempts to widen the status set, and return 404 for hidden direct reads. The public controller does not accept a `status` query parameter.
 
 ## Currency and promotion routes
 
@@ -162,13 +207,13 @@ These endpoints must not be used as proof that client-calculated checkout totals
 
 | Method   | Route                     | Present behavior                                            | Critical missing guarantee                      |
 | -------- | ------------------------- | ----------------------------------------------------------- | ----------------------------------------------- |
-| `POST`   | `/cart`                   | Creates a principal cart or mints a hashed `st_guest` proof | Guest→user merge is not implemented             |
+| `POST`   | `/cart`                   | Creates a principal cart or mints a hashed `st_guest` proof | Pending-intent continuation is not implemented  |
 | `GET`    | `/cart/:id`               | Principal or guest-proof ownership; support read bypass     | OpenAPI omits ownership semantics               |
 | `POST`   | `/cart/:id/lines`         | Ownership check before append                               | No product/configuration/price/stock validation |
 | `PATCH`  | `/cart/:id/lines/:lineId` | Ownership check before positive-quantity update             | No stock/version/concurrency policy             |
 | `DELETE` | `/cart/:id/lines/:lineId` | Ownership check before removal                              | No explicit idempotency policy                  |
 
-Target cart routes resolve “my cart” from secure identity rather than accepting arbitrary ownership. Guest-cart merge and offline sync are separate transactional use cases.
+Target cart routes resolve “my cart” from secure identity rather than accepting arbitrary ownership. Authentication-time guest-cart adoption is implemented; broader pending-intent continuation and offline synchronization remain separate use cases.
 
 ## Order routes
 

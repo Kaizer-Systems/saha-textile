@@ -4,7 +4,7 @@ slug: /tools/storybook
 description: Symbolic Docusaurus gateway to the generated Angular Storybook child.
 status: implemented
 audience: [beginner, frontend]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 wide: true
 hide_table_of_contents: true
 source_of_truth:
@@ -29,4 +29,4 @@ import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
 
 The Component Forge opens one application-segregated Angular renderer. Storefront, Admin, and Shared stories retain their own decorators while inheriting the portal’s common visual language.
 
-The renderer includes the Admin PIN Pad and idle-lock modal states alongside the established Storefront, Admin and Shared catalogue. Its compiler gate accounts for all 141 reusable components across 289 Angular components (Storefront 106/106; Admin 35/35), while route and page orchestration remains assigned to integration and Playwright coverage. The Storefront full-page Loader is an intentionally permanent component specimen.
+The renderer includes the Admin PIN Pad and idle-lock modal states alongside the established Storefront, Admin, and Shared catalogue. The current coverage scan reaches **140 of 141** reusable components across **290** Angular components (Storefront 105/106; Admin 35/35). `shared/ui/social-sign-in/social-sign-in.ts` is the single uncovered reusable component, so the freshness gate remains red until it has an approved specimen or an evidence-backed integration-only classification. Route and page orchestration remains assigned to integration and Playwright coverage. The Storefront full-page Loader is an intentionally permanent component specimen.

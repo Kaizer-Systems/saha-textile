@@ -4,7 +4,7 @@ wide: true
 description: Verification contract for storefront and admin changes, including the current test-coverage boundary.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/storefront/vite.config.ts
     - apps/admin/package.json
@@ -64,7 +64,7 @@ A frontend change is not done because it renders once on a developer machine.
 
 - [ ] Loading, empty, error, success, and retry behavior are intentional.
 - [ ] Duplicate submissions and destructive actions are controlled.
-- [ ] Mock seams remain clearly labelled until replaced.
+- [ ] Fixture-backed and unwired seams remain clearly labelled until replaced.
 - [ ] Price, stock, identity, and authorization assumptions are server-revalidated.
 
 ### Rendering and interaction

@@ -3,7 +3,7 @@ title: 'Pending Decisions'
 description: 'Canonical inbox of unresolved owner decisions and stable implementation gates.'
 audience: [engineering, product, operator, agent]
 document_role: canonical
-last_verified: '2026-08-13'
+last_verified: '2026-08-18'
 search_keywords: 'pending decisions owner questions implementation gates unresolved'
 ---
 
@@ -11,7 +11,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 
 **Status:** Sole owner-question inbox. Nothing in this file is locked until the owner answers it and the answer is recorded in `owner-decisions-log.mdx`.
 
-**Last reconciled:** 2026-07-27
+**Last reconciled:** 2026-08-18
 
 ## How this file works
 
@@ -27,33 +27,36 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 
 ## Open-decision index
 
-| ID                             | Decision                                                                                 | Primary impact                                   |
-| ------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `DEC-NUMBERING`                | Order, tax-invoice, purchase-invoice, and related document numbering                     | Orders, invoices, sequences, GST audit           |
-| `DEC-TAX-HSN`                  | Tax classes, GST slabs, and HSN granularity                                              | Catalog, checkout, invoices, accounting          |
-| `DEC-SHIPPING`                 | Launch shipping-rate policy                                                              | Checkout, Shiprocket seam, promotions            |
-| `DEC-RETURNS`                  | Return/refund policy                                                                     | Orders, returns, refunds, customer support       |
-| `DEC-PROMO-STACK`              | Promotion and coupon stacking                                                            | Pricing engine, checkout                         |
-| `DEC-STOCK-RESERVE`            | Stock reservation timing and TTL                                                         | Inventory, checkout, payment recovery            |
-| `DEC-BACKORDER`                | Backorder/oversell policy                                                                | Catalog, inventory, storefront                   |
-| `DEC-ORDER-SNAPSHOT`           | Immutable order-line snapshot fields                                                     | Orders, invoices, analytics, support             |
-| `DEC-ADDRESS`                  | Address model and checkout phone requirements                                            | Accounts, checkout, shipping                     |
-| `DEC-VARIANT-OVERRIDES`        | Fields variants may override                                                             | Catalog contracts and admin forms                |
-| `DEC-PRICE-DISPLAY`            | MRP, sale, and price-range behavior                                                      | Catalog, pricing, storefront                     |
-| `DEC-ADDON-MEASUREMENTS`       | Add-on pricing and measurement validation                                                | Product setup, cart, orders                      |
-| `DEC-CUSTOMER-CREDIT`          | Ledger, store credit, wallet, and points scope                                           | Customers, refunds, checkout                     |
-| `DEC-ID-SLUG`                  | IDs, business codes, slugs, and redirects                                                | Catalog, SEO, orders                             |
-| `DEC-BADGES-RAILS`             | Storefront badge and rail taxonomy                                                       | Analytics and merchandising                      |
-| `DEC-SCOPE-GAPS`               | Missing business flows and launch scope                                                  | Whole product                                    |
-| `DEC-I18N-ROUTES`              | Canonical locale URL policy                                                              | Routing, SEO, hreflang                           |
-| `DEC-IMG-PX`                   | Image derivative pixel ladder                                                            | Media worker and storefront images               |
-| `DEC-MEDIA-CAPS`               | Image/video ingest limits                                                                | Upload API, admin UX, workers                    |
-| `DEC-PAYPAL-FX`                | Treatment of PayPal FX-conversion markup                                                 | Foreign-currency pricing and margin              |
-| `DEC-INR-GATEWAY-TIMING`       | Timing of CCAvenue-to-Razorpay succession                                                | Payment adapter delivery and operations          |
-| `DEC-DOMAIN-TOPOLOGY`          | Production storefront/admin/API hostname topology                                        | Cookies, CORS, Nginx, deployment                 |
-| `DEC-TRANSLATION-QUALITY`      | French translation authorship and acceptance policy                                      | Storefront/admin copy quality and release QA     |
-| `DEC-PORTAL-PRIVATE-ACCESS`    | Developer-portal identity policy and origin-protection mechanism                         | Portal deployment, Cloudflare, service access    |
-| `DEC-CUSTOMER-SOFT-DELETE-OPS` | **VERY IMPORTANT** — soft-deleted customer revive, access, and order/ledger corner cases | CRM list/detail, auth, orders, uniqueness, MSG91 |
+| ID                                | Decision                                                                                 | Primary impact                                   |
+| --------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `DEC-NUMBERING`                   | Order, tax-invoice, purchase-invoice, and related document numbering                     | Orders, invoices, sequences, GST audit           |
+| `DEC-TAX-HSN`                     | Tax classes, GST slabs, and HSN granularity                                              | Catalog, checkout, invoices, accounting          |
+| `DEC-SHIPPING`                    | Launch shipping-rate policy                                                              | Checkout, Shiprocket seam, promotions            |
+| `DEC-RETURNS`                     | Return/refund policy                                                                     | Orders, returns, refunds, customer support       |
+| `DEC-PROMO-STACK`                 | Promotion and coupon stacking                                                            | Pricing engine, checkout                         |
+| `DEC-STOCK-RESERVE`               | Stock reservation timing and TTL                                                         | Inventory, checkout, payment recovery            |
+| `DEC-BACKORDER`                   | Backorder/oversell policy                                                                | Catalog, inventory, storefront                   |
+| `DEC-ORDER-SNAPSHOT`              | Immutable order-line snapshot fields                                                     | Orders, invoices, analytics, support             |
+| `DEC-ADDRESS`                     | Address model and checkout phone requirements                                            | Accounts, checkout, shipping                     |
+| `DEC-VARIANT-OVERRIDES`           | Fields variants may override                                                             | Catalog contracts and admin forms                |
+| `DEC-PRICE-DISPLAY`               | MRP, sale, and price-range behavior                                                      | Catalog, pricing, storefront                     |
+| `DEC-ADDON-MEASUREMENTS`          | Add-on pricing and measurement validation                                                | Product setup, cart, orders                      |
+| `DEC-CUSTOMER-CREDIT`             | Ledger, store credit, wallet, and points scope                                           | Customers, refunds, checkout                     |
+| `DEC-ID-SLUG`                     | IDs, business codes, slugs, and redirects                                                | Catalog, SEO, orders                             |
+| `DEC-BADGES-RAILS`                | Storefront badge and rail taxonomy                                                       | Analytics and merchandising                      |
+| `DEC-SCOPE-GAPS`                  | Missing business flows and launch scope                                                  | Whole product                                    |
+| `DEC-I18N-ROUTES`                 | Canonical locale URL policy                                                              | Routing, SEO, hreflang                           |
+| `DEC-IMG-PX`                      | Image derivative pixel ladder                                                            | Media worker and storefront images               |
+| `DEC-MEDIA-CAPS`                  | Image/video ingest limits                                                                | Upload API, admin UX, workers                    |
+| `DEC-PAYPAL-FX`                   | Treatment of PayPal FX-conversion markup                                                 | Foreign-currency pricing and margin              |
+| `DEC-INR-GATEWAY-TIMING`          | Timing of CCAvenue-to-Razorpay succession                                                | Payment adapter delivery and operations          |
+| `DEC-DOMAIN-TOPOLOGY`             | Production storefront/admin/API hostname topology                                        | Cookies, CORS, Nginx, deployment                 |
+| `DEC-TRANSLATION-QUALITY`         | French translation authorship and acceptance policy                                      | Storefront/admin copy quality and release QA     |
+| `DEC-PORTAL-PRIVATE-ACCESS`       | Developer-portal identity policy and origin-protection mechanism                         | Portal deployment, Cloudflare, service access    |
+| `DEC-CUSTOMER-SOFT-DELETE-OPS`    | **VERY IMPORTANT** — soft-deleted customer revive, access, and order/ledger corner cases | CRM list/detail, auth, orders, uniqueness, MSG91 |
+| `DEC-ACCOUNT-EMPTY-TILES`         | Visibility of unavailable account-dashboard metrics                                      | Storefront account dashboard                     |
+| `DEC-SOFT-DELETED-IDENTITY-REUSE` | Provider-link behavior after customer soft deletion                                      | Storefront identity, CRM, account recovery       |
+| `DEC-DENVER-HOME-GRADIENT`        | Denver-theme treatment for the home-search gradient                                      | Storefront visual design                         |
 
 ---
 
@@ -1126,7 +1129,7 @@ Notes:
 
 ---
 
-## 24. `DEC-CUSTOMER-SOFT-DELETE-OPS` — Soft-deleted customer ops (VERY IMPORTANT)
+## 25. `DEC-CUSTOMER-SOFT-DELETE-OPS` — Soft-deleted customer ops (VERY IMPORTANT)
 
 > **VERY IMPORTANT.** Soft-delete of durable customer accounts is already locked
 > (owner log: soft-delete retention for durable business records). This gate is **not** “hard vs soft” — it is how
@@ -1227,7 +1230,7 @@ Notes:
 
 ---
 
-## 25. `DEC-ACCOUNT-EMPTY-TILES` — Wallet / points / orders tiles on the account dashboard
+## 26. `DEC-ACCOUNT-EMPTY-TILES` — Wallet / points / orders tiles on the account dashboard
 
 **Opened 2026-08-18** (storefront `account.json` retirement).
 
@@ -1250,7 +1253,7 @@ Notes:
 
 ---
 
-## 26. `DEC-SOFT-DELETED-IDENTITY-REUSE` — Provider links on a soft-deleted customer
+## 27. `DEC-SOFT-DELETED-IDENTITY-REUSE` — Provider links on a soft-deleted customer
 
 **Opened 2026-08-18** (found while making the local seeder re-runnable).
 
@@ -1274,7 +1277,7 @@ Notes:
 
 ---
 
-## 27. `DEC-DENVER-HOME-GRADIENT` — Home-search background ramp
+## 28. `DEC-DENVER-HOME-GRADIENT` — Home-search background ramp
 
 **Opened 2026-08-18** (theme-colour leak sweep).
 

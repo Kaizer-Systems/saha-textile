@@ -3,7 +3,7 @@ title: Backend Path
 description: Onboarding route for API, contracts, domain and adapter work.
 status: scaffolded
 audience: [backend]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/api/src
     - packages/core-domain/src
@@ -17,9 +17,9 @@ Use this path for NestJS controllers, contracts, domain use cases, persistence, 
 
 ## Current implementation snapshot
 
-The repository already contains an API composition root, health/auth/admin-authorization (including CRM customers)/catalog/cart/order/currency/promotion modules, OpenAPI generation, domain ports and a Mongo adapter with models, indexes and repositories. Cookie-session auth, the closed **103-code** permission registry, active role assignments, deny-by-default admin authority routes, Account Security, idle soft-lock resume, and operator-only first-admin bootstrap are real, while OAuth verification, guest→user merge, real-browser PIN-login proof coverage, and later commerce/provider workflows remain incomplete. This is a working scaffold and partial implementation—not a finished production API.
+The repository already contains an API composition root, health/auth/storefront-account/admin-authorization/catalog/cart/order/currency/promotion modules, OpenAPI generation, domain ports and a Mongo adapter with models, indexes and repositories. Cookie-session auth, verified-before-creation signup, password/OTP login by email or phone, Google and Facebook verifier adapters, identity linking, guest-cart adoption, account self-service, the closed **89-code** permission registry, active role assignments, deny-by-default admin authority routes, Account Security, idle soft-lock resume, and operator-only first-admin bootstrap are real. Provider activation and browser proof, pending-intent continuation, real-browser PIN-login proof coverage, and later commerce/provider workflows remain incomplete. This is a working scaffold and partial implementation—not a finished production API.
 
-The portal publishes a human-facing Scalar scaffold and a source-only 34-model MongoDB catalogue. Both expose current evidence and limitations; neither represents a complete contract. The existing framework API documentation UI is transitional and deprecated.
+The portal publishes a human-facing Scalar scaffold and a source-only 40-model MongoDB catalogue. Both expose current evidence and limitations; neither represents a complete contract. The existing framework API documentation UI is transitional and deprecated.
 
 ## Read in this order
 

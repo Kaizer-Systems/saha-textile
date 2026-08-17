@@ -32,7 +32,17 @@ import { resolve } from 'node:path';
 const documentPath = resolve(process.argv[2] ?? 'dist/openapi.json');
 
 /** Mirrors `src/openapi-tags.ts`. Kept as a literal so the check needs no build output. */
-const DECLARED_TAGS = ['health', 'catalog', 'currency', 'promotions', 'cart', 'orders', 'auth', 'privacy'];
+const DECLARED_TAGS = [
+	'health',
+	'catalog',
+	'currency',
+	'promotions',
+	'cart',
+	'orders',
+	'auth',
+	'storefront-account',
+	'privacy',
+];
 
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];
 const LOWER_CAMEL_CASE = /^[a-z][A-Za-z0-9]*$/;

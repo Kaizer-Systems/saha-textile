@@ -37,6 +37,7 @@ export {
 	isRetryable,
 	isUnauthorized,
 	isUnrecoverableRefusal,
+	readApiErrorMessage,
 	readRefusalReason,
 	toTransportFailure,
 } from './errors.js';

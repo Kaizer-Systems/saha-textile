@@ -264,3 +264,53 @@ function genericMessageFor(status: number): string {
 	if (status >= 400) return 'The request could not be completed.';
 	return 'Unexpected response from the server.';
 }
+
+/**
+ * The sentence to show a person when a request failed.
+ *
+ * ## Why this lives here and not in each app
+ *
+ * It was written twice — once in the storefront, once in admin — and the two copies had already
+ * drifted into two different bugs before either was noticed: the storefront's returned `''`
+ * unconditionally (so every error toast was an empty outlined box), while admin's read
+ * `.message` off the response BODY, which is `undefined` for every response this API sends (so
+ * every toast said "Something Went Wrong" and never the reason). Two copies of one idea is how
+ * that happens; both apps already depend on this package, and the envelope it parses is defined
+ * a few lines above.
+ *
+ * ## Where the message actually is
+ *
+ * `{ error: { code, message, issues } }`, so from an `HttpErrorResponse` it is TWO levels down —
+ * `httpError.error.error.message`. The one-level path is `undefined` every time, and being
+ * `undefined` rather than throwing is what let both bugs survive.
+ *
+ * Issues win over the envelope's own message: for a rejected field the envelope says "Request
+ * validation failed." while the issue says which field and why.
+ *
+ * ## Only ever OUR text
+ *
+ * A message is accepted only from a payload carrying `code` or `issues` — the marks of this
+ * API's envelope. Without that check the browser's own "Failed to fetch" and Angular's "Http
+ * failure response for https://…: 500" both qualify as "a string called message", and both are
+ * for a log rather than for a person.
+ */
+export function readApiErrorMessage(error: unknown): string | null {
+	let node: unknown = error;
+
+	// Three hops covers `HttpErrorResponse` → body → payload, with one to spare.
+	for (let depth = 0; depth < 3; depth += 1) {
+		if (typeof node !== 'object' || node === null) return null;
+		const candidate = node as Partial<ApiErrorBody>;
+
+		const issue = candidate.issues?.find((entry) => typeof entry?.message === 'string' && entry.message.length > 0);
+		if (issue) return issue.message;
+
+		const isOurs = typeof candidate.code === 'string' || Array.isArray(candidate.issues);
+		if (isOurs && typeof candidate.message === 'string' && candidate.message.length > 0) {
+			return candidate.message;
+		}
+
+		node = (node as { error?: unknown }).error;
+	}
+	return null;
+}

@@ -4,7 +4,7 @@ wide: true
 description: Ownership rules for TanStack Query, SignalStore, classic NgRx, services, interceptors, and transitional fixtures.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/admin/src/app/app.config.ts
     - apps/admin/src/app/core/config/runtime-config.ts
@@ -48,7 +48,7 @@ Many feature list components contain explicit comments that status toggles, dele
 
 Exceptions that are already live: Account Security mutations at `/account`, CRM customer create/edit/soft-delete (deleted hidden by default; revive blocked on `DEC-CUSTOMER-SOFT-DELETE-OPS`), role/user authority flows, and notification-settings channel/template updates.
 
-These explicit gaps prevent a mock interaction from being mistaken for a backend capability. When implementing a mutation, replace the seam deliberately rather than layering a success message over a no-op.
+These explicit gaps prevent a local interaction from being mistaken for a backend capability. When implementing a mutation, replace the seam deliberately rather than layering a success message over a no-op.
 
 ## Migrating a reader to the API
 

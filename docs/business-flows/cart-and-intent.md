@@ -4,7 +4,7 @@ wide: true
 description: Guest cart, authenticated cart, pending-action replay, merge, expiry, and reconnect behavior.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/storefront/src/app/core/state/cart
     - apps/api/src/cart

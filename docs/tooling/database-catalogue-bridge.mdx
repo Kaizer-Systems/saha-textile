@@ -4,7 +4,7 @@ slug: /tools/database-catalogue
 description: Symbolic Docusaurus gateway to the generated current-model MongoDB catalogue.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 wide: true
 hide_table_of_contents: true
 source_of_truth:
@@ -23,9 +23,9 @@ import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
 	target="/database/catalogue/"
 	eyebrow="Schema Observatory · Current persistence evidence"
 	title="Inspect the implemented persistence model."
-	description="The catalogue resolves 35 current Mongoose models into source-derived fields, defaults, enums, select policy, and indexes without touching a database."
+	description="The catalogue resolves 40 current Mongoose models into source-derived fields, defaults, enums, select policy, and indexes without touching a database."
 	launchLabel="Open Schema Observatory"
 	symbol="schema-observatory"
 />
 
-The source-only catalogue covers all **35** current Mongoose models: the separated customer and operator populations, the remaining original core collections, identity, authorization roles and assignments, consent, catalogue structure, variants, bundles and relations, media, inventory, governance and notifications, FAQ, Q&A, reviews, and rating aggregates. It measures **438 fields, 97 indexes, and 27 temporary shapes**. All **14** excluded-by-default fields are named as policy evidence but omitted from synthetic previews. The unified `users` collection has been split into `customers` (shoppers) and `adminUsers` (operators), promoting the `adminUsers` Schema Nebula star to solid state. Temporary `Mixed` fields are not presented as finished database design, and generation never connects to local, test, staging, or production data.
+The source-only catalogue covers all **40** current Mongoose models: separated customer/operator populations, extracted credentials and provider identities, sessions and pending proof, authorization, consent, catalogue structure, variants, bundles and relations, media, inventory, governance and notifications, FAQ, Q&A, reviews, and rating aggregates. It measures **479 fields, 107 indexes, and 27 temporary shapes**. All **13** excluded-by-default fields are named as policy evidence but omitted from synthetic previews. Temporary `Mixed` fields are not presented as finished database design, and generation never connects to local, test, staging, or production data.

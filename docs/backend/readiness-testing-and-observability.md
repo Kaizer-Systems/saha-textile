@@ -4,7 +4,7 @@ wide: true
 description: Liveness versus readiness, logging, metrics, testing layers, transaction proof, and backend definition of done.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/api/src/health
     - apps/api/src/infra/persistence.module.ts
@@ -78,16 +78,16 @@ Avoid high-cardinality labels such as raw user id, order id, email, token, full 
 
 ## Current automated-test evidence
 
-| Package            | Present evidence                                                                                                                             | Limitation                                                                              |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `contracts`        | 160 schema tests across common/auth/permission/role/admin-user/catalog/media/inventory/content/commerce families                             | Complete operation DTO/OpenAPI wiring remains                                           |
-| `core-domain`      | 98 pricing, visibility, auth-policy, effective-permission, runtime-purity and port-conformance tests                                         | No complete use-case/state-machine suites                                               |
-| Mongo adapter      | 103 tests total: 4 source-only collection-name checks plus 99 rs0-gated integration tests across transactions, auth/RBAC and domain adapters | The 99 integration checks require `RUN_DB_IT=1`; broader HTTP/workflow adoption remains |
-| API                | 131 platform, route-contract, OpenAPI, CSRF/session, role/authority and feature tests, with test files included in typecheck                 | Full live HTTP/idempotency workflow coverage remains                                    |
-| HTTP transport     | 157 framework-free policy tests for CSRF, refresh single-flight, cross-tab exclusion and refusal mapping                                     | Browser integration does not replace feature-flow coverage                              |
-| Storefront / Admin | 57 / 61 unit tests for gateways, interceptors, stores and admin routes                                                                       | Feature/page coverage remains incomplete                                                |
+| Package            | Present evidence                                                                                                               | Limitation                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `contracts`        | Schema suites cover common identity, authority, account, catalogue, media, inventory, content and commerce families            | Complete operation DTO/OpenAPI wiring remains                                    |
+| `core-domain`      | Pricing, visibility, signup/password/PIN policy, effective-permission, runtime-purity and port-conformance suites              | Complete use-case/state-machine coverage remains                                 |
+| Mongo adapter      | Source-only naming checks and rs0-gated integration suites cover transactions, identity/authority and domain adapters          | Integration checks require `RUN_DB_IT=1`; broader HTTP/workflow adoption remains |
+| API                | Platform, route-contract, OpenAPI, CSRF/session, identity/account, role/authority and feature suites are included in typecheck | Full live HTTP/idempotency workflow coverage remains                             |
+| HTTP transport     | Framework-free policy suites cover CSRF, refresh single-flight, cross-tab exclusion and refusal mapping                        | Browser integration does not replace feature-flow coverage                       |
+| Storefront / Admin | Focused gateway, interceptor, state, route, identity/account and presentation suites                                           | Feature/page coverage remains incomplete                                         |
 
-The dedicated live security campaign adds 22 end-to-end checks for bootstrap closure, cookie sessions, audience isolation, direct-API RBAC denial, role grant/revoke, last-admin protection, offboarding, permission-version invalidation, BOLA and related negative cases. The admin browser proof separately covers password login, cookie-only reload, expiry recovery, role mutation with CSRF, `permissions_changed` recovery and menu logout. Real-browser PIN-login proof coverage remains open; the idle soft-lock client is live in product but is not yet part of that browser proof campaign.
+Dedicated live security campaigns cover bootstrap closure, cookie sessions, audience isolation, direct-API RBAC denial, authority changes, last-administrator protection, offboarding, permission-version invalidation, BOLA and negative cases. Admin browser evidence covers password login, cookie-only reload, expiry recovery, CSRF-protected authority mutation, refusal recovery, and logout. Real-browser PIN login and real storefront provider flows remain open proof obligations.
 
 The former zero-spec Angular baseline has been superseded: both applications now test their cookie-session transport and state boundaries, and the admin also tests protected routing. These focused tests are not broad UI coverage. The backend gate still rejects permanently skipped transaction proof as a production-done state.
 
@@ -103,7 +103,7 @@ flowchart TD
 ### Unit
 
 - pure pricing/tax/transition/permission/idempotency rules;
-- application orchestration with fake ports;
+- application orchestration with deterministic test implementations of ports;
 - config parsing and fail-closed behavior;
 - validation and response serialization;
 - error translation and redaction.

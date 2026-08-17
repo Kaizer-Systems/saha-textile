@@ -4,7 +4,7 @@ wide: true
 description: Authenticated checkout calculation, quote, promotion, tax, FX, shipping, and correction flow.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/storefront/src/app/features/shop/checkout
     - apps/api/src/cart
@@ -17,7 +17,7 @@ source_of_truth:
 
 # Checkout, pricing, tax, currency, and shipping
 
-Checkout is the server-owned calculation and validation boundary between a cart and a payment attempt. The current storefront presents checkout forms, addresses, delivery, payment choices, coupons, and totals, but it uses a static totals object and navigates to a stub order detail. It is not a production transaction.
+Checkout is the server-owned calculation and validation boundary between a cart and a payment attempt. The current storefront presents checkout forms, addresses, delivery, payment choices, coupons, and totals, but it uses a static totals object and navigates to an unwired order detail. It is not a production transaction.
 
 ## Preconditions
 

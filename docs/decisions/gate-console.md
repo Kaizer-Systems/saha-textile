@@ -5,7 +5,7 @@ slug: /decisions/gate-console
 wide: true
 status: implemented
 audience: [beginner, backend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -28,4 +28,4 @@ A **gate** is a governed decision that must be resolved before a slice of the bu
 
 Gate questions and blast radii live in `docs/_data/instruments/decision-gates.json`; live state comes from the marked Portal truth snapshot in `project-progress.mdx`. The build-time compiler cross-checks that state against the roadmap gate table and ratified decision log before publishing the typed dataset.
 
-The wider decision register contains **24 open decisions**. The most recently resolved entries are `DEC-SKU`, `DEC-PRODUCT-RELATIONS`, `DEC-BUNDLE-NESTING`, and `DEC-DELETE-RETENTION`. The compiler derives the open count from `pending-decisions.mdx` and rejects a resolved id that remains in the pending register or lacks decision-log evidence.
+The wider decision register contains **28 open decisions**. The compiler derives this count from `pending-decisions.mdx` and rejects a resolved id that remains in the pending register or lacks decision-log evidence. The interactive console intentionally shows only the stable roadmap gates with an explicit chunk or collection blast radius; it is not a duplicate of the complete decision inbox.

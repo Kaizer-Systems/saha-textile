@@ -2,9 +2,9 @@
 title: Identity, Account, and Admin Resume
 wide: true
 description: Storefront sessions, OTP/OAuth, account boundaries, admin authorization, soft lock, and draft recovery.
-status: planned
+status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/storefront/src/app/pages/auth
     - apps/admin/src/app/features/auth
@@ -21,11 +21,11 @@ source_of_truth:
 
 # Identity, account, and admin resume
 
-The API executes cookie-session auth: storefront registration/password/OTP login, logout, refresh, password reset, email verification and `me`; admin recovery, password/PIN login, PIN setup/lockout, invite lifecycle, HTTP resume, logout, refresh and `me`; audience separation; permission-version invalidation; and rotating persisted refresh families. Admin authority additionally uses a closed **103-code** permission registry, active role assignments, deny-by-default management routes, no-delegation/last-admin/offboarding controls and an operator-only first-admin bootstrap. Responses are sanitized and reusable credentials stay in httpOnly cookies. Both Angular applications consume the session through one typed auth gateway each, with no browser-held token. The shared transport implements CSRF acquisition, per-tab refresh single-flight, cross-tab rotation exclusion, deterministic refusal handling and loop prevention. **Current** in admin: Account Security at `/account` (PIN/password/sessions) and the 15-minute idle soft-lock (`IdleLockService` + `idle-lock-modal` + `POST /auth/admin/resume` with PIN or password). **Remaining:** OAuth verification, real-browser PIN-login proof coverage, granular adoption by older privileged routes, protected deep-link continuation, guest→user merge, portal private-access deploy, and soft-delete revive ops.
+The API executes cookie-session auth for storefront and admin audiences. Storefront capabilities include verified-before-creation signup, password and OTP login by email or phone, Google/Facebook verification, identity connect/disconnect, password/session management, profile/address/contact self-service, guest-cart adoption, logout, refresh, recovery, and `me`. Admin capabilities include recovery, password/PIN login, PIN management/lockout, invites, HTTP resume, logout, refresh, `me`, Account Security, and the idle soft lock. Admin authority uses a closed **89-code** permission registry, active role assignments, deny-by-default management routes, no-delegation/last-administrator/offboarding controls, and operator bootstrap. Responses are sanitized and reusable credentials stay in httpOnly cookies. Both Angular applications consume sessions through typed gateways with no browser-held token. Remaining work includes provider-console activation and browser proof, real-browser PIN-login proof, granular adoption by older privileged routes, protected deep-link/pending-intent continuation, portal private-access deployment, and soft-delete operations.
 
 ## Storefront methods
 
-Email/password, email OTP and email-verification completion/resend are implemented at the API boundary. Google/Facebook OAuth verification remains open. Guest browsing/cart remains first-class: cart routes enforce Principal ownership or hashed `st_guest` proof, while guest→user merge remains Chunk G.
+Email or phone can identify password and OTP login. Signup creates no customer until both email and phone are verified, and finalisation reads those proven values from server-held pending state. Google and Facebook verifier adapters and storefront provider controls are present; real use requires configured credentials, approved origins, and provider/browser acceptance proof. Guest browsing remains first-class: cart routes enforce Principal ownership or hashed `st_guest` proof, and signup or social sign-in adopts a proven guest cart. Pending-intent continuation remains open.
 
 ## Browser session model
 
@@ -59,7 +59,7 @@ Angular stores sanitized user/session status, never access or refresh secrets.
 
 ## Account data
 
-Addresses, order history, wishlists, reviews, saved-for-later items, notifications, and profile facts are authenticated server state. They are not public offline cache. Every object lookup enforces ownership.
+The current account API owns the signed-in customer profile name, addresses, login methods, sessions, and pending email/phone changes. Account screens read the authenticated customer rather than a static account record. Order history, wishlists, reviews, saved items, notifications, points, and wallet/credit remain separate capabilities and must not be inferred from the account shell. Personalized records are not public offline cache, and object lookups enforce ownership.
 
 ## Admin authentication
 
@@ -97,4 +97,4 @@ Complex product/order/invoice forms need enough draft metadata to reconstruct co
 
 ## Current and target boundary
 
-The API session lifecycle, recovery/invite endpoints, first-admin operator bootstrap, fine-grained admin management APIs, Account Security, idle soft-lock resume and cart/order ownership checks are real, and both Angular clients use the shared cookie transport. Missing OAuth verification, real-browser PIN-login proof coverage, complete granular migration, protected deep-link continuation and guest→user merge keep the end-to-end capability incomplete.
+The API session lifecycle, storefront verified signup/provider/account flows, authentication-time guest-cart adoption, recovery/invite endpoints, operator bootstrap, fine-grained admin management APIs, Account Security, idle-lock resume, and cart/order ownership checks are implemented, and both Angular clients use the shared cookie transport. Provider activation/browser proof, real-browser PIN-login proof, complete granular migration, and protected deep-link/pending-intent continuation keep the end-to-end capability incomplete.

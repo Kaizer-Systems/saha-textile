@@ -64,6 +64,17 @@ export const AccountStore = signalStore(
 			patchState(store, { user: null });
 		},
 		/**
+		 * Adopts a customer the caller already has from the server.
+		 *
+		 * For writes that live outside this store — the contact-change flow, which has its own
+		 * multi-step service — but whose result is still the whole updated customer. Handing it
+		 * over beats a `loadUser()` round trip that would ask for something already in hand, and
+		 * it keeps the rule that what is on screen is the server's answer, never a local guess.
+		 */
+		adoptUser(user: IAccountUser): void {
+			patchState(store, { user });
+		},
+		/**
 		 * Address writes, against the customer's OWN routes.
 		 *
 		 * Each answers the whole updated customer and the store adopts it wholesale, so the list

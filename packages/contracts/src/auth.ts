@@ -22,8 +22,15 @@ export type Password = z.infer<typeof Password>;
 export const OtpCode = z.string().regex(/^\d{6}$/, 'must be a 6-digit code');
 export type OtpCode = z.infer<typeof OtpCode>;
 
-/** What an OTP challenge is for (`otpChallenges.purpose`). */
-export const OtpPurpose = z.enum(['login', 'register', 'verify_email', 'reset_password', 'step_up']);
+/**
+ * What an OTP challenge is for (`otpChallenges.purpose`).
+ *
+ * A purpose is part of the lookup key, so it is what stops a code minted for one thing being
+ * spent on another. `change_contact` is its own value rather than borrowing `register` for
+ * exactly that reason: the two would collide on the same address — a signup code could confirm
+ * somebody's contact change, and a contact-change send would overwrite a live signup challenge.
+ */
+export const OtpPurpose = z.enum(['login', 'register', 'verify_email', 'reset_password', 'step_up', 'change_contact']);
 export type OtpPurpose = z.infer<typeof OtpPurpose>;
 
 /** Channel an OTP is delivered on (channel-direct via NotificationPort — no provider OTP widget). */

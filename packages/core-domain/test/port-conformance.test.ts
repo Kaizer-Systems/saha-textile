@@ -140,6 +140,7 @@ const fakeCustomerAuth = {
 	findAuthStateByIdentifier: notImplemented,
 	setPasswordHash: notImplemented,
 	markEmailVerified: notImplemented,
+	markPhoneVerified: notImplemented,
 	setStatus: notImplemented,
 	bumpTokenVersion: notImplemented,
 	recordSuccessfulLogin: notImplemented,

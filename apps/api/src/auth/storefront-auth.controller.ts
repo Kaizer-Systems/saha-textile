@@ -568,28 +568,11 @@ export class StorefrontAuthController {
 	/**
 	 * Proves the person at the keyboard is still the account holder.
 	 *
-	 * Password when one is set — free, and stronger than a code delivered to a channel the
-	 * session holder may already be reading. OTP only for accounts that have no password yet,
-	 * which is every social signup until they set one.
+	 * The rule itself lives on `AuthService` — the contact-change routes in `storefront/` need
+	 * the same check, and a second copy is how one surface ends up quietly weaker than another.
 	 */
-	private async requireStepUp(customerId: string, password?: string, otpCode?: string): Promise<void> {
-		const state = await this.auth.customerAuthRepository.findAuthStateById(customerId);
-		const stepUpFailed = domainRefusal('step_up_required', 'Confirm it is you');
-
-		if (state?.passwordHash) {
-			if (!password) throw stepUpFailed;
-			if (!(await this.auth.verifyPassword(state, password))) throw stepUpFailed;
-			return;
-		}
-
-		if (!otpCode) throw stepUpFailed;
-		const customer = await this.auth.publicCustomer(customerId);
-		for (const destination of [customer.email, customer.phone]) {
-			if (!destination) continue;
-			const verified = await this.auth.verifyOtp({ identifier: destination, purpose: 'step_up', code: otpCode });
-			if (verified) return;
-		}
-		throw stepUpFailed;
+	private requireStepUp(customerId: string, password?: string, otpCode?: string): Promise<void> {
+		return this.auth.assertStepUp(customerId, { password, otpCode });
 	}
 
 	@Post('login/password')

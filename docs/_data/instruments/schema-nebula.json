@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-15",
+	"lastVerified": "2026-08-18",
 	"route": "/database/schema-nebula",
 	"title": "Schema Nebula",
 	"summary": "A governed one-star-per-collection map of the 65 explicit MongoDB collection targets across the Saha Textile platform.",
@@ -33,7 +33,7 @@
 		"existingModelCount": 35,
 		"targetOnlyCount": 30,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
-		"statusPolicy": "A star becomes solid only when a tested current adapter model resolves to that exact ratified physical collection name. All 38 exported models declare explicit physical names; 35 match ratified graph nodes and are solid (including passwordCredentials, pinCredentials, authIdentities). authRateLimits, productQuestions, and ratingAggregates are implemented catalogue evidence but remain outside the ratified 65-node graph."
+		"statusPolicy": "A star becomes solid only when a tested current adapter model resolves to that exact ratified physical collection name. All 40 exported models declare explicit physical names; 35 match ratified graph nodes and are solid. authRateLimits, pendingSignups, and pendingContactChanges are transient runtime machinery outside the graph; productQuestions and ratingAggregates are durable implemented collections awaiting graph reconciliation."
 	},
 	"clusters": [
 		{

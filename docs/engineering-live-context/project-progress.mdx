@@ -3,7 +3,7 @@ title: 'Project Progress'
 description: 'Canonical cross-tool checkpoint for current implementation status and verification evidence.'
 audience: [engineering, operator, agent]
 document_role: canonical
-last_verified: 2026-08-13
+last_verified: 2026-08-18
 search_keywords: 'project progress current status checkpoint verification evidence chunks gates'
 ---
 
@@ -79,7 +79,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 ```json
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-15",
+	"lastVerified": "2026-08-18",
 	"chunks": {
 		"A": "done",
 		"B": "done",
@@ -3823,6 +3823,28 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
   `/storybook/`, `/typedoc/`, `/api/reference/`, `/database/catalogue/`, `/api/openapi.json`.
   Derived narratives no longer claim idle-lock or admin CRM customers as absent.
   `DEC-PORTAL-PRIVATE-ACCESS` still BLOCKED (no deploy). **No commit.** Tool: cursor.
+- 2026-08-18 — [DONE] **Developer portal current-head deep reconciliation.** Started from a
+  clean tree at `d2065c11`; the last full portal reconciliation (`b503790f`) was **22 commits**
+  behind. Re-read those commits and the current API, contracts, core ports, Mongo models,
+  storefront/admin identity surfaces, generated-tool inputs, and governed live context. Public
+  documentation now describes verified-before-creation signup, email/phone login, Google/Meta
+  verifier and identity seams, remember-me lifetime alignment, password/session management,
+  storefront profile/address/contact self-service, guest-cart adoption, the **89-code**
+  permission registry, and the current audience-separated architecture without task-diary or
+  defect-fix narration. OpenAPI evidence is **95 paths / 111 operations / 9 tags** and remains
+  scaffolded with zero operation security/request bodies/response schemas. The source-only
+  catalogue generator now includes both TTL runtime models and measures **40 models / 479
+  fields / 107 indexes / 27 temporary shapes / 13 excluded fields**. Schema Nebula remains the
+  ratified **65 / 35 / 30** graph; `authRateLimits`, `pendingSignups`, and
+  `pendingContactChanges` are runtime-only, while `productQuestions` and `ratingAggregates`
+  remain graph-reconciliation debt. The decision inbox/index and Gate Console agree at **28
+  open decisions**. Public documentation no longer uses temporary implementation vocabulary
+  prohibited by the naming law. Validator and TypeScript pass; targeted formatting and
+  Docusaurus production build pass (**83 pages / 83 routes / 52 portal source files**).
+  Storybook coverage is accurately recorded as **140 / 141 reusable across 290 components**;
+  `shared/ui/social-sign-in/social-sign-in.ts` lacks an approved specimen, so that gate remains
+  red and no product UI/story was added. TypeDoc builds **701 HTML pages** with one unresolved
+  `labelFromUserAgent` link warning. No product runtime code changed. Tool: codex.
 - _(append)_
 
 ---

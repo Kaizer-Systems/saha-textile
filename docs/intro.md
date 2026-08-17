@@ -4,7 +4,7 @@ slug: /
 description: Private developer portal for Saha Textile.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - apps/developer-portal/src
@@ -137,7 +137,7 @@ import { MissionControl } from '@site/src/components/MissionControl';
 		<a className="portalPathCard" href="/admin/application-atlas">
 			<span>Admin · Explore</span>
 			<h3>Operator application atlas</h3>
-			<p>Lazy features, forms, tables, queries, permissions and mock mutation seams.</p>
+			<p>Lazy features, forms, tables, queries, permissions and unwired mutation seams.</p>
 		</a>
 		<a className="portalPathCard" href="/frontend/engineering-system">
 			<span>Shared · Decide</span>
@@ -207,7 +207,7 @@ import { MissionControl } from '@site/src/components/MissionControl';
 		<a href="/database/overview" className="portalImplementationItem" role="listitem">
 			<span className="portalStatusPill" data-status="scaffolded">Scaffolded</span>
 			<strong>Mongo adapter</strong>
-			<p>All 35 current Mongoose models plus their fields and indexes are source-generated into the scaffolded current-model catalogue.</p>
+			<p>All 40 current Mongoose models plus their fields and indexes are source-generated into the scaffolded current-model catalogue.</p>
 		</a>
 	</div>
 </section>

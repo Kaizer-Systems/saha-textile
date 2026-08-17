@@ -3,7 +3,7 @@ title: Generated Surfaces and Persistent Portal Runtime
 description: Storybook, TypeDoc, Scalar, database-catalogue, shared-theme, and atomic local serving topology.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/developer-portal
     - apps/developer-portal-storybook
@@ -27,8 +27,8 @@ Docusaurus remains the navigation, narrative, governance, search, and deployment
 | `/tools/storybook`          | `/storybook/`          | One Angular Storybook renderer | Built; Component Forge gateway                                               |
 | `/tools/typedoc`            | `/typedoc/`            | TypeDoc                        | Built; Type Lattice gateway                                                  |
 | `/tools/scalar`             | `/api/reference/`      | Scalar                         | Scaffolded current OpenAPI; Request Wormhole gateway; Test Request available |
-| `/tools/database-catalogue` | `/database/catalogue/` | Mongo catalogue generator      | Scaffolded 34-model current evidence; Schema Observatory gateway             |
-| n/a                         | `/api/openapi.json`    | OpenAPI artifact pipeline      | Scaffolded deterministic 52-path/59-operation document                       |
+| `/tools/database-catalogue` | `/database/catalogue/` | Mongo catalogue generator      | Scaffolded 40-model current evidence; Schema Observatory gateway             |
+| n/a                         | `/api/openapi.json`    | OpenAPI artifact pipeline      | Scaffolded deterministic 95-path/111-operation document                      |
 
 Storybook is not a React-only or view-only substitute. The selected `@storybook/angular` renderer compiles Angular templates, dependency injection, inputs/outputs, change detection, directives, and application providers. A React renderer cannot directly render Angular components as React components.
 
@@ -64,15 +64,15 @@ Tool-specific selectors remain in tool adapters. Shared token values must not be
 
 Storybook renders real Angular classes; it does not reproduce application components with Storybook-only HTML.
 
-The production catalogue contains story states across Storefront, Admin, and Shared (including Admin PIN Pad and idle-lock modal specimens). The automated coverage gate scans all 289 Angular components in both applications and accounts for every component classified as reusable:
+The production catalogue contains story states across Storefront, Admin, and Shared, including Admin PIN Pad and idle-lock modal specimens. The automated coverage gate scans all 290 Angular components. Its current result is:
 
 | Application | Reusable components accounted for | Application components reached directly by stories |
 | ----------- | --------------------------------- | -------------------------------------------------- |
-| Storefront  | 106 / 106                         | 107 / 155                                          |
+| Storefront  | 105 / 106                         | 106 / 156                                          |
 | Admin       | 35 / 35                           | 35 / 134                                           |
-| Combined    | 141 / 141                         | 142 / 289                                          |
+| Combined    | 140 / 141                         | 141 / 290                                          |
 
-The extra directly reached component is an application-composition surface. Application components not directly reached are route/page orchestration, not missing reusable-component specimens. Their navigation, resolver, live-service, and whole-application behavior belongs in integration and Playwright coverage.
+The uncovered reusable component is `shared/ui/social-sign-in/social-sign-in.ts`. Application components not directly reached are route/page orchestration; their navigation, resolver, live-service, and whole-application behavior belongs in integration and Playwright coverage.
 
 The coverage gate runs before Storybook development, typechecking, linting, and production builds:
 
@@ -163,7 +163,7 @@ corepack pnpm portal:persistent -- --port 3457
 4. builds Storybook and TypeDoc;
 5. builds the API and source-generates the scaffolded OpenAPI artifact without MongoDB;
 6. builds Scalar with Test Request available;
-7. source-generates the 34-model MongoDB catalogue without database access;
+7. source-generates the 40-model MongoDB catalogue without database access;
 8. builds Docusaurus;
 9. verifies that every enabled surface produced a non-empty entry page;
 10. copies child outputs under the Docusaurus composite tree;

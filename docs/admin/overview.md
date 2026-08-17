@@ -4,7 +4,7 @@ wide: true
 description: Start here before changing the Angular administration application.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/admin/src/app
     - apps/api/src/admin
@@ -16,7 +16,7 @@ source_of_truth:
 
 The admin application is the private operator workspace for catalogue, orders, customers, promotions, content, configuration, and reporting. It is an Angular 21 single-page application with a broad lazy-loaded feature tree.
 
-The routed UI surface is substantial. Auth, Account Security, idle soft-lock, roles/operators, notification settings, and CRM customers are live against the API; most other domain reads still come from static JSON and many writes remain explicit mock seams. Treat the admin as a mature UI scaffold with selected live operator workflows—not as a fully operational commerce back office.
+The routed UI surface is substantial. Auth, Account Security, idle soft-lock, roles/operators, notification settings, and CRM customers are live against the API; most other domain reads still come from static JSON and many writes remain explicitly unwired. Treat the admin as a mature UI scaffold with selected live operator workflows—not as a fully operational commerce back office.
 
 ## Recommended reading sequence
 
@@ -50,9 +50,9 @@ flowchart LR
 | Authentication      | Cookie-session gateway, guarded shells, password/PIN/recovery, Account Security at `/account`, idle soft-lock resume, first-admin bootstrap, role/authority and CRM APIs | Scaffolded  | Real-browser PIN-login proof coverage remains open; OAuth remains credential-blocked.       |
 | Server-state reads  | TanStack Query + typed gateways for roles, operators, customers, notifications; other features still mix fixtures                                                        | Scaffolded  | Not every feature family is contract-backed yet.                                            |
 | Cart/order creation | Classic NgRx cart and checkout composition exist                                                                                                                         | Scaffolded  | Order placement and authoritative totals are not connected.                                 |
-| Forms               | Reactive forms exist for major catalogue/content/settings features; CRM and Account Security use live mutations                                                          | Scaffolded  | Many catalogue/content submission paths still stop at mock methods or navigation.           |
+| Forms               | Reactive forms exist for major catalogue/content/settings features; CRM and Account Security use live mutations                                                          | Scaffolded  | Many catalogue/content submission paths still stop at no-op methods or navigation.          |
 | Tables              | Shared search, pagination, selection, date, action, and permission UI exists; CRM soft-delete hides deleted by default                                                   | Scaffolded  | Backend filtering/bulk mutations are not generally operational; revive blocked on DEC gate. |
-| Authorization       | Permission-shaped UI directives against the live **103-code** registry                                                                                                   | Scaffolded  | UI visibility is not a security boundary; API authorization must enforce every operation.   |
+| Authorization       | Permission-shaped UI directives against the live **89-code** registry                                                                                                    | Scaffolded  | UI visibility is not a security boundary; API authorization must enforce every operation.   |
 | Dial / flags        | Country dial labels are HTML in `country-code.ts`; sprites at `/assets/images/flags/flags.png`                                                                           | Implemented | Reuse shared dial markup; do not invent alternate flag assets.                              |
 
 ## Feature families
@@ -86,7 +86,7 @@ Hiding an action in a table or menu improves usability, but it does not secure t
 
 - Identify the feature route and its owning shell.
 - Trace every displayed record to its query and service.
-- Confirm whether the action is a real mutation or a mock seam.
+- Confirm whether the action is a real mutation or an unwired seam.
 - Reuse shared table/form/upload primitives when they fit.
 - Do not preserve weak typing or placeholder behavior merely because it already exists.
 - Design API-backed writes around shared contracts, error recovery, and operator auditability.

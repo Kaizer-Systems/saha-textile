@@ -4,7 +4,7 @@ wide: true
 description: Zod contract ownership, request parsing, persistence mapping, response safety, and evolution rules.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - packages/contracts/src
     - packages/contracts/test
@@ -35,7 +35,7 @@ That does **not** mean one schema should represent every layer.
 | Persistence document | How an adapter stores data |    Sometimes internal-only values | Mongoose interfaces/models exist               |
 | Response DTO         | What one actor may receive | Never secret/internal-only fields | Mostly public entity schemas returned directly |
 
-An API request for account registration should not accept `role`, `emailVerified`, `passwordHash`, or internal flags merely because those fields exist somewhere in a user model.
+A signup-finalisation request must not accept `role`, verified identifiers, provider subjects, credential hashes, or internal flags merely because those fields exist in persistence. The final values come from server-held proof state.
 
 ## Current contract families
 
@@ -46,14 +46,15 @@ An API request for account registration should not accept `role`, `emailVerified
 | `attribute.ts`, `product*.ts`, `promotion.ts`        | semantic attributes, lifecycle, options, variants, bundles, relations, promotions | only `live` is public; option role is independent of eight display styles                |
 | `media.ts`, `inventory.ts`, `content.ts`             | assets/HLS, ledger/FIFO, FAQ, Q&A and verified reviews                            | ratified media/inventory/content invariants are runtime-validated                        |
 | `cart.ts`, `order.ts`, `currency.ts`, `shipping.ts`  | commerce aggregates, snapshots, FX inputs, and quote                              | value and currency travel together; canonical product price remains INR                  |
-| `user.ts`                                            | sanitized public user, identities, addresses, consent snapshot                    | credential material is intentionally absent                                              |
+| `customer.ts`, `admin-user.ts`                       | separated customer/operator profiles, addresses and public authority state        | credential material is intentionally absent                                              |
 | `session.ts`                                         | access claims, public session info, server-internal session/refresh-family entity | browser response metadata contains no token values                                       |
-| `auth.ts`, `admin-auth.ts`                           | storefront/admin request and actor-safe response DTOs                             | 12-character password floor; six-digit admin PIN shape; no tokens in body                |
+| `auth.ts`, `signup.ts`, `oauth.ts`, `admin-auth.ts`  | storefront/admin auth, verified signup, provider and actor-safe response DTOs     | proven identifiers remain server-held; no reusable session token in a body               |
+| `storefront-account.ts`                              | own-profile, address, session and contact-change requests/responses               | customer identity comes from the session, never a caller-supplied customer id            |
 | `auth-internal.ts`                                   | OTP/OAuth/reset/invite/rate-limit persistence shapes                              | codes/tokens/IP/user-agent values are represented by hashes                              |
 | `consent.ts`, `audit.ts`, `notification.ts`          | consent history, broad admin/security audit, notification settings/outbox         | append-only evidence and channel/category control are explicit                           |
-| `permission.ts`, `role.ts`, `admin-user.ts`          | 103-code permission registry, roles, assignments and admin authority operations   | grants normalize against the registry; server-only codes have a justified write boundary |
+| `permission.ts`, `role.ts`, `admin-user.ts`          | 89-code permission registry, roles, assignments and admin authority operations    | grants normalize against the registry; server-only codes have a justified write boundary |
 
-These contract families are not proof of end-to-end operations. Contract tests total 160, and the matching core port surface is complete. Auth/session, OTP, password reset, email verification, admin recovery/PIN/invite/resume, Account Security and idle-lock resume, role/permission/user-authority administration, admin CRM customers, consent/privacy, cart/`st_guest` ownership and order-ownership contracts have meaningful HTTP adoption. The permission registry is compile-time closed at **103** codes (menu ∪ UI gates ∪ former mock names), and only the explicitly identified server-only subset may cross the internal bootstrap/administration boundary. OAuth verification, real-browser PIN-login proof coverage, and guest→user merge remain open; soft-delete revive ops remain gated by `DEC-CUSTOMER-SOFT-DELETE-OPS`. The Mongo adapter implements the role/assignment seam plus consent, audit, notification, catalogue, media, inventory, governance and content models/repositories, but most expanded families still lack complete HTTP workflows. Checkout, payment, reporting, analytics and the rest of the ratified target persistence remain incomplete.
+These contract families are not proof of end-to-end operations. Auth/session, verified signup, password and OTP login by email or phone, OAuth verification and identity management, password/session management, storefront profile/address/contact self-service, admin recovery/PIN/invite/resume, Account Security and idle-lock resume, authority administration, CRM, consent/privacy, cart ownership, guest-cart adoption, and order ownership have meaningful HTTP adoption. The permission registry is compile-time closed at **89** codes, and only the justified server-only subset may cross the internal bootstrap/administration boundary. Provider activation/browser proof, real-browser PIN-login proof, pending-intent continuation, and soft-delete operations remain incomplete or decision-gated. The Mongo adapter implements the identity/authorization seam plus consent, audit, notification, catalogue, media, inventory, governance and content models/repositories, but most expanded families still lack complete HTTP workflows. Checkout, payment, reporting, analytics and the rest of the ratified target persistence remain incomplete.
 
 ## Boundary validation today
 

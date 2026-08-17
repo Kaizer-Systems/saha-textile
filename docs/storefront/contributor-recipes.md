@@ -3,7 +3,7 @@ title: Storefront Contributor Recipes
 description: Beginner-safe recipes for adding routes, server queries, client state, translations, and SSR-safe UI.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 source_of_truth:
     - apps/storefront/src/app/pages
     - apps/storefront/src/app/features
@@ -90,7 +90,7 @@ If classic NgRx is justified:
 
 - [ ] The change lives in the correct directory and layer.
 - [ ] External data has a typed, validated contract boundary.
-- [ ] Mock behavior is labelled and not mistaken for a backend capability.
+- [ ] Fixture-backed or unwired behavior is labelled and not mistaken for a backend capability.
 - [ ] SSR and browser navigation were both checked.
 - [ ] Loading, error, empty, and success states are intentional.
 - [ ] Keyboard, touch, focus, and reduced-motion behavior were considered.

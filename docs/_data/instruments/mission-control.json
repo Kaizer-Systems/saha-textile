@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-15",
+	"lastVerified": "2026-08-18",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
 		"docs/engineering-live-context/project-progress.mdx"
@@ -57,15 +57,15 @@
 			"title": "Cookie-session auth, PIN, OTP & OAuth",
 			"deps": ["C"],
 			"blockingGates": [],
-			"summary": "Cookie sessions, atomic refresh rotation/reuse revocation, session-bound CSRF, storefront/admin audiences, OTP, password reset, email verification, PIN lockout, admin invites and HTTP resume, a closed 103-code permission registry with effective permissions on GET /auth/admin/me, active role-assignment resolution, deny-by-default role/permission/user-authority routes, permission-version invalidation, no-delegation and last-administrator controls, audited offboarding, operator-only first-admin bootstrap, consent/privacy seams, order ownership and cart Principal/st_guest proof, admin Account Security (PIN/password/sessions), and the admin 15-minute idle soft-lock with PIN-or-password resume against POST /auth/admin/resume are implemented. The chunk remains partial because OAuth verification, real-browser PIN-login proof coverage, and guest-to-user merge plus pending-intent continuation are still absent.",
-			"dod": "Partial: D2–D5 core auth and the idle-lock/PIN-resume client are live. Finish OAuth verification, browser-prove PIN login end-to-end, and implement guest-to-user merge plus pending-intent continuation."
+			"summary": "Cookie sessions, atomic refresh rotation/reuse revocation, session-bound CSRF, storefront/admin audiences, verified-before-creation signup, password and OTP login by email or phone, Google and Facebook verification adapters, identity linking, remember-me lifetime alignment, password management, account self-service, guest-cart adoption, PIN lockout, admin invites and HTTP resume, a closed 89-code permission registry, active role-assignment resolution, deny-by-default administration, consent/privacy seams, ownership checks, Account Security, and the admin idle soft-lock are implemented. The chunk remains partial until provider credentials and approved origins are configured, provider and PIN flows are proven in supported browsers, pending-intent continuation is implemented, and older privileged routes finish granular-permission adoption.",
+			"dod": "Partial: the server and storefront identity/account paths are implemented. Complete provider activation and browser proof, PIN-login browser proof, pending-intent continuation, and granular-permission adoption."
 		},
 		{
 			"id": "E",
 			"title": "Mongo persistence & transaction adoption",
 			"deps": ["C"],
 			"blockingGates": [],
-			"summary": "Chunk E persistence is complete. The adapter now exports 34 Mongoose models covering the original surface plus identity, authorization, consent, catalogue structure, variants, bundles, relations, inventory, media, audit, notifications, FAQ, Q&A, reviews and rating aggregates. Atomic catalogue, inventory, governance and content workflows are rs0-proven.",
+			"summary": "Chunk E persistence is complete. The adapter exports 40 Mongoose models covering the original surface plus separated customer/operator identity, credentials, pending verification state, authorization, consent, catalogue structure, variants, bundles, relations, inventory, media, audit, notifications, FAQ, Q&A, reviews and rating aggregates. Atomic catalogue, inventory, governance and content workflows are rs0-proven.",
 			"dod": "Complete: 100 adapter integration tests cover uniqueness, TTL, visibility, concurrency, transaction rollback, order-and-cart atomicity, role assignments and response-safe mapping."
 		},
 		{
@@ -81,8 +81,8 @@
 			"title": "Cart, checkout, orders & payment/shipping ports",
 			"deps": ["B", "E", "F"],
 			"blockingGates": ["G-NUM-ORDER"],
-			"summary": "Cart + guest merge, pricing engine shell (INR canonical, FX, PayPal gross-up), Payment/Shipping ports + stubs, and order/payment/shipment/return/refund shapes with ownership, idempotency and transactions. Customer-facing order numbers wait on the numbering gate.",
-			"dod": "Cart + merge + quote + stub pay/ship + ownership tests; order placement internal-id-only or gated."
+			"summary": "Cart and guest adoption, a pricing-engine shell (INR canonical, FX, PayPal gross-up), Payment/Shipping ports with non-production implementations, and order/payment/shipment/return/refund shapes with ownership, idempotency and transaction seams. Customer-facing order numbers wait on the numbering gate.",
+			"dod": "Cart adoption, quote, non-production payment/shipping implementations and ownership tests; order placement remains internal-id-only or gated."
 		},
 		{
 			"id": "H",
@@ -105,7 +105,7 @@
 			"title": "Docs, seeds, verification & infra close-out",
 			"deps": ["D", "E", "F", "G", "H", "I"],
 			"blockingGates": [],
-			"summary": "OpenAPI / runbook / env docs aligned with §0b–0d, seeds + bulk fixtures, full lint/typecheck/test, and the detailed deploy scripts (not stubs).",
+			"summary": "OpenAPI, runbook and environment docs aligned with §0b–0d, seeds and bulk fixtures, full lint/typecheck/test, and detailed deploy scripts.",
 			"dod": "Docs aligned; seeds; green gates; deploy scripts documented; deferred seams reported."
 		}
 	]

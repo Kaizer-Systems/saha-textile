@@ -3,7 +3,7 @@ title: Backend Platform Atlas
 description: Interactive, evidence-backed map of API request paths, boundaries, risks, and proof obligations.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-08-15'
+last_verified: '2026-08-18'
 wide: true
 source_of_truth:
     - apps/api/src
@@ -64,31 +64,28 @@ An implementation is incorrectly layered when a controller imports a provider SD
 
 ## Current capability radar
 
-| Boundary                 | What exists                                                                                                                                                                                                                                                                 | What is not yet proven                                                                                      |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Fastify/NestJS bootstrap | Helmet, trusted proxy/client IP, request ids, redacted pino logs, safe error envelope, strict CORS, global rate limit, cookies/CSRF, split health, OpenAPI, shutdown hooks                                                                                                  | Route-specific limits, secure production CSP, remaining identity workflows and complete OpenAPI semantics   |
-| HTTP modules             | Health, auth, admin authorization (roles, CRM customers, notifications), privacy, catalogue, currency, promotions, cart, orders                                                                                                                                             | Complete public/admin route families, DTO families, versioning and operation metadata                       |
-| Authentication           | Cookie-only sessions, sid-bound logout, session CSRF, audiences, storefront auth, admin recovery/PIN/invites/resume, Account Security + idle soft-lock, 103-code registry, assignment resolution, deny-by-default admin management, operator bootstrap, CRM customers, BOLA | OAuth, real-browser PIN-login proof, guest→user merge, soft-delete revive ops, and provider-backed delivery |
-| Contracts                | Zod schemas for common/auth/permission/role/admin-user/catalog/media/inventory/content/commerce families; 160 tests                                                                                                                                                         | Runtime wiring and complete operation-level OpenAPI mapping                                                 |
-| Core domain              | Repository/provider ports, auth rate-limit and effective-permission policy, pure pricing/visibility helpers, mechanically enforced type-only contract boundary; 98 tests                                                                                                    | Use-case/state-machine adoption and remaining policy coverage                                               |
-| Mongo adapter            | 38 models with explicitly declared physical collection names, 103 tests total (99 rs0-gated), mappers, indexes, seed tool, `MongoTransactionManager`, self-hosted Docker `rs0` profile                                                                                      | Remaining HTTP/workflow adoption, stronger nested validation, migrations, backups/restore                   |
-| Tests                    | Contract/core suites, 131 API tests and 103 Mongo adapter tests plus a 22-check live auth/security campaign                                                                                                                                                                 | Full live HTTP/idempotency workflow coverage and CI execution of every DB-gated proof                       |
-| Generated references     | API `/openapi.json`; 75-path/88-operation Scalar scaffold; 38-model source catalogue                                                                                                                                                                                        | Complete OpenAPI operation metadata and target-complete database catalogue                                  |
+| Boundary                 | What exists                                                                                                                                                                                             | What is not yet proven                                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Fastify/NestJS bootstrap | Helmet, trusted proxy/client IP, request ids, redacted logs, safe error envelope, strict CORS, rate limiting, cookies/CSRF, split health, OpenAPI, shutdown hooks                                       | Route-specific limits, secure production CSP, fail-closed secret validation, and complete OpenAPI semantics                         |
+| HTTP modules             | Health, storefront/admin auth, storefront account self-service, admin authority/CRM/notifications, privacy, catalogue, currency, promotions, cart, orders                                               | Complete public/admin route families, DTO families, versioning, and operation metadata                                              |
+| Authentication           | Verified signup, email/phone password and OTP login, provider verifiers and identity links, sessions/password/account management, guest-cart adoption, admin PIN/invites/resume, 89-code registry, BOLA | Provider activation/browser proof, PIN browser proof, pending-intent continuation, granular migration, and provider-backed delivery |
+| Contracts                | Zod families for common identity, account, authority, catalogue, media, inventory, content and commerce boundaries                                                                                      | Runtime wiring and complete operation-level OpenAPI mapping                                                                         |
+| Core domain              | Repository/provider ports, signup/password/PIN/permission policy, pure pricing/visibility helpers, mechanically enforced inward dependencies                                                            | Use-case/state-machine adoption and remaining policy coverage                                                                       |
+| Mongo adapter            | 40 explicitly named models, mappers, indexes, seed/reconciliation tools, `MongoTransactionManager`, and self-hosted Docker `rs0` profile                                                                | Remaining HTTP/workflow adoption, stronger nested validation, migrations, and backup/restore proof                                  |
+| Tests                    | Package-level unit/contract suites, rs0-gated adapter integration suites, and focused live auth/security campaigns                                                                                      | Full live HTTP/idempotency workflow coverage and CI execution of every DB-gated proof                                               |
+| Generated references     | API `/openapi.json`; 95-path/111-operation Scalar scaffold; 40-model source catalogue                                                                                                                   | Complete OpenAPI operation metadata and target-complete database catalogue                                                          |
 
-## Current implementation risks and resolved defects
+## Current implementation boundaries
 
-1. **Resolved 2026-07-31:** public product reads now fail closed to `live`; the former list/direct-read visibility leak is covered by repository integration tests.
-2. **Resolved 2026-08-01:** cart routes stay `@Public()` for guest add-to-cart but enforce Principal ownership or hashed `st_guest` proof; cross-owner access is 404.
-3. **Resolved 2026-08-01:** `GET /orders/:id` enforces customer ownership, hides mismatches and permits an explicit staff/admin support bypass.
-4. **Resolved for atomicity 2026-08-01:** order create validates cart ownership/adoption and commits order save + cart consume in one `TransactionManagerPort` unit of work. Idempotency keys remain a Chunk G seam.
-5. **Resolved end to end by 2026-08-08:** browser auth uses cookie-only persisted session families with rotation/reuse revocation and immediate sid invalidation on logout. Both Angular applications use the shared cookie transport with refresh single-flight, cross-tab exclusion and stable refusal handling; lint guards reject bearer/browser-token regressions.
-6. API configuration supplies development JWT defaults without a production fail-closed check.
-7. **Resolved for probe semantics 2026-08-01:** `/health/live` is dependency-free and `/health/ready` fails closed when Mongo is unavailable; `/health` remains a liveness alias.
-8. Storefront search currently uses Mongo regular expressions even though the ratified target is Meilisearch through `SearchPort`.
-9. **Resolved 2026-07-24:** the Mongo connection builder and `.env.example` implement the self-hosted Docker `rs0` model; former hosted-cluster/SRV assumptions are removed and a local replica set is available through `pnpm mongo:up`.
-10. API has 131 tests. The Mongo package has four source-only collection-name checks and 99 tests gated by `RUN_DB_IT=1`; the transaction and repository suites have been proven against rs0 but must remain part of CI readiness work.
+1. Public catalogue reads enforce `live` visibility in the repository; search remains the transitional Mongo implementation until a Meilisearch adapter is bound through `SearchPort`.
+2. Guest cart routes enforce the hashed `st_guest` proof, customer cart/order reads enforce ownership, and support access is explicit.
+3. Order creation commits order save and cart consumption in one `TransactionManagerPort` unit of work. Idempotency, inventory, payment, audit, and outbox participation remain open.
+4. Browser authentication is cookie-only with session-family rotation, reuse revocation, session-bound CSRF, and audience separation. Provider activation and supported-browser evidence remain separate readiness gates.
+5. `/health/live` is dependency-free and `/health/ready` reflects Mongo availability. Other required production dependencies must join readiness as their adapters become traffic-critical.
+6. API configuration still permits development JWT defaults and needs a production fail-closed check.
+7. Mongo integration suites are opt-in and require a dedicated test database before they can be treated as a safe routine local gate.
 
-Treat each finding as an explicit implementation and verification gate. Do not “solve” it by documenting the unsafe behavior as acceptable.
+Treat each boundary as an implementation and verification gate; the presence of a route, port, or test seam does not promote the wider capability.
 
 ## Request analysis framework
 
@@ -106,4 +103,4 @@ For any backend change, answer these questions in order:
 
 ## Capability boundary
 
-Order creation adopts the transaction port for order and cart consumption. Idempotency, guest-to-user merge, Meilisearch, production provider adapters, the remaining identity workflows, and complete generated operation contracts remain unfinished.
+Order creation adopts the transaction port for order and cart consumption. Idempotency, pending-intent continuation, Meilisearch, production provider activation, remaining commerce workflows, and complete generated operation contracts remain unfinished.

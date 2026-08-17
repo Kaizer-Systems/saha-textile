@@ -67,6 +67,8 @@ function toSession(doc: AuthSessionDoc): AuthSession {
 		replacedBySessionId: doc.replacedBySessionId ?? null,
 		csrfSecretHash: doc.csrfSecretHash,
 		device: doc.device ?? { userAgentHash: null, ipHash: null, country: null, label: null },
+		// Rows predating "remember me" were all persistent; absent must not read as false.
+		persistent: doc.persistent ?? true,
 		createdAt: isoRequired(doc.createdAt),
 		lastSeenAt: isoRequired(doc.lastSeenAt),
 		expiresAt: isoRequired(doc.expiresAt),
@@ -695,6 +697,24 @@ export class MongoCustomerAuthRepository implements CustomerAuthRepository {
 		const doc = await CustomerModel.findById(customerId).lean<CustomerAuthLean>().exec();
 		if (!doc) return null;
 		return toCustomerAuthState(doc, await loadPasswordHash('customer', customerId));
+	}
+
+	/**
+	 * One query against whichever column the identifier is shaped like.
+	 *
+	 * An `@` decides it. Querying BOTH columns for every attempt would let somebody discover
+	 * that a string is a registered phone by typing it into the email box — a small leak, and
+	 * an entirely avoidable one.
+	 */
+	async findAuthStateByIdentifier(identifier: string): Promise<CustomerAuthState | null> {
+		const trimmed = identifier.trim();
+		const filter = trimmed.includes('@')
+			? { email: trimmed.toLowerCase(), status: { $ne: 'deleted' } }
+			: { phone: trimmed, status: { $ne: 'deleted' } };
+
+		const doc = await CustomerModel.findOne(filter).lean<CustomerAuthLean>().exec();
+		if (!doc) return null;
+		return toCustomerAuthState(doc, await loadPasswordHash('customer', doc._id));
 	}
 
 	async findAuthStateByEmail(emailNormalized: string): Promise<CustomerAuthState | null> {

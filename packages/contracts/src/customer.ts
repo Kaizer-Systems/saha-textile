@@ -119,7 +119,13 @@ export const Customer = z.object({
 	id: CustomerId,
 	email: z.email().nullable().default(null),
 	emailVerified: z.boolean().default(false),
-	/** Collected at checkout/address stage, optional (owner lock 2026-06-29) — not at registration. */
+	/**
+	 * A login credential, proven before the account exists (`DEC-SIGNUP-VERIFICATION`).
+	 *
+	 * Supersedes the 2026-06-29 lock that collected phone at the checkout/address stage and
+	 * explicitly not at registration. Still nullable on the type because rows created under the
+	 * older rule predate the requirement.
+	 */
 	phone: z.string().nullable().default(null),
 	phoneVerified: z.boolean().default(false),
 	displayName: z.string().optional(),

@@ -40,9 +40,32 @@ export const RegisterStorefrontRequest = z.object({
 });
 export type RegisterStorefrontRequest = z.infer<typeof RegisterStorefrontRequest>;
 
+/**
+ * An email address or a phone number, as the person typed it.
+ *
+ * Both are login credentials under `DEC-SIGNUP-VERIFICATION` — both are OTP-verified before an
+ * account exists, so either identifies its owner exactly as well as the other. Validated only
+ * for shape here; which column it resolves against is the server's decision, and a caller must
+ * not be able to steer that by claiming a value is "an email".
+ */
+export const CustomerIdentifier = z
+	.string()
+	.trim()
+	.min(3)
+	.max(254)
+	.refine((value) => value.includes('@') || /^\+?[0-9]{6,20}$/.test(value), {
+		message: 'must be an email address or a phone number',
+	});
+export type CustomerIdentifier = z.infer<typeof CustomerIdentifier>;
+
 /** `POST /auth/storefront/login/password` */
 export const PasswordLoginRequest = z.object({
-	email: z.email(),
+	/**
+	 * Email or phone. `email` is retained as an accepted alias so an older client keeps working
+	 * through the transition; the server reads `identifier` when both are present.
+	 */
+	identifier: CustomerIdentifier.optional(),
+	email: z.email().optional(),
 	/** Login accepts any length (legacy passwords may predate policy); policy applies on set/change. */
 	password: z.string().min(1).max(256),
 	rememberMe: z.boolean().optional(),
@@ -52,22 +75,27 @@ export type PasswordLoginRequest = z.infer<typeof PasswordLoginRequest>;
 
 /** `POST /auth/storefront/login/email-otp/request` — response is ALWAYS generic (anti-enumeration lock). */
 export const EmailOtpRequest = z.object({
-	email: z.email(),
+	identifier: CustomerIdentifier.optional(),
+	email: z.email().optional(),
 	purpose: z.enum(['login', 'register']),
 });
 export type EmailOtpRequest = z.infer<typeof EmailOtpRequest>;
 
 /** `POST /auth/storefront/login/email-otp/verify` — single-use; consumes the challenge. */
 export const EmailOtpVerifyRequest = z.object({
-	email: z.email(),
+	identifier: CustomerIdentifier.optional(),
+	email: z.email().optional(),
 	code: OtpCode,
+	/** Same "remember me" the password path takes — the choice belongs to the sign-in, not the proof. */
+	rememberMe: z.boolean().optional(),
 	guestCartId: Id.optional(),
 });
 export type EmailOtpVerifyRequest = z.infer<typeof EmailOtpVerifyRequest>;
 
 /** `POST /auth/storefront/password/forgot` — response is ALWAYS generic (anti-enumeration). */
 export const PasswordForgotRequest = z.object({
-	email: z.email(),
+	identifier: CustomerIdentifier.optional(),
+	email: z.email().optional(),
 });
 export type PasswordForgotRequest = z.infer<typeof PasswordForgotRequest>;
 
@@ -77,6 +105,26 @@ export const PasswordResetRequest = z.object({
 	newPassword: Password,
 });
 export type PasswordResetRequest = z.infer<typeof PasswordResetRequest>;
+
+/**
+ * `POST /auth/storefront/password/set` — set or change the password of the SIGNED-IN account.
+ *
+ * Distinct from `password/reset`, which is unauthenticated and spends a mailed token. This one
+ * needs a live session PLUS fresh credential proof, because a stolen session must not be able to
+ * mint a permanent new way in. Same freshness rule as connect/disconnect: the current password
+ * when one is set, otherwise a one-time code — which is the path every social-only account takes
+ * to acquire its first password.
+ */
+export const SetPasswordRequest = z.object({
+	newPassword: Password,
+	/** Freshness proof. Exactly one applies, decided by whether a password already exists. */
+	password: z.string().min(1).max(256).optional(),
+	otpCode: z
+		.string()
+		.regex(/^\d{6}$/)
+		.optional(),
+});
+export type SetPasswordRequest = z.infer<typeof SetPasswordRequest>;
 
 /**
  * `POST /auth/storefront/activate` — admin-minted activation token → first password.

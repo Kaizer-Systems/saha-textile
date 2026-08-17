@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { AuthService } from '../src/auth/auth.service';
 import { StorefrontAuthController } from '../src/auth/storefront-auth.controller';
 import { loadConfig } from '../src/config/app-config';
 
@@ -41,14 +42,27 @@ function harness(options: { passwordHash: string | null; acceptOtp?: string }): 
 	};
 	const result: Harness = { controller: null as never, written: [], revokedOthers: 0, revokedAll: 0 };
 
-	const auth = {
-		customerAuthRepository: {
-			findAuthStateById: async () => state,
-			setPasswordHash: async (_id: string, hash: string) => {
-				result.written.push(hash);
-				state.passwordHash = hash;
-			},
+	const customerAuth = {
+		findAuthStateById: async () => state,
+		setPasswordHash: async (_id: string, hash: string) => {
+			result.written.push(hash);
+			state.passwordHash = hash;
 		},
+	};
+
+	const auth = {
+		customerAuthRepository: customerAuth,
+		/** The name `assertStepUp` reads off `this`. Same object, both spellings. */
+		customerAuth,
+		/**
+		 * The REAL step-up rule, borrowed from the service and run against these fakes.
+		 *
+		 * The rule used to be a private method on the controller and was tested through it. It
+		 * moved to `AuthService` when the contact-change routes needed the same check, and a stub
+		 * here would have quietly ended the coverage: the cases below would keep passing against
+		 * any rule at all. Binding the real function keeps them pointed at the thing that decides.
+		 */
+		assertStepUp: AuthService.prototype.assertStepUp,
 		// Deliberately trivial: the argon2 adapter has its own coverage, and a real KDF here would
 		// make the suite slow without testing anything this route owns.
 		verifyPassword: async (subject: { passwordHash: string | null }, plain: string) =>

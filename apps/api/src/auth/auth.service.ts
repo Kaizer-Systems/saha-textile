@@ -42,6 +42,7 @@ import {
 	OTP_CHALLENGE_REPOSITORY,
 	PASSWORD_RESET_TOKEN_REPOSITORY,
 } from '../infra/tokens';
+import { domainRefusal } from './domain-refusal';
 import { assertPasswordAcceptable } from './password-policy';
 
 /** Owner lock: five failed PIN attempts lock PIN use for fifteen minutes. */
@@ -484,6 +485,39 @@ export class AuthService {
 		const user = await this.customers.findById(userId);
 		if (!user) throw new UnauthorizedException('Account not found');
 		return user;
+	}
+
+	/**
+	 * Proves the person at the keyboard is still the account holder.
+	 *
+	 * Password when one is set — free, and stronger than a code delivered to a channel whoever
+	 * holds the session may already be reading. OTP only for accounts that have no password yet,
+	 * which is every social signup until they set one. WHICH proof applies is decided here, from
+	 * account state, so a caller cannot pick the weaker one by offering it.
+	 *
+	 * Lives on the service rather than on a controller because three surfaces need it — connect,
+	 * disconnect and set-password on the auth controller, and now the contact-change routes in
+	 * another module. A second copy of a step-up check is how one of them ends up subtly weaker
+	 * than the others.
+	 */
+	async assertStepUp(customerId: string, proof: { password?: string; otpCode?: string }): Promise<void> {
+		const state = await this.customerAuth.findAuthStateById(customerId);
+		const stepUpFailed = domainRefusal('step_up_required', 'Confirm it is you');
+
+		if (state?.passwordHash) {
+			if (!proof.password) throw stepUpFailed;
+			if (!(await this.verifyPassword(state, proof.password))) throw stepUpFailed;
+			return;
+		}
+
+		if (!proof.otpCode) throw stepUpFailed;
+		const customer = await this.publicCustomer(customerId);
+		for (const destination of [customer.email, customer.phone]) {
+			if (!destination) continue;
+			const verified = await this.verifyOtp({ identifier: destination, purpose: 'step_up', code: proof.otpCode });
+			if (verified) return;
+		}
+		throw stepUpFailed;
 	}
 
 	/** Loads the public operator projection for an admin response body. */

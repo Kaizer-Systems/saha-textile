@@ -24,4 +24,5 @@ export * from './youtube.port';
 export * from './video-transcode.port';
 export * from './oauth-verifier.port';
 export * from './pending-signup.repository';
+export * from './pending-contact-change.repository';
 export * from './auth-identity.repository';

@@ -73,6 +73,12 @@ export const COLLECTION_NAMES = {
 	 * by nothing, and is deleted by TTL; it exists so a real customer can be born.
 	 */
 	PendingSignup: 'pendingSignups',
+	/**
+	 * Started-but-unproven changes of email or phone — intentionally NOT a Schema Nebula node,
+	 * for the same reasons as `pendingSignups`. A row lives 15–30 minutes and exists so that an
+	 * account's recovery channel can only move once somebody has proven the new one.
+	 */
+	PendingContactChange: 'pendingContactChanges',
 	// --- Governance, privacy, notifications ----------------------------------
 	AuditLog: 'auditLogs',
 	ConsentEvent: 'consentEvents',
@@ -103,7 +109,7 @@ export type ModelName = keyof typeof COLLECTION_NAMES;
  * Absence from the graph is a classification here, never a shortcut. Anything that is genuinely
  * part of the data model belongs in `GRAPH_RECONCILIATION_OWED` below and gets fixed.
  */
-const RUNTIME_ONLY_COLLECTIONS = ['authRateLimits', 'pendingSignups'] as const;
+const RUNTIME_ONLY_COLLECTIONS = ['authRateLimits', 'pendingSignups', 'pendingContactChanges'] as const;
 
 /**
  * ⚠ OWED WORK — real domain models the ratified graph has not caught up with.

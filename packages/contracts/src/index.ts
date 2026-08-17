@@ -21,8 +21,9 @@ export * from './permission';
 export * from './role';
 export * from './shipping';
 export * from './session';
-export * from './storefront-account';
 export * from './auth';
+// After './auth': the contact-change bodies build on `OtpCode`.
+export * from './storefront-account';
 export * from './auth-internal';
 export * from './signup';
 export * from './oauth';

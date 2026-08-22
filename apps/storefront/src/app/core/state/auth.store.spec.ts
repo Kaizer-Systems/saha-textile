@@ -55,6 +55,12 @@ class FakeGateway extends StorefrontAuthGateway {
 	 * is the point: adding a method to the boundary makes every implementation declare an answer
 	 * rather than silently inheriting `undefined`.
 	 */
+	override currentSignup(): Observable<never> {
+		return throwError(() => new Error('not used'));
+	}
+	override discardSignup(): Observable<never> {
+		return throwError(() => new Error('not used'));
+	}
 	override startSignup(): Observable<never> {
 		return throwError(() => new Error('not used'));
 	}

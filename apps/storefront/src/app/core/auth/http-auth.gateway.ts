@@ -32,6 +32,7 @@ import {
 const ROUTES = {
 	csrf: '/auth/csrf',
 	me: '/auth/storefront/me',
+	signup: '/auth/storefront/signup',
 	signupStart: '/auth/storefront/signup/start',
 	signupField: '/auth/storefront/signup/field',
 	signupOtpRequest: '/auth/storefront/signup/otp/request',
@@ -72,6 +73,8 @@ const CREDENTIAL_ROUTES: readonly string[] = [
 	 * answer a refused code by rotating a session that does not exist yet and retrying, which
 	 * is a loop rather than a recovery.
 	 */
+	// `signup` — the GET and its DELETE — is deliberately absent. Neither presents a credential,
+	// so a 401 from either would be a session question, which is the case rotation exists for.
 	ROUTES.signupStart,
 	ROUTES.signupField,
 	ROUTES.signupOtpRequest,
@@ -112,7 +115,7 @@ const SESSION_ESTABLISHING_ROUTES: readonly string[] = [
 
 /** Wire shape of the API's `/me`. Declared here so no other file depends on it. */
 interface MeResponse {
-	user: AuthUser;
+	user: AuthUser | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -126,10 +129,10 @@ export class HttpStorefrontAuthGateway extends StorefrontAuthGateway {
 
 	override currentUser(): Observable<AuthUser | null> {
 		return this.http.get<MeResponse>(this.url(ROUTES.me)).pipe(
-			map((response) => response.user),
-			// 401 is the ordinary anonymous answer, not an error worth surfacing. Anything
-			// else is also treated as "not signed in" because a session we cannot confirm
-			// must never be rendered as one.
+			map((response) => response.user ?? null),
+			// A 401 here is a presented session the API refused (expired access that may still
+			// rotate). A true guest is 200 with `user: null`. Anything else is also treated as
+			// "not signed in" because a session we cannot confirm must never be rendered as one.
 			catchError(() => of(null)),
 		);
 	}
@@ -140,6 +143,26 @@ export class HttpStorefrontAuthGateway extends StorefrontAuthGateway {
 
 	override startSignup(input: StartSignupInput): Observable<PendingSignupView> {
 		return this.http.post<PendingSignupView>(this.url(ROUTES.signupStart), input);
+	}
+
+	override currentSignup(): Observable<PendingSignupView | null> {
+		return this.http.get<{ pending: PendingSignupView | null }>(this.url(ROUTES.signup)).pipe(
+			map((response) => response.pending ?? null),
+			// Nothing in flight and no way to ask are the same thing to the form: it renders an
+			// empty registration. Failing loudly here would put an error banner over a page the
+			// visitor has done nothing wrong on.
+			catchError(() => of(null)),
+		);
+	}
+
+	override discardSignup(): Observable<void> {
+		return this.http.delete<void>(this.url(ROUTES.signup)).pipe(
+			map(() => undefined),
+			// Best effort by design. This fires as the screen is being torn down, so there is
+			// nobody left to tell, and the record TTLs out regardless — the DELETE only makes
+			// the ending prompt.
+			catchError(() => of(undefined)),
+		);
 	}
 
 	override updateSignupField(field: 'email' | 'phone', value: string): Observable<PendingSignupView> {

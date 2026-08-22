@@ -1,6 +1,7 @@
 import type { AuthIdentity, AuthIdentityRepository, IdentitySubjectType } from '@saha-textile/core-domain';
 
 import { AuthIdentityModel, type AuthIdentityDoc } from '../models/credential.model';
+import { sessionFrom } from '../transaction-manager';
 
 /** Mongo-backed `authIdentities`. Documents never escape; ISO strings cross the port. */
 export class MongoAuthIdentityRepository implements AuthIdentityRepository {
@@ -15,17 +16,24 @@ export class MongoAuthIdentityRepository implements AuthIdentityRepository {
 	}
 
 	async link(identity: AuthIdentity): Promise<AuthIdentity> {
-		const created = await AuthIdentityModel.create({
-			_id: identity.id,
-			subjectType: identity.subjectType,
-			subjectId: identity.subjectId,
-			provider: identity.provider,
-			providerSubject: identity.providerSubject,
-			email: identity.email,
-			linkedAt: new Date(identity.linkedAt),
-			lastUsedAt: identity.lastUsedAt ? new Date(identity.lastUsedAt) : null,
-		});
-		return toDomain(created.toObject() as AuthIdentityDoc);
+		// `create` with an array + options is how mongoose accepts a session here. Joins the
+		// signup transaction so a provider link cannot outlive a rolled-back account.
+		const [created] = await AuthIdentityModel.create(
+			[
+				{
+					_id: identity.id,
+					subjectType: identity.subjectType,
+					subjectId: identity.subjectId,
+					provider: identity.provider,
+					providerSubject: identity.providerSubject,
+					email: identity.email,
+					linkedAt: new Date(identity.linkedAt),
+					lastUsedAt: identity.lastUsedAt ? new Date(identity.lastUsedAt) : null,
+				},
+			],
+			{ session: sessionFrom() },
+		);
+		return toDomain(created!.toObject() as AuthIdentityDoc);
 	}
 
 	async unlink(subjectType: IdentitySubjectType, subjectId: string, provider: string): Promise<boolean> {

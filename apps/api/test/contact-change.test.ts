@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Customer } from '@saha-textile/contracts';
-import type { PendingContactChange } from '@saha-textile/core-domain';
+import { DuplicateIdentifierError, type PendingContactChange } from '@saha-textile/core-domain';
 
 import { ContactChangeService } from '../src/storefront/contact-change.service';
 
@@ -60,7 +60,15 @@ type Harness = {
  * @param options.hasPassword drives which step-up proof the account requires.
  * @param options.takenBy an account already holding the value the caller will ask for.
  */
-function harness(options: { hasPassword?: boolean; takenBy?: string; password?: string } = {}): Harness {
+function harness(
+	options: {
+		hasPassword?: boolean;
+		takenBy?: string;
+		password?: string;
+		writeFails?: unknown;
+		auditFails?: boolean;
+	} = {},
+): Harness {
 	const password = options.password ?? 'the-current-passphrase';
 	const result = {
 		sent: [],
@@ -120,9 +128,11 @@ function harness(options: { hasPassword?: boolean; takenBy?: string; password?: 
 
 	const customerAuth = {
 		markEmailVerified: async (_id: string, email: string) => {
+			if (options.writeFails) throw options.writeFails;
 			result.row = { ...result.row, email, emailVerified: true };
 		},
 		markPhoneVerified: async (_id: string, phone: string) => {
+			if (options.writeFails) throw options.writeFails;
 			result.row = { ...result.row, phone, phoneVerified: true };
 		},
 	};
@@ -144,6 +154,7 @@ function harness(options: { hasPassword?: boolean; takenBy?: string; password?: 
 			retentionTier: string;
 			diffs: Array<{ before?: unknown; after?: unknown }>;
 		}) => {
+			if (options.auditFails) throw new Error('audit store unavailable');
 			result.audits.push({
 				action: entry.action,
 				before: entry.diffs[0]?.before,
@@ -154,15 +165,49 @@ function harness(options: { hasPassword?: boolean; takenBy?: string; password?: 
 		},
 	};
 
+	/**
+	 * Models the port's own contract: the work runs, and a thrown error ABORTS it and propagates
+	 * unchanged. Snapshotting the three pieces of state the callback can touch is what lets these
+	 * cases assert the guarantee the service is relying on rather than merely that it called
+	 * something named `withTransaction`.
+	 */
+	const transactions = {
+		withTransaction: async <T>(work: () => Promise<T>): Promise<T> => {
+			const before = { row: result.row, pending: result.pending, audits: [...result.audits] };
+			try {
+				return await work();
+			} catch (error) {
+				result.row = before.row;
+				result.pending = before.pending;
+				result.audits = before.audits;
+				throw error;
+			}
+		},
+	};
+
 	result.service = new ContactChangeService(
 		pending as never,
 		customers as never,
 		customerAuth as never,
 		notifications as never,
 		audit as never,
+		transactions as never,
 		auth as never,
 	);
 	return result;
+}
+
+/** The stable code, read where `domainRefusal` puts it rather than off the message. */
+async function refusalCodeOf(work: Promise<unknown>): Promise<string> {
+	try {
+		await work;
+		return 'did-not-throw';
+	} catch (error) {
+		const body = (error as { getResponse?: () => unknown }).getResponse?.() as
+			| { issues?: Array<{ code?: string }> }
+			| undefined;
+		return body?.issues?.[0]?.code ?? String((error as Error).message);
+	}
 }
 
 const startEmail = (h: Harness, over: Record<string, unknown> = {}) =>
@@ -312,6 +357,70 @@ describe('a value another account already holds', () => {
 
 		await expect(claimed.service.confirm(CUSTOMER_ID, RIGHT_CODE)).rejects.toThrow();
 		expect(claimed.row.email).toBe('old@example.test');
+	});
+});
+
+describe('the three writes commit together', () => {
+	/**
+	 * The sharpest of the failures this replaced: the value moved, the caller was told it had
+	 * not, and no audit row recorded that an account's recovery channel had changed.
+	 */
+	it('does not move the value when the audit write fails', async () => {
+		const h = harness({ auditFails: true });
+		await startEmail(h);
+
+		await expect(h.service.confirm(CUSTOMER_ID, RIGHT_CODE)).rejects.toThrow();
+		expect(h.row.email).toBe('old@example.test');
+		expect(h.audits).toEqual([]);
+	});
+
+	/** And the proof is not spent either, so the person needs a new code — not a new step-up. */
+	it('leaves the pending change in flight when the audit write fails', async () => {
+		const h = harness({ auditFails: true });
+		await startEmail(h);
+
+		await h.service.confirm(CUSTOMER_ID, RIGHT_CODE).catch(() => undefined);
+		expect(h.pending).not.toBeNull();
+	});
+
+	it('writes no audit row when the value write fails', async () => {
+		const h = harness({ writeFails: new Error('replica set unavailable') });
+		await startEmail(h);
+
+		await expect(h.service.confirm(CUSTOMER_ID, RIGHT_CODE)).rejects.toThrow(/replica set unavailable/);
+		expect(h.audits).toEqual([]);
+		expect(h.pending).not.toBeNull();
+	});
+
+	it('applies all three on success', async () => {
+		const h = harness();
+		await startEmail(h);
+		await h.service.confirm(CUSTOMER_ID, RIGHT_CODE);
+
+		expect(h.row.email).toBe('new@example.test');
+		expect(h.audits).toHaveLength(1);
+		expect(h.pending).toBeNull();
+	});
+});
+
+describe('a race lost to the unique index', () => {
+	/**
+	 * Ownership was free when checked and taken by the time of the write. Reported as the refusal
+	 * the check itself would have given, rather than as the driver error the caller cannot read.
+	 */
+	it('is reported as contact_in_use rather than a storage failure', async () => {
+		const h = harness({ writeFails: new DuplicateIdentifierError('email') });
+		await startEmail(h);
+
+		expect(await refusalCodeOf(h.service.confirm(CUSTOMER_ID, RIGHT_CODE))).toBe('contact_in_use');
+		expect(h.row.email).toBe('old@example.test');
+	});
+
+	it('leaves an unrelated storage failure alone', async () => {
+		const h = harness({ writeFails: new Error('disk on fire') });
+		await startEmail(h);
+
+		expect(await refusalCodeOf(h.service.confirm(CUSTOMER_ID, RIGHT_CODE))).toBe('disk on fire');
 	});
 });
 

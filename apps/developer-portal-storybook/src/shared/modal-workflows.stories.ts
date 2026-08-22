@@ -6,7 +6,6 @@ import type { IOrder } from '../../../storefront/src/app/data-access/interfaces/
 import type { IProduct } from '../../../storefront/src/app/data-access/interfaces/product.interface';
 import { NotificationService as StorefrontNotificationService } from '../../../storefront/src/app/data-access/services/notification.service';
 import { AddressModal } from '../../../storefront/src/app/shared/ui/modal/address-modal/address-modal';
-import { ChangePasswordModal } from '../../../storefront/src/app/shared/ui/modal/change-password-modal/change-password-modal';
 import { DealsModal } from '../../../storefront/src/app/shared/ui/modal/deals-modal/deals-modal';
 import { DeleteModal } from '../../../storefront/src/app/shared/ui/modal/delete-modal/delete-modal';
 import { EditProfileModal } from '../../../storefront/src/app/shared/ui/modal/edit-profile-modal/edit-profile-modal';
@@ -39,18 +38,6 @@ const notificationBoundary = {
 })
 class AddressModalHost implements AfterViewInit {
 	private readonly modal = viewChild.required<AddressModal>('modal');
-	ngAfterViewInit(): void {
-		queueMicrotask(() => void this.modal().openModal());
-	}
-}
-
-@Component({
-	selector: 'storybook-password-modal-host',
-	imports: [ChangePasswordModal],
-	template: '<app-change-password-modal #modal />',
-})
-class PasswordModalHost implements AfterViewInit {
-	private readonly modal = viewChild.required<ChangePasswordModal>('modal');
 	ngAfterViewInit(): void {
 		queueMicrotask(() => void this.modal().openModal());
 	}
@@ -148,7 +135,6 @@ const meta = {
 		moduleMetadata({
 			imports: [
 				AddressModalHost,
-				PasswordModalHost,
 				DealsModalHost,
 				DeleteModalHost,
 				ProfileModalHost,
@@ -173,7 +159,6 @@ export default meta;
 type Story = StoryObj<DeleteModal>;
 
 export const AddressEditor: Story = { render: () => ({ template: '<storybook-address-modal-host />' }) };
-export const ChangePassword: Story = { render: () => ({ template: '<storybook-password-modal-host />' }) };
 export const ProductDeals: Story = { render: () => ({ template: '<storybook-deals-modal-host />' }) };
 export const DeleteConfirmation: Story = { render: () => ({ template: '<storybook-delete-modal-host />' }) };
 export const ProfileEditor: Story = { render: () => ({ template: '<storybook-profile-modal-host />' }) };

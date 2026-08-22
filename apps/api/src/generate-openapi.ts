@@ -18,7 +18,8 @@ function readArgument(name: string): string | undefined {
 async function generate(): Promise<void> {
 	process.env.SAHA_TEXTILE_DOCUMENTATION_BUILD = '1';
 	const outputPath = resolve(readArgument('--output') ?? 'dist/openapi.json');
-	const serverUrl = readArgument('--server') ?? 'http://127.0.0.1:4000';
+	// Falls through to `createOpenApiDocument`'s own default, which explains why it must be HTTPS.
+	const serverUrl = readArgument('--server');
 	const app = await NestFactory.create<NestFastifyApplication>(AppModule.forRoot(), new FastifyAdapter(), {
 		logger: false,
 	});

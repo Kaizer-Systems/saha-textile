@@ -42,5 +42,6 @@ export class AuthStore {
 
 	async bootstrap(): Promise<void> {}
 	async logout(): Promise<void> {}
+	async adoptSocialSession(_user: StorybookAuthUser): Promise<void> {}
 	clearError(): void {}
 }

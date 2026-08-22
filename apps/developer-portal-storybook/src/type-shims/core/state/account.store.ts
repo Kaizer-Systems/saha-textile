@@ -29,9 +29,23 @@ export class AccountStore {
 		this.roleName.set(null);
 	}
 
-	updateProfile(_payload: unknown): void {}
-	updatePassword(_payload: unknown): void {}
-	createAddress(_payload: unknown): void {}
-	updateAddress(_payload: unknown, _id: number): void {}
-	deleteAddress(_id: number): void {}
+	adoptUser(user: AdminAccountUser | StorefrontAccountUser): void {
+		this.user.set(user as StorybookAccountUser);
+	}
+
+	async updateProfile(_displayName: string): Promise<boolean> {
+		return true;
+	}
+
+	async createAddress(_payload: unknown): Promise<boolean> {
+		return true;
+	}
+
+	async updateAddress(_addressId: string, _address: unknown): Promise<boolean> {
+		return true;
+	}
+
+	async deleteAddress(_addressId: string): Promise<boolean> {
+		return true;
+	}
 }

@@ -40,7 +40,7 @@ export interface ICustomer {
 	updatedAt?: string;
 }
 
-/** `GET /auth/storefront/me`. */
+/** `GET /auth/storefront/me`. `user` is null for a guest. */
 export interface IMeResponse {
-	user: ICustomer;
+	user: ICustomer | null;
 }

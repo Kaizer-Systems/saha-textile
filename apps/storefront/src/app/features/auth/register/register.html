@@ -17,6 +17,19 @@
 						<h3>{{ 'welcome_to_our_store' | transloco }}</h3>
 						<h4>{{ 'create_new_account' | transloco }}</h4>
 					</div>
+					<!--
+						A social signup arrives here with its email already proven, so the screen has
+						to say WHY the form looks different: no password fields, an address that
+						cannot be edited, and one step left. Bootstrap's own alert — no new CSS.
+					-->
+					@if (!needsPassword()) {
+					<div
+						class="alert alert-info"
+						role="status"
+					>
+						{{ 'signup_continue_with_provider' | transloco: { provider: (providerKey() | transloco) } }}
+					</div>
+					}
 					<div class="input-box">
 						<form
 							class="row g-4"
@@ -186,6 +199,13 @@
 								}
 							</div>
 							}
+							<!--
+								Password only where the origin needs one. `finaliseSignup` does not
+								require a password for a social signup, and the controls are DISABLED
+								alongside this rather than merely hidden — a hidden required control
+								is a form that can never be valid and never says why.
+							-->
+							@if (needsPassword()) {
 							<div class="col-12">
 								<div class="form-floating log-in-form">
 									<input
@@ -228,6 +248,7 @@
 									} }
 								</div>
 							</div>
+							}
 							<div class="col-12">
 								<div class="forgot-box">
 									<div class="form-check remember-box m-0 ps-0">
@@ -299,10 +320,18 @@
 						</form>
 					</div>
 
+					<!--
+						Providers are offered on an EMPTY registration page and nowhere else.
+						`POST /signup/start` REPLACES the record for this browser, so a provider
+						button pressed halfway through a signup discards whatever has already been
+						proven — including a phone number somebody waited for a code on.
+					-->
+					@if (showSocial()) {
 					<div class="other-log-in">
 						<h6>{{ 'or' | transloco }}</h6>
 					</div>
 					<app-social-sign-in />
+					}
 
 					<div class="sign-up-box">
 						<h4>{{ 'already_have_an_account' | transloco }}?</h4>

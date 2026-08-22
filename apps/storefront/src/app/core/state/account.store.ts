@@ -5,10 +5,9 @@ import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { EMPTY, Observable, catchError, firstValueFrom, pipe, switchMap, tap } from 'rxjs';
 
 import { IAccountUser } from '@data-access/interfaces/account.interface';
-import { IUserAddress } from '@data-access/interfaces/user.interface';
+import { ICustomerAddress } from '@data-access/interfaces/customer.interface';
 import { AccountAddressService } from '@data-access/services/account-address.service';
 import { AccountService } from '@data-access/services/account.service';
-import { ICustomerAddress } from '@data-access/interfaces/customer.interface';
 
 /**
  * User account/session (replaces NGXS AccountState + its actions). `user` is a
@@ -41,10 +40,11 @@ export const AccountStore = signalStore(
 		 * Loads the signed-in customer, and SURVIVES a failure.
 		 *
 		 * The `catchError` is load-bearing rather than defensive. This read used to be a static
-		 * fixture that could not fail; it is now `/auth/storefront/me`, which answers 401 for every
-		 * anonymous visitor. Without it the error escapes the `rxMethod` stream — which on the
-		 * server means an unhandled rejection that takes the whole SSR render down, so a logged-out
-		 * visitor gets no page at all rather than the public one.
+		 * fixture that could not fail; it is now `/auth/storefront/me`. A guest answers 200 with
+		 * `user: null`, which this load must not treat as a profile. Without the catch the error
+		 * escapes the `rxMethod` stream — which on the server means an unhandled rejection that
+		 * takes the whole SSR render down, so a logged-out visitor gets no page at all rather than
+		 * the public one.
 		 *
 		 * `EMPTY` leaves `user` as it was: null for a visitor who was never signed in, and the last
 		 * known value if a refresh momentarily fails. Clearing on any error would sign people out of

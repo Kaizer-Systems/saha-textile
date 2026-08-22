@@ -146,7 +146,7 @@ export interface PasswordResetInput {
 }
 
 export abstract class StorefrontAuthGateway {
-	/** Resolves the signed-in customer from session cookies, or `null` when anonymous. */
+	/** Resolves the signed-in customer from session cookies, or `null` when the visitor is a guest. */
 	abstract currentUser(): Observable<AuthUser | null>;
 
 	/**
@@ -161,6 +161,28 @@ export abstract class StorefrontAuthGateway {
 	 * Returns the server's view of the pending record; the browser holds no proof of its own.
 	 */
 	abstract startSignup(input: StartSignupInput): Observable<PendingSignupView>;
+
+	/**
+	 * The signup in flight for this browser, or null.
+	 *
+	 * The registration screen's FIRST question, and the one it previously had no way to ask. A
+	 * social round trip leaves a fully populated record on the server — verified email, display
+	 * name, provider subject — keyed to an httpOnly cookie the browser cannot read. Without this
+	 * the screen rendered an empty form over the top of it.
+	 *
+	 * Asked on every arrival rather than carried across the navigation, so a reload resumes the
+	 * signup instead of losing it.
+	 */
+	abstract currentSignup(): Observable<PendingSignupView | null>;
+
+	/**
+	 * Abandons the signup in flight.
+	 *
+	 * Called when the registration screen is LEFT without finishing, so a half-finished record —
+	 * and, on a shared machine, somebody else's verified address — does not resume days later on
+	 * the next visit. A reload is not leaving.
+	 */
+	abstract discardSignup(): Observable<void>;
 
 	/** Sets an identifier, which clears that field's verification server-side. */
 	abstract updateSignupField(field: 'email' | 'phone', value: string): Observable<PendingSignupView>;

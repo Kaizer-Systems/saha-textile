@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "turbo run build",
+    "build:product-apps": "turbo run build --filter=@saha-textile/storefront --filter=@saha-textile/admin --filter=@saha-textile/api",
     "dev": "turbo run dev",
     "dev:storefront": "pnpm --filter @saha-textile/storefront dev",
     "dev:admin": "pnpm --filter @saha-textile/admin dev",

@@ -11,7 +11,8 @@
     "serve": "docusaurus serve --host 0.0.0.0",
     "persistent": "node ../../scripts/serve-developer-portal-persistent.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "node --test ../../scripts/developer-portal-local-auth.test.mjs"
   },
   "dependencies": {
     "@docusaurus/core": "3.10.2",

@@ -21,6 +21,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useHistory } from '@docusaurus/router';
 import { usePluginData } from '@docusaurus/useGlobalData';
 
+import { replayEvent } from '../PortalArrival';
+import { lockDeveloperPortal as lockPortalSession } from '../PortalSession/lockDeveloperPortal';
 import { useCommandVerbData, type CommandVerb, type CommandVerbTarget } from '@site/src/data/command-verbs';
 import { fuzzyScore, type CommandEntry } from './commandIndex';
 import styles from './styles.module.css';
@@ -90,6 +92,7 @@ export function CommandPalette(): React.ReactNode {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState('');
 	const [active, setActive] = useState(0);
+	const [controlStatus, setControlStatus] = useState('');
 	const inputRef = useRef<HTMLInputElement>(null);
 	const listRef = useRef<HTMLDivElement>(null);
 
@@ -124,6 +127,21 @@ export function CommandPalette(): React.ReactNode {
 		setQuery(`${verb.token} `);
 		requestAnimationFrame(() => inputRef.current?.focus());
 	}, []);
+
+	const replayIdentityLoom = useCallback(() => {
+		close();
+		window.requestAnimationFrame(() => window.dispatchEvent(new Event(replayEvent)));
+	}, [close]);
+
+	const lockDeveloperPortal = useCallback(async () => {
+		close();
+		try {
+			await lockPortalSession();
+		} catch {
+			setControlStatus('The local portal could not be locked.');
+			setOpen(true);
+		}
+	}, [close]);
 
 	// Global open/close shortcuts: ⌘K / Ctrl-K anywhere, "/" outside inputs.
 	useEffect(() => {
@@ -165,6 +183,7 @@ export function CommandPalette(): React.ReactNode {
 
 	useEffect(() => {
 		setActive(0);
+		setControlStatus('');
 	}, [query]);
 
 	// Keep the active row scrolled into view.
@@ -334,6 +353,27 @@ export function CommandPalette(): React.ReactNode {
 									</button>
 								);
 							})}
+						</div>
+
+						<div
+							className={styles.portalControls}
+							role="group"
+							aria-label="Local portal controls"
+						>
+							<span>Identity Loom</span>
+							<button
+								type="button"
+								onClick={replayIdentityLoom}
+							>
+								Replay Identity Loom
+							</button>
+							<button
+								type="button"
+								onClick={() => void lockDeveloperPortal()}
+							>
+								Lock developer portal
+							</button>
+							{controlStatus && <output role="status">{controlStatus}</output>}
 						</div>
 
 						<div className={styles.paletteFooter}>

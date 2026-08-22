@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from '@docusaurus/router';
 
 import { FirstFlightHUD } from '../FirstFlight/FirstFlightHUD';
+import { PortalArrival } from '../PortalArrival';
 import { AmbientReactor } from './AmbientReactor';
 import { CommandPalette } from './CommandPalette';
 import { ScrollBeam } from './ScrollBeam';
@@ -43,6 +44,7 @@ export function PortalExperience(): React.ReactNode {
 
 	return (
 		<>
+			<PortalArrival />
 			<AmbientReactor />
 			{/* Holographic scanline veil — drawn just above the ambient canvas,
 			    below all content. Static lines + a slow drifting scan sweep. */}

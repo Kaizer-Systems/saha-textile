@@ -73,6 +73,28 @@ export const PendingSignupState = z.object({
 export type PendingSignupState = z.infer<typeof PendingSignupState>;
 
 /**
+ * `GET /auth/storefront/signup`
+ *
+ * The signup in flight for this browser, or `null`. Mirrors `GET /storefront/account/contact`,
+ * and exists for the same reason: server-held state that a screen has to RENDER is useless if
+ * the screen has no way to ask for it.
+ *
+ * Its absence is what broke the social flow. A provider round trip left a fully populated
+ * pending record on the server — verified email, display name, provider subject — and then
+ * routed the person to a registration form that had no way to ask what the server was already
+ * holding, so they were shown an empty form and invited to type an address Google had just
+ * asserted. Nothing was lost; nothing could be read.
+ *
+ * Wrapped in an object rather than returned bare so that "no signup in flight" is a 200 with a
+ * null field instead of a 404. Not finding one is the ordinary case for anybody opening the
+ * page for the first time, and a screen should not have to treat its own happy path as an error.
+ */
+export const PendingSignupResponse = z.object({
+	pending: PendingSignupState.nullable(),
+});
+export type PendingSignupResponse = z.infer<typeof PendingSignupResponse>;
+
+/**
  * `POST /auth/storefront/signup/start`
  *
  * Replaces the old `POST /auth/storefront/register`, which created an account from an email

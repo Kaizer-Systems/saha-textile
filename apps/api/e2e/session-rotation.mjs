@@ -660,10 +660,18 @@ async function main() {
 			return body.error?.reason;
 		};
 
-		// No cookies at all.
+		// No cookies at all — a guest identity, not a refused session.
 		const missing = await app.inject({ method: 'GET', url: '/auth/storefront/me' });
-		assert.equal(missing.statusCode, 401);
-		assert.equal(reasonOf(missing), 'session_missing');
+		assert.equal(missing.statusCode, 200);
+		assert.equal(JSON.parse(missing.body).user, null);
+
+		const refreshOnly = await app.inject({
+			method: 'GET',
+			url: '/auth/storefront/me',
+			headers: { cookie: `${COOKIE.refresh}=not-a-live-refresh` },
+		});
+		assert.equal(refreshOnly.statusCode, 401);
+		assert.equal(reasonOf(refreshOnly), 'session_expired');
 
 		// A live session whose access cookie has aged out. ACCESS_TTL is deliberately tiny.
 		const jar = await registerCustomer();

@@ -98,6 +98,7 @@ function harness(options: { passwordHash: string | null; acceptOtp?: string }): 
 		{} as never,
 		{} as never,
 		oauth as never,
+		{ withTransaction: async <T>(work: () => Promise<T>) => work() } as never,
 		config,
 	);
 	return result;

@@ -26,6 +26,23 @@ import { AuthService } from './auth.service';
 /** Short — a state exists only for the seconds between the button and the callback. */
 const STATE_TTL_MS = 10 * 60_000;
 
+/**
+ * What linking an identity actually requires: a provider, its stable subject, and an email to
+ * snapshot. The provider's own assertions may come along and are simply not read.
+ *
+ * Narrower than `VerifiedOAuthIdentity` on purpose. Signup finalisation links from the PENDING
+ * record, which holds the provider and subject the round trip proved but NOT the provider's
+ * `emailVerified` / `displayName` claims — and inventing those to satisfy a wider parameter would
+ * mean asserting something no provider said.
+ *
+ * The remaining fields stay optional rather than being excluded, because TypeScript rejects
+ * excess properties on a fresh object literal: a bare `Pick` would have refused the full,
+ * realistic identities the OAuth tests pass inline, and accommodating the signature by trimming
+ * those literals would have made the tests describe less than they do today.
+ */
+export type LinkableIdentity = Pick<VerifiedOAuthIdentity, 'provider' | 'subject' | 'email'> &
+	Partial<Omit<VerifiedOAuthIdentity, 'provider' | 'subject' | 'email'>>;
+
 export class OAuthStateInvalidError extends Error {
 	constructor() {
 		super('oauth_state_invalid');
@@ -142,7 +159,7 @@ export class OAuthService {
 	}
 
 	/** The customer this provider identity already belongs to, if any. */
-	async findCustomerIdFor(identity: VerifiedOAuthIdentity): Promise<string | null> {
+	async findCustomerIdFor(identity: LinkableIdentity): Promise<string | null> {
 		const existing = await this.identities.findByProviderSubject(identity.provider, identity.subject);
 		if (!existing) return null;
 		// Storefront identities only. An identity attached to an operator must never open a
@@ -167,7 +184,7 @@ export class OAuthService {
 	 * too, but as a duplicate-key error — a 500 where the honest answer is "that account is
 	 * already connected elsewhere".
 	 */
-	async link(customerId: string, identity: VerifiedOAuthIdentity): Promise<void> {
+	async link(customerId: string, identity: LinkableIdentity): Promise<void> {
 		const owner = await this.findCustomerIdFor(identity);
 		if (owner && owner !== customerId) throw new OAuthIdentityConflictError();
 		if (owner === customerId) return;

@@ -4,7 +4,7 @@ import { Reflector } from '@nestjs/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SessionRefusal } from '../src/auth/session-refusal';
-import { AUDIENCE_KEY, SessionGuard } from '../src/auth/session.guard';
+import { AUDIENCE_KEY, IDENTITY_PROBE_KEY, SessionGuard } from '../src/auth/session.guard';
 import type { SessionService } from '../src/auth/session.service';
 import { cookieNames } from '../src/common/cookies';
 import { loadConfig } from '../src/config/app-config';
@@ -146,6 +146,22 @@ describe('SessionGuard — AuthSession sid binding', () => {
 
 		it('reports session_missing when no access cookie is presented', async () => {
 			expect(await reasonFrom({})).toBe('session_missing');
+		});
+
+		it('lets an identity probe through with no cookies so a guest can be 200', async () => {
+			(reflector.getAllAndOverride as ReturnType<typeof vi.fn>).mockImplementation(
+				(key: unknown) => key === IDENTITY_PROBE_KEY,
+			);
+			expect(await guardWith().canActivate(contextFor({}))).toBe(true);
+			(reflector.getAllAndOverride as ReturnType<typeof vi.fn>).mockImplementation(() => undefined);
+		});
+
+		it('refuses an identity probe that still has a refresh cookie so the client can rotate', async () => {
+			(reflector.getAllAndOverride as ReturnType<typeof vi.fn>).mockImplementation(
+				(key: unknown) => key === IDENTITY_PROBE_KEY,
+			);
+			expect(await reasonFrom({ [names.refresh]: 'refresh-token' })).toBe('session_expired');
+			(reflector.getAllAndOverride as ReturnType<typeof vi.fn>).mockImplementation(() => undefined);
 		});
 
 		it('reports session_expired when the access cookie will not verify', async () => {

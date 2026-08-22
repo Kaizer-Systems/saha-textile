@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { ContactField, Customer, PendingContactChangeState } from '@saha-textile/contracts';
 import {
+	DuplicateIdentifierError,
 	resendDelaySeconds,
 	type AuditLogRepository,
 	type CustomerAuthRepository,
@@ -10,6 +11,7 @@ import {
 	type NotificationPort,
 	type PendingContactChange,
 	type PendingContactChangeRepository,
+	type TransactionManagerPort,
 } from '@saha-textile/core-domain';
 
 import { AuthService } from '../auth/auth.service';
@@ -20,6 +22,7 @@ import {
 	CUSTOMER_REPOSITORY,
 	NOTIFICATION_PORT,
 	PENDING_CONTACT_CHANGE_REPOSITORY,
+	TRANSACTION_MANAGER,
 } from '../infra/tokens';
 
 /**
@@ -52,6 +55,7 @@ export class ContactChangeService {
 		@Inject(CUSTOMER_AUTH_REPOSITORY) private readonly customerAuth: CustomerAuthRepository,
 		@Inject(NOTIFICATION_PORT) private readonly notifications: NotificationPort,
 		@Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository,
+		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		private readonly auth: AuthService,
 	) {}
 
@@ -153,7 +157,21 @@ export class ContactChangeService {
 	 *
 	 * `contact_in_use` may finally be spoken here. The caller has just proven control of the
 	 * value, so telling them it belongs to somebody else discloses nothing they could not
-	 * establish anyway — the same rule `SignupService.verifyOtp` follows.
+	 * establish anyway — the same rule `SignupService.verifyOtp` follows. That this costs the
+	 * code is accepted: the refusal cannot be given before proof without becoming the very
+	 * enumeration oracle the flow is shaped to avoid, and the only sensible next move is a
+	 * different address, which needs a fresh code regardless.
+	 *
+	 * ## The three writes commit together
+	 *
+	 * Spending the proof, moving the value and recording the audit are ONE transaction. Run in
+	 * sequence they each failed differently and badly: a failed write left the proof spent and
+	 * the account unchanged, forcing the whole step-up dance again; and a failed audit left the
+	 * credential MOVED, the caller told it had not been, and no record of it — a changed recovery
+	 * channel with no trail, which is the one thing the seven-year retention tier exists to stop.
+	 *
+	 * If the transaction aborts, the pending record is still there and the account is untouched:
+	 * the person needs a new code, not a new proof of identity.
 	 */
 	async confirm(customerId: string, code: string): Promise<Customer> {
 		const record = await this.require(customerId);
@@ -169,17 +187,35 @@ export class ContactChangeService {
 			throw domainRefusal('contact_in_use', 'That value already belongs to another account');
 		}
 
-		const consumed = await this.pending.consume(record.id);
-		if (!consumed) throw domainRefusal('contact_change_expired', 'That change is no longer in flight');
-
 		const previous = await this.auth.publicCustomer(customerId);
-		if (consumed.field === 'email') {
-			await this.customerAuth.markEmailVerified(customerId, consumed.newValue);
-		} else {
-			await this.customerAuth.markPhoneVerified(customerId, consumed.newValue);
+
+		try {
+			await this.transactions.withTransaction(async () => {
+				const consumed = await this.pending.consume(record.id);
+				if (!consumed) {
+					throw domainRefusal('contact_change_expired', 'That change is no longer in flight');
+				}
+
+				if (consumed.field === 'email') {
+					await this.customerAuth.markEmailVerified(customerId, consumed.newValue);
+				} else {
+					await this.customerAuth.markPhoneVerified(customerId, consumed.newValue);
+				}
+
+				await this.recordAudit(previous, consumed);
+			});
+		} catch (error) {
+			/**
+			 * The unique index refused between the ownership check above and the write. Reported as
+			 * the same `contact_in_use` that check would have given, because the caller cannot act
+			 * on the difference and a driver error would reach them as "something went wrong".
+			 */
+			if (error instanceof DuplicateIdentifierError) {
+				throw domainRefusal('contact_in_use', 'That value already belongs to another account');
+			}
+			throw error;
 		}
 
-		await this.recordAudit(previous, consumed);
 		return this.auth.publicCustomer(customerId);
 	}
 

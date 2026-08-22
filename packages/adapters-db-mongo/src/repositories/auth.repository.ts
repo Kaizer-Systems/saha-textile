@@ -25,6 +25,8 @@ import type {
 	PasswordResetTokenRepository,
 } from '@saha-textile/core-domain';
 
+import { asDuplicateIdentifier } from '../duplicate-key';
+import { sessionFrom } from '../transaction-manager';
 import {
 	AdminInviteModel,
 	AdminUserModel,
@@ -733,11 +735,28 @@ export class MongoCustomerAuthRepository implements CustomerAuthRepository {
 		).exec();
 	}
 
+	/**
+	 * Joins an open transaction through the async context, and translates a lost race.
+	 *
+	 * `sessionFrom()` is called with no argument on purpose. The port takes no `context`, because
+	 * no caller has one to give: the contact-change flow opens its transaction around this call
+	 * and the audit row that must commit WITH it, and `AsyncLocalStorage` carries the session
+	 * down. Adding a parameter nothing passes would be surface invented for symmetry — it can be
+	 * added without breaking anything the day a caller genuinely holds a context.
+	 *
+	 * Outside a transaction `sessionFrom()` is `undefined`, which is exactly the previous
+	 * behaviour.
+	 */
 	async markEmailVerified(customerId: string, emailNormalized: string): Promise<void> {
-		await CustomerModel.updateOne(
-			{ _id: customerId },
-			{ $set: { emailVerified: true, email: emailNormalized } },
-		).exec();
+		try {
+			await CustomerModel.updateOne(
+				{ _id: customerId },
+				{ $set: { emailVerified: true, email: emailNormalized } },
+				{ session: sessionFrom() },
+			).exec();
+		} catch (error) {
+			throw asDuplicateIdentifier(error) ?? error;
+		}
 	}
 
 	/**
@@ -746,8 +765,17 @@ export class MongoCustomerAuthRepository implements CustomerAuthRepository {
 	 * Two statements would leave a window in which the account carried a number nobody had proven
 	 * — and a number on the account is a way in, so that window is a login.
 	 */
+	/** Transaction-joining and race-translating for the same reasons as its email counterpart. */
 	async markPhoneVerified(customerId: string, phone: string): Promise<void> {
-		await CustomerModel.updateOne({ _id: customerId }, { $set: { phoneVerified: true, phone } }).exec();
+		try {
+			await CustomerModel.updateOne(
+				{ _id: customerId },
+				{ $set: { phoneVerified: true, phone } },
+				{ session: sessionFrom() },
+			).exec();
+		} catch (error) {
+			throw asDuplicateIdentifier(error) ?? error;
+		}
 	}
 
 	async setStatus(customerId: string, status: CustomerStatus): Promise<void> {

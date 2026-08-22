@@ -38,12 +38,25 @@ import { SessionRefusal } from './session-refusal';
 import { SessionService } from './session.service';
 
 export const PUBLIC_ROUTE_KEY = 'auth:public';
+/** `GET /me`-style identity probe: a true guest is 200, not 401. */
+export const IDENTITY_PROBE_KEY = 'auth:identity-probe';
 export const AUDIENCE_KEY = 'auth:audience';
 export const ROLES_KEY = 'auth:roles';
 export const PERMISSIONS_KEY = 'auth:permissions';
 
 /** Marks a route as reachable without a session. */
 export const Public = () => SetMetadata(PUBLIC_ROUTE_KEY, true);
+
+/**
+ * Identity probe (`GET /me`): "who is this visitor?", not "prove you may see this page".
+ *
+ * A true guest — no access cookie and no refresh cookie — is allowed through with no
+ * principal so the handler can answer 200 `{ user: null }`. A refresh cookie without
+ * access still 401s, because that is the recoverable "access lapsed" case the browser
+ * interceptor must rotate. Do not mark the route `@Public()`: an expired-but-still-sent
+ * access cookie must keep failing closed so rotation still runs.
+ */
+export const IdentityProbe = () => SetMetadata(IDENTITY_PROBE_KEY, true);
 
 /** Restricts a route to one browser audience. Admin cookies must never drive storefront flows. */
 export const Audience = (audience: SessionAudience) => SetMetadata(AUDIENCE_KEY, audience);
@@ -115,13 +128,22 @@ export class SessionGuard implements CanActivate {
 		]);
 
 		const request = context.switchToHttp().getRequest<RequestWithPrincipal>();
-		const token = request.cookies?.[cookieNames(this.config).access];
+		const names = cookieNames(this.config);
+		const token = request.cookies?.[names.access];
+		const isIdentityProbe = this.reflector.getAllAndOverride<boolean | undefined>(IDENTITY_PROBE_KEY, [
+			context.getHandler(),
+			context.getClass(),
+		]);
 
 		// Public routes remain reachable anonymously, but when an access cookie IS present
 		// we still resolve the principal so ownership checks (cart, consent) can bind to it.
 		if (!token) {
 			if (isPublic) return true;
-			throw new SessionRefusal('session_missing', 'Authentication required');
+			if (isIdentityProbe && !request.cookies?.[names.refresh]) return true;
+			throw new SessionRefusal(
+				isIdentityProbe ? 'session_expired' : 'session_missing',
+				'Authentication required',
+			);
 		}
 
 		let claims: Record<string, unknown>;

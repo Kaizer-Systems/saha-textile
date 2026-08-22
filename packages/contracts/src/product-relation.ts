@@ -28,6 +28,16 @@ export type ProductRelationType = z.infer<typeof ProductRelationType>;
  * persisted `productInsightSets` row — the storefront reads persisted sets only and
  * never runs a live analytics join.
  */
+/**
+ * What a relation points AT.
+ *
+ * Named rather than inlined so the Mongo schema can be built from it. A hand-copied `enum: [...]`
+ * beside a contract is a second source of truth that agrees until the day it does not — and one
+ * of them already went stale and answered 500 to a request no test could have caught.
+ */
+export const ProductRelationTargetType = z.enum(['product', 'variant', 'product_group']);
+export type ProductRelationTargetType = z.infer<typeof ProductRelationTargetType>;
+
 export const ProductRelationSource = z.enum(['manual', 'insight_set', 'imported_woocommerce']);
 export type ProductRelationSource = z.infer<typeof ProductRelationSource>;
 
@@ -65,7 +75,7 @@ export const ProductRelation = z
 		id: Id,
 		sourceProductId: Id,
 		relationType: ProductRelationType,
-		targetType: z.enum(['product', 'variant', 'product_group']).default('product'),
+		targetType: ProductRelationTargetType.default('product'),
 		targetId: Id,
 		surfaces: z.array(ProductRelationSurface).min(1),
 		/** Lower sorts first within a surface. */

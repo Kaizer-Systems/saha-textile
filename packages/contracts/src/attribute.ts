@@ -41,6 +41,13 @@ export const OptionDisplayStyle = z.enum([
 ]);
 export type OptionDisplayStyle = z.infer<typeof OptionDisplayStyle>;
 
+/**
+ * What kind of value an attribute's terms carry. Named so storage can be derived from it
+ * rather than re-typed beside it.
+ */
+export const AttributeValueType = z.enum(['term', 'color', 'number', 'text']);
+export type AttributeValueType = z.infer<typeof AttributeValueType>;
+
 /** Facet renderer for the category sidebar/off-canvas filter UI. */
 export const FacetDisplayStyle = z.enum(['checkbox', 'swatch', 'range', 'rating', 'toggle', 'chips', 'radio']);
 export type FacetDisplayStyle = z.infer<typeof FacetDisplayStyle>;
@@ -86,7 +93,7 @@ export const AttributeDefinition = z.object({
 	label: I18nString,
 	defaultRole: AttributeDefaultRole.default('filter_only'),
 	defaultDisplayStyle: OptionDisplayStyle.default('rectangle'),
-	valueType: z.enum(['term', 'color', 'number', 'text']).default('term'),
+	valueType: AttributeValueType.default('term'),
 	terms: z.array(AttributeDefinitionTerm).default([]),
 	filterConfig: AttributeFilterConfig.optional(),
 	createdAt: z.string().optional(),

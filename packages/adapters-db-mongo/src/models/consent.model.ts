@@ -1,3 +1,4 @@
+import { ConsentSource } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 /**
@@ -24,7 +25,7 @@ const ConsentEventSchema = new Schema<ConsentEventDoc>(
 		guestId: { type: String, default: null },
 		categories: { type: Schema.Types.Mixed, required: true },
 		policyVersion: { type: String, required: true },
-		source: { type: String, enum: ['storefront', 'admin'], required: true },
+		source: { type: String, enum: ConsentSource.options, required: true },
 		ipHash: { type: String, default: null },
 		userAgentHash: { type: String, default: null },
 	},

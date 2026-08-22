@@ -1,3 +1,4 @@
+import { InventoryMovementSource } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 /**
@@ -31,16 +32,7 @@ const InventoryLedgerSchema = new Schema<InventoryLedgerDoc>(
 		balanceAfter: { type: Number, required: true },
 		source: {
 			type: String,
-			enum: [
-				'manual_adjustment',
-				'purchase_invoice',
-				'order_placed',
-				'order_cancelled',
-				'return_restocked',
-				'reservation',
-				'reservation_released',
-				'system_migration',
-			],
+			enum: InventoryMovementSource.options,
 			required: true,
 		},
 		reasonCode: { type: String, default: null },

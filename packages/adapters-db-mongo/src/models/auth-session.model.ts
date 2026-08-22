@@ -1,3 +1,4 @@
+import { AdminRole, SessionAudience } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 /**
@@ -36,10 +37,18 @@ const AuthSessionSchema = new Schema<AuthSessionDoc>(
 	{
 		_id: { type: String, required: true },
 		userId: { type: String, required: true },
-		audience: { type: String, enum: ['storefront', 'admin'], required: true },
+		audience: { type: String, enum: SessionAudience.options, required: true },
+		/**
+		 * The operator roles, plus the two this collection needs that `AdminRole` does not name.
+		 *
+		 * Written as the contract's values PLUS the difference rather than as a fresh list, so the
+		 * shared half cannot drift the way `otpChallenges.purpose` did. `customer` is not an admin
+		 * role and never will be — a storefront session simply records that it had none of them —
+		 * and `null` covers a session established before roles were recorded at all.
+		 */
 		roleAtLogin: {
 			type: String,
-			enum: ['staff', 'admin', 'customer', null],
+			enum: [...AdminRole.options, 'customer', null],
 			default: null,
 			required: false,
 		},

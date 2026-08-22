@@ -1,4 +1,4 @@
-import { OtpChannel, OtpPurpose } from '@saha-textile/contracts';
+import { OAuthProvider, OtpChannel, OtpPurpose, SessionAudience } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 /**
@@ -98,8 +98,8 @@ export interface OAuthStateDoc {
 const OAuthStateSchema = new Schema<OAuthStateDoc>(
 	{
 		_id: { type: String, required: true },
-		provider: { type: String, enum: ['google', 'facebook'], required: true },
-		audience: { type: String, enum: ['storefront', 'admin'], required: true },
+		provider: { type: String, enum: OAuthProvider.options, required: true },
+		audience: { type: String, enum: SessionAudience.options, required: true },
 		stateHash: { type: String, required: true, select: false },
 		nonceHash: { type: String, default: null, select: false },
 		codeVerifierHash: { type: String, default: null, select: false },

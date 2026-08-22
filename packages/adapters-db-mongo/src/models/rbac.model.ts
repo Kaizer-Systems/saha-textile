@@ -1,3 +1,4 @@
+import { AdminRole } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 import { COLLECTION_NAMES } from '../collection-names';
@@ -21,7 +22,7 @@ const RoleSchema = new Schema<RoleDoc>(
 		key: { type: String, required: true },
 		label: { type: String, required: true },
 		description: { type: String, default: null },
-		baseRole: { type: String, enum: ['staff', 'admin'], required: true },
+		baseRole: { type: String, enum: AdminRole.options, required: true },
 		/**
 		 * Stored as plain strings, validated against the canonical registry at the contract
 		 * boundary. Deliberately not a Mongoose enum: a role written before a code was retired

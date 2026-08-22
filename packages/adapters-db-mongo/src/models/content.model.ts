@@ -1,3 +1,4 @@
+import { CatalogStatus, FaqScope, QuestionStatus, ReviewStatus } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 /** Admin-authored FAQ (`faqEntries`). */
@@ -19,11 +20,11 @@ const FaqEntrySchema = new Schema<FaqEntryDoc>(
 		_id: { type: String, required: true },
 		question: { type: Schema.Types.Mixed, required: true },
 		answer: { type: Schema.Types.Mixed, required: true },
-		scope: { type: String, enum: ['global', 'category', 'product', 'mixed'], required: true },
+		scope: { type: String, enum: FaqScope.options, required: true },
 		categoryIds: { type: [String], default: [] },
 		productIds: { type: [String], default: [] },
 		displayOrder: { type: Number, default: 0 },
-		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
+		status: { type: String, enum: CatalogStatus.options, default: 'draft' },
 	},
 	{ collection: 'faqEntries', timestamps: true },
 );
@@ -70,7 +71,7 @@ const ProductQuestionSchema = new Schema<ProductQuestionDoc>(
 		answer: { type: String, default: null },
 		answeredByUserId: { type: String, default: null },
 		answeredAt: { type: Date, default: null },
-		status: { type: String, enum: ['pending', 'answered', 'rejected'], default: 'pending' },
+		status: { type: String, enum: QuestionStatus.options, default: 'pending' },
 	},
 	{ collection: 'productQuestions', timestamps: { createdAt: true, updatedAt: false } },
 );
@@ -111,7 +112,7 @@ const ReviewSchema = new Schema<ReviewDoc>(
 		title: { type: String, default: null },
 		body: { type: String, required: true },
 		imageAssetIds: { type: [String], default: [] },
-		status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+		status: { type: String, enum: ReviewStatus.options, default: 'pending' },
 		moderatedByUserId: { type: String, default: null },
 		moderatedAt: { type: Date, default: null },
 		moderationNote: { type: String, default: null },

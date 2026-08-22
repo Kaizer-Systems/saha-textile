@@ -3,7 +3,7 @@ title: 'Owner Decisions'
 description: 'Authoritative record of currently locked Saha Textile owner decisions.'
 audience: [engineering, product, operator, agent]
 document_role: canonical
-last_verified: '2026-08-13'
+last_verified: '2026-08-22'
 search_keywords: 'owner decisions authoritative locked intent architecture product operations'
 ---
 
@@ -11,7 +11,7 @@ search_keywords: 'owner decisions authoritative locked intent architecture produ
 
 **Status:** Authoritative record of currently locked owner decisions.
 
-**Last reconciled:** 2026-08-12
+**Last reconciled:** 2026-08-22
 
 This file contains current decisions only. Superseded intermediate positions remain available in Git history, not inline where they can be mistaken for current direction.
 
@@ -297,7 +297,10 @@ Prose and comments keep saying “operator”; identifiers say `adminUser`. The 
   scope for the split task.
   **Status 2026-08-13:** Schema Nebula reconciled (`customers` + solid `adminUsers`, graph
   **65 / 32 / 33**); the temporary `NON_GRAPH` exceptions for those two names are cleared.
-  Remaining NON_GRAPH: `authRateLimits`, `productQuestions`, `ratingAggregates` only.
+  Remaining NON_GRAPH: `authRateLimits` only at that date; `pendingSignups` /
+  `pendingContactChanges` later joined the runtime-only set. **Status 2026-08-19:**
+  `productQuestions` and `ratingAggregates` are Schema Nebula nodes. Runtime-only
+  remaining: `authRateLimits`, `pendingSignups`, `pendingContactChanges`.
 
 ## OTP and notifications
 
@@ -459,7 +462,7 @@ Prose and comments keep saying “operator”; identifiers say `adminUser`. The 
 
 - Every admin mutation writes an audit record.
 - Explicit coverage includes catalog, price, stock, purchase invoice, order, payment/refund, shipping/tax/payment/currency/notification config, role/permission, login failure, session revocation, and security events.
-- Financial/security audit retention is seven years.
+- Financial/security audit retention is eight financial years, superseding the earlier seven-year figure, following the CA's 2026-08-21 confirmation that the Companies Act books-of-account requirement is eight financial years. Confirmation that the entity is in fact a company is still outstanding (round-2 item `B9.1`); eight years is the safe floor either way.
 - Catalog/general-admin audit retention is five years.
 - Raw analytics events are retained for 90 days after aggregate rollup.
 - Never audit secrets, passwords, full tokens, card data, or gateway working keys.
@@ -499,6 +502,11 @@ Prose and comments keep saying “operator”; identifiers say `adminUser`. The 
 - The origin must be protected from direct bypass, using an approved Cloudflare Tunnel or authenticated-origin/JWT design. Machine access uses scoped service tokens.
 - Release verification must prove unauthorized users cannot fetch either the portal shell or a known static asset and cannot reach the origin directly.
 - Local persistent serving binds to `127.0.0.1` by default.
+- **Local Identity Loom gate (`2026-08-20`, locked):** `portal:persistent` is hard loopback-only and opens through one username/password pair read from gitignored `apps/developer-portal/.env.local`. Authentication and opaque session state live only in the native portal server process; there is no `devPortalUsers` collection, Saha Textile API module, shared business-auth code, registration, recovery, role model, or remote hosting seam. The session cookie is browser-session-only and a server restart invalidates every session. All portal HTML, assets, search data, reload events, generated child tools, OpenAPI and catalogue output sit behind this local gate.
+- Identity Loom shares the portable portal tokens/fonts and uses native inputs plus Canvas 2D/Web Audio. Its idle state is a full-viewport fibre-optic warp field. Username insertion launches blue shuttles that leave persistent computational threads; password insertion creates green length-only encrypted cells; deletion recoils the newest matching threads; and paste, replacement, autofill or IME completion runs a rapid punch-card ingestion burst. Password decoration is driven by field identity, input operation and length only, never credential characters.
+- Rejection misaligns the loom, sends an amber fault wave across the field, clears only the password and announces the generic `Identity not recognized` message. Success is an unskippable five-second sequence—identity lock, warp tension, Jacquard compile, architecture fold, then route breach—followed by an aperture reveal of the originally requested route. Sound is on by default after the first real interaction, uses separately mixed interface, mechanical, fault and ceremony buses, and keeps an always-visible persistent mute choice; reduced-motion receives a short non-cinematic handoff.
+- Portal lock is available as an icon-only, labelled circuit-breaker control immediately to the right of the dark-mode switcher in desktop and mobile headers. The command palette retains `Replay Identity Loom` and `Lock developer portal` as the searchable secondary controls. Locking preserves the current safe route as the next post-authentication destination.
+- The local Identity Loom decision does **not** resolve `DEC-PORTAL-PRIVATE-ACCESS` and must never be presented as production access control. A future hosted portal requires a separately approved front door, origin protection, credentials, deployment, and—if account persistence becomes necessary—a separate database rather than a collection in the commerce database.
 - Portal navigation to every generated child surface always enters through a unique Docusaurus bridge route; generated mounts are never used as top-navbar destinations.
 - Bridge, overview, and generated-child entry surfaces are deployment-agnostic product experiences. They must not expose local orchestration commands, build prerequisites, filesystem mechanics, or “works only when locally running” copy; those instructions belong only in explicitly operational or local-development documentation.
 - The locked child-transition metaphors are:
@@ -523,6 +531,7 @@ Prose and comments keep saying “operator”; identifiers say `adminUser`. The 
     - Related collections may be clustered visually, but must never be collapsed into one family node or described as one physical collection.
     - The broad `auditLogs` collection owns admin and security audit history; do not add a separate `securityAuditLogs` node.
     - Collection status comes from tested adapter/model evidence. A contract or architecture section alone does not make a collection implemented.
+      **Status 2026-08-19:** Schema Nebula is **67 / 37 / 30**. `productQuestions` and `ratingAggregates` are solid graph nodes (they were documentation debt, not a lock to stay outside). Remaining outside the graph: runtime-only `authRateLimits`, `pendingSignups`, and `pendingContactChanges`. `GRAPH_RECONCILIATION_OWED` is empty.
 - First Flight’s canonical route is `/getting-started/first-flight`.
 - First Flight is an enterprise guided onboarding journey with three acts: Launch Bay persona selection, a route-spanning spotlight HUD, and Mission Debrief.
 - Its persona order is exactly beginner → frontend → backend → operator.
@@ -618,6 +627,18 @@ no such control — the hour-long admin idle bounds them either way.
 imitation), and a Facebook button built to Meta's published guidance because Meta ships no
 drawable widget. Both capped to Google's 400px ceiling so the pair is the same length.
 
+**Pending social signup survives reload and ends on deliberate leave.** Registration reads the
+server-held pending record on every browser arrival. Provider name/email are prefilled; a
+provider-verified email is locked; social-origin signup shows no password fields or competing
+provider buttons. Browser reload retains the record. In-app navigation away discards it without
+blocking the navigation; TTL expiry remains the fallback.
+
+**Abandoned Google signup returns this site's grant, not the Google session.** When a Google-origin
+signup is abandoned, Google Identity Services `revoke()` is called for this client so a future
+button does not imply that an unfinished Saha Textile account exists. This does not sign the
+person out of Google. The owner accepts that a later attempt may require account selection and
+consent again. A completed signup retains the grant.
+
 **A storefront customer has no permissions.** Permissions are operator vocabulary that arrived
 with the vendor port. A customer's access follows from owning the account. The storefront store's
 `permissions` state is deleted rather than left empty, so nobody starts gating on it.
@@ -639,6 +660,57 @@ Samoa and most of the Caribbean) and neither does a state code (`TN` is Tamil Na
 **Profile self-service is display name only.** Email and phone are login credentials; changing one
 requires the security matrix's row-84 flow rather than a patch field, so a stolen session cannot
 move an account's recovery channel in one request.
+
+## Tax, invoicing, and statutory compliance (`DEC-TAX-COMPLIANCE-R1` — locked 2026-08-21)
+
+Source: written replies from the CA/accountant to the round-1 compliance questionnaire, received
+2026-08-21. These are external professional confirmations rather than owner preferences; they
+constrain design and are not to be re-litigated inside a build session. The questions they did
+**not** answer are in `tax-compliance-questionnaire-round-2.mdx` and stay open in
+`pending-decisions.mdx`.
+
+### Place of supply and tax determination
+
+- Place of supply is a stored, snapshotted field on the order and on the tax invoice. It is never recomputed at read time.
+- Every order persists billing address State and PIN, shipping address State and PIN, and the customer GSTIN where one is supplied.
+- Place of supply for an unregistered (B2C) customer derives from the recipient address recorded on the invoice under Section 10(1)(ca). It may **not** be taken from the shipping PIN alone. Which stored address fills the recipient role when billing and shipping differ is still open (round-2 item `B1.1`).
+- Place of supply for a registered (B2B) customer, where goods are moved, is where the movement terminates for delivery.
+- Tax determination is binary: place of supply West Bengal → CGST + SGST; every other State **and** Union Territory → IGST.
+- CGST + UTGST never arises for Saha Textile and is not modelled anywhere. A supply from West Bengal to a Union Territory is inter-State and attracts IGST.
+
+### Invoice content and tax treatments
+
+- Selling prices remain stored and displayed tax-inclusive; tax-exclusive bases are reverse-calculated for invoices and reporting only. Externally confirmed, consistent with the existing pricing lock.
+- Every tax invoice separately shows taxable value, the rate and amount of each applicable component (CGST and SGST, or IGST), and the total invoice value.
+- The invoice tax-treatment enum has exactly three members: intra-state (CGST + SGST), inter-state (IGST), and zero-rated export under LUT.
+- Export invoices show no CGST, SGST or IGST, and carry the endorsement "SUPPLY MEANT FOR EXPORT UNDER BOND OR LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGRATED TAX."
+- Exports go out under LUT without payment of IGST, with refund of accumulated ITC claimed afterwards. IEC and AD-code/bank registration precede regular export of goods.
+
+### Delivery charges
+
+- A delivery charge for delivering the goods sold forms part of the value of supply under Section 15(2). Transport, packing and insurance form a composite supply with the goods as the principal supply.
+- How one delivery charge apportions across a cart holding more than one GST rate is still open (`DEC-SHIPPING`, round-2 item `C2.2`).
+
+### Document numbering machinery
+
+- Rule 46 constraints are binding: consecutive serial number, unique within the Indian financial year, at most 16 characters, alphanumeric with hyphen and slash permitted, one or multiple series permitted.
+- Numbers are allocated transactionally, reset on 1 April, and a cancelled number is never reused and remains part of its sequence.
+- Prefix and format strings are configuration, never constants in code. The exact per-document formats are unapproved (`DEC-NUMBERING`, round-2 item `B6.1`).
+
+### Credit notes
+
+- A credit note references exactly one original tax invoice. Multiple invoices are never combined into a single credit note.
+- The statutory outer limit for a GST credit note is 30 November following the end of the financial year of the supply, or the date of furnishing the relevant annual return, whichever is earlier. A return accepted after that limit cannot reduce output tax.
+
+### Purchase records
+
+- Every supplier invoice captures supplier legal name, GSTIN, invoice number, invoice date, supplier address, HSN/SAC, product or service description, quantity, taxable value, CGST, SGST, IGST, cess where any, place of supply, RCM flag, e-invoice IRN where applicable, e-invoice QR data where applicable, payment date, goods-receipt date, and purchase-return details.
+
+### HSN and rate resolution
+
+- Invoice HSN requirements and GSTR-1 HSN reporting requirements are two separate settings and are configured separately.
+- HSN digit length is turnover-banded: 4-digit while preceding-year turnover is up to ₹5 crore, 6-digit above it.
+- Rate resolution is implemented as a function of the order line, not as a constant looked up from a tax class, because the apparel rate may depend on per-piece value. The codes, the rates, and the threshold rule are unissued (`DEC-TAX-HSN`, round-2 items `B2.4`, `B2.5`, `B2.6`).
 
 ## Open decisions
 

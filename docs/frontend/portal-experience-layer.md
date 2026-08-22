@@ -3,7 +3,7 @@ title: Portal Experience Layer
 description: The developer portal's own next-gen interaction layer, its code map, and the convention that these stylings stay comment-marked.
 status: implemented
 audience: [frontend]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/project-progress.mdx
@@ -14,6 +14,13 @@ source_of_truth:
     - docs/_data/instruments/first-flight.json
     - apps/developer-portal/src/theme/Root.tsx
     - apps/developer-portal/src/components/PortalExperience
+    - apps/developer-portal/src/components/PortalArrival
+    - apps/developer-portal/src/components/PortalLockButton
+    - apps/developer-portal/src/components/PortalSession
+    - apps/developer-portal/src/theme/Navbar
+    - apps/developer-portal/local-auth
+    - scripts/developer-portal-local-auth.mjs
+    - scripts/serve-developer-portal-persistent.mjs
     - apps/developer-portal/src/components/GateConsole
     - apps/developer-portal/src/components/ArchitectureReactor
     - apps/developer-portal/src/components/FirstFlight
@@ -32,7 +39,7 @@ Unlike the rest of the portal (which documents the Saha Textile platform), this 
 
 ## Feature inventory
 
-Six self-contained, dependency-free features (pure Canvas / SVG / CSS / React), all theme-aware for light and dark and all `prefers-reduced-motion`-safe:
+Seven self-contained, dependency-free features (pure Canvas / SVG / CSS / React), all theme-aware for light and dark and all `prefers-reduced-motion`-safe:
 
 | Feature                       | What it does                                                                                                                |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
@@ -42,6 +49,7 @@ Six self-contained, dependency-free features (pure Canvas / SVG / CSS / React), 
 | **Architecture reactor**      | The hexagonal architecture as a live orbital with animated data pulses; homepage + system-overview.                         |
 | **First Flight system**       | Launch Bay, URL-carried spotlight guide, explicit device-local resume, reset controls, and a compiled-data Mission Debrief. |
 | **Living micro-interactions** | Cursor-spotlight cards, magnetic buttons, scroll-reveal, a read-progress beam, breathing status dots.                       |
+| **Identity Loom**             | Local-only native credential instrument, fibre/shuttle loom, punch-card compiler, synthesized sound and route aperture.     |
 
 ## Code map
 
@@ -57,6 +65,13 @@ Every file carries a `NEXT-GEN-UI` banner comment — run `grep -rn NEXT-GEN-UI 
 | `src/components/PortalExperience/ScrollBeam.tsx`                   | Read-depth progress beam.                                                  |
 | `src/components/PortalExperience/useMicroInteractions.ts`          | Spotlight, magnetic pull, scroll-reveal (delegated listeners).             |
 | `src/components/PortalExperience/styles.module.css`                | Styles for the above (ambient, scanlines, beam, palette).                  |
+| `src/components/PortalArrival`                                     | Short authenticated handoff plus full command-palette entrance replay.     |
+| `src/components/PortalLockButton`                                  | Labelled icon-only circuit breaker beside the colour-mode control.         |
+| `src/components/PortalSession`                                     | Shared local lock request and safe return-route handling.                  |
+| `src/theme/Navbar`                                                 | Desktop/mobile placement immediately after the colour-mode switcher.       |
+| `local-auth/{index.html,identity-loom.css,identity-loom.js}`       | Standalone pre-bundle login instrument, Canvas loom and Web Audio engine.  |
+| `../../scripts/developer-portal-local-auth.mjs`                    | Loopback, credential comparison, return-path and process-session boundary. |
+| `../../scripts/serve-developer-portal-persistent.mjs`              | Whole-composite gate, login routes and protected static serving.           |
 | `src/components/ArchitectureReactor/{index.tsx,styles.module.css}` | The signature hexagonal reactor.                                           |
 | `src/css/custom.css` (NEXT-GEN-UI block)                           | Global glass chrome, cursor spotlight, scroll-reveal, glow accents.        |
 | `plugins/portal-search`                                            | Build-time plugin: indexes every page's frontmatter → global data → ⌘K.    |
@@ -81,6 +96,18 @@ Every file carries a `NEXT-GEN-UI` banner comment — run `grep -rn NEXT-GEN-UI 
 Wave instruments use a parallel governed path: `docs/_data/portal-manifest.json` + versioned instrument JSON + the machine-readable Portal truth snapshot in `project-progress.mdx` → `portal-data` build compiler → validated Docusaurus global data → typed `src/data/*.ts` React adapters. Source paths, routes, catalog membership, chunk/gate state and page verification dates are checked before the site builds. Wide instrument pages opt in with `wide: true`.
 
 First Flight extends that contract with a live Launch Bay and route-spanning HUD: its four persona paths live in governed JSON, while the compiler proves that every route and stable heading target still exists and injects the destination page title, lifecycle status, and source path. The persona console owns only the current selection. The global guide owns navigation, target focus, and the URL-carried active step—not onboarding facts or completion history.
+
+## Identity Loom local boundary
+
+The local login cannot be a normal Docusaurus route: serving the Docusaurus JavaScript first would also serve build-indexed private documentation data before authentication. The native `portal:persistent` server therefore exposes only the standalone Identity Loom HTML, shared theme contract, two local font files, logo, CSS and JavaScript until the process-memory session cookie validates. Every Docusaurus and child-tool route or asset—including the live reload stream—stays behind that boundary.
+
+The form itself remains native and password-manager compatible. Canvas receives only field identity, input operation (`insert`, `delete`, paste/replacement burst) and current length; it never receives password characters. Username characters launch blue shuttles and leave persistent threads; password length produces abstract green encrypted cells; backspace retracts the newest threads for that field; and paste, replacement, autofill or completed IME input becomes a punch-card ingestion burst rather than a misleading sequence of individual keystrokes. The server compares digests in constant time, issues an opaque random session token, keeps it only in memory, and strips both local credential variables before spawning any documentation build subprocess.
+
+Rejection visibly misaligns the woven field, sends an amber fault wave through the instrument, clears only the password and announces one generic error. Success runs an unskippable five-second state machine: identity lock, warp tension, Jacquard compile, architecture fold and route breach. It writes only a one-use session-storage handoff marker. `PortalArrival` consumes and deletes that marker after full-document navigation, then reveals the already-loaded requested route through a growing aperture. Reduced motion receives a short non-cinematic handoff.
+
+Web Audio is synthesized locally after the first real user interaction. Interface, mechanical, fault and ceremony buses feed a compressor and master bus, allowing tactile keystrokes and a phase-synchronized transition without clipping; the always-visible mute choice persists locally. The command palette owns the full replay action and a secondary lock action. An icon-only, accessibly labelled circuit breaker sits immediately after the colour-mode switcher in desktop and mobile headers for direct locking without text clutter; it preserves the current safe route for the next authenticated handoff.
+
+This mechanism is local-only and refuses non-loopback binding. It has no account model, database, product API dependency, remote-hosting override, or production-auth claim; `DEC-PORTAL-PRIVATE-ACCESS` remains unresolved for deployment.
 
 ## First Flight navigation
 

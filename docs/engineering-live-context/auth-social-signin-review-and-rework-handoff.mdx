@@ -1,0 +1,428 @@
+---
+title: 'Auth Review, Ten Passes, and the Social Sign-In Rework — Handoff'
+description: 'A nine-finding code review, the ten passes that answered it, the browser session that showed the social flow was not trustworthy, and the rework that fixed it. What is proven, what is owed, and what only the owner can finish.'
+audience: [engineering, operator, agent]
+document_role: canonical
+last_verified: '2026-08-22'
+search_keywords: 'social sign-in google facebook oauth signup prefill popup blocked FB.login stale window.FB fbAsyncInit revoke personalized button abandonment atomicity duplicate identifier address lost update mongoose enum sweep handoff'
+---
+
+# Auth review, ten passes, and the social sign-in rework
+
+**Status:** Rework COMPLETE and browser-verified, except the last mile that needs the owner's own
+provider accounts. Written 2026-08-19 and reverified against the complete working tree during the
+2026-08-22 portal reconciliation.
+
+Supplements — does not replace — `storefront-account-and-auth-ui-handoff.mdx`, which covers the
+session that BUILT this surface. This one covers the review of that work, the ten passes that
+answered it, the browser testing that showed the social parts of it did not work, and the rework
+that fixed them.
+
+> **Read §5 first if you read nothing else.** It records what was broken and how each defect was
+> closed. The reason the flow ever looked finished is a verification method that could not see the
+> failures — §5.3 — and that standard now applies to everything on this surface.
+
+> **What is left is in §7.** Two items, both needing a real Google and a real Facebook account:
+> a full provider round trip, and the Meta app configuration. Nothing else is outstanding.
+
+---
+
+## 1. Where the work sits
+
+- **Branch:** `feat/api-db-env-secrets-sync`
+- **HEAD:** `4a2ee3cf` — 19 commits past `e43fa760`. Eighteen are the previous session's; the
+  latest is unrelated portal work.
+- **Working tree:** dirty, and NOT all of it belongs to this effort. Documentation, developer
+  portal, Storybook and several storefront templates carry uncommitted changes from other work.
+
+**The files that belong to passes 1–10, and nothing else:**
+
+| Area             | Files                                                                                                                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| API auth         | `apps/api/src/auth/{oauth,signup}.service.ts`, `storefront-auth.controller.ts`                                                                                                                         |
+| API storefront   | `apps/api/src/storefront/contact-change.service.ts`                                                                                                                                                    |
+| API docs surface | `apps/api/src/{openapi,generate-openapi}.ts`, `apps/api/scripts/check-openapi.mjs`                                                                                                                     |
+| Contracts / core | `packages/core-domain/src/ports/{auth,customer}.repository.ts`                                                                                                                                         |
+| Mongo adapter    | `repositories/{auth,auth-identity,customer,pending-contact-change}.repository.ts`, `models/credential.model.ts`, `seed/customer-seed-data.ts`, **new** `src/duplicate-key.ts`                          |
+| Storefront       | `apps/storefront/src/app/shared/ui/social-sign-in/social-sign-in.ts`                                                                                                                                   |
+| Tests (new)      | `apps/api/test/signup-finalise-{identity,atomicity}.test.ts`, `apps/storefront/.../social-sign-in.spec.ts`, `packages/adapters-db-mongo/test/customer-{address-persistence,account-atomicity}.test.ts` |
+
+**The rework (§5) adds:**
+
+| Area         | Files                                                                                                                                                                                          |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contracts    | `packages/contracts/src/signup.ts` (`PendingSignupResponse`), `{product-relation,attribute,auth-internal}.ts` (four inline enums promoted to named exports)                                    |
+| Core domain  | `packages/core-domain/src/ports/auth-identity.repository.ts` (`IDENTITY_SUBJECT_TYPES`)                                                                                                        |
+| API          | `apps/api/src/auth/{signup.service,storefront-auth.controller}.ts` — `find`, `discard`, `GET` and `DELETE /auth/storefront/signup`                                                             |
+| Mongo models | 21 files under `packages/adapters-db-mongo/src/models/` — every mirrored `enum: [...]` derived                                                                                                 |
+| Storefront   | `core/auth/{provider-sdk.loader,auth-gateway,http-auth.gateway}.ts`, `core/guards/abandon-signup.guard.ts` **new**, `features/auth/register/register.{ts,html}`, `pages/auth/register.page.ts` |
+| Tests (new)  | `apps/api/test/signup-resume.test.ts`, `apps/storefront/.../core/auth/provider-sdk.loader.spec.ts`, `apps/storefront/.../features/auth/register/register.spec.ts`                              |
+
+**Nothing is committed.** All gates green: typecheck 19/19, tests 15/15 tasks (API 284,
+storefront 122), lint 22/22 with 0 errors, OpenAPI **113** operations, TypeDoc clean, live DB
+suite 14 files / 127 tests.
+
+---
+
+## 2. How this started
+
+A nine-item review was raised against the previous session's work. Each was verified against the
+code, then arbitrated by a second reviewer. Final positions:
+
+| #   | Finding                                            | Verdict                                                                                                                                                                  |
+| --- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Social signup loses its provider identity          | Real, High                                                                                                                                                               |
+| 2   | Facebook connect mode executes sign-in             | Real, High                                                                                                                                                               |
+| 3   | Signup finalisation is not atomic                  | Real, High                                                                                                                                                               |
+| 4   | `save()` can replace every provider identity       | Real, but **dormant** — no reachable path                                                                                                                                |
+| 5   | Contact-change confirmation burns proof on failure | Real — **raised to High**: the audit write could be lost after the credential moved                                                                                      |
+| 6   | Concurrent address writes overwrite each other     | Real, Medium                                                                                                                                                             |
+| 7   | Google OAuth state expires before first click      | Real, Medium                                                                                                                                                             |
+| 8   | Scalar server conflicts with local secure cookies  | Real, narrow scope                                                                                                                                                       |
+| 9   | TypeDoc unresolved symbol                          | Real, Low — **I first called this misattributed and was wrong**: two files share the basename `auth.repository.ts`, and I checked the Mongo one instead of `core-domain` |
+
+---
+
+## 3. The ten passes
+
+Each pass: one fix, tests, mutation checks, full regression, then approval before the next.
+
+| Pass | Finding                 | What shipped                                                                                                                                             |
+| ---- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | #1                      | Provider identity linked through `AuthIdentityRepository` at finalisation; `LinkableIdentity` narrow type; password identity only when a password exists |
+| 2    | #2                      | Both providers funnel through one `completeProviderResult`; `ProviderResult` discriminated union names each token kind                                   |
+| 3    | #3                      | `finalise()` split into `resolve()` + `consume()`; `DuplicateIdentifierError` primitive; guest-cart adoption made non-fatal                              |
+| 4    | #5                      | Consume + write + audit in ONE transaction, joined via `AsyncLocalStorage`; duplicate key → `contact_in_use`                                             |
+| 5    | #6                      | Address writes became single atomic statements (`$push`, `arrayFilters`, one aggregation pipeline)                                                       |
+| 6    | #7                      | Google state re-armed after every use and when a stale tab returns; `social_state_expired` recovery                                                      |
+| 7    | #4 + deferred atomicity | `replacePublicIdentities` **deleted**; `authIdentities` has one writer; customer + credential + identity commit together                                 |
+| 8    | #8                      | OpenAPI server → `https://localhost:4000`, plus a check-script guard                                                                                     |
+| 9    | #9                      | `{@link}` demoted to prose; TypeDoc build verified warning-free                                                                                          |
+| 10   | Facebook popup          | Click handler made synchronous, watchdog added, arm-only-when-offered                                                                                    |
+
+**Things worth keeping:**
+
+- **`DuplicateIdentifierError`** (core-domain) + `asDuplicateIdentifier` (Mongo). The unique index
+  is the arbiter; pre-checks are a courtesy. Two consumers already.
+- **`AsyncLocalStorage` transaction joining.** Threading `TransactionContext` through three ports
+  proved unnecessary — `sessionFrom()` picks the session up. Proven live: removing the join from
+  ANY of the three repositories breaks the rollback test.
+- **Live DB tests** (`RUN_DB_IT=1`). The address concurrency tests reproduce the original bug:
+  restore the read-modify-write and three cases fail.
+
+---
+
+## 4. Findings that only the real browser produced
+
+Every one of these was invisible to the test suite.
+
+1. **MongoDB refuses `$push` + `$set` on the same array path** — "would create a conflict". The
+   `arrayFilters` design I reasoned carefully about is _not accepted by the server_. Forced the
+   aggregation-pipeline form, which also needs mongoose's `updatePipeline: true`.
+2. **`$literal` is mandatory in that pipeline.** Inside an aggregation, a string beginning with
+   `$` is a field path — and address lines are customer input.
+3. **Google `origin_mismatch`** — config, `https://localhost:4200` was not an authorised
+   JavaScript origin. Owner has fixed it.
+4. **Facebook never opened a popup** — see §5.1. Root cause was a cached `window.FB`; fixed.
+5. **`GSI_LOGGER: google.accounts.id.initialize() is called multiple times`** — caused by pass 6's
+   re-arm. Fixed by re-arming only when the person is still looking at the button; a successful
+   sign-in navigates away, so there is nothing to arm.
+6. **`GSI_LOGGER: Attempt to call revoke() before initialize()`** — found during the rework's own
+   browser pass, see §8. GIS refuses `revoke` until the page has configured it, and the screen
+   that revokes is the one that never renders the button.
+
+---
+
+## 5. The social sign-in and sign-up flow — what was broken, and what closed it
+
+### 5.1 Facebook: the stale `window.FB` — FIXED and browser-verified
+
+In-component instrumentation produced:
+
+```
+[fb-probe] entered { apiIsWindowFB: false, loginType: 'function', ... }
+[fb-probe] calling login
+[fb-probe] login returned without throwing
+   → callback never fires, no popup, no error
+```
+
+**`apiIsWindowFB: false`.** `ProviderSdkLoader.resolveFacebook` captured `window.FB` at script
+`onload` and cached it. Meta's SDK REPLACES that object during its own initialisation — which is
+why `fbAsyncInit` exists. We therefore held a stub whose `login` queues into a queue that is
+never flushed: it accepted the call, returned cleanly, opened nothing, called back never.
+Evidence across that session: **facebook states minted 4, consumed 0.**
+
+**The fix, two halves that are only correct together:**
+
+1. **Wait for `fbAsyncInit`,** installed BEFORE the script tag, because the SDK fires it the
+   moment it is ready and there is no way to ask afterwards whether it already did. `init()` is
+   called from inside it, on the object that exists at that moment. A 15-second timeout resolves
+   the provider as unavailable rather than leaving the button armed against nothing.
+2. **Never cache the result.** `loadFacebook()` now returns a façade that resolves `window.FB` on
+   every call. Even a correctly-timed capture is a bet that Meta will not swap the object again;
+   reading it live costs one property access and removes the bet. The façade stays synchronous,
+   which is what keeps the click inside its own user gesture.
+
+**Proven in a real browser.** With the page loaded, `window.FB.login` was replaced with a spy and
+the Facebook button pressed with a genuine click: the spy fired once, with
+`scope: 'public_profile,email'`. Under the old code a spy on the live object could never have
+fired, because the component was holding a different object. The button then released itself and
+reported `Sign-in was cancelled.` rather than stranding.
+
+**A wrong turn worth keeping on record:** the hypothesis was tested by sampling `window.FB` twice
+_after_ load, seeing `sameObject: true`, and declaring it disproven. The swap had already happened
+before the first sample. The hypothesis was right; the measurement was worthless.
+
+### 5.2 Sign-up after a social round trip — FIXED and browser-verified
+
+The server had everything. This was the pending record while the user looked at a blank form:
+
+```json
+{
+	"origin": "google",
+	"email": { "value": "moulikpatra03@gmail.com", "verified": true, "locked": true },
+	"displayName": "Moulik Patra",
+	"phone": { "value": null, "verified": false },
+	"provider": "google",
+	"hasSubject": true
+}
+```
+
+Four symptoms, **one root cause: there was no `GET /auth/storefront/signup`.** The record exists
+server-side keyed by the httpOnly `st_signup` cookie, and nothing could ask for it.
+
+The route now exists — public, answering `{ pending: null }` rather than 404 when there is
+nothing in flight, because for anybody opening the page cold that is the ordinary case. It mirrors
+`GET /storefront/account/contact`. `DELETE` sits beside it for §5.2.4. The projection still
+excludes the provider subject: the form needs to know what to render, not what the server is
+holding it to.
+
+The registration screen asks on every arrival — including a reload, which is what makes the flow
+survive one. Carrying the state through router state instead would have looked simpler and lost
+everything the moment anybody pressed F5.
+
+Verified in a browser against a Google-origin record:
+
+| Was                                    | Is now                                                                                                               |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| No prefill; empty form                 | `name` and `email` filled from the server record                                                                     |
+| Verified email editable                | Control **disabled**, `Verified` badge, no "change" affordance                                                       |
+| Password fields shown                  | **Zero** password inputs; the controls are disabled, not merely hidden                                               |
+| Social buttons offered inside the flow | **Hidden**, divider and all                                                                                          |
+| Nothing explained why                  | One Bootstrap alert: "Continuing with Google. Your email is already verified — confirm your phone number to finish." |
+
+Disabled rather than hidden matters: Angular excludes disabled controls from validity, so a
+hidden-but-`required` password field would hold the submit button down with an error the page has
+no way to display. And hiding the provider buttons is not tidiness — `POST /signup/start`
+REPLACES the record for this browser, so a Google click halfway through a signup discards
+whatever has already been proven, including a phone number somebody waited for a code on.
+
+**Abandonment.** A `canDeactivate` guard on the register route calls `DELETE` when the screen is
+LEFT. Angular runs it on an in-app navigation and never when the browser tears the page down
+itself, which separates the two cases exactly: **reload keeps, leave discards.** Both verified
+against the database — the record survived an F5 and was gone within two seconds of clicking a
+router link away. It never blocks the navigation, and the record TTLs out regardless; the `DELETE`
+only makes the ending prompt, so a half-finished signup does not resume days later on a shared
+machine showing somebody else's verified address.
+
+### 5.3 Honest assessment of how this passed review
+
+The unit tests used a fake Facebook SDK whose `login` invoked its callback **synchronously**. That
+construction cannot observe a user gesture, a popup, page-level flow, prefill, or which object was
+actually called — the one question that mattered was the question the fake had defined away.
+Passing said nothing about whether the feature worked, and it was reported as "verified".
+
+**The standard going forward:** no social or multi-page flow is called done without being driven
+in a real browser, end to end, with the database inspected before and after. Unit tests stay for
+rules and refusals; they are not evidence that a flow works.
+
+Two new suites are written to that standard rather than around it:
+`provider-sdk.loader.spec.ts` drives the REAL loader against a `window.FB` that changes underneath
+it and asserts on object identity; `register.spec.ts` starts from a server record and asserts what
+the form became. Both files say in their own comments what they cannot prove.
+
+## 6. Owner / configuration actions
+
+| Item                                                                                 | Where                                       | Status                                                                                                                                |
+| ------------------------------------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `https://localhost:4200` as an authorised JavaScript origin                          | Google Cloud Console                        | **Done**                                                                                                                              |
+| Consent screen reads "Saha Textile Dev" — should be "Saha Textile"                   | Google Cloud Console → OAuth consent screen | Open                                                                                                                                  |
+| `localhost` under _Allowed Domains for the JavaScript SDK_; app mode and tester list | Meta app settings                           | **Still unverified.** The stale-object blocker is fixed (§5.1) and our side of the call is proven; this may be a second one behind it |
+| Popup permission for `localhost:4200`                                                | Chrome site settings                        | Worth checking; earlier attempts were genuinely blocked and Chrome remembers                                                          |
+
+---
+
+## 7. Owed work
+
+**Everything that could be done without the owner's own provider accounts is done.**
+
+| #   | Item                                                                          | Status                                                                                                                                                     |
+| --- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Fix Facebook (`fbAsyncInit`, read `window.FB` at call time); remove the probe | **Done** (§5.1). The `try/catch` was kept, as it is a genuine improvement                                                                                  |
+| 2   | `GET /auth/storefront/signup`                                                 | **Done** (§5.2), with `DELETE` beside it                                                                                                                   |
+| 3   | Rework the signup page on top of it                                           | **Done** (§5.2) — prefill, locked email, no password fields, no provider buttons, phone the only step                                                      |
+| 4   | Abandonment: clear on leaving, KEEP on refresh                                | **Done** (§5.2), `canDeactivate` guard, both halves verified against the database                                                                          |
+| 5   | Google personalized button — decide and verify                                | **Done** (§8) — verified against Google's documentation, decided, implemented                                                                              |
+| 6   | The repeated `initialize()` warning                                           | **Done** — re-arm only when the person is still on the button; gone from the console                                                                       |
+| 7   | Mongoose enum sweep                                                           | **Done** — 55 sites across 21 model files now derive; four inline contract enums promoted to named exports; two deliberate differences documented in place |
+| 8   | Re-verify the whole social surface in a browser                               | **Partial — the last mile is the owner's.** See below                                                                                                      |
+| 9   | Commit                                                                        | Not done, at the owner's instruction                                                                                                                       |
+
+### What item 8 still needs, and why it stops here
+
+Verified without a provider account, in a real browser, database read before and after:
+
+- the Facebook button reaches the LIVE `window.FB` on a genuine user click, with the locked scope;
+- the button releases itself and reports a dismissal rather than stranding;
+- Google's button renders and the SDK is initialised exactly once per page;
+- a Google-origin pending record renders as prefill, locked email, no password, no provider
+  buttons;
+- reload resumes that record, in-app navigation away deletes it;
+- abandoning a Google-origin signup reaches Google's `revoke` (§8);
+- `authIdentities` `password` rows and `customers` both unchanged across every run — passes 1 and
+  7 holding;
+- zero console errors on the registration page.
+
+What is left needs a real Google account and a real Facebook account, and therefore the owner:
+
+1. **A full provider round trip on each**, ending in a created customer: sign in, sign out, sign
+   in again, connect, disconnect. Read `authIdentities` before and after; a social signup must
+   leave `password` identities unchanged.
+2. **The Meta app configuration** (§6) — `localhost` under _Allowed Domains for the JavaScript
+   SDK_, app mode, tester list. Still unverified, and still a possible second Facebook blocker
+   behind the stale-object one that is now fixed. §5.1 proves our side of the call is correct; it
+   does not prove Meta will accept it.
+
+### Still open, and untouched by this work
+
+- Wallet / points / orders tiles showing `0` — from the previous handoff.
+- `/auth/otp` duplicating the login code flow.
+- Soft-deleted customers keeping social identity links.
+
+---
+
+## 8. The Google personalized button — verified, decided, implemented
+
+**The complaint.** After consent, Google's own button stops reading "Sign in with Google" and
+starts reading "Sign in as \<name\>". On a site where no account exists, that asserts something
+untrue.
+
+**What Google's documentation actually says** (checked, not assumed):
+
+- The personalized button needs BOTH an active Google session AND "a corresponding account on your
+  website who has signed in using Sign In With Google before". The second half is the problem: the
+  grant is made when the button is pressed, and the account is only made when the signup FINISHES.
+  Abandon in between and the button claims a returning customer who does not exist.
+- **A site cannot opt out of personalization.** `renderButton` has no flag for it. The documented
+  suppressions are all disfigurements — `type: 'icon'`, `size` `medium`/`small`, a width under
+  200px — and this button is deliberately sized to match Meta's beside it.
+- **`revoke()` does not sign anybody out of Google.** It revokes "the OAuth grant used to share
+  the ID token" for THIS client. The person stays signed in to Google here and in every other tab.
+  `disableAutoSelect()` is a different thing again and does not change the button.
+
+**Owner decision (2026-08-19):** revoking is acceptable. Being asked to pick an account and
+approve Saha Textile again is fine; signing the person out of Google would not have been. That
+distinction was the whole of the earlier objection.
+
+**What was implemented.** The grant is handed back on ONE path: a Google-origin signup that is
+ABANDONED. That is the only moment both halves are known for certain — consent was given, and no
+account came of it. Finishing keeps the grant, because then "Sign in as…" is simply true.
+
+**A defect the browser found, and no test could have.** The first version called `revoke()`
+directly and GIS answered `Attempt to call revoke() before initialize()`. The screen that revokes
+is precisely the screen that never renders the button — a resumed social signup hides it — so
+nothing there had configured the SDK, and the call failed silently on the only path it exists for.
+`ProviderSdkLoader` now owns that lifecycle: it tracks whether `initialize()` has run in this page
+and configures GIS first only when nothing has, so the ordinary path does not pay for a second
+`initialize()` and the warning that comes with one. Re-verified on a clean console: the refusal is
+gone, and Google now genuinely attempts the disconnect.
+
+## 9. Traps
+
+1. **Two files are named `auth.repository.ts`** (`core-domain/src/ports`, `adapters-db-mongo/src/repositories`). Grepping the wrong one produced a wrong verdict on finding #9.
+2. **`nest --watch` does not restart on a workspace-package rebuild.** The API serves stale
+   compiled packages until restarted. Any browser test after a `packages/**` change is meaningless
+   without it.
+3. **Chrome blocks popups outside a user gesture.** Any `await` before `FB.login()` ends the
+   gesture.
+4. **Meta replaces `window.FB` after script load.** Never cache it — and never test for the swap
+   by sampling `window.FB` twice after load, because it has already happened. `ProviderSdkLoader`
+   now waits for `fbAsyncInit` and resolves the global at call time; keep it that way.
+5. **GIS refuses `revoke()` before `initialize()`,** and gives no way to ask whether it has been
+   initialised. `ProviderSdkLoader` tracks it; go through `initializeGoogle` / `revokeGoogleGrant`
+   rather than touching `google.accounts.id` directly.
+6. **A hidden Angular control is still a validated one.** Hiding a `required` password field in the
+   template alone leaves the form permanently invalid with nothing on screen to explain it —
+   disable the control as well, which is what excludes it from validity.
+7. **`canDeactivate` fires on in-app navigation and NOT on reload.** That is deliberate here: it is
+   what lets a pending signup survive an F5 and die when somebody walks away. A teardown hook could
+   not have told the two apart.
+8. **Mongo rejects two update operators on one array path.** Use an aggregation pipeline, with
+   `updatePipeline: true` on mongoose 9 and `$literal` around user data.
+9. **`sessionFrom()` joins a transaction through `AsyncLocalStorage`** — no port parameter needed.
+10. **Importing the models module creates every collection.** This is almost certainly the origin
+    of the unattributed `saha_textile_probe` database noted in the previous handoff: a script run
+    with a non-default `MONGODB_DB_NAME`.
+11. **`check:i18n-parity` passes with keys missing from `fr.json`.** It did not catch two.
+12. **Mongoose `enum` no longer accepts a hand-written list.** Every mirrored vocabulary is derived
+    from its contract (`SignupOrigin.options`, `CatalogStatus.options`, `IDENTITY_SUBJECT_TYPES`).
+    Where a schema genuinely differs, spell it as the contract's values plus the difference —
+    `roleAtLogin` in `auth-session.model.ts` is the worked example.
+
+---
+
+## 10. Temporary code
+
+None outstanding. The `[fb-probe]` diagnostics in
+`apps/storefront/src/app/shared/ui/social-sign-in/social-sign-in.ts` were removed with the §5.1
+fix. The `try/catch` around `api.login` was kept deliberately: it guards a third-party global we
+do not control, and without it a throw would leave the button disabled reading "Signing in…" with
+the ninety-second watchdog as the only way out.
+
+## 11. How to verify
+
+```bash
+pnpm typecheck        # 19/19
+pnpm test             # 15/15 tasks — API 284, storefront 122
+pnpm lint             # 22/22, 0 errors
+pnpm --filter @saha-textile/api generate:openapi     # 113 operations, https servers
+pnpm --filter @saha-textile/developer-portal-typedoc build   # no warnings
+
+# Live DB tests — these are the ones that catch concurrency and atomicity
+MONGODB_PORT=27018 RUN_DB_IT=1 pnpm --filter @saha-textile/adapters-db-mongo test   # 14 files, 127 tests
+```
+
+Snapshot the database before any manual browser run and read the deltas afterwards:
+
+```bash
+docker exec saha-textile-mongo mongosh --quiet --eval '
+const d = db.getSiblingDB("saha_textile_local");
+print("oauthStates google  u/c : " + d.oauthStates.countDocuments({provider:"google",consumedAt:null}) + " / " + d.oauthStates.countDocuments({provider:"google",consumedAt:{$ne:null}}));
+print("oauthStates facebook u/c: " + d.oauthStates.countDocuments({provider:"facebook",consumedAt:null}) + " / " + d.oauthStates.countDocuments({provider:"facebook",consumedAt:{$ne:null}}));
+print("authIdentities g/f/p    : " + d.authIdentities.countDocuments({provider:"google"}) + " / " + d.authIdentities.countDocuments({provider:"facebook"}) + " / " + d.authIdentities.countDocuments({provider:"password"}));
+print("customers / pendingSignups: " + d.customers.countDocuments() + " / " + d.pendingSignups.countDocuments());
+'
+```
+
+A social signup must leave `password` identities **unchanged** — that is passes 1 and 7 holding.
+
+### Driving the signup screen without a provider account
+
+The registration rework can be exercised end to end without signing in to Google or Meta. Start a
+signup so the API sets a real `st_signup` cookie on the browser, then reshape that record into the
+one a provider round trip would have left:
+
+```bash
+docker exec saha-textile-mongo mongosh --quiet --eval '
+const d = db.getSiblingDB("saha_textile_local");
+d.pendingSignups.updateOne({"email.value":"<the address you started with>"},
+  {$set:{origin:"google", provider:"google", providerSubject:"google-sub-fixture",
+         "email.verified":true, "email.locked":true, "phone.value":null}});
+'
+```
+
+Reload `/auth/register` and the screen should show the name and address prefilled, the email
+control disabled behind a `Verified` badge, **zero** password inputs, and no provider buttons.
+Reload again — the record survives. Click any in-app link away — it is gone within a second or
+two. What this CANNOT show is a provider dialog, a popup surviving a user gesture, or Meta
+accepting our app; those need §7 item 8.

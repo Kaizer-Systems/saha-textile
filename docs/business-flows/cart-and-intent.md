@@ -4,7 +4,7 @@ wide: true
 description: Guest cart, authenticated cart, pending-action replay, merge, expiry, and reconnect behavior.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - apps/storefront/src/app/core/state/cart
     - apps/api/src/cart
@@ -69,6 +69,8 @@ sequenceDiagram
 ```
 
 The order is mandatory: authenticate → merge cart → revalidate intent → replay once → clear intent.
+
+Current signup/social authentication attempts guest-cart adoption after the account session is established. A merge failure is logged and does not invalidate an otherwise successful login; the customer can recover the cart path separately. The broader target still requires authoritative merge notices, pending-intent revalidation, one-time replay, and explicit clearing. Do not describe the current non-fatal adoption hook as complete pending-intent continuation.
 
 ## Merge policy
 

@@ -3,7 +3,7 @@ title: Storefront Contributor Recipes
 description: Beginner-safe recipes for adding routes, server queries, client state, translations, and SSR-safe UI.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - apps/storefront/src/app/pages
     - apps/storefront/src/app/features
@@ -80,11 +80,20 @@ If classic NgRx is justified:
 
 ## Recipe: add or change a translation
 
-1. Use semantic translation keys rather than copying visible English into templates.
+1. Use semantic translation keys for interface chrome rather than copying visible English into templates.
 2. Update every active locale file in the same change.
 3. Verify parameter interpolation and plural behavior.
 4. Test narrow layouts because translated strings expand.
 5. Do not mark Bengali implemented until the active runtime locale configuration and content coverage enable it.
+
+Catalogue option, add-on, attribute, taxonomy, and measurement labels are Machine-2 content. Render those returned values directly; do not invent Transloco keys for dynamic catalogue data.
+
+## Recipe: render a repeated collection
+
+1. Track a stable domain id when the record has one; cart lines use `item.id`.
+2. Use the positional index only for presentation lists with no unique identity, such as source-authored notices or menu fragments.
+3. Never track a value known to repeat, such as a path or display label, merely because it is convenient.
+4. Exercise duplicate-looking records so Angular's duplicate-key diagnostic cannot hide behind ideal fixture data.
 
 ## Pull-request checklist
 
@@ -93,6 +102,7 @@ If classic NgRx is justified:
 - [ ] Fixture-backed or unwired behavior is labelled and not mistaken for a backend capability.
 - [ ] SSR and browser navigation were both checked.
 - [ ] Loading, error, empty, and success states are intentional.
+- [ ] Repeated templates have a stable, non-duplicating track key.
 - [ ] Keyboard, touch, focus, and reduced-motion behavior were considered.
 - [ ] Unit/e2e coverage matches the risk.
 - [ ] Portal status, sources, and verification date were updated when behavior changed.

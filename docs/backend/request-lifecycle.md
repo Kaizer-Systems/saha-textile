@@ -3,7 +3,7 @@ title: Request Lifecycle and Boundary Tracing
 description: How a request enters the API, crosses application and domain boundaries, reaches an adapter, and returns safely.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 wide: true
 search_keywords: 'flight simulator photon post orders idempotency transaction ghost stages trace'
 source_of_truth:
@@ -78,7 +78,9 @@ This path exists, but it is inconsistent:
 - query/path parameters are often parsed manually;
 - every failure has the global safe `ApiErrorResponse` envelope, but successful values still lack consistent explicit response serialization;
 - order reads have 404-on-mismatch ownership, and cart reads/mutations plus place-order loading enforce Principal or hashed `st_guest` proof;
-- the order service adopts the rollback-proven transaction port for order save plus cart consumption, while inventory/payment/audit side effects remain outside that unit of work.
+- the order service adopts the rollback-proven transaction port for order save plus cart consumption, while inventory/payment/audit side effects remain outside that unit of work;
+- signup finalisation commits customer, password credential when present, and provider identity together, while treating post-authentication guest-cart merge as a recoverable follow-up; and
+- contact confirmation commits proof consumption, unique identifier mutation, and audit evidence together. Customer address add/update remains a single-document atomic statement rather than a multi-document transaction.
 - session failures may include a stable, optional refusal reason (`session_missing`, `session_expired`, `session_revoked`, `permissions_changed`, or `account_inactive`) without exposing internal causes; refresh rotation checks reuse before CSRF so a replay can revoke its family even when the old CSRF value is stale.
 - named admin permissions are resolved only for routes that declare them, using active role assignments plus transitional embedded grants under the holder's coarse-role ceiling; the new role, permission and user-authority routes fail closed when a required code is absent.
 
@@ -184,6 +186,7 @@ Never send stack traces, database documents, provider payloads, secrets, tokens,
 - Recalculate business truth server-side.
 - Use idempotency for retryable high-value actions.
 - Open a transaction when several durable facts must agree.
+- Let repositories join the ambient adapter session when their core ports do not expose transaction context; pass only the opaque core context through ports that already declare it.
 - Emit audit/outbox records inside the same consistency boundary when required.
 - Return a versioned response DTO rather than a persistence document.
 

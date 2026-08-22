@@ -1,9 +1,9 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-18",
+	"lastVerified": "2026-08-22",
 	"route": "/database/schema-nebula",
 	"title": "Schema Nebula",
-	"summary": "A governed one-star-per-collection map of the 65 explicit MongoDB collection targets across the Saha Textile platform.",
+	"summary": "A governed one-star-per-collection map of the 67 explicit MongoDB collection targets across the Saha Textile platform.",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/owner-decisions-log.mdx",
 		"docs/engineering-live-context/account-separation-task-handoff.mdx",
@@ -29,11 +29,11 @@
 		"notifications": "packages/contracts/src/notification.ts"
 	},
 	"inventory": {
-		"nodeCount": 65,
-		"existingModelCount": 35,
+		"nodeCount": 67,
+		"existingModelCount": 37,
 		"targetOnlyCount": 30,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
-		"statusPolicy": "A star becomes solid only when a tested current adapter model resolves to that exact ratified physical collection name. All 40 exported models declare explicit physical names; 35 match ratified graph nodes and are solid. authRateLimits, pendingSignups, and pendingContactChanges are transient runtime machinery outside the graph; productQuestions and ratingAggregates are durable implemented collections awaiting graph reconciliation."
+		"statusPolicy": "A star becomes solid only when a tested current adapter model resolves to that exact ratified physical collection name. All 40 exported models declare explicit physical names; 37 match ratified graph nodes and are solid. authRateLimits, pendingSignups, and pendingContactChanges are transient runtime machinery outside the graph."
 	},
 	"clusters": [
 		{
@@ -343,6 +343,32 @@
 			"source": "catalog §7.41",
 			"currentModel": "packages/adapters-db-mongo/src/models/content.model.ts",
 			"references": ["customers", "products", "orders", "mediaAssets"]
+		},
+		{
+			"id": "productQuestions",
+			"label": "productQuestions",
+			"cluster": "content-seo-media",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["F"],
+			"blockingDecisions": [],
+			"purpose": "Customer and guest product questions with optional anonymity, admin answers, and public answered-only reads. askerEmail is select:false so a public projection cannot leak it.",
+			"source": "catalog §7.41",
+			"currentModel": "packages/adapters-db-mongo/src/models/content.model.ts",
+			"references": ["customers", "products"]
+		},
+		{
+			"id": "ratingAggregates",
+			"label": "ratingAggregates",
+			"cluster": "content-seo-media",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["F"],
+			"blockingDecisions": [],
+			"purpose": "Persisted rating averages and star buckets recomputed from approved verified-purchase reviews only.",
+			"source": "catalog §7.41",
+			"currentModel": "packages/adapters-db-mongo/src/models/content.model.ts",
+			"references": ["reviews", "products"]
 		},
 		{
 			"id": "searchDictionary",

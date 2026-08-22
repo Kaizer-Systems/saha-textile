@@ -3,7 +3,7 @@ title: Frontend Path
 description: Onboarding route for storefront and admin developers.
 status: scaffolded
 audience: [frontend]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - apps/storefront/src/app
     - apps/admin/src/app
@@ -43,6 +43,7 @@ Use this path for work in the Angular storefront, Angular admin application, sha
 - The storefront catalogue currently mixes JSON fixture readers with a server-side catalogue route; check the service method used by your page before changing data behaviour.
 - The admin application has a broad route and feature scaffold with services still reading development JSON data in several areas.
 - Both applications use Transloco, interceptors and strict application configuration.
+- Storefront registration resumes server-held social/signup state after reload and discards it on in-app abandonment. Dynamic catalogue labels remain Machine-2 content rather than translation keys, and repeated templates require non-duplicating track identities.
 
 ## Read in this order
 

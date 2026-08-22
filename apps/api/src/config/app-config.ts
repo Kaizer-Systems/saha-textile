@@ -18,6 +18,59 @@ const boolString = boolStringWithDefault('false');
 /** Opt-OUT flag: absent means on, so a forgotten variable fails closed rather than open. */
 const secureBoolString = boolStringWithDefault('true');
 
+/** An absolute URL. `URL.canParse` rather than a regex: the platform already owns this grammar. */
+const AbsoluteUrl = z
+	.string()
+	.min(1)
+	.refine((value) => URL.canParse(value), { message: 'must be an absolute URL' });
+
+/**
+ * DigitalOcean Spaces — the S3-compatible store behind `StoragePort` (owner lock, Media).
+ *
+ * Every credential field is optional so a developer or CI job with no Spaces access still
+ * boots; media routes then fail loudly at the point of use instead of taking the whole API
+ * down. What is NOT tolerated is a HALF-configured store: a bucket with no secret, or a
+ * secret with no bucket, is a typo, and letting it through would surface hours later as an
+ * opaque 403 from the object store that reads like a credentials problem. The refinement
+ * below turns that into a boot-time error that names the missing variables.
+ *
+ * `endpoint` is derived from `region` when unset. It carries the region but NOT the bucket
+ * — the SDK prepends the bucket for virtual-hosted addressing — whereas `SPACES_CDN_URL`
+ * DOES include the bucket, because the CDN is a different host. They are separate settings
+ * because they are genuinely different URLs, not two spellings of one.
+ */
+const SpacesConfigSchema = z
+	.object({
+		key: z.string().min(1).optional(),
+		secret: z.string().min(1).optional(),
+		bucket: z.string().min(1).optional(),
+		region: z.string().min(1).default('sgp1'),
+		endpoint: AbsoluteUrl.optional(),
+		cdnUrl: AbsoluteUrl.optional(),
+	})
+	.superRefine((spaces, ctx) => {
+		const required = [
+			['SPACES_KEY', spaces.key],
+			['SPACES_SECRET', spaces.secret],
+			['SPACES_BUCKET', spaces.bucket],
+		] as const;
+		const missing = required.filter(([, value]) => !value).map(([name]) => name);
+		if (missing.length > 0 && missing.length < required.length) {
+			ctx.addIssue({
+				code: 'custom',
+				message:
+					`Media storage is partially configured — missing ${missing.join(', ')}. ` +
+					'Set all of SPACES_KEY, SPACES_SECRET and SPACES_BUCKET, or none of them.',
+			});
+		}
+	})
+	.transform((spaces) => ({
+		...spaces,
+		endpoint: spaces.endpoint ?? `https://${spaces.region}.digitaloceanspaces.com`,
+		/** True only when the store is fully configured; the DI factory switches on this. */
+		configured: Boolean(spaces.key && spaces.secret && spaces.bucket),
+	}));
+
 /** Runtime configuration, validated once at boot from process.env. */
 const ConfigSchema = z.object({
 	nodeEnv: z.enum(['development', 'test', 'production']).default('development'),
@@ -124,6 +177,20 @@ const ConfigSchema = z.object({
 		ttlSeconds: z.coerce.number().int().positive().default(600),
 		maxAttempts: z.coerce.number().int().positive().default(5),
 	}),
+	spaces: SpacesConfigSchema,
+	/**
+	 * Redis, used solely as the BullMQ broker for media derivative and transcode jobs.
+	 *
+	 * Not a cache and not a session store — sessions live in Mongo and are cookie-bound, so
+	 * nothing here is on the request path. Defaults point at a local instance because the
+	 * queue is infrastructure the API expects to find beside it, not an optional provider.
+	 */
+	redis: z.object({
+		host: z.string().min(1).default('127.0.0.1'),
+		port: z.coerce.number().int().positive().default(6379),
+		password: z.string().optional(),
+		db: z.coerce.number().int().nonnegative().default(0),
+	}),
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;
@@ -180,6 +247,20 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 		otp: {
 			ttlSeconds: env.OTP_TTL_SECONDS || undefined,
 			maxAttempts: env.OTP_MAX_ATTEMPTS || undefined,
+		},
+		spaces: {
+			key: env.SPACES_KEY || undefined,
+			secret: env.SPACES_SECRET || undefined,
+			bucket: env.SPACES_BUCKET || undefined,
+			region: env.SPACES_REGION || undefined,
+			endpoint: env.SPACES_ENDPOINT || undefined,
+			cdnUrl: env.SPACES_CDN_URL || undefined,
+		},
+		redis: {
+			host: env.REDIS_HOST || undefined,
+			port: env.REDIS_PORT || undefined,
+			password: env.REDIS_PASSWORD || undefined,
+			db: env.REDIS_DB || undefined,
 		},
 	});
 }

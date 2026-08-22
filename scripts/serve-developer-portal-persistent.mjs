@@ -2,16 +2,33 @@ import { spawn } from 'node:child_process';
 import { createReadStream } from 'node:fs';
 import { access, cp, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { watch } from 'node:fs';
+
+import {
+	assertLoopbackHost,
+	clearSessionCookie,
+	createDeveloperPortalLocalAuth,
+	createSessionCookie,
+	environmentWithoutDeveloperPortalCredentials,
+	formatPortalOrigin,
+	hasExpectedPortalOrigin,
+	readDeveloperPortalCredentials,
+	readUrlEncodedBody,
+	sanitizePortalReturnPath,
+} from './developer-portal-local-auth.mjs';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const defaultPort = 3457;
 const host = readArgument('--host') ?? '127.0.0.1';
 const port = parsePort(readArgument('--port') ?? process.env.PORTAL_PORT ?? String(defaultPort));
 const debounceMilliseconds = 450;
+
+assertLoopbackHost(host);
+const portalOrigin = formatPortalOrigin(host, port);
 
 const portalPackage = '@saha-textile/developer-portal';
 const storybookPackage = '@saha-textile/developer-portal-storybook';
@@ -20,6 +37,28 @@ const scalarPackage = '@saha-textile/developer-portal-scalar';
 const apiPackage = '@saha-textile/api';
 const temporaryBuildRoot = join(tmpdir(), 'saha-textile-developer-portal-');
 const mountedChildRoots = new Set(['storybook', 'typedoc', 'api/reference', 'database/catalogue']);
+const localAuthDirectory = join(repositoryRoot, 'apps', 'developer-portal', 'local-auth');
+const localAuthEnvironmentPath = join(repositoryRoot, 'apps', 'developer-portal', '.env.local');
+const portalRequire = createRequire(join(repositoryRoot, 'apps', 'developer-portal', 'package.json'));
+const localCredentials = await readDeveloperPortalCredentials({
+	environment: process.env,
+	filePath: localAuthEnvironmentPath,
+});
+const localAuth = createDeveloperPortalLocalAuth(localCredentials);
+const localAuthAssets = new Map([
+	['/__portal/login/theme.css', join(repositoryRoot, 'apps', 'developer-portal', 'src', 'css', 'nextgen-theme.css')],
+	['/__portal/login/identity-loom.css', join(localAuthDirectory, 'identity-loom.css')],
+	['/__portal/login/identity-loom.js', join(localAuthDirectory, 'identity-loom.js')],
+	['/__portal/login/logo.svg', join(repositoryRoot, 'apps', 'developer-portal', 'static', 'img', 'logo.svg')],
+	[
+		'/__portal/login/inter.woff2',
+		portalRequire.resolve('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2'),
+	],
+	[
+		'/__portal/login/jetbrains-mono.woff2',
+		portalRequire.resolve('@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2'),
+	],
+]);
 
 const watchTargets = [
 	'apps/developer-portal',
@@ -72,6 +111,7 @@ const mimeTypes = new Map([
 ]);
 
 let activeSiteDirectory;
+let lastBuildFailed = false;
 let activeBuildDirectory;
 let buildInProgress = false;
 let rebuildRequested = false;
@@ -104,6 +144,9 @@ function isIgnoredPath(filename) {
 	if (!filename) {
 		return false;
 	}
+	if (filename.endsWith('.gen.css')) {
+		return true;
+	}
 	return filename
 		.split(/[\\/]/u)
 		.filter(Boolean)
@@ -124,7 +167,7 @@ function run(command, arguments_, options = {}) {
 		log(`run: ${command} ${arguments_.join(' ')}`);
 		const child = spawn(command, arguments_, {
 			cwd: options.cwd ?? repositoryRoot,
-			env: { ...process.env, ...options.env },
+			env: environmentWithoutDeveloperPortalCredentials({ ...process.env, ...options.env }),
 			stdio: 'inherit',
 		});
 		activeChild = child;
@@ -174,6 +217,9 @@ async function buildCandidate() {
 		log(`build ${sequence}: composing shared TypeDoc theme`);
 		await run(process.execPath, ['apps/developer-portal-typedoc/scripts/compose-theme.mjs']);
 
+		log(`build ${sequence}: checking Storybook component coverage`);
+		await run(process.execPath, ['apps/developer-portal-storybook/scripts/check-component-coverage.mjs']);
+
 		log(`build ${sequence}: composing isolated application styles for Storybook`);
 		await run(process.execPath, ['apps/developer-portal-storybook/scripts/compose-application-styles.mjs']);
 
@@ -213,13 +259,7 @@ async function buildCandidate() {
 
 		log(`build ${sequence}: generating the source-only OpenAPI artifact`);
 		await run('corepack', ['pnpm', '--filter', apiPackage, 'exec', 'nest', 'build']);
-		await run(process.execPath, [
-			'apps/api/dist/generate-openapi.js',
-			'--output',
-			openApiPath,
-			'--server',
-			'http://127.0.0.1:4000',
-		]);
+		await run(process.execPath, ['apps/api/dist/generate-openapi.js', '--output', openApiPath]);
 
 		log(`build ${sequence}: building the Scalar child with Test Request available`);
 		await run('corepack', [
@@ -318,6 +358,7 @@ async function promoteBuild(candidate) {
 	const previousBuildDirectory = activeBuildDirectory;
 	activeBuildDirectory = candidate.candidateRoot;
 	activeSiteDirectory = candidate.siteDirectory;
+	lastBuildFailed = false;
 	log(`build ${candidate.sequence}: promoted; refreshing connected portal tabs`);
 	broadcastReload(candidate.sequence);
 
@@ -344,7 +385,12 @@ async function rebuild(reason) {
 			await rm(candidate.candidateRoot, { force: true, recursive: true });
 		}
 		const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
-		log(`build failed; keeping the last known good portal\n${message}`);
+		lastBuildFailed = true;
+		if (activeSiteDirectory) {
+			log(`build failed; keeping the last known good portal\n${message}`);
+		} else {
+			log(`build failed; no composite has been promoted yet\n${message}`);
+		}
 	} finally {
 		buildInProgress = false;
 		if (rebuildRequested && !shuttingDown) {
@@ -381,7 +427,7 @@ async function startWatchers() {
 }
 
 function safeRequestPath(requestUrl) {
-	const url = new URL(requestUrl ?? '/', `http://${host}:${port}`);
+	const url = new URL(requestUrl ?? '/', portalOrigin);
 	let decodedPath;
 	try {
 		decodedPath = decodeURIComponent(url.pathname);
@@ -438,8 +484,194 @@ function sendSecurityHeaders(response) {
 	response.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
 }
 
+function sendLocalAuthSecurityHeaders(response) {
+	sendSecurityHeaders(response);
+	response.setHeader(
+		'Content-Security-Policy',
+		"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+	);
+	response.setHeader('Cache-Control', 'no-store');
+	response.setHeader('X-Frame-Options', 'DENY');
+}
+
+function escapeHtmlAttribute(value) {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&#39;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;');
+}
+
+function requestAcceptsHtml(request) {
+	return request.headers['x-portal-request'] !== 'identity-loom';
+}
+
+function sendJson(response, statusCode, payload, headers = {}) {
+	response.writeHead(statusCode, {
+		'Cache-Control': 'no-store',
+		'Content-Type': 'application/json; charset=utf-8',
+		...headers,
+	});
+	response.end(`${JSON.stringify(payload)}\n`);
+}
+
+async function serveLocalAuthAsset(request, response, filePath) {
+	if (request.method !== 'GET' && request.method !== 'HEAD') {
+		response.writeHead(405, { Allow: 'GET, HEAD' });
+		response.end();
+		return;
+	}
+
+	sendLocalAuthSecurityHeaders(response);
+	response.setHeader('Content-Type', mimeTypes.get(extname(filePath).toLowerCase()) ?? 'application/octet-stream');
+	response.writeHead(200);
+	if (request.method === 'HEAD') {
+		response.end();
+		return;
+	}
+	createReadStream(filePath).pipe(response);
+}
+
+async function serveLocalAuthPage(request, response, requestUrl) {
+	if (request.method !== 'GET' && request.method !== 'HEAD') {
+		response.writeHead(405, { Allow: 'GET, HEAD' });
+		response.end();
+		return;
+	}
+
+	const returnPath = sanitizePortalReturnPath(requestUrl.searchParams.get('next'));
+	if (localAuth.hasSession(request.headers.cookie)) {
+		response.writeHead(303, { 'Cache-Control': 'no-store', Location: returnPath });
+		response.end();
+		return;
+	}
+
+	const html = (await readFile(join(localAuthDirectory, 'index.html'), 'utf8')).replace(
+		'__PORTAL_RETURN_PATH__',
+		escapeHtmlAttribute(returnPath),
+	);
+	sendLocalAuthSecurityHeaders(response);
+	response.setHeader('Content-Type', 'text/html; charset=utf-8');
+	response.writeHead(200);
+	response.end(request.method === 'HEAD' ? undefined : html);
+}
+
+async function handleLocalAuthLogin(request, response) {
+	if (request.method !== 'POST') {
+		response.writeHead(405, { Allow: 'POST' });
+		response.end();
+		return;
+	}
+
+	sendLocalAuthSecurityHeaders(response);
+	if (!hasExpectedPortalOrigin(request, portalOrigin)) {
+		sendJson(response, 403, { ok: false });
+		return;
+	}
+	if (!request.headers['content-type']?.startsWith('application/x-www-form-urlencoded')) {
+		sendJson(response, 415, { ok: false });
+		return;
+	}
+
+	let body;
+	try {
+		body = await readUrlEncodedBody(request);
+	} catch (error) {
+		sendJson(response, error?.statusCode === 413 ? 413 : 400, { ok: false });
+		return;
+	}
+
+	const returnPath = sanitizePortalReturnPath(body.get('next'));
+	const authenticated = localAuth.authenticate(body.get('username'), body.get('password'));
+	if (!authenticated) {
+		if (requestAcceptsHtml(request)) {
+			response.writeHead(303, {
+				'Cache-Control': 'no-store',
+				Location: `/__portal/login?error=1&next=${encodeURIComponent(returnPath)}`,
+			});
+			response.end();
+			return;
+		}
+		sendJson(response, 401, { ok: false });
+		return;
+	}
+
+	const session = localAuth.createSession();
+	const sessionHeader = { 'Set-Cookie': createSessionCookie(session) };
+	if (requestAcceptsHtml(request)) {
+		response.writeHead(303, {
+			'Cache-Control': 'no-store',
+			Location: returnPath,
+			...sessionHeader,
+		});
+		response.end();
+		return;
+	}
+	sendJson(response, 200, { ok: true, next: returnPath }, sessionHeader);
+}
+
+async function handleLocalAuthLogout(request, response) {
+	if (request.method !== 'POST') {
+		response.writeHead(405, { Allow: 'POST' });
+		response.end();
+		return;
+	}
+
+	sendLocalAuthSecurityHeaders(response);
+	if (!hasExpectedPortalOrigin(request, portalOrigin)) {
+		sendJson(response, 403, { ok: false });
+		return;
+	}
+	localAuth.destroySession(request.headers.cookie);
+	const clearedSessionHeader = { 'Set-Cookie': clearSessionCookie() };
+	if (requestAcceptsHtml(request)) {
+		response.writeHead(303, {
+			'Cache-Control': 'no-store',
+			Location: '/__portal/login',
+			...clearedSessionHeader,
+		});
+		response.end();
+		return;
+	}
+	sendJson(response, 200, { ok: true }, clearedSessionHeader);
+}
+
 async function handleRequest(request, response) {
 	sendSecurityHeaders(response);
+	const requestUrl = new URL(request.url ?? '/', portalOrigin);
+	const localAuthAsset = localAuthAssets.get(requestUrl.pathname);
+	if (localAuthAsset) {
+		await serveLocalAuthAsset(request, response, localAuthAsset);
+		return;
+	}
+	if (requestUrl.pathname === '/__portal/login') {
+		await serveLocalAuthPage(request, response, requestUrl);
+		return;
+	}
+	if (requestUrl.pathname === '/__portal/auth/login') {
+		await handleLocalAuthLogin(request, response);
+		return;
+	}
+	if (requestUrl.pathname === '/__portal/auth/logout') {
+		await handleLocalAuthLogout(request, response);
+		return;
+	}
+
+	if (!localAuth.hasSession(request.headers.cookie)) {
+		const returnPath = sanitizePortalReturnPath(`${requestUrl.pathname}${requestUrl.search}`);
+		if (request.method === 'GET' || request.method === 'HEAD') {
+			response.writeHead(303, {
+				'Cache-Control': 'no-store',
+				Location: `/__portal/login?next=${encodeURIComponent(returnPath)}`,
+			});
+			response.end();
+			return;
+		}
+		sendJson(response, 401, { ok: false });
+		return;
+	}
+
 	if (request.url?.startsWith('/__portal/events')) {
 		response.writeHead(200, {
 			'Cache-Control': 'no-cache, no-transform',
@@ -460,7 +692,9 @@ async function handleRequest(request, response) {
 		});
 		response.end(
 			injectReloadClient(
-				'<!doctype html><title>Developer portal building</title><body><h1>Developer portal build in progress</h1><p>This page will refresh after the first verified build completes.</p></body>',
+				lastBuildFailed
+					? '<!doctype html><title>Developer portal build failed</title><body><h1>Developer portal last build failed</h1><p>No composite has been promoted. See the terminal for the compile error, then retry.</p></body>'
+					: '<!doctype html><title>Developer portal building</title><body><h1>Developer portal build in progress</h1><p>This page will refresh after the first verified build completes.</p></body>',
 			),
 		);
 		return;
@@ -474,7 +708,7 @@ async function handleRequest(request, response) {
 	}
 
 	if (mountedChildRoots.has(requestPath)) {
-		const requestUrl = new URL(request.url ?? '/', `http://${host}:${port}`);
+		const requestUrl = new URL(request.url ?? '/', portalOrigin);
 		response.writeHead(308, {
 			'Cache-Control': 'no-store',
 			Location: `/${requestPath}/${requestUrl.search}`,
@@ -545,7 +779,7 @@ server.on('error', (error) => {
 });
 
 server.listen(port, host, () => {
-	log(`server listening at http://${host}:${port}`);
+	log(`server listening at ${portalOrigin}; local Identity Loom gate active`);
 	void startWatchers()
 		.then(() => rebuild('initial composite build'))
 		.catch((error) => {

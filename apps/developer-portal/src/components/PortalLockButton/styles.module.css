@@ -1,0 +1,128 @@
+/* NEXT-GEN-UI · icon-only circuit exit with a retracting woven thread. */
+
+.lockControl {
+	position: relative;
+	display: grid;
+	place-items: center;
+}
+
+.lockButton {
+	display: grid;
+	width: 34px;
+	height: 34px;
+	padding: 4px;
+	border: 1px solid transparent;
+	border-radius: var(--portal-radius-lg);
+	background: transparent;
+	color: var(--ifm-navbar-link-color);
+	cursor: pointer;
+	place-items: center;
+	transition:
+		border-color 160ms ease,
+		background 160ms ease,
+		box-shadow 160ms ease,
+		color 160ms ease,
+		transform 160ms ease;
+}
+
+.lockButton:hover,
+.lockButton:focus-visible {
+	border-color: rgba(255, 156, 50, 0.44);
+	outline: none;
+	background: rgba(255, 156, 50, 0.075);
+	box-shadow:
+		0 0 22px rgba(255, 156, 50, 0.12),
+		inset 0 0 14px rgba(255, 156, 50, 0.035);
+	color: var(--portal-dark-warning);
+	transform: translateY(-1px);
+}
+
+.lockButton:disabled {
+	cursor: wait;
+	opacity: 0.52;
+}
+
+.lockButton svg {
+	width: 24px;
+	height: 24px;
+	overflow: visible;
+	fill: none;
+	stroke: currentColor;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-width: 1.25;
+}
+
+.circuitFrame {
+	opacity: 0.52;
+}
+
+.portalDoor {
+	stroke: rgba(62, 166, 255, 0.9);
+}
+
+.retractingThread {
+	stroke: rgba(34, 185, 130, 0.92);
+	stroke-dasharray: 18;
+	stroke-dashoffset: 0;
+	filter: drop-shadow(0 0 3px rgba(34, 185, 130, 0.78));
+	transition: stroke-dashoffset 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.shuttleArrow {
+	stroke: currentColor;
+	transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.signalNode {
+	fill: currentColor;
+	stroke: none;
+	filter: drop-shadow(0 0 4px currentColor);
+	transform-origin: 23px 14px;
+}
+
+.lockButton:hover .retractingThread,
+.lockButton:focus-visible .retractingThread {
+	stroke-dashoffset: 18;
+}
+
+.lockButton:hover .shuttleArrow,
+.lockButton:focus-visible .shuttleArrow {
+	transform: translateX(2px);
+}
+
+.lockButton:hover .signalNode,
+.lockButton:focus-visible .signalNode {
+	animation: lockSignal 640ms ease-in-out infinite alternate;
+}
+
+.status {
+	position: absolute;
+	top: calc(100% + 8px);
+	right: 0;
+	width: max-content;
+	max-width: min(280px, 78vw);
+	padding: 7px 9px;
+	border: 1px solid rgba(255, 156, 50, 0.36);
+	border-radius: var(--portal-radius);
+	background: var(--portal-surface-raised);
+	color: var(--portal-dark-warning);
+	font: 500 10px/1.4 var(--portal-font-mono);
+	box-shadow: 0 16px 42px rgba(0, 0, 0, 0.34);
+}
+
+@keyframes lockSignal {
+	to {
+		transform: scale(1.45);
+		opacity: 0.58;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.lockButton,
+	.lockButton *,
+	.signalNode {
+		animation: none !important;
+		transition-duration: 1ms !important;
+	}
+}

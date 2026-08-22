@@ -1,0 +1,438 @@
+<!doctype html>
+<html
+	lang="en"
+	data-portal-theme="dark"
+>
+	<head>
+		<meta charset="utf-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1"
+		/>
+		<meta
+			name="color-scheme"
+			content="dark"
+		/>
+		<meta
+			name="robots"
+			content="noindex, nofollow, noarchive"
+		/>
+		<title>Identity Loom · Saha Textile Developer Portal</title>
+		<link
+			rel="icon"
+			href="/__portal/login/logo.svg"
+			type="image/svg+xml"
+		/>
+		<link
+			rel="stylesheet"
+			href="/__portal/login/theme.css"
+		/>
+		<link
+			rel="stylesheet"
+			href="/__portal/login/identity-loom.css"
+		/>
+		<script
+			src="/__portal/login/identity-loom.js"
+			defer
+		></script>
+	</head>
+	<body class="portalThemeCanvas">
+		<canvas
+			id="identity-loom-field"
+			class="loom-field"
+			aria-hidden="true"
+		></canvas>
+		<div
+			class="loom-grid"
+			aria-hidden="true"
+		></div>
+		<div
+			class="loom-vignette"
+			aria-hidden="true"
+		></div>
+		<div
+			class="loom-spectrum"
+			aria-hidden="true"
+		>
+			<span></span>
+			<span></span>
+			<span></span>
+			<span></span>
+			<span></span>
+			<span></span>
+		</div>
+
+		<header
+			class="brand-lockup"
+			aria-label="Saha Textile Developer Portal"
+		>
+			<img
+				src="/__portal/login/logo.svg"
+				alt=""
+				width="32"
+				height="32"
+			/>
+			<div>
+				<strong>Saha Textile</strong>
+				<span>Developer Portal</span>
+			</div>
+		</header>
+
+		<main class="loom-stage">
+			<section
+				class="loom-instrument"
+				aria-labelledby="identity-loom-title"
+			>
+				<div
+					class="loom-rail loom-rail-start"
+					aria-hidden="true"
+				>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+				</div>
+				<div
+					class="loom-rail loom-rail-end"
+					aria-hidden="true"
+				>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+				</div>
+
+				<div class="instrument-heading">
+					<div
+						class="heading-line"
+						aria-hidden="true"
+					>
+						<span></span>
+					</div>
+					<div>
+						<p>Local authentication instrument</p>
+						<h1 id="identity-loom-title">Identity Loom</h1>
+					</div>
+					<div
+						class="heading-line heading-line-reversed"
+						aria-hidden="true"
+					>
+						<span></span>
+					</div>
+				</div>
+
+				<form
+					id="identity-loom-form"
+					action="/__portal/auth/login"
+					method="post"
+					novalidate
+				>
+					<input
+						type="hidden"
+						name="next"
+						value="__PORTAL_RETURN_PATH__"
+					/>
+
+					<label
+						class="loom-field-control"
+						data-field="username"
+					>
+						<span class="field-header">
+							<span>Username</span>
+							<output
+								data-field-count="username"
+								aria-hidden="true"
+							>
+								00
+							</output>
+						</span>
+						<span class="field-shell">
+							<span
+								class="field-index"
+								aria-hidden="true"
+							>
+								01
+							</span>
+							<input
+								id="developer-portal-username"
+								name="username"
+								type="text"
+								autocomplete="username"
+								autocapitalize="none"
+								spellcheck="false"
+								required
+								aria-describedby="identity-loom-error"
+							/>
+							<span
+								class="field-weave"
+								aria-hidden="true"
+							></span>
+							<span
+								class="punch-card-ingestion"
+								aria-hidden="true"
+							></span>
+						</span>
+					</label>
+
+					<label
+						class="loom-field-control"
+						data-field="password"
+					>
+						<span class="field-header">
+							<span>Password</span>
+							<output
+								data-field-count="password"
+								aria-hidden="true"
+							>
+								00
+							</output>
+						</span>
+						<span class="field-shell">
+							<span
+								class="field-index"
+								aria-hidden="true"
+							>
+								02
+							</span>
+							<input
+								id="developer-portal-password"
+								name="password"
+								type="password"
+								autocomplete="current-password"
+								required
+								aria-describedby="identity-loom-error"
+							/>
+							<span
+								class="encrypted-cells"
+								aria-hidden="true"
+							></span>
+							<span
+								class="field-weave"
+								aria-hidden="true"
+							></span>
+							<span
+								class="punch-card-ingestion"
+								aria-hidden="true"
+							></span>
+						</span>
+					</label>
+
+					<div
+						id="identity-loom-error"
+						class="loom-error"
+						role="alert"
+						aria-live="assertive"
+					>
+						<span aria-hidden="true"></span>
+						<output></output>
+					</div>
+
+					<button
+						class="authenticate-button"
+						type="submit"
+					>
+						<span
+							class="button-scan"
+							aria-hidden="true"
+						></span>
+						<span class="button-label">Authenticate</span>
+						<span
+							class="button-arrow"
+							aria-hidden="true"
+						>
+							→
+						</span>
+					</button>
+				</form>
+
+				<footer class="instrument-footer">
+					<div class="local-node">
+						<span
+							class="status-light"
+							aria-hidden="true"
+						></span>
+						<span>Local node</span>
+						<code>127.0.0.1</code>
+					</div>
+					<button
+						id="identity-loom-sound"
+						class="sound-control"
+						type="button"
+						aria-pressed="true"
+					>
+						<span
+							class="sound-bars"
+							aria-hidden="true"
+						>
+							<i></i>
+							<i></i>
+							<i></i>
+						</span>
+						<span>Sound</span>
+						<strong>On</strong>
+					</button>
+				</footer>
+			</section>
+
+			<aside
+				class="loom-telemetry"
+				aria-hidden="true"
+			>
+				<span>PORTAL.NODE / LOOPBACK</span>
+				<span>SESSION.MODE / VOLATILE</span>
+				<span>DATA.PERSISTENCE / NONE</span>
+			</aside>
+		</main>
+
+		<div
+			id="identity-loom-launch"
+			class="launch-sequence"
+			aria-hidden="true"
+		>
+			<div
+				class="launch-fibre-bank"
+				aria-hidden="true"
+			></div>
+			<div
+				class="launch-coordinate-field"
+				aria-hidden="true"
+			></div>
+
+			<div
+				class="jacquard-compiler"
+				aria-hidden="true"
+			>
+				<header>
+					<span>Jacquard computation matrix</span>
+					<output data-launch-compiler-state>Awaiting warp tension</output>
+				</header>
+				<div class="punch-card-grid">
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+				</div>
+				<div class="compiler-shuttle"></div>
+			</div>
+
+			<div
+				class="launch-reactor"
+				aria-hidden="true"
+			>
+				<svg viewBox="0 0 640 640">
+					<g class="reactor-orbit reactor-orbit-outer">
+						<circle
+							cx="320"
+							cy="320"
+							r="280"
+						></circle>
+						<polygon points="320,38 564,179 564,461 320,602 76,461 76,179"></polygon>
+					</g>
+					<g class="reactor-orbit reactor-orbit-middle">
+						<circle
+							cx="320"
+							cy="320"
+							r="205"
+						></circle>
+						<polygon points="320,114 498,217 498,423 320,526 142,423 142,217"></polygon>
+					</g>
+					<g class="reactor-orbit reactor-orbit-inner">
+						<circle
+							cx="320"
+							cy="320"
+							r="128"
+						></circle>
+						<polygon points="320,190 432,255 432,385 320,450 208,385 208,255"></polygon>
+					</g>
+					<g class="reactor-conduits">
+						<path
+							d="M320 38V190M564 179L432 255M564 461L432 385M320 602V450M76 461L208 385M76 179L208 255"
+						></path>
+						<path d="M40 320H192M448 320H600M320 40V192M320 448V600"></path>
+					</g>
+				</svg>
+				<div class="reactor-core">
+					<img
+						src="/__portal/login/logo.svg"
+						alt=""
+						width="82"
+						height="82"
+					/>
+				</div>
+			</div>
+
+			<div
+				class="launch-aperture"
+				aria-hidden="true"
+			>
+				<span></span>
+				<span></span>
+				<span></span>
+			</div>
+
+			<div class="launch-readout">
+				<span data-launch-index>01 / 05</span>
+				<p data-launch-title>Credential lock</p>
+				<output data-launch-detail>Converting the authentication instrument into computational fibre</output>
+			</div>
+
+			<div
+				class="launch-timeline"
+				aria-hidden="true"
+			>
+				<span data-launch-step="lock">Lock</span>
+				<span data-launch-step="tension">Tension</span>
+				<span data-launch-step="compile">Compile</span>
+				<span data-launch-step="reactor">Reactor</span>
+				<span data-launch-step="breach">Breach</span>
+			</div>
+
+			<div class="launch-destination">
+				<span>Authenticated route</span>
+				<output data-launch-destination>/</output>
+			</div>
+		</div>
+
+		<noscript>
+			<div class="no-script-note">
+				Animation requires JavaScript. The native credential form remains available.
+			</div>
+		</noscript>
+	</body>
+</html>

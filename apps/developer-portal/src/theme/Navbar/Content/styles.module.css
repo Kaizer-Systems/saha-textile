@@ -1,0 +1,16 @@
+/* Keep the Docusaurus 3.10.2 navbar layout contract while placing the portal
+   lock immediately after the desktop color-mode switcher. */
+
+@media (max-width: 996px) {
+	.colorModeToggle {
+		display: none;
+	}
+
+	.desktopLock {
+		display: none;
+	}
+}
+
+:global(.navbar__items--right) > :last-child {
+	padding-right: 0;
+}

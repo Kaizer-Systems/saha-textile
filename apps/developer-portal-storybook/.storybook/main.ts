@@ -84,6 +84,11 @@ const config: StorybookConfig = {
 		webpackConfig.plugins.push(
 			new NormalModuleReplacementPlugin(/^@(core|data-access|features|layout|shared)\//, resolveApplicationAlias),
 		);
+		webpackConfig.performance = {
+			hints: 'warning',
+			maxAssetSize: 5 * 1024 * 1024,
+			maxEntrypointSize: 5 * 1024 * 1024,
+		};
 		return webpackConfig;
 	},
 };

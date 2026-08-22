@@ -7,6 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "styles": "sass --quiet --quiet-deps --no-source-map --load-path=public/assets/scss --load-path=node_modules --load-path=../../node_modules public/assets/scss/app.scss:public/assets/scss/app.gen.css",
     "dev": "vite",
     "start": "vite preview --host localhost --port 4300 --strictPort",
     "start:watch": "node ../../scripts/serve-built-frontend.mjs --app admin",

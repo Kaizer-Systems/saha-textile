@@ -11,8 +11,8 @@
     "dev": "node scripts/check-component-coverage.mjs && node scripts/compose-application-styles.mjs && ng run developer-portal-storybook:storybook",
     "storybook": "node scripts/check-component-coverage.mjs && node scripts/compose-application-styles.mjs && ng run developer-portal-storybook:storybook",
     "build": "node scripts/check-component-coverage.mjs && node scripts/compose-application-styles.mjs && ng run developer-portal-storybook:build-storybook",
-    "typecheck": "node scripts/check-component-coverage.mjs && tsc --noEmit",
-    "lint": "node scripts/check-component-coverage.mjs && tsc --noEmit"
+    "typecheck": "node scripts/check-component-coverage.mjs && tsc --noEmit -p tsconfig.typecheck.json",
+    "lint": "node scripts/check-component-coverage.mjs && tsc --noEmit -p tsconfig.typecheck.json"
   },
   "dependencies": {
     "@angular/animations": "21.2.18",

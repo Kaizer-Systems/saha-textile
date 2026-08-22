@@ -106,6 +106,19 @@ for (const [name, scheme] of Object.entries(schemes)) {
 }
 if (Object.keys(schemes).length === 0) fail('no security scheme documented — the session cookie should be described');
 
+/**
+ * Every advertised server must be HTTPS.
+ *
+ * The document describes a session carried by `__Host-` cookies, and that prefix requires
+ * `Secure` — so a plain-HTTP server entry advertises an endpoint that can be reached but never
+ * authenticated. A reader following the document would get a 401 with nothing explaining it.
+ */
+for (const server of document.servers ?? []) {
+	if (!String(server.url).startsWith('https://')) {
+		fail(`server "${server.url}" is not HTTPS, so it cannot carry the __Host- session this document describes`);
+	}
+}
+
 // Declared tag order is part of the contract: an undeclared-but-used tag would otherwise only
 // surface per-operation, and a tag declared without description reads as an empty namespace.
 for (const declared of document.tags ?? []) {
@@ -119,5 +132,5 @@ if (failures > 0) {
 }
 console.log(
 	`check-openapi: OK (${operations.length} operations across ${Object.keys(document.paths ?? {}).length} paths, ` +
-		`${byId.size} unique explicit ids, ${DECLARED_TAGS.length} declared tags, no bearer scheme)`,
+		`${byId.size} unique explicit ids, ${DECLARED_TAGS.length} declared tags, https servers, no bearer scheme)`,
 );

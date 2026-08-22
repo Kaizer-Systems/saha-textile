@@ -16,5 +16,9 @@
 	"searchInComments": true,
 	"includeVersion": false,
 	"hideGenerator": false,
-	"cleanOutputDir": true
+	"cleanOutputDir": true,
+	"validation": {
+		"invalidLink": true
+	},
+	"treatWarningsAsErrors": true
 }

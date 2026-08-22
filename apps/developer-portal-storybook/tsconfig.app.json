@@ -4,6 +4,18 @@
 		"outDir": "./dist/angular-ts",
 		"types": []
 	},
-	"files": ["src/main.ts"],
-	"include": [".storybook/**/*.ts", "src/**/*.ts"]
+	"files": [],
+	"include": [
+		".storybook/preview.ts",
+		".storybook/preview-experience.ts",
+		".storybook/decorators/**/*.ts",
+		"src/**/*.ts",
+		"../storefront/src/app/core/state/auth.store.ts",
+		"../admin/src/app/core/state/auth.store.ts",
+		"../admin/src/app/core/state/cart/**/*.ts",
+		"../admin/src/app/shared/directives/out-side-directive.ts",
+		"../admin/src/app/shared/data/menu.ts",
+		"../admin/src/app/shared/pipes/**/*.ts"
+	],
+	"exclude": ["src/main.ts", "../admin/src/app/core/state/cart/cart.effects.ts"]
 }

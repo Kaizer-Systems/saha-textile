@@ -34,12 +34,12 @@ function sourceImports(file) {
 	return [...readFileSync(file, 'utf8').matchAll(/from\s+['"]([^'"]+)['"]/g)].map((match) => match[1]);
 }
 
-function existingTypeScriptFile(candidate) {
-	for (const path of [`${candidate}.ts`, resolve(candidate, 'index.ts')]) {
+function existingModuleFile(candidate) {
+	for (const path of [candidate, `${candidate}.ts`, resolve(candidate, 'index.ts')]) {
 		try {
 			if (statSync(path).isFile()) return path;
 		} catch {
-			// The candidate is not a repository TypeScript module.
+			// The candidate is not a repository module at this exact path.
 		}
 	}
 	return undefined;
@@ -47,11 +47,11 @@ function existingTypeScriptFile(candidate) {
 
 function resolveImport(specifier, importer, applicationRoot) {
 	if (specifier.startsWith('.')) {
-		return existingTypeScriptFile(resolve(dirname(importer), specifier));
+		return existingModuleFile(resolve(dirname(importer), specifier));
 	}
 	const alias = Object.keys(applicationAliases).find((prefix) => specifier.startsWith(prefix));
 	if (!alias) return undefined;
-	return existingTypeScriptFile(resolve(applicationRoot, applicationAliases[alias], specifier.slice(alias.length)));
+	return existingModuleFile(resolve(applicationRoot, applicationAliases[alias], specifier.slice(alias.length)));
 }
 
 function isReusableComponent(applicationRoot, file) {
@@ -75,6 +75,15 @@ for (const [application, applicationRoot] of Object.entries(applicationRoots)) {
 		if (!file || visited.has(file)) continue;
 		visited.add(file);
 		for (const specifier of sourceImports(file)) {
+			if (specifier.startsWith('.')) {
+				const imported = resolveImport(specifier, file, applicationRoot);
+				if (!imported) {
+					failures.push(`unresolved import in ${relative(repositoryRoot, file)}: ${specifier}`);
+					continue;
+				}
+				if (!visited.has(imported)) queue.push(imported);
+				continue;
+			}
 			const imported = resolveImport(specifier, file, applicationRoot);
 			if (imported && !visited.has(imported)) queue.push(imported);
 		}

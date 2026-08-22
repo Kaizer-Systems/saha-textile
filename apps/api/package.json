@@ -29,6 +29,7 @@
     "@saha-textile/adapters-auth": "workspace:*",
     "@saha-textile/adapters-db-mongo": "workspace:*",
     "@saha-textile/adapters-notifications-msg91": "workspace:*",
+    "@saha-textile/adapters-storage-spaces": "workspace:*",
     "@saha-textile/contracts": "workspace:*",
     "@saha-textile/core-domain": "workspace:*",
     "argon2": "0.44.0",

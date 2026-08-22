@@ -72,8 +72,8 @@ export class Layout {
 		this.cookies$.subscribe((res) => (this.cookies = res));
 		this.exit$.subscribe((res) => (this.exit = res));
 		this.siteConfigService.preloader.set(true);
-		// Only when there IS a session. `/auth/storefront/me` answers 401 otherwise, and asking on
-		// every anonymous page view is both a guaranteed-failing request and a pointless one.
+		// Only when there IS a session. A guest `/me` is 200 with `user: null`; this profile
+		// load is for chrome that needs the full customer, not for discovering whether one exists.
 		if (this.authStore.isAuthenticated()) this.accountStore.loadUser();
 		// Categories, blogs and deal products load on-demand via TanStack queries in
 		// each consumer (footer/filters/sidebar, menu/blog pages, header/menu deals);

@@ -27,8 +27,13 @@ export class AccountService {
 	private http = inject(HttpClient);
 
 	GetUserDetails(): Observable<IAccountUser> {
-		return this.http
-			.get<IMeResponse>(`${runtimeConfig.apiUrl}/auth/storefront/me`)
-			.pipe(map((response) => toAccountUser(response.user)));
+		return this.http.get<IMeResponse>(`${runtimeConfig.apiUrl}/auth/storefront/me`).pipe(
+			map((response) => {
+				if (!response.user) {
+					throw new Error('anonymous');
+				}
+				return toAccountUser(response.user);
+			}),
+		);
 	}
 }

@@ -1,0 +1,688 @@
+/* NEXT-GEN-UI · cross-document Identity Loom aperture and replay ceremony. */
+
+@property --arrival-hole {
+	syntax: '<percentage>';
+	inherits: false;
+	initial-value: 0%;
+}
+
+.arrival {
+	position: fixed;
+	inset: 0;
+	z-index: 500;
+	overflow: hidden;
+	pointer-events: all;
+	isolation: isolate;
+}
+
+.veil,
+.coordinateField,
+.warp,
+.compiler,
+.reactor,
+.aperture {
+	position: absolute;
+	pointer-events: none;
+}
+
+.veil,
+.coordinateField,
+.warp {
+	inset: 0;
+}
+
+.veil {
+	z-index: 0;
+	background: radial-gradient(circle at center, rgba(62, 166, 255, 0.22), transparent 38%), var(--portal-dark-canvas);
+}
+
+.coordinateField {
+	z-index: 1;
+	background-image:
+		linear-gradient(rgba(62, 166, 255, 0.065) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(62, 166, 255, 0.065) 1px, transparent 1px);
+	background-position: center;
+	background-size: 42px 42px;
+	mask-image: radial-gradient(circle at center, #000, transparent 74%);
+	opacity: 0.42;
+	transform: perspective(900px) rotateX(62deg) scale(1.5) translateY(24%);
+}
+
+.warp {
+	z-index: 2;
+}
+
+.warp i {
+	--position: calc((var(--strand-index) + 1) / 73);
+	position: absolute;
+	top: calc(var(--position) * 100%);
+	right: -8%;
+	left: -8%;
+	height: 1px;
+	background: linear-gradient(
+		90deg,
+		transparent,
+		rgba(62, 166, 255, 0.3) 16%,
+		rgba(62, 166, 255, 0.86) 49%,
+		rgba(34, 185, 130, 0.4) 83%,
+		transparent
+	);
+	box-shadow: 0 0 8px rgba(62, 166, 255, 0.34);
+	transform: translateX(calc((var(--strand-index) - 36) * 1.5px)) scaleX(1.4) scaleY(0.5);
+	transform-origin: center;
+	opacity: 0;
+}
+
+.arrival[data-mode='replay'] .warp i {
+	animation: strandSequence 5s cubic-bezier(0.16, 0.8, 0.18, 1) both;
+	animation-delay: calc(var(--strand-index) * 5ms);
+}
+
+.compiler {
+	top: 50%;
+	left: 50%;
+	z-index: 3;
+	width: min(76vw, 1060px);
+	height: min(58vh, 610px);
+	border: 1px solid rgba(62, 166, 255, 0.34);
+	background:
+		linear-gradient(90deg, rgba(62, 166, 255, 0.055), transparent 18% 82%, rgba(34, 185, 130, 0.04)),
+		rgba(4, 9, 14, 0.76);
+	box-shadow:
+		0 0 100px rgba(62, 166, 255, 0.12),
+		inset 0 0 80px rgba(0, 0, 0, 0.48);
+	clip-path: polygon(4% 0, 96% 0, 100% 8%, 100% 92%, 96% 100%, 4% 100%, 0 92%, 0 8%);
+	transform: translate(-50%, -50%) perspective(800px) rotateX(72deg) scale(0.7);
+	opacity: 0;
+}
+
+.compiler header {
+	position: absolute;
+	top: 0;
+	right: 0;
+	left: 0;
+	display: flex;
+	min-height: 42px;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 22px;
+	border-bottom: 1px solid rgba(62, 166, 255, 0.2);
+	color: var(--portal-dark-accent);
+	font: 520 9px/1 var(--portal-font-mono);
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+}
+
+.compiler header output {
+	color: var(--portal-dark-success);
+	font: inherit;
+	letter-spacing: 0.08em;
+}
+
+.punchGrid {
+	position: absolute;
+	top: 64px;
+	right: 28px;
+	bottom: 28px;
+	left: 28px;
+	display: grid;
+	grid-template-columns: repeat(8, 1fr);
+	gap: clamp(7px, 1vw, 14px);
+	padding: clamp(12px, 2vw, 26px);
+	background-image:
+		linear-gradient(rgba(62, 166, 255, 0.08) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(62, 166, 255, 0.08) 1px, transparent 1px);
+	background-size: 6.25% 16.666%;
+}
+
+.punchGrid i {
+	position: relative;
+	border: 1px solid rgba(62, 166, 255, 0.22);
+	background: rgba(62, 166, 255, 0.035);
+}
+
+.punchGrid i::after {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--portal-dark-success);
+	box-shadow: 0 0 14px rgba(34, 185, 130, 0.9);
+	content: '';
+	transform: translate(-50%, -50%) scale(0);
+}
+
+.punchGrid i:nth-child(3n + 1)::after,
+.punchGrid i:nth-child(5n + 2)::after,
+.punchGrid i:nth-child(7n + 4)::after {
+	animation: punchResolve 460ms cubic-bezier(0.18, 0.82, 0.18, 1) both;
+	animation-delay: calc(var(--punch-index) * 14ms + 2.05s);
+}
+
+.shuttle {
+	position: absolute;
+	top: 51%;
+	left: 4%;
+	width: 58px;
+	height: 11px;
+	background: linear-gradient(90deg, transparent, var(--portal-dark-warning) 44% 70%, transparent);
+	clip-path: polygon(0 40%, 72% 40%, 86% 0, 100% 50%, 86% 100%, 72% 60%, 0 60%);
+	filter: drop-shadow(0 0 13px rgba(255, 156, 50, 0.92));
+	opacity: 0;
+}
+
+.arrival[data-mode='replay'] .compiler {
+	animation: compilerSequence 5s cubic-bezier(0.16, 0.82, 0.18, 1) both;
+}
+
+.arrival[data-mode='replay'] .shuttle {
+	animation: replayShuttle 520ms linear 2s 3;
+}
+
+.reactor {
+	top: 50%;
+	left: 50%;
+	z-index: 5;
+	width: min(78vmin, 780px);
+	height: min(78vmin, 780px);
+	transform: translate(-50%, -50%) scale(0.08) rotate(-42deg);
+	opacity: 0;
+}
+
+.reactor svg {
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+}
+
+.outerOrbit circle,
+.outerOrbit polygon,
+.middleOrbit circle,
+.middleOrbit polygon,
+.innerOrbit circle,
+.innerOrbit polygon,
+.conduits path {
+	fill: none;
+	stroke: rgba(62, 166, 255, 0.74);
+	stroke-width: 1.25;
+	vector-effect: non-scaling-stroke;
+	filter: drop-shadow(0 0 7px rgba(62, 166, 255, 0.62));
+}
+
+.outerOrbit circle,
+.middleOrbit circle,
+.innerOrbit circle {
+	stroke-dasharray: 18 11;
+}
+
+.middleOrbit circle,
+.middleOrbit polygon {
+	stroke: rgba(34, 185, 130, 0.78);
+}
+
+.innerOrbit circle {
+	stroke-dasharray: 4 9;
+}
+
+.conduits path {
+	stroke: rgba(212, 236, 255, 0.42);
+	stroke-dasharray: 3 7;
+}
+
+.core {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	display: grid;
+	width: 132px;
+	height: 132px;
+	border: 1px solid rgba(219, 240, 255, 0.62);
+	background: radial-gradient(circle, rgba(62, 166, 255, 0.24), rgba(5, 9, 14, 0.92) 68%);
+	box-shadow:
+		0 0 90px rgba(62, 166, 255, 0.38),
+		inset 0 0 38px rgba(62, 166, 255, 0.16);
+	clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+	place-items: center;
+	transform: translate(-50%, -50%);
+}
+
+.core img {
+	width: 72px;
+	height: 72px;
+	filter: drop-shadow(0 0 22px rgba(62, 166, 255, 0.55));
+}
+
+.arrival[data-mode='replay'] .reactor {
+	animation: reactorSequence 5s cubic-bezier(0.12, 0.84, 0.18, 1) both;
+}
+
+.arrival[data-mode='replay'] .outerOrbit,
+.arrival[data-mode='handoff'] .outerOrbit {
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: reactorSpin 8s linear infinite;
+}
+
+.arrival[data-mode='replay'] .middleOrbit,
+.arrival[data-mode='handoff'] .middleOrbit {
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: reactorSpinReverse 5.4s linear infinite;
+}
+
+.arrival[data-mode='replay'] .innerOrbit,
+.arrival[data-mode='handoff'] .innerOrbit {
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: reactorPulse 1.2s ease-in-out infinite alternate;
+}
+
+.aperture {
+	top: 50%;
+	left: 50%;
+	z-index: 8;
+	width: 16vmin;
+	height: 16vmin;
+	border: 2px solid rgba(222, 242, 255, 0.9);
+	border-radius: 50%;
+	background: rgba(222, 246, 255, 0.12);
+	box-shadow:
+		0 0 70px rgba(62, 166, 255, 0.62),
+		inset 0 0 48px rgba(255, 255, 255, 0.18);
+	transform: translate(-50%, -50%) scale(0.02);
+	opacity: 0;
+}
+
+.aperture i {
+	position: absolute;
+	border: 1px solid rgba(62, 166, 255, 0.58);
+	border-radius: 50%;
+}
+
+.aperture i:nth-child(1) {
+	inset: -22%;
+}
+.aperture i:nth-child(2) {
+	inset: -48%;
+	border-style: dashed;
+}
+.aperture i:nth-child(3) {
+	inset: -86%;
+	opacity: 0.42;
+}
+
+.arrival[data-mode='replay'] .aperture {
+	animation: replayAperture 5s cubic-bezier(0.1, 0.78, 0.14, 1) both;
+}
+
+.phaseReadout {
+	position: absolute;
+	top: clamp(24px, 4vw, 54px);
+	left: clamp(22px, 4vw, 58px);
+	z-index: 12;
+	color: var(--portal-dark-ink);
+	font: 530 clamp(16px, 2.4vw, 28px) / 1 var(--portal-font-mono);
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+.phaseReadout span {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: max-content;
+	max-width: calc(100vw - 44px);
+	opacity: 0;
+}
+
+.arrival[data-mode='replay'] .phaseReadout span:nth-child(1) {
+	animation: phaseOne 5s linear both;
+}
+.arrival[data-mode='replay'] .phaseReadout span:nth-child(2) {
+	animation: phaseTwo 5s linear both;
+}
+.arrival[data-mode='replay'] .phaseReadout span:nth-child(3) {
+	animation: phaseThree 5s linear both;
+}
+.arrival[data-mode='replay'] .phaseReadout span:nth-child(4) {
+	animation: phaseFour 5s linear both;
+}
+.arrival[data-mode='replay'] .phaseReadout span:nth-child(5) {
+	animation: phaseFive 5s linear both;
+}
+
+.arrival[data-mode='handoff'] {
+	animation: handoffContainer 900ms linear both;
+}
+
+.arrival[data-mode='handoff'] .veil {
+	--arrival-hole: 0%;
+	background:
+		radial-gradient(
+			circle at center,
+			rgba(232, 249, 255, 0.98),
+			rgba(62, 166, 255, 0.78) 16%,
+			rgba(3, 7, 12, 0.96) 46%
+		),
+		var(--portal-dark-canvas);
+	mask-image: radial-gradient(
+		circle at center,
+		transparent 0 var(--arrival-hole),
+		#000 calc(var(--arrival-hole) + 0.6%)
+	);
+	-webkit-mask-image: radial-gradient(
+		circle at center,
+		transparent 0 var(--arrival-hole),
+		#000 calc(var(--arrival-hole) + 0.6%)
+	);
+	animation: revealDestination 900ms cubic-bezier(0.12, 0.82, 0.18, 1) both;
+}
+
+.arrival[data-mode='handoff'] .coordinateField {
+	animation: handoffFade 780ms ease-out both;
+}
+
+.arrival[data-mode='handoff'] .reactor {
+	transform: translate(-50%, -50%) scale(1);
+	opacity: 1;
+	animation: handoffReactor 900ms cubic-bezier(0.12, 0.82, 0.18, 1) both;
+}
+
+.arrival[data-mode='handoff'] .aperture {
+	transform: translate(-50%, -50%) scale(1);
+	opacity: 1;
+	animation: handoffAperture 900ms cubic-bezier(0.12, 0.82, 0.18, 1) both;
+}
+
+@keyframes strandSequence {
+	0%,
+	8% {
+		transform: translateX(calc((var(--strand-index) - 36) * 1.5px)) scaleX(1.4) scaleY(0.4);
+		opacity: 0;
+	}
+	20%,
+	40% {
+		transform: translateX(0) scaleX(1) scaleY(1);
+		opacity: 0.78;
+	}
+	64% {
+		transform: translateY(calc((36 - var(--strand-index)) * 1.3vh)) scaleX(0.45);
+		opacity: 0.48;
+	}
+	88%,
+	100% {
+		transform: translateY(calc((36 - var(--strand-index)) * 1.3vh)) scaleX(0.04);
+		opacity: 0;
+	}
+}
+
+@keyframes compilerSequence {
+	0%,
+	38% {
+		transform: translate(-50%, -50%) perspective(800px) rotateX(72deg) scale(0.7);
+		opacity: 0;
+	}
+	44%,
+	62% {
+		transform: translate(-50%, -50%) perspective(800px) rotateX(0deg) scale(1);
+		opacity: 1;
+	}
+	72%,
+	100% {
+		transform: translate(-50%, -50%) scale(0.38) rotate(16deg);
+		opacity: 0;
+	}
+}
+
+@keyframes replayShuttle {
+	0% {
+		transform: translateX(0) skewX(-12deg);
+		opacity: 0;
+	}
+	8%,
+	90% {
+		opacity: 1;
+	}
+	100% {
+		transform: translateX(calc(min(76vw, 1060px) - 115px)) skewX(-12deg);
+		opacity: 0;
+	}
+}
+
+@keyframes punchResolve {
+	0% {
+		transform: translate(-50%, -50%) scale(0);
+		opacity: 0;
+	}
+	64% {
+		transform: translate(-50%, -50%) scale(1.65);
+		opacity: 1;
+	}
+	100% {
+		transform: translate(-50%, -50%) scale(1);
+		opacity: 1;
+	}
+}
+
+@keyframes reactorSequence {
+	0%,
+	62% {
+		transform: translate(-50%, -50%) scale(0.08) rotate(-42deg);
+		opacity: 0;
+	}
+	70%,
+	88% {
+		transform: translate(-50%, -50%) scale(1) rotate(0);
+		opacity: 1;
+	}
+	100% {
+		transform: translate(-50%, -50%) scale(1.75) rotate(9deg);
+		opacity: 0;
+	}
+}
+
+@keyframes reactorSpin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes reactorSpinReverse {
+	to {
+		transform: rotate(-360deg);
+	}
+}
+
+@keyframes reactorPulse {
+	from {
+		transform: scale(0.96) rotate(-4deg);
+		opacity: 0.72;
+	}
+	to {
+		transform: scale(1.04) rotate(4deg);
+		opacity: 1;
+	}
+}
+
+@keyframes replayAperture {
+	0%,
+	87% {
+		transform: translate(-50%, -50%) scale(0.02);
+		opacity: 0;
+	}
+	90% {
+		opacity: 1;
+	}
+	100% {
+		background: rgba(230, 248, 255, 0.94);
+		box-shadow:
+			0 0 120px rgba(62, 166, 255, 1),
+			0 0 0 110vmax rgba(226, 246, 255, 0.96);
+		transform: translate(-50%, -50%) scale(3.1);
+		opacity: 1;
+	}
+}
+
+@keyframes phaseOne {
+	0%,
+	2% {
+		opacity: 0;
+	}
+	4%,
+	14% {
+		opacity: 1;
+	}
+	16%,
+	100% {
+		opacity: 0;
+	}
+}
+@keyframes phaseTwo {
+	0%,
+	15% {
+		opacity: 0;
+	}
+	18%,
+	37% {
+		opacity: 1;
+	}
+	40%,
+	100% {
+		opacity: 0;
+	}
+}
+@keyframes phaseThree {
+	0%,
+	39% {
+		opacity: 0;
+	}
+	42%,
+	61% {
+		opacity: 1;
+	}
+	64%,
+	100% {
+		opacity: 0;
+	}
+}
+@keyframes phaseFour {
+	0%,
+	63% {
+		opacity: 0;
+	}
+	66%,
+	85% {
+		opacity: 1;
+	}
+	88%,
+	100% {
+		opacity: 0;
+	}
+}
+@keyframes phaseFive {
+	0%,
+	87% {
+		opacity: 0;
+	}
+	90%,
+	98% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes revealDestination {
+	0% {
+		--arrival-hole: 0%;
+	}
+	35% {
+		--arrival-hole: 8%;
+	}
+	100% {
+		--arrival-hole: 82%;
+	}
+}
+
+@keyframes handoffReactor {
+	from {
+		transform: translate(-50%, -50%) scale(1);
+		opacity: 1;
+	}
+	to {
+		transform: translate(-50%, -50%) scale(2.4) rotate(14deg);
+		opacity: 0;
+	}
+}
+
+@keyframes handoffAperture {
+	from {
+		transform: translate(-50%, -50%) scale(1);
+		opacity: 1;
+	}
+	to {
+		transform: translate(-50%, -50%) scale(4.2);
+		opacity: 0;
+	}
+}
+
+@keyframes handoffFade {
+	to {
+		opacity: 0;
+	}
+}
+
+@keyframes handoffContainer {
+	0%,
+	86% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+@media (max-width: 720px) {
+	.compiler {
+		width: 92vw;
+		height: 52vh;
+	}
+
+	.compiler header output {
+		display: none;
+	}
+
+	.punchGrid {
+		top: 54px;
+		right: 14px;
+		bottom: 14px;
+		left: 14px;
+		gap: 5px;
+		padding: 8px;
+	}
+
+	.phaseReadout {
+		font-size: clamp(14px, 4.2vw, 20px);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.arrival,
+	.arrival *,
+	.arrival *::before,
+	.arrival *::after {
+		animation-duration: 180ms !important;
+		animation-delay: 0ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 1ms !important;
+	}
+
+	.warp,
+	.compiler,
+	.phaseReadout {
+		display: none;
+	}
+}

@@ -113,7 +113,6 @@ function buildOne(index: number): Customer {
 		phoneVerified: index % 2 === 0,
 		displayName,
 		status,
-		identities: [{ provider: 'password', email }],
 		addresses: withAddress
 			? [
 					{

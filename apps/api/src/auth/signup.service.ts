@@ -107,11 +107,46 @@ export class SignupService {
 	 * would make the window in which a stale proof still works a matter of background timing.
 	 */
 	async require(sessionKey: string | null): Promise<PendingSignup> {
-		if (!sessionKey) throw new SignupError('signup_expired');
-		const record = await this.pending.findBySessionKey(sessionKey);
+		const record = await this.find(sessionKey);
 		if (!record) throw new SignupError('signup_expired');
-		if (Date.parse(record.expiresAt) <= Date.now()) throw new SignupError('signup_expired');
 		return record;
+	}
+
+	/**
+	 * The same lookup, for the caller who is ASKING rather than acting.
+	 *
+	 * `GET /auth/storefront/signup` renders whatever this returns, and having no signup in
+	 * flight is its ordinary first answer — for anyone opening the registration page cold. A
+	 * refusal there would make the screen treat its own happy path as an error, so absence is
+	 * reported as absence and only the mutating routes go through `require`.
+	 *
+	 * Expiry is applied here for the reason given above: Mongo's TTL sweep runs on its own
+	 * schedule, so a record can outlive its `expiresAt`, and a form must not be prefilled from
+	 * proof the next write is going to refuse.
+	 */
+	async find(sessionKey: string | null): Promise<PendingSignup | null> {
+		if (!sessionKey) return null;
+		const record = await this.pending.findBySessionKey(sessionKey);
+		if (!record) return null;
+		if (Date.parse(record.expiresAt) <= Date.now()) return null;
+		return record;
+	}
+
+	/**
+	 * Throws away the signup in flight for this browser.
+	 *
+	 * Abandonment, not failure. Someone who opens the registration page, starts a social round
+	 * trip and then navigates away has left; keeping their half-finished record alive means the
+	 * next visit resumes a signup they no longer remember beginning — showing a stranger's
+	 * address on a shared machine, and, for a social origin, a form with no password field and
+	 * no explanation of why.
+	 *
+	 * The record already TTLs out, so this only makes the ending prompt. Silent when there is
+	 * nothing to drop: the caller is saying "I am done", not asserting that a record exists.
+	 */
+	async discard(sessionKey: string | null): Promise<void> {
+		if (!sessionKey) return;
+		await this.pending.deleteBySessionKey(sessionKey);
 	}
 
 	/** The sliding extension, clamped so activity can never push past the absolute ceiling. */
@@ -187,24 +222,42 @@ export class SignupService {
 	}
 
 	/**
-	 * Turns a fully proven record into an account, or into the reason it cannot be one.
+	 * Who, if anybody, already owns these values — decided while the proof is still SPENDABLE.
 	 *
-	 * Consumption is atomic and single-use, so two submits cannot both mint an account from one
-	 * proof. Every identifier comes from the CONSUMED record — never from the request, which is
-	 * why `FinaliseSignupRequest` carries none.
+	 * Separate from `consume` on purpose. Both refusals this can produce, `conflict` and
+	 * `existing`, were knowable before anything was spent, yet used to be raised after: somebody
+	 * proved an email and a phone, was told the address was taken, and had to begin again from
+	 * an empty form because the one-shot record was already gone. Answering first costs one
+	 * lookup and leaves the record — and its cookie — intact, so they can correct the field and
+	 * re-verify just that one.
+	 *
+	 * This is a courtesy, NOT the decision. It cannot close the window between reading and
+	 * writing, so the unique index remains the arbiter and its refusal arrives as
+	 * `DuplicateIdentifierError`.
 	 */
-	async finalise(record: PendingSignup): Promise<{ resolution: SignupResolution; consumed: PendingSignup }> {
+	async resolve(record: PendingSignup): Promise<SignupResolution> {
 		if (!record.email.verified || !record.phone.verified) throw new SignupError('signup_incomplete');
 
-		const consumed = await this.pending.consume(record.id);
-		if (!consumed) throw new SignupError('signup_expired');
-
 		const [emailOwnerId, phoneOwnerId] = await Promise.all([
-			this.ownerOf('email', consumed.email.value),
-			this.ownerOf('phone', consumed.phone.value),
+			this.ownerOf('email', record.email.value),
+			this.ownerOf('phone', record.phone.value),
 		]);
 
-		return { resolution: resolveSignupTarget({ emailOwnerId, phoneOwnerId }), consumed };
+		return resolveSignupTarget({ emailOwnerId, phoneOwnerId });
+	}
+
+	/**
+	 * Spends the proof, once.
+	 *
+	 * Atomic read-and-delete, so two submits racing one record cannot both mint an account: the
+	 * loser is told the signup expired, which is true from where it is standing. Every identifier
+	 * the caller goes on to write comes from the record RETURNED here — never from the request,
+	 * which is why `FinaliseSignupRequest` carries none.
+	 */
+	async consume(record: PendingSignup): Promise<PendingSignup> {
+		const consumed = await this.pending.consume(record.id);
+		if (!consumed) throw new SignupError('signup_expired');
+		return consumed;
 	}
 
 	private async ownerOf(field: PendingSignupFieldName, value: string | null): Promise<string | null> {

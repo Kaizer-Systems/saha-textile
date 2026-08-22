@@ -8,6 +8,7 @@ import {
 	HttpCode,
 	HttpStatus,
 	Inject,
+	Logger,
 	Param,
 	Post,
 	Req,
@@ -29,6 +30,7 @@ import {
 	FinaliseSignupRequest,
 	SignupOtpRequestBody,
 	SignupOtpVerifyRequest,
+	type PendingSignupResponse,
 	type PendingSignupState,
 	type SignupOtpVerifyResponse,
 	StartSignupRequest,
@@ -51,18 +53,24 @@ import { CartService } from '../cart/cart.service';
 import { cookieNames, sessionCookieOptions } from '../common/cookies';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { TRANSACTION_MANAGER } from '../infra/tokens';
 import { API_TAGS } from '../openapi-tags';
 import { AuthService } from './auth.service';
 import { Principal } from './ownership';
 import { domainRefusal } from './domain-refusal';
 import { assertPasswordAcceptable } from './password-policy';
-import { mayRemoveCredential, stepUpMethodFor } from '@saha-textile/core-domain';
+import {
+	DuplicateIdentifierError,
+	mayRemoveCredential,
+	stepUpMethodFor,
+	type TransactionManagerPort,
+} from '@saha-textile/core-domain';
 
 import { OAuthIdentityConflictError, OAuthService, OAuthStateInvalidError } from './oauth.service';
 import { SignupError, SignupService } from './signup.service';
 import { tooManyRequests } from './rate-limit-response';
 import { RotatesSession } from './refresh-reuse.guard';
-import { type AuthenticatedPrincipal, Audience, Public } from './session.guard';
+import { type AuthenticatedPrincipal, Audience, IdentityProbe, Public } from './session.guard';
 import { SessionService } from './session.service';
 
 /**
@@ -80,12 +88,15 @@ const ACCEPTED: GenericAcceptedResponse = {
 @Controller('auth/storefront')
 @Audience('storefront')
 export class StorefrontAuthController {
+	private readonly logger = new Logger(StorefrontAuthController.name);
+
 	constructor(
 		private readonly auth: AuthService,
 		private readonly sessions: SessionService,
 		private readonly carts: CartService,
 		private readonly signup: SignupService,
 		private readonly oauth: OAuthService,
+		@Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort,
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
 	) {}
 
@@ -137,17 +148,94 @@ export class StorefrontAuthController {
 		if (error instanceof SignupError) {
 			throw domainRefusal(error.code, 'Signup could not be completed');
 		}
+		/**
+		 * The unique index refused, so somebody else took the address between the pre-check and
+		 * the write. That is the same fact `signup_identifier_taken` already describes, and the
+		 * caller cannot act on the difference — so it is reported identically rather than as the
+		 * 500 a raw driver error would have produced.
+		 */
+		if (error instanceof DuplicateIdentifierError) {
+			throw domainRefusal('signup_identifier_taken', 'Signup could not be completed');
+		}
 		throw error;
 	}
 
-	/** Merge a proven guest cart into the new session, then drop `st_guest`. */
+	/**
+	 * Merge a proven guest cart into the new session, then drop `st_guest`.
+	 *
+	 * Never fatal. Every call site reaches this AFTER the session has been established and its
+	 * cookies written, so a failing merge would answer 500 to somebody who is, in fact, signed
+	 * in — and at signup, to somebody whose account was just created. Losing a basket merge is a
+	 * bad afternoon; being told your brand-new account failed to exist is worse, and untrue.
+	 *
+	 * Handled here rather than at each call site so a future one inherits it, and logged rather
+	 * than swallowed so a systematic failure is still visible.
+	 */
 	private async adoptGuestCart(userId: string, request: FastifyRequest, reply: FastifyReply): Promise<void> {
 		const names = cookieNames(this.config);
 		const guestToken = request.cookies?.[names.guest] ?? null;
-		await this.carts.mergeGuestCartForUser(userId, guestToken);
+		try {
+			await this.carts.mergeGuestCartForUser(userId, guestToken);
+		} catch (error) {
+			this.logger.warn(`Guest cart merge failed for ${userId}: ${(error as Error).message}`);
+		}
 		if (guestToken) {
 			void reply.setCookie(names.guest, '', sessionCookieOptions(this.config, 0));
 		}
+	}
+
+	/**
+	 * The signup in flight for this browser, or nothing.
+	 *
+	 * The keystone the social flow was missing. A Google or Facebook round trip leaves a fully
+	 * populated pending record here — a verified, locked email, a display name, the provider
+	 * subject — and then hands the browser back to the registration page. Without this route
+	 * that page had no way to ask what the server was already holding, so it rendered an empty
+	 * form: no prefill, a password field a social origin does not need, and an invitation to
+	 * re-type an address Google had just asserted. Nothing was lost. Nothing could be read.
+	 *
+	 * Public, and safe to be: it answers only for the browser presenting the `st_signup` cookie,
+	 * which is httpOnly and opaque, and it discloses nothing about whether any of those values
+	 * belong to an existing account. That question still has to be earned with an OTP.
+	 *
+	 * Answers 200 with `pending: null` rather than 404 when there is nothing in flight, because
+	 * for anybody opening the page cold that is the ordinary case, not a failure.
+	 */
+	@Get('signup')
+	@Public()
+	@ApiOperation({
+		operationId: 'getCustomerSignup',
+		summary: 'The signup in flight for this browser, or null',
+	})
+	async currentSignup(@Req() request: FastifyRequest): Promise<PendingSignupResponse> {
+		const record = await this.signup.find(this.signupKey(request));
+		return { pending: record ? this.signup.toState(record) : null };
+	}
+
+	/**
+	 * Abandons the signup in flight, and clears the cookie that pointed at it.
+	 *
+	 * Called when the registration screen is LEFT without finishing. A reload is not leaving —
+	 * the browser keeps the cookie and the record is still there to be read back — so this is
+	 * driven by an in-app navigation away, never by page teardown.
+	 *
+	 * Answers 204 whether or not anything was there to drop. The caller is stating that it is
+	 * done, not asserting that a record exists, and a refusal would tell an unauthenticated
+	 * caller whether a given `st_signup` value is live.
+	 */
+	@Delete('signup')
+	@Public()
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({
+		operationId: 'discardCustomerSignup',
+		summary: 'Abandon the signup in flight for this browser',
+	})
+	async discardSignup(
+		@Req() request: FastifyRequest,
+		@Res({ passthrough: true }) reply: FastifyReply,
+	): Promise<void> {
+		await this.signup.discard(this.signupKey(request));
+		void reply.setCookie(cookieNames(this.config).signup, '', sessionCookieOptions(this.config, 0));
 	}
 
 	@Post('signup/start')
@@ -257,36 +345,80 @@ export class StorefrontAuthController {
 				assertPasswordAcceptable(body.password);
 			}
 
-			const { resolution, consumed } = await this.signup.finalise(record);
-			void reply.setCookie(cookieNames(this.config).signup, '', sessionCookieOptions(this.config, 0));
-
+			/**
+			 * Ownership first, while the proof can still be spent.
+			 *
+			 * Both refusals below were always knowable at this point and used to be raised after
+			 * consumption, so being told "that address is taken" cost the person both verified
+			 * identifiers and sent them back to an empty form. Refusing here leaves the record and
+			 * its cookie alone: they can change the one field that clashed and re-verify it.
+			 */
+			const resolution = await this.signup.resolve(record);
 			if (resolution.kind === 'conflict') throw new SignupError('signup_identifier_conflict');
 			if (resolution.kind === 'existing') throw new SignupError('signup_identifier_taken');
 
-			// Every identifier comes from the CONSUMED record. The request carried none, which is why
-			// a caller cannot name an address at the moment an account is minted.
-			const customer = await this.auth.customerRepository.save({
-				id: `cus_${randomUUID()}`,
-				email: consumed.email.value,
-				emailVerified: true,
-				phone: consumed.phone.value,
-				phoneVerified: true,
-				displayName: consumed.displayName ?? undefined,
-				status: 'active',
-				identities: consumed.email.value ? [{ provider: 'password', email: consumed.email.value }] : [],
-				addresses: [],
-				contacts: [],
-				savedSizes: [],
-				measurementProfiles: [],
-				guestCartId: consumed.guestCartId,
-			});
+			// Only now is the one-shot proof spent, and only now is the cookie cleared with it.
+			const consumed = await this.signup.consume(record);
+			void reply.setCookie(cookieNames(this.config).signup, '', sessionCookieOptions(this.config, 0));
 
-			if (body.password) {
-				await this.auth.customerAuthRepository.setPasswordHash(
-					customer.id,
-					await this.auth.hashPassword(body.password),
-				);
-			}
+			/**
+			 * The account and every way into it, in ONE commit.
+			 *
+			 * These were three sequential writes, and each gap was a way to end up with an account
+			 * that half existed: a row with no credential, or a password with no provider link. The
+			 * address was taken by then, so signing up again was refused, and the person was left
+			 * with a one-time code as their only route in — recoverable, but not something anybody
+			 * would guess.
+			 *
+			 * Every identifier comes from the CONSUMED record. The request carried none, which is why
+			 * a caller cannot name an address at the moment an account is minted.
+			 */
+			const customer = await this.transactions.withTransaction(async () => {
+				const created = await this.auth.customerRepository.save({
+					id: `cus_${randomUUID()}`,
+					email: consumed.email.value,
+					emailVerified: true,
+					phone: consumed.phone.value,
+					phoneVerified: true,
+					displayName: consumed.displayName ?? undefined,
+					status: 'active',
+					// Ignored by `save` — identity links are written below, through the repository
+					// that owns them.
+					identities: [],
+					addresses: [],
+					contacts: [],
+					savedSizes: [],
+					measurementProfiles: [],
+					guestCartId: consumed.guestCartId,
+				});
+
+				/**
+				 * The provider link, written through `AuthIdentityRepository`, which is what sign-in
+				 * reads. `attachProvider` parked the provider and subject on the pending record
+				 * precisely so that finalisation could not be TOLD which provider to trust. Nothing
+				 * read them back, so a social signup created no `authIdentities` row at all: the next
+				 * Google or Facebook click did not recognise the account it had just made, and signup
+				 * refused the address as taken. Not a lockout — a one-time code still opens a verified
+				 * account — but a provider integration that silently stopped working for that
+				 * customer, leaving them at a dead end with no way to tell why.
+				 */
+				if (consumed.provider && consumed.providerSubject) {
+					await this.oauth.link(created.id, {
+						provider: consumed.provider,
+						subject: consumed.providerSubject,
+						email: consumed.email.value,
+					});
+				}
+
+				if (body.password) {
+					await this.auth.customerAuthRepository.setPasswordHash(
+						created.id,
+						await this.auth.hashPassword(body.password),
+					);
+				}
+
+				return created;
+			});
 
 			const state = await this.auth.customerAuthRepository.findAuthStateById(customer.id);
 			const { session } = await this.sessions.establish({
@@ -868,9 +1000,13 @@ export class StorefrontAuthController {
 	}
 
 	@Get('me')
-	@ApiOperation({ operationId: 'getCurrentCustomer', summary: 'Current storefront user (requires a session cookie)' })
+	@IdentityProbe()
+	@ApiOperation({
+		operationId: 'getCurrentCustomer',
+		summary: 'Current storefront identity (200 with user null when the visitor is a guest)',
+	})
 	async me(@Principal() principal: AuthenticatedPrincipal | undefined) {
-		if (!principal) throw new UnauthorizedException('Authentication required');
+		if (!principal) return { user: null };
 		return { user: await this.auth.publicCustomer(principal.userId) };
 	}
 

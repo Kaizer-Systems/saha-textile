@@ -1,8 +1,8 @@
-import { randomUUID } from 'node:crypto';
-
+import { IDENTITY_SUBJECT_TYPES } from '@saha-textile/core-domain';
 import { type Model, Schema, model, models } from 'mongoose';
 
 import { COLLECTION_NAMES } from '../collection-names';
+import { sessionFrom } from '../transaction-manager';
 
 /** Population that owns a credential row (`DEC-ACCOUNT-SEPARATION` + auth §7.3). */
 export type CredentialSubjectType = 'customer' | 'admin_user';
@@ -24,7 +24,7 @@ export interface PasswordCredentialDoc {
 const PasswordCredentialSchema = new Schema<PasswordCredentialDoc>(
 	{
 		_id: { type: String, required: true },
-		subjectType: { type: String, enum: ['customer', 'admin_user'], required: true },
+		subjectType: { type: String, enum: IDENTITY_SUBJECT_TYPES, required: true },
 		subjectId: { type: String, required: true },
 		passwordHash: { type: String, required: true, select: false },
 	},
@@ -92,7 +92,7 @@ export interface AuthIdentityDoc {
 const AuthIdentitySchema = new Schema<AuthIdentityDoc>(
 	{
 		_id: { type: String, required: true },
-		subjectType: { type: String, enum: ['customer', 'admin_user'], required: true },
+		subjectType: { type: String, enum: IDENTITY_SUBJECT_TYPES, required: true },
 		subjectId: { type: String, required: true },
 		provider: { type: String, required: true },
 		providerSubject: { type: String, required: true },
@@ -109,15 +109,13 @@ AuthIdentitySchema.index({ subjectType: 1, subjectId: 1 });
 export const AuthIdentityModel: Model<AuthIdentityDoc> =
 	(models.AuthIdentity as Model<AuthIdentityDoc>) ?? model<AuthIdentityDoc>('AuthIdentity', AuthIdentitySchema);
 
-export function passwordCredentialId(subjectType: CredentialSubjectType, subjectId: string): string {
-	return `pcred_${subjectType}_${subjectId}`;
-}
-
-export function pinCredentialId(adminUserId: string): string {
-	return `pincred_${adminUserId}`;
-}
-
-/** Public identity projection used on `Customer.identities`. */
+/**
+ * Public identity projection used on `Customer.identities`.
+ *
+ * READ ONLY. `CustomerRepository.save` no longer accepts identities to write — `authIdentities`
+ * has one writer, `AuthIdentityRepository` — so this exists purely to fill the field on the way
+ * out of a customer read.
+ */
 export type PublicAuthIdentity = {
 	provider: string;
 	providerId?: string;
@@ -136,29 +134,12 @@ export async function loadPublicIdentities(
 	}));
 }
 
-export async function replacePublicIdentities(
-	subjectType: CredentialSubjectType,
-	subjectId: string,
-	identities: PublicAuthIdentity[],
-): Promise<void> {
-	await AuthIdentityModel.deleteMany({ subjectType, subjectId }).exec();
-	if (identities.length === 0) return;
-	const now = new Date();
-	await AuthIdentityModel.insertMany(
-		identities.map((identity, index) => {
-			const providerSubject = identity.providerId ?? identity.email ?? `${subjectId}:${index}`;
-			return {
-				_id: `aid_${randomUUID()}`,
-				subjectType,
-				subjectId,
-				provider: identity.provider,
-				providerSubject,
-				email: identity.email ?? null,
-				linkedAt: now,
-				lastUsedAt: null,
-			};
-		}),
-	);
+export function passwordCredentialId(subjectType: CredentialSubjectType, subjectId: string): string {
+	return `pcred_${subjectType}_${subjectId}`;
+}
+
+export function pinCredentialId(adminUserId: string): string {
+	return `pincred_${adminUserId}`;
 }
 
 export async function upsertPasswordCredential(
@@ -167,13 +148,15 @@ export async function upsertPasswordCredential(
 	passwordHash: string,
 ): Promise<void> {
 	const id = passwordCredentialId(subjectType, subjectId);
+	// Joins an open transaction through the async context, so that creating an account and giving
+	// it its first credential is one commit rather than two hopeful steps.
 	await PasswordCredentialModel.updateOne(
 		{ _id: id },
 		{
 			$set: { subjectType, subjectId, passwordHash },
 			$setOnInsert: { _id: id },
 		},
-		{ upsert: true },
+		{ upsert: true, session: sessionFrom() },
 	).exec();
 }
 

@@ -1,6 +1,7 @@
 import type { PendingContactChange, PendingContactChangeRepository } from '@saha-textile/core-domain';
 
 import { PendingContactChangeModel, type PendingContactChangeDoc } from '../models/pending-contact-change.model';
+import { sessionFrom } from '../transaction-manager';
 
 /**
  * Mongo-backed pending contact changes.
@@ -50,7 +51,10 @@ export class MongoPendingContactChangeRepository implements PendingContactChange
 	 * true from where it is standing.
 	 */
 	async consume(id: string): Promise<PendingContactChange | null> {
-		const doc = await PendingContactChangeModel.findOneAndDelete({ _id: id })
+		// Joins the confirmation's transaction through the async context, so that spending the
+		// proof, moving the value and writing the audit row are one commit: a later failure puts
+		// the record back rather than leaving somebody with no proof and no change.
+		const doc = await PendingContactChangeModel.findOneAndDelete({ _id: id }, { session: sessionFrom() })
 			.lean<PendingContactChangeDoc>()
 			.exec();
 		return doc ? toDomain(doc) : null;

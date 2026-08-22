@@ -34,6 +34,7 @@ import {
 	MongoPromotionRepository,
 } from '@saha-textile/adapters-db-mongo';
 import { Msg91NotificationAdapter } from '@saha-textile/adapters-notifications-msg91';
+import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
 import type {
 	ConsentRepository,
 	MessageOutboxRepository,
@@ -44,6 +45,7 @@ import type {
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { Argon2JwtAuth } from './argon2-jwt.auth';
 import { ConsoleNotificationAdapter } from './console-notification.adapter';
+import { UnconfiguredStorageAdapter } from './unconfigured-storage.adapter';
 import {
 	AUTH_PORT,
 	CART_REPOSITORY,
@@ -69,6 +71,7 @@ import {
 	AUTH_IDENTITY_REPOSITORY,
 	MESSAGE_OUTBOX_REPOSITORY,
 	NOTIFICATION_PORT,
+	STORAGE_PORT,
 	NOTIFICATION_SETTINGS_REPOSITORY,
 	NOTIFICATION_TEMPLATE_REPOSITORY,
 	OTP_CHALLENGE_REPOSITORY,
@@ -111,6 +114,23 @@ import {
 		{ provide: NOTIFICATION_SETTINGS_REPOSITORY, useClass: MongoNotificationSettingsRepository },
 		{ provide: NOTIFICATION_TEMPLATE_REPOSITORY, useClass: MongoNotificationTemplateRepository },
 		{ provide: MESSAGE_OUTBOX_REPOSITORY, useClass: MongoMessageOutboxRepository },
+		{
+			// Object storage behind StoragePort. Fully configured or explicitly unavailable —
+			// `configured` is computed in app-config, where a half-set credential trio is already
+			// a boot-time error, so by here the choice is genuinely binary.
+			provide: STORAGE_PORT,
+			useFactory: (config: AppConfig) => {
+				// Narrowed on the credentials themselves rather than on the `configured` flag: the
+				// two can only ever agree, but checking the values is what lets the compiler prove
+				// the adapter gets three strings — no assertions to fall out of date.
+				const { key, secret, bucket, region, endpoint, cdnUrl } = config.spaces;
+				if (!key || !secret || !bucket) {
+					return new UnconfiguredStorageAdapter();
+				}
+				return new SpacesStorageAdapter({ key, secret, bucket, region, endpoint, cdnUrl });
+			},
+			inject: [APP_CONFIG],
+		},
 		{
 			provide: NOTIFICATION_PORT,
 			useFactory: (
@@ -190,6 +210,7 @@ import {
 		CONSENT_REPOSITORY,
 		AUTH_RATE_LIMIT_REPOSITORY,
 		AUTH_PORT,
+		STORAGE_PORT,
 	],
 })
 export class PersistenceModule implements OnApplicationBootstrap, OnApplicationShutdown {

@@ -5,7 +5,13 @@
 		let-menus
 		let-top="top"
 	>
-		@for (menu of menus; track menu) {
+		<!--
+			Tracked by position. Fastkart mega-menu rows reuse the same `path`
+			(e.g. one watermelon product, several layout query params) and most
+			children have no `id`, so `id ?? path ?? title` produced duplicate
+			keys and NG0955 on every change-detection cycle.
+		-->
+		@for (menu of menus; track $index) {
 		<li
 			[ngClass]="[menu.type === 'sub' && menu.children ? 'nav-item dropdown' : 'nav-item', menu.megaMenu ? 'dropdown-mega' : '']"
 			[class.new-nav-item]="menu.badge"
@@ -16,7 +22,8 @@
 				[routerLink]="isMobileView() ? null : menu.path"
 				(click)="toggle(menu)"
 			>
-				{{ menu.title | transloco }} @if (menu.badge) {
+				{{ menu.i18nTitle === false ? menu.title : (menu.title | transloco: menu.titleParams) }} @if
+				(menu.badge) {
 				<label class="new-dropdown">{{ menu.badge | transloco }}</label>
 				}
 			</a>
@@ -27,7 +34,8 @@
 				[class.show]="menu.active"
 				[queryParams]="menu.params"
 			>
-				{{ menu.title | transloco }} @if (menu.label) {
+				{{ menu.i18nTitle === false ? menu.title : (menu.title | transloco: menu.titleParams) }} @if
+				(menu.label) {
 				<label class="menu-label {{ menu.labelClass }}">{{ menu.label | transloco }}</label>
 				}
 			</a>
@@ -37,17 +45,20 @@
 				[class.show]="menu.active"
 			>
 				<div class="row">
-					@for (megaMenu of menu.children; track megaMenu) {
+					@for (megaMenu of menu.children; track $index) {
 					<div class="dropdown-column col-xl-3">
-						@for (link of megaMenu.children; track link) { @if (link.type === 'sub') {
-						<h5 class="dropdown-header {{ link.class }}">{{ link.title | transloco }}</h5>
+						@for (link of megaMenu.children; track $index) { @if (link.type === 'sub') {
+						<h5 class="dropdown-header {{ link.class }}">
+							{{ link.i18nTitle === false ? link.title : (link.title | transloco: link.titleParams) }}
+						</h5>
 						} @else { @if (link.type === 'link') {
 						<a
 							class="dropdown-item"
 							[routerLink]="link.path"
 							[queryParams]="link.params"
 						>
-							{{ link.title | transloco }} @if (link.label) {
+							{{ link.i18nTitle === false ? link.title : (link.title | transloco: link.titleParams) }} @if
+							(link.label) {
 							<label class="menu-label {{ link.labelClass }}">{{ link.label | transloco }}</label>
 							}
 						</a>
@@ -57,7 +68,8 @@
 							class="dropdown-item"
 							target="_blank"
 						>
-							{{ link.title | transloco }} @if (link.label) {
+							{{ link.i18nTitle === false ? link.title : (link.title | transloco: link.titleParams) }} @if
+							(link.label) {
 							<label class="menu-label {{ link.labelClass }}">{{ link.label | transloco }}</label>
 							}
 						</a>
@@ -143,7 +155,7 @@
 				[class.show]="menu.active"
 			>
 				<div class="dropdown-column">
-					@for (imageMenu of menu.children; track imageMenu) {
+					@for (imageMenu of menu.children; track $index) {
 					<a
 						href="javascript:void(0)"
 						class="dropdown-item text-center"
@@ -154,7 +166,10 @@
 							class="img-fluid"
 							[alt]="imageMenu.title"
 						/>
-						<span>{{ imageMenu.title | transloco }}</span>
+						<span>
+							{{ imageMenu.i18nTitle === false ? imageMenu.title : (imageMenu.title | transloco:
+							imageMenu.titleParams) }}
+						</span>
 					</a>
 					}
 				</div>

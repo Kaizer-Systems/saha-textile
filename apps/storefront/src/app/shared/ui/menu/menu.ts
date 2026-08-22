@@ -114,13 +114,14 @@ export class Menu {
 			return {
 				id: category.id,
 				title: category.name,
+				i18nTitle: false,
 				type: 'sub',
 				path,
 				active: false,
 				children: children.map((child) => this.toMenuNode(child, categories)),
 			};
 		}
-		return { id: category.id, title: category.name, type: 'link', path };
+		return { id: category.id, title: category.name, i18nTitle: false, type: 'link', path };
 	}
 
 	/**
@@ -134,13 +135,27 @@ export class Menu {
 			.map((child) => ({
 				id: child.id,
 				title: child.name,
+				i18nTitle: false,
 				type: 'link',
 				path: child.canonical_path ? localizedPath('collections', child.canonical_path) : undefined,
 			}));
 		if (rootPath) {
-			children.push({ title: `View all ${root.name}`, type: 'link', path: rootPath });
+			children.push({
+				title: 'view_all',
+				titleParams: { name: root.name },
+				type: 'link',
+				path: rootPath,
+			});
 		}
-		return { id: root.id, title: root.name, type: 'sub', path: rootPath, active: false, children };
+		return {
+			id: root.id,
+			title: root.name,
+			i18nTitle: false,
+			type: 'sub',
+			path: rootPath,
+			active: false,
+			children,
+		};
 	}
 
 	toggle(menu: IMenu) {

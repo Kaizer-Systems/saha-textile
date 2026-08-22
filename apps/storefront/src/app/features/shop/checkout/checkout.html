@@ -121,7 +121,7 @@
 							/>
 							} @if ((cartItem$ | async)?.length) {
 							<ul class="cart-listing">
-								@for (item of cartItem$ | async; track item) {
+								@for (item of cartItem$ | async; track item.id) {
 								<li>
 									<img
 										[src]="item?.variation && item?.variation?.variation_image

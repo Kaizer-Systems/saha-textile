@@ -1,3 +1,12 @@
+import {
+	AuditAudience,
+	AuditRetentionTier,
+	AuditSeverity,
+	MessageOutboxStatus,
+	NotificationCategory,
+	NotificationChannel,
+	NotificationTemplateStatus,
+} from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 /**
@@ -30,12 +39,12 @@ const AuditLogSchema = new Schema<AuditLogDoc>(
 		_id: { type: String, required: true },
 		actorUserId: { type: String, default: null },
 		targetUserId: { type: String, default: null },
-		audience: { type: String, enum: ['storefront', 'admin', 'system'], required: true },
+		audience: { type: String, enum: AuditAudience.options, required: true },
 		action: { type: String, required: true },
 		entityType: { type: String, default: null },
 		entityId: { type: String, default: null },
-		severity: { type: String, enum: ['info', 'warn', 'critical'], default: 'info' },
-		retentionTier: { type: String, enum: ['financial_security', 'catalog_admin'], default: 'catalog_admin' },
+		severity: { type: String, enum: AuditSeverity.options, default: 'info' },
+		retentionTier: { type: String, enum: AuditRetentionTier.options, default: 'catalog_admin' },
 		diffs: { type: [Schema.Types.Mixed], default: [] },
 		metadata: { type: Schema.Types.Mixed, default: {} },
 		requestId: { type: String, default: null },
@@ -72,8 +81,8 @@ export interface NotificationChannelSettingsDoc {
 const NotificationChannelSettingsSchema = new Schema<NotificationChannelSettingsDoc>(
 	{
 		_id: { type: String, required: true },
-		channel: { type: String, enum: ['email', 'sms', 'whatsapp'], required: true },
-		category: { type: String, enum: ['transactional', 'marketing'], required: true },
+		channel: { type: String, enum: NotificationChannel.options, required: true },
+		category: { type: String, enum: NotificationCategory.options, required: true },
 		enabled: { type: Boolean, default: true },
 		planLimit: { type: Number, default: null },
 		usedThisPeriod: { type: Number, default: 0 },
@@ -113,8 +122,8 @@ const NotificationTemplateSchema = new Schema<NotificationTemplateDoc>(
 	{
 		_id: { type: String, required: true },
 		key: { type: String, required: true },
-		channel: { type: String, enum: ['email', 'sms', 'whatsapp'], required: true },
-		category: { type: String, enum: ['transactional', 'marketing'], required: true },
+		channel: { type: String, enum: NotificationChannel.options, required: true },
+		category: { type: String, enum: NotificationCategory.options, required: true },
 		name: { type: String, required: true },
 		description: { type: String },
 		dltHeaderId: { type: String, default: null },
@@ -122,7 +131,7 @@ const NotificationTemplateSchema = new Schema<NotificationTemplateDoc>(
 		whatsappTemplateId: { type: String, default: null },
 		emailSubject: { type: Schema.Types.Mixed },
 		emailBody: { type: Schema.Types.Mixed },
-		status: { type: String, enum: ['draft', 'pending_approval', 'approved', 'disabled'], default: 'draft' },
+		status: { type: String, enum: NotificationTemplateStatus.options, default: 'draft' },
 	},
 	{ collection: 'notificationTemplates', timestamps: true },
 );
@@ -159,22 +168,14 @@ export interface MessageOutboxDoc {
 const MessageOutboxSchema = new Schema<MessageOutboxDoc>(
 	{
 		_id: { type: String, required: true },
-		channel: { type: String, enum: ['email', 'sms', 'whatsapp'], required: true },
-		category: { type: String, enum: ['transactional', 'marketing'], required: true },
+		channel: { type: String, enum: NotificationChannel.options, required: true },
+		category: { type: String, enum: NotificationCategory.options, required: true },
 		templateKey: { type: String, required: true },
 		destinationHash: { type: String, required: true },
 		userId: { type: String, default: null },
 		status: {
 			type: String,
-			enum: [
-				'queued',
-				'sent',
-				'delivered',
-				'failed',
-				'suppressed_channel_disabled',
-				'suppressed_no_consent',
-				'suppressed_plan_limit',
-			],
+			enum: MessageOutboxStatus.options,
 			default: 'queued',
 		},
 		providerMessageId: { type: String, default: null },

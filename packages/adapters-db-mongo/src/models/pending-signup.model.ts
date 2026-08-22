@@ -1,3 +1,4 @@
+import { OAuthProvider, SignupOrigin } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 import { COLLECTION_NAMES } from '../collection-names';
@@ -86,13 +87,13 @@ const PendingSignupSchema = new Schema<PendingSignupDoc>(
 	{
 		_id: { type: String, required: true },
 		sessionKey: { type: String, required: true },
-		origin: { type: String, enum: ['password', 'google', 'facebook'], required: true },
+		origin: { type: String, enum: SignupOrigin.options, required: true },
 		email: { type: fieldState(), required: true },
 		phone: { type: fieldState(), required: true },
 		displayName: { type: String, default: null },
 		marketingOptIn: { type: Boolean, default: false },
 		guestCartId: { type: String, default: null },
-		provider: { type: String, enum: ['google', 'facebook', null], default: null },
+		provider: { type: String, enum: [...OAuthProvider.options, null], default: null },
 		providerSubject: { type: String, default: null },
 		expiresAt: { type: Date, required: true },
 		absoluteExpiresAt: { type: Date, required: true },

@@ -54,7 +54,7 @@ const CustomerSchema = new Schema<CustomerDoc>(
 		phone: { type: String, default: null },
 		phoneVerified: { type: Boolean, default: false },
 		displayName: { type: String },
-		status: { type: String, enum: ['active', 'pending', 'disabled', 'locked', 'deleted'], default: 'active' },
+		status: { type: String, enum: CustomerStatus.options, default: 'active' },
 		tokenVersion: { type: Number, default: 0 },
 		failedLoginAttempts: { type: Number, default: 0 },
 		lastLoginAt: { type: Date, default: null },

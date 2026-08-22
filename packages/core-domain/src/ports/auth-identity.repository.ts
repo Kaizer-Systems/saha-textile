@@ -9,7 +9,17 @@
  * that forgot to check would be a cross-population authentication.
  */
 
-export type IdentitySubjectType = 'customer' | 'admin_user';
+/**
+ * The two populations, as a VALUE rather than only a type.
+ *
+ * A bare union tells the compiler what is allowed and leaves storage to re-type the same list by
+ * hand — which is how the `otpChallenges.purpose` enum drifted from its contract and answered 500
+ * to a request no test could catch. The Mongo schema is built from this array, so the two cannot
+ * disagree.
+ */
+export const IDENTITY_SUBJECT_TYPES = ['customer', 'admin_user'] as const;
+
+export type IdentitySubjectType = (typeof IDENTITY_SUBJECT_TYPES)[number];
 
 export interface AuthIdentity {
 	id: string;

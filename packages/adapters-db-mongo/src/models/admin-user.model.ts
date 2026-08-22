@@ -1,3 +1,4 @@
+import { AdminRole, AdminUserStatus, PreferredLoginMethod } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 import { COLLECTION_NAMES } from '../collection-names';
@@ -36,13 +37,13 @@ const AdminUserSchema = new Schema<AdminUserDoc>(
 		username: { type: String, default: null },
 		displayName: { type: String },
 		phone: { type: String, default: null },
-		role: { type: String, enum: ['staff', 'admin'], required: true },
+		role: { type: String, enum: AdminRole.options, required: true },
 		// Four states, matching `AdminUserStatus` — no `deleted`. An operator is deactivated
 		// (`disabled`), never deleted, so the audit trail keeps its subject and the email stays
 		// claimed. The contract narrowed on 2026-08-15; this enum had stayed at the customer's
 		// five, which would have let a write reach a state no contract could describe.
-		status: { type: String, enum: ['active', 'pending', 'disabled', 'locked'], default: 'active' },
-		preferredLoginMethod: { type: String, enum: ['password', 'pin'], default: 'password' },
+		status: { type: String, enum: AdminUserStatus.options, default: 'active' },
+		preferredLoginMethod: { type: String, enum: PreferredLoginMethod.options, default: 'password' },
 		permissions: { type: [String], default: [] },
 		tokenVersion: { type: Number, default: 0 },
 		permissionsVersion: { type: Number, default: 0 },

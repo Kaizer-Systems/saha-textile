@@ -104,12 +104,33 @@ export type AdminInvite = z.infer<typeof AdminInvite>;
  * Mongo-backed rate-limit entity (`authRateLimits`) — atomic `$inc` counters
  * until a hot store (Redis) takes over; audit stays in Mongo.
  */
+/**
+ * What a rate-limit counter is keyed BY, and what it counts.
+ *
+ * Both named so the `authRateLimits` schema is built from them instead of repeating them. The
+ * cost of the repetition is not theoretical: `otpChallenges.purpose` drifted from its contract
+ * exactly this way and produced a 500 that only a live request could reveal.
+ */
+export const AuthRateLimitScope = z.enum(['ip', 'email', 'phone', 'user', 'provider']);
+export type AuthRateLimitScope = z.infer<typeof AuthRateLimitScope>;
+
+export const AuthRateLimitAction = z.enum([
+	'login',
+	'pin_login',
+	'otp_request',
+	'otp_verify',
+	'password_reset',
+	'oauth_start',
+	'refresh',
+]);
+export type AuthRateLimitAction = z.infer<typeof AuthRateLimitAction>;
+
 export const AuthRateLimit = z.object({
 	id: Id,
 	/** Composite key, e.g. `ip:<hash>` / `email:<hash>`. */
 	key: z.string().min(1),
-	scope: z.enum(['ip', 'email', 'phone', 'user', 'provider']),
-	action: z.enum(['login', 'pin_login', 'otp_request', 'otp_verify', 'password_reset', 'oauth_start', 'refresh']),
+	scope: AuthRateLimitScope,
+	action: AuthRateLimitAction,
 	count: z.number().int().nonnegative().default(0),
 	firstSeenAt: IsoDateTime,
 	lastSeenAt: IsoDateTime,

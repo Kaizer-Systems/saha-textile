@@ -3,7 +3,20 @@ import { DocumentBuilder, type OpenAPIObject, SwaggerModule } from '@nestjs/swag
 
 import { API_TAG_DESCRIPTIONS } from './openapi-tags';
 
-const DEFAULT_DOCUMENTATION_SERVER = 'http://127.0.0.1:4000';
+/**
+ * The local server the document advertises.
+ *
+ * HTTPS, and `localhost` rather than `127.0.0.1`, because this document describes a session
+ * carried by `__Host-`-prefixed cookies. That prefix requires `Secure`, so a plain-HTTP origin can
+ * never send one — and the prefix also forbids a `Domain` attribute, which host-locks the cookie,
+ * so a reader signed in at `localhost` would not have it sent to `127.0.0.1` either. The previous
+ * value failed on both counts: Scalar's "Test Request" could reach the API and still never
+ * authenticate, with nothing on screen explaining why.
+ *
+ * Matches `.claude/launch.json` and the storefront's `apiUrl`, so the address in the docs is the
+ * address everything else uses.
+ */
+const DEFAULT_DOCUMENTATION_SERVER = 'https://localhost:4000';
 
 /**
  * The session cookie a browser presents. Named here rather than imported from

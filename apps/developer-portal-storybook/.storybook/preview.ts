@@ -1,3 +1,5 @@
+import '../src/main';
+
 import { CurrencyPipe } from '@angular/common';
 import { HttpResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { Component, importProvidersFrom } from '@angular/core';
@@ -98,6 +100,9 @@ const preview: Preview = {
 								select_option: 'Select option',
 								stay_connected: 'Stay connected',
 								sku: 'SKU',
+								signing_in: 'Signing in…',
+								continue_with_facebook: 'Continue with Facebook',
+								social_unavailable: 'Social sign-in is unavailable.',
 								stock: 'Stock',
 								total_price: 'Total price',
 								variation: 'Variation',

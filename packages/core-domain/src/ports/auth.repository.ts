@@ -57,7 +57,12 @@ export interface AuthSessionRepository {
 	touch(sessionId: string, lastSeenAt: string): Promise<void>;
 	/**
 	 * Persists a UA-derived device label (establish / refresh backfill).
-	 * Does not invent hardware IDs — callers pass {@link labelFromUserAgent} output only.
+	 *
+	 * Does not invent hardware IDs — callers pass the output of `labelFromUserAgent`, which lives
+	 * in the API app (`apps/api/src/auth/device-label.ts`). Named in prose rather than as a
+	 * `{@link}`: the symbol is not reachable from this package, so the tag resolved to nothing and
+	 * was the sole remaining TypeDoc warning. A cross-boundary reference core cannot import is a
+	 * note for the reader, not a link.
 	 */
 	updateDeviceLabel(sessionId: string, label: string): Promise<void>;
 	/**

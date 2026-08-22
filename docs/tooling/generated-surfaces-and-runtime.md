@@ -3,7 +3,7 @@ title: Generated Surfaces and Persistent Portal Runtime
 description: Storybook, TypeDoc, Scalar, database-catalogue, shared-theme, and atomic local serving topology.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - apps/developer-portal
     - apps/developer-portal-storybook
@@ -28,7 +28,7 @@ Docusaurus remains the navigation, narrative, governance, search, and deployment
 | `/tools/typedoc`            | `/typedoc/`            | TypeDoc                        | Built; Type Lattice gateway                                                  |
 | `/tools/scalar`             | `/api/reference/`      | Scalar                         | Scaffolded current OpenAPI; Request Wormhole gateway; Test Request available |
 | `/tools/database-catalogue` | `/database/catalogue/` | Mongo catalogue generator      | Scaffolded 40-model current evidence; Schema Observatory gateway             |
-| n/a                         | `/api/openapi.json`    | OpenAPI artifact pipeline      | Scaffolded deterministic 95-path/111-operation document                      |
+| n/a                         | `/api/openapi.json`    | OpenAPI artifact pipeline      | Scaffolded deterministic 96-path/113-operation document                      |
 
 Storybook is not a React-only or view-only substitute. The selected `@storybook/angular` renderer compiles Angular templates, dependency injection, inputs/outputs, change detection, directives, and application providers. A React renderer cannot directly render Angular components as React components.
 
@@ -44,7 +44,7 @@ Shared/
 
 Each story declares `parameters.application` as `storefront`, `admin`, or `shared`. A global dispatcher selects the matching per-application decorator.
 
-The application style bundles are generated separately and enabled one at a time in the preview document. This avoids allowing storefront and admin global selectors to collide while keeping both applications in one renderer. Component-local Angular styles continue to travel with their components.
+The application style bundles are compiled separately through the pinned Sass CLI and enabled one at a time in the preview document. This avoids allowing storefront and admin global selectors to collide while keeping both applications in one renderer. Component-local Angular styles continue to travel with their components. Storybook's focused TypeScript gate uses `tsconfig.typecheck.json`, while its measured preview warning budget remains 5 MiB; Scalar's measured chunk warning budget remains 3500 kB rather than disabling warnings.
 
 Every tool has a unique Docusaurus bridge route. The Tools menu always enters through that bridge; only its animated launch button performs the full-document handoff to the generated mount. The composite server permanently redirects extensionless child roots to slash-terminated roots while preserving query strings, so relative child assets resolve under the correct mount.
 
@@ -68,11 +68,11 @@ The production catalogue contains story states across Storefront, Admin, and Sha
 
 | Application | Reusable components accounted for | Application components reached directly by stories |
 | ----------- | --------------------------------- | -------------------------------------------------- |
-| Storefront  | 105 / 106                         | 106 / 156                                          |
+| Storefront  | 106 / 106                         | 107 / 156                                          |
 | Admin       | 35 / 35                           | 35 / 134                                           |
-| Combined    | 140 / 141                         | 141 / 290                                          |
+| Combined    | 141 / 141                         | 142 / 290                                          |
 
-The uncovered reusable component is `shared/ui/social-sign-in/social-sign-in.ts`. Application components not directly reached are route/page orchestration; their navigation, resolver, live-service, and whole-application behavior belongs in integration and Playwright coverage.
+Application components not directly reached are route/page orchestration; their navigation, resolver, live-service, and whole-application behavior belongs in integration and Playwright coverage.
 
 The coverage gate runs before Storybook development, typechecking, linting, and production builds:
 
@@ -87,7 +87,7 @@ Coverage includes:
 - foundation controls, titles, icons, feedback, empty states, pagination, breadcrumbs, and skeletons;
 - Storefront commerce configuration, product cards, collection/filter surfaces, header/footer primitives, home widgets, application surfaces, and the reusable product-detail system;
 - Admin controls, forms, dropdowns, data/media surfaces, alerts, permission-aware links, pagination, cards, modal workflows, page wrappers, navigation, and application chrome; and
-- Shared theme-contract, modal-workflow, and Component Forge overview states.
+- Shared theme-contract, modal-workflow, social-sign-in states, and Component Forge overview states.
 
 Every preview selects exactly one application stylesheet and the shared interaction adapter. Issuer-aware alias resolution keeps Storefront and Admin imports pointed at their own `@core`, `@data-access`, `@layout`, and `@shared` roots inside the single Angular renderer. Deterministic state/query shims provide catalogue, category, blog, notification, account, loader, menu, and settings data without reaching live services. Shared preview providers supply routing, translations, NgRx commerce states, TanStack Query, ng-bootstrap, HTTP fixtures, currency formatting, and no-op animations.
 
@@ -104,6 +104,19 @@ corepack pnpm install
 ```
 
 No vendor account or manual desktop download is required. Docusaurus, Storybook, TypeDoc, Scalar, and the Mongo generator are pinned repository dependencies or source tooling. Test Request still requires the API to be running at an approved document server and obeys its normal authentication, CSRF, CORS, authorization, ownership, and rate-limit configuration. For a state-changing request with a session cookie, echo the readable CSRF cookie issued with login/OTP/refresh in `x-csrf-token`; `GET /auth/csrf` preserves a valid active-session token or atomically recovers a missing/desynchronized one.
+
+The complete umbrella requires explicit local credentials. Copy the empty example into the gitignored portal-local file and choose values; no built-in pair exists:
+
+```bash
+cp apps/developer-portal/.env.example apps/developer-portal/.env.local
+```
+
+```text
+DEVELOPER_PORTAL_LOCAL_USERNAME=...
+DEVELOPER_PORTAL_LOCAL_PASSWORD=...
+```
+
+These values belong only to the native persistent server. It strips them from every Docusaurus, Storybook, TypeDoc, Scalar, API-build, and catalogue subprocess environment, and they must never enter a generated browser asset.
 
 Run only Docusaurus in development:
 
@@ -157,21 +170,27 @@ corepack pnpm portal:persistent -- --port 3457
 
 `portal:persistent`:
 
-1. binds to `127.0.0.1` by default;
-2. validates portal sources;
-3. composes the shared TypeDoc theme and isolated Storybook application styles;
-4. builds Storybook and TypeDoc;
-5. builds the API and source-generates the scaffolded OpenAPI artifact without MongoDB;
-6. builds Scalar with Test Request available;
-7. source-generates the 40-model MongoDB catalogue without database access;
-8. builds Docusaurus;
-9. verifies that every enabled surface produced a non-empty entry page;
-10. copies child outputs under the Docusaurus composite tree;
-11. atomically promotes the complete verified candidate;
-12. sends a reload event to connected browser tabs;
-13. watches only declared portal and child-source scopes for the next change.
+1. fails closed unless both portal-local credentials are present and refuses every non-loopback bind address;
+2. retains credentials only in the native process and creates an in-memory authentication/session boundary;
+3. validates portal sources;
+4. composes the shared TypeDoc theme and isolated Storybook application styles;
+5. builds Storybook and warning-as-error TypeDoc;
+6. builds the API and source-generates the scaffolded OpenAPI artifact without MongoDB;
+7. builds Scalar with Test Request available;
+8. source-generates the 40-model MongoDB catalogue without database access;
+9. builds Docusaurus;
+10. verifies that every enabled surface produced a non-empty entry page;
+11. copies child outputs under the Docusaurus composite tree;
+12. atomically promotes the complete verified candidate;
+13. serves only the Identity Loom shell and allowlisted fonts/theme/logo before authentication;
+14. protects Docusaurus, child tools, generated assets, metadata, reload events, OpenAPI and catalogue behind one local session;
+15. sends authenticated tabs a reload event and watches only declared portal/child-source scopes for the next change.
 
-While a replacement builds, the server continues serving the last successful composite. A failed build is logged and never replaces the active portal. Before the first successful build, the server returns a temporary `503` build-in-progress page.
+While a replacement builds, the server continues serving the last successful composite. A failed build is logged and never replaces the active portal. Before any composite is promoted, the loopback 503 page distinguishes a first build in progress from a failed build with nothing to serve. After a promotion, rebuild failures keep the last known good composite instead of returning 503.
+
+Successful authentication creates a cryptographically random, in-memory session and sets the session-only `st_developer_portal_session` cookie as `HttpOnly` and `SameSite=Strict`. Wrong credentials return one generic refusal and do not create a cookie. Restarting the server invalidates every session; closing the browser session discards its cookie. Same-origin Host/Origin checks and a small request-body limit protect the login/logout posts. Safe deep links survive the gate, and the command palette exposes replay and lock actions without adding permanent navigation clutter.
+
+Identity Loom shares the portal token/font/logo system but owns its Canvas 2D fibre field and locally synthesized Web Audio. Username edits weave/recoil threads; password decoration uses only input operation and length, never credential content. Paste/autofill receives a bulk-ingestion sequence. Successful authentication holds a five-second arrival ceremony before the requested route; reduced motion receives a short handoff and the mute preference remains visible and persistent.
 
 Running Docusaurus alone does **not** start or build the child tools. Use their direct commands for isolated work or `portal:persistent` for the complete umbrella.
 
@@ -184,4 +203,4 @@ Scalar and the MongoDB catalogue are live as visibly scaffolded current-evidence
 - Scalar must remain scaffolded until the real OpenAPI contract passes the documented completeness, drift, environment, CORS/CSRF, and interaction-safety gates.
 - The MongoDB catalogue must remain scaffolded while implemented schemas contain temporary shapes and stable mappings, migrations, retention, workflow transaction participation, and nested validators are absent.
 
-The complete deployment—including Docusaurus HTML, JavaScript/CSS, search data, Engineering Live Context, Storybook, TypeDoc, Scalar, OpenAPI, and database catalogue assets—remains blocked on verified whole-host default-deny private access. `noindex` is not access control.
+This local single-user boundary does not create a `devPortalUsers` collection, call the Saha Textile API, share commerce auth/session code, or provide remote hosting. The complete deployment—including Docusaurus HTML, JavaScript/CSS, search data, Engineering Live Context, Storybook, TypeDoc, Scalar, OpenAPI, and database catalogue assets—remains blocked on verified whole-host default-deny private access. `noindex` is not access control.

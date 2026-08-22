@@ -1,0 +1,1322 @@
+---
+title: 'Tax Compliance Questionnaire — Round 2'
+description: 'Outstanding GST, invoicing, export, and consumer-law questions issued to the owner, CA, and accountant after the round-1 replies.'
+audience: [engineering, product, operator, agent]
+document_role: canonical
+last_verified: '2026-08-22'
+search_keywords: 'gst tax compliance questionnaire ca accountant hsn place of supply export loyalty credit note round 2'
+---
+
+# Tax Compliance Questionnaire — Round 2
+
+**Status:** Reference artifact, not a decision source. This is the question set issued to the
+owner, CA, and accountant on 2026-08-21 after their replies to round 1 left gaps.
+
+- Answers already confirmed by the CA are locked in `owner-decisions-log.mdx` under
+  **Tax, invoicing, and statutory compliance**. Do not re-derive them from this file.
+- Items still unanswered are referenced by their identifiers below (`A1`, `B1.1`, `B2.5`, …)
+  from the affected entries in `pending-decisions.mdx`.
+- Round 1 asked 16 numbered points. Four came back with no answer at all (loyalty points,
+  refund method, TCS/TDS, e-commerce disclosures), nine were answered only in part, and three
+  were answered in principle without the arithmetic needed to implement them.
+
+Blocking build work right now: **A1** (loyalty points — discount or tender), **B1.1** (place of
+supply when billing and shipping States differ), **B2.4 / B2.5** (HSN codes, rates, and the
+per-piece value threshold), **B6.1** (approved document number formats).
+
+## Document as issued
+
+```text
+SAHA TEXTILE — TAX & COMPLIANCE CLARIFICATIONS, ROUND 2
+For: Owner / CA / Accountant
+Re: our Round-1 questionnaire and your replies to it
+
+
+WHY THERE IS A SECOND ROUND, AND HOW WE NEED THESE ANSWERED
+
+Thank you for the replies. Several points are now settled and are listed in
+Part 0 below so you do not have to repeat them.
+
+The remaining items fall into four buckets: (a) points that received no answer
+at all, (b) points where the main question was answered but sub-questions were
+not, (c) points where the answer is correct in principle but cannot yet be
+turned into a rule, and (d) new points that Round 1 did not cover and that we
+now know we need.
+
+Please keep in mind while answering: we are not asking for opinions, we are
+writing these answers into software. A billing system cannot execute
+"review carefully", "generally", "substantially correct", "potentially yes" or
+"where applicable". It can only execute a rule of the form:
+
+    IF <condition> THEN <exact action>, ELSE <exact action>.
+
+So for every point below, please give us either (i) a lettered option chosen
+from the ones we have listed, or (ii) an if/then rule in the form above, or
+(iii) a worked calculation with real numbers. Where we ask for a number, a
+code, a rate, a date or a name, please give the actual value.
+
+Two further requests:
+
+  - Please answer every numbered item, including the ones where the answer is
+    "not applicable to you". Silence reads to us as unanswered, and we then
+    have to guess, which is exactly what we are trying to avoid.
+
+  - Where a rule depends on something we have not told you about our business,
+    please say what you need to know and we will answer immediately.
+
+Business recap, unchanged from Round 1: single-brand online boutique selling
+our own sarees, apparel and tailoring/customisation. Not a marketplace, no
+third-party sellers. GST registration in Kolkata, West Bengal, and no premises
+or stock outside West Bengal. All sales are prepaid online; no cash on
+delivery. We ship across India, and we accept international orders paid in
+foreign currency through PayPal. We sell our own closed-loop gift cards and we
+run an in-house loyalty points programme.
+
+
+================================================================================
+PART 0 — WHAT WE HAVE RECORDED AS SETTLED
+================================================================================
+
+We have taken the following from your replies and are building to it. Please
+read this list and correct anything we have misread; otherwise no action is
+needed on Part 0.
+
+S1.  Place of supply cannot be derived from the shipping PIN code alone. Our
+     system must capture and store, for every order: billing/recipient address
+     with State and PIN, shipping/delivery address with State and PIN, the
+     customer's GSTIN where applicable, and the determined Place of Supply as
+     a stored field on the invoice.
+
+S2.  For an unregistered (B2C) customer, place of supply is determined under
+     Section 10(1)(ca) from the recipient address recorded on the invoice.
+
+S3.  For a registered (B2B) customer where goods are moved, place of supply is
+     where the movement terminates for delivery.
+
+S4.  Supplies from West Bengal to a Union Territory are inter-State and attract
+     IGST. We must not charge CGST + UTGST. CGST + UTGST is for an intra-UT
+     supply, which does not arise for us.
+
+S5.  Invoice-level HSN requirements and GSTR-1 reporting requirements are two
+     different things and must be configured separately. Up to Rs 5 crore
+     preceding-year turnover, 4-digit HSN is mandatory on B2B invoices; above
+     Rs 5 crore, 6-digit.
+
+S6.  Tax-inclusive display pricing is acceptable. The website may show
+     "Saree Rs 5,250 — GST included". The tax invoice must separately show
+     taxable value, CGST rate and amount, SGST rate and amount (or IGST rate
+     and amount), and total invoice value.
+
+S7.  A delivery charge for delivering the goods sold forms part of the value of
+     supply under Section 15(2) as an incidental expense, and transport,
+     packing and insurance can form a composite supply with the goods as the
+     principal supply.
+
+S8.  Exports may be zero-rated, and we will use Route A: export under LUT
+     without payment of IGST, then claim refund of eligible accumulated ITC. We
+     will obtain an IEC before regular export of goods and arrange AD-code /
+     bank-account registration for the customs and export setup. Export
+     invoices will carry the endorsement "SUPPLY MEANT FOR EXPORT UNDER BOND OR
+     LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGRATED TAX."
+
+S9.  Gift cards: issuing/selling the card is not itself a taxable supply, no
+     GST at the point of sale of the card, and GST applies normally on the
+     underlying goods when the card is redeemed (CBIC Circular 243/37/2024-GST
+     dated 31 December 2024). Redemption is a tender/payment mechanism, not a
+     discount: if the taxable value of the goods is Rs 1,000, it stays
+     Rs 1,000 even where the customer pays entirely with a gift card.
+
+S10. Advance payments: operationally the document sequence is order
+     confirmation / payment receipt, then dispatch, then tax invoice.
+
+S11. Invoice numbering per Rule 46: consecutive serial number, unique for the
+     financial year, maximum 16 characters, one or multiple series permitted,
+     alphanumeric and special characters including hyphen and slash permitted.
+     Format approved in principle: ST/26-27/000001, then ST/26-27/000002. A
+     cancelled invoice number remains part of the sequence and is not reused.
+
+S12. Credit notes: outer deadline is 30 November following the end of the
+     financial year to which the supply relates, or the date of furnishing the
+     relevant annual return, whichever is earlier. One credit note per original
+     invoice/order — we will not combine multiple invoices into one credit note.
+
+S13. Purchase master: for every supplier invoice we will capture supplier legal
+     name, GSTIN, invoice number, invoice date, supplier address, HSN/SAC,
+     product/service description, quantity, taxable value, CGST, SGST, IGST,
+     cess if any, place of supply, RCM flag, e-invoice IRN where applicable, QR
+     code / e-invoice data where applicable, payment date, goods receipt date
+     and purchase return details.
+
+S14. Rounding: GST computed to two decimal places internally, final invoice
+     payable amount rounded to the nearest rupee, with the adjustment shown on
+     the invoice as a "Round-off" line (for example +Rs 0.40 / -Rs 0.40).
+
+
+================================================================================
+PART A — POINTS THAT RECEIVED NO ANSWER AT ALL
+================================================================================
+
+These four points from Round 1 came back with nothing against them. A1 is the
+single most urgent item in this entire document: we cannot finish the checkout
+and invoice engine without it, and the answer changes the tax on every order a
+loyalty member places.
+
+--------------------------------------------------------------------------------
+A1. LOYALTY / REWARD POINTS — WE NEED A WRITTEN RULING (was Point 7)
+--------------------------------------------------------------------------------
+
+How the programme works: customers earn "coins" on purchases. Coins are issued
+by us, are usable only on our own store, involve no third party, are not sold
+for money, and do not expire. At checkout a customer may redeem coins to reduce
+the amount payable.
+
+A1.1 The ruling we need, in one letter. When a customer redeems coins, is the
+     redemption:
+
+     (a) a DISCOUNT that reduces the taxable value, so GST is charged on the
+         reduced price; or
+     (b) a PAYMENT/tender that does not reduce the taxable value, so GST is
+         charged on the full price, exactly as you have already ruled for gift
+         cards (S9); or
+     (c) something else — please state it.
+
+     Please answer with a single letter and, if you can, the reasoning or
+     authority you are relying on, because this is the position we will defend
+     in an audit.
+
+A1.2 Illustration we need back with numbers filled in. Order: one saree, list
+     price Rs 5,250 including GST. Customer redeems coins worth Rs 500. Please
+     show, for your chosen answer to A1.1, the invoice lines: taxable value,
+     GST rate, GST amount, coin redemption line, and total payable. We will
+     hard-code exactly what you write here.
+
+A1.3 Is your answer to A1.1 different if the coins were earned on a purchase
+     that was later returned and refunded? Do we claw the coins back, and does
+     that create any GST event?
+
+A1.4 Issuance. Is there any GST consequence at the moment coins are ISSUED
+     (that is, when a customer earns them on a purchase)? We assume none.
+     Confirm.
+
+A1.5 Accounting. How do we carry the outstanding coin balance in the books —
+     as a provision, a deferred revenue liability, or a marketing expense? At
+     what value (face value, or expected redemption)? Since our coins do not
+     expire, is there any point at which we may release the liability, and on
+     what evidence?
+
+A1.6 If your answer to A1.1 is (a) DISCOUNT: does it satisfy Section 15(3)(a),
+     that is, is the discount recorded on the invoice at the time of supply and
+     established in terms of an agreement entered into at or before the supply?
+     Do we need to publish the coin programme terms and conditions on the site
+     for this to hold, and if so should you review that wording?
+
+A1.7 If your answer to A1.1 is (b) TENDER: confirm that the customer still pays
+     GST on the full value, so a customer redeeming Rs 500 of coins on a
+     Rs 5,250 order pays Rs 4,750 in cash, and confirm that no part of the
+     Rs 500 is treated as our income or expense at redemption.
+
+A1.8 Combination case. A customer pays with coins AND a gift card AND a card
+     payment on the same order. Please confirm the ordering of application and
+     that the taxable value is unaffected by the payment mix.
+
+--------------------------------------------------------------------------------
+A2. REFUND METHOD AND REFUND TIMELINES — CONSUMER-LAW CHECK (was Point 11)
+--------------------------------------------------------------------------------
+
+A2.1 We intend that where an order was paid for (wholly or partly) with a gift
+     card, any refund goes back only into a new store gift card, never to a
+     bank account. Is that permissible under the Consumer Protection
+     (E-Commerce) Rules 2020, which point refunds to the original method and to
+     RBI timelines? Please answer yes or no.
+
+A2.2 If the answer to A2.1 is no, what is the permitted rule? For example:
+     refund the gift-card-funded portion to a gift card and the card-funded
+     portion to the original card; or refund everything to the original method
+     on request.
+
+A2.3 For orders paid entirely by card/UPI/netbanking, we intend to let the
+     customer CHOOSE between original payment method and a store gift card. Is
+     offering that choice permissible, provided original method is always
+     available?
+
+A2.4 What refund timeline must we commit to publicly and meet operationally,
+     counted from what trigger event (customer request, our approval, receipt
+     of the returned goods, or quality check pass)? Please give the number of
+     days we should publish.
+
+A2.5 International orders: what is the refund position for an export order paid
+     in foreign currency through PayPal, including the FX difference between
+     the amount collected and the amount refunded — who bears it, and how is it
+     booked?
+
+A2.6 Are there any refund cases we may lawfully refuse or restrict — for
+     example made-to-measure/customised garments, altered garments, pierced or
+     intimate items, or items returned after our stated window? Please tell us
+     what we may exclude, because it must be written into the published policy
+     before launch.
+
+--------------------------------------------------------------------------------
+A3. TCS / TDS APPLICABILITY (was Point 14)
+--------------------------------------------------------------------------------
+
+A3.1 GST TCS under Section 52: we believe it does not apply to us because we
+     sell only our own goods on our own website and do not collect
+     consideration on behalf of other suppliers. Confirm yes or no.
+
+A3.2 Income-tax TDS under Section 194-O: same position, we believe it does not
+     apply to us. Confirm yes or no.
+
+A3.3 Income-tax TCS under Section 206C: confirm it does not apply to our
+     apparel retail sales.
+
+A3.4 If we ever list our products on a third-party marketplace (Amazon, Myntra,
+     Nykaa Fashion, Ajio) in addition to our own site, which of A3.1 to A3.3
+     change, and what would we then have to capture in our books? We are not
+     doing this now, but we want to know the trigger before it happens.
+
+A3.5 Are there any OTHER collection or withholding obligations on our SALES
+     side that we should know about — for instance anything triggered by
+     payment aggregators, or by a single customer crossing a value threshold in
+     a year?
+
+--------------------------------------------------------------------------------
+A4. E-COMMERCE DISCLOSURES AND LEGAL METROLOGY (was Point 15)
+--------------------------------------------------------------------------------
+
+A4.1 Consumer Protection (E-Commerce) Rules 2020 — please confirm each of the
+     following is required of us and, where it is, state the exact wording or
+     data point you want published:
+
+     (i)   total price with a full break-up shown before purchase, including
+           all taxes and delivery charges;
+     (ii)  country of origin displayed on each product;
+     (iii) published return, refund, exchange, warranty and cancellation
+           policies;
+     (iv)  published delivery/shipment timelines and any shipping restrictions;
+     (v)   a grievance officer resident in India, with name, designation,
+           contact number and email displayed on the site;
+     (vi)  acknowledgement of a complaint within 48 hours and redressal within
+           one month;
+     (vii) any other mandatory disclosure we have not listed.
+
+A4.2 Who will be named as grievance officer? We need a name, designation,
+     phone number and email address to put on the site before launch. Please
+     confirm with the owner and give us the exact text to display.
+
+A4.3 Do we also need a separate nodal contact person, or any additional officer
+     under any other rule, given our size?
+
+A4.4 Legal Metrology (Packaged Commodities) Rules — for our product types
+     (a saree in a polybag, a stitched garment in a polybag, an unstitched
+     fabric piece, a made-to-measure garment, and a gift box), please tell us
+     for each:
+
+     (i)   whether it is a "pre-packaged commodity" at all;
+     (ii)  whether MRP inclusive of all taxes must be declared, and how MRP
+           coexists with our website price when we run a discount;
+     (iii) net quantity declaration and the unit to use (metres, pieces, grams);
+     (iv)  manufacturer / packer / importer name and full address to print;
+     (v)   month and year of manufacture or packing;
+     (vi)  consumer-care contact details to print;
+     (vii) whether these must be printed on the physical label, or displayed on
+           the product page online, or both.
+
+A4.5 Are there any textile-specific labelling requirements we must meet
+     (fibre composition, care instructions, size designation, BIS or any
+     mandatory standard) for domestic sale, and separately for export?
+
+
+================================================================================
+PART B — POINTS ANSWERED IN PART, WITH SUB-QUESTIONS STILL OPEN
+================================================================================
+
+--------------------------------------------------------------------------------
+B1. PLACE OF SUPPLY — WE STILL CANNOT CODE THE BILLING-VS-SHIPPING CASE
+    (was Point 1)
+--------------------------------------------------------------------------------
+
+Your reply said that where billing address is Maharashtra and shipping address
+is Karnataka we "should not automatically use Karnataka merely because the
+parcel is shipped there", and that the invoice/POS configuration "should be
+reviewed carefully". We accept the correction, but a checkout cannot review
+anything carefully at 2 a.m. — it needs one rule. Please pick a letter.
+
+B1.1 For a B2C (unregistered) customer where the billing State and the shipping
+     State differ, our system must:
+
+     (a) record the SHIPPING address as the recipient address on the invoice,
+         so that the Section 10(1)(ca) recipient address is by definition the
+         delivery address, and POS = shipping State in all cases; or
+     (b) record the BILLING address as the recipient address on the invoice, so
+         POS = billing State in all cases, even though the parcel goes
+         elsewhere; or
+     (c) apply some other rule, which you will state in if/then form.
+
+     Please choose (a), (b) or (c). If you choose (c), tell us exactly which
+     stored field decides it.
+
+B1.2 Consequence check for whichever letter you choose. Our checkout currently
+     collects a delivery address and an optional separate billing address. Do
+     you want us to:
+
+     (a) keep the billing address optional, defaulting billing = delivery; or
+     (b) make a separate billing address mandatory for every customer?
+
+     We would prefer (a) for conversion reasons. Tell us if that is unsafe.
+
+B1.3 Gift orders and bill-to/ship-to. A customer in Delhi buys a saree and has
+     it delivered to a relative in Assam as a gift. The buyer is the recipient
+     and the payer; the person in Assam is neither. Is this our normal B2C rule
+     from B1.1, or does Section 10(1)(b) (goods delivered on the direction of a
+     third person) apply, and does the answer change if the buyer is
+     GST-registered? This is a real and frequent case for us.
+
+B1.4 B2B confirmation. You said POS for a registered customer is where the
+     movement terminates for delivery. Confirm that for us this simply means:
+     if the customer supplies a GSTIN, POS = ship-to State, and the invoice
+     must carry the customer's GSTIN and registered name. Confirm also what
+     happens where a registered customer's GSTIN State differs from the ship-to
+     State (for example GSTIN of Gujarat, delivery to Rajasthan).
+
+B1.5 Since we are registered only in West Bengal, is the following complete and
+     correct as our entire tax-determination logic for domestic sales?
+
+         IF place of supply State = West Bengal  THEN CGST + SGST
+         ELSE                                    THEN IGST
+
+     That is, every State AND every Union Territory outside West Bengal is
+     IGST, with no exceptions, and CGST + UTGST never arises for us. Please
+     confirm yes, or state the exception.
+
+B1.6 Please confirm the authoritative State/UT code list we should load into
+     the address master, and confirm we should store the two-digit GST State
+     code against every order. Please also tell us how to treat addresses in
+     Ladakh, Jammu & Kashmir, Chandigarh, Andaman & Nicobar, Lakshadweep,
+     Daman & Diu / Dadra & Nagar Haveli, and Puducherry, since these are the
+     ones that trip up address masters.
+
+B1.7 What is the correct treatment if a customer refuses to give a State, or
+     enters an address we cannot resolve to a State? We propose blocking the
+     order. Confirm.
+
+--------------------------------------------------------------------------------
+B2. HSN CODES AND RATES — THE ACTUAL CODES ARE STILL MISSING (was Point 2)
+--------------------------------------------------------------------------------
+
+Your reply explained the 4-digit and 6-digit bands, which we have recorded at
+S5. Three things in the original question were not answered.
+
+B2.1 Which band applies to Saha Textile right now? We are a new business, so
+     please tell us what applies in our FIRST year, when there is no preceding
+     financial year turnover, and at what point we must switch. We would rather
+     print 6-digit HSN from day one and never think about it again — is there
+     any downside to voluntarily printing 6-digit HSN on every invoice,
+     including B2C?
+
+B2.2 B2C invoices: is HSN optional for us on B2C invoices in our band, or do
+     you want it printed anyway? Give us a yes/no we can configure.
+
+B2.3 GSTR-1 reporting (Table 12 HSN summary): what digit length and what
+     coverage (B2B only, or B2B and B2C) must our monthly export to you carry?
+     We will generate whatever you specify.
+
+B2.4 Please fill in this table. This is the single most valuable thing you can
+     send back, because nothing can be catalogued until it exists.
+
+     Category                          | HSN/SAC | Digits | GST rate | Notes
+     ----------------------------------|---------|--------|----------|------
+     Saree — cotton                    |         |        |          |
+     Saree — silk                      |         |        |          |
+     Saree — synthetic / blended       |         |        |          |
+     Unstitched fabric / dress material|         |        |          |
+     Stitched garment — women's        |         |        |          |
+     Stitched garment — men's          |         |        |          |
+     Kids' garments                    |         |        |          |
+     Dupatta / stole / scarf           |         |        |          |
+     Blouse (readymade)                |         |        |          |
+     Petticoat / inner wear            |         |        |          |
+     Made-ups (bedsheet, cushion etc.) |         |        |          |
+     Bags / clutches, if we sell them  |         |        |          |
+     Imitation jewellery, if we sell it|         |        |          |
+     Tailoring / stitching service     |         |        |          |
+     Alteration service                |         |        |          |
+     Gift card / voucher               |         |        |          |
+     Gift wrapping / packaging charge  |         |        |          |
+     Delivery / shipping charge        |         |        |          |
+
+B2.5 Rates and the value threshold. We understand the textile and apparel rate
+     structure and the per-piece value threshold were revised in 2025. Please
+     state, as at the date of your reply and with the effective date:
+
+     (i)   the rate applicable below the threshold and above it;
+     (ii)  the exact threshold value per piece;
+     (iii) whether the threshold is tested against the sale value per piece,
+           the MRP, or the taxable value;
+     (iv)  whether the threshold is tested per piece or per invoice line where
+           a customer buys three of the same saree;
+     (v)   whether a saree, an unstitched fabric length and a stitched garment
+           are each tested the same way.
+
+B2.6 The threshold problem created by our tax-inclusive pricing. If the rate
+     depends on a value that is itself net of the rate, the calculation is
+     circular near the threshold. Worked example we need back from you: a saree
+     displayed at a tax-inclusive price of exactly the threshold value plus
+     Rs 1. Please show which rate applies, the taxable value, the tax and the
+     total, and state the rule: is the threshold tested on the tax-INCLUSIVE
+     displayed price or on the tax-EXCLUSIVE taxable value? We will make
+     merchandising avoid prices near the boundary once we know which side of
+     the line the test falls on.
+
+B2.7 Confirm our proposed configuration: a default HSN and rate per product
+     category, with a per-product override, and the override recorded with a
+     reason and a date. Is that acceptable to you as a control?
+
+B2.8 Who signs off on the HSN assigned to a new product before it goes live —
+     you, or us? We would like a documented approval step and we need to know
+     whose approval it is.
+
+--------------------------------------------------------------------------------
+B3. EXPORTS — ROUTE CONFIRMED, MECHANICS NOT (was Point 5)
+--------------------------------------------------------------------------------
+
+You confirmed Route A, IEC and AD code (recorded at S8). The document list, the
+invoice mechanics and the follow-through were not answered.
+
+B3.1 Documents. Please list every document we must obtain and retain for each
+     export order, and who obtains it. Our current understanding is: commercial
+     invoice with the LUT endorsement, packing list, shipping bill or courier
+     bill of export, airway bill, and proof of foreign inward remittance (FIRC
+     / FIRA / e-BRC). Please correct and complete this list.
+
+B3.2 Courier exports. Our international orders are single low-value parcels
+     sent by courier (DHL/FedEx/India Post), not container shipments. Please
+     confirm the export documentation route that actually applies to us
+     (for example CSB-V courier shipping bill), any value limit on it, and
+     whether that route still supports our zero-rating and ITC refund claim.
+
+B3.3 PayPal. Our foreign receipts come through PayPal, net of PayPal's fees and
+     after PayPal's own currency conversion. Please tell us:
+     (i)   whether PayPal's inward remittance evidence is acceptable proof of
+           realisation for export purposes, and what exactly we must download
+           and keep;
+     (ii)  whether the export value we declare is the gross order value or the
+           net amount received after PayPal fees;
+     (iii) how PayPal's fee is booked, and whether it attracts GST under
+           reverse charge on our side (see also D7);
+     (iv)  which exchange rate and which date we must use to record the sale in
+           the books and on the invoice.
+
+B3.4 LUT mechanics. Who files the LUT (RFD-11), by when, for which period, and
+     what happens to orders shipped before the LUT for a new financial year is
+     filed? Please give us the annual calendar reminder date.
+
+B3.5 Realisation timeline. What is the deadline for receiving the export
+     proceeds, and what happens if a foreign customer's payment is delayed
+     beyond it or the order is refunded? Does our zero-rating or refund claim
+     get affected, and what do we have to do?
+
+B3.6 Invoice mechanics for exports. Please confirm:
+     (i)   an export invoice shows no CGST, no SGST, no IGST, and instead
+           carries the LUT endorsement text you gave us;
+     (ii)  whether the export invoice must be in a SEPARATE number series from
+           domestic invoices, or may share the same series;
+     (iii) which currency the invoice is raised in, whether an INR equivalent
+           must also be shown, and the exchange rate rule and rate source to
+           use;
+     (iv)  what place of supply we record on an export invoice, and what
+           State code (if any) we store;
+     (v)   what the invoice must state as the recipient's address and country,
+           and whether any recipient tax identifier is needed.
+
+B3.7 Storefront display for international customers — this affects the website
+     directly. Our domestic prices are tax-inclusive. For a customer whose
+     delivery address is outside India, should the storefront:
+
+     (a) show the same displayed price and simply not charge GST, so we absorb
+         nothing and earn more on export orders; or
+     (b) show a price with the GST element stripped out, so the customer pays
+         less than the domestic sticker price; or
+     (c) show a separate export price list we maintain independently?
+
+     Please pick a letter. This is a pricing and margin decision as much as a
+     tax one, so we would like the owner to see your recommendation.
+
+B3.8 Export returns. A foreign customer returns a garment. What is the GST and
+     customs position on the re-import, do we raise a credit note against the
+     export invoice, and does it affect a refund we have already claimed?
+
+B3.9 Reporting. Confirm what export data we must supply for GSTR-1 (Table 6A),
+     what has to match between the invoice, the shipping bill and the
+     remittance, and what breaks the refund if it does not match.
+
+B3.10 ITC refund. Since we will accumulate ITC under Route A, please tell us:
+      how often we should file the refund claim, what the claim is based on,
+      what documents we must hand you, and what we should build into our
+      monthly export to make that claim painless.
+
+B3.11 Nepal and Bhutan. If we receive an order from Nepal or Bhutan paid in
+      INR, does it still qualify as an export? Please state the rule.
+
+B3.12 Any registration or reporting we have not asked about that a first-time
+      exporter of apparel must complete (for example EDPMS closure, AD bank
+      intimation, DGFT filings, RoDTEP or any scheme we may be eligible for).
+
+--------------------------------------------------------------------------------
+B4. GIFT CARDS — GST CONFIRMED, ACCOUNTING AND LIMITS NOT (was Point 6)
+--------------------------------------------------------------------------------
+
+You confirmed the GST treatment (recorded at S9). Four sub-questions from
+Round 1 were not answered.
+
+B4.1 Breakage. If a gift card expires with a balance unredeemed, is any GST
+     payable on that lapsed amount? We understand not, but we need it in
+     writing.
+
+B4.2 Accounting for outstanding balances. How do we carry unredeemed gift-card
+     value in the books — as a liability, and under what head? At what point
+     and on what basis do we recognise breakage income for lapsed cards? Which
+     financial year does that income fall into?
+
+B4.3 Validity period. We propose 24 months. Our cards are closed-loop, usable
+     only on our own store, which we understand are not RBI-regulated prepaid
+     payment instruments. Please confirm both: (i) closed-loop status means no
+     RBI PPI authorisation is needed, and (ii) 24 months is acceptable, or tell
+     us the minimum validity you want us to offer. Please also flag any
+     consumer-law risk in expiring a gift card at all.
+
+B4.4 Document on sale of a card. When a customer buys a Rs 1,000 gift card,
+     what document do we issue — a tax invoice with no tax, a receipt, a
+     payment voucher, or nothing beyond an order confirmation? Please name the
+     document, and tell us whether it needs its own number series.
+
+B4.5 Turnover. Does the Rs 1,000 collected on the card sale form part of our
+     GST turnover in the month of sale, in the month of redemption, or neither?
+     We need to know so our turnover monitoring (see D12) is not wrong.
+
+B4.6 Selling cards at a discount. If we ever sell a Rs 1,000 card for Rs 900 in
+     a promotion, what is the treatment at sale and at redemption, and on what
+     value is GST charged when the card is spent?
+
+B4.7 Partial redemption and refunds. A customer pays with a card and later
+     returns the goods; we refund to a new card (subject to A2). Confirm the
+     credit note is still raised at full taxable value and that the refund into
+     a card is a balance-sheet movement with no GST effect.
+
+B4.8 Are gift cards issued free of charge — as compensation for a service
+     failure, or as a promotional giveaway — treated differently from cards
+     sold for money, in GST and in the books?
+
+--------------------------------------------------------------------------------
+B5. ADVANCE PAYMENT AND TIME OF SUPPLY (was Point 8)
+--------------------------------------------------------------------------------
+
+Your reply recommended: order confirmation / payment receipt, then dispatch,
+then tax invoice. We have adopted that (S10), but the statutory questions
+behind it are still open, and they decide which documents our system has to
+generate and number.
+
+B5.1 Receipt voucher. Is a receipt voucher under Section 31(3)(d) legally
+     REQUIRED when we take payment in advance for GOODS, or not required
+     because tax is not payable on advances for goods? Please answer yes or no.
+     If yes, tell us what it must contain and confirm it needs its own number
+     series.
+
+B5.2 What exactly is the "order confirmation / payment receipt" you recommended
+     in GST terms — a receipt voucher, a proforma invoice, or a purely
+     commercial document with no GST status? Should it show a GST break-up at
+     all, or show the total only? We need to know what to print on it.
+
+B5.3 Time of supply for our goods. Please state it plainly: is it the date of
+     the invoice, the date of dispatch/removal, or the date of payment? One
+     answer, please, since it decides which month a sale lands in.
+
+B5.4 Cancellation before dispatch. Customer pays, then cancels before we ship,
+     and we refund. If no tax invoice was raised, is a refund voucher under
+     Section 31(3)(e) required, and does the transaction appear anywhere in the
+     returns? Please give us the document to generate and its number series.
+
+B5.5 Rate change between payment and dispatch. If the GST rate changes between
+     the date we take the money and the date we ship, which rate applies
+     (Section 14), and what does our system need to store to prove it? Given
+     the 2025 rate revision this is not hypothetical for us.
+
+B5.6 Split dispatch. One order of three items, shipped in two parcels on
+     different dates because one item was in a different location. Do we raise
+     ONE invoice for the order or ONE invoice PER dispatch? Please choose, as
+     this changes our fulfilment design.
+
+B5.7 Made-to-order. For a tailored garment where payment is taken up front and
+     delivery is six weeks later, does anything in B5.3 change? And if the
+     customer cancels mid-production and we retain a cancellation charge, what
+     is the GST treatment of the retained amount?
+
+B5.8 Reporting. Do advances outstanding at month-end need to be reported
+     anywhere in GSTR-1 or GSTR-3B for a goods-only business? If so, we will
+     build a month-end "advances received, not yet dispatched" report for you —
+     tell us the fields you want.
+
+--------------------------------------------------------------------------------
+B6. DOCUMENT NUMBERING — PLEASE APPROVE THE ACTUAL SERIES (was Point 9)
+--------------------------------------------------------------------------------
+
+You approved the format in principle (S11). We need the specific series signed
+off before we generate a single live document, because a numbering scheme
+cannot be changed retrospectively.
+
+B6.1 Please approve, amend or reject each of the following. FY 2026-27 shown.
+     All reset to 000001 on 1 April.
+
+     Document                | Proposed format          | Approve? | Amend to
+     ------------------------|--------------------------|----------|---------
+     Tax invoice (domestic)  | ST/26-27/000001          |          |
+     Tax invoice (export)    | STE/26-27/000001         |          |
+     Credit note             | STCN/26-27/000001        |          |
+     Debit note              | STDN/26-27/000001        |          |
+     Receipt voucher         | STRV/26-27/000001        |          |
+     Refund voucher          | STRF/26-27/000001        |          |
+     Delivery challan        | STDC/26-27/000001        |          |
+     Payment voucher (RCM)   | STPV/26-27/000001        |          |
+     Order number (internal) | SO/26-27/000001          |          |
+
+B6.2 Character count. "STCN/26-27/000001" is 17 characters and would breach the
+     16-character limit. Please tell us which of these to shorten and how, so
+     that every series is 16 characters or fewer. If you prefer a compact
+     scheme such as "CN2627-000001", say so and we will adopt it exactly.
+
+B6.3 Must domestic and export invoices be in separate series, or is that merely
+     good practice? (See also B3.6(ii).)
+
+B6.4 An order is cancelled AFTER the tax invoice is generated but BEFORE
+     dispatch. You have told us the number is never reused. So do we: (a) issue
+     a credit note against that invoice, or (b) mark the invoice cancelled in a
+     documented way without a credit note? If (b), what document evidences the
+     cancellation and how is it reported?
+
+B6.5 Do we need to print the copy designations for goods invoices — "ORIGINAL
+     FOR RECIPIENT", "DUPLICATE FOR TRANSPORTER", "TRIPLICATE FOR SUPPLIER" —
+     given that our invoice is emailed as a PDF and a copy travels in the
+     parcel? Which copy goes in the parcel?
+
+B6.6 Delivery challans: in which situations must we raise one (courier
+     handover, goods sent for job work to a tailor, exhibition stock, returns
+     pickup)? We need the trigger list so the system knows when to generate it.
+
+--------------------------------------------------------------------------------
+B7. CREDIT NOTES AND RETURNS (was Point 10)
+--------------------------------------------------------------------------------
+
+You gave us the deadline and the one-note-per-invoice rule (S12). The
+operational half was not answered.
+
+B7.1 Contents. Please list what our credit note must carry under Rule 53 so we
+     can build the template — in particular how the original invoice number and
+     date are referenced, and whether the reason for issue must be stated.
+
+B7.2 Partial returns. Customer bought three items on one invoice and returns
+     one. Confirm we raise a credit note for that one line, referencing the
+     original invoice, and that this is consistent with your one-credit-note-
+     per-invoice rule (that is, we may issue more than one credit note over
+     time against the same invoice, as long as each references it).
+
+B7.3 Shipping charge on a partial return. The order carried one Rs 100 delivery
+     charge across three items and one item comes back. Does the credit note
+     reverse a proportionate part of the delivery charge, all of it, or none of
+     it? Please pick one and tell us the apportionment basis.
+
+B7.4 Returns after the credit-note deadline. Our published returns window is
+     short, but exchanges, warranty claims and disputes can land later. If a
+     return is accepted AFTER 30 November following the relevant financial year
+     and we refund the customer:
+     (i)   confirm we cannot reduce our GST liability at that point;
+     (ii)  confirm the correct instrument is a commercial/financial credit note
+           with no GST adjustment;
+     (iii) confirm that we therefore refund the customer the full amount
+           including the tax element and absorb that tax as a cost;
+     (iv)  tell us whether you want our returns policy hard-capped so this can
+           never happen.
+
+B7.5 B2B returns. Where the customer is GST-registered, is our ability to
+     reduce our tax liability conditional on that customer reversing their ITC?
+     If so, what evidence must we obtain from them before we issue the credit
+     note, and should our system block a B2B credit note until we have it?
+
+B7.6 Restocking versus write-off. Goods returned and put back into sellable
+     stock, versus goods returned damaged and written off — is the GST or
+     accounting treatment different, and does a write-off require any ITC
+     reversal on our side? (See also D17.)
+
+B7.7 Order cancelled and refunded where the goods never moved but an invoice
+     existed — same as B6.4, please make sure the two answers agree.
+
+B7.8 Rejected / undelivered / return-to-origin parcels. The courier returns a
+     parcel because the customer was unreachable and we refund. Is that a sale
+     that happened and was reversed by credit note, or a sale that never
+     happened? Please state the rule, because our system must decide
+     automatically.
+
+--------------------------------------------------------------------------------
+B8. PURCHASES AND INPUT TAX CREDIT (was Point 12)
+--------------------------------------------------------------------------------
+
+Your capture list was thorough and we have adopted it in full (S13). The
+process questions around it were not answered.
+
+B8.1 Purchase returns. How do we handle goods returned to a supplier — do we
+     raise a debit note, or do we wait for the supplier's credit note? What do
+     we record, and when do we reverse the ITC?
+
+B8.2 The 180-day payment rule. Confirm that ITC must be reversed if we have not
+     paid a supplier within 180 days, and tell us whether you want our system
+     to produce a monthly "unpaid supplier invoices approaching 180 days"
+     report. We will build it if you want it.
+
+B8.3 Blocked credits. Please list the cost lines on which we must NOT claim ITC,
+     specifically for our kind of business — motor vehicles, food and beverage,
+     staff welfare, gifts and free samples, goods lost/stolen/written off,
+     construction or fit-out of our premises. We want this list in the chart of
+     accounts so the wrong claim cannot be made.
+
+B8.4 ITC we CAN claim. Please confirm we may claim ITC on: courier and freight
+     outward, packaging material, payment gateway charges, professional and
+     audit fees, rent, advertising and digital marketing, photography, software
+     subscriptions, and website/hosting. Mark any of these as no or conditional.
+
+B8.5 Reconciliation. Who reconciles our purchase register against GSTR-2B, at
+     what frequency, and what do we do when a supplier has not filed? Please
+     specify the format you want the purchase register exported in.
+
+B8.6 Since we will be claiming refunds of accumulated ITC on exports (B3.10),
+     is there anything additional we must do at purchase time to protect that
+     claim?
+
+--------------------------------------------------------------------------------
+B9. RECORD RETENTION (was Point 16)
+--------------------------------------------------------------------------------
+
+You answered that the requirement is 8 financial years under the Companies Act
+"if Saha Textile is a company". That leaves three things open.
+
+B9.1 Entity type. Please confirm on record what Saha Textile actually is —
+     proprietorship, partnership, LLP or private limited company — and give us
+     the retention period that applies to THAT entity. We will store data
+     forever if you want, but we need the stated minimum.
+
+B9.2 GST retention. Please confirm the GST requirement separately (we
+     understand it runs to roughly 72 months from the due date of the annual
+     return) and confirm that the longest applicable period governs.
+
+B9.3 Electronic records. Are digital-only records acceptable, or must anything
+     be retained in physical/signed form? Where must the records be kept, and
+     does the location of our cloud hosting matter?
+
+B9.4 What exactly is in scope — invoices and books only, or also order data,
+     customer addresses, payment gateway settlements, courier proofs of
+     delivery, gift-card ledgers and loyalty-point ledgers? We will set the
+     deletion policy from your answer, and it interacts with data-privacy
+     rules pushing the other way (see D21).
+
+
+================================================================================
+PART C — ANSWERED IN PRINCIPLE, BUT WE NEED THE ARITHMETIC
+================================================================================
+
+For each of these, we are asking for a filled-in worked example rather than a
+restatement of the principle. We will copy your numbers into the code and into
+the invoice template, and use them as our test cases.
+
+--------------------------------------------------------------------------------
+C1. TAX-INCLUSIVE REVERSE CALCULATION — SHOW US ONE INVOICE (was Point 3)
+--------------------------------------------------------------------------------
+
+C1.1 Please complete this invoice exactly as you want it to print. Assume an
+     intra-State (West Bengal) B2C sale, and use whatever rate is correct.
+
+     Line 1: Saree, quantity 1, displayed price Rs 5,250 (GST included)
+     Line 2: Kurta, quantity 2, displayed price Rs 1,499 each (GST included)
+     Delivery charge: Rs 100 (see C2 for how it is treated)
+
+     Show for each line: HSN, quantity, taxable value, rate, CGST, SGST; then
+     the invoice totals, the round-off, and the total payable. Show the amount
+     in words if you want it printed.
+
+C1.2 Then show the SAME order as an inter-State sale (delivery to Karnataka),
+     so we can see the IGST version.
+
+C1.3 Rounding of the reverse calculation. When we divide a tax-inclusive price
+     to get the taxable value, we get fractions of a paisa. Do we round the
+     taxable value to two decimals and then compute tax, or compute both and
+     round only at the end? State the sequence precisely — this is the single
+     most common cause of an invoice that does not tie out.
+
+C1.4 Quantity greater than one. For the two kurtas, do we compute tax on the
+     unit price and multiply, or on the line total? These give different
+     answers by a rupee or two, and the invoice must be internally consistent.
+
+C1.5 The customer must see the same total on the website as on the invoice, to
+     the paisa. If your rounding rule makes the invoice total differ from the
+     amount we charged the card, tell us which one moves.
+
+--------------------------------------------------------------------------------
+C2. DELIVERY CHARGE — HOW IT SITS IN A REAL CART (was Point 4)
+--------------------------------------------------------------------------------
+
+You confirmed that the delivery charge forms part of the value of supply (S7).
+The cart-level mechanics were not covered.
+
+C2.1 Is our displayed flat shipping fee GST-INCLUSIVE, like our product prices,
+     or is it added on top and taxed? Yes/no, one way.
+
+C2.2 Mixed-rate cart. A cart contains one item at 5% and one item at 18%, with
+     a single Rs 100 delivery charge. Please show the treatment: do we
+
+     (a) apportion the Rs 100 across the two lines in proportion to their
+         taxable values and tax each portion at that line's rate; or
+     (b) tax the whole Rs 100 at the highest rate in the cart; or
+     (c) tax it at the rate of the principal supply, and if so how do we
+         identify the principal supply automatically; or
+     (d) something else?
+
+     Please pick a letter and show the arithmetic on those numbers.
+
+C2.3 Free shipping. Where we offer free shipping above an order value, there is
+     no separate charge at all. Confirm nothing needs to be shown, and that we
+     are not required to impute a delivery value.
+
+C2.4 Gift wrapping charge. Same question as C2.2 — part of the composite supply
+     at the goods rate, or a separate supply at its own rate?
+
+C2.5 Tailoring/customisation charge added to a garment being purchased (for
+     example a blouse stitched to measurement as part of the saree order). Is
+     that part of the same composite supply of goods, or a separate service
+     line at its own rate? (See also D4.)
+
+C2.6 Express/priority shipping charged at a higher rate than standard — same
+     treatment as standard shipping, or different?
+
+C2.7 If a partial return occurs, see B7.3; please make sure the two answers are
+     consistent.
+
+--------------------------------------------------------------------------------
+C3. ROUNDING — PLEASE MAKE THE INVOICE TIE OUT (was Point 13)
+--------------------------------------------------------------------------------
+
+You told us to compute to two decimals and round the final payable to the
+nearest rupee, with a Round-off line (S14). That creates an arithmetic problem
+we need you to resolve.
+
+C3.1 If taxable value + CGST + SGST = Rs 6,148.60 and we round the payable to
+     Rs 6,149, then the components no longer add to the total. Please tell us
+     which is true:
+
+     (a) the round-off is a separate non-taxable line on the invoice, and the
+         taxable value and tax figures reported in GSTR-1 stay unrounded; or
+     (b) the tax amounts themselves are adjusted so everything ties; or
+     (c) something else.
+
+C3.2 Do we round at line level, at rate-slab level, or only at invoice level?
+     Please state which, since GSTR-1 is reported per rate slab.
+
+C3.3 Please show the round-off applied to the C1.1 example, so we can see
+     exactly which line moves.
+
+C3.4 Does the round-off apply to export invoices in a foreign currency, and if
+     so to what precision?
+
+C3.5 On a credit note for a partial return of an invoice that carried a
+     round-off, is the round-off reversed proportionately, ignored, or
+     recomputed? Please choose.
+
+
+================================================================================
+PART D — NEW POINTS, NOT IN ROUND 1
+================================================================================
+
+These came out of building the system against your answers. None of them were
+in the original questionnaire, and we would rather raise them now than
+discover them after launch.
+
+--------------------------------------------------------------------------------
+D1. DISCOUNTS AND COUPON CODES
+--------------------------------------------------------------------------------
+
+D1.1 A percentage coupon (say 10% off) applied at cart level across items at
+     different GST rates. Confirm the discount is apportioned across lines in
+     proportion to value and reduces each line's taxable value at its own rate,
+     and show the arithmetic on a two-line, two-rate cart.
+
+D1.2 A flat-amount coupon (say Rs 500 off) on the same cart — same question,
+     and please confirm the apportionment basis is the same.
+
+D1.3 Confirm that a discount shown on the invoice at the time of supply reduces
+     the taxable value under Section 15(3)(a), and tell us whether we need the
+     coupon terms published on the site for that to hold.
+
+D1.4 Post-supply discounts — a goodwill credit given after delivery. What
+     instrument do we use, and does it reduce our tax liability? Please
+     distinguish this from the loyalty question in A1.
+
+D1.5 Where a discount takes a garment's price across the value threshold in
+     B2.5, is the rate tested on the pre-discount price or the post-discount
+     taxable value? This one genuinely worries us.
+
+--------------------------------------------------------------------------------
+D2. FREE ITEMS, BOGO AND PROMOTIONAL GIVEAWAYS
+--------------------------------------------------------------------------------
+
+D2.1 "Buy one get one free": is this two supplies with a 50% discount on the
+     total, or one supply with a free item? Which do you want on the invoice?
+
+D2.2 A free gift item added to a qualifying order (a free dupatta above
+     Rs 5,000). How is it invoiced, at what value, and is any ITC reversal
+     triggered on the free item?
+
+D2.3 Samples, PR seeding and influencer gifting — goods that leave our stock
+     with no consideration. What document accompanies them, is there a GST
+     liability, and must we reverse ITC on them?
+
+D2.4 Staff purchases at a discount, and goods taken for personal use by the
+     owner. Please tell us the treatment for both, since these will happen.
+
+--------------------------------------------------------------------------------
+D3. TAILORING, CUSTOMISATION AND ALTERATION
+--------------------------------------------------------------------------------
+
+D3.1 Classification. When a customer buys fabric from us AND pays us to stitch
+     it, is that a composite supply of goods, a composite supply of services,
+     or a mixed supply? Which rate applies to the whole?
+
+D3.2 Standalone alteration of a garment the customer already owns — separate
+     service supply, at what SAC and rate?
+
+D3.3 If we send fabric to an outside tailor and get finished garments back, is
+     that job work? What documents does that require (delivery challan,
+     job-work register, any return), and what is the tax on the tailor's
+     charges to us?
+
+D3.4 Made-to-measure garments: does the customer's own measurement data or
+     supplied material change any of the above?
+
+D3.5 On the invoice, do stitching charges appear as a separate line with a
+     separate SAC and rate, or merged into the garment line? Please tell us
+     which, since the invoice template depends on it.
+
+--------------------------------------------------------------------------------
+D4. E-INVOICING (IRN) AND QR CODES
+--------------------------------------------------------------------------------
+
+D4.1 At what aggregate turnover does e-invoicing become mandatory for us, and
+     does it apply to B2C invoices or only B2B?
+
+D4.2 What is our position today, and what turnover alarm should we build so we
+     know before the obligation starts rather than after?
+
+D4.3 If and when it applies, what changes in our system — IRN generation, the
+     signed QR code on the invoice, the time limit for reporting an invoice to
+     the portal, and the effect on our numbering series?
+
+D4.4 Is a dynamic QR code on B2C invoices required of us at our size? Yes/no.
+
+D4.5 Should we build the e-invoicing capability now and leave it switched off,
+     or wait? Your view on timing would help us plan.
+
+--------------------------------------------------------------------------------
+D5. E-WAY BILLS
+--------------------------------------------------------------------------------
+
+D5.1 For a B2C parcel shipped by courier, at what consignment value does an
+     e-way bill become necessary, and is it our obligation or the courier's?
+
+D5.2 High-value orders (a Rs 60,000 bridal saree, or a large multi-item order)
+     will occur. Please tell us the exact trigger and who generates the e-way
+     bill, so our system can flag the order at packing time.
+
+D5.3 Is the answer different for intra-State West Bengal movement versus
+     inter-State?
+
+D5.4 What about goods sent to an outside tailor for job work, or stock sent to
+     an exhibition?
+
+D5.5 If we must generate them, what data must the system hold to do so, and do
+     you want us to build it now?
+
+--------------------------------------------------------------------------------
+D6. REVERSE CHARGE (RCM) ON OUR PURCHASES
+--------------------------------------------------------------------------------
+
+We buy several services that we suspect attract reverse charge, and we would
+rather build the flags now than be told at audit.
+
+D6.1 Foreign software and services billed to us from outside India — hosting,
+     email, analytics, design tools, SMS/WhatsApp providers, payment platforms.
+     Do these attract GST under reverse charge as import of services? Please
+     confirm and state the rate.
+
+D6.2 Goods transport (GTA) and courier services — which of these are reverse
+     charge for us and which are forward charge?
+
+D6.3 Legal services from an advocate, sponsorship, director's remuneration,
+     rent from an unregistered landlord — please tell us which apply to us.
+
+D6.4 What document must we issue for an RCM purchase (self-invoice, payment
+     voucher), what number series, and by when?
+
+D6.5 Can we claim ITC on the GST we pay under RCM, and in which period?
+
+D6.6 Please give us a short monthly RCM checklist we can run against our
+     expense ledger, so nothing is missed.
+
+--------------------------------------------------------------------------------
+D7. PAYMENT GATEWAY, PAYPAL AND SETTLEMENT ACCOUNTING
+--------------------------------------------------------------------------------
+
+D7.1 The gateway deducts its fee before settling to us. Confirm that our
+     taxable value is the GROSS order value, not the net settlement, and that
+     the gateway fee is an expense with its own ITC.
+
+D7.2 How should we reconcile gateway settlements to orders in the books — what
+     is the accounting entry chain from customer payment to bank credit, and
+     what report do you want from us monthly?
+
+D7.3 Chargebacks and failed/reversed payments — what is the treatment where the
+     goods have already shipped?
+
+D7.4 Partial capture, or a payment captured in one month for an order invoiced
+     in the next — how do we present that at month end?
+
+D7.5 For PayPal in foreign currency, see B3.3; please make the two answers
+     consistent.
+
+--------------------------------------------------------------------------------
+D8. INVOICE FORM, SIGNATURE AND DELIVERY TO THE CUSTOMER
+--------------------------------------------------------------------------------
+
+D8.1 Our invoice is generated by software and emailed as a PDF. Does it require
+     a physical signature or a digital signature certificate to be valid? If a
+     DSC is needed, whose, and how should it be applied automatically?
+
+D8.2 Please review and approve our invoice template before launch. We will send
+     a PDF; we need your sign-off on the field list, the tax break-up layout,
+     the placement of the GSTIN, HSN, POS and round-off, and any declaration
+     text you want printed.
+
+D8.3 Must the invoice be in English only? Any restriction on including a
+     second language?
+
+D8.4 Do we need to print our GSTIN, the customer's GSTIN (where applicable),
+     the place of supply, and a declaration on every invoice? Please confirm
+     the full mandatory field list once, so we can check it off.
+
+D8.5 Is there any requirement to make the invoice available to the customer in
+     a specific way (emailed, downloadable from their account, printed in the
+     parcel)? We plan all three.
+
+--------------------------------------------------------------------------------
+D9. REGISTRATION FOOTPRINT AND FUTURE TRIGGERS
+--------------------------------------------------------------------------------
+
+D9.1 Confirm that because we stock and ship only from West Bengal, we need GST
+     registration only in West Bengal, no matter where our customers are.
+
+D9.2 What would change that? Specifically: storing stock in a third-party
+     warehouse or 3PL in another State, using a fulfilment service that holds
+     our inventory, or selling at an exhibition in another State. Please tell
+     us the trigger for each, because these are things the owner may want to do
+     within a year.
+
+D9.3 Do we need any additional registration for our current model — professional
+     tax, Shops and Establishments, trade licence, MSME/Udyam, IEC (already
+     noted), or anything else? Please list what is done and what is pending,
+     with who is responsible.
+
+--------------------------------------------------------------------------------
+D10. RETURNS FILING, CALENDAR AND OWNERSHIP
+--------------------------------------------------------------------------------
+
+D10.1 Which GST returns must we file, at what frequency, and on which dates?
+      Please give us the annual calendar.
+
+D10.2 Should we opt for the quarterly filing scheme (QRMP) or file monthly?
+      Please decide for us and state why, since it affects our cash flow and
+      our customers' credit.
+
+D10.3 Who prepares and files — you, or our accountant? And what is the cut-off
+      date each month by which we must hand you the data?
+
+D10.4 What is the definitive list of files/reports we must send you every
+      month? Please specify names, formats and fields, and we will automate the
+      export so nobody has to assemble it by hand. Our starting assumption:
+      sales register, credit/debit note register, purchase register, export
+      register, advances outstanding, gift-card ledger, loyalty-point ledger,
+      gateway settlement reconciliation, HSN summary. Add or remove as needed.
+
+D10.5 Income-tax and other filings — advance tax, TDS returns, annual return,
+      audit. Please give us the same calendar with owners against each.
+
+--------------------------------------------------------------------------------
+D11. THRESHOLDS WE MUST MONITOR
+--------------------------------------------------------------------------------
+
+D11.1 Please list every turnover threshold that changes an obligation for us —
+      HSN digit length, e-invoicing, GST audit/reconciliation statement, tax
+      audit, anything else — with the number and what changes at it.
+
+D11.2 We will build an automatic alert when trailing turnover approaches each
+      threshold. At what percentage of each threshold do you want to be
+      alerted?
+
+D11.3 How is "aggregate turnover" computed for these tests in our case — does
+      it include exports, gift-card sales, and shipping charges?
+
+--------------------------------------------------------------------------------
+D12. TDS ON OUR OWN PAYMENTS, AND MSME PAYMENT RULES
+--------------------------------------------------------------------------------
+
+D12.1 On which of our vendor payments must we deduct income-tax TDS —
+      contractors and tailors, professional fees, commission, rent, advertising
+      — with the section, rate and threshold for each?
+
+D12.2 Do we have a TAN, and if not, when do we need one?
+
+D12.3 The 45-day MSME payment rule: how do we identify which of our suppliers
+      are MSME-registered, what payment deadline applies, and what is the
+      consequence of missing it? We can build the supplier master to hold this
+      flag if you tell us to.
+
+--------------------------------------------------------------------------------
+D13. B2B ORDERS ON THE WEBSITE
+--------------------------------------------------------------------------------
+
+D13.1 Do we want to accept B2B orders at all in phase one? If yes, we will add
+      a GSTIN field at checkout.
+
+D13.2 If we collect a GSTIN, must we validate it against the GST portal before
+      accepting the order? And must the invoice show the customer's registered
+      legal name exactly as per the portal, rather than the name they typed?
+
+D13.3 Can a customer ask us to convert an already-issued B2C invoice into a B2B
+      invoice after the fact (they forgot to enter the GSTIN)? What is the
+      correct remedy and its time limit? This request will be common.
+
+D13.4 Any additional invoice fields required for B2B that are not required for
+      B2C?
+
+--------------------------------------------------------------------------------
+D14. THE ORDER-CANCELLATION AND FULFILMENT MATRIX
+--------------------------------------------------------------------------------
+
+Please complete this matrix. It is the single table our order system needs, and
+it pulls together several answers above so they cannot contradict each other.
+
+  Scenario                                   | Document(s) to issue | Reported where
+  -------------------------------------------|----------------------|---------------
+  Payment fails, order never confirmed       |                      |
+  Customer cancels after payment, pre-invoice|                      |
+  We cancel (out of stock), pre-invoice      |                      |
+  Cancelled after invoice, before dispatch   |                      |
+  Cancelled after dispatch, refused at door  |                      |
+  Returned within policy window              |                      |
+  Returned after the credit-note deadline    |                      |
+  Exchange for a different size              |                      |
+  Partial return of a multi-item order       |                      |
+  Parcel lost in transit, we refund          |                      |
+  Parcel damaged in transit, we replace      |                      |
+  Export order returned from abroad          |                      |
+
+D14.1 For the exchange row specifically: is an exchange one credit note plus a
+      fresh invoice, or an amendment of the original? Please choose, because
+      the customer-facing flow depends on it.
+
+D14.2 For goods lost in transit where the courier compensates us — what is the
+      treatment of the compensation, and of the lost stock?
+
+--------------------------------------------------------------------------------
+D15. STOCK, VALUATION AND WRITE-OFFS
+--------------------------------------------------------------------------------
+
+D15.1 What inventory valuation method do you want us to use, and must our
+      system be able to produce a stock valuation on any date?
+
+D15.2 Goods damaged, stolen or written off — confirm the ITC reversal
+      requirement and how we should evidence a write-off.
+
+D15.3 Physical stock count: how often do you want one, and in what format
+      should the reconciliation be given to you?
+
+D15.4 Do we need to maintain a stock register in any prescribed form?
+
+--------------------------------------------------------------------------------
+D16. DATA, PRIVACY AND WHAT WE MAY KEEP
+--------------------------------------------------------------------------------
+
+D16.1 Retention in B9 pushes us to keep customer data for years; data-protection
+      expectations push the other way. For customers who ask us to delete their
+      account, what may we delete and what must we keep? Please state which
+      fields are legally required to be retained on an invoice record.
+
+D16.2 Are there any obligations under India's data-protection law that apply to
+      us at our size that we should be preparing for now — a privacy notice,
+      a named contact, consent wording at signup, breach reporting? If this is
+      outside your scope, please say so and tell us who should advise.
+
+--------------------------------------------------------------------------------
+D17. POLICIES AND WEBSITE LEGAL PAGES — WHO DRAFTS, WHO APPROVES
+--------------------------------------------------------------------------------
+
+D17.1 We need the following live before launch. For each, please tell us
+      whether YOU will supply the text, WE draft and you review, or it is out
+      of scope: Terms of Service; Privacy Policy; Return, Refund and Exchange
+      Policy; Cancellation Policy; Shipping and Delivery Policy; Gift Card
+      Terms; Loyalty Programme Terms; Grievance Redressal.
+
+D17.2 Please give us the deadline by which the owner needs to have decided the
+      commercial terms in these (return window, who pays return shipping,
+      refund timeline, gift-card validity), because we cannot publish a policy
+      with a blank in it.
+
+--------------------------------------------------------------------------------
+D18. ANYTHING ELSE
+--------------------------------------------------------------------------------
+
+D18.1 Please flag anything an Indian e-commerce business selling its own goods
+      (domestic and export, online-prepaid, with gift cards and a loyalty
+      programme) must comply with in 2026 that neither round of this
+      questionnaire has asked about.
+
+D18.2 Please tell us about any change effective in FY 2026-27 that alters an
+      answer you have given us, including any transitional rule we must handle
+      in code.
+
+D18.3 If any answer you have given depends on a fact about our business you
+      have assumed rather than been told, please state the assumption so we can
+      confirm or correct it.
+
+
+================================================================================
+PART E — SIGN-OFF WE ARE ASKING FOR
+================================================================================
+
+E1. Please return this document with answers written against each numbered
+    item, rather than as a separate note, so nothing falls between the two.
+
+E2. Please mark each answer as one of: FINAL (we may build to it), PROVISIONAL
+    (subject to your further check, with a date by which it becomes final), or
+    OUT OF SCOPE (with who should answer instead).
+
+E3. Please name, for each of the following areas, the single person
+    responsible: GST returns; income-tax filings; invoice template approval;
+    HSN and rate assignment; export documentation and refunds; policy and
+    consumer-law text; monthly bookkeeping.
+
+E4. Please date and sign the completed document. We will store it as the basis
+    on which the system was built, and we will come back to you before changing
+    anything that rests on it.
+
+E5. If any item here needs a conversation rather than a written answer, tell us
+    which numbers and we will set up a call — but we will still need the
+    outcome in writing afterwards.
+
+Thank you. Items A1 (loyalty points), B1.1 (place of supply when billing and
+shipping differ), B2.4 and B2.5 (HSN codes and rates) and B6.1 (document
+numbering) are the ones blocking work right now; if it is easier to send those
+five first and the rest afterwards, please do.
+```

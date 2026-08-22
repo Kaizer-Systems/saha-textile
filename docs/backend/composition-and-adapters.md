@@ -4,7 +4,7 @@ wide: true
 description: NestJS module wiring, dependency-injection tokens, adapter ownership, Mongo mappings, and provider seams.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - apps/api/src/app.module.ts
     - apps/api/src/config/app-config.ts
@@ -46,7 +46,7 @@ flowchart TD
 
 The name `PersistenceModule` is currently broader than persistence because it also binds `AuthPort`. The target folder plan separates composition into persistence, search, and external-adapter modules so dependency ownership remains obvious.
 
-`PersistenceModule` binds customer/operator auth, sessions, OTP, OAuth state, provider identities, pending signup/contact-change proof, reset, verification, invite, rate-limit, role, admin-user-role-assignment, audit, consent, and notification repositories. `AuthModule`, `StorefrontModule`, `AdminModule`, and privacy services consume those bindings. `OAuthService` composes the Google and Facebook verifier adapters from `@saha-textile/adapters-auth` at the API edge; provider SDK and payload types do not enter core. `SessionGuard` resolves effective permissions from transitional embedded grants plus active assignments under the account's coarse-role ceiling. `NOTIFICATION_PORT` selects `Msg91NotificationAdapter` when configured and otherwise uses `ConsoleNotificationAdapter`. Chunk E's additional repository adapters exist in the Mongo package but are not all API-bound workflows.
+`PersistenceModule` binds customer/operator auth, sessions, OTP, OAuth state, provider identities, pending signup/contact-change proof, reset, verification, invite, rate-limit, role, admin-user-role-assignment, audit, consent, notification, and transaction capabilities. `AuthModule`, `StorefrontModule`, `AdminModule`, and privacy services consume those bindings. `OAuthService` composes the Google and Facebook verifier adapters from `@saha-textile/adapters-auth` at the API edge; provider SDK and payload types do not enter core. Signup and contact-change orchestration enter `MongoTransactionManager`; repositories without transaction parameters join through the adapter's ambient `AsyncLocalStorage` session, while ports that already expose opaque transaction context continue receiving it explicitly. `SessionGuard` resolves effective permissions from transitional embedded grants plus active assignments under the account's coarse-role ceiling. `NOTIFICATION_PORT` selects `Msg91NotificationAdapter` when configured and otherwise uses `ConsoleNotificationAdapter`. Chunk E's additional repository adapters exist in the Mongo package but are not all API-bound workflows.
 
 ## Current DI bindings
 
@@ -73,6 +73,9 @@ The adapter currently owns:
 - conversion from Mongoose documents to public contract-shaped values;
 - original API-bound repositories plus bound auth/consent and tested Chunk E catalogue, inventory, media, governance, notification and content adapters;
 - a transaction manager that exposes only the opaque core transaction context and uses `AsyncLocalStorage` so nested transactions join;
+- stable translation of customer email/phone unique-index races into `DuplicateIdentifierError`;
+- single-statement customer address writes, with a pipeline for default-address insertion and array filters for targeted updates;
+- one provider-identity write boundary: `AuthIdentityRepository`; customer saves treat identities as a read projection;
 - idempotent seed data for categories, products, currencies, and promotion;
 - a gated live integration test.
 

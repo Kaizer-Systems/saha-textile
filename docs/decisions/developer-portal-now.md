@@ -3,7 +3,7 @@ title: Start Developer Portal Early
 description: ADR for starting the portal before all generated artifacts exist.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - docs/engineering-live-context/execution-roadmap.mdx
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -30,6 +30,9 @@ Start the portal with stable structure, navigation, source-of-truth rules, high-
 - Future PRs have a known place to update operator-facing and developer-facing behavior.
 - Storybook and TypeDoc are generated from current source; Scalar and the database catalogue are generated but visibly scaffolded behind their evidence gates.
 - The portal can build before the full app surface is complete.
+- The complete local umbrella opens through Identity Loom and one portal-local credential pair. This boundary is in-memory, loopback-only, and separate from the API, MongoDB, commerce users, and hosted-access decisions.
+- Identity Loom preserves the requested deep link, provides an accessible native form and executes a five-stage fibre-loom/Jacquard/reactor handoff. The header exposes an icon-only lock control directly beside the colour-mode switcher, while the command palette retains replay and lock actions.
+- `DEC-PORTAL-PRIVATE-ACCESS` remains unresolved; the local entrance is never evidence that remote deployment is approved or protected.
 
 ## Related
 

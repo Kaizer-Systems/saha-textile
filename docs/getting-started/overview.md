@@ -3,7 +3,7 @@ title: Overview
 description: Start here when maintaining the Saha Textile platform.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/execution-roadmap.mdx
@@ -24,8 +24,10 @@ This portal is the private engineering manual for the Saha Textile platform. It 
 
 - Scalar renders the current generated OpenAPI at its stable route; the operation contract remains scaffolded until its completeness gates pass.
 - The source-generated database catalogue renders all 40 current Mongoose models, but stays scaffolded until its model, mapping, migration, retention, and validator gates pass.
-- Storybook is built with one Angular renderer and a green 140/140 reusable-component coverage gate; application-shell behavior remains integration-test scope.
+- Storybook is built with one Angular renderer and a green 141/141 reusable-component coverage gate; application-shell and complete provider-account behavior remain integration/browser-test scope.
 - Pagefind remains a deferred optional full-text layer. The current ⌘K palette already receives a build-generated index from every page's frontmatter, so new routes appear without maintaining a static command list.
+
+The complete local umbrella opens through Identity Loom. Its single credential pair and in-memory session belong only to the loopback portal server; they do not create application users or resolve the hosted private-access release gate.
 
 ## Source-of-truth rule
 

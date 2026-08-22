@@ -4,7 +4,7 @@ wide: true
 description: Category, search, product-detail, semantic option, variant, add-on, bundle, pricing, and stock journey.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-09'
+last_verified: '2026-08-22'
 source_of_truth:
     - apps/storefront/src/app/pages/en/collections
     - apps/storefront/src/app/pages/en/product/[slug].page.ts
@@ -90,6 +90,8 @@ product id
 ```
 
 Quantity is applied after identity matching and remains subject to current stock.
+
+Catalogue option, add-on, attribute, and taxonomy labels are Machine-2 strings: the storefront renders them as returned, not through Transloco. UI chrome such as “View all” stays on Transloco keys.
 
 ## Price and stock ownership
 

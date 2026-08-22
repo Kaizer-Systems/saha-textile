@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-18",
+	"lastVerified": "2026-08-22",
 	"route": "/getting-started/first-flight",
 	"title": "First Flight",
 	"summary": "A persona-led, route-spanning orientation that teaches contributors how to find current evidence, follow the architecture, and stop safely when the portal exposes planned intent.",
@@ -206,7 +206,7 @@
 					"route": "/database/schema-nebula",
 					"anchor": "how-to-read-the-constellation",
 					"title": "Inspect persistence evidence",
-					"instruction": "Use the constellation to distinguish 35 graph-backed current nodes from 30 target ghosts and the separate 40-model source catalogue.",
+					"instruction": "Use the constellation to distinguish 37 graph-backed current nodes from 30 target ghosts and the separate 40-model source catalogue.",
 					"why": "An architecture plan does not make a collection implemented."
 				},
 				{

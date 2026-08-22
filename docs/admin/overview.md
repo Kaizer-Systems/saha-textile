@@ -4,7 +4,7 @@ wide: true
 description: Start here before changing the Angular administration application.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - apps/admin/src/app
     - apps/api/src/admin

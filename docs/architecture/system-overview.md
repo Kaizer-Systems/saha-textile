@@ -4,7 +4,7 @@ wide: true
 description: High-level architecture and dependency direction.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - AGENTS.md
     - apps/api/.env.example
@@ -51,3 +51,6 @@ Configuration is injected at runtime, not baked into builds, and secrets cross e
 
 - The **API** receives all secrets through its environment (local `.env`; deploy-time env files / Docker Compose secrets).
 - The **Angular apps** receive only a public `config.json`, loaded at boot, carrying non-secret values (API/site URLs, locales, public client IDs). No secret ever reaches a browser build.
+- The **local developer portal** receives one separate username/password pair in its gitignored `.env.local`. Only the native loopback server reads it; child builds receive a stripped environment, and no API, MongoDB, or commerce identity code participates.
+
+Identity Loom is a local process boundary, not the production private-access design. It protects the complete composite with an in-memory browser session and refuses non-loopback binding. Any hosted developer portal still waits for `DEC-PORTAL-PRIVATE-ACCESS` and a separately approved identity/origin/deployment architecture.

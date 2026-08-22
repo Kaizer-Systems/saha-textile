@@ -4,7 +4,7 @@ wide: true
 description: Cross-journey troubleshooting map for catalogue, cart, auth, checkout, payment, order, shipment, and admin failures.
 status: planned
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - apps/storefront/src/app
     - apps/admin/src/app
@@ -35,18 +35,23 @@ flowchart TD
 
 ## Symptom map
 
-| Symptom                             | Check first                                       | Then inspect                                    | Never do                             |
-| ----------------------------------- | ------------------------------------------------- | ----------------------------------------------- | ------------------------------------ |
-| Product missing                     | Status, locale route, redirect/410 policy         | Search index freshness and catalogue source     | Re-publish blindly                   |
-| Variant cannot add                  | Semantic role and exact combination               | Stock, add-ons, measurements, line signature    | Force a default invalid variant      |
-| Cart differs after login            | Guest/user ownership and merge notices            | Line signatures, stock, expired intent          | Drop conflicting lines silently      |
-| Checkout total changed              | Cart/quote version                                | INR price, promotions, tax, FX, shipping        | Trust the old browser total          |
-| Coupon rejected                     | Code, time window, scope, conditions              | Priority/stacking and current cart              | Apply a client-only discount         |
-| Payment “success” but order pending | Verified callback/webhook                         | Amount/currency/idempotency and attempt state   | Mark paid from return URL            |
-| Customer cannot open order          | Session and resource ownership                    | Order snapshot/read model                       | Remove ownership checks              |
-| Admin action hidden/forbidden       | Permission/version and role                       | UI mapping, then API policy                     | Treat UI visibility as authorization |
-| Refund stuck                        | Payment/refund identifiers and provider reference | Idempotency, amount, currency, provider outcome | Mark processed before confirmation   |
-| Notification missing                | Channel/category switch and consent               | Outbox/provider delivery state                  | Roll back the business event         |
+| Symptom                               | Check first                                       | Then inspect                                        | Never do                                 |
+| ------------------------------------- | ------------------------------------------------- | --------------------------------------------------- | ---------------------------------------- |
+| Product missing                       | Status, locale route, redirect/410 policy         | Search index freshness and catalogue source         | Re-publish blindly                       |
+| Variant cannot add                    | Semantic role and exact combination               | Stock, add-ons, measurements, line signature        | Force a default invalid variant          |
+| Cart differs after login              | Guest/user ownership and merge notices            | Line signatures, stock, expired intent              | Drop conflicting lines silently          |
+| Registration resumes unexpectedly     | `st_signup` pending projection and route history  | Reload versus in-app leave; pending TTL             | Trust browser flags as verification      |
+| Social button does nothing            | SDK readiness and live provider global on click   | One-use OAuth state, popup policy, callback timer   | Cache a provider loader object blindly   |
+| Signup loses a unique-value race      | Stable `signup_identifier_taken` refusal          | Unique index, transaction rollback, spent proof     | Expose a driver duplicate-key error      |
+| Contact change refuses at confirm     | Stable `contact_in_use` refusal                   | Proof/identifier/audit transaction rollback         | Burn proof before a partial write        |
+| Address disappears after another edit | Atomic single-document address statement          | Target address id, fixed update paths/default rules | Read and replace the whole address array |
+| Checkout total changed                | Cart/quote version                                | INR price, promotions, tax, FX, shipping            | Trust the old browser total              |
+| Coupon rejected                       | Code, time window, scope, conditions              | Priority/stacking and current cart                  | Apply a client-only discount             |
+| Payment “success” but order pending   | Verified callback/webhook                         | Amount/currency/idempotency and attempt state       | Mark paid from return URL                |
+| Customer cannot open order            | Session and resource ownership                    | Order snapshot/read model                           | Remove ownership checks                  |
+| Admin action hidden/forbidden         | Permission/version and role                       | UI mapping, then API policy                         | Treat UI visibility as authorization     |
+| Refund stuck                          | Payment/refund identifiers and provider reference | Idempotency, amount, currency, provider outcome     | Mark processed before confirmation       |
+| Notification missing                  | Channel/category switch and consent               | Outbox/provider delivery state                      | Roll back the business event             |
 
 ## Evidence to capture safely
 
@@ -70,6 +75,7 @@ Never capture passwords, OTPs, access/refresh tokens, guest-token plaintext, car
 5. **Separate business and communication state.** A failed notification does not erase a successful order transition.
 6. **Reconcile from authority.** Replace browser assumptions with validated server truth after reconnect, auth, or conflict.
 7. **Audit privileged/manual actions.** Operator overrides need reason, actor, time, and before/after evidence.
+8. **Use the right proof layer.** Unit tests prove rules and refusals; provider popups, user-gesture constraints, navigation/reload behavior, and complete multi-page social journeys require a real browser plus before/after persistence evidence.
 
 ## Diagnostic checklist
 

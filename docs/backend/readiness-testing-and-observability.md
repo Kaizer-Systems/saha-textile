@@ -4,7 +4,7 @@ wide: true
 description: Liveness versus readiness, logging, metrics, testing layers, transaction proof, and backend definition of done.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - apps/api/src/health
     - apps/api/src/infra/persistence.module.ts
@@ -78,18 +78,18 @@ Avoid high-cardinality labels such as raw user id, order id, email, token, full 
 
 ## Current automated-test evidence
 
-| Package            | Present evidence                                                                                                               | Limitation                                                                       |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| `contracts`        | Schema suites cover common identity, authority, account, catalogue, media, inventory, content and commerce families            | Complete operation DTO/OpenAPI wiring remains                                    |
-| `core-domain`      | Pricing, visibility, signup/password/PIN policy, effective-permission, runtime-purity and port-conformance suites              | Complete use-case/state-machine coverage remains                                 |
-| Mongo adapter      | Source-only naming checks and rs0-gated integration suites cover transactions, identity/authority and domain adapters          | Integration checks require `RUN_DB_IT=1`; broader HTTP/workflow adoption remains |
-| API                | Platform, route-contract, OpenAPI, CSRF/session, identity/account, role/authority and feature suites are included in typecheck | Full live HTTP/idempotency workflow coverage remains                             |
-| HTTP transport     | Framework-free policy suites cover CSRF, refresh single-flight, cross-tab exclusion and refusal mapping                        | Browser integration does not replace feature-flow coverage                       |
-| Storefront / Admin | Focused gateway, interceptor, state, route, identity/account and presentation suites                                           | Feature/page coverage remains incomplete                                         |
+| Package            | Present evidence                                                                                                                                             | Limitation                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `contracts`        | Schema suites cover common identity, authority, account, catalogue, media, inventory, content and commerce families                                          | Complete operation DTO/OpenAPI wiring remains                                    |
+| `core-domain`      | Pricing, visibility, signup/password/PIN policy, effective-permission, runtime-purity and port-conformance suites                                            | Complete use-case/state-machine coverage remains                                 |
+| Mongo adapter      | Source-only naming/enum checks and rs0-gated suites cover transactions, identity/authority, signup/contact rollback, address concurrency and domain adapters | Integration checks require `RUN_DB_IT=1`; broader HTTP/workflow adoption remains |
+| API                | Platform, route-contract, OpenAPI, CSRF/session, pending-signup, identity/account atomicity, role/authority and feature suites are included in typecheck     | Full live HTTP/idempotency workflow coverage remains                             |
+| HTTP transport     | Framework-free policy suites cover CSRF, refresh single-flight, cross-tab exclusion and refusal mapping                                                      | Browser integration does not replace feature-flow coverage                       |
+| Storefront / Admin | Focused gateway, provider-loader, registration, state, route, identity/account and presentation suites                                                       | Feature/page coverage and complete provider-account journeys remain incomplete   |
 
-Dedicated live security campaigns cover bootstrap closure, cookie sessions, audience isolation, direct-API RBAC denial, authority changes, last-administrator protection, offboarding, permission-version invalidation, BOLA and negative cases. Admin browser evidence covers password login, cookie-only reload, expiry recovery, CSRF-protected authority mutation, refusal recovery, and logout. Real-browser PIN login and real storefront provider flows remain open proof obligations.
+Dedicated live security campaigns cover bootstrap closure, cookie sessions, audience isolation, direct-API RBAC denial, authority changes, last-administrator protection, offboarding, permission-version invalidation, BOLA and negative cases. Admin browser evidence covers password login, cookie-only reload, expiry recovery, CSRF-protected authority mutation, refusal recovery, and logout. Storefront browser probes cover the live Facebook SDK-object boundary plus pending social-signup rendering, reload retention, abandonment deletion, and Google grant-revocation dispatch. They do not prove a complete provider-account round trip. Real-browser PIN login, Google/Meta account journeys, and Meta console acceptance remain open proof obligations.
 
-The former zero-spec Angular baseline has been superseded: both applications now test their cookie-session transport and state boundaries, and the admin also tests protected routing. These focused tests are not broad UI coverage. The backend gate still rejects permanently skipped transaction proof as a production-done state.
+The former zero-spec Angular baseline has been superseded: both applications now test their cookie-session transport and state boundaries, and the admin also tests protected routing. Storefront tests can simulate provider callbacks and changing SDK globals, but they cannot prove popup/user-gesture behavior, provider-console acceptance, reload/navigation semantics against a live server, or an end-to-end provider account. Those claims require a real browser and before/after persistence evidence. The backend gate still rejects permanently skipped transaction proof as a production-done state.
 
 ## Test pyramid for this backend
 

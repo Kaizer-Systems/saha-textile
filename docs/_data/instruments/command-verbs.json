@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-18",
+	"lastVerified": "2026-08-22",
 	"title": "⌘K Verbs",
 	"summary": "Turn the dynamic page navigator into a read-only action grammar without creating a second search index or allowing the palette to mutate project state.",
 	"sourceOfTruth": [

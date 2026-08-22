@@ -5,7 +5,7 @@ slug: /decisions/gate-console
 wide: true
 status: implemented
 audience: [beginner, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
     - docs/engineering-live-context/owner-decisions-log.mdx

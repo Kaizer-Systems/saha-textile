@@ -7,7 +7,7 @@
  * `AuthSession` becomes `authsessions`, `MessageOutbox` becomes `messageoutboxes`. Every
  * multiword model in this adapter therefore landed on a lowercase, sometimes wrongly
  * pluralized physical name that does NOT match the ratified Schema Nebula graph
- * (`docs/_data/instruments/schema-nebula.json`, 65 nodes) or the auth architecture's
+ * (`docs/_data/instruments/schema-nebula.json`, 67 nodes) or the auth architecture's
  * §7 collection list (as amended by `DEC-ACCOUNT-SEPARATION`). The auth delivery matrix
  * records physical-name alignment as **RECONCILE FIRST**.
  *
@@ -27,7 +27,7 @@
  * Authentication rate limiting is mandatory, but the auth architecture (§7 closing note)
  * keeps its backing an adapter/runtime concern rather than a locked Schema Nebula node.
  * It gets an explicit, consistent name here so its physical identity is still reviewed —
- * it simply must never be counted as one of the 65 stars.
+ * it simply must never be counted as one of the 67 stars.
  */
 
 /** Model class name → ratified physical collection name. */
@@ -102,30 +102,20 @@ export type ModelName = keyof typeof COLLECTION_NAMES;
  * Collections deliberately outside the ratified data model.
  *
  * MACHINERY, not domain data. A rate-limit counter and a half-finished signup are scaffolding
- * that exists so real records can be written safely; putting either into the governed 65-node
+ * that exists so real records can be written safely; putting either into the governed 67-node
  * graph would make that graph LESS truthful, not more, by promoting a runtime concern to the
  * same standing as an order or a customer.
  *
  * Absence from the graph is a classification here, never a shortcut. Anything that is genuinely
- * part of the data model belongs in `GRAPH_RECONCILIATION_OWED` below and gets fixed.
+ * part of the data model belongs in the Schema Nebula graph, not in a debt list.
  */
 const RUNTIME_ONLY_COLLECTIONS = ['authRateLimits', 'pendingSignups', 'pendingContactChanges'] as const;
 
 /**
- * ⚠ OWED WORK — real domain models the ratified graph has not caught up with.
- *
- * These are NOT machinery. `productQuestions` and `ratingAggregates` are implemented, durable,
- * business-meaningful collections that belong in the Schema Nebula graph and are missing from
- * it. Every entry here is a documentation debt against the portal/owner, and clearing it means
- * ADDING the node and removing the name from this list — never renaming the collection to fit.
- *
- * Kept separate from `RUNTIME_ONLY_COLLECTIONS` on purpose. One combined list let a deliberate
- * exclusion and an unpaid debt look identical, so the debt could sit there indefinitely
- * wearing the same clothes as a decision. Two lists mean this one can only shrink.
- *
- * Tracked in `project-progress.mdx` under the Developer portal section.
+ * Formerly held implemented collections the graph had not caught up with.
+ * Empty: `productQuestions` and `ratingAggregates` are now Schema Nebula nodes.
  */
-export const GRAPH_RECONCILIATION_OWED = ['productQuestions', 'ratingAggregates'] as const;
+export const GRAPH_RECONCILIATION_OWED = [] as const;
 
 /** Every collection the Schema Nebula assertion must skip, whatever the reason. */
 export const NON_GRAPH_COLLECTIONS: readonly string[] = [...RUNTIME_ONLY_COLLECTIONS, ...GRAPH_RECONCILIATION_OWED];

@@ -4,7 +4,7 @@ wide: true
 description: Atomic-write design, replica-set verification, current source-generated catalogue, and target-completeness requirements.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - packages/adapters-db-mongo/src
     - packages/adapters-db-mongo/scripts/generate-catalogue.ts
@@ -24,7 +24,7 @@ source_of_truth:
 
 # Transactions and generated catalogue
 
-The transaction infrastructure and shared capability are implemented. The `rs0` single-node replica set is provisioned by the Docker profile, `TransactionManagerPort` is implemented by `MongoTransactionManager`, nested calls join the outer `AsyncLocalStorage` session, and the adapter is bound through API dependency injection. Six replica-set integration tests prove transaction-manager commit and rollback behavior, while three order-and-cart tests prove that order creation commits or rolls back order save and cart consumption as one unit.
+The transaction infrastructure and shared capability are implemented. The `rs0` single-node replica set is provisioned by the Docker profile, `TransactionManagerPort` is implemented by `MongoTransactionManager`, nested calls join the outer `AsyncLocalStorage` session, and the adapter is bound through API dependency injection. Six replica-set integration tests prove transaction-manager commit and rollback behavior, while focused suites prove order-and-cart atomicity, signup customer/credential/provider-identity atomicity, contact-change proof/identifier/audit atomicity, and concurrent address-write safety.
 
 ## Why a replica set is required
 
@@ -59,6 +59,8 @@ The core port describes an atomic unit without leaking a Mongoose `ClientSession
 
 At minimum:
 
+- signup finalisation where customer, password credential when present, and provider identity agree — implemented;
+- contact-change confirmation where proof consumption, identifier write, and audit evidence agree — implemented;
 - session creation/refresh rotation where identity/session/audit facts agree;
 - guest-to-user cart merge;
 - place order with order, payment attempt, inventory/reservation/ledger, cart, audit/outbox;
@@ -73,7 +75,7 @@ Do not wrap external network calls inside a long database transaction. Use durab
 
 - Keep the callback bounded and deterministic.
 - Do not run parallel operations inside one transaction with `Promise.all`.
-- Pass transaction context explicitly to participating repositories.
+- Join through the transaction manager's ambient `AsyncLocalStorage` session when a port does not expose transaction context; continue passing the opaque context explicitly only through ports that already declare it. Never leak a Mongoose session into core.
 - Generate or reserve idempotency/correlation evidence before unsafe retries.
 - Treat unknown commit result as a reconciliation problem, not automatic failure/success.
 - Test rollback after every participating write.
@@ -107,7 +109,7 @@ Never assume a Mongoose schema edit automatically migrates historical documents.
 
 ## Current generated catalogue
 
-The composite portal publishes a source-only **Schema Observatory** at `/database/catalogue/`. The deterministic 2026-08-18 regeneration imports every exported Mongoose model without opening a connection and measures:
+The composite portal publishes a source-only **Schema Observatory** at `/database/catalogue/`. The current deterministic regeneration imports every exported Mongoose model without opening a connection and measures:
 
 - 40 current models;
 - 479 schema paths;
@@ -115,7 +117,7 @@ The composite portal publishes a source-only **Schema Observatory** at `/databas
 - 27 paths whose `Mixed` or array-of-`Mixed` shape is explicitly marked temporary;
 - 13 excluded-by-default credential, PIN, token, code, state, nonce, PKCE, CSRF and private-contact fields, all omitted from synthetic previews.
 
-The catalogue covers separated customer/operator populations, extracted credential and provider-identity collections, pending signup/contact-change proof, and the remaining core, identity, authorization, consent, catalogue, variant, merchandising, media, inventory, governance, notification, and content models — **40 models / 479 fields / 107 indexes**. `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient non-graph evidence; `productQuestions` and `ratingAggregates` remain graph-reconciliation debt. The catalogue is current-model evidence, not a finished database dictionary: it does not claim complete HTTP/workflow adoption, migration history, retention completeness, or complete nested validators.
+The catalogue covers separated customer/operator populations, extracted credential and provider-identity collections, pending signup/contact-change proof, and the remaining core, identity, authorization, consent, catalogue, variant, merchandising, media, inventory, governance, notification, and content models — **40 models / 479 fields / 107 indexes**. `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime-only evidence. The catalogue is current-model evidence, not a finished database dictionary: it does not claim complete HTTP/workflow adoption, migration history, retention completeness, or complete nested validators.
 
 ## Target-complete catalogue gate
 

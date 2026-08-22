@@ -26,7 +26,7 @@
 					<div class="comp-attrs">
 						@for (a of comp.attributes; track a.code) {
 						<span>
-							{{ a.label | transloco }}:
+							{{ a.label }}:
 							<b>{{ a.value }}</b>
 						</span>
 						}
@@ -95,7 +95,7 @@
 			</li>
 			} @for (group of optionGroups(); track group.code) {
 			<li class="s-option">
-				<span class="s-name">{{ group.label | transloco }}: {{ selectedTermLabel(group) | transloco }}</span>
+				<span class="s-name">{{ group.label }}: {{ selectedTermLabel(group) }}</span>
 				<span class="s-price">—</span>
 			</li>
 			}

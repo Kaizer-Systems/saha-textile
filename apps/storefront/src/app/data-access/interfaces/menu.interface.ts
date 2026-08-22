@@ -3,6 +3,10 @@ export interface IMenu {
 	path?: string;
 	params?: IMenu;
 	title?: string;
+	/** False when `title` is catalog/taxonomy copy and must not go through Transloco. */
+	i18nTitle?: boolean;
+	/** Interpolation for a Machine-1 title key, e.g. `{ name }` on `view_all`. */
+	titleParams?: Record<string, string>;
 	type?: string;
 	active?: boolean;
 	image?: string;

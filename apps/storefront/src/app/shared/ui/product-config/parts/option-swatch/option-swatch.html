@@ -2,12 +2,12 @@
 	@if (label()) {
 	<div class="option-swatch-head">
 		<h4>
-			{{ label() | transloco }} @if (required()) {
+			{{ label() }} @if (required()) {
 			<span class="req">*</span>
 			}
 		</h4>
 		@if (selectedLabel()) {
-		<span class="selected-hint">{{ selectedLabel() | transloco }}</span>
+		<span class="selected-hint">{{ selectedLabel() }}</span>
 		}
 	</div>
 	} @switch (displayStyle()) { @case ('dropdown') {
@@ -20,7 +20,7 @@
 			[value]="t.code"
 			[selected]="t.code === selected()"
 		>
-			{{ t.label | transloco }}@if (t.price_delta) { (+{{ t.price_delta | currencySymbol }}) }
+			{{ t.label }}@if (t.price_delta) { (+{{ t.price_delta | currencySymbol }}) }
 		</option>
 		}
 	</select>
@@ -37,7 +37,7 @@
 				[checked]="t.code === selected()"
 				(change)="select(t.code)"
 			/>
-			<span class="opt-label">{{ t.label | transloco }}</span>
+			<span class="opt-label">{{ t.label }}</span>
 			<span class="opt-delta">
 				{{ t.price_delta ? ('+' + (t.price_delta | currencySymbol)) : ('free' | transloco) }}
 			</span>
@@ -59,7 +59,7 @@
 				[src]="t.image || 'assets/images/product.png'"
 				[alt]="t.label"
 			/>
-			<span class="tile-label">{{ t.label | transloco }}</span>
+			<span class="tile-label">{{ t.label }}</span>
 			<span class="tile-delta">
 				{{ t.price_delta ? ('+' + (t.price_delta | currencySymbol)) : ('+' + (0 | currencySymbol)) }}
 			</span>
@@ -73,7 +73,7 @@
 		<li
 			[class.active]="t.code === selected()"
 			placement="top"
-			ngbTooltip="{{ t.label | transloco }}"
+			ngbTooltip="{{ t.label }}"
 		>
 			<button
 				type="button"
@@ -92,7 +92,7 @@
 				type="button"
 				(click)="select(t.code)"
 			>
-				{{ t.label | transloco }}
+				{{ t.label }}
 			</button>
 		</li>
 		}
@@ -106,7 +106,7 @@
 				type="button"
 				(click)="select(t.code)"
 			>
-				{{ t.label | transloco }}@if (t.price_delta) { (+{{ t.price_delta | currencySymbol }}) }
+				{{ t.label }}@if (t.price_delta) { (+{{ t.price_delta | currencySymbol }}) }
 			</button>
 		</li>
 		}

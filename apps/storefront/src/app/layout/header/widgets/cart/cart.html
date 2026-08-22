@@ -79,7 +79,7 @@
 	</div>
 	} @if ((cartItem$ | async)?.length) {
 	<ul class="cart-list">
-		@for (item of cartItem$ | async; track item) {
+		@for (item of cartItem$ | async; track item.id) {
 		<li class="product-box-contain">
 			<div class="drop-cart">
 				<a

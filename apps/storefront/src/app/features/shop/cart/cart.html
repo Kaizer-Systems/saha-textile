@@ -8,7 +8,7 @@
 					<div class="table-responsive">
 						<table class="table">
 							<tbody>
-								@for (item of cartItem$ | async; track item) {
+								@for (item of cartItem$ | async; track item.id) {
 								<tr class="product-box-contain">
 									<td class="product-detail">
 										<div class="product border-0">

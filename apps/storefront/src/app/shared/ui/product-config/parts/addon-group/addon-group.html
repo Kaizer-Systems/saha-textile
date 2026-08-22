@@ -2,10 +2,10 @@
 	@for (group of groups(); track group.code) {
 	<div class="addon-block">
 		<div class="addon-head">
-			<h4>{{ 'required_addon' | transloco }}: {{ group.label | transloco }}</h4>
+			<h4>{{ 'required_addon' | transloco }}: {{ group.label }}</h4>
 		</div>
 		@if (group.help_text) {
-		<p class="addon-help text-content">{{ group.help_text | transloco }}</p>
+		<p class="addon-help text-content">{{ group.help_text }}</p>
 		}
 		<app-option-swatch
 			[terms]="group.terms"

@@ -7,7 +7,7 @@
 		@for (attr of attributes(); track attr.code) {
 		<li class="attributes-pill">
 			<i class="{{ attr.icon || 'ri-price-tag-3-line' }}"></i>
-			<span class="attr-label">{{ attr.label | transloco }}:</span>
+			<span class="attr-label">{{ attr.label }}:</span>
 			<span class="attr-value">{{ attr.value }}</span>
 		</li>
 		}

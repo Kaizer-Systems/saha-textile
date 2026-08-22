@@ -3,7 +3,7 @@ title: Choose Your Path
 description: Select the shortest reliable onboarding route for your role.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/execution-roadmap.mdx

@@ -4,7 +4,7 @@ description: Verified Mongoose models, indexes, repositories, mappers, seed tool
 search_keywords: 'mongo rs0 replica set connection uri directConnection models indexes repositories'
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - packages/adapters-db-mongo/src/models
     - packages/adapters-db-mongo/src/repositories
@@ -42,11 +42,11 @@ The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps,
 
 Every schema passes an explicit `collection` option, and `packages/adapters-db-mongo/src/collection-names.ts` is the single declaration checked by `test/collection-names.test.ts`. `pnpm mongo:align-collections` aligns legacy inferred names with the ratified names; it is idempotent, refuses to merge when both names hold data, and never runs at application boot.
 
-The generated catalogue confirms all 40 physical names directly from Mongoose metadata: 479 fields and 107 indexes. Thirty-five names map to ratified Schema Nebula nodes (**65 / 35 / 30**). `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime collections outside the graph; `productQuestions` and `ratingAggregates` are durable current collections awaiting graph reconciliation.
+The generated catalogue confirms all 40 physical names directly from Mongoose metadata: 479 fields and 107 indexes. Thirty-seven names map to ratified Schema Nebula nodes (**67 / 37 / 30**). `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime collections outside the graph.
 
 ## Current repository inventory
 
-Repository adapters cover the original domain stores plus customer/operator auth, provider identities, pending proof, authorization roles/assignments, consent, catalogue structure, merchandising, inventory, media, governance and content. Identity adapters are bound into session, OTP, signup, provider, password, contact-change, recovery, verification, invite, and admin flows. Role and assignment adapters drive effective-permission resolution and deny-by-default admin authority APIs; catalogue/media/inventory/governance/content adapters remain tested capabilities whose wider HTTP workflows are incomplete.
+Repository adapters cover the original domain stores plus customer/operator auth, provider identities, pending proof, authorization roles/assignments, consent, catalogue structure, merchandising, inventory, media, governance and content. Identity adapters are bound into session, OTP, signup, provider, password, contact-change, recovery, verification, invite, and admin flows. `AuthIdentityRepository` is the only provider-link writer; customer saves no longer replace the identity projection. Signup repositories join one ambient transaction for customer, credential, and provider identity, while contact confirmation joins proof consumption, identifier mutation, and audit recording. Role and assignment adapters drive effective-permission resolution and deny-by-default admin authority APIs; catalogue/media/inventory/governance/content adapters remain tested capabilities whose wider HTTP workflows are incomplete.
 
 ### Common pattern
 
@@ -61,6 +61,8 @@ save/upsert → strip public id → findByIdAndUpdate($set) → mapper
 - Category tree returns a flat depth/display-order sort; hierarchy reconstruction is a consumer concern.
 - Active promotions use start/end-window filtering and priority sort.
 - Customer and admin-user credential lookups explicitly request otherwise hidden password/PIN hashes; public mapping returns neither. Password and provider identity records are stored outside account documents.
+- Customer email/phone unique-index races translate into core `DuplicateIdentifierError`; API callers map that stable fact to their operation-specific refusal without exposing driver details.
+- Customer address add/update uses one Mongo statement. Default insertion uses a `$literal`-protected aggregation pipeline; targeted updates use fixed field paths and array filters, preventing concurrent read-modify-write loss.
 - Session/challenge/token repositories explicitly select hidden hashes only inside credential verification paths and never expose plaintext secrets.
 - Order listing scopes by `userId`; the controller applies customer ownership to single-order reads and gives staff/admin an explicit support bypass.
 - Order status update appends a timeline value but throws a generic adapter error when missing.
@@ -79,7 +81,7 @@ Current risks:
 - nested `Mixed` fields are type-cast, not runtime-parsed;
 - adapter values are often returned as broad public entity contracts rather than operation-specific response DTOs;
 - compatibility defaults can mask model/contract widening until the planned user-model migration lands;
-- order save and cart consumption share the available transaction context; most other multi-record workflows and entity-version policies remain open;
+- order save/cart consumption, signup finalisation, and contact-change confirmation share their required transaction contexts; most other multi-record workflows and entity-version policies remain open;
 - no migration/version discriminator protects historical shapes.
 
 ## Current connection behavior

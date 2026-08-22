@@ -4,7 +4,7 @@ wide: true
 description: How AnalogJS file routes, route metadata, dynamic SSR, and browser-only code fit together.
 status: implemented
 audience: [beginner, frontend]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/storefront/src/app/app.config.server.ts
@@ -18,15 +18,16 @@ The storefront does not maintain a central Angular `Routes` array. AnalogJS disc
 
 ## From filename to URL
 
-| File shape                             | URL shape            | Example               |
-| -------------------------------------- | -------------------- | --------------------- |
-| `index.page.ts`                        | `/`                  | Home                  |
-| `cart.page.ts`                         | `/cart`              | Cart                  |
-| `account/addresses.page.ts`            | `/account/addresses` | Saved addresses       |
-| `blog/[slug].page.ts`                  | `/blog/:slug`        | Blog detail           |
-| `en/product/[slug].page.ts`            | `/en/product/:slug`  | Product detail        |
-| `en/collections/[...category].page.ts` | `/en/collections/**` | Nested category route |
-| `[...not-found].page.ts`               | Catch-all            | Unknown URL fallback  |
+| File shape                             | URL shape            | Example                |
+| -------------------------------------- | -------------------- | ---------------------- |
+| `index.page.ts`                        | `/`                  | Home                   |
+| `cart.page.ts`                         | `/cart`              | Cart                   |
+| `auth/register.page.ts`                | `/auth/register`     | Resumable registration |
+| `account/addresses.page.ts`            | `/account/addresses` | Saved addresses        |
+| `blog/[slug].page.ts`                  | `/blog/:slug`        | Blog detail            |
+| `en/product/[slug].page.ts`            | `/en/product/:slug`  | Product detail         |
+| `en/collections/[...category].page.ts` | `/en/collections/**` | Nested category route  |
+| `[...not-found].page.ts`               | Catch-all            | Unknown URL fallback   |
 
 Brackets create dynamic parameters. Three dots create a catch-all parameter. The `.page.ts` suffix marks a routable page.
 
@@ -48,6 +49,8 @@ export default Collections;
 ```
 
 Keep querying, filtering, mutation, and presentation orchestration inside the appropriate feature/data layer.
+
+The registration route is a deliberate exception to an activation-only guard list: its `canDeactivate` guard distinguishes in-app abandonment from a browser reload. Leaving discards server-held pending signup state without blocking navigation; reload does not run the guard and the page resumes through `GET /auth/storefront/signup`.
 
 ## Rendering mode
 

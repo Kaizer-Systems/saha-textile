@@ -3,7 +3,7 @@ title: Database Overview
 description: Current Mongo adapter boundary, durable-data status, and future generated catalogue.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - packages/adapters-db-mongo/src
     - packages/contracts/src
@@ -16,7 +16,7 @@ source_of_truth:
 
 # Database overview
 
-The Mongo adapter contains real connection configuration, 40 models, indexes, mappers, repositories, seed and index-reconciliation tooling, rs0-gated integration suites, and a bound transaction manager. The adapter remains partial at the whole-roadmap level. The interactive [Schema Nebula](./schema-nebula) maps the governed 65-collection target with 35 current nodes, while the source-only catalogue documents all 40 current Mongoose models.
+The Mongo adapter contains real connection configuration, 40 models, indexes, mappers, repositories, seed and index-reconciliation tooling, rs0-gated integration suites, and a bound transaction manager. The adapter remains partial at the whole-roadmap level. The interactive [Schema Nebula](./schema-nebula) maps the governed 67-collection target with 37 current nodes, while the source-only catalogue documents all 40 current Mongoose models.
 
 ## Current implementation boundary
 
@@ -32,13 +32,13 @@ Models currently exist for the original commerce/catalogue surface plus separate
 | Example documents            | Sanitised synthetic examples   | **Scaffolded**; sensitive excluded fields omitted |
 | Stable DTO/migration mapping | Contracts, mappers, migrations | **Deferred** until mappings and migrations mature |
 
-The catalogue generator imports model metadata without opening a database connection. It remains explicitly current-model-only and scaffolded. The deterministic 2026-08-18 regeneration measures **40 models / 479 fields / 107 indexes / 27 temporary shapes** and omits all **13** excluded-by-default fields from synthetic previews.
+The catalogue generator imports model metadata without opening a database connection. It remains explicitly current-model-only and scaffolded. The current deterministic regeneration measures **40 models / 479 fields / 107 indexes / 27 temporary shapes** and omits all **13** excluded-by-default fields from synthetic previews.
 
 Do not manually duplicate field tables once generation is available.
 
 ## Database documentation map
 
-- [Schema Nebula](./schema-nebula) — interactive 65-node current-versus-target collection constellation, context lenses, decisions and relationships.
+- [Schema Nebula](./schema-nebula) — interactive 67-node current-versus-target collection constellation, context lenses, decisions and relationships.
 - [Current Mongo adapter map](./current-adapter-map) — models, indexes, repositories, mappings and verified gaps.
 - [Transactions and generated catalogue](./transactions-and-generation) — atomic-write boundary, replica-set proof, generation trigger and page contract.
 - [Contracts and validation](../backend/contracts-and-validation) — persistence versus request/domain/response shapes.
@@ -48,7 +48,8 @@ Do not manually duplicate field tables once generation is available.
 
 - Connection configuration and `.env.example` implement the ratified self-hosted Docker MongoDB 8.3 single-node replica set (`rs0`), with the same profile locally and in production; previous hosted-cluster/SRV assumptions are removed. Start the local set with `pnpm mongo:up` (see [current adapter map](./current-adapter-map#local-replica-set-lifecycle)).
 - Current models use multiple `Mixed` nested structures, which are weaker than the future generated validator/catalogue needs.
-- `TransactionManagerPort` and `MongoTransactionManager` are bound in API composition and commit/rollback-proven against rs0. Order creation adopts the capability for order save plus cart consumption; idempotency and the wider inventory, payment, audit, and outbox transaction boundary remain open.
+- `TransactionManagerPort` and `MongoTransactionManager` are bound in API composition and commit/rollback-proven against rs0. Order creation adopts it for order save plus cart consumption; signup uses it for customer/credential/provider identity; contact confirmation uses it for proof/identifier/audit. Address writes are single-document atomic statements. Checkout idempotency and the wider inventory, payment, order-audit, and outbox transaction boundary remain open.
+- Storage enums at 55 sites across 21 model files derive from shared contract/domain option sets rather than copied arrays; intentional persistence-only differences stay documented at the model boundary.
 - Payment, shipment, return/refund and search-outbox records remain target-only. Inventory, consent, notifications and broad audit evidence now have current models.
-- Every model declares its physical collection name. Schema Nebula promotes 35 graph-backed names. `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime machinery outside the graph; `productQuestions` and `ratingAggregates` are durable collections awaiting graph reconciliation.
+- Every model declares its physical collection name. Schema Nebula promotes 37 graph-backed names. `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime machinery outside the graph.
 - DB integration suites remain opt-in through `RUN_DB_IT=1`; CI execution and HTTP/workflow adoption remain separate readiness requirements.

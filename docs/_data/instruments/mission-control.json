@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-18",
+	"lastVerified": "2026-08-22",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
 		"docs/engineering-live-context/project-progress.mdx"
@@ -57,16 +57,16 @@
 			"title": "Cookie-session auth, PIN, OTP & OAuth",
 			"deps": ["C"],
 			"blockingGates": [],
-			"summary": "Cookie sessions, atomic refresh rotation/reuse revocation, session-bound CSRF, storefront/admin audiences, verified-before-creation signup, password and OTP login by email or phone, Google and Facebook verification adapters, identity linking, remember-me lifetime alignment, password management, account self-service, guest-cart adoption, PIN lockout, admin invites and HTTP resume, a closed 89-code permission registry, active role-assignment resolution, deny-by-default administration, consent/privacy seams, ownership checks, Account Security, and the admin idle soft-lock are implemented. The chunk remains partial until provider credentials and approved origins are configured, provider and PIN flows are proven in supported browsers, pending-intent continuation is implemented, and older privileged routes finish granular-permission adoption.",
-			"dod": "Partial: the server and storefront identity/account paths are implemented. Complete provider activation and browser proof, PIN-login browser proof, pending-intent continuation, and granular-permission adoption."
+			"summary": "Cookie sessions, atomic refresh rotation/reuse revocation, session-bound CSRF, storefront/admin audiences, resumable verified-before-creation signup, transactional customer/credential/provider-identity finalisation, password and OTP login by email or phone, Google and Facebook verification adapters, identity linking, transactional contact confirmation, atomic address writes, remember-me lifetime alignment, password management, account self-service, guest-cart adoption, PIN lockout, admin invites and HTTP resume, a closed 89-code permission registry, active role-assignment resolution, deny-by-default administration, consent/privacy seams, ownership checks, Account Security, and the admin idle soft-lock are implemented. The chunk remains partial until complete provider-account round trips and Meta console acceptance are proven, PIN is proven in a supported browser, pending-intent continuation is implemented, and older privileged routes finish granular-permission adoption.",
+			"dod": "Partial: the server and storefront identity/account paths are implemented, with focused provider-SDK and pending-signup browser evidence. Complete Google/Meta account journeys, Meta console verification, PIN-login browser proof, pending-intent continuation, and granular-permission adoption remain."
 		},
 		{
 			"id": "E",
 			"title": "Mongo persistence & transaction adoption",
 			"deps": ["C"],
 			"blockingGates": [],
-			"summary": "Chunk E persistence is complete. The adapter exports 40 Mongoose models covering the original surface plus separated customer/operator identity, credentials, pending verification state, authorization, consent, catalogue structure, variants, bundles, relations, inventory, media, audit, notifications, FAQ, Q&A, reviews and rating aggregates. Atomic catalogue, inventory, governance and content workflows are rs0-proven.",
-			"dod": "Complete: 100 adapter integration tests cover uniqueness, TTL, visibility, concurrency, transaction rollback, order-and-cart atomicity, role assignments and response-safe mapping."
+			"summary": "Chunk E persistence is complete. The adapter exports 40 Mongoose models covering the original surface plus separated customer/operator identity, credentials, pending verification state, authorization, consent, catalogue structure, variants, bundles, relations, inventory, media, audit, notifications, FAQ, Q&A, reviews and rating aggregates. Provider identities have one writer; signup and contact-change units join the ambient rs0 transaction; customer address writes are single-statement atomic; storage enums derive from shared option sources.",
+			"dod": "Complete: adapter integration evidence covers uniqueness, TTL, visibility, concurrent address writes, transaction rollback, order/cart and identity/contact atomicity, role assignments, and response-safe mapping."
 		},
 		{
 			"id": "F",

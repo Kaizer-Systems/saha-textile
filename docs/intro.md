@@ -4,7 +4,7 @@ slug: /
 description: Private developer portal for Saha Textile.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - apps/developer-portal/src
@@ -87,7 +87,7 @@ import { MissionControl } from '@site/src/components/MissionControl';
 	<a className="portalPathCard" href="/database/schema-nebula">
 		<span>Data · Explore</span>
 		<h3>Schema Nebula</h3>
-		<p>Navigate 65 physical collection targets, current model evidence, context clusters and decision gravity.</p>
+		<p>Navigate 67 physical collection targets, current model evidence, context clusters and decision gravity.</p>
 	</a>
 	</div>
 </section>

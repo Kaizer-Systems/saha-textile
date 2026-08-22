@@ -4,7 +4,7 @@ wide: true
 description: Shared decision rules for state, contracts, layers, reusable UI, and cross-application behavior.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/admin/src/app/app.config.ts
@@ -61,7 +61,7 @@ The auth interceptor sends `withCredentials: true` on every request so the httpO
 
 ## Contracts today
 
-`packages/contracts/src` contains zod-backed common locale/money/pagination/error primitives and families for catalogue placements/attributes/options/variants/bundles/relations, media, inventory, content, cart, order, currency, promotion, shipping, customer, admin-user, signup, OAuth, storefront account, auth/session/admin auth, authority, permissions, roles, consent, audit, and notifications. The active locale set is runtime configuration, not a contract enum. The 89-code permission registry and admin authority contracts back API authority routes and `GET /auth/admin/me` effective permissions. Most other expanded families describe validated boundaries without Angular workflow or current API-operation adoption.
+`packages/contracts/src` contains zod-backed common locale/money/pagination/error primitives and families for catalogue placements/attributes/options/variants/bundles/relations, media, inventory, content, cart, order, currency, promotion, shipping, customer, admin-user, signup, OAuth, storefront account, auth/session/admin auth, authority, permissions, roles, consent, audit, and notifications. `PendingSignupResponse` gives registration a safe server-owned resume projection; it does not expose provider subjects or proof internals. Named contract/domain option sets also feed persistence enums so browser/API/storage allowed values do not drift into hand-copied lists. The active locale set is runtime configuration, not a contract enum. The 89-code permission registry and admin authority contracts back API authority routes and `GET /auth/admin/me` effective permissions. Most other expanded families describe validated boundaries without Angular workflow or current API-operation adoption.
 
 These contracts are the preferred trust boundary as real endpoints replace fixtures. Existing application-local interfaces still describe many fixture/view shapes; migrate deliberately rather than renaming them “contracts.”
 

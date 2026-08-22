@@ -3,7 +3,7 @@ title: 'Pending Decisions'
 description: 'Canonical inbox of unresolved owner decisions and stable implementation gates.'
 audience: [engineering, product, operator, agent]
 document_role: canonical
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 search_keywords: 'pending decisions owner questions implementation gates unresolved'
 ---
 
@@ -11,7 +11,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 
 **Status:** Sole owner-question inbox. Nothing in this file is locked until the owner answers it and the answer is recorded in `owner-decisions-log.mdx`.
 
-**Last reconciled:** 2026-08-18
+**Last reconciled:** 2026-08-22
 
 ## How this file works
 
@@ -24,39 +24,43 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
     - mark the corresponding roadmap/progress gate resolved.
 4. Implementation tasks, credentials, external approvals, and ordinary TODOs do not belong here.
 5. `project-context/nextjs-context/` is superseded and is never a decision source.
+6. A decision may be **partially** settled. Where a `### Settled by CA confirmation` block appears
+   inside an entry, those points are locked in `owner-decisions-log.mdx`, are not open, and must
+   not be re-asked or re-decided; only the remainder of that entry is still a question. The
+   outstanding question set issued on 2026-08-21 is `tax-compliance-questionnaire-round-2.mdx`.
 
 ## Open-decision index
 
-| ID                                | Decision                                                                                 | Primary impact                                   |
-| --------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `DEC-NUMBERING`                   | Order, tax-invoice, purchase-invoice, and related document numbering                     | Orders, invoices, sequences, GST audit           |
-| `DEC-TAX-HSN`                     | Tax classes, GST slabs, and HSN granularity                                              | Catalog, checkout, invoices, accounting          |
-| `DEC-SHIPPING`                    | Launch shipping-rate policy                                                              | Checkout, Shiprocket seam, promotions            |
-| `DEC-RETURNS`                     | Return/refund policy                                                                     | Orders, returns, refunds, customer support       |
-| `DEC-PROMO-STACK`                 | Promotion and coupon stacking                                                            | Pricing engine, checkout                         |
-| `DEC-STOCK-RESERVE`               | Stock reservation timing and TTL                                                         | Inventory, checkout, payment recovery            |
-| `DEC-BACKORDER`                   | Backorder/oversell policy                                                                | Catalog, inventory, storefront                   |
-| `DEC-ORDER-SNAPSHOT`              | Immutable order-line snapshot fields                                                     | Orders, invoices, analytics, support             |
-| `DEC-ADDRESS`                     | Address model and checkout phone requirements                                            | Accounts, checkout, shipping                     |
-| `DEC-VARIANT-OVERRIDES`           | Fields variants may override                                                             | Catalog contracts and admin forms                |
-| `DEC-PRICE-DISPLAY`               | MRP, sale, and price-range behavior                                                      | Catalog, pricing, storefront                     |
-| `DEC-ADDON-MEASUREMENTS`          | Add-on pricing and measurement validation                                                | Product setup, cart, orders                      |
-| `DEC-CUSTOMER-CREDIT`             | Ledger, store credit, wallet, and points scope                                           | Customers, refunds, checkout                     |
-| `DEC-ID-SLUG`                     | IDs, business codes, slugs, and redirects                                                | Catalog, SEO, orders                             |
-| `DEC-BADGES-RAILS`                | Storefront badge and rail taxonomy                                                       | Analytics and merchandising                      |
-| `DEC-SCOPE-GAPS`                  | Missing business flows and launch scope                                                  | Whole product                                    |
-| `DEC-I18N-ROUTES`                 | Canonical locale URL policy                                                              | Routing, SEO, hreflang                           |
-| `DEC-IMG-PX`                      | Image derivative pixel ladder                                                            | Media worker and storefront images               |
-| `DEC-MEDIA-CAPS`                  | Image/video ingest limits                                                                | Upload API, admin UX, workers                    |
-| `DEC-PAYPAL-FX`                   | Treatment of PayPal FX-conversion markup                                                 | Foreign-currency pricing and margin              |
-| `DEC-INR-GATEWAY-TIMING`          | Timing of CCAvenue-to-Razorpay succession                                                | Payment adapter delivery and operations          |
-| `DEC-DOMAIN-TOPOLOGY`             | Production storefront/admin/API hostname topology                                        | Cookies, CORS, Nginx, deployment                 |
-| `DEC-TRANSLATION-QUALITY`         | French translation authorship and acceptance policy                                      | Storefront/admin copy quality and release QA     |
-| `DEC-PORTAL-PRIVATE-ACCESS`       | Developer-portal identity policy and origin-protection mechanism                         | Portal deployment, Cloudflare, service access    |
-| `DEC-CUSTOMER-SOFT-DELETE-OPS`    | **VERY IMPORTANT** — soft-deleted customer revive, access, and order/ledger corner cases | CRM list/detail, auth, orders, uniqueness, MSG91 |
-| `DEC-ACCOUNT-EMPTY-TILES`         | Visibility of unavailable account-dashboard metrics                                      | Storefront account dashboard                     |
-| `DEC-SOFT-DELETED-IDENTITY-REUSE` | Provider-link behavior after customer soft deletion                                      | Storefront identity, CRM, account recovery       |
-| `DEC-DENVER-HOME-GRADIENT`        | Denver-theme treatment for the home-search gradient                                      | Storefront visual design                         |
+| ID                                | Decision                                                                                             | Primary impact                                   |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `DEC-NUMBERING`                   | Order, tax-invoice, purchase-invoice, and related document numbering — **partly settled 2026-08-21** | Orders, invoices, sequences, GST audit           |
+| `DEC-TAX-HSN`                     | Tax classes, GST slabs, and HSN granularity — **partly settled 2026-08-21**                          | Catalog, checkout, invoices, accounting          |
+| `DEC-SHIPPING`                    | Launch shipping-rate policy — **partly settled 2026-08-21**                                          | Checkout, Shiprocket seam, promotions            |
+| `DEC-RETURNS`                     | Return/refund policy — **partly settled 2026-08-21**                                                 | Orders, returns, refunds, customer support       |
+| `DEC-PROMO-STACK`                 | Promotion and coupon stacking                                                                        | Pricing engine, checkout                         |
+| `DEC-STOCK-RESERVE`               | Stock reservation timing and TTL                                                                     | Inventory, checkout, payment recovery            |
+| `DEC-BACKORDER`                   | Backorder/oversell policy                                                                            | Catalog, inventory, storefront                   |
+| `DEC-ORDER-SNAPSHOT`              | Immutable order-line snapshot fields — **partly settled 2026-08-21**                                 | Orders, invoices, analytics, support             |
+| `DEC-ADDRESS`                     | Address model and checkout phone requirements — **partly settled 2026-08-21**                        | Accounts, checkout, shipping                     |
+| `DEC-VARIANT-OVERRIDES`           | Fields variants may override                                                                         | Catalog contracts and admin forms                |
+| `DEC-PRICE-DISPLAY`               | MRP, sale, and price-range behavior                                                                  | Catalog, pricing, storefront                     |
+| `DEC-ADDON-MEASUREMENTS`          | Add-on pricing and measurement validation                                                            | Product setup, cart, orders                      |
+| `DEC-CUSTOMER-CREDIT`             | Ledger, store credit, wallet, and points scope — **partly settled 2026-08-21**                       | Customers, refunds, checkout                     |
+| `DEC-ID-SLUG`                     | IDs, business codes, slugs, and redirects                                                            | Catalog, SEO, orders                             |
+| `DEC-BADGES-RAILS`                | Storefront badge and rail taxonomy                                                                   | Analytics and merchandising                      |
+| `DEC-SCOPE-GAPS`                  | Missing business flows and launch scope                                                              | Whole product                                    |
+| `DEC-I18N-ROUTES`                 | Canonical locale URL policy                                                                          | Routing, SEO, hreflang                           |
+| `DEC-IMG-PX`                      | Image derivative pixel ladder                                                                        | Media worker and storefront images               |
+| `DEC-MEDIA-CAPS`                  | Image/video ingest limits                                                                            | Upload API, admin UX, workers                    |
+| `DEC-PAYPAL-FX`                   | Treatment of PayPal FX-conversion markup                                                             | Foreign-currency pricing and margin              |
+| `DEC-INR-GATEWAY-TIMING`          | Timing of CCAvenue-to-Razorpay succession                                                            | Payment adapter delivery and operations          |
+| `DEC-DOMAIN-TOPOLOGY`             | Production storefront/admin/API hostname topology                                                    | Cookies, CORS, Nginx, deployment                 |
+| `DEC-TRANSLATION-QUALITY`         | French translation authorship and acceptance policy                                                  | Storefront/admin copy quality and release QA     |
+| `DEC-PORTAL-PRIVATE-ACCESS`       | Developer-portal identity policy and origin-protection mechanism                                     | Portal deployment, Cloudflare, service access    |
+| `DEC-CUSTOMER-SOFT-DELETE-OPS`    | **VERY IMPORTANT** — soft-deleted customer revive, access, and order/ledger corner cases             | CRM list/detail, auth, orders, uniqueness, MSG91 |
+| `DEC-ACCOUNT-EMPTY-TILES`         | Visibility of unavailable account-dashboard metrics                                                  | Storefront account dashboard                     |
+| `DEC-SOFT-DELETED-IDENTITY-REUSE` | Provider-link behavior after customer soft deletion                                                  | Storefront identity, CRM, account recovery       |
+| `DEC-DENVER-HOME-GRADIENT`        | Denver-theme treatment for the home-search gradient                                                  | Storefront visual design                         |
 
 ---
 
@@ -91,6 +95,20 @@ Use separate Indian-financial-year sequences for each document family. Allocate 
 #### Option C — Custom
 
 - Supply the exact prefix, separator, padding, reset rule, and gap policy for every document family.
+
+### Settled by CA confirmation (2026-08-21) — no longer open
+
+Locked in `owner-decisions-log.mdx` under **Tax, invoicing, and statutory compliance**; do not
+re-ask these:
+
+- Rule 46 constraints are binding: consecutive, unique within the Indian financial year, at most 16 characters, alphanumeric with hyphen and slash allowed, one or multiple series allowed.
+- Separate FY-reset sequences per document family are confirmed acceptable, so Option A's shape is safe to build.
+- Allocation is transactional, rollover is 1 April, and a cancelled number is never reused and stays in its sequence.
+
+**Still open here:** the exact prefix, separator, padding and length for each document family.
+The CA's own example breaks the limit — `STCN/26-27/000001` is 17 characters — so the formats
+must be approved before any live document is generated. Build the allocator now, keep every
+format string in configuration. Round-2 items `B6.1`–`B6.6`.
 
 ### Owner answer
 
@@ -137,6 +155,24 @@ Category defaults with product/variant overrides. Snapshot resolved HSN, tax rat
 - Pros: simplest.
 - Cons: brittle if fabric, stitched goods, or services differ.
 
+### Settled by CA confirmation (2026-08-21) — no longer open
+
+Locked in `owner-decisions-log.mdx` under **Tax, invoicing, and statutory compliance**; do not
+re-ask these:
+
+- Invoice HSN requirements and GSTR-1 HSN reporting are separate settings, configured separately.
+- HSN digit length is turnover-banded: 4-digit up to ₹5 crore preceding-year turnover, 6-digit above.
+- Resolved HSN, rate, taxable base and tax amount are snapshotted on the order line.
+
+**Still open here:** the actual HSN codes and GST rates per category, whether the per-piece value
+threshold for apparel applies and on which value it is tested, and whether the category-default
+plus product/variant-override model is acceptable to the CA as a control. Round-2 items `B2.1`–`B2.8`.
+
+**Architectural warning for anyone building before this closes:** if the rate turns on per-piece
+value, `taxClass → rate` is the wrong model and it must be `taxClass + unit value → rate`. Write
+the resolver as a function of the order line, not a constant lookup, or this becomes a rewrite.
+Tax-inclusive pricing also makes the threshold test circular near the boundary (round-2 item `B2.6`).
+
 ### Owner answer
 
 Choice:
@@ -175,6 +211,14 @@ Domestic zone-plus-weight tiers with a free-shipping threshold and a Shiprocket 
 
 - Pros: closest courier price.
 - Cons: checkout depends on provider availability and credentials.
+
+### Settled by CA confirmation (2026-08-21) — no longer open
+
+- A delivery charge for delivering the goods sold forms part of the value of supply under Section 15(2); transport, packing and insurance form a composite supply with the goods as principal supply. Locked in `owner-decisions-log.mdx`.
+
+**Still open here:** the commercial rate policy below, plus whether the displayed shipping fee is
+itself tax-inclusive and how one delivery charge apportions across a cart holding more than one
+GST rate. Round-2 items `C2.1`–`C2.7`.
 
 ### Owner answer
 
@@ -218,6 +262,20 @@ Use a structured but manually operated return/refund workflow at launch.
 
 - Pros: polished structured experience.
 - Cons: substantial status, upload, courier, and refund scope.
+
+### Settled by CA confirmation (2026-08-21) — no longer open
+
+- A credit note references exactly one original tax invoice; multiple invoices are never combined into one.
+- The statutory outer limit for a GST credit note is 30 November following the end of the financial year of the supply, or the date of furnishing the relevant annual return, whichever is earlier.
+
+Both locked in `owner-decisions-log.mdx`. The practical consequence for the policy chosen below:
+a return accepted after that limit cannot reduce output tax, so we would refund the customer the
+tax element and absorb it. Any published returns window should sit inside the credit-note window
+unless the owner accepts that cost knowingly.
+
+**Still open here:** the policy itself, plus credit-note contents, partial returns, whether the
+delivery charge reverses proportionately, restocking versus write-off, and B2B ITC-reversal
+evidence. Round-2 items `A2`, `B7.1`–`B7.8`.
 
 ### Owner answer
 
@@ -383,6 +441,19 @@ Use a bounded rich snapshot: product/variant IDs, title, SKU, selected options/a
 - Pros: maximum historical content.
 - Cons: excessive size and possible internal-data leakage.
 
+### Settled by CA confirmation (2026-08-21) — no longer open
+
+These snapshot fields are now mandatory regardless of which option is chosen, and are locked in
+`owner-decisions-log.mdx`:
+
+- resolved place of supply, stored on the order and frozen on the invoice, never recomputed at read time;
+- billing address State and PIN, and shipping address State and PIN, held separately;
+- customer GSTIN where one was supplied;
+- resolved HSN, tax rate, taxable base and tax amount per line;
+- tax treatment: intra-state (CGST + SGST), inter-state (IGST), or zero-rated export under LUT.
+
+**Still open here:** everything else in the snapshot field list.
+
 ### Owner answer
 
 Choice:
@@ -421,6 +492,14 @@ Multiple addresses per user, default shipping/billing flags, billing-same-as-shi
 
 - Pros: most complete.
 - Cons: more checkout friction.
+
+### Settled by CA confirmation (2026-08-21) — no longer open
+
+- The address model must carry billing State and PIN separately from shipping State and PIN, and an optional GSTIN, because place of supply is determined from the recipient address recorded on the invoice rather than from the shipping PIN. Locked in `owner-decisions-log.mdx`.
+
+**Still open here:** the saved-address behaviour below, and — bearing directly on the
+billing-same-as-shipping default — which of the two addresses fills the recipient role when the
+States differ. Do not finalise that default before round-2 item `B1.1` is answered.
 
 ### Owner answer
 
@@ -590,6 +669,16 @@ Ledger-only at launch with future store-credit seams. No wallet top-up or points
 
 - Pros: maximum retention feature set.
 - Cons: excessive launch and accounting scope.
+
+### Settled by CA confirmation (2026-08-21) — partial
+
+- Gift cards: issuing or selling a card is not a taxable supply and carries no GST at the point of sale; GST applies to the underlying goods on redemption; redemption is a tender/payment mechanism and does **not** reduce the taxable value of the goods (CBIC Circular 243/37/2024-GST). Locked in `owner-decisions-log.mdx`. Gift cards remain excluded at launch under `DEC-SCOPE-GAPS`, so this constrains a future build rather than the current one.
+
+**Still open, and blocking:** the same question for loyalty points has no answer at all. Until the
+CA rules whether redeeming points is a **discount** that reduces taxable value or a **tender**
+that does not, no points redemption can be wired to checkout or to the invoice — the two answers
+produce different tax on the same order. Round-2 item `A1`. The existing defer posture (Points
+tiles visible but inert) is correct and should hold.
 
 ### Owner answer
 
@@ -1112,6 +1201,11 @@ tokens for CI or machine readers.
 Still **unanswered / pending**. This gate blocks **developer-portal deployment**
 and production private-access work only. It does **not** block admin, storefront,
 API, CRM, auth, MSG91 adapter, or local `portal:persistent` development.
+
+**Local update 2026-08-20:** the loopback-only Identity Loom username/password
+gate is implemented for `portal:persistent`, with process-memory sessions and no
+database or business-API dependency. It is intentionally not remotely hostable
+and does not answer or weaken this production release gate.
 
 ### Owner answer
 

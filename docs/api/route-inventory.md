@@ -4,7 +4,7 @@ wide: true
 description: Verified controller routes, present controls, missing production guarantees, and target ownership.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts
@@ -32,7 +32,7 @@ source_of_truth:
 
 # Current API route inventory
 
-This inventory describes controller code reviewed on 2026-08-18. It is not a production API promise. “Present control” means code exists; “missing guarantee” names the proof still required.
+This inventory describes controller code reviewed on 2026-08-20. It is not a production API promise. “Present control” means code exists; “missing guarantee” names the proof still required.
 
 ## Runtime and contract routes
 
@@ -48,35 +48,37 @@ This inventory describes controller code reviewed on 2026-08-18. It is not a pro
 
 The former `POST /auth/storefront/register` route has been removed. Customer creation now occurs only through the server-held signup flow after both email and phone are verified.
 
-| Method   | Route                                      | Present control                                                               | Current boundary/gap                                     |
-| -------- | ------------------------------------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `POST`   | `/auth/storefront/signup/start`            | Begins or resumes one browser-bound pending signup; creates no customer       | OpenAPI omits request/response and cookie semantics      |
-| `POST`   | `/auth/storefront/signup/field`            | Updates email or phone and clears proof for the changed field                 | OpenAPI omits stable refusal codes                       |
-| `POST`   | `/auth/storefront/signup/otp/request`      | Rate-limited email/phone verification send with bounded resend policy         | Live delivery requires configured templates/provider     |
-| `POST`   | `/auth/storefront/signup/otp/verify`       | One-time proof; existence disclosure only after control is proven             | OpenAPI omits refusal and disclosure semantics           |
-| `POST`   | `/auth/storefront/signup/finalise`         | Creates a customer from server-held verified values and adopts a guest cart   | Pending-intent continuation remains open                 |
-| `POST`   | `/auth/storefront/oauth/state`             | Mints short-lived state/nonce and retains allowlisted continuation evidence   | Provider-console origin configuration remains external   |
-| `POST`   | `/auth/storefront/oauth/google`            | Verifies signature/audience/expiry/nonce and confirmed Google email           | Real credentials and supported-browser proof remain open |
-| `POST`   | `/auth/storefront/oauth/facebook`          | Verifies token validity, app id, expiry, and provider subject                 | Real credentials and supported-browser proof remain open |
-| `GET`    | `/auth/storefront/login-methods`           | Returns methods only after authenticated proof-of-control rules are satisfied | OpenAPI omits disclosure policy                          |
-| `POST`   | `/auth/storefront/step-up/request`         | Issues an email or phone step-up challenge for a signed-in customer           | Provider delivery remains configuration-dependent        |
-| `POST`   | `/auth/storefront/oauth/connect`           | Links a verified provider subject after step-up                               | Provider browser proof remains open                      |
-| `POST`   | `/auth/storefront/oauth/disconnect`        | Removes a provider link without allowing the last credential to disappear     | OpenAPI omits last-credential refusal semantics          |
-| `POST`   | `/auth/storefront/login/password`          | Accepts normalized email or phone, rate limits, and issues storefront cookies | OpenAPI does not declare cookie security                 |
-| `POST`   | `/auth/storefront/login/email-otp/request` | Generic response with atomic challenge issuance for email or phone            | Route name retains `email-otp`; contract accepts either  |
-| `POST`   | `/auth/storefront/login/email-otp/verify`  | Attempt-capped consume and storefront cookie session                          | OpenAPI omits request/response/security schemas          |
-| `POST`   | `/auth/storefront/refresh`                 | Atomic rotation; replay revokes refresh family; rotates CSRF                  | OpenAPI omits cookie/CSRF semantics                      |
-| `POST`   | `/auth/storefront/logout`                  | Revokes current session and clears cookies                                    | OpenAPI omits cookie/CSRF semantics                      |
-| `POST`   | `/auth/storefront/password/forgot`         | Generic recovery response for email or phone                                  | No operation-specific rate-limit/error schema            |
-| `POST`   | `/auth/storefront/password/reset`          | Single-use token; token-version bump; revokes all sessions                    | OpenAPI omits side effects                               |
-| `POST`   | `/auth/storefront/password/set`            | Step-up set/change; revokes other sessions and retains the caller             | OpenAPI omits step-up/refusal semantics                  |
-| `POST`   | `/auth/storefront/activate`                | Establishes credentials for an eligible admin-created customer                | Provider delivery remains configuration-dependent        |
-| `GET`    | `/auth/storefront/me`                      | Storefront audience with sanitized customer/session data                      | OpenAPI declares no security requirement                 |
-| `GET`    | `/auth/storefront/sessions`                | Lists the signed-in customer's sessions                                       | OpenAPI omits cookie security                            |
-| `DELETE` | `/auth/storefront/sessions/:id`            | Revokes one owned session                                                     | OpenAPI omits ownership and CSRF semantics               |
-| `POST`   | `/auth/storefront/sessions/revoke-others`  | Revokes every other owned session                                             | OpenAPI omits side effects                               |
-| `POST`   | `/auth/storefront/email/verify`            | Single-use email-verification completion                                      | OpenAPI omits body and side-effect schemas               |
-| `POST`   | `/auth/storefront/email/verify/resend`     | Generic resend acknowledgement and token rotation                             | Provider delivery remains configuration-dependent        |
+| Method   | Route                                      | Present control                                                                                            | Current boundary/gap                                                       |
+| -------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `GET`    | `/auth/storefront/signup`                  | Returns the browser-bound pending signup projection or `{ pending: null }`                                 | Provider subject and proof internals remain server-only                    |
+| `DELETE` | `/auth/storefront/signup`                  | Discards the pending signup and clears its browser cookie                                                  | Navigation cleanup is best-effort; TTL remains fallback                    |
+| `POST`   | `/auth/storefront/signup/start`            | Begins or resumes one browser-bound pending signup; creates no customer                                    | OpenAPI omits request/response and cookie semantics                        |
+| `POST`   | `/auth/storefront/signup/field`            | Updates email or phone and clears proof for the changed field                                              | OpenAPI omits stable refusal codes                                         |
+| `POST`   | `/auth/storefront/signup/otp/request`      | Rate-limited email/phone verification send with bounded resend policy                                      | Live delivery requires configured templates/provider                       |
+| `POST`   | `/auth/storefront/signup/otp/verify`       | One-time proof; existence disclosure only after control is proven                                          | OpenAPI omits refusal and disclosure semantics                             |
+| `POST`   | `/auth/storefront/signup/finalise`         | Atomically creates customer, credential and provider identity from proven state                            | Guest-cart adoption is non-fatal; pending-intent continuation remains open |
+| `POST`   | `/auth/storefront/oauth/state`             | Mints short-lived state/nonce and retains allowlisted continuation evidence                                | Provider-console origin configuration remains external                     |
+| `POST`   | `/auth/storefront/oauth/google`            | Verifies signature/audience/expiry/nonce and confirmed Google email                                        | Real credentials and supported-browser proof remain open                   |
+| `POST`   | `/auth/storefront/oauth/facebook`          | Verifies token validity, app id, expiry, and provider subject                                              | Real credentials and supported-browser proof remain open                   |
+| `GET`    | `/auth/storefront/login-methods`           | Returns methods only after authenticated proof-of-control rules are satisfied                              | OpenAPI omits disclosure policy                                            |
+| `POST`   | `/auth/storefront/step-up/request`         | Issues an email or phone step-up challenge for a signed-in customer                                        | Provider delivery remains configuration-dependent                          |
+| `POST`   | `/auth/storefront/oauth/connect`           | Links a verified provider subject after step-up                                                            | Provider browser proof remains open                                        |
+| `POST`   | `/auth/storefront/oauth/disconnect`        | Removes a provider link without allowing the last credential to disappear                                  | OpenAPI omits last-credential refusal semantics                            |
+| `POST`   | `/auth/storefront/login/password`          | Accepts normalized email or phone, rate limits, and issues storefront cookies                              | OpenAPI does not declare cookie security                                   |
+| `POST`   | `/auth/storefront/login/email-otp/request` | Generic response with atomic challenge issuance for email or phone                                         | Route name retains `email-otp`; contract accepts either                    |
+| `POST`   | `/auth/storefront/login/email-otp/verify`  | Attempt-capped consume and storefront cookie session                                                       | OpenAPI omits request/response/security schemas                            |
+| `POST`   | `/auth/storefront/refresh`                 | Atomic rotation; replay revokes refresh family; rotates CSRF                                               | OpenAPI omits cookie/CSRF semantics                                        |
+| `POST`   | `/auth/storefront/logout`                  | Revokes current session and clears cookies                                                                 | OpenAPI omits cookie/CSRF semantics                                        |
+| `POST`   | `/auth/storefront/password/forgot`         | Generic recovery response for email or phone                                                               | No operation-specific rate-limit/error schema                              |
+| `POST`   | `/auth/storefront/password/reset`          | Single-use token; token-version bump; revokes all sessions                                                 | OpenAPI omits side effects                                                 |
+| `POST`   | `/auth/storefront/password/set`            | Step-up set/change; revokes other sessions and retains the caller                                          | OpenAPI omits step-up/refusal semantics                                    |
+| `POST`   | `/auth/storefront/activate`                | Establishes credentials for an eligible admin-created customer                                             | Provider delivery remains configuration-dependent                          |
+| `GET`    | `/auth/storefront/me`                      | Identity probe: 200 `{ user: null }` for a true guest; 401 `session_expired` when refresh can still rotate | Not `@Public()`; expired access still 401 so rotation runs                 |
+| `GET`    | `/auth/storefront/sessions`                | Lists the signed-in customer's sessions                                                                    | OpenAPI omits cookie security                                              |
+| `DELETE` | `/auth/storefront/sessions/:id`            | Revokes one owned session                                                                                  | OpenAPI omits ownership and CSRF semantics                                 |
+| `POST`   | `/auth/storefront/sessions/revoke-others`  | Revokes every other owned session                                                                          | OpenAPI omits side effects                                                 |
+| `POST`   | `/auth/storefront/email/verify`            | Single-use email-verification completion                                                                   | OpenAPI omits body and side-effect schemas                                 |
+| `POST`   | `/auth/storefront/email/verify/resend`     | Generic resend acknowledgement and token rotation                                                          | Provider delivery remains configuration-dependent                          |
 
 ## Storefront account routes
 

@@ -4,13 +4,16 @@ description: Local setup checklist for the monorepo and developer portal.
 search_keywords: 'mongo rs0 config.json env docker setup pnpm mongo:up check:naming replica set'
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-08-22'
 source_of_truth:
     - package.json
     - pnpm-workspace.yaml
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh
     - apps/api/.env.example
+    - apps/developer-portal/.env.example
+    - scripts/developer-portal-local-auth.mjs
+    - scripts/serve-developer-portal-persistent.mjs
     - apps/storefront/public/config.example.json
     - .cursor/rules/mcp-tools.mdc
 ---
@@ -67,6 +70,28 @@ The canonical host URI is `mongodb://127.0.0.1:27017/saha_textile_local?replicaS
 The storefront and admin apps load `public/config.json` at boot (via an app initializer) rather than baking URLs into the build. The file is committed with localhost defaults; copy from `config.example.json` when customizing. Secrets never reach the browser — the Angular apps receive only this public config, while the API receives secrets via its env file.
 
 ## Developer portal commands
+
+Create the gitignored local credential file before starting the complete portal; the example has
+no default values and startup fails closed when either entry is absent:
+
+```bash
+cp apps/developer-portal/.env.example apps/developer-portal/.env.local
+```
+
+Set `DEVELOPER_PORTAL_LOCAL_USERNAME` and `DEVELOPER_PORTAL_LOCAL_PASSWORD` in that file, then run:
+
+```bash
+pnpm portal:persistent
+```
+
+The persistent server accepts loopback hosts only. Identity Loom protects Docusaurus, every
+generated child, assets, OpenAPI/catalogue output, build metadata, and reload events with an
+in-memory session. Credentials are stripped from child-build environments. Locking the portal,
+closing the browser session, or restarting the server requires authentication again. This is not
+the unresolved hosted private-access design and does not use the Saha Textile API or MongoDB.
+
+Use the package commands below for isolated Docusaurus authoring/build checks; they do not compose
+or serve the authenticated four-child umbrella:
 
 ```bash
 pnpm --filter @saha-textile/developer-portal dev

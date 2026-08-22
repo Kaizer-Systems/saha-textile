@@ -1,3 +1,4 @@
+import { ProductStatus, ProductType } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 export interface ProductDoc {
@@ -35,7 +36,7 @@ export interface ProductDoc {
 const ProductSchema = new Schema<ProductDoc>(
 	{
 		_id: { type: String, required: true },
-		type: { type: String, enum: ['simple', 'variable'], required: true },
+		type: { type: String, enum: ProductType.options, required: true },
 		sku: { type: String, required: true },
 		title: { type: Schema.Types.Mixed, required: true },
 		slug: { type: String, required: true },
@@ -52,7 +53,7 @@ const ProductSchema = new Schema<ProductDoc>(
 		upsellIds: { type: [String], default: [] },
 		seo: { type: Schema.Types.Mixed },
 		ratingsSummary: { type: Schema.Types.Mixed, default: { avg: 0, count: 0 } },
-		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
+		status: { type: String, enum: ProductStatus.options, default: 'draft' },
 		lifecycle: { type: Schema.Types.Mixed, default: {} },
 	},
 	{ collection: 'products', timestamps: true },

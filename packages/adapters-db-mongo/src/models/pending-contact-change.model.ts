@@ -1,3 +1,4 @@
+import { ContactField } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 import { COLLECTION_NAMES } from '../collection-names';
@@ -46,7 +47,7 @@ const PendingContactChangeSchema = new Schema<PendingContactChangeDoc>(
 	{
 		_id: { type: String, required: true },
 		customerId: { type: String, required: true },
-		field: { type: String, enum: ['email', 'phone'], required: true },
+		field: { type: String, enum: ContactField.options, required: true },
 		newValue: { type: String, required: true },
 		sends: { type: Number, default: 0 },
 		lastSentAt: { type: Date, default: null },

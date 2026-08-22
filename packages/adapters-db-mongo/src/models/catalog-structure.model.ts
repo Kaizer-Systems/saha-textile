@@ -1,3 +1,10 @@
+import {
+	AttributeDefaultRole,
+	AttributeValueType,
+	CatalogStatus,
+	FacetConfigScope,
+	OptionDisplayStyle,
+} from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 /**
@@ -40,7 +47,7 @@ const CategoryPlacementSchema = new Schema<CategoryPlacementDoc>(
 		depth: { type: Number, required: true },
 		isCanonical: { type: Boolean, default: false },
 		displayOrder: { type: Number, default: 0 },
-		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
+		status: { type: String, enum: CatalogStatus.options, default: 'draft' },
 	},
 	{ collection: 'categoryPlacements', timestamps: true },
 );
@@ -84,12 +91,12 @@ export interface CategoryFacetConfigDoc {
 const CategoryFacetConfigSchema = new Schema<CategoryFacetConfigDoc>(
 	{
 		_id: { type: String, required: true },
-		scope: { type: String, enum: ['global', 'category', 'category_placement', 'product_group'], required: true },
+		scope: { type: String, enum: FacetConfigScope.options, required: true },
 		categoryId: { type: String, default: null },
 		categoryPlacementId: { type: String, default: null },
 		productGroupId: { type: String, default: null },
 		facets: { type: [Schema.Types.Mixed], default: [] },
-		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
+		status: { type: String, enum: CatalogStatus.options, default: 'draft' },
 	},
 	{ collection: 'categoryFacetConfigs', timestamps: true },
 );
@@ -126,24 +133,15 @@ const AttributeDefinitionSchema = new Schema<AttributeDefinitionDoc>(
 		label: { type: Schema.Types.Mixed, required: true },
 		defaultRole: {
 			type: String,
-			enum: ['filter_only', 'variation_axis', 'named_add_on', 'bundle_component_option', 'descriptive', 'search'],
+			enum: AttributeDefaultRole.options,
 			default: 'filter_only',
 		},
 		defaultDisplayStyle: {
 			type: String,
-			enum: [
-				'rectangle',
-				'circle',
-				'image_swatch',
-				'color_swatch',
-				'radio',
-				'dropdown',
-				'image_tile',
-				'radio_bar',
-			],
+			enum: OptionDisplayStyle.options,
 			default: 'rectangle',
 		},
-		valueType: { type: String, enum: ['term', 'color', 'number', 'text'], default: 'term' },
+		valueType: { type: String, enum: AttributeValueType.options, default: 'term' },
 		terms: { type: [Schema.Types.Mixed], default: [] },
 		filterConfig: { type: Schema.Types.Mixed },
 	},

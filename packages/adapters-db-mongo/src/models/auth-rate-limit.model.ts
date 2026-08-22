@@ -1,3 +1,4 @@
+import { AuthRateLimitAction, AuthRateLimitScope } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 /**
@@ -26,10 +27,10 @@ const AuthRateLimitSchema = new Schema<AuthRateLimitDoc>(
 	{
 		_id: { type: String, required: true },
 		key: { type: String, required: true },
-		scope: { type: String, enum: ['ip', 'email', 'phone', 'user', 'provider'], required: true },
+		scope: { type: String, enum: AuthRateLimitScope.options, required: true },
 		action: {
 			type: String,
-			enum: ['login', 'pin_login', 'otp_request', 'otp_verify', 'password_reset', 'oauth_start', 'refresh'],
+			enum: AuthRateLimitAction.options,
 			required: true,
 		},
 		count: { type: Number, default: 0 },

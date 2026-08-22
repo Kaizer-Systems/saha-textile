@@ -1,3 +1,4 @@
+import { CatalogStatus } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 /**
@@ -31,7 +32,7 @@ const ProductVariantSchema = new Schema<ProductVariantDoc>(
 		_id: { type: String, required: true },
 		productId: { type: String, required: true },
 		sku: { type: String, required: true },
-		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
+		status: { type: String, enum: CatalogStatus.options, default: 'draft' },
 		optionSelections: {
 			type: [{ _id: false, attributeCode: String, termCode: String }],
 			default: [],

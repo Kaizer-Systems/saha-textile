@@ -1,3 +1,4 @@
+import { CatalogStatus, MediaKind } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 /**
@@ -31,7 +32,7 @@ export interface MediaAssetDoc {
 const MediaAssetSchema = new Schema<MediaAssetDoc>(
 	{
 		_id: { type: String, required: true },
-		kind: { type: String, enum: ['image', 'video'], required: true },
+		kind: { type: String, enum: MediaKind.options, required: true },
 		originalStorageKey: { type: String, default: null },
 		originalFormat: { type: String, required: true },
 		originalByteSize: { type: Number, required: true },
@@ -43,7 +44,7 @@ const MediaAssetSchema = new Schema<MediaAssetDoc>(
 		hlsPlaylistKey: { type: String, default: null },
 		durationSeconds: { type: Number, default: null },
 		text: { type: Schema.Types.Mixed, default: { alt: {}, title: {}, caption: {} } },
-		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
+		status: { type: String, enum: CatalogStatus.options, default: 'draft' },
 		deletedAt: { type: Date, default: null },
 	},
 	{ collection: 'mediaAssets', timestamps: true },

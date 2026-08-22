@@ -1,3 +1,4 @@
+import { AdminRole, SessionAudience } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 /**
@@ -23,7 +24,7 @@ const PasswordResetTokenSchema = new Schema<PasswordResetTokenDoc>(
 		_id: { type: String, required: true },
 		userId: { type: String, required: true },
 		tokenHash: { type: String, required: true, select: false },
-		audience: { type: String, enum: ['storefront', 'admin'], required: true },
+		audience: { type: String, enum: SessionAudience.options, required: true },
 		ipHash: { type: String, default: null },
 		userAgentHash: { type: String, default: null },
 		expiresAt: { type: Date, required: true },
@@ -91,7 +92,7 @@ const AdminInviteSchema = new Schema<AdminInviteDoc>(
 	{
 		_id: { type: String, required: true },
 		emailNormalized: { type: String, required: true },
-		role: { type: String, enum: ['staff', 'admin'], required: true },
+		role: { type: String, enum: AdminRole.options, required: true },
 		permissions: { type: [String], default: [] },
 		invitedByUserId: { type: String, required: true },
 		tokenHash: { type: String, required: true, select: false },

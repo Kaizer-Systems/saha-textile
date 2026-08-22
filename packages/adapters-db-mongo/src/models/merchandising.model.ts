@@ -1,3 +1,11 @@
+import {
+	BundlePricePolicy,
+	BundleType,
+	CatalogStatus,
+	ProductRelationSource,
+	ProductRelationTargetType,
+	ProductRelationType,
+} from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 /** Bundles (`productBundles`) — a compound product that resolves to component lines. */
@@ -17,15 +25,15 @@ const ProductBundleSchema = new Schema<ProductBundleDoc>(
 	{
 		_id: { type: String, required: true },
 		productId: { type: String, required: true },
-		bundleType: { type: String, enum: ['fixed_kit', 'choose_one_per_group', 'optional_addons'], required: true },
+		bundleType: { type: String, enum: BundleType.options, required: true },
 		pricePolicy: {
 			type: String,
-			enum: ['sum_components', 'fixed_bundle_price', 'discounted_components'],
+			enum: BundlePricePolicy.options,
 			required: true,
 		},
 		fixedPriceINR: { type: Number, default: null },
 		groups: { type: [Schema.Types.Mixed], default: [] },
-		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
+		status: { type: String, enum: CatalogStatus.options, default: 'draft' },
 	},
 	{ collection: 'productBundles', timestamps: true },
 );
@@ -65,27 +73,19 @@ const ProductRelationSchema = new Schema<ProductRelationDoc>(
 		sourceProductId: { type: String, required: true },
 		relationType: {
 			type: String,
-			enum: [
-				'related',
-				'upsell',
-				'cross_sell',
-				'bought_together',
-				'complete_the_look',
-				'substitute',
-				'same_collection',
-			],
+			enum: ProductRelationType.options,
 			required: true,
 		},
-		targetType: { type: String, enum: ['product', 'variant', 'product_group'], default: 'product' },
+		targetType: { type: String, enum: ProductRelationTargetType.options, default: 'product' },
 		targetId: { type: String, required: true },
 		surfaces: { type: [String], default: [] },
 		rank: { type: Number, default: 0 },
-		source: { type: String, enum: ['manual', 'insight_set', 'imported_woocommerce'], default: 'manual' },
+		source: { type: String, enum: ProductRelationSource.options, default: 'manual' },
 		insightSetId: { type: String, default: null },
 		reason: { type: String, default: null },
 		startsAt: { type: Date, default: null },
 		endsAt: { type: Date, default: null },
-		status: { type: String, enum: ['draft', 'live', 'disabled', 'discontinued'], default: 'draft' },
+		status: { type: String, enum: CatalogStatus.options, default: 'draft' },
 	},
 	{ collection: 'productRelations', timestamps: true },
 );

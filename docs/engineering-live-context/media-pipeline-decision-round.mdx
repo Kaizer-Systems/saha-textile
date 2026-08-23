@@ -1,0 +1,363 @@
+---
+title: 'Media Pipeline Decision Round'
+description: 'Open media decisions — locked answers, plain-language explanations, storage/SEO architecture, droplet sizing, and the outstanding question list.'
+audience: [backend, operator, agent]
+document_role: canonical
+last_verified: '2026-08-23'
+search_keywords: 'media images spaces cdn purge derivatives ladder seo storage keys droplet youtube vidstack'
+---
+
+Everything below is either locked, explained-then-locked, or flagged as still open. Four things I'm **not** locking yet because you asked for discussion first, plus a few you didn't answer.
+
+---
+
+# PART A — Locked as answered
+
+No further discussion needed on these; I'll write them into `owner-decisions-log.mdx`:
+
+| Point            | Locked value                                                                                   |
+| ---------------- | ---------------------------------------------------------------------------------------------- |
+| CDN staleness    | Queued purge job (B) + immutable content-addressed keys (D)                                    |
+| DEC-MEDIA-CAPS   | 25 MB / 8000 px / 50 MP max · 1600 px min · reject at presign · video N/A at launch            |
+| 4.1 Roles        | `mediaRoles` collection, six seeded and undeletable, dimensions editable, custom roles allowed |
+| 4.2 Ladder edit  | Mark stale → explicit reprocess with count + estimate → **old derivatives deleted**            |
+| 4.3 Publish gate | `thumb`+`card`+`gallery` mandatory, blocked not warned                                         |
+| 4.5 Upscale      | Never; skip role and warn                                                                      |
+| 4.6 GC grace     | 30 days                                                                                        |
+| 4.7 Delivery     | CDN public, listing restricted, objects public-read, default hostname for now                  |
+| 4.10 Queue       | BullMQ + Redis, `noeviction`, AOF `everysec`                                                   |
+| 4.11 Video       | Dropped; seams kept dormant behind an off-by-default flag                                      |
+| 4.12 Player      | Vidstack YouTube provider, nocookie + click-to-load                                            |
+
+One addition to 4.2 from your "delete the stale ones" instruction: deletion must go through the **same queued CDN purge** as any other delete, or a reprocess would leave the old derivative served from the edge for an hour while the new one is live. Small thing, easy to miss, now wired.
+
+---
+
+# PART B — 4.4 Fit / crop / background, in plain terms
+
+## The problem
+
+Every photo has a shape. Every slot on the page has a shape. They rarely match.
+
+Your product photos will mostly be **portrait** — a saree hangs long and tall. A listing grid tile is usually **square-ish**, because that's what makes a grid look like a grid. So the pipeline has to decide what to do with the mismatch. That decision is "fit."
+
+## The three choices
+
+**`cover`** — zoom in until the slot is completely filled, and cut off whatever hangs outside. No empty space, but you lose the edges of the photo.
+
+**`contain`** — shrink until the entire photo fits inside the slot, then pad the leftover space with a background colour. Nothing is lost, but you get bars.
+
+**`fill`** — stretch the photo to the slot's shape. Distorts the product. Never use this.
+
+## Why it matters, concretely
+
+**Scenario 1 — the listing grid.** You have 25 sarees on a category page. Some were shot portrait, one was shot landscape on a mannequin. With `contain`, each tile gets differently-sized white bars, the products render at different visual sizes, and the grid looks amateur. With `cover`, every tile is identical and the grid looks like Myntra. **So listing tiles use `cover`.**
+
+**Scenario 2 — cover bites you.** A full-length saree shot vertically, cropped `cover` into a square, keeps only the middle. The **pallu** — the ornate end panel, the single most important selling feature — is at the top and gets cut off entirely. Your card now shows a plain mid-section of fabric. The customer scrolls past.
+
+**That is what "gravity" fixes.** Instead of always cropping around the geometric centre, `attention` gravity asks the library to find the most visually complex region — which on a saree is almost always the pallu, the border, or the zari work — and crop around _that_. The interesting part survives the crop.
+
+**Scenario 3 — when the smart crop still gets it wrong.** Two-tone saree, plain top half, ornate bottom. `attention` might latch onto a bright fold instead of the border. That's what the **focal point** is: the admin clicks the one spot in the image that must never be cropped out, and every `cover` derivative crops around it. You'd use it on maybe 5% of images.
+
+**Scenario 4 — the PDP.** Here the customer has already clicked in and wants to see the whole garment. Cropping is now actively wrong — they want to judge length, drape, the full border run. **So gallery and zoom use `contain`, never crop, white background** to match your light theme.
+
+## So the recommendation, restated plainly
+
+Grid tiles crop intelligently so the grid stays clean; detail views never crop so the customer sees the whole product; and you get a manual override for the handful of photos where the automatic choice looks wrong.
+
+Locking this unless you object.
+
+---
+
+# PART C — 4.9 The `countReferences` bug, in plain terms
+
+## The setup
+
+`mediaAssets` is a **shared library**, deliberately. One uploaded image can be attached in many places — three products, a homepage banner, a swatch — and each place just holds a _reference_ to it, not a copy.
+
+That design has one hard requirement: **before deleting an image, count how many places still use it.** Zero means nobody needs it; anything above zero means deleting it breaks a live page. That's what `countReferences` is for, and it's what makes the whole garbage-collection job safe.
+
+## The bug
+
+The function looks in exactly three places: product galleries, variant primary images, and attribute swatches.
+
+It does **not** look at content blocks — your homepage banners and CMS pages — even though those genuinely store image references in `content.imageAssetIds`.
+
+## The real scenario
+
+1. You upload a hero banner for the homepage. Beautiful shot, took an afternoon.
+2. You attach it to the homepage content block. That's its only use.
+3. Weeks later the orphan-collection job runs, as designed.
+4. It asks: "how many things use this image?" The function checks products → 0. Variants → 0. Swatches → 0. It answers **zero**.
+5. The job concludes the image is an orphan. Soft-deletes it.
+6. Thirty days pass. Nobody notices, because a soft-deleted asset still serves fine.
+7. Hard delete. The object is removed from Spaces.
+8. **Your homepage hero is now a broken image.** No error was raised, nothing in the logs explains it, and the audit trail says the system did exactly what it was told.
+
+And because of the CDN, it _still looks fine for the next hour_ — so if you happen to check right after, you'll see nothing wrong and go looking somewhere else entirely.
+
+## Why now
+
+Today this is harmless: the GC job doesn't exist yet, so nothing acts on the wrong answer. The moment I write that job, it becomes a data-destroying bug. Fixing it costs minutes now.
+
+## The fix
+
+Count content blocks too — but more importantly, restructure so the list of owner collections comes from **one registry** that every owner must join, instead of a hand-maintained list somebody has to remember to update. Add-on term galleries are a locked future owner and would have hit exactly the same bug.
+
+Plus three guards, because the job hard-deletes:
+
+- **Dry-run mode** — print what would be collected, delete nothing.
+- **An audit line per hard delete**, recording the reference count at the moment of the decision, so a wrong deletion is explainable afterwards.
+- **Never collect anything created recently**, regardless of count — an upload that hasn't been attached yet isn't garbage.
+
+Say yes and I'll fix it in the same pass as the worker.
+
+---
+
+# PART D — 4.7 Custom subdomain and the environment seam
+
+## Yes, `cdn.sahatextile.com` is possible — with one real catch
+
+DigitalOcean supports custom subdomains on Spaces CDN endpoints. You add a CNAME pointing at the CDN endpoint and assign the subdomain in the Space's settings.
+
+**The catch:** DO's free managed Let's Encrypt certificate **only works if your DNS is hosted at DigitalOcean.** If DNS is on Cloudflare — which your config comments suggest is the plan — DO does not support Let's Encrypt for delegated subdomains or CNAMEs, and you must upload and manually renew your own certificate.
+
+So this becomes a three-way choice, and it belongs with `DEC-DOMAIN-TOPOLOGY`:
+
+**Option 1 — DNS at DigitalOcean.** Free managed cert, auto-renewing, zero maintenance. Cost: you give up Cloudflare's DNS features for the whole domain, or split DNS across two providers.
+
+**Option 2 — DNS at Cloudflare, custom cert on DO.** Keep Cloudflare. Cost: you own certificate renewal forever, and a missed renewal takes down every product image on the site. Automatable with a certbot hook, but it's a moving part that fails silently.
+
+**Option 3 — Skip the DO CDN, put Cloudflare in front of the Spaces origin.** Cloudflare handles the cert automatically, and Cloudflare's edge network is stronger than DO's. Cost: you're paying for a DO CDN you don't use, and cache purging moves to Cloudflare's API instead of DO's — which changes the purge job I'm about to build.
+
+**My lean is Option 3**, but I'd rather not decide it today: it changes which API the purge job calls, and you don't have the company account yet. What I'll do now is make the purge mechanism sit behind a small interface so swapping DO-purge for Cloudflare-purge is one adapter, not a rewrite. Flagging it in the KB as you asked.
+
+## The environment seam
+
+Good news first: **the seam already exists and is already correct.** Everything reads `SPACES_CDN_URL` from env, and nothing stores URLs — only keys, composed at read time through `StoragePort.getUrl()`. So each environment is a different set of env values and zero code differences.
+
+Better news: **buckets are free within your $5 subscription** — it covers up to 100 buckets and 250 GiB across all of them. So separate buckets per environment cost nothing.
+
+Recommended layout:
+
+| Env        | Bucket                       | CORS origins                                                     | CDN URL                                   |
+| ---------- | ---------------------------- | ---------------------------------------------------------------- | ----------------------------------------- |
+| Local      | `saha-textile-media-dev`     | `https://localhost:4200`, `:4300`                                | default `.cdn.digitaloceanspaces.com`     |
+| Staging    | `saha-textile-media-staging` | `https://staging-storefront.sahatextile.com`, `staging-admin...` | default, or `cdn-staging.sahatextile.com` |
+| Production | `saha-textile-media`         | `https://sahatextile.com`, `https://admin.sahatextile.com`       | `cdn.sahatextile.com`                     |
+
+Each with its **own bucket-scoped key**, so a staging credential leak cannot touch production media, and a staging test that deletes objects physically cannot reach production.
+
+Note this means the bucket you created yesterday, `saha-textile-media`, is the _production_ name sitting on a personal account. When the company account arrives, the cleanest move is: create `saha-textile-media` fresh on the company account, rename your current one to `-dev`, and carry on. No copy needed if you're happy re-uploading test images.
+
+---
+
+# PART E — 4.8 Storage keys, resolutions, and SEO
+
+This is the meatiest one, and there's a misconception in the question worth clearing first because it changes the whole design.
+
+## E1. Spaces does not resize anything
+
+> _"how does Spaces send back that specific version to that specific page?"_
+
+It doesn't. **Spaces is dumb object storage.** There is no "give me the 600×600 version" — that's what Cloudinary, imgix, or a Next.js image endpoint do, and none of them are in your stack.
+
+What actually happens:
+
+1. At upload, the worker generates **every derivative as its own separate file** with its own key and its own URL.
+2. Each one is an independent object in the bucket. `card` and `gallery` are as unrelated to Spaces as two different products' photos.
+3. The page must already know **which URL** it wants.
+
+So the real question isn't "how does Spaces pick" — it's **"how does the frontend learn the URL."** Two options:
+
+**Option 1 — the API returns resolved URLs** _(recommended)_
+The product payload carries, per image, the roles that exist and their URLs. The card component asks for `card`, the PDP asks for `gallery`.
+
+- _Pros:_ the frontend never constructs a URL, never knows the key scheme, and never guesses. Changing bucket, CDN, or key layout is invisible to Angular. It's also the only option compatible with content-hashed keys, since the client cannot compute a hash it's never seen.
+- _Cons:_ payload is slightly larger.
+
+**Option 2 — the frontend builds URLs from a template.** Requires predictable keys, which kills immutability and hence the one-year cache header. **Rejected.**
+
+## E2. The thing you haven't accounted for: retina
+
+Your card slot might be 500 px wide in CSS. On a phone or a MacBook — which is most of your traffic — that slot has **two physical pixels per CSS pixel**. Serving a 500 px image into it renders visibly soft.
+
+For a saree store this matters more than for most retailers, because **the fabric texture is the product.** Soft zari, mushy weave detail, and the customer can't judge quality.
+
+The fix is `srcset`: hand the browser several widths and let it pick based on screen density and viewport.
+
+```
+srcset="card-500w.webp 500w, card-1000w.webp 1000w"
+sizes="(max-width: 768px) 50vw, 300px"
+```
+
+This also _saves_ bandwidth on a phone — a 2-up mobile grid picks the smaller file — which is exactly your page-speed goal.
+
+**So I'm proposing one refinement to your ladder decision:** a role has a **base width**, and the pipeline emits **1× and 2×** from it. You still think and edit in one number ("card is 500"), and you get 500 w and 1000 w files. `zoom` is 1× only, since it's already large.
+
+## E3. Do filenames matter for SEO?
+
+**Honest answer: weakly, and far less than you'd think.**
+
+Google's image guidance does mention descriptive filenames, but the heavy lifting is done by **alt text, the surrounding page content, structured data, and an image sitemap**. Filename is a tiebreaker.
+
+The proof is what the companies you named actually do. Amazon serves `.../images/I/71abc123XYZ._AC_SL1500_.jpg`. Flipkart serves `rukminim2.flixcart.com/image/612/612/xif0q/saree/...`. Myntra is similarly opaque. **None of them put product names in image filenames**, and they dominate Indian ecommerce image search. They win on structured data and page context.
+
+But including a slug costs essentially nothing, so the right answer is: **include it, positioned so it doesn't break immutability.** Which the layout below does.
+
+Where your SEO effort actually pays off, in order: alt text per locale → `schema.org/Product` with `image` array → an image sitemap → descriptive surrounding copy → filename. I'd build the first three properly and treat the filename as a free bonus.
+
+## E4. Where SEO fields live — upload-time or attach-time
+
+You leaned upload-time. You're **mostly** right, and the reason the pure version fails is worth seeing.
+
+**Option A — asset-level only (pure upload-time)**
+
+- _Pros:_ one place, simple UI, satisfies "required before publish" at the asset, no duplication.
+- _Cons:_ the same fabric close-up reused on three products carries one alt text for all three. If it says "Red Banarasi silk saree", it's wrong on the other two.
+
+**Option B — attachment-level only (pure attach-time)**
+
+- _Pros:_ always contextual.
+- _Cons:_ re-typed on every use; an asset sitting in the library has **no name at all**, so the media library becomes unsearchable — you'd be scrolling thumbnails to find an image. That alone disqualifies it.
+
+**Option C — asset-level baseline + optional per-attachment override** _(recommended)_
+
+- At **upload**: the asset gets its SEO filename slug, plus `alt` / `title` / `caption` per locale. This is its identity and what the media library searches on. Required before the asset can be attached anywhere.
+- At **attach**: an optional alt override for that specific placement. Left empty, it inherits the asset's — and the admin UI shows the inherited value greyed in the field, so it's obvious what will be used.
+- The publish gate checks the **resolved** value (override, else asset), so the locked "alt required for every active locale before publish" rule is satisfied either way.
+- _Pros:_ single source of truth, searchable library, contextual where it matters, no re-typing in the 95% case.
+- _Cons:_ two places a value can come from — mitigated entirely by showing the inheritance in the UI.
+
+This is how enterprise DAMs work, and it's what I'd build.
+
+## E5. The resulting key layout
+
+```
+media/{assetId}/original.{ext}                              ← private
+media/{assetId}/full.webp                                   ← private
+media/{assetId}/{slug}-{role}-{width}w-{hash8}.webp         ← public, immutable
+```
+
+Real example:
+
+```
+media/01J8XQ.../red-banarasi-silk-saree-card-500w-9c1d2e4f.webp
+media/01J8XQ.../red-banarasi-silk-saree-card-1000w-3b7ae012.webp
+media/01J8XQ.../red-banarasi-silk-saree-gallery-900w-c40f18aa.webp
+```
+
+Why each piece:
+
+- **`{assetId}` first** — every object for one asset lives under one prefix, so deleting an asset is a prefix operation and the GC can enumerate cheaply.
+- **`{slug}`** — your free SEO bonus, human-readable in the URL, taken from the asset's SEO filename set at upload.
+- **`{role}` and `{width}w`** — makes "why is this image 500px?" answerable from the URL alone. Saves real debugging time.
+- **`{hash8}`** — the content hash. This is what makes the key **immutable**, which earns the one-year cache header and means the CDN can never serve a stale version of a changed image.
+- **`original` and `full` stay private** — they're derivation masters, 1–3 MB each, never linked from a page. Public-read would mean your entire catalogue's full-resolution masters are scrapeable.
+
+**When the slug changes** (admin edits the SEO filename), that's a **reprocess trigger**, exactly like a ladder change: new keys generated, old ones marked stale, deleted, and purged from the CDN. Consistent with the model you already approved in 4.2, so there's no second mechanism to learn.
+
+## E6. What gets stored where
+
+> _"will the ladder px and associated media ids get stored in the product as well?"_
+
+**No — and the existing contracts already got this right.**
+
+- **The product** stores only an **attachment**: `assetId`, `sortOrder`, optional focal point, optional alt override. No URLs. No dimensions. No roles.
+- **The asset** stores its derivative list: role, storage key, actual width, actual height, byte size.
+- **The API** joins the two at read time and returns a srcset-ready structure.
+- **Angular** consumes URLs and never composes one.
+
+That separation is precisely why moving buckets is an env change. The moment a URL or a pixel width is written into a product document, that stops being true — so this is worth being strict about.
+
+---
+
+# PART F — Droplet: take the 8 GB
+
+Let me total what you're putting on one box: MongoDB, Meilisearch, Redis, the Nest API, the Analog/Nitro SSR storefront, nginx serving admin, and the sharp worker.
+
+Rough resident memory: MongoDB 1–2 GB (WiredTiger grabs half of RAM by default unless capped), Meilisearch 200 MB–1 GB depending on index size, SSR storefront 300–600 MB, API 200–400 MB, Redis ~30 MB, nginx ~50 MB, OS ~300 MB — and a sharp job spikes **300–500 MB transiently** while decoding a 25 MB JPEG.
+
+**At 4 GB that does not fit with any comfort.** Mongo's cache plus SSR plus one sharp spike puts you into the OOM killer, and the OOM killer will usually take MongoDB or the Node SSR process. On 2 vCPU it's worse: image encoding at concurrency 2 saturates both cores, and SSR rendering stalls **exactly while an admin is uploading products** — which is precisely when you'd be testing the site.
+
+**Recommendation: `s-4vcpu-8gb` at $48/mo.** The $24 delta is trivial against a storefront that stalls under its own admin work, and your entire stated goal is a fast site on a modest box.
+
+Two config items that matter more than the plan choice:
+
+- **Cap MongoDB's WiredTiger cache explicitly** (e.g. 1.5 GB). Left alone on a shared box it takes half your RAM and squeezes everything else.
+- **Run the image worker at concurrency 2 and `nice` it**, so an upload burst can never starve SSR.
+
+If you want to start at 4 GB to save money, DO droplet resize for CPU/RAM is reversible and takes a few minutes of downtime — but you'd be choosing to discover the ceiling in production.
+
+---
+
+# PART G — Your Lightroom workflow
+
+You were right to mention it. There's one specific thing that will bite you.
+
+**Export sRGB from Lightroom.** Lightroom can export sRGB, AdobeRGB, or ProPhoto RGB. AdobeRGB and ProPhoto have wider colour ranges — great for print, wrong for web. If you export AdobeRGB and any step strips the colour profile, browsers assume sRGB and your reds render **dull and desaturated**. For a saree shop that's a returns problem: the customer receives a more vivid garment than the screen promised, or a less vivid one, and either way they're annoyed.
+
+The pipeline will convert defensively — sharp converts _using_ the embedded profile before stripping, which preserves the colour — but the clean answer is to export sRGB at source so there's no conversion to get wrong.
+
+House export settings I'd standardise on:
+
+- **Colour space: sRGB**
+- **Format: JPEG, quality 90–100** (or PNG only when you genuinely need transparency)
+- **No resizing on export** — give us the full sensor resolution; the pipeline downsizes
+- **Output sharpening: OFF** — sharpening then downscaling produces crunchy halos. The pipeline applies its own light sharpen _after_ resize, which is the correct order and matters a lot for zari and weave detail
+- **Metadata: whatever you like** — we strip EXIF anyway, for bytes and because location data doesn't belong on a public URL
+
+A 25 MB cap comfortably fits a full-resolution DSLR export at quality 95.
+
+---
+
+# PART H — YouTube
+
+Confirmed and locked: Vidstack, nocookie, click-to-load, PDP videos via a per-product ID field, homepage rail configurable by surface from day one.
+
+**Yes, the API is required** — for the rail only. PDP videos need no API at all.
+
+Design for the rail's configurability, so adding surfaces later is data not code: a `youtubeRailPlacements` **setting holding a list of surface keys**, seeded with `home`. Adding a page later means adding a key in admin. If it were a boolean you'd be editing code every time.
+
+Channel: `https://www.youtube.com/@SahaTextile`. One-time setup resolves the handle to a channel ID and then to the uploads-playlist ID; after that the daily refresh is `playlistItems.list` at **1 quota unit** against a 10,000/day allowance. Effectively free.
+
+**Two things I still need:**
+
+- **5 or 10?** My recommendation: fetch and cache **10**, make the displayed count an admin setting, seed it at 8. Costs the same quota either way, and you can tune the slider without a deploy.
+- **PDP field format** — do you want to paste a full YouTube URL (`youtube.com/watch?v=...`, `youtu.be/...`) or a bare video ID? Vidstack accepts both. My recommendation: accept **any** of those forms in admin and normalise to a bare ID on save, so you can paste whatever the browser gives you.
+
+I'll write the Codex prompt for the Google Cloud project when you ask.
+
+---
+
+# PART I — What you still owe me
+
+Things from the answer sheet you didn't cover, plus new ones this discussion raised:
+
+1. **`original` and `full.webp` set to private ACL** — you didn't answer this. Recommend yes; without it your full-resolution masters are publicly scrapeable.
+2. **Per-role seed pixel widths** — never answered. My proposal below, and since they're admin-editable the risk is near zero. But `DEC-IMG-PX`'s own recommended route is to _measure the rendered slots_, and I'd rather do that than guess — **want me to measure the actual storefront slots and come back with real numbers?**
+
+    | Role              | Base width | Emits       |
+    | ----------------- | ---------- | ----------- |
+    | `thumb`           | 150        | 150w, 300w  |
+    | `card`            | 500        | 500w, 1000w |
+    | `gallery`         | 900        | 900w, 1800w |
+    | `zoom`            | 2000       | 2000w only  |
+    | `swatch_image`    | 100        | 100w, 200w  |
+    | `swatch_image_v2` | 160        | 160w, 320w  |
+
+3. **Card aspect ratio** — the vendor theme uses square-ish tiles; portrait (3:4) suits sarees better but means CSS changes. Part of the measurement pass. Flagging rather than guessing.
+4. **1×/2× retina refinement** (E2) — yes or no.
+5. **API returns resolved URLs** (E1 Option 1) — confirming.
+6. **SEO fields: Option C**, asset baseline + optional attachment override — confirming.
+7. **Key layout** as in E5 — confirming.
+8. **`countReferences` fix** with registry + dry-run + audit + recency guard — yes?
+9. **Droplet:** 4 vCPU / 8 GB — confirming.
+10. **DO API token** for the purge job — you'll need to create one (account-scoped, cannot be bucket-restricted).
+11. **YouTube:** rail count, and PDP field format.
+12. **Environment buckets** — three buckets as in Part D, and are you comfortable that today's `saha-textile-media` becomes `-dev` later?
+13. **CDN custom subdomain path** — Option 1, 2, or 3 from Part D. Not urgent; I'll build the purge behind an interface either way. Flagged in the KB as you asked.
+
+Once these land I'll write every lock into `owner-decisions-log.mdx`, close `DEC-IMG-PX` and `DEC-MEDIA-CAPS` out of `pending-decisions.mdx`, add the three previously-untracked gaps as recorded decisions, and start on the presign endpoint and derivative worker against final numbers.
+
+Sources: [Spaces CDN custom subdomains](https://docs.digitalocean.com/products/spaces/how-to/enable-cdn/) · [Custom subdomains announcement](https://www.digitalocean.com/blog/custom-subdomains-for-spaces-cdn-endpoints)

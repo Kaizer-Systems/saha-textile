@@ -1,0 +1,271 @@
+---
+title: 'MSG91 Console + DLT Setup — Browser Agent Plan Prompt'
+description: 'A plan-mode prompt for a browser-driving agent to take the MSG91 account from bare login to live transactional email and SMS, with the exact template matrix the code requires and explicit hand-back points for anything legal, financial or identity-bearing.'
+audience: [engineering, operator, agent]
+document_role: canonical
+last_verified: '2026-08-23'
+search_keywords: 'msg91 dlt trai smartping vilpower sender id header entity pe id auth key template flow_id template_id otp delivery notificationTemplates codex chrome browser agent'
+---
+
+# MSG91 console + DLT setup — plan prompt for a browser agent
+
+**For:** Codex (or any agent driving the owner's Chrome).
+**Written:** 2026-08-23. **State it assumes:** an MSG91 account with nothing but a login.
+
+> **The code is already finished.** `@saha-textile/adapters-notifications-msg91` shipped
+> 2026-08-13 — email/SMS/WhatsApp tools, kill-switches, plan limits, marketing-consent gating and
+> the outbox. `apps/api/src/infra/persistence.module.ts` already selects it the moment
+> `NOTIFICATION_PROVIDER=msg91` and `MSG91_AUTH_KEY` are set. **Do not write or change
+> application code.** This is console work, plus writing two values into `apps/api/.env`.
+
+---
+
+## 1. What "done" means
+
+Transactional OTP delivery works end to end from the running API:
+
+- an email OTP arrives in a real inbox;
+- an SMS OTP arrives on a real Indian handset;
+- `messageOutbox` rows read `sent` with a `providerMessageId`, not `failed`.
+
+Anything short of a delivered message is not done. A `200` from MSG91 is not delivery.
+
+---
+
+## 2. Boundaries — stop and hand the keyboard back
+
+These are the owner's own acts, legally or financially. **Navigate to the page, explain what is
+on it, then stop and wait.** Do not fill, submit, or click through them.
+
+| Stop for                                                                         | Why                                                                                                            |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **MSG91 KYC** — uploading or typing PAN, GST, incorporation or address documents | Identity documents. The owner submits these personally.                                                        |
+| **Adding funds / any payment**                                                   | Spends money.                                                                                                  |
+| **Accepting terms, agreements, or consent banners**                              | A legal acceptance in the owner's name.                                                                        |
+| **DLT entity (PE) registration submission** on the telecom portal                | A regulatory declaration by the business entity, backed by company documents. Fill nothing; the owner submits. |
+| **Any OTP or password sent to the owner's phone or email to log in**             | Credentials. Ask the owner to type it.                                                                         |
+
+Everything else — navigating, reading current state, creating templates from the content in §6,
+mapping ids, generating an auth key — is yours to do.
+
+**On the auth key specifically:** when you generate it, write it **straight into
+`apps/api/.env`** and nowhere else. Never print it in your reply, never put it in a commit
+message, never paste it into a chat log or a scratch file. `apps/api/.env` is gitignored
+(`.gitignore:9`), and it must stay uncommitted.
+
+---
+
+## 3. The two portals, and why the order is fixed
+
+Indian SMS is not one system. Verified against MSG91's own guide
+(`msg91.com/help/dlt-registration-in-india/step-by-step-guide-to-implement-dlt-in-sms`):
+
+**Phase 1 — a telecom operator's DLT platform** (SmartPing or VILPower; separate signup, separate
+documents, separate approvals):
+
+1. Entity / PE registration → approval
+2. Header (Sender ID) application → approval
+3. Content template submission → approval
+
+**Phase 2 — the MSG91 panel:**
+
+4. Map the Entity/PE ID and the approved Header
+5. Create MSG91 templates carrying the approved DLT template ids
+
+Each arrow is an external approval measured in **days, not minutes**, and MSG91's docs do not
+publish the timings. Their help pages note the Common Operator Platform sync alone takes two to
+three days after a header is approved. **Plan around waiting; do not sit and poll.** When you hit
+a wait, say so plainly, record where the queue is, and stop.
+
+Email has no DLT step and is much faster — which is why §5 does email first.
+
+`SAHATX` is the reserved sender header (six-character TRAI cap; recorded in the brand naming law
+as a deliberate exception). Apply for that one.
+
+---
+
+## 4. Before you touch the browser — read the current state
+
+1. Open `apps/api/.env` and confirm `NOTIFICATION_PROVIDER` and `MSG91_AUTH_KEY`. Expect
+   `console` and empty. Do not change them yet — §7 does that, last.
+2. Confirm the Mongo container is up (`docker ps | grep saha-textile-mongo`) and read what
+   templates already exist:
+
+    ```bash
+    docker exec saha-textile-mongo mongosh --quiet --eval '
+    const d = db.getSiblingDB("saha_textile_local");
+    print("notificationTemplates: " + d.notificationTemplates.countDocuments());
+    d.notificationTemplates.find({}, {_id:1, key:1, channel:1, dltTemplateId:1, status:1}).forEach(printjson);'
+    ```
+
+    Expect zero. **Nothing seeds this collection**, which is why every send would fail with
+    "Notification template missing or channel mismatch" even with a valid auth key.
+
+Report both readings before proceeding.
+
+---
+
+## 5. Phases
+
+### Phase A — account basics (mostly the owner's)
+
+1. Sign in. If a login OTP is required, stop and ask for it.
+2. Locate the KYC section, report exactly what it is asking for, **stop**.
+3. Locate the wallet/funds section, report the balance and what is required, **stop**.
+4. Once the owner confirms KYC has cleared, continue.
+
+### Phase B — auth key
+
+1. Find the API key / Auth Key section of the panel and report what key types are offered
+   (test vs live, if the account distinguishes them).
+2. Generate a key scoped as narrowly as the panel allows.
+3. Write it into `apps/api/.env` as `MSG91_AUTH_KEY=…`. Do not set `NOTIFICATION_PROVIDER` yet.
+4. Confirm only that the line was written — never echo the value.
+
+### Phase C — email domain
+
+1. Find the email domain section. Add the sending domain the owner nominates.
+2. Report the DNS records MSG91 asks for (SPF / DKIM / tracking CNAME) **verbatim** — the owner
+   adds these at their DNS host; you do not have access.
+3. When the owner says DNS has propagated, run MSG91's verification and report the result.
+4. Set `MSG91_EMAIL_FROM` and `MSG91_EMAIL_DOMAIN` in `apps/api/.env` to match what was verified.
+
+### Phase D — email templates
+
+Create the **eight email templates** in §6. Then §7 can be run for email alone, without waiting
+for any DLT approval. **This is the first point where a real message can be delivered** — reaching
+it is the milestone that matters most.
+
+### Phase E — DLT, phase 1 (telecom portal)
+
+1. Open SmartPing or VILPower. Report which the owner has an entity on, or that neither exists.
+2. Walk the owner through entity/PE registration. **Fill nothing** — report the required document
+   list and stop.
+3. After entity approval: apply for the header `SAHATX`. Report the form's fields and stop for the
+   owner to submit.
+4. After header approval: submit the **five SMS content templates** from §6. The content must be
+   submitted here **character for character** as it will be sent — DLT matches exactly, and a
+   later edit means a fresh approval cycle.
+
+### Phase F — DLT, phase 2 (MSG91 panel)
+
+1. Map the Entity/PE ID and the approved header on the MSG91 panel.
+2. Create the five MSG91 SMS templates, each carrying its approved **DLT template id**.
+3. Record every DLT template id — §6 explains where each one has to be written.
+
+### Phase G — the `flow_id` vs `template_id` question
+
+`packages/adapters-notifications-msg91/src/tools/sms-flow.tool.ts` carries a
+`⚠ PENDING LIVE VERIFICATION` note. MSG91 renamed this concept from "Flow" to "Template" across
+v5 and their API reference sits behind a login, so the code deliberately sends **both** keys with
+the same value as a hedge. Their public help pages do not settle it either — I checked.
+
+The first successful SMS settles it. When one lands, report which key the account's API version
+honoured if the response or logs reveal it. **Do not edit the code yourself** — report the finding
+and the repo owner removes the loser.
+
+---
+
+## 6. The template matrix — derived from the code, not invented
+
+Two rules that will silently break delivery if broken:
+
+1. **Email template names must equal the key exactly.**
+   `resolveProviderTemplateId` returns `template.key` for email
+   (`msg91-notification.adapter.ts`), so the MSG91 email template must be _named_ `otp_register`,
+   `otp_login`, and so on. SMS is exempt — it resolves through `dltTemplateId`, so the MSG91-side
+   name there is free.
+2. **Variable names are fixed by the sender.** `auth.service.ts:226` sends `variables: { code }`.
+   The placeholder must be `code` — not `otp`, not `OTP`, not `##var##`. Same for the others below.
+
+OTP lifetime is `OTP_TTL_SECONDS=600`, so "10 minutes" is accurate copy.
+
+### Email — eight templates
+
+| MSG91 template name (exact) | Variables                 | Purpose                                    |
+| --------------------------- | ------------------------- | ------------------------------------------ |
+| `otp_register`              | `code`                    | Signup email verification                  |
+| `otp_login`                 | `code`                    | Sign in by code                            |
+| `otp_step_up`               | `code`                    | Re-proof before a sensitive account change |
+| `otp_change_contact`        | `code`                    | Code to a new email being added            |
+| `password_reset`            | `token`                   | Password recovery link                     |
+| `verify_email`              | `token`                   | Email verification link                    |
+| `admin_invite`              | `token`, `role`           | Back-office invitation                     |
+| `contact_change_requested`  | `field`, `maskedNewValue` | Warning to the OLD address                 |
+
+### SMS — five templates (each needs DLT approval)
+
+| Key                        | DLT template must carry | Variables                 |
+| -------------------------- | ----------------------- | ------------------------- |
+| `otp_register`             | the OTP body            | `code`                    |
+| `otp_login`                | the OTP body            | `code`                    |
+| `otp_step_up`              | the OTP body            | `code`                    |
+| `otp_change_contact`       | the OTP body            | `code`                    |
+| `contact_change_requested` | the warning body        | `field`, `maskedNewValue` |
+
+### Do NOT create these
+
+`otp_verify_email` and `otp_reset_password` exist in the `OtpPurpose` enum but **no code path
+issues them today** — password recovery uses the `password_reset` token template instead. DLT
+approval is slow and finite; do not spend cycles on messages nothing sends. Revisit only if a
+caller appears.
+
+### Content notes
+
+- Brand naming law: the full **"Saha Textile"** everywhere in copy, never the bare first word. <!-- naming-law:allow -->
+- `contact_change_requested` goes to the address being displaced, so it must **never** contain the
+  new value in full — `maskedNewValue` is already masked by the server, deliberately, so an
+  attacker reading it learns nothing.
+- Keep the SMS bodies short; DLT rejects vague or marketing-flavoured transactional content.
+
+---
+
+## 7. Cutover and proof
+
+Only after the templates exist on **both** sides:
+
+1. Insert the matching `notificationTemplates` rows in Mongo — one per row above, `channel` set,
+   `dltTemplateId` filled for SMS, `status` such that the adapter will use it. Ask the repo owner
+   for the seeder if one has landed by then; there was none as of 2026-08-23.
+2. Set `NOTIFICATION_PROVIDER=msg91` in `apps/api/.env`.
+3. **Restart the API.** `nest --watch` does not restart on a workspace-package rebuild, and it
+   does not reload `.env` on its own — a test against a stale process proves nothing.
+4. Trigger one real email OTP through the storefront signup form and confirm arrival in a real
+   inbox.
+5. Once DLT is live, do the same for SMS on a real handset.
+6. Read the outbox and report it:
+
+    ```bash
+    docker exec saha-textile-mongo mongosh --quiet --eval '
+    const d = db.getSiblingDB("saha_textile_local");
+    d.messageOutbox.find({}, {_id:1, channel:1, templateKey:1, status:1, providerMessageId:1, errorMessage:1})
+      .sort({createdAt:-1}).limit(10).forEach(printjson);'
+    ```
+
+    `sent` with a `providerMessageId` is the pass. `failed` carries `errorMessage` — MSG91's
+    error 211 means a missing or invalid DLT template id, 203 means the PE ID is missing or the
+    header is not approved.
+
+---
+
+## 8. What I could not verify, so do not assume it
+
+- **The MSG91 console's current layout.** Their overview docs delegate to help pages that do not
+  show the panel, and much of the API reference is behind a login. **Discover the UI, do not
+  follow a remembered click path.** If a section is not where this document implies, report what
+  you actually see rather than improvising.
+- **The v5 flow API field name** (§7 of the adapter). Unresolved in public docs; only a live send
+  answers it.
+- **Approval timings.** MSG91 does not publish them. Report queue positions rather than estimating.
+
+---
+
+## 9. Report format
+
+After each phase, report: what you did, what the screen actually showed, what is now blocked and
+on whom, and the exact next action. Never claim a step succeeded because a page navigated —
+name the confirmation you saw. If a template, header or domain is pending approval, say pending;
+do not round it up to done.
+
+The failure this whole surface has already suffered once is a verification method that could not
+see the failures. Do not repeat it.

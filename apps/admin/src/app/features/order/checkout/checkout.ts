@@ -6,7 +6,7 @@ import { Router } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { Store } from '@ngrx/store';
-import { Select2, Select2Data, Select2Module, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
+import { Select2, Select2Data, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
 import { debounceTime, lastValueFrom, Observable, Subject } from 'rxjs';
 
 import {
@@ -85,7 +85,7 @@ function toCheckoutView(customer: AdminCustomer): CheckoutCustomerView {
 		Loader,
 		HasPermissionDirective,
 		ReactiveFormsModule,
-		Select2Module,
+		Select2,
 		AddressBlock,
 		DeliveryBlock,
 		PaymentBlock,

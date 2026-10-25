@@ -1,17 +1,23 @@
 import { CurrencyPipe } from '@angular/common';
-import { HTTP_INTERCEPTORS, provideHttpClient, withFetch, withInterceptorsFromDi } from '@angular/common/http';
+import {
+	HTTP_INTERCEPTORS,
+	provideHttpClient,
+	withFetch,
+	withInterceptorsFromDi,
+	ɵHTTP_FETCH_MAX_RESPONSE_SIZE,
+} from '@angular/common/http';
 import { ApplicationConfig, importProvidersFrom, isDevMode, provideZoneChangeDetection } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { withInMemoryScrolling } from '@angular/router';
 
 import { provideFileRouter } from '@analogjs/router';
+import { provideToastr } from '@damjantonkli/ngx-toastr';
 import { provideTransloco } from '@jsverse/transloco';
 import { provideEffects } from '@ngrx/effects';
 import { provideState, provideStore } from '@ngrx/store';
 import { LoadingBarRouterModule } from '@ngx-loading-bar/router';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
-import { provideToastr } from 'ngx-toastr';
 
 import { CartEffects } from '@core/state/cart/cart.effects';
 import { CART_FEATURE_KEY } from '@core/state/cart/cart.models';
@@ -72,6 +78,9 @@ export const appConfig: ApplicationConfig = {
 		},
 		importProvidersFrom(BrowserModule, BrowserAnimationsModule, LoadingBarRouterModule),
 		provideHttpClient(withInterceptorsFromDi(), withFetch()),
+		// Angular 22 caps an SSR fetch body at 1MB. The theme catalogue fixture is larger,
+		// and a capped read fails the render before the page can paint.
+		{ provide: ɵHTTP_FETCH_MAX_RESPONSE_SIZE, useValue: 8 * 1024 * 1024 },
 		// Transloco — the locked i18n lib (ngx-translate fully removed). Loads
 		// assets/i18n/<lang>.json via TranslocoHttpLoader; the language switcher drives
 		// it through TranslocoService.setActiveLang.

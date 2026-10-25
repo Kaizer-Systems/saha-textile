@@ -4,7 +4,7 @@ wide: true
 description: Ownership rules for TanStack Query, SignalStore, classic NgRx, services, interceptors, and transitional fixtures.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-10-26'
 source_of_truth:
     - apps/admin/src/app/app.config.ts
     - apps/admin/src/app/core/config/runtime-config.ts

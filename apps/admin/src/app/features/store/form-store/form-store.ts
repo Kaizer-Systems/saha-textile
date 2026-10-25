@@ -5,7 +5,7 @@ import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } 
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
+import { Select2Data, Select2, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable, Subject, of } from 'rxjs';
 import { map, switchMap, takeUntil } from 'rxjs/operators';
 
@@ -23,7 +23,7 @@ import { CustomValidators } from '@shared/validators/password-match';
 	selector: 'app-form-store',
 	templateUrl: './form-store.html',
 	styleUrls: ['./form-store.scss'],
-	imports: [ReactiveFormsModule, FormFields, ImageUpload, Select2Module, Button, TranslocoModule, AsyncPipe],
+	imports: [ReactiveFormsModule, FormFields, ImageUpload, Select2, Button, TranslocoModule, AsyncPipe],
 })
 export class FormStore {
 	private route = inject(ActivatedRoute);

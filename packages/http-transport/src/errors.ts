@@ -314,3 +314,40 @@ export function readApiErrorMessage(error: unknown): string | null {
 	}
 	return null;
 }
+
+/**
+ * Whether a failure is a DOMAIN refusal the calling screen is meant to explain itself.
+ *
+ * The API sends a decision about account state — `otp_invalid`, `last_credential`,
+ * `signup_identifier_taken` — as an issue whose `path` is `['request']` (`domainRefusal` in the
+ * API), because it is not about any one form field. The screen that made the request reads the
+ * issue's `code` and renders a translated sentence beside the control that caused it.
+ *
+ * A global error toast on top of that said the same thing twice, and worse: it showed the API's
+ * own English fallback — "Signup could not be completed" under "That code is not right" — which
+ * contradicts the screen and ignores the reader's language. A field-validation failure, an
+ * unexpected status or a transport error still answers false here, so those keep their toast.
+ */
+export function isDomainRefusal(error: unknown): boolean {
+	let node: unknown = error;
+
+	// The same three hops as `readApiErrorMessage`: `HttpErrorResponse` → body → payload.
+	for (let depth = 0; depth < 3; depth += 1) {
+		if (typeof node !== 'object' || node === null) return false;
+		const issues = (node as Partial<ApiErrorBody>).issues;
+		if (Array.isArray(issues)) {
+			return (
+				issues.length > 0 &&
+				issues.every(
+					(issue) =>
+						typeof issue?.code === 'string' &&
+						Array.isArray(issue.path) &&
+						issue.path.length === 1 &&
+						issue.path[0] === 'request',
+				)
+			);
+		}
+		node = (node as { error?: unknown }).error;
+	}
+	return false;
+}

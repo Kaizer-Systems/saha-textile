@@ -7,7 +7,6 @@
 		"strict": true,
 		"skipLibCheck": true,
 		"noEmit": true,
-		"baseUrl": ".",
 		"paths": {
 			"@saha-textile/contracts": ["../../packages/contracts/src/index.ts"]
 		}

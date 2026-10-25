@@ -2,6 +2,12 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
+# Angular 22.2.3's compiler imports encodeRangeMappings, which exists in
+# @jridgewell/sourcemap-codec 1.6.0. The compiler's own range (^1.4.14) also
+# allows 1.5.5, which does not export it. This pin stays inside that range.
+overrides:
+  '@jridgewell/sourcemap-codec': '1.6.0'
+
 # Keep local and CI dependency layouts identical. pnpm otherwise enables the
 # experimental global virtual store only outside CI and repeatedly treats the
 # same installation as stale when switching between those environments.

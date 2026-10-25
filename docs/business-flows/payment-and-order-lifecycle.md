@@ -4,7 +4,7 @@ wide: true
 description: Gateway selection, hosted payment, idempotency, atomic order records, status transitions, and ownership.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-18'
+last_verified: '2026-10-26'
 source_of_truth:
     - apps/api/src/orders
     - packages/contracts/src/order.ts
@@ -139,3 +139,11 @@ Do not generate production numbering from database counts, random IDs, timestamp
 5. Inspect the append-only status timeline/audit evidence.
 6. Confirm ownership/permission checks before exposing detail.
 7. Never rely on the browser success page as settlement evidence.
+
+## Provider documents
+
+Gateway behavior recorded from provider material lives under [Payments](/payments):
+
+- [CCAvenue](/payments/ccavenue) transcribes the HDFC VAS and CCAvenue documents received for the INR role. No adapter performs those calls yet.
+- [Razorpay](/payments/razorpay) is the preferred later INR gateway and is deferred.
+- [PayPal](/payments/paypal) is the non-INR role and its provider notes are deferred.

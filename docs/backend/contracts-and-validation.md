@@ -4,7 +4,7 @@ wide: true
 description: Zod contract ownership, request parsing, persistence mapping, response safety, and evolution rules.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-08-22'
+last_verified: '2026-10-26'
 source_of_truth:
     - packages/contracts/src
     - packages/contracts/test

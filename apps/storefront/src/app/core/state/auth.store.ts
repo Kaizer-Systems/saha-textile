@@ -5,6 +5,7 @@ import { patchState, signalStore, withComputed, withMethods, withState } from '@
 import { firstValueFrom } from 'rxjs';
 
 import { type AuthUser, StorefrontAuthGateway } from '@core/auth/auth-gateway';
+import { refusalCode } from '@core/auth/refusal-code';
 
 import { AccountStore } from './account.store';
 
@@ -142,12 +143,13 @@ export const AuthStore = signalStore(
 						accountStore.loadUser();
 						await firstValueFrom(gateway.ensureCsrfToken());
 						return true;
-					} catch {
+					} catch (error) {
 						// Covers every refusal the flow can end on — an expired pending record, an
 						// identifier that turned out to be taken, a conflict between two proven
-						// identifiers. The screen reads the stable code; the store only needs to
-						// know it did not become a session.
-						applyAnonymous(ERROR_KEYS.registration);
+						// identifiers. The STABLE code is kept as the error, not a generic key: the
+						// registration screen renders it inline, and it is the only place the reason
+						// reaches the person now that domain refusals are no longer also toasted.
+						applyAnonymous(refusalCode(error, ERROR_KEYS.registration));
 						return false;
 					}
 				},

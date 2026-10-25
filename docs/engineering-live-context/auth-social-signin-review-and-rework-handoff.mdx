@@ -3,15 +3,15 @@ title: 'Auth Review, Ten Passes, and the Social Sign-In Rework — Handoff'
 description: 'A nine-finding code review, the ten passes that answered it, the browser session that showed the social flow was not trustworthy, and the rework that fixed it. What is proven, what is owed, and what only the owner can finish.'
 audience: [engineering, operator, agent]
 document_role: canonical
-last_verified: '2026-08-22'
+last_verified: '2026-10-25'
 search_keywords: 'social sign-in google facebook oauth signup prefill popup blocked FB.login stale window.FB fbAsyncInit revoke personalized button abandonment atomicity duplicate identifier address lost update mongoose enum sweep handoff'
 ---
 
 # Auth review, ten passes, and the social sign-in rework
 
-**Status:** Rework COMPLETE and browser-verified, except the last mile that needs the owner's own
-provider accounts. Written 2026-08-19 and reverified against the complete working tree during the
-2026-08-22 portal reconciliation.
+**Status:** Rework COMPLETE, and on 2026-10-25 driven end to end with the owner's REAL Google and
+Facebook accounts (§12). That run found nine more defects — one of them broke every returning social
+sign-in — all fixed and re-verified. Written 2026-08-19, reverified 2026-08-22, extended 2026-10-25.
 
 Supplements — does not replace — `storefront-account-and-auth-ui-handoff.mdx`, which covers the
 session that BUILT this surface. This one covers the review of that work, the ten passes that
@@ -22,8 +22,8 @@ that fixed them.
 > closed. The reason the flow ever looked finished is a verification method that could not see the
 > failures — §5.3 — and that standard now applies to everything on this surface.
 
-> **What is left is in §7.** Two items, both needing a real Google and a real Facebook account:
-> a full provider round trip, and the Meta app configuration. Nothing else is outstanding.
+> **What is left is in §12.4** — owner calls only. The real-account round trips §7 asked for are done,
+> and Meta accepted the app from `https://localhost:4200`, so §6's Meta row is settled too.
 
 ---
 
@@ -243,12 +243,12 @@ the form became. Both files say in their own comments what they cannot prove.
 
 ## 6. Owner / configuration actions
 
-| Item                                                                                 | Where                                       | Status                                                                                                                                |
-| ------------------------------------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `https://localhost:4200` as an authorised JavaScript origin                          | Google Cloud Console                        | **Done**                                                                                                                              |
-| Consent screen reads "Saha Textile Dev" — should be "Saha Textile"                   | Google Cloud Console → OAuth consent screen | Open                                                                                                                                  |
-| `localhost` under _Allowed Domains for the JavaScript SDK_; app mode and tester list | Meta app settings                           | **Still unverified.** The stale-object blocker is fixed (§5.1) and our side of the call is proven; this may be a second one behind it |
-| Popup permission for `localhost:4200`                                                | Chrome site settings                        | Worth checking; earlier attempts were genuinely blocked and Chrome remembers                                                          |
+| Item                                                                                 | Where                                       | Status                                                                                                                    |
+| ------------------------------------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `https://localhost:4200` as an authorised JavaScript origin                          | Google Cloud Console                        | **Done**                                                                                                                  |
+| Consent screen reads "Saha Textile Dev" — should be "Saha Textile"                   | Google Cloud Console → OAuth consent screen | Open                                                                                                                      |
+| `localhost` under _Allowed Domains for the JavaScript SDK_; app mode and tester list | Meta app settings                           | **Done** — verified 2026-10-25: real Facebook login, connect and signup all completed from `https://localhost:4200` (§12) |
+| Popup permission for `localhost:4200`                                                | Chrome site settings                        | Worth checking; earlier attempts were genuinely blocked and Chrome remembers                                              |
 
 ---
 
@@ -265,7 +265,7 @@ the form became. Both files say in their own comments what they cannot prove.
 | 5   | Google personalized button — decide and verify                                | **Done** (§8) — verified against Google's documentation, decided, implemented                                                                              |
 | 6   | The repeated `initialize()` warning                                           | **Done** — re-arm only when the person is still on the button; gone from the console                                                                       |
 | 7   | Mongoose enum sweep                                                           | **Done** — 55 sites across 21 model files now derive; four inline contract enums promoted to named exports; two deliberate differences documented in place |
-| 8   | Re-verify the whole social surface in a browser                               | **Partial — the last mile is the owner's.** See below                                                                                                      |
+| 8   | Re-verify the whole social surface in a browser                               | **Done 2026-10-25** with real accounts — §12                                                                                                               |
 | 9   | Commit                                                                        | Not done, at the owner's instruction                                                                                                                       |
 
 ### What item 8 still needs, and why it stops here
@@ -426,3 +426,77 @@ control disabled behind a `Verified` badge, **zero** password inputs, and no pro
 Reload again — the record survives. Click any in-app link away — it is gone within a second or
 two. What this CANNOT show is a provider dialog, a popup surviving a user gesture, or Meta
 accepting our app; those need §7 item 8.
+
+## 12. Real-account verification (2026-10-25)
+
+Driven in the owner's Chrome through the Claude extension. The in-app browser pane refuses any popup
+opened by automation, so it cannot reach either provider. The owner finished each provider popup;
+everything else was automated, and `pendingSignups`, `oauthStates`, `authIdentities`, `customers` and
+`authSessions` were read before and after every step. One-time codes used `OTP_LOCAL_FIXED_CODE`
+(see `environment-variables.mdx`); between rounds `pnpm --filter @saha-textile/api reset:local-customer
+-- --i-am-local --email …` returned both real accounts to "never signed up".
+
+### 12.1 What passed
+
+| #   | Scenario                                                                                                                  |
+| --- | ------------------------------------------------------------------------------------------------------------------------- |
+| G1  | Google signup from the login card: prefill, locked email, no password, phone OTP, account + identity in one commit        |
+| A1  | Reload mid-signup resumes the same record                                                                                 |
+| A4  | Returning Google sign-in (after fix 1)                                                                                    |
+| F1  | Facebook connected from Sign-in methods behind step-up; confirm without a code refused                                    |
+| F2  | Returning Facebook sign-in                                                                                                |
+| F3  | Facebook disconnected behind step-up; a wrong code refused                                                                |
+| F4  | Facebook signup: its email needs its own code; a proven phone owned by another account is disclosed with "Log In"         |
+| F5  | Back mid-signup is an in-app leave: record discarded (as designed — the person loses what they proved)                    |
+| C1  | Google pressed on the registration page itself (after fix 2)                                                              |
+| C2  | Google → Facebook mid-signup by in-app navigation: record discarded, Google grant revoked, Facebook record created        |
+| C3  | Facebook → Google mid-signup across a full reload: one record, replaced under the same cookie, nothing left of Facebook's |
+| C4  | Facebook signup whose email is changed to an existing account's: disclosed once proven; final submit refused inline       |
+| C5  | Google email already owned by a non-Google account: refused at the end → one-time-code login → connect Google → sign in   |
+| —   | Signed-in visits to `/auth/login` and `/auth/register` bounce to the dashboard (after fix 3), direct and in-app           |
+
+Password identities stayed at 70 through every run — passes 1 and 7 hold against real providers.
+
+### 12.2 Defects found and fixed
+
+1. **Every returning social sign-in failed.** `OAuthVerifyResult` declared `user`; the contract sends
+   `customer`. The API set the session cookie, the screen routed into an empty signup form labelled
+   "Hi, User". The spec fake replied with `user` too — §5.3's lesson, again.
+2. **A provider button on the registration page did nothing visible.** `navigateByUrl('/auth/register')`
+   from `/auth/register` is ignored, so the empty password form stayed on screen over a provider-origin
+   record, and pressing Verify there would have replaced it. `SocialSignIn.signupStarted` → `Register.resume()`.
+3. **No guest-only guard.** It existed as an unused `canActivateChild`; now `guestOnlyGuard` on login,
+   register, OTP and forgot-password.
+4. **"Your email is already verified" told to Facebook signups.** The banner follows the server's state.
+5. **Two messages for every refusal.** The global interceptor toasted the API's English fallback over
+   the screen's translated one. `isDomainRefusal` in `http-transport` hands `path: ['request']` refusals
+   to the screen; register now renders final-submit refusals inline, which it never did.
+6. **"Log In" trailed later, unrelated errors.** Cleared with each new attempt.
+7. **`authIdentities.lastUsedAt` was never written.** `OAuthService.signInCustomerIdFor` stamps it;
+   the ownership check behind `link` does not.
+8. **The registration page armed both providers before knowing a signup was in flight** — two stray
+   states and Google's "initialize() is called multiple times" on every arrival from a provider button.
+9. **`password_too_short` / `_too_long` / `_repeated` / `_common` had no translations.**
+
+### 12.3 Traps added by this run
+
+1. **The in-app browser pane cannot test providers** — it blocks popups that automation opens. Use the
+   owner's Chrome, and expect the owner to finish each popup.
+2. **Synthetic clicks into Google's cross-origin button frame are intermittent**, and the page keeps
+   scrolling after a programmatic scroll. When a click "does nothing", check the API log for
+   `POST /oauth/google` before suspecting the app.
+3. **A Google state lives ten minutes from page load, not from the click.** A popup finished after
+   that answers "That sign-in attempt timed out" and the button re-arms — correct, but easy to hit
+   while waiting on a person.
+4. **The Vite dev server caches workspace-package types** like `nest --watch` does: rebuild
+   `http-transport` and restart the storefront server, or it fails with "has no exported member".
+
+### 12.4 Still open — owner calls
+
+- **Registration OTP feedback.** No "code sent" line, no resend countdown although the server sends
+  `resendAvailableAt`, the code box shows before any send, and a backoff answers "No codes left".
+  Reuses `ResendCountdown` and the one-time-code login markup; needs a `DEC-UI-REUSE` brief.
+- **Say "this email already has an account" up front for Google.** Today the person verifies a phone
+  first. Google proved the address, so disclosing at the callback is safe — but it changes the rule.
+- **"Sign in as …" survives an abandoned Google signup until reload** — the revoke races the next
+  screen's render. Cosmetic: pressing it starts a signup.

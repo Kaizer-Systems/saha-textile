@@ -31,7 +31,7 @@ import {
 	ApexXAxis,
 	ApexYAxis,
 } from 'ng-apexcharts';
-import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
+import { Select2Data, Select2, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
 import { AuthStore } from '@core/state/auth.store';
@@ -76,7 +76,7 @@ export interface ChartOptions {
 	imports: [
 		PageWrapper,
 		HasPermissionDirective,
-		Select2Module,
+		Select2,
 		Table,
 		RouterModule,
 		NgbRating,

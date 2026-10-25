@@ -4,7 +4,7 @@ description: Verified Mongoose models, indexes, repositories, mappers, seed tool
 search_keywords: 'mongo rs0 replica set connection uri directConnection models indexes repositories'
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-22'
+last_verified: '2026-10-26'
 source_of_truth:
     - packages/adapters-db-mongo/src/models
     - packages/adapters-db-mongo/src/repositories
@@ -91,8 +91,8 @@ Current risks:
 This implements the ratified deployment model:
 
 ```text
-Local: Docker Desktop → MongoDB 8.3 single-node replica set (rs0)
-Production: private Docker network → MongoDB 8.3 single-node replica set (rs0)
+Local: Docker Desktop → MongoDB 9.0.4 single-node replica set (rs0)
+Production: private Docker network → MongoDB 9.0.4 single-node replica set (rs0)
 ```
 
 The `mongodb+srv`/hosted-cluster assumption has been removed. The liveness/readiness split and transaction-capable rs0 proof now exist. Remaining operational work includes authenticated deploy-time secret injection, connection-pool and timeout tuning, private networking, resource caps, backup and restore, and transaction adoption across additional workflows.

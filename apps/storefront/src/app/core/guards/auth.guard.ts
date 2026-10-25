@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { UrlTree, Router, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
+import { UrlTree, Router, ActivatedRouteSnapshot, RouterStateSnapshot, type CanActivateFn } from '@angular/router';
 
 import { AuthStore } from '@core/state/auth.store';
 import { AuthService } from '@data-access/services/auth.service';
@@ -37,12 +37,17 @@ export class AuthGuard {
 		this.authService.redirectUrl = state.url;
 		return this.router.createUrlTree(['/auth/login']);
 	}
-
-	/** Keeps an already-authenticated customer out of the guest-only auth screens. */
-	canActivateChild(_route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): boolean | UrlTree {
-		if (this.authStore.isAuthenticated()) {
-			return this.router.createUrlTree(['/account/dashboard']);
-		}
-		return true;
-	}
 }
+
+/**
+ * Keeps an already-authenticated customer out of the guest-only auth screens.
+ *
+ * This used to be a `canActivateChild` method that no route ever declared, so a signed-in
+ * customer could open `/auth/login` and `/auth/register` and use them: start a second signup
+ * under the cookie of the account they were in, or press a provider button and be switched into
+ * whichever account that provider belonged to without being signed out of this one.
+ *
+ * Same caveat as `AuthGuard`: usability, not security. The server decides what a session may do.
+ */
+export const guestOnlyGuard: CanActivateFn = () =>
+	inject(AuthStore).isAuthenticated() ? inject(Router).createUrlTree(['/account/dashboard']) : true;

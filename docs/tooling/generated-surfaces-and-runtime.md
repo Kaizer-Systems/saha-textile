@@ -3,7 +3,7 @@ title: Generated Surfaces and Persistent Portal Runtime
 description: Storybook, TypeDoc, Scalar, database-catalogue, shared-theme, and atomic local serving topology.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-22'
+last_verified: '2026-10-26'
 source_of_truth:
     - apps/developer-portal
     - apps/developer-portal-storybook

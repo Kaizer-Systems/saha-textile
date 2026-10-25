@@ -1,5 +1,5 @@
 # =============================================================================
-#  Local MongoDB 8.3 — single-node replica set `rs0` (SAFE NOW profile)
+#  Local MongoDB 9.0.4 — single-node replica set `rs0` (SAFE NOW profile)
 # =============================================================================
 #  The same self-hosted Docker profile shape is used locally and in prod for
 #  parity (never Atlas). A single-node replica set is required so the API can
@@ -30,7 +30,7 @@ name: saha-textile-mongo
 
 services:
   mongo:
-    image: mongo:8.3
+    image: mongo:9.0.4
     container_name: saha-textile-mongo
     command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
     ports:

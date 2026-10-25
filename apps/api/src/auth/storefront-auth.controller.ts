@@ -510,7 +510,7 @@ export class StorefrontAuthController {
 	): Promise<OAuthVerifyResponse> {
 		try {
 			const { identity, guestCartId } = await this.oauth.verify({ provider, stateId, credential, nonce });
-			const customerId = await this.oauth.findCustomerIdFor(identity);
+			const customerId = await this.oauth.signInCustomerIdFor(identity);
 
 			if (customerId) {
 				const state = await this.auth.customerAuthRepository.findAuthStateById(customerId);

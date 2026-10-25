@@ -5,7 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
-import { Select2Module, type Select2Option } from 'ng-select2-component';
+import { Select2, type Select2Option } from 'ng-select2-component';
 import { firstValueFrom } from 'rxjs';
 
 import { StorefrontAuthGateway, type PendingSignupView } from '@core/auth/auth-gateway';
@@ -98,7 +98,7 @@ function splitPhone(e164: string): { country_code: string; phone: string } {
 	imports: [
 		Breadcrumb,
 		ReactiveFormsModule,
-		Select2Module,
+		Select2,
 		Button,
 		RouterLink,
 		TranslocoModule,
@@ -157,14 +157,32 @@ export class Register {
 	 * Not merely incoherent inside a signup in progress — destructive. `POST /signup/start`
 	 * REPLACES the record for this browser, so a Google click halfway through a signup discards
 	 * whatever has already been proven, including a phone number the person waited for a code on.
+	 *
+	 * And only once the page KNOWS it is empty. Rendering them while the first `GET` was still in
+	 * flight armed both providers — a state minted for each, and a `google.accounts.id.initialize()`
+	 * — for buttons that vanished a moment later whenever a signup was in progress, which is every
+	 * arrival from a provider button. That was the stray state rows and Google's "initialize() is
+	 * called multiple times" warning on the next screen.
 	 */
-	public readonly showSocial = computed(() => this.signup() === null);
+	public readonly showSocial = computed(() => !this.loading() && this.signup() === null);
 
 	/** Google asserted this address, so the form displays it and will not invite a re-entry. */
 	public readonly emailLocked = computed(() => this.emailState()?.locked === true);
 
 	/** The provider's own name, through the keys the account screen already translates. */
 	public readonly providerKey = computed(() => `provider_${this.origin()}`);
+
+	/**
+	 * What the banner says is left to do.
+	 *
+	 * It used to tell every social signup "your email is already verified", which is true for
+	 * Google — Google asserts its address — and false for Facebook, whose address arrives unproven
+	 * and still needs a code. Read from the server's state, so it also becomes true for Facebook
+	 * once that code has been entered.
+	 */
+	public readonly continueKey = computed(() =>
+		this.emailState()?.verified ? 'signup_continue_with_provider' : 'signup_continue_with_provider_confirm_email',
+	);
 
 	/**
 	 * The account has been created, so the pending record is already spent.
@@ -206,8 +224,11 @@ export class Register {
 	 * Runs on every arrival, including a reload, which is what makes the flow survive one. The
 	 * alternative — carrying the state across the navigation from the social button — looks
 	 * simpler and loses everything the moment anybody presses F5.
+	 *
+	 * Also run when a provider button ON this screen begins a signup (`signupStarted`): that
+	 * button's navigation to this same URL is ignored by the router, so arrival never happens.
 	 */
-	private async resume(): Promise<void> {
+	async resume(): Promise<void> {
 		this.loading.set(true);
 		try {
 			const pending = await firstValueFrom(this.gateway.currentSignup());
@@ -323,6 +344,18 @@ export class Register {
 		await this.loader.revokeGoogleGrant(pending.email.value);
 	}
 
+	/**
+	 * Starts a new attempt with no refusal on screen.
+	 *
+	 * The "sign in instead" link belongs to the refusal that offered it. Clearing only the message
+	 * left the link behind, so it went on trailing every later, unrelated error — "That code is not
+	 * right. Log In" — long after the person had changed the number that matched an account.
+	 */
+	private clearRefusal(): void {
+		this.refusal.set(null);
+		this.existingAccount.set(false);
+	}
+
 	get passwordMatchError() {
 		return this.form.getError('mismatch') && this.form.get('password_confirmation')?.touched;
 	}
@@ -356,7 +389,7 @@ export class Register {
 		if (control?.invalid || this.busyField()) return;
 
 		this.busyField.set(field);
-		this.refusal.set(null);
+		this.clearRefusal();
 		try {
 			if (!this.signup()) {
 				this.adopt(
@@ -393,7 +426,7 @@ export class Register {
 	async submitCode(field: 'email' | 'phone', code: string): Promise<void> {
 		if (this.busyField()) return;
 		this.busyField.set(field);
-		this.refusal.set(null);
+		this.clearRefusal();
 		try {
 			const result = await firstValueFrom(this.gateway.verifySignupOtp(field, code));
 			this.adopt(result.state);
@@ -420,13 +453,20 @@ export class Register {
 		this.form.markAllAsTouched();
 		if (this.tnc.invalid || !this.canSubmit() || this.pending()) return;
 
-		this.refusal.set(null);
+		this.clearRefusal();
 		// Undefined rather than an empty string for a social origin: the API branches on whether
 		// a password is PRESENT, and `''` is present. Sending one would fail the length policy
 		// for a credential the flow never asked anybody to choose.
 		const password = this.needsPassword() ? String(this.form.getRawValue().password ?? '') : undefined;
 		const created = await this.authStore.finaliseSignup(password);
-		if (!created) return;
+		if (!created) {
+			// The store keeps the API's stable code; showing it here, beside the form, is the only
+			// place a refusal at this last step is ever explained.
+			const code = this.error() ?? 'registration_failed';
+			this.existingAccount.set(code === 'signup_identifier_taken');
+			this.refusal.set(code);
+			return;
+		}
 
 		// The record is spent, so leaving this screen must not try to abandon it.
 		this.finalised = true;

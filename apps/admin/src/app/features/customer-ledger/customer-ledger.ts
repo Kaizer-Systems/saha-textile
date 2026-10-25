@@ -4,7 +4,7 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Select2Data, Select2Module } from 'ng-select2-component';
+import { Select2Data, Select2 } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
 import { SettingStore } from '@core/state/setting.store';
@@ -31,7 +31,7 @@ import { Table } from '@shared/ui/table/table';
 	imports: [
 		ReactiveFormsModule,
 		PageWrapper,
-		Select2Module,
+		Select2,
 		NumberDirective,
 		HasPermissionDirective,
 		Button,

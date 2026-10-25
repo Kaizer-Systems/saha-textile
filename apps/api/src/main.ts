@@ -20,6 +20,11 @@ async function bootstrap(): Promise<void> {
 	const config = loadConfig();
 	const logger = new Logger('Bootstrap');
 
+	// Loud on purpose: a fixed OTP left switched on should be impossible to miss in the log.
+	if (config.otp.localFixedCode) {
+		logger.warn('OTP_LOCAL_FIXED_CODE is set — every one-time code is the configured fixed value (local only).');
+	}
+
 	const app = await createApp(config);
 
 	await app.listen({ port: config.port, host: '0.0.0.0' });

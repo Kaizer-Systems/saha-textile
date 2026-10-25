@@ -5,7 +5,7 @@ import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } 
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
+import { Select2Data, Select2, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
 import { AccountStore } from '@core/state/account.store';
@@ -22,7 +22,7 @@ import { Button } from '../../button/button';
 	selector: 'address-modal',
 	templateUrl: './address-modal.html',
 	styleUrls: ['./address-modal.scss'],
-	imports: [Button, ReactiveFormsModule, Select2Module, AsyncPipe, TranslocoModule],
+	imports: [Button, ReactiveFormsModule, Select2, AsyncPipe, TranslocoModule],
 })
 export class AddressModal {
 	private modalService = inject(NgbModal);

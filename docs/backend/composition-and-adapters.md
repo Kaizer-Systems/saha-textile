@@ -4,7 +4,7 @@ wide: true
 description: NestJS module wiring, dependency-injection tokens, adapter ownership, Mongo mappings, and provider seams.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-22'
+last_verified: '2026-10-26'
 source_of_truth:
     - apps/api/src/app.module.ts
     - apps/api/src/config/app-config.ts
@@ -127,7 +127,7 @@ Seam-first provider work is ratified: ports and non-production adapters can adva
 
 - proxy/client-IP settings (`TRUST_PROXY`, `CLIENT_IP_HEADER`) are parsed and applied to trusted request-id/client-IP handling and rate-limit keys;
 - cookie/session/CSRF names (`st_access`, `st_refresh`, `st_csrf`, `x-csrf-token`, `CSRF_SECRET`) feed the shared cookie helpers and global CSRF foundation;
-- notification (`NOTIFICATION_PROVIDER`/MSG91 plus an optional email fallback) and self-hosted Mongo (`rs0`) settings in `.env.example` and `app-config.ts`;
+- notification (`NOTIFICATION_PROVIDER`/MSG91 plus an optional email fallback), OTP policy, and self-hosted Mongo (`rs0`) settings in `.env.example` and `app-config.ts`. `OTP_LOCAL_FIXED_CODE` is optional and local-only: config refuses to boot with it when `NODE_ENV=production` or the notification provider is not `console`;
 - the Mongo config now assembles a self-hosted `mongodb://…replicaSet=rs0` URI (or accepts a pre-encoded `MONGODB_URI`); the SRV hosted-cluster path and the obsolete email provider are gone.
 
 Remaining configuration gaps:

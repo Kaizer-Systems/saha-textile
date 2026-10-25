@@ -33,6 +33,7 @@ export { RefreshCoordinator } from './refresh-coordinator.js';
 export type { RefreshCoordinatorOptions, RefreshOperation } from './refresh-coordinator.js';
 export {
 	isApiErrorEnvelope,
+	isDomainRefusal,
 	isForbidden,
 	isRetryable,
 	isUnauthorized,

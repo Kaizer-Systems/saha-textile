@@ -4,7 +4,7 @@ wide: true
 description: Liveness versus readiness, logging, metrics, testing layers, transaction proof, and backend definition of done.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-22'
+last_verified: '2026-10-26'
 source_of_truth:
     - apps/api/src/health
     - apps/api/src/infra/persistence.module.ts
@@ -130,7 +130,7 @@ flowchart TD
 
 For every atomic workflow:
 
-1. establish the real Docker MongoDB 8.3 single-node replica set (`pnpm mongo:up`);
+1. establish the real Docker MongoDB 9.0.4 single-node replica set (`pnpm mongo:up`);
 2. seed only isolated test fixtures;
 3. inject failure after each participating write;
 4. assert every participating collection rolled back;

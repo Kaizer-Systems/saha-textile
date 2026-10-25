@@ -4,7 +4,7 @@ description: Local setup checklist for the monorepo and developer portal.
 search_keywords: 'mongo rs0 config.json env docker setup pnpm mongo:up check:naming replica set'
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-22'
+last_verified: '2026-10-26'
 source_of_truth:
     - package.json
     - pnpm-workspace.yaml
@@ -45,7 +45,7 @@ Local defaults target the Docker MongoDB replica set below, `console` notificati
 
 ### Local MongoDB (Docker replica set)
 
-The API requires a MongoDB 8.3 single-node replica set (`rs0`) — the same self-hosted Docker profile is used locally and in production (never Atlas). Docker Desktop must be running. From the repository root:
+The API requires a MongoDB 9.0.4 single-node replica set (`rs0`) — the same self-hosted Docker profile is used locally and in production (never Atlas). Docker Desktop must be running. From the repository root:
 
 ```bash
 pnpm mongo:up       # start rs0 and wait until healthy (rs.initiate is idempotent)

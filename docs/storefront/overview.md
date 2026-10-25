@@ -4,7 +4,7 @@ wide: true
 description: Start here before changing the public Angular and AnalogJS storefront.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-08-22'
+last_verified: '2026-10-26'
 source_of_truth:
     - apps/storefront/src/app
     - apps/storefront/vite.config.ts
@@ -13,7 +13,7 @@ source_of_truth:
 
 # Storefront orientation
 
-The storefront is the public, search-facing Saha Textile shopping experience. It is an Angular 21 application hosted by AnalogJS, rendered dynamically through Nitro, and organized around file-based routes in `apps/storefront/src/app/pages`.
+The storefront is the public, search-facing Saha Textile shopping experience. It is an Angular 22 application hosted by AnalogJS, rendered dynamically through Nitro, and organized around file-based routes in `apps/storefront/src/app/pages`.
 
 This area is **scaffolded**, not production-complete. The customer-facing page and feature surface is broad, but its data sources are mixed: catalogue listing has a real API seam, many readers still load JSON fixtures, identity and core account self-service use the API, and checkout, refunds, reviews, pending-intent continuation, and full server-cart reconciliation remain incomplete.
 

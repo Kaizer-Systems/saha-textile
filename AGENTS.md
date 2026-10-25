@@ -10,18 +10,18 @@
 
 ## 2. Stack (pinned — never silently upgrade a major)
 
-- Monorepo: **pnpm** workspaces + **Turborepo** (pnpm only — no npm/yarn).
-- Storefront: **Angular 21 + AnalogJS** (SSR/SSG, file-based routing under `apps/storefront/src/app/pages`). PWA (offline catalogue + offline cart) via **`vite-plugin-pwa` / Workbox**.
-- Admin: **Angular 21** (Fastkart-style UI).
-- API: **NestJS 11 on Fastify 5** (`@nestjs/platform-fastify`).
+- Monorepo: **pnpm 12.15.0** workspaces + **Turborepo** (pnpm only — no npm/yarn).
+- Storefront: **Angular 22 + AnalogJS** (SSR/SSG, file-based routing under `apps/storefront/src/app/pages`). PWA (offline catalogue + offline cart) via **`vite-plugin-pwa` / Workbox**.
+- Admin: **Angular 22** (Fastkart-style UI).
+- API: **NestJS 12 on Fastify 5** (`@nestjs/platform-fastify`).
 - UI/styling: **Bootstrap 5 + ng-bootstrap + SCSS**. **Fastkart** (Angular) is a UI/behaviour **reference only — never fork it.** Forms: Angular reactive/signal forms. Charts: ApexCharts.
 - Client state: **NgRx hybrid** — `@ngrx/signals` (SignalStore) for feature/UI state + classic `@ngrx/store`/`effects`/`entity` where heavy client mutation warrants it (e.g. cart). Server state/data: **TanStack Angular Query**.
-- DB: **self-hosted Docker MongoDB 8.3** (single-node replica set for multi-document transactions) — **not Atlas**. Same Docker profile locally and in prod for parity. Media: **DigitalOcean Spaces** (S3-compatible, SGP).
+- DB: **self-hosted Docker MongoDB 9.0.4** (single-node replica set for multi-document transactions) — **not Atlas**. Same Docker profile locally and in prod for parity. Media: **DigitalOcean Spaces** (S3-compatible, SGP).
 - Search: **self-hosted Meilisearch behind `SearchPort`** (Mongo is source of truth; Meili is a derived, rebuildable index). Do **not** use Mongo regex/`$text` for storefront typeahead.
 - i18n: **Transloco** — runtime **en↔fr** for the whole development phase (Fastkart shipped both; French stays). **Bengali is added only once development is complete**, deliberately: building against two live locales keeps the multi-language seams exercised, so adding a third is a data change rather than an architecture change. Add keys to BOTH `en.json` and `fr.json`; never add `bn.json` or propose replacing `fr`. Enforced by `pnpm check:i18n-parity`. Validation: **zod** at every boundary.
 - Payments: **`PaymentGatewayPort`** — INR online gateway slot + PayPal for foreign; **no COD** at launch. Ops preference for the INR adapter is CCAvenue now / Razorpay later; **swap = adapter + DI only** (core/UI never vendor-specific). FX: **ExchangeRate-API** (daily cron, rates persisted) + PayPal gross-up for non-INR. Shipping: **Shiprocket** (domestic + international) behind `ShippingPort`. Notifications: **MSG91** (SMS/WhatsApp/Email) behind `NotificationPort` with split transactional/marketing kill-switches.
 - Tooling: **angular-eslint** + ESLint flat config, Prettier (tabs/4), **Vitest** (unit) + Playwright (e2e).
-- Node: pin via `.nvmrc` (root engines require Node ≥24).
+- Node: pin via `.nvmrc` (**24.22.1**; root engines require Node ≥24).
 - Use **Context7** (MCP) for version-correct docs of any library — always pin the version in the query.
 
 ## 3. Architecture — non-negotiable: hexagonal / ports & adapters

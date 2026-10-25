@@ -13,7 +13,7 @@ import {
 	NgbNavLinkBase,
 	NgbNavOutlet,
 } from '@ng-bootstrap/ng-bootstrap';
-import { Select2Data, Select2Module } from 'ng-select2-component';
+import { Select2Data, Select2 } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -44,7 +44,7 @@ import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 		NgbNavContent,
 		FormFields,
 		ImageUpload,
-		Select2Module,
+		Select2,
 		Button,
 		NgbNavOutlet,
 		HasPermissionDirective,

@@ -1,6 +1,7 @@
 import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
+import { isDomainRefusal } from '@saha-textile/http-transport';
 import { Observable, catchError, throwError } from 'rxjs';
 
 import { ErrorService } from '@data-access/services/error.service';
@@ -29,6 +30,12 @@ export class GlobalErrorHandlerInterceptor implements HttpInterceptor {
 				// An unrecoverable 401 is not silent: the auth interceptor clears the session
 				// and the app returns the user to login.
 				if (error.status === 401) return throwError(() => error);
+
+				// A domain refusal (`otp_invalid`, `last_credential`, …) belongs to the screen that
+				// asked: it renders the translated reason beside the control. Toasting it as well put
+				// the API's English fallback on top of that — two messages, one of them contradicting
+				// the other and neither in the reader's language twice.
+				if (isDomainRefusal(error)) return throwError(() => error);
 
 				// Handle HTTP errors here
 				console.error('HTTP Error:', error.error);

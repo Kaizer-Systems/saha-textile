@@ -15,7 +15,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
+import { Select2Data, Select2, Select2UpdateEvent } from 'ng-select2-component';
 import { injectMutation, injectQueryClient } from '@tanstack/angular-query-experimental';
 import { Observable, lastValueFrom } from 'rxjs';
 
@@ -57,7 +57,7 @@ function channelsMatchContact(group: AbstractControl): ValidationErrors | null {
 	selector: 'app-form-customer',
 	templateUrl: './form-customer.html',
 	styleUrls: ['./form-customer.scss'],
-	imports: [ReactiveFormsModule, FormFields, Select2Module, Button, TranslocoModule, DeleteModal, AsyncPipe],
+	imports: [ReactiveFormsModule, FormFields, Select2, Button, TranslocoModule, DeleteModal, AsyncPipe],
 })
 export class FormCustomer {
 	private readonly route = inject(ActivatedRoute);

@@ -11,7 +11,7 @@ import {
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { Select2Module } from 'ng-select2-component';
+import { Select2 } from 'ng-select2-component';
 import { injectMutation, injectQueryClient } from '@tanstack/angular-query-experimental';
 import { lastValueFrom } from 'rxjs';
 
@@ -43,7 +43,7 @@ function channelsMatchContact(group: AbstractControl): ValidationErrors | null {
 	selector: 'app-customer-modal',
 	templateUrl: './add-customer-modal.html',
 	styleUrls: ['./add-customer-modal.scss'],
-	imports: [Button, ReactiveFormsModule, FormFields, Select2Module, TranslocoModule],
+	imports: [Button, ReactiveFormsModule, FormFields, Select2, TranslocoModule],
 })
 export class AddCustomerModal {
 	private modalService = inject(NgbModal);

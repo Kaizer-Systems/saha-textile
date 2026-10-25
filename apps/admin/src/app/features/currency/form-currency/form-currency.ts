@@ -4,7 +4,7 @@ import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } 
 import { Router, ActivatedRoute } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Select2Data, Select2UpdateEvent, Select2Module } from 'ng-select2-component';
+import { Select2Data, Select2UpdateEvent, Select2 } from 'ng-select2-component';
 import { Subject, of } from 'rxjs';
 import { switchMap, map, takeUntil } from 'rxjs/operators';
 
@@ -17,7 +17,7 @@ import { FormFields } from '@shared/ui/form-fields/form-fields';
 	selector: 'app-form-currency',
 	templateUrl: './form-currency.html',
 	styleUrls: ['./form-currency.scss'],
-	imports: [ReactiveFormsModule, FormFields, Select2Module, Button, TranslocoModule],
+	imports: [ReactiveFormsModule, FormFields, Select2, Button, TranslocoModule],
 })
 export class FormCurrency {
 	private currencyService = inject(CurrencyService);

@@ -54,9 +54,9 @@ Unanswered questions live only in `pending-decisions.mdx`. When an answer is con
 
 ## Applications and frontend foundations
 
-- Storefront: Angular 21 + AnalogJS SSR/SSG, file-based routing, PWA.
-- Admin: Angular 21 private application; no SEO requirement.
-- API: NestJS 11 on Fastify 5.
+- Storefront: Angular 22 + AnalogJS SSR/SSG, file-based routing, PWA.
+- Admin: Angular 22 private application; no SEO requirement.
+- API: NestJS 12 on Fastify 5.
 - Developer portal: Docusaurus, derived from repository evidence.
 - Styling: Bootstrap 5, ng-bootstrap, SCSS.
 - Client state:
@@ -437,7 +437,7 @@ Prose and comments keep saying “operator”; identifiers say `adminUser`. The 
 
 ## Infrastructure, config, and deployment
 
-- Production MongoDB is self-hosted Docker MongoDB 8.3.
+- Production MongoDB is self-hosted Docker MongoDB 9.0.4. The local compose pin matches (`mongo:9.0.4`, feature compatibility 9.0). The previous pins were Angular 21, NestJS 11, and MongoDB 8.3 until the 2026-10-26 upgrade.
 - MongoDB runs as a single-node replica set for transaction support.
 - MongoDB and Meilisearch are private-network-only.
 - Local development uses the same MongoDB replica-set behavior.

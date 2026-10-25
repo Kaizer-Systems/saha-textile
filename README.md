@@ -6,16 +6,16 @@ Custom rebuild of [sahatextile.com](https://sahatextile.com) (Kolkata saree/text
 
 ## Stack (pinned)
 
-- Monorepo: **pnpm** workspaces + **Turborepo**
-- Storefront: **Angular 21 + AnalogJS** (SSR/SSG, file-based routing, PWA) — Admin: **Angular 21**
-- API: **NestJS 11 on Fastify 5**
+- Monorepo: **pnpm 12.15.0** workspaces + **Turborepo**
+- Storefront: **Angular 22 + AnalogJS** (SSR/SSG, file-based routing, PWA) — Admin: **Angular 22**
+- API: **NestJS 12 on Fastify 5**
 - Styling: **Bootstrap 5 + ng-bootstrap + SCSS** (Fastkart as UI reference only — never forked)
 - State: **NgRx hybrid** (SignalStore + classic store/effects for cart) + **TanStack Angular Query** (server state)
-- DB: **self-hosted Docker MongoDB 8.3** — single-node replica set `rs0` for transactions (not Atlas); Search: **Meilisearch** behind `SearchPort`
+- DB: **self-hosted Docker MongoDB 9.0.4** — single-node replica set `rs0` for transactions (not Atlas); Search: **Meilisearch** behind `SearchPort`
 - Media: **DigitalOcean Spaces (SGP / `sgp1`)**; Notifications: **MSG91** (SMS/WhatsApp/Email) behind `NotificationPort`
 - Payments: INR gateway role (CCAvenue now / Razorpay later, adapter-swappable) + PayPal for non-INR; Shipping: Shiprocket behind `ShippingPort`
 - Validation: **zod** (shared `packages/contracts`); i18n: **Transloco** (current app locales: English + French)
-- Node: pinned via [`.nvmrc`](./.nvmrc)
+- Node: pinned via [`.nvmrc`](./.nvmrc) (**24.22.1**)
 
 ## Layout
 

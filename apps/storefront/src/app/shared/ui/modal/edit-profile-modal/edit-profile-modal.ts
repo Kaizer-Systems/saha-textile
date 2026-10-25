@@ -5,7 +5,7 @@ import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } 
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { Select2Module } from 'ng-select2-component';
+import { Select2 } from 'ng-select2-component';
 import { Observable, firstValueFrom } from 'rxjs';
 
 import { StorefrontAuthGateway } from '@core/auth/auth-gateway';
@@ -51,7 +51,7 @@ type ContactField = 'email' | 'phone';
 	selector: 'app-edit-profile-modal',
 	templateUrl: './edit-profile-modal.html',
 	styleUrls: ['./edit-profile-modal.scss'],
-	imports: [Button, ReactiveFormsModule, Select2Module, TranslocoModule],
+	imports: [Button, ReactiveFormsModule, Select2, TranslocoModule],
 })
 export class EditProfileModal {
 	private modalService = inject(NgbModal);

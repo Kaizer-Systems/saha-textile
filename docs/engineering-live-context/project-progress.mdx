@@ -3,7 +3,7 @@ title: 'Project Progress'
 description: 'Canonical cross-tool checkpoint for current implementation status and verification evidence.'
 audience: [engineering, operator, agent]
 document_role: canonical
-last_verified: 2026-08-24
+last_verified: 2026-10-26
 search_keywords: 'project progress current status checkpoint verification evidence chunks gates'
 ---
 
@@ -79,7 +79,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 ```json
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-08-24",
+	"lastVerified": "2026-10-26",
 	"chunks": {
 		"A": "done",
 		"B": "done",
@@ -145,7 +145,11 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 - 2026-07-24 — [DONE] **Chunk A (roadmap) — context/delta/dependency-pin**. Recorded a per-package keep/refactor/missing delta for `apps/api` + `contracts` + `core-domain` + `adapters-db-mongo`; full 48-collection target matrix (7 exist, ~41 missing/seam, `sequences` BLOCKED on G-NUM-ORDER/PI) mapped to chunks; contract-family + port gaps (`TransactionManagerPort`, `NotificationPort`/`EmailPort`, `YouTubePort`, `VideoTranscodePort`, auth/session/otp/oauth repos all missing). Boundary check: `core-domain` imports **zero** Nest/Mongoose/adapter code (clean); core→`contracts` dependency **stated** as G-CORE-CONTRACTS, **not resolved** (Chunk B). Stale CODE (3 sites, all in files a later chunk rewrites, left in place + logged): Brevo OTP comments `auth.service.ts:73-79`/`auth.controller.ts:63,69` (→MSG91, Chunk D), "Atlas Search" comment `search.port.ts:10` (→Meilisearch, B/F). No BillDesk/`blr1`/`mongodb+srv` in code. The superseded standalone delta report remains recoverable in Git history; current deltas live in the roadmap and this progress log. Tool: claude-code. Notes: Chunk A is read+document+pin only — no B/C/D implementation done.
 - 2026-07-24 — [DONE] **Dependency pins (Chunk A).** Converted 9 caret ranges → exact installed versions (pure pins, no major move, `pnpm install` added/downloaded 0): `apps/api` — @fastify/helmet 13.1.0, @fastify/rate-limit 11.1.0, @fastify/static 9.3.0, @nestjs/swagger 11.4.5, argon2 0.44.0, dotenv 17.4.2, jsonwebtoken 9.0.3, @types/jsonwebtoken 9.0.10; root — @types/node 24.13.3. Rest of API stack already exact-pinned (Nest 11.1.27, zod 4.4.3, mongoose 9.7.2, vitest 4.1.9, ts 6.0.3). Context7 MCP not connected this session → pins grounded on lockfile (conflict-free); future deps (@fastify/cookie/csrf, jose, meilisearch client, aws-sdk s3, bullmq, sharp, google-auth-library) recorded **advisory-only**, not installed. No latest-together conflict → nothing BLOCKED for owner. Gates green: api lint/typecheck/test + contracts/core-domain/adapters typecheck + `pnpm check:naming`. Tool: claude-code.
 - 2026-07-24 — [DONE] **Brand naming law sweep**: owner locked "never bare `saha`" (owner-decisions-log §2026-07-24 + AGENTS.md §5). Renamed repo-wide: Docker `saha-textile-mongo` + `saha_textile_mongo_data|_configdb` volumes, DBs `saha_textile_local|test|prod`, health service `saha-textile-api`, internal order prefix `SAHA-TEXTILE-`, mock-data brand strings, docs identifiers (`/etc/saha-textile/`, mongo user `saha_textile_api`) + full prose sweep "Saha"→"Saha Textile" in engineering-live-context. Cookie names locked compact `st_*`; docs cookie names aligned (`__Host-st_*`, `st_csrf|guest|locale|currency`). `SAHATX` kept (TRAI DLT 6-char cap, annotated). Added `scripts/check-naming.sh` wired into root `pnpm lint` (`naming-law:allow` marker for rule text; geography allowlist) — passes clean. Mongo stack recreated under new names; rs0 PRIMARY, integration tests 3/3, API boots + `/health` returns `saha-textile-api`. Tool: claude-code.
+- 2026-10-26 — [DONE] **Strict toolchain upgrade.** Angular 22.2.3 (CLI/`@angular/build`/`cdk` 22.2.4, `zone.js` 0.16.3), Analog 2.9.2, ng-bootstrap 21.0.0, NgRx 22.0.1, angular-eslint 22.6.0, Vite 8.3.5, Vitest 5.0.5, TypeScript 6.0.3 (not 7). Storefront and admin toast imports now use `@damjantonkli/ngx-toastr@22.0.2`; theme classes and `showSuccess`/`showError` call sites are unchanged. Root ESLint 10.13.0; storefront and admin stay on ESLint 9.39.5 because `eslint-plugin-import@2.32.0` does not peer ESLint 10. NestJS 12.2.0, Fastify 5.12.7, `@fastify/static` 10.1.7, Mongoose 9.11.4, zod 4.6.7. `.nvmrc` is 24.22.1, `packageManager` is `pnpm@12.15.0`, `@types/node` is 24.19.2. The local Node binary used for this run was still 24.17.0. `pnpm-workspace.yaml` pins `@jridgewell/sourcemap-codec` to 1.6.0 (inside the compiler's `^1.4.14` range) because 1.5.5 does not export `encodeRangeMappings`, which `@angular/compiler-cli@22.2.3` imports. `pnpm peers check` clean. `pnpm turbo run typecheck` 21/21 and `test` 18/18.   Vendor Fastkart manifests were not touched. Tool: cursor.
+- 2026-10-26 — [DONE] **Angular 22 SSR follow-ups.** Storefront `provideHttpClient(withFetch())` now sets `ɵHTTP_FETCH_MAX_RESPONSE_SIZE` to 8MB because Angular 22 otherwise refuses an SSR fetch larger than 1MB, and the theme catalogue fixture is about 3.6MB. Storefront toasts are shown only in the browser, because the toastr timeout helper calls `window.setTimeout`. A success toast reading "Saved" rendered in both apps with the theme classes `ngx-toastr toast-success` and `toast-message`; an empty message and a whitespace message added no toast. Portal validator passed again (95 pages). Storefront tests 135/135. Tool: cursor.
 - 2026-08-22 — [DONE] **Repository package manager upgraded from pnpm 11.9.0 to 11.22.0.** The root `packageManager` pin now matches the installed pnpm used by nested workspace scripts, and CI derives the same version from the manifest. A frozen install accepted all 16 workspaces without changing `pnpm-lock.yaml` or any dependency version. The previously blocked root lint aggregator is green at 24/24 tasks; typecheck is green at 21/21, tests at 18/18, and the Storefront/Admin/API production build graph at 10/10. Developer-portal validation remains green at 85 pages and 85 routes. The Mongo test package retained its environment-bound result of 5 source-only passes and 122 live-replica-set skips because no test connection was present. Existing lint, Sass deprecation, and bundle-size warnings are unchanged. Tool: codex.
+- 2026-10-26 — [DONE] **TypeScript 6 path config.** `baseUrl` is an error in TypeScript 6, so it was removed from the storefront, admin, Storybook, and Typedoc tsconfigs. Path mappings that were relative to that base now start with `./`. No `ignoreDeprecations` was added for this. Tool: cursor.
+- 2026-10-26 — [DONE] **Stack pins written through.** The versions in the toolchain bullet above are also in `AGENTS.md`, `README.md`, `saha-textile-technical-knowledgebase.mdx`, `owner-decisions-log.mdx`, and `environment-variables.mdx`. Vendor Fastkart manifests were left unchanged. Tool: cursor.
 
 ---
 
@@ -182,6 +186,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 - 2026-08-18 — [DONE] **Address CRUD + profile name wired.** `createAddress`/`updateAddress`/`deleteAddress`/`updateProfile` were empty function bodies — Add/Edit/Remove submitted and silently did nothing. Country→state→dial-code resolution added (`shared/util/address-location.ts`, 7 tests): `country.json` has three countries sharing `calling_code: "1"` with American Samoa first, so a dial-code-first lookup showed the wrong flag. **No commit.** Tool: claude-code.
 - 2026-08-18 — [DONE] **Toast rendering fixed (storefront + admin).** `getClientErrorMessage` returned `''` (empty toast box); admin read the wrong envelope nesting (always "Something Went Wrong"). Parser moved to `@saha-textile/http-transport` as `readApiErrorMessage`. Error/warning/info toasts had an invisible white-on-white icon; all four variants now share one mixin. **No commit.** Tool: claude-code.
 - 2026-08-18 — [DONE] **OTP slot geometry corrected.** The gradient inks the RIGHT 35px of each tile (verified by rasterising) and the theme sets digits proportionally — fixed with `tabular-nums` plus stride-derived geometry; digit centres now identical to ink centres and the cut-off leading slot is gone. Also de-greened the logout button and four more `#1aa488` leaks. **No commit.** Tool: claude-code.
+- 2026-10-26 — [DONE] **Select2 is the standalone component.** `ng-select2-component` 19 no longer exports `Select2Module`. Storefront forms that used the module now import `Select2` once. Side-effect CSS imports are declared in `apps/storefront/src/style-modules.d.ts`. The attribute-create Style control is the manual check. Tool: cursor.
 - _(append new bullets below)_
 
 ---
@@ -309,6 +314,8 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
   `$setOnInsert` `_id` (governance DB-IT **16/16**); `set-local-test-credentials`
   excluded from `nest build` / run via `tsx` so it is **absent from `dist`**. **No
   commit.** Tool: cursor.
+- 2026-10-26 — [DONE] **Select2 is the standalone component.** `ng-select2-component` 19 no longer exports `Select2Module`. Admin forms that used the module now import `Select2` once. The Style field on `/attribute/create` (Rectangle, Circle, Radio, Radio Bar, Dropdown, Image, Image V2) is the manual check. Tool: cursor.
+- 2026-10-26 — [DONE] **Local admin sign-in for the Style check.** `adminUsers` was empty while one live administrator assignment and password credential remained for `adm_36cf3c06-4b94-4c91-9d54-c6c40f0b365e`. Restored that user row (`owner@saha-textile.test`, role `admin`, status `active`) and rotated the local password. Signed in at `/auth/login` and left `/attribute/create` open. Bootstrap still refuses because the assignment already exists. Password is not recorded. Tool: cursor.
 - _(append)_
 
 ---
@@ -909,6 +916,7 @@ optionSelectionHash)`, globally unique variant SKU per `DEC-SKU`, unique bundle 
   Tool: cursor.
 - 2026-08-13 — [DONE] **`MongoAdminUserRepository.list`** paginated directory for
   `GET /admin/users`. Tool: cursor.
+- 2026-10-26 — [DONE] **Local Mongo image `mongo:8.3` (resolved 8.3.13) → pinned `mongo:9.0.4` on the same volumes.** `mongodump` of `saha_textile_local` is in gitignored `.generated/mongo-upgrade-2026-10-26/`. Stopped-volume copies: `saha_textile_mongo_data_bak_20261026` and `saha_textile_mongo_configdb_bak_20261026`. After start, `rs0` PRIMARY, databases unchanged, and `saha_textile_local` counts match the pre-upgrade record (customers 143, authIdentities 77, passwordCredentials 48, authSessions 22, auditLogs 19, categories 6, notificationChannelSettings 6, products 3, carts 2, currencies 2, promotions 1, pinCredentials 1, adminUserRoleAssignments 1). Feature compatibility set to 9.0 after that check. API `/health/ready` reported mongodb up, and `GET /catalog/products` returned 3 items with 6 categories. No wipe. Tool: cursor.
 - _(append)_
 
 ---
@@ -3648,6 +3656,56 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
   "runtime en↔bn" claim is what kept causing agents to "fix" French into Bengali. Bengali lands
   once development completes, deliberately, so two live locales keep the i18n seams exercised.
   Tool: claude-code.
+- 2026-10-25 — [DONE] **Google and Facebook sign-up and sign-in driven end to end with the
+  owner's REAL provider accounts** — the last mile `auth-social-signin-review-and-rework-handoff.mdx`
+  §7 item 8 left open. Run in the owner's Chrome (the in-app browser pane refuses provider popups
+  opened by automation), database read before and after every step. Passed: Google signup from
+  the login card (prefill, locked email, no password, phone OTP, account + identity in one
+  commit, password identities unchanged at 70); refresh mid-signup resumes; returning Google and
+  Facebook sign-in; Facebook connect and disconnect behind step-up (wrong code refused); Facebook
+  signup with its own email OTP; Back mid-signup discards (as designed); Google → Facebook and
+  Facebook → Google mid-signup, both by in-app navigation (discard + Google revoke) and by full
+  reload (record replaced under the same cookie); a proven phone or email that belongs to another
+  account is disclosed with "Log In"; a Google email already owned by a non-Google account is
+  refused at the last step, then the owner signs in by one-time code, connects Google, and signs
+  in with it. Full matrix and evidence in the handoff §12. Tool: claude-code.
+- 2026-10-25 — [DONE] **Defects the real-account run found, all fixed and re-verified in the
+  browser.** (1) Every RETURNING social sign-in was broken: the storefront read `result.user`, the
+  contract sends `customer`, so the API set the session cookie while the screen routed into an empty
+  signup form labelled "Hi, User" — the spec fake had the same wrong field. (2) A provider button
+  pressed ON the registration page left the empty password form over a provider-origin pending
+  record (the router ignores same-URL navigation); pressing Verify there would have replaced the
+  record and lost the provider link — `SocialSignIn.signupStarted` now tells the host to re-read
+  it. (3) `guestOnlyGuard` existed as an unused `canActivateChild`; login, register, OTP and
+  forgot-password are now guest-only. (4) Facebook signups were told "your email is already
+  verified"; the banner now follows the server's email state (new en/fr key). (5) The global
+  error interceptor toasted the API's English fallback on top of every inline domain refusal;
+  `isDomainRefusal` (http-transport) now leaves `path: ['request']` refusals to the screen, and
+  the register screen renders final-submit refusals inline (it never rendered them at all). (6)
+  The "Log In" offer stuck to every later error. (7) `authIdentities.lastUsedAt` was never
+  written; social sign-in stamps it. (8) The registration page armed both providers (two states,
+  one Google `initialize()`) before knowing a signup was in flight. (9) `password_*` refusal codes
+  had no translations. Gates: typecheck 21/21, tests 18/18 tasks (API 307, storefront 135,
+  http-transport 162), lint 24/24 with all repo guards OK. **No commit.** Tool: claude-code.
+- 2026-10-25 — [DONE] **`OTP_LOCAL_FIXED_CODE`** — local-only fixed six-digit OTP while no
+  notification provider is wired; only generation changes (HMAC storage, single use, attempt cap
+  and TTL unchanged). Boot refuses it with `NODE_ENV=production` or any provider but `console`, and
+  logs a warning when set. Local `.env` uses it; documented in `environment-variables.mdx`.
+  Plus `pnpm --filter @saha-textile/api reset:local-customer -- --i-am-local --email … [--phone …]`
+  to return a real provider account to "never signed up" between rounds (soft delete + unlink;
+  built on the Mongo repositories directly because `tsx` cannot drive Nest DI). **No commit.**
+  Tool: claude-code.
+- 2026-10-25 — [PARTIAL] **Owed after the real-account run (owner calls).** (a) Registration OTP
+  feedback: no "code sent" line, no resend countdown (the server already sends
+  `resendAvailableAt`), the code box shows before any send, and a backoff answers "No codes left"
+  — needs a `DEC-UI-REUSE` brief (reuses `ResendCountdown` and the login screen's markup). (b) A
+  Google email that already has a non-Google account is only refused after phone verification;
+  telling the person up front is safe (Google proved the address) but changes the disclosure rule.
+  (c) After an abandoned Google signup the next screen keeps "Sign in as …" until reload (revoke
+  races the render). (d) `set:local-credentials` exits 1 silently: it runs under `tsx`, which
+  cannot drive Nest DI. (e) The developer-portal validator is red on freshness only: 30 derived
+  pages predate today's source changes. They were not bulk-stamped; a deliberate portal
+  reconciliation is owed before the next promotion. Tool: claude-code.
 - _(append)_
 
 ---
@@ -3662,6 +3720,9 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
 ## Payments / shipping / FX
 
 - 2026-07-24 — [PARTIAL] Ports/stubs later; no COD; INR gateway role + PayPal non-INR locked. Tool: cursor.
+- 2026-10-26 — [PARTIAL] Developer portal Payments section records the three HDFC PDFs received for K R MARKETING ONLINE: the audit checklist, the HDFC VAS integration guide, and the CCAvenue merchant API guide. The helpdesk text said a Node.js kit was attached. The files are PDFs. The kit is still outstanding. Tool: cursor.
+- 2026-10-26 — [BLOCKED] Razorpay portal page stays a placeholder until Razorpay access arrives. `DEC-INR-GATEWAY-TIMING` is unanswered. Tool: cursor.
+- 2026-10-26 — [BLOCKED] PayPal business documentation waits for a later pass. The deferred page states only the existing non-INR role. Tool: cursor.
 - _(append)_
 
 ---
@@ -3671,6 +3732,17 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
 - 2026-07-24 — [PARTIAL] Locked model: GitHub Actions secrets + droplet env for API; deploy-time `config.json` for Angular; **no** secret bake-in; **detailed** deploy scripts (not one-liners) required per roadmap Infra section. Tool: cursor.
 - 2026-07-24 — [BLOCKED] Full auto-deploy workflow + detailed scripts not yet written. Tool: cursor.
 - 2026-07-24 — [DONE] §0b Pass 4 (docs sync): `environment-variables.mdx` fully rewritten to the locked model (Docker Mongo rs0 parts + `saha_textile_*` DB names, MSG91 primary + `EMAIL_FALLBACK_PROVIDER`, cookie/CSRF `st_*` names, `TRUST_PROXY`/`CLIENT_IP_HEADER`, CORS 4200/4300, Spaces `sgp1`, `public/config.json` runtime model + `MONGO_HOST_PORT` override; Resend-as-primary and storefront/admin `.env` files removed). Root `README.md` refreshed to Angular 21 + Analog / Bootstrap / NgRx+TanStack / Docker Mongo / Meili / MSG91 / SGP with mongo lifecycle + locked env model (Next/Atlas/Tailwind/Zustand framing gone). Owner log gained §2026-07-24 “Config injection, MSG91 primary reinforce, Spaces SGP, auth orientation”. Naming guard green. Tool: claude-code. Notes: §0d detailed deploy scripts remain BLOCKED/queued (deliberately untouched this pass).
+- 2026-10-25 — [DONE] **Local Mongo container restored.** `saha-textile-mongo` was crash-looping:
+  Docker Desktop's VM kernel moved to 6.19+, which MongoDB 8.3.7 refuses at startup
+  (SERVER-121912). Pulled the same `mongo:8.3` tag (now 8.3.13) and recreated the container on the
+  existing volumes — data intact, rs0 PRIMARY. The compose file is unchanged; whoever next pins an
+  exact Mongo patch must take 8.3.13 or later. Tool: claude-code.
+- 2026-10-25 — [DONE] **Storefront dev server trusts the local CA.** SSR's server-side fetch failed
+  `UNABLE_TO_VERIFY_LEAF_SIGNATURE` against the mkcert certificate and the unhandled initializer
+  error killed the dev server. `.claude/launch.json` now starts both storefront entries with
+  `NODE_OPTIONS=--use-system-ca` (the CA `setup:local-https` installs into the system store), so
+  no per-machine path is needed. That one bad fetch can still take the whole SSR dev process
+  down is not addressed. Tool: claude-code.
 - _(append)_
 
 ---
@@ -3859,6 +3931,7 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
   `shared/ui/social-sign-in/social-sign-in.ts` lacks an approved specimen, so that gate remains
   red and no product UI/story was added. TypeDoc builds **701 HTML pages** with one unresolved
   `labelFromUserAgent` link warning. No product runtime code changed. Tool: codex.
+- 2026-10-26 — [DONE] **Portal freshness reconciliation.** The 25 October item that left the validator red is closed. Stale pages were read against the newer sources. Drifted facts were corrected (guest-only login, register, OTP, and forgot-password; `OTP_LOCAL_FIXED_CODE`; returning social sign-in reads `customer` and stamps `authIdentities.lastUsedAt`). Dataset `lastVerified` and the portal-truth snapshot moved to 2026-10-26 together. The validator then passed at 95 pages and 95 routes. Storybook CSS side-effect imports are declared in `apps/developer-portal-storybook/.storybook/css-modules.d.ts`. Tool: cursor.
 - _(append)_
 
 ---

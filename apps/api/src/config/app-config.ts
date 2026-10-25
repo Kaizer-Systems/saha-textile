@@ -176,6 +176,22 @@ const ConfigSchema = z.object({
 	otp: z.object({
 		ttlSeconds: z.coerce.number().int().positive().default(600),
 		maxAttempts: z.coerce.number().int().positive().default(5),
+		/**
+		 * A fixed six-digit code issued in place of a random one — local development ONLY.
+		 *
+		 * Exists because no notification provider is wired yet, so every flow that asks for a
+		 * code (signup, one-time-code login, step-up, contact change) would otherwise be
+		 * undrivable by a person at a browser. Only the GENERATION changes: the code is still
+		 * stored as an HMAC, still single-use, still attempt-capped and still expires, so every
+		 * rule around it runs exactly as it will in production.
+		 *
+		 * Refused at boot in production and whenever a real provider would deliver it — see
+		 * `RuntimeConfigSchema` below.
+		 */
+		localFixedCode: z
+			.string()
+			.regex(/^\d{6}$/, 'OTP_LOCAL_FIXED_CODE must be exactly six digits')
+			.optional(),
 	}),
 	spaces: SpacesConfigSchema,
 	/**
@@ -193,12 +209,32 @@ const ConfigSchema = z.object({
 	}),
 });
 
+/**
+ * Cross-field rules, applied after the shape is parsed.
+ *
+ * A predictable code is a skeleton key to every account it guards, so the escape hatch above
+ * fails CLOSED: a production process, or one that would hand the code to a real SMS or email
+ * provider, refuses to start rather than quietly accepting a value anyone could guess.
+ */
+const RuntimeConfigSchema = ConfigSchema.superRefine((config, ctx) => {
+	if (!config.otp.localFixedCode) return;
+	if (config.nodeEnv === 'production') {
+		ctx.addIssue({ code: 'custom', message: 'OTP_LOCAL_FIXED_CODE is refused when NODE_ENV=production.' });
+	}
+	if (config.notifications.provider !== 'console') {
+		ctx.addIssue({
+			code: 'custom',
+			message: 'OTP_LOCAL_FIXED_CODE is refused unless NOTIFICATION_PROVIDER=console.',
+		});
+	}
+});
+
 export type AppConfig = z.infer<typeof ConfigSchema>;
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-	return ConfigSchema.parse({
+	return RuntimeConfigSchema.parse({
 		nodeEnv: env.NODE_ENV,
 		port: env.PORT,
 		corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS,
@@ -247,6 +283,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 		otp: {
 			ttlSeconds: env.OTP_TTL_SECONDS || undefined,
 			maxAttempts: env.OTP_MAX_ATTEMPTS || undefined,
+			localFixedCode: env.OTP_LOCAL_FIXED_CODE || undefined,
 		},
 		spaces: {
 			key: env.SPACES_KEY || undefined,

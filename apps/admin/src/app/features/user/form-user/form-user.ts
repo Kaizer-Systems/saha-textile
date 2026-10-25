@@ -4,7 +4,7 @@ import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } 
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Select2Module } from 'ng-select2-component';
+import { Select2 } from 'ng-select2-component';
 import { injectMutation, injectQueryClient } from '@tanstack/angular-query-experimental';
 import { lastValueFrom } from 'rxjs';
 
@@ -23,7 +23,7 @@ import { FormFields } from '@shared/ui/form-fields/form-fields';
 	selector: 'app-form-user',
 	templateUrl: './form-user.html',
 	styleUrls: ['./form-user.scss'],
-	imports: [ReactiveFormsModule, FormFields, Select2Module, Button, TranslocoModule, HasPermissionDirective],
+	imports: [ReactiveFormsModule, FormFields, Select2, Button, TranslocoModule, HasPermissionDirective],
 })
 export class FormAdminUser {
 	private readonly route = inject(ActivatedRoute);

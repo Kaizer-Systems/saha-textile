@@ -54,11 +54,11 @@ Fastkart code is never forked.
 | Area         | Technology                                                            | Role                                 |
 | ------------ | --------------------------------------------------------------------- | ------------------------------------ |
 | Monorepo     | pnpm workspaces + Turborepo                                           | Build/test orchestration             |
-| Storefront   | Angular 21 + AnalogJS                                                 | SSR/SSG public PWA                   |
-| Admin        | Angular 21                                                            | Private operations UI                |
-| API          | NestJS 11 + Fastify 5                                                 | HTTP composition root                |
+| Storefront   | Angular 22 + AnalogJS                                                 | SSR/SSG public PWA                   |
+| Admin        | Angular 22                                                            | Private operations UI                |
+| API          | NestJS 12 + Fastify 5                                                 | HTTP composition root                |
 | Portal       | Docusaurus                                                            | Private developer documentation      |
-| Database     | MongoDB 8.3                                                           | Operational source of truth          |
+| Database     | MongoDB 9.0.4                                                         | Operational source of truth          |
 | Search       | Self-hosted Meilisearch                                               | Derived searchable index             |
 | Media        | DigitalOcean Spaces, SGP                                              | Object storage/CDN origin            |
 | Styling      | Bootstrap 5 + ng-bootstrap + SCSS                                     | Shared UI foundation                 |
@@ -140,7 +140,7 @@ Canonical local ports:
 
 ## 6. Data and transaction foundations
 
-- MongoDB 8.3 is self-hosted in Docker in local/test/production.
+- MongoDB 9.0.4 is self-hosted in Docker in local/test/production.
 - Use a single-node replica set so transaction behavior is available in every
   phase.
 - MongoDB is private-network-only in deployed environments.

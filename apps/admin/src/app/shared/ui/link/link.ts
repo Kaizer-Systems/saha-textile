@@ -4,7 +4,7 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Select2, Select2Data, Select2Module, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
+import { Select2, Select2Data, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable, Subject, debounceTime } from 'rxjs';
 
 import { Params } from '@data-access/interfaces/core.interface';
@@ -17,7 +17,7 @@ import { FormFields } from '../form-fields/form-fields';
 	templateUrl: './link.html',
 	styleUrls: ['./link.scss'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [ReactiveFormsModule, FormFields, Select2Module, TranslocoModule],
+	imports: [ReactiveFormsModule, FormFields, Select2, TranslocoModule],
 })
 export class Link {
 	readonly linkForm = input<any>(undefined);

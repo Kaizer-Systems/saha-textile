@@ -3,7 +3,7 @@ import { Component, SimpleChanges, PLATFORM_ID, inject, output, input } from '@a
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Select2Data, Select2UpdateEvent, Select2Module } from 'ng-select2-component';
+import { Select2Data, Select2UpdateEvent, Select2 } from 'ng-select2-component';
 
 import { Params } from '@data-access/interfaces/core.interface';
 import { AttributeService } from '@data-access/services/attribute.service';
@@ -12,7 +12,7 @@ import { AttributeService } from '@data-access/services/attribute.service';
 	selector: 'app-collection-sort',
 	templateUrl: './collection-sort.html',
 	styleUrls: ['./collection-sort.scss'],
-	imports: [Select2Module, TranslocoModule],
+	imports: [Select2, TranslocoModule],
 })
 export class CollectionSort {
 	private route = inject(ActivatedRoute);

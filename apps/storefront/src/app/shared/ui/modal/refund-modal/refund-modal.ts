@@ -4,7 +4,7 @@ import { FormControl, FormGroup, Validators, ReactiveFormsModule, FormsModule } 
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { Select2Data, Select2Module } from 'ng-select2-component';
+import { Select2Data, Select2 } from 'ng-select2-component';
 
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
@@ -16,7 +16,7 @@ import { Button } from '../../button/button';
 	templateUrl: './refund-modal.html',
 	styleUrls: ['./refund-modal.scss'],
 	providers: [CurrencySymbolPipe],
-	imports: [Button, ReactiveFormsModule, FormsModule, Select2Module, TranslocoModule, CurrencySymbolPipe],
+	imports: [Button, ReactiveFormsModule, FormsModule, Select2, TranslocoModule, CurrencySymbolPipe],
 })
 export class RefundModal {
 	private modalService = inject(NgbModal);

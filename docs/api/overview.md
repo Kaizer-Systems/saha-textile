@@ -3,7 +3,7 @@ title: API Overview
 description: Current API application boundary, capability status, navigation, and generated reference.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-08-22'
+last_verified: '2026-10-26'
 source_of_truth:
     - apps/api/src
     - packages/contracts/src

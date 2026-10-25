@@ -4,7 +4,7 @@ import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Va
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Select2Data, Select2Module } from 'ng-select2-component';
+import { Select2Data, Select2 } from 'ng-select2-component';
 import { Subject, of } from 'rxjs';
 import { map, switchMap, takeUntil } from 'rxjs/operators';
 
@@ -16,7 +16,7 @@ import { FormFields } from '@shared/ui/form-fields/form-fields';
 	selector: 'app-form-attribute',
 	templateUrl: './form-attribute.html',
 	styleUrls: ['./form-attribute.scss'],
-	imports: [ReactiveFormsModule, FormFields, Select2Module, Button, TranslocoModule],
+	imports: [ReactiveFormsModule, FormFields, Select2, Button, TranslocoModule],
 })
 export class FormAttribute {
 	private route = inject(ActivatedRoute);

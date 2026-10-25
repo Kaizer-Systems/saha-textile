@@ -46,6 +46,33 @@ const sidebars: SidebarsConfig = {
 		},
 		{
 			type: 'category',
+			label: 'Payments',
+			collapsed: false,
+			link: {
+				type: 'doc',
+				id: 'payments/overview',
+			},
+			items: [
+				{
+					type: 'category',
+					label: 'CCAvenue',
+					link: {
+						type: 'doc',
+						id: 'payments/ccavenue/overview',
+					},
+					items: [
+						'payments/ccavenue/hosted-checkout',
+						'payments/ccavenue/status-enquiry',
+						'payments/ccavenue/merchant-api',
+						'payments/ccavenue/audit-and-go-live',
+					],
+				},
+				'payments/razorpay',
+				'payments/paypal',
+			],
+		},
+		{
+			type: 'category',
 			label: 'Applications',
 			collapsed: false,
 			items: [

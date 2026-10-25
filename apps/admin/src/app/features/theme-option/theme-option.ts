@@ -5,7 +5,7 @@ import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule } f
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { NgbAccordionModule, NgbNavModule, NgbNavOutlet } from '@ng-bootstrap/ng-bootstrap';
-import { Select2Data, Select2Module } from 'ng-select2-component';
+import { Select2Data, Select2 } from 'ng-select2-component';
 import { Editor, NgxEditorModule } from 'ngx-editor';
 import { map, of, Observable } from 'rxjs';
 
@@ -43,7 +43,7 @@ import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 		NgbNavModule,
 		FormFields,
 		ImageUpload,
-		Select2Module,
+		Select2,
 		AdvancedDropdown,
 		NgxEditorModule,
 		NgbNavOutlet,

@@ -1,0 +1,195 @@
+/* ============================================================================
+ * NEXT-GEN-UI · Payment clearing lanes
+ * What: glass rails, a solid current lane, dashed later lanes, one traveling pulse.
+ * Why: the payments landing should match the portal tempo without a new dependency.
+ * How: portal tokens, a contained horizontal rail, pulse hidden when motion is reduced.
+ * Tuning knobs: --pulse-duration, lane gap, rail min-width.
+ * ========================================================================= */
+
+.clearing {
+	--pulse-duration: 7.2s;
+	margin: 1.5rem 0 2.5rem;
+}
+
+.headingRow {
+	display: flex;
+	align-items: end;
+	justify-content: space-between;
+	gap: 1rem 2rem;
+	margin-bottom: 0.9rem;
+}
+
+.headingRow h2 {
+	margin: 0.15rem 0 0;
+	font-size: 1.35rem;
+}
+
+.kicker,
+.mark {
+	margin: 0;
+	font-family: var(--portal-font-mono);
+	font-size: 0.68rem;
+	font-weight: 650;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--portal-muted);
+}
+
+.legend,
+.summary,
+.waiting {
+	margin: 0;
+	max-width: 36rem;
+	color: var(--portal-muted);
+	font-size: 0.92rem;
+}
+
+.lanes {
+	display: grid;
+	gap: 0.75rem;
+}
+
+.laneCurrent,
+.laneLater {
+	padding: 0.9rem;
+	border: var(--portal-border-width) solid var(--portal-border);
+	border-radius: var(--portal-radius-xl);
+	background: color-mix(in srgb, var(--portal-surface) 88%, transparent);
+}
+
+.laneCurrent {
+	border-color: color-mix(in srgb, var(--portal-accent) 55%, var(--portal-border));
+	box-shadow: inset 0 0 0 1px var(--portal-accent-soft);
+}
+
+.laneLater {
+	border-style: dashed;
+	opacity: 0.92;
+}
+
+.laneHead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.laneButton,
+.laneButtonActive {
+	display: grid;
+	gap: 0.15rem;
+	padding: 0.15rem 0.2rem;
+	border: 0;
+	background: transparent;
+	color: var(--portal-ink);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.laneButton:focus-visible,
+.laneButtonActive:focus-visible,
+.open:focus-visible {
+	outline: 2px solid var(--portal-accent);
+	outline-offset: 3px;
+}
+
+.laneTitle {
+	font-size: 1.15rem;
+	font-weight: 650;
+}
+
+.laneButtonActive .laneTitle {
+	color: var(--portal-accent);
+}
+
+.open {
+	font-family: var(--portal-font-mono);
+	font-size: 0.78rem;
+	letter-spacing: 0.02em;
+}
+
+.summary {
+	margin-top: 0.45rem;
+}
+
+.railScroll {
+	margin-top: 0.85rem;
+	overflow-x: auto;
+}
+
+.stops {
+	position: relative;
+	display: grid;
+	grid-template-columns: repeat(6, minmax(8.5rem, 1fr));
+	gap: 0.45rem;
+	min-width: 52rem;
+	margin: 0;
+	padding: 0.35rem 0 0.2rem;
+	list-style: none;
+}
+
+.stops li {
+	position: relative;
+	z-index: 1;
+	display: grid;
+	gap: 0.35rem;
+	min-height: 4.6rem;
+	padding: 0.55rem 0.6rem;
+	border: var(--portal-border-width) solid var(--portal-border);
+	border-radius: var(--portal-radius-lg);
+	background: var(--portal-canvas);
+	color: var(--portal-ink);
+	font-size: 0.82rem;
+}
+
+.stopIndex {
+	font-family: var(--portal-font-mono);
+	font-size: 0.68rem;
+	color: var(--portal-accent);
+}
+
+.pulse {
+	position: absolute;
+	z-index: 2;
+	top: 0.15rem;
+	left: 0;
+	width: 0.55rem;
+	height: 0.55rem;
+	border-radius: 50%;
+	background: var(--portal-accent);
+	box-shadow: 0 0 0 4px var(--portal-accent-soft);
+	animation: payment-pulse var(--pulse-duration) linear infinite;
+}
+
+.waiting {
+	margin-top: 0.75rem;
+	padding: 0.7rem 0.75rem;
+	border: var(--portal-border-width) dashed var(--portal-border);
+	border-radius: var(--portal-radius);
+}
+
+@keyframes payment-pulse {
+	0% {
+		left: 0;
+	}
+
+	100% {
+		left: calc(100% - 0.55rem);
+	}
+}
+
+@media (max-width: 768px) {
+	.headingRow,
+	.laneHead {
+		align-items: start;
+		flex-direction: column;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.pulse {
+		animation: none;
+		opacity: 0;
+	}
+}

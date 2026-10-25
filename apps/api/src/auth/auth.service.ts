@@ -196,7 +196,9 @@ export class AuthService {
 		channel: 'email' | 'sms' | 'whatsapp';
 		userId?: string | null;
 	}): Promise<void> {
-		const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+		// The fixed code exists only in local development, and config refuses to boot with it
+		// anywhere a real provider could deliver it.
+		const code = this.config.otp.localFixedCode ?? String(randomInt(0, 1_000_000)).padStart(6, '0');
 		const nowMs = Date.now();
 
 		await this.otps.upsertActive({

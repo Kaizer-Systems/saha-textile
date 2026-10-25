@@ -5,7 +5,7 @@ description: Current authentication scaffold, ratified browser-session architect
 search_keywords: 'cookies csrf st_access st_refresh otp msg91 jwt session bola audiences pin'
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-08-22'
+last_verified: '2026-10-26'
 source_of_truth:
     - apps/api/src/auth
     - apps/api/src/admin
@@ -69,7 +69,7 @@ Important current gaps:
 
 - both Angular applications use cookie-only typed auth gateways with no browser-held credential; the shared transport coordinates CSRF, one refresh attempt and cross-tab refresh exclusion;
 - signup and password-management flows enforce the shared 12-character minimum and the domain common-password policy;
-- OTP request/verify is live through `NotificationPort`. DI selects `Msg91NotificationAdapter` when `NOTIFICATION_PROVIDER=msg91` and `MSG91_AUTH_KEY` is set; otherwise `ConsoleNotificationAdapter` (local/test / missing key fallback);
+- OTP request/verify is live through `NotificationPort`. DI selects `Msg91NotificationAdapter` when `NOTIFICATION_PROVIDER=msg91` and `MSG91_AUTH_KEY` is set; otherwise `ConsoleNotificationAdapter` (local/test / missing key fallback). Local development may set `OTP_LOCAL_FIXED_CODE` to six digits while the provider is `console`; boot refuses that value in production or with any other provider. The code is still stored as an HMAC, single-use, attempt-capped, and short-lived;
 - signup holds identifiers and proof server-side until both email and phone are verified; the browser can recover the server projection after reload and discard it when leaving registration; Google and Facebook verification, OAuth state/nonce validation, and identity connect/disconnect routes are implemented;
 - signup finalisation resolves ownership before consuming proof, then commits customer, password credential when applicable, and provider identity in one transaction; unique-index races return `signup_identifier_taken`, and failure to merge a guest cart does not revoke an otherwise valid login;
 - contact-change confirmation consumes the pending proof, changes the identifier, and records its audit event in one transaction; a competing unique write returns `contact_in_use`;

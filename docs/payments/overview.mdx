@@ -1,0 +1,41 @@
+---
+title: Payments
+slug: /payments
+wide: true
+description: Gateway lanes for INR and international checkout, and where each provider's notes live.
+status: planned
+audience: [beginner, backend, operator]
+last_verified: '2026-10-26'
+search_keywords: payments CCAvenue Razorpay PayPal HDFC VAS clearing
+source_of_truth:
+    - packages/core-domain/src/ports/payment-gateway.port.ts
+    - docs/business-flows/payment-and-order-lifecycle.md
+    - docs/engineering-live-context/owner-decisions-log.mdx
+    - docs/engineering-live-context/pending-decisions.mdx
+---
+
+import { PaymentClearing } from '@site/src/components/PaymentClearing';
+
+# Payments
+
+Currency selects a gateway role. INR uses the Indian online-gateway role. Any other enabled currency uses the PayPal role. The current INR preference is CCAvenue, with Razorpay as the preferred successor. `DEC-INR-GATEWAY-TIMING` is unanswered. No payment adapter is in this repository. `PaymentGatewayPort` defines `createPayment` and `verifyCallback` only.
+
+The business rules for orders, attempts, and callbacks stay on [Payment and order lifecycle](/business-flows/payment-and-order-lifecycle). This section holds the provider notes.
+
+<PaymentClearing />
+
+## Read next
+
+1. [CCAvenue](/payments/ccavenue) — transcription of the three HDFC documents received for K R MARKETING ONLINE.
+2. [Razorpay](/payments/razorpay) — deferred until access arrives.
+3. [PayPal](/payments/paypal) — deferred until a later documentation pass.
+
+## Still open
+
+These three items are also logged under **Payments / shipping / FX** in [Project progress](/engineering-live-context/project-progress).
+
+- The Node.js integration kit was named in the HDFC helpdesk mail and was not in the three PDF attachments.
+- Razorpay documentation waits until Razorpay access arrives.
+- PayPal business documentation waits for a later pass.
+
+`DEC-INR-GATEWAY-TIMING` stays open in [Pending decisions](/engineering-live-context/pending-decisions).

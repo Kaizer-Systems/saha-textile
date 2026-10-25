@@ -18,16 +18,17 @@
 						<h4>{{ 'create_new_account' | transloco }}</h4>
 					</div>
 					<!--
-						A social signup arrives here with its email already proven, so the screen has
-						to say WHY the form looks different: no password fields, an address that
-						cannot be edited, and one step left. Bootstrap's own alert — no new CSS.
+						A social signup arrives here without password fields, so the screen has to say
+						WHY the form looks different and what is left. Google's address is already
+						proven; Meta's is not, and still needs its own code — the copy follows the
+						server's answer, not the provider's name. Bootstrap's own alert — no new CSS.
 					-->
 					@if (!needsPassword()) {
 					<div
 						class="alert alert-info"
 						role="status"
 					>
-						{{ 'signup_continue_with_provider' | transloco: { provider: (providerKey() | transloco) } }}
+						{{ continueKey() | transloco: { provider: (providerKey() | transloco) } }}
 					</div>
 					}
 					<div class="input-box">
@@ -330,7 +331,8 @@
 					<div class="other-log-in">
 						<h6>{{ 'or' | transloco }}</h6>
 					</div>
-					<app-social-sign-in />
+					<!-- Already on the signup form, so a provider signup is adopted here rather than navigated to. -->
+					<app-social-sign-in (signupStarted)="resume()" />
 					}
 
 					<div class="sign-up-box">

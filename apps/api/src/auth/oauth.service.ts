@@ -167,6 +167,21 @@ export class OAuthService {
 		return existing.subjectType === 'customer' ? existing.subjectId : null;
 	}
 
+	/**
+	 * The customer a provider SIGN-IN opens, with the identity's last use recorded.
+	 *
+	 * Separate from `findCustomerIdFor`, which `link` also calls to check ownership — a link
+	 * attempt is not a use, and stamping one there would make "last used" mean nothing.
+	 * `lastUsedAt` existed on every identity row and was never written, so the account screen
+	 * could not tell a provider somebody signs in with daily from one connected and forgotten.
+	 */
+	async signInCustomerIdFor(identity: LinkableIdentity): Promise<string | null> {
+		const existing = await this.identities.findByProviderSubject(identity.provider, identity.subject);
+		if (!existing || existing.subjectType !== 'customer') return null;
+		await this.identities.touch(existing.id, new Date().toISOString());
+		return existing.subjectId;
+	}
+
 	/** Every identity currently attached to this customer, for the account screen. */
 	async listIdentities(customerId: string) {
 		return this.identities.listForSubject('customer', customerId);

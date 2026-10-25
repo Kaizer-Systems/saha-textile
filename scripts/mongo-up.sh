@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start the local MongoDB 8.3 single-node replica set (rs0) and wait until
+# Start the local MongoDB 9.0.4 single-node replica set (rs0) and wait until
 # it is healthy (the compose healthcheck runs rs.initiate idempotently).
 set -euo pipefail
 

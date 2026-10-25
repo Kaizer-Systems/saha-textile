@@ -3,7 +3,7 @@ title: Monorepo Map
 description: Workspace package ownership and responsibilities.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-22'
+last_verified: '2026-10-26'
 source_of_truth:
     - pnpm-workspace.yaml
     - turbo.json
@@ -29,7 +29,7 @@ source_of_truth:
 | `packages/adapters-db-mongo`            | Mongo persistence adapter and seed tooling                                                 |
 | `packages/adapters-notifications-msg91` | MSG91 `NotificationPort` adapter (email / SMS Flow / WhatsApp tools; Authkey from API env) |
 | `packages/config`                       | Shared TypeScript, lint, and style configuration                                           |
-| `docker/mongo`                          | Local Docker MongoDB 8.3 single-node replica-set (`rs0`) profile                           |
+| `docker/mongo`                          | Local Docker MongoDB 9.0.4 single-node replica-set (`rs0`) profile                           |
 | `scripts`                               | Repo lifecycle, naming, portal validation, local portal auth, and atomic composite runtime |
 | `docs`                                  | Human-authored portal content plus governed data for generated documentation               |
 | `docs/engineering-live-context`         | Planning and architecture source material                                                  |

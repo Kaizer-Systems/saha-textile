@@ -3,7 +3,7 @@ import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } 
 import { RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Select2Module } from 'ng-select2-component';
+import { Select2 } from 'ng-select2-component';
 
 import { AuthStore } from '@core/state/auth.store';
 import { Alert } from '@shared/ui/alert/alert';
@@ -46,7 +46,7 @@ type Channel = 'email' | 'phone';
 	selector: 'app-forgot-password',
 	templateUrl: './forgot-password.html',
 	styleUrls: ['./forgot-password.scss'],
-	imports: [Breadcrumb, Alert, ReactiveFormsModule, Button, TranslocoModule, Select2Module, RouterLink],
+	imports: [Breadcrumb, Alert, ReactiveFormsModule, Button, TranslocoModule, Select2, RouterLink],
 })
 export class ForgotPassword {
 	private authStore = inject(AuthStore);

@@ -4,7 +4,7 @@ import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } 
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Select2Module } from 'ng-select2-component';
+import { Select2 } from 'ng-select2-component';
 import { injectMutation, injectQueryClient } from '@tanstack/angular-query-experimental';
 import { lastValueFrom } from 'rxjs';
 
@@ -46,7 +46,7 @@ function asPermissionCodes(value: unknown): string[] {
 	selector: 'app-form-role',
 	templateUrl: './form-role.html',
 	styleUrls: ['./form-role.scss'],
-	imports: [ReactiveFormsModule, FormFields, Permissions, Button, TranslocoModule, Select2Module],
+	imports: [ReactiveFormsModule, FormFields, Permissions, Button, TranslocoModule, Select2],
 })
 export class FormRole {
 	private readonly gateway = inject(AdminRolesGateway);

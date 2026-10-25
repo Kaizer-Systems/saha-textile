@@ -3,7 +3,7 @@ title: Portal Experience Layer
 description: The developer portal's own next-gen interaction layer, its code map, and the convention that these stylings stay comment-marked.
 status: implemented
 audience: [frontend]
-last_verified: '2026-08-24'
+last_verified: '2026-10-26'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/project-progress.mdx
@@ -86,6 +86,7 @@ Every file carries a `NEXT-GEN-UI` banner comment — run `grep -rn NEXT-GEN-UI 
 | `src/components/FirstFlight/MissionDebrief.tsx`                    | Final-checkpoint handoff derived from compiled persona and lifecycle data. |
 | `src/components/FirstFlight/useFirstFlightProgress.ts`             | Versioned opt-in local progress parser, synchronizer and reset boundary.   |
 | `src/components/FirstFlight/{styles,hud}.module.css`               | Responsive Launch Bay, route HUD, resume and debrief visual systems.       |
+| `src/components/PaymentClearing/{index.tsx,styles.module.css}`     | Payments landing lanes: solid CCAvenue pulse, dashed later lanes.          |
 | `src/data/command-verbs.ts`                                        | Typed adapter for the compiled palette grammar and targets.                |
 | `src/data/first-flight.ts`                                         | Typed adapter for the governed persona paths and spotlight targets.        |
 

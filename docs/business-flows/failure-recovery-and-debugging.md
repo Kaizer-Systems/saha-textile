@@ -4,7 +4,7 @@ wide: true
 description: Cross-journey troubleshooting map for catalogue, cart, auth, checkout, payment, order, shipment, and admin failures.
 status: planned
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-08-22'
+last_verified: '2026-10-26'
 source_of_truth:
     - apps/storefront/src/app
     - apps/admin/src/app

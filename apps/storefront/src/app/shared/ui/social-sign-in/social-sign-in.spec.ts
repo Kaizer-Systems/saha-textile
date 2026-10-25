@@ -82,12 +82,12 @@ function harness(
 		verifyGoogle: vi.fn(() =>
 			of(
 				options.signupRequired
-					? { outcome: 'signup_required', user: null, session: null, pendingSignup: null }
-					: { outcome: 'signed_in', user: { id: 'cus_1' }, session: null, pendingSignup: null },
+					? { outcome: 'signup_required', customer: null, session: null, pendingSignup: null }
+					: { outcome: 'signed_in', customer: { id: 'cus_1' }, session: null, pendingSignup: null },
 			),
 		),
 		verifyFacebook: vi.fn(() =>
-			of({ outcome: 'signed_in', user: { id: 'cus_1' }, session: null, pendingSignup: null }),
+			of({ outcome: 'signed_in', customer: { id: 'cus_1' }, session: null, pendingSignup: null }),
 		),
 		navigate: vi.fn().mockResolvedValue(true),
 		adopt: vi.fn().mockResolvedValue(undefined),
@@ -238,6 +238,9 @@ describe('sign-in mode verifies and routes', () => {
 			accessToken: FACEBOOK_ACCESS_TOKEN,
 		});
 		expect(h.emitted).toEqual([]);
+		// The session is adopted from the wire's `customer` field — reading a `user` field the API
+		// never sends left every returning sign-in on an empty signup form.
+		expect(h.adopt).toHaveBeenCalledWith({ id: 'cus_1' });
 		expect(h.navigate).toHaveBeenCalledWith('/');
 	});
 
@@ -254,13 +257,15 @@ describe('sign-in mode verifies and routes', () => {
 			nonce: 'non_1',
 		});
 		expect(h.emitted).toEqual([]);
+		expect(h.adopt).toHaveBeenCalledWith({ id: 'cus_1' });
+		expect(h.navigate).toHaveBeenCalledWith('/');
 	});
 
 	/** An unknown subject continues in the signup form — sign-in only, never from connect. */
 	it('routes an unrecognised provider account into signup', async () => {
 		const h = harness('sign-in', ['facebook']);
 		h.verifyFacebook.mockReturnValue(
-			of({ outcome: 'signup_required', user: null, session: null, pendingSignup: null }),
+			of({ outcome: 'signup_required', customer: null, session: null, pendingSignup: null }),
 		);
 		await settle();
 
@@ -268,6 +273,38 @@ describe('sign-in mode verifies and routes', () => {
 		await settle();
 
 		expect(h.navigate).toHaveBeenCalledWith('/auth/register');
+	});
+
+	/**
+	 * Pressed on the registration screen itself, the navigation above is to the URL already
+	 * showing and the router ignores it — so the screen has to be TOLD, or it keeps rendering an
+	 * empty password signup over the provider's pending record.
+	 */
+	it('tells its host that a signup began, so a screen already at /auth/register can adopt it', async () => {
+		const h = harness('sign-in', ['facebook']);
+		h.verifyFacebook.mockReturnValue(
+			of({ outcome: 'signup_required', customer: null, session: null, pendingSignup: null }),
+		);
+		const started = vi.fn();
+		h.component.signupStarted.subscribe(started);
+		await settle();
+
+		h.component.signInWithFacebook();
+		await settle();
+
+		expect(started).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not announce a signup for a returning customer', async () => {
+		const h = harness('sign-in', ['facebook']);
+		const started = vi.fn();
+		h.component.signupStarted.subscribe(started);
+		await settle();
+
+		h.component.signInWithFacebook();
+		await settle();
+
+		expect(started).not.toHaveBeenCalled();
 	});
 });
 

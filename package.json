@@ -2,7 +2,7 @@
   "name": "saha-textile",
   "version": "0.0.0",
   "private": true,
-  "packageManager": "pnpm@11.22.0",
+  "packageManager": "pnpm@12.15.0",
   "engines": {
     "node": ">=24"
   },
@@ -42,11 +42,11 @@
   },
   "devDependencies": {
     "@saha-textile/config": "workspace:*",
-    "@types/node": "24.13.3",
-    "eslint": "10.5.0",
-    "prettier": "3.8.4",
-    "prettier-plugin-tailwindcss": "0.8.0",
-    "turbo": "2.10.0",
+    "@types/node": "24.19.2",
+    "eslint": "10.13.0",
+    "prettier": "3.9.10",
+    "prettier-plugin-tailwindcss": "0.8.1",
+    "turbo": "2.11.10",
     "typescript": "6.0.3"
   }
 }

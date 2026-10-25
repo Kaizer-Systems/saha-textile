@@ -3,7 +3,7 @@ import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } 
 import { Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Select2Module } from 'ng-select2-component';
+import { Select2 } from 'ng-select2-component';
 
 import { ResendCountdown } from '@core/auth/resend-countdown';
 import { AuthStore } from '@core/state/auth.store';
@@ -50,7 +50,7 @@ type Method = 'password' | 'code';
 	selector: 'app-login',
 	templateUrl: './login.html',
 	styleUrls: ['./login.scss'],
-	imports: [Breadcrumb, Alert, ReactiveFormsModule, RouterLink, Button, TranslocoModule, SocialSignIn, Select2Module],
+	imports: [Breadcrumb, Alert, ReactiveFormsModule, RouterLink, Button, TranslocoModule, SocialSignIn, Select2],
 })
 export class Login {
 	private authStore = inject(AuthStore);

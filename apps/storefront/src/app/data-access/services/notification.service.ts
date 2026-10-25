@@ -1,8 +1,9 @@
+import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Injectable, NgZone, inject } from '@angular/core';
+import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core';
 
+import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { ToastrService } from 'ngx-toastr';
 import { Observable, Subject } from 'rxjs';
 
 import { Params } from '@data-access/interfaces/core.interface';
@@ -18,6 +19,7 @@ export class NotificationService {
 	private http = inject(HttpClient);
 	private modalService = inject(NgbModal);
 	private toastr = inject(ToastrService);
+	private platformId = inject(PLATFORM_ID);
 
 	public alertSubject = new Subject();
 
@@ -39,7 +41,7 @@ export class NotificationService {
 		this.alertSubject.next({ type: 'success', message: message });
 		this.zone.run(() => {
 			this.modalService.dismissAll();
-			if (this.notification && this.hasSomethingToSay(message)) {
+			if (this.notification && this.hasSomethingToSay(message) && isPlatformBrowser(this.platformId)) {
 				this.toastr.success(message);
 			}
 		});
@@ -48,7 +50,7 @@ export class NotificationService {
 	showError(message: string): void {
 		this.alertSubject.next({ type: 'error', message: message });
 		this.zone.run(() => {
-			if (this.notification && this.hasSomethingToSay(message)) {
+			if (this.notification && this.hasSomethingToSay(message) && isPlatformBrowser(this.platformId)) {
 				this.toastr.error(message);
 			}
 		});

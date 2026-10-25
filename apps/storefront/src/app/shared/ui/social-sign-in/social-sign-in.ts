@@ -127,6 +127,17 @@ export class SocialSignIn {
 	readonly providers = input<SocialProvider[]>(['google', 'facebook']);
 	/** Emitted in `connect` mode only: everything the connect endpoint needs, minus the proof. */
 	readonly credential = output<ProviderCredential>();
+	/**
+	 * Emitted in `sign-in` mode when the provider account is new and a signup has begun.
+	 *
+	 * The navigation to `/auth/register` below is enough from the login card, because arriving
+	 * there builds the registration screen, which reads the pending record. From the registration
+	 * screen ITSELF it is not: the router ignores a navigation to the URL it is already on, so the
+	 * screen was never told, and kept showing an empty password signup over a Google-origin record
+	 * — one press of Verify on that form would have replaced the record and lost the provider link.
+	 * The host that is already the signup form listens to this instead.
+	 */
+	readonly signupStarted = output<void>();
 
 	readonly isBrowser = isPlatformBrowser(this.platformId);
 	readonly googleReady = signal(false);
@@ -516,8 +527,8 @@ export class SocialSignIn {
 	private async complete(request: Observable<OAuthVerifyResult>): Promise<boolean> {
 		try {
 			const result = await firstValueFrom(request);
-			if (result.outcome === 'signed_in' && result.user) {
-				await this.authStore.adoptSocialSession(result.user);
+			if (result.outcome === 'signed_in' && result.customer) {
+				await this.authStore.adoptSocialSession(result.customer);
 				await this.router.navigateByUrl('/');
 				return true;
 			}
@@ -528,6 +539,7 @@ export class SocialSignIn {
 			 * reading it back is what makes the form survive a refresh — a value handed through
 			 * router state would be gone the moment anybody pressed F5.
 			 */
+			this.signupStarted.emit();
 			await this.router.navigateByUrl('/auth/register');
 			return true;
 		} catch (error) {

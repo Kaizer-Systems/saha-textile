@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, NgZone, inject } from '@angular/core';
 
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { ToastrService } from 'ngx-toastr';
+import { ToastrService } from '@damjantonkli/ngx-toastr';
 import { Observable, Subject } from 'rxjs';
 
 import { Params } from '@data-access/interfaces/core.interface';

@@ -4,7 +4,7 @@ wide: true
 description: How AnalogJS file routes, route metadata, dynamic SSR, and browser-only code fit together.
 status: implemented
 audience: [beginner, frontend]
-last_verified: '2026-08-22'
+last_verified: '2026-10-26'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/storefront/src/app/app.config.server.ts
@@ -50,7 +50,7 @@ export default Collections;
 
 Keep querying, filtering, mutation, and presentation orchestration inside the appropriate feature/data layer.
 
-The registration route is a deliberate exception to an activation-only guard list: its `canDeactivate` guard distinguishes in-app abandonment from a browser reload. Leaving discards server-held pending signup state without blocking navigation; reload does not run the guard and the page resumes through `GET /auth/storefront/signup`.
+The registration route carries both guards. `guestOnlyGuard` keeps a signed-in customer on `/account/dashboard`. Its `canDeactivate` guard distinguishes in-app abandonment from a browser reload. Leaving discards server-held pending signup state without blocking navigation; reload does not run the guard and the page resumes through `GET /auth/storefront/signup`. Login, one-time-code, and forgot-password use the same guest-only activation guard.
 
 ## Rendering mode
 

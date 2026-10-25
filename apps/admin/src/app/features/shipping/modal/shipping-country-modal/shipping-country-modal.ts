@@ -5,7 +5,7 @@ import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } 
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { Select2Data, Select2Module } from 'ng-select2-component';
+import { Select2Data, Select2 } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
 import { IShipping } from '@data-access/interfaces/shipping.interface';
@@ -16,7 +16,7 @@ import { Button } from '@shared/ui/button/button';
 	selector: 'app-shipping-country-modal',
 	templateUrl: './shipping-country-modal.html',
 	styleUrls: ['./shipping-country-modal.scss'],
-	imports: [ReactiveFormsModule, Select2Module, Button, TranslocoModule, AsyncPipe],
+	imports: [ReactiveFormsModule, Select2, Button, TranslocoModule, AsyncPipe],
 })
 export class ShippingCountryModal {
 	private modalService = inject(NgbModal);

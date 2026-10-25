@@ -4,7 +4,7 @@ wide: true
 description: Practical rules for TanStack Query, SignalStore, classic NgRx, services, and local component state.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-08-22'
+last_verified: '2026-10-26'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/storefront/src/app/core/config/runtime-config.ts

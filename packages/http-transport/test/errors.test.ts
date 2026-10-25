@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	isDomainRefusal,
 	isApiErrorEnvelope,
 	isForbidden,
 	isRetryable,
@@ -202,5 +203,44 @@ describe('refusal reasons', () => {
 
 	it('keeps attempting rotation when no reason was given', () => {
 		expect(isUnrecoverableRefusal(undefined)).toBe(false);
+	});
+});
+
+describe('isDomainRefusal', () => {
+	const refusal = (issues: unknown[]) => ({ status: 400, error: { error: { code: 'validation_failed', issues } } });
+
+	it('recognises a refusal the API sent through domainRefusal', () => {
+		expect(
+			isDomainRefusal(
+				refusal([{ path: ['request'], message: 'Signup could not be completed', code: 'otp_invalid' }]),
+			),
+		).toBe(true);
+	});
+
+	it('leaves a field-validation failure to the global toast', () => {
+		expect(isDomainRefusal(refusal([{ path: ['email'], message: 'Invalid email', code: 'invalid_string' }]))).toBe(
+			false,
+		);
+	});
+
+	it('does not claim a mix of a refusal and a field issue', () => {
+		expect(
+			isDomainRefusal(
+				refusal([
+					{ path: ['request'], message: 'x', code: 'otp_invalid' },
+					{ path: ['phone'], message: 'y', code: 'too_small' },
+				]),
+			),
+		).toBe(false);
+	});
+
+	it('requires a code, since that is what the screen renders', () => {
+		expect(isDomainRefusal(refusal([{ path: ['request'], message: 'no code' }]))).toBe(false);
+	});
+
+	it('is false for an envelope with no issues and for anything that is not ours', () => {
+		expect(isDomainRefusal(refusal([]))).toBe(false);
+		expect(isDomainRefusal({ status: 0, error: new Error('Failed to fetch') })).toBe(false);
+		expect(isDomainRefusal(null)).toBe(false);
 	});
 });

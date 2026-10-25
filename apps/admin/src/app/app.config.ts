@@ -8,7 +8,7 @@ import { provideTransloco } from '@jsverse/transloco';
 import { provideEffects } from '@ngrx/effects';
 import { provideStore } from '@ngrx/store';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
-import { provideToastr } from 'ngx-toastr';
+import { provideToastr } from '@damjantonkli/ngx-toastr';
 
 import { AdminAuthGateway } from '@core/auth/auth-gateway';
 import { HttpAdminAuthGateway } from '@core/auth/http-auth.gateway';

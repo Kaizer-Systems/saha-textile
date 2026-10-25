@@ -3,7 +3,7 @@ title: Database Overview
 description: Current Mongo adapter boundary, durable-data status, and future generated catalogue.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-08-24'
+last_verified: '2026-10-26'
 source_of_truth:
     - packages/adapters-db-mongo/src
     - packages/contracts/src
@@ -46,7 +46,7 @@ Do not manually duplicate field tables once generation is available.
 
 ## Current limitations and evidence boundaries
 
-- Connection configuration and `.env.example` implement the ratified self-hosted Docker MongoDB 8.3 single-node replica set (`rs0`), with the same profile locally and in production; previous hosted-cluster/SRV assumptions are removed. Start the local set with `pnpm mongo:up` (see [current adapter map](./current-adapter-map#local-replica-set-lifecycle)).
+- Connection configuration and `.env.example` implement the ratified self-hosted Docker MongoDB 9.0.4 single-node replica set (`rs0`), with the same profile locally and in production; previous hosted-cluster/SRV assumptions are removed. Start the local set with `pnpm mongo:up` (see [current adapter map](./current-adapter-map#local-replica-set-lifecycle)).
 - Current models use multiple `Mixed` nested structures, which are weaker than the future generated validator/catalogue needs.
 - `TransactionManagerPort` and `MongoTransactionManager` are bound in API composition and commit/rollback-proven against rs0. Order creation adopts it for order save plus cart consumption; signup uses it for customer/credential/provider identity; contact confirmation uses it for proof/identifier/audit. Address writes are single-document atomic statements. Checkout idempotency and the wider inventory, payment, order-audit, and outbox transaction boundary remain open.
 - Storage enums at 55 sites across 21 model files derive from shared contract/domain option sets rather than copied arrays; intentional persistence-only differences stay documented at the model boundary.

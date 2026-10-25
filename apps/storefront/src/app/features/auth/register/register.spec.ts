@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
-import { of } from 'rxjs';
+import { Subject, of, type Observable } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { StorefrontAuthGateway, type PendingSignupView } from '@core/auth/auth-gateway';
@@ -66,7 +66,14 @@ interface Harness {
  */
 const TEMPLATE_STAND_IN = '<div></div>';
 
-function harness(pending: PendingSignupView | null): Harness {
+interface HarnessOptions {
+	/** Replaces the first `GET`, for a test that needs to hold it in flight or change its answer. */
+	currentSignup?: () => Observable<PendingSignupView | null>;
+	/** What the store reports after a refused finalisation. */
+	storeError?: string | null;
+}
+
+function harness(pending: PendingSignupView | null, options: HarnessOptions = {}): Harness {
 	const result = {
 		discard: vi.fn(() => of(undefined)),
 		finalise: vi.fn().mockResolvedValue(true),
@@ -82,7 +89,7 @@ function harness(pending: PendingSignupView | null): Harness {
 	};
 
 	const gateway = {
-		currentSignup: () => of(pending),
+		currentSignup: options.currentSignup ?? (() => of(pending)),
 		discardSignup: result.discard,
 		startSignup: () => of(pending),
 		updateSignupField: () => of(pending),
@@ -99,7 +106,7 @@ function harness(pending: PendingSignupView | null): Harness {
 			{
 				provide: AuthStore,
 				useValue: {
-					error: () => null,
+					error: () => options.storeError ?? null,
 					pending: () => false,
 					finaliseSignup: result.finalise,
 				},
@@ -273,5 +280,97 @@ describe('leaving abandons the signup; finishing does not', () => {
 		expect(h.discard).not.toHaveBeenCalled();
 		// And the grant stays: "Sign in as <name>" is true once the account exists.
 		expect(h.revoked).toEqual([]);
+	});
+});
+
+describe('what the screen says, and when it offers the provider buttons', () => {
+	/**
+	 * Arming a provider button mints a state and initialises Google's SDK. Doing that before the
+	 * first answer arrived spent both on buttons that vanished whenever a signup was in flight —
+	 * which is every arrival from a provider button.
+	 */
+	it('holds the provider buttons back until it knows nothing is in flight', async () => {
+		const answer = new Subject<PendingSignupView | null>();
+		const h = harness(null, { currentSignup: () => answer });
+		await settle();
+
+		expect(h.component.showSocial()).toBe(false);
+
+		answer.next(null);
+		answer.complete();
+		await settle();
+
+		expect(h.component.showSocial()).toBe(true);
+	});
+
+	/** Meta asserts nothing about its address, so the screen must not claim it is verified. */
+	it('asks a Facebook signup to confirm its email as well as its phone', async () => {
+		const h = harness({
+			...GOOGLE_PENDING,
+			origin: 'facebook',
+			email: { ...GOOGLE_PENDING.email, verified: false, locked: false },
+		});
+		await settle();
+
+		expect(h.component.continueKey()).toBe('signup_continue_with_provider_confirm_email');
+	});
+
+	it('tells a Google signup its email is already verified', async () => {
+		const h = harness(GOOGLE_PENDING);
+		await settle();
+
+		expect(h.component.continueKey()).toBe('signup_continue_with_provider');
+	});
+});
+
+describe('a provider signup begun on this screen', () => {
+	/**
+	 * The provider button navigates to `/auth/register`, which the router ignores when that is
+	 * already the URL — so the screen re-reads the record when the button says a signup began.
+	 */
+	it('is adopted when the button announces it', async () => {
+		let answer: PendingSignupView | null = null;
+		const h = harness(null, { currentSignup: () => of(answer) });
+		await settle();
+		expect(h.component.signup()).toBeNull();
+
+		answer = GOOGLE_PENDING;
+		await h.component.resume();
+
+		expect(h.component.origin()).toBe('google');
+		expect(h.component.emailLocked()).toBe(true);
+		expect(h.component.showSocial()).toBe(false);
+	});
+});
+
+describe('a refusal at the last step is explained on the form', () => {
+	/**
+	 * The store used to swallow the code into a generic key the screen never rendered, so the only
+	 * trace of "an account already exists" was an English toast — and toasts no longer repeat
+	 * domain refusals.
+	 */
+	it('shows why, and offers to sign in when the details are taken', async () => {
+		const h = harness({ ...GOOGLE_PENDING, complete: true }, { storeError: 'signup_identifier_taken' });
+		await settle();
+		h.component.tnc.setValue(true);
+		h.finalise.mockResolvedValue(false);
+
+		await h.component.submit();
+
+		expect(h.component.refusal()).toBe('signup_identifier_taken');
+		expect(h.component.existingAccount()).toBe(true);
+		expect(h.navigate).not.toHaveBeenCalled();
+	});
+
+	it('shows other refusals without the sign-in offer', async () => {
+		const h = harness({ ...GOOGLE_PENDING, complete: true }, { storeError: 'signup_expired' });
+		await settle();
+		h.component.tnc.setValue(true);
+		h.finalise.mockResolvedValue(false);
+
+		await h.component.submit();
+
+		expect(h.component.refusal()).toBe('signup_expired');
+		expect(h.component.existingAccount()).toBe(false);
 	});
 });

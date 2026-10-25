@@ -27,7 +27,7 @@ import {
 	NgbNavLinkBase,
 	NgbNavOutlet,
 } from '@ng-bootstrap/ng-bootstrap';
-import { Select2, Select2Data, Select2Module, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
+import { Select2, Select2Data, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
 import { Editor, NgxEditorModule } from 'ngx-editor';
 import { Observable, of, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map, switchMap, takeUntil } from 'rxjs/operators';
@@ -69,7 +69,7 @@ function convertToNgbDate(date: NgbDateStruct): NgbDate {
 		NgbNavContent,
 		FormFields,
 		NgxEditorModule,
-		Select2Module,
+		Select2,
 		NgbInputDatepicker,
 		Button,
 		NgbAccordionDirective,

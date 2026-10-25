@@ -93,7 +93,15 @@ export interface OAuthStartResult {
  */
 export interface OAuthVerifyResult {
 	outcome: 'signed_in' | 'signup_required';
-	user: AuthUser | null;
+	/**
+	 * `customer`, not `user` — the contract's own name (`OAuthVerifyResponse.customer`).
+	 *
+	 * This was declared `user`, which the wire never sends, so every RETURNING social sign-in read
+	 * `undefined`: the API had already set the session cookie, yet the button routed the person
+	 * into an empty signup form still labelled "Hi, User". The spec's fake replied with `user` too,
+	 * which is why nothing failed until a real provider account signed in a second time.
+	 */
+	customer: AuthUser | null;
 	session: AuthSessionInfo | null;
 	pendingSignup: PendingSignupView | null;
 }

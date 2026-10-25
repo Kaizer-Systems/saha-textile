@@ -255,3 +255,51 @@ describe('identity linking', () => {
 		expect(found).toBeNull();
 	});
 });
+
+describe('signing in records the identity it used', () => {
+	const IDENTITY = {
+		provider: 'google' as const,
+		subject: 'g_sub_1',
+		email: null,
+		emailVerified: true,
+		displayName: null,
+	};
+
+	it('stamps lastUsedAt on the identity a sign-in resolved to', async () => {
+		const { service, identities } = build(CONFIGURED);
+		identities.findByProviderSubject.mockResolvedValue({
+			id: 'aid_1',
+			subjectType: 'customer',
+			subjectId: 'cus_1',
+		} as never);
+
+		expect(await service.signInCustomerIdFor(IDENTITY)).toBe('cus_1');
+		expect(identities.touch).toHaveBeenCalledWith('aid_1', expect.any(String));
+	});
+
+	/** An operator's identity opens nothing here, so there is no use to record either. */
+	it('records nothing for an operator identity', async () => {
+		const { service, identities } = build(CONFIGURED);
+		identities.findByProviderSubject.mockResolvedValue({
+			id: 'aid_2',
+			subjectType: 'admin_user',
+			subjectId: 'adm_1',
+		} as never);
+
+		expect(await service.signInCustomerIdFor(IDENTITY)).toBeNull();
+		expect(identities.touch).not.toHaveBeenCalled();
+	});
+
+	/** The ownership check behind `link` is not a sign-in and must not move "last used". */
+	it('leaves lastUsedAt alone when only ownership is checked', async () => {
+		const { service, identities } = build(CONFIGURED);
+		identities.findByProviderSubject.mockResolvedValue({
+			id: 'aid_1',
+			subjectType: 'customer',
+			subjectId: 'cus_1',
+		} as never);
+
+		await service.findCustomerIdFor(IDENTITY);
+		expect(identities.touch).not.toHaveBeenCalled();
+	});
+});

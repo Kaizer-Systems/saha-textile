@@ -23,7 +23,10 @@
 			"runtimeArgs": ["--filter", "@saha-textile/storefront", "dev"],
 			"port": 4200,
 			"autoPort": false,
-			"url": "https://localhost:4200"
+			"url": "https://localhost:4200",
+			"env": {
+				"NODE_OPTIONS": "--use-system-ca"
+			}
 		},
 		{
 			"name": "storefront-prod",
@@ -31,7 +34,10 @@
 			"runtimeArgs": ["--filter", "@saha-textile/storefront", "start"],
 			"port": 4200,
 			"autoPort": false,
-			"url": "https://localhost:4200"
+			"url": "https://localhost:4200",
+			"env": {
+				"NODE_OPTIONS": "--use-system-ca"
+			}
 		},
 		{
 			"name": "dev-portal",

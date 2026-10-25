@@ -56,7 +56,7 @@ await compileStylesheet(adminEntry, adminGenerated, [
 
 const storefrontStylePaths = [
 	storefrontRequire.resolve('bootstrap/dist/css/bootstrap.min.css'),
-	storefrontRequire.resolve('ngx-toastr/toastr'),
+	storefrontRequire.resolve('@damjantonkli/ngx-toastr/toastr'),
 	storefrontRequire.resolve('swiper/css'),
 	storefrontRequire.resolve('swiper/swiper-bundle.css'),
 	storefrontGenerated,

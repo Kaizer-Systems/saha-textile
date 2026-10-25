@@ -4,7 +4,7 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
+import { Select2Data, Select2, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable, of, Subject } from 'rxjs';
 import { map, switchMap, takeUntil } from 'rxjs/operators';
 
@@ -21,7 +21,7 @@ import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 	styleUrls: ['./details.scss'],
 	imports: [
 		PageWrapper,
-		Select2Module,
+		Select2,
 		RouterModule,
 		UpperCasePipe,
 		TitleCasePipe,

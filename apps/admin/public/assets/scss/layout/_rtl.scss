@@ -2081,7 +2081,7 @@ html[dir='rtl'] {
 			&:before {
 				left: 100%;
 				right: unset;
-				border-left: 7px solid var(-semi-dark);
+				border-left: 7px solid $semi-dark;
 				border-right: unset;
 			}
 

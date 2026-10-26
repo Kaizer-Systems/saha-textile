@@ -3,12 +3,16 @@ import 'reflect-metadata';
 
 import { randomBytes } from 'node:crypto';
 
-import { NestFactory } from '@nestjs/core';
-import type { AdminUserAuthRepository, AuthPort, CustomerAuthRepository } from '@saha-textile/core-domain';
+import {
+	MongoAdminUserAuthRepository,
+	MongoCustomerAuthRepository,
+	connectMongo,
+	disconnectMongo,
+} from '@saha-textile/adapters-db-mongo';
 import { evaluatePassword } from '@saha-textile/core-domain';
 
-import { AppModule } from './app.module';
-import { ADMIN_USER_AUTH_REPOSITORY, AUTH_PORT, CUSTOMER_AUTH_REPOSITORY } from './infra/tokens';
+import { loadConfig } from './config/app-config';
+import { Argon2JwtAuth } from './infra/argon2-jwt.auth';
 
 /**
  * LOCAL-ONLY helper so agents can set/rotate known passwords/PINs for browser QA
@@ -22,6 +26,12 @@ import { ADMIN_USER_AUTH_REPOSITORY, AUTH_PORT, CUSTOMER_AUTH_REPOSITORY } from 
  *
  * If `--password` is omitted, a random 20-char secret is generated and printed once.
  * Argon2 hashes are never reversed — this always writes a new hash.
+ *
+ * Built on the Mongo repositories and the application's own `Argon2JwtAuth` directly, not a Nest
+ * application context. It runs from source under `tsx`, which does not emit decorator metadata, so
+ * Nest's injector could not resolve a single constructor — and with `logger: false` the failure was
+ * silent: exit 1, nothing on either stream. Using the same hasher class the API binds to
+ * `AUTH_PORT` keeps the argon2 parameters identical to the ones sign-in verifies against.
  */
 
 function readArgument(name: string): string | undefined {
@@ -95,14 +105,13 @@ async function main(): Promise<void> {
 		return;
 	}
 
-	const app = await NestFactory.createApplicationContext(AppModule.forRoot(), { logger: false });
+	await connectMongo();
 	try {
-		await app.init();
-		const auth = app.get<AuthPort>(AUTH_PORT);
+		const auth = new Argon2JwtAuth(loadConfig());
 		const passwordHash = await auth.hashPassword(password);
 
 		if (audience === 'admin') {
-			const admins = app.get<AdminUserAuthRepository>(ADMIN_USER_AUTH_REPOSITORY);
+			const admins = new MongoAdminUserAuthRepository();
 			const user = await admins.findAuthStateByIdentifier(email);
 			if (!user) {
 				process.stderr.write(`Refused: no admin user for ${email}.\n`);
@@ -135,7 +144,7 @@ async function main(): Promise<void> {
 			return;
 		}
 
-		const customers = app.get<CustomerAuthRepository>(CUSTOMER_AUTH_REPOSITORY);
+		const customers = new MongoCustomerAuthRepository();
 		const customer = await customers.findAuthStateByEmail(email);
 		if (!customer) {
 			process.stderr.write(`Refused: no customer for ${email}.\n`);
@@ -163,7 +172,7 @@ async function main(): Promise<void> {
 			].join('\n'),
 		);
 	} finally {
-		await app.close();
+		await disconnectMongo();
 	}
 }
 

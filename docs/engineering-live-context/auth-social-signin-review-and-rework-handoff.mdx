@@ -491,12 +491,34 @@ Password identities stayed at 70 through every run — passes 1 and 7 hold again
 4. **The Vite dev server caches workspace-package types** like `nest --watch` does: rebuild
    `http-transport` and restart the storefront server, or it fails with "has no exported member".
 
-### 12.4 Still open — owner calls
+### 12.4 Closed 2026-10-26 (owner-approved)
 
-- **Registration OTP feedback.** No "code sent" line, no resend countdown although the server sends
-  `resendAvailableAt`, the code box shows before any send, and a backoff answers "No codes left".
-  Reuses `ResendCountdown` and the one-time-code login markup; needs a `DEC-UI-REUSE` brief.
-- **Say "this email already has an account" up front for Google.** Today the person verifies a phone
-  first. Google proved the address, so disclosing at the callback is safe — but it changes the rule.
-- **"Sign in as …" survives an abandoned Google signup until reload** — the revoke races the next
-  screen's render. Cosmetic: pressing it starts a signup.
+All three items from the real-account run were built and browser-verified:
+
+- **Registration OTP feedback, email and phone.** The code box appears only once the server reports
+  `codeSent`; the row says where the code went; "Send a new code" waits out the server's
+  `resendAvailableAt` (verified: 28 s after the first send, 118 s after the second, surviving a
+  reload); editing the value afterwards withdraws the box. The markup and `ResendCountdown` are the
+  one-time-code login's — no new CSS or keys. Found on the way and fixed: **"Change" on a verified
+  field called Verify** — it cleared the proof and spent a send on the unchanged address. It now
+  only reopens the field.
+- **Google early notice.** A Google-proven address that already has an account is answered at the
+  callback (`oauth_email_registered`); no signup is begun. This is what `DEC-SIGNUP-VERIFICATION`
+  already said ("or Google asserts `email_verified`") — the code had only ever reached it at final
+  submit. Facebook still learns at its email code, as the decision requires. Verified with the
+  owner's Google account against a password-only account holding the same Gmail.
+- **"Sign in as …" after an abandoned Google signup.** `ProviderSdkLoader.googleGrantRevocations`
+  moves when Google confirms a revoke and any button on screen redraws without re-initialising.
+  Verified live: one confirmed revoke, one redraw.
+
+### 12.5 Sign in on proof (owner decision 2026-10-26, built and verified)
+
+- **After a signup code proves an existing account's email or phone,** the alert offers "Sign in to
+  that account" (no second code) or "Use different details" (reopens the field). Verified in the
+  browser: signed in to the existing account, its phone untouched, the pending record gone, no
+  customer created. Disabled or locked accounts are offered nothing.
+- **Google on an address with an account** hands over to the login card's one-time-code mode with
+  the address filled in (navigation state, never the URL) and a notice; nothing is sent until Send.
+  Verified with a real Google press from the registration page: code sent, Validate, signed in,
+  Google not linked.
+- No open owner calls remain on this surface.

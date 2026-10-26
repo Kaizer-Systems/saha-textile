@@ -9,6 +9,8 @@ source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/storefront/src/app/core/config/runtime-config.ts
     - apps/storefront/src/app/core/interceptors/auth.interceptor.ts
+    - apps/storefront/src/app/core/interceptors/global-error-handler.interceptor.ts
+    - packages/http-transport/src/errors.ts
     - apps/storefront/src/app/core/state
     - apps/storefront/src/app/data-access/queries
     - apps/storefront/src/app/data-access/services
@@ -78,6 +80,10 @@ Use it when:
 The API base URL is not compiled into the bundle. `core/config/runtime-config.ts` loads `public/config.json` at boot (via `provideAppInitializer`) and fills a mutable `runtimeConfig` singleton plus the legacy `environment` object that services read for `apiUrl`. Only non-secret values live there; deployments overwrite the file. The auth interceptor sends `withCredentials: true` for the cookie session and echoes the readable `st_csrf` cookie as `x-csrf-token` on unsafe methods; the browser holds no reusable credential. Session state comes from `GET /auth/storefront/me`, resolved by an app initializer before routing and never persisted to browser storage. A true guest (no access cookie, no refresh cookie) receives **200 `{ user: null }`**; expired access with a live refresh still 401s so the interceptor can rotate. Pending signup also remains server-owned: the registration route reads its safe projection after navigation/reload and discards it on an in-app leave, without placing provider subjects or proof state in router/browser storage. The account adapter maps a signed-in customer into the existing account view model; profile name, address CRUD, login methods, sessions, and contact changes use authenticated endpoints rather than a static account payload. `@saha-textile/http-transport` supplies per-tab refresh single-flight, audience-specific Web Locks across tabs, fresh-CSRF replay, loop prevention, request-id/error mapping, and stable handling for unrecoverable session refusals. Repository lint guards reject bearer, browser-token and cross-audience gateway regressions.
 
 Catalogue option, add-on, attribute, taxonomy, and measurement labels are Machine-2 content and render exactly as the API/fixture supplies them. Transloco owns interface chrome such as actions and status messages, including the paired English/French keys for provider continuation, expired social state, and “View all.” Repeated templates track stable entity ids when one exists; presentation-only lists with no unique identity use their positional index. This keeps dynamic content out of the UI dictionary and prevents duplicate-key rendering faults.
+
+## Errors: screen-owned refusals versus toasts
+
+`GlobalErrorHandlerInterceptor` toasts unexpected failures, but not a domain refusal: an API error whose every issue has `path: ['request']` and a stable `code` (`otp_invalid`, `signup_identifier_taken`, `last_credential`, …), recognised by `isDomainRefusal` from `@saha-textile/http-transport`. The screen that made the request renders that code as a translated sentence beside the control; toasting it as well showed the API's English fallback on top of it. `AuthStore.finaliseSignup` keeps the code as its `error`, so registration explains a refusal at the final step inline. Field-validation issues and transport failures keep their toast.
 
 ## Catalogue source boundary
 

@@ -100,6 +100,7 @@ describe('verified-before-creation signup contracts', () => {
 			'oauth_identity_conflict',
 			'step_up_required',
 			'last_credential',
+			'signup_no_existing_account',
 		]);
 	});
 });

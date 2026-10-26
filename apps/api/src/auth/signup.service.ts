@@ -39,7 +39,8 @@ export type SignupRefusal =
 	| 'otp_invalid'
 	| 'signup_identifier_taken'
 	| 'account_not_accessible'
-	| 'signup_identifier_conflict';
+	| 'signup_identifier_conflict'
+	| 'signup_no_existing_account';
 
 export class SignupError extends Error {
 	constructor(readonly code: SignupRefusal) {
@@ -260,6 +261,18 @@ export class SignupService {
 		return consumed;
 	}
 
+	/**
+	 * The customer that owns a value this signup has PROVEN, or null.
+	 *
+	 * Refuses an unproven field outright: this is what lets `sign-in-existing` open an account on
+	 * the strength of a signup code, and without the verified flag it would be a way to sign in to
+	 * somebody else's account just by typing their address.
+	 */
+	async provenOwner(record: PendingSignup, field: PendingSignupFieldName): Promise<string | null> {
+		if (!record[field].verified) throw new SignupError('signup_incomplete');
+		return this.ownerOf(field, record[field].value);
+	}
+
 	private async ownerOf(field: PendingSignupFieldName, value: string | null): Promise<string | null> {
 		if (!value) return null;
 		const found =
@@ -298,6 +311,7 @@ export class SignupService {
 				locked: state.locked,
 				sendsRemaining: remaining,
 				resendAvailableAt: readyAt > Date.now() ? new Date(readyAt).toISOString() : null,
+				codeSent: state.sends > 0,
 			};
 		};
 

@@ -36,8 +36,9 @@ const GOOGLE_PENDING: PendingSignupView = {
 		locked: true,
 		sendsRemaining: 5,
 		resendAvailableAt: null,
+		codeSent: false,
 	},
-	phone: { value: null, verified: false, locked: false, sendsRemaining: 5, resendAvailableAt: null },
+	phone: { value: null, verified: false, locked: false, sendsRemaining: 5, resendAvailableAt: null, codeSent: false },
 	displayName: 'Someone Example',
 	complete: false,
 	expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
@@ -57,6 +58,7 @@ interface Harness {
 	navigate: ReturnType<typeof vi.fn>;
 	/** Google grants handed back, by the account hint they were revoked for. */
 	revoked: string[];
+	signInFromSignup: ReturnType<typeof vi.fn>;
 }
 
 /**
@@ -71,6 +73,8 @@ interface HarnessOptions {
 	currentSignup?: () => Observable<PendingSignupView | null>;
 	/** What the store reports after a refused finalisation. */
 	storeError?: string | null;
+	/** What verifying a code reveals about an existing account. */
+	verifyReveals?: { existingAccount: boolean; accountUsable: boolean };
 }
 
 function harness(pending: PendingSignupView | null, options: HarnessOptions = {}): Harness {
@@ -79,6 +83,7 @@ function harness(pending: PendingSignupView | null, options: HarnessOptions = {}
 		finalise: vi.fn().mockResolvedValue(true),
 		navigate: vi.fn().mockResolvedValue(true),
 		revoked: [] as string[],
+		signInFromSignup: vi.fn().mockResolvedValue(true),
 	} as unknown as Harness;
 
 	const loader = {
@@ -94,7 +99,8 @@ function harness(pending: PendingSignupView | null, options: HarnessOptions = {}
 		startSignup: () => of(pending),
 		updateSignupField: () => of(pending),
 		requestSignupOtp: () => of(pending),
-		verifySignupOtp: () => of({ state: pending, existingAccount: false, accountUsable: true }),
+		verifySignupOtp: () =>
+			of({ state: pending, ...(options.verifyReveals ?? { existingAccount: false, accountUsable: true }) }),
 	};
 
 	TestBed.resetTestingModule();
@@ -109,6 +115,7 @@ function harness(pending: PendingSignupView | null, options: HarnessOptions = {}
 					error: () => options.storeError ?? null,
 					pending: () => false,
 					finaliseSignup: result.finalise,
+					signInFromSignup: result.signInFromSignup,
 				},
 			},
 			{ provide: Router, useValue: { navigateByUrl: result.navigate } },
@@ -372,5 +379,163 @@ describe('a refusal at the last step is explained on the form', () => {
 
 		expect(h.component.refusal()).toBe('signup_expired');
 		expect(h.component.existingAccount()).toBe(false);
+	});
+});
+
+describe('the code box and the resend wait follow what the server sent', () => {
+	const sentTo = (resendInMs: number | null): PendingSignupView => ({
+		...PASSWORD_PENDING,
+		phone: {
+			...PASSWORD_PENDING.phone,
+			sendsRemaining: 4,
+			codeSent: true,
+			resendAvailableAt: resendInMs === null ? null : new Date(Date.now() + resendInMs).toISOString(),
+		},
+	});
+
+	/** Typing into a box before anything was sent only ever earned "that code is not right". */
+	it('offers no code box before a code has gone out', async () => {
+		const h = harness(PASSWORD_PENDING);
+		await settle();
+
+		expect(h.component.codeSentFor('phone')).toBe(false);
+		expect(h.component.codeSentFor('email')).toBe(false);
+	});
+
+	it('offers the code box once the server says a code went out for this value', async () => {
+		const h = harness(sentTo(null));
+		await settle();
+
+		expect(h.component.codeSentFor('phone')).toBe(true);
+	});
+
+	/** The code was for the old number; showing its box beside a new one invites a wrong code. */
+	it('withdraws the code box when the person edits the value afterwards', async () => {
+		const h = harness(sentTo(null));
+		await settle();
+
+		h.component.form.patchValue({ phone: '9000000000' });
+
+		expect(h.component.codeSentFor('phone')).toBe(false);
+	});
+
+	/** Seeded from the server, so a reload mid-wait shows the wait that is really left. */
+	it("starts the resend wait from the server's own clock", async () => {
+		const h = harness(sentTo(25_000));
+		await settle();
+
+		expect(h.component.resend.phone.waiting).toBe(true);
+		expect(h.component.resend.phone.secondsRemaining()).toBeGreaterThan(20);
+		expect(h.component.resend.email.waiting).toBe(false);
+	});
+
+	it('has no wait when the server says a resend is already available', async () => {
+		const h = harness(sentTo(null));
+		await settle();
+
+		expect(h.component.resend.phone.waiting).toBe(false);
+	});
+});
+
+describe('"Change" on a verified field', () => {
+	const verifiedEmail: PendingSignupView = {
+		...PASSWORD_PENDING,
+		email: { ...PASSWORD_PENDING.email, verified: true, codeSent: true, sendsRemaining: 4 },
+	};
+
+	/**
+	 * It used to call Verify with the unchanged value: the proof was cleared server-side and a code
+	 * went to the same address, spending one of five sends on nothing.
+	 */
+	it('reopens the field without contacting the server', async () => {
+		const updates = vi.fn(() => of(verifiedEmail));
+		const h = harness(verifiedEmail);
+		await settle();
+		(TestBed.inject(StorefrontAuthGateway) as unknown as { updateSignupField: typeof updates }).updateSignupField =
+			updates;
+
+		h.component.changeField('email');
+
+		expect(h.component.editing.email()).toBe(true);
+		expect(updates).not.toHaveBeenCalled();
+		// The server's proof stands until a new value is verified.
+		expect(h.component.signup()?.email.verified).toBe(true);
+	});
+});
+
+describe('a code that proves an address with an existing account', () => {
+	const usable = { existingAccount: true, accountUsable: true };
+
+	/** "Sign-in is granted directly, because the OTP already served as the proof." */
+	it('offers sign-in to that account, by the field that was proven', async () => {
+		const h = harness(PASSWORD_PENDING, { verifyReveals: usable });
+		await settle();
+
+		await h.component.submitCode('phone', '123456');
+
+		expect(h.component.refusal()).toBe('signup_identifier_taken');
+		expect(h.component.existingAccountField()).toBe('phone');
+	});
+
+	it('signs in with no second code and leaves for the dashboard', async () => {
+		const h = harness(PASSWORD_PENDING, { verifyReveals: usable });
+		await settle();
+		await h.component.submitCode('phone', '123456');
+
+		await h.component.signInToExisting();
+
+		expect(h.signInFromSignup).toHaveBeenCalledWith('phone');
+		expect(h.navigate).toHaveBeenCalledWith('/account/dashboard');
+		// The record is spent; leaving must not try to abandon it.
+		h.component.leaveSignup();
+		expect(h.discard).not.toHaveBeenCalled();
+	});
+
+	it('explains a refused sign-in and withdraws the offer', async () => {
+		const h = harness(PASSWORD_PENDING, { verifyReveals: usable, storeError: 'account_not_accessible' });
+		await settle();
+		await h.component.submitCode('phone', '123456');
+		h.signInFromSignup.mockResolvedValue(false);
+
+		await h.component.signInToExisting();
+
+		expect(h.component.refusal()).toBe('account_not_accessible');
+		expect(h.component.existingAccountField()).toBeNull();
+		expect(h.navigate).not.toHaveBeenCalled();
+	});
+
+	/** A disabled or locked account is not offered a sign-in that would be refused. */
+	it('offers nothing for an account that cannot be used', async () => {
+		const h = harness(PASSWORD_PENDING, { verifyReveals: { existingAccount: true, accountUsable: false } });
+		await settle();
+
+		await h.component.submitCode('phone', '123456');
+
+		expect(h.component.refusal()).toBe('account_not_accessible');
+		expect(h.component.existingAccount()).toBe(false);
+		expect(h.component.existingAccountField()).toBeNull();
+	});
+
+	it('lets the person keep signing up with different details instead', async () => {
+		const h = harness(PASSWORD_PENDING, { verifyReveals: usable });
+		await settle();
+		await h.component.submitCode('phone', '123456');
+
+		h.component.useDifferentDetails();
+
+		expect(h.component.refusal()).toBeNull();
+		expect(h.component.editing.phone()).toBe(true);
+	});
+});
+
+describe('Google pressed here on an address that already has an account', () => {
+	/** Nothing to sign up: hand over to the login card's code mode — in navigation state, not the URL. */
+	it('hands the proven address to the login screen in navigation state', async () => {
+		const h = harness(null);
+		await settle();
+
+		await h.component.continueWithCode('ada@example.test');
+
+		expect(h.navigate).toHaveBeenCalledWith('/auth/login', { state: { existingAccountEmail: 'ada@example.test' } });
 	});
 });

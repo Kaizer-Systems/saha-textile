@@ -38,6 +38,7 @@ const ROUTES = {
 	signupOtpRequest: '/auth/storefront/signup/otp/request',
 	signupOtpVerify: '/auth/storefront/signup/otp/verify',
 	signupFinalise: '/auth/storefront/signup/finalise',
+	signupSignInExisting: '/auth/storefront/signup/sign-in-existing',
 	oauthState: '/auth/storefront/oauth/state',
 	oauthGoogle: '/auth/storefront/oauth/google',
 	oauthFacebook: '/auth/storefront/oauth/facebook',
@@ -80,6 +81,7 @@ const CREDENTIAL_ROUTES: readonly string[] = [
 	ROUTES.signupOtpRequest,
 	ROUTES.signupOtpVerify,
 	ROUTES.signupFinalise,
+	ROUTES.signupSignInExisting,
 	ROUTES.oauthState,
 	ROUTES.oauthGoogle,
 	ROUTES.oauthFacebook,
@@ -108,6 +110,8 @@ const SESSION_ESTABLISHING_ROUTES: readonly string[] = [
 	// verifying one all leave the customer signed out — treating any of them as proof would
 	// un-latch the transport and buy one pointless rotation per later 401.
 	ROUTES.signupFinalise,
+	// So does signing in to the account a signup code just proved.
+	ROUTES.signupSignInExisting,
 	// A provider token may sign an existing customer in, so this one CAN establish a session.
 	ROUTES.oauthGoogle,
 	ROUTES.oauthFacebook,
@@ -181,6 +185,10 @@ export class HttpStorefrontAuthGateway extends StorefrontAuthGateway {
 		// No identifiers. The server finalises from what it verified, so there is nothing here
 		// for a tampered form to substitute.
 		return this.http.post<AuthSessionResult>(this.url(ROUTES.signupFinalise), password ? { password } : {});
+	}
+
+	override signInFromSignup(field: 'email' | 'phone'): Observable<AuthSessionResult> {
+		return this.http.post<AuthSessionResult>(this.url(ROUTES.signupSignInExisting), { field });
 	}
 
 	override startOAuth(provider: SocialProvider): Observable<OAuthStartResult> {

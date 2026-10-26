@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
@@ -58,6 +59,10 @@ interface Harness {
 	facebookLoginCalls: number;
 	/** How many times Google's SDK was initialised — one per armed nonce, and no more. */
 	initializeCalls: () => number;
+	/** How many times Google's button was drawn. */
+	renderCalls: () => number;
+	/** Stands in for Google confirming that a grant was handed back. */
+	confirmRevocation: () => void;
 }
 
 function harness(
@@ -76,6 +81,8 @@ function harness(
 	let armedNonce: string | undefined;
 	let minted = 0;
 	let initializeCalls = 0;
+	let renderCalls = 0;
+	const revocations = signal(0);
 
 	const result = {
 		emitted: [],
@@ -96,6 +103,8 @@ function harness(
 		armedNonce: () => armedNonce,
 		facebookLoginCalls: 0,
 		initializeCalls: () => initializeCalls,
+		renderCalls: () => renderCalls,
+		confirmRevocation: () => revocations.update((count) => count + 1),
 	} as unknown as Harness;
 
 	const googleApi = {
@@ -106,13 +115,16 @@ function harness(
 					googleCallback = config.callback;
 					armedNonce = config.nonce;
 				},
-				renderButton: () => undefined,
+				renderButton: () => {
+					renderCalls += 1;
+				},
 				revoke: () => undefined,
 			},
 		},
 	};
 
 	const loader = {
+		googleGrantRevocations: revocations,
 		loadGoogle: async () => googleApi,
 		// Mirrors the real service: configure, then hand the API back. The component goes through
 		// this rather than calling `initialize` itself, so the loader knows GIS is configured and
@@ -487,5 +499,59 @@ describe('degrading stays quiet', () => {
 		expect(h.emitted).toEqual([]);
 		expect(h.verifyFacebook).not.toHaveBeenCalled();
 		expect(h.component.status()).toBe('social_unavailable');
+	});
+});
+
+describe('the Google button after a grant is handed back', () => {
+	/**
+	 * An abandoned signup revokes on its way out, and the next screen draws its button before
+	 * Google confirms — so it kept "Sign in as <name>" for an account that was never created.
+	 */
+	it('redraws once Google confirms the revoke, without initialising again', async () => {
+		const h = harness('sign-in', ['google']);
+		await settle();
+		const drawn = h.renderCalls();
+		const initialised = h.initializeCalls();
+
+		h.confirmRevocation();
+		TestBed.tick();
+
+		expect(h.renderCalls()).toBe(drawn + 1);
+		expect(h.initializeCalls()).toBe(initialised);
+	});
+
+	it('does not redraw when nothing has been revoked', async () => {
+		const h = harness('sign-in', ['google']);
+		await settle();
+		const drawn = h.renderCalls();
+
+		TestBed.tick();
+
+		expect(h.renderCalls()).toBe(drawn);
+	});
+});
+
+describe('a provider-proven address that already has an account', () => {
+	it('hands the proven address to its host instead of opening an empty signup', async () => {
+		const h = harness('sign-in', ['google']);
+		h.verifyGoogle.mockReturnValue(
+			of({
+				outcome: 'account_exists',
+				customer: null,
+				session: null,
+				pendingSignup: null,
+				existingAccountEmail: 'ada@example.test',
+			}),
+		);
+		const offered = vi.fn();
+		h.component.existingAccount.subscribe(offered);
+		await settle();
+
+		h.fireGoogle(GOOGLE_ID_TOKEN);
+		await settle();
+
+		expect(offered).toHaveBeenCalledWith('ada@example.test');
+		expect(h.navigate).not.toHaveBeenCalled();
+		expect(h.adopt).not.toHaveBeenCalled();
 	});
 });

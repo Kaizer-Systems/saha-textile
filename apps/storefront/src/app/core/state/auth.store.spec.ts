@@ -48,6 +48,10 @@ class FakeGateway extends StorefrontAuthGateway {
 		return this.loginResult === 'ok' ? of(SESSION) : throwError(() => new Error('rejected'));
 	}
 
+	override signInFromSignup(): Observable<AuthSessionResult> {
+		return this.loginResult === 'ok' ? of(SESSION) : throwError(() => new Error('rejected'));
+	}
+
 	/**
 	 * The rest of the signup and social surface, unused by these cases.
 	 *

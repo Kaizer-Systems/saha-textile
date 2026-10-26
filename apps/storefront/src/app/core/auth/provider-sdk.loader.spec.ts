@@ -333,6 +333,22 @@ describe('Google is configured before it is asked to revoke', () => {
 		expect(id.revoke).toHaveBeenCalledTimes(1);
 	});
 
+	/**
+	 * The redraw signal. It moves when Google CONFIRMS the revoke — not when it is asked for —
+	 * because a button redrawn before the grant is gone would still read "Sign in as <name>".
+	 */
+	it('counts a revocation only once Google confirms it', async () => {
+		const id = installGoogle();
+		const loader = makeLoader('browser');
+
+		await loader.revokeGoogleGrant('someone@example.test');
+		expect(loader.googleGrantRevocations()).toBe(0);
+
+		const done = id.revoke.mock.calls[0]?.[1] as () => void;
+		done();
+		expect(loader.googleGrantRevocations()).toBe(1);
+	});
+
 	/** An unconfigured provider is one we cannot revoke against, and saying so is the job. */
 	it('reports failure rather than throwing when Google is unconfigured', async () => {
 		runtimeConfig.googleClientId = '';

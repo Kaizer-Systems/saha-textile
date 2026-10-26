@@ -103,10 +103,21 @@ export type FacebookVerifyRequest = z.infer<typeof FacebookVerifyRequest>;
  * refused at finalisation, not a silent takeover.
  */
 export const OAuthVerifyResponse = z.object({
-	outcome: z.enum(['signed_in', 'signup_required']),
+	/**
+	 * `account_exists`: the provider PROVED an address (Google) that already belongs to a usable
+	 * account. No signup is begun and nothing is linked; the person is offered a one-time code to
+	 * that address, which is what signs them in.
+	 */
+	outcome: z.enum(['signed_in', 'signup_required', 'account_exists']),
 	customer: Customer.nullable().default(null),
 	session: SessionInfo.nullable().default(null),
 	pendingSignup: PendingSignupState.nullable().default(null),
+	/**
+	 * The proven address, for `account_exists` only, so the screen can offer a code to it.
+	 *
+	 * Safe to return: the caller has just signed in to the provider with this very address.
+	 */
+	existingAccountEmail: z.string().nullable().default(null),
 });
 export type OAuthVerifyResponse = z.infer<typeof OAuthVerifyResponse>;
 

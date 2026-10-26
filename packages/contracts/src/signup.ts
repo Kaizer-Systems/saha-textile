@@ -51,6 +51,14 @@ export const SignupFieldState = z.object({
 	sendsRemaining: z.number().int().nonnegative(),
 	/** When a resend becomes available (progressive backoff), or null when it already is. */
 	resendAvailableAt: IsoDateTime.nullable().default(null),
+	/**
+	 * Whether a code has been sent for this field on this signup.
+	 *
+	 * The form shows the code box only once there is a code to type. Reported by the server so a
+	 * reload mid-verification still shows it — the browser cannot work this out from the budget
+	 * without hard-coding the server's per-field limit.
+	 */
+	codeSent: z.boolean().default(false),
 });
 export type SignupFieldState = z.infer<typeof SignupFieldState>;
 
@@ -135,6 +143,17 @@ export type UpdateSignupFieldRequest = z.infer<typeof UpdateSignupFieldRequest>;
 export const SignupOtpRequestBody = z.object({ field: SignupField });
 export type SignupOtpRequestBody = z.infer<typeof SignupOtpRequestBody>;
 
+/**
+ * `POST /auth/storefront/signup/sign-in-existing`
+ *
+ * Signs in to the account that owns a value this signup has just PROVEN with a code
+ * (`DEC-SIGNUP-VERIFICATION`: "sign-in is granted directly, because the OTP already served as the
+ * proof"). Names only the field: the value, its proof and its owner are all read from the
+ * server-held pending record, never from the request.
+ */
+export const SignupSignInExistingRequest = z.object({ field: SignupField });
+export type SignupSignInExistingRequest = z.infer<typeof SignupSignInExistingRequest>;
+
 /** `POST /auth/storefront/signup/otp/verify` */
 export const SignupOtpVerifyRequest = z.object({
 	field: SignupField,
@@ -214,5 +233,7 @@ export const SignupErrorCode = z.enum([
 	'step_up_required',
 	/** Removing this would leave the account with no way back in. */
 	'last_credential',
+	/** Sign-in from a signup asked for an account the proven value does not (or no longer) belong to. */
+	'signup_no_existing_account',
 ]);
 export type SignupErrorCode = z.infer<typeof SignupErrorCode>;

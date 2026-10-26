@@ -30,6 +30,7 @@ import {
 	FinaliseSignupRequest,
 	SignupOtpRequestBody,
 	SignupOtpVerifyRequest,
+	SignupSignInExistingRequest,
 	type PendingSignupResponse,
 	type PendingSignupState,
 	type SignupOtpVerifyResponse,
@@ -328,6 +329,67 @@ export class StorefrontAuthController {
 		}
 	}
 
+	/**
+	 * Signs in to the account a signup code has just shown to be the caller's.
+	 *
+	 * `DEC-SIGNUP-VERIFICATION`: once a code proves control of an address that already has an
+	 * account, "sign-in is granted directly, because the OTP already served as the proof". The proof
+	 * is the very one `login/email-otp/verify` would accept, so this grants nothing that path would
+	 * not — it only spares the person a second code (an SMS, for a phone) to say it again.
+	 *
+	 * Everything comes from the pending record: the value, its verified flag, and therefore its
+	 * owner. The request names only which field. The record is consumed, so the proof opens one
+	 * session once, and NOTHING else from the abandoned signup reaches the account — not the other
+	 * field's value, not a provider identity. Connecting a provider stays behind step-up.
+	 */
+	@Post('signup/sign-in-existing')
+	@Public()
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({
+		operationId: 'signInFromCustomerSignup',
+		summary: 'Sign in to the existing account a signup code just proved',
+	})
+	async signInFromSignup(
+		@Body(new ZodValidationPipe(SignupSignInExistingRequest)) body: SignupSignInExistingRequest,
+		@Req() request: FastifyRequest,
+		@Res({ passthrough: true }) reply: FastifyReply,
+	): Promise<AuthSessionResponse> {
+		try {
+			const record = await this.signup.require(this.signupKey(request));
+			const ownerId = await this.signup.provenOwner(record, body.field);
+			if (!ownerId) throw new SignupError('signup_no_existing_account');
+
+			// The same rule as a one-time-code login: only an active account opens.
+			const user = await this.auth.customerAuthRepository.findAuthStateById(ownerId);
+			if (!user || user.status !== 'active') throw new SignupError('account_not_accessible');
+
+			await this.signup.consume(record);
+			void reply.setCookie(cookieNames(this.config).signup, '', sessionCookieOptions(this.config, 0));
+
+			const { session } = await this.sessions.establish({
+				user: { id: user.id, role: null, tokenVersion: user.tokenVersion, permissionsVersion: 0 },
+				audience: 'storefront',
+				request,
+				reply,
+				// Signup carries no "remember me", and finalisation keeps the long session; a person
+				// who just proved an address on this browser plainly intends to keep using it.
+				persistent: true,
+			});
+			await this.adoptGuestCart(user.id, request, reply);
+
+			return {
+				user: await this.auth.publicCustomer(user.id),
+				session: {
+					audience: session.audience,
+					expiresAt: session.expiresAt,
+					refreshExpiresAt: session.absoluteExpiresAt,
+				},
+			};
+		} catch (error) {
+			return this.refuse(error);
+		}
+	}
+
 	@Post('signup/finalise')
 	@Public()
 	@ApiOperation({ operationId: 'finaliseCustomerSignup', summary: 'Create the account from the proven values' })
@@ -496,9 +558,10 @@ export class StorefrontAuthController {
 	 *
 	 * A known subject signs in. An unknown one begins a signup with whatever the provider
 	 * supplied, still editable. A matching EMAIL does neither: accounts are never linked
-	 * automatically on an address, so somebody arriving with a Google account whose email happens
-	 * to match an existing customer lands in signup and is refused at finalisation — deliberately,
-	 * because auto-linking there is account takeover by email.
+	 * automatically on an address, because auto-linking there is account takeover by email. When
+	 * the provider PROVED that address (Google), the person is told at once and offered a one-time
+	 * code to it; when it did not (Meta), a signup begins and the email code is where they find out
+	 * — and, from there, sign in (`signup/sign-in-existing`).
 	 */
 	private async completeOAuth(
 		provider: 'google' | 'facebook',
@@ -534,7 +597,49 @@ export class StorefrontAuthController {
 						refreshExpiresAt: session.absoluteExpiresAt,
 					},
 					pendingSignup: null,
+					existingAccountEmail: null,
 				};
+			}
+
+			/**
+			 * An address the provider PROVED, that already has an account, ends here — not after a
+			 * phone code at the end of a signup that could never finish.
+			 *
+			 * This is the disclosure rule every other path already follows: ownership is answered
+			 * the moment control of the address is proven. A password or Facebook signup proves it
+			 * with an email code and is told then; Google proves it with a verified token, which
+			 * skipped the email code — and with it the check, so the person verified a phone (an
+			 * SMS) before hearing that the signup was refused. Facebook never reaches this branch:
+			 * Meta asserts nothing about its address (`emailVerified` is always false), so telling
+			 * a Facebook caller would let anybody ask about an address they do not control.
+			 *
+			 * Still no linking, and no sign-in on the provider's word alone: the person is offered a
+			 * one-time code to the address (below), signs in with it, and connects the provider from
+			 * Sign-in methods behind step-up.
+			 */
+			if (identity.emailVerified && identity.email) {
+				const owner = await this.auth.customerAuthRepository.findAuthStateByEmail(
+					this.auth.normalizeEmail(identity.email),
+				);
+				if (owner) {
+					if (owner.status !== 'active') {
+						throw domainRefusal('account_not_accessible', 'That account cannot be used');
+					}
+					/**
+					 * Offered, not granted. Google's `email_verified` is authoritative only for its
+					 * own and Workspace domains; for any other address it says Google checked the
+					 * mailbox ONCE, when that Google account was made — someone who has since lost the
+					 * mailbox still carries the claim. So the person is offered a one-time code to the
+					 * address, and that code is what signs them in, exactly as a code login would.
+					 */
+					return {
+						outcome: 'account_exists',
+						customer: null,
+						session: null,
+						pendingSignup: null,
+						existingAccountEmail: owner.email ?? this.auth.normalizeEmail(identity.email),
+					};
+				}
 			}
 
 			const sessionKey = this.signupKey(request) ?? this.signup.newSessionKey();
@@ -558,6 +663,7 @@ export class StorefrontAuthController {
 				customer: null,
 				session: null,
 				pendingSignup: this.signup.toState(record),
+				existingAccountEmail: null,
 			};
 		} catch (error) {
 			return this.refuse(error);

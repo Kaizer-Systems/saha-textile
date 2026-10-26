@@ -574,6 +574,20 @@ Supersedes "phone is collected at checkout, not registration" (2026-06-29, struc
   granted directly, because the OTP already served as the proof.
 - Facebook's email is never proof on its own. The Facebook path always requires our own email
   OTP, whether Meta supplied an address or not; prefill when given, blank when not.
+- _2026-10-26 implementation note (owner-approved build):_ the Google half of the bullet above
+  now runs at the provider callback — a Google-proven address that already has an account is
+  answered at once (`oauth_email_registered`, or `account_not_accessible`) and no signup is
+  begun; it previously surfaced only at final submit, after a phone code.
+- _2026-10-26 owner decision — sign in on proof, split by proof:_ "sign-in is granted directly"
+  applies where a CODE served as the proof. After a signup code proves an email or phone that
+  belongs to an active account, the person may sign in to it at once
+  (`POST /auth/storefront/signup/sign-in-existing`): no second code, the pending record is
+  consumed, nothing from the abandoned signup is attached, and disabled or locked accounts are
+  offered nothing. Google's `email_verified` alone never signs anyone in — it is stale-prone for
+  addresses outside Google's own and Workspace domains — so a Google-proven address with an
+  account is offered a one-time code to that address (`outcome: 'account_exists'`), and the code
+  signs them in. Providers are still never linked on an address; connecting stays behind
+  step-up.
 - Password login failure is one message, always — regardless of whether the account exists,
   has no password, or has three providers linked.
 - Auto-sign-in is refused for `disabled`/`locked` accounts with a contact-support message.

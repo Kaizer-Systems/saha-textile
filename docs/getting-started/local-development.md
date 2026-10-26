@@ -10,6 +10,9 @@ source_of_truth:
     - pnpm-workspace.yaml
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh
+    - apps/api/src/reset-local-customer.ts
+    - apps/api/src/set-local-test-credentials.ts
+    - apps/api/src/seed-local-auth-accounts.ts
     - apps/api/.env.example
     - apps/developer-portal/.env.example
     - scripts/developer-portal-local-auth.mjs
@@ -68,6 +71,22 @@ The canonical host URI is `mongodb://127.0.0.1:27017/saha_textile_local?replicaS
 ### Angular runtime config
 
 The storefront and admin apps load `public/config.json` at boot (via an app initializer) rather than baking URLs into the build. The file is committed with localhost defaults; copy from `config.example.json` when customizing. Secrets never reach the browser — the Angular apps receive only this public config, while the API receives secrets via its env file.
+
+### Local identity testing
+
+No notification provider is wired yet, so local one-time codes can be fixed: set `OTP_LOCAL_FIXED_CODE=123456` in `apps/api/.env` and every signup, one-time-code login, step-up and contact-change code is that value. Only generation changes — the code is still hashed, single-use, attempt-capped and short-lived — and the API refuses to start with it under `NODE_ENV=production` or any `NOTIFICATION_PROVIDER` other than `console`.
+
+Three local-only tools keep accounts testable; each refuses to run without `--i-am-local`, under `NODE_ENV=production`, or against a non-loopback MongoDB:
+
+```bash
+pnpm --filter @saha-textile/api seed:local-auth-accounts -- --i-am-local
+pnpm --filter @saha-textile/api reset:local-customer -- --i-am-local --email you@example.com
+pnpm --filter @saha-textile/api set:local-credentials -- --i-am-local --audience admin --email you@example.com
+```
+
+`seed:local-auth-accounts` writes one account per sign-in shape. `reset:local-customer` returns a real Google or Facebook account to "never signed up" (soft delete plus unlinking its identities) between test rounds. `set:local-credentials` sets a known password, and for admins optionally a PIN, using the API's own argon2 hasher.
+
+Social sign-in needs real provider accounts and a browser that allows the provider popups. The in-app browser pane refuses popups opened by automation, so drive provider flows in an ordinary Chrome window. The storefront's server-side rendering calls the API over the local TLS certificate; start it with `NODE_OPTIONS=--use-system-ca` (the `.claude/launch.json` entries already do) so Node trusts the mkcert authority `pnpm setup:local-https` installed.
 
 ## Developer portal commands
 

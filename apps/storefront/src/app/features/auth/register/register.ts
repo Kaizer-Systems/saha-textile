@@ -11,6 +11,7 @@ import { firstValueFrom } from 'rxjs';
 import { StorefrontAuthGateway, type PendingSignupView } from '@core/auth/auth-gateway';
 import { ProviderSdkLoader } from '@core/auth/provider-sdk.loader';
 import { refusalCode } from '@core/auth/refusal-code';
+import { ResendCountdown } from '@core/auth/resend-countdown';
 import { AuthStore } from '@core/state/auth.store';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
@@ -95,16 +96,7 @@ function splitPhone(e164: string): { country_code: string; phone: string } {
 	selector: 'app-register',
 	templateUrl: './register.html',
 	styleUrls: ['./register.scss'],
-	imports: [
-		Breadcrumb,
-		ReactiveFormsModule,
-		Select2,
-		Button,
-		RouterLink,
-		TranslocoModule,
-		NgbTooltip,
-		SocialSignIn,
-	],
+	imports: [Breadcrumb, ReactiveFormsModule, Select2, Button, RouterLink, TranslocoModule, NgbTooltip, SocialSignIn],
 })
 export class Register {
 	private authStore = inject(AuthStore);
@@ -133,11 +125,38 @@ export class Register {
 	public readonly refusal = signal<string | null>(null);
 	/** Set when a verified identifier turned out to already have an account. */
 	public readonly existingAccount = signal(false);
+	/**
+	 * Which proven field the existing account was found by, when it can be signed in to.
+	 *
+	 * Set only by a code verification — the moment the proof is fresh and names one field. A refusal
+	 * at final submit leaves it null: by then either field could be the owner's, so the screen falls
+	 * back to the ordinary sign-in link rather than guessing which account to open.
+	 */
+	public readonly existingAccountField = signal<'email' | 'phone' | null>(null);
 	/** True while the first `GET` is in flight, so the form is not rendered and then rewritten. */
 	public readonly loading = signal(false);
 
 	public readonly emailState = computed(() => this.signup()?.email ?? null);
 	public readonly phoneState = computed(() => this.signup()?.phone ?? null);
+
+	/**
+	 * The resend wait for each field, the same helper the one-time-code login uses.
+	 *
+	 * Seeded from the server's `resendAvailableAt` rather than counted locally, so a reload in the
+	 * middle of a wait shows the wait that is really left. The backoff belongs to the FIELD, not to
+	 * the value in it: changing the number does not buy a fresh send, which is the cost control.
+	 */
+	public readonly resend = { email: new ResendCountdown(), phone: new ResendCountdown() };
+
+	/**
+	 * A verified field the person has reopened with "Change".
+	 *
+	 * "Change" used to call `verify` directly: it re-submitted the UNCHANGED value, which clears the
+	 * proof server-side, and sent a code to the same address — one of the field's five sends, and a
+	 * longer wait for the next, spent on nothing. Reopening is now local; the record changes only
+	 * when the person presses Verify with the value they actually want.
+	 */
+	public readonly editing = { email: signal(false), phone: signal(false) };
 	public readonly canSubmit = computed(() => this.signup()?.complete === true);
 
 	/** How this signup began. Absent one, the screen behaves as the password form it always was. */
@@ -257,7 +276,33 @@ export class Register {
 		});
 		if (pending.phone.value) this.form.patchValue(splitPhone(pending.phone.value));
 
+		for (const field of ['email', 'phone'] as const) {
+			const availableAt = pending[field].resendAvailableAt;
+			if (availableAt) this.resend[field].start(availableAt);
+			else this.resend[field].reset();
+		}
+
 		this.applyOriginRules(pending);
+	}
+
+	/**
+	 * Whether there is a code to type for this field, right now.
+	 *
+	 * The code box used to show from the first moment a signup existed, before anything had been
+	 * sent, so a person could type into it and be told the code was wrong. It now appears once the
+	 * server says a code went out — and goes away again if the person edits the field afterwards,
+	 * because that code was for the old value.
+	 */
+	/** Reopens a verified field for editing. Nothing is sent and the proof stands until Verify. */
+	changeField(field: 'email' | 'phone'): void {
+		this.editing[field].set(true);
+	}
+
+	codeSentFor(field: 'email' | 'phone'): boolean {
+		const state = this.signup()?.[field];
+		if (!state?.codeSent || state.verified || !state.value) return false;
+		const current = field === 'email' ? this.emailValue().trim().toLowerCase() : this.phoneValue();
+		return current === state.value;
 	}
 
 	/**
@@ -354,6 +399,44 @@ export class Register {
 	private clearRefusal(): void {
 		this.refusal.set(null);
 		this.existingAccount.set(false);
+		this.existingAccountField.set(null);
+	}
+
+	/**
+	 * Signs in to the account the code just proved is theirs (`DEC-SIGNUP-VERIFICATION`: "sign-in is
+	 * granted directly, because the OTP already served as the proof"). No second code; nothing from
+	 * this signup is carried into the account.
+	 */
+	async signInToExisting(): Promise<void> {
+		const field = this.existingAccountField();
+		if (!field || this.pending()) return;
+
+		const signedIn = await this.authStore.signInFromSignup(field);
+		if (!signedIn) {
+			this.existingAccountField.set(null);
+			this.existingAccount.set(false);
+			this.refusal.set(this.error() ?? 'registration_failed');
+			return;
+		}
+		// The record is spent, so leaving this screen must not try to abandon it.
+		this.finalised = true;
+		await this.router.navigateByUrl('/account/dashboard');
+	}
+
+	/**
+	 * Google proved an address that already has an account: there is nothing to sign up, so hand
+	 * over to the login card's one-time-code mode with that address filled in. In navigation state,
+	 * never the URL.
+	 */
+	async continueWithCode(email: string): Promise<void> {
+		await this.router.navigateByUrl('/auth/login', { state: { existingAccountEmail: email } });
+	}
+
+	/** The other choice: keep signing up, with a different value in the field that matched. */
+	useDifferentDetails(): void {
+		const field = this.existingAccountField();
+		this.clearRefusal();
+		if (field) this.changeField(field);
 	}
 
 	get passwordMatchError() {
@@ -409,6 +492,8 @@ export class Register {
 				this.adopt(await firstValueFrom(this.gateway.updateSignupField(field, value)));
 			}
 			this.adopt(await firstValueFrom(this.gateway.requestSignupOtp(field)));
+			// Reopened for editing and now re-sent: the field is waiting on its code, not being edited.
+			this.editing[field].set(false);
 		} catch (error) {
 			this.refusal.set(refusalCode(error, 'registration_failed'));
 		} finally {
@@ -431,7 +516,10 @@ export class Register {
 			const result = await firstValueFrom(this.gateway.verifySignupOtp(field, code));
 			this.adopt(result.state);
 			if (result.existingAccount) {
-				this.existingAccount.set(true);
+				// Only a usable account is offered: a disabled or locked one gets the support message
+				// and nothing to press, because any sign-in it offered would be refused.
+				this.existingAccount.set(result.accountUsable);
+				this.existingAccountField.set(result.accountUsable ? field : null);
 				// A disabled or locked account is not enterable even by its owner, so the screen
 				// must not offer a sign-in that would be refused.
 				this.refusal.set(result.accountUsable ? 'signup_identifier_taken' : 'account_not_accessible');

@@ -1,4 +1,5 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
@@ -90,6 +91,14 @@ export class Login {
 	 */
 	public readonly resend = new ResendCountdown();
 
+	/**
+	 * Shown when Google proved an address that already has an account.
+	 *
+	 * The card has switched to its one-time-code mode with that address filled in; this line says
+	 * why, and that Google can be connected once signed in. Nothing is sent until Send is pressed.
+	 */
+	public readonly existingAccountNotice = signal(false);
+
 	/** What the API is asked about — an address, or a phone in E.164. */
 	public readonly identifier = computed(() => {
 		if (this.channel() === 'email') return String(this.form?.value.email ?? '').trim();
@@ -113,6 +122,30 @@ export class Login {
 			]),
 		});
 		this.applyChannelValidators('email');
+
+		// Arriving from the registration screen, where the Google button found an existing account.
+		// Carried in navigation state, never the URL: an address does not belong in a query string.
+		if (isPlatformBrowser(inject(PLATFORM_ID))) {
+			const state = history.state as { existingAccountEmail?: unknown } | null;
+			if (typeof state?.existingAccountEmail === 'string') {
+				this.useCodeFor(state.existingAccountEmail);
+				// A reload restores history.state; consume it so the offer is not replayed.
+				history.replaceState({ ...state, existingAccountEmail: undefined }, '');
+			}
+		}
+	}
+
+	/**
+	 * Offers a one-time code to an address Google proved already has an account.
+	 *
+	 * Uses the card's existing code mode, prefilled — the code, not Google's word, is what signs the
+	 * person in, because Google's verified flag can be stale for addresses outside its own domains.
+	 */
+	useCodeFor(email: string): void {
+		this.selectChannel('email');
+		this.selectMethod('code');
+		this.form.patchValue({ email });
+		this.existingAccountNotice.set(true);
 	}
 
 	/** The control the current channel actually uses, for touch/validity checks. */
@@ -137,6 +170,7 @@ export class Login {
 	}
 
 	selectChannel(channel: Channel): void {
+		this.existingAccountNotice.set(false);
 		if (this.channel() === channel) return;
 		this.channel.set(channel);
 		this.applyChannelValidators(channel);
@@ -145,6 +179,7 @@ export class Login {
 	}
 
 	selectMethod(method: Method): void {
+		this.existingAccountNotice.set(false);
 		if (this.method() === method) return;
 		this.method.set(method);
 		this.resetCode();

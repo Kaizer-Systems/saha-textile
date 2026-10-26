@@ -50,6 +50,8 @@ export interface SignupFieldView {
 	sendsRemaining: number;
 	/** When a resend becomes available under the backoff, or null when it already is. */
 	resendAvailableAt: string | null;
+	/** A code has gone out for this field, so there is something to type. */
+	codeSent: boolean;
 }
 
 export interface PendingSignupView {
@@ -92,7 +94,8 @@ export interface OAuthStartResult {
  * never linked automatically on an address.
  */
 export interface OAuthVerifyResult {
-	outcome: 'signed_in' | 'signup_required';
+	/** `account_exists`: a provider-proven address that already has an account; nothing was begun. */
+	outcome: 'signed_in' | 'signup_required' | 'account_exists';
 	/**
 	 * `customer`, not `user` — the contract's own name (`OAuthVerifyResponse.customer`).
 	 *
@@ -104,6 +107,8 @@ export interface OAuthVerifyResult {
 	customer: AuthUser | null;
 	session: AuthSessionInfo | null;
 	pendingSignup: PendingSignupView | null;
+	/** The proven address, for `account_exists` only. */
+	existingAccountEmail: string | null;
 }
 
 export interface LinkedIdentityView {
@@ -212,6 +217,14 @@ export abstract class StorefrontAuthGateway {
 	 * cannot name an address at the moment an account is minted.
 	 */
 	abstract finaliseSignup(password?: string): Observable<AuthSessionResult>;
+
+	/**
+	 * Signs in to the account that owns a value this signup has just proven with a code.
+	 *
+	 * Names only the field — the value, its proof and its owner are the server's. Nothing from the
+	 * abandoned signup reaches the account.
+	 */
+	abstract signInFromSignup(field: 'email' | 'phone'): Observable<AuthSessionResult>;
 
 	/** Mints the single-use state a provider round-trip is bound to. */
 	abstract startOAuth(provider: SocialProvider): Observable<OAuthStartResult>;

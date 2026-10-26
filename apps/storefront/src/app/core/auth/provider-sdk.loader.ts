@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
 
 import { runtimeConfig } from '@core/config/runtime-config';
 
@@ -103,6 +103,16 @@ export class ProviderSdkLoader {
 	 */
 	private googleInitialized = false;
 
+	/**
+	 * Counts grants Google has confirmed handing back in this page.
+	 *
+	 * `revoke` is asynchronous, and the screen that abandons a signup navigates away at once, so the
+	 * next screen draws its Google button while the grant still stands — "Sign in as <name>" for a
+	 * customer who was never created, until a reload. A button on screen watches this and redraws
+	 * when it moves, which is when Google itself says the grant is gone.
+	 */
+	readonly googleGrantRevocations = signal(0);
+
 	get googleConfigured(): boolean {
 		return Boolean(runtimeConfig.googleClientId);
 	}
@@ -170,7 +180,7 @@ export class ProviderSdkLoader {
 			this.googleInitialized = true;
 		}
 
-		api.accounts.id.revoke(hint, () => undefined);
+		api.accounts.id.revoke(hint, () => this.googleGrantRevocations.update((count) => count + 1));
 		return true;
 	}
 

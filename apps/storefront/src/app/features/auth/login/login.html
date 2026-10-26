@@ -32,6 +32,14 @@
 						<!-- `error()` is a translation KEY, not a sentence — the other auth screens pipe it too. -->
 						{{ error()! | transloco }}
 					</div>
+					} @if (existingAccountNotice()) {
+					<!-- Why the card switched to a one-time code. Bootstrap's own alert — no new CSS. -->
+					<div
+						class="alert alert-info"
+						role="status"
+					>
+						{{ 'oauth_email_registered' | transloco }}
+					</div>
 					}
 					<div class="input-box">
 						<form
@@ -269,7 +277,7 @@
 					<div class="other-log-in">
 						<h6>{{ 'or'| transloco}}</h6>
 					</div>
-					<app-social-sign-in />
+					<app-social-sign-in (existingAccount)="useCodeFor($event)" />
 					<div class="sign-up-box">
 						<h4>{{ "don't_have_an_account"| transloco}}?</h4>
 						<a [routerLink]="['/auth/register']">{{ 'sign_up'| transloco}}</a>

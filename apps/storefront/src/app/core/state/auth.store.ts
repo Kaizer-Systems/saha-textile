@@ -155,6 +155,25 @@ export const AuthStore = signalStore(
 				},
 
 				/**
+				 * Signs in to the existing account a signup code just proved — the same proof a
+				 * one-time-code login accepts, so no second code is asked for. Keeps the stable
+				 * refusal code as the error, as `finaliseSignup` does, for the screen to render.
+				 */
+				async signInFromSignup(field: 'email' | 'phone'): Promise<boolean> {
+					patchState(store, { pending: true, error: null });
+					try {
+						const result = await firstValueFrom(gateway.signInFromSignup(field));
+						applySession(result.user);
+						accountStore.loadUser();
+						await firstValueFrom(gateway.ensureCsrfToken());
+						return true;
+					} catch (error) {
+						applyAnonymous(refusalCode(error, ERROR_KEYS.registration));
+						return false;
+					}
+				},
+
+				/**
 				 * Adopts a session minted by a verified provider token.
 				 *
 				 * The social routes may sign an EXISTING customer in, so the store has to be

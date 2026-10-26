@@ -138,6 +138,12 @@ export class SocialSignIn {
 	 * The host that is already the signup form listens to this instead.
 	 */
 	readonly signupStarted = output<void>();
+	/**
+	 * Emitted with the proven address when a provider (Google) proved an email that already has an
+	 * account. Nothing was begun and nobody is signed in: the host offers a one-time code to that
+	 * address, which is what opens the account.
+	 */
+	readonly existingAccount = output<string>();
 
 	readonly isBrowser = isPlatformBrowser(this.platformId);
 	readonly googleReady = signal(false);
@@ -155,6 +161,8 @@ export class SocialSignIn {
 	 */
 	private googleState: { stateId: string; nonce: string | null; expiresAt: string } | null = null;
 	private googleMountElement: HTMLElement | null = null;
+	/** The configured SDK, kept so the button can be redrawn without initialising it again. */
+	private googleApi: Awaited<ReturnType<ProviderSdkLoader['initializeGoogle']>> = null;
 
 	/**
 	 * Facebook's SDK and state, both resolved BEFORE the click.
@@ -193,6 +201,21 @@ export class SocialSignIn {
 			const mount = this.googleMount()?.nativeElement;
 			if (!this.isBrowser || !mount || this.googleReady()) return;
 			void this.armGoogle(mount);
+		});
+
+		/**
+		 * Redraws the button once Google confirms a grant was handed back.
+		 *
+		 * Rendering takes the grant as it stands at that moment, and an abandoned signup revokes
+		 * on its way out — so this screen usually draws first and keeps "Sign in as <name>" for an
+		 * account that does not exist. Only revocations AFTER this component appeared count; an
+		 * older one was already reflected when the button was first drawn.
+		 */
+		const revocationsSeen = this.loader.googleGrantRevocations();
+		effect(() => {
+			const revocations = this.loader.googleGrantRevocations();
+			if (revocations === revocationsSeen || !this.googleReady() || this.destroyed) return;
+			this.renderGoogleButton();
 		});
 
 		/**
@@ -270,6 +293,17 @@ export class SocialSignIn {
 
 		this.googleState = state;
 		this.googleMountElement = mount;
+		this.googleApi = api;
+
+		this.renderGoogleButton();
+		this.googleReady.set(true);
+	}
+
+	/** Draws Google's own button into the mount, replacing whatever it drew before. */
+	private renderGoogleButton(): void {
+		const api = this.googleApi;
+		const mount = this.googleMountElement;
+		if (!api || !mount) return;
 
 		api.accounts.id.renderButton(mount, {
 			theme: 'outline',
@@ -282,7 +316,6 @@ export class SocialSignIn {
 			// card left their button short of Meta's. Both are capped to the same ceiling.
 			width: Math.min(mount.clientWidth || 320, GOOGLE_BUTTON_MAX_WIDTH),
 		});
-		this.googleReady.set(true);
 	}
 
 	/**
@@ -531,6 +564,13 @@ export class SocialSignIn {
 				await this.authStore.adoptSocialSession(result.customer);
 				await this.router.navigateByUrl('/');
 				return true;
+			}
+			// The address already has an account and nothing was begun, so there is no signup to
+			// open. The host turns this into an offer of a one-time code to that address; this card
+			// keeps its buttons and re-arms.
+			if (result.outcome === 'account_exists' && result.existingAccountEmail) {
+				this.existingAccount.emit(result.existingAccountEmail);
+				return false;
 			}
 			/**
 			 * The signup form asks the API for this record itself, through

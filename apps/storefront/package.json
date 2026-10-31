@@ -25,7 +25,6 @@
     "format": "prettier --write \"**/*.{ts,html,scss,css,js,json,md}\""
   },
   "dependencies": {
-    "@saha-textile/http-transport": "workspace:*",
     "@analogjs/router": "^2.9.2",
     "@angular/animations": "^22.2.3",
     "@angular/cdk": "^22.2.4",
@@ -38,6 +37,7 @@
     "@angular/platform-browser-dynamic": "^22.2.3",
     "@angular/platform-server": "^22.2.3",
     "@angular/router": "^22.2.3",
+    "@damjantonkli/ngx-toastr": "22.0.2",
     "@jsverse/transloco": "^8.4.0",
     "@ng-bootstrap/ng-bootstrap": "^21.0.0",
     "@ngrx/effects": "^22.0.1",
@@ -46,17 +46,18 @@
     "@ngrx/store": "^22.0.1",
     "@ngx-loading-bar/core": "^7.0.1",
     "@ngx-loading-bar/router": "^7.0.1",
+    "@saha-textile/http-transport": "workspace:*",
     "@tanstack/angular-query-experimental": "^5.104.5",
     "bootstrap": "^5.3.8",
     "feather-icons": "^4.29.2",
+    "h3": "1.15.11",
     "ng-select2-component": "^19.1.0",
     "ngx-image-zoom": "^3.0.0",
     "ngx-owl-carousel-o": "^22.0.0",
     "rxjs": "~7.8.0",
     "swiper": "^14.3.0",
     "tslib": "^2.8.1",
-    "zone.js": "~0.16.3",
-    "@damjantonkli/ngx-toastr": "22.0.2"
+    "zone.js": "~0.16.3"
   },
   "devDependencies": {
     "@analogjs/platform": "^2.9.2",

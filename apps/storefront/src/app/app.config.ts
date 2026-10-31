@@ -32,6 +32,8 @@ import { StorefrontAuthGateway } from './core/auth/auth-gateway';
 import { HttpStorefrontAuthGateway } from './core/auth/http-auth.gateway';
 import { provideSessionBootstrap } from './core/auth/session-bootstrap';
 import { provideRuntimeConfig } from './core/config/runtime-config';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './core/i18n/locale';
+import { provideLocaleRouting } from './core/i18n/locale-routing';
 import { TranslocoHttpLoader } from './core/i18n/transloco-loader';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-handler.interceptor';
@@ -55,6 +57,8 @@ export const appConfig: ApplicationConfig = {
 		// Analog file-based routing (pages under src/app/pages). `/` is the custom
 		// home (pages/index.page.ts → features/home). Replaces the old
 		// provideRouter + app.routes.ts / feature *.routes.ts config.
+		// Every route is served under its locale (`/en/…`, `/fr/…`) as the router's base —
+		// see provideLocaleRouting; the pages themselves stay locale-free.
 		provideFileRouter(
 			withInMemoryScrolling({
 				anchorScrolling: 'enabled',
@@ -82,13 +86,15 @@ export const appConfig: ApplicationConfig = {
 		// and a capped read fails the render before the page can paint.
 		{ provide: ɵHTTP_FETCH_MAX_RESPONSE_SIZE, useValue: 8 * 1024 * 1024 },
 		// Transloco — the locked i18n lib (ngx-translate fully removed). Loads
-		// assets/i18n/<lang>.json via TranslocoHttpLoader; the language switcher drives
-		// it through TranslocoService.setActiveLang.
+		// assets/i18n/<lang>.json via TranslocoHttpLoader. The active language comes from
+		// the URL prefix (provideLocaleRouting), never from storage; the switcher changes
+		// it by navigating to the other prefix.
+		provideLocaleRouting(),
 		provideTransloco({
 			config: {
-				availableLangs: ['en', 'fr'],
-				defaultLang: 'en',
-				fallbackLang: 'en',
+				availableLangs: [...SUPPORTED_LOCALES],
+				defaultLang: DEFAULT_LOCALE,
+				fallbackLang: DEFAULT_LOCALE,
 				reRenderOnLangChange: true,
 				prodMode: !isDevMode(),
 				missingHandler: { useFallbackTranslation: true },

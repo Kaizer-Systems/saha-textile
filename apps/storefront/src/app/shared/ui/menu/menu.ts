@@ -13,7 +13,6 @@ import { IProduct } from '@data-access/interfaces/product.interface';
 import { injectBlogsQuery } from '@data-access/queries/blog.queries';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { injectDealProductsQuery } from '@data-access/queries/product.queries';
-import { localizedPath } from '@core/i18n/locale';
 import * as data from '@shared/data/menu';
 
 import { ProductBox } from '../product-box/product-box';
@@ -109,7 +108,7 @@ export class Menu {
 	/** Desktop: a category → `sub` (flyout parent) when it has children, else a leaf `link`. Every level is clickable. */
 	private toMenuNode(category: ICategory, categories: ICategory[]): IMenu {
 		const children = categories.filter((candidate) => candidate.parent_id === category.id);
-		const path = category.canonical_path ? localizedPath('collections', category.canonical_path) : undefined;
+		const path = category.canonical_path ? `/collections/${category.canonical_path}` : undefined;
 		if (children.length) {
 			return {
 				id: category.id,
@@ -129,7 +128,7 @@ export class Menu {
 	 * `sub`, its direct children (L2) are plain `link`s, and "View all {L1}" is appended last. No L3+.
 	 */
 	private toMobileBranch(root: ICategory, categories: ICategory[]): IMenu {
-		const rootPath = root.canonical_path ? localizedPath('collections', root.canonical_path) : undefined;
+		const rootPath = root.canonical_path ? `/collections/${root.canonical_path}` : undefined;
 		const children: IMenu[] = categories
 			.filter((candidate) => candidate.parent_id === root.id)
 			.map((child) => ({
@@ -137,7 +136,7 @@ export class Menu {
 				title: child.name,
 				i18nTitle: false,
 				type: 'link',
-				path: child.canonical_path ? localizedPath('collections', child.canonical_path) : undefined,
+				path: child.canonical_path ? `/collections/${child.canonical_path}` : undefined,
 			}));
 		if (rootPath) {
 			children.push({

@@ -373,6 +373,31 @@ Prose and comments keep saying “operator”; identifiers say `adminUser`. The 
 - Measurement definitions are reusable data-driven Machine-2 entities, not a hard-coded universal field list.
 - Adding a locale requires a checklist covering UI JSON, DB content, media alt/SEO, notification templates, SEO defaults, hreflang, and any compiled payloads.
 
+### Locale URLs (`DEC-I18N-ROUTES` — locked 2026-10-31)
+
+Grounded in Google Search Central's multilingual guidance (separate URLs per language in
+subdirectories; no cookie- or parameter-selected language; no automatic language/IP redirects;
+reciprocal, self-referencing hreflang with `x-default`).
+
+- **Every storefront route carries its locale as the first path segment, including the default:**
+  `/en/…`, `/fr/…`, and later `/bn/…`. This covers public pages and private ones alike — cart,
+  checkout, account, sign-in, wishlist, compare and search — so a link always opens in the language
+  it was copied in and account emails can deep-link in the customer's language. Private routes stay
+  `noindex`.
+- **Slugs are the same in every locale at launch** (`/fr/product/{slug}`). The route model stores
+  routes per locale, so translated slugs remain a later data change, not a redesign.
+- **No automatic redirect by browser language or IP.** `/` sends the visitor to the locale they
+  last chose (remembered in the `st_locale` cookie), otherwise `/en/`. Every page shows the
+  language switcher, which moves to the same page in the other locale and updates the cookie. A
+  non-redirecting "view this page in French?" suggestion is permitted later, behind its own UI
+  brief.
+- **hreflang:** every indexable page lists every active locale including itself, as fully
+  qualified URLs, plus `x-default` → `/`.
+- **Currency and country are never in the URL.** Prices are canonical INR converted per visitor.
+- **Redirects:** legacy WooCommerce `/product/{slug}/` and `/product-category/{…}/`, and today's
+  unprefixed public paths, 301 to their `/en/` equivalents through `seoRedirects`.
+- Resolved implementation gate `G-I18N-ROUTES`: the locale URL rules above are final.
+
 ## Media
 
 - DigitalOcean Spaces region is SGP (`sgp1`).

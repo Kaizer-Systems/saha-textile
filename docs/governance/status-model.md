@@ -3,7 +3,7 @@ title: Documentation Status Model
 description: The five lifecycle states used throughout the developer portal.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-10-26'
+last_verified: '2026-10-31'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - scripts/validate-developer-portal.mjs

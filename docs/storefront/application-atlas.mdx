@@ -3,7 +3,7 @@ title: Storefront Application Atlas
 description: Interactive, evidence-backed map of storefront capabilities and implementation boundaries.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-10-26'
+last_verified: '2026-10-31'
 source_of_truth:
     - apps/storefront/src/app
     - apps/storefront/vite.config.ts
@@ -45,8 +45,8 @@ No. Dynamic SSR is enabled, but browser-dependent components still need `isPlatf
 
 ### “Language switching means Bengali is ready”
 
-No. Transloco is wired, and the present application configuration lists English and French. Locale membership is configuration rather than a fixed contract enum; Bengali can be enabled only when its catalogue/content coverage and validation are ready.
+No. Transloco is wired, and the present application configuration lists English and French. Locale membership is configuration rather than a fixed contract enum; Bengali can be enabled only when its catalogue/content coverage and validation are ready. Locale URLs are locked (every route prefixed with its locale, shared slugs, no automatic language redirect), but today only product and category routes carry the prefix and the switcher still stores the choice in the browser rather than the URL.
 
 ### “A social callback means signup is complete”
 
-No. An unknown provider subject creates server-held pending signup state and navigates to registration. That page resumes the projection after reload, locks provider-verified email, removes irrelevant password/provider choices, and collects the remaining phone proof. Leaving through in-app navigation discards the record; a complete Google or Meta account round trip is still an external proof obligation.
+No. An unknown provider subject creates server-held pending signup state and navigates to registration. That page resumes the projection after reload, locks provider-verified email, removes irrelevant password/provider choices, and collects the remaining phone proof. Leaving through in-app navigation discards the record. Real Google and Facebook round trips were proven end to end on 2026-10-25, and a provider-proven email that already has an account is offered a one-time code instead of a signup.

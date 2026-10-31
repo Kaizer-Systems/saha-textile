@@ -4,7 +4,7 @@ wide: true
 description: Verified controller routes, present controls, missing production guarantees, and target ownership.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-10-26'
+last_verified: '2026-10-31'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts

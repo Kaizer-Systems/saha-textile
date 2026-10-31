@@ -3,7 +3,7 @@ title: PayPal
 description: Deferred page for the non-INR gateway. PayPal business documentation is not written yet.
 status: deferred
 audience: [backend, operator]
-last_verified: '2026-10-26'
+last_verified: '2026-10-31'
 search_keywords: PayPal non-INR international gross-up
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts

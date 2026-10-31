@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-10-26",
+	"lastVerified": "2026-10-31",
 	"route": "/database/schema-nebula",
 	"title": "Schema Nebula",
 	"summary": "A governed one-star-per-collection map of the 67 explicit MongoDB collection targets across the Saha Textile platform.",
@@ -111,7 +111,7 @@
 			"currentState": "existing",
 			"targetAction": "refactor",
 			"owningChunks": ["F"],
-			"blockingDecisions": ["DEC-ID-SLUG", "DEC-I18N-ROUTES"],
+			"blockingDecisions": ["DEC-ID-SLUG"],
 			"purpose": "Category and collection node identity, localized SEO metadata, labels, and admin lifecycle.",
 			"source": "catalog §7.1",
 			"currentModel": "packages/adapters-db-mongo/src/models/category.model.ts",
@@ -124,7 +124,7 @@
 			"currentState": "existing",
 			"targetAction": "refactor",
 			"owningChunks": ["F"],
-			"blockingDecisions": ["DEC-I18N-ROUTES"],
+			"blockingDecisions": [],
 			"purpose": "Multi-parent placement paths and merchandising hierarchy without corrupting category identity.",
 			"source": "catalog §7.2",
 			"currentModel": "packages/adapters-db-mongo/src/models/catalog-structure.model.ts",
@@ -150,7 +150,7 @@
 			"currentState": "planned",
 			"targetAction": "add",
 			"owningChunks": ["F"],
-			"blockingDecisions": ["DEC-I18N-ROUTES", "DEC-ID-SLUG"],
+			"blockingDecisions": ["DEC-ID-SLUG"],
 			"purpose": "SEO preservation when legacy paths are cleaned, categories are merged, or archived routes move.",
 			"source": "catalog §7.3",
 			"references": ["categories"]
@@ -251,7 +251,7 @@
 			"currentState": "planned",
 			"targetAction": "add",
 			"owningChunks": ["F"],
-			"blockingDecisions": ["DEC-BADGES-RAILS", "DEC-I18N-ROUTES"],
+			"blockingDecisions": ["DEC-BADGES-RAILS"],
 			"purpose": "Curated product groupings, lookbooks, campaign rails, bought-together sets, and landing-page sections.",
 			"source": "catalog §7.11",
 			"references": ["products", "categories", "mediaAssets"]
@@ -276,7 +276,7 @@
 			"currentState": "planned",
 			"targetAction": "add",
 			"owningChunks": ["F"],
-			"blockingDecisions": ["DEC-I18N-ROUTES", "DEC-ID-SLUG"],
+			"blockingDecisions": ["DEC-ID-SLUG"],
 			"purpose": "Canonical route registry and SEO rendering source for products, categories, groups, content, and static pages.",
 			"source": "catalog §7.12",
 			"references": ["products", "categories", "productGroups", "contentBlocks"]
@@ -288,7 +288,7 @@
 			"currentState": "planned",
 			"targetAction": "add",
 			"owningChunks": ["F"],
-			"blockingDecisions": ["DEC-I18N-ROUTES", "DEC-ID-SLUG"],
+			"blockingDecisions": ["DEC-ID-SLUG"],
 			"purpose": "Legacy URL preservation, entity moves, slug changes, and archived or discontinued route handling.",
 			"source": "catalog §7.13",
 			"references": ["seoRoutes"]

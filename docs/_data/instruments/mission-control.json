@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-10-26",
+	"lastVerified": "2026-10-31",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
 		"docs/engineering-live-context/project-progress.mdx"
@@ -72,8 +72,8 @@
 			"id": "F",
 			"title": "Catalog, SEO, search & merchandising",
 			"deps": ["B", "C"],
-			"blockingGates": ["G-I18N-ROUTES"],
-			"summary": "Catalog + SEO + self-hosted Meilisearch behind SearchPort + merchandising; live-only public reads; search outbox. Locale route seams are provisional until the URL policy is resolved.",
+			"blockingGates": [],
+			"summary": "Catalog + SEO + self-hosted Meilisearch behind SearchPort + merchandising; live-only public reads; search outbox. Locale routes follow the locked URL law (every route locale-prefixed).",
 			"dod": "Public + admin catalog CRUD; Meili indexes live products only; search/facet tests."
 		},
 		{

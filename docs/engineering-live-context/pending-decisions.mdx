@@ -3,7 +3,7 @@ title: 'Pending Decisions'
 description: 'Canonical inbox of unresolved owner decisions and stable implementation gates.'
 audience: [engineering, product, operator, agent]
 document_role: canonical
-last_verified: '2026-08-22'
+last_verified: '2026-10-31'
 search_keywords: 'pending decisions owner questions implementation gates unresolved'
 ---
 
@@ -11,7 +11,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 
 **Status:** Sole owner-question inbox. Nothing in this file is locked until the owner answers it and the answer is recorded in `owner-decisions-log.mdx`.
 
-**Last reconciled:** 2026-08-22
+**Last reconciled:** 2026-10-31
 
 ## How this file works
 
@@ -49,7 +49,6 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-ID-SLUG`                     | IDs, business codes, slugs, and redirects                                                            | Catalog, SEO, orders                             |
 | `DEC-BADGES-RAILS`                | Storefront badge and rail taxonomy                                                                   | Analytics and merchandising                      |
 | `DEC-SCOPE-GAPS`                  | Missing business flows and launch scope                                                              | Whole product                                    |
-| `DEC-I18N-ROUTES`                 | Canonical locale URL policy                                                                          | Routing, SEO, hreflang                           |
 | `DEC-IMG-PX`                      | Image derivative pixel ladder                                                                        | Media worker and storefront images               |
 | `DEC-MEDIA-CAPS`                  | Image/video ingest limits                                                                            | Upload API, admin UX, workers                    |
 | `DEC-PAYPAL-FX`                   | Treatment of PayPal FX-conversion markup                                                             | Foreign-currency pricing and margin              |
@@ -827,47 +826,6 @@ Build now:
 Seam only:
 
 Exclude:
-
-Notes:
-
----
-
-## 17. `DEC-I18N-ROUTES` — Canonical locale URLs
-
-### Decision needed
-
-Choose the permanent routing/canonical rule for the default and additional locales.
-
-### Recommended route
-
-Always prefix every storefront locale, including English.
-
-### Options
-
-#### Option A — Always prefixed (recommended)
-
-- Examples: `/en/product/...`, `/fr/product/...`, later `/bn/product/...`.
-- Pros: explicit, symmetric, clean hreflang/canonical generation.
-- Cons: longer default-language URLs.
-
-#### Option B — Default locale unprefixed
-
-- Examples: `/product/...`, `/fr/product/...`.
-- Pros: shorter default URLs.
-- Cons: extra redirect/canonical logic.
-
-#### Option C — Locale outside the URL
-
-- Pros: shortest routes.
-- Cons: poor crawlability, sharing, and deterministic SSR behavior.
-
-### Owner answer
-
-Choice:
-
-Default locale:
-
-Redirect rule for old/unprefixed URLs:
 
 Notes:
 

@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-10-26",
+	"lastVerified": "2026-10-31",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
 		"docs/engineering-live-context/owner-decisions-log.mdx",
@@ -8,7 +8,7 @@
 		"docs/engineering-live-context/project-progress.mdx"
 	],
 	"decisionRegister": {
-		"openCount": 28,
+		"openCount": 27,
 		"newlyLocked": ["DEC-SKU", "DEC-PRODUCT-RELATIONS", "DEC-BUNDLE-NESTING", "DEC-DELETE-RETENTION"]
 	},
 	"gates": [
@@ -51,11 +51,12 @@
 			"id": "G-I18N-ROUTES",
 			"label": "Locale URL policy",
 			"question": "Always-prefixed locales vs default-unprefixed?",
-			"source": "worksheet A.6",
-			"blocksChunks": ["F"],
-			"blocksCollections": ["seoRoutes", "seoRedirects"],
-			"blocksFeatures": ["Final SEO route / hreflang canonical policy"],
-			"seamsOk": "Configured-locale route seams may proceed; the permanent prefix and canonical policy remains open."
+			"source": "decision log §Locale URLs (2026-10-31)",
+			"blocksChunks": [],
+			"blocksCollections": [],
+			"blocksFeatures": [],
+			"seamsOk": "Cleared — locale routes follow the locked URL law.",
+			"resolvedNote": "Every route locale-prefixed (default included, private routes noindex); slugs shared across locales at launch; no automatic language redirect; reciprocal hreflang with x-default → /."
 		},
 		{
 			"id": "G-IMG-PX",

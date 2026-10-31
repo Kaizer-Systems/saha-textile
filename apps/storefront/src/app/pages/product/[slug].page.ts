@@ -1,6 +1,5 @@
-// AnalogJS file-based route → /en/product/:slug (KB-shaped, locale-prefixed).
-// Literal `en` segment for now; a non-breaking rename to `[locale]` in the
-// site-wide locale pass. The demo product page stays at /product/:slug.
+// AnalogJS file-based route → /<locale>/product/:slug. One flat product URL per
+// language, whatever categories the product sits in.
 
 import { ScrollPositionGuard } from '@core/guards/scroll.guard';
 import { ProductDetail } from '@features/shop/product-detail/product-detail';

@@ -4014,6 +4014,25 @@ Track only status here; details stay in worksheet/umbrella/owner log.
   Woo and today's unprefixed public paths 301 to `/en/`. Grounded in Google Search Central's
   multilingual guidance. Recorded in the owner log; removed from `pending-decisions.mdx` (27 open).
   Implementation not started. Tool: claude-code.
+- 2026-10-31 — [DONE] **`DEC-I18N-ROUTES` implemented in the storefront (uncommitted).** The
+  locale is the router's BASE, not a route segment: `provideLocaleRouting()` sets `APP_BASE_HREF`
+  to `/<locale>` from the requested URL, so pages, `routerLink`s, menu data and `navigateByUrl`
+  stay locale-free (the three `pages/en/*` files moved to `pages/collections…`, `pages/product…`;
+  every `'/en/product/'` link and `localizedPath()` removed). SSR now renders IN the page's
+  language (dictionary loaded before first render, `<html lang>`; a failed dictionary load falls
+  back instead of 500-ing). Nitro middleware `src/server/middleware/locale.ts` applies the shared
+  `localeRedirectFor()`: `/` → 302 to `st_locale` or `/en/` (`private, no-store`, `Vary: Cookie`),
+  `/en` → `/en/`, unprefixed pages → 301 `/en/…`. Switcher options are real links to the same page
+  in the other language and set `st_locale`; nothing in `localStorage`. `LocaleSeo` emits canonical
+  + reciprocal hreflang + `x-default` on every public navigation and `noindex,follow` on private
+  paths; the collection page overrides the canonical for extra placements. `h3@1.15.11` declared
+  (was a phantom dependency of `server/routes`). Verified: 16 new unit tests, storefront 171/171,
+  typecheck, lint; dev and built server redirects by curl; SSR `/fr/…` French with prefixed links
+  and hreflang; in-app navigation, switcher round trip and cookie-driven `/` in the browser pane.
+  **Found, not caused here (also at HEAD):** the product detail page stays empty in the browser
+  after hydration — the component holds the product but its view is never refreshed; and the built
+  server on plain HTTP cannot reach the default `https` `siteUrl`, so its catalogue/dictionary
+  fetches fail locally. Renamed legacy Woo paths still need the `seoRedirects` map. Tool: claude-code.
 - 2026-07-24 — [PARTIAL] G-CORE-CONTRACTS (state dependency rule early in Chunk B). Tool: cursor.
 - 2026-07-25 — [DONE] **G-CORE-CONTRACTS resolved (owner pick: Option C).** `core-domain` may reference contract shapes via `import type` ONLY (runtime-erased; dist verified zero runtime dep on contracts/zod); value imports of contracts + all Nest/Mongoose/Fastify/provider-SDK/adapter imports forbidden, ESLint-enforced in Chunk B. Contracts remain the single shape source of truth (no duplicate entity layer). Lock recorded: owner-decisions-log §2026-07-25 + roadmap gate table + §0 reconciliation note. Tool: claude-code.
 - 2026-08-13 — [BLOCKED] **`DEC-PORTAL-PRIVATE-ACCESS` still pending** (deploy-only; does not

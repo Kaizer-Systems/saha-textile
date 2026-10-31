@@ -13,7 +13,7 @@
 	<div class="media-body">
 		<div>
 			<div class="title d-block mb-0">{{ 'someone_recently_purchased' | transloco }}</div>
-			<a [routerLink]="['/en/product/', product.slug]">
+			<a [routerLink]="['/product/', product.slug]">
 				<span class="product-name">{{ product.name }}</span>
 			</a>
 			<small class="timeAgo">{{ min }} {{ 'minutes_ago' | transloco }}</small>

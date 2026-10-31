@@ -1,4 +1,3 @@
-import { DOCUMENT } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { Meta, Title } from '@angular/platform-browser';
@@ -6,13 +5,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { combineLatest, Observable } from 'rxjs';
 
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { injectCatalogQuery } from '@data-access/queries/product.queries';
 import { AttributeService } from '@data-access/services/attribute.service';
-
-import { environment } from '../../../../../public/environments/environment';
 import * as data from '@shared/data/owl-carousel';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 
@@ -57,16 +55,16 @@ export class Collection {
 	private router = inject(Router);
 	private meta = inject(Meta);
 	private title = inject(Title);
-	private doc = inject(DOCUMENT);
+	private seo = inject(LocaleSeo);
 
 	constructor() {
-		// Base category = the URL PATH after /en/collections/ (named-category pages,
+		// Base category = the URL PATH after /collections/ (named-category pages,
 		// catch-all `[...category]` → Angular `**`, no named param), filters/sort/page
 		// from the query string. Path wins over any legacy `?category=`.
 		combineLatest([this.route.url, this.route.queryParams]).subscribe(([, query]) => {
 			const path = this.router.url
 				.split('?')[0]
-				.replace(/^\/en\/collections\/?/, '')
+				.replace(/^\/collections\/?/, '')
 				.replace(/\/$/, '');
 			const categoryPath = decodeURIComponent(path) || (query['category'] as string) || '';
 			const next: Params = {
@@ -106,7 +104,7 @@ export class Collection {
 						title: cat?.name ?? 'Collections',
 						items: trail.map((c, i) => ({
 							label: c.name,
-							url: `/en/collections/${c.path}`,
+							url: `/collections/${c.path}`,
 							active: i === trail.length - 1,
 						})),
 					}
@@ -114,15 +112,10 @@ export class Collection {
 		);
 
 		// Canonical = the node's CANONICAL path (not the current URL) so extra-placement
-		// pages consolidate onto the home URL; clean category page otherwise.
-		const canonicalUrl = `${environment.baseURL}en/collections${cat ? '/' + cat.canonical_path : ''}`;
-		let link = this.doc.querySelector("link[rel='canonical']") as HTMLLinkElement | null;
-		if (!link) {
-			link = this.doc.createElement('link');
-			link.setAttribute('rel', 'canonical');
-			this.doc.head.appendChild(link);
-		}
-		link.setAttribute('href', canonicalUrl);
+		// pages consolidate onto the home URL; clean category page otherwise. The language
+		// alternates follow it. Without a response (still loading, or the catalogue failed)
+		// the page keeps its own address rather than claiming to be the general page.
+		if (res) this.seo.setCanonicalPath(`/collections${cat ? '/' + cat.canonical_path : ''}`);
 
 		// Filtered / paged combinations are noindex,follow (protect crawl budget).
 		const f = this.filter();

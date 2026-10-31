@@ -38,7 +38,7 @@ import { YouMayAlsoLike } from './you-may-also-like/you-may-also-like';
  * Dynamic product detail page (our architecture — the demo `features/shop/product`
  * is left untouched). Thin orchestrator: reusable gallery + role-aware buy-box +
  * reused detail widgets (info, delivery, tabs, related, FBT, sidebar) + sticky.
- * Mounted at the KB-shaped `/en/product/:slug`.
+ * Mounted at `/<locale>/product/:slug`.
  */
 @Component({
 	selector: 'app-product-detail',

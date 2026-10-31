@@ -3,7 +3,7 @@ title: Storefront Contributor Recipes
 description: Beginner-safe recipes for adding routes, server queries, client state, translations, and SSR-safe UI.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-10-26'
+last_verified: '2026-10-31'
 source_of_truth:
     - apps/storefront/src/app/pages
     - apps/storefront/src/app/features
@@ -19,12 +19,12 @@ These recipes are guardrails, not copy-paste substitutes for understanding the o
 
 **Use when:** a new stable customer URL is required.
 
-1. Choose the file-based URL shape under `src/app/pages`.
+1. Choose the file-based URL shape under `src/app/pages` — without a locale segment. The router's base serves it at `/en/…` and `/fr/…`, so links to it are written locale-free too (`/cart`, never `/en/cart`).
 2. Build the real feature under `src/app/features`; keep the page entry thin.
 3. Add `routeMeta` only for required guards or route behavior.
 4. Reuse the shared layout rather than rebuilding header/footer composition.
 5. Verify direct SSR request, hydrated navigation, browser back/forward, and unknown parameters.
-6. Add metadata/SEO behavior when the route is indexable.
+6. Add metadata/SEO behavior when the route is indexable. A customer-only page goes in `PRIVATE_PREFIXES` (`core/i18n/locale.ts`) so it gets `noindex` and no language alternates.
 
 **Done means:** the URL works on refresh, not only after navigating from the home page.
 

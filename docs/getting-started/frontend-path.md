@@ -3,7 +3,7 @@ title: Frontend Path
 description: Onboarding route for storefront and admin developers.
 status: scaffolded
 audience: [frontend]
-last_verified: '2026-10-26'
+last_verified: '2026-10-31'
 source_of_truth:
     - apps/storefront/src/app
     - apps/admin/src/app

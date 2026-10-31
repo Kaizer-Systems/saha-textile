@@ -2113,8 +2113,10 @@ SEO is not a frontend-only concern. It must be modeled in DB, validated in admin
 
 ### 10.1 Canonical Route Policy
 
-- Route records are locale-aware, but the permanent prefix/canonical convention
-  remains gated by `DEC-I18N-ROUTES`.
+- Route records are locale-aware. The prefix/canonical convention is locked
+  (owner log § Locale URLs, 2026-10-31): every route carries its locale as the
+  first segment, slugs are shared across locales at launch, and hreflang lists
+  every active locale plus `x-default` → `/`.
 - Product and category routes must be generated from one centralized route
   policy rather than hard-coded locale pairs.
 - Category paths come from canonical `categoryPlacements.pathSlugs`.

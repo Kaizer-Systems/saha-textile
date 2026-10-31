@@ -198,7 +198,7 @@ For every coherent unit:
 - SSR/SSG routes render correct localized public data.
 - Offline storage contains no account/order/admin/payment secrets or PII.
 - Reconnect revalidates product status, stock, price, and cart ownership.
-- Locale routing waits for `DEC-I18N-ROUTES`.
+- Locale routing follows the locked locale URL law (owner log § Locale URLs, 2026-10-31).
 - Image enforcement waits for `DEC-IMG-PX` and `DEC-MEDIA-CAPS`.
 
 ## Milestone 9 — Admin production integration
@@ -259,6 +259,6 @@ Highest-leverage gates:
 4. `DEC-BACKORDER`
 5. `DEC-SHIPPING`
 6. `DEC-RETURNS`
-7. `DEC-I18N-ROUTES`
+7. ~~`DEC-I18N-ROUTES`~~ — resolved 2026-10-31 (owner log § Locale URLs)
 8. `DEC-IMG-PX`
 9. `DEC-MEDIA-CAPS`

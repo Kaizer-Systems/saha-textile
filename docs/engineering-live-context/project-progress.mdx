@@ -79,7 +79,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 ```json
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-10-26",
+	"lastVerified": "2026-10-31",
 	"chunks": {
 		"A": "done",
 		"B": "done",
@@ -96,7 +96,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 		"G-NUM-ORDER": "open",
 		"G-NUM-PI": "open",
 		"G-CORE-CONTRACTS": "resolved",
-		"G-I18N-ROUTES": "open",
+		"G-I18N-ROUTES": "resolved",
 		"G-IMG-PX": "open"
 	}
 }
@@ -4007,6 +4007,13 @@ Track only status here; details stay in worksheet/umbrella/owner log.
 - 2026-07-24 — [BLOCKED] G-NUM-ORDER / G-NUM-PI (numbering). Tool: cursor.
 - 2026-07-24 — [BLOCKED] G-IMG-PX (sharp ladder px). Tool: cursor.
 - 2026-07-24 — [BLOCKED] G-I18N-ROUTES (locale URL law). Tool: cursor.
+- 2026-10-31 — [DONE] **G-I18N-ROUTES resolved (`DEC-I18N-ROUTES` locked).** Every storefront
+  route is locale-prefixed (`/en/…`, `/fr/…`), private routes included and kept `noindex`; slugs
+  shared across locales at launch; no automatic language/IP redirect — `/` goes to the `st_locale`
+  choice or `/en/`; reciprocal hreflang with `x-default` → `/`; currency never in the URL; legacy
+  Woo and today's unprefixed public paths 301 to `/en/`. Grounded in Google Search Central's
+  multilingual guidance. Recorded in the owner log; removed from `pending-decisions.mdx` (27 open).
+  Implementation not started. Tool: claude-code.
 - 2026-07-24 — [PARTIAL] G-CORE-CONTRACTS (state dependency rule early in Chunk B). Tool: cursor.
 - 2026-07-25 — [DONE] **G-CORE-CONTRACTS resolved (owner pick: Option C).** `core-domain` may reference contract shapes via `import type` ONLY (runtime-erased; dist verified zero runtime dep on contracts/zod); value imports of contracts + all Nest/Mongoose/Fastify/provider-SDK/adapter imports forbidden, ESLint-enforced in Chunk B. Contracts remain the single shape source of truth (no duplicate entity layer). Lock recorded: owner-decisions-log §2026-07-25 + roadmap gate table + §0 reconciliation note. Tool: claude-code.
 - 2026-08-13 — [BLOCKED] **`DEC-PORTAL-PRIVATE-ACCESS` still pending** (deploy-only; does not

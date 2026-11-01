@@ -4033,6 +4033,17 @@ Track only status here; details stay in worksheet/umbrella/owner log.
   after hydration — the component holds the product but its view is never refreshed; and the built
   server on plain HTTP cannot reach the default `https` `siteUrl`, so its catalogue/dictionary
   fetches fail locally. Renamed legacy Woo paths still need the `seoRedirects` map. Tool: claude-code.
+- 2026-11-01 — [DONE] **Product detail page no longer goes blank after hydration (uncommitted).**
+  Cause: `ProductDetail` copied the query result into plain fields (`product`, `breadcrumb`) from a
+  `toObservable(...).subscribe`, i.e. inside an effect, so nothing marked the view dirty and the
+  hydrated `@if (product)` stayed false. Now `product` and `breadcrumb` are `computed` from the
+  TanStack query signal, the OG meta tags are set in an `effect`, and the template reads
+  `@if (product(); as product)`; the 404 effect is unchanged. New `product-detail.spec.ts` (renders
+  product + breadcrumb + `og:title`, unknown slug → `/404`; the first case fails on the old code).
+  Verified: storefront 173/173, typecheck, lint; browser pane on a direct load of
+  `/en/product/pure-cotton-handloom-saree`, in-app navigation from `/en/collections`, and an
+  unknown slug landing on `/en/404`. `collection.ts` and `collection-paginate.ts` still write plain
+  fields from the same subscription pattern (`totalItems`). Tool: claude-code.
 - 2026-07-24 — [PARTIAL] G-CORE-CONTRACTS (state dependency rule early in Chunk B). Tool: cursor.
 - 2026-07-25 — [DONE] **G-CORE-CONTRACTS resolved (owner pick: Option C).** `core-domain` may reference contract shapes via `import type` ONLY (runtime-erased; dist verified zero runtime dep on contracts/zod); value imports of contracts + all Nest/Mongoose/Fastify/provider-SDK/adapter imports forbidden, ESLint-enforced in Chunk B. Contracts remain the single shape source of truth (no duplicate entity layer). Lock recorded: owner-decisions-log §2026-07-25 + roadmap gate table + §0 reconciliation note. Tool: claude-code.
 - 2026-08-13 — [BLOCKED] **`DEC-PORTAL-PRIVATE-ACCESS` still pending** (deploy-only; does not

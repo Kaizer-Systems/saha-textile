@@ -72,7 +72,23 @@ export class ProductDetail {
 
 	private readonly slug = signal<string | undefined>(undefined);
 	private readonly productQuery = injectProductBySlugQuery(() => this.slug());
-	product$: Observable<IProduct | undefined> = toObservable(computed(() => this.productQuery.data()));
+	/**
+	 * Read straight from the query signal, so the template re-renders when the data lands. A plain
+	 * field assigned from a `toObservable` subscription is written inside an effect, which never marks
+	 * the view dirty: the server render showed the product, but the hydrated page went blank.
+	 */
+	readonly product = computed<IProduct | undefined>(() => this.productQuery.data());
+	readonly breadcrumb = computed<IBreadcrumb>(() => {
+		const product = this.product();
+		if (!product) return { title: 'Product', items: [] };
+		return {
+			title: product.name,
+			items: [
+				{ label: 'Product', active: true },
+				{ label: product.name, active: false },
+			],
+		};
+	});
 
 	private readonly relatedParams = computed<Params | undefined>(() => {
 		const p = this.productQuery.data();
@@ -88,8 +104,6 @@ export class ProductDetail {
 	private readonly galleryRef = viewChild(ProductGallery);
 	readonly owlCar = computed(() => this.galleryRef()?.carousel());
 
-	public breadcrumb: IBreadcrumb = { title: 'Product', items: [] };
-	public product: IProduct | undefined;
 	public isBrowser: boolean;
 
 	constructor() {
@@ -113,16 +127,9 @@ export class ProductDetail {
 			this.siteConfigService.preloader.set(this.productQuery.isFetching() || this.relatedQuery.isFetching());
 		});
 
-		this.product$.subscribe((product) => {
+		effect(() => {
+			const product = this.product();
 			if (!product) return;
-			this.product = product;
-			this.breadcrumb = {
-				title: product.name,
-				items: [
-					{ label: 'Product', active: true },
-					{ label: product.name, active: false },
-				],
-			};
 			product.meta_title && this.meta.updateTag({ property: 'og:title', content: product.meta_title });
 			product.meta_description &&
 				this.meta.updateTag({ property: 'og:description', content: product.meta_description });

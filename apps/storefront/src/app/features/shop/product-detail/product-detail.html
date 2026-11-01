@@ -1,6 +1,6 @@
-<app-breadcrumb [breadcrumb]="breadcrumb" />
+<app-breadcrumb [breadcrumb]="breadcrumb()" />
 
-@if (product) {
+@if (product(); as product) {
 <section
 	class="product-section"
 	[class.section-b-space]="!product.related_products?.length"

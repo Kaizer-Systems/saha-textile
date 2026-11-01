@@ -79,7 +79,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 ```json
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-10-31",
+	"lastVerified": "2026-11-01",
 	"chunks": {
 		"A": "done",
 		"B": "done",
@@ -4024,7 +4024,7 @@ Track only status here; details stay in worksheet/umbrella/owner log.
   `localeRedirectFor()`: `/` → 302 to `st_locale` or `/en/` (`private, no-store`, `Vary: Cookie`),
   `/en` → `/en/`, unprefixed pages → 301 `/en/…`. Switcher options are real links to the same page
   in the other language and set `st_locale`; nothing in `localStorage`. `LocaleSeo` emits canonical
-  + reciprocal hreflang + `x-default` on every public navigation and `noindex,follow` on private
+  and reciprocal hreflang + `x-default` on every public navigation and `noindex,follow` on private
   paths; the collection page overrides the canonical for extra placements. `h3@1.15.11` declared
   (was a phantom dependency of `server/routes`). Verified: 16 new unit tests, storefront 171/171,
   typecheck, lint; dev and built server redirects by curl; SSR `/fr/…` French with prefixed links
@@ -4044,6 +4044,16 @@ Track only status here; details stay in worksheet/umbrella/owner log.
   `/en/product/pure-cotton-handloom-saree`, in-app navigation from `/en/collections`, and an
   unknown slug landing on `/en/404`. `collection.ts` and `collection-paginate.ts` still write plain
   fields from the same subscription pattern (`totalItems`). Tool: claude-code.
+- 2026-11-01 — [DONE] **Unknown storefront URLs answer a real 404.** Before, `/en/no-such-page`,
+  legacy `/product-category/…` and unknown product slugs rendered the not-found page with HTTP 200
+  and a self-canonical plus hreflang (soft 404s). The catch-all and `/404` pages now export
+  `routeMeta = notFoundRouteMeta`; `LocaleSeo` reads that route data on each navigation, sets
+  `noindex,follow` with no canonical/alternates, and on the server sets the response to `404`
+  (Analog's dev and Nitro renderers both keep a status set during render). Also dropped the stale
+  "PROVISIONAL until `DEC-I18N-ROUTES`" note on `CategoryPlacement.pathSlugs` (paths are
+  locale-free by design). Verified: 2 new `LocaleSeo` tests; curl on en/fr unknown paths, `/en/404`
+  and an unknown slug → 404 + noindex, real pages unchanged; in-app navigation to and back from an
+  unknown page in the browser pane. Tool: claude-code.
 - 2026-07-24 — [PARTIAL] G-CORE-CONTRACTS (state dependency rule early in Chunk B). Tool: cursor.
 - 2026-07-25 — [DONE] **G-CORE-CONTRACTS resolved (owner pick: Option C).** `core-domain` may reference contract shapes via `import type` ONLY (runtime-erased; dist verified zero runtime dep on contracts/zod); value imports of contracts + all Nest/Mongoose/Fastify/provider-SDK/adapter imports forbidden, ESLint-enforced in Chunk B. Contracts remain the single shape source of truth (no duplicate entity layer). Lock recorded: owner-decisions-log §2026-07-25 + roadmap gate table + §0 reconciliation note. Tool: claude-code.
 - 2026-08-13 — [BLOCKED] **`DEC-PORTAL-PRIVATE-ACCESS` still pending** (deploy-only; does not

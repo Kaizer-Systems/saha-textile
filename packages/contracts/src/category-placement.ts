@@ -27,8 +27,9 @@ export const CategoryPlacement = z.object({
 	pathCategoryIds: z.array(Id).min(1),
 	/**
 	 * Slug segments matching `pathCategoryIds`. `pathSlugs.join('/')` is the category
-	 * route — PROVISIONAL until `DEC-I18N-ROUTES` settles the canonical locale URL law
-	 * (whether a locale prefix participates in this path).
+	 * route below `/collections/`. Locale-free by design (`DEC-I18N-ROUTES`): the
+	 * storefront serves it under `/<locale>/` as the router's base, so one path serves
+	 * every language.
 	 */
 	pathSlugs: z.array(Slug).min(1),
 	/** Human-readable breadcrumb label, e.g. `Sarees / Pure Silk`. */

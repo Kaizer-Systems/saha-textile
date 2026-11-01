@@ -3,13 +3,14 @@ import { TestBed } from '@angular/core/testing';
 import { Meta } from '@angular/platform-browser';
 import { NavigationEnd, Router } from '@angular/router';
 
+import { RESPONSE } from '@analogjs/router/tokens';
 import { Subject } from 'rxjs';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { runtimeConfig } from '@core/config/runtime-config';
 
 import { ACTIVE_LOCALE } from './active-locale';
-import { LocaleSeo } from './locale-seo';
+import { LocaleSeo, notFoundRouteMeta } from './locale-seo';
 
 /**
  * The language-aware head: what a search engine reads to pair the en and fr pages.
@@ -17,21 +18,28 @@ import { LocaleSeo } from './locale-seo';
  * Driven by real `NavigationEnd` events through a stand-in router, against the test document's
  * `<head>` — the same DOM calls the server render makes.
  */
-function harness(locale: 'en' | 'fr') {
+function harness(locale: 'en' | 'fr', { onServer = false } = {}) {
 	const events = new Subject<unknown>();
+	// The activated route's data, as the router would hold it once a navigation lands.
+	const leaf = { firstChild: null, data: {} as Record<string, unknown> };
+	const response = { statusCode: 200 };
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: ACTIVE_LOCALE, useValue: locale },
-			{ provide: Router, useValue: { events } },
+			{ provide: Router, useValue: { events, routerState: { snapshot: { root: leaf } } } },
+			onServer ? { provide: RESPONSE, useValue: response } : [],
 		],
 	});
 	const seo = TestBed.inject(LocaleSeo);
 	const doc = TestBed.inject(DOCUMENT);
-	const navigate = (url: string) => events.next(new NavigationEnd(1, url, url));
+	const navigate = (url: string, data: Record<string, unknown> = {}) => {
+		leaf.data = data;
+		events.next(new NavigationEnd(1, url, url));
+	};
 	const href = (selector: string) => doc.head.querySelector(selector)?.getAttribute('href') ?? null;
 	const robots = () => TestBed.inject(Meta).getTag("name='robots'")?.content ?? null;
-	return { seo, doc, navigate, href, robots };
+	return { seo, doc, navigate, href, robots, response };
 }
 
 const SITE = 'https://shop.example.test';
@@ -103,5 +111,28 @@ describe('LocaleSeo', () => {
 		);
 		expect(doc.head.querySelectorAll("link[rel='canonical']")).toHaveLength(1);
 		expect(doc.head.querySelectorAll("link[rel='alternate'][hreflang='en']")).toHaveLength(1);
+	});
+
+	// A mistyped or retired URL must not be indexed as a page of its own (a "soft 404").
+	it('answers a not-found page with 404, noindex and no canonical or alternates', () => {
+		runtimeConfig.siteUrl = SITE;
+		const { navigate, doc, robots, response } = harness('fr', { onServer: true });
+
+		navigate('/collections/sarees');
+		navigate('/no-such-page', notFoundRouteMeta.data);
+
+		expect(response.statusCode).toBe(404);
+		expect(robots()).toBe('noindex,follow');
+		expect(doc.head.querySelectorAll("link[rel='canonical'], link[rel='alternate']")).toHaveLength(0);
+	});
+
+	it('leaves the status of an ordinary page alone', () => {
+		runtimeConfig.siteUrl = SITE;
+		const { navigate, response } = harness('en', { onServer: true });
+
+		navigate('/cart');
+		navigate('/product/red-katan');
+
+		expect(response.statusCode).toBe(200);
 	});
 });

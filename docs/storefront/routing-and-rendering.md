@@ -4,7 +4,7 @@ wide: true
 description: How AnalogJS file routes, route metadata, dynamic SSR, and browser-only code fit together.
 status: implemented
 audience: [beginner, frontend]
-last_verified: '2026-10-31'
+last_verified: '2026-11-01'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/storefront/src/app/app.config.server.ts
@@ -29,7 +29,7 @@ The storefront does not maintain a central Angular `Routes` array. AnalogJS disc
 | `blog/[slug].page.ts`               | `/<locale>/blog/:slug`        | Blog detail            |
 | `product/[slug].page.ts`            | `/<locale>/product/:slug`     | Product detail         |
 | `collections/[...category].page.ts` | `/<locale>/collections/**`    | Nested category route  |
-| `[...not-found].page.ts`            | Catch-all                     | Unknown URL fallback   |
+| `[...not-found].page.ts`            | Catch-all                     | Unknown URL, HTTP 404  |
 
 Brackets create dynamic parameters. Three dots create a catch-all parameter. The `.page.ts` suffix marks a routable page. File paths never contain the locale; it is the router's base (see [Locale URLs](#locale-urls)).
 
@@ -76,7 +76,7 @@ There is no redirect on browser language or IP. Legacy WooCommerce paths that su
 
 **The switcher is a set of real links** (`layout/header/widgets/language`): each option links to the same page under the other prefix, so choosing a language is a full navigation the server renders, and clicking records the choice in the `st_locale` cookie — the only thing `/` consults.
 
-**Head tags** (`LocaleSeo`, `core/i18n/locale-seo.ts`): every public page gets a canonical in its own language plus reciprocal `hreflang` for each locale and `x-default` → `/`, refreshed on every navigation. Private paths (`/account`, `/auth`, `/cart`, `/checkout`, `/wishlist`, `/compare`, `/search`) get `noindex,follow` and no alternates. A page that knows its canonical better calls `setCanonicalPath()` — the collection page does, so an extra-placement category points everything at its home path.
+**Head tags** (`LocaleSeo`, `core/i18n/locale-seo.ts`): every public page gets a canonical in its own language plus reciprocal `hreflang` for each locale and `x-default` → `/`, refreshed on every navigation. Private paths (`/account`, `/auth`, `/cart`, `/checkout`, `/wishlist`, `/compare`, `/search`) get `noindex,follow` and no alternates. A page that knows its canonical better calls `setCanonicalPath()` — the collection page does, so an extra-placement category points everything at its home path. Not-found pages (the catch-all and `/404`, where an unknown product slug also lands) export `routeMeta = notFoundRouteMeta`: they get the same `noindex` treatment, and the server answers them with HTTP `404` instead of a `200` page claiming itself as canonical.
 
 Development gotcha: Analog loads `src/server/middleware/*.ts` **without compiling TypeScript** in dev, so a type annotation or `import type` there crashes the server. Keep middleware to syntax that is valid JavaScript.
 

@@ -3,12 +3,21 @@ import { Injectable, inject } from '@angular/core';
 import { Meta } from '@angular/platform-browser';
 import { NavigationEnd, Router } from '@angular/router';
 
+import { RESPONSE } from '@analogjs/router/tokens';
 import { filter } from 'rxjs';
 
 import { runtimeConfig } from '@core/config/runtime-config';
 
 import { ACTIVE_LOCALE } from './active-locale';
 import { SUPPORTED_LOCALES, isPrivatePath, withLocale } from './locale';
+
+const NOT_FOUND_KEY = 'notFound';
+
+/**
+ * The `routeMeta` of a page that stands for "nothing here": the catch-all and `/404`, which the
+ * product page also lands on for an unknown slug.
+ */
+export const notFoundRouteMeta = { data: { [NOT_FOUND_KEY]: true } };
 
 /**
  * The language-aware head of every page: canonical, `hreflang` alternates and the private-route
@@ -19,6 +28,10 @@ import { SUPPORTED_LOCALES, isPrivatePath, withLocale } from './locale';
  * redirecting on a guess. Private pages (account, cart, checkout, sign-in…) get `noindex` and no
  * alternates — they are locale-prefixed so a customer stays in their language, not to be found.
  *
+ * A not-found page ({@link notFoundRouteMeta}) is treated the same way, and on the server it also
+ * answers `404`: otherwise every mistyped or retired URL is a `200` page claiming itself as
+ * canonical, which a search engine indexes as a real page (a "soft 404").
+ *
  * Defaults are applied on every navigation. A page that knows better — a category reached
  * through an extra placement, whose canonical is its home path — calls
  * {@link setCanonicalPath} after its data resolves.
@@ -27,11 +40,14 @@ import { SUPPORTED_LOCALES, isPrivatePath, withLocale } from './locale';
 export class LocaleSeo {
 	private doc = inject(DOCUMENT);
 	private meta = inject(Meta);
+	private router = inject(Router);
 	private locale = inject(ACTIVE_LOCALE);
+	/** Present only while rendering on the server. */
+	private response = inject(RESPONSE, { optional: true });
 
 	constructor() {
-		inject(Router)
-			.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+		this.router.events
+			.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
 			.subscribe((event) => this.applyDefaults(event.urlAfterRedirects));
 	}
 
@@ -51,7 +67,9 @@ export class LocaleSeo {
 
 	private applyDefaults(appUrl: string): void {
 		const path = appUrl.split(/[?#]/)[0] || '/';
-		if (isPrivatePath(path)) {
+		const notFound = this.isNotFound();
+		if (notFound && this.response) this.response.statusCode = 404;
+		if (notFound || isPrivatePath(path)) {
 			this.meta.updateTag({ name: 'robots', content: 'noindex,follow' });
 			this.doc.head
 				.querySelectorAll("link[rel='canonical'], link[rel='alternate'][hreflang]")
@@ -60,6 +78,13 @@ export class LocaleSeo {
 		}
 		this.meta.removeTag("name='robots'");
 		this.setCanonicalPath(path);
+	}
+
+	/** Whether the page now showing is declared a not-found page by its route. */
+	private isNotFound(): boolean {
+		let route = this.router.routerState.snapshot.root;
+		while (route.firstChild) route = route.firstChild;
+		return route.data[NOT_FOUND_KEY] === true;
 	}
 
 	private absolute(path: string): string {

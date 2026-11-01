@@ -731,11 +731,30 @@ Mongo ObjectId internally, immutable business codes/SKUs, mutable SEO slugs with
 - Pros: simplest.
 - Cons: broken links and SEO loss.
 
+### Addition (2026-11-01) — legacy WooCommerce category URLs
+
+Carried over from the locale URL decision (locked 2026-10-31, owner log § Locale URLs), whose
+implementation left this one gap on purpose: it needs the redirect rules this decision sets.
+
+- **Already working:** legacy product URLs. `/product/<slug>/` 301s to `/en/product/<slug>/`, which
+  renders while the slug is unchanged.
+- **Not working:** the 26 legacy category URLs (`/product-category/<path>/`, listed in the live
+  `product_cat-sitemap.xml`). They 301 to `/en/product-category/<path>/`, which is now an honest
+  `404` (not indexed, but the old link equity is lost). The new taxonomy renamed and regrouped
+  categories, so no pattern rule maps them: each needs a `seoRedirects` row pointing at its new
+  `/collections/<path>`, or a deliberate `410`.
+- **What the answer must also settle:** whether retired categories redirect to their nearest
+  parent or answer `410`; and that the redirect map runs before the locale rule, so an old URL
+  reaches its final address in one hop.
+- **Built in:** Chunk F, with the `seoRoutes`/`seoRedirects` collections and the sitemap.
+
 ### Owner answer
 
 Choice:
 
 Discontinued URL: 410 or category redirect:
+
+Legacy category URL map (26 rows):
 
 Slug reuse:
 

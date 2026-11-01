@@ -3,7 +3,7 @@ title: CCAvenue merchant API
 description: CCAvenue merchant API guide v1.3 envelope, command index, and Confirm, Cancel, Refund, and Status, as printed.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-10-31'
+last_verified: '2026-11-01'
 search_keywords: CCAvenue DoWebTrans confirmOrder cancelOrder refundOrder orderStatusTracker
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts

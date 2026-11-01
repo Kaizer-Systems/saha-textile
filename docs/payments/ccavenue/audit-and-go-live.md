@@ -3,7 +3,7 @@ title: CCAvenue audit and go-live
 description: HDFC integration checklist, security-audit checks, hygiene, go-live steps, and best practices, as printed.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-10-31'
+last_verified: '2026-11-01'
 search_keywords: CCAvenue security audit go-live SSL status API receipt
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts

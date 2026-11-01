@@ -3,7 +3,7 @@ title: Razorpay
 description: Deferred page for the preferred later INR gateway. No Razorpay API is documented yet.
 status: deferred
 audience: [backend, operator]
-last_verified: '2026-10-31'
+last_verified: '2026-11-01'
 search_keywords: Razorpay INR gateway successor DEC-INR-GATEWAY-TIMING
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts

@@ -4054,6 +4054,11 @@ Track only status here; details stay in worksheet/umbrella/owner log.
   locale-free by design). Verified: 2 new `LocaleSeo` tests; curl on en/fr unknown paths, `/en/404`
   and an unknown slug → 404 + noindex, real pages unchanged; in-app navigation to and back from an
   unknown page in the browser pane. Tool: claude-code.
+- 2026-11-01 — [BLOCKED] **Legacy WooCommerce category redirects parked under `DEC-ID-SLUG`
+  (chunk 1, catalog modelling).** Owner call: keep it pending rather than build it under the locale
+  work. The 26 `/product-category/…` URLs now land on an honest 404; mapping them to
+  `/collections/…` (or `410`) needs the redirect rules `DEC-ID-SLUG` sets and the `seoRedirects`
+  table from Chunk F. Recorded as an addition in that decision's section. Tool: claude-code.
 - 2026-07-24 — [PARTIAL] G-CORE-CONTRACTS (state dependency rule early in Chunk B). Tool: cursor.
 - 2026-07-25 — [DONE] **G-CORE-CONTRACTS resolved (owner pick: Option C).** `core-domain` may reference contract shapes via `import type` ONLY (runtime-erased; dist verified zero runtime dep on contracts/zod); value imports of contracts + all Nest/Mongoose/Fastify/provider-SDK/adapter imports forbidden, ESLint-enforced in Chunk B. Contracts remain the single shape source of truth (no duplicate entity layer). Lock recorded: owner-decisions-log §2026-07-25 + roadmap gate table + §0 reconciliation note. Tool: claude-code.
 - 2026-08-13 — [BLOCKED] **`DEC-PORTAL-PRIVATE-ACCESS` still pending** (deploy-only; does not

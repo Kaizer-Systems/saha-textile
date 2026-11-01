@@ -3,7 +3,7 @@ title: CCAvenue status enquiry
 description: HDFC VAS integration-guide section 3, transcribed as printed, including samples.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-10-31'
+last_verified: '2026-11-01'
 search_keywords: orderStatusTracker enc_request DoWebTrans tracking_id status enquiry
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts

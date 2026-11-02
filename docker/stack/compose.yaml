@@ -109,7 +109,9 @@ services:
   edge:
     image: nginx:1.30.6-alpine
     ports:
-      - '127.0.0.1:443:443'
+      # 443 by default; a machine where 443 is taken sets STACK_HTTPS_PORT=8443 in env/stack.env.
+      # The edge listens on both, so in-network SSR calls use the same origin as the browser.
+      - '127.0.0.1:${STACK_HTTPS_PORT:-443}:${STACK_HTTPS_PORT:-443}'
     volumes:
       - ./nginx/edge.conf:/etc/nginx/conf.d/default.conf:ro
       - ../../certs/stack-cert.pem:/etc/nginx/certs/stack-cert.pem:ro

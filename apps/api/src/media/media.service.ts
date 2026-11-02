@@ -23,9 +23,9 @@ import {
 	type MediaAssetRepository,
 	type MediaJobQueuePort,
 	type MediaRoleRepository,
-	SEEDED_MEDIA_ROLES,
 	type StoragePort,
 	checkIngest,
+	reconcileSeededRoles,
 	mediaSlug,
 	originalStorageKey,
 	resolveImage,
@@ -72,12 +72,16 @@ export class MediaService implements OnApplicationBootstrap {
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
 	) {}
 
-	/** Seeds missing roles; never overwrites an operator's edits. Non-fatal without Mongo. */
+	/**
+	 * Inserts missing seeded roles and applies code changes to their fixed shape (fit, aspect,
+	 * format), bumping the version so old derivatives regenerate; never touches an operator's
+	 * widths, quality or label. Non-fatal without Mongo.
+	 */
 	async onApplicationBootstrap(): Promise<void> {
 		if (process.env.SAHA_TEXTILE_DOCUMENTATION_BUILD === '1') return;
 		try {
-			const inserted = await this.roles.insertMissing(SEEDED_MEDIA_ROLES);
-			if (inserted > 0) this.logger.log(`Seeded ${inserted} media role(s)`);
+			const reconciled = await reconcileSeededRoles(this.roles);
+			if (reconciled.length > 0) this.logger.log(`Media roles reconciled: ${reconciled.join(', ')}`);
 		} catch (error) {
 			this.logger.warn(`Media roles not seeded (${(error as Error).message})`);
 		}

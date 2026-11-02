@@ -1,5 +1,7 @@
 import type { MediaRoleDefinition } from '@saha-textile/contracts';
 
+import type { MediaRoleRepository } from '../ports/media-role.repository';
+
 const role = (definition: Omit<MediaRoleDefinition, 'seeded' | 'version' | 'updatedAt'>): MediaRoleDefinition => ({
 	...definition,
 	seeded: true,
@@ -90,7 +92,8 @@ export const SEEDED_MEDIA_ROLES: readonly MediaRoleDefinition[] = [
 		purposes: ['product'],
 		widths: [1200],
 		aspect: { width: 1200, height: 630 },
-		fit: 'pad',
+		// Blurred-photo fill rather than white bands (owner, 2026-11-02): a richer link card.
+		fit: 'blur',
 		format: 'image/jpeg',
 		quality: 84,
 		primaryOnly: true,
@@ -196,3 +199,32 @@ export const SEEDED_MEDIA_ROLES: readonly MediaRoleDefinition[] = [
 
 /** Roles every product image must have before the product can publish (blocked, not warned). */
 export const PUBLISH_REQUIRED_ROLES: readonly string[] = ['thumb', 'card', 'gallery'];
+
+/** The fields operators cannot edit: a change in code is applied to existing databases. */
+const FIXED_FIELDS = ['purposes', 'aspect', 'fit', 'format', 'primaryOnly', 'respectSlotMaxWidth'] as const;
+
+/**
+ * Brings stored seeded roles in line with the code. Missing seeds are inserted; a seed whose
+ * fixed shape changed (fit, aspect, format…) is updated with its version bumped, so the stale
+ * sweep regenerates its derivatives. Operator-editable fields (label, widths, quality) are
+ * never touched. Returns the keys it inserted or changed.
+ */
+export const reconcileSeededRoles = async (roles: Pick<MediaRoleRepository, 'list' | 'save'>): Promise<string[]> => {
+	const stored = new Map((await roles.list()).map((role) => [role.key, role]));
+	const changed: string[] = [];
+	for (const seed of SEEDED_MEDIA_ROLES) {
+		const current = stored.get(seed.key);
+		if (!current) {
+			await roles.save(seed);
+			changed.push(seed.key);
+			continue;
+		}
+		const drifted = FIXED_FIELDS.some((field) => JSON.stringify(current[field]) !== JSON.stringify(seed[field]));
+		if (!drifted) continue;
+		const next = { ...current, version: current.version + 1 } as MediaRoleDefinition;
+		for (const field of FIXED_FIELDS) (next as Record<string, unknown>)[field] = seed[field];
+		await roles.save(next);
+		changed.push(seed.key);
+	}
+	return changed;
+};

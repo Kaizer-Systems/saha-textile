@@ -72,6 +72,59 @@
 					rows="3"
 				></textarea>
 			</div>
+
+			<!--
+				Review photos (owner log § Media → Review photos; approved wireframe 4): Bootstrap's
+				file input, thumbnails as Bootstrap img-thumbnail with the theme's btn-close. Up to
+				five; iPhone HEIC/HEIF photos convert in the browser; held private until approved.
+			-->
+			<div class="review-box">
+				<label
+					class="form-label"
+					for="review_photos"
+				>
+					{{ 'review_add_photos' | transloco }}
+				</label>
+				<input
+					#photoInput
+					id="review_photos"
+					class="form-control"
+					type="file"
+					multiple
+					accept="image/jpeg,image/png,image/heic,image/heif,.heic,.heif"
+					[disabled]="photos().length >= maxPhotos || uploading()"
+					(change)="addPhotos(photoInput)"
+				/>
+				<p class="small mt-1 mb-0">{{ 'review_photos_help' | transloco }}</p>
+				@if (photoNotice()) {
+				<div class="invalid-feedback d-block">{{ photoNotice()! | transloco }}</div>
+				} @if (photos().length || uploading()) {
+				<div class="d-flex mt-2 flex-wrap gap-2">
+					@for (photo of photos(); track photo.assetId) {
+					<div class="position-relative">
+						<img
+							[src]="photo.previewUrl"
+							class="img-thumbnail"
+							width="80"
+							height="107"
+							[alt]="'review_add_photos' | transloco"
+						/>
+						<button
+							type="button"
+							class="btn-close position-absolute end-0 top-0 bg-white"
+							[attr.aria-label]="'close' | transloco"
+							(click)="removePhoto(photo.assetId)"
+						></button>
+					</div>
+					} @if (uploading()) {
+					<div
+						class="spinner-border spinner-border-sm align-self-center"
+						role="status"
+					></div>
+					}
+				</div>
+				}
+			</div>
 		</form>
 
 		<div class="modal-footer">

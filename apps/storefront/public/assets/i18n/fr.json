@@ -634,5 +634,13 @@
 	"newsletter_popup_body": "Nouveautés, collections de fête et offres de Saha Textile, directement dans votre boîte mail.",
 	"newsletter_email_placeholder": "Votre adresse e-mail",
 	"newsletter_dont_show_again": "Ne plus afficher cette fenêtre",
-	"newsletter_signup_coming_soon": "L'inscription à la newsletter ouvre bientôt. Merci de votre intérêt !"
+	"newsletter_signup_coming_soon": "L'inscription à la newsletter ouvre bientôt. Merci de votre intérêt !",
+	"review_add_photos": "Ajouter des photos (facultatif)",
+	"review_photos_help": "Jusqu’à 5 photos — JPEG, PNG ou HEIC d’iPhone. Affichées après validation de l’avis.",
+	"review_photos_too_many": "Vous pouvez ajouter jusqu’à 5 photos.",
+	"review_photo_small": "Cette photo est petite et pourrait paraître floue.",
+	"review_photo_not_an_image": "Ce fichier n’est pas une photo. Choisissez une image JPEG, PNG ou HEIC.",
+	"review_photo_too_large": "Cette photo dépasse 25 Mo.",
+	"review_photo_processing_failed": "La photo n’a pas pu être envoyée. Veuillez réessayer.",
+	"review_needs_delivered_order": "Les avis sont ouverts une fois votre commande livrée."
 }

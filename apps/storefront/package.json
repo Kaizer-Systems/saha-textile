@@ -51,6 +51,7 @@
     "bootstrap": "^5.3.8",
     "feather-icons": "^4.29.2",
     "h3": "1.15.11",
+    "heic-to": "1.6.6",
     "ng-select2-component": "^19.1.0",
     "ngx-owl-carousel-o": "^22.0.0",
     "rxjs": "~7.8.0",

@@ -12,6 +12,7 @@ import type { AppConfig } from './config/app-config';
 import { ConfigModule } from './config/config.module';
 import { CurrencyModule } from './currency/currency.module';
 import { HealthModule } from './health/health.module';
+import { MediaModule } from './media/media.module';
 import { PersistenceModule } from './infra/persistence.module';
 import { OrdersModule } from './orders/orders.module';
 import { PrivacyModule } from './privacy/privacy.module';
@@ -45,6 +46,7 @@ export class AppModule {
 				SecurityModule,
 				StorefrontModule,
 				PrivacyModule,
+				MediaModule,
 			],
 			providers: [
 				// Ordered deliberately, and the order is itself a security property.

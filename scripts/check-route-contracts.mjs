@@ -39,6 +39,8 @@ const DECLARED_FAMILIES = [
 	'auth',
 	'storefrontAccount',
 	'privacy',
+	'media',
+	'reviews',
 ];
 
 const ROUTE_DECORATOR = /@(Get|Post|Put|Patch|Delete)\s*\(/g;

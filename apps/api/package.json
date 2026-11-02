@@ -16,7 +16,9 @@
     "bootstrap:first-admin": "nest build && node dist/create-first-admin.js",
     "set:local-credentials": "node --import tsx src/set-local-test-credentials.ts",
     "reset:local-customer": "node --import tsx src/reset-local-customer.ts",
-    "seed:local-auth-accounts": "nest build && node dist/seed-local-auth-accounts.js"
+    "seed:local-auth-accounts": "nest build && node dist/seed-local-auth-accounts.js",
+    "worker": "nest build && node dist/worker.js",
+    "worker:dev": "node --import tsx --watch src/worker.ts"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.3",

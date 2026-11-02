@@ -22,6 +22,11 @@ import {
 	MongoRoleRepository,
 	MongoTransactionManager,
 	MongoAdminUserRoleAssignmentRepository,
+	MongoContentBlockRepository,
+	MongoMediaAssetRepository,
+	MongoMediaRoleRepository,
+	MongoReviewRepository,
+	MongoSiteSettingsRepository,
 	connectMongo,
 	disconnectMongo,
 } from '@saha-textile/adapters-db-mongo';
@@ -34,7 +39,10 @@ import {
 	MongoPromotionRepository,
 } from '@saha-textile/adapters-db-mongo';
 import { Msg91NotificationAdapter } from '@saha-textile/adapters-notifications-msg91';
+import { CloudflareCdnPurge } from '@saha-textile/adapters-cdn-cloudflare';
+import { BullMqMediaJobQueue } from '@saha-textile/adapters-queue-bullmq';
 import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
+import { YouTubeDataApi } from '@saha-textile/adapters-youtube';
 import type {
 	ConsentRepository,
 	MessageOutboxRepository,
@@ -45,6 +53,8 @@ import type {
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { Argon2JwtAuth } from './argon2-jwt.auth';
 import { ConsoleNotificationAdapter } from './console-notification.adapter';
+import { LogOnlyCdnPurgeAdapter } from './log-only-cdn-purge.adapter';
+import { UnavailableYouTubeAdapter } from './unavailable-youtube.adapter';
 import { UnconfiguredStorageAdapter } from './unconfigured-storage.adapter';
 import {
 	AUTH_PORT,
@@ -78,6 +88,14 @@ import {
 	PASSWORD_RESET_TOKEN_REPOSITORY,
 	PROMOTION_REPOSITORY,
 	TRANSACTION_MANAGER,
+	MEDIA_ASSET_REPOSITORY,
+	MEDIA_ROLE_REPOSITORY,
+	CONTENT_BLOCK_REPOSITORY,
+	SITE_SETTINGS_REPOSITORY,
+	REVIEW_REPOSITORY,
+	MEDIA_JOB_QUEUE,
+	CDN_PURGE,
+	YOUTUBE_PORT,
 } from './tokens';
 
 @Global()
@@ -173,6 +191,35 @@ import {
 				CONSENT_REPOSITORY,
 			],
 		},
+		// Media pipeline (owner log § Media).
+		{ provide: MEDIA_ASSET_REPOSITORY, useClass: MongoMediaAssetRepository },
+		{ provide: MEDIA_ROLE_REPOSITORY, useClass: MongoMediaRoleRepository },
+		{ provide: CONTENT_BLOCK_REPOSITORY, useClass: MongoContentBlockRepository },
+		{ provide: SITE_SETTINGS_REPOSITORY, useClass: MongoSiteSettingsRepository },
+		{ provide: REVIEW_REPOSITORY, useClass: MongoReviewRepository },
+		{
+			provide: MEDIA_JOB_QUEUE,
+			useFactory: (config: AppConfig) => new BullMqMediaJobQueue(config.redis),
+			inject: [APP_CONFIG],
+		},
+		{
+			provide: CDN_PURGE,
+			useFactory: (config: AppConfig) => {
+				const { cloudflareZoneId, cloudflarePurgeToken } = config.media;
+				return cloudflareZoneId && cloudflarePurgeToken
+					? new CloudflareCdnPurge({ zoneId: cloudflareZoneId, apiToken: cloudflarePurgeToken })
+					: new LogOnlyCdnPurgeAdapter();
+			},
+			inject: [APP_CONFIG],
+		},
+		{
+			provide: YOUTUBE_PORT,
+			useFactory: (config: AppConfig) =>
+				config.media.youtubeApiKey
+					? new YouTubeDataApi({ apiKey: config.media.youtubeApiKey })
+					: new UnavailableYouTubeAdapter(),
+			inject: [APP_CONFIG],
+		},
 		{
 			provide: AUTH_PORT,
 			useFactory: (config: AppConfig) => new Argon2JwtAuth(config),
@@ -211,6 +258,14 @@ import {
 		AUTH_RATE_LIMIT_REPOSITORY,
 		AUTH_PORT,
 		STORAGE_PORT,
+		MEDIA_ASSET_REPOSITORY,
+		MEDIA_ROLE_REPOSITORY,
+		CONTENT_BLOCK_REPOSITORY,
+		SITE_SETTINGS_REPOSITORY,
+		REVIEW_REPOSITORY,
+		MEDIA_JOB_QUEUE,
+		CDN_PURGE,
+		YOUTUBE_PORT,
 	],
 })
 export class PersistenceModule implements OnApplicationBootstrap, OnApplicationShutdown {

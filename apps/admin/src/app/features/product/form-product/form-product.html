@@ -947,6 +947,18 @@
 										(selectedFiles)="selectSizeImage($event)"
 									/>
 								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'product_video'"
+									[for]="'youtube_video_id'"
+									[required]="false"
+								>
+									<app-youtube-video-field
+										[id]="'youtube_video_id'"
+										[control]="$any(form.controls['youtube_video_id'])"
+									/>
+								</app-form-fields>
 							</div>
 						</ng-template>
 					</li>

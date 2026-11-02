@@ -1,12 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-	ForbiddenException,
-	Inject,
-	Injectable,
-	NotFoundException,
-	UnprocessableEntityException,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
 import type {
 	AdminReviewListQuery,
 	AdminReviewListResponse,
@@ -31,6 +26,7 @@ import {
 	reviewPhotoSlug,
 } from '@saha-textile/core-domain';
 
+import { mediaRefusal } from './media-refusal';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import {
 	CUSTOMER_REPOSITORY,
@@ -71,10 +67,11 @@ export class ReviewsService {
 		const product = await this.products.findById(request.productId);
 		if (!product) throw new NotFoundException('No such product');
 		if (!(await this.reviews.hasVerifiedPurchase({ userId: customerId, productId: request.productId }))) {
-			throw new ForbiddenException({
-				code: 'not_a_verified_buyer',
-				message: 'Only customers who bought this can add photos.',
-			});
+			throw mediaRefusal(
+				HttpStatus.FORBIDDEN,
+				'not_a_verified_buyer',
+				'Only customers who bought this can add photos.',
+			);
 		}
 		return this.media.presign(
 			{ type: 'customer', id: customerId },
@@ -98,20 +95,18 @@ export class ReviewsService {
 			REVIEWABLE_ORDER_STATUSES.has(order.status) &&
 			order.lines.some((line) => line.productId === request.productId);
 		if (!bought)
-			throw new ForbiddenException({
-				code: 'not_a_verified_buyer',
-				message: 'Only a delivered order can be reviewed.',
-			});
+			throw mediaRefusal(HttpStatus.FORBIDDEN, 'not_a_verified_buyer', 'Only a delivered order can be reviewed.');
 
 		const photos = await checkReviewPhotos(
 			{ assets: this.assets },
 			{ customerId, assetIds: request.imageAssetIds },
 		);
 		if (photos.refusal) {
-			throw new UnprocessableEntityException({
-				code: `photos_${photos.refusal}`,
-				message: 'One of the photos cannot be attached.',
-			});
+			throw mediaRefusal(
+				HttpStatus.UNPROCESSABLE_ENTITY,
+				`photos_${photos.refusal}`,
+				'One of the photos cannot be attached.',
+			);
 		}
 
 		// Alt text is generated for every active locale and names the product, never the customer.

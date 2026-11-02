@@ -1,14 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-	ConflictException,
-	Inject,
-	Injectable,
-	Logger,
-	NotFoundException,
-	type OnApplicationBootstrap,
-	UnprocessableEntityException,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException, type OnApplicationBootstrap } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
 import type {
 	AuditLog,
 	MediaAsset,
@@ -39,6 +32,7 @@ import {
 	staleRolesOf,
 } from '@saha-textile/core-domain';
 
+import { mediaRefusal } from './media-refusal';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import {
 	AUDIT_LOG_REPOSITORY,
@@ -117,10 +111,11 @@ export class MediaService implements OnApplicationBootstrap {
 			height: request.height,
 		});
 		if (check.refusal) {
-			throw new UnprocessableEntityException({
-				code: check.refusal.code,
-				message: REFUSAL_MESSAGES[check.refusal.code],
-			});
+			throw mediaRefusal(
+				HttpStatus.UNPROCESSABLE_ENTITY,
+				check.refusal.code,
+				REFUSAL_MESSAGES[check.refusal.code] ?? 'This image cannot be uploaded.',
+			);
 		}
 
 		const id = `med_${randomUUID()}`;
@@ -231,7 +226,11 @@ export class MediaService implements OnApplicationBootstrap {
 	async reprocess(actorId: string, assetId: string): Promise<MediaLibraryItem> {
 		const asset = await this.requireAsset(assetId);
 		if (!asset.originalStorageKey) {
-			throw new ConflictException('This image has no retained original to regenerate from.');
+			throw mediaRefusal(
+				HttpStatus.CONFLICT,
+				'no_original',
+				'This image has no retained original to regenerate from.',
+			);
 		}
 		await this.queue.enqueue({ type: 'reprocess', assetId, reason: 'manual' });
 		await this.record(actorId, 'media.asset.reprocess', assetId, {});
@@ -246,7 +245,7 @@ export class MediaService implements OnApplicationBootstrap {
 		await this.requireAsset(assetId);
 		const usage = await this.assets.countReferences(assetId);
 		if (usage > 0) {
-			throw new ConflictException({ code: 'in_use', message: `This image is used in ${usage} place(s).` });
+			throw mediaRefusal(HttpStatus.CONFLICT, 'in_use', `This image is used in ${usage} place(s).`, { usage });
 		}
 		await this.assets.softDelete(assetId, new Date().toISOString());
 		await this.record(actorId, 'media.asset.delete', assetId, {});

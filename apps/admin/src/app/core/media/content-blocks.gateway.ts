@@ -75,3 +75,19 @@ export class ContentBlocksGateway {
 		return this.http.delete<void>(this.url(`/content-blocks/${encodeURIComponent(key)}`));
 	}
 }
+
+/** `POST /admin/youtube/validate` answer. */
+export interface YouTubeValidation {
+	videoId: string;
+	title: string;
+	thumbnailUrl: string;
+}
+
+@Injectable({ providedIn: 'root' })
+export class YouTubeGateway {
+	private readonly http = inject(HttpClient);
+
+	validate(input: string): Observable<YouTubeValidation> {
+		return this.http.post<YouTubeValidation>(`${runtimeConfig.apiUrl}/admin/youtube/validate`, { input });
+	}
+}

@@ -48,6 +48,7 @@ import { ProductService } from '@data-access/services/product.service';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
+import { YouTubeVideoField } from '@shared/ui/youtube-video-field/youtube-video-field';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 import { priceValidator } from '@shared/validators/price-validator';
 
@@ -81,6 +82,7 @@ function convertToNgbDate(date: NgbDateStruct): NgbDate {
 		NgbAccordionCollapse,
 		NgbAccordionBody,
 		ImageUpload,
+		YouTubeVideoField,
 		AdvancedDropdown,
 		NgbNavOutlet,
 		TranslocoModule,
@@ -213,6 +215,8 @@ export class FormProduct {
 		this.isBrowser = isPlatformBrowser(platformId);
 
 		this.form = this.formBuilder.group({
+			/** Validated YouTube video id for the PDP (catalog chunk persists it). */
+			youtube_video_id: new FormControl<string | null>(null),
 			name: new FormControl('', [Validators.required]),
 			short_description: new FormControl('', [Validators.required]),
 			description: new FormControl('', [Validators.required]),

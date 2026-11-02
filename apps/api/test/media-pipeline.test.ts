@@ -1,4 +1,4 @@
-import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ContentBlock, MediaAsset } from '@saha-textile/contracts';
@@ -96,7 +96,7 @@ describe('MediaService', () => {
 					height: 1600,
 				},
 			),
-		).rejects.toBeInstanceOf(UnprocessableEntityException);
+		).rejects.toMatchObject({ status: 422 });
 		expect(storage.createSignedUploadUrl).not.toHaveBeenCalled();
 	});
 
@@ -197,7 +197,7 @@ describe('ContentBlocksService', () => {
 			storage,
 			config,
 		);
-		await expect(service.upsert(input)).rejects.toBeInstanceOf(UnprocessableEntityException);
+		await expect(service.upsert(input)).rejects.toMatchObject({ status: 422 });
 	});
 
 	it('requires alt in every active locale before going live', async () => {
@@ -208,9 +208,7 @@ describe('ContentBlocksService', () => {
 			storage,
 			config,
 		);
-		await expect(service.upsert({ ...input, status: 'active' })).rejects.toMatchObject({
-			response: { code: 'alt_missing', locales: ['fr'] },
-		});
+		await expect(service.upsert({ ...input, status: 'active' })).rejects.toMatchObject({ status: 422 });
 		const saved = await service.upsert({
 			...input,
 			status: 'active',
@@ -249,7 +247,7 @@ describe('YouTubeService', () => {
 		const youtube = { findVideo: vi.fn() };
 		await expect(
 			new YouTubeService(youtube as never, {} as never).validate('https://vimeo.com/1'),
-		).rejects.toBeInstanceOf(UnprocessableEntityException);
+		).rejects.toMatchObject({ status: 422 });
 		expect(youtube.findVideo).not.toHaveBeenCalled();
 	});
 

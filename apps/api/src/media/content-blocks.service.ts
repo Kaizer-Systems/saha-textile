@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import { Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
 import {
 	type ContentBlock,
 	type ContentBlockInput,
@@ -21,6 +22,7 @@ import {
 	resolveImage,
 } from '@saha-textile/core-domain';
 
+import { mediaRefusal } from './media-refusal';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import {
 	CONTENT_BLOCK_REPOSITORY,
@@ -63,20 +65,20 @@ export class ContentBlocksService {
 			return !asset || asset.deletedAt || asset.purpose !== 'banner' || asset.processing.state !== 'ready';
 		});
 		if (unusable.length > 0) {
-			throw new UnprocessableEntityException({
-				code: 'banner_image_not_ready',
-				message: 'Every banner image must be a processed banner upload.',
-				assetIds: unusable,
-			});
+			throw mediaRefusal(
+				HttpStatus.UNPROCESSABLE_ENTITY,
+				'banner_image_not_ready',
+				'Every banner image must be a processed banner upload.',
+			);
 		}
 		if (input.status === 'active') {
 			const missing = this.config.locales.filter((locale) => !input.alt[locale]?.trim());
 			if (missing.length > 0) {
-				throw new UnprocessableEntityException({
-					code: 'alt_missing',
-					message: `Add alt text for: ${missing.join(', ')}.`,
-					locales: missing,
-				});
+				throw mediaRefusal(
+					HttpStatus.UNPROCESSABLE_ENTITY,
+					'alt_missing',
+					`Add alt text for: ${missing.join(', ')}.`,
+				);
 			}
 		}
 		const existing = await this.blocks.findByKey(key);

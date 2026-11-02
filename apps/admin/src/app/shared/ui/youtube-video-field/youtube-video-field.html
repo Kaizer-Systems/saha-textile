@@ -1,0 +1,32 @@
+<div class="input-group">
+	<input
+		class="form-control"
+		type="text"
+		[id]="id()"
+		[value]="text()"
+		placeholder="https://www.youtube.com/watch?v=…"
+		(input)="edit($any($event.target).value)"
+	/>
+	@if (matchedTitle()) {
+	<span class="input-group-text">
+		<i class="ri-checkbox-circle-line me-2"></i>
+		{{ matchedTitle() }}
+	</span>
+	} @else {
+	<app-button
+		[class]="'btn btn-theme'"
+		[id]="id() + '_validate'"
+		[type]="'button'"
+		[spinner]="false"
+		[disabled]="checking() || !text().trim()"
+		(click)="validate()"
+	>
+		{{ 'validate' | transloco }}
+	</app-button>
+	}
+</div>
+@if (error()) {
+<div class="invalid-feedback d-block">{{ error() }}</div>
+} @else if (text().trim() && !matchedTitle()) {
+<p class="help-text">{{ 'youtube_validate_required' | transloco }}</p>
+}

@@ -63,7 +63,7 @@ search_keywords: 'api database roadmap backend chunks gates verification deploym
 | **G-NUM-PI** — purchase-invoice numbering                      | `DEC-NUMBERING`                    | Posting purchase invoices with final business numbers                    |
 | **G-CORE-CONTRACTS** — core/contracts direction — **RESOLVED** | owner decision: type-only coupling | Nothing; ESLint-enforced and unblocked                                   |
 | **G-I18N-ROUTES** — canonical locale URL law — **RESOLVED**    | owner decision 2026-10-31          | Nothing; every route locale-prefixed, rules in the owner log             |
-| **G-IMG-PX** — image dimensions and ingest limits              | `DEC-IMG-PX`, `DEC-MEDIA-CAPS`     | Final sharp presets, upload ceilings, and responsive-source enforcement  |
+| **G-IMG-PX** — image dimensions and ingest limits              | `DEC-IMG-PX`, `DEC-MEDIA-CAPS`     | **Resolved 2026-11-02** — owner log § Media                              |
 
 Other open decisions block only their own final policy engine. Reversible schemas, contracts, ports, and seams may proceed.
 
@@ -317,7 +317,7 @@ satisfy the full D3–D5 boundary above.
 - Direct upload and asset ownership/security tests pass.
 - Workers are idempotent and failure-recoverable.
 - Notification kill-switch and consent tests pass.
-- **BLOCKED:** G-IMG-PX for final image sizes/upload caps.
+- G-IMG-PX resolved 2026-11-02: sizes and caps follow owner log § Media.
 
 ---
 
@@ -360,5 +360,5 @@ Recommended order for the fastest reduction of blocked behavior:
 5. `DEC-SHIPPING`
 6. `DEC-RETURNS`
 7. `DEC-I18N-ROUTES`
-8. `DEC-IMG-PX`
-9. `DEC-MEDIA-CAPS`
+8. ~~`DEC-IMG-PX`~~ — resolved 2026-11-02
+9. ~~`DEC-MEDIA-CAPS`~~ — resolved 2026-11-02

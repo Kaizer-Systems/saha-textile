@@ -1,13 +1,28 @@
 ---
 title: 'Media Pipeline Decision Round'
-description: 'Open media decisions — locked answers, plain-language explanations, storage/SEO architecture, droplet sizing, and the outstanding question list.'
+description: 'Media decision round — reasoning behind the locked media rules (storage, CDN, keys, sizes, SEO, droplet, YouTube) and the resolution record.'
 audience: [backend, operator, agent]
 document_role: canonical
-last_verified: '2026-08-23'
+last_verified: '2026-11-02'
 search_keywords: 'media images spaces cdn purge derivatives ladder seo storage keys droplet youtube vidstack'
 ---
 
-Everything below is either locked, explained-then-locked, or flagged as still open. Four things I'm **not** locking yet because you asked for discussion first, plus a few you didn't answer.
+> **Status 2026-11-02: every item in this round is locked.** The authoritative rules live in
+> `owner-decisions-log.mdx` § Media; where anything below disagrees with the owner log, the owner
+> log wins. This document keeps the reasoning. Superseded specifics, so nobody revives them:
+>
+> - the size ladders in Part E2 and Part I were replaced by the measured ladder (card
+>   200/400/700/960, gallery 600/900/1200/1600, zoom 2000 wide, thumb 150/300, swatches square
+>   80/160/240 and 120/240);
+> - `full.webp` (Part E5) is not produced;
+> - the DO API token (Part D, Part I item 10) is not needed — Cloudflare fronts the CDN and is the
+>   only layer purged;
+> - PhotoSwipe is the fallback only; the full-screen gallery reuses Bootstrap `modal-fullscreen` +
+>   Swiper Zoom;
+> - the staging hostnames in Part D follow the single-level rule (`admin-staging.`, `api-staging.`,
+>   `cdn-staging.sahatextile.com`).
+>
+> The resolution record is Part I at the end.
 
 ---
 
@@ -140,11 +155,11 @@ Better news: **buckets are free within your $5 subscription** — it covers up t
 
 Recommended layout:
 
-| Env        | Bucket                       | CORS origins                                                     | CDN URL                                   |
-| ---------- | ---------------------------- | ---------------------------------------------------------------- | ----------------------------------------- |
-| Local      | `saha-textile-media-dev`     | `https://localhost:4200`, `:4300`                                | default `.cdn.digitaloceanspaces.com`     |
-| Staging    | `saha-textile-media-staging` | `https://staging-storefront.sahatextile.com`, `staging-admin...` | default, or `cdn-staging.sahatextile.com` |
-| Production | `saha-textile-media`         | `https://sahatextile.com`, `https://admin.sahatextile.com`       | `cdn.sahatextile.com`                     |
+| Env        | Bucket                       | CORS origins                                                               | CDN URL                               |
+| ---------- | ---------------------------- | -------------------------------------------------------------------------- | ------------------------------------- |
+| Local      | `saha-textile-media-dev`     | `https://localhost:4200`, `:4300`                                          | default `.cdn.digitaloceanspaces.com` |
+| Staging    | `saha-textile-media-staging` | `https://staging.sahatextile.com`, `https://admin-staging.sahatextile.com` | `cdn-staging.sahatextile.com`         |
+| Production | `saha-textile-media`         | `https://sahatextile.com`, `https://admin.sahatextile.com`                 | `cdn.sahatextile.com`                 |
 
 Each with its **own bucket-scoped key**, so a staging credential leak cannot touch production media, and a staging test that deletes objects physically cannot reach production.
 
@@ -235,8 +250,7 @@ This is how enterprise DAMs work, and it's what I'd build.
 
 ```
 media/{assetId}/original.{ext}                              ← private
-media/{assetId}/full.webp                                   ← private
-media/{assetId}/{slug}-{role}-{width}w-{hash8}.webp         ← public, immutable
+media/{assetId}/{slug}-{role}-{width}w-{hash8}.webp         ← public, immutable (review photos: private until approved)
 ```
 
 Real example:
@@ -330,34 +344,26 @@ I'll write the Codex prompt for the Google Cloud project when you ask.
 
 ---
 
-# PART I — What you still owe me
+# PART I — Resolution record
 
-Things from the answer sheet you didn't cover, plus new ones this discussion raised:
-
-1. **`original` and `full.webp` set to private ACL** — you didn't answer this. Recommend yes; without it your full-resolution masters are publicly scrapeable.
-2. **Per-role seed pixel widths** — never answered. My proposal below, and since they're admin-editable the risk is near zero. But `DEC-IMG-PX`'s own recommended route is to _measure the rendered slots_, and I'd rather do that than guess — **want me to measure the actual storefront slots and come back with real numbers?**
-
-    | Role              | Base width | Emits       |
-    | ----------------- | ---------- | ----------- |
-    | `thumb`           | 150        | 150w, 300w  |
-    | `card`            | 500        | 500w, 1000w |
-    | `gallery`         | 900        | 900w, 1800w |
-    | `zoom`            | 2000       | 2000w only  |
-    | `swatch_image`    | 100        | 100w, 200w  |
-    | `swatch_image_v2` | 160        | 160w, 320w  |
-
-3. **Card aspect ratio** — the vendor theme uses square-ish tiles; portrait (3:4) suits sarees better but means CSS changes. Part of the measurement pass. Flagging rather than guessing.
-4. **1×/2× retina refinement** (E2) — yes or no.
-5. **API returns resolved URLs** (E1 Option 1) — confirming.
-6. **SEO fields: Option C**, asset baseline + optional attachment override — confirming.
-7. **Key layout** as in E5 — confirming.
-8. **`countReferences` fix** with registry + dry-run + audit + recency guard — yes?
-9. **Droplet:** 4 vCPU / 8 GB — confirming.
-10. **DO API token** for the purge job — you'll need to create one (account-scoped, cannot be bucket-restricted).
-11. **YouTube:** rail count, and PDP field format.
-12. **Environment buckets** — three buckets as in Part D, and are you comfortable that today's `saha-textile-media` becomes `-dev` later?
-13. **CDN custom subdomain path** — Option 1, 2, or 3 from Part D. Not urgent; I'll build the purge behind an interface either way. Flagged in the KB as you asked.
-
-Once these land I'll write every lock into `owner-decisions-log.mdx`, close `DEC-IMG-PX` and `DEC-MEDIA-CAPS` out of `pending-decisions.mdx`, add the three previously-untracked gaps as recorded decisions, and start on the presign endpoint and derivative worker against final numbers.
+| #   | Item                   | Resolution                                                                                                                                         |
+| --- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Private originals      | Yes. `full.webp` dropped (2026-11-02).                                                                                                             |
+| 2   | Per-role pixel widths  | Measured ladder, 2026-11-01/02 (owner log § Media).                                                                                                |
+| 3   | Card aspect ratio      | 3:4 portrait for product and category photos; warn >5% off, letterbox on white.                                                                    |
+| 4   | Retina                 | Multiple widths per role with accurate `sizes`, not a fixed 1×/2× pair.                                                                            |
+| 5   | Resolved URLs          | The API returns srcset-ready URLs.                                                                                                                 |
+| 6   | SEO fields             | Asset baseline + optional attachment override.                                                                                                     |
+| 7   | Key layout             | As in E5, unique by (role, width).                                                                                                                 |
+| 8   | `countReferences`      | Owner registry + schema-walking CI test; GC with dry-run, audit, recency guard.                                                                    |
+| 9   | Droplet                | 4 vCPU / 8 GB, WiredTiger cache capped, worker concurrency 2 and niced.                                                                            |
+| 10  | Purge credential       | Cloudflare purge token at production cutover, reused for staging. No DO token.                                                                     |
+| 11  | YouTube                | Cache 10, display count setting seeded at 8; URL-or-ID field with a mandatory Validate button; `rel=0`.                                            |
+| 12  | Buckets                | Three, one per environment; today's bucket is the dev bucket.                                                                                      |
+| 13  | CDN path               | Option 3: Cloudflare in front; DO CDN TTL 60 s, Cloudflare up to a year.                                                                           |
+| —   | Review photos          | ≤5, HEIC/HEIF converted in browser, `review_thumb` + `review_full` (≤1600), original discarded, private until approved, no PII in names.           |
+| —   | Banners                | `contentBlocks` by position and shape; admin-selectable hero layouts; up to three images per slot by viewport width; "image contains text" switch. |
+| —   | Newsletter popup       | Reused theme modal in the WordPress layout, engagement-triggered.                                                                                  |
+| —   | Environments and HTTPS | dev / staging / prod everywhere; HTTPS in all three local modes (mkcert) and via Cloudflare + Origin Certificate in staging/prod.                  |
 
 Sources: [Spaces CDN custom subdomains](https://docs.digitalocean.com/products/spaces/how-to/enable-cdn/) · [Custom subdomains announcement](https://www.digitalocean.com/blog/custom-subdomains-for-spaces-cdn-endpoints)

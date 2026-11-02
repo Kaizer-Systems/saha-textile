@@ -96,8 +96,8 @@
 			"id": "I",
 			"title": "Privacy, content, FAQ, reviews & media",
 			"deps": ["B", "C"],
-			"blockingGates": ["G-IMG-PX"],
-			"summary": "Consent + analytics gating, FAQ / Q&A / reviews, media assets + Spaces SGP presign, and an image-derivative job skeleton. Exact sharp sizes wait on the image-ladder gate.",
+			"blockingGates": [],
+			"summary": "Consent + analytics gating, FAQ / Q&A / reviews, media assets + Spaces SGP presign, and the image-derivative worker on the locked size ladder.",
 			"dod": "Consent gating; moderation model; media presign; derivative skeleton."
 		},
 		{

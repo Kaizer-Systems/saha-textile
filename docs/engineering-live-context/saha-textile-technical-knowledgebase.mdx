@@ -298,13 +298,13 @@ The detailed design is `codex-auth-architecture-db-and-request-plan.mdx`.
 - Upload normal media directly with presigned operations; do not proxy routine
   bytes through the API.
 - `mediaAssets` is first-class and reusable.
-- Images retain the original and produce WebP role derivatives through BullMQ
-  plus sharp at the adapter/worker edge.
+- Images retain the original (review photos excepted) and produce WebP role
+  derivatives through BullMQ plus sharp at the adapter/worker edge.
 - No AVIF at launch or in the near-term plan.
-- Final image dimensions and ingest limits wait for `DEC-IMG-PX` and
-  `DEC-MEDIA-CAPS`.
-- Videos upload H.264/AAC MP4 masters and transcode through BullMQ/ffmpeg to HLS
-  ladders defined by the owner lock.
+- Image dimensions, ingest limits, banners, review photos, and the rendering
+  standard are locked in owner log § Media (2026-11-02).
+- Uploaded video is dropped at launch; the HLS seams stay dormant behind an
+  off-by-default flag.
 - Core never imports Spaces, BullMQ, sharp, ffmpeg, or player libraries.
 - YouTube latest-video discovery uses `YouTubePort` and a daily cached refresh.
 

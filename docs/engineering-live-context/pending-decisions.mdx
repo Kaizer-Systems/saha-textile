@@ -3,7 +3,7 @@ title: 'Pending Decisions'
 description: 'Canonical inbox of unresolved owner decisions and stable implementation gates.'
 audience: [engineering, product, operator, agent]
 document_role: canonical
-last_verified: '2026-10-31'
+last_verified: '2026-11-02'
 search_keywords: 'pending decisions owner questions implementation gates unresolved'
 ---
 
@@ -11,7 +11,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 
 **Status:** Sole owner-question inbox. Nothing in this file is locked until the owner answers it and the answer is recorded in `owner-decisions-log.mdx`.
 
-**Last reconciled:** 2026-10-31
+**Last reconciled:** 2026-11-02
 
 ## How this file works
 
@@ -49,11 +49,9 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-ID-SLUG`                     | IDs, business codes, slugs, and redirects                                                            | Catalog, SEO, orders                             |
 | `DEC-BADGES-RAILS`                | Storefront badge and rail taxonomy                                                                   | Analytics and merchandising                      |
 | `DEC-SCOPE-GAPS`                  | Missing business flows and launch scope                                                              | Whole product                                    |
-| `DEC-IMG-PX`                      | Image derivative pixel ladder                                                                        | Media worker and storefront images               |
-| `DEC-MEDIA-CAPS`                  | Image/video ingest limits                                                                            | Upload API, admin UX, workers                    |
 | `DEC-PAYPAL-FX`                   | Treatment of PayPal FX-conversion markup                                                             | Foreign-currency pricing and margin              |
 | `DEC-INR-GATEWAY-TIMING`          | Timing of CCAvenue-to-Razorpay succession                                                            | Payment adapter delivery and operations          |
-| `DEC-DOMAIN-TOPOLOGY`             | Production storefront/admin/API hostname topology                                                    | Cookies, CORS, Nginx, deployment                 |
+| `DEC-DOMAIN-TOPOLOGY`             | Production hostname topology — **partly settled 2026-11-02**                                         | Cookies, CORS, Nginx, deployment                 |
 | `DEC-TRANSLATION-QUALITY`         | French translation authorship and acceptance policy                                                  | Storefront/admin copy quality and release QA     |
 | `DEC-PORTAL-PRIVATE-ACCESS`       | Developer-portal identity policy and origin-protection mechanism                                     | Portal deployment, Cloudflare, service access    |
 | `DEC-CUSTOMER-SOFT-DELETE-OPS`    | **VERY IMPORTANT** — soft-deleted customer revive, access, and order/ledger corner cases             | CRM list/detail, auth, orders, uniqueness, MSG91 |
@@ -850,100 +848,6 @@ Notes:
 
 ---
 
-## 18. `DEC-IMG-PX` — Image derivative dimensions
-
-### Decision needed
-
-Choose exact pixel dimensions and crop/fit rules for `thumb`, `card`, `gallery`, `zoom`, `swatch_image`, and `swatch_image_v2`.
-
-### Recommended route
-
-Decide after measuring the final storefront/admin rendered slots, then encode one static role ladder in worker config. Do not guess dimensions before the UI audit.
-
-### Options
-
-#### Option A — UI-audit-derived ladder (recommended)
-
-- Pros: avoids waste and undersized assets.
-- Cons: blocks final sharp enforcement until the audit.
-
-#### Option B — Adopt provisional industry-standard sizes now
-
-- Pros: unblocks worker early.
-- Cons: likely later reprocessing and storage churn.
-
-#### Option C — Owner-supplied dimensions
-
-- Pros: direct acceptance target.
-- Cons: still needs responsive/crop validation.
-
-### Owner answer
-
-Choice:
-
-`thumb`:
-
-`card`:
-
-`gallery`:
-
-`zoom`:
-
-`swatch_image`:
-
-`swatch_image_v2`:
-
-Fit/crop/background rules:
-
-Notes:
-
----
-
-## 19. `DEC-MEDIA-CAPS` — Upload and ingest limits
-
-### Decision needed
-
-Choose maximum source bytes, dimensions, duration, and rejection/compression behavior for media uploads.
-
-### Recommended route
-
-Set separate image and video caps based on the worker/droplet budget. Reject over-limit uploads before presigning and show actionable admin guidance.
-
-### Options
-
-#### Option A — Strict pre-upload caps (recommended)
-
-- Pros: predictable storage, network, and worker cost.
-- Cons: admins must resize/transcode oversized sources.
-
-#### Option B — Accept larger sources and normalize server-side
-
-- Pros: easier admin UX.
-- Cons: expensive worker and storage spikes.
-
-#### Option C — Warning-only
-
-- Pros: least friction.
-- Cons: does not protect infrastructure.
-
-### Owner answer
-
-Choice:
-
-Image maximum MB:
-
-Image maximum long edge:
-
-Video maximum MB:
-
-Video maximum duration:
-
-Video maximum source resolution:
-
-Notes:
-
----
-
 ## 20. `DEC-PAYPAL-FX` — PayPal FX-conversion markup
 
 ### Decision needed
@@ -1064,6 +968,14 @@ cookies and exact CORS/CSRF allowlists.
 - Example: storefront/admin share the apex while API uses a subdomain.
 - Pros: may simplify one application boundary.
 - Cons: combines both models and needs a precise exception matrix.
+
+### Settled 2026-11-02 — no longer open
+
+- Separate per-application subdomains (Option A shape) for staging and production.
+- Single-level hostnames only, because Cloudflare's free Universal SSL covers just `*.sahatextile.com`.
+- Staging: `staging.sahatextile.com` (storefront), `admin-staging.sahatextile.com`, `api-staging.sahatextile.com`, `cdn-staging.sahatextile.com`.
+
+Still open: the production storefront host (`www` vs apex, with the other redirecting), the exact admin/API/CDN production names, and the cookie-domain rule.
 
 ### Owner answer
 

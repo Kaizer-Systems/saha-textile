@@ -19,7 +19,8 @@
     "seed:local-auth-accounts": "nest build && node dist/seed-local-auth-accounts.js",
     "worker": "nest build && node dist/worker.js",
     "worker:dev": "node --import tsx --watch src/worker.ts",
-    "e2e:media": "node --import tsx e2e/media-pipeline.e2e.ts"
+    "e2e:media": "node --import tsx e2e/media-pipeline.e2e.ts",
+    "e2e:banners": "node --import tsx e2e/banners.e2e.ts"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.3",

@@ -13,17 +13,17 @@ const connection = {
 };
 
 describe.runIf(process.env.RUN_REDIS_IT === '1')('BullMQ media queue (integration)', () => {
-	it('delivers an enqueued job to the matching handler, once per asset', async () => {
+	it('delivers an enqueued job to the matching handler, once per asset', { timeout: 20_000 }, async () => {
 		const queue = new BullMqMediaJobQueue(connection);
 		const seen: MediaQueueJob[] = [];
+		let worker: ReturnType<typeof startMediaWorker> | undefined;
 		const done = new Promise<void>((resolve) => {
-			const worker = startMediaWorker({
+			worker = startMediaWorker({
 				connection,
 				concurrency: 1,
 				handlers: {
 					process: async (job) => {
 						seen.push(job);
-						await worker.close();
 						resolve();
 					},
 					reprocess: async () => {},
@@ -39,6 +39,9 @@ describe.runIf(process.env.RUN_REDIS_IT === '1')('BullMQ media queue (integratio
 		await queue.enqueue({ type: 'process', assetId });
 		await queue.enqueue({ type: 'process', assetId });
 		await done;
+		// Closing from inside a handler would wait on itself; close once the job has run.
+		await new Promise((settle) => setTimeout(settle, 300));
+		await worker?.close();
 		expect(seen).toEqual([{ type: 'process', assetId }]);
 		expect(await queue.ping()).toBe(true);
 		await queue.close();

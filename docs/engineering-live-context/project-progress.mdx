@@ -3,7 +3,7 @@ title: 'Project Progress'
 description: 'Canonical cross-tool checkpoint for current implementation status and verification evidence.'
 audience: [engineering, operator, agent]
 document_role: canonical
-last_verified: 2026-10-26
+last_verified: 2026-11-02
 search_keywords: 'project progress current status checkpoint verification evidence chunks gates'
 ---
 
@@ -97,7 +97,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 		"G-NUM-PI": "open",
 		"G-CORE-CONTRACTS": "resolved",
 		"G-I18N-ROUTES": "resolved",
-		"G-IMG-PX": "open"
+		"G-IMG-PX": "resolved"
 	}
 }
 ```
@@ -3766,6 +3766,7 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
 ## Media / Spaces
 
 - 2026-07-24 — [PARTIAL] Region locked SGP (`sgp1`) only — scrub any `blr1` leftovers in examples/config. Tool: cursor.
+- 2026-11-02 — [DONE] **Media rules locked; `DEC-IMG-PX` and `DEC-MEDIA-CAPS` closed (G-IMG-PX resolved).** Owner log § Media rewritten from the 2026-08-23 answers plus the 2026-11-01/02 measurement and consolidation rounds: 3:4 product/category photos and the measured ladder (card 200/400/700/960, gallery 600/900/1200/1600, zoom 2000w, thumb 150/300, square swatches 80/160/240 and 120/240, plus `share`, `feed_square`, JPEG `email_thumb`, review, banner, blog, icon, avatar roles); no `full.webp`; review photos (≤5, HEIC converted in browser, original discarded, private until approved, no PII); banners as `contentBlocks` named by position/shape with admin-selectable hero layouts, up to three images per slot by viewport width and an "image contains text" switch; engagement-triggered newsletter popup reusing the theme modal; the image rendering standard; YouTube Validate field. `media-pipeline-decision-round.mdx` marked fully locked with a resolution record. Bug noted: the PDP main slider collapses to 1 px because `ngx-image-zoom` sizes itself on an image `load` event that has already fired after SSR — fixed by the gallery rebuild. Tool: claude-code.
 - _(append)_
 
 ---
@@ -3796,6 +3797,7 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
   `NODE_OPTIONS=--use-system-ca` (the CA `setup:local-https` installs into the system store), so
   no per-machine path is needed. That one bad fetch can still take the whole SSR dev process
   down is not addressed. Tool: claude-code.
+- 2026-11-02 — [DONE] **Environment and HTTPS law locked.** Three environments (dev / staging / prod) with separate credentials for every integration; HTTPS in all modes — mkcert local CA for dev hot reload and local prod build, a new mode 3 full local Docker stack behind Nginx TLS using the same Dockerfiles later published to private GHCR, and Cloudflare edge + Origin Certificate in staging/prod. Single-level hostnames (`staging.`, `admin-staging.`, `api-staging.`, `cdn-staging.sahatextile.com`); `DEC-DOMAIN-TOPOLOGY` partly settled. Mode 3 not built yet. Tool: claude-code.
 - _(append)_
 
 ---
@@ -4007,6 +4009,7 @@ Track only status here; details stay in worksheet/umbrella/owner log.
 - 2026-07-24 — [BLOCKED] G-NUM-ORDER / G-NUM-PI (numbering). Tool: cursor.
 - 2026-07-24 — [BLOCKED] G-IMG-PX (sharp ladder px). Tool: cursor.
 - 2026-07-24 — [BLOCKED] G-I18N-ROUTES (locale URL law). Tool: cursor.
+- 2026-11-02 — [DONE] **G-IMG-PX resolved** (`DEC-IMG-PX`, `DEC-MEDIA-CAPS` locked in owner log § Media). Tool: claude-code.
 - 2026-10-31 — [DONE] **G-I18N-ROUTES resolved (`DEC-I18N-ROUTES` locked).** Every storefront
   route is locale-prefixed (`/en/…`, `/fr/…`), private routes included and kept `noindex`; slugs
   shared across locales at launch; no automatic language/IP redirect — `/` goes to the `st_locale`

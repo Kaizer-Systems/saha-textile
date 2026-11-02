@@ -300,7 +300,7 @@
 			"currentState": "existing",
 			"targetAction": "refactor",
 			"owningChunks": ["F", "I"],
-			"blockingDecisions": ["DEC-IMG-PX", "DEC-MEDIA-CAPS"],
+			"blockingDecisions": [],
 			"purpose": "Reusable Spaces-backed media catalogue, localized alt text, derivative metadata, lifecycle, and SEO evidence.",
 			"source": "catalog §7.15",
 			"currentModel": "packages/adapters-db-mongo/src/models/media.model.ts",

@@ -62,11 +62,12 @@
 			"id": "G-IMG-PX",
 			"label": "Image ladder px & ingest caps",
 			"question": "Exact derivative sizes (px) and upload size limits?",
-			"source": "decision log image policy (deferred)",
-			"blocksChunks": ["I"],
-			"blocksCollections": ["mediaAssets"],
-			"blocksFeatures": ["Sharp derivative enforcement", "Upload size caps"],
-			"seamsOk": "Media metadata + presign may proceed."
+			"source": "decision log §Media (2026-11-02)",
+			"blocksChunks": [],
+			"blocksCollections": [],
+			"blocksFeatures": [],
+			"seamsOk": "Cleared — sizes and caps follow the locked media rules.",
+			"resolvedNote": "3:4 product/category photos; card 200/400/700/960, gallery 600/900/1200/1600, zoom 2000w, thumb 150/300, swatches square; 25 MB / 8000 px / 50 MP max, 1600 px short-edge minimum (owner log § Media, 2026-11-02)."
 		}
 	]
 }

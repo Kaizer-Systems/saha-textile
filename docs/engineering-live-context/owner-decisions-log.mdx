@@ -3,7 +3,7 @@ title: 'Owner Decisions'
 description: 'Authoritative record of currently locked Saha Textile owner decisions.'
 audience: [engineering, product, operator, agent]
 document_role: canonical
-last_verified: '2026-08-22'
+last_verified: '2026-11-02'
 search_keywords: 'owner decisions authoritative locked intent architecture product operations'
 ---
 
@@ -11,7 +11,7 @@ search_keywords: 'owner decisions authoritative locked intent architecture produ
 
 **Status:** Authoritative record of currently locked owner decisions.
 
-**Last reconciled:** 2026-08-22
+**Last reconciled:** 2026-11-02
 
 This file contains current decisions only. Superseded intermediate positions remain available in Git history, not inline where they can be mistaken for current direction.
 
@@ -65,6 +65,7 @@ Unanswered questions live only in `pending-decisions.mdx`. When an answer is con
     - Classic NgRx Store/Effects/Entity owns heavily mutated workflows such as cart.
 - Forms use typed Angular reactive/signal forms.
 - Transloco owns runtime UI translations.
+- Responsive standard (locked 2026-11-02, all chunks): every decision and test covers every screen size — phones 360–430, phablets, tablets in both orientations, Windows/Ubuntu laptops and desktops, Mac retina and non-retina, 4K/5K — and treats the app-like small-screen layout as a first-class case wherever it differs from desktop. No flicker, no layout shift, no slow or flashing first paint, no visible SSR→hydration swap. Decisions follow current and emerging ecommerce, web, and PWA standards, not historical habit alone.
 
 ### UI reuse and the pre-build brief (`DEC-UI-REUSE` — locked 2026-08-11)
 
@@ -355,7 +356,7 @@ Prose and comments keep saying “operator”; identifiers say `adminUser`. The 
 - Admin answers publish the Q&A and trigger an answer email.
 - FAQ and Q&A use separate admin pages with shared reusable editor/table components.
 - Reviews require logged-in verified purchase.
-- Review content is star rating, text, and optional images.
+- Review content is star rating, text, and up to five optional photos (rules under Media § Review photos).
 - Reviews require admin moderation before public display.
 - Rating aggregates and SEO use approved verified reviews only.
 
@@ -400,34 +401,115 @@ reciprocal, self-referencing hreflang with `x-default`).
 
 ## Media
 
-- DigitalOcean Spaces region is SGP (`sgp1`).
-- Uploads use presigned direct-to-Spaces operations; API does not proxy normal browse bytes.
-- `mediaAssets` is first-class and reusable; products/content store references and attachment sort order.
-- Images:
-    - upload JPEG/PNG;
-    - retain original;
-    - create full-resolution WebP;
-    - create static WebP role derivatives;
-    - no AVIF at launch or for the near-term plan;
-    - BullMQ plus sharp at the adapter/worker edge;
-    - role names: `thumb`, `card`, `gallery`, `zoom`, `swatch_image`, `swatch_image_v2`;
-    - localized alt/SEO is required for every active locale before publish;
-    - orphan assets are soft-deleted and garbage-collected after grace.
-- Product imagery supports Simple and Compound modes.
-- Compound image rows follow the full variation-axis Cartesian matrix.
-- Inactive image mode data is parked rather than destroyed.
+Locked across the 2026-08-21 → 2026-08-23 rounds and the 2026-11-01/02 measurement and consolidation rounds (`DEC-IMG-PX` and `DEC-MEDIA-CAPS` closed 2026-11-02). Reasoning and measurements: `media-pipeline-decision-round.mdx`.
+
+### Storage, delivery, and environments
+
+- DigitalOcean Spaces region is SGP (`sgp1`); droplets go BLR1.
+- One bucket per environment, each with its own bucket-scoped key: `saha-textile-media-dev`, `saha-textile-media-staging`, `saha-textile-media`. Today's `saha-textile-media` (personal team) serves as the dev bucket until the production bucket is created; the swap is env-only. Dev means the apps run on the developer machine while media goes to the dev bucket — no local S3 emulator, because it cannot reproduce the CDN, per-object ACLs, or Cloudflare in front.
+- Cloudflare (free plan) fronts the Spaces CDN (DNS Option 3). DO CDN TTL 60 s (thin inner layer); Cloudflare cache rule holds up to one year (safe because keys are immutable). Only Cloudflare is ever purged. No DigitalOcean API token. One Cloudflare purge token is created by the owner at production cutover and is reused for staging testing.
+- Uploads use presigned direct-to-Spaces PUTs; the API never proxies normal browse bytes. The content type is part of the signature.
+- Nothing stores URLs. The API returns resolved, srcset-ready URLs; Angular never composes a media URL.
+- Key layout: `media/{assetId}/original.{ext}` (private) and `media/{assetId}/{slug}-{role}-{width}w-{hash8}.webp` (public-read, immutable, one-year cache). A derivative is unique by **(role, width)**, not role alone.
+- `StoragePort` gains `makePublic(key)` and `createSignedDownloadUrl(key, ttlSeconds)`. CDN purge sits behind its own port; dev uses a log-only adapter, staging/prod a Cloudflare adapter.
+
+### Image ingest
+
+- Admin uploads accept JPEG and PNG only. Limits: 25 MB, 8000 px long edge, 50 MP; product and category photos at least **1600 px on the short edge** (1600×2133 at 3:4; ideally export ≥2400×3200). Over-limit uploads are rejected at presign with actionable guidance.
+- Lightroom house export: sRGB, JPEG q90–100, full resolution, output sharpening off. The worker converts using the embedded profile, strips EXIF, and applies a light post-resize sharpen.
+- The original is retained privately as the regeneration master. **No full-resolution WebP copy is made** (superseded 2026-11-02: nothing displays it, the 2000 px zoom covers the largest view).
+- Never upscale: a role width larger than the source is skipped with a warning.
+- Every upload is decoded by the worker (sharp). Bytes that do not decode as an image delete the object and fail the upload — this is the trust boundary; `accept`, browser magic-byte checks and presign content-type checks are convenience layers.
+- No AVIF now; each derivative records its format so AVIF can be added later as a setting.
+
+### Roles and the size ladder
+
+Roles live in the `mediaRoles` collection: seeded roles are undeletable and unrenamable, dimensions editable, custom roles allowed. A ladder edit marks derivatives stale → explicit reprocess (count + estimate) → old derivatives deleted through the queued CDN purge. An SEO-slug edit is the same reprocess trigger.
+
+| Role                                                                      | Shape                                      | Widths (px)                                                                                                                |
+| ------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `thumb` (cart, mini-cart, checkout, compare, order rows)                  | 3:4                                        | 150 / 300                                                                                                                  |
+| `card` (all product cards and rails; PDP thumbnail strip)                 | 3:4                                        | 200 / 400 / 700 / 960                                                                                                      |
+| `gallery` (PDP main slider)                                               | 3:4                                        | 600 / 900 / 1200 / 1600                                                                                                    |
+| `zoom` (hover lens, full-screen gallery)                                  | 3:4                                        | 2000 wide (2000×2667), with the never-upscale guard                                                                        |
+| `swatch_image`                                                            | centre-cropped square                      | 80 / 160 / 240                                                                                                             |
+| `swatch_image_v2` (image tile)                                            | centre-cropped square                      | 120 / 240                                                                                                                  |
+| `share` (main product image only)                                         | 1200×630, letterboxed on white             | 1200                                                                                                                       |
+| `feed_square` (main product image only; Merchant Center / Meta catalogue) | 1:1 on white                               | 1200                                                                                                                       |
+| `email_thumb` (main product image only)                                   | 3:4 **JPEG** (desktop Outlook has no WebP) | 150 / 300                                                                                                                  |
+| `review_thumb`                                                            | 3:4 cover                                  | 150 / 300                                                                                                                  |
+| `review_full`                                                             | original shape                             | long edge capped at 1600                                                                                                   |
+| `banner`                                                                  | keeps the uploaded shape                   | 480 / 768 / 1080 / 1440 / 1920 / 2560 / 2880, skipping any wider than the source or more than 2× the slot's widest display |
+| `blog`                                                                    | 16:9, source ≥2400×1350                    | 480 / 800 / 1200 / 1600 / 2400                                                                                             |
+| `category_icon`                                                           | square; SVG preferred, else PNG            | 256 (PNG)                                                                                                                  |
+| `avatar` (operator avatar, when built)                                    | square                                     | 96 / 192                                                                                                                   |
+
+- Product and category photos are **3:4 portrait**, shot and cropped 3:4 so the whole image fills cards and the PDP slider with no background showing. An upload more than 5% off 3:4 warns; if the admin proceeds it is letterboxed on white. No focal-point picker, no gravity, no per-image crop; the per-role fit setting stays in ladder config as a dormant knob.
+- Category images come in three kinds: `category_icon`, a 3:4 category photo on the `card` ladder (used only if a photo tile row is added), and a category banner (`banner` role, wide plus a phone image).
+- Every asset stores its dominant colour and a ThumbHash for instant placeholders.
+
+### SEO and alt text
+
+- Asset-level baseline (SEO filename slug, alt/title/caption per locale) set at upload, plus an optional per-attachment alt override shown greyed with the inherited value. Localized alt is required for every active locale before publish; the publish gate checks the resolved value.
+- Publish requires `thumb` + `card` + `gallery` derivatives (blocked, not warned).
+
+### Rendering standard (every page, every screen size)
+
+- Every `<img>` carries width/height or a fixed aspect box, so nothing shifts while loading; the ThumbHash/colour placeholder fills the box.
+- The LCP image (first hero or PDP main image) is eager with `fetchpriority="high"`; everything else is `loading="lazy"` with `decoding="async"`.
+- Every image has an accurate `sizes` value.
+- Banners render as `<img>` / `<picture>`, never CSS backgrounds (the `image-link` component's existing `<img>` branch).
+- Verified at 360/390/430, tablet portrait and landscape, and desktop widths, with no flicker, layout shift, or hydration flash (Applications § Responsive standard).
+
+### Product imagery
+
+- Product imagery supports Simple and Compound modes; Compound rows follow the full variation-axis Cartesian matrix. Inactive image-mode data is parked rather than destroyed. (Attachment shape is built in the catalog chunk.)
 - Attachment ordering is contiguous and attachment-owned; `#1` is primary.
 - Named add-on terms may have ordered galleries without becoming inventory variants.
-- Video:
-    - master upload is H.264/AAC MP4 at 1080p or better;
-    - BullMQ plus ffmpeg generates HLS;
-    - always 480p/720p/1080p;
-    - add 1440p only for 1440p source;
-    - add 2160p only for 2160p source and skip 1440p in that case;
-    - delete hot master after successful transcode;
-    - playback uses Vidstack through a thin UI wrapper;
-    - core never imports Vidstack, ffmpeg, BullMQ, or Spaces SDKs.
-- YouTube latest-video discovery uses Data API v3 through `YouTubePort`, cached and refreshed daily at 00:00 IST.
+- PDP: hover zoom on desktop (fine pointer only) at the cursor position, loading the zoom file on first hover; click or tap opens a full-screen gallery. The full-screen gallery reuses Bootstrap `modal-fullscreen` + Swiper 14's Zoom module (pinch and double-tap), with the phone back button closing it; PhotoSwipe is the fallback only if that proves worse on a real phone. `ngx-image-zoom` is removed (it sizes itself on the image `load` event, which has already fired after SSR, collapsing the slider to 1 px).
+
+### Review photos
+
+- Up to **5 photos per review**. The customer may pick JPEG, PNG, HEIC, or HEIF; HEIC/HEIF are converted to JPEG in the browser, so the API only ever accepts JPEG and PNG. Any other type is refused. No minimum size; warn below ~500 px.
+- Named exception to "retain original": the worker produces `review_thumb` and `review_full`, then discards the original immediately.
+- Derivatives are written **private** and made public on moderator approval; moderators view them through short-lived signed URLs. A rejected review deletes both derivatives.
+- File names and alt text carry no personal data: slug and alt are generated from the product name ("{product} customer photo"), auto-filled for every active locale. Identity lives on the review record (`reviews.userId`), never in an asset address.
+- Indexes: `reviews {userId: 1, createdAt: -1}` and `reviews {imageAssetIds: 1}`.
+- When a discontinued product is finally purged, its review photos are purged; review text and ratings are kept as historical records.
+
+### Lifecycle and garbage collection
+
+- Assets with no owner are soft-deleted and garbage-collected after a 30-day grace.
+- `countReferences` is driven by an owner registry (products, variants, add-on galleries, categories, content blocks, reviews, settings…), and a schema-walking CI test fails if any persisted media reference is not registered.
+- The GC hard-delete job runs with dry-run, an audit record, and a recency guard.
+
+### Banners and content blocks
+
+- Banners are `contentBlocks` records — one record per page position, named by **position and shape, never by a Fastkart theme**. The storefront keeps one theme and colour scheme; other themes' hero styles become admin-selectable layouts rendered in our colours.
+- Home hero layout is one setting: `hero_full` (one 10:3 banner), `hero_main_side` (main + one tall tile), `hero_main_stack` (main + two stacked tiles), `hero_center_sides` (centre + tall tiles left and right). Slots within a layout: `main`, `side`, `side_top`, `side_bottom`, `left`, `right`. Record key form: `home.hero.main`.
+- Other positions: `promo_cards`, `promo_wide`, `strip`, `bar`, `sidebar_tall`, `category_banner`, `product_sidebar`, `newsletter_popup`.
+- Banner boxes never crop: the box takes the shape of the image chosen for the current viewport width. Up to three images per slot — desktop (required), tablet 768–1199 (optional, falls back to desktop), phone <768 (portrait or square). Landscape phones get the tablet/desktop image.
+- One "Image contains text" switch per slot. **Off (default):** a text-free photo with live heading/subheading/CTA per locale over it. **On:** the phone image is mandatory on wide slots, live-text fields hide, alt must repeat the image's words, and an optional per-locale image set overrides the default (empty falls back to it). No safe zones or hard boundaries. Designer brief: one design exported as artboards — desktop 2880×864, phone 1080×1350 or 1080×1080.
+- Each slot also has link, alt per locale, status, and start/end schedule. Banners are registered media owners.
+- Newsletter section background is a fabric texture or plain theme colour, not a photo.
+
+### Newsletter popup
+
+- Reuses the existing theme `NewsletterModal`, restyled to the WordPress layout from existing classes only: logo, heading, paragraph, pill email input with dark Submit, "Don't show this popup again" checkbox (the login page's `form-check remember-box` + `checkbox_animated`), and a 3:4 portrait image on the right (≈1200×1600, `newsletter_popup` slot) shown only at ≥992 px.
+- Opens only after engagement: ~50% scroll, ~30 s on site, or desktop exit intent. Never on cart, checkout, account, or auth pages; at most once per session; closed → quiet 7 days; "don't show again" → long-lived `st_*` cookie; subscribed → never again. The "15% off" copy is removed.
+- Submit depends on the newsletter-subscribe endpoint (notifications/consent chunk); until it exists the button reports that sign-up is coming soon.
+- The theme's separate exit-intent modal is deleted (redundant).
+
+### PWA image caching (applied when the PWA is set up)
+
+- Card and thumb derivatives are cached after first view (30 days, ~300 entries / ~60 MB); gallery and zoom are network-only; signed URLs are never cached. The CDN must send CORS headers so cached responses are not opaque.
+
+### Video and YouTube
+
+- Uploaded video is dropped at launch; the HLS/ffmpeg seams stay dormant behind an off-by-default flag.
+- YouTube playback uses Vidstack's YouTube provider, `youtube-nocookie`, click-to-load, `rel=0` (end-screen suggestions stay within the same channel).
+- PDP videos come from a per-product field that accepts a URL or bare ID, normalised to the ID. The field has a **Validate** button that must succeed before the form can submit; on success it becomes plain text showing the matched video title, and editing the field resets it.
+- The home rail uses Data API v3 through `YouTubePort` (`playlistItems.list` on the uploads playlist, 1 quota unit), fetching and caching 10 daily at 00:00 IST; the displayed count is an admin setting seeded at 8; surfaces are a `youtubeRailPlacements` list seeded with `home`.
 
 ## Payments, FX, and shipping
 
@@ -481,6 +563,12 @@ reciprocal, self-referencing hreflang with `x-default`).
     - admin `4300`;
     - API `4000`.
 - Repository is public; deployment images are private GHCR packages.
+- Three environments for every integration (locked 2026-11-02): **dev** (developer machine; cloud-only services such as Spaces use a dedicated dev resource), **staging** (hosted beside the live WordPress sahatextile.com until cutover), **prod** (replaces WordPress). Each has its own credentials and resources — MSG91, Google Cloud/OAuth/YouTube, Meta apps, payments, Shiprocket, Spaces. A prod credential is never shared with staging or dev.
+- HTTPS in every mode, so requests behave identically everywhere:
+    - mode 1 (dev hot reload) and mode 2 (local prod build) use the mkcert local CA (`pnpm setup:local-https`) — a locally trusted CA, not a self-signed certificate (self-signed would warn and block service workers);
+    - mode 3 (full local stack) runs the same Dockerfiles later published to private GHCR, behind Nginx terminating TLS with the mkcert certificate, with runtime secrets from gitignored env files, never baked into images;
+    - staging and prod use Cloudflare's edge certificate plus a Cloudflare Origin Certificate on Nginx (Full strict).
+- Hostnames are single-level subdomains (locked 2026-11-02), because Cloudflare's free Universal SSL covers only `*.sahatextile.com`. Staging: `staging.sahatextile.com` (storefront), `admin-staging.sahatextile.com`, `api-staging.sahatextile.com`, `cdn-staging.sahatextile.com`. Production names follow the same rule; the remaining choices stay under `DEC-DOMAIN-TOPOLOGY`.
 - Protected branches are changed only through reviewed PRs.
 
 ## Audit and retention

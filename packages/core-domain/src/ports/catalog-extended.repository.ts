@@ -200,6 +200,8 @@ export interface ReviewRepository {
 			moderatedByUserId: string;
 			moderatedAt: string;
 			note?: string;
+			/** Replaces the photo list — a rejection clears it once the photos are deleted. */
+			imageAssetIds?: string[];
 		},
 		context?: TransactionContext,
 	): Promise<Review | null>;

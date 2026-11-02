@@ -207,6 +207,35 @@ const ConfigSchema = z.object({
 		password: z.string().optional(),
 		db: z.coerce.number().int().nonnegative().default(0),
 	}),
+	/**
+	 * Media pipeline (owner log § Media). The worker runs the same image as the API with a
+	 * different command; these settings are read by both.
+	 *
+	 * - `workerConcurrency` stays at 2 on the shared droplet so an upload burst never starves
+	 *   the storefront's SSR.
+	 * - `gcLive` must be switched on explicitly: until it is, the daily GC runs as a dry run
+	 *   that only writes its audit record of what it WOULD delete.
+	 * - Cloudflare purge credentials are both-or-neither (a half pair is a typo); absent, purges
+	 *   are logged instead — the dev setting, since dev has no Cloudflare in front.
+	 * - Without a YouTube key the rail refresh is skipped and Validate answers "unavailable".
+	 */
+	media: z
+		.object({
+			workerConcurrency: z.coerce.number().int().min(1).max(8).default(2),
+			gcLive: boolString,
+			cloudflareZoneId: z.string().min(1).optional(),
+			cloudflarePurgeToken: z.string().min(1).optional(),
+			youtubeApiKey: z.string().min(1).optional(),
+		})
+		.superRefine((media, ctx) => {
+			if (!media.cloudflareZoneId !== !media.cloudflarePurgeToken) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'Set both CLOUDFLARE_ZONE_ID and CLOUDFLARE_PURGE_TOKEN, or neither.',
+					path: ['cloudflarePurgeToken'],
+				});
+			}
+		}),
 });
 
 /**
@@ -298,6 +327,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 			port: env.REDIS_PORT || undefined,
 			password: env.REDIS_PASSWORD || undefined,
 			db: env.REDIS_DB || undefined,
+		},
+		media: {
+			workerConcurrency: env.MEDIA_WORKER_CONCURRENCY || undefined,
+			gcLive: env.MEDIA_GC_LIVE || undefined,
+			cloudflareZoneId: env.CLOUDFLARE_ZONE_ID || undefined,
+			cloudflarePurgeToken: env.CLOUDFLARE_PURGE_TOKEN || undefined,
+			youtubeApiKey: env.YOUTUBE_API_KEY || undefined,
 		},
 	});
 }

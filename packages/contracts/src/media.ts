@@ -478,3 +478,46 @@ export const MediaLibraryItem = z.object({
 	staleRoles: z.array(MediaRoleKey).default([]),
 });
 export type MediaLibraryItem = z.infer<typeof MediaLibraryItem>;
+
+/** `GET /admin/media` query. */
+export const MediaLibraryQuery = z.object({
+	purpose: MediaPurpose.optional(),
+	search: z.string().max(100).optional(),
+	page: z.coerce.number().int().positive().default(1),
+	pageSize: z.coerce.number().int().positive().max(100).default(24),
+});
+export type MediaLibraryQuery = z.infer<typeof MediaLibraryQuery>;
+
+export const MediaLibraryResponse = z.object({
+	items: z.array(MediaLibraryItem),
+	total: z.number().int().nonnegative(),
+	page: z.number().int().positive(),
+	pageSize: z.number().int().positive(),
+});
+export type MediaLibraryResponse = z.infer<typeof MediaLibraryResponse>;
+
+/**
+ * `POST /storefront/reviews/photos/presign` — a customer's review photo. JPEG or PNG only:
+ * HEIC/HEIF from a phone is converted in the browser before this request is made.
+ */
+export const ReviewPhotoPresignRequest = z.object({
+	contentType: ImageUploadFormat,
+	byteSize: z.number().int().positive(),
+	fileName: z.string().min(1).max(255),
+	width: z.number().int().positive(),
+	height: z.number().int().positive(),
+	/** The product being reviewed: names the photo (no personal data) and scopes it. */
+	productId: Id,
+});
+export type ReviewPhotoPresignRequest = z.infer<typeof ReviewPhotoPresignRequest>;
+
+/** Where an upload is, polled by the uploader until `ready` or `failed`. */
+export const MediaUploadStatus = z.object({
+	assetId: Id,
+	state: MediaProcessingState,
+	error: z.string().nullable(),
+	warnings: z.array(MediaWarning),
+	/** A short-lived preview (signed for private review photos), once ready. */
+	previewUrl: z.string().nullable(),
+});
+export type MediaUploadStatus = z.infer<typeof MediaUploadStatus>;

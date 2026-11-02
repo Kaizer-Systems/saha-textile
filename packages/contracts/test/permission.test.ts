@@ -31,7 +31,7 @@ describe('permission registry', () => {
 	// `wallet.*`) that a single-vendor business cannot use, duplicates of live codes
 	// (`role.edit`, `theme.{edit,index}`), and the ambiguous `user.{edit,destroy}`.
 	it('exposes every code with a stable order', () => {
-		expect(PERMISSION_CODES).toHaveLength(89);
+		expect(PERMISSION_CODES).toHaveLength(91);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 

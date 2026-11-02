@@ -100,3 +100,26 @@ export const normalizeYouTubeVideoId = (input: string): string | null => {
 	}
 	return candidate && YOUTUBE_ID.test(candidate) ? candidate : null;
 };
+
+/** `PUT /admin/youtube/settings` — the operator-editable part of the rail. */
+export const YouTubeSettingsUpdate = z.object({
+	channelHandle: z
+		.string()
+		.regex(/^@[A-Za-z0-9._-]{3,100}$/)
+		.optional(),
+	displayCount: z.number().int().min(1).max(10).optional(),
+	railPlacements: z.array(z.string().regex(/^[a-z][a-z0-9_]*$/)).optional(),
+});
+export type YouTubeSettingsUpdate = z.infer<typeof YouTubeSettingsUpdate>;
+
+/** `GET /storefront/youtube/rail?placement=home`. */
+export const YouTubeRailQuery = z.object({
+	placement: z
+		.string()
+		.regex(/^[a-z][a-z0-9_]*$/)
+		.default('home'),
+});
+export type YouTubeRailQuery = z.infer<typeof YouTubeRailQuery>;
+
+export const YouTubeRailResponse = z.object({ videos: z.array(YouTubeVideoSummary) });
+export type YouTubeRailResponse = z.infer<typeof YouTubeRailResponse>;

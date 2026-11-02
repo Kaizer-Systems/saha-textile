@@ -32,7 +32,6 @@ const CATALOGUES = [{ app: 'admin', dir: 'apps/admin/public/assets/i18n', refere
  */
 const SHARED_VALUE = /^(?:[A-Z]{2,6}|\d+|[\s\p{P}]*)$/u;
 const SHARED_WORDS = new Set([
-	'Photos',
 	'action',
 	'actions',
 	'activation',

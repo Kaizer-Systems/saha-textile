@@ -25,7 +25,7 @@ import type {
 import { resolveEffectivePermissions } from '@saha-textile/core-domain';
 import type { FastifyRequest } from 'fastify';
 
-import { cookieNames } from '../common/cookies';
+import { cookieNames, requestCookieAudience } from '../common/cookies';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import {
 	ADMIN_USER_AUTH_REPOSITORY,
@@ -128,7 +128,7 @@ export class SessionGuard implements CanActivate {
 		]);
 
 		const request = context.switchToHttp().getRequest<RequestWithPrincipal>();
-		const names = cookieNames(this.config);
+		const names = cookieNames(this.config, requestCookieAudience(request));
 		const token = request.cookies?.[names.access];
 		const isIdentityProbe = this.reflector.getAllAndOverride<boolean | undefined>(IDENTITY_PROBE_KEY, [
 			context.getHandler(),

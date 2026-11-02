@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { CartModule } from './cart/cart.module';
+import { CookieAudienceGuard } from './common/cookie-audience.guard';
 import { CsrfGuard } from './common/csrf.guard';
 import { RefreshReuseGuard } from './auth/refresh-reuse.guard';
 import { SessionGuard } from './auth/session.guard';
@@ -58,6 +59,9 @@ export class AppModule {
 				// session kept working and no security event was recorded. It costs nothing
 				// elsewhere — the guard returns immediately unless the handler is marked
 				// `@RotatesSession()`.
+				// First of all: decide which audience's cookies this route reads (admin or
+				// storefront), so every guard below looks at the right session.
+				{ provide: APP_GUARD, useClass: CookieAudienceGuard },
 				{ provide: APP_GUARD, useClass: RefreshReuseGuard },
 				// Applied to every route: unsafe methods carrying a session cookie must echo the
 				// double-submit token. Registering it globally means a new controller is protected

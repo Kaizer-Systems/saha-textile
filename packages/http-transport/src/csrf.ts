@@ -24,6 +24,12 @@ export const CSRF_HEADER_NAME = 'x-csrf-token';
  */
 export const CSRF_COOKIE_NAMES = ['st_csrf', '__Host-st_csrf'] as const;
 
+/**
+ * The admin session's CSRF cookie. Admin sessions have their own cookie names so a storefront
+ * session in the same browser can never overwrite or clear an operator's (API `cookieNames`).
+ */
+export const ADMIN_CSRF_COOKIE_NAMES = ['st_admin_csrf', '__Host-st_admin_csrf'] as const;
+
 /** Methods the API treats as safe, and therefore does not CSRF-protect. */
 const SAFE_METHODS: readonly string[] = ['GET', 'HEAD', 'OPTIONS'];
 
@@ -43,11 +49,14 @@ export function isUnsafeMethod(method: string): boolean {
  * The name is compared exactly (split at the first `=`) rather than by prefix, so a
  * differently-named cookie that merely starts with `st_csrf` can never be mistaken for it.
  */
-export function readCsrfTokenFrom(cookieJar: string | null | undefined): string | null {
+export function readCsrfTokenFrom(
+	cookieJar: string | null | undefined,
+	names: readonly string[] = CSRF_COOKIE_NAMES,
+): string | null {
 	if (!cookieJar) return null;
 
 	const entries = cookieJar.split(/;\s*/);
-	for (const name of CSRF_COOKIE_NAMES) {
+	for (const name of names) {
 		for (const entry of entries) {
 			const separator = entry.indexOf('=');
 			if (separator === -1) continue;
@@ -68,8 +77,8 @@ export function readCsrfTokenFrom(cookieJar: string | null | undefined): string 
  * and an unsafe request does not originate there. Reached through `globalThis` with a narrow
  * local type so this package needs no `DOM` lib and stays compilable in a Node test run.
  */
-export function readCsrfToken(): string | null {
-	return readCsrfTokenFrom(ambientCookieJar());
+export function readCsrfToken(names: readonly string[] = CSRF_COOKIE_NAMES): string | null {
+	return readCsrfTokenFrom(ambientCookieJar(), names);
 }
 
 /**

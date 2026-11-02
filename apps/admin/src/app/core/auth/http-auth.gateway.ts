@@ -28,7 +28,8 @@ import {
  * import error rather than a silent privilege question.
  */
 const ROUTES = {
-	csrf: '/auth/csrf',
+	// The admin session's own token (`st_admin_csrf`), never the storefront's.
+	csrf: '/auth/admin/csrf',
 	me: '/auth/admin/me',
 	login: '/auth/admin/login',
 	pinLogin: '/auth/admin/login/pin',

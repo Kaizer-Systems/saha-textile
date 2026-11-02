@@ -5,7 +5,7 @@ import type { FastifyRequest } from 'fastify';
 
 import { SessionService } from '../auth/session.service';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
-import { cookieNames } from './cookies';
+import { cookieNames, requestCookieAudience } from './cookies';
 
 /** Methods that cannot change state, so they need no CSRF proof. */
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -52,7 +52,7 @@ export class CsrfGuard implements CanActivate {
 
 		if (SAFE_METHODS.has(request.method.toUpperCase())) return true;
 
-		const names = cookieNames(this.config);
+		const names = cookieNames(this.config, requestCookieAudience(request));
 		const cookies = request.cookies ?? {};
 		const hasSession = Boolean(cookies[names.access] ?? cookies[names.refresh]);
 		if (!hasSession) return true;

@@ -18,7 +18,7 @@ import type {
 } from '@saha-textile/core-domain';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
-import { cookieNames, csrfCookieOptions, sessionCookieOptions } from '../common/cookies';
+import { cookieNames, csrfCookieOptions, requestCookieAudience, sessionCookieOptions } from '../common/cookies';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { labelFromUserAgent, shouldBackfillDeviceLabel } from './device-label';
 import type { AuthenticatedPrincipal } from './session.guard';
@@ -156,7 +156,7 @@ export class SessionService {
 	 * (refresh / logout paths).
 	 */
 	async resolveLiveSessionFromRequest(request: FastifyRequest): Promise<AuthSession | null> {
-		const names = cookieNames(this.config);
+		const names = cookieNames(this.config, requestCookieAudience(request));
 		const access = this.readCookie(request, names.access);
 		if (access) {
 			try {
@@ -188,7 +188,7 @@ export class SessionService {
 	 * value. Anonymous callers still receive an unbound pre-session token.
 	 */
 	async issueCsrfToken(request: FastifyRequest, reply: FastifyReply): Promise<string> {
-		const names = cookieNames(this.config);
+		const names = cookieNames(this.config, requestCookieAudience(request));
 		const session = await this.resolveLiveSessionFromRequest(request);
 		const presented = this.readCookie(request, names.csrf);
 
@@ -304,7 +304,7 @@ export class SessionService {
 	 * compromised or hopelessly stale.
 	 */
 	async revokeFamilyIfRefreshReused(request: FastifyRequest, reply: FastifyReply): Promise<boolean> {
-		const presented = this.readCookie(request, cookieNames(this.config).refresh);
+		const presented = this.readCookie(request, cookieNames(this.config, requestCookieAudience(request)).refresh);
 		if (!presented) return false;
 
 		const compromised = await this.sessions.findByPreviousRefreshTokenHash(this.hash(presented));
@@ -327,7 +327,7 @@ export class SessionService {
 		reply: FastifyReply;
 		audience: SessionAudience;
 	}): Promise<EstablishedSession> {
-		const names = cookieNames(this.config);
+		const names = cookieNames(this.config, input.audience);
 		const presented = this.readCookie(input.request, names.refresh);
 		if (!presented) throw new UnauthorizedException('No refresh token');
 
@@ -411,13 +411,13 @@ export class SessionService {
 	}
 
 	async revoke(request: FastifyRequest, reply: FastifyReply, reason: SessionRevokeReason = 'logout'): Promise<void> {
-		const presented = this.readCookie(request, cookieNames(this.config).refresh);
+		const presented = this.readCookie(request, cookieNames(this.config, requestCookieAudience(request)).refresh);
 		if (presented) {
 			const session = await this.sessions.findByRefreshTokenHash(this.hash(presented));
 			if (session) await this.sessions.revoke(session.id, reason, new Date().toISOString());
 		} else {
 			// Access-only logout: still revoke the sid so the access JWT dies immediately.
-			const access = this.readCookie(request, cookieNames(this.config).access);
+			const access = this.readCookie(request, cookieNames(this.config, requestCookieAudience(request)).access);
 			if (access) {
 				try {
 					const claims = (await this.auth.verifyToken(access)) as unknown as Record<string, unknown>;
@@ -535,7 +535,7 @@ export class SessionService {
 	}
 
 	async findByRefreshCookie(request: FastifyRequest): Promise<AuthSession | null> {
-		const presented = this.readCookie(request, cookieNames(this.config).refresh);
+		const presented = this.readCookie(request, cookieNames(this.config, requestCookieAudience(request)).refresh);
 		return presented ? this.sessions.findByRefreshTokenHash(this.hash(presented)) : null;
 	}
 
@@ -585,7 +585,8 @@ export class SessionService {
 		user: SessionUser;
 		reply: FastifyReply;
 	}): Promise<void> {
-		const names = cookieNames(this.config);
+		// The session's own audience, not the route's: the cookies always match the session.
+		const names = cookieNames(this.config, input.session.audience);
 		const claims: Omit<AccessTokenClaims, 'iat' | 'exp'> = {
 			iss: 'saha-textile-api',
 			aud: input.session.audience,
@@ -616,7 +617,8 @@ export class SessionService {
 	}
 
 	clearCookies(reply: FastifyReply): void {
-		const names = cookieNames(this.config);
+		// Only the cookies of the audience this request is about; the other session is untouched.
+		const names = cookieNames(this.config, requestCookieAudience(reply.request));
 		const options = sessionCookieOptions(this.config, 0);
 		void reply
 			.setCookie(names.access, '', options)

@@ -17,22 +17,18 @@
 					[options]="productMainThumbSlider"
 					#owlCar
 				>
-					@for (image of product()?.product_galleries; track image; let i = $index) {
+					@for (image of images(); track image.id; let i = $index) {
 					<ng-template
 						carouselSlide
-						[id]="image.id.toString()"
+						[id]="image.id"
 					>
 						<div>
 							<div class="slider-image">
-								<lib-ngx-image-zoom
-									[zoomMode]="'click'"
-									[thumbImage]="image.original_url"
-									[fullImage]="image.original_url"
-									[magnification]="3"
-									[enableScrollZoom]="true"
-									[enableLens]="true"
-									[lensWidth]="350"
-									[lensHeight]="350"
+								<app-gallery-zoom-lens
+									[image]="image"
+									[alt]="product()?.name ?? ''"
+									[priority]="i === 0"
+									(opened)="openFullscreen(i)"
 								/>
 							</div>
 						</div>

@@ -732,9 +732,6 @@ importers:
       ng-select2-component:
         specifier: ^19.1.0
         version: 19.1.0(@angular/cdk@22.2.4(3a298d79b98ffed20e4ada273b186854))(@angular/common@22.2.3(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2)(zone.js@0.16.3))(rxjs@7.8.2))(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2)(zone.js@0.16.3))
-      ngx-image-zoom:
-        specifier: ^3.0.0
-        version: 3.0.0
       ngx-owl-carousel-o:
         specifier: ^22.0.0
         version: 22.0.0(@angular/common@22.2.3(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2)(zone.js@0.16.3))(rxjs@7.8.2))(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2)(zone.js@0.16.3))(rxjs@7.8.2)
@@ -11598,9 +11595,6 @@ packages:
       '@angular/forms': '>=22.0.0'
       '@angular/platform-browser': '>=22.0.0'
       rxjs: '>=7.8.0'
-
-  ngx-image-zoom@3.0.0:
-    resolution: {integrity: sha512-4NOWfbc0dnPOo85PwZHhIhUoB+DS1mJ02RJlsFhH+JK/fMSFftsiYIbTeRXszVTB6M3aHOaU7c07F/n4DEdhfg==}
 
   ngx-owl-carousel-o@22.0.0:
     resolution: {integrity: sha512-YMyuPp6PIMeQUQsMRXLuRLkUtxdFBE224X64hWzrp91iyLD6FZqDV7YspQDyOHeUBSlNEYow+E5Jmlrs+1dHmQ==}
@@ -28176,10 +28170,6 @@ snapshots:
       prosemirror-tables: 1.8.5
       prosemirror-view: 1.42.8
       rxjs: 7.8.2
-      tslib: 2.8.1
-
-  ngx-image-zoom@3.0.0:
-    dependencies:
       tslib: 2.8.1
 
   ngx-owl-carousel-o@22.0.0(@angular/common@22.2.3(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2)(zone.js@0.16.3))(rxjs@7.8.2))(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2)(zone.js@0.16.3))(rxjs@7.8.2):

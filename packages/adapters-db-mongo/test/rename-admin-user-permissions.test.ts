@@ -4,7 +4,13 @@ import { COLLECTION_NAMES } from '../src/collection-names';
 import { connectMongo, disconnectMongo, getMongoose } from '../src/connection';
 import { renameAdminUserPermissions } from '../src/migrations/rename-admin-user-permissions';
 
-const runDb = process.env.RUN_DB_IT === '1';
+/**
+ * This suite DELETES every role, admin and invite in the database it connects to. It once ran
+ * against `saha_textile_local` and took the owner's admin account and the system roles with it
+ * (2026-11-02). It now runs only against a database named for tests.
+ */
+const testDatabase = /_(it|e2e|test)$/.test(process.env.MONGODB_DB_NAME ?? '');
+const runDb = process.env.RUN_DB_IT === '1' && testDatabase;
 
 describe.runIf(runDb)('renameAdminUserPermissions', () => {
 	beforeAll(async () => {
@@ -15,7 +21,7 @@ describe.runIf(runDb)('renameAdminUserPermissions', () => {
 	 * Cleared BEFORE each case and again AFTER the last one.
 	 *
 	 * `beforeEach` alone left the final case's fixtures sitting in the database, and this
-	 * suite shares `saha_textile_local` with the running dev app. Those rows are deliberately
+	 * suite used to share `saha_textile_local` with the running dev app. Those rows are deliberately
 	 * minimal — a `_id` and a `permissions` array, no `createdAt` — which is all the migration
 	 * reads, but not what `toRole` needs: `GET /admin/roles` threw `RangeError: Invalid time
 	 * value` on the leftover row and the whole Roles screen 500'd. The migration under test was

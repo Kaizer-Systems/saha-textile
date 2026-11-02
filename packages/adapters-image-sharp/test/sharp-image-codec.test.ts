@@ -67,6 +67,21 @@ describe('SharpImageCodec', () => {
 		expect((await sharp(pad.bytes).metadata()).format).toBe('jpeg');
 	});
 
+	it('renders the blur fill at the exact box size, photo uncropped in the middle', async () => {
+		const out = await codec.render(await jpeg(600, 800), {
+			width: 1200,
+			height: 630,
+			fit: 'blur',
+			format: 'image/jpeg',
+			quality: 84,
+		});
+		expect([out.width, out.height]).toEqual([1200, 630]);
+		// The centre column is the photo (the red source); the far edge is the darkened backdrop.
+		const raw = await sharp(out.bytes).raw().toBuffer({ resolveWithObject: true });
+		const at = (x: number, y: number) => raw.data[(y * raw.info.width + x) * raw.info.channels] ?? 0;
+		expect(at(600, 315)).toBeGreaterThan(at(5, 315));
+	});
+
 	it('strips metadata from every output', async () => {
 		const out = await codec.render(await jpeg(600, 800, 6), {
 			width: 300,

@@ -50,6 +50,7 @@ export class SharpImageCodec implements ImageCodecPort {
 	}
 
 	async render(bytes: Uint8Array, spec: ImageRenderSpec): Promise<RenderedImage> {
+		if (spec.fit === 'blur') return this.renderBlurFill(bytes, spec);
 		let pipeline = this.base(bytes);
 		pipeline =
 			spec.fit === 'inside'
@@ -68,6 +69,37 @@ export class SharpImageCodec implements ImageCodecPort {
 				? pipeline.jpeg({ quality: spec.quality, mozjpeg: true, progressive: true })
 				: pipeline.webp({ quality: spec.quality, effort: 5, smartSubsample: true });
 
+		const { data, info } = await pipeline.toBuffer({ resolveWithObject: true });
+		const out = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+		return {
+			bytes: out,
+			width: info.width,
+			height: info.height,
+			sha256: createHash('sha256').update(out).digest('hex'),
+		};
+	}
+
+	/**
+	 * Link-preview card: the whole photo, uncropped, centred over a blurred and slightly darkened
+	 * enlargement of itself. Richer than white bands in a WhatsApp or social card, and the photo
+	 * stays the clear subject.
+	 */
+	private async renderBlurFill(bytes: Uint8Array, spec: ImageRenderSpec): Promise<RenderedImage> {
+		const width = spec.width;
+		const height = spec.height ?? spec.width;
+		const backdrop = await this.base(bytes)
+			.resize({ width, height, fit: 'cover', position: 'centre' })
+			.blur(Math.max(12, Math.round(width / 40)))
+			.modulate({ brightness: 0.82 })
+			.toBuffer();
+		const photo = await this.base(bytes).resize({ width, height, fit: 'inside' }).toBuffer();
+		let pipeline = sharp(backdrop)
+			.composite([{ input: photo, gravity: 'centre' }])
+			.sharpen({ sigma: 0.5 });
+		pipeline =
+			spec.format === 'image/jpeg'
+				? pipeline.jpeg({ quality: spec.quality, mozjpeg: true, progressive: true })
+				: pipeline.webp({ quality: spec.quality, effort: 5, smartSubsample: true });
 		const { data, info } = await pipeline.toBuffer({ resolveWithObject: true });
 		const out = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
 		return {

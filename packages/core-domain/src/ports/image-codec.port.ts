@@ -12,12 +12,13 @@ export interface ImageProbe {
  *
  * - `inside` scales to `width`, keeping the source shape (`height` ignored);
  * - `cover` fills `width`×`height` exactly with a centre crop;
- * - `pad` fits inside `width`×`height` and letterboxes on white.
+ * - `pad` fits inside `width`×`height` and letterboxes on white;
+ * - `blur` fits inside `width`×`height` over a blurred, darkened enlargement of the same image.
  */
 export interface ImageRenderSpec {
 	width: number;
 	height: number | null;
-	fit: 'inside' | 'cover' | 'pad';
+	fit: 'inside' | 'cover' | 'pad' | 'blur';
 	format: 'image/webp' | 'image/jpeg';
 	quality: number;
 }

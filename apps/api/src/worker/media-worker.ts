@@ -14,8 +14,8 @@ import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
 import { YouTubeDataApi } from '@saha-textile/adapters-youtube';
 import {
 	type CdnPurgePort,
-	SEEDED_MEDIA_ROLES,
 	processMediaAsset,
+	reconcileSeededRoles,
 	refreshYouTubeFeed,
 	runMediaGarbageCollection,
 } from '@saha-textile/core-domain';
@@ -99,7 +99,8 @@ export const composeMediaWorker = async (config: AppConfig) => {
 		},
 	};
 
-	await roles.insertMissing(SEEDED_MEDIA_ROLES);
+	const reconciled = await reconcileSeededRoles(roles);
+	if (reconciled.length > 0) logger.log(`Media roles reconciled: ${reconciled.join(', ')}`);
 	await queue.registerSchedules();
 	const worker = startMediaWorker({
 		connection: config.redis,

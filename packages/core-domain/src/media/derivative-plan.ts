@@ -82,6 +82,7 @@ const specFor = (
 	}
 
 	const height = Math.round((width * role.aspect.height) / role.aspect.width);
+	// `cover` must fill the box from the source; `pad` and `blur` only need the photo to fit inside.
 	const scale =
 		role.fit === 'cover'
 			? Math.max(width / source.width, height / source.height)

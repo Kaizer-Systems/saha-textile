@@ -514,3 +514,29 @@ describe('runMediaGarbageCollection', () => {
 		expect(assets.rows.get('orphan')?.deletedAt).toBeNull();
 	});
 });
+
+describe('reconcileSeededRoles', () => {
+	it('inserts missing seeds, applies fixed-shape changes with a version bump, and keeps operator edits', async () => {
+		const { reconcileSeededRoles } = await import('../src/index');
+		const share = SEEDED_MEDIA_ROLES.find((role) => role.key === 'share');
+		const card = SEEDED_MEDIA_ROLES.find((role) => role.key === 'card');
+		if (!share || !card) throw new Error('seed missing');
+		const stored = new Map<string, MediaRoleDefinition>([
+			['share', { ...share, fit: 'pad', version: 1 }],
+			['card', { ...card, widths: [200, 400, 800], quality: 75 }],
+		]);
+		const repo = {
+			list: async () => [...stored.values()],
+			save: async (role: MediaRoleDefinition) => {
+				stored.set(role.key, role);
+				return role;
+			},
+		};
+		const changed = await reconcileSeededRoles(repo);
+		expect(changed).toContain('share');
+		expect(changed).not.toContain('card');
+		expect(stored.get('share')).toMatchObject({ fit: 'blur', version: 2 });
+		expect(stored.get('card')).toMatchObject({ widths: [200, 400, 800], quality: 75 });
+		expect(stored.size).toBe(SEEDED_MEDIA_ROLES.length);
+	});
+});

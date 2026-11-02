@@ -95,9 +95,12 @@ export type MediaUploadRules = z.infer<typeof MediaUploadRules>;
  *
  * - `inside` — keep the source shape, scale to the width (product 3:4, banners, review full);
  * - `cover` — fill the box exactly, centre crop (square swatches, review thumbs);
- * - `pad` — fit inside the box and letterbox on white (share and feed images).
+ * - `pad` — fit inside the box and letterbox on white (feed square: catalogues want plain light
+ *   backgrounds);
+ * - `blur` — fit inside the box over a blurred, darkened enlargement of the same photo (link
+ *   previews: richer than white bands in a WhatsApp or social card, and still uncropped).
  */
-export const DerivativeFit = z.enum(['inside', 'cover', 'pad']);
+export const DerivativeFit = z.enum(['inside', 'cover', 'pad', 'blur']);
 export type DerivativeFit = z.infer<typeof DerivativeFit>;
 
 /**
@@ -129,7 +132,11 @@ export const MediaRoleDefinition = z
 			ctx.addIssue({ code: 'custom', message: 'role widths must be unique', path: ['widths'] });
 		}
 		if (role.fit !== 'inside' && !role.aspect) {
-			ctx.addIssue({ code: 'custom', message: '`cover` and `pad` roles need an aspect box', path: ['aspect'] });
+			ctx.addIssue({
+				code: 'custom',
+				message: '`cover`, `pad` and `blur` roles need an aspect box',
+				path: ['aspect'],
+			});
 		}
 	});
 export type MediaRoleDefinition = z.infer<typeof MediaRoleDefinition>;

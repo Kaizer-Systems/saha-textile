@@ -853,7 +853,11 @@
 		}
 
 		img {
-			@include pseudowh($width: 100%, $height: calc(100px + (140 - 100) * ((100vw - 320px) / (1920 - 320))));
+			// 3:4 product photos (owner log § Media): the box takes the photo's shape instead of a
+			// fixed height, so a saree is never cropped; `contain` letterboxes any off-shape image.
+			width: 100%;
+			height: auto;
+			aspect-ratio: 3 / 4;
 			object-fit: contain;
 			transition:
 				opacity 0.5s,
@@ -3218,8 +3222,10 @@
 			background-color: #f8f8f8;
 
 			img {
-				height: calc(180px + (250 - 180) * ((100vw - 320px) / (1920 - 320)));
-				object-fit: cover;
+				// 3:4 like every product card; `contain`, not `cover`, so nothing is cropped.
+				height: auto;
+				aspect-ratio: 3 / 4;
+				object-fit: contain;
 				margin-bottom: 20px;
 			}
 		}

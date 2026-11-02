@@ -1,5 +1,7 @@
 import { Component, Input, viewChild, output, input } from '@angular/core';
 
+import type { MediaPurpose } from '@core/media/media.gateway';
+
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { MediaModal, MediaModal as MediaModalComponent_1 } from '@shared/ui/modal/media-modal/media-modal';
 
@@ -24,6 +26,8 @@ export class ImageUpload {
 	@Input() imageUrl: string | null;
 	readonly url = input<boolean>(false);
 	readonly multipleImage = input<boolean>(false);
+	/** What uploads made from this picker are for; passed to the media modal. */
+	readonly purpose = input<MediaPurpose>('product');
 	// TODO: Skipped for migration because:
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
 	//  and migrating would break narrowing currently.

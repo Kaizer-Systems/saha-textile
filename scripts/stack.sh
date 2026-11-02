@@ -20,6 +20,14 @@ ENV_DIR="$STACK_DIR/env"
 CERT_DIR="$ROOT_DIR/certs"
 COMPOSE=(docker compose -f "$STACK_DIR/compose.yaml")
 
+# The edge's host port: 443 unless env/stack.env says otherwise (some machines already use 443).
+if [[ -f "$ENV_DIR/stack.env" ]]; then
+	STACK_HTTPS_PORT="$(sed -n 's/^STACK_HTTPS_PORT=//p' "$ENV_DIR/stack.env")"
+fi
+export STACK_HTTPS_PORT="${STACK_HTTPS_PORT:-443}"
+PORT_SUFFIX=""
+[[ "$STACK_HTTPS_PORT" == "443" ]] || PORT_SUFFIX=":$STACK_HTTPS_PORT"
+
 STOREFRONT_HOST="local.saha-textile.localhost"
 ADMIN_HOST="admin-local.saha-textile.localhost"
 API_HOST="api-local.saha-textile.localhost"
@@ -60,7 +68,7 @@ MONGODB_REPLICA_SET=rs0
 MONGODB_DB_NAME=saha_textile_stack
 REDIS_HOST=redis
 REDIS_PORT=6379
-CORS_ALLOWED_ORIGINS=https://$STOREFRONT_HOST,https://$ADMIN_HOST
+CORS_ALLOWED_ORIGINS=https://$STOREFRONT_HOST$PORT_SUFFIX,https://$ADMIN_HOST$PORT_SUFFIX
 TRUST_PROXY=true
 CLIENT_IP_HEADER=cf-connecting-ip
 COOKIE_SECURE=true
@@ -74,8 +82,8 @@ VARS
 	local public_config
 	public_config=$(cat <<JSON
 {
-	"apiUrl": "https://$API_HOST",
-	"siteUrl": "https://$STOREFRONT_HOST",
+	"apiUrl": "https://$API_HOST$PORT_SUFFIX",
+	"siteUrl": "https://$STOREFRONT_HOST$PORT_SUFFIX",
 	"defaultLocale": "en",
 	"supportedLocales": ["en", "fr"],
 	"googleClientId": "$google",
@@ -89,7 +97,7 @@ JSON
 		echo "SAHA_TEXTILE_PUBLIC_CONFIG=$(echo "$public_config" | tr -d '\n\t')"
 		echo "NODE_EXTRA_CA_CERTS=/certs/rootCA.pem"
 	} >"$ENV_DIR/storefront.env"
-	printf '{\n\t"apiUrl": "https://%s",\n\t"adminUrl": "https://%s"\n}\n' "$API_HOST" "$ADMIN_HOST" >"$ENV_DIR/admin.config.json"
+	printf '{\n\t"apiUrl": "https://%s",\n\t"adminUrl": "https://%s"\n}\n' "$API_HOST$PORT_SUFFIX" "$ADMIN_HOST$PORT_SUFFIX" >"$ENV_DIR/admin.config.json"
 
 	echo "Wrote docker/stack/env (api.env, stack.env, storefront.env, *.config.json)."
 	echo "Safari only — add to /etc/hosts:  127.0.0.1 $STOREFRONT_HOST $ADMIN_HOST $API_HOST"
@@ -100,9 +108,9 @@ cmd_up() {
 	[[ -f "$ENV_DIR/api.env" ]] || { echo "Run: pnpm stack:env" >&2; exit 1; }
 	"${COMPOSE[@]}" up -d --build --wait
 	echo
-	echo "  storefront  https://$STOREFRONT_HOST"
-	echo "  admin       https://$ADMIN_HOST"
-	echo "  API         https://$API_HOST/health/ready"
+	echo "  storefront  https://$STOREFRONT_HOST$PORT_SUFFIX"
+	echo "  admin       https://$ADMIN_HOST$PORT_SUFFIX"
+	echo "  API         https://$API_HOST$PORT_SUFFIX/health/ready"
 }
 
 case "${1:-}" in

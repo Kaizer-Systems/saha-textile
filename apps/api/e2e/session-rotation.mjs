@@ -121,6 +121,9 @@ async function main() {
 	// production does not use.
 	const { cookieNames } = await import('../dist/common/cookies.js');
 	const COOKIE = cookieNames(config);
+	// Admin sessions have their own cookie names (st_admin_*); see `cookieNames` in the API.
+	const ADMIN_COOKIE = cookieNames(config, 'admin');
+	const isAdminUrl = (url) => url.startsWith('/admin') || url.startsWith('/auth/admin');
 
 	const app = await createApp(config);
 	await app.init();
@@ -143,7 +146,7 @@ async function main() {
 		const cookie = jar.header();
 		if (cookie) headers.cookie = cookie;
 
-		const csrf = jar.get(COOKIE.csrf);
+		const csrf = jar.get(options.audience === 'admin' || isAdminUrl(url) ? ADMIN_COOKIE.csrf : COOKIE.csrf);
 		// Mirrors the browser client: the header goes on unsafe methods only, and only when
 		// there is a readable value to echo.
 		if (csrf && options.csrf !== false && method !== 'GET') headers['x-csrf-token'] = csrf;
@@ -163,6 +166,8 @@ async function main() {
 	 * a 401 for any OTHER reason, and every 403, still surfaces untouched.
 	 */
 	async function adminRequest(jar, method, url, options = {}) {
+		// Admin routes are not all under /admin (order status is /orders/:id/status), so say so.
+		options = { ...options, audience: 'admin' };
 		const first = await request(jar, method, url, options);
 		if (first.statusCode !== 401) return first;
 

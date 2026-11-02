@@ -89,7 +89,7 @@ describe('admin AuthInterceptor', () => {
 				csrfCalls += 1;
 				// The real endpoint sets the cookie; the fake must too, or the rotation that
 				// follows would still see an empty jar and the test would prove nothing.
-				setCookie('st_csrf=acquired-token');
+				setCookie('st_admin_csrf=acquired-token');
 				return of(undefined);
 			},
 			refreshSession: () => {
@@ -126,7 +126,7 @@ describe('admin AuthInterceptor', () => {
 		});
 
 		it('echoes the CSRF cookie on an unsafe method', () => {
-			setCookie('st_csrf=tok-123');
+			setCookie('st_admin_csrf=tok-123');
 			run('POST').subscribe();
 
 			expect(handler.forwarded()[0]?.headers.get('x-csrf-token')).toBe('tok-123');
@@ -140,7 +140,7 @@ describe('admin AuthInterceptor', () => {
 		// `packages/http-transport/test/csrf.test.ts` against the pure jar-in/value-out reader.
 		it('finds the CSRF cookie among unrelated cookies', () => {
 			setCookie('language=en');
-			setCookie('st_csrf=tok-123');
+			setCookie('st_admin_csrf=tok-123');
 			setCookie('theme=dark');
 			run('POST').subscribe();
 
@@ -149,7 +149,7 @@ describe('admin AuthInterceptor', () => {
 
 		// The API's guard only requires it on unsafe methods; sending it on a GET would be noise.
 		it('does not attach the header on a safe method', () => {
-			setCookie('st_csrf=tok-123');
+			setCookie('st_admin_csrf=tok-123');
 			run('GET').subscribe();
 
 			expect(handler.forwarded()[0]?.headers.has('x-csrf-token')).toBe(false);
@@ -167,7 +167,7 @@ describe('admin AuthInterceptor', () => {
 		beforeEach(() => {
 			// A readable CSRF cookie is the precondition for rotation: it is an unsafe,
 			// cookie-authenticated POST and cannot succeed without the double-submit half.
-			setCookie('st_csrf=first-token');
+			setCookie('st_admin_csrf=first-token');
 		});
 
 		it('rotates once and replays the request, keeping the session', async () => {
@@ -220,7 +220,7 @@ describe('admin AuthInterceptor', () => {
 		// as an auth failure rather than the stale header it is.
 		it('re-reads the CSRF cookie for the replay', async () => {
 			refreshResult = () => {
-				setCookie('st_csrf=rotated-token');
+				setCookie('st_admin_csrf=rotated-token');
 				return of(undefined);
 			};
 			handler.responder = (_req, index) =>
@@ -375,7 +375,7 @@ describe('admin AuthInterceptor', () => {
 
 	describe('latch lifetime', () => {
 		beforeEach(() => {
-			setCookie('st_csrf=first-token');
+			setCookie('st_admin_csrf=first-token');
 			refreshResult = () => throwError(() => new HttpErrorResponse({ status: 401 }));
 			handler.responder = (req) =>
 				req.url === PROTECTED_URL ? throwError(unauthorized) : of(new HttpResponse({ status: 200 }));
@@ -424,7 +424,7 @@ describe('admin AuthInterceptor', () => {
 				},
 			});
 
-			setCookie('st_csrf=first-token');
+			setCookie('st_admin_csrf=first-token');
 			handler.responder = (_req, index) =>
 				index === 0 ? throwError(unauthorized) : of(new HttpResponse({ status: 200 }));
 
@@ -453,7 +453,7 @@ describe('admin AuthInterceptor', () => {
 			});
 
 		it.each(['session_revoked', 'account_inactive'])('does not rotate after %s', async (reason) => {
-			setCookie('st_csrf=tok');
+			setCookie('st_admin_csrf=tok');
 			handler.responder = () => throwError(() => refusedWith(reason));
 
 			await expect(firstValueFrom(run('GET'))).rejects.toMatchObject({ status: 401 });
@@ -467,7 +467,7 @@ describe('admin AuthInterceptor', () => {
 		it.each(['session_expired', 'session_missing', 'permissions_changed'])(
 			'still rotates after %s',
 			async (reason) => {
-				setCookie('st_csrf=tok');
+				setCookie('st_admin_csrf=tok');
 				handler.responder = (_req, index) =>
 					index === 0 ? throwError(() => refusedWith(reason)) : of(new HttpResponse({ status: 200 }));
 
@@ -481,7 +481,7 @@ describe('admin AuthInterceptor', () => {
 		// The pre-4b contract, and the reason absence must never be read as a verdict: an
 		// older API, a proxy-mangled body, or any endpoint that simply does not say.
 		it('still rotates when the refusal names no reason at all', async () => {
-			setCookie('st_csrf=tok');
+			setCookie('st_admin_csrf=tok');
 			handler.responder = (_req, index) =>
 				index === 0 ? throwError(unauthorized) : of(new HttpResponse({ status: 200 }));
 
@@ -497,7 +497,7 @@ describe('admin AuthInterceptor', () => {
 		 * as grounds to sign someone out.
 		 */
 		it('still rotates when the reason is one this client does not recognise', async () => {
-			setCookie('st_csrf=tok');
+			setCookie('st_admin_csrf=tok');
 			handler.responder = (_req, index) =>
 				index === 0 ? throwError(() => refusedWith('pin_locked')) : of(new HttpResponse({ status: 200 }));
 

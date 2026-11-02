@@ -75,8 +75,34 @@ export function csrfCookieOptions(config: AppConfig): CookieSerializeOptions {
 	};
 }
 
-/** Every cookie name this API sets, resolved for the current environment. */
-export function cookieNames(config: AppConfig): {
+/** Which session a request is about; decided per route by `@Audience` (see `CookieAudienceGuard`). */
+export type CookieAudience = 'storefront' | 'admin';
+
+/** Set on the request by `CookieAudienceGuard` before any other guard runs. */
+export type RequestWithCookieAudience = { cookieAudience?: CookieAudience };
+
+export const requestCookieAudience = (request: unknown): CookieAudience =>
+	(request as RequestWithCookieAudience | null | undefined)?.cookieAudience ?? 'storefront';
+
+/**
+ * Admin sessions carry their own cookie names (`st_admin_access`, `st_admin_refresh`,
+ * `st_admin_csrf`).
+ *
+ * Both audiences' cookies are set by the one API host, so they share one browser cookie jar
+ * however the apps' own hostnames differ. With shared names, an operator who opened the
+ * storefront was signed out of admin: the storefront saw no shopper session, refreshed with
+ * the operator's token, was refused, and the refusal cleared the shared cookies (found while
+ * testing, 2026-11-02). Separate names make the two sessions independent; the storefront keeps
+ * the original names, so existing shopper sessions are unaffected.
+ */
+const forAudience = (base: string, audience: CookieAudience): string =>
+	audience === 'admin' ? (base.startsWith('st_') ? `st_admin_${base.slice(3)}` : `admin_${base}`) : base;
+
+/** Every cookie name this API sets, resolved for the current environment and audience. */
+export function cookieNames(
+	config: AppConfig,
+	audience: CookieAudience = 'storefront',
+): {
 	access: string;
 	refresh: string;
 	csrf: string;
@@ -84,9 +110,9 @@ export function cookieNames(config: AppConfig): {
 	signup: string;
 } {
 	return {
-		access: cookieName(config.cookies.accessName, config),
-		refresh: cookieName(config.cookies.refreshName, config),
-		csrf: cookieName(config.cookies.csrfName, config),
+		access: cookieName(forAudience(config.cookies.accessName, audience), config),
+		refresh: cookieName(forAudience(config.cookies.refreshName, audience), config),
+		csrf: cookieName(forAudience(config.cookies.csrfName, audience), config),
 		guest: cookieName(config.cookies.guestName, config),
 		signup: cookieName(config.cookies.signupName, config),
 	};

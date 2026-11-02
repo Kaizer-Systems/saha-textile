@@ -11,6 +11,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable, catchError, firstValueFrom, from, switchMap, tap, throwError } from 'rxjs';
 
 import {
+	ADMIN_CSRF_COOKIE_NAMES,
 	CSRF_HEADER_NAME,
 	RefreshCoordinator,
 	hasBrowserCookieJar,
@@ -71,12 +72,12 @@ export const SESSION_REFRESH_LOCK = 'saha-textile-admin-session-refresh';
  *    recovery means the credential was refused; rotating would be pointless, and rotating
  *    after a failed rotation would be infinite. The gateway classifies this, because the
  *    gateway is the file that owns route paths.
- * 4. **A missing CSRF cookie is acquired, not treated as defeat.** `st_csrf` is a
+ * 4. **A missing CSRF cookie is acquired, not treated as defeat.** `st_admin_csrf` is a
  *    browser-session cookie while the refresh cookie persists, so closing the browser and
  *    returning leaves a valid session with no readable double-submit half. Rotation would
  *    403, so one is fetched first — the API's CSRF policy exists for exactly this.
  * 5. **The replay re-reads the CSRF cookie.** Rotation replaces `csrfSecretHash` server-side
- *    and issues a new `st_csrf`, so replaying with the header captured before the rotation
+ *    and issues a new `st_admin_csrf`, so replaying with the header captured before the rotation
  *    would fail closed with a 403 — and read as an auth failure.
  * 6. **One verdict per session.** `latchOnFailure` stops a failed rotation from being retried
  *    on every subsequent 401. It clears only on a response that PROVES a session exists —
@@ -159,7 +160,7 @@ export class AuthInterceptor implements HttpInterceptor {
 	private prepare<T>(req: HttpRequest<T>): HttpRequest<T> {
 		const prepared = req.clone({ withCredentials: true });
 
-		const csrfToken = readCsrfToken();
+		const csrfToken = readCsrfToken(ADMIN_CSRF_COOKIE_NAMES);
 		if (csrfToken && isUnsafeMethod(prepared.method)) {
 			return prepared.clone({ setHeaders: { [CSRF_HEADER_NAME]: csrfToken } });
 		}
@@ -198,7 +199,7 @@ export class AuthInterceptor implements HttpInterceptor {
 	 * missing.
 	 *
 	 * Rotation is an unsafe, cookie-authenticated POST, so it needs the readable half of the
-	 * double-submit pair — and `st_csrf` is set WITHOUT a `maxAge`, making it a browser-session
+	 * double-submit pair — and `st_admin_csrf` is set WITHOUT a `maxAge`, making it a browser-session
 	 * cookie while the access and refresh cookies persist. Closing the browser and returning
 	 * therefore leaves a valid session with no readable CSRF value, and refusing to rotate
 	 * there used to log that user out.

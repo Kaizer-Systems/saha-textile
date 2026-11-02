@@ -18,6 +18,7 @@
  *     `test/runtime-purity.test.ts` proves the compiled output imports nothing at all.
  */
 export {
+	ADMIN_CSRF_COOKIE_NAMES,
 	CSRF_COOKIE_NAMES,
 	CSRF_HEADER_NAME,
 	hasBrowserCookieJar,

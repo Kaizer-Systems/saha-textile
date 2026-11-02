@@ -125,6 +125,10 @@ ReviewSchema.index({ productId: 1, userId: 1, orderId: 1 }, { unique: true });
 /** The PDP read and the aggregate recompute both scan approved reviews of one product. */
 ReviewSchema.index({ productId: 1, status: 1, createdAt: -1 });
 ReviewSchema.index({ status: 1, createdAt: 1 });
+/** Admin customer view: one customer's reviews, newest first (owner lock 2026-08-23). */
+ReviewSchema.index({ userId: 1, createdAt: -1 });
+/** Reverse lookup from a photo to its review — required by media reference counting. */
+ReviewSchema.index({ imageAssetIds: 1 });
 
 export const ReviewModel: Model<ReviewDoc> =
 	(models.Review as Model<ReviewDoc>) ?? model<ReviewDoc>('Review', ReviewSchema);

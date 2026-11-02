@@ -97,7 +97,7 @@ describe('createSignedUploadUrl', () => {
 		expect(signed.url).toContain('X-Amz-Expires=900');
 		expect(signed.headers).toEqual({
 			'Content-Type': 'image/jpeg',
-			'x-amz-acl': 'public-read',
+			'x-amz-acl': 'private',
 		});
 		// A presigned PUT carries its signature in the URL, never in POST-policy form fields.
 		expect(signed.fields).toBeUndefined();
@@ -173,5 +173,81 @@ describe('upload and delete', () => {
 		const adapter = new SpacesStorageAdapter(baseConfig, fakeClient(send));
 		await expect(adapter.delete('../other-bucket-object')).rejects.toThrow();
 		expect(send).not.toHaveBeenCalled();
+	});
+});
+
+describe('visibility and server-side operations', () => {
+	it('writes derivatives public with the cache header it is given', async () => {
+		const sent: unknown[] = [];
+		const adapter = new SpacesStorageAdapter(
+			baseConfig,
+			fakeClient(async (command) => {
+				sent.push(command);
+				return {};
+			}),
+		);
+		await adapter.upload({
+			key: 'media/a/x-card-400w-12345678.webp',
+			body: new Uint8Array([1]),
+			contentType: 'image/webp',
+			cacheControl: 'public, max-age=31536000, immutable',
+		});
+		await adapter.upload({
+			key: 'media/a/y.webp',
+			body: new Uint8Array([1]),
+			contentType: 'image/webp',
+			visibility: 'private',
+		});
+		const inputs = sent.map((command) => (command as { input: Record<string, unknown> }).input);
+		expect(inputs[0]).toMatchObject({ ACL: 'public-read', CacheControl: 'public, max-age=31536000, immutable' });
+		expect(inputs[1]).toMatchObject({ ACL: 'private' });
+		expect(inputs[1]).not.toHaveProperty('CacheControl');
+	});
+
+	it('presigns a public upload only when asked', async () => {
+		const adapter = new SpacesStorageAdapter(baseConfig);
+		const signed = await adapter.createSignedUploadUrl({
+			key: 'media/a/b.jpg',
+			contentType: 'image/jpeg',
+			visibility: 'public',
+		});
+		expect(signed.headers?.['x-amz-acl']).toBe('public-read');
+	});
+
+	it('flips an ACL for moderation', async () => {
+		const sent: unknown[] = [];
+		const adapter = new SpacesStorageAdapter(
+			baseConfig,
+			fakeClient(async (command) => {
+				sent.push(command);
+				return {};
+			}),
+		);
+		await adapter.setVisibility('media/a/b.webp', 'public');
+		expect((sent[0] as { input: Record<string, unknown> }).input).toMatchObject({
+			Key: 'media/a/b.webp',
+			ACL: 'public-read',
+		});
+	});
+
+	it('batches deletes and tolerates keys that are already gone', async () => {
+		const batches: number[] = [];
+		const adapter = new SpacesStorageAdapter(
+			baseConfig,
+			fakeClient(async (command) => {
+				const input = (command as { input: { Delete: { Objects: unknown[] } } }).input;
+				batches.push(input.Delete.Objects.length);
+				return { Errors: [{ Key: 'gone', Code: 'NoSuchKey' }] };
+			}),
+		);
+		await adapter.deleteMany(Array.from({ length: 1500 }, (_, index) => `media/a/${index}.webp`));
+		expect(batches).toEqual([1000, 500]);
+	});
+
+	it('signs private reads against the origin', async () => {
+		const adapter = new SpacesStorageAdapter(baseConfig);
+		const url = await adapter.createSignedDownloadUrl({ key: 'media/a/review.webp', expiresInSeconds: 600 });
+		expect(url).toContain('sgp1.digitaloceanspaces.com');
+		expect(url).toContain('X-Amz-Expires=600');
 	});
 });

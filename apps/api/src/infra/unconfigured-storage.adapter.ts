@@ -35,6 +35,22 @@ export class UnconfiguredStorageAdapter implements StoragePort {
 		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
 	}
 
+	download(): Promise<Uint8Array> {
+		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
+	}
+
+	deleteMany(): Promise<void> {
+		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
+	}
+
+	setVisibility(): Promise<void> {
+		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
+	}
+
+	createSignedDownloadUrl(): Promise<string> {
+		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
+	}
+
 	createSignedUploadUrl(): Promise<SignedUpload> {
 		return Promise.reject(new Error(UnconfiguredStorageAdapter.MESSAGE));
 	}

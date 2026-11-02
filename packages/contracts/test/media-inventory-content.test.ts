@@ -52,6 +52,7 @@ describe('MediaAsset', () => {
 		originalByteSize: 2_400_000,
 		width: 3000,
 		height: 4000,
+		slug: 'red-banarasi-saree',
 		...overrides,
 	});
 
@@ -69,20 +70,33 @@ describe('MediaAsset', () => {
 		expect(MediaAsset.safeParse(image({ originalFormat: 'image/webp' })).success).toBe(false);
 	});
 
-	it('emits WebP derivatives only, one per role', () => {
+	it('holds several widths per role, unique by (role, width), in WebP or JPEG only', () => {
 		const derivative = {
 			role: 'card',
-			storageKey: 'products/saree-001/card.webp',
-			width: 600,
-			height: 800,
+			storageKey: 'media/media_1/red-banarasi-saree-card-400w-9c1d2e4f.webp',
+			width: 400,
+			height: 533,
 			byteSize: 40_000,
 			format: 'image/webp',
 		};
-		expect(MediaAsset.safeParse(image({ derivatives: [derivative] })).success).toBe(true);
+		expect(MediaAsset.safeParse(image({ derivatives: [derivative, { ...derivative, width: 700 }] })).success).toBe(
+			true,
+		);
 		expect(MediaAsset.safeParse(image({ derivatives: [derivative, derivative] })).success).toBe(false);
 		expect(MediaAsset.safeParse(image({ derivatives: [{ ...derivative, format: 'image/jpeg' }] })).success).toBe(
+			true,
+		);
+		expect(MediaAsset.safeParse(image({ derivatives: [{ ...derivative, format: 'image/avif' }] })).success).toBe(
 			false,
 		);
+	});
+
+	it('starts awaiting upload, public, with no placeholder yet', () => {
+		const parsed = MediaAsset.parse(image());
+		expect(parsed.processing.state).toBe('awaiting_upload');
+		expect(parsed.visibility).toBe('public');
+		expect(parsed.dominantColor).toBeNull();
+		expect(MediaAsset.safeParse(image({ slug: 'Not A Slug' })).success).toBe(false);
 	});
 
 	it('keeps image and video shapes from bleeding into each other', () => {
@@ -103,13 +117,21 @@ describe('MediaAsset', () => {
 				{ height: 1080, storageKey: 'v/1080.m3u8', bitrateKbps: 4500, byteSize: 40 },
 			],
 			hlsPlaylistKey: 'v/master.m3u8',
+			slug: 'lookbook',
 		};
 		// originalStorageKey null models the hot master deleted after a successful transcode.
 		expect(MediaAsset.safeParse(video).success).toBe(true);
 		expect(MediaAsset.safeParse({ ...video, renditions: [video.renditions[0], video.renditions[0]] }).success).toBe(
 			false,
 		);
-		expect(MediaAsset.safeParse({ ...video, fullWebpStorageKey: 'x.webp' }).success).toBe(false);
+		expect(
+			MediaAsset.safeParse({
+				...video,
+				derivatives: [
+					{ role: 'card', storageKey: 'k', width: 1, height: 1, byteSize: 1, format: 'image/webp' },
+				],
+			}).success,
+		).toBe(false);
 	});
 });
 

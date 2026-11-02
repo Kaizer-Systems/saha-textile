@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-11-01",
+	"lastVerified": "2026-11-02",
 	"route": "/database/schema-nebula",
 	"title": "Schema Nebula",
 	"summary": "A governed one-star-per-collection map of the 67 explicit MongoDB collection targets across the Saha Textile platform.",
@@ -29,11 +29,11 @@
 		"notifications": "packages/contracts/src/notification.ts"
 	},
 	"inventory": {
-		"nodeCount": 67,
-		"existingModelCount": 37,
-		"targetOnlyCount": 30,
+		"nodeCount": 69,
+		"existingModelCount": 40,
+		"targetOnlyCount": 29,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
-		"statusPolicy": "A star becomes solid only when a tested current adapter model resolves to that exact ratified physical collection name. All 40 exported models declare explicit physical names; 37 match ratified graph nodes and are solid. authRateLimits, pendingSignups, and pendingContactChanges are transient runtime machinery outside the graph."
+		"statusPolicy": "A star becomes solid only when a tested current adapter model resolves to that exact ratified physical collection name. All 43 exported models declare explicit physical names; 40 match ratified graph nodes and are solid. authRateLimits, pendingSignups, and pendingContactChanges are transient runtime machinery outside the graph."
 	},
 	"clusters": [
 		{
@@ -304,6 +304,32 @@
 			"purpose": "Reusable Spaces-backed media catalogue, localized alt text, derivative metadata, lifecycle, and SEO evidence.",
 			"source": "catalog §7.15",
 			"currentModel": "packages/adapters-db-mongo/src/models/media.model.ts",
+			"references": ["mediaRoles"]
+		},
+		{
+			"id": "mediaRoles",
+			"label": "mediaRoles",
+			"cluster": "content-seo-media",
+			"currentState": "existing",
+			"targetAction": "add",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"purpose": "Editable image size ladder: seeded undeletable roles plus operator roles; widths, fit, format and a version that marks derivatives stale on edit.",
+			"source": "owner log § Media (2026-11-02)",
+			"currentModel": "packages/adapters-db-mongo/src/models/media.model.ts",
+			"references": []
+		},
+		{
+			"id": "siteSettings",
+			"label": "siteSettings",
+			"cluster": "content-seo-media",
+			"currentState": "existing",
+			"targetAction": "add",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"purpose": "Typed site settings, one document per key: the home hero layout, YouTube rail settings, and the cached latest uploads.",
+			"source": "owner log § Media (2026-11-02)",
+			"currentModel": "packages/adapters-db-mongo/src/models/content-block.model.ts",
 			"references": []
 		},
 		{
@@ -323,13 +349,14 @@
 			"id": "contentBlocks",
 			"label": "contentBlocks",
 			"cluster": "content-seo-media",
-			"currentState": "planned",
-			"targetAction": "add",
-			"owningChunks": ["F"],
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["F", "I"],
 			"blockingDecisions": [],
-			"purpose": "Translatable CMS blocks, category editorial copy, product help, and SEO-safe page content.",
+			"purpose": "Banners by page position and shape (admin-selectable hero layouts, up to three viewport images per slot, per-locale art when the image carries text) plus translatable editorial blocks.",
 			"source": "catalog §7.27",
-			"references": ["mediaAssets"]
+			"references": ["mediaAssets", "categories", "products"],
+			"currentModel": "packages/adapters-db-mongo/src/models/content-block.model.ts"
 		},
 		{
 			"id": "reviews",

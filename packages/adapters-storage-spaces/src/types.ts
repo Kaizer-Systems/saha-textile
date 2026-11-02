@@ -1,10 +1,6 @@
 /**
- * Object ACL applied to uploaded objects.
- *
- * `public-read` is the launch default because product media is served straight from the
- * Spaces CDN to anonymous browsers, and the API is locked out of proxying those bytes.
- * It is a constructor option rather than a constant because whether public objects or
- * signed reads win is still an open owner question; nothing here presumes the answer.
+ * The S3 canned ACL behind `ObjectVisibility`: derivatives are `public-read` (served by the
+ * CDN), originals and unmoderated review photos `private` (owner log § Media).
  */
 export type SpacesObjectAcl = 'public-read' | 'private';
 
@@ -25,7 +21,6 @@ export interface SpacesStorageConfig {
 	 * forms are stable public URLs, so this is a delivery choice, not a data one.
 	 */
 	cdnUrl?: string;
-	objectAcl?: SpacesObjectAcl;
 	/** Presigned upload lifetime when a caller does not specify one. */
 	defaultUploadExpirySeconds?: number;
 }

@@ -12,19 +12,17 @@ import { SiteConfigService } from '@data-access/services/site-config.service';
  * Site config + session flags (replaces NGXS SiteConfigState + its
  * GetSiteConfig/UpdateSession actions). Hybrid shell state → SignalStore:
  *  - `site_config` is server config, (re)loaded via loadSiteConfig() (rxMethod).
- *  - `exit` / `cookies` / `newsletter` are one-shot session flags (cookie-consent
- *    dismissed, exit-intent/newsletter shown). Persisted to localStorage so they
- *    don't re-trigger on reload — the NGXS storage plugin persisted the whole
- *    site_config state. SSR-guarded.
+ *  - `cookies` is a one-shot flag (cookie consent dismissed), persisted to localStorage
+ *    so it doesn't re-trigger on reload. SSR-guarded. The newsletter popup keeps its own
+ *    `st_newsletter` cookie and session flag; the theme's exit-intent modal was removed
+ *    (owner log § Media → Newsletter popup).
  *
  * Note: mutable UI fields like preloader/theme_color live on SiteConfigService,
  * not here, and are untouched.
  */
 interface SiteConfigStateModel {
 	siteConfig: ISiteConfig | null;
-	exit: boolean;
 	cookies: boolean;
-	newsletter: boolean;
 }
 
 const SESSION_KEY = 'site_config_session';
@@ -33,9 +31,7 @@ export const SiteConfigStore = signalStore(
 	{ providedIn: 'root' },
 	withState<SiteConfigStateModel>({
 		siteConfig: null,
-		exit: true,
 		cookies: true,
-		newsletter: true,
 	}),
 	withMethods((store, siteConfigService = inject(SiteConfigService), platformId = inject(PLATFORM_ID)) => ({
 		loadSiteConfig: rxMethod<void>(
@@ -50,16 +46,12 @@ export const SiteConfigStore = signalStore(
 		updateSession(slug: string, value: boolean): void {
 			patchState(store, {
 				cookies: slug == 'cookies' ? value : store.cookies(),
-				exit: slug == 'exit' ? value : store.exit(),
-				newsletter: slug == 'newsletter' ? value : store.newsletter(),
 			});
 			if (isPlatformBrowser(platformId)) {
 				localStorage.setItem(
 					SESSION_KEY,
 					JSON.stringify({
-						exit: store.exit(),
 						cookies: store.cookies(),
-						newsletter: store.newsletter(),
 					}),
 				);
 			}
@@ -69,7 +61,7 @@ export const SiteConfigStore = signalStore(
 		onInit(store) {
 			if (isPlatformBrowser(inject(PLATFORM_ID))) {
 				const saved = localStorage.getItem(SESSION_KEY);
-				if (saved) patchState(store, JSON.parse(saved));
+				if (saved) patchState(store, { cookies: (JSON.parse(saved) as { cookies?: boolean }).cookies ?? true });
 			}
 		},
 	}),

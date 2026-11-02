@@ -16,7 +16,6 @@ import { Header } from '@layout/header/header';
 import { BackToTop } from '@shared/ui/back-to-top/back-to-top';
 import { Cookie } from '@shared/ui/cookie/cookie';
 import { Loader } from '@shared/ui/loader/loader';
-import { ExitModal } from '@shared/ui/modal/exit-modal/exit-modal';
 import { NewsletterModal } from '@shared/ui/modal/newsletter-modal/newsletter-modal';
 import { RecentPurchasePopup } from '@shared/ui/recent-purchase-popup/recent-purchase-popup';
 import { StickyCart } from '@shared/ui/sticky-cart/sticky-cart';
@@ -38,7 +37,6 @@ import { StickyCompare } from '@shared/ui/sticky-compare/sticky-compare';
 		BackToTop,
 		NewsletterModal,
 		Cookie,
-		ExitModal,
 		AsyncPipe,
 	],
 })
@@ -51,10 +49,8 @@ export class Layout {
 
 	siteConfig$: Observable<ISiteConfig> = toObservable(this.siteConfigStore.siteConfig) as Observable<ISiteConfig>;
 	cookies$: Observable<boolean> = toObservable(this.siteConfigStore.cookies);
-	exit$: Observable<boolean> = toObservable(this.siteConfigStore.exit);
 
 	public cookies: boolean;
-	public exit: boolean;
 	public isBrowser: boolean;
 	public isLoading: boolean = true;
 
@@ -70,7 +66,6 @@ export class Layout {
 	constructor() {
 		this.isBrowser = isPlatformBrowser(this.platformId);
 		this.cookies$.subscribe((res) => (this.cookies = res));
-		this.exit$.subscribe((res) => (this.exit = res));
 		this.siteConfigService.preloader.set(true);
 		// Only when there IS a session. A guest `/me` is 200 with `user: null`; this profile
 		// load is for chrome that needs the full customer, not for discovering whether one exists.

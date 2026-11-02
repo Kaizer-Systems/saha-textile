@@ -65,10 +65,10 @@ export const wishlistReducer = createReducer(
 
 const selectWishlistState = createFeatureSelector<WishlistStateModel>(WISHLIST_FEATURE_KEY);
 const { selectAll } = wishlistAdapter.getSelectors();
-export const selectWishlistItems = createSelector(
-	selectWishlistState,
-	(state): WishlistView => ({ data: selectAll(state), total: state.total }),
-);
+export const selectWishlistItems = createSelector(selectWishlistState, (state): WishlistView => ({
+	data: selectAll(state),
+	total: state.total,
+}));
 
 @Injectable()
 export class WishlistEffects {

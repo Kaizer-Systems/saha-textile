@@ -238,6 +238,9 @@ export type AdminReviewListQuery = z.infer<typeof AdminReviewListQuery>;
 /** An admin review row with moderation previews of its photos (signed while private). */
 export const AdminReviewRow = z.object({
 	review: Review,
+	/** Resolved for the moderator: the product's English title and the reviewer's display name. */
+	productName: z.string().nullable(),
+	customerName: z.string().nullable(),
 	photos: z.array(z.object({ assetId: Id, thumbUrl: z.string().nullable(), fullUrl: z.string().nullable() })),
 });
 export type AdminReviewRow = z.infer<typeof AdminReviewRow>;

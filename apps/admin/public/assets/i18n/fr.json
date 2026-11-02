@@ -913,5 +913,8 @@
 	"banner_ends_at": "Afficher jusqu’au",
 	"banner_status_draft": "Brouillon",
 	"banner_status_active": "En ligne",
-	"banner_status_archived": "Archivée"
+	"banner_status_archived": "Archivée",
+	"review_photos": "Photos de l’avis",
+	"review_no_photos": "Cet avis n’a pas de photos.",
+	"photos": "Photos"
 }

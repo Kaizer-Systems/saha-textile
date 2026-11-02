@@ -20,6 +20,7 @@ import {
 	MEDIA_INGEST_POLICY,
 	type MediaAssetRepository,
 	type MediaJobQueuePort,
+	type CustomerRepository,
 	type OrderRepository,
 	type ProductRepository,
 	type ReviewRepository,
@@ -32,6 +33,7 @@ import {
 
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import {
+	CUSTOMER_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
 	MEDIA_JOB_QUEUE,
 	ORDER_REPOSITORY,
@@ -58,6 +60,7 @@ export class ReviewsService {
 		@Inject(MEDIA_ASSET_REPOSITORY) private readonly assets: MediaAssetRepository,
 		@Inject(PRODUCT_REPOSITORY) private readonly products: ProductRepository,
 		@Inject(ORDER_REPOSITORY) private readonly orders: OrderRepository,
+		@Inject(CUSTOMER_REPOSITORY) private readonly customers: CustomerRepository,
 		@Inject(STORAGE_PORT) private readonly storage: StoragePort,
 		@Inject(MEDIA_JOB_QUEUE) private readonly queue: MediaJobQueuePort,
 		private readonly media: MediaService,
@@ -148,7 +151,18 @@ export class ReviewsService {
 			pageSize: query.pageSize,
 		});
 		const items = await Promise.all(
-			page.items.map(async (review) => ({ review, photos: await this.previews(review.imageAssetIds) })),
+			page.items.map(async (review) => {
+				const [product, customer] = await Promise.all([
+					this.products.findById(review.productId, 'admin'),
+					this.customers.findById(review.userId),
+				]);
+				return {
+					review,
+					productName: product?.title.en ?? null,
+					customerName: customer?.displayName ?? customer?.email ?? null,
+					photos: await this.previews(review.imageAssetIds),
+				};
+			}),
 		);
 		return { items, total: page.total, page: page.page, pageSize: page.pageSize };
 	}

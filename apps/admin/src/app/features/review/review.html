@@ -3,9 +3,49 @@
 	[title]="'reviews'"
 >
 	<app-table
-		[tableConfig]="tableConfig"
-		[hasCheckbox]="true"
+		[tableConfig]="tableConfig()"
+		[hasCheckbox]="false"
 		(tableChanged)="onTableChange($event)"
 		(action)="onActionClicked($event)"
 	/>
 </app-page-wrapper>
+
+<ng-template
+	#photosModal
+	let-modal
+>
+	<div class="modal-header">
+		<h2>{{ 'review_photos' | transloco }}</h2>
+		<app-button
+			[class]="'btn btn-close'"
+			[spinner]="false"
+			[id]="'review_photos_close'"
+			(click)="modal.dismiss('close')"
+		>
+			<i class="ri-close-line"></i>
+		</app-button>
+	</div>
+	<div class="modal-body">
+		@if (openPhotos().length) {
+		<div class="row g-3">
+			@for (photo of openPhotos(); track photo.assetId) {
+			<div class="col-sm-6">
+				<a
+					[href]="photo.fullUrl"
+					target="_blank"
+					rel="noopener"
+				>
+					<img
+						[src]="photo.fullUrl ?? photo.thumbUrl"
+						class="img-fluid"
+						[alt]="'review_photos' | transloco"
+					/>
+				</a>
+			</div>
+			}
+		</div>
+		} @else {
+		<p class="mb-0">{{ 'review_no_photos' | transloco }}</p>
+		}
+	</div>
+</ng-template>

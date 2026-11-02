@@ -30,7 +30,8 @@ import { NotificationService } from '@data-access/services/notification.service'
  * Web Locks are scoped per origin, and the name is audience-specific so that an origin ever
  * shared with the storefront would not serialise two unrelated sessions against each other.
  */
-const SESSION_REFRESH_LOCK = 'saha-textile-admin-session-refresh';
+/** Shared with `IdleLockService`: every refresh in every tab takes this one lock. */
+export const SESSION_REFRESH_LOCK = 'saha-textile-admin-session-refresh';
 
 /**
  * Session transport for admin API calls.

@@ -1,3 +1,4 @@
+import { DuplicateIdentifierError } from '@saha-textile/core-domain';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import type { Customer } from '@saha-textile/contracts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -80,6 +81,22 @@ describe('AdminCustomersService', () => {
 	});
 
 	describe('create', () => {
+		it('refuses a phone another customer holds with a readable refusal, not a 500', async () => {
+			customers.create.mockRejectedValueOnce(new DuplicateIdentifierError('phone'));
+			await expect(
+				service().create({
+					displayName: 'Dup',
+					email: 'dup@example.test',
+					phone: '+919876543210',
+					activationChannels: ['email'],
+				}),
+			).rejects.toMatchObject({
+				status: 400,
+				response: { issues: [expect.objectContaining({ code: 'customer_identifier_taken' })] },
+			});
+			expect(notifications.send).not.toHaveBeenCalled();
+		});
+
 		it('creates without a password, mints a reset token, and notifies each channel', async () => {
 			const created = await service().create({
 				displayName: 'New Shopper',

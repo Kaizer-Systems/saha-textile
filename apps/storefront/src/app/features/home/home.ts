@@ -1,10 +1,12 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, inject } from '@angular/core';
+import { Component, PLATFORM_ID, computed, inject } from '@angular/core';
 
 import { CarouselModule } from 'ngx-owl-carousel-o';
 
 import { INewsLetter } from '@data-access/interfaces/theme.interface';
+import { bannerSrc, injectBannersQuery, StorefrontBanners } from '@data-access/queries/banner.queries';
 import { Blog } from '@features/themes/widgets/blog/blog';
+import { HomeBanner } from '@features/themes/widgets/home-banner/home-banner';
 import { Newsletter } from '@features/themes/widgets/newsletter/newsletter';
 import { Product } from '@features/themes/widgets/product/product';
 import { blogSliderNav, heroBannerSlider, productSlider6ItemMarginNav } from '@shared/data/owl-carousel';
@@ -23,11 +25,19 @@ import { Title } from '@shared/ui/title/title';
  * hero and the newsletter as we go (import the widget here, drop its <app-…> tag into
  * home.html, feed it data).
  */
+/** Admin hero layouts → the theme hero branch that already renders that arrangement. */
+const HERO_LAYOUT_THEME: Record<StorefrontBanners['heroLayout'], string | null> = {
+	hero_full: null,
+	hero_main_side: 'berlin',
+	hero_main_stack: 'paris',
+	hero_center_sides: 'tokyo',
+};
+
 @Component({
 	selector: 'app-home',
 	templateUrl: './home.html',
 	styleUrls: ['./home.scss'],
-	imports: [CarouselModule, ImageLink, Title, Product, Blog, Newsletter],
+	imports: [CarouselModule, ImageLink, Title, Product, Blog, Newsletter, HomeBanner],
 })
 export class Home {
 	public isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -79,6 +89,40 @@ export class Home {
 	// Hero slides — Denver full-width banner images (assets/images/data/themes/denver).
 	// Same shape as the theme JSON's banner slice: image_url + redirect_link. Add,
 	// remove or repoint these freely; the carousel adapts to the count.
+	private readonly bannersQuery = injectBannersQuery(() => 'home');
+
+	/**
+	 * The admin's hero (owner log § Media → Banners). `hero_full` keeps this page's carousel;
+	 * the other layouts reuse the theme's own hero markup, rendered in our colours, through
+	 * `app-theme-home-banner`. With no live hero banners the theme artwork below stays.
+	 */
+	readonly heroTheme = computed(() => {
+		const data = this.bannersQuery.data();
+		if (!data || !data.banners.some((banner) => banner.position === 'hero')) return null;
+		return HERO_LAYOUT_THEME[data.heroLayout];
+	});
+
+	readonly heroThemeData = computed(() => {
+		const hero = (this.bannersQuery.data()?.banners ?? []).filter((banner) => banner.position === 'hero');
+		const slot = (...names: string[]) => {
+			const banner = hero.find((candidate) => names.includes(candidate.slot));
+			return banner ? { image_url: bannerSrc(banner.images.desktop), resolved: banner } : null;
+		};
+		return {
+			main_banner: slot('main'),
+			sub_banner_1: slot('side', 'side_top', 'left'),
+			sub_banner_2: slot('side_bottom', 'right'),
+		};
+	});
+
+	/** `hero_full` slides from the API, or null to keep the theme artwork. */
+	readonly heroSlides = computed(() => {
+		const data = this.bannersQuery.data();
+		const main = (data?.banners ?? []).filter((banner) => banner.position === 'hero' && banner.slot === 'main');
+		if (data?.heroLayout !== 'hero_full' || main.length === 0) return null;
+		return main.map((banner) => ({ image_url: bannerSrc(banner.images.desktop), resolved: banner }));
+	});
+
 	public heroBanners = [
 		{
 			image_url: 'assets/images/data/themes/denver/1.jpg',

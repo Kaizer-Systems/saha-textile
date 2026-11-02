@@ -8,17 +8,26 @@
 <!-- Denver's single ratio_30 hero, reworked into an infinite auto-carousel with
      arrows + dots. ratio_30 stays on an ANCESTOR of the carousel so its .bg-size:before
      rule keeps the exact Denver height (30% of width) on every slide. -->
+@if (heroTheme(); as theme) {
+<section class="home-section pt-2">
+	<app-theme-home-banner
+		[theme]="theme"
+		[data]="heroThemeData()"
+	/>
+</section>
+} @else {
 <section class="home-section-2 home-section-bg pt-md-0 overflow-hidden pt-2">
 	<div class="home-slider-carousel container-fluid ratio_30 p-0">
 		<div class="row">
 			<div class="col-12">
 				@if (isBrowser) {
 				<owl-carousel-o [options]="heroSlider">
-					@for (banner of heroBanners; track banner.image_url) {
+					@for (banner of heroSlides() ?? heroBanners; track banner.image_url; let first = $first) {
 					<ng-template carouselSlide>
 						<app-image-link
 							[image]="banner"
 							[bgImage]="true"
+							[priority]="first"
 							[class]="'home-contain rounded-0 p-0'"
 						/>
 					</ng-template>
@@ -29,6 +38,7 @@
 		</div>
 	</div>
 </section>
+}
 
 <!-- ===== Top Selling Items (Denver products_list_1) — carousel w/ side arrows ===== -->
 <section class="product-section product-section-3">

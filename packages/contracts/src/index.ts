@@ -10,6 +10,8 @@ export * from './product-variant';
 export * from './product-bundle';
 export * from './product-relation';
 export * from './media';
+export * from './content-block';
+export * from './site-settings';
 export * from './inventory';
 export * from './content';
 export * from './promotion';

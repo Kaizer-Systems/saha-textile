@@ -87,6 +87,8 @@ export const COLLECTION_NAMES = {
 	MessageOutbox: 'messageOutbox',
 	// --- Media and inventory -------------------------------------------------
 	MediaAsset: 'mediaAssets',
+	/** Editable size ladder (owner log § Media, `mediaRoles` locked 2026-08-23). */
+	MediaRole: 'mediaRoles',
 	InventoryLedger: 'inventoryLedger',
 	InventoryCostLayer: 'inventoryCostLayers',
 	// --- Content -------------------------------------------------------------
@@ -94,6 +96,9 @@ export const COLLECTION_NAMES = {
 	ProductQuestion: 'productQuestions',
 	Review: 'reviews',
 	RatingAggregate: 'ratingAggregates',
+	ContentBlock: 'contentBlocks',
+	/** Typed site settings: home hero layout, YouTube rail settings and cache. */
+	SiteSetting: 'siteSettings',
 } as const satisfies Record<string, string>;
 
 export type ModelName = keyof typeof COLLECTION_NAMES;

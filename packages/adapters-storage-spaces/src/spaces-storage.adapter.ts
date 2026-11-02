@@ -1,11 +1,22 @@
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+	DeleteObjectCommand,
+	DeleteObjectsCommand,
+	GetObjectCommand,
+	PutObjectAclCommand,
+	PutObjectCommand,
+	S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import type { SignedUpload, StoragePort, StoredObject } from '@saha-textile/core-domain';
+import type { ObjectVisibility, SignedUpload, StoragePort, StoredObject } from '@saha-textile/core-domain';
 
 import { assertValidStorageKey, encodeStorageKeyForUrl } from './storage-key.js';
 import { SpacesStorageError, type SpacesObjectAcl, type SpacesStorageConfig } from './types.js';
 
 const DEFAULT_UPLOAD_EXPIRY_SECONDS = 900;
+/** S3's DeleteObjects ceiling per request. */
+const DELETE_BATCH = 1000;
+
+const aclFor = (visibility: ObjectVisibility): SpacesObjectAcl => (visibility === 'public' ? 'public-read' : 'private');
 /** Spaces rejects presigned lifetimes beyond seven days; fail here rather than at upload. */
 const MAX_UPLOAD_EXPIRY_SECONDS = 604_800;
 
@@ -31,13 +42,11 @@ const MAX_UPLOAD_EXPIRY_SECONDS = 604_800;
 export class SpacesStorageAdapter implements StoragePort {
 	private readonly client: S3Client;
 	private readonly bucket: string;
-	private readonly objectAcl: SpacesObjectAcl;
 	private readonly defaultExpirySeconds: number;
 	private readonly publicBaseUrl: string;
 
 	constructor(config: SpacesStorageConfig, client?: S3Client) {
 		this.bucket = config.bucket;
-		this.objectAcl = config.objectAcl ?? 'public-read';
 		this.defaultExpirySeconds = config.defaultUploadExpirySeconds ?? DEFAULT_UPLOAD_EXPIRY_SECONDS;
 		this.publicBaseUrl = resolvePublicBaseUrl(config);
 		this.client =
@@ -59,9 +68,16 @@ export class SpacesStorageAdapter implements StoragePort {
 	/**
 	 * Server-side write. Not the normal upload path — browsers use
 	 * `createSignedUploadUrl` — this exists for worker-produced objects such as image
-	 * derivatives and HLS segments, which are generated in-process and never touch a client.
+	 * derivatives, which are generated in-process and never touch a client. Derivative keys
+	 * are content-hashed, so the worker passes a one-year immutable `cacheControl`.
 	 */
-	async upload(input: { key: string; body: Uint8Array; contentType: string }): Promise<StoredObject> {
+	async upload(input: {
+		key: string;
+		body: Uint8Array;
+		contentType: string;
+		visibility?: ObjectVisibility;
+		cacheControl?: string;
+	}): Promise<StoredObject> {
 		assertValidStorageKey(input.key);
 		try {
 			await this.client.send(
@@ -70,13 +86,26 @@ export class SpacesStorageAdapter implements StoragePort {
 					Key: input.key,
 					Body: input.body,
 					ContentType: input.contentType,
-					ACL: this.objectAcl,
+					ACL: aclFor(input.visibility ?? 'public'),
+					...(input.cacheControl ? { CacheControl: input.cacheControl } : {}),
 				}),
 			);
 		} catch (err) {
 			throw new SpacesStorageError(`Failed to upload object "${input.key}"`, err);
 		}
 		return { key: input.key, url: this.getUrl(input.key) };
+	}
+
+	/** Reads an object's bytes; the worker fetching an original to derive from. */
+	async download(key: string): Promise<Uint8Array> {
+		assertValidStorageKey(key);
+		try {
+			const result = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+			if (!result.Body) throw new Error('empty body');
+			return await result.Body.transformToByteArray();
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to download object "${key}"`, err);
+		}
 	}
 
 	/**
@@ -100,6 +129,52 @@ export class SpacesStorageAdapter implements StoragePort {
 		}
 	}
 
+	/** Batched delete; deleting a key that is already gone is not an error (idempotent jobs). */
+	async deleteMany(keys: readonly string[]): Promise<void> {
+		keys.forEach(assertValidStorageKey);
+		for (let start = 0; start < keys.length; start += DELETE_BATCH) {
+			const batch = keys.slice(start, start + DELETE_BATCH);
+			try {
+				const result = await this.client.send(
+					new DeleteObjectsCommand({
+						Bucket: this.bucket,
+						Delete: { Objects: batch.map((Key) => ({ Key })), Quiet: true },
+					}),
+				);
+				const failed = (result.Errors ?? []).filter((error) => error.Code !== 'NoSuchKey');
+				if (failed.length > 0) throw new Error(failed.map((error) => `${error.Key}: ${error.Code}`).join(', '));
+			} catch (err) {
+				throw new SpacesStorageError(`Failed to delete ${batch.length} objects`, err);
+			}
+		}
+	}
+
+	/** Flips an object's ACL — a moderator approving (or withdrawing) a review photo. */
+	async setVisibility(key: string, visibility: ObjectVisibility): Promise<void> {
+		assertValidStorageKey(key);
+		try {
+			await this.client.send(new PutObjectAclCommand({ Bucket: this.bucket, Key: key, ACL: aclFor(visibility) }));
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to set visibility of "${key}"`, err);
+		}
+	}
+
+	/**
+	 * A short-lived GET for a private object. Signed against the ORIGIN, never the CDN: a
+	 * private object must not be cached at an edge, and the CDN cannot verify a signature.
+	 */
+	async createSignedDownloadUrl(input: { key: string; expiresInSeconds: number }): Promise<string> {
+		assertValidStorageKey(input.key);
+		this.assertExpiry(input.expiresInSeconds);
+		try {
+			return await getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.bucket, Key: input.key }), {
+				expiresIn: input.expiresInSeconds,
+			});
+		} catch (err) {
+			throw new SpacesStorageError(`Failed to presign download for "${input.key}"`, err);
+		}
+	}
+
 	/**
 	 * Mints a presigned PUT so the browser uploads directly to Spaces.
 	 *
@@ -112,23 +187,19 @@ export class SpacesStorageAdapter implements StoragePort {
 		key: string;
 		contentType: string;
 		expiresInSeconds?: number;
+		visibility?: ObjectVisibility;
 	}): Promise<SignedUpload> {
 		assertValidStorageKey(input.key);
 		const expiresIn = input.expiresInSeconds ?? this.defaultExpirySeconds;
-		if (!Number.isInteger(expiresIn) || expiresIn <= 0) {
-			throw new SpacesStorageError('presigned upload expiry must be a positive whole number of seconds');
-		}
-		if (expiresIn > MAX_UPLOAD_EXPIRY_SECONDS) {
-			throw new SpacesStorageError(
-				`presigned upload expiry must be at most ${MAX_UPLOAD_EXPIRY_SECONDS} seconds (seven days)`,
-			);
-		}
+		this.assertExpiry(expiresIn);
+		// Originals are regeneration masters, never linked from a page: private unless asked.
+		const acl = aclFor(input.visibility ?? 'private');
 
 		const command = new PutObjectCommand({
 			Bucket: this.bucket,
 			Key: input.key,
 			ContentType: input.contentType,
-			ACL: this.objectAcl,
+			ACL: acl,
 		});
 
 		try {
@@ -137,11 +208,22 @@ export class SpacesStorageAdapter implements StoragePort {
 				url,
 				headers: {
 					'Content-Type': input.contentType,
-					'x-amz-acl': this.objectAcl,
+					'x-amz-acl': acl,
 				},
 			};
 		} catch (err) {
 			throw new SpacesStorageError(`Failed to presign upload for "${input.key}"`, err);
+		}
+	}
+
+	private assertExpiry(expiresIn: number): void {
+		if (!Number.isInteger(expiresIn) || expiresIn <= 0) {
+			throw new SpacesStorageError('presigned expiry must be a positive whole number of seconds');
+		}
+		if (expiresIn > MAX_UPLOAD_EXPIRY_SECONDS) {
+			throw new SpacesStorageError(
+				`presigned expiry must be at most ${MAX_UPLOAD_EXPIRY_SECONDS} seconds (seven days)`,
+			);
 		}
 	}
 }
@@ -150,8 +232,8 @@ export class SpacesStorageAdapter implements StoragePort {
  * Prefers the CDN hostname when one is configured and falls back to the bucket origin.
  *
  * Both are valid public URLs, so an absent `cdnUrl` degrades to slower delivery rather
- * than to broken links — which matters because whether reads go through the CDN or the
- * origin is still an open owner question.
+ * than to broken links. In every deployed environment `cdnUrl` is the Cloudflare-fronted
+ * CDN hostname (owner lock, 2026-08-23).
  */
 function resolvePublicBaseUrl(config: SpacesStorageConfig): string {
 	const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');

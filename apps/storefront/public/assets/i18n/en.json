@@ -629,5 +629,10 @@
 	"you_saved": "You Saved",
 	"your_cart_is_currently_empty": "Your cart is currently empty",
 	"your_questions": "Your Question",
-	"close": "Close"
+	"close": "Close",
+	"newsletter_popup_title": "Subscribe to our newsletter",
+	"newsletter_popup_body": "New arrivals, festive collections and offers from Saha Textile, straight to your inbox.",
+	"newsletter_email_placeholder": "Your email address",
+	"newsletter_dont_show_again": "Don't show this popup again",
+	"newsletter_signup_coming_soon": "Newsletter sign-up is opening soon. Thank you for your interest!"
 }

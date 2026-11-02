@@ -1,0 +1,134 @@
+# =============================================================================
+#  Mode 3 — the full local stack, shaped like staging and production
+# =============================================================================
+#  Same images (docker/images/Dockerfile) that are published as private GHCR
+#  packages for staging/prod, behind an Nginx edge that terminates HTTPS with the
+#  machine-local mkcert certificate and forwards the client IP the way Cloudflare
+#  does. Secrets come from gitignored env files at runtime, never from an image.
+#
+#    pnpm stack:certs   issue the stack certificate (mkcert, once)
+#    pnpm stack:env     write docker/stack/env/*.env from apps/api/.env (once)
+#    pnpm stack:up      build + start everything, wait until healthy
+#    pnpm stack:down    stop (volumes kept)
+#
+#  Hosts (Chrome and Firefox resolve *.localhost to loopback by themselves;
+#  Safari needs the /etc/hosts line printed by `pnpm stack:env`):
+#    https://local.saha-textile.localhost        storefront
+#    https://admin-local.saha-textile.localhost  admin
+#    https://api-local.saha-textile.localhost    API
+#  They follow the staging pattern (staging. / admin-staging. / api-staging.).
+#
+#  Media is NOT local: dev uses the dev Spaces bucket, exactly as modes 1 and 2.
+# =============================================================================
+
+name: saha-textile-stack
+
+x-app-env: &app-env
+  env_file:
+    - ./env/stack.env
+    - ./env/api.env
+
+services:
+  mongo:
+    image: mongo:9.0.4
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all', '--wiredTigerCacheSizeGB', '1']
+    volumes:
+      - saha_textile_stack_mongo_data:/data/db
+      - saha_textile_stack_mongo_configdb:/data/configdb
+    healthcheck:
+      test: |
+        mongosh --quiet --eval "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] }).ok }" | grep -q 1
+      interval: 5s
+      timeout: 10s
+      retries: 24
+      start_period: 15s
+    restart: unless-stopped
+
+  redis:
+    image: redis:8.8.4-alpine
+    env_file: ./env/stack.env
+    # BullMQ needs every job kept: never evict, and persist each second.
+    command:
+      [
+        'sh',
+        '-c',
+        'exec redis-server --appendonly yes --appendfsync everysec --maxmemory-policy noeviction --requirepass "$$REDIS_PASSWORD"',
+      ]
+    volumes:
+      - saha_textile_stack_redis_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build: { context: ../.., dockerfile: docker/images/Dockerfile, target: api }
+    image: saha-textile-api:local
+    <<: *app-env
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  worker:
+    image: saha-textile-api:local
+    <<: *app-env
+    command: ['node', 'dist/worker.js']
+    # Encoding is the only CPU-heavy work; keep it niced and bounded like on the droplet.
+    cpus: 2
+    mem_limit: 1536m
+    healthcheck:
+      disable: true
+    depends_on:
+      api: { condition: service_started }
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  storefront:
+    build: { context: ../.., dockerfile: docker/images/Dockerfile, target: storefront }
+    image: saha-textile-storefront:local
+    env_file: ./env/storefront.env
+    volumes:
+      - ./env/storefront.config.json:/app/public/config.json:ro
+      # SSR calls the API through the edge over HTTPS, so it must trust the local CA.
+      - ../../certs/rootCA.pem:/certs/rootCA.pem:ro
+    depends_on:
+      api: { condition: service_started }
+    restart: unless-stopped
+
+  admin:
+    build: { context: ../.., dockerfile: docker/images/Dockerfile, target: admin }
+    image: saha-textile-admin:local
+    volumes:
+      - ./env/admin.config.json:/usr/share/nginx/html/config.json:ro
+    restart: unless-stopped
+
+  edge:
+    image: nginx:1.30.6-alpine
+    ports:
+      - '127.0.0.1:443:443'
+    volumes:
+      - ./nginx/edge.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../../certs/stack-cert.pem:/etc/nginx/certs/stack-cert.pem:ro
+      - ../../certs/stack-key.pem:/etc/nginx/certs/stack-key.pem:ro
+    depends_on: [api, storefront, admin]
+    networks:
+      default:
+        # Containers resolve the public hostnames to the edge, so server-side calls take
+        # the same HTTPS path a browser does — as they would through Cloudflare.
+        aliases:
+          - local.saha-textile.localhost
+          - admin-local.saha-textile.localhost
+          - api-local.saha-textile.localhost
+    restart: unless-stopped
+
+volumes:
+  saha_textile_stack_mongo_data:
+    name: saha_textile_stack_mongo_data
+  saha_textile_stack_mongo_configdb:
+    name: saha_textile_stack_mongo_configdb
+  saha_textile_stack_redis_data:
+    name: saha_textile_stack_redis_data

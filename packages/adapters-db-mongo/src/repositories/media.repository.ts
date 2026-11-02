@@ -122,7 +122,7 @@ export class MongoMediaAssetRepository implements MediaAssetRepository {
 		const doc = await MediaAssetModel.findOneAndUpdate(
 			{ _id: assetId, 'processing.state': { $in: states }, deletedAt: null },
 			{ $set: { 'processing.state': 'processing' }, $inc: { 'processing.attempts': 1 } },
-			{ new: true },
+			{ returnDocument: 'after' },
 		)
 			.lean<MediaAssetDoc>()
 			.exec();

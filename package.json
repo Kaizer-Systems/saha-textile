@@ -38,7 +38,15 @@
     "mongo:rename-admin-user-permissions": "pnpm --filter @saha-textile/adapters-db-mongo rename:admin-user-permissions",
     "mongo:extract-credentials": "pnpm --filter @saha-textile/adapters-db-mongo extract:credentials",
     "auth:set-local-credentials": "pnpm --filter @saha-textile/api set:local-credentials",
-    "mongo:reconcile-indexes": "pnpm --filter @saha-textile/adapters-db-mongo reconcile:indexes"
+    "mongo:reconcile-indexes": "pnpm --filter @saha-textile/adapters-db-mongo reconcile:indexes",
+    "stack:certs": "bash scripts/stack.sh certs",
+    "stack:env": "bash scripts/stack.sh env",
+    "stack:up": "bash scripts/stack.sh up",
+    "stack:down": "bash scripts/stack.sh down",
+    "stack:logs": "bash scripts/stack.sh logs",
+    "stack:status": "bash scripts/stack.sh status",
+    "redis:up": "docker compose -f docker/redis/compose.yaml up -d --wait",
+    "redis:down": "docker compose -f docker/redis/compose.yaml down"
   },
   "devDependencies": {
     "@saha-textile/config": "workspace:*",

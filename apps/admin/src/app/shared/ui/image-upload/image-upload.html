@@ -58,6 +58,7 @@
 }
 <app-media-modal
 	[multipleImage]="multipleImage()"
+	[purpose]="purpose()"
 	[url]="url()"
 	(selectImage)="selectImage($event, url())"
 	#mediaModal

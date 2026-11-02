@@ -357,6 +357,14 @@ export const menu: IMenu[] = [
 				level: 2,
 				permission: ['theme_option.index'],
 			},
+			{
+				parent_id: 18,
+				title: 'home banners',
+				path: '/home-banners',
+				type: 'link',
+				level: 2,
+				permission: ['theme_option.index'],
+			},
 		],
 	},
 	{

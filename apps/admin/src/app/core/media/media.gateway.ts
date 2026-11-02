@@ -60,6 +60,21 @@ const previewOf = (item: MediaLibraryItem): string => {
 	return (card ?? any)?.url ?? 'assets/images/placeholder.png';
 };
 
+const toAttachment = (item: MediaLibraryItem): IAttachment =>
+	({
+		id: item.asset.id,
+		collection_name: item.asset.purpose,
+		name: item.asset.slug,
+		file_name: item.asset.slug,
+		mime_type: item.asset.originalFormat,
+		disk: 'spaces',
+		conversions_disk: 'spaces',
+		size: String(item.asset.originalByteSize),
+		original_url: previewOf(item),
+		created_by_id: 0,
+		created_at: item.asset.createdAt,
+	}) as unknown as IAttachment;
+
 /**
  * Admin media API (owner log § Media). Library rows are mapped onto the theme's
  * `IAttachment` shape so the existing media grid, picker and media-box render them unchanged.
@@ -91,25 +106,17 @@ export class MediaGateway {
 						current_page: response.page,
 						per_page: response.pageSize,
 						total: response.total,
-						data: response.items.map(
-							(item): IAttachment =>
-								({
-									id: item.asset.id,
-									collection_name: item.asset.purpose,
-									name: item.asset.slug,
-									file_name: item.asset.slug,
-									mime_type: item.asset.originalFormat,
-									disk: 'spaces',
-									conversions_disk: 'spaces',
-									size: String(item.asset.originalByteSize),
-									original_url: previewOf(item),
-									created_by_id: 0,
-									created_at: item.asset.createdAt,
-								}) as unknown as IAttachment,
-						),
+						data: response.items.map(toAttachment),
 					}) as unknown as IAttachmentModel,
 			),
 		);
+	}
+
+	/** One library item in the picker's shape, for previewing an asset already chosen. */
+	get(assetId: string): Observable<IAttachment> {
+		return this.http
+			.get<MediaLibraryItem>(this.url(`/${encodeURIComponent(assetId)}`))
+			.pipe(map((item) => toAttachment(item)));
 	}
 
 	presign(body: {

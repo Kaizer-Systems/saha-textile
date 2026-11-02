@@ -65,7 +65,7 @@ export class MediaBox {
 	readonly deleteAction = input<boolean>(true);
 
 	readonly setImage = output<[] | any>();
-	readonly setDeleteImage = output<number>();
+	readonly setDeleteImage = output<number | string>();
 
 	public term = new FormControl();
 	public filter = {

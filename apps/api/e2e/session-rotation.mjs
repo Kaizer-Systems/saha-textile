@@ -656,7 +656,14 @@ async function main() {
 			url: '/auth/storefront/me',
 			headers: { authorization: `Bearer ${access}` },
 		});
-		assert.equal(viaBearer.statusCode, 401, `bearer header was accepted: ${viaBearer.statusCode}`);
+		// `/auth/storefront/me` answers every cookie-less caller 200 with `user: null` (a guest
+		// identity probe; asserted in the next check), so the property is that the header
+		// confers NO identity — not a particular status code.
+		const bearerUser = viaBearer.statusCode === 200 ? JSON.parse(viaBearer.body).user : null;
+		assert.ok(
+			viaBearer.statusCode === 401 || bearerUser === null,
+			`bearer header was accepted: ${viaBearer.statusCode} ${viaBearer.body.slice(0, 120)}`,
+		);
 	});
 
 	await check('session-bound refusals name a reason on the wire; credential refusals do not', async () => {
@@ -918,7 +925,9 @@ async function main() {
 		];
 
 		for (const [method, url] of surfaces) {
-			const response = await request(probe.jar, method, url, {
+			// adminRequest, not request: with a one-second access TTL a long sweep crosses the
+			// expiry mid-way, and a 401 session_expired there was a flake, not a finding.
+			const response = await adminRequest(probe.jar, method, url, {
 				payload: method === 'GET' || method === 'DELETE' ? undefined : {},
 			});
 			// 403 is the answer for "authenticated, correct audience, no grant". A 404 or a 400
@@ -1036,7 +1045,9 @@ async function main() {
 				payload: {
 					displayName: 'BOLA Probe',
 					email: `bola-${randomUUID()}@example.test`,
-					phone: '+919999000002',
+					// Unique per probe: the phone is a unique identifier, and a fixed number made the
+					// second probe (and every rerun) collide.
+					phone: `+9199${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`,
 					activationChannels: ['email'],
 				},
 			});

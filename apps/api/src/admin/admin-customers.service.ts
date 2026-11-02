@@ -14,13 +14,15 @@ import type {
 	UpdateCustomerAddressRequest,
 	UpdateCustomerRequest,
 } from '@saha-textile/contracts';
-import type {
-	CustomerRepository,
-	NotificationPort,
-	OrderRepository,
-	PasswordResetTokenRepository,
+import {
+	type CustomerRepository,
+	DuplicateIdentifierError,
+	type NotificationPort,
+	type OrderRepository,
+	type PasswordResetTokenRepository,
 } from '@saha-textile/core-domain';
 
+import { domainRefusal } from '../auth/domain-refusal';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import {
 	CUSTOMER_REPOSITORY,
@@ -120,24 +122,43 @@ export class AdminCustomersService {
 		const existing = await this.customers.findByEmail(email);
 		if (existing) throw new ConflictException('A customer with that email already exists');
 
-		const customer = await this.customers.create({
-			id: `cus_${randomUUID()}`,
-			email,
-			emailVerified: false,
-			phone: phone || null,
-			phoneVerified: false,
-			displayName: body.displayName.trim(),
-			status: body.status ?? 'pending',
-			identities: [{ provider: 'password', email }],
-			addresses: [],
-			contacts: [],
-			savedSizes: [],
-			measurementProfiles: [],
-			guestCartId: null,
-		});
+		const customer = await this.withIdentifierGuard(() =>
+			this.customers.create({
+				id: `cus_${randomUUID()}`,
+				email,
+				emailVerified: false,
+				phone: phone || null,
+				phoneVerified: false,
+				displayName: body.displayName.trim(),
+				status: body.status ?? 'pending',
+				identities: [{ provider: 'password', email }],
+				addresses: [],
+				contacts: [],
+				savedSizes: [],
+				measurementProfiles: [],
+				guestCartId: null,
+			}),
+		);
 
 		await this.mintAndSendActivation(customer, body.activationChannels);
 		return customer;
+	}
+
+	/**
+	 * The email is checked up front, but the phone (and any race on either) is only refused by
+	 * the unique index. That surfaced as a raw duplicate-key error and a 500 "Something went
+	 * wrong" (found by the session-rotation e2e, 2026-11-02). Reported as the same domain
+	 * refusal contact changes use, so the operator is told what is wrong.
+	 */
+	private async withIdentifierGuard<T>(write: () => Promise<T>): Promise<T> {
+		try {
+			return await write();
+		} catch (error) {
+			if (error instanceof DuplicateIdentifierError) {
+				throw domainRefusal('customer_identifier_taken', 'Another customer already holds that email or phone');
+			}
+			throw error;
+		}
 	}
 
 	async update(customerId: string, body: UpdateCustomerRequest): Promise<Customer> {
@@ -161,7 +182,7 @@ export class AdminCustomersService {
 		if (body.phone !== undefined) patch.phone = body.phone.trim();
 		if (body.status !== undefined) patch.status = body.status;
 
-		const updated = await this.customers.update(customerId, patch);
+		const updated = await this.withIdentifierGuard(() => this.customers.update(customerId, patch));
 		if (!updated) throw new NotFoundException('Customer not found');
 		return updated;
 	}

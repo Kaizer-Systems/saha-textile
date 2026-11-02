@@ -42,6 +42,8 @@ const DECLARED_TAGS = [
 	'auth',
 	'storefront-account',
 	'privacy',
+	'media',
+	'reviews',
 ];
 
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];

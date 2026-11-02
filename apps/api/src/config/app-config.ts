@@ -219,6 +219,22 @@ const ConfigSchema = z.object({
 	 *   are logged instead — the dev setting, since dev has no Cloudflare in front.
 	 * - Without a YouTube key the rail refresh is skipped and Validate answers "unavailable".
 	 */
+	/**
+	 * Locales this deployment serves (owner lock: en + fr during development; Bengali joins
+	 * once development is complete, as a data change). Gates banner and media alt-text
+	 * completeness and the storefront's locale-resolved responses.
+	 */
+	locales: z
+		.string()
+		.default('en,fr')
+		.transform((value) =>
+			value
+				.split(',')
+				.map((locale) => locale.trim())
+				.filter(Boolean),
+		)
+		.pipe(z.array(z.string().regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/)).min(1))
+		.refine((locales) => locales.includes('en'), { message: 'ACTIVE_LOCALES must include en' }),
 	media: z
 		.object({
 			workerConcurrency: z.coerce.number().int().min(1).max(8).default(2),
@@ -328,6 +344,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 			password: env.REDIS_PASSWORD || undefined,
 			db: env.REDIS_DB || undefined,
 		},
+		locales: env.ACTIVE_LOCALES || undefined,
 		media: {
 			workerConcurrency: env.MEDIA_WORKER_CONCURRENCY || undefined,
 			gcLive: env.MEDIA_GC_LIVE || undefined,

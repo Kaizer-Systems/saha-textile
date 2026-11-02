@@ -20,6 +20,8 @@ export const API_TAGS = {
 	auth: 'auth',
 	storefrontAccount: 'storefront-account',
 	privacy: 'privacy',
+	media: 'media',
+	reviews: 'reviews',
 } as const;
 
 export type ApiTag = (typeof API_TAGS)[keyof typeof API_TAGS];
@@ -47,4 +49,13 @@ export const API_TAG_DESCRIPTIONS: ReadonlyArray<{ name: ApiTag; description: st
 			"A customer's own account data. Every route is scoped to the session principal — these carry no customer id, so one shopper cannot address another's account.",
 	},
 	{ name: API_TAGS.privacy, description: 'Consent, data export and erasure requests.' },
+	{
+		name: API_TAGS.media,
+		description:
+			'Media library, presigned uploads, size roles, banners and the YouTube rail. Clients receive resolved image URLs and never compose one.',
+	},
+	{
+		name: API_TAGS.reviews,
+		description: 'Verified-buyer reviews with photos, and their moderation. Photos stay private until approved.',
+	},
 ];

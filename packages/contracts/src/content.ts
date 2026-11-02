@@ -207,3 +207,45 @@ export const RatingAggregate = z
 		}
 	});
 export type RatingAggregate = z.infer<typeof RatingAggregate>;
+
+/** `POST /storefront/reviews` — a verified buyer's review, with up to five uploaded photos. */
+export const ReviewSubmitRequest = z.object({
+	productId: Id,
+	orderId: Id,
+	rating: z.number().int().min(1).max(5),
+	title: z.string().max(200).nullable().default(null),
+	body: z.string().trim().min(1).max(5000),
+	imageAssetIds: z.array(Id).max(5).default([]),
+});
+export type ReviewSubmitRequest = z.infer<typeof ReviewSubmitRequest>;
+
+/** `POST /admin/reviews/:id/moderation` — approval publishes the photos, rejection deletes them. */
+export const ReviewModerationRequest = z.object({
+	decision: z.enum(['approve', 'reject']),
+	note: z.string().max(1000).nullable().default(null),
+});
+export type ReviewModerationRequest = z.infer<typeof ReviewModerationRequest>;
+
+/** `GET /admin/reviews` query. */
+export const AdminReviewListQuery = z.object({
+	status: ReviewStatus.optional(),
+	productId: Id.optional(),
+	page: z.coerce.number().int().positive().default(1),
+	pageSize: z.coerce.number().int().positive().max(100).default(20),
+});
+export type AdminReviewListQuery = z.infer<typeof AdminReviewListQuery>;
+
+/** An admin review row with moderation previews of its photos (signed while private). */
+export const AdminReviewRow = z.object({
+	review: Review,
+	photos: z.array(z.object({ assetId: Id, thumbUrl: z.string().nullable(), fullUrl: z.string().nullable() })),
+});
+export type AdminReviewRow = z.infer<typeof AdminReviewRow>;
+
+export const AdminReviewListResponse = z.object({
+	items: z.array(AdminReviewRow),
+	total: z.number().int().nonnegative(),
+	page: z.number().int().positive(),
+	pageSize: z.number().int().positive(),
+});
+export type AdminReviewListResponse = z.infer<typeof AdminReviewListResponse>;

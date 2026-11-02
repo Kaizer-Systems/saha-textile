@@ -223,3 +223,19 @@ export const StorefrontBannersResponse = z.object({
 	banners: z.array(ResolvedBanner),
 });
 export type StorefrontBannersResponse = z.infer<typeof StorefrontBannersResponse>;
+
+/** `GET /storefront/banners` query. */
+export const StorefrontBannersQuery = z.object({
+	ownerType: ContentBlockOwnerType.default('home'),
+	ownerId: Id.optional(),
+	locale: z.string().min(2).max(10).default('en'),
+});
+export type StorefrontBannersQuery = z.infer<typeof StorefrontBannersQuery>;
+
+/** `GET /admin/content-blocks` query. */
+export const ContentBlockListQuery = z.object({
+	ownerType: ContentBlockOwnerType.optional(),
+	ownerId: Id.optional(),
+	position: BannerPosition.optional(),
+});
+export type ContentBlockListQuery = z.infer<typeof ContentBlockListQuery>;

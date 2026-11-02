@@ -47,6 +47,7 @@ export const PermissionCode = z.enum([
 	'admin_user.update',
 	'attachment.create',
 	'attachment.destroy',
+	'attachment.edit',
 	'attachment.index',
 	'attribute.create',
 	'attribute.destroy',
@@ -103,6 +104,7 @@ export const PermissionCode = z.enum([
 	'refund.index',
 	'review.create',
 	'review.destroy',
+	'review.edit',
 	'review.index',
 	'role.create',
 	'role.destroy',
@@ -161,6 +163,8 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 		'Upload control on the Media library and on the media-picker modal (media.html, media-modal.html). menu.ts carries no Media entry, so this is reachable only in-page.',
 	'attachment.destroy':
 		'Delete control on the Media library and on the media-box thumbnail (media.html, media-box.html). No Media navigation entry exists to gate.',
+	'attachment.edit':
+		'Media library SEO edits (slug, alt, title, caption) and the Reprocess action (PATCH /admin/media/:id, POST /admin/media/:id/reprocess). No Media navigation entry exists to gate.',
 	'attribute.create':
 		'Add-attribute button on the Attributes page. menu.ts gates attribute.index beneath Products; creation is in-page only.',
 	'attribute.destroy':
@@ -220,6 +224,8 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 	'review.create':
 		'Reserved for the kept Reviews page, which exposes no create surface today; only review.destroy is gated there.',
 	'review.destroy': 'Reviews table row Delete action (review.ts).',
+	'review.edit':
+		'Review moderation: Approve publishes the review and its photos, Reject deletes the photos (POST /admin/reviews/:id/moderation). Row action only; navigation gates review.index.',
 	'role.create': 'Role management surface (auth pass 5c.3); the navigation gates only role.index today.',
 	'role.destroy': 'Role management surface (auth pass 5c.3); deleting a role is separate from editing one.',
 	'role.update': 'Role management surface (auth pass 5c.3); editing a role changes what everyone holding it can do.',

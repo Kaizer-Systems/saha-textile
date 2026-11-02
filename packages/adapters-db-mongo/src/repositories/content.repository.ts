@@ -319,6 +319,7 @@ export class MongoReviewRepository implements ReviewRepository {
 			moderatedByUserId: string;
 			moderatedAt: string;
 			note?: string;
+			imageAssetIds?: string[];
 		},
 		context?: TransactionContext,
 	): Promise<Review | null> {
@@ -330,6 +331,7 @@ export class MongoReviewRepository implements ReviewRepository {
 					moderatedByUserId: input.moderatedByUserId,
 					moderatedAt: new Date(input.moderatedAt),
 					moderationNote: input.note ?? null,
+					...(input.imageAssetIds ? { imageAssetIds: input.imageAssetIds } : {}),
 				},
 			},
 			{ returnDocument: 'after', session: sessionFrom(context) },

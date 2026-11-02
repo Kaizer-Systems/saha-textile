@@ -35,7 +35,14 @@ const assets = new MongoMediaAssetRepository();
 const reviews = new MongoReviewRepository();
 const storage = new SpacesStorageAdapter({ key, secret, bucket, region, endpoint, cdnUrl });
 const queue = new BullMqMediaJobQueue(config.redis);
-const media = new MediaService(assets, new MongoMediaRoleRepository(), storage, queue, { append: async () => undefined } as never, config);
+const media = new MediaService(
+	assets,
+	new MongoMediaRoleRepository(),
+	storage,
+	queue,
+	{ append: async () => undefined } as never,
+	config,
+);
 const deps = { assets, storage, queue };
 const check = (ok: boolean, label: string) => console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`);
 
@@ -55,9 +62,19 @@ async function main(): Promise<void> {
 		if (!product || !customer) throw new Error('needs one product and one customer in the database');
 		const uploader = { type: 'customer' as const, id: String(customer._id) };
 
-		const body = await sharp({ create: { width: 3024, height: 4032, channels: 3, background: { r: 120, g: 60, b: 90 } } }).jpeg().toBuffer();
+		const body = await sharp({
+			create: { width: 3024, height: 4032, channels: 3, background: { r: 120, g: 60, b: 90 } },
+		})
+			.jpeg()
+			.toBuffer();
 		const presigned = await media.presign(uploader, {
-			purpose: 'review', contentType: 'image/jpeg', byteSize: body.byteLength, fileName: 'IMG_4031.jpg', width: 3024, height: 4032, slug: 'e2e-customer-photo',
+			purpose: 'review',
+			contentType: 'image/jpeg',
+			byteSize: body.byteLength,
+			fileName: 'IMG_4031.jpg',
+			width: 3024,
+			height: 4032,
+			slug: 'e2e-customer-photo',
 		});
 		await fetch(presigned.uploadUrl, { method: 'PUT', headers: presigned.headers, body });
 		await media.finalize(uploader, presigned.assetId);
@@ -69,9 +86,19 @@ async function main(): Promise<void> {
 		check(state === 'ready', `photo processed (${state})`);
 
 		await reviews.create({
-			id: `rev_e2e_${Date.now()}`, productId: String(product._id), userId: String(customer._id), orderId: `ord_e2e_${Date.now()}`,
-			rating: 5, title: 'Beautiful drape', body: MARKER, imageAssetIds: [presigned.assetId], status: 'pending',
-			moderatedByUserId: null, moderatedAt: null, moderationNote: null, createdAt: new Date().toISOString(),
+			id: `rev_e2e_${Date.now()}`,
+			productId: String(product._id),
+			userId: String(customer._id),
+			orderId: `ord_e2e_${Date.now()}`,
+			rating: 5,
+			title: 'Beautiful drape',
+			body: MARKER,
+			imageAssetIds: [presigned.assetId],
+			status: 'pending',
+			moderatedByUserId: null,
+			moderatedAt: null,
+			moderationNote: null,
+			createdAt: new Date().toISOString(),
 		});
 		const thumb = (await assets.findById(presigned.assetId))?.derivatives.find((d) => d.role === 'review_thumb');
 		const before = thumb ? (await fetch(storage.getUrl(thumb.storageKey))).status : 0;

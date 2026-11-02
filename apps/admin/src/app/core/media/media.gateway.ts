@@ -105,7 +105,7 @@ export class MediaGateway {
 									original_url: previewOf(item),
 									created_by_id: 0,
 									created_at: item.asset.createdAt,
-								}) as IAttachment,
+								}) as unknown as IAttachment,
 						),
 					}) as unknown as IAttachmentModel,
 			),

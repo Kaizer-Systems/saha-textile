@@ -1,4 +1,6 @@
-import { Inject, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { mediaRefusal } from './media-refusal';
+import { Inject, Injectable } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
 import {
 	type YouTubeRailResponse,
 	type YouTubeSettings,
@@ -22,17 +24,15 @@ export class YouTubeService {
 	async validate(input: string): Promise<YouTubeValidateResponse> {
 		const videoId = normalizeYouTubeVideoId(input);
 		if (!videoId) {
-			throw new UnprocessableEntityException({
-				code: 'not_a_youtube_video',
-				message: 'Paste a YouTube link or video id.',
-			});
+			throw mediaRefusal(
+				HttpStatus.UNPROCESSABLE_ENTITY,
+				'not_a_youtube_video',
+				'Paste a YouTube link or video id.',
+			);
 		}
 		const video = await this.youtube.findVideo(videoId);
 		if (!video)
-			throw new NotFoundException({
-				code: 'video_not_found',
-				message: 'No public, embeddable video has that id.',
-			});
+			throw mediaRefusal(HttpStatus.NOT_FOUND, 'video_not_found', 'No public, embeddable video has that id.');
 		return { videoId: video.videoId, title: video.title, thumbnailUrl: video.thumbnailUrl };
 	}
 

@@ -916,5 +916,7 @@
 	"banner_status_archived": "Archived",
 	"review_photos": "Review photos",
 	"review_no_photos": "This review has no photos.",
-	"photos": "Photos"
+	"photos": "Photos",
+	"product_video": "Product video (YouTube)",
+	"youtube_validate_required": "Press Validate to confirm the video before saving."
 }

@@ -913,5 +913,8 @@
 	"banner_ends_at": "Show until",
 	"banner_status_draft": "Draft",
 	"banner_status_active": "Live",
-	"banner_status_archived": "Archived"
+	"banner_status_archived": "Archived",
+	"review_photos": "Review photos",
+	"review_no_photos": "This review has no photos.",
+	"photos": "Photos"
 }

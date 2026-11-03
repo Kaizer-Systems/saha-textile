@@ -108,6 +108,9 @@ class FakeGateway extends AdminAuthGateway {
 	override createInvite(): Observable<void> {
 		return of(undefined);
 	}
+	override acceptInvite(): Observable<void> {
+		return of(undefined);
+	}
 	override logout(): Observable<void> {
 		return of(undefined);
 	}

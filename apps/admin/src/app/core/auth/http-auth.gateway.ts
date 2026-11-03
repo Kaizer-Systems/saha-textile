@@ -13,6 +13,7 @@ import {
 	type AdminPasswordLoginInput,
 	type AdminPinLoginInput,
 	type AdminPinSetupInput,
+	type AdminInviteAcceptInput,
 	type AdminInviteInput,
 	type AdminSecurityState,
 	type AdminSessionResult,
@@ -46,6 +47,7 @@ const ROUTES = {
 	sessions: '/auth/admin/sessions',
 	revokeOthers: '/auth/admin/sessions/revoke-others',
 	invites: '/auth/admin/invites',
+	inviteAccept: '/auth/admin/invites/accept',
 } as const;
 
 /**
@@ -70,6 +72,7 @@ const CREDENTIAL_ROUTES: readonly string[] = [
 	ROUTES.resume,
 	ROUTES.passwordForgot,
 	ROUTES.passwordReset,
+	ROUTES.inviteAccept,
 	ROUTES.logout,
 	ROUTES.refresh,
 ];
@@ -169,6 +172,10 @@ export class HttpAdminAuthGateway extends AdminAuthGateway {
 
 	override createInvite(input: AdminInviteInput): Observable<void> {
 		return this.http.post<unknown>(this.url(ROUTES.invites), input).pipe(map(() => undefined));
+	}
+
+	override acceptInvite(input: AdminInviteAcceptInput): Observable<void> {
+		return this.http.post<unknown>(this.url(ROUTES.inviteAccept), input).pipe(map(() => undefined));
 	}
 
 	override logout(): Observable<void> {

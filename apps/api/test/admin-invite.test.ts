@@ -117,6 +117,34 @@ describe('AdminInviteService.create', () => {
 		).rejects.toBeInstanceOf(BadRequestException);
 	});
 
+	it('refuses a second invite while the first is still live, in words rather than a 500', async () => {
+		const service = buildService();
+		await service.create({ request: { email: 'twice@example.com', role: 'staff' }, invitedByUserId: 'user_admin' });
+
+		await expect(
+			service.create({ request: { email: 'Twice@Example.com', role: 'staff' }, invitedByUserId: 'user_admin' }),
+		).rejects.toThrow('An invitation is already pending for that address');
+		expect(captured.notifications).toHaveLength(1);
+	});
+
+	it('revokes an expired invite, audited, so the address can be invited again', async () => {
+		const service = buildService();
+		const stale = await service.create({
+			request: { email: 'late@example.com', role: 'staff' },
+			invitedByUserId: 'user_admin',
+		});
+		stale.expiresAt = new Date(Date.now() - 1000).toISOString();
+
+		const fresh = await service.create({
+			request: { email: 'late@example.com', role: 'staff' },
+			invitedByUserId: 'user_admin',
+		});
+
+		expect(fresh.id).not.toBe(stale.id);
+		expect(captured.audits.map((entry) => entry.action)).toContain('admin.invite.revoke');
+		expect(captured.audits.find((entry) => entry.action === 'admin.invite.revoke')?.entityId).toBe(stale.id);
+	});
+
 	it('sets an expiry in the future', async () => {
 		const service = buildService();
 		const invite = await service.create({

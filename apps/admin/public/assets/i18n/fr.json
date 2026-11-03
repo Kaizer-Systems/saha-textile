@@ -919,5 +919,13 @@
 	"review_no_photos": "Cet avis n’a pas de photos.",
 	"photos": "Images",
 	"product_video": "Vidéo du produit (YouTube)",
-	"youtube_validate_required": "Cliquez sur Vérifier pour confirmer la vidéo avant d’enregistrer."
+	"youtube_validate_required": "Cliquez sur Vérifier pour confirmer la vidéo avant d’enregistrer.",
+	"accept_your_invitation": "Acceptez votre invitation",
+	"set_how_you_will_sign_in": "Choisissez comment vous connecter à l’administration",
+	"your_name_optional": "Votre nom (facultatif)",
+	"set_a_pin_optional": "Définir un code PIN (facultatif)",
+	"pin_must_be_6_digits": "Un code PIN doit comporter 6 chiffres ; laissez-le vide pour l’ignorer.",
+	"create_my_account": "Créer mon compte",
+	"account_created_sign_in": "Compte créé. Connectez-vous pour continuer.",
+	"invalid_or_expired_invitation_link": "Ce lien d’invitation n’est pas valide ou a expiré. Demandez-en un nouveau à un administrateur."
 }

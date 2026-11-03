@@ -84,7 +84,7 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 		"A": "done",
 		"B": "done",
 		"C": "done",
-		"D": "partial",
+		"D": "done",
 		"E": "done",
 		"F": "planned",
 		"G": "planned",
@@ -3759,6 +3759,7 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
   `use_different_details`, updated `oauth_email_registered` (en/fr). Resolves the 2026-10-26 owner
   call above. Gates: typecheck 21/21, tests 32/32 tasks (storefront 155), lint 24/24, builds 10/10.
   **No commit.** Tool: claude-code.
+- 2026-11-03 — [DONE] **Chunk D closed: admin invitations can be accepted, PIN sign-in proven in a real browser.** New admin page `/auth/accept-invite?token=…` (`features/auth/accept-invite`), built from the update-password screen and the Account Security PIN pads — no new UI elements or classes (owner-approved brief): password + confirm, optional name, optional PIN with confirm and "prefer PIN at login", the server's own reason on a weak credential without spending the invite, then the login page; no session is issued. `AdminAuthGateway.acceptInvite` (`/auth/admin/invites/accept`, a credential route, not session-establishing). Invitation links stay in the `admin_invite` MSG91 template (`<admin host>/auth/accept-invite?token=##token##`), so the API holds no hostname. Local tool `pnpm --filter @saha-textile/api invite:local-admin -- --i-am-local --email <addr>` runs the real `AdminInviteService.create` and prints the link once (refuses production, non-loopback and non-`_local` DBs; excluded from `nest build`). **Bug fixed:** a second invite to the same address threw a raw duplicate-key error (500); a live one is now refused in words and an expired one is revoked (audited) so the address can be invited again. **Browser proof** (local throwaway `pin-check-2@saha-textile.test`): sequential PIN refused with the invite unspent → accepted with PIN + prefer-PIN → wrong PIN refused generically → correct PIN signs in → five wrong PINs lock (`failedPinAttempts` 5, `pinLockedUntil` +15 min) and the correct PIN is then refused → password sign-in works and clears the lock (0 / null). Granular route migration was already complete (`check-route-authorization`: 142 routes, 52 permission-gated, 10 role-only justified). Owner confirmed marking Chunk D **done**; guest→user cart merge and pending intents stay with Chunk G. Noted, by design: an accepted invitee holds the coarse role only and sees an empty dashboard until an administrator assigns a role on the user's edit screen. Tests: admin auth specs 77/77 (6 new accept-invite, 1 gateway classification), API invite tests 9/9 (2 new). Tool: claude-code.
 - _(append)_
 
 ---

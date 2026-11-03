@@ -122,6 +122,16 @@ export interface AdminInviteInput {
 	permissions?: string[];
 }
 
+/** Redeems an invitation. `pin` and `preferredLoginMethod` travel together or not at all. */
+export interface AdminInviteAcceptInput {
+	/** The single-use token from the invitation email. Never persisted client-side. */
+	token: string;
+	password: string;
+	displayName?: string;
+	pin?: string;
+	preferredLoginMethod?: 'password' | 'pin';
+}
+
 export abstract class AdminAuthGateway {
 	/** Resolves the signed-in operator plus current permissions, or `null` when anonymous. */
 	abstract currentUser(): Observable<AdminMe | null>;
@@ -214,6 +224,12 @@ export abstract class AdminAuthGateway {
 
 	/** Issues a privileged admin invite (permission-gated on the API). */
 	abstract createInvite(input: AdminInviteInput): Observable<void>;
+
+	/**
+	 * Accepts an invitation and creates the account. Issues no session: the invitee signs in
+	 * afterwards, which exercises the credential they just set.
+	 */
+	abstract acceptInvite(input: AdminInviteAcceptInput): Observable<void>;
 
 	abstract logout(): Observable<void>;
 

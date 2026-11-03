@@ -164,6 +164,9 @@ describe('HttpAdminAuthGateway credential classification', () => {
 		['password recovery request', () => gateway.requestPasswordReset('operator')],
 		// A reset revokes every admin session and suspends PIN use by design.
 		['password reset', () => gateway.resetPassword({ token: 'tok', newPassword: 'x'.repeat(12) })],
+		// Accepting an invitation creates the account but no session: a 401 there is a spent or
+		// unknown invitation, never a lapsed session to rotate.
+		['invitation acceptance', () => gateway.acceptInvite({ token: 'tok', password: 'x'.repeat(12) })],
 	];
 
 	// The latch that stops a failed rotation being re-attempted clears only on proof that a

@@ -204,8 +204,7 @@ async function refusalCodeOf(work: Promise<unknown>): Promise<string> {
 		return 'did-not-throw';
 	} catch (error) {
 		const body = (error as { getResponse?: () => unknown }).getResponse?.() as
-			| { issues?: Array<{ code?: string }> }
-			| undefined;
+			{ issues?: Array<{ code?: string }> } | undefined;
 		return body?.issues?.[0]?.code ?? String((error as Error).message);
 	}
 }

@@ -6,6 +6,7 @@ import { Logger } from '@nestjs/common';
 import { connectMongo, disconnectMongo } from '@saha-textile/adapters-db-mongo';
 
 import { loadConfig } from './config/app-config';
+import { exitOnDeploymentConfigError } from './config/boot-failure';
 import { composeMediaWorker } from './worker/media-worker';
 
 /**
@@ -28,4 +29,4 @@ async function start(): Promise<void> {
 	process.once('SIGINT', () => void shutdown('SIGINT'));
 }
 
-void start();
+start().catch(exitOnDeploymentConfigError);

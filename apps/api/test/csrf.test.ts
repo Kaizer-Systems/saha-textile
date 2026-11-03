@@ -12,8 +12,10 @@ const config = (overrides: NodeJS.ProcessEnv = {}) =>
 	loadConfig({ JWT_ACCESS_SECRET: 'a'.repeat(32), JWT_REFRESH_SECRET: 'b'.repeat(32), ...overrides });
 
 const dev = config();
-const prod = config({ NODE_ENV: 'production' });
-const prodWithDomain = config({ NODE_ENV: 'production', COOKIE_DOMAIN: '.sahatextile.com' });
+// `DEPLOY_ENV=local`: these test production COOKIE attributes, not the deployment hardening
+// rules a strict production config is held to (covered in deployment-hardening.test.ts).
+const prod = config({ NODE_ENV: 'production', DEPLOY_ENV: 'local' });
+const prodWithDomain = config({ NODE_ENV: 'production', DEPLOY_ENV: 'local', COOKIE_DOMAIN: '.sahatextile.com' });
 /** The only way to get insecure cookies now: an explicit, visible opt-out. */
 const insecureOptOut = config({ COOKIE_SECURE: 'false' });
 

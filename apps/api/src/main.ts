@@ -8,6 +8,8 @@ import { Logger } from '@nestjs/common';
 
 import { createApp } from './bootstrap';
 import { loadConfig } from './config/app-config';
+import { exitOnDeploymentConfigError } from './config/boot-failure';
+import { isStrictDeployment } from './config/deployment-hardening';
 
 /**
  * Process startup.
@@ -25,6 +27,12 @@ async function bootstrap(): Promise<void> {
 		logger.warn('OTP_LOCAL_FIXED_CODE is set — every one-time code is the configured fixed value (local only).');
 	}
 
+	logger.log(
+		isStrictDeployment(config)
+			? `Strict deployment (${config.deployEnv ?? 'production by default'}): hardening checks passed.`
+			: `Non-strict environment (NODE_ENV=${config.nodeEnv}${config.deployEnv ? `, DEPLOY_ENV=${config.deployEnv}` : ''}).`,
+	);
+
 	const app = await createApp(config);
 
 	await app.listen({ port: config.port, host: '0.0.0.0' });
@@ -33,4 +41,4 @@ async function bootstrap(): Promise<void> {
 	);
 }
 
-void bootstrap();
+bootstrap().catch(exitOnDeploymentConfigError);

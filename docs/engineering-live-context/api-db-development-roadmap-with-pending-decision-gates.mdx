@@ -284,6 +284,15 @@ accept-invitation page and the browser PIN proof.
 - Provider callbacks are authenticated and idempotent.
 - **BLOCKED:** G-NUM-ORDER for final customer-facing numbers.
 
+#### Open items carried into this chunk
+
+- **Admin CRM customer → Orders tab paging (found 2026-11-03).**
+  `AdminCustomersService.listOrders` fetches ONE page from `OrderRepository.listByUser`, then
+  applies the search and date filters in memory and reports `total`/`totalPages` from that
+  filtered page. Past the first page, totals, search and date filters are wrong. Fix by moving
+  `q`/`startDate`/`endDate` into the repository query (index-backed) and returning the
+  repository's own count. Owner: do it here, when real orders exist to page through.
+
 ---
 
 ### Chunk H — Inventory, purchasing, analytics, and reporting
@@ -382,6 +391,25 @@ show as a placeholder tile; the review page shows them via signed URLs).
 - **BLOCKED — database catalogue:** persistence schemas, nested validators/indexes, mappings, migrations, and deterministic sanitized examples are not stable enough for authoritative generation.
 - **BLOCKED — deployment:** `DEC-PORTAL-PRIVATE-ACCESS` is unanswered; whole-host default-deny identity and origin protection must be implemented and probed before promotion.
 - **PARTIAL — follow-up debt:** repository-level pnpm/peer/formatting issues and Storybook bundle/shell warnings remain tracked separately from the completed local portal foundation.
+
+#### Open items carried into this chunk (2026-11-03)
+
+- **Prove deployment hardening on a real environment.** The API and worker refuse to start
+  when a strict deployment (`NODE_ENV=production`, `DEPLOY_ENV` not `local`) has unsafe settings
+  (`apps/api/src/config/deployment-hardening.ts`; rules in `environment-variables.mdx`). It is
+  proven locally by unit tests, by spawning the real entrypoints, and by the mode-3 stack still
+  booting as `DEPLOY_ENV=local`. Still owed on staging: (1) the deploy scripts set
+  `DEPLOY_ENV=staging`/`production` and every required variable; (2) a staging boot logs
+  `Strict deployment (staging): hardening checks passed.` and then connects to the
+  authenticated Mongo, password-protected Redis and the staging Spaces bucket; (3) one
+  deliberate negative deploy (e.g. `CSRF_SECRET` removed) fails with exit 1 and the listed
+  problem, and the orchestrator marks it failed rather than restart-looping; (4) the container
+  log shows no secret value. Tick these in `project-progress.mdx` when done.
+- **Lint warning clean-up — deferred by the owner (2026-11-03).** About 95 warnings (52
+  `no-explicit-any` in admin, 36 `import/order`, a few unused variables and one `no-console`),
+  almost all in kept Fastkart demo files that later chunks rewrite. Fixing them now would be
+  throwaway work. Do it as a late pre-launch pass, then raise `--max-warnings` to 0 in CI so
+  they cannot return.
 
 ## Owner lock order
 

@@ -4,7 +4,7 @@ wide: true
 description: NestJS module wiring, dependency-injection tokens, adapter ownership, Mongo mappings, and provider seams.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-03'
+last_verified: '2026-11-04'
 source_of_truth:
     - apps/api/src/app.module.ts
     - apps/api/src/config/app-config.ts
@@ -141,7 +141,7 @@ Remaining configuration gaps:
 - development JWT secrets are still supplied as defaults (`?? 'dev-…-change-me'`) without a production rejection gate;
 - cookie session issuance/rotation and session-bound CSRF are wired; MSG91 delivery is adapter-ready behind env Authkey + DB templates (console remains the default local provider).
 
-Production must fail closed when required secrets or security settings are absent. Never “helpfully” create predictable production secrets.
+Production must fail closed when required secrets or security settings are absent. Never “helpfully” create predictable production secrets. This is enforced at boot by `apps/api/src/config/deployment-hardening.ts`, which `loadConfig` runs for the API and the worker: a strict deployment (`NODE_ENV=production` with `DEPLOY_ENV` unset, `staging` or `production`) lists every unsafe setting and exits 1. The local mode-3 stack opts out explicitly with `DEPLOY_ENV=local`.
 
 ## Connection lifecycle and readiness
 

@@ -3,7 +3,7 @@ title: Deployment Overview
 description: Deployment documentation landing page.
 status: planned
 audience: [operator, backend]
-last_verified: '2026-11-03'
+last_verified: '2026-11-04'
 source_of_truth:
     - apps/api/.env.example
     - docker/mongo/docker-compose.yml
@@ -54,6 +54,7 @@ to portal content or browser-delivered indexes.
 ## Runtime configuration and secrets model
 
 - **Secrets reach the API only.** GitHub Actions encrypted secrets are injected as root-owned env files / Docker Compose secrets into the **API container**. They never reach the Angular apps.
+- **A deployment refuses unsafe settings.** With `NODE_ENV=production` and `DEPLOY_ENV` unset, `staging` or `production`, the API and worker list every unsafe setting (default or shared secrets, localhost CORS, console notifier, unauthenticated stores, unset media storage …) and exit 1 before connecting. Deploy scripts must set `DEPLOY_ENV`; the full rule list is in the environment-variables catalogue. A real staging proof is still owed (API roadmap, Chunk J).
 - **Angular apps get public config.** The storefront and admin apps receive a deploy-time public `config.json` (API/site URLs, locales, public client IDs) loaded at boot — no secret is ever baked into a browser build.
 - **Same Mongo profile as local.** Deployments run the same self-hosted Docker MongoDB 9.0.4 single-node replica set (`rs0`) profile used locally, on a private Docker network with credentials injected at deploy time.
 
@@ -71,5 +72,5 @@ the media worker with `node dist/worker.js`), `storefront` (Analog SSR) and `adm
 behind Nginx). `docker/stack/compose.yaml` runs them locally with MongoDB 9.0.4 (`rs0`), Redis and
 an Nginx edge that terminates HTTPS with the mkcert certificate on single-level hostnames
 (`local.`, `admin-local.` and `api-local.saha-textile.localhost`): `pnpm stack:certs`, `pnpm
-stack:env`, `pnpm stack:up`; `STACK_HTTPS_PORT` moves the edge off 443. The stack proves the image
+stack:env`, `pnpm stack:up`; `STACK_HTTPS_PORT` moves the edge off 443. The stack runs production images with development secrets, so `stack:env` writes `DEPLOY_ENV=local` to opt out of the deployment checks. The stack proves the image
 and edge shape; the deploy workflow, secret injection and rollback scripts are still future work.

@@ -161,11 +161,11 @@ Other open decisions block only their own final policy engine. Reversible schema
 - **D2 — session lifecycle (done):** issue, refresh, revoke, refresh-reuse family
   revocation, session-bound CSRF, and storefront/admin audience guards are implemented
   and live-proven through httpOnly cookies.
-- **D3 — storefront auth endpoints (partial):** register, password login, logout, me,
+- **D3 — storefront auth endpoints (done):** register, password login, logout, me,
   refresh, password reset, email-verification completion/resend, and OTP use generic
-  anti-enumeration responses. Google/Facebook token verification remains deferred pending
-  approved credentials.
-- **D4 — admin auth (partial):** password/PIN login, password recovery, PIN
+  anti-enumeration responses. Google and Facebook sign-up/sign-in were proven end to end
+  with the owner's real provider accounts on 2026-10-25.
+- **D4 — admin auth (done):** password/PIN login, password recovery, PIN
   setup/lockout, invite create/list/revoke/acceptance, HTTP quick-resume, audience guards,
   and permission-version invalidation exist. The closed **103-code** permission registry,
   active role-assignment resolution, deny-by-default role/permission/user-authority routes,
@@ -174,17 +174,22 @@ Other open decisions block only their own final policy engine. Reversible schema
   Security at `/account` (PIN/password/sessions) and the 15-minute idle soft-lock
   (`IdleLockService` + `idle-lock-modal` + `POST /auth/admin/resume` with PIN or password)
   are live. A real browser has proven password login, cookie-only reload, refresh recovery,
-  role grant/revoke, permission invalidation, last-admin refusal, and logout. Real-browser
-  PIN-login proof coverage and granular migration of older privileged routes remain open.
-- **D5 — consent, privacy, and ownership (partial):** consent history, export/erase
+  role grant/revoke, permission invalidation, last-admin refusal, and logout. On 2026-11-03
+  the admin accept-invitation page (`/auth/accept-invite`) was added and a real browser proved
+  invite → acceptance (weak PIN refused without spending the invite) → PIN sign-in → wrong
+  PIN → five-failure lock refusing even the right PIN → password sign-in clearing the lock.
+  Route migration is complete: `check-route-authorization` (in `pnpm lint`) holds every route
+  to a permission or a written self-service justification.
+- **D5 — consent, privacy, and ownership (done for this chunk):** consent history, export/erase
   seams, order-read BOLA, cart ownership/`st_guest` proof, and order-create cart
   ownership/adoption are implemented. Cart routes remain `@Public()` for guest
   add-to-cart but enforce Principal/guest-token proof in the service boundary. Guest→user
   merge, pending intents, and checkout idempotency remain Chunk G.
 
-The 2026-08-11 portal reassessment therefore retains Chunk D as **partial**. The earlier
-“Chunk D complete” progress label describes the delivered session/auth core but does not
-satisfy the full D3–D5 boundary above.
+**Chunk D is done (2026-11-03, owner-confirmed).** Guest→user cart merge, pending intents
+and checkout idempotency are carried by Chunk G, which owns the cart and checkout they act on.
+The 2026-08-11 reassessment that kept D partial predates the real-account OAuth run, the
+accept-invitation page and the browser PIN proof.
 
 #### Deliver
 

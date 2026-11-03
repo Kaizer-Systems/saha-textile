@@ -193,6 +193,13 @@ OTP lifetime is `OTP_TTL_SECONDS=600`, so "10 minutes" is accurate copy.
 | `admin_invite`              | `token`, `role`           | Back-office invitation                     |
 | `contact_change_requested`  | `field`, `maskedNewValue` | Warning to the OLD address                 |
 
+The link-carrying templates build their own link, so the API never holds a hostname and each
+environment's MSG91 account points at its own site. `admin_invite` links to
+`<admin host>/auth/accept-invite?token=##token##` (staging: `admin-staging.sahatextile.com`);
+the page sets a password and an optional PIN and issues no session. Locally there is no email:
+`pnpm --filter @saha-textile/api invite:local-admin -- --i-am-local --email <addr>` creates the
+invite through the real service and prints the link once.
+
 ### SMS — five templates (each needs DLT approval)
 
 | Key                        | DLT template must carry | Variables                 |

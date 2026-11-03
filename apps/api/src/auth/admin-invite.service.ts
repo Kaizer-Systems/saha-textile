@@ -66,6 +66,20 @@ export class AdminInviteService {
 		const existing = await this.authUsers.findAuthStateByIdentifier(emailNormalized);
 		if (existing) throw new BadRequestException('An account already exists for that address');
 
+		// One outstanding invite per address (a partial unique index). A live one is refused in
+		// words rather than left to the index, whose duplicate-key error surfaces as a 500. An
+		// expired one is revoked here, audited like any revoke, so the address can be invited
+		// again without an administrator first finding and revoking the stale row.
+		const outstanding = (await this.invites.listPending()).find(
+			(invite) => invite.emailNormalized === emailNormalized,
+		);
+		if (outstanding) {
+			if (Date.parse(outstanding.expiresAt) > Date.now()) {
+				throw new BadRequestException('An invitation is already pending for that address');
+			}
+			await this.revoke(outstanding.id, input.invitedByUserId, input.requestId);
+		}
+
 		const token = `${randomUUID()}${randomUUID()}`.replace(/-/g, '');
 		const nowMs = Date.now();
 

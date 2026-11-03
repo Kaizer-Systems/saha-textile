@@ -11,6 +11,7 @@
 		"**/*.test.ts",
 		"src/set-local-test-credentials.ts",
 		"src/reset-local-customer.ts",
-		"src/seed-local-catalog-photos.ts"
+		"src/seed-local-catalog-photos.ts",
+		"src/invite-local-admin.ts"
 	]
 }

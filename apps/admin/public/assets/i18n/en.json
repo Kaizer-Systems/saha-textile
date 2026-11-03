@@ -919,5 +919,13 @@
 	"review_no_photos": "This review has no photos.",
 	"photos": "Photos",
 	"product_video": "Product video (YouTube)",
-	"youtube_validate_required": "Press Validate to confirm the video before saving."
+	"youtube_validate_required": "Press Validate to confirm the video before saving.",
+	"accept_your_invitation": "Accept your invitation",
+	"set_how_you_will_sign_in": "Set how you will sign in to the admin",
+	"your_name_optional": "Your name (optional)",
+	"set_a_pin_optional": "Set a PIN (optional)",
+	"pin_must_be_6_digits": "A PIN must be 6 digits, or leave it empty to skip it.",
+	"create_my_account": "Create my account",
+	"account_created_sign_in": "Account created. Sign in to continue.",
+	"invalid_or_expired_invitation_link": "That invitation link is not valid or has expired. Ask an administrator for a new one."
 }

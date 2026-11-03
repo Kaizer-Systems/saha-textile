@@ -42,7 +42,7 @@ The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps,
 
 Every schema passes an explicit `collection` option, and `packages/adapters-db-mongo/src/collection-names.ts` is the single declaration checked by `test/collection-names.test.ts`. `pnpm mongo:align-collections` aligns legacy inferred names with the ratified names; it is idempotent, refuses to merge when both names hold data, and never runs at application boot.
 
-The generated catalogue confirms all 43 physical names directly from Mongoose metadata: 527 fields and 115 indexes. Forty names map to ratified Schema Nebula nodes (**69 / 40 / 29**). `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime collections outside the graph.
+The generated catalogue confirms all 43 physical names directly from Mongoose metadata: 529 fields and 115 indexes. Forty names map to ratified Schema Nebula nodes (**69 / 40 / 29**). `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime collections outside the graph.
 
 ## Current repository inventory
 

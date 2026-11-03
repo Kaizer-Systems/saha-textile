@@ -187,14 +187,6 @@ export class AdminCustomersService {
 		return updated;
 	}
 
-	/** Soft-delete — status `deleted`; email/phone uniqueness is released. */
-	async softDelete(customerId: string): Promise<Customer> {
-		await this.get(customerId);
-		const updated = await this.customers.setStatus(customerId, 'deleted');
-		if (!updated) throw new NotFoundException('Customer not found');
-		return updated;
-	}
-
 	async resendActivation(customerId: string, body: ResendCustomerActivationRequest): Promise<Customer> {
 		const customer = await this.get(customerId);
 		if (customer.status === 'active') {

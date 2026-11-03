@@ -304,6 +304,20 @@ export class MongoOtpChallengeRepository implements OtpChallengeRepository {
 		return result.modifiedCount === 1;
 	}
 
+	/**
+	 * Marks the challenges blocked AND consumed: blocked says why for whoever reads the row later,
+	 * and consumed is what every verify path already refuses — and what releases the one-active
+	 * slot, so the address's next owner can be sent a code at once.
+	 */
+	async revokeOpenFor(input: { userId: string; identifiers: string[] }, at: string): Promise<number> {
+		const when = new Date(at);
+		const result = await OtpChallengeModel.updateMany(
+			{ consumedAt: null, $or: [{ userId: input.userId }, { identifier: { $in: input.identifiers } }] },
+			{ $set: { consumedAt: when, blockedAt: when } },
+		).exec();
+		return result.modifiedCount;
+	}
+
 	async deleteExpired(now: string): Promise<number> {
 		const result = await OtpChallengeModel.deleteMany({ expiresAt: { $lte: new Date(now) } }).exec();
 		return result.deletedCount ?? 0;
@@ -411,6 +425,15 @@ export class MongoPasswordResetTokenRepository implements PasswordResetTokenRepo
 		};
 	}
 
+	/** Spent rather than deleted, so the row still shows what existed until its TTL removes it. */
+	async revokeAllForUser(userId: string, at: string): Promise<number> {
+		const result = await PasswordResetTokenModel.updateMany(
+			{ userId, consumedAt: null },
+			{ $set: { consumedAt: new Date(at) } },
+		).exec();
+		return result.modifiedCount;
+	}
+
 	async deleteExpired(now: string): Promise<number> {
 		const result = await PasswordResetTokenModel.deleteMany({ expiresAt: { $lte: new Date(now) } }).exec();
 		return result.deletedCount ?? 0;
@@ -460,6 +483,15 @@ export class MongoEmailVerificationTokenRepository implements EmailVerificationT
 			expiresAt: isoRequired(doc.expiresAt),
 			consumedAt: iso(doc.consumedAt),
 		};
+	}
+
+	/** Spent rather than deleted, so the row still shows what existed until its TTL removes it. */
+	async revokeAllForUser(userId: string, at: string): Promise<number> {
+		const result = await EmailVerificationTokenModel.updateMany(
+			{ userId, consumedAt: null },
+			{ $set: { consumedAt: new Date(at) } },
+		).exec();
+		return result.modifiedCount;
 	}
 
 	async deleteExpired(now: string): Promise<number> {

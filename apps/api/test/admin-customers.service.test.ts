@@ -1,5 +1,5 @@
 import { DuplicateIdentifierError } from '@saha-textile/core-domain';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import type { Customer } from '@saha-textile/contracts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -170,20 +170,6 @@ describe('AdminCustomersService', () => {
 		it('passes q through unchanged so the adapter can apply S1 prefix match', async () => {
 			await service().list({ page: 1, pageSize: 24, q: 'MoU' });
 			expect(customers.list).toHaveBeenCalledWith(expect.objectContaining({ q: 'MoU' }));
-		});
-	});
-
-	describe('softDelete', () => {
-		it('sets status deleted', async () => {
-			customers.setStatus.mockResolvedValue(customerFixture({ status: 'deleted' }));
-			const result = await service().softDelete('cus_test_1');
-			expect(customers.setStatus).toHaveBeenCalledWith('cus_test_1', 'deleted');
-			expect(result.status).toBe('deleted');
-		});
-
-		it('404s when the customer is already deleted', async () => {
-			customers.findById.mockResolvedValue(customerFixture({ status: 'deleted' }));
-			await expect(service().softDelete('cus_test_1')).rejects.toBeInstanceOf(NotFoundException);
 		});
 	});
 });

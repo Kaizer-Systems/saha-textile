@@ -52,14 +52,14 @@ flowchart LR
 | Cart/order creation | Classic NgRx cart and checkout composition exist                                                                                                                         | Scaffolded  | Order placement and authoritative totals are not connected.                                 |
 | Forms               | Reactive forms exist for major catalogue/content/settings features; CRM and Account Security use live mutations                                                          | Scaffolded  | Many catalogue/content submission paths still stop at no-op methods or navigation.          |
 | Tables              | Shared search, pagination, selection, date, action, and permission UI exists; CRM soft-delete hides deleted by default                                                   | Scaffolded  | Backend filtering/bulk mutations are not generally operational; revive blocked on DEC gate. |
-| Authorization       | Permission-shaped UI directives against the live **91-code** registry                                                                                                    | Scaffolded  | UI visibility is not a security boundary; API authorization must enforce every operation.   |
+| Authorization       | Permission-shaped UI directives against the live **92-code** registry                                                                                                    | Scaffolded  | UI visibility is not a security boundary; API authorization must enforce every operation.   |
 | Dial / flags        | Country dial labels are HTML in `country-code.ts`; sprites at `/assets/images/flags/flags.png`                                                                           | Implemented | Reuse shared dial markup; do not invent alternate flag assets.                              |
 
 ## Feature families
 
 The content shell lazy-loads dashboard, account, role, user, attribute, tag, blog, page, tax, store, category, shipping, media, coupon, product, currency, **customer** (`/customer`, `/customer/create`, `/customer/edit/:id`), customer ledger, points, settings, order status, orders, theme options, reviews, FAQs, notifications, refunds, and questions/answers.
 
-CRM soft-delete hides deleted customers by default; recycle bin + restore was decided on 2026-11-03 (`DEC-CUSTOMER-SOFT-DELETE-OPS`) and is not built yet.
+CRM soft-delete hides deleted customers by default; the recycle bin (Live/Deleted filter) and Restore are live for holders of `customer.restore` (`DEC-CUSTOMER-SOFT-DELETE-OPS`, built 2026-11-03).
 
 Several families also expose create/edit routes. Orders add details, create-order, and checkout routes; blog adds category and tag subflows.
 

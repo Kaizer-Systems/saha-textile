@@ -32,7 +32,7 @@ Models currently exist for the original commerce/catalogue surface plus separate
 | Example documents            | Sanitised synthetic examples   | **Scaffolded**; sensitive excluded fields omitted |
 | Stable DTO/migration mapping | Contracts, mappers, migrations | **Deferred** until mappings and migrations mature |
 
-The catalogue generator imports model metadata without opening a database connection. It remains explicitly current-model-only and scaffolded. The current deterministic regeneration measures **43 models / 527 fields / 115 indexes / 37 temporary shapes** and omits all **13** excluded-by-default fields from synthetic previews.
+The catalogue generator imports model metadata without opening a database connection. It remains explicitly current-model-only and scaffolded. The current deterministic regeneration measures **43 models / 529 fields / 115 indexes / 37 temporary shapes** and omits all **13** excluded-by-default fields from synthetic previews.
 
 Do not manually duplicate field tables once generation is available.
 

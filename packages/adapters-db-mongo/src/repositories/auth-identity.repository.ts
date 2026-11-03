@@ -41,6 +41,24 @@ export class MongoAuthIdentityRepository implements AuthIdentityRepository {
 		return (result.deletedCount ?? 0) > 0;
 	}
 
+	async releaseForSubject(
+		subjectType: IdentitySubjectType,
+		subjectId: string,
+		providers: string[],
+	): Promise<AuthIdentity[]> {
+		if (providers.length === 0) return [];
+		const session = sessionFrom();
+		const filter = { subjectType, subjectId, provider: { $in: providers } };
+		const docs = await AuthIdentityModel.find(filter)
+			.session(session ?? null)
+			.lean<AuthIdentityDoc[]>()
+			.exec();
+		if (docs.length === 0) return [];
+		// By id, not by the filter again: only the rows that were read are reported as removed.
+		await AuthIdentityModel.deleteMany({ _id: { $in: docs.map((doc) => doc._id) } }, { session }).exec();
+		return docs.map(toDomain);
+	}
+
 	async touch(id: string, usedAt: string): Promise<void> {
 		await AuthIdentityModel.updateOne({ _id: id }, { $set: { lastUsedAt: new Date(usedAt) } }).exec();
 	}

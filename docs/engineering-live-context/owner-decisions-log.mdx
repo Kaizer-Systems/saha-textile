@@ -853,15 +853,20 @@ Answered in chat on 2026-11-03 and removed from `pending-decisions.mdx`.
 - **`DEC-SOFT-DELETED-IDENTITY-REUSE` — unlink on soft delete.** Soft-deleting a customer
   releases their linked Google/Facebook identities the same way email and phone are released,
   so the person can sign up again with the same provider account. The audit log keeps the
-  history. Implementation pending.
+  history. Built 2026-11-03: the links are removed (not parked) and the delete's audit row names
+  each released provider account; a restored customer reconnects Google/Facebook from their
+  account page (owner choice the same day).
 - **`DEC-DENVER-HOME-GRADIENT` — flat theme colour.** The home-search background uses
   `var(--theme-color)` instead of the vendor's green ramp. Done 2026-11-03.
 - **`DEC-CUSTOMER-SOFT-DELETE-OPS` — recycle bin plus restore (the recommended route).** A
   "Deleted" filter in the CRM customer list (not the default view); restore needs a dedicated
   permission; restore is refused when the email or phone now belongs to another live customer;
   soft delete revokes activation tokens and OTP challenges and ends the customer's sessions;
-  reports exclude deleted customers unless explicitly included. Implementation pending (the
-  CRM screen change needs a UI brief first).
+  reports exclude deleted customers unless explicitly included. Built 2026-11-03 from an
+  approved UI brief, with three follow-up owner choices: restore returns the status the customer
+  had (rows deleted earlier come back `disabled`); only `customer.restore` holders see the
+  Deleted view (the API lists deleted customers on its own route); and Restore asks for
+  confirmation first.
 
 Still open after this round: `DEC-PORTAL-PRIVATE-ACCESS` (owner: decide at deploy time). Later the
 same day the owner chose the production hostnames (see Infrastructure: bare `sahatextile.com`); only

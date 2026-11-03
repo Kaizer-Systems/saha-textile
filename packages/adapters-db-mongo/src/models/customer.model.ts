@@ -33,6 +33,9 @@ export interface CustomerDoc {
 	phoneVerified: boolean;
 	displayName?: string;
 	status: string;
+	/** Status held when soft-deleted, so a restore can put it back. Null while live. */
+	statusBeforeDelete: string | null;
+	deletedAt: Date | null;
 	tokenVersion: number;
 	failedLoginAttempts: number;
 	lastLoginAt: Date | null;
@@ -55,6 +58,8 @@ const CustomerSchema = new Schema<CustomerDoc>(
 		phoneVerified: { type: Boolean, default: false },
 		displayName: { type: String },
 		status: { type: String, enum: CustomerStatus.options, default: 'active' },
+		statusBeforeDelete: { type: String, enum: UNIQUENESS_HOLDING_STATUSES, default: null },
+		deletedAt: { type: Date, default: null },
 		tokenVersion: { type: Number, default: 0 },
 		failedLoginAttempts: { type: Number, default: 0 },
 		lastLoginAt: { type: Date, default: null },

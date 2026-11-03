@@ -4,10 +4,18 @@
 >
 	<div
 		class="d-flex flex-wrap gap-2"
-		*hasPermission="'customer.create'"
 		button
 	>
+		<select2
+			*hasPermission="'customer.restore'"
+			class="custom-select min-w-cls"
+			[data]="viewOptions()"
+			[value]="view()"
+			[placeholder]="'filter_by' | transloco"
+			(update)="onViewChange($event)"
+		/>
 		<a
+			*hasPermission="'customer.create'"
 			[routerLink]="['/customer/create']"
 			class="align-items-center btn btn-theme"
 		>
@@ -16,8 +24,9 @@
 		</a>
 	</div>
 	<app-table
-		[tableConfig]="tableConfig"
+		[tableConfig]="tableConfig()"
 		[hasCheckbox]="false"
+		[deleteMessage]="'customer_deleted_message'"
 		(tableChanged)="onTableChange($event)"
 		(rowClicked)="edit($event)"
 		(action)="onActionClicked($event)"

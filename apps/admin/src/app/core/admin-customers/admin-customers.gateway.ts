@@ -44,8 +44,12 @@ export interface AdminCustomerListParams {
 	page?: number;
 	pageSize?: number;
 	q?: string;
-	status?: CustomerStatus;
+	/** The live directory never lists deleted customers; `listDeleted` is the recycle bin. */
+	status?: Exclude<CustomerStatus, 'deleted'>;
 }
+
+/** Recycle-bin query (`GET /admin/customers/deleted`); the status is implied. */
+export type AdminDeletedCustomerListParams = Omit<AdminCustomerListParams, 'status'>;
 
 export interface CreateCustomerInput {
 	displayName: string;
@@ -136,6 +140,12 @@ export abstract class AdminCustomersGateway {
 	abstract update(customerId: string, input: UpdateCustomerInput): Observable<AdminCustomer>;
 
 	abstract softDelete(customerId: string): Observable<AdminCustomer>;
+
+	/** Soft-deleted customers. Needs `customer.restore` (`DEC-CUSTOMER-SOFT-DELETE-OPS`). */
+	abstract listDeleted(params: AdminDeletedCustomerListParams): Observable<AdminCustomerListResponse>;
+
+	/** Brings a deleted customer back with the status they had. Needs `customer.restore`. */
+	abstract restore(customerId: string): Observable<AdminCustomer>;
 
 	abstract resendActivation(customerId: string, input: ResendCustomerActivationInput): Observable<AdminCustomer>;
 

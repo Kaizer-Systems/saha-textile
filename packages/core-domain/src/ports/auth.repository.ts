@@ -87,6 +87,12 @@ export interface OtpChallengeRepository {
 	incrementAttempts(challengeId: string): Promise<number>;
 	/** Atomically marks consumed; returns false when another request won the race. */
 	consume(challengeId: string, at: string): Promise<boolean>;
+	/**
+	 * Ends every open challenge that belongs to a subject — addressed to one of its identifiers
+	 * or issued for its id — so a code already in somebody's inbox stops working. Used when a
+	 * customer is soft-deleted. Returns how many were ended.
+	 */
+	revokeOpenFor(input: { userId: string; identifiers: string[] }, at: string): Promise<number>;
 	deleteExpired(now: string): Promise<number>;
 }
 
@@ -107,12 +113,19 @@ export interface OAuthStateRepository {
 export interface PasswordResetTokenRepository {
 	create(token: PasswordResetToken): Promise<PasswordResetToken>;
 	consume(tokenHash: string, at: string): Promise<PasswordResetToken | null>;
+	/**
+	 * Spends every unused token for a user — password-reset and customer-activation links alike,
+	 * since activation reuses this store. Returns how many were spent.
+	 */
+	revokeAllForUser(userId: string, at: string): Promise<number>;
 	deleteExpired(now: string): Promise<number>;
 }
 
 export interface EmailVerificationTokenRepository {
 	create(token: EmailVerificationToken): Promise<EmailVerificationToken>;
 	consume(tokenHash: string, at: string): Promise<EmailVerificationToken | null>;
+	/** Spends every unused verification link for a user. Returns how many were spent. */
+	revokeAllForUser(userId: string, at: string): Promise<number>;
 	deleteExpired(now: string): Promise<number>;
 }
 

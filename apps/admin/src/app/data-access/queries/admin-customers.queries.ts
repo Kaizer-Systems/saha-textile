@@ -5,12 +5,18 @@ import { lastValueFrom } from 'rxjs';
 
 import { AdminCustomersGateway, type AdminCustomerListParams } from '@core/admin-customers/admin-customers.gateway';
 
-export function injectAdminCustomersQuery(params: () => AdminCustomerListParams) {
+/** Which population the CRM list shows: the live directory, or the recycle bin. */
+export type AdminCustomerListView = 'live' | 'deleted';
+
+export function injectAdminCustomersQuery(
+	params: () => AdminCustomerListParams,
+	view: () => AdminCustomerListView = () => 'live',
+) {
 	const gateway = inject(AdminCustomersGateway);
 
 	return injectQuery(() => ({
-		queryKey: ['admin-customers', params()],
-		queryFn: () => lastValueFrom(gateway.list(params())),
+		queryKey: ['admin-customers', view(), params()],
+		queryFn: () => lastValueFrom(view() === 'deleted' ? gateway.listDeleted(params()) : gateway.list(params())),
 	}));
 }
 

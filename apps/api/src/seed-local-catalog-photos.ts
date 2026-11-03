@@ -14,6 +14,7 @@ import { BullMqMediaJobQueue } from '@saha-textile/adapters-queue-bullmq';
 import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
 import type { ResolvedImage } from '@saha-textile/contracts';
 import { purgeAsset, resolveImage } from '@saha-textile/core-domain';
+import { format, resolveConfig } from 'prettier';
 import sharp from 'sharp';
 
 import { loadConfig } from './config/app-config';
@@ -83,6 +84,10 @@ const CONTENT_TYPES: Record<string, 'image/jpeg' | 'image/png'> = {
 
 const args = process.argv.slice(2);
 if (!args.includes('--i-am-local')) throw new Error('Pass --i-am-local: this rewrites demo data and the dev bucket.');
+if (process.env['NODE_ENV'] === 'production') throw new Error('Refused: NODE_ENV=production.');
+const mongoHost = (process.env['MONGODB_HOST'] || '127.0.0.1').toLowerCase();
+if (!['127.0.0.1', 'localhost', '::1', '0.0.0.0'].includes(mongoHost))
+	throw new Error(`Refused: MONGODB_HOST=${mongoHost} is not a loopback host.`);
 const config = loadConfig();
 if (!/_local$/.test(process.env['MONGODB_DB_NAME'] ?? ''))
 	throw new Error('Refusing: MONGODB_DB_NAME must end in _local.');
@@ -180,7 +185,9 @@ const rewriteData = async (photos: DemoPhoto[] | null): Promise<void> => {
 		const path = resolve(DATA_DIR, file);
 		const data = JSON.parse(await readFile(path, 'utf8')) as Json;
 		dress(data, photos, slot);
-		await writeFile(path, `${JSON.stringify(data, null, '\t')}\n`);
+		// Through the repo's Prettier config, so a run leaves `pnpm format:check` clean.
+		const options = { ...(await resolveConfig(path)), filepath: path };
+		await writeFile(path, await format(JSON.stringify(data), options));
 	}
 };
 

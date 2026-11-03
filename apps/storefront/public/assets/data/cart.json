@@ -10,48 +10,19 @@
 			"unit_price": 6650,
 			"line_config": {
 				"variation_label": "Green",
-				"addon_options": [
-					{
-						"group": "Blouse Designs",
-						"value": "Blouse Design 1",
-						"price_delta": 750
-					}
-				],
+				"addon_options": [{ "group": "Blouse Designs", "value": "Blouse Design 1", "price_delta": 750 }],
 				"measurements": [
-					{
-						"label": "Shoulder",
-						"value": 15,
-						"unit": "in"
-					},
-					{
-						"label": "Chest",
-						"value": 38,
-						"unit": "in"
-					},
-					{
-						"label": "Waist",
-						"value": 32,
-						"unit": "in"
-					},
-					{
-						"label": "Sleeve",
-						"value": 20,
-						"unit": "in"
-					}
+					{ "label": "Shoulder", "value": 15, "unit": "in" },
+					{ "label": "Chest", "value": 38, "unit": "in" },
+					{ "label": "Waist", "value": 32, "unit": "in" },
+					{ "label": "Sleeve", "value": 20, "unit": "in" }
 				],
 				"base_price": 5900,
 				"delta_total": 750,
 				"raw": {
 					"variation_id": 90002,
-					"addon_selections": {
-						"blouse-design": "design-1"
-					},
-					"measurements": {
-						"shoulder": 15,
-						"chest": 38,
-						"waist": 32,
-						"sleeve": 20
-					}
+					"addon_selections": { "blouse-design": "design-1" },
+					"measurements": { "shoulder": 15, "chest": 38, "waist": 32, "sleeve": 20 }
 				}
 			},
 			"created_at": "2026-01-01T00:00:00.000000Z",
@@ -107,19 +78,9 @@
 				"can_review": true,
 				"rating_count": 4.6,
 				"order_amount": 5400,
-				"review_ratings": [
-					1,
-					1,
-					0,
-					1,
-					2
-				],
+				"review_ratings": [1, 1, 0, 1, 2],
 				"related_products": [],
-				"cross_sell_products": [
-					902,
-					903,
-					904
-				],
+				"cross_sell_products": [902, 903, 904],
 				"product_thumbnail": {
 					"id": 95026,
 					"collection_name": "attachment",
@@ -294,11 +255,7 @@
 							"system_reserve": "1",
 							"created_at": "2023-08-24T08:16:03.000000Z",
 							"updated_at": "2023-08-24T08:16:03.000000Z",
-							"pivot": {
-								"model_id": "16",
-								"role_id": "3",
-								"model_type": "App\\Models\\User"
-							}
+							"pivot": { "model_id": "16", "role_id": "3", "model_type": "App\\Models\\User" }
 						},
 						"point": null,
 						"wallet": null,
@@ -361,10 +318,7 @@
 						"deleted_at": null,
 						"blogs_count": 0,
 						"products_count": 10,
-						"pivot": {
-							"product_id": "906",
-							"category_id": "60"
-						},
+						"pivot": { "product_id": "906", "category_id": "60" },
 						"category_image": {
 							"id": 382,
 							"collection_name": "attachment",
@@ -409,10 +363,7 @@
 						"deleted_at": null,
 						"blogs_count": 0,
 						"products_count": 10,
-						"pivot": {
-							"product_id": "906",
-							"tag_id": "60"
-						}
+						"pivot": { "product_id": "906", "tag_id": "60" }
 					}
 				],
 				"attributes": [
@@ -427,10 +378,7 @@
 						"created_at": "2026-01-01T00:00:00.000000Z",
 						"updated_at": "2026-01-01T00:00:00.000000Z",
 						"deleted_at": null,
-						"pivot": {
-							"product_id": "937",
-							"attribute_id": "901"
-						},
+						"pivot": { "product_id": "937", "attribute_id": "901" },
 						"attribute_values": [
 							{
 								"id": 9001,
@@ -510,10 +458,7 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90001",
-									"attribute_value_id": "9001"
-								}
+								"pivot": { "variation_id": "90001", "attribute_value_id": "9001" }
 							}
 						]
 					},
@@ -558,10 +503,7 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90002",
-									"attribute_value_id": "9002"
-								}
+								"pivot": { "variation_id": "90002", "attribute_value_id": "9002" }
 							}
 						]
 					},
@@ -606,20 +548,13 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90003",
-									"attribute_value_id": "9003"
-								}
+								"pivot": { "variation_id": "90003", "attribute_value_id": "9003" }
 							}
 						]
 					}
 				],
 				"semantic_role": "variation_axis",
-				"related_blog_ids": [
-					21,
-					20,
-					19
-				],
+				"related_blog_ids": [21, 20, 19],
 				"addon_groups": [
 					{
 						"code": "blouse-design",
@@ -629,12 +564,7 @@
 						"style": "image_tile",
 						"default_term_code": "no-design",
 						"terms": [
-							{
-								"code": "no-design",
-								"label": "No Design",
-								"price_delta": 0,
-								"is_default": true
-							},
+							{ "code": "no-design", "label": "No Design", "price_delta": 0, "is_default": true },
 							{
 								"code": "design-1",
 								"label": "Blouse Design 1",
@@ -657,34 +587,10 @@
 					}
 				],
 				"measurement_fields": [
-					{
-						"code": "shoulder",
-						"label": "Shoulder",
-						"unit": "in",
-						"min": 10,
-						"max": 24
-					},
-					{
-						"code": "chest",
-						"label": "Chest",
-						"unit": "in",
-						"min": 24,
-						"max": 50
-					},
-					{
-						"code": "waist",
-						"label": "Waist",
-						"unit": "in",
-						"min": 22,
-						"max": 48
-					},
-					{
-						"code": "sleeve",
-						"label": "Sleeve",
-						"unit": "in",
-						"min": 4,
-						"max": 26
-					}
+					{ "code": "shoulder", "label": "Shoulder", "unit": "in", "min": 10, "max": 24 },
+					{ "code": "chest", "label": "Chest", "unit": "in", "min": 24, "max": 50 },
+					{ "code": "waist", "label": "Waist", "unit": "in", "min": 22, "max": 48 },
+					{ "code": "sleeve", "label": "Sleeve", "unit": "in", "min": 4, "max": 26 }
 				]
 			},
 			"variation": {
@@ -728,10 +634,7 @@
 						"created_at": "2026-01-01T00:00:00.000000Z",
 						"updated_at": "2026-01-01T00:00:00.000000Z",
 						"deleted_at": null,
-						"pivot": {
-							"variation_id": "90002",
-							"attribute_value_id": "9002"
-						}
+						"pivot": { "variation_id": "90002", "attribute_value_id": "9002" }
 					}
 				]
 			}
@@ -748,9 +651,7 @@
 				"variation_label": "Maroon / Zari",
 				"base_price": 7800,
 				"delta_total": 0,
-				"raw": {
-					"variation_id": 90022
-				}
+				"raw": { "variation_id": 90022 }
 			},
 			"created_at": "2026-01-01T00:00:00.000000Z",
 			"updated_at": "2026-01-01T00:00:00.000000Z",
@@ -805,18 +706,9 @@
 				"can_review": true,
 				"rating_count": 4.6,
 				"order_amount": 7800,
-				"review_ratings": [
-					1,
-					1,
-					0,
-					1,
-					2
-				],
+				"review_ratings": [1, 1, 0, 1, 2],
 				"related_products": [],
-				"cross_sell_products": [
-					903,
-					902
-				],
+				"cross_sell_products": [903, 902],
 				"product_thumbnail": {
 					"id": 95056,
 					"collection_name": "attachment",
@@ -991,11 +883,7 @@
 							"system_reserve": "1",
 							"created_at": "2023-08-24T08:16:03.000000Z",
 							"updated_at": "2023-08-24T08:16:03.000000Z",
-							"pivot": {
-								"model_id": "16",
-								"role_id": "3",
-								"model_type": "App\\Models\\User"
-							}
+							"pivot": { "model_id": "16", "role_id": "3", "model_type": "App\\Models\\User" }
 						},
 						"point": null,
 						"wallet": null,
@@ -1058,10 +946,7 @@
 						"deleted_at": null,
 						"blogs_count": 0,
 						"products_count": 10,
-						"pivot": {
-							"product_id": "912",
-							"category_id": "60"
-						},
+						"pivot": { "product_id": "912", "category_id": "60" },
 						"category_image": {
 							"id": 382,
 							"collection_name": "attachment",
@@ -1106,10 +991,7 @@
 						"deleted_at": null,
 						"blogs_count": 0,
 						"products_count": 10,
-						"pivot": {
-							"product_id": "912",
-							"tag_id": "60"
-						}
+						"pivot": { "product_id": "912", "tag_id": "60" }
 					}
 				],
 				"attributes": [
@@ -1124,10 +1006,7 @@
 						"created_at": "2026-01-01T00:00:00.000000Z",
 						"updated_at": "2026-01-01T00:00:00.000000Z",
 						"deleted_at": null,
-						"pivot": {
-							"product_id": "912",
-							"attribute_id": "907"
-						},
+						"pivot": { "product_id": "912", "attribute_id": "907" },
 						"attribute_values": [
 							{
 								"id": 9022,
@@ -1175,10 +1054,7 @@
 						"created_at": "2026-01-01T00:00:00.000000Z",
 						"updated_at": "2026-01-01T00:00:00.000000Z",
 						"deleted_at": null,
-						"pivot": {
-							"product_id": "912",
-							"attribute_id": "908"
-						},
+						"pivot": { "product_id": "912", "attribute_id": "908" },
 						"attribute_values": [
 							{
 								"id": 9025,
@@ -1247,10 +1123,7 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90022",
-									"attribute_value_id": "9022"
-								}
+								"pivot": { "variation_id": "90022", "attribute_value_id": "9022" }
 							},
 							{
 								"id": 9025,
@@ -1262,10 +1135,7 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90022",
-									"attribute_value_id": "9025"
-								}
+								"pivot": { "variation_id": "90022", "attribute_value_id": "9025" }
 							}
 						]
 					},
@@ -1310,10 +1180,7 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90023",
-									"attribute_value_id": "9022"
-								}
+								"pivot": { "variation_id": "90023", "attribute_value_id": "9022" }
 							},
 							{
 								"id": 9026,
@@ -1325,10 +1192,7 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90023",
-									"attribute_value_id": "9026"
-								}
+								"pivot": { "variation_id": "90023", "attribute_value_id": "9026" }
 							}
 						]
 					},
@@ -1373,10 +1237,7 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90024",
-									"attribute_value_id": "9023"
-								}
+								"pivot": { "variation_id": "90024", "attribute_value_id": "9023" }
 							},
 							{
 								"id": 9025,
@@ -1388,10 +1249,7 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90024",
-									"attribute_value_id": "9025"
-								}
+								"pivot": { "variation_id": "90024", "attribute_value_id": "9025" }
 							}
 						]
 					},
@@ -1436,10 +1294,7 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90025",
-									"attribute_value_id": "9023"
-								}
+								"pivot": { "variation_id": "90025", "attribute_value_id": "9023" }
 							},
 							{
 								"id": 9026,
@@ -1451,10 +1306,7 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90025",
-									"attribute_value_id": "9026"
-								}
+								"pivot": { "variation_id": "90025", "attribute_value_id": "9026" }
 							}
 						]
 					},
@@ -1499,10 +1351,7 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90026",
-									"attribute_value_id": "9024"
-								}
+								"pivot": { "variation_id": "90026", "attribute_value_id": "9024" }
 							},
 							{
 								"id": 9025,
@@ -1514,10 +1363,7 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90026",
-									"attribute_value_id": "9025"
-								}
+								"pivot": { "variation_id": "90026", "attribute_value_id": "9025" }
 							}
 						]
 					},
@@ -1562,10 +1408,7 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90027",
-									"attribute_value_id": "9024"
-								}
+								"pivot": { "variation_id": "90027", "attribute_value_id": "9024" }
 							},
 							{
 								"id": 9026,
@@ -1577,10 +1420,7 @@
 								"created_at": "2026-01-01T00:00:00.000000Z",
 								"updated_at": "2026-01-01T00:00:00.000000Z",
 								"deleted_at": null,
-								"pivot": {
-									"variation_id": "90027",
-									"attribute_value_id": "9026"
-								}
+								"pivot": { "variation_id": "90027", "attribute_value_id": "9026" }
 							}
 						]
 					}
@@ -1628,10 +1468,7 @@
 						"created_at": "2026-01-01T00:00:00.000000Z",
 						"updated_at": "2026-01-01T00:00:00.000000Z",
 						"deleted_at": null,
-						"pivot": {
-							"variation_id": "90022",
-							"attribute_value_id": "9022"
-						}
+						"pivot": { "variation_id": "90022", "attribute_value_id": "9022" }
 					},
 					{
 						"id": 9025,
@@ -1643,10 +1480,7 @@
 						"created_at": "2026-01-01T00:00:00.000000Z",
 						"updated_at": "2026-01-01T00:00:00.000000Z",
 						"deleted_at": null,
-						"pivot": {
-							"variation_id": "90022",
-							"attribute_value_id": "9025"
-						}
+						"pivot": { "variation_id": "90022", "attribute_value_id": "9025" }
 					}
 				]
 			}
@@ -1660,47 +1494,18 @@
 			"sub_total": 9450,
 			"unit_price": 9450,
 			"line_config": {
-				"addon_options": [
-					{
-						"group": "Blouse Designs",
-						"value": "Blouse Design 2",
-						"price_delta": 950
-					}
-				],
+				"addon_options": [{ "group": "Blouse Designs", "value": "Blouse Design 2", "price_delta": 950 }],
 				"measurements": [
-					{
-						"label": "Shoulder",
-						"value": 15,
-						"unit": "in"
-					},
-					{
-						"label": "Chest",
-						"value": 38,
-						"unit": "in"
-					},
-					{
-						"label": "Waist",
-						"value": 32,
-						"unit": "in"
-					},
-					{
-						"label": "Sleeve",
-						"value": 20,
-						"unit": "in"
-					}
+					{ "label": "Shoulder", "value": 15, "unit": "in" },
+					{ "label": "Chest", "value": 38, "unit": "in" },
+					{ "label": "Waist", "value": 32, "unit": "in" },
+					{ "label": "Sleeve", "value": 20, "unit": "in" }
 				],
 				"base_price": 8500,
 				"delta_total": 950,
 				"raw": {
-					"addon_selections": {
-						"blouse-design": "design-2"
-					},
-					"measurements": {
-						"shoulder": 15,
-						"chest": 38,
-						"waist": 32,
-						"sleeve": 20
-					}
+					"addon_selections": { "blouse-design": "design-2" },
+					"measurements": { "shoulder": 15, "chest": 38, "waist": 32, "sleeve": 20 }
 				}
 			},
 			"created_at": "2026-01-01T00:00:00.000000Z",
@@ -1756,18 +1561,9 @@
 				"can_review": true,
 				"rating_count": 4.6,
 				"order_amount": 8500,
-				"review_ratings": [
-					1,
-					1,
-					0,
-					1,
-					2
-				],
+				"review_ratings": [1, 1, 0, 1, 2],
 				"related_products": [],
-				"cross_sell_products": [
-					903,
-					910
-				],
+				"cross_sell_products": [903, 910],
 				"product_thumbnail": {
 					"id": 95166,
 					"collection_name": "attachment",
@@ -1942,11 +1738,7 @@
 							"system_reserve": "1",
 							"created_at": "2023-08-24T08:16:03.000000Z",
 							"updated_at": "2023-08-24T08:16:03.000000Z",
-							"pivot": {
-								"model_id": "16",
-								"role_id": "3",
-								"model_type": "App\\Models\\User"
-							}
+							"pivot": { "model_id": "16", "role_id": "3", "model_type": "App\\Models\\User" }
 						},
 						"point": null,
 						"wallet": null,
@@ -2009,10 +1801,7 @@
 						"deleted_at": null,
 						"blogs_count": 0,
 						"products_count": 10,
-						"pivot": {
-							"product_id": "934",
-							"category_id": "60"
-						},
+						"pivot": { "product_id": "934", "category_id": "60" },
 						"category_image": {
 							"id": 382,
 							"collection_name": "attachment",
@@ -2057,22 +1846,14 @@
 						"deleted_at": null,
 						"blogs_count": 0,
 						"products_count": 10,
-						"pivot": {
-							"product_id": "934",
-							"tag_id": "60"
-						}
+						"pivot": { "product_id": "934", "tag_id": "60" }
 					}
 				],
 				"attributes": [],
 				"variations": [],
 				"semantic_role": "named_add_on",
 				"semantic_attributes": [
-					{
-						"code": "fabric",
-						"label": "fabric",
-						"value": "Katan Silk",
-						"icon": "ri-shirt-line"
-					}
+					{ "code": "fabric", "label": "fabric", "value": "Katan Silk", "icon": "ri-shirt-line" }
 				],
 				"addon_groups": [
 					{
@@ -2082,12 +1863,7 @@
 						"required": true,
 						"default_term_code": "no-design",
 						"terms": [
-							{
-								"code": "no-design",
-								"label": "No Design",
-								"price_delta": 0,
-								"is_default": true
-							},
+							{ "code": "no-design", "label": "No Design", "price_delta": 0, "is_default": true },
 							{
 								"code": "design-1",
 								"label": "Blouse Design 1",
@@ -2111,40 +1887,12 @@
 					}
 				],
 				"measurement_fields": [
-					{
-						"code": "shoulder",
-						"label": "Shoulder",
-						"unit": "in",
-						"min": 10,
-						"max": 24
-					},
-					{
-						"code": "chest",
-						"label": "Chest",
-						"unit": "in",
-						"min": 24,
-						"max": 50
-					},
-					{
-						"code": "waist",
-						"label": "Waist",
-						"unit": "in",
-						"min": 22,
-						"max": 48
-					},
-					{
-						"code": "sleeve",
-						"label": "Sleeve",
-						"unit": "in",
-						"min": 4,
-						"max": 26
-					}
+					{ "code": "shoulder", "label": "Shoulder", "unit": "in", "min": 10, "max": 24 },
+					{ "code": "chest", "label": "Chest", "unit": "in", "min": 24, "max": 50 },
+					{ "code": "waist", "label": "Waist", "unit": "in", "min": 22, "max": 48 },
+					{ "code": "sleeve", "label": "Sleeve", "unit": "in", "min": 4, "max": 26 }
 				],
-				"related_blog_ids": [
-					24,
-					22,
-					20
-				]
+				"related_blog_ids": [24, 22, 20]
 			},
 			"variation": null
 		},
@@ -2158,69 +1906,25 @@
 			"unit_price": 13700,
 			"line_config": {
 				"bundle_options": [
-					{
-						"group": "Blouse Design",
-						"value": "Design 1",
-						"price_delta": 800
-					},
-					{
-						"group": "Petticoat Size",
-						"value": "M",
-						"price_delta": 0
-					}
+					{ "group": "Blouse Design", "value": "Design 1", "price_delta": 800 },
+					{ "group": "Petticoat Size", "value": "M", "price_delta": 0 }
 				],
 				"bundle_components": [
-					{
-						"name": "Katan Saree",
-						"sku": "SAR-001",
-						"price": 9900
-					},
-					{
-						"name": "Blouse Stitching Service",
-						"sku": "SERV-BL-D2",
-						"price": 2000
-					},
-					{
-						"name": "Petticoat",
-						"sku": "PET-RED-M",
-						"price": 1000
-					}
+					{ "name": "Katan Saree", "sku": "SAR-001", "price": 9900 },
+					{ "name": "Blouse Stitching Service", "sku": "SERV-BL-D2", "price": 2000 },
+					{ "name": "Petticoat", "sku": "PET-RED-M", "price": 1000 }
 				],
 				"measurements": [
-					{
-						"label": "Shoulder",
-						"value": 15,
-						"unit": "in"
-					},
-					{
-						"label": "Chest",
-						"value": 38,
-						"unit": "in"
-					},
-					{
-						"label": "Waist",
-						"value": 32,
-						"unit": "in"
-					},
-					{
-						"label": "Sleeve",
-						"value": 20,
-						"unit": "in"
-					}
+					{ "label": "Shoulder", "value": 15, "unit": "in" },
+					{ "label": "Chest", "value": 38, "unit": "in" },
+					{ "label": "Waist", "value": 32, "unit": "in" },
+					{ "label": "Sleeve", "value": 20, "unit": "in" }
 				],
 				"base_price": 12900,
 				"delta_total": 800,
 				"raw": {
-					"bundle_selections": {
-						"blouse-design": "design-1",
-						"petticoat-size": "m"
-					},
-					"measurements": {
-						"shoulder": 15,
-						"chest": 38,
-						"waist": 32,
-						"sleeve": 20
-					}
+					"bundle_selections": { "blouse-design": "design-1", "petticoat-size": "m" },
+					"measurements": { "shoulder": 15, "chest": 38, "waist": 32, "sleeve": 20 }
 				}
 			},
 			"created_at": "2026-01-01T00:00:00.000000Z",
@@ -2276,13 +1980,7 @@
 				"can_review": true,
 				"rating_count": 4.6,
 				"order_amount": 12900,
-				"review_ratings": [
-					1,
-					1,
-					0,
-					1,
-					2
-				],
+				"review_ratings": [1, 1, 0, 1, 2],
 				"related_products": [],
 				"cross_sell_products": [],
 				"product_thumbnail": {
@@ -2459,11 +2157,7 @@
 							"system_reserve": "1",
 							"created_at": "2023-08-24T08:16:03.000000Z",
 							"updated_at": "2023-08-24T08:16:03.000000Z",
-							"pivot": {
-								"model_id": "16",
-								"role_id": "3",
-								"model_type": "App\\Models\\User"
-							}
+							"pivot": { "model_id": "16", "role_id": "3", "model_type": "App\\Models\\User" }
 						},
 						"point": null,
 						"wallet": null,
@@ -2526,10 +2220,7 @@
 						"deleted_at": null,
 						"blogs_count": 0,
 						"products_count": 10,
-						"pivot": {
-							"product_id": "936",
-							"category_id": "67"
-						},
+						"pivot": { "product_id": "936", "category_id": "67" },
 						"category_image": {
 							"id": 382,
 							"collection_name": "attachment",
@@ -2574,10 +2265,7 @@
 						"deleted_at": null,
 						"blogs_count": 0,
 						"products_count": 10,
-						"pivot": {
-							"product_id": "936",
-							"tag_id": "67"
-						}
+						"pivot": { "product_id": "936", "tag_id": "67" }
 					}
 				],
 				"attributes": [],
@@ -2600,18 +2288,8 @@
 							"stock": 4,
 							"price": 9900,
 							"attributes": [
-								{
-									"code": "color",
-									"label": "color",
-									"value": "Red",
-									"icon": "ri-palette-line"
-								},
-								{
-									"code": "fabric",
-									"label": "fabric",
-									"value": "Katan Silk",
-									"icon": "ri-shirt-line"
-								}
+								{ "code": "color", "label": "color", "value": "Red", "icon": "ri-palette-line" },
+								{ "code": "fabric", "label": "fabric", "value": "Katan Silk", "icon": "ri-shirt-line" }
 							]
 						},
 						{
@@ -2642,18 +2320,8 @@
 							"stock": 7,
 							"price": 1000,
 							"attributes": [
-								{
-									"code": "color",
-									"label": "color",
-									"value": "Red",
-									"icon": "ri-palette-line"
-								},
-								{
-									"code": "fabric",
-									"label": "fabric",
-									"value": "Cotton",
-									"icon": "ri-shirt-line"
-								}
+								{ "code": "color", "label": "color", "value": "Red", "icon": "ri-palette-line" },
+								{ "code": "fabric", "label": "fabric", "value": "Cotton", "icon": "ri-shirt-line" }
 							]
 						}
 					],
@@ -2664,12 +2332,7 @@
 							"required": true,
 							"default_term_code": "no-design",
 							"terms": [
-								{
-									"code": "no-design",
-									"label": "No Design",
-									"price_delta": 0,
-									"is_default": true
-								},
+								{ "code": "no-design", "label": "No Design", "price_delta": 0, "is_default": true },
 								{
 									"code": "design-1",
 									"label": "Design 1",
@@ -2691,55 +2354,18 @@
 							"required": true,
 							"default_term_code": "m",
 							"terms": [
-								{
-									"code": "s",
-									"label": "S",
-									"price_delta": 0
-								},
-								{
-									"code": "m",
-									"label": "M",
-									"price_delta": 0,
-									"is_default": true
-								},
-								{
-									"code": "l",
-									"label": "L",
-									"price_delta": 0
-								}
+								{ "code": "s", "label": "S", "price_delta": 0 },
+								{ "code": "m", "label": "M", "price_delta": 0, "is_default": true },
+								{ "code": "l", "label": "L", "price_delta": 0 }
 							],
 							"style": "circle"
 						}
 					],
 					"measurement_fields": [
-						{
-							"code": "shoulder",
-							"label": "Shoulder",
-							"unit": "in",
-							"min": 10,
-							"max": 24
-						},
-						{
-							"code": "chest",
-							"label": "Chest",
-							"unit": "in",
-							"min": 24,
-							"max": 50
-						},
-						{
-							"code": "waist",
-							"label": "Waist",
-							"unit": "in",
-							"min": 22,
-							"max": 48
-						},
-						{
-							"code": "sleeve",
-							"label": "Sleeve",
-							"unit": "in",
-							"min": 4,
-							"max": 26
-						}
+						{ "code": "shoulder", "label": "Shoulder", "unit": "in", "min": 10, "max": 24 },
+						{ "code": "chest", "label": "Chest", "unit": "in", "min": 24, "max": 50 },
+						{ "code": "waist", "label": "Waist", "unit": "in", "min": 22, "max": 48 },
+						{ "code": "sleeve", "label": "Sleeve", "unit": "in", "min": 4, "max": 26 }
 					]
 				}
 			},
@@ -2807,13 +2433,7 @@
 				"can_review": true,
 				"rating_count": 4.6,
 				"order_amount": 1200,
-				"review_ratings": [
-					1,
-					1,
-					0,
-					1,
-					2
-				],
+				"review_ratings": [1, 1, 0, 1, 2],
 				"related_products": [],
 				"cross_sell_products": [],
 				"product_thumbnail": {
@@ -2990,11 +2610,7 @@
 							"system_reserve": "1",
 							"created_at": "2023-08-24T08:16:03.000000Z",
 							"updated_at": "2023-08-24T08:16:03.000000Z",
-							"pivot": {
-								"model_id": "16",
-								"role_id": "3",
-								"model_type": "App\\Models\\User"
-							}
+							"pivot": { "model_id": "16", "role_id": "3", "model_type": "App\\Models\\User" }
 						},
 						"point": null,
 						"wallet": null,
@@ -3057,10 +2673,7 @@
 						"deleted_at": null,
 						"blogs_count": 0,
 						"products_count": 10,
-						"pivot": {
-							"product_id": "902",
-							"category_id": "66"
-						},
+						"pivot": { "product_id": "902", "category_id": "66" },
 						"category_image": {
 							"id": 382,
 							"collection_name": "attachment",
@@ -3105,10 +2718,7 @@
 						"deleted_at": null,
 						"blogs_count": 0,
 						"products_count": 10,
-						"pivot": {
-							"product_id": "902",
-							"tag_id": "66"
-						}
+						"pivot": { "product_id": "902", "tag_id": "66" }
 					}
 				],
 				"attributes": [],

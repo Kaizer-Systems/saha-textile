@@ -4,7 +4,7 @@ import { withBrowserLock } from '@saha-textile/http-transport';
 import { firstValueFrom } from 'rxjs';
 
 import { AdminAuthGateway } from '@core/auth/auth-gateway';
-import { SESSION_REFRESH_LOCK } from '@core/interceptors/auth.interceptor';
+import { SESSION_REFRESH_LOCK } from '@core/auth/session-refresh-lock';
 import { AuthStore } from '@core/state/auth.store';
 
 /** Admin soft-lock idle window (owner lock — 15 minutes). Must stay below admin server idle TTL. */

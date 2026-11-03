@@ -24,15 +24,9 @@ import {
 } from '@saha-textile/http-transport';
 
 import { AdminAuthGateway } from '@core/auth/auth-gateway';
+import { SESSION_REFRESH_LOCK } from '@core/auth/session-refresh-lock';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
-
-/**
- * Web Locks are scoped per origin, and the name is audience-specific so that an origin ever
- * shared with the storefront would not serialise two unrelated sessions against each other.
- */
-/** Shared with `IdleLockService`: every refresh in every tab takes this one lock. */
-export const SESSION_REFRESH_LOCK = 'saha-textile-admin-session-refresh';
 
 /**
  * Session transport for admin API calls.

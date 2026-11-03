@@ -57,7 +57,7 @@ Trace the explicit no-op, fixture-backed, or navigation-only boundary before imp
 7. Remove obsolete no-op comments and fixture assumptions.
 8. Advance portal status only after verification.
 
-Live CRM soft-delete already follows this path: the default list hides deleted customers; do not add revive/recycle-bin UI until `DEC-CUSTOMER-SOFT-DELETE-OPS` lands.
+Live CRM soft-delete already follows this path: the default list hides deleted customers; the recycle bin + restore rules were decided on 2026-11-03 (`DEC-CUSTOMER-SOFT-DELETE-OPS`, owner log); the screen change still needs an approved UI brief before it is built.
 
 ## Recipe: phone dial with country flags
 

@@ -947,7 +947,7 @@
 			"currentState": "existing",
 			"targetAction": "refactor",
 			"owningChunks": ["I"],
-			"blockingDecisions": ["DEC-TRANSLATION-QUALITY"],
+			"blockingDecisions": [],
 			"purpose": "Approved channel templates, provider template identifiers, and localized email content.",
 			"source": "notifications NotificationTemplate",
 			"currentModel": "packages/adapters-db-mongo/src/models/governance.model.ts",

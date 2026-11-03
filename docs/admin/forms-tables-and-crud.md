@@ -108,6 +108,6 @@ Bulk delete, approval, publish, and status actions require more than a selected-
 
 ## Live CRM and dial conventions
 
-Customer list/create/edit (`/customer`, `/customer/create`, `/customer/edit/:id`) and customer ledger are live against `/admin/customers/**`. Soft-delete hides deleted rows by default; revive/ops behavior is blocked on `DEC-CUSTOMER-SOFT-DELETE-OPS`—do not invent a recycle-bin path ahead of that gate.
+Customer list/create/edit (`/customer`, `/customer/create`, `/customer/edit/:id`) and customer ledger are live against `/admin/customers/**`. Soft-delete hides deleted rows by default; the recycle bin + restore rules were decided on 2026-11-03 (`DEC-CUSTOMER-SOFT-DELETE-OPS`, owner log) and need an approved UI brief before they are built.
 
 Phone dial selects reuse HTML labels from `shared/data/country-code.ts` and the local sprite `/assets/images/flags/flags.png` (with `flags@2x.png`). Prefer the shared `.country` / `.iti-flag` markup over custom flag markup.

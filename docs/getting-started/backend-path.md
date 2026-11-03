@@ -3,7 +3,7 @@ title: Backend Path
 description: Onboarding route for API, contracts, domain and adapter work.
 status: scaffolded
 audience: [backend]
-last_verified: '2026-11-03'
+last_verified: '2026-11-04'
 source_of_truth:
     - apps/api/src
     - packages/core-domain/src

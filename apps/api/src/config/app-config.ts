@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { DEPLOY_ENVS, DeploymentConfigError, deploymentHardeningProblems } from './deployment-hardening';
+
 /**
  * Parses 'true'/'false' env strings into a real boolean.
  *
@@ -74,6 +76,13 @@ const SpacesConfigSchema = z
 /** Runtime configuration, validated once at boot from process.env. */
 const ConfigSchema = z.object({
 	nodeEnv: z.enum(['development', 'test', 'production']).default('development'),
+	/**
+	 * Where this process runs — `local`, `staging` or `production` (`DEPLOY_ENV`). Optional, and
+	 * its absence is NOT leniency: with `NODE_ENV=production` an unset value is treated as a
+	 * deployment, so the hardening rules in `deployment-hardening.ts` apply unless the operator
+	 * says `DEPLOY_ENV=local` (the mode-3 Docker stack does).
+	 */
+	deployEnv: z.enum(DEPLOY_ENVS).optional(),
 	port: z.coerce.number().int().positive().default(4000),
 	corsAllowedOrigins: z
 		.string()
@@ -278,9 +287,24 @@ export type AppConfig = z.infer<typeof ConfigSchema>;
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
 
+/**
+ * Parses and validates the configuration, then applies the deployment hardening rules.
+ *
+ * Throws on the first failure of shape (zod) and otherwise reports every hardening problem at
+ * once (`DeploymentConfigError`). Both happen before anything connects or listens, so a strict
+ * deployment that is misconfigured never serves a request.
+ */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
+	const config = parseConfig(env);
+	const problems = deploymentHardeningProblems(config, env);
+	if (problems.length > 0) throw new DeploymentConfigError(problems);
+	return config;
+}
+
+function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 	return RuntimeConfigSchema.parse({
 		nodeEnv: env.NODE_ENV,
+		deployEnv: env.DEPLOY_ENV || undefined,
 		port: env.PORT,
 		corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS,
 		trustProxy: env.TRUST_PROXY,
@@ -289,8 +313,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 		rateLimitMax: env.RATE_LIMIT_MAX,
 		rateLimitWindow: env.RATE_LIMIT_WINDOW,
 		jwt: {
-			accessSecret: env.JWT_ACCESS_SECRET ?? 'dev-access-secret-change-me',
-			refreshSecret: env.JWT_REFRESH_SECRET ?? 'dev-refresh-secret-change-me',
+			// Development fallbacks only. A strict deployment refuses to start without real values
+			// (`deployment-hardening.ts` reads the raw env, so these never satisfy it).
+			accessSecret: env.JWT_ACCESS_SECRET || 'dev-access-secret-change-me',
+			refreshSecret: env.JWT_REFRESH_SECRET || 'dev-refresh-secret-change-me',
 			accessTtl: env.JWT_ACCESS_TTL,
 			refreshTtl: env.JWT_REFRESH_TTL,
 		},

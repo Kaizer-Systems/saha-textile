@@ -839,6 +839,33 @@ constrain design and are not to be re-litigated inside a build session. The ques
 - HSN digit length is turnover-banded: 4-digit while preceding-year turnover is up to ₹5 crore, 6-digit above it.
 - Rate resolution is implemented as a function of the order line, not as a constant looked up from a tax class, because the apparel rate may depend on per-piece value. The codes, the rates, and the threshold rule are unissued (`DEC-TAX-HSN`, round-2 items `B2.4`, `B2.5`, `B2.6`).
 
+## Owner decision round (2026-11-03)
+
+Answered in chat on 2026-11-03 and removed from `pending-decisions.mdx`.
+
+- **`DEC-TRANSLATION-QUALITY` — best-effort French, then human review.** Developers write
+  reasonable French as they build; a named reviewer checks each screen before it is
+  release-ready; visible placeholder keys never ship. Proper-noun parts of product and other
+  admin-entered names stay as entered — they are content, not interface copy, and are not
+  translated by engineering passes.
+- **`DEC-ACCOUNT-EMPTY-TILES` — leave the zeros.** The storefront dashboard keeps its Balance,
+  Points and Orders tiles showing honest zeros until each feature lands.
+- **`DEC-SOFT-DELETED-IDENTITY-REUSE` — unlink on soft delete.** Soft-deleting a customer
+  releases their linked Google/Facebook identities the same way email and phone are released,
+  so the person can sign up again with the same provider account. The audit log keeps the
+  history. Implementation pending.
+- **`DEC-DENVER-HOME-GRADIENT` — flat theme colour.** The home-search background uses
+  `var(--theme-color)` instead of the vendor's green ramp. Done 2026-11-03.
+- **`DEC-CUSTOMER-SOFT-DELETE-OPS` — recycle bin plus restore (the recommended route).** A
+  "Deleted" filter in the CRM customer list (not the default view); restore needs a dedicated
+  permission; restore is refused when the email or phone now belongs to another live customer;
+  soft delete revokes activation tokens and OTP challenges and ends the customer's sessions;
+  reports exclude deleted customers unless explicitly included. Implementation pending (the
+  CRM screen change needs a UI brief first).
+
+Still open after this round: `DEC-PORTAL-PRIVATE-ACCESS` (owner: decide at deploy time) and
+the production half of `DEC-DOMAIN-TOPOLOGY`.
+
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

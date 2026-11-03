@@ -4,7 +4,7 @@ wide: true
 description: Authenticated checkout calculation, quote, promotion, tax, FX, shipping, and correction flow.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-10-31'
+last_verified: '2026-11-03'
 source_of_truth:
     - apps/storefront/src/app/features/shop/checkout
     - apps/api/src/cart

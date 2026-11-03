@@ -59,7 +59,7 @@ flowchart LR
 
 The content shell lazy-loads dashboard, account, role, user, attribute, tag, blog, page, tax, store, category, shipping, media, coupon, product, currency, **customer** (`/customer`, `/customer/create`, `/customer/edit/:id`), customer ledger, points, settings, order status, orders, theme options, reviews, FAQs, notifications, refunds, and questions/answers.
 
-CRM soft-delete hides deleted customers by default; revive/ops rules remain open on `DEC-CUSTOMER-SOFT-DELETE-OPS`.
+CRM soft-delete hides deleted customers by default; recycle bin + restore was decided on 2026-11-03 (`DEC-CUSTOMER-SOFT-DELETE-OPS`) and is not built yet.
 
 Several families also expose create/edit routes. Orders add details, create-order, and checkout routes; blog adds category and tag subflows.
 

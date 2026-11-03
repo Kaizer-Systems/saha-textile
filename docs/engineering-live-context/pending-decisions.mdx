@@ -3,7 +3,7 @@ title: 'Pending Decisions'
 description: 'Canonical inbox of unresolved owner decisions and stable implementation gates.'
 audience: [engineering, product, operator, agent]
 document_role: canonical
-last_verified: '2026-11-02'
+last_verified: '2026-11-03'
 search_keywords: 'pending decisions owner questions implementation gates unresolved'
 ---
 
@@ -11,7 +11,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 
 **Status:** Sole owner-question inbox. Nothing in this file is locked until the owner answers it and the answer is recorded in `owner-decisions-log.mdx`.
 
-**Last reconciled:** 2026-11-02
+**Last reconciled:** 2026-11-03
 
 ## How this file works
 
@@ -31,33 +31,28 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 
 ## Open-decision index
 
-| ID                                | Decision                                                                                             | Primary impact                                   |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `DEC-NUMBERING`                   | Order, tax-invoice, purchase-invoice, and related document numbering — **partly settled 2026-08-21** | Orders, invoices, sequences, GST audit           |
-| `DEC-TAX-HSN`                     | Tax classes, GST slabs, and HSN granularity — **partly settled 2026-08-21**                          | Catalog, checkout, invoices, accounting          |
-| `DEC-SHIPPING`                    | Launch shipping-rate policy — **partly settled 2026-08-21**                                          | Checkout, Shiprocket seam, promotions            |
-| `DEC-RETURNS`                     | Return/refund policy — **partly settled 2026-08-21**                                                 | Orders, returns, refunds, customer support       |
-| `DEC-PROMO-STACK`                 | Promotion and coupon stacking                                                                        | Pricing engine, checkout                         |
-| `DEC-STOCK-RESERVE`               | Stock reservation timing and TTL                                                                     | Inventory, checkout, payment recovery            |
-| `DEC-BACKORDER`                   | Backorder/oversell policy                                                                            | Catalog, inventory, storefront                   |
-| `DEC-ORDER-SNAPSHOT`              | Immutable order-line snapshot fields — **partly settled 2026-08-21**                                 | Orders, invoices, analytics, support             |
-| `DEC-ADDRESS`                     | Address model and checkout phone requirements — **partly settled 2026-08-21**                        | Accounts, checkout, shipping                     |
-| `DEC-VARIANT-OVERRIDES`           | Fields variants may override                                                                         | Catalog contracts and admin forms                |
-| `DEC-PRICE-DISPLAY`               | MRP, sale, and price-range behavior                                                                  | Catalog, pricing, storefront                     |
-| `DEC-ADDON-MEASUREMENTS`          | Add-on pricing and measurement validation                                                            | Product setup, cart, orders                      |
-| `DEC-CUSTOMER-CREDIT`             | Ledger, store credit, wallet, and points scope — **partly settled 2026-08-21**                       | Customers, refunds, checkout                     |
-| `DEC-ID-SLUG`                     | IDs, business codes, slugs, and redirects                                                            | Catalog, SEO, orders                             |
-| `DEC-BADGES-RAILS`                | Storefront badge and rail taxonomy                                                                   | Analytics and merchandising                      |
-| `DEC-SCOPE-GAPS`                  | Missing business flows and launch scope                                                              | Whole product                                    |
-| `DEC-PAYPAL-FX`                   | Treatment of PayPal FX-conversion markup                                                             | Foreign-currency pricing and margin              |
-| `DEC-INR-GATEWAY-TIMING`          | Timing of CCAvenue-to-Razorpay succession                                                            | Payment adapter delivery and operations          |
-| `DEC-DOMAIN-TOPOLOGY`             | Production hostname topology — **partly settled 2026-11-02**                                         | Cookies, CORS, Nginx, deployment                 |
-| `DEC-TRANSLATION-QUALITY`         | French translation authorship and acceptance policy                                                  | Storefront/admin copy quality and release QA     |
-| `DEC-PORTAL-PRIVATE-ACCESS`       | Developer-portal identity policy and origin-protection mechanism                                     | Portal deployment, Cloudflare, service access    |
-| `DEC-CUSTOMER-SOFT-DELETE-OPS`    | **VERY IMPORTANT** — soft-deleted customer revive, access, and order/ledger corner cases             | CRM list/detail, auth, orders, uniqueness, MSG91 |
-| `DEC-ACCOUNT-EMPTY-TILES`         | Visibility of unavailable account-dashboard metrics                                                  | Storefront account dashboard                     |
-| `DEC-SOFT-DELETED-IDENTITY-REUSE` | Provider-link behavior after customer soft deletion                                                  | Storefront identity, CRM, account recovery       |
-| `DEC-DENVER-HOME-GRADIENT`        | Denver-theme treatment for the home-search gradient                                                  | Storefront visual design                         |
+| ID                          | Decision                                                                                             | Primary impact                                |
+| --------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `DEC-NUMBERING`             | Order, tax-invoice, purchase-invoice, and related document numbering — **partly settled 2026-08-21** | Orders, invoices, sequences, GST audit        |
+| `DEC-TAX-HSN`               | Tax classes, GST slabs, and HSN granularity — **partly settled 2026-08-21**                          | Catalog, checkout, invoices, accounting       |
+| `DEC-SHIPPING`              | Launch shipping-rate policy — **partly settled 2026-08-21**                                          | Checkout, Shiprocket seam, promotions         |
+| `DEC-RETURNS`               | Return/refund policy — **partly settled 2026-08-21**                                                 | Orders, returns, refunds, customer support    |
+| `DEC-PROMO-STACK`           | Promotion and coupon stacking                                                                        | Pricing engine, checkout                      |
+| `DEC-STOCK-RESERVE`         | Stock reservation timing and TTL                                                                     | Inventory, checkout, payment recovery         |
+| `DEC-BACKORDER`             | Backorder/oversell policy                                                                            | Catalog, inventory, storefront                |
+| `DEC-ORDER-SNAPSHOT`        | Immutable order-line snapshot fields — **partly settled 2026-08-21**                                 | Orders, invoices, analytics, support          |
+| `DEC-ADDRESS`               | Address model and checkout phone requirements — **partly settled 2026-08-21**                        | Accounts, checkout, shipping                  |
+| `DEC-VARIANT-OVERRIDES`     | Fields variants may override                                                                         | Catalog contracts and admin forms             |
+| `DEC-PRICE-DISPLAY`         | MRP, sale, and price-range behavior                                                                  | Catalog, pricing, storefront                  |
+| `DEC-ADDON-MEASUREMENTS`    | Add-on pricing and measurement validation                                                            | Product setup, cart, orders                   |
+| `DEC-CUSTOMER-CREDIT`       | Ledger, store credit, wallet, and points scope — **partly settled 2026-08-21**                       | Customers, refunds, checkout                  |
+| `DEC-ID-SLUG`               | IDs, business codes, slugs, and redirects                                                            | Catalog, SEO, orders                          |
+| `DEC-BADGES-RAILS`          | Storefront badge and rail taxonomy                                                                   | Analytics and merchandising                   |
+| `DEC-SCOPE-GAPS`            | Missing business flows and launch scope                                                              | Whole product                                 |
+| `DEC-PAYPAL-FX`             | Treatment of PayPal FX-conversion markup                                                             | Foreign-currency pricing and margin           |
+| `DEC-INR-GATEWAY-TIMING`    | Timing of CCAvenue-to-Razorpay succession                                                            | Payment adapter delivery and operations       |
+| `DEC-DOMAIN-TOPOLOGY`       | Production hostname topology — **partly settled 2026-11-02**                                         | Cookies, CORS, Nginx, deployment              |
+| `DEC-PORTAL-PRIVATE-ACCESS` | Developer-portal identity policy and origin-protection mechanism                                     | Portal deployment, Cloudflare, service access |
 
 ---
 
@@ -993,57 +988,6 @@ Notes:
 
 ---
 
-## 23. `DEC-TRANSLATION-QUALITY` — French translation acceptance
-
-### Decision needed
-
-Choose who authors and approves French values for new/changed UI and
-admin-authored content.
-
-### Why this matters
-
-English and French are the active target locale pair, but a technical
-implementation pass cannot establish business-quality French by guessing.
-Without a rule, contributors may mix machine translation, English fallbacks,
-placeholders, and unreviewed copy.
-
-### Recommended route
-
-Allow clearly flagged best-effort French during implementation, require a named
-human review before the affected route is release-ready, and never ship visible
-placeholder tokens.
-
-### Options
-
-#### Option A — Best-effort then human review (recommended)
-
-- Pros: engineering is not blocked while keeping a real quality gate.
-- Cons: requires a visible review queue and accountable reviewer.
-
-#### Option B — English fallback until professional translation
-
-- Pros: avoids incorrect French.
-- Cons: the French experience remains incomplete and must be visibly tracked.
-
-#### Option C — Translation required before merge
-
-- Pros: every merged locale value is approved.
-- Cons: blocks engineering on translator availability.
-
-### Owner answer
-
-Choice:
-
-Approved author/reviewer:
-
-May English fallback ship temporarily:
-
-Release gate:
-
-Notes:
-
----
-
 ## 24. `DEC-PORTAL-PRIVATE-ACCESS` — Developer-portal private-access design
 
 ### Decision needed
@@ -1107,174 +1051,5 @@ Session duration and re-authentication rule:
 Service-token consumers:
 
 Origin-bypass test target:
-
-Notes:
-
----
-
-## 25. `DEC-CUSTOMER-SOFT-DELETE-OPS` — Soft-deleted customer ops (VERY IMPORTANT)
-
-> **VERY IMPORTANT.** Soft-delete of durable customer accounts is already locked
-> (owner log: soft-delete retention for durable business records). This gate is **not** “hard vs soft” — it is how
-> operators **find, revive, and safely handle** tombstones, especially when
-> orders/ledger/identity are involved. Current CRM code **hides** deleted rows
-> by default and **404s** detail for deleted ids, so there is **no recovery UI**
-> until this is answered. Blocks CRM ops UX and any revive/restore API.
-
-### Decision needed
-
-Define operator access and lifecycle rules for soft-deleted storefront customers:
-
-1. How staff **discover** soft-deleted customers (status filter, recycle bin,
-   search-including-deleted, deep link).
-2. Whether **revive/restore** is allowed; who may do it (existing
-   `customer.update` vs a dedicated permission); restore target status
-   (`pending` vs `active`).
-3. What happens on restore when **email/phone was reclaimed** by a newer
-   account (fail closed — UI and API).
-4. Whether soft-delete is **allowed when historical or open orders / unpaid
-   ledger / gift credit** exist; if always allowed, what restore implies for
-   GST naming, credit notes, customer ledger, MSG91/WhatsApp identity, and
-   analytics.
-5. Side effects on soft-delete: revoke **activation tokens / OTP challenges**,
-   bump **tokenVersion** / revoke live sessions, or keep relying on
-   status-only checks.
-6. Reporting/export: tombstones in or out of sales/customer reports; relation
-   to GDPR purge vs financial retention windows.
-7. Concurrent **restore vs create** races against partial unique indexes.
-
-### Why this matters (current failure modes)
-
-| Scenario                                         | What code does today                      | Risk                                                    |
-| ------------------------------------------------ | ----------------------------------------- | ------------------------------------------------------- |
-| Accidental soft-delete                           | List hides row; `GET :id` 404             | No in-product recovery path                             |
-| Staff bookmark `/customer/edit/:id` after delete | 404                                       | Broken deep links; support confusion                    |
-| Soft-delete then new customer with same email    | Uniqueness released; new row OK           | Restore of old row must fail if email taken             |
-| Soft-delete with order history                   | Allowed; orders keep `customerId`         | Restore / naming / ledger / tax docs unclear            |
-| Open orders or unpaid credit at delete           | Not blocked                               | Ops may tombstone an account still owed/owing           |
-| Activation link after delete                     | Token may consume then 401; stays deleted | Burned token; possible password hash write on tombstone |
-| Live session after soft-delete                   | No explicit revoke / version bump         | Relies on status checks on next auth touch              |
-| Duplicate create after soft-delete               | Intentional reclaim possible              | Accidental double accounts vs support “merge”           |
-| Concurrent restore + create same email           | Partial unique filter races               | One must win; need clear error                          |
-| Analytics / exports                              | Not specified                             | Inflated or missing customer counts                     |
-| Privacy purge vs soft-delete                     | Separate hard-delete path reserved        | Ops may expect “delete” to mean gone                    |
-
-### Recommended route (proposal only — not locked)
-
-- Keep soft-delete; add an explicit **Deleted / Recycle** CRM filter (not default list).
-- Revive requires a dedicated permission; restore to `pending` if credentials
-  must be re-proven, else `active` only when last status was active and email
-  still free.
-- Refuse restore when email/phone owned by another non-deleted customer.
-- Soft-delete always allowed for durable retention, **or** optionally warn/block
-  when open orders exist (owner choice).
-- On soft-delete: revoke activation tokens + OTP challenges; revoke audience
-  sessions (or bump tokenVersion).
-- Reports: exclude `deleted` unless an explicit “include tombstones” toggle.
-
-### Options
-
-#### Option A — Recycle bin + revive (recommended direction)
-
-- Pros: matches the locked soft-delete retention rule (“recoverable”); clears accidental deletes.
-- Cons: needs list filter, restore API, conflict UX for reclaimed identities.
-
-#### Option B — Soft-delete is permanent for ops (no revive UI)
-
-- Pros: simplest CRM; tombstones only for audit/DB retention.
-- Cons: contradicts “recoverable” intent; accidental deletes need engineer/DB help.
-
-#### Option C — Block soft-delete when live commercial deps exist
-
-- Pros: safer for open orders/ledger.
-- Cons: staff cannot offboard a problem account without clearing deps first.
-
-### Status note (2026-08-14)
-
-**Unanswered / pending.** Marked **VERY IMPORTANT**. Does **not** reopen
-the locked soft-delete retention decision. Blocks recycle-bin / restore CRM work and related API
-until answered.
-
-### Owner answer
-
-Choice (A / B / C / hybrid):
-
-Revive allowed? (yes/no) Permission:
-
-Restore target status:
-
-Delete with open orders / unpaid ledger:
-
-Token + session revoke on soft-delete? (yes/no)
-
-Reports include tombstones? (yes/no / toggle)
-
-Notes:
-
----
-
-## 26. `DEC-ACCOUNT-EMPTY-TILES` — Wallet / points / orders tiles on the account dashboard
-
-**Opened 2026-08-18** (storefront `account.json` retirement).
-
-The dashboard shows Balance, Total Points and Total Orders. Their source was a shipped fixture
-that gave every account the same invented numbers (₹300, 8 orders), including brand-new ones.
-Those numbers are gone; the tiles now render honest zeros.
-
-There is no store-credit ledger, no loyalty ledger and no order count wired to the storefront yet.
-
-Choice:
-
-- **A — leave the zeros.** Truthful, and the tiles light up for free when the features land.
-- **B — hide each tile until its feature exists.** No dead furniture, but the dashboard looks
-  sparse and the layout changes twice.
-- **C — hide the section entirely** until at least one of the three is real.
-
-Choice (A / B / C):
-
-Notes:
-
----
-
-## 27. `DEC-SOFT-DELETED-IDENTITY-REUSE` — Provider links on a soft-deleted customer
-
-**Opened 2026-08-18** (found while making the local seeder re-runnable).
-
-Soft-deleting a customer releases their email and phone — the unique indexes are partial on the
-non-deleted statuses. It does **not** release their linked provider identities: `authIdentities`
-is unique on `(provider, providerSubject)` and the rows stay attached to the tombstone. So a
-person whose account was deleted can never sign up again with the same Google or Facebook
-account.
-
-Choice:
-
-- **A — unlink identities on soft delete.** Symmetrical with email/phone. Loses the record of
-  which provider the deleted account used.
-- **B — keep them, and let re-signup adopt the tombstone's subject.** Preserves history, but
-  needs a rule for what "adopt" means.
-- **C — deliberate**: deletion is final for provider sign-up; they may re-register by email/phone.
-
-Choice (A / B / C):
-
-Notes:
-
----
-
-## 28. `DEC-DENVER-HOME-GRADIENT` — Home-search background ramp
-
-**Opened 2026-08-18** (theme-colour leak sweep).
-
-`apps/storefront/src/scss/layout/_home.scss:468` paints the home-search background with a
-five-stop gradient hardcoded to the default green theme (`#0da487` …). Four other leaks of the
-same kind were mechanically replaced with `var(--theme-color)`; this one cannot be, because a
-five-stop ramp is a design choice rather than a single accent.
-
-Choice:
-
-- **A — supply Denver's equivalent five-stop ramp** (owner or designer provides the stops).
-- **B — collapse it to a flat `var(--theme-color)` fill.**
-- **C — leave the green** as a deliberate accent on that one surface.
-
-Choice (A / B / C), stops if A:
 
 Notes:

@@ -1821,6 +1821,12 @@ async function main() {
 		database.collection('passwordCredentials').deleteMany({}),
 		database.collection('pinCredentials').deleteMany({}),
 		database.collection('authIdentities').deleteMany({}),
+		// Not written by any check: `MediaService.onApplicationBootstrap` seeds the media roles
+		// every time the app boots (media pipeline, 2026-11-02). Since then the leftovers check
+		// below failed EVERY run with `mediaRoles=15` while all checks passed — exit 1 for
+		// reference data, which trained readers to ignore the exit code. Removed here; the next
+		// boot re-seeds them.
+		database.collection('mediaRoles').deleteMany({}),
 	]);
 	/**
 	 * Users are cleared WHOLESALE, not by tracked id or address.

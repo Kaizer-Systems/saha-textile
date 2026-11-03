@@ -3,7 +3,7 @@ title: Request Lifecycle and Boundary Tracing
 description: How a request enters the API, crosses application and domain boundaries, reaches an adapter, and returns safely.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-11-01'
+last_verified: '2026-11-03'
 wide: true
 search_keywords: 'flight simulator photon post orders idempotency transaction ghost stages trace'
 source_of_truth:
@@ -13,6 +13,7 @@ source_of_truth:
     - apps/api/src/common/request-context.ts
     - apps/api/src/common/http-exception.filter.ts
     - apps/api/src/common/csrf.guard.ts
+    - apps/api/src/common/cookie-audience.guard.ts
     - apps/api/src/auth/session.guard.ts
     - apps/api/src/auth/ownership.ts
     - apps/api/src/infra/persistence.module.ts
@@ -73,6 +74,7 @@ sequenceDiagram
 
 This path exists, but it is inconsistent:
 
+- `CookieAudienceGuard` runs first and records which session's cookies the route reads (storefront `st_*` or admin `st_admin_*`, from `@Audience`); it never refuses a request;
 - the global session guard protects by default, while public routes opt out explicitly;
 - seven formerly controller-local body schemas now have shared named contracts and a lint guard; complete operation DTO coverage remains incomplete;
 - query/path parameters are often parsed manually;

@@ -401,7 +401,7 @@ reciprocal, self-referencing hreflang with `x-default`).
 
 ## Media
 
-Locked across the 2026-08-21 → 2026-08-23 rounds and the 2026-11-01/02 measurement and consolidation rounds (`DEC-IMG-PX` and `DEC-MEDIA-CAPS` closed 2026-11-02). Reasoning and measurements: `media-pipeline-decision-round.mdx`.
+Locked across the 2026-08-21 → 2026-08-23 rounds and the 2026-11-01/02 measurement and consolidation rounds (`DEC-IMG-PX` and `DEC-MEDIA-CAPS` closed 2026-11-02, which resolves gate `G-IMG-PX`). Reasoning and measurements: `media-pipeline-decision-round.mdx`.
 
 ### Storage, delivery, and environments
 
@@ -473,7 +473,7 @@ Roles live in the `mediaRoles` collection: seeded roles are undeletable and unre
 - Up to **5 photos per review**. The customer may pick JPEG, PNG, HEIC, or HEIF; HEIC/HEIF are converted to JPEG in the browser, so the API only ever accepts JPEG and PNG. Any other type is refused. No minimum size; warn below ~500 px.
 - Named exception to "retain original": the worker produces `review_thumb` and `review_full`, then discards the original immediately.
 - Derivatives are written **private** and made public on moderator approval; moderators view them through short-lived signed URLs. A rejected review deletes both derivatives.
-- File names and alt text carry no personal data: slug and alt are generated from the product name ("{product} customer photo"), auto-filled for every active locale. Identity lives on the review record (`reviews.userId`), never in an asset address.
+- File names and alt text carry no personal data: slug and alt are generated from the product name (`{product} customer photo`), auto-filled for every active locale. Identity lives on the review record (`reviews.userId`), never in an asset address.
 - Indexes: `reviews {userId: 1, createdAt: -1}` and `reviews {imageAssetIds: 1}`.
 - When a discontinued product is finally purged, its review photos are purged; review text and ratings are kept as historical records.
 
@@ -488,7 +488,7 @@ Roles live in the `mediaRoles` collection: seeded roles are undeletable and unre
 - Banners are `contentBlocks` records — one record per page position, named by **position and shape, never by a Fastkart theme**. The storefront keeps one theme and colour scheme; other themes' hero styles become admin-selectable layouts rendered in our colours.
 - Home hero layout is one setting: `hero_full` (one 10:3 banner), `hero_main_side` (main + one tall tile), `hero_main_stack` (main + two stacked tiles), `hero_center_sides` (centre + tall tiles left and right). Slots within a layout: `main`, `side`, `side_top`, `side_bottom`, `left`, `right`. Record key form: `home.hero.main`.
 - Other positions: `promo_cards`, `promo_wide`, `strip`, `bar`, `sidebar_tall`, `category_banner`, `product_sidebar`, `newsletter_popup`.
-- Banner boxes never crop: the box takes the shape of the image chosen for the current viewport width. Up to three images per slot — desktop (required), tablet 768–1199 (optional, falls back to desktop), phone <768 (portrait or square). Landscape phones get the tablet/desktop image.
+- Banner boxes never crop: the box takes the shape of the image chosen for the current viewport width. Up to three images per slot — desktop (required), tablet 768–1199 (optional, falls back to desktop), phone below 768 (portrait or square). Landscape phones get the tablet/desktop image.
 - One "Image contains text" switch per slot. **Off (default):** a text-free photo with live heading/subheading/CTA per locale over it. **On:** the phone image is mandatory on wide slots, live-text fields hide, alt must repeat the image's words, and an optional per-locale image set overrides the default (empty falls back to it). No safe zones or hard boundaries. Designer brief: one design exported as artboards — desktop 2880×864, phone 1080×1350 or 1080×1080.
 - Each slot also has link, alt per locale, status, and start/end schedule. Banners are registered media owners.
 - Newsletter section background is a fabric texture or plain theme colour, not a photo.

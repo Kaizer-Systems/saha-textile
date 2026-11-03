@@ -3,7 +3,7 @@ title: Operations Overview
 description: Runtime operations landing page.
 status: planned
 audience: [operator, backend]
-last_verified: '2026-10-31'
+last_verified: '2026-11-03'
 source_of_truth:
     - docker/mongo/docker-compose.yml
     - scripts/mongo-up.sh

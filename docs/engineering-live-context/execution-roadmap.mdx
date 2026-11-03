@@ -116,6 +116,10 @@ For every coherent unit:
 - products, variants, option definitions/terms, add-ons, bundles, relations, facet configs.
 - FAQ, product Q&A, reviews.
 - media assets and attachment metadata.
+- media wiring handed over by the finished image pipeline (2026-11-03): product/category/blog
+  media fields, catalog reads returning `ResolvedImage`, primary-image attach (renders `share`
+  and `feed_square`), variant swatch images, category icons, and `og:image` — table in the API
+  roadmap, Chunk I "Media pipeline status".
 - Meilisearch projection/outbox/dictionary/facet search.
 
 ### Definition of Done
@@ -173,6 +177,8 @@ For every coherent unit:
 - PayPal foreign path; configured INR adapter.
 - Shiprocket shipping adapter.
 - MSG91 notification adapter, templates, outbox, callbacks, kill-switches, usage controls.
+- media handoffs: `email_thumb` JPEGs in order/notification templates; the newsletter popup's
+  subscribe endpoint (consent + marketing kill-switch).
 
 ### Definition of Done
 
@@ -189,6 +195,8 @@ For every coherent unit:
 - API-backed discovery/PDP/cart/checkout/account/orders.
 - Analog SSR/SSG and canonical locale routing.
 - PWA app shell, cached public catalog, offline cart mutation queue.
+- media handoff: Workbox runtime caching of CDN image derivatives within the offline-catalogue
+  budget; `og:image` from the primary image's `share` derivative.
 - SEO metadata, structured data, canonical/hreflang, sitemap.
 - accessible loading/error/empty/recovery states.
 
@@ -231,7 +239,7 @@ For every coherent unit:
 ### Current checkpoint — 2026-08-20
 
 - **DONE:** canonical Engineering Live Context, build-indexed LIVE/search surfaces, one Angular Storybook with 141/141 reusable-component coverage, warning-as-error TypeDoc, shared theme contract, four unique symbolic child gateways, and the atomic persistent local composite runner. Identity Loom adds a loopback-only, in-memory local entrance without API, MongoDB, commerce-auth, or hosted-deployment coupling.
-- **SCAFFOLDED:** Scalar and mandatory Test Request are mounted with the deterministic 96-path/113-operation OpenAPI evidence and the declared `https://localhost:4000` server. Contract completeness, operation security/response semantics, examples, CI drift proof, and approved interaction configuration remain promotion gates.
+- **SCAFFOLDED:** Scalar and mandatory Test Request are mounted with the deterministic 120-path/142-operation OpenAPI evidence and the declared `https://localhost:4000` server. Contract completeness, operation security/response semantics, examples, CI drift proof, and approved interaction configuration remain promotion gates.
 - **SCAFFOLDED:** the deterministic source-only MongoDB catalogue renders all 40 implemented Mongoose models, 479 fields, 107 indexes, 27 temporary-shape warnings, and sanitized synthetic examples that omit all 13 excluded-by-default fields. Schema Nebula separately publishes 67 nodes / 37 graph-backed current / 30 target; `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are current runtime-only collections outside the graph. Stable target schemas, mappings, migrations, and target-only collections remain promotion gates.
 - **BLOCKED:** any portal deployment waits for `DEC-PORTAL-PRIVATE-ACCESS` and verified whole-host default-deny protection, including static assets and direct-origin bypass.
 - **PARTIAL:** measured Storybook/Scalar size warnings remain visible through explicit budgets, while repository-level product/deployment work remains independent of portal lifecycle status; these are not grounds to mislabel gated surfaces as implemented.

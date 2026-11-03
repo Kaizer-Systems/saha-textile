@@ -4,7 +4,7 @@ wide: true
 description: Ownership rules for TanStack Query, SignalStore, classic NgRx, services, interceptors, and transitional fixtures.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-10-26'
+last_verified: '2026-11-03'
 source_of_truth:
     - apps/admin/src/app/app.config.ts
     - apps/admin/src/app/core/config/runtime-config.ts
@@ -20,14 +20,14 @@ The admin combines server-state queries, application stores, a client cart workf
 
 ## Ownership map
 
-| Concern                      | Current owner                  | Examples                                                                                   |
-| ---------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------ |
-| Remote list/detail lifecycle | TanStack Angular Query         | Products, categories, orders, roles, users, customers, notifications                       |
-| Transport                    | Typed gateways / `HttpClient`  | Live admin gateways for roles, users, customers, notifications; fixture services elsewhere |
-| Session/shell state          | NgRx SignalStore               | Auth (incl. `/me` profile), menu, loader, settings                                         |
-| Create-order cart            | Classic NgRx                   | Cart reducer and effects                                                                   |
-| Form interaction             | Angular reactive forms/signals | Product, coupon, user, role, customer, account security forms                              |
-| Cross-cutting HTTP behavior  | Interceptors                   | Cookie credentials, CSRF, loader, error handling, SSR placeholder                          |
+| Concern                      | Current owner                  | Examples                                                                                                                     |
+| ---------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Remote list/detail lifecycle | TanStack Angular Query         | Products, categories, orders, roles, users, customers, notifications                                                         |
+| Transport                    | Typed gateways / `HttpClient`  | Live admin gateways for roles, users, customers, notifications, media, banners, reviews, YouTube; fixture services elsewhere |
+| Session/shell state          | NgRx SignalStore               | Auth (incl. `/me` profile), menu, loader, settings                                                                           |
+| Create-order cart            | Classic NgRx                   | Cart reducer and effects                                                                                                     |
+| Form interaction             | Angular reactive forms/signals | Product, coupon, user, role, customer, account security forms                                                                |
+| Cross-cutting HTTP behavior  | Interceptors                   | Cookie credentials, CSRF, loader, error handling, SSR placeholder                                                            |
 
 ## Read path today
 
@@ -46,7 +46,7 @@ Query keys commonly include the full parameter object. Preserve stable serializa
 
 Many feature list components contain explicit comments that status toggles, delete, bulk delete, approve, export, replicate, refund updates, or settings updates have no backend yet. Some forms load existing fixture records and then navigate without a real write.
 
-Exceptions that are already live: Account Security mutations at `/account`, CRM customer create/edit/soft-delete (deleted hidden by default; revive blocked on `DEC-CUSTOMER-SOFT-DELETE-OPS`), role/user authority flows, and notification-settings channel/template updates.
+Exceptions that are already live: Account Security mutations at `/account`, CRM customer create/edit/soft-delete (deleted hidden by default; revive blocked on `DEC-CUSTOMER-SOFT-DELETE-OPS`), role/user authority flows, notification-settings channel/template updates, and the media work added 2026-11-02: the media library (direct-to-Spaces upload through `MediaUploadService`, list, soft delete), the home banner editor, review moderation with photos, and the product form's YouTube Validate field.
 
 These explicit gaps prevent a local interaction from being mistaken for a backend capability. When implementing a mutation, replace the seam deliberately rather than layering a success message over a no-op.
 
@@ -85,7 +85,7 @@ Do not optimistically remove or approve records unless rollback behavior is defi
 
 ## Runtime configuration
 
-The admin loads `public/config.json` at boot (via `provideAppInitializer` in `core/config/runtime-config.ts`), filling the mutable `environment` object with `apiUrl` and other non-secret values. The committed file holds localhost defaults; deployments overwrite it. The auth interceptor sends `withCredentials: true` for the API cookie session and echoes the readable `st_csrf` cookie as `x-csrf-token` on unsafe methods. It holds no credential of its own. `@saha-textile/http-transport` supplies per-tab refresh single-flight, audience-specific Web Locks across tabs, fresh-CSRF replay, loop prevention, request-id/error mapping, and stable handling for unrecoverable session refusals. Repository lint guards fail if bearer/browser tokens, browser session persistence or cross-audience gateway calls return.
+The admin loads `public/config.json` at boot (via `provideAppInitializer` in `core/config/runtime-config.ts`), filling the mutable `environment` object with `apiUrl` and other non-secret values. The committed file holds localhost defaults; deployments overwrite it. The auth interceptor sends `withCredentials: true` for the API cookie session and echoes the readable `st_admin_csrf` cookie (the admin's own; see `GET /auth/admin/csrf`) as `x-csrf-token` on unsafe methods. The idle soft-lock's keep-alive refresh takes the same cross-tab Web Lock as the interceptor's 401 rotation (`core/auth/session-refresh-lock.ts`), so two tabs never rotate one refresh token at once. It holds no credential of its own. `@saha-textile/http-transport` supplies per-tab refresh single-flight, audience-specific Web Locks across tabs, fresh-CSRF replay, loop prevention, request-id/error mapping, and stable handling for unrecoverable session refusals. Repository lint guards fail if bearer/browser tokens, browser session persistence or cross-audience gateway calls return.
 
 ## Security boundary
 

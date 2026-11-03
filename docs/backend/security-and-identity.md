@@ -2,10 +2,10 @@
 title: Security, Sessions, and Authorization
 wide: true
 description: Current authentication scaffold, ratified browser-session architecture, CSRF, authorization, BOLA, and security verification.
-search_keywords: 'cookies csrf st_access st_refresh otp msg91 jwt session bola audiences pin'
+search_keywords: 'cookies csrf st_access st_refresh st_admin_access otp msg91 jwt session bola audiences pin'
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-10-31'
+last_verified: '2026-11-03'
 source_of_truth:
     - apps/api/src/auth
     - apps/api/src/admin
@@ -36,7 +36,7 @@ source_of_truth:
 
 # Security, sessions, and authorization
 
-Security status is **scaffolded** because the implemented identity and authorization foundation still has deployment and browser-proof gaps. Browser auth uses audience-bound httpOnly access/refresh cookies, opaque refresh rotation with reuse-triggered family revocation, session `sid` checks, session-bound double-submit CSRF, current-account/version checks, role/permission enforcement, and object ownership. Storefront identity includes verified-before-creation signup with server-held resume/discard state, password and OTP login by email or phone, Google and Facebook verifier adapters, provider-neutral identity links, step-up credential management, aligned remember-me lifetimes, session management, and guest-cart adoption. Signup account/credential/identity writes and contact-change proof/identifier/audit writes now use bounded transactions; duplicate identifier races become stable domain refusals. The admin boundary includes a closed **89-code** registry, active assignment resolution, permission-gated authority routes, no-delegation-above-self, last-administrator protection, offboarding/session revocation, operator bootstrap, Account Security, and idle-lock resume. Strict credentialed CORS, Helmet, trusted client-IP rate limiting, request correlation, log redaction, and the safe error envelope also exist. Google and Facebook signup, sign-in, connect and disconnect were proven end to end with real provider accounts on 2026-10-25. Remaining gaps include real-browser PIN-login proof, pending-intent continuation, fail-closed production secret validation, provider-backed delivery, granular-permission migration for older privileged routes, portal private-access deployment (`DEC-PORTAL-PRIVATE-ACCESS`), and soft-delete operations (`DEC-CUSTOMER-SOFT-DELETE-OPS`).
+Security status is **scaffolded** because the implemented identity and authorization foundation still has deployment and browser-proof gaps. Browser auth uses audience-bound httpOnly access/refresh cookies, opaque refresh rotation with reuse-triggered family revocation, session `sid` checks, session-bound double-submit CSRF, current-account/version checks, role/permission enforcement, and object ownership. Storefront identity includes verified-before-creation signup with server-held resume/discard state, password and OTP login by email or phone, Google and Facebook verifier adapters, provider-neutral identity links, step-up credential management, aligned remember-me lifetimes, session management, and guest-cart adoption. Signup account/credential/identity writes and contact-change proof/identifier/audit writes now use bounded transactions; duplicate identifier races become stable domain refusals. The admin boundary includes a closed **91-code** registry, active assignment resolution, permission-gated authority routes, no-delegation-above-self, last-administrator protection, offboarding/session revocation, operator bootstrap, Account Security, and idle-lock resume. Strict credentialed CORS, Helmet, trusted client-IP rate limiting, request correlation, log redaction, and the safe error envelope also exist. Google and Facebook signup, sign-in, connect and disconnect were proven end to end with real provider accounts on 2026-10-25. Remaining gaps include real-browser PIN-login proof, pending-intent continuation, fail-closed production secret validation, provider-backed delivery, granular-permission migration for older privileged routes, portal private-access deployment (`DEC-PORTAL-PRIVATE-ACCESS`), and soft-delete operations (`DEC-CUSTOMER-SOFT-DELETE-OPS`).
 
 ## Authentication versus authorization
 
@@ -120,7 +120,7 @@ sequenceDiagram
 | Guest cookie               |                No | Opaque authority for one guest cart only            |
 | Locale/currency preference |            May be | Non-secret presentation context                     |
 
-The base cookie names are `st_access`, `st_refresh`, and the browser-readable `st_csrf` (CSRF header `x-csrf-token`). Session cookies use `httpOnly`, `SameSite=Lax`, `Path=/`, and Secure-by-default configuration; the CSRF cookie is deliberately readable and is not a credential. The `__Host-` prefix is used when cookies are Secure and no cookie domain is pinned. An explicit insecure local opt-out or a pinned domain uses the compact `st_*` names. Auth responses return sanitized account/session metadata, never reusable access or refresh credentials.
+The base cookie names are `st_access`, `st_refresh`, and the browser-readable `st_csrf` (CSRF header `x-csrf-token`). Admin sessions use their own names — `st_admin_access`, `st_admin_refresh`, `st_admin_csrf` — so an admin and a storefront session on the same host never overwrite each other. `CookieAudienceGuard` runs before every other guard and records the route's `@Audience` on the request; the session and CSRF guards then read that audience's cookies, and the admin fetches its CSRF token from `GET /auth/admin/csrf`. Session cookies use `httpOnly`, `SameSite=Lax`, `Path=/`, and Secure-by-default configuration; the CSRF cookie is deliberately readable and is not a credential. The `__Host-` prefix is used when cookies are Secure and no cookie domain is pinned. An explicit insecure local opt-out or a pinned domain uses the compact `st_*` names. Auth responses return sanitized account/session metadata, never reusable access or refresh credentials.
 
 `GET /auth/storefront/me` is an identity probe, not a gated resource: a true guest (no access cookie and no refresh cookie) receives 200 `{ user: null }`. Expired access with a live refresh still 401s `session_expired` so the browser interceptor can rotate. It is not `@Public()`; a present access cookie is still validated.
 
@@ -175,7 +175,7 @@ The current guard accepts `customer | staff | admin` roles, enforces explicit pe
 
 ### Current admin authority controls
 
-- `GET /admin/permissions` publishes the compile-time closed **89-code** registry; clients cannot mint free-form privileges.
+- `GET /admin/permissions` publishes the compile-time closed **91-code** registry; clients cannot mint free-form privileges.
 - `/admin/roles` CRUD is admin-audience and permission-gated; system roles cannot be edited or deleted.
 - `/admin/users/:userId/authority` returns server-resolved roles and effective permissions.
 - Role grants cannot exceed the actor's tier or permission set.

@@ -3,7 +3,7 @@ title: Generated Surfaces and Persistent Portal Runtime
 description: Storybook, TypeDoc, Scalar, database-catalogue, shared-theme, and atomic local serving topology.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-01'
+last_verified: '2026-11-03'
 source_of_truth:
     - apps/developer-portal
     - apps/developer-portal-storybook
@@ -28,7 +28,7 @@ Docusaurus remains the navigation, narrative, governance, search, and deployment
 | `/tools/typedoc`            | `/typedoc/`            | TypeDoc                        | Built; Type Lattice gateway                                                  |
 | `/tools/scalar`             | `/api/reference/`      | Scalar                         | Scaffolded current OpenAPI; Request Wormhole gateway; Test Request available |
 | `/tools/database-catalogue` | `/database/catalogue/` | Mongo catalogue generator      | Scaffolded 40-model current evidence; Schema Observatory gateway             |
-| n/a                         | `/api/openapi.json`    | OpenAPI artifact pipeline      | Scaffolded deterministic 96-path/113-operation document                      |
+| n/a                         | `/api/openapi.json`    | OpenAPI artifact pipeline      | Scaffolded deterministic 120-path/142-operation document                     |
 
 Storybook is not a React-only or view-only substitute. The selected `@storybook/angular` renderer compiles Angular templates, dependency injection, inputs/outputs, change detection, directives, and application providers. A React renderer cannot directly render Angular components as React components.
 
@@ -64,13 +64,13 @@ Tool-specific selectors remain in tool adapters. Shared token values must not be
 
 Storybook renders real Angular classes; it does not reproduce application components with Storybook-only HTML.
 
-The production catalogue contains story states across Storefront, Admin, and Shared, including Admin PIN Pad and idle-lock modal specimens. The automated coverage gate scans all 290 Angular components. Its current result is:
+The production catalogue contains story states across Storefront, Admin, and Shared, including Admin PIN Pad, idle-lock modal and YouTube video field specimens. The automated coverage gate scans all 294 Angular components. Its current result is:
 
 | Application | Reusable components accounted for | Application components reached directly by stories |
 | ----------- | --------------------------------- | -------------------------------------------------- |
-| Storefront  | 106 / 106                         | 107 / 156                                          |
-| Admin       | 35 / 35                           | 35 / 134                                           |
-| Combined    | 141 / 141                         | 142 / 290                                          |
+| Storefront  | 105 / 105                         | 106 / 157                                          |
+| Admin       | 36 / 36                           | 36 / 137                                           |
+| Combined    | 141 / 141                         | 142 / 294                                          |
 
 Application components not directly reached are route/page orchestration; their navigation, resolver, live-service, and whole-application behavior belongs in integration and Playwright coverage.
 

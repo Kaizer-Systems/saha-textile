@@ -4,7 +4,7 @@ wide: true
 description: OpenAPI source-of-truth rules, current Scalar scaffold, completeness gates, Test Request security, and build topology.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-01'
+last_verified: '2026-11-03'
 source_of_truth:
     - apps/api/src/openapi.ts
     - apps/api/src/generate-openapi.ts
@@ -47,7 +47,7 @@ Missing, mismatched, or cross-session values fail with `403`. The CSRF token doe
 
 ## Current authentication and authorization boundary
 
-The authentication and authorization implementation is **partial**, not absent and not complete. Cookie sessions use tested Mongo repositories backed by separated customer and operator populations; access and opaque rotating refresh tokens live only in httpOnly cookies, refresh reuse revokes the family, CSRF is checked against the current session, and storefront/admin audiences are isolated. Storefront verified-before-creation signup, pending-signup resume/discard, password and OTP login by email or phone, Google and Facebook token verification, identity linking, password management, sessions, profile/address/contact self-service, guest-cart adoption, and `me` are implemented. Customer, credential, and provider-identity creation commit as one transaction; contact-change proof consumption, identifier replacement, and audit recording also commit together. Admin recovery, password/PIN login, PIN setup, invites, HTTP resume, Account Security, the 15-minute idle soft-lock, the closed **89-code** permission registry, assignment resolution, deny-by-default administration, operator bootstrap, CRM, consent/privacy, and ownership checks are also implemented.
+The authentication and authorization implementation is **partial**, not absent and not complete. Cookie sessions use tested Mongo repositories backed by separated customer and operator populations; access and opaque rotating refresh tokens live only in httpOnly cookies, refresh reuse revokes the family, CSRF is checked against the current session, and storefront/admin audiences are isolated. Storefront verified-before-creation signup, pending-signup resume/discard, password and OTP login by email or phone, Google and Facebook token verification, identity linking, password management, sessions, profile/address/contact self-service, guest-cart adoption, and `me` are implemented. Customer, credential, and provider-identity creation commit as one transaction; contact-change proof consumption, identifier replacement, and audit recording also commit together. Admin recovery, password/PIN login, PIN setup, invites, HTTP resume, Account Security, the 15-minute idle soft-lock, the closed **91-code** permission registry, assignment resolution, deny-by-default administration, operator bootstrap, CRM, consent/privacy, and ownership checks are also implemented.
 
 The remaining boundary is explicit:
 
@@ -60,15 +60,15 @@ Scalar must distinguish these active controls from the residual gaps. A route ap
 
 ## Generated evidence snapshot
 
-| Measurement                              | Generated result                                         | Meaning                                                                                                                                           |
-| ---------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Paths / operations                       | **96 paths / 113 operations**                            | Current controller routes, including pending-signup resume/discard, storefront identity/account self-service and admin operations, are published. |
-| Declared servers                         | One: `https://localhost:4000`                            | Matches local `__Host-` cookie topology. Test Request has no production target or proxy.                                                          |
-| Operation tags                           | 113 / 113 operations; 9 declared tags                    | Operations are grouped under the governed tag vocabulary.                                                                                         |
-| Explicit operation security              | 0 / 113 operations                                       | The document declares `sessionCookie`, but no operation attaches security or its audience/permission rules.                                       |
-| Request bodies / component schemas       | 0 / 0                                                    | Controller-local zod bodies are not represented as reusable OpenAPI request contracts.                                                            |
-| Responses with content schemas           | 0 / 113 operations                                       | Runtime response values—including `ApiErrorResponse`—are not yet represented as generated response schemas.                                       |
-| Explicit non-success operation responses | 1 / 113 operations (`GET /health/ready` documents `503`) | Operation-specific error documentation is still almost entirely absent.                                                                           |
+| Measurement                              | Generated result                                         | Meaning                                                                                                                                                                                         |
+| ---------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Paths / operations                       | **120 paths / 142 operations**                           | Current controller routes, including the media, banner, YouTube and review routes, pending-signup resume/discard, storefront identity/account self-service and admin operations, are published. |
+| Declared servers                         | One: `https://localhost:4000`                            | Matches local `__Host-` cookie topology. Test Request has no production target or proxy.                                                                                                        |
+| Operation tags                           | 142 / 142 operations; 11 declared tags                   | Operations are grouped under the governed tag vocabulary.                                                                                                                                       |
+| Explicit operation security              | 0 / 142 operations                                       | The document declares `sessionCookie`, but no operation attaches security or its audience/permission rules.                                                                                     |
+| Request bodies / component schemas       | 0 / 0                                                    | Controller-local zod bodies are not represented as reusable OpenAPI request contracts.                                                                                                          |
+| Responses with content schemas           | 0 / 142 operations                                       | Runtime response values—including `ApiErrorResponse`—are not yet represented as generated response schemas.                                                                                     |
+| Explicit non-success operation responses | 1 / 142 operations (`GET /health/ready` documents `503`) | Operation-specific error documentation is still almost entirely absent.                                                                                                                         |
 
 Two generation runs produced byte-identical output without opening a MongoDB connection. That proves the current source generator is deterministic in this environment; it is not yet the required CI generation and drift gate.
 

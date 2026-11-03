@@ -16,6 +16,7 @@ import {
 	CategoryModel,
 	CategoryPlacementModel,
 	ConsentEventModel,
+	ContentBlockModel,
 	CurrencyModel,
 	CustomerModel,
 	EmailVerificationTokenModel,
@@ -23,6 +24,7 @@ import {
 	InventoryCostLayerModel,
 	InventoryLedgerModel,
 	MediaAssetModel,
+	MediaRoleModel,
 	MessageOutboxModel,
 	NotificationChannelSettingsModel,
 	NotificationTemplateModel,
@@ -43,6 +45,7 @@ import {
 	RatingAggregateModel,
 	ReviewModel,
 	RoleModel,
+	SiteSettingModel,
 	AdminUserRoleAssignmentModel,
 } from '../src/models/index';
 import * as modelExports from '../src/models/index';
@@ -241,6 +244,25 @@ const modelSources: Array<{
 		source: 'packages/adapters-db-mongo/src/models/media.model.ts',
 		context: 'Media',
 		purpose: 'Reference-counted media assets and soft-delete lifecycle.',
+	},
+	{
+		model: MediaRoleModel,
+		source: 'packages/adapters-db-mongo/src/models/media.model.ts',
+		context: 'Media',
+		purpose:
+			'Editable image size ladder: seeded roles plus operator roles, versioned so edits mark derivatives stale.',
+	},
+	{
+		model: ContentBlockModel,
+		source: 'packages/adapters-db-mongo/src/models/content-block.model.ts',
+		context: 'Media',
+		purpose: 'Banners by page position and slot, with per-viewport images and per-locale text.',
+	},
+	{
+		model: SiteSettingModel,
+		source: 'packages/adapters-db-mongo/src/models/content-block.model.ts',
+		context: 'Media',
+		purpose: 'Typed site settings, one document per key: home hero layout and the YouTube rail.',
 	},
 	{
 		model: InventoryLedgerModel,

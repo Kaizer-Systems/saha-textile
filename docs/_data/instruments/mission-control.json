@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-11-01",
+	"lastVerified": "2026-11-03",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
 		"docs/engineering-live-context/project-progress.mdx"
@@ -65,7 +65,7 @@
 			"title": "Mongo persistence & transaction adoption",
 			"deps": ["C"],
 			"blockingGates": [],
-			"summary": "Chunk E persistence is complete. The adapter exports 40 Mongoose models covering the original surface plus separated customer/operator identity, credentials, pending verification state, authorization, consent, catalogue structure, variants, bundles, relations, inventory, media, audit, notifications, FAQ, Q&A, reviews and rating aggregates. Provider identities have one writer; signup and contact-change units join the ambient rs0 transaction; customer address writes are single-statement atomic; storage enums derive from shared option sources.",
+			"summary": "Chunk E persistence is complete. The adapter exports 43 Mongoose models covering the original surface plus separated customer/operator identity, credentials, pending verification state, authorization, consent, catalogue structure, variants, bundles, relations, inventory, media, audit, notifications, FAQ, Q&A, reviews and rating aggregates. Provider identities have one writer; signup and contact-change units join the ambient rs0 transaction; customer address writes are single-statement atomic; storage enums derive from shared option sources.",
 			"dod": "Complete: adapter integration evidence covers uniqueness, TTL, visibility, concurrent address writes, transaction rollback, order/cart and identity/contact atomicity, role assignments, and response-safe mapping."
 		},
 		{
@@ -97,7 +97,7 @@
 			"title": "Privacy, content, FAQ, reviews & media",
 			"deps": ["B", "C"],
 			"blockingGates": [],
-			"summary": "Consent + analytics gating, FAQ / Q&A / reviews, media assets + Spaces SGP presign, and the image-derivative worker on the locked size ladder.",
+			"summary": "Consent + analytics gating, FAQ / Q&A / reviews, media assets + Spaces SGP presign, and the image-derivative worker on the locked size ladder. The image pipeline is built and verified (2026-11-03): presigned upload, BullMQ/sharp worker, size roles, banners, YouTube, review photos and moderation, admin and storefront screens. Catalog media fields, email thumbnails, PWA caching and live GC wait on their owning chunks.",
 			"dod": "Consent gating; moderation model; media presign; derivative skeleton."
 		},
 		{

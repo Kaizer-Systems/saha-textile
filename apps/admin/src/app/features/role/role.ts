@@ -35,7 +35,7 @@ export class Role {
 		},
 	}));
 
-	public tableConfig: ITableConfig<IRole> = {
+	private readonly baseConfig: ITableConfig<IRole> = {
 		columns: [
 			{ title: 'No.', dataField: 'no', type: 'no' },
 			{ title: 'name', dataField: 'name', sortable: true, sort_direction: 'desc' },
@@ -60,11 +60,15 @@ export class Role {
 		total: 0,
 	};
 
+	readonly tableConfig = signal<ITableConfig<IRole>>(this.baseConfig);
+
 	constructor() {
 		effect(() => {
 			const role = this.rolesQuery.data();
-			this.tableConfig.data = role ? role.data : [];
-			this.tableConfig.total = role ? role.total : 0;
+			// A signal, not a field write: in this zoneless app a plain field set from an effect does
+			// not schedule a render, so a change made here left the old rows on screen after the
+			// refetch. Same fix as the reviews and customer pages.
+			this.tableConfig.set({ ...this.baseConfig, data: role ? role.data : [], total: role ? role.total : 0 });
 		});
 	}
 
@@ -90,7 +94,7 @@ export class Role {
 
 	deleteAll(ids: Array<string | number>) {
 		for (const id of ids ?? []) {
-			const row = this.tableConfig.data?.find((role) => role.id === id);
+			const row = this.tableConfig().data?.find((role) => role.id === id);
 			if (row?.isSystem || row?.system_reserve === '1') continue;
 			this.deleteMutation.mutate(String(id));
 		}

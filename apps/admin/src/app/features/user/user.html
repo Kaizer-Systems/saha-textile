@@ -16,7 +16,7 @@
 		</a>
 	</div>
 	<app-table
-		[tableConfig]="tableConfig"
+		[tableConfig]="tableConfig()"
 		[hasCheckbox]="false"
 		(tableChanged)="onTableChange($event)"
 		(rowClicked)="edit($event)"

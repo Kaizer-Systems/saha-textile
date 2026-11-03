@@ -50,7 +50,7 @@ export class AdminUsers {
 		},
 	}));
 
-	public tableConfig: ITableConfig<AdminUserRow> = {
+	private readonly baseConfig: ITableConfig<AdminUserRow> = {
 		columns: [
 			{ title: 'name', dataField: 'name', sortable: true, sort_direction: 'desc' },
 			{ title: 'email', dataField: 'email' },
@@ -71,16 +71,12 @@ export class AdminUsers {
 		total: 0,
 	};
 
+	readonly tableConfig = signal<ITableConfig<AdminUserRow>>(this.baseConfig);
+
 	constructor() {
 		effect(() => {
 			const response = this.usersQuery.data();
-			if (!response) {
-				this.tableConfig.data = [];
-				this.tableConfig.total = 0;
-				return;
-			}
-
-			this.tableConfig.data = response.items.map((user) => ({
+			const data = (response?.items ?? []).map((user): AdminUserRow => ({
 				id: user.id,
 				name: user.displayName || user.username || user.email || user.id,
 				email: user.email ?? '',
@@ -88,7 +84,10 @@ export class AdminUsers {
 				created_at: user.createdAt || null,
 				status: user.status === 'active' ? '1' : '0',
 			}));
-			this.tableConfig.total = response.meta.total;
+			// A signal, not a field write: in this zoneless app a plain field set from an effect does
+			// not schedule a render, so a change made here left the old rows on screen after the
+			// refetch. Same fix as the reviews and customer pages.
+			this.tableConfig.set({ ...this.baseConfig, data, total: response?.meta.total ?? 0 });
 		});
 	}
 
@@ -105,8 +104,14 @@ export class AdminUsers {
 		void this.router.navigateByUrl(`/admin-user/edit/${data.id}`);
 	}
 
+	/**
+	 * By the time this runs, the shared table has already written the switch's REQUESTED value
+	 * (`1` on, `0` off) onto the row (`rowData[actionType] = value`). Reading it as the current
+	 * state and flipping it again sent `active` for every click, so an operator could never be
+	 * disabled from this list.
+	 */
 	status(data: AdminUserRow) {
-		const newStatus: 'active' | 'disabled' = data.status === '1' ? 'disabled' : 'active';
+		const newStatus: 'active' | 'disabled' = Number(data.status) === 1 ? 'active' : 'disabled';
 		this.statusMutation.mutate({ userId: String(data.id), status: newStatus });
 	}
 }

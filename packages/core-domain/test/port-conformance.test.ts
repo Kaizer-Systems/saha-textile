@@ -120,6 +120,8 @@ const fakeCustomers = {
 	create: notImplemented,
 	update: notImplemented,
 	setStatus: notImplemented,
+	softDelete: notImplemented,
+	restore: notImplemented,
 	addAddress: notImplemented,
 	updateAddress: notImplemented,
 	deleteAddress: notImplemented,

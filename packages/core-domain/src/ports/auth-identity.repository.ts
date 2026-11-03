@@ -51,5 +51,20 @@ export interface AuthIdentityRepository {
 	/** Detaches one provider from one subject. Returns false when there was nothing to remove. */
 	unlink(subjectType: IdentitySubjectType, subjectId: string, provider: string): Promise<boolean>;
 
+	/**
+	 * Detaches every link one subject holds for the named providers and returns what was removed.
+	 *
+	 * The soft-delete release (`DEC-SOFT-DELETED-IDENTITY-REUSE`): the pair is unique, so a link
+	 * left on a deleted account would stop the same Google or Facebook account from ever signing
+	 * up again. The rows go rather than being parked (owner choice 2026-11-03), so no lookup has
+	 * to learn to skip them; the caller writes what was removed to the audit log, which is where
+	 * the history lives. Joins an open transaction.
+	 */
+	releaseForSubject(
+		subjectType: IdentitySubjectType,
+		subjectId: string,
+		providers: string[],
+	): Promise<AuthIdentity[]>;
+
 	touch(id: string, usedAt: string): Promise<void>;
 }

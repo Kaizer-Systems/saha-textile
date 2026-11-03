@@ -57,7 +57,7 @@ Trace the explicit no-op, fixture-backed, or navigation-only boundary before imp
 7. Remove obsolete no-op comments and fixture assumptions.
 8. Advance portal status only after verification.
 
-Live CRM soft-delete already follows this path: the default list hides deleted customers; the recycle bin + restore rules were decided on 2026-11-03 (`DEC-CUSTOMER-SOFT-DELETE-OPS`, owner log); the screen change still needs an approved UI brief before it is built.
+Live CRM soft-delete already follows this path: the default list hides deleted customers, and the recycle bin (`DEC-CUSTOMER-SOFT-DELETE-OPS`, built 2026-11-03 from an approved UI brief) is a header `select2` filter plus a Restore row action. A recycle-bin action is declared with `deletedRows: true` on `ITableAction`, so the shared table shows it only on deleted rows; `confirm: true` routes it through the table's existing confirmation modal; and `deleteMessage` replaces the delete modal's "deleted permanently" text where a delete is really a soft one. Keep the table config in a signal (`tableConfig.set(...)` from the query effect): in this zoneless app a field write from an effect does not re-render.
 
 ## Recipe: phone dial with country flags
 

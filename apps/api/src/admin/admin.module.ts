@@ -8,6 +8,7 @@ import { AdminUsersController } from './admin-users.controller';
 import { AdminUsersService } from './admin-users.service';
 import { AuditLogsController } from './audit-logs.controller';
 import { AuditLogsService } from './audit-logs.service';
+import { CustomerLifecycleService } from './customer-lifecycle.service';
 import { PermissionsController } from './permissions.controller';
 import { RolesController } from './roles.controller';
 import { RolesService } from './roles.service';
@@ -28,7 +29,14 @@ import { RolesService } from './roles.service';
 		PermissionsController,
 		AuditLogsController,
 	],
-	providers: [RolesService, AdminUsersService, AdminCustomersService, AdminNotificationsService, AuditLogsService],
+	providers: [
+		RolesService,
+		AdminUsersService,
+		AdminCustomersService,
+		CustomerLifecycleService,
+		AdminNotificationsService,
+		AuditLogsService,
+	],
 	exports: [RolesService, AdminUsersService, AdminCustomersService, AdminNotificationsService, AuditLogsService],
 })
 export class AdminModule {}

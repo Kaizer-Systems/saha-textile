@@ -76,6 +76,8 @@ export class Table {
 	readonly pagination = input<boolean>(true);
 	readonly loading = input<boolean>(true);
 	readonly dateRange = input<boolean>(false);
+	/** Overrides the delete modal's "deleted permanently" text where a delete is really a soft one. */
+	readonly deleteMessage = input<string>('deleted_message');
 
 	readonly tableChanged = output<Params>();
 	readonly action = output<ITableClickedAction>();

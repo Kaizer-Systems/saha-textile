@@ -46,7 +46,7 @@ Query keys commonly include the full parameter object. Preserve stable serializa
 
 Many feature list components contain explicit comments that status toggles, delete, bulk delete, approve, export, replicate, refund updates, or settings updates have no backend yet. Some forms load existing fixture records and then navigate without a real write.
 
-Exceptions that are already live: Account Security mutations at `/account`, CRM customer create/edit/soft-delete (deleted hidden by default; recycle bin + restore decided 2026-11-03 under `DEC-CUSTOMER-SOFT-DELETE-OPS`, not built yet), role/user authority flows, notification-settings channel/template updates, and the media work added 2026-11-02: the media library (direct-to-Spaces upload through `MediaUploadService`, list, soft delete), the home banner editor, review moderation with photos, and the product form's YouTube Validate field.
+Exceptions that are already live: Account Security mutations at `/account`, CRM customer create/edit/soft-delete (deleted hidden by default; recycle bin + restore live since 2026-11-03 under `DEC-CUSTOMER-SOFT-DELETE-OPS` — `injectAdminCustomersQuery` takes a `live`/`deleted` view and keys the cache on it), role/user authority flows, notification-settings channel/template updates, and the media work added 2026-11-02: the media library (direct-to-Spaces upload through `MediaUploadService`, list, soft delete), the home banner editor, review moderation with photos, and the product form's YouTube Validate field.
 
 These explicit gaps prevent a local interaction from being mistaken for a backend capability. When implementing a mutation, replace the seam deliberately rather than layering a success message over a no-op.
 

@@ -32,7 +32,7 @@ For most admin feature families, scaffolded means:
 - table/form interaction is present; and
 - create/update/delete/approve/bulk behavior is absent, no-op, or navigation-only.
 
-**Current exceptions (live, not fixture-only):** Account Security at `/account`; idle soft-lock resume; roles/operators authority; notification settings; CRM customers at `/customer`, `/customer/create`, `/customer/edit/:id` plus `/customer-ledger` against `/admin/customers/**` (soft-delete hides deleted by default; recycle bin + restore decided 2026-11-03 under `DEC-CUSTOMER-SOFT-DELETE-OPS`, not built yet). Dial flags use HTML labels in `country-code.ts` and `/assets/images/flags/flags.png`.
+**Current exceptions (live, not fixture-only):** Account Security at `/account`; idle soft-lock resume; roles/operators authority; notification settings; CRM customers at `/customer`, `/customer/create`, `/customer/edit/:id` plus `/customer-ledger` against `/admin/customers/**` (soft-delete hides deleted by default; a Live/Deleted header filter and a confirmed Restore row action, both gated by `customer.restore`, form the recycle bin under `DEC-CUSTOMER-SOFT-DELETE-OPS`, built 2026-11-03). Dial flags use HTML labels in `country-code.ts` and `/assets/images/flags/flags.png`.
 
 ## Operational readiness test
 

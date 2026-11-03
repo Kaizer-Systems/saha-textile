@@ -1,25 +1,30 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UnauthorizedException } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	CreateCustomerAddressRequest,
 	CreateCustomerRequest,
 	type Customer,
-	CustomerListQuery,
 	type CustomerListResponse,
 	CustomerOrdersQuery,
 	type CustomerOrdersResponse,
+	DeletedCustomerListQuery,
+	LiveCustomerListQuery,
 	ResendCustomerActivationRequest,
 	UpdateCustomerAddressRequest,
 	UpdateCustomerRequest,
 } from '@saha-textile/contracts';
+import type { FastifyRequest } from 'fastify';
 
-import { Audience, RequirePermissions } from '../auth/session.guard';
+import { Principal } from '../auth/ownership';
+import { type AuthenticatedPrincipal, Audience, RequirePermissions } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { AdminCustomersService } from './admin-customers.service';
+import { CustomerLifecycleService, type LifecycleActor } from './customer-lifecycle.service';
 
 /**
- * Admin Customer CRM — directory, create/activate, profile/address edits, soft-delete.
+ * Admin Customer CRM — directory, create/activate, profile/address edits, soft delete, and the
+ * recycle bin with restore (`DEC-CUSTOMER-SOFT-DELETE-OPS`).
  *
  * Operators only reach this surface (`DEC-ACCOUNT-SEPARATION` D3). Storefront customers
  * never share `/admin/users/**`; those codes stay operator-scoped.
@@ -28,13 +33,35 @@ import { AdminCustomersService } from './admin-customers.service';
 @Audience('admin')
 @Controller('admin/customers')
 export class AdminCustomersController {
-	constructor(private readonly customers: AdminCustomersService) {}
+	constructor(
+		private readonly customers: AdminCustomersService,
+		private readonly lifecycle: CustomerLifecycleService,
+	) {}
 
 	@Get()
 	@RequirePermissions('customer.index')
-	@ApiOperation({ operationId: 'listCustomers', summary: 'Paginated customer directory (optional search/status)' })
-	list(@Query(new ZodValidationPipe(CustomerListQuery)) query: CustomerListQuery): Promise<CustomerListResponse> {
+	@ApiOperation({
+		operationId: 'listCustomers',
+		summary: 'Paginated live customer directory (optional search/status; never deleted customers)',
+	})
+	list(
+		@Query(new ZodValidationPipe(LiveCustomerListQuery)) query: LiveCustomerListQuery,
+	): Promise<CustomerListResponse> {
 		return this.customers.list(query);
+	}
+
+	/**
+	 * The recycle bin. Its own route, so the permission is declared where `check-route-authorization`
+	 * can see it rather than decided from a query value inside a handler. Static, so it wins over
+	 * `:customerId` regardless of declaration order.
+	 */
+	@Get('deleted')
+	@RequirePermissions('customer.restore')
+	@ApiOperation({ operationId: 'listDeletedCustomers', summary: 'Paginated soft-deleted customers (recycle bin)' })
+	listDeleted(
+		@Query(new ZodValidationPipe(DeletedCustomerListQuery)) query: DeletedCustomerListQuery,
+	): Promise<CustomerListResponse> {
+		return this.customers.list({ ...query, status: 'deleted' });
 	}
 
 	@Post()
@@ -76,9 +103,31 @@ export class AdminCustomersController {
 
 	@Delete(':customerId')
 	@RequirePermissions('customer.destroy')
-	@ApiOperation({ operationId: 'deleteCustomer', summary: 'Soft-delete a customer (status deleted)' })
-	softDelete(@Param('customerId') customerId: string): Promise<Customer> {
-		return this.customers.softDelete(customerId);
+	@ApiOperation({
+		operationId: 'deleteCustomer',
+		summary: 'Soft-delete a customer: ends sessions, revokes links and codes, releases Google/Facebook (audited)',
+	})
+	softDelete(
+		@Param('customerId') customerId: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Req() request: FastifyRequest,
+	): Promise<Customer> {
+		return this.lifecycle.softDelete(customerId, actorOf(principal, request));
+	}
+
+	@Post(':customerId/restore')
+	@RequirePermissions('customer.restore')
+	@ApiOperation({
+		operationId: 'restoreCustomer',
+		summary:
+			'Restore a soft-deleted customer to its previous status; refused if the email/phone is taken (audited)',
+	})
+	restore(
+		@Param('customerId') customerId: string,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Req() request: FastifyRequest,
+	): Promise<Customer> {
+		return this.lifecycle.restore(customerId, actorOf(principal, request));
 	}
 
 	@Post(':customerId/activation/resend')
@@ -121,4 +170,9 @@ export class AdminCustomersController {
 	deleteAddress(@Param('customerId') customerId: string, @Param('addressId') addressId: string): Promise<Customer> {
 		return this.customers.deleteAddress(customerId, addressId);
 	}
+}
+
+function actorOf(principal: AuthenticatedPrincipal | undefined, request: FastifyRequest): LifecycleActor {
+	if (!principal) throw new UnauthorizedException('Authentication required');
+	return { actorUserId: principal.userId, requestId: typeof request.id === 'string' ? request.id : null };
 }

@@ -22,7 +22,8 @@ import { z } from 'zod';
  *
  * There is no `admin_user.destroy` for operators: they are deactivated, never deleted, because an
  * audit trail that can lose its subject is not an audit trail. Storefront customers use
- * soft-delete via `customer.destroy` (`status: deleted`) so email/phone can be reclaimed.
+ * soft-delete via `customer.destroy` (`status: deleted`) so email/phone can be reclaimed, and
+ * `customer.restore` (`DEC-CUSTOMER-SOFT-DELETE-OPS`) both opens that recycle bin and undoes a delete.
  *
  * There is no bare `user.*` family. That noun meant two populations at once, which is the
  * defect `DEC-ACCOUNT-SEPARATION` existed to remove; operators are `admin_user.*`, shoppers
@@ -74,6 +75,7 @@ export const PermissionCode = z.enum([
 	'customer.create',
 	'customer.destroy',
 	'customer.index',
+	'customer.restore',
 	'customer.update',
 	'faq.create',
 	'faq.destroy',
@@ -190,6 +192,8 @@ export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCod
 	'currency.edit': 'Currency table row Edit action (currency.ts).',
 	'customer.destroy':
 		'Admin Customer CRM soft-delete (status deleted). Separate from update so directory editors need not hold irreversible offboarding. Menu gates create/index only.',
+	'customer.restore':
+		'Deleted filter on the Customer CRM list and its Restore row action (DEC-CUSTOMER-SOFT-DELETE-OPS). Also the only code that lists deleted customers at the API. Menu gates create/index only.',
 	'customer.update':
 		'Admin Customer CRM profile/address edits and activation resend. Menu gates create/index only; edit screens check this code at the API.',
 	'faq.create': 'Add-FAQ button on the FAQ page. No FAQ navigation entry exists.',
@@ -287,7 +291,9 @@ export type PermissionResource = z.infer<typeof PermissionResource>;
  * authority and removing it carry opposite risks. `edit` remains alongside `update` where a
  * kept admin screen still sends the Fastkart-era `.edit` string from a table row action;
  * `update` is what the API's own routes use. `credit` and `debit` cover the points controls,
- * and `action` covers the payout approve/reject chrome.
+ * `action` covers the payout approve/reject chrome, and `restore` undoes a soft delete — kept
+ * apart from `destroy` and `update` so bringing a departed customer back is its own grant
+ * (`DEC-CUSTOMER-SOFT-DELETE-OPS`).
  */
 export const PermissionAction = z.enum([
 	'action',
@@ -298,6 +304,7 @@ export const PermissionAction = z.enum([
 	'destroy',
 	'edit',
 	'index',
+	'restore',
 	'revoke',
 	'update',
 ]);

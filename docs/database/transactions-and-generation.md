@@ -112,12 +112,12 @@ Never assume a Mongoose schema edit automatically migrates historical documents.
 The composite portal publishes a source-only **Schema Observatory** at `/database/catalogue/`. The current deterministic regeneration imports every exported Mongoose model without opening a connection and measures:
 
 - 43 current models;
-- 527 schema paths;
+- 529 schema paths;
 - 115 indexes;
 - 37 paths whose `Mixed` or array-of-`Mixed` shape is explicitly marked temporary;
 - 13 excluded-by-default credential, PIN, token, code, state, nonce, PKCE, CSRF and private-contact fields, all omitted from synthetic previews.
 
-The catalogue covers separated customer/operator populations, extracted credential and provider-identity collections, pending signup/contact-change proof, and the remaining core, identity, authorization, consent, catalogue, variant, merchandising, media, inventory, governance, notification, and content models — **43 models / 527 fields / 115 indexes**. `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime-only evidence. The catalogue is current-model evidence, not a finished database dictionary: it does not claim complete HTTP/workflow adoption, migration history, retention completeness, or complete nested validators.
+The catalogue covers separated customer/operator populations, extracted credential and provider-identity collections, pending signup/contact-change proof, and the remaining core, identity, authorization, consent, catalogue, variant, merchandising, media, inventory, governance, notification, and content models — **43 models / 529 fields / 115 indexes**. `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime-only evidence. The catalogue is current-model evidence, not a finished database dictionary: it does not claim complete HTTP/workflow adoption, migration history, retention completeness, or complete nested validators.
 
 ## Target-complete catalogue gate
 

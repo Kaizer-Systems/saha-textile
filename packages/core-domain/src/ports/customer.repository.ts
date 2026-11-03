@@ -67,6 +67,24 @@ export interface CustomerRepository {
 	create(customer: Customer): Promise<Customer>;
 	update(customerId: string, patch: CustomerUpdateInput): Promise<Customer | null>;
 	setStatus(customerId: string, status: CustomerStatus): Promise<Customer | null>;
+	/**
+	 * Soft-deletes a live customer in ONE write (`DEC-CUSTOMER-SOFT-DELETE-OPS`).
+	 *
+	 * Records the status the customer had, so a restore can put it back, and bumps the token
+	 * version, so every access token already issued is dead on its next request. Returns null when
+	 * there is no live customer with that id — a second delete of the same row is not a delete.
+	 */
+	softDelete(customerId: string, at: string): Promise<Customer | null>;
+	/**
+	 * Restores a soft-deleted customer to the status recorded at delete time, or `disabled` for a
+	 * row deleted before that status was recorded (owner choice 2026-11-03: an operator reviews
+	 * those).
+	 *
+	 * Returns null when the row is not deleted. Throws `DuplicateIdentifierError` when another live
+	 * customer now holds the email or phone: the restored row re-enters the unique indexes, so the
+	 * index — not a read beforehand — decides who keeps the address.
+	 */
+	restore(customerId: string): Promise<Customer | null>;
 	addAddress(customerId: string, address: Address): Promise<Customer | null>;
 	updateAddress(customerId: string, addressId: string, patch: Partial<Omit<Address, 'id'>>): Promise<Customer | null>;
 	deleteAddress(customerId: string, addressId: string): Promise<Customer | null>;

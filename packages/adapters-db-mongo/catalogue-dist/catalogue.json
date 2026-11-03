@@ -5,7 +5,7 @@
 	"sourcePolicy": "Mongoose source metadata only; no database connection or record access.",
 	"counts": {
 		"currentModels": 43,
-		"fields": 527,
+		"fields": 529,
 		"indexes": 115,
 		"temporaryShapes": 37
 	},
@@ -1193,6 +1193,26 @@
 					"sensitive": false
 				},
 				{
+					"path": "statusBeforeDelete",
+					"type": "String",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": ["active", "pending", "disabled", "locked"],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "deletedAt",
+					"type": "Date",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
 					"path": "tokenVersion",
 					"type": "Number",
 					"required": false,
@@ -1373,6 +1393,8 @@
 				"phoneVerified": false,
 				"displayName": "<displayName>",
 				"status": "active",
+				"statusBeforeDelete": null,
+				"deletedAt": null,
 				"tokenVersion": 0,
 				"failedLoginAttempts": 0,
 				"lastLoginAt": null,

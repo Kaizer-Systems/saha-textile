@@ -10,6 +10,7 @@ import {
 	type AdminCustomer,
 	type AdminCustomerListParams,
 	type AdminCustomerListResponse,
+	type AdminDeletedCustomerListParams,
 	type CreateCustomerAddressInput,
 	type CreateCustomerInput,
 	type CustomerOrdersListParams,
@@ -21,8 +22,10 @@ import {
 
 const ROUTES = {
 	list: '/admin/customers',
+	deleted: '/admin/customers/deleted',
 	detail: (customerId: string) => `/admin/customers/${customerId}`,
 	orders: (customerId: string) => `/admin/customers/${customerId}/orders`,
+	restore: (customerId: string) => `/admin/customers/${customerId}/restore`,
 	resend: (customerId: string) => `/admin/customers/${customerId}/activation/resend`,
 	addresses: (customerId: string) => `/admin/customers/${customerId}/addresses`,
 	address: (customerId: string, addressId: string) => `/admin/customers/${customerId}/addresses/${addressId}`,
@@ -37,16 +40,15 @@ export class HttpAdminCustomersGateway extends AdminCustomersGateway {
 	}
 
 	override list(params: AdminCustomerListParams): Observable<AdminCustomerListResponse> {
-		const queryParams: Record<string, string> = {};
-		if (params.page !== undefined) queryParams['page'] = String(params.page);
-		if (params.pageSize !== undefined) queryParams['pageSize'] = String(params.pageSize);
-		if (params.q) queryParams['q'] = params.q;
-		if (params.status) queryParams['status'] = params.status;
+		return this.http.get<AdminCustomerListResponse>(this.url(withQuery(ROUTES.list, params)));
+	}
 
-		const query = new URLSearchParams(queryParams).toString();
-		const path = query ? `${ROUTES.list}?${query}` : ROUTES.list;
+	override listDeleted(params: AdminDeletedCustomerListParams): Observable<AdminCustomerListResponse> {
+		return this.http.get<AdminCustomerListResponse>(this.url(withQuery(ROUTES.deleted, params)));
+	}
 
-		return this.http.get<AdminCustomerListResponse>(this.url(path));
+	override restore(customerId: string): Observable<AdminCustomer> {
+		return this.http.post<AdminCustomer>(this.url(ROUTES.restore(customerId)), {});
 	}
 
 	override get(customerId: string): Observable<AdminCustomer> {
@@ -98,4 +100,15 @@ export class HttpAdminCustomersGateway extends AdminCustomersGateway {
 
 		return this.http.get<CustomerOrdersListResponse>(this.url(path));
 	}
+}
+
+function withQuery(path: string, params: AdminCustomerListParams): string {
+	const queryParams: Record<string, string> = {};
+	if (params.page !== undefined) queryParams['page'] = String(params.page);
+	if (params.pageSize !== undefined) queryParams['pageSize'] = String(params.pageSize);
+	if (params.q) queryParams['q'] = params.q;
+	if (params.status) queryParams['status'] = params.status;
+
+	const query = new URLSearchParams(queryParams).toString();
+	return query ? `${path}?${query}` : path;
 }

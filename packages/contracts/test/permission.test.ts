@@ -29,9 +29,10 @@ describe('permission registry', () => {
 	// 2026-08-15, retiring 14 codes nothing in any app referenced — marketplace vocabulary
 	// (`vendor_wallet.*`, `commission_history.index`, `withdraw_request.{create,index}`,
 	// `wallet.*`) that a single-vendor business cannot use, duplicates of live codes
-	// (`role.edit`, `theme.{edit,index}`), and the ambiguous `user.{edit,destroy}`.
+	// (`role.edit`, `theme.{edit,index}`), and the ambiguous `user.{edit,destroy}`. 91 → 92 on
+	// 2026-11-03 with `customer.restore` (`DEC-CUSTOMER-SOFT-DELETE-OPS` recycle bin).
 	it('exposes every code with a stable order', () => {
-		expect(PERMISSION_CODES).toHaveLength(91);
+		expect(PERMISSION_CODES).toHaveLength(92);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 

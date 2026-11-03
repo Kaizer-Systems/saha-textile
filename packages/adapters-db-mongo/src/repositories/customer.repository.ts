@@ -21,6 +21,12 @@ function escapeRegex(value: string): string {
 /** Live (non-deleted) rows only — soft-deleted emails/phones may be reclaimed. */
 const NOT_DELETED = { status: { $ne: 'deleted' } } as const;
 
+/**
+ * What a row deleted before `statusBeforeDelete` existed comes back as: an operator reviews it
+ * before the customer can sign in again (owner choice 2026-11-03).
+ */
+const RESTORE_FALLBACK_STATUS: CustomerStatus = 'disabled';
+
 async function mapCustomer(doc: CustomerDoc): Promise<Customer> {
 	return toCustomer(doc, (await loadPublicIdentities('customer', doc._id)) as Customer['identities']);
 }
@@ -165,6 +171,59 @@ export class MongoCustomerRepository implements CustomerRepository {
 
 	async setStatus(customerId: string, status: CustomerStatus): Promise<Customer | null> {
 		return this.update(customerId, { status });
+	}
+
+	/**
+	 * One pipeline update, so the status that is remembered is the status that was replaced: a
+	 * read-then-write would let a concurrent status edit slip between the two and be restored
+	 * later as though it had never happened.
+	 */
+	async softDelete(customerId: string, at: string): Promise<Customer | null> {
+		const doc = await CustomerModel.findOneAndUpdate(
+			{ _id: customerId, ...NOT_DELETED },
+			[
+				{
+					$set: {
+						statusBeforeDelete: '$status',
+						status: 'deleted',
+						deletedAt: new Date(at),
+						tokenVersion: { $add: [{ $ifNull: ['$tokenVersion', 0] }, 1] },
+					},
+				},
+			],
+			{ returnDocument: 'after', session: sessionFrom(), updatePipeline: true },
+		)
+			.lean<CustomerDoc>()
+			.exec();
+		return doc ? mapCustomer(doc) : null;
+	}
+
+	/**
+	 * The restored row re-enters the partial unique indexes, so this write is where a clash with a
+	 * customer who took the email or phone meanwhile is decided — including one created a moment
+	 * after the caller looked. That verdict leaves as `DuplicateIdentifierError`.
+	 */
+	async restore(customerId: string): Promise<Customer | null> {
+		try {
+			const doc = await CustomerModel.findOneAndUpdate(
+				{ _id: customerId, status: 'deleted' },
+				[
+					{
+						$set: {
+							status: { $ifNull: ['$statusBeforeDelete', RESTORE_FALLBACK_STATUS] },
+							statusBeforeDelete: null,
+							deletedAt: null,
+						},
+					},
+				],
+				{ returnDocument: 'after', session: sessionFrom(), updatePipeline: true },
+			)
+				.lean<CustomerDoc>()
+				.exec();
+			return doc ? mapCustomer(doc) : null;
+		} catch (error) {
+			throw asDuplicateIdentifier(error) ?? error;
+		}
 	}
 
 	/**

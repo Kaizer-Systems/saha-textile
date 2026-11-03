@@ -283,13 +283,16 @@
 								<i [class]="'ri-lock-line'"></i>
 							</a>
 							} @else { @for ( action of tableConfig?.rowActions; track action) { @if
-							(columnData['status'] !== 'deleted') {
+							((columnData['status'] === 'deleted') === !!action.deletedRows) {
 							<ng-container *hasPermission="action.permission">
 								<li>
 									<a
 										href="javascript:void(0)"
+										[attr.aria-label]="action.label"
 										(click)="action?.actionToPerform === 'delete' 
                                                                 ? DeleteModal().openModal('delete', columnData) 
+                                                                : action.confirm
+                                                                ? ConfirmationModal().openModal(action.actionToPerform, columnData)
                                                                 : onActionClicked(action?.actionToPerform.toString(), columnData)"
 									>
 										<i [class]="action?.icon"></i>
@@ -329,6 +332,7 @@
 }
 <app-delete-modal
 	#deleteModal
+	[message]="deleteMessage()"
 	(deleteItem)="onActionClicked($event?.actionToPerform, $event?.data)"
 />
 

@@ -9,7 +9,13 @@ import { NotificationChannel } from './notification';
  *
  * `q` is a case-insensitive tokenized contains search over email, phone, and displayName.
  * Each token must appear (in any order) as a substring in at least one of those fields.
- * Soft-deleted rows are included only when `status=deleted` is requested explicitly.
+ *
+ * This is the DIRECTORY filter the repository understands, and it can name `status=deleted`.
+ * The HTTP routes do not accept it as-is: `GET /admin/customers` takes
+ * `LiveCustomerListQuery`, and soft-deleted rows are reached only through
+ * `GET /admin/customers/deleted` (`customer.restore`, `DEC-CUSTOMER-SOFT-DELETE-OPS`). With no
+ * status the directory is the live population, which is also the rule every report or export
+ * follows: deleted customers appear only where they are explicitly asked for.
  */
 export const CustomerListQuery = z.object({
 	page: z.coerce.number().int().positive().default(1),
@@ -19,6 +25,21 @@ export const CustomerListQuery = z.object({
 	sort: z.enum(['displayName', 'createdAt']).optional(),
 });
 export type CustomerListQuery = z.infer<typeof CustomerListQuery>;
+
+/**
+ * Query for `GET /admin/customers` — the live directory.
+ *
+ * `status=deleted` is refused here rather than honoured: the recycle bin is its own route behind
+ * its own permission, so holding `customer.index` alone never lists departed customers.
+ */
+export const LiveCustomerListQuery = CustomerListQuery.extend({
+	status: CustomerStatus.exclude(['deleted']).optional(),
+});
+export type LiveCustomerListQuery = z.infer<typeof LiveCustomerListQuery>;
+
+/** Query for `GET /admin/customers/deleted` — the recycle bin. The status is implied. */
+export const DeletedCustomerListQuery = CustomerListQuery.omit({ status: true });
+export type DeletedCustomerListQuery = z.infer<typeof DeletedCustomerListQuery>;
 
 /** Paginated customer directory (`GET /admin/customers`). */
 export const CustomerListResponse = paginated(Customer);

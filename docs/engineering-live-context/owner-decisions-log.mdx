@@ -568,7 +568,7 @@ Roles live in the `mediaRoles` collection: seeded roles are undeletable and unre
     - mode 1 (dev hot reload) and mode 2 (local prod build) use the mkcert local CA (`pnpm setup:local-https`) — a locally trusted CA, not a self-signed certificate (self-signed would warn and block service workers);
     - mode 3 (full local stack) runs the same Dockerfiles later published to private GHCR, behind Nginx terminating TLS with the mkcert certificate, with runtime secrets from gitignored env files, never baked into images;
     - staging and prod use Cloudflare's edge certificate plus a Cloudflare Origin Certificate on Nginx (Full strict).
-- Hostnames are single-level subdomains (locked 2026-11-02), because Cloudflare's free Universal SSL covers only `*.sahatextile.com`. Staging: `staging.sahatextile.com` (storefront), `admin-staging.sahatextile.com`, `api-staging.sahatextile.com`, `cdn-staging.sahatextile.com`. Production names follow the same rule; the remaining choices stay under `DEC-DOMAIN-TOPOLOGY`.
+- Hostnames are single-level subdomains (locked 2026-11-02), because Cloudflare's free Universal SSL covers only `*.sahatextile.com`. Staging: `staging.sahatextile.com` (storefront), `admin-staging.sahatextile.com`, `api-staging.sahatextile.com`, `cdn-staging.sahatextile.com`. Production (locked 2026-11-03): the storefront on the bare `sahatextile.com` (as the live WordPress site today; `www` permanently redirects to it), `admin.sahatextile.com`, `api.sahatextile.com`, `cdn.sahatextile.com`. Only the cookie-domain rule stays under `DEC-DOMAIN-TOPOLOGY`.
 - Protected branches are changed only through reviewed PRs.
 
 ## Audit and retention
@@ -863,8 +863,9 @@ Answered in chat on 2026-11-03 and removed from `pending-decisions.mdx`.
   reports exclude deleted customers unless explicitly included. Implementation pending (the
   CRM screen change needs a UI brief first).
 
-Still open after this round: `DEC-PORTAL-PRIVATE-ACCESS` (owner: decide at deploy time) and
-the production half of `DEC-DOMAIN-TOPOLOGY`.
+Still open after this round: `DEC-PORTAL-PRIVATE-ACCESS` (owner: decide at deploy time). Later the
+same day the owner chose the production hostnames (see Infrastructure: bare `sahatextile.com`); only
+the cookie-domain rule of `DEC-DOMAIN-TOPOLOGY` remains open.
 
 ## Open decisions
 

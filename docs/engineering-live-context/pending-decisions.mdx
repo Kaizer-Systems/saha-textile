@@ -51,7 +51,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-SCOPE-GAPS`            | Missing business flows and launch scope                                                              | Whole product                                 |
 | `DEC-PAYPAL-FX`             | Treatment of PayPal FX-conversion markup                                                             | Foreign-currency pricing and margin           |
 | `DEC-INR-GATEWAY-TIMING`    | Timing of CCAvenue-to-Razorpay succession                                                            | Payment adapter delivery and operations       |
-| `DEC-DOMAIN-TOPOLOGY`       | Production hostname topology — **partly settled 2026-11-02**                                         | Cookies, CORS, Nginx, deployment              |
+| `DEC-DOMAIN-TOPOLOGY`       | Production cookie-domain rule — **hostnames settled 2026-11-03**                                     | Cookies, CORS, Nginx, deployment              |
 | `DEC-PORTAL-PRIVATE-ACCESS` | Developer-portal identity policy and origin-protection mechanism                                     | Portal deployment, Cloudflare, service access |
 
 ---
@@ -970,7 +970,17 @@ cookies and exact CORS/CSRF allowlists.
 - Single-level hostnames only, because Cloudflare's free Universal SSL covers just `*.sahatextile.com`.
 - Staging: `staging.sahatextile.com` (storefront), `admin-staging.sahatextile.com`, `api-staging.sahatextile.com`, `cdn-staging.sahatextile.com`.
 
-Still open: the production storefront host (`www` vs apex, with the other redirecting), the exact admin/API/CDN production names, and the cookie-domain rule.
+### Settled 2026-11-03 — no longer open
+
+- Production storefront: the bare `sahatextile.com`, which the live WordPress site already uses as
+  its main address; `www.sahatextile.com` permanently redirects to it. Keeping the host Google
+  already indexes avoids a host change on top of the URL migration.
+- Production admin, API and CDN: `admin.sahatextile.com`, `api.sahatextile.com`,
+  `cdn.sahatextile.com`.
+
+Still open: the cookie-domain rule — host-only cookies per application, or a shared
+`Domain=sahatextile.com` (the environment catalogue currently plans the apex for staging and
+production so the storefront server and the API can both read the session).
 
 ### Owner answer
 

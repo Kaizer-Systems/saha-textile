@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Model, Schema } from 'mongoose';
+import type { Schema } from 'mongoose';
 
 import * as models from '../src/models/index';
 import { MEDIA_OWNER_REGISTRY } from '../src/repositories/media-owner-registry';
@@ -13,14 +13,21 @@ import { MEDIA_OWNER_REGISTRY } from '../src/repositories/media-owner-registry';
  * path ending in `AssetId`/`AssetIds`, or a free-form `media` sub-document — has no
  * registry entry on that model.
  */
-const exportedModels = Object.values(models).filter(
-	(value): value is Model<unknown> => typeof value === 'function' && 'modelName' in value && 'schema' in value,
+/** The part of a Mongoose model the walk reads; the export union is too wide to narrow to `Model`. */
+interface WalkableModel {
+	modelName: string;
+	collection: { collectionName: string };
+	schema: Schema;
+}
+
+const exportedModels = (Object.values(models) as unknown[]).filter(
+	(value): value is WalkableModel => typeof value === 'function' && 'modelName' in value && 'schema' in value,
 );
 
 /** Collections that store media ids as their OWN identity, not as a reference. */
 const NOT_OWNERS = new Set(['mediaAssets', 'mediaRoles']);
 
-const registeredPaths = (model: Model<unknown>): string[] =>
+const registeredPaths = (model: WalkableModel): string[] =>
 	MEDIA_OWNER_REGISTRY.filter((entry) => entry.model.modelName === model.modelName).map((entry) => entry.path);
 
 const referencePaths = (schema: Schema): string[] => {

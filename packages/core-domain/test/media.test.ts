@@ -517,7 +517,7 @@ describe('runMediaGarbageCollection', () => {
 
 describe('reconcileSeededRoles', () => {
 	it('inserts missing seeds, applies fixed-shape changes with a version bump, and keeps operator edits', async () => {
-		const { reconcileSeededRoles } = await import('../src/index');
+		const { reconcileSeededRoles } = await import('../src/index.js');
 		const share = SEEDED_MEDIA_ROLES.find((role) => role.key === 'share');
 		const card = SEEDED_MEDIA_ROLES.find((role) => role.key === 'card');
 		if (!share || !card) throw new Error('seed missing');

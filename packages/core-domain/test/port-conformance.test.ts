@@ -69,16 +69,17 @@ const fakeNotifications: NotificationPort = {
 	isChannelEnabled: async (_channel, category) => category !== 'marketing',
 };
 
+const video = (index: number) => ({
+	videoId: `video_${index}`,
+	title: 'Saha Textile weave',
+	publishedAt: '2026-08-01T00:00:00.000Z',
+	thumbnailUrl: 'https://example.invalid/thumb.jpg',
+});
+
 const fakeYouTube: YouTubePort = {
-	fetchLatestVideos: async ({ limit }) =>
-		Array.from({ length: limit }, (_unused, index) => ({
-			videoId: `video_${index}`,
-			title: 'Saha Textile weave',
-			description: '',
-			publishedAt: '2026-08-01T00:00:00.000Z',
-			thumbnailUrl: 'https://example.invalid/thumb.jpg',
-			watchUrl: 'https://example.invalid/watch',
-		})),
+	resolveChannel: async () => ({ channelId: 'UC_saha_textile', uploadsPlaylistId: 'UU_saha_textile' }),
+	listPlaylistVideos: async ({ limit }) => Array.from({ length: limit }, (_unused, index) => video(index)),
+	findVideo: async (videoId) => ({ ...video(0), videoId }),
 };
 
 const fakeTranscode: VideoTranscodePort = {
@@ -236,7 +237,8 @@ describe('port conformance (compile-time)', () => {
 	});
 
 	it('returns the requested number of videos', async () => {
-		const videos = await fakeYouTube.fetchLatestVideos({ channelId: 'UC_saha_textile', limit: 3 });
+		const channel = await fakeYouTube.resolveChannel('@saha-textile');
+		const videos = await fakeYouTube.listPlaylistVideos({ playlistId: channel!.uploadsPlaylistId, limit: 3 });
 		expect(videos).toHaveLength(3);
 	});
 });

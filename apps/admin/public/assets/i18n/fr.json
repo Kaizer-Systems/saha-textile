@@ -642,6 +642,7 @@
 	"no_records_found": "Aucun enregistrement trouvé",
 	"delete_item": "Effacer l'article ?",
 	"deleted_message": "Cet article sera supprimé définitivement. Vous ne pouvez pas annuler cette action.",
+	"media_deleted_message": "Cette image quitte la bibliothèque dès maintenant ; ses fichiers sont effacés définitivement après 30 jours.",
 	"confirmation": "Confirmation",
 	"confirmation_massage": "Êtes-vous sur de vouloir continuer?",
 	"enter_password_confirmation": "Entrez la confirmation du mot de passe",

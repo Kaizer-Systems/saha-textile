@@ -642,6 +642,7 @@
 	"no_records_found": "No Records Found",
 	"delete_item": "Delete Item ?",
 	"deleted_message": "This Item will be deleted permanently. You can't undo this action.",
+	"media_deleted_message": "This image leaves the library now, and its files are erased for good after 30 days.",
 	"confirmation": "Confirmation",
 	"confirmation_massage": "Are you sure you want to proceed?",
 	"enter_password_confirmation": "Enter password confirmation",

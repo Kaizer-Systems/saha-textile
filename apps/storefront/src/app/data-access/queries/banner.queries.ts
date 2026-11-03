@@ -6,20 +6,12 @@ import { injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import { runtimeConfig, runtimeConfigReady } from '@core/config/runtime-config';
+import { ResolvedImage, ResolvedImageSource, roleSrcset } from '@core/media/resolved-image';
 
-/** One width of one banner image, as the API resolves it (`ResolvedImageSource`). */
-export interface BannerSource {
-	url: string;
-	width: number;
-	height: number;
-}
+/** One width of one banner image, as the API resolves it. */
+export type BannerSource = ResolvedImageSource;
 
-export interface BannerImage {
-	width: number;
-	height: number;
-	dominantColor: string | null;
-	roles: Record<string, BannerSource[]>;
-}
+export type BannerImage = ResolvedImage;
 
 /** `ResolvedBanner` from `@saha-textile/contracts`, as the storefront reads it. */
 export interface ResolvedBanner {
@@ -66,8 +58,7 @@ export function injectBannersQuery(ownerType: () => 'home' | 'global' = () => 'h
 }
 
 /** `srcset` for one banner image's `banner` role. */
-export const bannerSrcset = (image: BannerImage | null): string | null =>
-	image?.roles['banner']?.map((source) => `${source.url} ${source.width}w`).join(', ') || null;
+export const bannerSrcset = (image: BannerImage | null): string | null => roleSrcset(image, 'banner');
 
 /** The largest rendered width, used as `src`. */
 export const bannerSrc = (image: BannerImage): string => image.roles['banner']?.at(-1)?.url ?? '';

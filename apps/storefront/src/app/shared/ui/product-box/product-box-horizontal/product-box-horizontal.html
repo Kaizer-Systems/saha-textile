@@ -19,6 +19,10 @@
 				[src]="product()?.product_thumbnail ?
                           product()?.product_thumbnail?.original_url :
                           'assets/images/product.png'"
+				[attr.srcset]="thumbnail().srcset"
+				[attr.sizes]="thumbnail().sizes"
+				[attr.width]="thumbnail().width"
+				[attr.height]="thumbnail().height"
 				class="img-fluid"
 				[alt]="'product'"
 			/>

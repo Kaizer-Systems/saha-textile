@@ -3,5 +3,14 @@
 	"compilerOptions": {
 		"incremental": false
 	},
-	"exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "**/*.test.ts", "src/set-local-test-credentials.ts", "src/reset-local-customer.ts"]
+	"exclude": [
+		"node_modules",
+		"dist",
+		"test",
+		"**/*.spec.ts",
+		"**/*.test.ts",
+		"src/set-local-test-credentials.ts",
+		"src/reset-local-customer.ts",
+		"src/seed-local-catalog-photos.ts"
+	]
 }

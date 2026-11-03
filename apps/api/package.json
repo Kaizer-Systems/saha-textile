@@ -21,7 +21,8 @@
     "worker:dev": "node --import tsx --watch src/worker.ts",
     "e2e:media": "node --import tsx e2e/media-pipeline.e2e.ts",
     "e2e:banners": "node --import tsx e2e/banners.e2e.ts",
-    "e2e:review-photos": "node --import tsx e2e/review-photos.e2e.ts"
+    "e2e:review-photos": "node --import tsx e2e/review-photos.e2e.ts",
+    "seed:local-catalog-photos": "node --import tsx src/seed-local-catalog-photos.ts"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.3",

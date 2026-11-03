@@ -3603,8 +3603,21 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 136.22,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [160, 153, 161, 158, 167, 168],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							160,
+							153,
+							161,
+							158,
+							167,
+							168
+						],
 						"cross_sell_products": [],
 						"pivot": {
 							"order_id": "28",
@@ -3628,7 +3641,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:29:48.000000Z",
 							"updated_at": "2023-09-18T12:29:48.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 						},
 						"product_galleries": [
 							{
@@ -3643,7 +3656,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:29:48.000000Z",
 								"updated_at": "2023-09-18T12:29:48.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1264,
@@ -3657,7 +3670,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:29:48.000000Z",
 								"updated_at": "2023-09-18T12:29:48.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1265,
@@ -3671,7 +3684,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:29:48.000000Z",
 								"updated_at": "2023-09-18T12:29:48.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1262,
@@ -3685,7 +3698,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:29:48.000000Z",
 								"updated_at": "2023-09-18T12:29:48.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							}
 						],
 						"product_meta_image": {
@@ -3964,7 +3977,13 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
 						"related_products": [],
 						"cross_sell_products": [],
 						"pivot": {
@@ -3989,7 +4008,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:06:25.000000Z",
 							"updated_at": "2023-09-18T12:06:25.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 						},
 						"product_galleries": [
 							{
@@ -4004,7 +4023,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:06:25.000000Z",
 								"updated_at": "2023-09-18T12:06:25.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1224,
@@ -4018,7 +4037,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:06:25.000000Z",
 								"updated_at": "2023-09-18T12:06:25.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1225,
@@ -4032,7 +4051,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:06:25.000000Z",
 								"updated_at": "2023-09-18T12:06:25.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1226,
@@ -4046,7 +4065,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:06:25.000000Z",
 								"updated_at": "2023-09-18T12:06:25.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							}
 						],
 						"product_meta_image": {
@@ -4312,7 +4331,13 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
 						"related_products": [],
 						"cross_sell_products": [],
 						"pivot": {
@@ -4337,7 +4362,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:14:21.000000Z",
 							"updated_at": "2023-09-18T12:14:21.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 						},
 						"product_galleries": [
 							{
@@ -4352,7 +4377,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:21.000000Z",
 								"updated_at": "2023-09-18T12:14:21.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1236,
@@ -4366,7 +4391,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:21.000000Z",
 								"updated_at": "2023-09-18T12:14:21.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1235,
@@ -4380,7 +4405,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:21.000000Z",
 								"updated_at": "2023-09-18T12:14:21.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1237,
@@ -4394,7 +4419,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:21.000000Z",
 								"updated_at": "2023-09-18T12:14:21.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1228,
@@ -4408,7 +4433,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1229,
@@ -4422,7 +4447,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1230,
@@ -4436,7 +4461,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1231,
@@ -4450,7 +4475,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1232,
@@ -4464,7 +4489,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							}
 						],
 						"product_meta_image": {
@@ -4730,9 +4755,26 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [167, 174, 157, 158, 163, 154],
-						"cross_sell_products": [178, 177, 175],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							167,
+							174,
+							157,
+							158,
+							163,
+							154
+						],
+						"cross_sell_products": [
+							178,
+							177,
+							175
+						],
 						"pivot": {
 							"order_id": "28",
 							"product_id": 160,
@@ -4755,7 +4797,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:32:18.000000Z",
 							"updated_at": "2023-09-18T12:32:18.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 						},
 						"product_galleries": [
 							{
@@ -4770,7 +4812,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:32:18.000000Z",
 								"updated_at": "2023-09-18T12:32:18.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1268,
@@ -4784,7 +4826,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:32:18.000000Z",
 								"updated_at": "2023-09-18T12:32:18.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							}
 						],
 						"product_meta_image": {
@@ -5113,7 +5155,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:32:18.000000Z",
 									"updated_at": "2023-09-18T12:32:18.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 								},
 								"attribute_values": [
 									{
@@ -5161,7 +5203,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:32:18.000000Z",
 									"updated_at": "2023-09-18T12:32:18.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 								},
 								"attribute_values": [
 									{
@@ -5209,7 +5251,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:32:18.000000Z",
 									"updated_at": "2023-09-18T12:32:18.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 								},
 								"attribute_values": [
 									{
@@ -5257,7 +5299,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:32:18.000000Z",
 									"updated_at": "2023-09-18T12:32:18.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 								},
 								"attribute_values": [
 									{
@@ -5329,8 +5371,21 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [162, 176, 175, 177, 156, 152],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							162,
+							176,
+							175,
+							177,
+							156,
+							152
+						],
 						"cross_sell_products": [],
 						"pivot": {
 							"order_id": "28",
@@ -5354,7 +5409,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-19T02:58:03.000000Z",
 							"updated_at": "2023-09-19T02:58:03.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 						},
 						"product_galleries": [
 							{
@@ -5369,7 +5424,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-19T02:58:03.000000Z",
 								"updated_at": "2023-09-19T02:58:03.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1322,
@@ -5383,7 +5438,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-19T02:58:03.000000Z",
 								"updated_at": "2023-09-19T02:58:03.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1323,
@@ -5397,7 +5452,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-19T02:58:03.000000Z",
 								"updated_at": "2023-09-19T02:58:03.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							}
 						],
 						"product_meta_image": {
@@ -5715,7 +5770,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-19T02:58:03.000000Z",
 									"updated_at": "2023-09-19T02:58:03.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 								},
 								"attribute_values": [
 									{
@@ -5763,7 +5818,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-19T02:58:03.000000Z",
 									"updated_at": "2023-09-19T02:58:03.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 								},
 								"attribute_values": [
 									{
@@ -5811,7 +5866,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-19T02:58:03.000000Z",
 									"updated_at": "2023-09-19T02:58:03.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 								},
 								"attribute_values": [
 									{
@@ -5883,9 +5938,26 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [170, 155, 160, 176, 152, 174],
-						"cross_sell_products": [171, 170, 168],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							170,
+							155,
+							160,
+							176,
+							152,
+							174
+						],
+						"cross_sell_products": [
+							171,
+							170,
+							168
+						],
 						"pivot": {
 							"order_id": "28",
 							"product_id": 164,
@@ -5908,7 +5980,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:23:44.000000Z",
 							"updated_at": "2023-09-18T12:23:44.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 						},
 						"product_galleries": [
 							{
@@ -5923,7 +5995,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:23:44.000000Z",
 								"updated_at": "2023-09-18T12:23:44.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1247,
@@ -5937,7 +6009,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:23:44.000000Z",
 								"updated_at": "2023-09-18T12:23:44.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1248,
@@ -5951,7 +6023,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:23:44.000000Z",
 								"updated_at": "2023-09-18T12:23:44.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							}
 						],
 						"product_meta_image": {
@@ -6385,7 +6457,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -6448,7 +6520,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -6511,7 +6583,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -6574,7 +6646,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -6637,7 +6709,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -6700,7 +6772,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -6787,9 +6859,26 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 777.2799999999999,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [154, 156, 168, 169, 158, 113],
-						"cross_sell_products": [157, 158, 166],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							154,
+							156,
+							168,
+							169,
+							158,
+							113
+						],
+						"cross_sell_products": [
+							157,
+							158,
+							166
+						],
 						"pivot": {
 							"order_id": "28",
 							"product_id": 161,
@@ -6812,7 +6901,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:33:04.000000Z",
 							"updated_at": "2023-09-18T12:33:04.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 						},
 						"product_galleries": [
 							{
@@ -6827,7 +6916,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:33:04.000000Z",
 								"updated_at": "2023-09-18T12:33:04.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1271,
@@ -6841,7 +6930,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:33:04.000000Z",
 								"updated_at": "2023-09-18T12:33:04.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1272,
@@ -6855,7 +6944,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:33:04.000000Z",
 								"updated_at": "2023-09-18T12:33:04.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1273,
@@ -6869,7 +6958,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:33:04.000000Z",
 								"updated_at": "2023-09-18T12:33:04.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							}
 						],
 						"product_meta_image": {
@@ -7248,7 +7337,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -7311,7 +7400,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -7374,7 +7463,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -7437,7 +7526,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -7500,7 +7589,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -7563,7 +7652,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -11268,8 +11357,21 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 136.22,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [160, 153, 161, 158, 167, 168],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							160,
+							153,
+							161,
+							158,
+							167,
+							168
+						],
 						"cross_sell_products": [],
 						"pivot": {
 							"order_id": "28",
@@ -11293,7 +11395,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:29:48.000000Z",
 							"updated_at": "2023-09-18T12:29:48.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 						},
 						"product_galleries": [
 							{
@@ -11308,7 +11410,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:29:48.000000Z",
 								"updated_at": "2023-09-18T12:29:48.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1264,
@@ -11322,7 +11424,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:29:48.000000Z",
 								"updated_at": "2023-09-18T12:29:48.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1265,
@@ -11336,7 +11438,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:29:48.000000Z",
 								"updated_at": "2023-09-18T12:29:48.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1262,
@@ -11350,7 +11452,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:29:48.000000Z",
 								"updated_at": "2023-09-18T12:29:48.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							}
 						],
 						"product_meta_image": {
@@ -11629,7 +11731,13 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
 						"related_products": [],
 						"cross_sell_products": [],
 						"pivot": {
@@ -11654,7 +11762,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:06:25.000000Z",
 							"updated_at": "2023-09-18T12:06:25.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 						},
 						"product_galleries": [
 							{
@@ -11669,7 +11777,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:06:25.000000Z",
 								"updated_at": "2023-09-18T12:06:25.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1224,
@@ -11683,7 +11791,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:06:25.000000Z",
 								"updated_at": "2023-09-18T12:06:25.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1225,
@@ -11697,7 +11805,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:06:25.000000Z",
 								"updated_at": "2023-09-18T12:06:25.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1226,
@@ -11711,7 +11819,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:06:25.000000Z",
 								"updated_at": "2023-09-18T12:06:25.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							}
 						],
 						"product_meta_image": {
@@ -11977,7 +12085,13 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
 						"related_products": [],
 						"cross_sell_products": [],
 						"pivot": {
@@ -12002,7 +12116,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:14:21.000000Z",
 							"updated_at": "2023-09-18T12:14:21.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 						},
 						"product_galleries": [
 							{
@@ -12017,7 +12131,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:21.000000Z",
 								"updated_at": "2023-09-18T12:14:21.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1236,
@@ -12031,7 +12145,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:21.000000Z",
 								"updated_at": "2023-09-18T12:14:21.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1235,
@@ -12045,7 +12159,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:21.000000Z",
 								"updated_at": "2023-09-18T12:14:21.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1237,
@@ -12059,7 +12173,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:21.000000Z",
 								"updated_at": "2023-09-18T12:14:21.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1228,
@@ -12073,7 +12187,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1229,
@@ -12087,7 +12201,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1230,
@@ -12101,7 +12215,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1231,
@@ -12115,7 +12229,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1232,
@@ -12129,7 +12243,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							}
 						],
 						"product_meta_image": {
@@ -12395,9 +12509,26 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [167, 174, 157, 158, 163, 154],
-						"cross_sell_products": [178, 177, 175],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							167,
+							174,
+							157,
+							158,
+							163,
+							154
+						],
+						"cross_sell_products": [
+							178,
+							177,
+							175
+						],
 						"pivot": {
 							"order_id": "28",
 							"product_id": 160,
@@ -12420,7 +12551,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:32:18.000000Z",
 							"updated_at": "2023-09-18T12:32:18.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 						},
 						"product_galleries": [
 							{
@@ -12435,7 +12566,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:32:18.000000Z",
 								"updated_at": "2023-09-18T12:32:18.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1268,
@@ -12449,7 +12580,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:32:18.000000Z",
 								"updated_at": "2023-09-18T12:32:18.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							}
 						],
 						"product_meta_image": {
@@ -12778,7 +12909,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:32:18.000000Z",
 									"updated_at": "2023-09-18T12:32:18.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 								},
 								"attribute_values": [
 									{
@@ -12826,7 +12957,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:32:18.000000Z",
 									"updated_at": "2023-09-18T12:32:18.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 								},
 								"attribute_values": [
 									{
@@ -12874,7 +13005,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:32:18.000000Z",
 									"updated_at": "2023-09-18T12:32:18.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 								},
 								"attribute_values": [
 									{
@@ -12922,7 +13053,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:32:18.000000Z",
 									"updated_at": "2023-09-18T12:32:18.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 								},
 								"attribute_values": [
 									{
@@ -12994,8 +13125,21 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [162, 176, 175, 177, 156, 152],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							162,
+							176,
+							175,
+							177,
+							156,
+							152
+						],
 						"cross_sell_products": [],
 						"pivot": {
 							"order_id": "28",
@@ -13019,7 +13163,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-19T02:58:03.000000Z",
 							"updated_at": "2023-09-19T02:58:03.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 						},
 						"product_galleries": [
 							{
@@ -13034,7 +13178,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-19T02:58:03.000000Z",
 								"updated_at": "2023-09-19T02:58:03.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1322,
@@ -13048,7 +13192,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-19T02:58:03.000000Z",
 								"updated_at": "2023-09-19T02:58:03.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1323,
@@ -13062,7 +13206,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-19T02:58:03.000000Z",
 								"updated_at": "2023-09-19T02:58:03.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							}
 						],
 						"product_meta_image": {
@@ -13380,7 +13524,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-19T02:58:03.000000Z",
 									"updated_at": "2023-09-19T02:58:03.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 								},
 								"attribute_values": [
 									{
@@ -13428,7 +13572,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-19T02:58:03.000000Z",
 									"updated_at": "2023-09-19T02:58:03.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 								},
 								"attribute_values": [
 									{
@@ -13476,7 +13620,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-19T02:58:03.000000Z",
 									"updated_at": "2023-09-19T02:58:03.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 								},
 								"attribute_values": [
 									{
@@ -13548,9 +13692,26 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [170, 155, 160, 176, 152, 174],
-						"cross_sell_products": [171, 170, 168],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							170,
+							155,
+							160,
+							176,
+							152,
+							174
+						],
+						"cross_sell_products": [
+							171,
+							170,
+							168
+						],
 						"pivot": {
 							"order_id": "28",
 							"product_id": 164,
@@ -13573,7 +13734,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:23:44.000000Z",
 							"updated_at": "2023-09-18T12:23:44.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 						},
 						"product_galleries": [
 							{
@@ -13588,7 +13749,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:23:44.000000Z",
 								"updated_at": "2023-09-18T12:23:44.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1247,
@@ -13602,7 +13763,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:23:44.000000Z",
 								"updated_at": "2023-09-18T12:23:44.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1248,
@@ -13616,7 +13777,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:23:44.000000Z",
 								"updated_at": "2023-09-18T12:23:44.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							}
 						],
 						"product_meta_image": {
@@ -14050,7 +14211,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -14113,7 +14274,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -14176,7 +14337,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -14239,7 +14400,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -14302,7 +14463,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -14365,7 +14526,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -14452,9 +14613,26 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 777.2799999999999,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [154, 156, 168, 169, 158, 113],
-						"cross_sell_products": [157, 158, 166],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							154,
+							156,
+							168,
+							169,
+							158,
+							113
+						],
+						"cross_sell_products": [
+							157,
+							158,
+							166
+						],
 						"pivot": {
 							"order_id": "28",
 							"product_id": 161,
@@ -14477,7 +14655,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:33:04.000000Z",
 							"updated_at": "2023-09-18T12:33:04.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 						},
 						"product_galleries": [
 							{
@@ -14492,7 +14670,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:33:04.000000Z",
 								"updated_at": "2023-09-18T12:33:04.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1271,
@@ -14506,7 +14684,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:33:04.000000Z",
 								"updated_at": "2023-09-18T12:33:04.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1272,
@@ -14520,7 +14698,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:33:04.000000Z",
 								"updated_at": "2023-09-18T12:33:04.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1273,
@@ -14534,7 +14712,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:33:04.000000Z",
 								"updated_at": "2023-09-18T12:33:04.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							}
 						],
 						"product_meta_image": {
@@ -14913,7 +15091,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -14976,7 +15154,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -15039,7 +15217,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -15102,7 +15280,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -15165,7 +15343,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -15228,7 +15406,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -18933,8 +19111,21 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 136.22,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [160, 153, 161, 158, 167, 168],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							160,
+							153,
+							161,
+							158,
+							167,
+							168
+						],
 						"cross_sell_products": [],
 						"pivot": {
 							"order_id": "28",
@@ -18958,7 +19149,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:29:48.000000Z",
 							"updated_at": "2023-09-18T12:29:48.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 						},
 						"product_galleries": [
 							{
@@ -18973,7 +19164,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:29:48.000000Z",
 								"updated_at": "2023-09-18T12:29:48.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1264,
@@ -18987,7 +19178,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:29:48.000000Z",
 								"updated_at": "2023-09-18T12:29:48.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1265,
@@ -19001,7 +19192,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:29:48.000000Z",
 								"updated_at": "2023-09-18T12:29:48.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1262,
@@ -19015,7 +19206,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:29:48.000000Z",
 								"updated_at": "2023-09-18T12:29:48.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							}
 						],
 						"product_meta_image": {
@@ -19294,7 +19485,13 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
 						"related_products": [],
 						"cross_sell_products": [],
 						"pivot": {
@@ -19319,7 +19516,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:06:25.000000Z",
 							"updated_at": "2023-09-18T12:06:25.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 						},
 						"product_galleries": [
 							{
@@ -19334,7 +19531,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:06:25.000000Z",
 								"updated_at": "2023-09-18T12:06:25.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1224,
@@ -19348,7 +19545,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:06:25.000000Z",
 								"updated_at": "2023-09-18T12:06:25.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1225,
@@ -19362,7 +19559,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:06:25.000000Z",
 								"updated_at": "2023-09-18T12:06:25.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1226,
@@ -19376,7 +19573,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:06:25.000000Z",
 								"updated_at": "2023-09-18T12:06:25.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							}
 						],
 						"product_meta_image": {
@@ -19642,7 +19839,13 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
 						"related_products": [],
 						"cross_sell_products": [],
 						"pivot": {
@@ -19667,7 +19870,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:14:21.000000Z",
 							"updated_at": "2023-09-18T12:14:21.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 						},
 						"product_galleries": [
 							{
@@ -19682,7 +19885,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:21.000000Z",
 								"updated_at": "2023-09-18T12:14:21.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1236,
@@ -19696,7 +19899,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:21.000000Z",
 								"updated_at": "2023-09-18T12:14:21.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1235,
@@ -19710,7 +19913,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:21.000000Z",
 								"updated_at": "2023-09-18T12:14:21.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1237,
@@ -19724,7 +19927,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:21.000000Z",
 								"updated_at": "2023-09-18T12:14:21.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1228,
@@ -19738,7 +19941,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1229,
@@ -19752,7 +19955,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1230,
@@ -19766,7 +19969,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1231,
@@ -19780,7 +19983,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1232,
@@ -19794,7 +19997,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:14:11.000000Z",
 								"updated_at": "2023-09-18T12:14:11.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							}
 						],
 						"product_meta_image": {
@@ -20060,9 +20263,26 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [167, 174, 157, 158, 163, 154],
-						"cross_sell_products": [178, 177, 175],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							167,
+							174,
+							157,
+							158,
+							163,
+							154
+						],
+						"cross_sell_products": [
+							178,
+							177,
+							175
+						],
 						"pivot": {
 							"order_id": "28",
 							"product_id": 160,
@@ -20085,7 +20305,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:32:18.000000Z",
 							"updated_at": "2023-09-18T12:32:18.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 						},
 						"product_galleries": [
 							{
@@ -20100,7 +20320,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:32:18.000000Z",
 								"updated_at": "2023-09-18T12:32:18.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1268,
@@ -20114,7 +20334,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:32:18.000000Z",
 								"updated_at": "2023-09-18T12:32:18.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							}
 						],
 						"product_meta_image": {
@@ -20443,7 +20663,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:32:18.000000Z",
 									"updated_at": "2023-09-18T12:32:18.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 								},
 								"attribute_values": [
 									{
@@ -20491,7 +20711,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:32:18.000000Z",
 									"updated_at": "2023-09-18T12:32:18.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 								},
 								"attribute_values": [
 									{
@@ -20539,7 +20759,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:32:18.000000Z",
 									"updated_at": "2023-09-18T12:32:18.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 								},
 								"attribute_values": [
 									{
@@ -20587,7 +20807,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:32:18.000000Z",
 									"updated_at": "2023-09-18T12:32:18.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 								},
 								"attribute_values": [
 									{
@@ -20659,8 +20879,21 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [162, 176, 175, 177, 156, 152],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							162,
+							176,
+							175,
+							177,
+							156,
+							152
+						],
 						"cross_sell_products": [],
 						"pivot": {
 							"order_id": "28",
@@ -20684,7 +20917,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-19T02:58:03.000000Z",
 							"updated_at": "2023-09-19T02:58:03.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 						},
 						"product_galleries": [
 							{
@@ -20699,7 +20932,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-19T02:58:03.000000Z",
 								"updated_at": "2023-09-19T02:58:03.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1322,
@@ -20713,7 +20946,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-19T02:58:03.000000Z",
 								"updated_at": "2023-09-19T02:58:03.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1323,
@@ -20727,7 +20960,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-19T02:58:03.000000Z",
 								"updated_at": "2023-09-19T02:58:03.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							}
 						],
 						"product_meta_image": {
@@ -21045,7 +21278,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-19T02:58:03.000000Z",
 									"updated_at": "2023-09-19T02:58:03.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 								},
 								"attribute_values": [
 									{
@@ -21093,7 +21326,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-19T02:58:03.000000Z",
 									"updated_at": "2023-09-19T02:58:03.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 								},
 								"attribute_values": [
 									{
@@ -21141,7 +21374,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-19T02:58:03.000000Z",
 									"updated_at": "2023-09-19T02:58:03.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 								},
 								"attribute_values": [
 									{
@@ -21213,9 +21446,26 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 96.24,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [170, 155, 160, 176, 152, 174],
-						"cross_sell_products": [171, 170, 168],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							170,
+							155,
+							160,
+							176,
+							152,
+							174
+						],
+						"cross_sell_products": [
+							171,
+							170,
+							168
+						],
 						"pivot": {
 							"order_id": "28",
 							"product_id": 164,
@@ -21238,7 +21488,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:23:44.000000Z",
 							"updated_at": "2023-09-18T12:23:44.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 						},
 						"product_galleries": [
 							{
@@ -21253,7 +21503,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:23:44.000000Z",
 								"updated_at": "2023-09-18T12:23:44.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1247,
@@ -21267,7 +21517,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:23:44.000000Z",
 								"updated_at": "2023-09-18T12:23:44.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1248,
@@ -21281,7 +21531,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:23:44.000000Z",
 								"updated_at": "2023-09-18T12:23:44.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							}
 						],
 						"product_meta_image": {
@@ -21715,7 +21965,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -21778,7 +22028,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -21841,7 +22091,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -21904,7 +22154,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -21967,7 +22217,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -22030,7 +22280,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:23:44.000000Z",
 									"updated_at": "2023-09-18T12:23:44.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -22117,9 +22367,26 @@
 						"can_review": false,
 						"rating_count": null,
 						"order_amount": 777.2799999999999,
-						"review_ratings": [0, 0, 0, 0, 0],
-						"related_products": [154, 156, 168, 169, 158, 113],
-						"cross_sell_products": [157, 158, 166],
+						"review_ratings": [
+							0,
+							0,
+							0,
+							0,
+							0
+						],
+						"related_products": [
+							154,
+							156,
+							168,
+							169,
+							158,
+							113
+						],
+						"cross_sell_products": [
+							157,
+							158,
+							166
+						],
 						"pivot": {
 							"order_id": "28",
 							"product_id": 161,
@@ -22142,7 +22409,7 @@
 							"created_by_id": "1",
 							"created_at": "2023-09-18T12:33:04.000000Z",
 							"updated_at": "2023-09-18T12:33:04.000000Z",
-							"original_url": "assets/images/data/product.png"
+							"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 						},
 						"product_galleries": [
 							{
@@ -22157,7 +22424,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:33:04.000000Z",
 								"updated_at": "2023-09-18T12:33:04.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							},
 							{
 								"id": 1271,
@@ -22171,7 +22438,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:33:04.000000Z",
 								"updated_at": "2023-09-18T12:33:04.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-thumb-300w-7e8ce026.webp"
 							},
 							{
 								"id": 1272,
@@ -22185,7 +22452,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:33:04.000000Z",
 								"updated_at": "2023-09-18T12:33:04.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-thumb-300w-cc413549.webp"
 							},
 							{
 								"id": 1273,
@@ -22199,7 +22466,7 @@
 								"created_by_id": "1",
 								"created_at": "2023-09-18T12:33:04.000000Z",
 								"updated_at": "2023-09-18T12:33:04.000000Z",
-								"original_url": "assets/images/data/product.png"
+								"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 							}
 						],
 						"product_meta_image": {
@@ -22578,7 +22845,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -22641,7 +22908,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -22704,7 +22971,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -22767,7 +23034,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -22830,7 +23097,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{
@@ -22893,7 +23160,7 @@
 									"created_by_id": "1",
 									"created_at": "2023-09-18T12:33:04.000000Z",
 									"updated_at": "2023-09-18T12:33:04.000000Z",
-									"original_url": "assets/images/data/product.png"
+									"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-thumb-300w-b143b02f.webp"
 								},
 								"attribute_values": [
 									{

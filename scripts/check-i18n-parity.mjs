@@ -23,7 +23,11 @@ import { join, resolve } from 'node:path';
 
 const repositoryRoot = resolve(import.meta.dirname, '..');
 
-const CATALOGUES = [{ app: 'admin', dir: 'apps/admin/public/assets/i18n', reference: 'en' }];
+/** Every app catalogue; the storefront joined on 2026-11-03 (it had never been guarded). */
+const CATALOGUES = [
+	{ app: 'admin', dir: 'apps/admin/public/assets/i18n', reference: 'en' },
+	{ app: 'storefront', dir: 'apps/storefront/public/assets/i18n', reference: 'en' },
+];
 
 /**
  * Values that are legitimately identical across languages: proper nouns, brand names, units
@@ -83,6 +87,28 @@ const SHARED_WORDS = new Set([
 	'twitter',
 	'type',
 	'code',
+	// Storefront (added 2026-11-03 when the guard was extended to it): theme-layout city
+	// names, the provider name, and words French spells identically.
+	'1 point',
+	'base',
+	'berlin',
+	'blogs',
+	'collections',
+	'contact',
+	'cookies',
+	'denver',
+	'google',
+	'madrid',
+	'menu',
+	'notifications',
+	'occasion',
+	'option',
+	'osaka',
+	'paris',
+	'rome',
+	'sports',
+	'tokyo',
+	'variation',
 ]);
 
 /** Letters that only appear in the non-English catalogues here. */

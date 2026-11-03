@@ -1827,15 +1827,7 @@ type ProductBadgeAssignmentDoc = {
 	productId: string;
 	variantId?: string;
 	badgeCode:
-		| 'sale'
-		| 'new'
-		| 'featured'
-		| 'hot'
-		| 'popular'
-		| 'most_viewed'
-		| 'most_bought'
-		| 'most_searched'
-		| 'trending';
+		'sale' | 'new' | 'featured' | 'hot' | 'popular' | 'most_viewed' | 'most_bought' | 'most_searched' | 'trending';
 	label: Record<string, string>;
 	source: 'manual_product_flag' | 'promotion' | 'weekly_insight' | 'system';
 	sourceId?: string;

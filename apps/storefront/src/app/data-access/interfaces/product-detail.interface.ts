@@ -22,14 +22,7 @@
  * Behaviour is a separate dimension (`semantic_role`), never encoded here.
  */
 export type DisplayStyle =
-	| 'color'
-	| 'image'
-	| 'rectangle'
-	| 'circle'
-	| 'radio'
-	| 'dropdown'
-	| 'image_tile'
-	| 'radio_bar';
+	'color' | 'image' | 'rectangle' | 'circle' | 'radio' | 'dropdown' | 'image_tile' | 'radio_bar';
 
 export type SemanticRole = 'variation_axis' | 'filter_only' | 'named_add_on' | 'bundle_component_option';
 

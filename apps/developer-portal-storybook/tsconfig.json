@@ -22,7 +22,9 @@
 			"@core/state/setting.store": ["./src/type-shims/core/state/setting.store.ts"],
 			"@data-access/interfaces/menu.interface": ["./src/type-shims/data-access/interfaces/menu.interface.ts"],
 			"@data-access/interfaces/refund.interface": ["../admin/src/app/data-access/interfaces/refund.interface.ts"],
-			"@data-access/queries/notification.queries": ["./src/type-shims/data-access/queries/notification.queries.ts"],
+			"@data-access/queries/notification.queries": [
+				"./src/type-shims/data-access/queries/notification.queries.ts"
+			],
 			"@core/*": ["../storefront/src/app/core/*", "../admin/src/app/core/*"],
 			"@data-access/*": ["../storefront/src/app/data-access/*", "../admin/src/app/data-access/*"],
 			"@features/*": ["../storefront/src/app/features/*", "../admin/src/app/features/*"],

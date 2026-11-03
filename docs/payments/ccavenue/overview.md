@@ -4,7 +4,7 @@ slug: /payments/ccavenue
 description: What HDFC sent for K R MARKETING ONLINE, and where each document is transcribed.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-01'
+last_verified: '2026-11-03'
 search_keywords: CCAvenue HDFC VAS K R MARKETING ONLINE integration kit
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts

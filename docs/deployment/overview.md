@@ -3,10 +3,12 @@ title: Deployment Overview
 description: Deployment documentation landing page.
 status: planned
 audience: [operator, backend]
-last_verified: '2026-10-31'
+last_verified: '2026-11-03'
 source_of_truth:
     - apps/api/.env.example
     - docker/mongo/docker-compose.yml
+    - docker/images/Dockerfile
+    - docker/stack/compose.yaml
     - docs/engineering-live-context/environment-variables.mdx
     - docs/engineering-live-context/execution-roadmap.mdx
     - .github/workflows
@@ -60,5 +62,14 @@ The automated deploy workflow and detailed injection scripts are **not yet imple
 Product-only deployment builds must use `pnpm build:product-apps`, whose Turbo graph targets only
 `@saha-textile/storefront`, `@saha-textile/admin`, and `@saha-textile/api`. An unfiltered root
 `pnpm build` can include portal workspaces and must not be used as evidence that a three-image
-product deployment excludes the portal. Application Dockerfiles and deployment workflows remain
-future work.
+product deployment excludes the portal.
+
+## Images and the local production-shaped stack
+
+`docker/images/Dockerfile` builds the product images from one multi-stage file: `api` (also run as
+the media worker with `node dist/worker.js`), `storefront` (Analog SSR) and `admin` (static build
+behind Nginx). `docker/stack/compose.yaml` runs them locally with MongoDB 9.0.4 (`rs0`), Redis and
+an Nginx edge that terminates HTTPS with the mkcert certificate on single-level hostnames
+(`local.`, `admin-local.` and `api-local.saha-textile.localhost`): `pnpm stack:certs`, `pnpm
+stack:env`, `pnpm stack:up`; `STACK_HTTPS_PORT` moves the edge off 443. The stack proves the image
+and edge shape; the deploy workflow, secret injection and rollback scripts are still future work.

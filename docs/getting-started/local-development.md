@@ -4,7 +4,7 @@ description: Local setup checklist for the monorepo and developer portal.
 search_keywords: 'mongo rs0 config.json env docker setup pnpm mongo:up check:naming replica set'
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-10-26'
+last_verified: '2026-11-03'
 source_of_truth:
     - package.json
     - pnpm-workspace.yaml
@@ -13,6 +13,8 @@ source_of_truth:
     - apps/api/src/reset-local-customer.ts
     - apps/api/src/set-local-test-credentials.ts
     - apps/api/src/seed-local-auth-accounts.ts
+    - apps/api/src/seed-local-catalog-photos.ts
+    - apps/api/src/worker.ts
     - apps/api/.env.example
     - apps/developer-portal/.env.example
     - scripts/developer-portal-local-auth.mjs
@@ -87,6 +89,16 @@ pnpm --filter @saha-textile/api set:local-credentials -- --i-am-local --audience
 `seed:local-auth-accounts` writes one account per sign-in shape. `reset:local-customer` returns a real Google or Facebook account to "never signed up" (soft delete plus unlinking its identities) between test rounds. `set:local-credentials` sets a known password, and for admins optionally a PIN, using the API's own argon2 hasher.
 
 Social sign-in needs real provider accounts and a browser that allows the provider popups. The in-app browser pane refuses popups opened by automation, so drive provider flows in an ordinary Chrome window. The storefront's server-side rendering calls the API over the local TLS certificate; start it with `NODE_OPTIONS=--use-system-ca` (the `.claude/launch.json` entries already do) so Node trusts the mkcert authority `pnpm setup:local-https` installed.
+
+### Local media and demo-catalogue photos
+
+Image uploads run through Redis, the media worker and the dev Spaces bucket even locally. Start Redis with `pnpm redis:up` and the worker with `pnpm --filter @saha-textile/api worker:dev` next to the API. The storefront still reads the vendor demo catalogue under `apps/storefront/public/assets/data/`. To see real product photos in every product slot (cards, gallery and zoom, cart, wishlist, compare, orders), put 3:4 JPEGs through the pipeline:
+
+```bash
+pnpm --filter @saha-textile/api seed:local-catalog-photos -- --i-am-local ~/photos/a.jpg ~/photos/b.jpg
+```
+
+On macOS, convert a phone HEIC first with `sips -s format jpeg photo.heic --out photo.jpg`. The tool uploads each photo like an admin upload, waits for the worker, then rewrites the demo JSON so each product shows the same photo everywhere: cards and the gallery get srcset data, rows get the 300 px thumbnail. Photos never enter git; only their CDN URLs do. `--assets=med_…,med_…` re-dresses the data from photos already uploaded, and `--clean` purges them and restores the placeholder. Like the identity tools, it refuses to run without `--i-am-local`, under `NODE_ENV=production`, against a non-loopback MongoDB or a database whose name doesn't end in `_local`.
 
 ## Developer portal commands
 

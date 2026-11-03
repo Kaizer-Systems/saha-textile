@@ -4,7 +4,7 @@ wide: true
 description: Conventions for safe operator forms, data tables, validation, actions, and future API mutations.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-10-26'
+last_verified: '2026-11-03'
 source_of_truth:
     - apps/admin/src/app/shared/ui/table
     - apps/admin/src/app/shared/ui/form-fields
@@ -56,7 +56,8 @@ Large forms such as product editing combine:
 - category, tag, store, attribute, and tax data;
 - rich-text editing;
 - date ranges;
-- image/media selection;
+- image/media selection (the media modal uploads straight to Spaces and shows the pipeline's preview once the worker finishes);
+- a YouTube video field that validates the link through the API before the form can submit;
 - product-type and variation logic; and
 - tab/accordion presentation.
 

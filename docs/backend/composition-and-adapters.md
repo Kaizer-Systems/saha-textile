@@ -4,7 +4,7 @@ wide: true
 description: NestJS module wiring, dependency-injection tokens, adapter ownership, Mongo mappings, and provider seams.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-10-31'
+last_verified: '2026-11-03'
 source_of_truth:
     - apps/api/src/app.module.ts
     - apps/api/src/config/app-config.ts
@@ -61,6 +61,11 @@ The name `PersistenceModule` is currently broader than persistence because it al
 | `NOTIFICATION_PORT`             | Factory: `Msg91NotificationAdapter` (`@saha-textile/adapters-notifications-msg91`) or `ConsoleNotificationAdapter`                                                                                               |
 | `AUTH_PORT`                     | `Argon2JwtAuth` factory using validated app config                                                                                                                                                               |
 | OAuth verifier ports            | `GoogleIdTokenVerifier` and `FacebookTokenVerifier` from `@saha-textile/adapters-auth`, composed by `OAuthService`                                                                                               |
+| `STORAGE_PORT`                  | `SpacesStorageAdapter` (`@saha-textile/adapters-storage-spaces`) when Spaces credentials are set, else `UnconfiguredStorageAdapter`                                                                              |
+| Media repositories              | `MongoMediaAssetRepository`, `MongoMediaRoleRepository`, `MongoContentBlockRepository`, `MongoSiteSettingsRepository`, `MongoReviewRepository`                                                                   |
+| `MEDIA_JOB_QUEUE`               | `BullMqMediaJobQueue` (`@saha-textile/adapters-queue-bullmq`) on Redis; the worker (`src/worker.ts`) adds `SharpImageCodec` (`@saha-textile/adapters-image-sharp`)                                               |
+| `CDN_PURGE`                     | `CloudflareCdnPurge` (`@saha-textile/adapters-cdn-cloudflare`) when zone and token are set, else `LogOnlyCdnPurgeAdapter`                                                                                        |
+| `YOUTUBE_PORT`                  | `YouTubeDataApi` (`@saha-textile/adapters-youtube`) when `YOUTUBE_API_KEY` is set, else `UnavailableYouTubeAdapter`                                                                                              |
 
 Unbound ports do not become operational merely because their interfaces exist.
 
@@ -69,7 +74,7 @@ Unbound ports do not become operational merely because their interfaces exist.
 The adapter currently owns:
 
 - connection configuration and Mongoose lifecycle;
-- 40 models with explicitly declared physical collection names, plus indexes;
+- 43 models with explicitly declared physical collection names, plus indexes;
 - conversion from Mongoose documents to public contract-shaped values;
 - original API-bound repositories plus bound auth/consent and tested Chunk E catalogue, inventory, media, governance, notification and content adapters;
 - a transaction manager that exposes only the opaque core transaction context and uses `AsyncLocalStorage` so nested transactions join;
@@ -126,7 +131,8 @@ Seam-first provider work is ratified: ports and non-production adapters can adva
 `app-config.ts` validates API runtime values with zod. The current configuration boundary includes:
 
 - proxy/client-IP settings (`TRUST_PROXY`, `CLIENT_IP_HEADER`) are parsed and applied to trusted request-id/client-IP handling and rate-limit keys;
-- cookie/session/CSRF names (`st_access`, `st_refresh`, `st_csrf`, `x-csrf-token`, `CSRF_SECRET`) feed the shared cookie helpers and global CSRF foundation;
+- cookie/session/CSRF names (`st_access`, `st_refresh`, `st_csrf`, `x-csrf-token`, `CSRF_SECRET`) feed the shared cookie helpers and global CSRF foundation; admin sessions derive their own names from the same base (`st_admin_access`, `st_admin_refresh`, `st_admin_csrf`);
+- media, Redis and provider settings (`REDIS_*`, `MEDIA_*`, `CLOUDFLARE_*`, `YOUTUBE_API_KEY`, `ACTIVE_LOCALES`) select the media adapters above and the worker's schedules;
 - notification (`NOTIFICATION_PROVIDER`/MSG91 plus an optional email fallback), OTP policy, and self-hosted Mongo (`rs0`) settings in `.env.example` and `app-config.ts`. `OTP_LOCAL_FIXED_CODE` is optional and local-only: config refuses to boot with it when `NODE_ENV=production` or the notification provider is not `console`;
 - the Mongo config now assembles a self-hosted `mongodb://…replicaSet=rs0` URI (or accepts a pre-encoded `MONGODB_URI`); the SRV hosted-cluster path and the obsolete email provider are gone.
 

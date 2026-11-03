@@ -3,7 +3,7 @@ title: Beginner Path
 description: First-day orientation for the repository, architecture, and contribution workflow.
 status: implemented
 audience: [beginner]
-last_verified: '2026-10-31'
+last_verified: '2026-11-03'
 source_of_truth:
     - AGENTS.md
     - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx

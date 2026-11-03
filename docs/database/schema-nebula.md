@@ -1,11 +1,11 @@
 ---
 title: Schema Nebula
-description: Interactive governed map of all 67 explicit target MongoDB collections, their current evidence, bounded contexts, ownership, decisions and relationships.
+description: Interactive governed map of all 69 explicit target MongoDB collections, their current evidence, bounded contexts, ownership, decisions and relationships.
 slug: /database/schema-nebula
 wide: true
 status: implemented
 audience: [beginner, backend, operator]
-last_verified: '2026-11-01'
+last_verified: '2026-11-03'
 search_keywords: 'schema nebula collections database mongodb star map models ghosts graph relationships bounded context DEC'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -36,7 +36,7 @@ import { SchemaNebula } from '@site/src/components/SchemaNebula';
 
 ## How to read the constellation
 
-Schema Nebula is a **governed architecture map**, not a live database browser and not a claim that all 67 collections exist.
+Schema Nebula is a **governed architecture map**, not a live database browser and not a claim that all 69 collections exist.
 
 | Signal             | Meaning                                                                                          |
 | ------------------ | ------------------------------------------------------------------------------------------------ |
@@ -47,9 +47,9 @@ Schema Nebula is a **governed architecture map**, not a live database browser an
 | Amber relationship | Another collection references the selected collection.                                           |
 | Decision badge     | A stable `DEC-*` decision still affects the collection’s final policy or shape.                  |
 
-Thirty-seven solid stars represent graph collections backed by exact physical-name model and test evidence. The remaining 30 stars stay target-only ghosts until equivalent adapter evidence exists.
+Forty solid stars represent graph collections backed by exact physical-name model and test evidence. The remaining 29 stars stay target-only ghosts until equivalent adapter evidence exists.
 
-The current adapter contains 40 exported Mongoose models. Every model declares an exact physical collection name, and adapter tests assert those names. Thirty-seven models resolve to graph nodes. `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime machinery deliberately outside the graph. Schema Nebula stands at **67 / 37 / 30**.
+The current adapter contains 43 exported Mongoose models. Every model declares an exact physical collection name, and adapter tests assert those names. Forty models resolve to graph nodes. `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime machinery deliberately outside the graph. Schema Nebula stands at **69 / 40 / 29**: the 2026-11-02 media decisions added `mediaRoles` and `siteSettings`, and `contentBlocks` gained its model.
 
 ## Controls
 
@@ -64,7 +64,7 @@ The current adapter contains 40 exported Mongoose models. Every model declares a
 
 The authored inventory lives in `docs/_data/instruments/schema-nebula.json`. The shared build-time compiler refuses to publish it unless all of the following agree:
 
-1. the ratified route and **67 / 37 / 30** inventory;
+1. the ratified route and **69 / 40 / 29** inventory;
 2. the current files under `packages/adapters-db-mongo/src/models`, including grouped files that implement several distinct physical collections, with three runtime-only collections excluded from star promotion;
 3. the catalog, auth, notification and roadmap sources;
 4. all collection-to-collection references;

@@ -319,6 +319,35 @@ satisfy the full D3–D5 boundary above.
 - Notification kill-switch and consent tests pass.
 - G-IMG-PX resolved 2026-11-02: sizes and caps follow owner log § Media.
 
+#### Media pipeline status — 2026-11-03
+
+**Standalone image pipeline: done and verified locally.** Contracts, core policy, size planner,
+Mongo and Spaces adapters, sharp/BullMQ/Cloudflare/YouTube adapters, the API (admin library,
+presign/finalize/status, roles, banners, YouTube settings, review photos and moderation), the
+worker and its schedulers (GC, YouTube refresh, stale-role reprocess), the mode-3 Docker stack,
+admin library/banner/review/YouTube screens, and the storefront gallery, banner `<picture>`,
+review-photo upload and 3:4 cards. The demo catalogue now shows real photos through
+`seed:local-catalog-photos` (local only).
+
+**Waiting on other chunks — do not build here:**
+
+| Item                                                                                      | Owner chunk                     | Why it waits                                                                                                            |
+| ----------------------------------------------------------------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Product/category/blog media fields; catalog reads return `ResolvedImage`                  | Milestone 4 (catalog)           | No product/category documents exist in Mongo yet; the storefront reads vendor demo JSON.                                |
+| `servesAsPrimary` → `share` (1200×630 blur) and `feed_square` derivatives; PDP `og:image` | Milestone 4 + 8                 | Primary-only roles render when an asset becomes a product's primary image — an attach that the catalog owns.            |
+| Variant swatch images (`swatch_image`, `swatch_image_v2`) in `variant-attributes`         | Milestone 4                     | Swatch images belong to option terms/variants, which the catalog chunk defines.                                         |
+| Category tile and icon images (`category_icon`)                                           | Milestone 4                     | Same: category documents and their media fields.                                                                        |
+| Review photos end to end (customer submits on a real purchase)                            | Milestone 4 + 6                 | Upload and moderation work; submission needs real products and delivered orders.                                        |
+| Email thumbnails (`email_thumb`, JPEG)                                                    | Milestone 7 (notifications)     | Rendered by order/notification templates (MSG91), not built yet.                                                        |
+| Newsletter subscribe endpoint behind the popup                                            | Milestone 7 (marketing consent) | Needs consent storage and the marketing kill-switch.                                                                    |
+| PWA runtime caching of CDN images                                                         | Milestone 8 (PWA)               | Belongs with the offline-catalogue cache budget and strategy.                                                           |
+| Live GC on the dev/prod buckets (`MEDIA_GC_LIVE`)                                         | Milestone 10 (ops)              | Dry-run until owner references are complete — today's demo-catalogue photos have no Mongo owner and would be collected. |
+| CDN purge on delete                                                                       | Milestone 10 (ops)              | Needs a DigitalOcean API token per environment (not the Spaces key).                                                    |
+
+**Optional, owner's call (not blocking):** a hero text-colour option for banners with text, and
+whether unapproved review photos should appear in the admin media library at all (today they
+show as a placeholder tile; the review page shows them via signed URLs).
+
 ---
 
 ### Chunk J — OpenAPI, portal, deployment, and production proof

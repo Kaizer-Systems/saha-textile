@@ -1,13 +1,13 @@
 {
 	"schemaVersion": 1,
-	"generatedAt": "2026-08-14",
+	"generatedAt": "2026-11-03",
 	"status": "scaffolded-current-evidence",
 	"sourcePolicy": "Mongoose source metadata only; no database connection or record access.",
 	"counts": {
-		"currentModels": 38,
-		"fields": 456,
-		"indexes": 103,
-		"temporaryShapes": 27
+		"currentModels": 43,
+		"fields": 527,
+		"indexes": 115,
+		"temporaryShapes": 37
 	},
 	"models": [
 		{
@@ -1312,7 +1312,7 @@
 								"$type": "string"
 							},
 							"status": {
-								"$ne": "deleted"
+								"$in": ["active", "pending", "disabled", "locked"]
 							}
 						}
 					}
@@ -1328,7 +1328,7 @@
 								"$type": "string"
 							},
 							"status": {
-								"$ne": "deleted"
+								"$in": ["active", "pending", "disabled", "locked"]
 							}
 						}
 					}
@@ -1468,7 +1468,7 @@
 					"required": false,
 					"select": "included",
 					"default": "active",
-					"enum": ["active", "pending", "disabled", "locked", "deleted"],
+					"enum": ["active", "pending", "disabled", "locked"],
 					"temporaryShape": false,
 					"sensitive": false
 				},
@@ -2080,6 +2080,16 @@
 					"sensitive": false
 				},
 				{
+					"path": "persistent",
+					"type": "Boolean",
+					"required": false,
+					"select": "included",
+					"default": true,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
 					"path": "lastSeenAt",
 					"type": "Date",
 					"required": true,
@@ -2184,6 +2194,7 @@
 				"device.ipHash": null,
 				"device.country": null,
 				"device.label": null,
+				"persistent": true,
 				"lastSeenAt": "2026-01-01T00:00:00.000Z",
 				"expiresAt": "2026-01-01T00:00:00.000Z",
 				"absoluteExpiresAt": "2026-01-01T00:00:00.000Z",
@@ -2224,7 +2235,7 @@
 					"type": "String",
 					"required": true,
 					"select": "included",
-					"enum": ["login", "register", "verify_email", "reset_password", "step_up"],
+					"enum": ["login", "register", "verify_email", "reset_password", "step_up", "change_contact"],
 					"temporaryShape": false,
 					"sensitive": false
 				},
@@ -3066,6 +3077,295 @@
 			"limitations": []
 		},
 		{
+			"model": "PendingSignup",
+			"collection": "pendingSignups",
+			"context": "Identity",
+			"purpose": "Short-lived server-held verification state used before a customer account is created.",
+			"source": "packages/adapters-db-mongo/src/models/pending-signup.model.ts",
+			"status": "current-model",
+			"fields": [
+				{
+					"path": "_id",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "sessionKey",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "origin",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": ["password", "google", "facebook"],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "email",
+					"type": "Embedded",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "phone",
+					"type": "Embedded",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "displayName",
+					"type": "String",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "marketingOptIn",
+					"type": "Boolean",
+					"required": false,
+					"select": "included",
+					"default": false,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "guestCartId",
+					"type": "String",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "provider",
+					"type": "String",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": ["google", "facebook", null],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "providerSubject",
+					"type": "String",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "expiresAt",
+					"type": "Date",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "absoluteExpiresAt",
+					"type": "Date",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "createdAt",
+					"type": "Date",
+					"required": false,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				}
+			],
+			"indexes": [
+				{
+					"keys": {
+						"sessionKey": 1
+					},
+					"options": {
+						"unique": true
+					}
+				},
+				{
+					"keys": {
+						"expiresAt": 1
+					},
+					"options": {
+						"expireAfterSeconds": 0
+					}
+				}
+			],
+			"example": {
+				"_id": "<document-id>",
+				"sessionKey": "<sessionKey>",
+				"origin": "password",
+				"email": "<email>",
+				"phone": "<phone>",
+				"displayName": null,
+				"marketingOptIn": false,
+				"guestCartId": null,
+				"provider": null,
+				"providerSubject": null,
+				"expiresAt": "2026-01-01T00:00:00.000Z",
+				"absoluteExpiresAt": "2026-01-01T00:00:00.000Z",
+				"createdAt": "2026-01-01T00:00:00.000Z"
+			},
+			"limitations": []
+		},
+		{
+			"model": "PendingContactChange",
+			"collection": "pendingContactChanges",
+			"context": "Identity",
+			"purpose": "Short-lived server-held verification state for a customer email or phone change.",
+			"source": "packages/adapters-db-mongo/src/models/pending-contact-change.model.ts",
+			"status": "current-model",
+			"fields": [
+				{
+					"path": "_id",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "customerId",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "field",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": ["email", "phone"],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "newValue",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "sends",
+					"type": "Number",
+					"required": false,
+					"select": "included",
+					"default": 0,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "lastSentAt",
+					"type": "Date",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "expiresAt",
+					"type": "Date",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "absoluteExpiresAt",
+					"type": "Date",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "createdAt",
+					"type": "Date",
+					"required": false,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				}
+			],
+			"indexes": [
+				{
+					"keys": {
+						"customerId": 1
+					},
+					"options": {
+						"unique": true
+					}
+				},
+				{
+					"keys": {
+						"expiresAt": 1
+					},
+					"options": {
+						"expireAfterSeconds": 0
+					}
+				}
+			],
+			"example": {
+				"_id": "<document-id>",
+				"customerId": "<customerId>",
+				"field": "email",
+				"newValue": "<newValue>",
+				"sends": 0,
+				"lastSentAt": null,
+				"expiresAt": "2026-01-01T00:00:00.000Z",
+				"absoluteExpiresAt": "2026-01-01T00:00:00.000Z",
+				"createdAt": "2026-01-01T00:00:00.000Z"
+			},
+			"limitations": []
+		},
+		{
 			"model": "Role",
 			"collection": "roles",
 			"context": "Authorization",
@@ -3188,8 +3488,8 @@
 			"limitations": []
 		},
 		{
-			"model": "UserRoleAssignment",
-			"collection": "userRoleAssignments",
+			"model": "AdminUserRoleAssignment",
+			"collection": "adminUserRoleAssignments",
 			"context": "Authorization",
 			"purpose": "Auditable user-to-role grants with one active assignment per role.",
 			"source": "packages/adapters-db-mongo/src/models/rbac.model.ts",
@@ -4515,6 +4815,16 @@
 					"sensitive": false
 				},
 				{
+					"path": "purpose",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"default": "product",
+					"enum": ["product", "category", "banner", "blog", "review", "avatar", "icon"],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
 					"path": "originalStorageKey",
 					"type": "String",
 					"required": false,
@@ -4563,11 +4873,10 @@
 					"sensitive": false
 				},
 				{
-					"path": "fullWebpStorageKey",
+					"path": "slug",
 					"type": "String",
-					"required": false,
+					"required": true,
 					"select": "included",
-					"default": null,
 					"enum": [],
 					"temporaryShape": false,
 					"sensitive": false
@@ -4578,6 +4887,106 @@
 					"required": false,
 					"select": "included",
 					"default": [],
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "dominantColor",
+					"type": "String",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "thumbHash",
+					"type": "String",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "visibility",
+					"type": "String",
+					"required": false,
+					"select": "included",
+					"default": "public",
+					"enum": ["public", "private"],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "processing.state",
+					"type": "String",
+					"required": false,
+					"select": "included",
+					"default": "awaiting_upload",
+					"enum": ["awaiting_upload", "queued", "processing", "ready", "failed"],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "processing.attempts",
+					"type": "Number",
+					"required": false,
+					"select": "included",
+					"default": 0,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "processing.error",
+					"type": "String",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "processing.processedAt",
+					"type": "Date",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "warnings",
+					"type": "Array",
+					"required": false,
+					"select": "included",
+					"default": [],
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "servesAsPrimary",
+					"type": "Boolean",
+					"required": false,
+					"select": "included",
+					"default": false,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "maxDisplayWidth",
+					"type": "Number",
+					"required": false,
+					"select": "included",
+					"default": null,
 					"enum": [],
 					"temporaryShape": false,
 					"sensitive": false
@@ -4637,6 +5046,16 @@
 					"sensitive": false
 				},
 				{
+					"path": "uploadedBy",
+					"type": "Mixed",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": true,
+					"sensitive": false
+				},
+				{
 					"path": "deletedAt",
 					"type": "Date",
 					"required": false,
@@ -4669,6 +5088,7 @@
 				{
 					"keys": {
 						"kind": 1,
+						"purpose": 1,
 						"status": 1,
 						"createdAt": -1
 					},
@@ -4677,6 +5097,27 @@
 				{
 					"keys": {
 						"deletedAt": 1
+					},
+					"options": {}
+				},
+				{
+					"keys": {
+						"deletedAt": 1,
+						"createdAt": 1,
+						"_id": 1
+					},
+					"options": {}
+				},
+				{
+					"keys": {
+						"derivatives.role": 1,
+						"derivatives.roleVersion": 1
+					},
+					"options": {}
+				},
+				{
+					"keys": {
+						"slug": 1
 					},
 					"options": {}
 				},
@@ -4697,13 +5138,24 @@
 			"example": {
 				"_id": "<document-id>",
 				"kind": "image",
+				"purpose": "product",
 				"originalStorageKey": null,
 				"originalFormat": "<originalFormat>",
 				"originalByteSize": 0,
 				"width": null,
 				"height": null,
-				"fullWebpStorageKey": null,
+				"slug": "<slug>",
 				"derivatives": [],
+				"dominantColor": null,
+				"thumbHash": null,
+				"visibility": "public",
+				"processing.state": "awaiting_upload",
+				"processing.attempts": 0,
+				"processing.error": null,
+				"processing.processedAt": null,
+				"warnings": [],
+				"servesAsPrimary": false,
+				"maxDisplayWidth": null,
 				"renditions": [],
 				"hlsPlaylistKey": null,
 				"durationSeconds": null,
@@ -4713,11 +5165,474 @@
 					"caption": {}
 				},
 				"status": "draft",
+				"uploadedBy": null,
 				"deletedAt": null,
 				"createdAt": "2026-01-01T00:00:00.000Z",
 				"updatedAt": "2026-01-01T00:00:00.000Z"
 			},
-			"limitations": ["text uses a temporary Mixed shape."]
+			"limitations": ["text uses a temporary Mixed shape.", "uploadedBy uses a temporary Mixed shape."]
+		},
+		{
+			"model": "MediaRole",
+			"collection": "mediaRoles",
+			"context": "Media",
+			"purpose": "Editable image size ladder: seeded roles plus operator roles, versioned so edits mark derivatives stale.",
+			"source": "packages/adapters-db-mongo/src/models/media.model.ts",
+			"status": "current-model",
+			"fields": [
+				{
+					"path": "_id",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "label",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "seeded",
+					"type": "Boolean",
+					"required": false,
+					"select": "included",
+					"default": false,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "purposes",
+					"type": "Array",
+					"required": true,
+					"select": "included",
+					"enum": ["product", "category", "banner", "blog", "review", "avatar", "icon"],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "widths",
+					"type": "Array",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "aspect",
+					"type": "Mixed",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": true,
+					"sensitive": false
+				},
+				{
+					"path": "fit",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": ["inside", "cover", "pad", "blur"],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "format",
+					"type": "String",
+					"required": false,
+					"select": "included",
+					"default": "image/webp",
+					"enum": ["image/webp", "image/jpeg"],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "quality",
+					"type": "Number",
+					"required": false,
+					"select": "included",
+					"default": 82,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "primaryOnly",
+					"type": "Boolean",
+					"required": false,
+					"select": "included",
+					"default": false,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "respectSlotMaxWidth",
+					"type": "Boolean",
+					"required": false,
+					"select": "included",
+					"default": false,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "version",
+					"type": "Number",
+					"required": false,
+					"select": "included",
+					"default": 1,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "updatedAt",
+					"type": "Date",
+					"required": false,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				}
+			],
+			"indexes": [],
+			"example": {
+				"_id": "<document-id>",
+				"label": "<label>",
+				"seeded": false,
+				"purposes": "product",
+				"widths": [],
+				"aspect": null,
+				"fit": "inside",
+				"format": "image/webp",
+				"quality": 82,
+				"primaryOnly": false,
+				"respectSlotMaxWidth": false,
+				"version": 1,
+				"updatedAt": "2026-01-01T00:00:00.000Z"
+			},
+			"limitations": ["aspect uses a temporary Mixed shape."]
+		},
+		{
+			"model": "ContentBlock",
+			"collection": "contentBlocks",
+			"context": "Media",
+			"purpose": "Banners by page position and slot, with per-viewport images and per-locale text.",
+			"source": "packages/adapters-db-mongo/src/models/content-block.model.ts",
+			"status": "current-model",
+			"fields": [
+				{
+					"path": "_id",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "key",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "ownerType",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": ["home", "category", "product", "global"],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "ownerId",
+					"type": "String",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "position",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": [
+						"hero",
+						"promo_cards",
+						"promo_wide",
+						"strip",
+						"bar",
+						"sidebar_tall",
+						"category_banner",
+						"product_sidebar",
+						"newsletter_popup"
+					],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "slot",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "images",
+					"type": "Mixed",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": true,
+					"sensitive": false
+				},
+				{
+					"path": "containsText",
+					"type": "Boolean",
+					"required": false,
+					"select": "included",
+					"default": false,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "localeImages",
+					"type": "Mixed",
+					"required": false,
+					"select": "included",
+					"default": "<generated>",
+					"enum": [],
+					"temporaryShape": true,
+					"sensitive": false
+				},
+				{
+					"path": "assetIds",
+					"type": "Array",
+					"required": false,
+					"select": "included",
+					"default": [],
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "heading",
+					"type": "Mixed",
+					"required": false,
+					"select": "included",
+					"default": "<generated>",
+					"enum": [],
+					"temporaryShape": true,
+					"sensitive": false
+				},
+				{
+					"path": "subheading",
+					"type": "Mixed",
+					"required": false,
+					"select": "included",
+					"default": "<generated>",
+					"enum": [],
+					"temporaryShape": true,
+					"sensitive": false
+				},
+				{
+					"path": "ctaLabel",
+					"type": "Mixed",
+					"required": false,
+					"select": "included",
+					"default": "<generated>",
+					"enum": [],
+					"temporaryShape": true,
+					"sensitive": false
+				},
+				{
+					"path": "link",
+					"type": "Mixed",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": true,
+					"sensitive": false
+				},
+				{
+					"path": "alt",
+					"type": "Mixed",
+					"required": false,
+					"select": "included",
+					"default": "<generated>",
+					"enum": [],
+					"temporaryShape": true,
+					"sensitive": false
+				},
+				{
+					"path": "status",
+					"type": "String",
+					"required": false,
+					"select": "included",
+					"default": "draft",
+					"enum": ["draft", "active", "archived"],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "startsAt",
+					"type": "Date",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "endsAt",
+					"type": "Date",
+					"required": false,
+					"select": "included",
+					"default": null,
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "createdAt",
+					"type": "Date",
+					"required": false,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "updatedAt",
+					"type": "Date",
+					"required": false,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				}
+			],
+			"indexes": [
+				{
+					"keys": {
+						"key": 1
+					},
+					"options": {
+						"unique": true
+					}
+				},
+				{
+					"keys": {
+						"ownerType": 1,
+						"ownerId": 1,
+						"status": 1
+					},
+					"options": {}
+				},
+				{
+					"keys": {
+						"assetIds": 1
+					},
+					"options": {}
+				}
+			],
+			"example": {
+				"_id": "<document-id>",
+				"key": "<key>",
+				"ownerType": "home",
+				"ownerId": null,
+				"position": "hero",
+				"slot": "<slot>",
+				"images": "<shape pending>",
+				"containsText": false,
+				"localeImages": "<shape pending>",
+				"assetIds": [],
+				"heading": "<shape pending>",
+				"subheading": "<shape pending>",
+				"ctaLabel": "<shape pending>",
+				"link": null,
+				"alt": "<shape pending>",
+				"status": "draft",
+				"startsAt": null,
+				"endsAt": null,
+				"createdAt": "2026-01-01T00:00:00.000Z",
+				"updatedAt": "2026-01-01T00:00:00.000Z"
+			},
+			"limitations": [
+				"images uses a temporary Mixed shape.",
+				"localeImages uses a temporary Mixed shape.",
+				"heading uses a temporary Mixed shape.",
+				"subheading uses a temporary Mixed shape.",
+				"ctaLabel uses a temporary Mixed shape.",
+				"link uses a temporary Mixed shape.",
+				"alt uses a temporary Mixed shape."
+			]
+		},
+		{
+			"model": "SiteSetting",
+			"collection": "siteSettings",
+			"context": "Media",
+			"purpose": "Typed site settings, one document per key: home hero layout and the YouTube rail.",
+			"source": "packages/adapters-db-mongo/src/models/content-block.model.ts",
+			"status": "current-model",
+			"fields": [
+				{
+					"path": "_id",
+					"type": "String",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				},
+				{
+					"path": "value",
+					"type": "Mixed",
+					"required": true,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": true,
+					"sensitive": false
+				},
+				{
+					"path": "updatedAt",
+					"type": "Date",
+					"required": false,
+					"select": "included",
+					"enum": [],
+					"temporaryShape": false,
+					"sensitive": false
+				}
+			],
+			"indexes": [],
+			"example": {
+				"_id": "<document-id>",
+				"value": "<shape pending>",
+				"updatedAt": "2026-01-01T00:00:00.000Z"
+			},
+			"limitations": ["value uses a temporary Mixed shape."]
 		},
 		{
 			"model": "InventoryLedger",
@@ -6152,6 +7067,19 @@
 					"keys": {
 						"status": 1,
 						"createdAt": 1
+					},
+					"options": {}
+				},
+				{
+					"keys": {
+						"userId": 1,
+						"createdAt": -1
+					},
+					"options": {}
+				},
+				{
+					"keys": {
+						"imageAssetIds": 1
 					},
 					"options": {}
 				}

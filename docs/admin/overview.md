@@ -4,7 +4,7 @@ wide: true
 description: Start here before changing the Angular administration application.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-10-31'
+last_verified: '2026-11-03'
 source_of_truth:
     - apps/admin/src/app
     - apps/api/src/admin
@@ -52,7 +52,7 @@ flowchart LR
 | Cart/order creation | Classic NgRx cart and checkout composition exist                                                                                                                         | Scaffolded  | Order placement and authoritative totals are not connected.                                 |
 | Forms               | Reactive forms exist for major catalogue/content/settings features; CRM and Account Security use live mutations                                                          | Scaffolded  | Many catalogue/content submission paths still stop at no-op methods or navigation.          |
 | Tables              | Shared search, pagination, selection, date, action, and permission UI exists; CRM soft-delete hides deleted by default                                                   | Scaffolded  | Backend filtering/bulk mutations are not generally operational; revive blocked on DEC gate. |
-| Authorization       | Permission-shaped UI directives against the live **89-code** registry                                                                                                    | Scaffolded  | UI visibility is not a security boundary; API authorization must enforce every operation.   |
+| Authorization       | Permission-shaped UI directives against the live **91-code** registry                                                                                                    | Scaffolded  | UI visibility is not a security boundary; API authorization must enforce every operation.   |
 | Dial / flags        | Country dial labels are HTML in `country-code.ts`; sprites at `/assets/images/flags/flags.png`                                                                           | Implemented | Reuse shared dial markup; do not invent alternate flag assets.                              |
 
 ## Feature families

@@ -4,7 +4,7 @@ wide: true
 description: Verified controller routes, present controls, missing production guarantees, and target ownership.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-10-31'
+last_verified: '2026-11-03'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts
@@ -21,6 +21,7 @@ source_of_truth:
     - apps/api/src/orders
     - apps/api/src/currency
     - apps/api/src/promotions
+    - apps/api/src/media
     - packages/adapters-db-mongo/src/models/auth-session.model.ts
     - packages/adapters-db-mongo/src/models/auth-challenge.model.ts
     - packages/adapters-db-mongo/src/models/auth-token.model.ts
@@ -32,7 +33,7 @@ source_of_truth:
 
 # Current API route inventory
 
-This inventory describes controller code reviewed on 2026-08-20. It is not a production API promise. “Present control” means code exists; “missing guarantee” names the proof still required.
+This inventory describes controller code reviewed on 2026-11-03. It is not a production API promise. “Present control” means code exists; “missing guarantee” names the proof still required.
 
 ## Runtime and contract routes
 
@@ -103,6 +104,7 @@ These routes derive the customer id from the storefront session. A caller cannot
 | Method   | Route                                | Present control                                                              | Current boundary/gap                               |
 | -------- | ------------------------------------ | ---------------------------------------------------------------------------- | -------------------------------------------------- |
 | `POST`   | `/auth/admin/login`                  | Generic password credentials; non-customer role; admin cookie audience       | OpenAPI omits cookie security                      |
+| `GET`    | `/auth/admin/csrf`                   | Issues the admin CSRF token in its own `st_admin_csrf` cookie                | OpenAPI omits cookie semantics                     |
 | `POST`   | `/auth/admin/login/pin`              | Six-digit PIN; five-failure/15-minute lockout; password fallback             | Real-browser PIN-login proof coverage remains open |
 | `POST`   | `/auth/admin/pin`                    | Admin/staff session, current-password proof, optional preferred login method | OpenAPI omits role and CSRF requirements           |
 | `GET`    | `/auth/admin/security`               | Returns PIN/password/session security settings                               | OpenAPI omits response/security schemas            |
@@ -133,7 +135,7 @@ Every route below requires an admin-audience session and a named registry permis
 
 | Method   | Route                                | Present control                                                                  | Current boundary/gap                                 |
 | -------- | ------------------------------------ | -------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `GET`    | `/admin/permissions`                 | `permission.index`; publishes the closed 89-code registry                        | OpenAPI omits the permission requirement             |
+| `GET`    | `/admin/permissions`                 | `permission.index`; publishes the closed 91-code registry                        | OpenAPI omits the permission requirement             |
 | `GET`    | `/admin/roles`                       | `role.index`; lists role definitions                                             | OpenAPI omits the permission requirement             |
 | `GET`    | `/admin/roles/:id`                   | `role.index`; reads one role                                                     | OpenAPI omits response/error schemas                 |
 | `POST`   | `/admin/roles`                       | `role.create`; validates registry grants and audits creation                     | OpenAPI omits body/CSRF/permission semantics         |
@@ -170,7 +172,7 @@ Admin CRM list/detail/create/edit and soft-delete are live against `/admin/custo
 
 The first administrator is created through an operator-only CLI, not HTTP. It generates a password once, stores only its Argon2 hash, writes a critical audit event with no fabricated actor, and refuses to run when any administrative authority already exists.
 
-Authentication and authorization remain partial. **Current:** cookie session issue/refresh/revoke; verified-before-creation signup; password and OTP login by email or phone; Google/Facebook verifier adapters and provider-neutral identity management; password/session management; storefront account self-service; authentication-time guest-cart adoption; admin recovery, PIN management, invites, HTTP resume, Account Security and idle lock; active assignment-based permission resolution against the closed **89-code** registry; deny-by-default authority APIs; no-delegation, last-administrator protection, offboarding, version invalidation, operator bootstrap, consent/privacy, order and cart ownership, transactional order-create cart adoption, and admin CRM. **Remaining:** provider activation/browser proof; pending-intent continuation; real-browser PIN-login proof; portal private-access deployment (`DEC-PORTAL-PRIVATE-ACCESS`); and soft-delete operations (`DEC-CUSTOMER-SOFT-DELETE-OPS`).
+Authentication and authorization remain partial. **Current:** cookie session issue/refresh/revoke; verified-before-creation signup; password and OTP login by email or phone; Google/Facebook verifier adapters and provider-neutral identity management; password/session management; storefront account self-service; authentication-time guest-cart adoption; admin recovery, PIN management, invites, HTTP resume, Account Security and idle lock; active assignment-based permission resolution against the closed **91-code** registry; deny-by-default authority APIs; no-delegation, last-administrator protection, offboarding, version invalidation, operator bootstrap, consent/privacy, order and cart ownership, transactional order-create cart adoption, and admin CRM. **Remaining:** provider activation/browser proof; pending-intent continuation; real-browser PIN-login proof; portal private-access deployment (`DEC-PORTAL-PRIVATE-ACCESS`); and soft-delete operations (`DEC-CUSTOMER-SOFT-DELETE-OPS`).
 
 ## Privacy routes
 
@@ -227,6 +229,32 @@ Target cart routes resolve “my cart” from secure identity rather than accept
 | `PATCH` | `/orders/:id/status` | Admin/staff role + cookie-session CSRF                                           | No explicit admin audience, permission, transition policy, version or audit |
 
 The order service now saves the order and consumes the proven-owned cart inside one `TransactionManagerPort` unit of work, with rs0 commit/rollback integration proof. That atomic pair does not yet make this a production checkout: retry deduplication, stock reservation, payment/shipping/tax work, immutable complete snapshots, audit and outbox side effects remain absent.
+
+## Media, banner and review routes
+
+Added 2026-11-02 with the image pipeline. Uploads go straight to Spaces through a presigned PUT; the API never proxies image bytes. Admin routes are `@Audience('admin')` with the permission shown.
+
+| Method   | Route                                                                                    | Present control                                                                        | Current boundary/gap                                             |
+| -------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `GET`    | `/admin/media`                                                                           | `attachment.index`; library page with preview, usage count and stale roles             | OpenAPI omits response schema                                    |
+| `POST`   | `/admin/media/presign`                                                                   | `attachment.create`; ingest policy (type, bytes, pixels, 3:4 warning) before a PUT URL | Private original until finalize                                  |
+| `POST`   | `/admin/media/:assetId/finalize`                                                         | `attachment.create`; queues processing                                                 | Needs a running worker                                           |
+| `GET`    | `/admin/media/:assetId/status`, `/admin/media/:assetId`                                  | `attachment.index`                                                                     | —                                                                |
+| `PATCH`  | `/admin/media/:assetId`                                                                  | `attachment.edit`; alt text and slug (a slug change reprocesses)                       | —                                                                |
+| `POST`   | `/admin/media/:assetId/reprocess`                                                        | `attachment.edit`                                                                      | —                                                                |
+| `DELETE` | `/admin/media/:assetId`                                                                  | `attachment.destroy`; refuses an image in use (409 `in_use`), else soft delete         | Files erased by GC after 30 days (dry-run until `MEDIA_GC_LIVE`) |
+| `GET`    | `/admin/media/roles`; `PUT /admin/media/roles/:key`                                      | `attachment.index`; edit needs `setting.edit` and bumps the role version               | —                                                                |
+| `GET`    | `/admin/content-blocks`; `PUT`, `DELETE /admin/content-blocks/:key`                      | `theme_option.index` / `theme_option.edit`; banners by position and slot               | —                                                                |
+| `GET`    | `/admin/settings/home-hero`; `PUT` same                                                  | `theme_option.index` / `theme_option.edit`; home hero layout                           | —                                                                |
+| `POST`   | `/admin/youtube/validate`                                                                | `product.edit`; normalises a link or id and checks the video is public and embeddable  | Needs `YOUTUBE_API_KEY`                                          |
+| `GET`    | `/admin/youtube/settings`; `PUT` same                                                    | `setting.index` / `setting.edit`; channel rail settings                                | —                                                                |
+| `GET`    | `/admin/reviews`                                                                         | `review.index`; moderation queue with signed photo URLs                                | —                                                                |
+| `POST`   | `/admin/reviews/:reviewId/moderation`                                                    | `review.edit`; approve makes photos public, reject purges them                         | —                                                                |
+| `GET`    | `/media/upload-rules`                                                                    | Public; the ingest limits clients check before uploading                               | —                                                                |
+| `GET`    | `/storefront/banners`                                                                    | Public; live banners resolved for the locale                                           | —                                                                |
+| `GET`    | `/storefront/youtube/rail`                                                               | Public; cached latest uploads                                                          | —                                                                |
+| `POST`   | `/storefront/reviews/photos/presign`, `.../:assetId/finalize`; `GET .../:assetId/status` | Storefront session; JPEG/PNG only, private until approved                              | —                                                                |
+| `POST`   | `/storefront/reviews`                                                                    | Storefront session; review with up to five photos                                      | Needs real products and delivered orders (catalog/orders chunks) |
 
 ## Current global controls
 

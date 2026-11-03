@@ -307,6 +307,11 @@ The detailed design is `codex-auth-architecture-db-and-request-plan.mdx`.
   off-by-default flag.
 - Core never imports Spaces, BullMQ, sharp, ffmpeg, or player libraries.
 - YouTube latest-video discovery uses `YouTubePort` and a daily cached refresh.
+- The image pipeline is complete as a standalone unit (2026-11-03). What still uses it —
+  catalog media fields, swatches, primary-only roles, email thumbnails, PWA caching, live GC —
+  is owned by later chunks; see the API roadmap, Chunk I "Media pipeline status".
+- Locally, `seed:local-catalog-photos` puts real photos through the pipeline and points the
+  storefront demo catalogue at them; the photos stay out of git.
 
 ## 16. Security and audit baseline
 

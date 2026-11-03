@@ -4,7 +4,7 @@ wide: true
 description: Storefront sessions, OTP/OAuth, account boundaries, admin authorization, soft lock, and draft recovery.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-10-31'
+last_verified: '2026-11-03'
 source_of_truth:
     - apps/storefront/src/app/pages/auth
     - apps/admin/src/app/features/auth
@@ -21,7 +21,7 @@ source_of_truth:
 
 # Identity, account, and admin resume
 
-The API executes cookie-session auth for storefront and admin audiences. Storefront capabilities include verified-before-creation signup with server-held resume/discard state, password and OTP login by email or phone, Google/Facebook verification, identity connect/disconnect, password/session management, profile/address/contact self-service, guest-cart adoption, logout, refresh, recovery, and `me`. Admin capabilities include recovery, password/PIN login, PIN management/lockout, invites, HTTP resume, logout, refresh, `me`, Account Security, and the idle soft lock. Admin authority uses a closed **89-code** permission registry, active role assignments, deny-by-default management routes, no-delegation/last-administrator/offboarding controls, and operator bootstrap. Responses are sanitized and reusable credentials stay in httpOnly cookies. Both Angular applications consume sessions through typed gateways with no browser-held token. Google and Facebook signup, sign-in, connect and disconnect were proven with real provider accounts on 2026-10-25. Remaining work includes real-browser PIN-login proof, granular adoption by older privileged routes, protected deep-link/pending-intent continuation, portal private-access deployment, and soft-delete operations.
+The API executes cookie-session auth for storefront and admin audiences. Storefront capabilities include verified-before-creation signup with server-held resume/discard state, password and OTP login by email or phone, Google/Facebook verification, identity connect/disconnect, password/session management, profile/address/contact self-service, guest-cart adoption, logout, refresh, recovery, and `me`. Admin capabilities include recovery, password/PIN login, PIN management/lockout, invites, HTTP resume, logout, refresh, `me`, Account Security, and the idle soft lock. Admin authority uses a closed **91-code** permission registry, active role assignments, deny-by-default management routes, no-delegation/last-administrator/offboarding controls, and operator bootstrap. Responses are sanitized and reusable credentials stay in httpOnly cookies. Both Angular applications consume sessions through typed gateways with no browser-held token. Google and Facebook signup, sign-in, connect and disconnect were proven with real provider accounts on 2026-10-25. Remaining work includes real-browser PIN-login proof, granular adoption by older privileged routes, protected deep-link/pending-intent continuation, portal private-access deployment, and soft-delete operations.
 
 ## Storefront methods
 

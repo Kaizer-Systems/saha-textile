@@ -4,7 +4,7 @@ description: Verified Mongoose models, indexes, repositories, mappers, seed tool
 search_keywords: 'mongo rs0 replica set connection uri directConnection models indexes repositories'
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-10-31'
+last_verified: '2026-11-03'
 source_of_truth:
     - packages/adapters-db-mongo/src/models
     - packages/adapters-db-mongo/src/repositories
@@ -42,7 +42,7 @@ The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps,
 
 Every schema passes an explicit `collection` option, and `packages/adapters-db-mongo/src/collection-names.ts` is the single declaration checked by `test/collection-names.test.ts`. `pnpm mongo:align-collections` aligns legacy inferred names with the ratified names; it is idempotent, refuses to merge when both names hold data, and never runs at application boot.
 
-The generated catalogue confirms all 40 physical names directly from Mongoose metadata: 479 fields and 107 indexes. Thirty-seven names map to ratified Schema Nebula nodes (**67 / 37 / 30**). `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime collections outside the graph.
+The generated catalogue confirms all 43 physical names directly from Mongoose metadata: 527 fields and 115 indexes. Forty names map to ratified Schema Nebula nodes (**69 / 40 / 29**). `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime collections outside the graph.
 
 ## Current repository inventory
 

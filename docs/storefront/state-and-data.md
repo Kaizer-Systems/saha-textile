@@ -4,7 +4,7 @@ wide: true
 description: Practical rules for TanStack Query, SignalStore, classic NgRx, services, and local component state.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-10-31'
+last_verified: '2026-11-03'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/storefront/src/app/core/config/runtime-config.ts
@@ -93,6 +93,8 @@ Catalogue option, add-on, attribute, taxonomy, and measurement labels are Machin
 - an API-backed catalogue response used by the collection flow.
 
 Before editing a product experience, trace the exact query and service method. Never generalize one working API request into “products are migrated.”
+
+Product images in that JSON carry an optional `image` (`ResolvedImage`, cut to the roles each slot renders) beside `original_url`. Locally, `seed:local-catalog-photos` fills it from real photos run through the media pipeline; the catalog chunk replaces the JSON with API reads that return the same shape, so cards and the gallery (`toGalleryImage`) do not change.
 
 ## Cache ownership rules
 

@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { Meta } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { TranslocoTestingModule } from '@jsverse/transloco';
 import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
 import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
@@ -32,7 +33,7 @@ function harness(slug: string) {
 	const navigate = vi.fn().mockResolvedValue(true);
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
-		imports: [ProductDetail],
+		imports: [ProductDetail, TranslocoTestingModule.forRoot({ langs: { en: { product: 'Product' } } })],
 		providers: [
 			provideTanStackQuery(new QueryClient()),
 			{ provide: ActivatedRoute, useValue: { params: of({ slug }) } },

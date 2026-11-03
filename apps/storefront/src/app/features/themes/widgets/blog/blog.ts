@@ -3,6 +3,7 @@ import { Component, computed, effect, inject, input } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { CarouselModule, OwlOptions } from 'ngx-owl-carousel-o';
 import { Observable } from 'rxjs';
 
@@ -17,7 +18,7 @@ import { SkeletonBlog } from '../../../blog/skeleton-blog/skeleton-blog';
 	selector: 'app-blog',
 	templateUrl: './blog.html',
 	styleUrls: ['./blog.scss'],
-	imports: [CarouselModule, SkeletonBlog, RouterLink, DatePipe],
+	imports: [CarouselModule, SkeletonBlog, RouterLink, DatePipe, TranslocoModule],
 })
 export class Blog {
 	blogService = inject(BlogService);

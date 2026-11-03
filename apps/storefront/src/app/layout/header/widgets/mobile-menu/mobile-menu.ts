@@ -1,13 +1,15 @@
 import { Component, inject } from '@angular/core';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 
+import { TranslocoModule } from '@jsverse/transloco';
+
 import { IMobileMenu } from '@data-access/interfaces/menu.interface';
 
 @Component({
 	selector: 'app-mobile-menu',
 	templateUrl: './mobile-menu.html',
 	styleUrls: ['./mobile-menu.scss'],
-	imports: [RouterLink],
+	imports: [RouterLink, TranslocoModule],
 })
 export class MobileMenu {
 	private router = inject(Router);
@@ -16,35 +18,35 @@ export class MobileMenu {
 		{
 			id: 1,
 			active: true,
-			title: 'Home',
+			title: 'home',
 			icon: 'ri-home-2',
 			path: '/',
 		},
 		{
 			id: 2,
 			active: false,
-			title: 'Category',
+			title: 'category',
 			icon: 'ri-apps-line js',
 			path: '/collections',
 		},
 		{
 			id: 3,
 			active: false,
-			title: 'Search',
+			title: 'search',
 			icon: 'ri-search-2',
 			path: '/search',
 		},
 		{
 			id: 4,
 			active: false,
-			title: 'My Wish',
+			title: 'my_wish',
 			icon: 'ri-heart-3',
 			path: '/wishlist',
 		},
 		{
 			id: 5,
 			active: false,
-			title: 'Cart',
+			title: 'cart',
 			icon: 'fly-cate ri-shopping-bag',
 			path: '/cart',
 		},

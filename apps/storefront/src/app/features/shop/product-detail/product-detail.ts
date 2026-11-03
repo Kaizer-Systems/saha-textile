@@ -4,6 +4,7 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { Meta } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { TranslocoService } from '@jsverse/transloco';
 import { injectQueryClient } from '@tanstack/angular-query-experimental';
 import { Observable } from 'rxjs';
 
@@ -64,6 +65,7 @@ import { YouMayAlsoLike } from './you-may-also-like/you-may-also-like';
 })
 export class ProductDetail {
 	private route = inject(ActivatedRoute);
+	private transloco = inject(TranslocoService);
 	private router = inject(Router);
 	private meta = inject(Meta);
 	private platformId = inject<Object>(PLATFORM_ID);
@@ -80,11 +82,12 @@ export class ProductDetail {
 	readonly product = computed<IProduct | undefined>(() => this.productQuery.data());
 	readonly breadcrumb = computed<IBreadcrumb>(() => {
 		const product = this.product();
-		if (!product) return { title: 'Product', items: [] };
+		const productLabel = this.transloco.translate('product');
+		if (!product) return { title: productLabel, items: [] };
 		return {
 			title: product.name,
 			items: [
-				{ label: 'Product', active: true },
+				{ label: productLabel, active: true },
 				{ label: product.name, active: false },
 			],
 		};

@@ -87,7 +87,7 @@
 				} } } @if ((blog$ | async)?.data?.length && !blogService.skeletonLoader) {
 				<nav class="custome-pagination">
 					<app-pagination
-						[total]="totalItems"
+						[total]="totalItems()"
 						[currentPage]="filter()['page']"
 						[pageSize]="filter()['paginate']"
 						(setPage)="setPaginate($event)"

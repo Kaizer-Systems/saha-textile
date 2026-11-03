@@ -27,9 +27,9 @@
 				<select2
 					class="custom-select"
 					[displaySearchStatus]="'hidden'"
-					[placeholder]="'Sort'"
+					[placeholder]="'sort' | transloco"
 					[value]="filter()!['sortBy']"
-					[data]="sorting ? sorting : []"
+					[data]="sortOptions()"
 					(update)="sortByFilter($event)"
 				/>
 			</div>

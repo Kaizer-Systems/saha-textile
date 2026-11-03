@@ -3,6 +3,8 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { Meta, Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { TranslocoService } from '@jsverse/transloco';
+
 import { combineLatest, Observable } from 'rxjs';
 
 import { LocaleSeo } from '@core/i18n/locale-seo';
@@ -26,6 +28,9 @@ import { CollectionSidebar } from './widgets/sidebar/sidebar';
 })
 export class Collection {
 	private route = inject(ActivatedRoute);
+	private transloco = inject(TranslocoService);
+	/** The general page's name in the active language (the dictionary loads before first render). */
+	private readonly collectionsLabel = this.transloco.translate('collections');
 	attributeService = inject(AttributeService);
 
 	public filter = signal<Params>({
@@ -45,12 +50,13 @@ export class Collection {
 	private readonly productsQuery = injectCatalogQuery(() => this.filter());
 	product$: Observable<ICatalogResponse | undefined> = toObservable(computed(() => this.productsQuery.data()));
 
-	public breadcrumb = signal<IBreadcrumb>({ title: 'Collections', items: [{ label: 'Collections', active: true }] });
+	public breadcrumb = signal<IBreadcrumb>({
+		title: this.collectionsLabel,
+		items: [{ label: this.collectionsLabel, active: true }],
+	});
 
 	public categorySlider = data.categorySlider;
 	public skeleton: boolean = true;
-
-	public totalItems: number = 0;
 
 	private router = inject(Router);
 	private meta = inject(Meta);
@@ -86,10 +92,7 @@ export class Collection {
 		// SEO + breadcrumb are driven by the RESPONSE, which resolves the category to
 		// its canonical identity (so an extra-placement URL canonicalises to the home
 		// path) and returns the breadcrumb trail.
-		this.product$.subscribe((res) => {
-			this.totalItems = res?.total ?? 0;
-			this.applySeo(res);
-		});
+		this.product$.subscribe((res) => this.applySeo(res));
 	}
 
 	private applySeo(res: ICatalogResponse | undefined) {
@@ -97,18 +100,18 @@ export class Collection {
 		const trail = res?.breadcrumb ?? [];
 
 		// Title + breadcrumb from the resolved node (fall back to the general page).
-		this.title.setTitle(`${cat?.name ?? 'Collections'} | Saha Textile`);
+		this.title.setTitle(`${cat?.name ?? this.collectionsLabel} | Saha Textile`);
 		this.breadcrumb.set(
 			trail.length
 				? {
-						title: cat?.name ?? 'Collections',
+						title: cat?.name ?? this.collectionsLabel,
 						items: trail.map((c, i) => ({
 							label: c.name,
 							url: `/collections/${c.path}`,
 							active: i === trail.length - 1,
 						})),
 					}
-				: { title: 'Collections', items: [{ label: 'Collections', active: true }] },
+				: { title: this.collectionsLabel, items: [{ label: this.collectionsLabel, active: true }] },
 		);
 
 		// Canonical = the node's CANONICAL path (not the current URL) so extra-placement

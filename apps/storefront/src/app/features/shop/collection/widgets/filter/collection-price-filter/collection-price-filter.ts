@@ -1,6 +1,8 @@
 import { Component, inject, input } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { TranslocoModule } from '@jsverse/transloco';
+
 import { Params } from '@data-access/interfaces/core.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 
@@ -9,7 +11,7 @@ import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 	templateUrl: './collection-price-filter.html',
 	styleUrls: ['./collection-price-filter.scss'],
 	providers: [CurrencySymbolPipe],
-	imports: [CurrencySymbolPipe],
+	imports: [CurrencySymbolPipe, TranslocoModule],
 })
 export class CollectionPriceFilter {
 	private route = inject(ActivatedRoute);
@@ -21,7 +23,7 @@ export class CollectionPriceFilter {
 		{
 			id: 1,
 			price: 100,
-			text: 'Below',
+			text: 'below',
 			value: '100',
 		},
 		{
@@ -57,7 +59,7 @@ export class CollectionPriceFilter {
 		{
 			id: 7,
 			price: 1000,
-			text: 'Above',
+			text: 'above',
 			value: '1000',
 		},
 	];

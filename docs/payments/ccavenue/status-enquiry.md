@@ -1,9 +1,9 @@
 ---
 title: CCAvenue status enquiry
-description: HDFC VAS integration-guide section 3, transcribed as printed, including samples.
+description: HDFC VAS integration-guide section 3, transcribed as printed, plus the ASP.NET, Java and PHP Status API sample kits.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-03'
+last_verified: '2026-11-04'
 search_keywords: orderStatusTracker enc_request DoWebTrans tracking_id status enquiry
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -121,7 +121,7 @@ The parameter name in that configuration row is printed `encRequest`. The sample
 Sample request as printed:
 
 ```text
-enc_request=bdaacd8a3c61733862628c3f0de0041abb56a3021d3a8746f560b8e426b7f6048e6d65336ed90c04dc2c92f3f83d41fc0363b28e940a2d18227faa586458fa49&access_code=AVJD76JC65CL08DJLC&request_type=JSON&response_type=JSON&command=orderStatusTracker&version=1.2
+enc_request=bdaacd8a3c61733862628c3f0de0041abb56a3021d3a8746f560b8e426b7f6048e6d65336ed90c04dc2c92f3f83d41fc0363b28e940a2d18227faa586458fa49&access_code=<ACCESS_CODE>&request_type=JSON&response_type=JSON&command=orderStatusTracker&version=1.2
 ```
 
 Sample API response, case 1, as printed:
@@ -204,3 +204,52 @@ Status API platforms printed: ASP.NET, JAVA, PHP.
 | 51002      | Invalid Parameter | Reference Number: Invalid Parameter              | Ensure that the Reference Number parameter is numeric.                    | Status API    |
 | 51003      | Invalid Parameter | Reference Number: Invalid Parameter              | Ensure that the Reference Number parameter does not exceed 25 characters. | Status API    |
 | 51004      | Invalid Parameter | Reference number/Order number: Invalid Parameter | Ensure that reference number/order number is provided.                    | Status API    |
+
+## Status API sample kits
+
+Source: `API_Document_Sample_Code-New.zip`, received 2026-11-04 with the [merchant API guide](/payments/ccavenue/merchant-api). Section 3.6 above names the same three platforms. Credentials in the kits are replaced or omitted here.
+
+| File in the archive                                                                                                                   | What it does                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Status_API_NEW.php`                                                                                                                  | Builds `{"order_no":"","reference_no":""}`, encrypts it, POSTs `enc_request=…&access_code=…&command=orderStatusTracker&request_type=JSON&response_type=JSON` to `https://apitest.ccavenue.com/apis/servlet/DoWebTrans` with cURL, splits the reply on `&` and `=`, and decrypts `enc_response`. No `version` is sent. |
+| `Status ApiJava.zip` → `Tester.java`, `AesUtil.java`, `Readme.txt`                                                                    | Sends an XML `Order_Status_Query` with `version=1.1`, `request_type=xml`, `response_type=xml`. Prints `enc_response` and `enc_error_code` when `status` is `1`, otherwise decrypts.                                                                                                                                   |
+| `STATUS API (ASP.NET).zip` → three Visual Studio projects (`Status Json`, `Status xml`, `Status string`), each also shipped as `.rar` | `CCAvenue_API.aspx.cs` encrypts the query with `CCACrypto` (`MCPG.CCA.Util.dll`), POSTs it as `application/x-www-form-urlencoded`, and decrypts only when the reply has exactly two pairs and `status` is `0`. No `version` is sent.                                                                                  |
+
+The three ASP.NET projects differ only in the query:
+
+```text
+JSON:   { "reference_no":"103001198924", "order_no":"77141516" }   request_type=JSON&response_type=JSON
+XML:    <Order_Status_Query order_no="77141516" reference_no="103001198924"></Order_Status_Query>   request_type=XML&response_type=XML
+STRING: 104003051888|86218925|   (comment: CCAvenue Reference No.|Order No.|)   request_type=STRING&response_type=STRING
+```
+
+The Java `Readme.txt`, as printed:
+
+```text
+1. To change the target server change static property "wsURL".
+2. Change the local variable in tester main method to get different responses.
+3. Access Code and Encryption key is provided in api keys in mars.
+3. ip of server from which merchant is calling api should be registered with CCAvenue.
+4. For more details about api please reffer Document provided.
+```
+
+### API hosts in the sample code
+
+The kits do not agree with the PDF, or with each other, on the API host:
+
+| Where                                                   | URL                                                                  |
+| ------------------------------------------------------- | -------------------------------------------------------------------- |
+| Merchant API guide, production                          | `https://api.ccavenue.com/apis/servlet/DoWebTrans`                   |
+| Merchant API guide, staging; PHP kit                    | `https://apitest.ccavenue.com/apis/servlet/DoWebTrans`               |
+| ASP.NET kits; Java comment "Production"                 | `https://login.ccavenue.com/apis/servlet/DoWebTrans`                 |
+| Java `wsURL`; Java comment "Staging"                    | `https://180.179.175.17/apis/servlet/DoWebTrans`                     |
+| ASP.NET JSON kit backup file `CCAvenue_API.aspx.cs.bak` | `https://login.ccavenue.ae/apis/servlet/DoWebTrans` (the UAE domain) |
+
+The guide's `api.ccavenue.com` / `apitest.ccavenue.com` pair is the documented one. Which host HDFC expects for this merchant is a question for HDFC; the kit hosts are recorded, not recommended.
+
+### Sample-code behaviour not to copy
+
+- The PHP kit sets `CURLOPT_SSL_VERIFYPEER` to `0`, which turns off TLS certificate checking, and sends a `Content-Type: application/json` header on a form-encoded body.
+- The Java kit falls back to `com.sun.net.ssl.HttpsURLConnection`, posts to a bare IP address over HTTPS, and hard-codes an access code and working key in `Tester.java` and `AesUtil.java`. Those values are not reproduced here.
+- The ASP.NET kits split every pair on `=`, so a value containing `=` would be truncated. Hex ciphertext has none; plain-text error messages may.
+- None of the kits checks the decrypted `order_no`, `order_amt`, or `order_currncy` against the merchant's own order record.

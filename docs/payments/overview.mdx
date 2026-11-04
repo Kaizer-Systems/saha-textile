@@ -5,7 +5,7 @@ wide: true
 description: Gateway lanes for INR and international checkout, and where each provider's notes live.
 status: planned
 audience: [beginner, backend, operator]
-last_verified: '2026-11-03'
+last_verified: '2026-11-04'
 search_keywords: payments CCAvenue Razorpay PayPal HDFC VAS clearing
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -24,17 +24,19 @@ The business rules for orders, attempts, and callbacks stay on [Payment and orde
 
 <PaymentClearing />
 
-## Read next
+## Gateway pages
 
-1. [CCAvenue](/payments/ccavenue) — transcription of the three HDFC documents received for K R MARKETING ONLINE.
+Every gateway landing page has the same two sections: **1. Company-provided documentation**, a faithful reference from the vendor's own kit, and **2. Endpoints we use**, the calls this project makes, with sample requests and responses and where in the project each one is used.
+
+1. [CCAvenue](/payments/ccavenue) — HDFC's documents and both integration kits for K R MARKETING ONLINE; four planned calls, none wired.
 2. [Razorpay](/payments/razorpay) — deferred until access arrives.
 3. [PayPal](/payments/paypal) — deferred until a later documentation pass.
 
 ## Still open
 
-These three items are also logged under **Payments / shipping / FX** in [Project progress](/engineering-live-context/project-progress).
+These items are also logged under **Payments / shipping / FX** in [Project progress](/engineering-live-context/project-progress).
 
-- The Node.js integration kit was named in the HDFC helpdesk mail and was not in the three PDF attachments.
+- The open questions for HDFC (auto-confirm, API host, server IP) are listed on [CCAvenue](/payments/ccavenue#open-questions-for-hdfc-or-the-owner).
 - Razorpay documentation waits until Razorpay access arrives.
 - PayPal business documentation waits for a later pass.
 

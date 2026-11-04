@@ -61,6 +61,7 @@ const sidebars: SidebarsConfig = {
 						id: 'payments/ccavenue/overview',
 					},
 					items: [
+						'payments/ccavenue/web-integration-kit',
 						'payments/ccavenue/hosted-checkout',
 						'payments/ccavenue/status-enquiry',
 						'payments/ccavenue/merchant-api',

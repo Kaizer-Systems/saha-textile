@@ -3,7 +3,7 @@ title: CCAvenue hosted checkout
 description: HDFC VAS integration-guide section 2, transcribed as printed, including samples.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-03'
+last_verified: '2026-11-04'
 search_keywords: CCAvenue initiateTransaction encRequest access_code AES-128 redirect_url
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -173,7 +173,7 @@ Redirection. After encryption, the merchant website redirects the customer to th
 Sample redirection URL as printed:
 
 ```text
-https://test.ccavenue.com/transaction/transaction.do?command=initiateTransaction&encRequest=004ec0eae33771776608806679116d694d269ee8161a05b4c691c8780037071ebb1a8041c0b33d53c7c317506dd872f29959a166ee9e60d47f57aaa9f90526b4ca6313c664300d1b57a9011d46aa19108b58081f64ddc3c9bf6551ac3bf3159eb9ab85f2bbe1e80f463ae790e21ce8080314caaaa958f806714f2604f45b4d95&access_code=AVZR45KC54CN06RZNC
+https://test.ccavenue.com/transaction/transaction.do?command=initiateTransaction&encRequest=004ec0eae33771776608806679116d694d269ee8161a05b4c691c8780037071ebb1a8041c0b33d53c7c317506dd872f29959a166ee9e60d47f57aaa9f90526b4ca6313c664300d1b57a9011d46aa19108b58081f64ddc3c9bf6551ac3bf3159eb9ab85f2bbe1e80f463ae790e21ce8080314caaaa958f806714f2604f45b4d95&access_code=<ACCESS_CODE>
 ```
 
 Response, as printed. The ciphertext continues across a page break in the PDF. The running header "Classification - Public" is not part of the value.

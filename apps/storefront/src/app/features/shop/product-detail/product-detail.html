@@ -69,10 +69,16 @@
 	</div>
 </section>
 
-<!-- You May Also Like — related-products rail as a nav-arrow owl carousel -->
+<!-- You May Also Like — saved related cards, loaded once the rail scrolls into view -->
+@if (alsoLike().length) {
 <section class="product-list-section section-b-space">
-	<app-you-may-also-like />
+	@defer (on viewport) {
+	<app-you-may-also-like [products]="alsoLike()" />
+	} @placeholder {
+	<div class="container-fluid-lg"></div>
+	}
 </section>
+}
 
 <!-- Conditional: blogs the admin linked to this / parent product -->
 <app-product-blogs [product]="product" />

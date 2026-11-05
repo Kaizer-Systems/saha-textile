@@ -1,0 +1,14 @@
+/*
+ * Global styles, linked from index.html so the browser loads them before first paint, on the
+ * dev server as well as in production. Do not import these from main.ts: on the dev server Vite
+ * then adds them from JavaScript, so the server-rendered page paints unstyled first.
+ *
+ * Order matters: vendor first, theme next, colour override last. app.gen.css is compiled by the
+ * `styles` script, because the Analog dev server cannot resolve the theme's scss imports.
+ */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+@import '@damjantonkli/ngx-toastr/toastr';
+@import 'swiper/css';
+@import 'swiper/swiper-bundle.css';
+@import './scss/app.gen.css';
+@import './scss/theme-color.css';

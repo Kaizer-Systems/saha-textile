@@ -1,12 +1,12 @@
 <div class="slider-3-blog ratio_65 no-arrow product-wrapper">
 	<owl-carousel-o [options]="sliderOption()! ? sliderOption()! : bannerSlider ">
-		@if (blogService.skeletonLoader) { @for (item of skeletonItems; track item) {
+		@if (loading()) { @for (item of skeletonItems; track item) {
 		<ng-container carouselSlide>
 			<ng-template carouselSlide>
 				<app-skeleton-blog />
 			</ng-template>
 		</ng-container>
-		} } @else { @for (blog of blogs; track blog) {
+		} } @else { @for (blog of blogs(); track blog) {
 		<ng-container carouselSlide>
 			<ng-template carouselSlide>
 				<div>

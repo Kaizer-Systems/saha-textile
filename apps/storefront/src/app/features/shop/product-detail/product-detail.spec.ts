@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Meta } from '@angular/platform-browser';
@@ -5,7 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SiteConfigStore } from '@core/state/site-config.store';
@@ -35,12 +36,15 @@ function harness(slug: string) {
 	TestBed.configureTestingModule({
 		imports: [ProductDetail, TranslocoTestingModule.forRoot({ langs: { en: { product: 'Product' } } })],
 		providers: [
-			provideTanStackQuery(new QueryClient()),
+			provideTanStackQuery(new QueryClient({ defaultOptions: { queries: { retry: false } } })),
 			{ provide: ActivatedRoute, useValue: { params: of({ slug }), snapshot: { params: { slug } } } },
 			{ provide: Router, useValue: { navigate, events: of() } },
 			{
 				provide: ProductService,
-				useValue: { getProductPage: (slug: string) => of(slug === saree.slug ? saree : undefined) },
+				useValue: {
+					getProductPage: (slug: string) =>
+						slug === saree.slug ? of(saree) : throwError(() => new HttpErrorResponse({ status: 404 })),
+				},
 			},
 			{ provide: SiteConfigService, useValue: { preloader: signal(true) } },
 			{ provide: SiteConfigStore, useValue: { siteConfig: signal(null) } },

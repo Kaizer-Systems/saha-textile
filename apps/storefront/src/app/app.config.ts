@@ -7,7 +7,12 @@ import {
 	ɵHTTP_FETCH_MAX_RESPONSE_SIZE,
 } from '@angular/common/http';
 import { ApplicationConfig, importProvidersFrom, isDevMode, provideZoneChangeDetection } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
+import {
+	BrowserModule,
+	provideClientHydration,
+	withEventReplay,
+	withHttpTransferCacheOptions,
+} from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { withInMemoryScrolling } from '@angular/router';
 
@@ -17,7 +22,7 @@ import { provideTransloco } from '@jsverse/transloco';
 import { provideEffects } from '@ngrx/effects';
 import { provideState, provideStore } from '@ngrx/store';
 import { LoadingBarRouterModule } from '@ngx-loading-bar/router';
-import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
+import { provideTanStackQuery } from '@tanstack/angular-query-experimental';
 
 import { CartEffects } from '@core/state/cart/cart.effects';
 import { CART_FEATURE_KEY } from '@core/state/cart/cart.models';
@@ -38,6 +43,7 @@ import { TranslocoHttpLoader } from './core/i18n/transloco-loader';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from './core/interceptors/loader.interceptor';
+import { QUERY_CLIENT, isPublicRequest } from './core/query/query-client';
 
 export const appConfig: ApplicationConfig = {
 	providers: [
@@ -110,7 +116,10 @@ export const appConfig: ApplicationConfig = {
 		provideEffects(CartEffects, WishlistEffects, CompareEffects),
 		// TanStack Query — server-state (lists/details/dropdowns) migrated off NGXS
 		// feature states, one feature at a time (queries in data-access/queries/).
-		provideTanStackQuery(new QueryClient()),
+		provideTanStackQuery(QUERY_CLIENT),
+		// The browser adopts the server's DOM instead of re-rendering it. Only public GETs
+		// are replayed from the server; clicks made before hydration are replayed too.
+		provideClientHydration(withHttpTransferCacheOptions({ filter: isPublicRequest }), withEventReplay()),
 		provideZoneChangeDetection({ eventCoalescing: true }),
 		provideToastr({
 			positionClass: 'toast-top-center',

@@ -20,7 +20,6 @@
 	<div class="home-slider-carousel container-fluid ratio_30 p-0">
 		<div class="row">
 			<div class="col-12">
-				@if (isBrowser) {
 				<owl-carousel-o [options]="heroSlider">
 					@for (banner of heroSlides() ?? heroBanners; track banner.image_url; let first = $first) {
 					<ng-template carouselSlide>
@@ -33,7 +32,6 @@
 					</ng-template>
 					}
 				</owl-carousel-o>
-				}
 			</div>
 		</div>
 	</div>

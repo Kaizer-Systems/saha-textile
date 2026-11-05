@@ -63,7 +63,9 @@ export class Cart {
 
 	constructor() {
 		this.cartFacade.getCartItems();
-		this.siteConfig$.subscribe((option) => (this.cartStyle = option?.general?.cart_style));
+		// The store starts empty, so keep the default until config arrives. Dropping it would remove
+		// `fixed-cart` during hydration and flash the closed cart into view.
+		this.siteConfig$.subscribe((option) => (this.cartStyle = option?.general?.cart_style ?? this.cartStyle));
 
 		// Calculation
 		this.cartTotal$.subscribe((total) => {

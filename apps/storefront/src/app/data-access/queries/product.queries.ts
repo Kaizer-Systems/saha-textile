@@ -105,11 +105,12 @@ export function filterProducts(result: IProductModel, payload?: Params): IProduc
  * filter params; the transform above is applied in `select`. Pass `undefined`
  * for the raw, untransformed list (theme widgets that filter by their own ids).
  */
-export function injectProductsQuery(params: () => Params | undefined) {
+export function injectProductsQuery(params: () => Params | undefined, enabled: () => boolean = () => true) {
 	const productService = inject(ProductService);
 	return injectQuery(() => ({
 		queryKey: ['products', params()],
 		queryFn: () => firstValueFrom(productService.getProducts(params())),
+		enabled: enabled(),
 		select: (res: IProductModel): IProductModel => filterProducts(res, params()),
 		staleTime: Infinity,
 	}));
@@ -156,35 +157,13 @@ export function injectProductBySlugQuery(slug: () => string | undefined, variant
 /** Fixed cache slot the detail widgets read as the shared related-products set. */
 export const RELATED_PRODUCTS_KEY = ['products', 'related', 'current'];
 
-/**
- * Related products for the current detail page (replaces relatedProducts +
- * GetRelatedProductsAction, which the slug action used to chain-dispatch). The
- * filter runs in queryFn so the computed array IS the cached value; keyed on the
- * params (ids/category_ids derived from the selected product). The product-detail
- * page owns this active query and mirrors its result into RELATED_PRODUCTS_KEY
- * so the detail widgets can read the same set via injectRelatedProductsData.
- */
-export function injectRelatedProductsQuery(params: () => Params | undefined) {
+/** The product page's saved relation rails, from the catalogue API. */
+export function injectProductRelationsQuery(slug: () => string | undefined) {
 	const productService = inject(ProductService);
 	return injectQuery(() => ({
-		queryKey: ['products', 'related', params()],
-		queryFn: async (): Promise<IProduct[]> => {
-			const payload = params();
-			const res = await firstValueFrom(productService.getProducts());
-			return res.data.filter(
-				(product) =>
-					payload?.['ids']
-						?.split(',')
-						?.map((id: number) => Number(id))
-						.includes(product.id) ||
-					(product?.categories.length &&
-						product?.categories
-							?.map((category) => category.id)
-							.includes(Number(payload?.['category_ids']))),
-			);
-		},
-		enabled: !!params()?.['ids'] || !!params()?.['category_ids'],
-		staleTime: Infinity,
+		queryKey: ['catalog', 'relations', slug()],
+		queryFn: () => firstValueFrom(productService.getRelations(slug()!)),
+		enabled: !!slug(),
 	}));
 }
 

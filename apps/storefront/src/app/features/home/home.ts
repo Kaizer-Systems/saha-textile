@@ -1,5 +1,4 @@
-import { isPlatformBrowser } from '@angular/common';
-import { afterNextRender, Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { afterNextRender, Component, computed, inject, signal } from '@angular/core';
 
 import { injectQuery } from '@tanstack/angular-query-experimental';
 import { CarouselModule } from 'ngx-owl-carousel-o';
@@ -45,8 +44,6 @@ const HERO_LAYOUT_THEME: Record<StorefrontBanners['heroLayout'], string | null> 
 	imports: [CarouselModule, ImageLink, Title, Product, Blog, Newsletter, HomeBanner],
 })
 export class Home {
-	public isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-
 	constructor() {
 		afterNextRender(() => {
 			const slugs = readRecentViews(sessionStorage).map((row) => row.slug);

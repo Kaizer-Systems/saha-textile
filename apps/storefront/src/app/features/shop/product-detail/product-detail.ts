@@ -1,4 +1,5 @@
 import { AsyncPipe, DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, HostListener, PLATFORM_ID, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -21,7 +22,7 @@ import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import {
 	RELATED_PRODUCTS_KEY,
 	injectProductBySlugQuery,
-	injectRelatedProductsQuery,
+	injectProductRelationsQuery,
 } from '@data-access/queries/product.queries';
 import { SiteConfigService } from '@data-access/services/site-config.service';
 import { ProductSidebar } from '@features/shop/product-detail/sidebar/sidebar';
@@ -46,6 +47,9 @@ import { YouMayAlsoLike } from './you-may-also-like/you-may-also-like';
  * reused detail widgets (info, delivery, tabs, related, FBT, sidebar) + sticky.
  * Mounted at `/<locale>/product/:slug`.
  */
+const uniqueCards = (cards: IProduct[]): IProduct[] =>
+	cards.filter((card, index) => cards.findIndex((other) => other.id === card.id) === index);
+
 @Component({
 	selector: 'app-product-detail',
 	templateUrl: './product-detail.html',
@@ -107,14 +111,12 @@ export class ProductDetail {
 		};
 	});
 
-	private readonly relatedParams = computed<Params | undefined>(() => {
-		const p = this.productQuery.data();
-		if (!p) return undefined;
-		const ids = [...(p.related_products ?? []), ...(p.cross_sell_products ?? [])];
-		const categoryIds = (p.categories ?? []).map((category) => category.id);
-		return { ids: ids.join(','), category_ids: categoryIds.join(','), status: 1 };
+	private readonly relationsQuery = injectProductRelationsQuery(() => this.slug());
+	/** "You May Also Like": saved related, then upsell cards, at most 12. */
+	readonly alsoLike = computed<IProduct[]>(() => {
+		const rails = this.relationsQuery.data();
+		return rails ? uniqueCards([...rails.related, ...rails.upsell]).slice(0, 12) : [];
 	});
-	private readonly relatedQuery = injectRelatedProductsQuery(() => this.relatedParams());
 
 	siteConfig$: Observable<ISiteConfig> = toObservable(inject(SiteConfigStore).siteConfig) as Observable<ISiteConfig>;
 
@@ -132,19 +134,21 @@ export class ProductDetail {
 		this.route.queryParamMap?.subscribe((params) => this.variantSku.set(params.get('variant')));
 
 		effect(() => {
-			const related = this.relatedQuery.data();
-			if (related) this.queryClient.setQueryData(RELATED_PRODUCTS_KEY, related);
+			const rails = this.relationsQuery.data();
+			if (!rails) return;
+			const cards = uniqueCards([...rails.related, ...rails.crossSell, ...rails.upsell, ...rails.boughtTogether]);
+			this.queryClient.setQueryData(RELATED_PRODUCTS_KEY, cards.slice(0, 12));
 		});
 
-		// 404 when the slug matches no product.
+		// 404 only when the API says the product does not exist. A server render that ran out
+		// of time leaves the page to the browser instead.
 		effect(() => {
-			if (this.slug() && !this.productQuery.isFetching() && this.productQuery.data() === undefined) {
-				void this.router.navigate(['/404']);
-			}
+			const error = this.productQuery.error();
+			if (error instanceof HttpErrorResponse && error.status === 404) void this.router.navigate(['/404']);
 		});
 
 		effect(() => {
-			this.siteConfigService.preloader.set(this.productQuery.isFetching() || this.relatedQuery.isFetching());
+			this.siteConfigService.preloader.set(this.productQuery.isFetching());
 		});
 
 		effect(() => {

@@ -77,3 +77,72 @@
 		}
 	}
 }
+
+// First paint of the carousels. The server has no width to measure, so owl writes an empty stage
+// width and `NaNpx` slide widths, and the slides stack. These rules lay out one row until the
+// browser sets real widths, when `width: px` stops matching and they switch off by themselves.
+// The counts mirror the owl options in shared/data/owl-carousel.ts. Owl measures the carousel,
+// not the window, so these are container queries.
+:host ::ng-deep {
+	.product-box-slider,
+	.slider-3-blog {
+		container-type: inline-size;
+	}
+
+	.owl-stage[style*='width: px'] {
+		display: flex;
+
+		> .owl-item {
+			min-width: 0;
+
+			&.cloned {
+				display: none;
+			}
+		}
+	}
+
+	.home-slider-carousel .owl-stage[style*='width: px'] > .owl-item,
+	.slider-3-blog .owl-stage[style*='width: px'] > .owl-item {
+		flex: 0 0 100%;
+	}
+
+	.product-box-slider .owl-stage[style*='width: px'] > .owl-item {
+		flex: 0 0 calc((100% + 16px) / 2 - 16px);
+	}
+
+	@container (min-width: 560px) {
+		.product-box-slider .owl-stage[style*='width: px'] > .owl-item {
+			flex-basis: calc((100% + 16px) / 3 - 16px);
+		}
+	}
+
+	@container (min-width: 580px) {
+		.slider-3-blog .owl-stage[style*='width: px'] > .owl-item {
+			flex-basis: calc((100% + 16px) / 2 - 16px);
+		}
+	}
+
+	@container (min-width: 760px) {
+		.product-box-slider .owl-stage[style*='width: px'] > .owl-item {
+			flex-basis: calc((100% + 16px) / 4 - 16px);
+		}
+	}
+
+	@container (min-width: 980px) {
+		.product-box-slider .owl-stage[style*='width: px'] > .owl-item {
+			flex-basis: calc((100% + 24px) / 5 - 24px);
+		}
+	}
+
+	@container (min-width: 1050px) {
+		.slider-3-blog .owl-stage[style*='width: px'] > .owl-item {
+			flex-basis: calc((100% + 20px) / 3 - 20px);
+		}
+	}
+
+	@container (min-width: 1180px) {
+		.product-box-slider .owl-stage[style*='width: px'] > .owl-item {
+			flex-basis: calc((100% + 24px) / 6 - 24px);
+		}
+	}
+}

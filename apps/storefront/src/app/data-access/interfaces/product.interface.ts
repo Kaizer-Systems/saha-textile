@@ -152,3 +152,11 @@ export interface ISelectedVariant {
 	id: number;
 	attribute_id: number;
 }
+
+/** A product's saved relation rails, each capped at 12 cards by the API. */
+export interface IProductRelations {
+	related: IProduct[];
+	upsell: IProduct[];
+	crossSell: IProduct[];
+	boughtTogether: IProduct[];
+}

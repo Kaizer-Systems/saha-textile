@@ -15,7 +15,7 @@ import {
 } from '@core/catalog/from-api';
 import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
-import { IProduct, IProductModel } from '@data-access/interfaces/product.interface';
+import { IProduct, IProductModel, IProductRelations } from '@data-access/interfaces/product.interface';
 
 import { environment } from '../../../../public/environments/environment';
 
@@ -108,6 +108,22 @@ export class ProductService {
 				params: { slug: slugs },
 			})
 			.pipe(map((cards) => cards.map(cardToProduct)));
+	}
+
+	/** Saved related, upsell, cross-sell and bought-together cards for one product. */
+	getRelations(slug: string): Observable<IProductRelations> {
+		return this.http
+			.get<Record<keyof IProductRelations, ApiCard[]>>(
+				`${environment.apiUrl}/catalog/products/${encodeURIComponent(slug)}/relations`,
+			)
+			.pipe(
+				map((rows) => ({
+					related: rows.related.map(cardToProduct),
+					upsell: rows.upsell.map(cardToProduct),
+					crossSell: rows.crossSell.map(cardToProduct),
+					boughtTogether: rows.boughtTogether.map(cardToProduct),
+				})),
+			);
 	}
 
 	getProductPage(slug: string, variant?: string | null): Observable<IProduct> {

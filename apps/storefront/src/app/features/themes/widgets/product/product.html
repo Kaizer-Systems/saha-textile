@@ -5,11 +5,12 @@
 	<li>
 		<app-skeleton-product-box [style]="'vertical'" />
 	</li>
-	} } @else { @for (product of products; track product) {
+	} } @else { @for (product of products; track product; let i = $index) {
 	<li>
 		<app-product-box
 			[product]="product"
 			[style]="'vertical'"
+			[imagePriority]="priority(i)"
 		/>
 	</li>
 	} }
@@ -26,11 +27,12 @@
 			<li>
 				<app-skeleton-product-box [style]="'vertical'" />
 			</li>
-			} } @else { @for (product of products; track product) {
+			} } @else { @for (product of products; track product; let i = $index) {
 			<li>
 				<app-product-box
 					[product]="product"
 					[style]="'vertical'"
+					[imagePriority]="priority(i)"
 				/>
 			</li>
 			} }
@@ -54,7 +56,7 @@
 	<div class="product-box-slider">
 		<!-- Horizontal Product Box With Slider -->
 		<owl-carousel-o [options]="sliderOption()">
-			@for (product of products; track product) {
+			@for (product of products; track product; let i = $index) {
 			<ng-template carouselSlide>
 				<div class="row m-0">
 					<div class="col-12 px-0">
@@ -62,6 +64,7 @@
 							[product]="product"
 							[class]="boxClass()"
 							[style]="'horizontal'"
+							[imagePriority]="priority(i)"
 						/>
 					</div>
 				</div>
@@ -76,12 +79,13 @@
                       showItem() === 4 ? 'row g-sm-4 g-3 row-cols-xl-4 row-cols-lg-3 row-cols-md-3 row-cols-sm-2 row-cols-2' : '',]"
 	>
 		<!-- Horizontal Product Box Without Slider -->
-		@for (product of products; track product) {
+		@for (product of products; track product; let i = $index) {
 		<div>
 			<app-product-box
 				[product]="product"
 				[class]="boxClass()"
 				[style]="'horizontal'"
+				[imagePriority]="priority(i)"
 			/>
 		</div>
 		}

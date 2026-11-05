@@ -1,14 +1,14 @@
 import { z } from 'zod';
 
 import { OptionDisplayStyle, SemanticRole } from './attribute';
-import { I18nString, Id, PriceINR } from './common';
+import { CatalogRupee, I18nString, Id } from './common';
 
 /**
  * One selectable term of a per-product option group.
  *
- * `priceDeltaINR` and `requiresMeasurements` are SEAMS: how add-on pricing and
- * measurement validation finally behave is `DEC-ADDON-MEASUREMENTS`. The structure is
- * safe to build now; the values stay admin-entered data, and no engine reads them yet.
+ * `priceDeltaINR` is a tax-inclusive whole-rupee amount. A product may override it.
+ * A percent, when a shop turns that setting on, is resolved to rupees before the
+ * order line is stored. Measurement step is validated with min and max.
  */
 export const ProductOptionTerm = z.object({
 	code: z.string().min(1),
@@ -20,8 +20,7 @@ export const ProductOptionTerm = z.object({
 		.regex(/^#([0-9a-fA-F]{6})$/, 'must be a 6-digit hex colour')
 		.optional(),
 	swatchAssetId: Id.optional(),
-	/** Seam — `DEC-ADDON-MEASUREMENTS`. */
-	priceDeltaINR: PriceINR.optional(),
+	priceDeltaINR: CatalogRupee.optional(),
 	/** Seam — `DEC-ADDON-MEASUREMENTS`: which template collects the measurements. */
 	addonTemplateIds: z.array(Id).default([]),
 	requiresMeasurements: z.boolean().default(false),

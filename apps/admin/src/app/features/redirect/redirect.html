@@ -1,0 +1,63 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="crumbs.at(-1)?.label ?? 'redirects'"
+>
+	@if (error()) {
+	<div class="alert alert-danger">{{ error() | transloco }}</div>
+	} @if (!formOnly()) {
+	<a routerLink="create">{{ 'create' | transloco }}</a>
+	<app-table
+		[tableConfig]="tableConfig"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="edit($event)"
+		(action)="onAction($event)"
+	/>
+	} @if (formOnly()) {
+	<form
+		class="theme-form theme-form-2 mega-form mb-4"
+		[formGroup]="form"
+		(ngSubmit)="save()"
+	>
+		<app-form-fields
+			[label]="'path'"
+			[for]="'sourcePath'"
+			[required]="true"
+		>
+			<input
+				class="form-control"
+				id="sourcePath"
+				formControlName="sourcePath"
+			/>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'status'"
+			[for]="'statusCode'"
+		>
+			<select2
+				class="custom-select d-block"
+				[data]="statuses"
+				formControlName="statusCode"
+			/>
+		</app-form-fields>
+		@if (form.controls.statusCode.value === '301' || form.controls.statusCode.value === '302') {
+		<app-form-fields
+			[label]="'target'"
+			[for]="'targetPath'"
+		>
+			<input
+				class="form-control"
+				id="targetPath"
+				formControlName="targetPath"
+			/>
+		</app-form-fields>
+		}
+		<app-button
+			[id]="'save-redirect'"
+			[type]="'submit'"
+			[spinner]="false"
+		>
+			{{ 'save' | transloco }}
+		</app-button>
+	</form>
+	}
+</app-page-wrapper>

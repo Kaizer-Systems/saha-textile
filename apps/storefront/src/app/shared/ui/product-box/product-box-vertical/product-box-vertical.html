@@ -7,8 +7,17 @@
 			[src]="product()?.product_thumbnail
                 ? product()?.product_thumbnail?.original_url
                 : 'assets/images/product.png'"
-			alt="product"
+			[attr.loading]="imagePriority() === 'lazy' ? 'lazy' : 'eager'"
+			[attr.fetchpriority]="imagePriority() === 'high' ? 'high' : imagePriority() === 'low' ? 'low' : null"
+			[alt]="product()?.name || 'product'"
 		/>
+		@if (offer(product()!).primary) {
+		<div class="product-label-tag"><span>{{ offer(product()!).primary! | transloco }}</span></div>
+		} @if (offer(product()!).secondary) {
+		<div class="product-label-tag warning-label-tag">
+			<span>{{ offer(product()!).secondary! | transloco }}</span>
+		</div>
+		}
 	</a>
 	<div class="offer-detail">
 		<div>
@@ -22,10 +31,16 @@
 			<span>{{ product()?.unit }}</span>
 			}
 			<div class="vertical-price">
-				<h5 class="price theme-color">{{ product()?.sale_price | currencySymbol }}</h5>
-				@if (product()?.discount) {
-				<del class="text-content">{{ product()?.price | currencySymbol }}</del>
-				}
+				@if (offer(product()!).kind === 'range') {
+				<h5 class="price theme-color">
+					{{ offer(product()!).min | currencySymbol }} – {{ offer(product()!).max | currencySymbol }}
+				</h5>
+				} @else {
+				<h5 class="price theme-color">{{ offer(product()!).selling | currencySymbol }}</h5>
+				@if (offer(product()!).percentOff) {
+				<del class="text-content">{{ (offer(product()!).mrp ?? 0) | currencySymbol }}</del>
+				<span class="offer-top">{{ offer(product()!).percentOff }}% {{ 'off' | transloco }}</span>
+				} }
 			</div>
 		</div>
 	</div>

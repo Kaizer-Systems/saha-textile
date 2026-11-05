@@ -8,13 +8,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./legacy-resolve": {
+      "types": "./dist/catalog/legacy-resolve.d.ts",
+      "import": "./dist/esm/legacy-resolve.js",
+      "default": "./dist/catalog/legacy-resolve.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.legacy-esm.json",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint .",
     "test": "vitest run"

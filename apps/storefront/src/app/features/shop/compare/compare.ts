@@ -35,7 +35,7 @@ export class Compare {
 		this.compareFacade.getCompare();
 	}
 
-	removeCompare(id: number) {
+	removeCompare(id: number | string) {
 		this.compareFacade.deleteCompare(id);
 	}
 }

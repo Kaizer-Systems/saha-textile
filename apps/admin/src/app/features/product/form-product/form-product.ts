@@ -1,10 +1,20 @@
 import { isPlatformBrowser, AsyncPipe } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, DOCUMENT, inject, input, PLATFORM_ID, Renderer2, signal, viewChild } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+	AbstractControl,
+	FormArray,
+	FormBuilder,
+	FormControl,
+	FormGroup,
+	ReactiveFormsModule,
+	ValidationErrors,
+	Validators,
+} from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import {
 	NgbAccordionBody,
 	NgbAccordionButton,
@@ -34,26 +44,49 @@ import { debounceTime, distinctUntilChanged, map, switchMap, takeUntil } from 'r
 
 import { SettingStore } from '@core/state/setting.store';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
+import {
+	CATALOG_BADGE_CODES,
+	CatalogBadgeCode,
+	CatalogProductDetail,
+	CatalogProductWrite,
+} from '@data-access/interfaces/catalog-product.interface';
 import { ICategoryModel } from '@data-access/interfaces/category.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProduct, IVariant, IVariation, IVariationCombination } from '@data-access/interfaces/product.interface';
 import { IValues } from '@data-access/interfaces/setting.interface';
 import { injectAttributesQuery, injectAttributeValuesQuery } from '@data-access/queries/attribute.queries';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
-import { injectProductsQuery } from '@data-access/queries/product.queries';
+import { injectCatalogProductsQuery } from '@data-access/queries/product.queries';
 import { injectStoresQuery } from '@data-access/queries/store.queries';
 import { injectTagsQuery } from '@data-access/queries/tag.queries';
 import { injectTaxesQuery } from '@data-access/queries/tax.queries';
 import { ProductService } from '@data-access/services/product.service';
+import { environment } from '../../../../../public/environments/environment';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { YouTubeVideoField } from '@shared/ui/youtube-video-field/youtube-video-field';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { priceValidator } from '@shared/validators/price-validator';
 
 function convertToNgbDate(date: NgbDateStruct): NgbDate {
 	return new NgbDate(date.year, date.month, date.day);
+}
+
+/** Required in the vendor form, but not held by the catalogue API, so an edit never blocks on them. */
+const FIELDS_THE_API_DOES_NOT_SAVE = ['short_description', 'description', 'categories', 'tax_id', 'store_id'];
+
+const blankToNull = (value: unknown): number | null =>
+	value === '' || value === null || value === undefined || Number.isNaN(Number(value)) ? null : Number(value);
+
+const textOrNull = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
+
+/** MRP may be empty; when set, the selling price may not be above it. */
+function sellingWithinMrp(group: AbstractControl): ValidationErrors | null {
+	const mrp = blankToNull(group.get('mrp')?.value);
+	const selling = blankToNull(group.get('price')?.value);
+	return mrp !== null && selling !== null && selling > mrp ? { sellingAboveMrp: true } : null;
 }
 
 @Component({
@@ -87,16 +120,19 @@ function convertToNgbDate(date: NgbDateStruct): NgbDate {
 		NgbNavOutlet,
 		TranslocoModule,
 		AsyncPipe,
+		CurrencySymbolPipe,
 	],
 })
 export class FormProduct {
 	private productService = inject(ProductService);
 	private route = inject(ActivatedRoute);
 	private router = inject(Router);
+	private http = inject(HttpClient);
 	private formBuilder = inject(FormBuilder);
 	private calendar = inject(NgbCalendar);
 	formatter = inject(NgbDateParserFormatter);
 	private renderer = inject(Renderer2);
+	private transloco = inject(TranslocoService);
 	private document = inject<Document>(DOCUMENT);
 
 	readonly type = input<string>(undefined);
@@ -110,20 +146,23 @@ export class FormProduct {
 		with_union_products: 0,
 		is_approved: 1,
 	});
-	private readonly productsQuery = injectProductsQuery(() => this.productParams());
+	private readonly productsQuery = injectCatalogProductsQuery(() => ({
+		search: String(this.productParams()['search'] ?? '') || undefined,
+		pageSize: 100,
+	}));
 	products$: Observable<Select2Data> = toObservable(
 		computed(() =>
-			(this.productsQuery.data()?.data ?? [])
-				.filter((res) => res.id !== this.id)
-				.map((res) => ({
-					label: res?.name,
-					value: res?.id,
+			(this.productsQuery.data()?.items ?? [])
+				.filter((row) => row.id !== this.id)
+				.map((row) => ({
+					label: row.title,
+					value: row.id,
 					data: {
-						type: res.type,
-						name: res.name,
-						slug: res.slug,
-						stock_status: res.stock_status,
-						image: res.product_thumbnail ? res.product_thumbnail.original_url : 'assets/images/product.png',
+						type: row.variantCount > 1 ? 'classified' : 'simple',
+						name: row.title,
+						slug: row.slug,
+						stock_status: row.stock > 0 ? 'in_stock' : 'out_of_stock',
+						image: row.thumbnailUrl ?? 'assets/images/product.png',
 					},
 				})),
 		),
@@ -152,7 +191,13 @@ export class FormProduct {
 	public active = 'general';
 	public tabError: string | null;
 	public form: FormGroup;
-	public id: number;
+	public id: string;
+	/** The product as the catalogue API holds it; set on edit. */
+	public catalogProduct: CatalogProductDetail | null = null;
+	public replacementTargets: Select2Data = [];
+	public badgeOptions: Select2Data = [];
+	public statusOptions: Select2Data = [];
+	public availabilityOptions: Select2Data = [];
 	public selectedCategories: Number[] = [];
 	public selectedTags: Number[] = [];
 	public variationCombinations: IVariationCombination[] = [];
@@ -229,13 +274,13 @@ export class FormProduct {
 			quantity: new FormControl('', [Validators.required]),
 			price: new FormControl('', [Validators.required, priceValidator]),
 			discount: new FormControl(),
-			is_sale_enable: new FormControl(false),
 			sale_starts_at: new FormControl(),
 			sale_expired_at: new FormControl(),
 			tags: new FormControl(),
 			categories: new FormControl('', [Validators.required]),
 			is_random_related_products: new FormControl(0),
 			related_products: new FormControl(),
+			upsell_products: new FormControl([]),
 			cross_sell_products: new FormControl([]),
 			product_thumbnail_id: new FormControl(),
 			product_galleries_id: new FormControl(),
@@ -254,12 +299,142 @@ export class FormProduct {
 			is_free_shipping: new FormControl(0),
 			tax_id: new FormControl('', [Validators.required]),
 			estimated_delivery_text: new FormControl(),
+			made_to_order: new FormControl(false),
+			low_stock_threshold: new FormControl(null),
+			pinned_badges: new FormControl<CatalogBadgeCode[]>([]),
+			hidden_badges: new FormControl<CatalogBadgeCode[]>([]),
+			replacement_path: new FormControl<string | null>(null),
+			length_cm: new FormControl(),
+			width_cm: new FormControl(),
+			height_cm: new FormControl(),
+			hsn_code: new FormControl(),
+			addon_price_inr: new FormControl(null),
 			return_policy_text: new FormControl(),
 			is_featured: new FormControl(0),
-			is_trending: new FormControl(0),
 			is_return: new FormControl(1),
-			status: new FormControl(1),
+			status: new FormControl<string>('live'),
 		});
+
+		this.transloco.selectTranslation().subscribe(() => this.buildOptions());
+	}
+
+	private buildOptions() {
+		const t = (key: string) => this.transloco.translate(key);
+		this.badgeOptions = CATALOG_BADGE_CODES.map((code) => ({ value: code, label: t(`badge_${code}`) }));
+		this.availabilityOptions = [
+			{ value: 'available', label: t('available') },
+			{ value: 'unavailable', label: t('not_available') },
+		];
+		const statuses = ['live', 'disabled', 'discontinued'];
+		if (this.catalogProduct?.status === 'draft') statuses.unshift('draft');
+		this.statusOptions = statuses.map((status) => ({
+			value: status,
+			label: t(`product_status_${status}`),
+			disabled: status === 'draft',
+		}));
+	}
+
+	/** Whole-rupee price for a percent off the MRP, rounded half up, shown before save. */
+	percentPreview(variation: AbstractControl): { price: number; percent: number } | null {
+		const mrp = blankToNull(variation.get('mrp')?.value);
+		const selling = blankToNull(variation.get('price')?.value);
+		if (mrp === null || selling === null || mrp <= 0 || selling >= mrp) return null;
+		return { price: selling, percent: Math.floor(((mrp - selling) / mrp) * 100) };
+	}
+
+	applyPercent(variation: AbstractControl) {
+		const mrp = blankToNull(variation.get('mrp')?.value);
+		const percent = blankToNull(variation.get('discount')?.value);
+		if (mrp === null || percent === null) return;
+		variation.get('price')?.setValue(this.saleRupee(mrp, percent));
+	}
+
+	/** "450 · from product" placeholder for an empty variant measure that inherits. */
+	fromProduct(control: string): string {
+		const value = this.form.get(control)?.value;
+		return value === null || value === undefined || value === ''
+			? ''
+			: this.transloco.translate('from_product', { value });
+	}
+
+	get isDiscontinuing(): boolean {
+		return this.form.get('status')?.value === 'discontinued';
+	}
+
+	get madeToOrderAllowed(): boolean {
+		return this.catalogProduct?.status === 'live' && this.form.get('status')?.value === 'live';
+	}
+
+	saleRupee(price: unknown, percent: unknown): number {
+		const mrp = Number(price);
+		const off = Number(percent);
+		if (!Number.isFinite(mrp) || !Number.isFinite(off)) return 0;
+		return Math.round((mrp * (100 - off)) / 100);
+	}
+
+	/** Fills the form from the catalogue API. Fields the API does not hold keep their defaults. */
+	private applyCatalogProduct(detail: CatalogProductDetail) {
+		this.catalogProduct = detail;
+		this.id = detail.id;
+		this.buildOptions();
+		for (const name of FIELDS_THE_API_DOES_NOT_SAVE) {
+			this.form.get(name)?.clearValidators();
+			this.form.get(name)?.updateValueAndValidity({ emitEvent: false });
+		}
+		this.form.patchValue(
+			{
+				name: detail.title,
+				sku: detail.sku,
+				type: detail.type === 'variable' ? 'classified' : 'simple',
+				weight: detail.shipping.weightGrams,
+				length_cm: detail.shipping.lengthCm,
+				width_cm: detail.shipping.widthCm,
+				height_cm: detail.shipping.heightCm,
+				hsn_code: detail.hsnCode,
+				estimated_delivery_text: detail.estimatedDeliveryText,
+				made_to_order: detail.madeToOrder,
+				low_stock_threshold: detail.lowStockThreshold,
+				pinned_badges: detail.pinnedBadges,
+				hidden_badges: detail.hiddenBadges,
+				replacement_path: detail.replacementPath,
+				addon_price_inr: detail.addonPriceINR,
+				is_featured: detail.featured,
+				status: detail.status,
+				related_products: detail.relatedProductIds,
+				upsell_products: detail.upsellProductIds,
+				cross_sell_products: detail.crossSellProductIds,
+			},
+			{ emitEvent: false },
+		);
+		// Price and stock live on the variant rows; the product-level inputs do not apply.
+		for (const name of ['price', 'quantity']) this.form.removeControl(name, { emitEvent: false });
+		if (detail.published) this.form.get('sku')?.disable({ emitEvent: false });
+		this.clearVariations();
+		for (const row of detail.variants) {
+			const group = this.formBuilder.group(
+				{
+					id: new FormControl(row.id),
+					variation_name: new FormControl(row.label),
+					name: new FormControl({ value: row.label, disabled: true }),
+					sku: new FormControl({ value: row.sku, disabled: detail.published }, [Validators.required]),
+					mrp: new FormControl(row.mrpINR, [Validators.min(0)]),
+					price: new FormControl(row.sellingINR, [Validators.required, priceValidator]),
+					discount: new FormControl(),
+					quantity: new FormControl(row.quantity, [Validators.required, Validators.min(0)]),
+					weight_grams: new FormControl(row.weightGrams),
+					length_cm: new FormControl(row.lengthCm),
+					width_cm: new FormControl(row.widthCm),
+					height_cm: new FormControl(row.heightCm),
+					barcode: new FormControl(row.barcode),
+					hsn: new FormControl(row.hsnCode),
+					availability: new FormControl(row.available ? 'available' : 'unavailable', [Validators.required]),
+					variation_image_id: new FormControl(),
+					variation_image: new FormControl(),
+				},
+				{ validators: sellingWithinMrp },
+			);
+			this.variationControl.push(group);
+		}
 	}
 
 	get variantControl(): FormArray {
@@ -280,132 +455,22 @@ export class FormProduct {
 
 		this.route.params
 			.pipe(
-				switchMap((params) => {
-					if (!params['id']) return of();
-					return this.productService
-						.getProducts()
-						.pipe(map((res) => res.data.find((product) => product.id == params['id']) ?? null));
-				}),
+				switchMap((params) => (params['id'] ? this.productService.getCatalogProduct(params['id']) : of(null))),
 				takeUntil(this.destroy$),
 			)
-			.subscribe((product) => {
-				if (product?.related_products && product?.cross_sell_products) {
-					let array = [...product?.related_products, ...product?.cross_sell_products];
-					this.filter['paginate'] = array?.length >= 15 ? array?.length : 15;
-					this.filter['ids'] = array?.join();
-					this.filter['with_union_products'] = array?.length ? (array?.length >= 15 ? 0 : 1) : 0;
-				}
-				of(this.productParams.set({ ...this.filter })).subscribe({
-					next: () => {
-						this.fromDate = product?.sale_starts_at
-							? convertToNgbDate(this.formatter.parse(product?.sale_starts_at)!)
-							: null;
-						this.toDate = product?.sale_expired_at
-							? convertToNgbDate(this.formatter.parse(product?.sale_expired_at)!)
-							: null;
-
-						this.selectedCategories = product?.categories.map((value) => value?.id!)!;
-						this.selectedTags = product?.tags.map((value) => value?.id!)!;
-
-						let attributes = product?.attributes.map((value) => value?.id);
-						let galleries = product?.product_galleries.map((value) => value?.id);
-						if (product) this.product = product;
-						this.id = product?.id!;
-						this.form.patchValue({
-							name: product?.name,
-							short_description: product?.short_description,
-							description: product?.description,
-							store_id: product?.store_id,
-							type: product?.type,
-							unit: product?.unit,
-							weight: product?.weight,
-							stock_status: product?.stock_status,
-							sku: product?.sku,
-							quantity: product?.quantity,
-							price: product?.price,
-							discount: product?.discount,
-							is_sale_enable: product?.is_sale_enable,
-							sale_starts_at: product?.sale_starts_at,
-							sale_expired_at: product?.sale_expired_at,
-							tags: this.selectedTags,
-							categories: this.selectedCategories,
-							is_random_related_products: product?.is_random_related_products,
-							related_products: product?.related_products,
-							cross_sell_products: product?.cross_sell_products,
-							product_thumbnail_id: product?.product_thumbnail_id,
-							product_galleries_id: galleries,
-							size_chart_image_id: product?.size_chart_image_id,
-							attributes_ids: attributes,
-							meta_title: product?.meta_title,
-							meta_description: product?.meta_description,
-							product_meta_image_id: product?.product_meta_image_id,
-							safe_checkout: product?.safe_checkout,
-							secure_checkout: product?.secure_checkout,
-							social_share: product?.social_share,
-							encourage_order: product?.encourage_order,
-							encourage_view: product?.encourage_view,
-							is_free_shipping: product?.is_free_shipping,
-							is_return: product?.is_return,
-							tax_id: product?.tax_id,
-							estimated_delivery_text: product?.estimated_delivery_text,
-							return_policy_text: product?.return_policy_text,
-							is_featured: product?.is_featured,
-							is_trending: product?.is_trending,
-							status: product?.status,
-						});
-
-						// Create Variants
-						let variants = attributes?.map((attr) => {
-							let matchingVariations = product?.variations.filter((variation) => {
-								return variation.attribute_values.some((attrVal) => attrVal?.attribute_id == attr);
-							});
-
-							let attributeValues = matchingVariations?.reduce((acc: any, variation) => {
-								let values = variation.attribute_values
-									.filter((attrVal) => attrVal?.attribute_id == attr)
-									.map((attrVal) => attrVal?.id);
-								return values ? [...new Set([...acc, ...values])] : acc;
-							}, []);
-
-							let options = matchingVariations?.reduce((acc: any, variation) => {
-								let attrVal = variation.attribute_values.find(
-									(attrVal) => attrVal.attribute_id == attr,
-								);
-								if (!acc.some((opt: any) => opt?.value == attrVal?.id)) {
-									acc.push({ label: attrVal?.value, value: attrVal?.id });
-								}
-								return acc;
-							}, []);
-
-							return {
-								id: attr,
-								attribute_values: attributeValues,
-								options: options,
-								variant_option: [],
-							};
-						});
-
-						// Set Variants and Variations
-						this.variants = variants;
-						this.variations = product?.variations!;
-
-						if (product?.type == 'classified') {
-							this?.variants?.forEach((variant) => {
-								this.variantControl.push(
-									this.formBuilder.group({
-										id: new FormControl(variant?.id, []),
-										attribute_values: new FormControl(variant?.attribute_values, []),
-										options: new FormControl(variant?.options, []),
-										variant_option: new FormControl(variant?.variant_option, []),
-									}),
-								);
-							});
-							this.retrieveVariants = true;
-						} else {
-							this.clearVariations();
-						}
-					},
-				});
+			.subscribe((detail) => {
+				if (detail) this.applyCatalogProduct(detail);
+			});
+		this.productService
+			.getReplacementTargets()
+			.pipe(takeUntil(this.destroy$))
+			.subscribe((targets) => {
+				this.replacementTargets = targets
+					.filter((target) => target.path !== `/product/${this.catalogProduct?.slug}`)
+					.map((target) => ({
+						value: target.path,
+						label: `${target.label} · ${target.path}`,
+					}));
 			});
 
 		if (this.type() == 'create') {
@@ -449,7 +514,13 @@ export class FormProduct {
 			}
 		});
 
+		// Made to order is live-only, and its switch locks once the status leaves live.
+		this.form.controls['status'].valueChanges.pipe(takeUntil(this.destroy$)).subscribe((status) => {
+			if (status !== 'live') this.form.get('made_to_order')?.setValue(false);
+		});
+
 		this.form.controls['type'].valueChanges.subscribe((value) => {
+			if (this.catalogProduct) return;
 			if (value == 'simple') {
 				this.form.setControl('quantity', new FormControl('', [Validators.required]));
 				this.form.setControl('price', new FormControl('', [Validators.required]));
@@ -616,23 +687,29 @@ export class FormProduct {
 					variationValue = this.variations[index];
 				}
 				this.variationControl.push(
-					this.formBuilder.group({
-						id: new FormControl(variationValue?.id, []),
-						variation_name: new FormControl(variation?.name, []),
-						name: new FormControl(variationValue?.name, [Validators.required]),
-						price: new FormControl(variationValue?.price, [Validators.required, priceValidator]),
-						discount: new FormControl(variationValue?.discount, []),
-						stock_status: new FormControl(
-							variationValue?.stock_status ? variationValue?.stock_status : 'in_stock',
-							[Validators.required],
-						),
-						sku: new FormControl(variationValue?.sku, [Validators.required]),
-						quantity: new FormControl(variationValue?.quantity, [Validators.required]),
-						variation_image_id: new FormControl(variationValue?.variation_image_id, []),
-						variation_image: new FormControl(variationValue?.variation_image, []),
-						attribute_values: new FormControl(variation?.attribute_values, []),
-						status: new FormControl(variationValue ? +variationValue?.status : 1),
-					}),
+					this.formBuilder.group(
+						{
+							id: new FormControl(variationValue?.id, []),
+							variation_name: new FormControl(variation?.name, []),
+							name: new FormControl(variationValue?.name, [Validators.required]),
+							sku: new FormControl(variationValue?.sku, [Validators.required]),
+							mrp: new FormControl(variationValue?.price, []),
+							price: new FormControl(variationValue?.sale_price, [Validators.required, priceValidator]),
+							discount: new FormControl(variationValue?.discount, []),
+							quantity: new FormControl(variationValue?.quantity, [Validators.required]),
+							weight_grams: new FormControl(),
+							length_cm: new FormControl(),
+							width_cm: new FormControl(),
+							height_cm: new FormControl(),
+							barcode: new FormControl(),
+							hsn: new FormControl(),
+							availability: new FormControl('available', [Validators.required]),
+							variation_image_id: new FormControl(variationValue?.variation_image_id, []),
+							variation_image: new FormControl(variationValue?.variation_image, []),
+							attribute_values: new FormControl(variation?.attribute_values, []),
+						},
+						{ validators: sellingWithinMrp },
+					),
 				);
 			});
 		}
@@ -724,28 +801,84 @@ export class FormProduct {
 
 	submit() {
 		this.form.markAllAsTouched();
-
-		// If product type simple then clear all variation
-		if (this.form.controls['type'].value == 'simple') {
-			this.form.controls['attributes_ids'].setValue([]);
-			this.clearVariations();
+		const product = this.catalogProduct;
+		if (!product) {
+			// Creating a product needs a catalogue create endpoint, which the API does not have yet.
+			this.tabError = 'general';
+			return;
 		}
+		const raw = this.form.getRawValue() as Record<string, unknown>;
+		const leadTime = textOrNull(raw['estimated_delivery_text']);
+		const leadTimeControl = this.form.get('estimated_delivery_text');
+		if (raw['made_to_order'] && !leadTime) leadTimeControl?.setErrors({ leadTimeRequired: true });
+		if (!this.form.valid) {
+			this.showInvalidTab();
+			return;
+		}
+		if (this.isDiscontinuing) {
+			this.productService.discontinueCatalogProduct(product.id, textOrNull(raw['replacement_path'])).subscribe({
+				next: () => void this.router.navigateByUrl('/product'),
+			});
+			return;
+		}
+		const ids = (value: unknown) => (Array.isArray(value) ? value.map(String).filter(Boolean) : []);
+		const body: CatalogProductWrite = {
+			sku: String(raw['sku'] ?? product.sku).trim(),
+			status: raw['status'] === 'disabled' ? 'disabled' : 'live',
+			featured: Boolean(raw['is_featured']),
+			madeToOrder: Boolean(raw['made_to_order']),
+			estimatedDeliveryText: leadTime,
+			lowStockThreshold: blankToNull(raw['low_stock_threshold']),
+			pinnedBadges: ids(raw['pinned_badges']) as CatalogBadgeCode[],
+			hiddenBadges: ids(raw['hidden_badges']) as CatalogBadgeCode[],
+			addonPriceINR: blankToNull(raw['addon_price_inr']),
+			shipping: {
+				weightGrams: blankToNull(raw['weight']),
+				lengthCm: blankToNull(raw['length_cm']),
+				widthCm: blankToNull(raw['width_cm']),
+				heightCm: blankToNull(raw['height_cm']),
+			},
+			hsnCode: textOrNull(raw['hsn_code']),
+			variants: this.variationControl.controls.map((group) => {
+				const row = (group as FormGroup).getRawValue() as Record<string, unknown>;
+				return {
+					id: String(row['id']),
+					sku: String(row['sku']).trim(),
+					mrpINR: blankToNull(row['mrp']),
+					sellingINR: Math.round(Number(row['price'])),
+					quantity: Math.round(Number(row['quantity'])),
+					available: row['availability'] !== 'unavailable',
+					weightGrams: blankToNull(row['weight_grams']),
+					lengthCm: blankToNull(row['length_cm']),
+					widthCm: blankToNull(row['width_cm']),
+					heightCm: blankToNull(row['height_cm']),
+					barcode: textOrNull(row['barcode']),
+					hsnCode: textOrNull(row['hsn']),
+				};
+			}),
+			relatedProductIds: ids(raw['related_products']),
+			upsellProductIds: ids(raw['upsell_products']),
+			crossSellProductIds: ids(raw['cross_sell_products']),
+		};
+		this.productService.saveCatalogProduct(product.id, body).subscribe({
+			next: () => {
+				this.tabError = null;
+				void this.router.navigateByUrl('/product');
+			},
+		});
+	}
 
-		if (this.form.valid) {
-			// Create/update have no backend yet — reset image fields and navigate back.
-			this.form.controls['product_thumbnail_id'].setValue('');
-			this.form.controls['product_galleries_id'].setValue('');
-			void this.router.navigateByUrl('/product');
-			this.tabError = null;
-		} else {
-			const invalidField = Object?.keys(this.form?.controls).find((key) => this.form.controls[key].invalid);
-			if (this.isBrowser) {
-				const div = document.querySelector(`#${invalidField}`)?.closest('div.tab')?.getAttribute('tab');
-				if (div) {
-					this.nav().select(div);
-					this.tabError = div;
-				}
-			}
+	private showInvalidTab() {
+		if (!this.isBrowser) return;
+		const invalidField =
+			Object.keys(this.form.controls).find((key) => this.form.controls[key].invalid) ?? 'variations';
+		const tab = this.document
+			.querySelector(`#${invalidField}, [formarrayname="${invalidField}"]`)
+			?.closest('div.tab')
+			?.getAttribute('tab');
+		if (tab) {
+			this.nav()?.select(tab);
+			this.tabError = tab;
 		}
 	}
 }

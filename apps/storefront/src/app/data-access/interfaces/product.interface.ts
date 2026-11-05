@@ -13,7 +13,8 @@ export interface IProductModel extends IPaginateModel {
 }
 
 export interface IProduct {
-	id: number;
+	/** The catalogue's opaque id. Demo widgets still carry numbers. */
+	id: number | string;
 	name: string;
 	slug: string;
 	short_description: string;
@@ -87,6 +88,10 @@ export interface IProduct {
 	pivot?: IPivotProduct;
 	created_by_id: number;
 	is_approved: boolean;
+	/** The two badge slots the API chose: one promotion, one stock fact. */
+	card_badges?: { primary: string | null; secondary: string | null };
+	unknown_variant?: boolean;
+	breadcrumb_trail?: Array<{ name: string; path: string }>;
 	total_in_approved_products: number;
 	published_at: string;
 	reviews: IReview[];
@@ -113,7 +118,7 @@ export interface IPivotProduct {
 }
 
 export interface IVariation {
-	id: number;
+	id: number | string;
 	name: string;
 	price: number;
 	sale_price: number;

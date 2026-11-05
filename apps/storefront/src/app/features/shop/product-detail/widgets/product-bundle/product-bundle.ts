@@ -32,7 +32,7 @@ export class ProductBundle {
 
 	public crossSellproducts: IProduct[] = [];
 	public selectedProduct: IProduct[] = [];
-	public selectedProductIds: number[] = [];
+	public selectedProductIds: Array<number | string> = [];
 
 	public total: number = 0;
 
@@ -41,20 +41,23 @@ export class ProductBundle {
 		if (productValue?.cross_sell_products && Array.isArray(productValue?.cross_sell_products)) {
 			this.crossSellproduct$.subscribe((products) => {
 				this.crossSellproducts = products.filter((product) =>
-					this.product()?.cross_sell_products?.includes(product?.id!),
+					this.product()?.cross_sell_products?.some((id) => String(id) === String(product?.id)),
 				);
 			});
 		}
 	}
 
 	select(event: Event) {
-		const index = this.selectedProductIds.indexOf(Number((<HTMLInputElement>event?.target)?.value)); // checked and unchecked value
+		const value = (<HTMLInputElement>event?.target)?.value;
+		const index = this.selectedProductIds.findIndex((id) => String(id) === value); // checked and unchecked value
 		if ((<HTMLInputElement>event?.target)?.checked)
-			this.selectedProductIds.push(Number((<HTMLInputElement>event?.target)?.value)); // push in array cheked value
+			this.selectedProductIds.push(value); // push in array cheked value
 		else this.selectedProductIds.splice(index, 1); // removed in array unchecked value
 
 		this.crossSellproduct$.subscribe((products) => {
-			this.selectedProduct = products.filter((product) => this.selectedProductIds?.includes(product?.id!));
+			this.selectedProduct = products.filter((product) =>
+				this.selectedProductIds.some((id) => String(id) === String(product?.id)),
+			);
 		});
 
 		this.total = this.selectedProduct.reduce((sum, item) => sum + item.sale_price, 0);

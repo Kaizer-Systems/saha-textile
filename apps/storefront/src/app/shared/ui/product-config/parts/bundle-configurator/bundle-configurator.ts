@@ -34,7 +34,7 @@ export class BundleConfigurator implements OnInit {
 	readonly initialSelections = input<Record<string, string>>();
 	/** Prefill measurement values (field code -> value) when editing a saved line. */
 	readonly initialMeasurements = input<Record<string, number>>();
-	readonly change = output<ConfiguratorState>();
+	readonly stateChange = output<ConfiguratorState>();
 
 	private readonly selections = signal<Record<string, string>>({});
 	private readonly measurements = signal<Record<string, number>>({});
@@ -94,7 +94,7 @@ export class BundleConfigurator implements OnInit {
 	}
 
 	private emit() {
-		this.change.emit({
+		this.stateChange.emit({
 			total: this.total(),
 			delta: this.optionDelta(),
 			valid: this.valid(),

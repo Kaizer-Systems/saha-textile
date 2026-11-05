@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { runtimeConfig } from '@core/config/runtime-config';
 
 import { ACTIVE_LOCALE } from './active-locale';
-import { LocaleSeo, notFoundRouteMeta } from './locale-seo';
+import { LocaleSeo, goneRouteMeta, notFoundRouteMeta } from './locale-seo';
 
 /**
  * The language-aware head: what a search engine reads to pair the en and fr pages.
@@ -124,6 +124,16 @@ describe('LocaleSeo', () => {
 		expect(response.statusCode).toBe(404);
 		expect(robots()).toBe('noindex,follow');
 		expect(doc.head.querySelectorAll("link[rel='canonical'], link[rel='alternate']")).toHaveLength(0);
+	});
+
+	it('answers a gone page with 410 and noindex', () => {
+		runtimeConfig.siteUrl = SITE;
+		const { navigate, robots, response } = harness('en', { onServer: true });
+
+		navigate('/gone', goneRouteMeta.data);
+
+		expect(response.statusCode).toBe(410);
+		expect(robots()).toBe('noindex,follow');
 	});
 
 	it('leaves the status of an ordinary page alone', () => {

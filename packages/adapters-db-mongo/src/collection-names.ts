@@ -99,6 +99,9 @@ export const COLLECTION_NAMES = {
 	ContentBlock: 'contentBlocks',
 	/** Typed site settings: home hero layout, YouTube rail settings and cache. */
 	SiteSetting: 'siteSettings',
+	SeoRedirect: 'seoRedirects',
+	SeoRoute: 'seoRoutes',
+	AddonTemplate: 'addonTemplates',
 } as const satisfies Record<string, string>;
 
 export type ModelName = keyof typeof COLLECTION_NAMES;

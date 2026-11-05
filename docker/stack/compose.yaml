@@ -63,6 +63,18 @@ services:
       retries: 20
     restart: unless-stopped
 
+  meilisearch:
+    image: getmeili/meilisearch:v1.16.0
+    environment:
+      MEILI_ENV: development
+      MEILI_NO_ANALYTICS: 'true'
+      MEILI_MASTER_KEY: ${MEILISEARCH_API_KEY:-local-saha-textile-meili}
+    ports:
+      - '127.0.0.1:7700:7700'
+    volumes:
+      - saha_textile_stack_meili_data:/meili_data
+    restart: unless-stopped
+
   api:
     build: { context: ../.., dockerfile: docker/images/Dockerfile, target: api }
     image: saha-textile-api:local
@@ -70,6 +82,7 @@ services:
     depends_on:
       mongo: { condition: service_healthy }
       redis: { condition: service_healthy }
+      meilisearch: { condition: service_started }
     restart: unless-stopped
 
   worker:
@@ -134,3 +147,5 @@ volumes:
     name: saha_textile_stack_mongo_configdb
   saha_textile_stack_redis_data:
     name: saha_textile_stack_redis_data
+  saha_textile_stack_meili_data:
+    name: saha_textile_stack_meili_data

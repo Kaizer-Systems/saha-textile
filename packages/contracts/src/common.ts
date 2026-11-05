@@ -68,6 +68,13 @@ export type Slug = z.infer<typeof Slug>;
 export const PriceINR = z.number().finite().nonnegative();
 export type PriceINR = z.infer<typeof PriceINR>;
 
+/**
+ * A catalog price in whole rupees. Paise are not a saree price. Foreign
+ * currencies may still show decimals; that conversion is never written back here.
+ */
+export const CatalogRupee = PriceINR.refine(Number.isInteger, { message: 'catalog prices are whole rupees' });
+export type CatalogRupee = z.infer<typeof CatalogRupee>;
+
 /** ISO 4217 currency code (uppercase alpha-3), e.g. `INR`, `USD`. */
 export const CurrencyCode = z.string().regex(/^[A-Z]{3}$/, 'must be an ISO 4217 alpha-3 code');
 export type CurrencyCode = z.infer<typeof CurrencyCode>;

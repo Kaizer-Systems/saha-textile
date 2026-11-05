@@ -1,4 +1,5 @@
-import { Component, computed, inject, input, signal, viewChild } from '@angular/core';
+import { Component, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 
@@ -6,16 +7,18 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { NgbRating } from '@ng-bootstrap/ng-bootstrap';
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 
+import { rememberNotifyIntent } from '@core/catalog/notify-intent';
+import { AuthStore } from '@core/state/auth.store';
 import { CartFacade } from '@core/state/cart/cart.facade';
 import { CompareFacade } from '@core/state/compare/compare.store';
 import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
 import { ICart } from '@data-access/interfaces/cart.interface';
 import { IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
-import { IProduct } from '@data-access/interfaces/product.interface';
+import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
-import { SaleTimer } from '@features/shop/product-detail/widgets/sale-timer/sale-timer';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { Button } from '@shared/ui/button/button';
+import { environment } from '../../../../../../public/environments/environment';
 import { ProductConfigurator } from '@shared/ui/product-config/product-configurator/product-configurator';
 
 /**
@@ -29,17 +32,20 @@ import { ProductConfigurator } from '@shared/ui/product-config/product-configura
 	templateUrl: './buy-box.html',
 	styleUrls: ['./buy-box.scss'],
 	providers: [CurrencySymbolPipe],
-	imports: [NgbRating, Button, SaleTimer, ProductConfigurator, CurrencySymbolPipe, TranslocoModule],
+	imports: [NgbRating, Button, ProductConfigurator, CurrencySymbolPipe, TranslocoModule],
 })
 export class BuyBox {
 	private wishlistFacade = inject(WishlistFacade);
 	private compareFacade = inject(CompareFacade);
 	private cartFacade = inject(CartFacade);
 	private router = inject(Router);
+	private http = inject(HttpClient);
+	private authStore = inject(AuthStore);
 
 	readonly product = input.required<IProduct>();
 	readonly option = input<ISiteConfig | null>();
 	readonly owlCar = input<CarouselComponent>();
+	readonly variationChange = output<IVariation | null>();
 
 	private readonly cartItems = toSignal(this.cartFacade.cartItems$, { initialValue: [] as ICart[] });
 
@@ -60,6 +66,7 @@ export class BuyBox {
 	}
 
 	onSummary(summary: IConfiguratorSummary) {
+		if (summary.variation !== this.summary()?.variation) this.variationChange.emit(summary.variation);
 		this.summary.set(summary);
 	}
 
@@ -76,6 +83,23 @@ export class BuyBox {
 	buyNow() {
 		this.addToCart();
 		void this.router.navigate(['/checkout']);
+	}
+
+	notify() {
+		const slug = this.product().slug;
+		const variant = this.summary()?.variation?.sku ?? this.product().sku;
+		if (!this.authStore.isAuthenticated()) {
+			rememberNotifyIntent(sessionStorage, slug, variant);
+			void this.router.navigate(['/auth/login']);
+			return;
+		}
+		this.http
+			.post(
+				`${environment.apiUrl}/catalog/products/${encodeURIComponent(slug)}/stock-alerts`,
+				{ variantSku: variant },
+				{ withCredentials: true },
+			)
+			.subscribe();
 	}
 
 	addToWishlist() {

@@ -8,6 +8,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { combineLatest, Observable } from 'rxjs';
 
 import { LocaleSeo } from '@core/i18n/locale-seo';
+import { listingRobots } from '@core/catalog/listing-robots';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
 import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
@@ -101,6 +102,32 @@ export class Collection {
 
 		// Title + breadcrumb from the resolved node (fall back to the general page).
 		this.title.setTitle(`${cat?.name ?? this.collectionsLabel} | Saha Textile`);
+		this.seo.applyDocument({
+			title: `${cat?.name ?? this.collectionsLabel} | Saha Textile`,
+			robots: listingRobots(this.filter()),
+		});
+		this.seo.applyJsonLd('collection-jsonld', {
+			'@context': 'https://schema.org',
+			'@type': 'ItemList',
+			itemListElement: (res?.data ?? []).map((product, index) => ({
+				'@type': 'ListItem',
+				position: index + 1,
+				name: product.name,
+				url: `/product/${product.slug}`,
+			})),
+		});
+		this.seo.applyJsonLd('collection-crumbs', {
+			'@context': 'https://schema.org',
+			'@type': 'BreadcrumbList',
+			itemListElement: (trail.length ? trail : [{ name: this.collectionsLabel, path: '' }]).map(
+				(crumb, index) => ({
+					'@type': 'ListItem',
+					position: index + 1,
+					name: crumb.name,
+					item: `/collections/${crumb.path}`,
+				}),
+			),
+		});
 		this.breadcrumb.set(
 			trail.length
 				? {
@@ -122,7 +149,7 @@ export class Collection {
 
 		// Filtered / paged combinations are noindex,follow (protect crawl budget).
 		const f = this.filter();
-		const filtered = !!(f['attribute'] || f['price'] || f['rating'] || Number(f['page']) > 1);
+		const filtered = listingRobots(f) === 'noindex,follow';
 		this.meta.updateTag({ name: 'robots', content: filtered ? 'noindex,follow' : 'index,follow' });
 	}
 }

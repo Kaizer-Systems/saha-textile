@@ -1,9 +1,14 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, computed, inject } from '@angular/core';
+import { afterNextRender, Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 
+import { injectQuery } from '@tanstack/angular-query-experimental';
 import { CarouselModule } from 'ngx-owl-carousel-o';
+import { firstValueFrom } from 'rxjs';
 
 import { INewsLetter } from '@data-access/interfaces/theme.interface';
+import { IProduct } from '@data-access/interfaces/product.interface';
+import { ProductService } from '@data-access/services/product.service';
+import { readRecentViews } from '@core/catalog/recent-views';
 import { bannerSrc, injectBannersQuery, StorefrontBanners } from '@data-access/queries/banner.queries';
 import { Blog } from '@features/themes/widgets/blog/blog';
 import { HomeBanner } from '@features/themes/widgets/home-banner/home-banner';
@@ -41,6 +46,25 @@ const HERO_LAYOUT_THEME: Record<StorefrontBanners['heroLayout'], string | null> 
 })
 export class Home {
 	public isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
+	constructor() {
+		afterNextRender(() => {
+			const slugs = readRecentViews(sessionStorage).map((row) => row.slug);
+			if (slugs.length === 0) return;
+			this.productsApi.cardsFor(slugs).subscribe((cards) => this.recentRail.set(cards));
+		});
+	}
+	private readonly productsApi = inject(ProductService);
+	private readonly homeQuery = injectQuery(() => ({
+		queryKey: ['catalog', 'home'],
+		queryFn: () => firstValueFrom(this.productsApi.home()),
+	}));
+	readonly railsLoading = computed(() => this.homeQuery.isPending());
+	readonly newArrivals = computed(() => this.homeQuery.data()?.newArrivals ?? []);
+	readonly bestsellers = computed(() => this.homeQuery.data()?.bestsellers ?? []);
+	readonly featuredRail = computed(() => this.homeQuery.data()?.featured ?? []);
+	readonly saleRail = computed(() => this.homeQuery.data()?.sale ?? []);
+	readonly recentRail = signal<IProduct[]>([]);
 
 	// Owl-carousel options for the hero (auto-advance + arrows + dots).
 	public heroSlider = heroBannerSlider;

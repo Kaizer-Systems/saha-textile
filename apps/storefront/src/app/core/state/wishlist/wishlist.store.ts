@@ -47,7 +47,7 @@ export const WishlistActions = createActionGroup({
 		'Get Wishlist': emptyProps(),
 		'Load Wishlist Success': props<{ data: IProduct[]; total: number }>(),
 		'Add To Wishlist': props<{ payload: Params }>(),
-		'Delete Wishlist': props<{ id: number }>(),
+		'Delete Wishlist': props<{ id: number | string }>(),
 	},
 });
 
@@ -58,7 +58,7 @@ export const wishlistReducer = createReducer(
 		total,
 	})),
 	on(WishlistActions.deleteWishlist, (state, { id }) => ({
-		...wishlistAdapter.removeOne(id, state),
+		...(typeof id === 'string' ? wishlistAdapter.removeOne(id, state) : wishlistAdapter.removeOne(id, state)),
 		total: state.total - 1,
 	})),
 );
@@ -121,7 +121,7 @@ export class WishlistFacade {
 	addToWishlist(payload: Params): void {
 		this.store.dispatch(WishlistActions.addToWishlist({ payload }));
 	}
-	deleteWishlist(id: number): void {
+	deleteWishlist(id: number | string): void {
 		this.store.dispatch(WishlistActions.deleteWishlist({ id }));
 	}
 }

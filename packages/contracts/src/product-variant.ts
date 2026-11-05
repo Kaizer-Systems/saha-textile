@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { CatalogStatus } from './catalog';
-import { Id, IsoDateTime, PriceINR } from './common';
+import { CatalogRupee, Id, IsoDateTime } from './common';
 
 /** One resolved axis selection on a variant row. */
 export const VariantOptionSelection = z.object({
@@ -14,9 +14,9 @@ export type VariantOptionSelection = z.infer<typeof VariantOptionSelection>;
  * Stock for one variant.
  *
  * Owner lock: stock is tracked on VARIANTS, never on the parent product.
- * `allowBackorder` is a SEAM — `DEC-BACKORDER` decides whether overselling is permitted
- * at all and on what terms, and `DEC-STOCK-RESERVE` owns reservation timing/TTL. The
- * field exists so the shape is stable; no engine acts on it yet.
+ * `allowBackorder` stays false. Made to order is a product switch, not an oversell
+ * of a stocked saree. `DEC-STOCK-RESERVE` still owns reservation timing. The card's
+ * low-stock threshold lives on the product, so this per-variant field is not a second rule.
  */
 export const VariantStock = z.object({
 	tracked: z.boolean().default(true),
@@ -48,9 +48,8 @@ export const VariantTaxProfile = z.object({
 export type VariantTaxProfile = z.infer<typeof VariantTaxProfile>;
 
 /**
- * A sale window on a variant. SEAM — `DEC-PRICE-DISPLAY` decides MRP/sale/price-range
- * behavior (what is struck through, how a range renders, what wins when both a sale
- * price and a promotion apply). Stored as data; no pricing engine reads it yet.
+ * Optional window during which `salePriceINR` is the selling price. The card and the
+ * product page read the two stored rupee amounts; they do not recompute a percent.
  */
 export const VariantSaleWindow = z.object({
 	startsAt: IsoDateTime.nullable().default(null),
@@ -71,9 +70,10 @@ export type VariantSaleWindow = z.infer<typeof VariantSaleWindow>;
  *     write-path/audit rule — a schema cannot see the previous value.
  *   - `optionSelectionHash` is the duplicate guard for one combination per product.
  *
- * Which fields a variant may OVERRIDE from its parent product is still open
- * (`DEC-VARIANT-OVERRIDES`); the override-capable fields below are therefore optional
- * structure, not a settled policy.
+ * A variant may set SKU, MRP (`compareAtPriceINR`), selling price, stock, images,
+ * shipping dimensions, barcode, availability, and HSN. An empty field inherits the
+ * product. Title, description, and SEO stay on the product. Colour and apparel size
+ * are variation axes, not free-text overrides.
  */
 export const ProductVariant = z
 	.object({
@@ -88,11 +88,10 @@ export const ProductVariant = z
 		 */
 		optionSelectionHash: z.string().min(1),
 		isBaseVariant: z.boolean().default(false),
-		priceINR: PriceINR,
-		/** Seam — `DEC-PRICE-DISPLAY`. */
-		compareAtPriceINR: PriceINR.nullable().default(null),
-		/** Seam — `DEC-PRICE-DISPLAY`. */
-		salePriceINR: PriceINR.nullable().default(null),
+		priceINR: CatalogRupee,
+		compareAtPriceINR: CatalogRupee.nullable().default(null),
+		salePriceINR: CatalogRupee.nullable().default(null),
+		barcode: z.string().min(1).nullable().optional(),
 		saleWindow: VariantSaleWindow.optional(),
 		stock: VariantStock.default({ tracked: true, quantity: 0, lowStockThreshold: null, allowBackorder: false }),
 		shippingProfile: VariantShippingProfile.optional(),

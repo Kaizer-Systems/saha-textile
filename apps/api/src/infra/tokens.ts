@@ -1,6 +1,17 @@
 /** Dependency-injection tokens binding core-domain ports to infra adapters. */
 export const PRODUCT_REPOSITORY = Symbol('ProductRepository');
+export const PRODUCT_VARIANT_REPOSITORY = Symbol('ProductVariantRepository');
+export const SEO_REDIRECT_REPOSITORY = Symbol('SeoRedirectRepository');
+export const SEO_ROUTE_REPOSITORY = Symbol('SeoRouteRepository');
+export const FAQ_REPOSITORY = Symbol('FaqRepository');
+export const PRODUCT_QUESTION_REPOSITORY = Symbol('ProductQuestionRepository');
+export const PRODUCT_RELATION_REPOSITORY = Symbol('ProductRelationRepository');
+export const PRODUCT_BUNDLE_REPOSITORY = Symbol('ProductBundleRepository');
+export const SEARCH_PORT = Symbol('SearchPort');
+export const ADDON_TEMPLATE_REPOSITORY = Symbol('AddonTemplateRepository');
 export const CATEGORY_REPOSITORY = Symbol('CategoryRepository');
+export const CATEGORY_PLACEMENT_REPOSITORY = Symbol('CategoryPlacementRepository');
+export const ATTRIBUTE_DEFINITION_REPOSITORY = Symbol('AttributeDefinitionRepository');
 export const CURRENCY_REPOSITORY = Symbol('CurrencyRepository');
 export const PROMOTION_REPOSITORY = Symbol('PromotionRepository');
 export const CART_REPOSITORY = Symbol('CartRepository');

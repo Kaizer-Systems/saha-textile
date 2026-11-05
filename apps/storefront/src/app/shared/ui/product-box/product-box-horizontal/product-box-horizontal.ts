@@ -5,6 +5,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { NgbRatingConfig, NgbRating } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 
+import { cardOffer } from '@core/catalog/card-offer';
 import { roleSrcset } from '@core/media/resolved-image';
 import { CartFacade } from '@core/state/cart/cart.facade';
 import { CompareFacade } from '@core/state/compare/compare.store';
@@ -46,6 +47,8 @@ export class ProductBoxHorizontal {
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
 	//  and migrating would break narrowing currently.
 	readonly product = input<IProduct>();
+	readonly imagePriority = input<'high' | 'low' | 'lazy'>('lazy');
+	readonly offer = cardOffer;
 	readonly class = input<string>();
 	readonly close = input<boolean>();
 
@@ -105,15 +108,15 @@ export class ProductBoxHorizontal {
 		this.cartFacade.addToCart(params);
 	}
 
-	addToWishlist(id: number) {
+	addToWishlist(id: number | string) {
 		this.wishlistFacade.addToWishlist({ product_id: id });
 	}
 
-	removeWishlist(id: number) {
+	removeWishlist(id: number | string) {
 		this.wishlistFacade.deleteWishlist(id);
 	}
 
-	addToCompar(id: number) {
+	addToCompar(id: number | string) {
 		this.compareFacade.addToCompare({ product_id: id });
 	}
 }

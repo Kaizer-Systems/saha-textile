@@ -37,6 +37,11 @@ export class GlobalErrorHandlerInterceptor implements HttpInterceptor {
 				// the other and neither in the reader's language twice.
 				if (isDomainRefusal(error)) return throwError(() => error);
 
+				// Background catalogue and banner reads have their own empty state. Toasting
+				// every one of them put a repeating box on each navigation. A shopper action
+				// (add to cart, save, question) does not send this header, so it still says why.
+				if (request.headers.get('x-st-background') === '1') return throwError(() => error);
+
 				// Handle HTTP errors here
 				console.error('HTTP Error:', error.error);
 

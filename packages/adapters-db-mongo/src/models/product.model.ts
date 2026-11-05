@@ -13,6 +13,7 @@ export interface ProductDoc {
 	basePriceINR: number;
 	media: { gallery: string[] };
 	attributes: unknown[];
+	optionGroups?: unknown[];
 	variations: unknown[];
 	addons: unknown[];
 	relatedProductIds: string[];
@@ -29,6 +30,26 @@ export interface ProductDoc {
 		richDataPurgedAt?: Date | null;
 		statusReason?: string | null;
 	};
+	madeToOrder?: boolean;
+	estimatedDeliveryText?: Record<string, string> | null;
+	lowStockThreshold?: number | null;
+	lifetimeUnitsReceived?: number;
+	featured?: boolean;
+	insightBadges?: Array<'bestseller' | 'trending'>;
+	pinnedBadges?: string[];
+	hiddenBadges?: string[];
+	backInStockAt?: Date | null;
+	replacementTarget?: { kind: 'product' | 'collection'; path: string } | null;
+	addonTemplateCode?: string | null;
+	addonPriceINR?: number | null;
+	onSale?: boolean;
+	shippingDefaults?: {
+		weightGrams: number | null;
+		lengthCm: number | null;
+		widthCm: number | null;
+		heightCm: number | null;
+	} | null;
+	hsnCode?: string | null;
 	createdAt?: Date;
 	updatedAt?: Date;
 }
@@ -46,6 +67,7 @@ const ProductSchema = new Schema<ProductDoc>(
 		basePriceINR: { type: Number, required: true },
 		media: { type: Schema.Types.Mixed, default: { gallery: [] } },
 		attributes: { type: [Schema.Types.Mixed], default: [] },
+		optionGroups: { type: [Schema.Types.Mixed], default: [] },
 		variations: { type: [Schema.Types.Mixed], default: [] },
 		addons: { type: [Schema.Types.Mixed], default: [] },
 		relatedProductIds: { type: [String], default: [] },
@@ -55,6 +77,21 @@ const ProductSchema = new Schema<ProductDoc>(
 		ratingsSummary: { type: Schema.Types.Mixed, default: { avg: 0, count: 0 } },
 		status: { type: String, enum: ProductStatus.options, default: 'draft' },
 		lifecycle: { type: Schema.Types.Mixed, default: {} },
+		madeToOrder: { type: Boolean, default: false },
+		estimatedDeliveryText: { type: Schema.Types.Mixed, default: null },
+		lowStockThreshold: { type: Number, default: null },
+		lifetimeUnitsReceived: { type: Number, default: 0 },
+		featured: { type: Boolean, default: false },
+		insightBadges: { type: [String], default: [] },
+		pinnedBadges: { type: [String], default: [] },
+		hiddenBadges: { type: [String], default: [] },
+		backInStockAt: { type: Date, default: null },
+		replacementTarget: { type: Schema.Types.Mixed, default: null },
+		addonTemplateCode: { type: String, default: null },
+		addonPriceINR: { type: Number, default: null },
+		onSale: { type: Boolean, default: false },
+		shippingDefaults: { type: Schema.Types.Mixed, default: null },
+		hsnCode: { type: String, default: null },
 	},
 	{ collection: 'products', timestamps: true },
 );
@@ -66,6 +103,10 @@ ProductSchema.index({ tags: 1 });
 ProductSchema.index({ status: 1 });
 // Public listings always filter on status first, then narrow by category/recency.
 ProductSchema.index({ status: 1, categoryIds: 1, createdAt: -1 });
+ProductSchema.index({ status: 1, featured: 1, createdAt: -1 });
+ProductSchema.index({ status: 1, onSale: 1, createdAt: -1 });
+ProductSchema.index({ status: 1, insightBadges: 1, createdAt: -1 });
+ProductSchema.index({ status: 1, slug: 1 });
 // Retention job: find discontinued products whose window has elapsed and that still hold rich data.
 ProductSchema.index({ status: 1, 'lifecycle.discontinuedAt': 1 });
 

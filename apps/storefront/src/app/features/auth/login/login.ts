@@ -1,4 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -6,7 +7,9 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 import { Select2 } from 'ng-select2-component';
 
+import { clearNotifyIntent, readNotifyIntent } from '@core/catalog/notify-intent';
 import { ResendCountdown } from '@core/auth/resend-countdown';
+import { environment } from '../../../../../public/environments/environment';
 import { AuthStore } from '@core/state/auth.store';
 import { AuthService } from '@data-access/services/auth.service';
 import { Alert } from '@shared/ui/alert/alert';
@@ -55,6 +58,7 @@ type Method = 'password' | 'code';
 })
 export class Login {
 	private authStore = inject(AuthStore);
+	private http = inject(HttpClient);
 	private router = inject(Router);
 	private formBuilder = inject(FormBuilder);
 	private authService = inject(AuthService);
@@ -246,6 +250,17 @@ export class Login {
 
 	/** Honours wherever the guard interrupted them, defaulting to the account dashboard. */
 	private async goToDestination(): Promise<void> {
+		const intent = readNotifyIntent(sessionStorage);
+		if (intent) {
+			clearNotifyIntent(sessionStorage);
+			this.http
+				.post(
+					`${environment.apiUrl}/catalog/products/${encodeURIComponent(intent.slug)}/stock-alerts`,
+					{ variantSku: intent.variant },
+					{ withCredentials: true },
+				)
+				.subscribe();
+		}
 		const redirectUrl = this.authService.redirectUrl || '/account/dashboard';
 		this.authService.redirectUrl = undefined;
 		await this.router.navigateByUrl(redirectUrl);

@@ -3,7 +3,7 @@ title: 'Pending Decisions'
 description: 'Canonical inbox of unresolved owner decisions and stable implementation gates.'
 audience: [engineering, product, operator, agent]
 document_role: canonical
-last_verified: '2026-11-03'
+last_verified: '2026-11-04'
 search_keywords: 'pending decisions owner questions implementation gates unresolved'
 ---
 
@@ -39,15 +39,9 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-RETURNS`               | Return/refund policy — **partly settled 2026-08-21**                                                 | Orders, returns, refunds, customer support    |
 | `DEC-PROMO-STACK`           | Promotion and coupon stacking                                                                        | Pricing engine, checkout                      |
 | `DEC-STOCK-RESERVE`         | Stock reservation timing and TTL                                                                     | Inventory, checkout, payment recovery         |
-| `DEC-BACKORDER`             | Backorder/oversell policy                                                                            | Catalog, inventory, storefront                |
 | `DEC-ORDER-SNAPSHOT`        | Immutable order-line snapshot fields — **partly settled 2026-08-21**                                 | Orders, invoices, analytics, support          |
 | `DEC-ADDRESS`               | Address model and checkout phone requirements — **partly settled 2026-08-21**                        | Accounts, checkout, shipping                  |
-| `DEC-VARIANT-OVERRIDES`     | Fields variants may override                                                                         | Catalog contracts and admin forms             |
-| `DEC-PRICE-DISPLAY`         | MRP, sale, and price-range behavior                                                                  | Catalog, pricing, storefront                  |
-| `DEC-ADDON-MEASUREMENTS`    | Add-on pricing and measurement validation                                                            | Product setup, cart, orders                   |
 | `DEC-CUSTOMER-CREDIT`       | Ledger, store credit, wallet, and points scope — **partly settled 2026-08-21**                       | Customers, refunds, checkout                  |
-| `DEC-ID-SLUG`               | IDs, business codes, slugs, and redirects                                                            | Catalog, SEO, orders                          |
-| `DEC-BADGES-RAILS`          | Storefront badge and rail taxonomy                                                                   | Analytics and merchandising                   |
 | `DEC-SCOPE-GAPS`            | Missing business flows and launch scope                                                              | Whole product                                 |
 | `DEC-PAYPAL-FX`             | Treatment of PayPal FX-conversion markup                                                             | Foreign-currency pricing and margin           |
 | `DEC-INR-GATEWAY-TIMING`    | Timing of CCAvenue-to-Razorpay succession                                                            | Payment adapter delivery and operations       |
@@ -367,45 +361,6 @@ Notes:
 
 ---
 
-## 07. `DEC-BACKORDER` — Backorder and oversell
-
-### Decision needed
-
-Decide whether a product can sell beyond available stock.
-
-### Recommended route
-
-Hard-block by default; allow a deliberate per-product preorder/backorder mode.
-
-### Options
-
-#### Option A — Block by default, per-product override (recommended)
-
-- Pros: safe for ready-stock boutique inventory while preserving future made-to-order support.
-- Cons: needs clear preorder labels and lead-time rules.
-
-#### Option B — Always allow
-
-- Pros: never loses a sale because of stock count.
-- Cons: high fulfillment risk.
-
-#### Option C — Never allow
-
-- Pros: simplest and safest.
-- Cons: no preorder/made-to-order flexibility.
-
-### Owner answer
-
-Choice:
-
-Default low-stock threshold:
-
-Launch products allowed to backorder:
-
-Notes:
-
----
-
 ## 08. `DEC-ORDER-SNAPSHOT` — Immutable order-line fields
 
 ### Decision needed
@@ -512,129 +467,6 @@ remain open here.
 
 ---
 
-## 10. `DEC-VARIANT-OVERRIDES` — Variant override fields
-
-### Decision needed
-
-Choose which fields a variant may override from its product.
-
-### Recommended route
-
-Allow SKU, price/MRP/sale, stock, media, weight/dimensions, barcode, and availability overrides. Keep descriptive content and SEO inherited.
-
-### Options
-
-#### Option A — Practical commerce overrides (recommended)
-
-- Pros: covers real variable-product needs without duplicating content.
-- Cons: needs clear inheritance UI.
-
-#### Option B — Minimal SKU/price/stock/image overrides
-
-- Pros: simpler form.
-- Cons: weak shipping/barcode/MRP support.
-
-#### Option C — Every field overrideable
-
-- Pros: maximum flexibility.
-- Cons: noisy admin UX and translation inconsistency.
-
-### Owner answer
-
-Choice:
-
-Allowed fields:
-
-Explicitly inherited fields:
-
-Notes:
-
----
-
-## 11. `DEC-PRICE-DISPLAY` — MRP, sale, and ranges
-
-### Decision needed
-
-Choose per-variant MRP/sale storage and listing-card behavior when variant prices differ.
-
-### Recommended route
-
-Store MRP/compare-at and effective selling price per variant. Show one price when all active variants match and a min–max range otherwise.
-
-### Options
-
-#### Option A — Variant-level MRP and sale (recommended)
-
-- Pros: accurate strike-throughs and ranges.
-- Cons: more data entry and calculation.
-
-#### Option B — Product-level MRP
-
-- Pros: simpler.
-- Cons: wrong when variants differ.
-
-#### Option C — Effective price only
-
-- Pros: minimal and avoids fake discounts.
-- Cons: cannot represent normal Indian sale presentation.
-
-### Owner answer
-
-Choice:
-
-Show strike-through MRP:
-
-Show ranges:
-
-Rounding rule:
-
-Notes:
-
----
-
-## 12. `DEC-ADDON-MEASUREMENTS` — Add-ons and measurements
-
-### Decision needed
-
-Confirm reusable add-on pricing and validation for data-driven tailoring measurements.
-
-### Recommended route
-
-Reusable add-on templates with per-term price deltas and reusable measurement definitions. Validate unit, minimum, maximum, and step on both client and API.
-
-### Options
-
-#### Option A — Reusable templates and definitions (recommended)
-
-- Pros: consistent and reusable.
-- Cons: needs template management.
-
-#### Option B — Product-specific definitions
-
-- Pros: flexible for a small catalog.
-- Cons: repetitive and inconsistent.
-
-#### Option C — Free-text measurements
-
-- Pros: quickest.
-- Cons: poor validation and fulfillment clarity.
-
-### Owner answer
-
-Choice:
-
-Default unit:
-
-Decimal step:
-
-Launch measurement definitions:
-
-How add-on price deltas are entered:
-
-Notes:
-
----
-
 ## 13. `DEC-CUSTOMER-CREDIT` — Ledger, credit, wallet, and points
 
 ### Decision needed
@@ -692,107 +524,6 @@ Refund-to-credit:
 Points at launch:
 
 Top-up allowed:
-
-Notes:
-
----
-
-## 14. `DEC-ID-SLUG` — IDs, codes, slugs, and redirects
-
-### Decision needed
-
-Confirm internal IDs, human business identifiers, mutable slugs, redirect history, and discontinued-product URLs.
-
-### Recommended route
-
-Mongo ObjectId internally, immutable business codes/SKUs, mutable SEO slugs with permanent redirect history, and no reuse of old slugs.
-
-### Options
-
-#### Option A — ObjectId plus codes and redirects (recommended)
-
-- Pros: stable references and SEO-safe renames.
-- Cons: requires redirect management.
-
-#### Option B — Slug as primary business key
-
-- Pros: human-readable.
-- Cons: dangerous renames and historical references.
-
-#### Option C — Mutable slugs without history
-
-- Pros: simplest.
-- Cons: broken links and SEO loss.
-
-### Addition (2026-11-01) — legacy WooCommerce category URLs
-
-Carried over from the locale URL decision (locked 2026-10-31, owner log § Locale URLs), whose
-implementation left this one gap on purpose: it needs the redirect rules this decision sets.
-
-- **Already working:** legacy product URLs. `/product/<slug>/` 301s to `/en/product/<slug>/`, which
-  renders while the slug is unchanged.
-- **Not working:** the 26 legacy category URLs (`/product-category/<path>/`, listed in the live
-  `product_cat-sitemap.xml`). They 301 to `/en/product-category/<path>/`, which is now an honest
-  `404` (not indexed, but the old link equity is lost). The new taxonomy renamed and regrouped
-  categories, so no pattern rule maps them: each needs a `seoRedirects` row pointing at its new
-  `/collections/<path>`, or a deliberate `410`.
-- **What the answer must also settle:** whether retired categories redirect to their nearest
-  parent or answer `410`; and that the redirect map runs before the locale rule, so an old URL
-  reaches its final address in one hop.
-- **Built in:** Chunk F, with the `seoRoutes`/`seoRedirects` collections and the sitemap.
-
-### Owner answer
-
-Choice:
-
-Discontinued URL: 410 or category redirect:
-
-Legacy category URL map (26 rows):
-
-Slug reuse:
-
-Notes:
-
----
-
-## 15. `DEC-BADGES-RAILS` — Badges and merchandising rails
-
-### Decision needed
-
-Choose launch badges, rails, priority, and analytics/manual ownership.
-
-### Recommended route
-
-A restrained premium set, at most one primary plus one secondary badge per card, with admin pin/suppress controls.
-
-### Options
-
-#### Option A — Curated premium set (recommended)
-
-- Candidate badges: New, Sale, Bestseller, Trending, Featured, Low Stock, Back in Stock.
-- Candidate rails: New Arrivals, Bestsellers, Trending, Featured, Sale, Recently Viewed, Handpicked.
-- Pros: useful without marketplace clutter.
-- Cons: needs priority rules and weekly insight jobs.
-
-#### Option B — Manual only
-
-- Pros: maximum brand control.
-- Cons: ongoing admin effort.
-
-#### Option C — Highly dynamic urgency labels
-
-- Pros: conversion pressure.
-- Cons: can feel noisy or misleading at low traffic.
-
-### Owner answer
-
-Choice:
-
-Launch badges:
-
-Launch rails:
-
-Priority rule:
 
 Notes:
 

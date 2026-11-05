@@ -31,9 +31,13 @@
 								[product]="product"
 								[option]="siteConfig$ | async"
 								[owlCar]="owlCar()"
+								(variationChange)="selectedVariation.set($event)"
 							/>
 							<app-product-action [product]="product" />
-							<app-product-information [product]="product" />
+							<app-product-information
+								[product]="product"
+								[variation]="selectedVariation()"
+							/>
 							<app-product-delivery-information [product]="product" />
 							<app-payment-option
 								[product]="product"

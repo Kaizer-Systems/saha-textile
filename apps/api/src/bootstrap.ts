@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { IncomingMessage } from 'node:http';
+import { gzipSync } from 'node:zlib';
 
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
@@ -114,8 +115,24 @@ export async function createApp(config: AppConfig): Promise<NestFastifyApplicati
 
 	// Echo the correlation id on every response, including successful ones, so a client
 	// or a support ticket can always name the exact request.
-	instance.addHook('onSend', (request, reply, _payload, done) => {
+	instance.addHook('onSend', (request, reply, payload, done) => {
 		void reply.header(REQUEST_ID_HEADER, request.id);
+		const accept = request.headers['accept-encoding'];
+		const type = String(reply.getHeader('content-type') ?? '');
+		if (
+			typeof payload === 'string' &&
+			type.includes('application/json') &&
+			typeof accept === 'string' &&
+			accept.includes('gzip') &&
+			payload.length > 1024 &&
+			!reply.getHeader('content-encoding')
+		) {
+			const body = gzipSync(payload);
+			void reply.header('content-encoding', 'gzip');
+			void reply.header('vary', 'Accept-Encoding');
+			done(null, body);
+			return;
+		}
 		done();
 	});
 
@@ -138,7 +155,7 @@ export async function createApp(config: AppConfig): Promise<NestFastifyApplicati
 		origin: config.corsAllowedOrigins,
 		credentials: true,
 		methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-		allowedHeaders: ['content-type', 'accept', config.cookies.csrfHeader, REQUEST_ID_HEADER],
+		allowedHeaders: ['content-type', 'accept', config.cookies.csrfHeader, REQUEST_ID_HEADER, 'x-st-background'],
 		exposedHeaders: [REQUEST_ID_HEADER],
 		maxAge: 600,
 	});

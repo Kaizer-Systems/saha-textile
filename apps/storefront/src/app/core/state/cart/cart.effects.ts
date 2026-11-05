@@ -74,7 +74,7 @@ export class CartEffects {
 					item.variation &&
 					payload.variation_id &&
 					Number(item.id) === Number(payload.id) &&
-					Number(item.variation_id) != Number(payload.variation_id)
+					String(item.variation_id) !== String(payload.variation_id)
 				) {
 					return of(CartActions.replaceCart({ payload }));
 				}
@@ -153,7 +153,7 @@ export class CartEffects {
 					item.variation &&
 					payload.variation_id &&
 					Number(item.id) === Number(payload.id) &&
-					Number(item.variation_id) != Number(payload.variation_id)
+					String(item.variation_id) !== String(payload.variation_id)
 				) {
 					variation = { ...payload.variation!, selected_variation: variationLabel(payload.variation) };
 					variation_id = payload.variation_id;

@@ -34,7 +34,7 @@ export interface ICartConfigMeasurement {
  * same selections when a cart line is re-opened for editing.
  */
 export interface ICartConfigRaw {
-	variation_id?: number | null;
+	variation_id?: number | string | null;
 	addon_selections?: Record<string, string>; // group code -> term code
 	bundle_selections?: Record<string, string>; // group code -> term code
 	measurements?: Record<string, number>; // field code -> value
@@ -53,9 +53,9 @@ export interface ICartLineConfig {
 
 export interface ICart {
 	id: number;
-	product_id: number;
+	product_id: number | string;
 	variation: IVariation;
-	variation_id: number | null;
+	variation_id: number | string | null;
 	consumer_id?: number;
 	quantity: number;
 	sub_total: number;
@@ -72,9 +72,9 @@ export interface ICart {
 export interface ICartAddOrUpdate {
 	id: number | null;
 	product: IProduct | null;
-	product_id: number;
+	product_id: number | string;
 	variation: IVariation | null;
-	variation_id: number | null;
+	variation_id: number | string | null;
 	quantity: number;
 	unit_price?: number;
 	line_config?: ICartLineConfig;

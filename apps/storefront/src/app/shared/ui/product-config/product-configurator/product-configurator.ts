@@ -1,4 +1,5 @@
-import { Component, OnInit, computed, effect, input, output, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, OnInit, PLATFORM_ID, computed, effect, inject, input, output, signal } from '@angular/core';
 
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 
@@ -32,8 +33,11 @@ export class ProductConfigurator implements OnInit {
 	/** Saved line snapshot to re-seed selections when editing an existing cart line. */
 	readonly initialConfig = input<ICartLineConfig>();
 
-	readonly summaryChange = output<IConfiguratorSummary>();
+	private platformId = inject(PLATFORM_ID);
+	private allowVariantUrl = false;
+	private variantArm: ReturnType<typeof setTimeout> | null = null;
 
+	readonly summaryChange = output<IConfiguratorSummary>();
 	readonly selectedVariation = signal<IVariation | null>(null);
 	readonly addonState = signal<ConfiguratorState | null>(null);
 	readonly bundleState = signal<ConfiguratorState | null>(null);
@@ -61,7 +65,12 @@ export class ProductConfigurator implements OnInit {
 
 	readonly displayPrice = computed(() => this.effectiveBase());
 	readonly comparePrice = computed(() => this.selectedVariation()?.price ?? this.product().price);
-	readonly discount = computed(() => this.selectedVariation()?.discount ?? this.product().discount);
+	readonly discount = computed(() => {
+		const selling = this.displayPrice();
+		const mrp = this.comparePrice();
+		if (!mrp || mrp <= selling) return 0;
+		return Math.floor(((mrp - selling) / mrp) * 100);
+	});
 	readonly unitPrice = computed(
 		() => this.effectiveBase() + (this.addonState()?.delta ?? 0) + (this.bundleState()?.delta ?? 0),
 	);
@@ -100,6 +109,7 @@ export class ProductConfigurator implements OnInit {
 		hasVariation: this.hasVariation(),
 		hasAddon: this.hasAddon(),
 		hasBundle: this.hasBundle(),
+		variation: this.selectedVariation(),
 	}));
 
 	constructor() {
@@ -124,6 +134,16 @@ export class ProductConfigurator implements OnInit {
 			return;
 		}
 		this.selectedVariation.set(variation);
+		if (this.variantArm) clearTimeout(this.variantArm);
+		this.variantArm = setTimeout(() => {
+			this.variantArm = null;
+			this.allowVariantUrl = true;
+		}, 0);
+		if (this.allowVariantUrl && variation?.sku && isPlatformBrowser(this.platformId)) {
+			const url = new URL(window.location.href);
+			url.searchParams.set('variant', variation.sku);
+			history.replaceState(history.state, '', `${url.pathname}${url.search}`);
+		}
 	}
 
 	onAddonChange(state: ConfiguratorState) {

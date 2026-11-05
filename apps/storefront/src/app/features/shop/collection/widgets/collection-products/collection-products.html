@@ -6,11 +6,12 @@
 <div [class]="gridClass">
 	@if (productService.skeletonLoader) { @for (item of skeletonItems; track item) {
 	<app-skeleton-product-box />
-	} } @else { @for (product of (product$ | async)?.data; track product) {
+	} } @else { @for (product of (product$ | async)?.data; track product; let i = $index) {
 	<app-product-box
 		[product]="product"
 		[class]="'product-box-3'"
 		[style]="'horizontal'"
+		[imagePriority]="i === 0 ? 'high' : i < 4 ? 'low' : 'lazy'"
 	/>
 	} }
 </div>

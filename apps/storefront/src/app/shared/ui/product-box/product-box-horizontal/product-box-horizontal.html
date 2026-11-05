@@ -3,16 +3,14 @@
 	class="product-box"
 	[class]="class()"
 >
-	@if (product()?.is_sale_enable) {
-	<div class="label-tag sale-tag"><span>{{ 'sale' | transloco }}</span></div>
-	} @else { @if (product()?.is_featured) {
-	<div class="label-tag"><span>{{ 'featured' | transloco }}</span></div>
-	} }
-	<ng-template #featured>
-		@if (product()?.is_featured) {
-		<div class="label-tag"><span>{{ 'featured' | transloco }}</span></div>
-		}
-	</ng-template>
+	@if (offer(product()!).primary; as primary) {
+	<div
+		class="label-tag"
+		[class.sale-tag]="primary === 'badge_sale'"
+	>
+		<span>{{ primary | transloco }}</span>
+	</div>
+	}
 	<div class="product-image">
 		<a [routerLink]="['/product/', product()?.slug]">
 			<img
@@ -23,8 +21,10 @@
 				[attr.sizes]="thumbnail().sizes"
 				[attr.width]="thumbnail().width"
 				[attr.height]="thumbnail().height"
+				[attr.loading]="imagePriority() === 'lazy' ? 'lazy' : 'eager'"
+				[attr.fetchpriority]="imagePriority() === 'high' ? 'high' : imagePriority() === 'low' ? 'low' : null"
 				class="img-fluid"
-				[alt]="'product'"
+				[alt]="product()?.name || 'product'"
 			/>
 		</a>
 		@if (close()) {
@@ -77,10 +77,15 @@
 		<h6 class="unit mt-1">{{ product()?.unit }}</h6>
 		}
 		<h5 class="sold text-content">
-			<span class="theme-color price">{{ product()?.sale_price | currencySymbol }}</span>
-			@if (product()?.discount) {
-			<del>{{ product()?.price | currencySymbol }}</del>
-			}
+			@if (offer(product()!).kind === 'range') {
+			<span class="theme-color price">
+				{{ offer(product()!).min | currencySymbol }} – {{ offer(product()!).max | currencySymbol }}
+			</span>
+			} @else {
+			<span class="theme-color price">{{ offer(product()!).selling | currencySymbol }}</span>
+			@if (offer(product()!).percentOff) {
+			<del>{{ (offer(product()!).mrp ?? 0) | currencySymbol }}</del>
+			} }
 		</h5>
 		<div class="product-rating">
 			<ngb-rating [rate]="product()!.rating_count" />

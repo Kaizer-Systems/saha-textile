@@ -3,7 +3,7 @@ title: Overview
 description: Start here when maintaining the Saha Textile platform.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-03'
+last_verified: '2026-11-04'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/execution-roadmap.mdx

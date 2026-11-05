@@ -1,0 +1,58 @@
+<app-breadcrumb [breadcrumb]="breadcrumb()" />
+<section class="section-404 section-lg-space">
+	<div class="container-fluid-lg">
+		<div class="row">
+			<div class="col-12">
+				<div class="image-404">
+					<img
+						src="assets/images/inner-page/404.png"
+						class="img-fluid"
+						alt=""
+					/>
+				</div>
+			</div>
+			<div class="col-12">
+				<div class="contain-404">
+					<h3 class="text-content">{{ 'page_gone_message' | transloco }}</h3>
+					<div class="search-box mt-4">
+						<div class="input-group">
+							<input
+								type="text"
+								class="form-control"
+								[formControl]="search"
+								[attr.placeholder]="'search_for_products' | transloco"
+							/>
+							<app-button
+								[class]="'btn theme-bg-color text-white m-0'"
+								[type]="'button'"
+								[id]="'gone-search'"
+								[spinner]="false"
+								(click)="searchProduct()"
+							>
+								{{ 'search' | transloco }}
+							</app-button>
+						</div>
+					</div>
+					<div class="d-flex justify-content-center mt-3 gap-2">
+						<app-button
+							[class]="'btn btn-md text-white theme-bg-color'"
+							[id]="'gone_home'"
+							[spinner]="false"
+							(click)="back()"
+						>
+							{{ 'back_to_home' | transloco }}
+						</app-button>
+						<app-button
+							[class]="'btn btn-md text-white theme-bg-color'"
+							[id]="'gone_collections'"
+							[spinner]="false"
+							(click)="collections()"
+						>
+							{{ 'collections' | transloco }}
+						</app-button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>

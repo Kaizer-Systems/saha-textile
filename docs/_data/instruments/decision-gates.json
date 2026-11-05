@@ -8,7 +8,7 @@
 		"docs/engineering-live-context/project-progress.mdx"
 	],
 	"decisionRegister": {
-		"openCount": 20,
+		"openCount": 14,
 		"newlyLocked": ["DEC-SKU", "DEC-PRODUCT-RELATIONS", "DEC-BUNDLE-NESTING", "DEC-DELETE-RETENTION"]
 	},
 	"gates": [

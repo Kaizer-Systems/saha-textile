@@ -40,16 +40,18 @@
 </section>
 }
 
-<!-- ===== Top Selling Items (Denver products_list_1) — carousel w/ side arrows ===== -->
+<!-- ===== New Arrivals — first product row. One image is high priority. ===== -->
 <section class="product-section product-section-3">
 	<div class="container-fluid-lg">
 		<div>
 			<app-title
-				[title]="topSellingItems.title"
+				[title]="'New Arrivals'"
 				[style]="'simple'"
 			/>
 			<app-theme-product
-				[productIds]="topSellingItems.product_ids"
+				[supplied]="newArrivals()"
+				[loading]="railsLoading()"
+				[fold]="'first'"
 				[style]="'horizontal'"
 				[slider]="true"
 				[sliderOption]="productSlider"
@@ -59,6 +61,27 @@
 		</div>
 	</div>
 </section>
+@if (recentRail().length) {
+<section class="product-section product-section-3">
+	<div class="container-fluid-lg">
+		<div>
+			<app-title
+				[title]="'Recently Viewed'"
+				[style]="'simple'"
+			/>
+			<app-theme-product
+				[supplied]="recentRail()"
+				[fold]="'below'"
+				[style]="'horizontal'"
+				[slider]="true"
+				[sliderOption]="productSlider"
+				[productStyle]="'product-solid'"
+				[boxClass]="'product-box-bg'"
+			/>
+		</div>
+	</div>
+</section>
+}
 
 <!-- ===== Two side-by-side promo banners (Denver two_column_banners) ===== -->
 <section>
@@ -80,16 +103,17 @@
 	</div>
 </section>
 
-<!-- ===== Trendy Fashion Finds (Denver products_list_2) — carousel w/ side arrows ===== -->
 <section class="product-section product-section-3">
 	<div class="container-fluid-lg">
 		<div>
 			<app-title
-				[title]="trendyFashionFinds.title"
+				[title]="'Bestsellers'"
 				[style]="'simple'"
 			/>
 			<app-theme-product
-				[productIds]="trendyFashionFinds.product_ids"
+				[supplied]="bestsellers()"
+				[loading]="railsLoading()"
+				[fold]="'below'"
 				[style]="'horizontal'"
 				[slider]="true"
 				[sliderOption]="productSlider"
@@ -99,17 +123,37 @@
 		</div>
 	</div>
 </section>
-
-<!-- ===== Chic Style Selection (Denver products_list_3) — carousel w/ side arrows ===== -->
 <section class="product-section product-section-3">
 	<div class="container-fluid-lg">
 		<div>
 			<app-title
-				[title]="chicStyleSelection.title"
+				[title]="'Featured'"
 				[style]="'simple'"
 			/>
 			<app-theme-product
-				[productIds]="chicStyleSelection.product_ids"
+				[supplied]="featuredRail()"
+				[loading]="railsLoading()"
+				[fold]="'below'"
+				[style]="'horizontal'"
+				[slider]="true"
+				[sliderOption]="productSlider"
+				[productStyle]="'product-solid'"
+				[boxClass]="'product-box-bg'"
+			/>
+		</div>
+	</div>
+</section>
+<section class="product-section product-section-3">
+	<div class="container-fluid-lg">
+		<div>
+			<app-title
+				[title]="'Sale'"
+				[style]="'simple'"
+			/>
+			<app-theme-product
+				[supplied]="saleRail()"
+				[loading]="railsLoading()"
+				[fold]="'below'"
 				[style]="'horizontal'"
 				[slider]="true"
 				[sliderOption]="productSlider"

@@ -33,6 +33,8 @@ export class FormFaq {
 		this.form = this.formBuilder.group({
 			title: new FormControl('', [Validators.required]),
 			description: new FormControl('', [Validators.required]),
+			titleFr: new FormControl(''),
+			descriptionFr: new FormControl(''),
 			status: new FormControl(true),
 		});
 	}
@@ -53,6 +55,8 @@ export class FormFaq {
 				this.form.patchValue({
 					title: this.faq?.title,
 					description: this.faq?.description,
+					titleFr: this.faq?.titleFr,
+					descriptionFr: this.faq?.descriptionFr,
 					status: this.faq?.status,
 				});
 			});
@@ -62,8 +66,17 @@ export class FormFaq {
 		this.form.markAllAsTouched();
 
 		if (this.form.valid) {
-			// Create/update have no backend yet — just navigate.
-			void this.router.navigateByUrl('/faq');
+			const raw = this.form.getRawValue() as {
+				title: string;
+				description: string;
+				titleFr: string;
+				descriptionFr: string;
+				status: boolean;
+			};
+			this.faqService
+				.save({ ...raw, faqId: this.faq?.faqId })
+				.pipe(takeUntil(this.destroy$))
+				.subscribe(() => void this.router.navigateByUrl('/faq'));
 		}
 	}
 }

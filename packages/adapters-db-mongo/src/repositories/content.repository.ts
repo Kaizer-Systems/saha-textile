@@ -1,4 +1,5 @@
 import type { FaqEntry, ProductQuestion, RatingAggregate, Review } from '@saha-textile/contracts';
+import { dedupeById } from '@saha-textile/core-domain';
 import type {
 	FaqFilter,
 	FaqRepository,
@@ -86,14 +87,7 @@ export class MongoFaqRepository implements FaqRepository {
 			.lean<FaqEntryDoc[]>()
 			.exec();
 
-		const seen = new Set<string>();
-		return docs
-			.filter((doc) => {
-				if (seen.has(doc._id)) return false;
-				seen.add(doc._id);
-				return true;
-			})
-			.map(toFaq);
+		return dedupeById(docs.map(toFaq));
 	}
 
 	async save(entry: FaqEntry): Promise<FaqEntry> {

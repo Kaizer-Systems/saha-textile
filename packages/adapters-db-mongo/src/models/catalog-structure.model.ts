@@ -61,6 +61,8 @@ const CategoryPlacementSchema = new Schema<CategoryPlacementDoc>(
  * have a child. The scalar key is what expresses "the whole path is unique".
  */
 CategoryPlacementSchema.index({ pathKey: 1 }, { unique: true });
+/** Sitemap and public menus read live canonical paths. */
+CategoryPlacementSchema.index({ status: 1, isCanonical: 1, pathKey: 1 });
 /**
  * At most ONE canonical placement per category. Partial so the non-canonical placements
  * of the same category do not collide with each other.

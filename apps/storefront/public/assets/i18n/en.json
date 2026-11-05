@@ -360,6 +360,8 @@
 	"out_of_stock": "Out of Stock",
 	"overall_rating": "Overall Rating",
 	"page_not_found_message": "The page you are looking for could not be found. The link to this address may be outdated, or we may have moved the page since you last bookmarked it.",
+	"page_gone_title": "Page no longer available",
+	"page_gone_message": "This page is no longer available. Try a search or browse our collections.",
 	"pages": "Pages",
 	"paris": "Paris",
 	"password": "Password",
@@ -528,6 +530,9 @@
 	"sold": "Sold",
 	"sold_by": "Sold By",
 	"sold_out": "SOLD OUT",
+	"notify_me": "Notify me",
+	"stay_anonymous": "Stay anonymous",
+	"search_unavailable": "Search is unavailable",
 	"someone_recently_purchased": "Someone Recently Purchased",
 	"something_went_wrong_please_try_again": "Something went wrong. Please try again.",
 	"sort_by": "Sort By",
@@ -662,5 +667,12 @@
 	"quick_view": "Quick View",
 	"blogs": "Blogs",
 	"wallet": "Wallet",
-	"paypal": "PayPal"
+	"paypal": "PayPal",
+	"badge_sale": "Sale",
+	"badge_featured": "Featured",
+	"badge_bestseller": "Bestseller",
+	"badge_trending": "Trending",
+	"badge_new": "New",
+	"badge_low_stock": "Low stock",
+	"badge_back_in_stock": "Back in stock"
 }

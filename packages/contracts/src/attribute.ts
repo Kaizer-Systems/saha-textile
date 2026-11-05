@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { I18nString, Id, Slug } from './common';
+import { CatalogRupee, I18nString, Id, Slug } from './common';
 
 /**
  * Per-product business meaning of an option group (owner lock 2026-07-04).
@@ -102,8 +102,8 @@ export const AttributeDefinition = z.object({
 export type AttributeDefinition = z.infer<typeof AttributeDefinition>;
 
 /**
- * One measurement/customization field of an add-on template. Validation bounds
- * are a SEAM (worksheet §14/B6): optional config, not locked business law.
+ * One measurement field. The stored unit is the only unit. `step` is the grain
+ * the shopper's entry is snapped to (half an inch for a blouse).
  */
 export const AddonTemplateField = z.object({
 	code: z.string().min(1),
@@ -116,6 +116,7 @@ export const AddonTemplateField = z.object({
 		.object({
 			min: z.number().optional(),
 			max: z.number().optional(),
+			step: z.number().positive().optional(),
 			decimals: z.number().int().nonnegative().optional(),
 		})
 		.optional(),
@@ -145,3 +146,15 @@ export const AddonTemplate = z.object({
 	status: z.enum(['active', 'archived']).default('active'),
 });
 export type AddonTemplate = z.infer<typeof AddonTemplate>;
+
+/** A priced add-on option. Whole rupees. A product may override this amount. */
+export const AddonTemplateOptionWrite = z.object({
+	code: z.string().min(1),
+	label: z.string().min(1),
+	priceINR: CatalogRupee,
+	unit: z.enum(['in', 'cm']).optional(),
+	min: z.number().optional(),
+	max: z.number().optional(),
+	step: z.number().positive().optional(),
+});
+export type AddonTemplateOptionWrite = z.infer<typeof AddonTemplateOptionWrite>;

@@ -35,6 +35,17 @@
 		}
 	</app-form-fields>
 	<app-form-fields
+		[label]="'description'"
+		[for]="'descriptionFr'"
+		[required]="false"
+	>
+		<textarea
+			class="form-control"
+			formControlName="descriptionFr"
+			rows="3"
+		></textarea>
+	</app-form-fields>
+	<app-form-fields
 		[label]="'status'"
 		[for]="'status'"
 		[required]="false"

@@ -25,7 +25,7 @@ const VALID_SCHEMA_TARGET_ACTIONS = new Set(['refactor', 'add']);
 const VALID_COMMAND_TARGET_SOURCES = new Set(['journey-pages', 'decision-gates', 'document-status']);
 const SCHEMA_NEBULA_ROUTE = '/database/schema-nebula';
 const SCHEMA_NEBULA_NODE_COUNT = 69;
-const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 40;
+const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 41;
 const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 	['categoryPlacements', 'catalog-structure.model.ts'],
 	['categoryFacetConfigs', 'catalog-structure.model.ts'],

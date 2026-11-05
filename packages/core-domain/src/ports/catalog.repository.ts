@@ -14,6 +14,11 @@ export interface ProductFilter extends PageQuery {
 	/** Narrowing only: a public caller can never widen beyond the storefront-visible set. */
 	status?: ProductStatus;
 	search?: string;
+	featured?: boolean;
+	onSale?: boolean;
+	insight?: 'bestseller' | 'trending';
+	/** Placement path such as `sarees/pure-cotton`. Matches a category id resolved by the caller. */
+	categoryIds?: string[];
 }
 
 /**
@@ -28,6 +33,10 @@ export interface ProductRepository {
 	list(filter: ProductFilter): Promise<Paginated<Product>>;
 	save(product: Product): Promise<Product>;
 	deleteById(id: string): Promise<void>;
+	/** Live product slugs for the storefront redirect allow-list. */
+	listPublicSlugs(): Promise<string[]>;
+	/** One row per email and product. Repeating it does not create a second row. */
+	saveStockAlert(customerId: string, productId: string, variantId: string): Promise<void>;
 }
 
 /** Persistence port for the category taxonomy. */

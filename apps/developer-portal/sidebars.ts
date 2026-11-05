@@ -134,6 +134,7 @@ const sidebars: SidebarsConfig = {
 					label: 'Database System',
 					items: [
 						'database/overview',
+						'database/storefront-cutover',
 						'database/schema-nebula',
 						'database/current-adapter-map',
 						'database/transactions-and-generation',

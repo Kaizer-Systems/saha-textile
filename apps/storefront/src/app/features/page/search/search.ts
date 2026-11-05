@@ -31,7 +31,8 @@ export class Search {
 
 	public breadcrumb = translatedBreadcrumb('search');
 
-	public products: IProduct[];
+	public unavailable = signal(false);
+	public products: IProduct[] = [];
 	public search = new FormControl();
 	public totalItems: number = 0;
 	public gridClass: string = 'row g-sm-4 g-3 row-cols-2 row-cols-md-3 cols-lg-4 row-cols-xxl-6 product-list-section';
@@ -53,10 +54,23 @@ export class Search {
 		effect(() => (this.productService.skeletonLoader = this.productsQuery.isFetching()));
 
 		this.route.queryParams.subscribe((params) => {
-			if (params['search']) {
-				this.filter.update((f) => ({ ...f, search: params['search'] }));
-				this.search.patchValue(params['search'] ? params['search'] : '');
+			const term = String(params['search'] ?? '');
+			this.search.patchValue(term);
+			this.filter.update((f) => ({ ...f, search: term }));
+			if (!term) {
+				this.unavailable.set(false);
+				return;
 			}
+			this.productService.search(term).subscribe({
+				next: (rows) => {
+					this.products = rows;
+					this.unavailable.set(false);
+				},
+				error: () => {
+					this.products = [];
+					this.unavailable.set(true);
+				},
+			});
 		});
 	}
 

@@ -42,6 +42,7 @@ export * from './consent.model';
 export * from './catalog-structure.model';
 export * from './product-variant.model';
 export * from './merchandising.model';
+export * from './seoRoute.model';
 export * from './media.model';
 export * from './content-block.model';
 export * from './inventory.model';

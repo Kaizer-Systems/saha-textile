@@ -22,3 +22,6 @@ export * from './content.repository';
 export * from './pending-signup.repository';
 export * from './pending-contact-change.repository';
 export * from './auth-identity.repository';
+export * from './seo-redirect.repository';
+export * from './seo-route.repository';
+export * from './addon-template.repository';

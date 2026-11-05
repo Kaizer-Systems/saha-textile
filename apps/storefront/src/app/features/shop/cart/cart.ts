@@ -63,7 +63,7 @@ export class Cart {
 		this.cartFacade.deleteCart(id);
 	}
 
-	addToWishlist(id: number) {
+	addToWishlist(id: number | string) {
 		this.wishlistFacade.addToWishlist({ product_id: id });
 	}
 }

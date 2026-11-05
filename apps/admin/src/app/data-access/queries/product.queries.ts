@@ -13,3 +13,11 @@ export function injectProductsQuery(params: () => Params) {
 		queryFn: () => firstValueFrom(productService.getProducts(params())),
 	}));
 }
+
+export function injectCatalogProductsQuery(query: () => { search?: string; page?: number; pageSize?: number }) {
+	const productService = inject(ProductService);
+	return injectQuery(() => ({
+		queryKey: ['catalog-products', query()],
+		queryFn: () => firstValueFrom(productService.getCatalogProducts(query())),
+	}));
+}

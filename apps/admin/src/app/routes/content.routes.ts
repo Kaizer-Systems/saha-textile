@@ -28,8 +28,20 @@ export const content: Routes = [
 		loadChildren: () => import('@features/attribute/attribute.routes'),
 	},
 	{
+		path: 'measurement',
+		loadChildren: () => import('@features/addon-template/addon-template.routes'),
+	},
+	{
+		path: 'addon-template',
+		loadChildren: () => import('@features/addon-template/addon-template.routes'),
+	},
+	{
 		path: 'tag',
 		loadChildren: () => import('@features/tag/tag.routes'),
+	},
+	{
+		path: 'redirect',
+		loadChildren: () => import('@features/redirect/redirect.routes'),
 	},
 	{
 		path: 'blog',

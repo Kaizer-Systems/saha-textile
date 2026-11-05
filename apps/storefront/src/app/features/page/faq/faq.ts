@@ -17,6 +17,7 @@ import { Observable } from 'rxjs';
 import { IFaqModel } from '@data-access/interfaces/page.interface';
 import { injectFaqsQuery } from '@data-access/queries/page.queries';
 import { PageService } from '@data-access/services/page.service';
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { translatedBreadcrumb } from '@shared/util/breadcrumb-i18n';
 
@@ -42,6 +43,7 @@ import { SkeletonPage } from '../skeleton-page/skeleton-page';
 })
 export class Faq {
 	pageService = inject(PageService);
+	private seo = inject(LocaleSeo);
 
 	public breadcrumb = translatedBreadcrumb('faq');
 
@@ -53,6 +55,17 @@ export class Faq {
 		// toggled by the old GetFaqsAction).
 		effect(() => {
 			this.pageService.skeletonLoader = this.faqsQuery.isPending();
+			const rows = this.faqsQuery.data()?.data ?? [];
+			if (rows.length === 0) return;
+			this.seo.applyJsonLd('faq-jsonld', {
+				'@context': 'https://schema.org',
+				'@type': 'FAQPage',
+				mainEntity: rows.map((row) => ({
+					'@type': 'Question',
+					name: row.title,
+					acceptedAnswer: { '@type': 'Answer', text: row.description },
+				})),
+			});
 		});
 	}
 }

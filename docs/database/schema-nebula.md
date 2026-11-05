@@ -5,7 +5,7 @@ slug: /database/schema-nebula
 wide: true
 status: implemented
 audience: [beginner, backend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-05'
 search_keywords: 'schema nebula collections database mongodb star map models ghosts graph relationships bounded context DEC'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -47,9 +47,9 @@ Schema Nebula is a **governed architecture map**, not a live database browser an
 | Amber relationship | Another collection references the selected collection.                                           |
 | Decision badge     | A stable `DEC-*` decision still affects the collection’s final policy or shape.                  |
 
-Forty solid stars represent graph collections backed by exact physical-name model and test evidence. The remaining 29 stars stay target-only ghosts until equivalent adapter evidence exists.
+Forty-one solid stars represent graph collections backed by exact physical-name model and test evidence. The remaining 28 stars stay target-only ghosts until equivalent adapter evidence exists.
 
-The current adapter contains 43 exported Mongoose models. Every model declares an exact physical collection name, and adapter tests assert those names. Forty models resolve to graph nodes. `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime machinery deliberately outside the graph. Schema Nebula stands at **69 / 40 / 29**: the 2026-11-02 media decisions added `mediaRoles` and `siteSettings`, and `contentBlocks` gained its model.
+The current adapter contains 44 exported Mongoose models. Every model declares an exact physical collection name, and adapter tests assert those names. Forty-one models resolve to graph nodes. `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime machinery deliberately outside the graph. Schema Nebula stands at **69 / 41 / 28**: `seoRoutes` now has a model beside the 2026-11-02 media additions.
 
 ## Controls
 
@@ -64,7 +64,7 @@ The current adapter contains 43 exported Mongoose models. Every model declares a
 
 The authored inventory lives in `docs/_data/instruments/schema-nebula.json`. The shared build-time compiler refuses to publish it unless all of the following agree:
 
-1. the ratified route and **69 / 40 / 29** inventory;
+1. the ratified route and **69 / 41 / 28** inventory;
 2. the current files under `packages/adapters-db-mongo/src/models`, including grouped files that implement several distinct physical collections, with three runtime-only collections excluded from star promotion;
 3. the catalog, auth, notification and roadmap sources;
 4. all collection-to-collection references;
@@ -75,6 +75,6 @@ Adding or removing a model therefore makes a stale constellation fail the portal
 
 ## What remains separate
 
-Schema Nebula answers **which ratified physical collections are current or targeted and how they relate**. The separate source-only database catalogue generates fields, indexes, defaults, enums, select policy, and sanitized examples for all 40 current Mongoose models, including the three current runtime-only collections. That broader catalogue evidence does not change the constellation’s 67-node boundary; stable DTO, migration, and retention coverage remains incomplete. Do not treat a target star as implemented schema documentation or deployment proof.
+Schema Nebula answers **which ratified physical collections are current or targeted and how they relate**. The separate source-only database catalogue generates fields, indexes, defaults, enums, select policy, and sanitized examples for all 44 current Mongoose models, including the three current runtime-only collections. That broader catalogue evidence does not change the constellation’s 69-node boundary; stable DTO, migration, and retention coverage remains incomplete. Do not treat a target star as implemented schema documentation or deployment proof.
 
 Continue with the [current Mongo adapter map](./current-adapter-map) for implemented model/repository evidence, [transactions and generation](./transactions-and-generation) for the future catalogue contract, and [Mission Control](/mission-control) for roadmap ownership.

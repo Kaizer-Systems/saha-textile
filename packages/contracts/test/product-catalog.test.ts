@@ -7,6 +7,8 @@ import {
 	ProductRelation,
 	ProductVariant,
 	ProductVariantSet,
+	SeoRedirect,
+	AddonTemplateField,
 	optionSelectionKey,
 	variationAxisCodes,
 } from '../src/index';
@@ -395,5 +397,68 @@ describe('ProductRelation — curated versus analytics-backed (DEC-PRODUCT-RELAT
 				relation({ startsAt: '2026-09-01T00:00:00.000Z', endsAt: '2026-08-01T00:00:00.000Z' }),
 			).success,
 		).toBe(false);
+	});
+});
+
+describe('catalog money and redirect rows', () => {
+	const variant = {
+		id: 'var_1',
+		productId: 'prod_5557',
+		sku: 'SKU75789-1-NS',
+		optionSelections: [{ attributeCode: 'salwaar_design', termCode: 'no-stitching' }],
+		optionSelectionHash: 'salwaar_design:no-stitching',
+		isBaseVariant: true,
+		priceINR: 1200,
+	};
+
+	it('refuses paise on a catalog price and a sale above the regular price', () => {
+		expect(ProductVariant.safeParse({ ...variant, priceINR: 1200.5 }).success).toBe(false);
+		expect(ProductVariant.safeParse({ ...variant, compareAtPriceINR: 1499.5 }).success).toBe(false);
+		expect(ProductVariant.safeParse({ ...variant, salePriceINR: 999.5 }).success).toBe(false);
+		expect(ProductVariant.safeParse({ ...variant, salePriceINR: 900, compareAtPriceINR: 1500 }).success).toBe(true);
+		expect(ProductVariant.safeParse({ ...variant, salePriceINR: 1500 }).success).toBe(false);
+	});
+
+	it('requires a target on a 301 and forbids one on a 410', () => {
+		expect(SeoRedirect.safeParse({ id: 'r1', sourcePath: '/old', statusCode: 301, reason: 'manual' }).success).toBe(
+			false,
+		);
+		expect(
+			SeoRedirect.safeParse({
+				id: 'r1',
+				sourcePath: '/old',
+				statusCode: 410,
+				targetPath: '/en/product/silk',
+				reason: 'product_archived',
+			}).success,
+		).toBe(false);
+		expect(
+			SeoRedirect.safeParse({
+				id: 'r1',
+				sourcePath: '/old',
+				statusCode: 301,
+				targetPath: '/en/product/silk',
+				reason: 'legacy_woo',
+			}).success,
+		).toBe(true);
+	});
+
+	it('accepts a measurement step in inches or centimetres', () => {
+		expect(
+			AddonTemplateField.parse({
+				code: 'bust',
+				label: { en: 'Bust' },
+				unit: 'in',
+				validation: { min: 30, max: 50, step: 0.5 },
+			}).validation?.step,
+		).toBe(0.5);
+		expect(
+			AddonTemplateField.safeParse({
+				code: 'bust',
+				label: { en: 'Bust' },
+				unit: 'cm',
+				validation: { step: 0.5 },
+			}).success,
+		).toBe(true);
 	});
 });

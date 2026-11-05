@@ -36,9 +36,12 @@ function harness(slug: string) {
 		imports: [ProductDetail, TranslocoTestingModule.forRoot({ langs: { en: { product: 'Product' } } })],
 		providers: [
 			provideTanStackQuery(new QueryClient()),
-			{ provide: ActivatedRoute, useValue: { params: of({ slug }) } },
-			{ provide: Router, useValue: { navigate } },
-			{ provide: ProductService, useValue: { getProducts: () => of({ data: [saree] }) } },
+			{ provide: ActivatedRoute, useValue: { params: of({ slug }), snapshot: { params: { slug } } } },
+			{ provide: Router, useValue: { navigate, events: of() } },
+			{
+				provide: ProductService,
+				useValue: { getProductPage: (slug: string) => of(slug === saree.slug ? saree : undefined) },
+			},
 			{ provide: SiteConfigService, useValue: { preloader: signal(true) } },
 			{ provide: SiteConfigStore, useValue: { siteConfig: signal(null) } },
 		],

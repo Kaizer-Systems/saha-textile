@@ -102,3 +102,57 @@ ProductRelationSchema.index({ sourceProductId: 1, relationType: 1, targetId: 1 }
 export const ProductRelationModel: Model<ProductRelationDoc> =
 	(models.ProductRelation as Model<ProductRelationDoc>) ??
 	model<ProductRelationDoc>('ProductRelation', ProductRelationSchema);
+
+export interface SeoRedirectDoc {
+	_id: string;
+	sourcePath: string;
+	statusCode: 301 | 302 | 410;
+	targetPath?: string;
+	reason: string;
+	entityType?: string;
+	entityId?: string;
+	createdAt?: Date;
+	updatedAt?: Date;
+}
+
+const SeoRedirectSchema = new Schema<SeoRedirectDoc>(
+	{
+		_id: { type: String, required: true },
+		sourcePath: { type: String, required: true },
+		statusCode: { type: Number, enum: [301, 302, 410], required: true },
+		targetPath: { type: String },
+		reason: { type: String, required: true },
+		entityType: { type: String },
+		entityId: { type: String },
+	},
+	{ collection: 'seoRedirects', timestamps: true },
+);
+
+SeoRedirectSchema.index({ sourcePath: 1 }, { unique: true });
+
+export const SeoRedirectModel: Model<SeoRedirectDoc> =
+	(models.SeoRedirect as Model<SeoRedirectDoc>) ?? model<SeoRedirectDoc>('SeoRedirect', SeoRedirectSchema);
+
+export interface AddonTemplateDoc {
+	_id: string;
+	code: string;
+	label: string;
+	priceINR: number;
+	fields?: unknown[];
+}
+
+const AddonTemplateSchema = new Schema<AddonTemplateDoc>(
+	{
+		_id: { type: String, required: true },
+		code: { type: String, required: true },
+		label: { type: String, required: true },
+		priceINR: { type: Number, required: true },
+		fields: { type: [Schema.Types.Mixed], default: [] },
+	},
+	{ collection: 'addonTemplates', timestamps: true },
+);
+
+AddonTemplateSchema.index({ code: 1 }, { unique: true });
+
+export const AddonTemplateModel: Model<AddonTemplateDoc> =
+	(models.AddonTemplate as Model<AddonTemplateDoc>) ?? model<AddonTemplateDoc>('AddonTemplate', AddonTemplateSchema);

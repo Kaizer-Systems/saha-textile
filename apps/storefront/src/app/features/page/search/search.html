@@ -58,7 +58,7 @@
 		<app-no-data
 			[class]="'no-data-added collection-no-data'"
 			[image]="'assets/svg/no-product.svg'"
-			[text]="'no_products_found' | transloco"
+			[text]="(unavailable() ? 'search_unavailable' : 'no_products_found') | transloco"
 			[description]="'no_search_results_description' | transloco"
 		/>
 		}

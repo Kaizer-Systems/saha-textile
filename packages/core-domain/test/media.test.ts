@@ -427,6 +427,56 @@ describe('resolveImage', () => {
 		});
 		expect(resolved?.roles.card?.map((source) => source.width)).toEqual([200, 400]);
 		expect(resolved?.alt).toBe('Sari rouge');
+
+		const cardOnly = resolveImage({
+			asset: asset({
+				width: 3000,
+				height: 4000,
+				visibility: 'public',
+				derivatives: [
+					{
+						role: 'card',
+						storageKey: 'k/400',
+						width: 400,
+						height: 533,
+						byteSize: 1,
+						format: 'image/webp',
+						roleVersion: 1,
+					},
+					{
+						role: 'gallery',
+						storageKey: 'k/1600',
+						width: 1600,
+						height: 2133,
+						byteSize: 1,
+						format: 'image/webp',
+						roleVersion: 1,
+					},
+					{
+						role: 'zoom',
+						storageKey: 'k/2000',
+						width: 2000,
+						height: 2667,
+						byteSize: 1,
+						format: 'image/webp',
+						roleVersion: 1,
+					},
+				],
+			}),
+			getUrl: (key) => `https://cdn.test/${key}`,
+			locale: 'en',
+			fallbackLocale: 'en',
+			roles: ['card'],
+		});
+		expect(Object.keys(cardOnly?.roles ?? {})).toEqual(['card']);
+
+		const hidden = resolveImage({
+			asset: asset({ visibility: 'private', width: 100, height: 100, derivatives: [] }),
+			getUrl: (key) => key,
+			locale: 'en',
+			fallbackLocale: 'en',
+		});
+		expect(hidden).toBeNull();
 	});
 	it('hides private review photos', () => {
 		expect(

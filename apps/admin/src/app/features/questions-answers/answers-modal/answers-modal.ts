@@ -5,6 +5,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
 import { IQuestionAnswers } from '@data-access/interfaces/questions-answers.interface';
+import { QuestionsAnswersService } from '@data-access/services/questions-answers.service';
 import { Button } from '@shared/ui/button/button';
 
 @Component({
@@ -15,6 +16,7 @@ import { Button } from '@shared/ui/button/button';
 })
 export class AnswersModal {
 	private modalService = inject(NgbModal);
+	private api = inject(QuestionsAnswersService);
 
 	public modalOpen: boolean = false;
 	public closeResult: string;
@@ -60,9 +62,10 @@ export class AnswersModal {
 
 	submit() {
 		this.answers.markAllAsTouched();
-		if (this.answers.valid) {
-			// Submitting an answer has no backend yet — just close the modal.
-			this.modalService.dismissAll();
+		if (this.answers.valid && this.qna.questionId) {
+			this.api
+				.answer(this.qna.questionId, this.answers.value ?? '')
+				.subscribe(() => this.modalService.dismissAll());
 		}
 	}
 

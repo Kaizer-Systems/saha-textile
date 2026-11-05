@@ -83,11 +83,11 @@ export class Deal {
 		return { days, hours, minutes, seconds };
 	}
 
-	addToWishlist(id: number) {
+	addToWishlist(id: number | string) {
 		this.wishlistFacade.addToWishlist({ product_id: id });
 	}
 
-	addToCompare(id: number) {
+	addToCompare(id: number | string) {
 		this.compareFacade.addToCompare({ product_id: id });
 	}
 }

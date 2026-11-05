@@ -3,7 +3,7 @@ title: Documentation Contribution Standard
 description: Definition of done for developer portal changes.
 status: implemented
 audience: [frontend, backend, operator]
-last_verified: '2026-11-03'
+last_verified: '2026-11-04'
 source_of_truth:
     - AGENTS.md
     - docs/engineering-live-context/owner-decisions-log.mdx

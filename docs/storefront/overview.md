@@ -4,7 +4,7 @@ wide: true
 description: Start here before changing the public Angular and AnalogJS storefront.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-11-03'
+last_verified: '2026-11-04'
 source_of_truth:
     - apps/storefront/src/app
     - apps/storefront/vite.config.ts

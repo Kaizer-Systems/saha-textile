@@ -26,17 +26,27 @@ import {
 	MongoMediaAssetRepository,
 	MongoMediaRoleRepository,
 	MongoReviewRepository,
+	MongoSeoRouteRepository,
+	MongoFaqRepository,
+	MongoProductQuestionRepository,
+	MongoProductRelationRepository,
+	MongoProductBundleRepository,
 	MongoSiteSettingsRepository,
 	connectMongo,
 	disconnectMongo,
 } from '@saha-textile/adapters-db-mongo';
 import {
 	MongoCartRepository,
+	MongoAttributeDefinitionRepository,
+	MongoCategoryPlacementRepository,
 	MongoCategoryRepository,
 	MongoCurrencyRepository,
 	MongoOrderRepository,
 	MongoProductRepository,
 	MongoPromotionRepository,
+	MongoProductVariantRepository,
+	MongoSeoRedirectRepository,
+	MongoAddonTemplateRepository,
 } from '@saha-textile/adapters-db-mongo';
 import { Msg91NotificationAdapter } from '@saha-textile/adapters-notifications-msg91';
 import { CloudflareCdnPurge } from '@saha-textile/adapters-cdn-cloudflare';
@@ -56,13 +66,25 @@ import { ConsoleNotificationAdapter } from './console-notification.adapter';
 import { LogOnlyCdnPurgeAdapter } from './log-only-cdn-purge.adapter';
 import { UnavailableYouTubeAdapter } from './unavailable-youtube.adapter';
 import { UnconfiguredStorageAdapter } from './unconfigured-storage.adapter';
+import { MeilisearchSearch } from '../search/meilisearch-search';
 import {
 	AUTH_PORT,
 	CART_REPOSITORY,
+	ATTRIBUTE_DEFINITION_REPOSITORY,
+	CATEGORY_PLACEMENT_REPOSITORY,
 	CATEGORY_REPOSITORY,
 	CURRENCY_REPOSITORY,
 	ORDER_REPOSITORY,
 	PRODUCT_REPOSITORY,
+	PRODUCT_VARIANT_REPOSITORY,
+	SEO_REDIRECT_REPOSITORY,
+	SEO_ROUTE_REPOSITORY,
+	FAQ_REPOSITORY,
+	PRODUCT_QUESTION_REPOSITORY,
+	PRODUCT_RELATION_REPOSITORY,
+	PRODUCT_BUNDLE_REPOSITORY,
+	SEARCH_PORT,
+	ADDON_TEMPLATE_REPOSITORY,
 	ADMIN_INVITE_REPOSITORY,
 	ADMIN_USER_AUTH_REPOSITORY,
 	ADMIN_USER_REPOSITORY,
@@ -102,7 +124,34 @@ import {
 @Module({
 	providers: [
 		{ provide: PRODUCT_REPOSITORY, useClass: MongoProductRepository },
+		{ provide: PRODUCT_VARIANT_REPOSITORY, useClass: MongoProductVariantRepository },
+		{ provide: SEO_REDIRECT_REPOSITORY, useClass: MongoSeoRedirectRepository },
+		{ provide: SEO_ROUTE_REPOSITORY, useClass: MongoSeoRouteRepository },
+		{ provide: FAQ_REPOSITORY, useClass: MongoFaqRepository },
+		{ provide: PRODUCT_QUESTION_REPOSITORY, useClass: MongoProductQuestionRepository },
+		{ provide: PRODUCT_RELATION_REPOSITORY, useClass: MongoProductRelationRepository },
+		{ provide: PRODUCT_BUNDLE_REPOSITORY, useClass: MongoProductBundleRepository },
+		{
+			provide: SEARCH_PORT,
+			useFactory: (products: MongoProductRepository) =>
+				new MeilisearchSearch(
+					process.env['MEILISEARCH_HOST'],
+					process.env['MEILISEARCH_API_KEY'],
+					async (ids) => {
+						const found = [];
+						for (const id of ids) {
+							const product = await products.findById(id, 'public');
+							if (product) found.push(product);
+						}
+						return found;
+					},
+				),
+			inject: [PRODUCT_REPOSITORY],
+		},
+		{ provide: ADDON_TEMPLATE_REPOSITORY, useClass: MongoAddonTemplateRepository },
 		{ provide: CATEGORY_REPOSITORY, useClass: MongoCategoryRepository },
+		{ provide: CATEGORY_PLACEMENT_REPOSITORY, useClass: MongoCategoryPlacementRepository },
+		{ provide: ATTRIBUTE_DEFINITION_REPOSITORY, useClass: MongoAttributeDefinitionRepository },
 		{ provide: CURRENCY_REPOSITORY, useClass: MongoCurrencyRepository },
 		{ provide: PROMOTION_REPOSITORY, useClass: MongoPromotionRepository },
 		{ provide: CART_REPOSITORY, useClass: MongoCartRepository },
@@ -228,6 +277,17 @@ import {
 	],
 	exports: [
 		PRODUCT_REPOSITORY,
+		PRODUCT_VARIANT_REPOSITORY,
+		SEO_REDIRECT_REPOSITORY,
+		SEO_ROUTE_REPOSITORY,
+		FAQ_REPOSITORY,
+		PRODUCT_QUESTION_REPOSITORY,
+		PRODUCT_RELATION_REPOSITORY,
+		PRODUCT_BUNDLE_REPOSITORY,
+		SEARCH_PORT,
+		ADDON_TEMPLATE_REPOSITORY,
+		ATTRIBUTE_DEFINITION_REPOSITORY,
+		CATEGORY_PLACEMENT_REPOSITORY,
 		CATEGORY_REPOSITORY,
 		CURRENCY_REPOSITORY,
 		PROMOTION_REPOSITORY,

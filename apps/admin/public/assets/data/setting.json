@@ -8,7 +8,7 @@
 			"site_title": "FastKart Marketplace: Where Vendors Shine Together",
 			"site_tagline": "Shop Unique, Sell Exceptional – FastKart's Multi-Vendor Universe.",
 			"default_timezone": "Asia/Kolkata",
-			"default_currency_id": 1,
+			"default_currency_id": 2,
 			"admin_site_language_direction": "ltr",
 			"min_order_amount": 0,
 			"min_order_free_shipping": 50,
@@ -72,9 +72,9 @@
 				"original_url": "assets/images/data/tiny-logo.png"
 			},
 			"default_currency": {
-				"id": 1,
-				"code": "USD",
-				"symbol": "$",
+				"id": 2,
+				"code": "INR",
+				"symbol": "₹",
 				"no_of_decimal": 2,
 				"exchange_rate": "1.00",
 				"symbol_position": "before_price",

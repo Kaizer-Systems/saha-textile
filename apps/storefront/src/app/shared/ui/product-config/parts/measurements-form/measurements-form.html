@@ -3,6 +3,24 @@
 		<i class="ri-ruler-line"></i>
 		{{ title() | transloco }}
 	</h5>
+	<ul class="select-package">
+		<li [class.active]="displayUnit() === 'in'">
+			<button
+				type="button"
+				(click)="showUnit('in')"
+			>
+				in
+			</button>
+		</li>
+		<li [class.active]="displayUnit() === 'cm'">
+			<button
+				type="button"
+				(click)="showUnit('cm')"
+			>
+				cm
+			</button>
+		</li>
+	</ul>
 	<form [formGroup]="form">
 		<div class="row g-3">
 			@for (field of fields(); track field.code) {
@@ -18,13 +36,16 @@
 						type="number"
 						class="form-control"
 						[id]="'meas-' + field.code"
-						[formControlName]="field.code"
+						[value]="draft()[field.code] ?? displayText(field.code, field.unit)"
 						[placeholder]="'enter' | transloco"
-						[min]="field.min ?? 1"
-						[max]="field.max ?? 200"
+						(input)="onDraft(field.code, $any($event.target).value)"
+						(change)="keep(field.code, field.unit, field.step ?? 0.5, field.min ?? 1, field.max ?? 200, $event)"
 					/>
-					<span class="input-group-text">{{ field.unit }}</span>
+					<span class="input-group-text">{{ displayUnit() }}</span>
 				</div>
+				@if (preview(field.code, field.unit, field.step ?? 0.5, field.min ?? 1, field.max ?? 200); as snapped) {
+				<p class="text-content">{{ snapped }}</p>
+				}
 			</div>
 			}
 		</div>

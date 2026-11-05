@@ -13,12 +13,16 @@ export const resolveImage = (input: {
 	locale: string;
 	fallbackLocale: string;
 	altOverride?: Record<string, string>;
+	/** When set, every other role is omitted. A card response asks for `card` only. */
+	roles?: readonly string[];
 }): ResolvedImage | null => {
 	const { asset } = input;
 	if (asset.visibility !== 'public' || asset.derivatives.length === 0 || !asset.width || !asset.height) return null;
 
+	const allowed = input.roles ? new Set(input.roles) : null;
 	const roles: Record<string, ResolvedImageSource[]> = {};
 	for (const derivative of [...asset.derivatives].sort((a, b) => a.width - b.width)) {
+		if (allowed && !allowed.has(derivative.role)) continue;
 		(roles[derivative.role] ??= []).push({
 			url: input.getUrl(derivative.storageKey),
 			width: derivative.width,

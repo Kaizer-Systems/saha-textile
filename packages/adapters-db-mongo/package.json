@@ -20,6 +20,7 @@
     "test": "vitest run --passWithNoTests",
     "generate:catalogue": "node --import tsx scripts/generate-catalogue.ts",
     "seed": "tsx scripts/seed.ts",
+    "seed:demo-catalogue": "node --env-file=../../apps/api/.env --import tsx scripts/seed-demo-catalogue.ts",
     "align:collections": "tsx scripts/align-collection-names.ts",
     "split:admin-users": "tsx scripts/split-admin-users.ts",
     "rename:admin-user-permissions": "tsx scripts/rename-admin-user-permissions.ts",

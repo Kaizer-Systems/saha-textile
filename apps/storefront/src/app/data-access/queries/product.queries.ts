@@ -143,20 +143,11 @@ export function injectDealProductsQuery(params: () => Params | undefined) {
  * and the old ProductResolver). Normalizes related/cross-sell arrays so the
  * detail widgets can derive their related-products query params.
  */
-export function injectProductBySlugQuery(slug: () => string | undefined) {
+export function injectProductBySlugQuery(slug: () => string | undefined, variant: () => string | null = () => null) {
 	const productService = inject(ProductService);
 	return injectQuery(() => ({
-		queryKey: ['products', 'all'],
-		queryFn: () => firstValueFrom(productService.getProducts()),
-		select: (res: IProductModel): IProduct | undefined => {
-			const result = res.data.find((product) => product.slug == slug());
-			if (!result) return undefined;
-			result.related_products =
-				result.related_products && result.related_products.length ? result.related_products : [];
-			result.cross_sell_products =
-				result.cross_sell_products && result.cross_sell_products.length ? result.cross_sell_products : [];
-			return result;
-		},
+		queryKey: ['catalog', 'product', slug(), variant() ?? ''],
+		queryFn: () => firstValueFrom(productService.getProductPage(slug()!, variant())),
 		enabled: !!slug(),
 		staleTime: Infinity,
 	}));

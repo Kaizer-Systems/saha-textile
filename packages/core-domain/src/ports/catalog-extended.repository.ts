@@ -9,6 +9,7 @@ import type {
 	ProductVariant,
 	RatingAggregate,
 	Review,
+	SeoRedirect,
 } from '@saha-textile/contracts';
 
 import type { CatalogAudience } from '../catalog/product-visibility';
@@ -28,6 +29,8 @@ export interface CategoryPlacementRepository {
 	listForCategory(categoryId: string): Promise<CategoryPlacement[]>;
 	findCanonical(categoryId: string): Promise<CategoryPlacement | null>;
 	listChildren(parentCategoryId: string | null, audience?: CatalogAudience): Promise<CategoryPlacement[]>;
+	/** Canonical live paths, for the storefront allow-list and the sitemap. */
+	listLivePaths(): Promise<string[]>;
 	listSubtree(rootPlacementId: string, audience?: CatalogAudience): Promise<CategoryPlacement[]>;
 	save(placement: CategoryPlacement, context?: TransactionContext): Promise<CategoryPlacement>;
 	/** Repoints a placement and recomputes every descendant path; returns the moved rows. */
@@ -208,4 +211,45 @@ export interface ReviewRepository {
 	getAggregate(productId: string): Promise<RatingAggregate | null>;
 	/** Recomputes from approved reviews only; returns the persisted aggregate. */
 	recomputeAggregate(productId: string, context?: TransactionContext): Promise<RatingAggregate>;
+}
+
+/** Old addresses. The stored target is never itself a redirect. */
+export interface SeoRedirectRepository {
+	list(): Promise<SeoRedirect[]>;
+	findBySource(sourcePath: string): Promise<SeoRedirect | null>;
+	save(row: SeoRedirect, context?: TransactionContext): Promise<SeoRedirect>;
+	remove(sourcePath: string, context?: TransactionContext): Promise<void>;
+}
+
+/** Reusable add-on options. A product may override the price; an empty override uses this amount. */
+export interface AddonTemplateRow {
+	code: string;
+	label: string;
+	priceINR: number;
+	unit?: 'in' | 'cm';
+	min?: number;
+	max?: number;
+	step?: number;
+}
+
+/** A measurement template with every field, as the product page and cart need it. */
+export interface AddonTemplateDetail {
+	code: string;
+	label: string;
+	priceINR: number;
+	fields: Array<{
+		code: string;
+		label: string;
+		unit: 'in' | 'cm';
+		min: number | null;
+		max: number | null;
+		step: number | null;
+	}>;
+}
+
+export interface AddonTemplateRepository {
+	list(): Promise<AddonTemplateRow[]>;
+	findByCode(code: string): Promise<AddonTemplateDetail | null>;
+	save(row: AddonTemplateRow): Promise<AddonTemplateRow>;
+	remove(code: string): Promise<void>;
 }

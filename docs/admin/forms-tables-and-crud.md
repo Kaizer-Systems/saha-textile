@@ -4,7 +4,7 @@ wide: true
 description: Conventions for safe operator forms, data tables, validation, actions, and future API mutations.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-03'
+last_verified: '2026-11-04'
 source_of_truth:
     - apps/admin/src/app/shared/ui/table
     - apps/admin/src/app/shared/ui/form-fields

@@ -84,6 +84,14 @@ export class MongoCategoryPlacementRepository implements CategoryPlacementReposi
 		return docs.map(toPlacement);
 	}
 
+	async listLivePaths(): Promise<string[]> {
+		const docs = await CategoryPlacementModel.find({ status: 'live', isCanonical: true })
+			.select('pathKey')
+			.lean<Array<{ pathKey: string }>>()
+			.exec();
+		return docs.map((doc) => doc.pathKey);
+	}
+
 	/** Everything under a placement, found by ancestor id rather than by walking levels. */
 	async listSubtree(rootPlacementId: string, audience: CatalogAudience = 'public'): Promise<CategoryPlacement[]> {
 		const root = await CategoryPlacementModel.findById(rootPlacementId).lean<CategoryPlacementDoc>().exec();

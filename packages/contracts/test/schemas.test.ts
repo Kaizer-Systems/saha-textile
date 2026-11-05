@@ -94,6 +94,11 @@ describe('Product — variable "No Stitching → Design + Color" pattern', () =>
 		// defaults applied
 		expect(parsed.status).toBe('draft');
 		expect(parsed.variations[0]?.salePriceINR).toBeNull();
+		expect(parsed.madeToOrder).toBe(false);
+		expect(parsed.lowStockThreshold).toBeNull();
+		expect(parsed.lifetimeUnitsReceived).toBe(0);
+		expect(parsed.pinnedBadges).toEqual([]);
+		expect(parsed.hiddenBadges).toEqual([]);
 	});
 
 	it('rejects a negative base price', () => {

@@ -1,20 +1,25 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { COLLECTION_NAMES } from '../src/collection-names';
+import { buildMongoConfig } from '../src/config';
 import { connectMongo, disconnectMongo, getMongoose } from '../src/connection';
 import { renameAdminUserPermissions } from '../src/migrations/rename-admin-user-permissions';
 
 /**
  * This suite DELETES every role, admin and invite in the database it connects to. It once ran
  * against `saha_textile_local` and took the owner's admin account and the system roles with it
- * (2026-11-02). It now runs only against a database named for tests.
+ * (2026-11-02). It now runs only against a database named for tests, and in a database of
+ * its own: it ran beside the RBAC suite in the shared test database and deleted that suite's
+ * roles mid-run.
  */
-const testDatabase = /_(it|e2e|test)$/.test(process.env.MONGODB_DB_NAME ?? '');
+const TEST_DATABASE = /_(it|e2e|test)$/;
+const testDatabase = TEST_DATABASE.test(process.env.MONGODB_DB_NAME ?? '');
 const runDb = process.env.RUN_DB_IT === '1' && testDatabase;
+const ownDatabase = (process.env.MONGODB_DB_NAME ?? '').replace(TEST_DATABASE, '_permissions_rename_$1');
 
 describe.runIf(runDb)('renameAdminUserPermissions', () => {
 	beforeAll(async () => {
-		await connectMongo();
+		await connectMongo(buildMongoConfig({ ...process.env, MONGODB_DB_NAME: ownDatabase }));
 	});
 
 	/**

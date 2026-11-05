@@ -12,12 +12,16 @@ import { ACTIVE_LOCALE } from './active-locale';
 import { SUPPORTED_LOCALES, isPrivatePath, withLocale } from './locale';
 
 const NOT_FOUND_KEY = 'notFound';
+const GONE_KEY = 'gone';
 
 /**
  * The `routeMeta` of a page that stands for "nothing here": the catch-all and `/404`, which the
  * product page also lands on for an unknown slug.
  */
 export const notFoundRouteMeta = { data: { [NOT_FOUND_KEY]: true } };
+
+/** A retired address. `noindex`, and the server answers 410 rather than 404. */
+export const goneRouteMeta = { data: { [GONE_KEY]: true } };
 
 /**
  * The language-aware head of every page: canonical, `hreflang` alternates and the private-route
@@ -51,6 +55,30 @@ export class LocaleSeo {
 			.subscribe((event) => this.applyDefaults(event.urlAfterRedirects));
 	}
 
+	applyJsonLd(id: string, data: unknown): void {
+		let script = this.doc.getElementById(id) as HTMLScriptElement | null;
+		if (!script) {
+			script = this.doc.createElement('script');
+			script.id = id;
+			script.type = 'application/ld+json';
+			this.doc.head.appendChild(script);
+		}
+		script.textContent = JSON.stringify(data);
+	}
+
+	applyDocument(input: { title?: string; description?: string; robots?: string; image?: string }): void {
+		if (input.title) {
+			this.doc.title = input.title;
+			this.meta.updateTag({ property: 'og:title', content: input.title });
+		}
+		if (input.description) {
+			this.meta.updateTag({ name: 'description', content: input.description });
+			this.meta.updateTag({ property: 'og:description', content: input.description });
+		}
+		if (input.robots) this.meta.updateTag({ name: 'robots', content: input.robots });
+		if (input.image) this.meta.updateTag({ property: 'og:image', content: input.image });
+	}
+
 	/**
 	 * Points canonical and the alternates at `appPath` (locale-free, no query).
 	 *
@@ -68,8 +96,10 @@ export class LocaleSeo {
 	private applyDefaults(appUrl: string): void {
 		const path = appUrl.split(/[?#]/)[0] || '/';
 		const notFound = this.isNotFound();
+		const gone = this.isGone();
 		if (notFound && this.response) this.response.statusCode = 404;
-		if (notFound || isPrivatePath(path)) {
+		if (gone && this.response) this.response.statusCode = 410;
+		if (notFound || gone || isPrivatePath(path)) {
 			this.meta.updateTag({ name: 'robots', content: 'noindex,follow' });
 			this.doc.head
 				.querySelectorAll("link[rel='canonical'], link[rel='alternate'][hreflang]")
@@ -85,6 +115,12 @@ export class LocaleSeo {
 		let route = this.router.routerState.snapshot.root;
 		while (route.firstChild) route = route.firstChild;
 		return route.data[NOT_FOUND_KEY] === true;
+	}
+
+	private isGone(): boolean {
+		let route = this.router.routerState.snapshot.root;
+		while (route.firstChild) route = route.firstChild;
+		return route.data[GONE_KEY] === true;
 	}
 
 	private absolute(path: string): string {

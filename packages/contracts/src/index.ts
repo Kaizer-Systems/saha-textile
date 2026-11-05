@@ -1,6 +1,8 @@
 export * from './common';
 export * from './currency';
 export * from './catalog';
+export * from './catalog-read';
+export * from './catalog-write';
 export * from './category';
 export * from './category-placement';
 export * from './attribute';
@@ -9,6 +11,8 @@ export * from './product-options';
 export * from './product-variant';
 export * from './product-bundle';
 export * from './product-relation';
+export * from './seo-redirect';
+export * from './seo-route';
 export * from './media';
 export * from './content-block';
 export * from './site-settings';

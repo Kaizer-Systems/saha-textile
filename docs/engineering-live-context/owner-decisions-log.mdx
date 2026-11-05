@@ -395,8 +395,9 @@ reciprocal, self-referencing hreflang with `x-default`).
 - **hreflang:** every indexable page lists every active locale including itself, as fully
   qualified URLs, plus `x-default` → `/`.
 - **Currency and country are never in the URL.** Prices are canonical INR converted per visitor.
-- **Redirects:** legacy WooCommerce `/product/{slug}/` and `/product-category/{…}/`, and today's
-  unprefixed public paths, 301 to their `/en/` equivalents through `seoRedirects`.
+- **Redirects:** legacy WooCommerce paths and today's unprefixed public paths are resolved by the
+  legacy resolver recorded in the 2026-11-04 owner round (exact row, then a same-path `/en/`
+  prefix only when that page exists, otherwise 410). They are not all sent to `/en/<same path>`.
 - Resolved implementation gate `G-I18N-ROUTES`: the locale URL rules above are final.
 
 ## Media
@@ -871,6 +872,26 @@ Answered in chat on 2026-11-03 and removed from `pending-decisions.mdx`.
 Still open after this round: `DEC-PORTAL-PRIVATE-ACCESS` (owner: decide at deploy time). Later the
 same day the owner chose the production hostnames (see Infrastructure: bare `sahatextile.com`); only
 the cookie-domain rule of `DEC-DOMAIN-TOPOLOGY` remains open.
+
+## Owner decision round (2026-11-04) — catalog, variants, and the move off WordPress
+
+Closed: `DEC-VARIANT-OVERRIDES`, `DEC-PRICE-DISPLAY`, `DEC-BACKORDER`, `DEC-ADDON-MEASUREMENTS`, `DEC-BADGES-RAILS`, `DEC-ID-SLUG`.
+
+Briefs B1–B7 are approved as drawn in revision 2 of `chunk-f-ui-briefs-2026-11-04.html`. Nothing custom was approved. The briefs say the product form uses the existing tabs and fields, add-on templates copy the Attribute screens, redirects get list and form pages like Tag, the card uses the existing price markup and label classes, the product page changes behaviour only, the measurement switch reuses the variant pills, and the gone page copies the 404 page.
+
+The approval covers the briefs as drawn, not code that differs from them. As of 2026-11-05 the Redirects and Add-on screens still edit inline on the list page; they must be built as separate list and form pages as briefed.
+
+Later owner decision (2026-11-05): the Redirects status field also allows 302, for session pages and old form pages. The brief showed only 301 and 410.
+
+- A variant may set SKU, MRP, selling price, stock, images, shipping dimensions, barcode, availability, and HSN. An empty field inherits the product. Title, description, and SEO stay on the product. Colour and apparel size stay variation axes.
+- Cards link to `/{locale}/product/{slug}`. The same selling price and the same MRP show one price, a struck MRP, and a percent rounded down. Different prices show a range. The card counts variants that can be bought now, including made to order, and falls back to every live variant only when none can be bought.
+- The product page opens on the base variant when it can be bought, otherwise the first buyable SKU. Nothing in stock opens the base SKU with Add to cart off and Notify Me on. `?variant={sku}` is in the first HTML. An unknown SKU redirects once to the clean path. A swatch change uses history replace. `ProductGroup` does not change when a swatch changes. A pin does not invent a Sale or Low stock badge.
+- Made to order is a product-level switch on a live product. The lead time uses `estimated_delivery_text` and shows on the product page only. Oversell stays off.
+- Measurements store one unit per field. The shopper may switch inches and centimetres. The value snaps to the field step. Body fields default to inches and a half-inch step. Add-on prices are whole tax-inclusive rupees, with a per-product override. Percent mode is off for Saha Textile.
+- Badges: one promotion (Sale, Featured, Bestseller, Trending, New) and one fact (Low stock, else Back in stock for 14 days). Low stock uses shop default 2, a product may override, and a product that has only ever held one unit stays unbadged unless its own threshold is set. Sale requires a lower price than MRP.
+- Identity is an opaque id. The SKU is the human code and is frozen once live or on an order. Orders have no slug. A rename writes a 301 for every locale in the same save and collapses chains. A path is never reused by a different entity.
+- A live product that is only out of stock stays a normal page. Disabled is a 404 and reversible. Discontinued is a 410 unless one real replacement is named, in which case it is a 301. A retired collection goes to its nearest live parent, or 410.
+- Old WordPress addresses resolve in one hop: junk patterns, then `seoRedirects`, then a same-path `/en/` prefix only when that page exists, otherwise 410 on the original URL. The homepage is not the fallback. A real 301 lasts as long as its target. There is no calendar expiry.
 
 ## Open decisions
 

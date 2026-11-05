@@ -48,6 +48,7 @@ const toVariant = (doc: ProductVariantDoc): ProductVariant => ({
 	shippingProfile: doc.shippingProfile as ProductVariant['shippingProfile'],
 	taxProfile: doc.taxProfile as ProductVariant['taxProfile'],
 	media: doc.media as ProductVariant['media'],
+	barcode: doc.barcode ?? null,
 	createdAt: iso(doc.createdAt),
 	updatedAt: iso(doc.updatedAt),
 });

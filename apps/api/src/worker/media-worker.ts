@@ -20,6 +20,7 @@ import {
 	runMediaGarbageCollection,
 } from '@saha-textile/core-domain';
 
+import { runWeeklyInsight } from './weekly-insight';
 import type { AppConfig } from '../config/app-config';
 import { LogOnlyCdnPurgeAdapter } from '../infra/log-only-cdn-purge.adapter';
 
@@ -96,6 +97,11 @@ export const composeMediaWorker = async (config: AppConfig) => {
 				}
 			}
 			return { queued };
+		},
+		'weekly-insight': async () => {
+			const result = await runWeeklyInsight();
+			logger.log(`Weekly insight ${result.insightSetId}: ${result.relations} relations`);
+			return result;
 		},
 	};
 

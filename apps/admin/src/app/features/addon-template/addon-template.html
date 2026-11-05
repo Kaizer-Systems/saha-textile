@@ -1,0 +1,109 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'addon_templates'"
+>
+	@if (!formOnly()) {
+	<a routerLink="create">{{ 'create' | transloco }}</a>
+	<app-table
+		[tableConfig]="tableConfig"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="edit($event)"
+		(action)="onAction($event)"
+	/>
+	} @if (formOnly()) {
+	<form
+		class="theme-form theme-form-2 mega-form mb-4"
+		[formGroup]="form"
+		(ngSubmit)="save()"
+	>
+		<app-form-fields
+			[label]="'name'"
+			[for]="'label'"
+			[required]="true"
+		>
+			<input
+				class="form-control"
+				id="label"
+				formControlName="label"
+			/>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'code'"
+			[for]="'code'"
+			[required]="true"
+		>
+			<input
+				class="form-control"
+				id="code"
+				formControlName="code"
+			/>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'price'"
+			[for]="'priceINR'"
+			[required]="true"
+		>
+			<input
+				class="form-control"
+				id="priceINR"
+				type="number"
+				formControlName="priceINR"
+			/>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'unit'"
+			[for]="'unit'"
+		>
+			<select
+				class="form-control"
+				id="unit"
+				formControlName="unit"
+			>
+				<option value="in">in</option>
+				<option value="cm">cm</option>
+			</select>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'min'"
+			[for]="'min'"
+		>
+			<input
+				class="form-control"
+				id="min"
+				type="number"
+				formControlName="min"
+			/>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'max'"
+			[for]="'max'"
+		>
+			<input
+				class="form-control"
+				id="max"
+				type="number"
+				formControlName="max"
+			/>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'step'"
+			[for]="'step'"
+		>
+			<input
+				class="form-control"
+				id="step"
+				type="number"
+				step="0.1"
+				formControlName="step"
+			/>
+		</app-form-fields>
+		<app-button
+			[id]="'save-addon'"
+			[type]="'submit'"
+			[spinner]="false"
+		>
+			{{ 'save' | transloco }}
+		</app-button>
+	</form>
+	}
+</app-page-wrapper>

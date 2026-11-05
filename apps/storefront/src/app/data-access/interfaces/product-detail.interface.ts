@@ -13,6 +13,7 @@
  *   - named_add_on    -> `addon_groups[]` (+ conditional `measurement_fields`)
  *   - bundle          -> `bundle` (composite/kit)
  */
+import type { IVariation } from './product.interface';
 
 /**
  * Single display-style vocabulary (key: `style`) for ALL option renderers —
@@ -67,6 +68,7 @@ export interface IMeasurementField {
 	code: string;
 	label: string;
 	unit: string; // 'in' | 'cm'
+	step?: number;
 	min?: number;
 	max?: number;
 }
@@ -136,6 +138,7 @@ export interface IConfiguratorSummary {
 	hasVariation: boolean;
 	hasAddon: boolean;
 	hasBundle: boolean;
+	variation: IVariation | null; // the variant the shopper has picked, if any
 }
 
 /** A true bundle / composite / kit (KB `productBundles`). */

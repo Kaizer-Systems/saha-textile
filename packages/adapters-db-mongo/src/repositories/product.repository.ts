@@ -9,6 +9,7 @@ import {
 
 import { toProduct } from '../mappers';
 import { type ProductDoc, ProductModel } from '../models/index';
+import { sessionFrom } from '../transaction-manager';
 
 function escapeRegex(input: string): string {
 	return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -43,10 +44,14 @@ export class MongoProductRepository implements ProductRepository {
 	async list(filter: ProductFilter): Promise<Paginated<Product>> {
 		const query: Record<string, unknown> = { ...statusClause(filter.audience, filter.status) };
 		if (filter.categoryId) query.categoryIds = filter.categoryId;
+		if (filter.categoryIds && filter.categoryIds.length > 0) query.categoryIds = { $in: filter.categoryIds };
+		if (filter.featured) query.featured = true;
+		if (filter.onSale) query.onSale = true;
+		if (filter.insight) query.insightBadges = filter.insight;
 		if (filter.tag) query.tags = filter.tag;
 		if (filter.search) {
 			const rx = new RegExp(escapeRegex(filter.search), 'i');
-			query.$or = [{ slug: rx }, { sku: rx }, { tags: rx }];
+			query.$or = [{ slug: rx }, { sku: rx }, { 'title.en': rx }, { tags: rx }];
 		}
 
 		const page = filter.page && filter.page > 0 ? filter.page : 1;
@@ -70,7 +75,7 @@ export class MongoProductRepository implements ProductRepository {
 		const doc = await ProductModel.findByIdAndUpdate(
 			id,
 			{ $set: rest },
-			{ upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
+			{ upsert: true, returnDocument: 'after', setDefaultsOnInsert: true, session: sessionFrom() },
 		)
 			.lean<ProductDoc>()
 			.exec();
@@ -79,5 +84,23 @@ export class MongoProductRepository implements ProductRepository {
 
 	async deleteById(id: string): Promise<void> {
 		await ProductModel.deleteOne({ _id: id }).exec();
+	}
+
+	async saveStockAlert(customerId: string, productId: string, variantId: string): Promise<void> {
+		const id = `ntf_${customerId}_${variantId}`;
+		await ProductModel.db
+			.collection<{ _id: string; customerId: string; productId: string; variantId: string; createdAt: Date }>(
+				'stockAlerts',
+			)
+			.updateOne(
+				{ _id: id },
+				{ $setOnInsert: { customerId, productId, variantId, createdAt: new Date() } },
+				{ upsert: true },
+			);
+	}
+
+	async listPublicSlugs(): Promise<string[]> {
+		const docs = await ProductModel.find({ status: 'live' }).select('slug').lean<Array<{ slug: string }>>().exec();
+		return docs.map((doc) => doc.slug);
 	}
 }

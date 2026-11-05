@@ -44,6 +44,10 @@
 									[src]="product() && product()?.product_thumbnail ?
                                         product()?.product_thumbnail?.original_url :
                                         'assets/images/product.png'"
+									fetchpriority="high"
+									loading="eager"
+									width="600"
+									height="800"
 									class="img-fluid"
 									alt="{{ product()?.name }}"
 								/>

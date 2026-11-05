@@ -23,6 +23,7 @@ export interface ProductVariantDoc {
 	shippingProfile?: Record<string, number | null>;
 	taxProfile?: { hsnCode: string | null; taxClassId: string | null };
 	media?: { primaryAssetId: string | null };
+	barcode?: string | null;
 	createdAt?: Date;
 	updatedAt?: Date;
 }
@@ -52,6 +53,7 @@ const ProductVariantSchema = new Schema<ProductVariantDoc>(
 		shippingProfile: { type: Schema.Types.Mixed },
 		taxProfile: { type: Schema.Types.Mixed },
 		media: { type: Schema.Types.Mixed },
+		barcode: { type: String, default: null },
 	},
 	{ collection: 'productVariants', timestamps: true },
 );

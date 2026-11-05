@@ -11,6 +11,7 @@ export interface IQuestionAnswers {
 	store: IStore;
 	reaction: string | null;
 	question: string;
+	questionId?: string;
 	total_dislikes: number;
 	total_likes: number;
 	consumer_id: number;

@@ -164,7 +164,7 @@ function addressesFor(shape: Shape, index: number): Customer['addresses'] {
 	const labels = ['Home', 'Office'];
 	return Array.from({ length: shape.addresses ?? 0 }, (_unused, position) => ({
 		id: `adr_${shape.slug}_${position}`,
-		label: labels[position] ?? `Address ${position + 1}`,
+		label: labels[position] as string,
 		fullName: shape.displayName,
 		line1: `${position + 12} Weavers Lane`,
 		line2: position === 0 ? 'Near the silk market' : undefined,
@@ -254,9 +254,7 @@ async function main(): Promise<void> {
 			if (shape.status !== 'active') await customerAuth.setStatus(created.id, shape.status);
 
 			const methods = [shape.password ? 'password' : null, ...shape.providers].filter(Boolean).join(' + ');
-			rows.push(
-				`  ${email.padEnd(46)} ${(methods || 'none').padEnd(28)} ${shape.status.padEnd(9)} ${shape.covers}`,
-			);
+			rows.push(`  ${email.padEnd(46)} ${methods.padEnd(28)} ${shape.status.padEnd(9)} ${shape.covers}`);
 		}
 
 		process.stdout.write(

@@ -173,7 +173,7 @@ const dress = (node: Json, photos: DemoPhoto[] | null, slot: SlotKind, productId
 			delete attachment['image'];
 			attachment['original_url'] = photo ? photo.urls[slot === 'thumb' ? 'thumb' : 'card'] : PLACEHOLDER_URL;
 			if (photo && slot === 'card+srcset') {
-				const roles = (CARRIED_ROLES[field] ?? []).map((role) => [role, photo.image.roles[role] ?? []]);
+				const roles = (CARRIED_ROLES[field] as string[]).map((role) => [role, photo.image.roles[role] ?? []]);
 				attachment['image'] = { ...photo.image, roles: Object.fromEntries(roles) } as unknown as Json;
 			}
 		});

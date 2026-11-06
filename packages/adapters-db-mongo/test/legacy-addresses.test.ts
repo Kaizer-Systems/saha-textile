@@ -13,6 +13,19 @@ describe('legacy address file', () => {
 		expect(normaliseLegacyPath('/Product-Tag/Silk-Sarees/?orderby=price')).toBe('/product-tag/silk-sarees');
 	});
 
+	it('keeps a query that is part of the address, and reads the home page', () => {
+		expect(normaliseLegacyPath('/old/?p=12&orderby=price')).toBe('/old?p=12');
+		expect(normaliseLegacyPath('/')).toBe('/');
+	});
+
+	it('accepts a live product and the home page only when it is live', () => {
+		const live = new Set(['/product/red-saree']);
+		expect(legacyTargetIsLive('/en/product/red-saree', live)).toBe(true);
+		expect(legacyTargetIsLive('/fr/product/gone', live)).toBe(false);
+		expect(legacyTargetIsLive('/en', live)).toBe(false);
+		expect(legacyTargetIsLive('/en/about-us', live)).toBe(false);
+	});
+
 	it('accepts the pure silk collection and the contact page, and rejects a missing target', () => {
 		const live = new Set(['sarees/pure-silk']);
 		expect(legacyTargetIsLive('/en/collections/sarees/pure-silk', live)).toBe(true);

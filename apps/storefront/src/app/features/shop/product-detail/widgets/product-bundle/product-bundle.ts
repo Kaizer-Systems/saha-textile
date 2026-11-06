@@ -72,7 +72,7 @@ export class ProductBundle {
 				const params: ICartAddOrUpdate = {
 					id: this.cartItem ? this.cartItem.id : null,
 					product_id: product?.id!,
-					product: product ? product : null,
+					product,
 					variation: null,
 					variation_id: null,
 					quantity: 1,

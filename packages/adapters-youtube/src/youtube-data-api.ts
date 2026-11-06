@@ -87,14 +87,18 @@ export class YouTubeDataApi implements YouTubePort {
 				maxResults: String(Math.min(Math.max(input.limit, 1), 50)),
 			}),
 		);
-		return body.items
-			.filter((item) => item.contentDetails.videoPublishedAt)
-			.map((item) => ({
-				videoId: item.contentDetails.videoId,
-				title: item.snippet.title,
-				publishedAt: item.contentDetails.videoPublishedAt ?? '',
-				thumbnailUrl: bestThumbnail(item.snippet.thumbnails),
-			}));
+		return body.items.flatMap((item) => {
+			const publishedAt = item.contentDetails.videoPublishedAt;
+			if (!publishedAt) return [];
+			return [
+				{
+					videoId: item.contentDetails.videoId,
+					title: item.snippet.title,
+					publishedAt,
+					thumbnailUrl: bestThumbnail(item.snippet.thumbnails),
+				},
+			];
+		});
 	}
 
 	/** Null for an unknown, private, or non-embeddable video — none of those can play on a PDP. */

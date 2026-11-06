@@ -7,6 +7,7 @@ import {
 	isRetryable,
 	isUnauthorized,
 	isUnrecoverableRefusal,
+	readApiErrorMessage,
 	readRefusalReason,
 	toTransportFailure,
 } from '../src/errors.js';
@@ -242,5 +243,58 @@ describe('isDomainRefusal', () => {
 		expect(isDomainRefusal(refusal([]))).toBe(false);
 		expect(isDomainRefusal({ status: 0, error: new Error('Failed to fetch') })).toBe(false);
 		expect(isDomainRefusal(null)).toBe(false);
+	});
+});
+
+describe('readApiErrorMessage', () => {
+	it('reads the message two levels down an HTTP error', () => {
+		const httpError = {
+			message: 'Http failure response',
+			error: { error: { code: 'not_found', message: 'Missing.' } },
+		};
+		expect(readApiErrorMessage(httpError)).toBe('Missing.');
+	});
+
+	it('prefers a field issue over the envelope message', () => {
+		expect(
+			readApiErrorMessage({
+				code: 'validation_failed',
+				message: 'Request validation failed.',
+				issues: [
+					{ path: [], message: '' },
+					{ path: ['email'], message: 'Enter an email' },
+				],
+			}),
+		).toBe('Enter an email');
+	});
+
+	it('accepts a message beside an issues list with no usable issue', () => {
+		expect(readApiErrorMessage({ issues: [], message: 'Rejected.' })).toBe('Rejected.');
+	});
+
+	it('ignores messages that are not from our API', () => {
+		expect(readApiErrorMessage({ message: 'Failed to fetch' })).toBeNull();
+		expect(readApiErrorMessage(new Error('Http failure response'))).toBeNull();
+	});
+
+	it('ignores an empty or non-text message in our envelope', () => {
+		expect(readApiErrorMessage({ code: 'x', message: '' })).toBeNull();
+		expect(readApiErrorMessage({ code: 'x', message: 7 })).toBeNull();
+	});
+
+	it('answers null for values that are not objects and stops after three levels', () => {
+		expect(readApiErrorMessage(null)).toBeNull();
+		expect(readApiErrorMessage('boom')).toBeNull();
+		expect(readApiErrorMessage({ error: 'boom' })).toBeNull();
+		expect(readApiErrorMessage({ error: { error: { error: { code: 'x', message: 'too deep' } } } })).toBeNull();
+	});
+});
+
+describe('field issue paths', () => {
+	it('drops path segments that are not text or numbers', () => {
+		const failure = toTransportFailure(422, {
+			error: { code: 'validation_failed', message: 'No.', issues: [{ path: ['a', 1, null], message: 'Bad' }] },
+		});
+		expect(failure.issues[0]?.path).toEqual(['a', 1]);
 	});
 });

@@ -253,7 +253,7 @@ export class EditProfileModal {
 		this.form.controls['name'].markAsTouched();
 		if (this.form.controls['name'].invalid) return;
 
-		const saved = await this.accountStore.updateProfile(String(this.form.value.name ?? ''));
+		const saved = await this.accountStore.updateProfile(String(this.form.value.name));
 		// Left open on failure so the edit is not lost; the interceptor has already said why.
 		if (saved) this.modalService.dismissAll();
 	}

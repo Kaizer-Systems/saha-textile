@@ -5,6 +5,7 @@ import { lastValueFrom, map } from 'rxjs';
 
 import { AdminRolesGateway } from '@core/admin-roles/admin-roles.gateway';
 import { Params } from '@data-access/interfaces/core.interface';
+
 import type { IModule, IRole, IRoleModel } from '@data-access/interfaces/role.interface';
 
 /** Map a live API role into the table/form `IRole` shape (`name` ← `label`). */
@@ -64,7 +65,7 @@ export function permissionsToModules(items: Array<{ code: string; resource: stri
 	return [...byResource.values()];
 }
 
-export function injectRolesQuery(_params: () => Params = () => ({})) {
+export function injectRolesQuery(_params?: () => Params) {
 	const gateway = inject(AdminRolesGateway);
 
 	return injectQuery(() => ({

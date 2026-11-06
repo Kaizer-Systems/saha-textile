@@ -1,4 +1,11 @@
-import { HttpErrorResponse, HttpEvent, HttpHandler, HttpRequest, HttpResponse } from '@angular/common/http';
+import {
+	HttpErrorResponse,
+	HttpEvent,
+	HttpHandler,
+	HttpRequest,
+	HttpResponse,
+	HttpEventType,
+} from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
@@ -107,6 +114,27 @@ describe('storefront AuthInterceptor', () => {
 
 	const run = (method: string, url = PROTECTED_URL) =>
 		interceptor.intercept(new HttpRequest(method as 'GET', url, method === 'GET' ? undefined : {}), handler);
+
+	describe('maintenance mode', () => {
+		it('follows the setting and goes to the maintenance page', async () => {
+			const router = TestBed.inject(Router);
+			interceptor.isMaintenanceModeOn = true;
+			run('GET').subscribe({ error: () => undefined });
+			expect(router.navigate).toHaveBeenCalledWith(['/maintenance']);
+		});
+
+		it('ignores a progress event', () => {
+			handler.responder = () => of({ type: HttpEventType.Sent });
+			const seen: unknown[] = [];
+			run('GET').subscribe((event) => seen.push(event));
+			expect(seen).toEqual([{ type: HttpEventType.Sent }]);
+		});
+
+		it('reads the setting through its effect', () => {
+			TestBed.tick();
+			expect(interceptor.isMaintenanceModeOn).toBeUndefined();
+		});
+	});
 
 	describe('transport contract', () => {
 		// Unconditional, because the API is a different origin in every environment and cookies

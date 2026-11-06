@@ -175,12 +175,12 @@ export class AddressModal {
 
 		const stateId = Number(value.state_id);
 		const state = (this.statesQuery.data() ?? []).find((entry) => entry.id === stateId);
-		const dialCode = String(value.country_code ?? country.calling_code ?? '').replace(/\D/g, '');
+		const dialCode = String(value.country_code).replace(/\D/g, '');
 
 		return {
-			label: String(value.title ?? ''),
-			fullName: String(value.title ?? ''),
-			line1: String(value.street ?? ''),
+			label: String(value.title),
+			fullName: String(value.title),
+			line1: String(value.street),
 			/**
 			 * Explicitly emptied, not omitted.
 			 *
@@ -190,11 +190,11 @@ export class AddressModal {
 			 * fragment every save.
 			 */
 			line2: '',
-			city: String(value.city ?? ''),
+			city: String(value.city),
 			state: state?.name ?? '',
-			postalCode: String(value.pincode ?? ''),
+			postalCode: String(value.pincode),
 			country: country.name,
-			phone: `+${dialCode}${String(value.phone ?? '')}`,
+			phone: `+${dialCode}${String(value.phone)}`,
 			isDefault: this.address?.is_default ?? false,
 		};
 	}

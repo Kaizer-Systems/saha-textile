@@ -61,7 +61,7 @@ export class StickyCheckout {
 			const params: ICartAddOrUpdate = {
 				id: this.cartItem ? this.cartItem.id : null,
 				product_id: product?.id!,
-				product: product ? product : null,
+				product,
 				variation: this.selectedVariation ? this.selectedVariation : null,
 				variation_id: this.selectedVariation?.id ? this.selectedVariation?.id! : null,
 				quantity: this.productQty,

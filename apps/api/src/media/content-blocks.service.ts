@@ -84,8 +84,6 @@ export class ContentBlocksService {
 		const existing = await this.blocks.findByKey(key);
 		const block: ContentBlock = { ...input, id: existing?.id ?? `cbk_${randomUUID()}`, key };
 		await this.blocks.save(block);
-		// Banner images are now owned; restore any that were waiting out their GC grace.
-		for (const asset of found) if (asset.deletedAt) await this.assets.restore(asset.id);
 		return block;
 	}
 

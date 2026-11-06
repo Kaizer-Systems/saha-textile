@@ -92,7 +92,7 @@ export const normalizeYouTubeVideoId = (input: string): string | null => {
 	const host = url.hostname.toLowerCase();
 	let candidate: string | null = null;
 	if (host === 'youtu.be') {
-		candidate = url.pathname.split('/')[1] ?? null;
+		candidate = url.pathname.replace(/^\/([^/]*).*$/, '$1');
 	} else if (YOUTUBE_HOSTS.has(host)) {
 		const [, first, second] = url.pathname.split('/');
 		if (first === 'watch') candidate = url.searchParams.get('v');

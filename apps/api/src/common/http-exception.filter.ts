@@ -19,7 +19,7 @@ const STATUS_TO_CODE: Record<number, ApiErrorCode> = {
 };
 
 /** Client-safe message per status — used instead of whatever an exception happened to carry. */
-const SAFE_MESSAGE: Record<string, string> = {
+const SAFE_MESSAGE: Record<ApiErrorCode, string> = {
 	bad_request: 'The request could not be processed.',
 	validation_failed: 'Request validation failed.',
 	unauthorized: 'Authentication is required.',
@@ -34,11 +34,11 @@ const SAFE_MESSAGE: Record<string, string> = {
 
 interface ValidationPayload {
 	message?: unknown;
-	issues?: Array<{ path?: unknown; message?: unknown; code?: unknown }>;
+	issues: Array<{ path?: unknown; message?: unknown; code?: unknown }>;
 }
 
 const toFieldIssues = (payload: ValidationPayload): FieldIssue[] =>
-	(payload.issues ?? []).map((issue) => ({
+	payload.issues.map((issue) => ({
 		path:
 			typeof issue.path === 'string'
 				? issue.path.split('.').filter(Boolean)
@@ -100,7 +100,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		const body = ApiErrorResponse.parse({
 			error: {
 				code,
-				message: SAFE_MESSAGE[code] ?? SAFE_MESSAGE.internal,
+				message: SAFE_MESSAGE[code],
 				issues,
 				requestId: typeof requestId === 'string' ? requestId : null,
 				...(reason ? { reason } : {}),

@@ -70,10 +70,7 @@ export class VariantAttributes {
 			// Set First Vatriant Default
 			for (const attribute of product?.attributes ?? []) {
 				if (this.attributeValues.length && attribute?.attribute_values.length) {
-					let values: number[] = [];
 					for (const value of attribute.attribute_values) {
-						if (values.indexOf(value.id) === -1) values.push(value.id);
-
 						if (this.attributeValues.includes(value.id)) {
 							this.setVariant(product.variations, value);
 							break; // Break out of the inner loop after setting the first variant
@@ -88,7 +85,7 @@ export class VariantAttributes {
 			const attrValues = (variation?.attribute_values ?? []).map((attribute_value) => attribute_value?.id);
 			(product?.attributes ?? []).forEach((attribute) => {
 				if (attribute.style !== 'image') return;
-				(attribute.attribute_values ?? []).forEach((attribute_value) => {
+				attribute.attribute_values.forEach((attribute_value) => {
 					// A term with its own square swatch keeps it; otherwise it shows the variant's photo.
 					if (attribute_value.variation_image) return;
 					if (this.attributeValues.includes(attribute_value.id) && attrValues.includes(attribute_value.id)) {
@@ -120,10 +117,8 @@ export class VariantAttributes {
 				attrValues.every((value) => this.variantIds.includes(value));
 			if (doValuesMatch) {
 				this.selectedVariation = variation;
-				this.product['quantity'] = this.selectedVariation
-					? this.selectedVariation?.quantity
-					: this.product?.quantity;
-				this.product['sku'] = this.selectedVariation ? this.selectedVariation?.sku : this.product?.sku;
+				this.product['quantity'] = variation.quantity;
+				this.product['sku'] = variation.sku;
 				const owlCar = this.owlCar();
 				if (owlCar && this.selectedVariation.variation_image) {
 					owlCar.to(this.selectedVariation.variation_image.id.toString());

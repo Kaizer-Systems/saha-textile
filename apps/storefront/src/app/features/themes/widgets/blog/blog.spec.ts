@@ -53,10 +53,14 @@ function harness(blogIds: number[]) {
 		response?.next(value);
 		response?.complete();
 	};
-	return { client, el, cards, answer, responses };
+	return { client, el, cards, answer, responses, blog: fixture.componentInstance };
 }
 
 describe('the home blog rail', () => {
+	it('has no posts before the first answer', () => {
+		expect(harness([1]).blog.blogs()).toEqual([]);
+	});
+
 	it('shows placeholders until the first data, then only the chosen posts', async () => {
 		const { el, cards, answer, responses } = harness([2, 3]);
 

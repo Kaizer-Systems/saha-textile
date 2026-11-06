@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { CloudflareCdnPurge, CloudflarePurgeError } from '../src/index.js';
 
@@ -33,5 +33,38 @@ describe('CloudflareCdnPurge', () => {
 		const error = await purge.purgeUrls(['https://cdn.test/a.webp']).catch((caught: unknown) => caught);
 		expect(error).toBeInstanceOf(CloudflarePurgeError);
 		expect(String((error as Error).message)).not.toContain('secret-token');
+	});
+});
+
+describe('CloudflareCdnPurge failures', () => {
+	it('uses the global fetch when none is supplied', async () => {
+		const { calls, fetchImpl } = recorder();
+		vi.stubGlobal('fetch', fetchImpl);
+		await new CloudflareCdnPurge({ zoneId: 'zone123', apiToken: 'test-token' }).purgeUrls([
+			'https://cdn.test/a.webp',
+		]);
+		vi.unstubAllGlobals();
+		expect(calls).toHaveLength(1);
+	});
+
+	it('wraps a network failure', async () => {
+		const fetchImpl = (async () => {
+			throw new Error('socket hang up');
+		}) as unknown as typeof fetch;
+		const purge = new CloudflareCdnPurge({ zoneId: 'zone123', apiToken: 'test-token', fetch: fetchImpl });
+		await expect(purge.purgeUrls(['https://cdn.test/a.webp'])).rejects.toThrow('Cloudflare purge request failed');
+	});
+
+	it('refuses a reply it cannot read', async () => {
+		const fetchImpl = (async () =>
+			new Response('<html>bad gateway</html>', { status: 502 })) as unknown as typeof fetch;
+		const purge = new CloudflareCdnPurge({ zoneId: 'zone123', apiToken: 'test-token', fetch: fetchImpl });
+		await expect(purge.purgeUrls(['https://cdn.test/a.webp'])).rejects.toThrow('HTTP 502, errors unreadable');
+	});
+
+	it('refuses a success status that reports failure', async () => {
+		const { fetchImpl } = recorder(200, { success: false, errors: [{ code: 7, message: 'no' }] });
+		const purge = new CloudflareCdnPurge({ zoneId: 'zone123', apiToken: 'test-token', fetch: fetchImpl });
+		await expect(purge.purgeUrls(['https://cdn.test/a.webp'])).rejects.toThrow('errors 7');
 	});
 });

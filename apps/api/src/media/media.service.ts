@@ -45,7 +45,9 @@ import {
 /** Who is uploading: an operator in admin, or a customer attaching review photos. */
 export type MediaUploader = { type: 'admin'; id: string } | { type: 'customer'; id: string };
 
-const REFUSAL_MESSAGES: Record<string, string> = {
+type IngestRefusalCode = NonNullable<ReturnType<typeof checkIngest>['refusal']>['code'];
+
+const REFUSAL_MESSAGES: Record<IngestRefusalCode, string> = {
 	type_not_accepted: 'Upload a JPEG or PNG image.',
 	too_large: 'The file is larger than 25 MB.',
 	too_many_pixels: 'The image is larger than 8000 px on its long edge or 50 megapixels.',
@@ -118,16 +120,17 @@ export class MediaService implements OnApplicationBootstrap {
 			throw mediaRefusal(
 				HttpStatus.UNPROCESSABLE_ENTITY,
 				check.refusal.code,
-				REFUSAL_MESSAGES[check.refusal.code] ?? 'This image cannot be uploaded.',
+				REFUSAL_MESSAGES[check.refusal.code],
 			);
 		}
 
 		const id = `med_${randomUUID()}`;
+		const storageKey = originalStorageKey(id, request.contentType);
 		const asset: MediaAsset = {
 			id,
 			kind: 'image',
 			purpose: request.purpose,
-			originalStorageKey: originalStorageKey(id, request.contentType),
+			originalStorageKey: storageKey,
 			originalFormat: request.contentType,
 			originalByteSize: request.byteSize,
 			width: request.width,
@@ -154,7 +157,7 @@ export class MediaService implements OnApplicationBootstrap {
 
 		const ttl = MEDIA_INGEST_POLICY.uploadUrlTtlSeconds;
 		const signed = await this.storage.createSignedUploadUrl({
-			key: asset.originalStorageKey ?? '',
+			key: storageKey,
 			contentType: request.contentType,
 			expiresInSeconds: ttl,
 			visibility: 'private',

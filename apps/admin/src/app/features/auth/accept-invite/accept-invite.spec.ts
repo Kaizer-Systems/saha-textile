@@ -1,126 +1,167 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
-import { TranslocoTestingModule } from '@jsverse/transloco';
-import { Observable, of, throwError } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TranslocoService } from '@jsverse/transloco';
+import { of, throwError } from 'rxjs';
+import { describe, expect, it, vi } from 'vitest';
 
-import { AdminAuthGateway, type AdminInviteAcceptInput } from '@core/auth/auth-gateway';
+import { AdminAuthGateway } from '@core/auth/auth-gateway';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { AcceptInvite } from './accept-invite';
 
-/**
- * The class logic of the accept-invitation screen: what it sends, and when it refuses to send.
- * The template is blanked so the test does not depend on the keypad or toast plumbing.
- */
+const password = 'long-enough-password';
+
+const render = (token: string | null = 't1') => {
+	const gateway = { acceptInvite: vi.fn(() => of<unknown>({})) };
+	const router = { navigateByUrl: vi.fn(async () => true) };
+	const notification = { showSuccess: vi.fn() };
+	TestBed.resetTestingModule();
+	TestBed.configureTestingModule({
+		providers: [
+			{ provide: AdminAuthGateway, useValue: gateway },
+			{ provide: Router, useValue: router },
+			{ provide: NotificationService, useValue: notification },
+			{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+			{ provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: { get: () => token } } } },
+		],
+	});
+	TestBed.overrideComponent(AcceptInvite, { set: { imports: [], template: '' } });
+	const page = TestBed.createComponent(AcceptInvite).componentInstance;
+	return { page, gateway, router, notification };
+};
+const filled = (token?: string | null) => {
+	const parts = render(token);
+	parts.page.form.patchValue({ newPassword: password, confirmPassword: password });
+	return parts;
+};
+const refused = (status: number, error: unknown) => throwError(() => new HttpErrorResponse({ status, error }));
+
 describe('AcceptInvite', () => {
-	let acceptInvite: ReturnType<typeof vi.fn<(input: AdminInviteAcceptInput) => Observable<void>>>;
-	let navigateByUrl: ReturnType<typeof vi.fn>;
-	let showSuccess: ReturnType<typeof vi.fn>;
+	it('reads its token, and treats a missing one as empty', () => {
+		expect(render().page.token()).toBe('t1');
+		expect(render(null).page.token()).toBe('');
+	});
 
-	function create(token: string | null): AcceptInvite {
-		TestBed.configureTestingModule({
-			imports: [AcceptInvite, TranslocoTestingModule.forRoot({ langs: { en: {} } })],
-			providers: [
-				{ provide: AdminAuthGateway, useValue: { acceptInvite } },
-				{ provide: NotificationService, useValue: { showSuccess } },
-				{ provide: Router, useValue: { navigateByUrl } },
-				{
-					provide: ActivatedRoute,
-					useValue: { snapshot: { queryParamMap: convertToParamMap(token ? { token } : {}) } },
-				},
-			],
-		}).overrideComponent(AcceptInvite, { set: { template: '' } });
-		return TestBed.createComponent(AcceptInvite).componentInstance;
-	}
+	it('toggles the password view', () => {
+		const { page } = render();
+		page.showPassword();
+		expect(page.show).toBe(true);
+	});
 
-	function fillPasswords(component: AcceptInvite): void {
-		component.form.setValue({
-			displayName: '  Rina  ',
-			newPassword: 'correct-horse-battery',
-			confirmPassword: 'correct-horse-battery',
+	it('compares the passwords once the second is typed', () => {
+		const { page } = render();
+		page.form.patchValue({ newPassword: password, confirmPassword: '' });
+		expect(page.passwordMismatch).toBe(false);
+		page.form.patchValue({ confirmPassword: 'other' });
+		expect(page.passwordMismatch).toBe(true);
+		page.form.patchValue({ confirmPassword: password });
+		expect(page.passwordMismatch).toBe(false);
+	});
+
+	it('compares complete PINs only', () => {
+		const { page } = render();
+		page.pin.set('123456');
+		page.confirmPin.set('12');
+		expect(page.pinMismatch()).toBe(false);
+		page.confirmPin.set('654321');
+		expect(page.pinMismatch()).toBe(true);
+		page.pin.set('1');
+		expect(page.pinMismatch()).toBe(false);
+	});
+
+	it.each([
+		['no token', () => filled('')],
+		['an invalid form', () => render()],
+		[
+			'different passwords',
+			() => {
+				const parts = filled();
+				parts.page.form.patchValue({ confirmPassword: 'different-password' });
+				return parts;
+			},
+		],
+		[
+			'a save in progress',
+			() => {
+				const parts = filled();
+				parts.page.pending.set(true);
+				return parts;
+			},
+		],
+	])('stops with %s', async (_name, build) => {
+		const { page, gateway } = build();
+		await page.submit();
+		expect(gateway.acceptInvite).not.toHaveBeenCalled();
+	});
+
+	it('refuses a part-typed PIN', async () => {
+		const { page, gateway } = filled();
+		page.pin.set('123');
+		await page.submit();
+		expect(page.error()).toBe('pin_must_be_6_digits');
+		expect(gateway.acceptInvite).not.toHaveBeenCalled();
+	});
+
+	it('refuses a PIN that does not match', async () => {
+		const { page } = filled();
+		page.pin.set('123456');
+		page.confirmPin.set('654321');
+		await page.submit();
+		expect(page.error()).toBe('pins_do_not_match');
+	});
+
+	it('accepts with a password alone', async () => {
+		const { page, gateway, notification, router } = filled();
+		await page.submit();
+		expect(gateway.acceptInvite).toHaveBeenCalledWith({ token: 't1', password });
+		expect(notification.showSuccess).toHaveBeenCalledWith('account_created_sign_in');
+		expect(router.navigateByUrl).toHaveBeenCalledWith('/auth/login');
+	});
+
+	it('sends a name and a PIN, with the chosen login method', async () => {
+		const { page, gateway } = filled();
+		page.form.patchValue({ displayName: ' Asha ' });
+		page.pin.set('123456');
+		page.confirmPin.set('123456');
+		await page.submit();
+		expect(gateway.acceptInvite).toHaveBeenCalledWith({
+			token: 't1',
+			password,
+			displayName: 'Asha',
+			pin: '123456',
+			preferredLoginMethod: 'password',
 		});
-	}
-
-	beforeEach(() => {
-		acceptInvite = vi.fn<(input: AdminInviteAcceptInput) => Observable<void>>(() => of(undefined));
-		navigateByUrl = vi.fn(() => Promise.resolve(true));
-		showSuccess = vi.fn();
-	});
-
-	it('sends nothing without a token in the link', async () => {
-		const component = create(null);
-		fillPasswords(component);
-
-		await component.submit();
-
-		expect(acceptInvite).not.toHaveBeenCalled();
-	});
-
-	it('skips the PIN when none is entered and goes to sign-in on success', async () => {
-		const component = create('tok');
-		fillPasswords(component);
-
-		await component.submit();
-
-		expect(acceptInvite).toHaveBeenCalledWith({
-			token: 'tok',
-			password: 'correct-horse-battery',
-			displayName: 'Rina',
-		});
-		expect(showSuccess).toHaveBeenCalled();
-		expect(navigateByUrl).toHaveBeenCalledWith('/auth/login');
-	});
-
-	it('sends the PIN with the chosen login preference', async () => {
-		const component = create('tok');
-		fillPasswords(component);
-		component.pin.set('384917');
-		component.confirmPin.set('384917');
-		component.preferPin.set(true);
-
-		await component.submit();
-
-		expect(acceptInvite).toHaveBeenCalledWith(
-			expect.objectContaining({ pin: '384917', preferredLoginMethod: 'pin' }),
+		const preferring = filled();
+		preferring.page.pin.set('123456');
+		preferring.page.confirmPin.set('123456');
+		preferring.page.preferPin.set(true);
+		await preferring.page.submit();
+		expect(preferring.gateway.acceptInvite).toHaveBeenCalledWith(
+			expect.objectContaining({ preferredLoginMethod: 'pin' }),
 		);
 	});
 
 	it.each([
-		['a half-typed PIN', '3849', ''],
-		['a PIN that does not match its confirmation', '384917', '384918'],
-	])('refuses %s without spending the invitation', async (_label, pin, confirmPin) => {
-		const component = create('tok');
-		fillPasswords(component);
-		component.pin.set(pin);
-		component.confirmPin.set(confirmPin);
-
-		await component.submit();
-
-		expect(acceptInvite).not.toHaveBeenCalled();
-		expect(component.error()).not.toBeNull();
+		['an issue', 422, { error: { issues: [{ message: 'Too weak' }] } }, 'Too weak'],
+		['a 400 message', 400, { error: { message: 'Bad token' } }, 'Bad token'],
+		['a 400 with no message', 400, {}, 'something_went_wrong_please_try_again'],
+		['a 401', 401, null, 'invalid_or_expired_invitation_link'],
+		['a 500', 500, null, 'something_went_wrong_please_try_again'],
+	])('explains %s', async (_name, status, body, text) => {
+		const { page, gateway, router } = filled();
+		gateway.acceptInvite.mockReturnValue(refused(status, body));
+		await page.submit();
+		expect(page.error()).toBe(text);
+		expect(page.pending()).toBe(false);
+		expect(router.navigateByUrl).not.toHaveBeenCalled();
 	});
 
-	it("shows the server's reason for a weak credential and stays on the page", async () => {
-		acceptInvite.mockReturnValue(
-			throwError(
-				() =>
-					new HttpErrorResponse({
-						status: 400,
-						error: {
-							error: { message: 'Invalid request', issues: [{ message: 'PIN is too easy to guess' }] },
-						},
-					}),
-			),
-		);
-		const component = create('tok');
-		fillPasswords(component);
-
-		await component.submit();
-
-		expect(component.error()).toBe('PIN is too easy to guess');
-		expect(navigateByUrl).not.toHaveBeenCalled();
+	it('explains an unknown failure', async () => {
+		const { page, gateway } = filled();
+		gateway.acceptInvite.mockReturnValue(throwError(() => new Error('down')));
+		await page.submit();
+		expect(page.error()).toBe('something_went_wrong_please_try_again');
 	});
 });

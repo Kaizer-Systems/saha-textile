@@ -31,9 +31,10 @@ export function normaliseLegacyPath(path: string): string {
 	const decoded = decodeURIComponent(path)
 		.toLowerCase()
 		.replace(/\/page\/\d+\/?$/, '');
-	const [pathname, query] = decoded.split('?');
-	const bare = (pathname ?? '/').replace(/\/+$/, '') || '/';
-	const kept = (query ?? '')
+	const pathname = decoded.replace(/\?.*$/, '');
+	const bare = pathname.replace(/\/+$/, '') || '/';
+	const kept = decoded
+		.slice(pathname.length + 1)
 		.split('&')
 		.filter((part) => part && !/^(orderby|order|min_price|max_price|rating_filter|query_type_|filter_)/.test(part));
 	return kept.length > 0 ? `${bare}?${kept.join('&')}` : bare;

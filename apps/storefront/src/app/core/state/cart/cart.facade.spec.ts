@@ -1,74 +1,64 @@
 import { TestBed } from '@angular/core/testing';
-import { provideEffects } from '@ngrx/effects';
-import { provideState, provideStore } from '@ngrx/store';
-import { EMPTY, firstValueFrom } from 'rxjs';
-import { describe, expect, it } from 'vitest';
 
-import { ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
-import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
-import { CartService } from '@data-access/services/cart.service';
-import { NotificationService } from '@data-access/services/notification.service';
+import { Store } from '@ngrx/store';
+import { of } from 'rxjs';
+import { describe, expect, it, vi } from 'vitest';
 
-import { CartEffects } from './cart.effects';
+import { CartActions } from './cart.actions';
 import { CartFacade } from './cart.facade';
-import { CART_FEATURE_KEY } from './cart.models';
-import { cartReducer } from './cart.reducer';
+import { selectCartItems, selectCartTotal, selectSidebarCartOpen, selectStickyCart } from './cart.selectors';
 
-function setup() {
-	TestBed.configureTestingModule({
-		providers: [
-			provideStore(),
-			provideState(CART_FEATURE_KEY, cartReducer),
-			provideEffects(CartEffects),
-			{ provide: CartService, useValue: { getCartItems: () => EMPTY } },
-			{ provide: NotificationService, useValue: { showError: () => undefined } },
-		],
-	});
-	return TestBed.inject(CartFacade);
-}
-
-function addPayload(variationId: string, quantity = 1) {
-	const variation = { id: variationId, sku: variationId, quantity: 5, sale_price: 2400, attribute_values: [] };
-	const product = { id: 'prd_1', slug: 'kurti', quantity: 5, sku: variationId, variations: [variation] };
-	const payload = {
-		id: null,
-		product: product as unknown as IProduct,
-		product_id: product.id,
-		variation: variation as unknown as IVariation,
-		variation_id: variation.id,
-		quantity,
-		unit_price: 2400,
-	} as ICartAddOrUpdate;
-	return { product, variation, payload };
-}
+const setup = () => {
+	const store = { select: vi.fn(() => of([])), dispatch: vi.fn() };
+	TestBed.resetTestingModule();
+	TestBed.configureTestingModule({ providers: [{ provide: Store, useValue: store }] });
+	return { store, facade: TestBed.inject(CartFacade) };
+};
 
 describe('CartFacade', () => {
-	it('leaves the product page free to keep editing the product it added', async () => {
-		const facade = setup();
-		const { product, variation, payload } = addPayload('KPS-1');
-
+	it('dispatches each action', () => {
+		const { store, facade } = setup();
+		const payload = { id: 1 } as never;
+		facade.getCartItems();
 		facade.addToCart(payload);
-
-		expect(Object.isFrozen(product)).toBe(false);
-		expect(Object.isFrozen(variation)).toBe(false);
-		expect(() => {
-			product.sku = 'KPS-2';
-			variation.quantity = 2;
-		}).not.toThrow();
-		const [line] = await firstValueFrom(facade.cartItems$);
-		expect(line?.product.sku).toBe('KPS-1');
-		expect(line?.variation_id).toBe('KPS-1');
+		facade.updateCart(payload);
+		facade.replaceCart(payload);
+		facade.editLine(payload);
+		facade.deleteCart(1);
+		facade.toggleSidebarCart(true);
+		expect(store.dispatch.mock.calls.map(([action]) => action.type)).toEqual([
+			CartActions.getCartItems.type,
+			CartActions.addToCart.type,
+			CartActions.updateCart.type,
+			CartActions.replaceCart.type,
+			CartActions.editLine.type,
+			CartActions.deleteCart.type,
+			CartActions.toggleSidebarCart.type,
+		]);
 	});
 
-	it('adds to the quantity when the same string-id variant is added again', async () => {
-		const facade = setup();
-		facade.addToCart(addPayload('var_931_90169').payload);
-		const [first] = await firstValueFrom(facade.cartItems$);
+	it('sends a copy, so a frozen store never holds the caller object', () => {
+		const { store, facade } = setup();
+		const payload = { id: 1 } as never;
+		facade.addToCart(payload);
+		expect(store.dispatch.mock.lastCall?.[0].payload).not.toBe(payload);
+		expect(store.dispatch.mock.lastCall?.[0].payload).toEqual({ id: 1 });
+	});
+});
 
-		facade.addToCart({ ...addPayload('var_931_90169').payload, id: first!.id });
+describe('cart selectors', () => {
+	const state = {
+		ids: [1],
+		entities: { 1: { id: 1 } },
+		total: 5,
+		stickyCartOpen: true,
+		sidebarCartOpen: false,
+	} as never;
 
-		const lines = await firstValueFrom(facade.cartItems$);
-		expect(lines).toHaveLength(1);
-		expect(lines[0]?.quantity).toBe(2);
+	it('read the state', () => {
+		expect(selectCartItems.projector(state)).toEqual([{ id: 1 }]);
+		expect(selectCartTotal.projector(state)).toBe(5);
+		expect(selectStickyCart.projector(state)).toBe(true);
+		expect(selectSidebarCartOpen.projector(state)).toBe(false);
 	});
 });

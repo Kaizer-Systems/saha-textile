@@ -8,9 +8,9 @@ import { ErrorService } from '@data-access/services/error.service';
 import { LoggingService } from '@data-access/services/logging.service';
 import { NotificationService } from '@data-access/services/notification.service';
 
-import { environment } from '../../../../public/environments/environment';
 import { backgroundRequest } from './background-request';
 import { GlobalErrorHandlerInterceptor } from './global-error-handler.interceptor';
+import { environment } from '../../../../public/environments/environment';
 
 const api = `${environment.apiUrl}/catalog/home`;
 const answering = (result: Observable<HttpEvent<unknown>>): HttpHandler => ({ handle: () => result });
@@ -37,6 +37,22 @@ describe('the global error handler', () => {
 			],
 		});
 		interceptor = TestBed.inject(GlobalErrorHandlerInterceptor);
+	});
+
+	it('leaves a 401 and a domain refusal to the caller', () => {
+		send(new HttpRequest('GET', api), failing(401));
+		const refusal = {
+			handle: () =>
+				throwError(
+					() =>
+						new HttpErrorResponse({
+							status: 400,
+							error: { error: { code: 'bad_request', issues: [{ code: 'taken', path: ['request'] }] } },
+						}),
+				),
+		} as unknown as HttpHandler;
+		send(new HttpRequest('GET', api), refusal);
+		expect(showError).not.toHaveBeenCalled();
 	});
 
 	it('says one thing per outage, however many reads fail', () => {

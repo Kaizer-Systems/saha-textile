@@ -7,8 +7,8 @@ import { CarouselModule } from 'ngx-owl-carousel-o';
 import { Observable } from 'rxjs';
 
 import { CartFacade } from '@core/state/cart/cart.facade';
-import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
+import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { ProductService } from '@data-access/services/product.service';
 import * as data from '@shared/data/owl-carousel';
@@ -119,7 +119,7 @@ export class ProductDetailModal {
 						? this.cartItem.id
 						: null,
 				product_id: product?.id!,
-				product: product ? product : null,
+				product,
 				variation: this.selectedVariation ? this.selectedVariation : null,
 				variation_id: this.selectedVariation?.id ? this.selectedVariation?.id! : null,
 				quantity: this.productQty,

@@ -142,6 +142,16 @@ describe('GoogleIdTokenVerifier', () => {
 		).rejects.toThrow(/Wrong recipient/);
 	});
 
+	it('still refuses when the library throws something that is not an Error', async () => {
+		verifyIdToken.mockImplementation(() => {
+			throw 'offline';
+		});
+
+		await expect(
+			new GoogleIdTokenVerifier(CLIENT_ID).verify({ credential: 'jwt', expectedNonce: null }),
+		).rejects.toThrow(/verification failed/);
+	});
+
 	/** Unconfigured fails closed, and before the library is ever asked. */
 	it('refuses when no client id is configured, without calling the library', async () => {
 		await expect(

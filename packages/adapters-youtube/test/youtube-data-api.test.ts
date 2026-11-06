@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { YouTubeApiError, YouTubeDataApi } from '../src/index.js';
 
@@ -84,5 +84,62 @@ describe('YouTubeDataApi', () => {
 			.catch((caught: unknown) => caught);
 		expect(error).toBeInstanceOf(YouTubeApiError);
 		expect((error as Error).message).not.toContain('secret-key');
+	});
+});
+
+describe('YouTubeDataApi edges', () => {
+	it('uses the global fetch when none is supplied', async () => {
+		const { fetchImpl, urls } = responder({ channels: { items: [] } });
+		vi.stubGlobal('fetch', fetchImpl);
+		const channel = await new YouTubeDataApi({ apiKey: 'k' }).resolveChannel('@none');
+		vi.unstubAllGlobals();
+		expect(channel).toBeNull();
+		expect(urls).toHaveLength(1);
+	});
+
+	it('wraps a network failure without the key', async () => {
+		const fetchImpl = (async () => {
+			throw new Error('socket hang up');
+		}) as unknown as typeof fetch;
+		const error = await new YouTubeDataApi({ apiKey: 'secret-key', fetch: fetchImpl })
+			.findVideo('dQw4w9WgXcQ')
+			.catch((caught: unknown) => caught);
+		expect(error).toBeInstanceOf(YouTubeApiError);
+		expect((error as Error).message).toBe('YouTube videos request failed');
+	});
+
+	it('treats an unknown video as not found', async () => {
+		const { fetchImpl } = responder({ videos: { items: [] } });
+		expect(await new YouTubeDataApi({ apiKey: 'k', fetch: fetchImpl }).findVideo('dQw4w9WgXcQ')).toBeNull();
+	});
+
+	it.each([
+		['maxres', 'https://i.ytimg.com/max.jpg'],
+		['medium', 'https://i.ytimg.com/med.jpg'],
+		['default', 'https://i.ytimg.com/def.jpg'],
+	])('falls back through the thumbnails to %s', async (size, url) => {
+		const { fetchImpl } = responder({
+			videos: {
+				items: [
+					{
+						id: 'dQw4w9WgXcQ',
+						snippet: { title: 't', publishedAt: 'p', thumbnails: { [size]: { url } } },
+						status: { privacyStatus: 'public', embeddable: true },
+					},
+				],
+			},
+		});
+		const video = await new YouTubeDataApi({ apiKey: 'k', fetch: fetchImpl }).findVideo('dQw4w9WgXcQ');
+		expect(video?.thumbnailUrl).toBe(url);
+	});
+
+	it('answers an empty thumbnail when a video has none', async () => {
+		const { fetchImpl } = responder({
+			videos: {
+				items: [{ id: 'dQw4w9WgXcQ', snippet: { title: 't', publishedAt: 'p', thumbnails: {} } }],
+			},
+		});
+		const video = await new YouTubeDataApi({ apiKey: 'k', fetch: fetchImpl }).findVideo('dQw4w9WgXcQ');
+		expect(video?.thumbnailUrl).toBe('');
 	});
 });

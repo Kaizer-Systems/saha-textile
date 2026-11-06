@@ -24,8 +24,8 @@ const VALID_SCHEMA_COLLECTION_STATES = new Set(['existing', 'planned']);
 const VALID_SCHEMA_TARGET_ACTIONS = new Set(['refactor', 'add']);
 const VALID_COMMAND_TARGET_SOURCES = new Set(['journey-pages', 'decision-gates', 'document-status']);
 const SCHEMA_NEBULA_ROUTE = '/database/schema-nebula';
-const SCHEMA_NEBULA_NODE_COUNT = 69;
-const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 41;
+const SCHEMA_NEBULA_NODE_COUNT = 70;
+const SCHEMA_NEBULA_EXISTING_MODEL_COUNT = 43;
 const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 	['categoryPlacements', 'catalog-structure.model.ts'],
 	['categoryFacetConfigs', 'catalog-structure.model.ts'],
@@ -60,10 +60,12 @@ const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 	['notificationChannelSettings', 'governance.model.ts'],
 	['notificationTemplates', 'governance.model.ts'],
 	['messageOutbox', 'governance.model.ts'],
+	['stockAlerts', 'stock-alert.model.ts'],
+	['productInsightSets', 'stock-alert.model.ts'],
 ]);
 const SCHEMA_NEBULA_NON_TARGET_MODEL_FILES = new Set([
 	// The auth architecture keeps transient runtime machinery outside the locked
-	// 69-node physical target graph; an adapter model must not invent a domain star.
+	// physical target graph; an adapter model must not invent a domain star.
 	'auth-rate-limit.model.ts',
 	'pending-signup.model.ts',
 	'pending-contact-change.model.ts',

@@ -21,6 +21,7 @@ source_of_truth:
     - packages/adapters-db-mongo/test/collection-names.test.ts
     - packages/adapters-db-mongo/test/rbac-persistence.test.ts
     - packages/contracts/src/notification.ts
+    - packages/contracts/src/stock-alert.ts
     - docs/_data/portal-manifest.json
     - docs/_data/instruments/schema-nebula.json
     - apps/developer-portal/plugins/portal-data/compiler.js

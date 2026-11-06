@@ -28,6 +28,8 @@ import {
 	MessageOutboxModel,
 	NotificationChannelSettingsModel,
 	NotificationTemplateModel,
+	ProductInsightSetModel,
+	StockAlertModel,
 	OAuthStateModel,
 	OtpChallengeModel,
 	OrderModel,
@@ -287,6 +289,18 @@ const modelSources: Array<{
 		source: 'packages/adapters-db-mongo/src/models/governance.model.ts',
 		context: 'Notifications',
 		purpose: 'Per-channel and category notification policy.',
+	},
+	{
+		model: StockAlertModel,
+		source: 'packages/adapters-db-mongo/src/models/stock-alert.model.ts',
+		context: 'Notifications',
+		purpose: 'Back-in-stock requests, one per customer and variant.',
+	},
+	{
+		model: ProductInsightSetModel,
+		source: 'packages/adapters-db-mongo/src/models/stock-alert.model.ts',
+		context: 'Catalog',
+		purpose: 'Weekly saved analytics behind the bestseller and trending badges.',
 	},
 	{
 		model: NotificationTemplateModel,

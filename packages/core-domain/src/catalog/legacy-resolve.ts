@@ -4,6 +4,9 @@
  * Order is fixed: junk patterns, then an exact redirect row, then a same-path
  * English prefix only when that page exists, otherwise 410 on the original URL.
  * The homepage is never the fallback.
+ *
+ * The address is normalised first: lower case, no trailing slash, no `/page/N`, no shop
+ * filters. Rows are stored without a language; the target takes the request's language.
  */
 
 export interface SeoRedirectRow {
@@ -54,9 +57,20 @@ function legacyShape(pathname: string): boolean {
 	);
 }
 
-function hasLocale(pathname: string): boolean {
-	const first = stripSlash(pathname).split('/').filter(Boolean)[0];
-	return (LOCALES as readonly string[]).includes(first ?? '');
+function localeOf(pathname: string): string | null {
+	const first = stripSlash(pathname).split('/').filter(Boolean)[0] ?? '';
+	return (LOCALES as readonly string[]).includes(first) ? first : null;
+}
+
+/** Lower case, with any `/page/N` tail gone. */
+function normalise(pathname: string): string {
+	return stripSlash(pathname.toLowerCase().replace(/\/page\/\d+\/?$/, '')) || '/';
+}
+
+/** A stored target in the language of the request. An unprefixed request lands in English. */
+function inLocale(targetPath: string, locale: string | null): string {
+	const bare = withoutLocale(targetPath);
+	return `/${locale ?? 'en'}${bare === '/' ? '' : bare}`;
 }
 
 function isAsset(pathname: string): boolean {
@@ -83,13 +97,13 @@ function queryValue(query: string, key: string): string | null {
 }
 
 function findRow(rows: readonly SeoRedirectRow[], pathname: string): SeoRedirectRow | undefined {
-	const bare = stripSlash(pathname);
-	return rows.find((row) => stripSlash(row.sourcePath) === bare || stripSlash(row.sourcePath) === pathname);
+	const bare = withoutLocale(pathname);
+	return rows.find((row) => withoutLocale(row.sourcePath) === bare);
 }
 
-function fromRow(row: SeoRedirectRow): LegacyResolution {
+function fromRow(row: SeoRedirectRow, locale: string | null): LegacyResolution {
 	if (row.statusCode === 410 || !row.targetPath) return { status: 410 };
-	return { status: row.statusCode, location: row.targetPath };
+	return { status: row.statusCode, location: inLocale(row.targetPath, locale) };
 }
 
 /** Public redirect list: source, status, and target. Internal ids never leave the API. */
@@ -109,9 +123,14 @@ export function publicRedirectView(row: {
 
 /**
  * WordPress paths that never have a redirect row. Returns null to continue.
+ * `path` is normalised and locale-free.
  */
-function wordpressPattern(pathname: string, query: string, rows: readonly SeoRedirectRow[]): LegacyResolution | null {
-	const path = stripSlash(pathname);
+function wordpressPattern(
+	path: string,
+	query: string,
+	locale: string | null,
+	rows: readonly SeoRedirectRow[],
+): LegacyResolution | null {
 	if (
 		path.startsWith('/wp-content') ||
 		path.startsWith('/wp-admin') ||
@@ -119,24 +138,25 @@ function wordpressPattern(pathname: string, query: string, rows: readonly SeoRed
 		path.startsWith('/wp-json') ||
 		path === '/xmlrpc.php' ||
 		path.endsWith('/feed') ||
-		path.includes('sitemap')
+		(path.includes('sitemap') && path !== SITEMAP_PATH)
 	) {
 		return { status: 410 };
 	}
 
+	const home = path === '/';
 	const search = queryValue(query, 's');
-	if (search) {
-		return { status: 301, location: `/en/search?q=${encodeURIComponent(search)}` };
+	if (search && home) {
+		return { status: 301, location: `/${locale ?? 'en'}/search?search=${encodeURIComponent(search)}` };
 	}
 
-	if (path === '/cart') return { status: 302, location: '/en/cart' };
-	if (path === '/checkout') return { status: 302, location: '/en/checkout' };
-	if (path === '/my-account') return { status: 302, location: '/en/account' };
+	if (path === '/cart' && !locale) return { status: 302, location: '/en/cart' };
+	if (path === '/checkout' && !locale) return { status: 302, location: '/en/checkout' };
+	if (path === '/my-account' || path.startsWith('/my-account/')) {
+		return { status: 302, location: `/${locale ?? 'en'}/account` };
+	}
 
 	const postId = queryValue(query, 'p');
-	if (postId && /^\d+$/.test(postId) && (path === '/' || path === '')) {
-		return { status: 410 };
-	}
+	if (postId && /^\d+$/.test(postId) && home) return { status: 410 };
 
 	if (
 		query.includes('porto_builder=') ||
@@ -151,11 +171,14 @@ function wordpressPattern(pathname: string, query: string, rows: readonly SeoRed
 	const added = queryValue(query, 'add-to-cart');
 	if (added) {
 		const row = findRow(rows, `/?add-to-cart=${added}`);
-		return row ? fromRow(row) : { status: 410 };
+		return row ? fromRow(row, locale) : { status: 410 };
 	}
 
 	return null;
 }
+
+/** The one sitemap this site serves. Every other sitemap address is a WordPress leftover. */
+export const SITEMAP_PATH = '/sitemap.xml';
 
 /**
  * Resolve an old or current address.
@@ -170,26 +193,26 @@ export function resolveLegacyAddress(
 ): LegacyResolution | null {
 	const { pathname, query } = split(pathAndQuery);
 	const cleaned = withoutWooFilters(query);
-	const pattern = wordpressPattern(pathname, query, rows);
+	const locale = localeOf(pathname.toLowerCase());
+	const path = withoutLocale(normalise(pathname));
+
+	const pattern = wordpressPattern(path, query, locale, rows);
 	if (pattern) return pattern;
-	if (isAsset(pathname) && !pathname.includes('/wp-content')) return null;
+	if (isAsset(pathname)) return null;
 
-	const row = findRow(rows, pathname);
-	if (row) return fromRow(row);
+	const row = findRow(rows, path);
+	if (row) return fromRow(row, locale);
 
-	const bare = withoutLocale(pathname);
-	if (bare !== stripSlash(pathname) && legacyShape(bare)) {
-		const inherited = findRow(rows, bare);
-		return inherited ? fromRow(inherited) : { status: 410 };
+	if (legacyShape(path)) return { status: 410 };
+	if (path === '/') return null;
+
+	const live = livePath(path);
+	if (locale) {
+		// A live page reached by an untidy address has one clean home.
+		const clean = `/${locale}${path}`;
+		return live && pathname !== clean ? { status: 301, location: `${clean}${cleaned}` } : null;
 	}
-
-	if (hasLocale(pathname)) return null;
-	if (pathname === '/' || pathname === '') return null;
-
-	if (livePath(stripSlash(pathname))) {
-		return { status: 301, location: `/en${stripSlash(pathname)}${cleaned}` };
-	}
-	return { status: 410 };
+	return live ? { status: 301, location: `/en${path}${cleaned}` } : { status: 410 };
 }
 
 export interface CollapsedRedirect {
@@ -219,18 +242,52 @@ export function collapseRedirectTarget(
 ): CollapsedRedirect | { error: 'loop' } {
 	if (statusCode === 410 || !targetPath) return { statusCode: 410 };
 	if (statusCode === 302) {
-		if (stripSlash(targetPath) === stripSlash(sourcePath)) return { error: 'loop' };
+		if (withoutLocale(targetPath) === withoutLocale(sourcePath)) return { error: 'loop' };
 		return { statusCode: 302, targetPath: stripSlash(targetPath) };
 	}
-	const seen = new Set<string>([stripSlash(sourcePath)]);
+	const seen = new Set<string>([withoutLocale(sourcePath)]);
 	let current = stripSlash(targetPath);
 	for (let hop = 0; hop < rows.length + 1; hop += 1) {
-		if (seen.has(current)) return { error: 'loop' };
-		seen.add(current);
-		const next = findRow(rows, current);
+		const bare = withoutLocale(current);
+		if (seen.has(bare)) return { error: 'loop' };
+		seen.add(bare);
+		const next = findRow(rows, bare);
 		if (!next) return { statusCode: 301, targetPath: current };
 		if (next.statusCode === 410 || !next.targetPath) return { statusCode: 410 };
 		current = stripSlash(next.targetPath);
 	}
 	return { error: 'loop' };
+}
+
+/** The stored form of a source: lower case, no language, no trailing slash. */
+export function normaliseSourcePath(path: string): string {
+	return withoutLocale(normalise(path));
+}
+
+/** Rows that pointed at `saved.sourcePath` and now must jump straight to where it leads. */
+export function repointedRows<T extends SeoRedirectRow>(rows: readonly T[], saved: SeoRedirectRow): T[] {
+	const source = withoutLocale(stripSlash(saved.sourcePath));
+	return rows
+		.filter((row) => row.targetPath && withoutLocale(stripSlash(row.targetPath)) === source)
+		.map((row) => {
+			if (saved.statusCode === 410 || !saved.targetPath) {
+				const { targetPath: _gone, ...rest } = row;
+				return { ...rest, statusCode: 410 } as T;
+			}
+			return { ...row, targetPath: saved.targetPath };
+		});
+}
+
+/**
+ * A retired collection forwards to its nearest live parent, or is gone when it has none.
+ * `path` is the collection path without `/collections/`; products inside are not moved.
+ */
+export function retiredCollectionRow(path: string, live: ReadonlySet<string>): SeoRedirectRow {
+	const sourcePath = `/collections/${path}`;
+	const parts = path.split('/');
+	for (let end = parts.length - 1; end > 0; end -= 1) {
+		const parent = parts.slice(0, end).join('/');
+		if (live.has(parent)) return { sourcePath, statusCode: 301, targetPath: `/collections/${parent}` };
+	}
+	return { sourcePath, statusCode: 410 };
 }

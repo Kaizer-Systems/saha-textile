@@ -48,5 +48,6 @@ export * from './content-block.model';
 export * from './inventory.model';
 export * from './governance.model';
 export * from './content.model';
+export * from './stock-alert.model';
 export * from './pending-signup.model';
 export * from './pending-contact-change.model';

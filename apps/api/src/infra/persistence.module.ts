@@ -47,8 +47,8 @@ import {
 	MongoProductVariantRepository,
 	MongoSeoRedirectRepository,
 	MongoAddonTemplateRepository,
+	MongoStockAlertRepository,
 } from '@saha-textile/adapters-db-mongo';
-import { Msg91NotificationAdapter } from '@saha-textile/adapters-notifications-msg91';
 import { CloudflareCdnPurge } from '@saha-textile/adapters-cdn-cloudflare';
 import { BullMqMediaJobQueue } from '@saha-textile/adapters-queue-bullmq';
 import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
@@ -62,10 +62,10 @@ import type {
 
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { Argon2JwtAuth } from './argon2-jwt.auth';
-import { ConsoleNotificationAdapter } from './console-notification.adapter';
 import { LogOnlyCdnPurgeAdapter } from './log-only-cdn-purge.adapter';
 import { UnavailableYouTubeAdapter } from './unavailable-youtube.adapter';
 import { UnconfiguredStorageAdapter } from './unconfigured-storage.adapter';
+import { buildNotificationPort } from './notification-factory';
 import { MeilisearchSearch } from '../search/meilisearch-search';
 import {
 	AUTH_PORT,
@@ -79,6 +79,7 @@ import {
 	PRODUCT_VARIANT_REPOSITORY,
 	SEO_REDIRECT_REPOSITORY,
 	SEO_ROUTE_REPOSITORY,
+	STOCK_ALERT_REPOSITORY,
 	FAQ_REPOSITORY,
 	PRODUCT_QUESTION_REPOSITORY,
 	PRODUCT_RELATION_REPOSITORY,
@@ -127,26 +128,23 @@ import {
 		{ provide: PRODUCT_VARIANT_REPOSITORY, useClass: MongoProductVariantRepository },
 		{ provide: SEO_REDIRECT_REPOSITORY, useClass: MongoSeoRedirectRepository },
 		{ provide: SEO_ROUTE_REPOSITORY, useClass: MongoSeoRouteRepository },
+		{ provide: STOCK_ALERT_REPOSITORY, useClass: MongoStockAlertRepository },
 		{ provide: FAQ_REPOSITORY, useClass: MongoFaqRepository },
 		{ provide: PRODUCT_QUESTION_REPOSITORY, useClass: MongoProductQuestionRepository },
 		{ provide: PRODUCT_RELATION_REPOSITORY, useClass: MongoProductRelationRepository },
 		{ provide: PRODUCT_BUNDLE_REPOSITORY, useClass: MongoProductBundleRepository },
 		{
 			provide: SEARCH_PORT,
-			useFactory: (products: MongoProductRepository) =>
-				new MeilisearchSearch(
-					process.env['MEILISEARCH_HOST'],
-					process.env['MEILISEARCH_API_KEY'],
-					async (ids) => {
-						const found = [];
-						for (const id of ids) {
-							const product = await products.findById(id, 'public');
-							if (product) found.push(product);
-						}
-						return found;
-					},
-				),
-			inject: [PRODUCT_REPOSITORY],
+			useFactory: (products: MongoProductRepository, config: AppConfig) =>
+				new MeilisearchSearch(config.search.host, config.search.apiKey, async (ids) => {
+					const found = [];
+					for (const id of ids) {
+						const product = await products.findById(id, 'public');
+						if (product) found.push(product);
+					}
+					return found;
+				}),
+			inject: [PRODUCT_REPOSITORY, APP_CONFIG],
 		},
 		{ provide: ADDON_TEMPLATE_REPOSITORY, useClass: MongoAddonTemplateRepository },
 		{ provide: CATEGORY_REPOSITORY, useClass: MongoCategoryRepository },
@@ -206,32 +204,7 @@ import {
 				templates: NotificationTemplateRepository,
 				outbox: MessageOutboxRepository,
 				consent: ConsentRepository,
-			) => {
-				const wantMsg91 = config.notifications.provider === 'msg91';
-				const authKey = config.notifications.msg91AuthKey;
-				if (wantMsg91 && authKey) {
-					return new Msg91NotificationAdapter({
-						config: {
-							authKey,
-							senderId: config.notifications.msg91SenderId,
-							emailFrom: config.notifications.msg91EmailFrom,
-							emailDomain: config.notifications.msg91EmailDomain,
-							whatsappNumber: config.notifications.msg91WhatsappNumber,
-						},
-						settings,
-						templates,
-						outbox,
-						consent,
-					});
-				}
-				if (wantMsg91 && !authKey) {
-					Logger.warn(
-						'NOTIFICATION_PROVIDER=msg91 but MSG91_AUTH_KEY is empty — falling back to console adapter',
-						'Notifications',
-					);
-				}
-				return new ConsoleNotificationAdapter();
-			},
+			) => buildNotificationPort(config, { settings, templates, outbox, consent }),
 			inject: [
 				APP_CONFIG,
 				NOTIFICATION_SETTINGS_REPOSITORY,
@@ -280,6 +253,7 @@ import {
 		PRODUCT_VARIANT_REPOSITORY,
 		SEO_REDIRECT_REPOSITORY,
 		SEO_ROUTE_REPOSITORY,
+		STOCK_ALERT_REPOSITORY,
 		FAQ_REPOSITORY,
 		PRODUCT_QUESTION_REPOSITORY,
 		PRODUCT_RELATION_REPOSITORY,

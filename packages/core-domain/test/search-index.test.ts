@@ -19,7 +19,6 @@ describe('rebuildSearchIndex', () => {
 				removed.push(id);
 			},
 			search: async () => ({ items: [], total: 0, page: 1, pageSize: 20 }),
-			facets: async () => [],
 		};
 		const rows = [product('live', 'live'), product('draft', 'draft')];
 		expect(await rebuildSearchIndex(rows, search)).toBe(1);

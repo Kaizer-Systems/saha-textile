@@ -13,6 +13,11 @@
       "types": "./dist/catalog/legacy-resolve.d.ts",
       "import": "./dist/esm/legacy-resolve.js",
       "default": "./dist/catalog/legacy-resolve.js"
+    },
+    "./listing": {
+      "types": "./dist/catalog/listing.d.ts",
+      "import": "./dist/esm/listing.js",
+      "default": "./dist/catalog/listing.js"
     }
   },
   "files": [

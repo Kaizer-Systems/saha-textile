@@ -1,7 +1,9 @@
 import { Controller, Get, Header, Query, UseInterceptors } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { CatalogCardsQuery, CatalogPlacementQuery, CatalogSeoRouteQuery } from '@saha-textile/contracts';
 
 import { Public } from '../auth/session.guard';
+import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { CatalogEtagInterceptor } from './catalog-etag.interceptor';
 import { CatalogPublicService } from './catalog-public.service';
@@ -31,21 +33,15 @@ export class StorefrontCatalogController {
 	@Get('placements')
 	@Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
 	@ApiOperation({ operationId: 'catalogPlacement', summary: 'Category listing by placement path' })
-	placement(
-		@Query('path') path = '',
-		@Query('page') page?: string,
-		@Query('pageSize') pageSize?: string,
-		@Query('attribute') attribute?: string,
-	) {
-		return this.catalog.placement(path, page ? Number(page) : 1, pageSize ? Number(pageSize) : 24, attribute);
+	placement(@Query(new ZodValidationPipe(CatalogPlacementQuery)) query: CatalogPlacementQuery) {
+		return this.catalog.placement(query);
 	}
 
 	@Get('cards')
 	@Header('Cache-Control', 'no-store')
 	@ApiOperation({ operationId: 'catalogCards', summary: 'Live cards for a personal slug list' })
-	cards(@Query('slug') slug?: string | string[]) {
-		const slugs = Array.isArray(slug) ? slug : slug ? [slug] : [];
-		return this.catalog.cardsForSlugs(slugs);
+	cards(@Query(new ZodValidationPipe(CatalogCardsQuery)) query: CatalogCardsQuery) {
+		return this.catalog.cardsForSlugs([query.slug ?? []].flat());
 	}
 
 	@Get('recent-purchases')
@@ -56,6 +52,20 @@ export class StorefrontCatalogController {
 	})
 	recent() {
 		return this.recentPurchases.list();
+	}
+
+	@Get('seo-route')
+	@Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
+	@ApiOperation({ operationId: 'catalogSeoRoute', summary: 'Head data for one public address' })
+	async seoRoute(@Query(new ZodValidationPipe(CatalogSeoRouteQuery)) query: CatalogSeoRouteQuery) {
+		return { route: await this.catalog.seoRoute(query.path, query.locale) };
+	}
+
+	@Get('sitemap')
+	@Header('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600')
+	@ApiOperation({ operationId: 'catalogSitemap', summary: 'Indexable addresses for the sitemap' })
+	async sitemap() {
+		return { paths: await this.catalog.sitemapPaths() };
 	}
 
 	@Get('live-paths')

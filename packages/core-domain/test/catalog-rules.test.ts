@@ -289,7 +289,7 @@ describe('legacy addresses', () => {
 		expect(resolveLegacyAddress('/wp-login.php', [], live)).toEqual({ status: 410 });
 		expect(resolveLegacyAddress('/?s=silk', [], live)).toEqual({
 			status: 301,
-			location: '/en/search?q=silk',
+			location: '/en/search?search=silk',
 		});
 		expect(resolveLegacyAddress('/my-account', [], live)).toEqual({ status: 302, location: '/en/account' });
 		expect(resolveLegacyAddress('/?add-to-cart=9', [], live)).toEqual({ status: 410 });
@@ -337,7 +337,7 @@ describe('legacy addresses', () => {
 
 	it('does not treat an empty search as a redirect and maps add-to-cart without adding', () => {
 		expect(resolveLegacyAddress('/?s=', [], live)).toBeNull();
-		expect(resolveLegacyAddress('/?s=silk+saree', [], live)?.location).toBe('/en/search?q=silk%20saree');
+		expect(resolveLegacyAddress('/?s=silk+saree', [], live)?.location).toBe('/en/search?search=silk%20saree');
 		expect(
 			resolveLegacyAddress(
 				'/?add-to-cart=9',

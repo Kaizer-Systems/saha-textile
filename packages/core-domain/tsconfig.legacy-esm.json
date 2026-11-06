@@ -11,5 +11,5 @@
 		"declaration": false,
 		"sourceMap": false
 	},
-	"files": ["src/catalog/legacy-resolve.ts"]
+	"files": ["src/catalog/legacy-resolve.ts", "src/catalog/listing.ts"]
 }

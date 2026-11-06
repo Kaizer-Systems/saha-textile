@@ -202,6 +202,11 @@ const ConfigSchema = z.object({
 			.regex(/^\d{6}$/, 'OTP_LOCAL_FIXED_CODE must be exactly six digits')
 			.optional(),
 	}),
+	/** Meilisearch. Unset leaves the index unreachable and search answers 503. */
+	search: z.object({
+		host: AbsoluteUrl.optional(),
+		apiKey: z.string().min(1).optional(),
+	}),
 	spaces: SpacesConfigSchema,
 	/**
 	 * Redis, used solely as the BullMQ broker for media derivative and transcode jobs.
@@ -355,6 +360,10 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			ttlSeconds: env.OTP_TTL_SECONDS || undefined,
 			maxAttempts: env.OTP_MAX_ATTEMPTS || undefined,
 			localFixedCode: env.OTP_LOCAL_FIXED_CODE || undefined,
+		},
+		search: {
+			host: env.MEILISEARCH_HOST || undefined,
+			apiKey: env.MEILISEARCH_API_KEY || undefined,
 		},
 		spaces: {
 			key: env.SPACES_KEY || undefined,

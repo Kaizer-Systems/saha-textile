@@ -180,7 +180,7 @@ Two rules that will silently break delivery if broken:
 
 OTP lifetime is `OTP_TTL_SECONDS=600`, so "10 minutes" is accurate copy.
 
-### Email — eight templates
+### Email — ten templates
 
 | MSG91 template name (exact) | Variables                 | Purpose                                    |
 | --------------------------- | ------------------------- | ------------------------------------------ |
@@ -192,6 +192,11 @@ OTP lifetime is `OTP_TTL_SECONDS=600`, so "10 minutes" is accurate copy.
 | `verify_email`              | `token`                   | Email verification link                    |
 | `admin_invite`              | `token`, `role`           | Back-office invitation                     |
 | `contact_change_requested`  | `field`, `maskedNewValue` | Warning to the OLD address                 |
+| `back_in_stock`             | `productSlug`, `productName`, `variantSku` | A variant a customer asked about can be bought |
+| `product_question_answered` | `questionId`, `productSlug` | An admin answered a product question      |
+
+Neither of the last two goes by SMS, so neither needs DLT. Until they exist in MSG91 those sends
+record `lastError` and the alert stays pending.
 
 The link-carrying templates build their own link, so the API never holds a hostname and each
 environment's MSG91 account points at its own site. `admin_invite` links to

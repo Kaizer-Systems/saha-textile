@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
-import { Product, ProductVariant } from '@saha-textile/contracts';
+import { CatalogPlacementQuery, Product, ProductVariant } from '@saha-textile/contracts';
+import { cleanListingParams } from '@saha-textile/core-domain';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 
@@ -72,6 +73,7 @@ function pageService(status: Product['status'] = 'live') {
 	};
 	const variants = {
 		listForProduct: async () => [variant('KPS-1', 's', 2400), variant('KPS-2', 'm', 2400, 2000)],
+		listForProducts: async () => [],
 	};
 	const addonTemplates = {
 		findByCode: async (code: string) =>
@@ -87,7 +89,6 @@ function pageService(status: Product['status'] = 'live') {
 	return new CatalogPublicService(
 		products as never,
 		variants as never,
-		null,
 		null,
 		null,
 		null,
@@ -152,41 +153,202 @@ describe('product page read', () => {
 });
 
 describe('category listing read', () => {
-	function listingService() {
-		const queries: { categoryId?: string }[] = [];
+	const silk = Product.parse({
+		...product,
+		id: 'prd_silk',
+		sku: 'SILK',
+		slug: 'silk-saree',
+		title: { en: 'Silk Saree' },
+		categoryIds: ['cat_silk'],
+		ratingsSummary: { avg: 4.5, count: 2 },
+		optionGroups: [
+			{
+				attributeCode: 'fabric',
+				label: { en: 'Fabric' },
+				semanticRole: 'filter_only',
+				displayStyle: 'rectangle',
+				requiredSelection: false,
+				terms: [{ code: 'silk', label: { en: 'Silk' } }],
+			},
+		],
+	});
+	const cotton = Product.parse({
+		...silk,
+		id: 'prd_cotton',
+		sku: 'COTTON',
+		slug: 'cotton-saree',
+		title: { en: 'Cotton Saree' },
+		categoryIds: ['cat_cotton'],
+		ratingsSummary: { avg: 0, count: 0 },
+		optionGroups: [
+			{
+				attributeCode: 'fabric',
+				label: { en: 'Fabric' },
+				semanticRole: 'filter_only',
+				displayStyle: 'rectangle',
+				requiredSelection: false,
+				terms: [{ code: 'cotton', label: { en: 'Cotton' } }],
+			},
+			{
+				attributeCode: 'blouse-design',
+				label: { en: 'Blouse' },
+				semanticRole: 'named_add_on',
+				displayStyle: 'rectangle',
+				requiredSelection: false,
+				defaultTermCode: 'plain',
+				terms: [{ code: 'plain', label: { en: 'Plain' }, isBase: true }],
+			},
+		],
+	});
+	const priced = (productId: string, priceINR: number, salePriceINR: number | null = null) => ({
+		...variant(`${productId}-1`, 's', priceINR, salePriceINR),
+		productId,
+	});
+
+	function listingService(pageSize = 500) {
+		const queries: { categoryId?: string; page?: number }[] = [];
+		const all = [silk, cotton];
 		const products = {
-			list: async (query: { categoryId?: string }) => {
+			list: async (query: { categoryId?: string; page?: number }) => {
 				queries.push(query);
-				return { items: [], total: 0, page: 1, pageSize: 500 };
+				const start = ((query.page ?? 1) - 1) * pageSize;
+				return { items: all.slice(start, start + pageSize), total: all.length, page: query.page, pageSize };
 			},
 		};
-		const placements = { findByPath: async () => null };
+		const variants = {
+			listForProducts: async () => [priced('prd_silk', 5000, 4000), priced('prd_cotton', 1500)],
+		};
+		const placements = {
+			findByPath: async (slugs: string[]) =>
+				slugs.join('/') === 'sarees'
+					? { categoryId: 'cat_sarees', pathLabel: 'Sarees', pathSlugs: ['sarees'] }
+					: null,
+		};
+		const categories = {
+			findBySlug: async (slug: string) => (slug === 'pure-silk' ? { id: 'cat_silk' } : null),
+		};
 		const service = new CatalogPublicService(
 			products as never,
-			{} as never,
+			variants as never,
 			placements as never,
 			null,
 			null,
 			null,
 			null,
 			null,
-			null,
+			categories as never,
 		);
 		return { service, queries };
 	}
 
+	const list = (input: Record<string, unknown> = {}, pageSize?: number) =>
+		listingService(pageSize).service.placement(CatalogPlacementQuery.parse(input));
+	const slugs = async (input: Record<string, unknown>) => (await list(input)).products.map((card) => card.slug);
+
 	it('answers an empty path with the all-products listing', async () => {
 		const { service, queries } = listingService();
 
-		const page = await service.placement('');
+		const page = await service.placement(CatalogPlacementQuery.parse({}));
 
-		expect(page).toMatchObject({ path: '', title: 'All products', breadcrumb: [], indexable: true });
+		expect(page).toMatchObject({ path: '', title: 'All products', breadcrumb: [], indexable: true, total: 2 });
 		expect(queries[0]?.categoryId).toBeUndefined();
+	});
+
+	it('names a real placement and reads only its category', async () => {
+		const { service, queries } = listingService();
+
+		const page = await service.placement(CatalogPlacementQuery.parse({ path: 'sarees' }));
+
+		expect(page).toMatchObject({ path: 'sarees', title: 'Sarees' });
+		expect(page.breadcrumb).toEqual([{ name: 'Sarees', path: '/collections/sarees' }]);
+		expect(queries[0]?.categoryId).toBe('cat_sarees');
 	});
 
 	it('still answers an unknown path as not found', async () => {
 		const { service } = listingService();
 
-		await expect(service.placement('no/such/path')).rejects.toBeInstanceOf(NotFoundException);
+		await expect(service.placement(CatalogPlacementQuery.parse({ path: 'no/such/path' }))).rejects.toBeInstanceOf(
+			NotFoundException,
+		);
+	});
+
+	it('reads the whole catalogue across pages', async () => {
+		const page = await list({}, 1);
+
+		expect(page.total).toBe(2);
+	});
+
+	it('sorts and filters by the price the shopper sees', async () => {
+		expect(await slugs({ sortBy: 'low-high' })).toEqual(['cotton-saree', 'silk-saree']);
+		expect(await slugs({ sortBy: 'high-low' })).toEqual(['silk-saree', 'cotton-saree']);
+		expect(await slugs({ sortBy: 'discount-high-low' })).toEqual(['silk-saree', 'cotton-saree']);
+		expect(await slugs({ price_min: 3000, price_max: 4500 })).toEqual(['silk-saree']);
+		expect(await slugs({ price: '0-2000,10000-' })).toEqual(['cotton-saree']);
+		expect(await slugs({ price_min: 99999 })).toEqual([]);
+	});
+
+	it('filters by rating floor, ticked category and attributes', async () => {
+		expect(await slugs({ rating: '4,5' })).toEqual(['silk-saree']);
+		expect(await slugs({ category: 'pure-silk' })).toEqual(['silk-saree']);
+		expect(await slugs({ category: 'no-such-slug' })).toEqual([]);
+		expect(await slugs({ attribute: 'fabric:cotton' })).toEqual(['cotton-saree']);
+		expect(await slugs({ attribute: ['fabric:cotton', 'fabric:silk'] })).toEqual(['silk-saree', 'cotton-saree']);
+	});
+
+	it('pages the result without losing the total', async () => {
+		const page = await list({ page: 2, pageSize: 1, sortBy: 'a-z' });
+
+		expect(page.products.map((card) => card.slug)).toEqual(['silk-saree']);
+		expect(page).toMatchObject({ total: 2, page: 2, pageSize: 1, indexable: false });
+	});
+
+	it('counts filter values disjunctively and leaves out add-ons', async () => {
+		const page = await list({ attribute: 'fabric:silk' });
+
+		expect(page.facets).toEqual([
+			{
+				code: 'fabric',
+				label: 'Fabric',
+				terms: [
+					{ code: 'cotton', label: 'Cotton', count: 1 },
+					{ code: 'silk', label: 'Silk', count: 1 },
+				],
+			},
+		]);
+	});
+
+	it('marks anything but the plain first page as not indexable', async () => {
+		for (const input of [
+			{ sortBy: 'a-z' },
+			{ rating: '4' },
+			{ price: '0-' },
+			{ price_min: 1 },
+			{ price_max: 1 },
+			{ category: 'pure-silk' },
+			{ attribute: 'fabric:silk' },
+			{ page: 2 },
+		]) {
+			expect((await list(input)).indexable).toBe(false);
+		}
+	});
+
+	it('accepts everything the storefront keeps after cleaning an address', () => {
+		const dirty = { page: '3', sortBy: 'z-a', rating: '1', price: '5-', attribute: 'a:b', category: 'c-d', x: 'y' };
+
+		expect(CatalogPlacementQuery.safeParse(cleanListingParams(dirty)).success).toBe(true);
+	});
+
+	it.each([
+		{ page: 'abc' },
+		{ pageSize: 'abc' },
+		{ pageSize: -1 },
+		{ pageSize: 100000 },
+		{ sortBy: 'nope' },
+		{ rating: '9' },
+		{ price: 'abc' },
+		{ price_min: -1 },
+		{ attribute: 'bad' },
+	])('refuses malformed input %j', (input) => {
+		expect(CatalogPlacementQuery.safeParse(input).success).toBe(false);
 	});
 });

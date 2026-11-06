@@ -84,6 +84,59 @@ export const CatalogFacet = z.object({
 	terms: z.array(z.object({ code: z.string(), label: z.string(), count: z.number().int().nonnegative() })),
 });
 
+export const CatalogSort = z.enum(['asc', 'desc', 'low-high', 'high-low', 'a-z', 'z-a', 'discount-high-low']);
+export type CatalogSort = z.infer<typeof CatalogSort>;
+
+const ATTRIBUTE_FILTER = /^[a-z0-9-]+:[^|:,]+(,[^|:,]+)*(\|[a-z0-9-]+:[^|:,]+(,[^|:,]+)*)*$/;
+const attributeFilter = z.string().regex(ATTRIBUTE_FILTER).max(500);
+
+/** Listing query params. Anything malformed is a 400, never a 500. */
+export const CatalogPlacementQuery = z.object({
+	path: z.string().max(300).default(''),
+	page: z.coerce.number().int().positive().max(100_000).default(1),
+	pageSize: z.coerce.number().int().positive().max(100).default(24),
+	sortBy: CatalogSort.optional(),
+	price_min: z.coerce.number().nonnegative().optional(),
+	price_max: z.coerce.number().nonnegative().optional(),
+	/** Ticked price ranges, each `min-max` with an open end allowed: `0-1000,20000-`. */
+	price: z
+		.string()
+		.regex(/^\d+-\d*(,\d+-\d*)*$/)
+		.max(200)
+		.optional(),
+	/** Ticked star ratings. The lowest one is the floor. */
+	rating: z
+		.string()
+		.regex(/^[1-5](,[1-5])*$/)
+		.optional(),
+	/** Ticked categories inside the listing, by slug. */
+	category: z
+		.string()
+		.regex(/^[a-z0-9-]+(,[a-z0-9-]+)*$/)
+		.max(500)
+		.optional(),
+	/** `fabric:silk,cotton|color:red`. A repeated param adds more groups. */
+	attribute: z.union([attributeFilter, z.array(attributeFilter).max(10)]).optional(),
+});
+export type CatalogPlacementQuery = z.infer<typeof CatalogPlacementQuery>;
+
+export const CatalogSeoRouteQuery = z.object({
+	path: z.string().min(1).max(300),
+	locale: z.enum(['en', 'fr']),
+});
+export type CatalogSeoRouteQuery = z.infer<typeof CatalogSeoRouteQuery>;
+
+export const CatalogCardsQuery = z.object({
+	slug: z.union([Slug, z.array(Slug).max(50)]).optional(),
+});
+export type CatalogCardsQuery = z.infer<typeof CatalogCardsQuery>;
+
+export const CatalogSearchQuery = z.object({
+	q: z.string().max(200).default(''),
+	categoryId: Id.optional(),
+});
+export type CatalogSearchQuery = z.infer<typeof CatalogSearchQuery>;
+
 export const CatalogPlacementPage = z.object({
 	path: z.string(),
 	title: z.string(),

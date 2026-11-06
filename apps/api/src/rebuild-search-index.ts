@@ -4,6 +4,7 @@ import { MongoProductRepository, connectMongo, disconnectMongo } from '@saha-tex
 import type { Product } from '@saha-textile/contracts';
 import { rebuildSearchIndex } from '@saha-textile/core-domain';
 
+import { loadConfig } from './config/app-config';
 import { MeilisearchSearch } from './search/meilisearch-search';
 
 const PAGE_SIZE = 200;
@@ -22,11 +23,8 @@ async function main(): Promise<void> {
 			products.push(...items);
 			if (!items.length || products.length >= total) break;
 		}
-		const search = new MeilisearchSearch(
-			process.env['MEILISEARCH_HOST'],
-			process.env['MEILISEARCH_API_KEY'],
-			async () => [],
-		);
+		const { host, apiKey } = loadConfig().search;
+		const search = new MeilisearchSearch(host, apiKey, async () => []);
 		const indexed = await rebuildSearchIndex(products, search);
 		process.stdout.write(`Indexed ${indexed} live products of ${products.length}.\n`);
 	} finally {

@@ -61,7 +61,11 @@ function harness(start: ProductRow = product()) {
 			return row;
 		},
 	};
-	const redirectRepo = { save: async (row: SeoRedirect) => (redirects.push(row), row) };
+	const redirectRepo = {
+		save: async (row: SeoRedirect) => (redirects.push(row), row),
+		findBySource: async () => null,
+		list: async () => redirects,
+	};
 	const catalog = new CatalogService(products as never, {} as never, variantRepo as never, redirectRepo as never);
 	return { catalog, variants, redirects, current: () => saved };
 }

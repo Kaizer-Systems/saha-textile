@@ -83,6 +83,16 @@ export class MongoProductVariantRepository implements ProductVariantRepository {
 		return docs.map(toVariant);
 	}
 
+	async listForProducts(
+		productIds: readonly string[],
+		audience: CatalogAudience = 'public',
+	): Promise<ProductVariant[]> {
+		const docs = await ProductVariantModel.find({ productId: { $in: productIds }, ...statusClause(audience) })
+			.lean<ProductVariantDoc[]>()
+			.exec();
+		return docs.map(toVariant);
+	}
+
 	async list(filter: VariantFilter): Promise<Paginated<ProductVariant>> {
 		const query: Record<string, unknown> = { ...statusClause(filter.audience) };
 		if (filter.productId) query.productId = filter.productId;
@@ -248,7 +258,7 @@ export class MongoProductRelationRepository implements ProductRelationRepository
 		context?: TransactionContext,
 	): Promise<number> {
 		const session = sessionFrom(context);
-		await ProductRelationModel.deleteMany({ insightSetId: input.insightSetId }, { session }).exec();
+		await ProductRelationModel.deleteMany({ source: 'insight_set' }, { session }).exec();
 		if (input.relations.length === 0) return 0;
 
 		await ProductRelationModel.insertMany(

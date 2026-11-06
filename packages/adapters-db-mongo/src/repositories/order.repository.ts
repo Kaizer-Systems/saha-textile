@@ -3,6 +3,7 @@ import type {
 	OrderRepository,
 	PageQuery,
 	Paginated,
+	PurchasedOrder,
 	PurchasedProduct,
 	TransactionContext,
 } from '@saha-textile/core-domain';
@@ -35,6 +36,16 @@ export class MongoOrderRepository implements OrderRepository {
 			OrderModel.countDocuments({ userId }).exec(),
 		]);
 		return { items: docs.map(toOrder), total, page, pageSize };
+	}
+
+	async listPurchased(): Promise<PurchasedOrder[]> {
+		const docs = await OrderModel.find({ status: { $in: PURCHASED_ORDER_STATUSES } })
+			.lean<OrderDoc[]>()
+			.exec();
+		return docs.map(toOrder).map((order) => ({
+			placedAt: order.createdAt ?? new Date(0).toISOString(),
+			lines: order.lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
+		}));
 	}
 
 	async listRecentlyPurchased(since: string, limit: number): Promise<PurchasedProduct[]> {

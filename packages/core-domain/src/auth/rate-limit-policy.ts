@@ -64,7 +64,10 @@ export type AuthRateLimitAction =
 	| 'admin_pin_login'
 	| 'otp_request'
 	| 'otp_verify'
-	| 'password_reset';
+	| 'password_reset'
+	| 'product_question'
+	| 'stock_alert'
+	| 'catalog_search';
 
 const MINUTES = 60;
 const HOURS = 60 * MINUTES;
@@ -122,6 +125,22 @@ export const AUTH_RATE_LIMIT_POLICY: Readonly<Record<AuthRateLimitAction, RateLi
 		counting: 'attempts',
 		identifier: { max: 5, windowSeconds: 1 * HOURS },
 		ip: { max: 30, windowSeconds: 1 * HOURS },
+	},
+	/** Keyed by customer or asker email and by address, so a new email alone buys nothing. */
+	product_question: {
+		counting: 'attempts',
+		identifier: { max: 5, windowSeconds: 1 * MINUTES },
+		ip: { max: 30, windowSeconds: 1 * HOURS },
+	},
+	stock_alert: {
+		counting: 'attempts',
+		identifier: { max: 5, windowSeconds: 1 * MINUTES },
+		ip: { max: 60, windowSeconds: 1 * HOURS },
+	},
+	/** Typeahead sends a request per pause, so this only stops scraping. */
+	catalog_search: {
+		counting: 'attempts',
+		ip: { max: 120, windowSeconds: 1 * MINUTES },
 	},
 };
 

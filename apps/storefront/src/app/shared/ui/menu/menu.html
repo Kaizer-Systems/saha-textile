@@ -1,5 +1,5 @@
 <ul class="navbar-nav">
-	<div *ngTemplateOutlet="recursiveMenu; context: { $implicit: menu, top: true }"></div>
+	<div *ngTemplateOutlet="recursiveMenu; context: { $implicit: menu(), top: true }"></div>
 	<ng-template
 		#recursiveMenu
 		let-menus

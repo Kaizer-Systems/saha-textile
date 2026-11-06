@@ -32,5 +32,7 @@ and Firefox resolve `*.localhost` themselves; Safari needs the `/etc/hosts` line
 excluded from the Docker build context). Images never contain a secret; staging and
 production inject the same variables from GitHub encrypted secrets at deploy time.
 
-**Known gaps**: social sign-in needs the stack origins added to the Google/Meta app
-settings, and Meilisearch joins the stack when the search adapter is built.
+**Search**: a fresh stack starts with an empty index, so fill it once with
+`docker compose -f docker/stack/compose.yaml exec api node dist/rebuild-search-index.js`.
+
+**Known gap**: social sign-in needs the stack origins added to the Google/Meta app settings.

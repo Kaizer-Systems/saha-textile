@@ -59,7 +59,8 @@ export class MongoProductRepository implements ProductRepository {
 
 		const [docs, total] = await Promise.all([
 			ProductModel.find(query)
-				.sort({ createdAt: -1 })
+				// `_id` breaks ties. Rows sharing a date otherwise repeat across pages and others go missing.
+				.sort({ createdAt: -1, _id: 1 })
 				.skip((page - 1) * pageSize)
 				.limit(pageSize)
 				.lean<ProductDoc[]>()

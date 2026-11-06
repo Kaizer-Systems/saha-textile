@@ -61,7 +61,8 @@ describe('GET /auth/csrf policy B — preserve active session token', () => {
 		};
 		const service = new SessionService(config, auth as never, sessions as never, {} as never, {} as never);
 		const setCookie = vi.fn().mockReturnThis();
-		const reply = { setCookie } as never;
+		const header = vi.fn().mockReturnThis();
+		const reply = { setCookie, header } as never;
 		const request = {
 			cookies: { [names.access]: 'jwt', [names.csrf]: token },
 		} as never;
@@ -91,7 +92,8 @@ describe('GET /auth/csrf policy B — preserve active session token', () => {
 		};
 		const service = new SessionService(config, auth as never, sessions as never, {} as never, {} as never);
 		const setCookie = vi.fn().mockReturnThis();
-		const reply = { setCookie } as never;
+		const header = vi.fn().mockReturnThis();
+		const reply = { setCookie, header } as never;
 		const request = { cookies: { [names.access]: 'jwt' } } as never;
 
 		const issued = await service.issueCsrfToken(request, reply);
@@ -111,12 +113,15 @@ describe('GET /auth/csrf policy B — preserve active session token', () => {
 		const auth = { verifyToken: vi.fn() };
 		const service = new SessionService(config, auth as never, sessions as never, {} as never, {} as never);
 		const setCookie = vi.fn().mockReturnThis();
-		const reply = { setCookie } as never;
+		const header = vi.fn().mockReturnThis();
+		const reply = { setCookie, header } as never;
 		const request = { cookies: {} } as never;
 
 		const issued = await service.issueCsrfToken(request, reply);
 		expect(issued).toBeTruthy();
 		expect(sessions.updateCsrfSecretHash).not.toHaveBeenCalled();
 		expect(setCookie).toHaveBeenCalledWith(names.csrf, issued, expect.any(Object));
+		// The app reads the token from this response, so a cached copy would be a stale one.
+		expect(header).toHaveBeenCalledWith('Cache-Control', 'no-store');
 	});
 });

@@ -35,15 +35,15 @@ The surface is deliberately labelled **scaffolded**. The document contains the c
 
 Scalar’s **Test Request** control is enabled. Authentication is not persisted by Scalar, no external request proxy is configured, and the generated document declares `https://localhost:4000` so Test Request can present `__Host-` session cookies against the same origin the local apps use. CORS, CSRF, audience, ownership, and rate-limit controls still apply; Test Request does not bypass them.
 
-Session establishment and refresh write a readable, session-bound CSRF cookie alongside the httpOnly access and refresh cookies. For an unsafe request carrying that session:
+Session establishment and refresh write a session-bound CSRF cookie alongside the access and refresh cookies. All three are httpOnly and stay on the API host, so a browser app cannot read them. For an unsafe request carrying that session:
 
-1. retain the readable CSRF cookie written by signup finalisation, login, OTP verification, or refresh;
-2. copy that cookie value into the `x-csrf-token` request header; and
+1. call `GET /auth/csrf` (or `GET /auth/admin/csrf`) after signup finalisation, login, OTP verification, or refresh, and keep the returned `csrfToken`;
+2. copy that value into the `x-csrf-token` request header; and
 3. send the unsafe request with the access/refresh and CSRF cookies.
 
-Missing, mismatched, or cross-session values fail with `403`. The CSRF token does not create a session, grant a role, prove object ownership, or increase the caller’s rate-limit allowance.
+Missing, mismatched, or cross-session values fail with `403` and `reason: csrf_rejected`. Fetch the token again and retry once; a `403` without that reason is a permissions refusal and must not be retried. The CSRF token does not create a session, grant a role, prove object ownership, or increase the caller’s rate-limit allowance.
 
-`GET /auth/csrf` works both before and during a session. For an active session, Policy B preserves a still-valid bound token; if the readable cookie is missing or desynchronized, the session service atomically rotates `csrfSecretHash` before issuing the replacement. Anonymous callers receive an unbound pre-session token. The route grants no identity or authorization by itself.
+`GET /auth/csrf` works both before and during a session. For an active session, Policy B preserves a still-valid bound token; if the cookie is missing or desynchronized, the session service atomically rotates `csrfSecretHash` before issuing the replacement. Anonymous callers receive an unbound pre-session token. The route grants no identity or authorization by itself.
 
 ## Current authentication and authorization boundary
 

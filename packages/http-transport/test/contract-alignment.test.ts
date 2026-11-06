@@ -112,6 +112,7 @@ describe('error shapes stay aligned with @saha-textile/contracts', () => {
 			session_revoked: true,
 			permissions_changed: true,
 			account_inactive: true,
+			csrf_rejected: true,
 		};
 
 		for (const reason of Object.keys(everyReason)) {

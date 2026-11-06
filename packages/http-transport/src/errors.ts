@@ -50,7 +50,12 @@ const API_ERROR_CODES: readonly string[] = [
  * the caller has proven who they are would confirm that a guessed account exists.
  */
 export type AuthRefusalReason =
-	'session_missing' | 'session_expired' | 'session_revoked' | 'permissions_changed' | 'account_inactive';
+	| 'session_missing'
+	| 'session_expired'
+	| 'session_revoked'
+	| 'permissions_changed'
+	| 'account_inactive'
+	| 'csrf_rejected';
 
 const AUTH_REFUSAL_REASONS: readonly string[] = [
 	'session_missing',
@@ -58,6 +63,7 @@ const AUTH_REFUSAL_REASONS: readonly string[] = [
 	'session_revoked',
 	'permissions_changed',
 	'account_inactive',
+	'csrf_rejected',
 ];
 
 /** One field-level validation problem, flattened for transport. */

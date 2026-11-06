@@ -59,15 +59,14 @@ export function sessionCookieOptions(config: AppConfig, maxAgeSeconds?: number):
 /**
  * Attributes for the CSRF cookie.
  *
- * Deliberately NOT `httpOnly`: the double-submit pattern requires the browser app to
- * read this value and echo it in a header, which is precisely what a cross-site attacker
- * cannot do — they can make the browser SEND cookies, but the same-origin policy stops
- * them reading one. It is a CSRF token, not a credential: on its own it authenticates
- * nothing.
+ * `httpOnly` because no script needs it: the browser app gets the token from the CSRF route's
+ * response and echoes that in a header. This cookie is the API's half of the double-submit
+ * pair, sent back automatically. It could not be read across hosts anyway, since it belongs
+ * to the API host.
  */
 export function csrfCookieOptions(config: AppConfig): CookieSerializeOptions {
 	return {
-		httpOnly: false,
+		httpOnly: true,
 		secure: isSecureContext(config),
 		sameSite: 'lax',
 		path: '/',

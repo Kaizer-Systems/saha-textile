@@ -191,6 +191,8 @@ export const AuthRefusalReason = z.enum([
 	'permissions_changed',
 	/** The account itself is no longer active, so no session can be re-established. */
 	'account_inactive',
+	/** The CSRF token was missing or stale (403). Fetch a new one and retry once. */
+	'csrf_rejected',
 ]);
 export type AuthRefusalReason = z.infer<typeof AuthRefusalReason>;
 

@@ -1,11 +1,12 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { type CanActivate, type ExecutionContext, ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { type CanActivate, type ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 
 import { SessionService } from '../auth/session.service';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { cookieNames, requestCookieAudience } from './cookies';
+import { CsrfRefusal } from './csrf-refusal';
 
 /** Methods that cannot change state, so they need no CSRF proof. */
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -23,9 +24,9 @@ function safeEquals(a: string, b: string): boolean {
  *
  * The attack this stops: a browser attaches our session cookies to a request the USER
  * never intended, triggered from another origin. The defence is that the request must
- * also echo a value only same-origin script can read — the CSRF cookie — in a header.
- * A cross-site page can make the browser send cookies, but the same-origin policy stops
- * it reading one, so it cannot produce the header.
+ * also echo the CSRF token in a header. The app gets that token from the CSRF route's
+ * response, which CORS lets only allowlisted origins read. A cross-site page can make the
+ * browser send cookies, but it cannot read the response, so it cannot produce the header.
  *
  * Enforced only when a SESSION cookie is present: a request with no session has nothing
  * to forge, and requiring a token there would break legitimate public reads and the
@@ -63,12 +64,12 @@ export class CsrfGuard implements CanActivate {
 
 		if (!cookieToken || !headerToken || !safeEquals(cookieToken, headerToken)) {
 			// Deliberately generic: naming which half was wrong tells an attacker where to aim.
-			throw new ForbiddenException('CSRF validation failed');
+			throw new CsrfRefusal();
 		}
 
 		const session = await this.sessions.resolveLiveSessionFromRequest(request);
 		if (!session || !this.sessions.verifyCsrfForSession(session, cookieToken)) {
-			throw new ForbiddenException('CSRF validation failed');
+			throw new CsrfRefusal();
 		}
 
 		return true;

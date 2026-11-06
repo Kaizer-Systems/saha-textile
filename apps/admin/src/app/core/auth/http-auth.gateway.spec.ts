@@ -6,6 +6,7 @@ import { Observable } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { AdminAuthGateway } from './auth-gateway';
+import { CsrfTokens } from './csrf-tokens';
 import { HttpAdminAuthGateway } from './http-auth.gateway';
 
 /**
@@ -50,6 +51,8 @@ describe('HttpAdminAuthGateway credential classification', () => {
 		const request = httpMock.expectOne(() => true);
 		const url = request.request.url;
 		request.flush({});
+		// A rotation follows up with a token fetch; close that too.
+		httpMock.match(() => true).forEach((followUp) => followUp.flush({ csrfToken: 'token' }));
 		return url;
 	}
 
@@ -200,5 +203,37 @@ describe('HttpAdminAuthGateway credential classification', () => {
 
 		expect(gateway.isCredentialEndpoint(`${path}/extra`)).toBe(false);
 		expect(gateway.isCredentialEndpoint(`/tenant${path}`)).toBe(false);
+	});
+
+	describe('CSRF token', () => {
+		const csrfRequest = () => httpMock.expectOne((req) => req.method === 'GET');
+
+		it('remembers the token the API returns', () => {
+			gateway.ensureCsrfToken().subscribe();
+			csrfRequest().flush({ csrfToken: 'from-api' });
+
+			expect(TestBed.inject(CsrfTokens).current()).toBe('from-api');
+		});
+
+		// Rotation replaces the token, and the new one is only in an API-host cookie the app
+		// cannot read, so a rotation that did not fetch would leave this tab holding a dead one.
+		it('fetches the new token after a rotation', () => {
+			TestBed.inject(CsrfTokens).remember('before-rotation');
+
+			gateway.refreshSession().subscribe();
+			httpMock.expectOne((req) => req.method === 'POST').flush({});
+			csrfRequest().flush({ csrfToken: 'after-rotation' });
+
+			expect(TestBed.inject(CsrfTokens).current()).toBe('after-rotation');
+		});
+
+		it('still reports the rotation as a success when the token fetch fails', () => {
+			let completed = false;
+			gateway.refreshSession().subscribe({ complete: () => (completed = true) });
+			httpMock.expectOne((req) => req.method === 'POST').flush({});
+			csrfRequest().flush({}, { status: 503, statusText: 'Unavailable' });
+
+			expect(completed).toBe(true);
+		});
 	});
 });

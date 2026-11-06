@@ -17,15 +17,7 @@
  *     error shape assignable to the contract in both directions, and
  *     `test/runtime-purity.test.ts` proves the compiled output imports nothing at all.
  */
-export {
-	ADMIN_CSRF_COOKIE_NAMES,
-	CSRF_COOKIE_NAMES,
-	CSRF_HEADER_NAME,
-	hasBrowserCookieJar,
-	isUnsafeMethod,
-	readCsrfToken,
-	readCsrfTokenFrom,
-} from './csrf.js';
+export { CSRF_HEADER_NAME, CsrfTokenHolder, hasBrowserCookieJar, isUnsafeMethod } from './csrf.js';
 export { withBrowserLock } from './browser-lock.js';
 export type { LockManagerLike } from './browser-lock.js';
 export { isRelativeApiPath, joinApiUrl } from './api-url.js';

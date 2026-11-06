@@ -27,8 +27,8 @@ describe('cookie attributes', () => {
 		expect(options.path).toBe('/');
 	});
 
-	it('leaves the CSRF cookie readable — double-submit requires the app to echo it', () => {
-		expect(csrfCookieOptions(dev).httpOnly).toBe(false);
+	it('keeps the CSRF cookie away from scripts — the app gets the token from the API reply', () => {
+		expect(csrfCookieOptions(dev).httpOnly).toBe(true);
 	});
 
 	/**
@@ -132,6 +132,13 @@ describe('CsrfGuard', () => {
 		await expect(
 			guard.canActivate(contextFor({ method: 'POST', headers: {}, cookies: { [names.access]: 'session' } })),
 		).rejects.toThrow(ForbiddenException);
+	});
+
+	// The client retries on this reason, so a permissions 403 must never carry it.
+	it('names the refusal so the client can recover, without saying which half failed', async () => {
+		await expect(
+			guard.canActivate(contextFor({ method: 'POST', headers: {}, cookies: { [names.access]: 'session' } })),
+		).rejects.toMatchObject({ reason: 'csrf_rejected', message: 'CSRF validation failed' });
 	});
 
 	it('rejects when the header is missing but the cookie is present', async () => {

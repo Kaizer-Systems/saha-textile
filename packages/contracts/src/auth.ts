@@ -161,7 +161,7 @@ export const AuthSessionResponse = z.object({
 });
 export type AuthSessionResponse = z.infer<typeof AuthSessionResponse>;
 
-/** `GET /auth/csrf` response — token also set as the readable `st_csrf` cookie (double-submit). */
+/** `GET /auth/csrf` response — the app echoes this token; it is also set as the `st_csrf` cookie (double-submit). */
 export const CsrfTokenResponse = z.object({
 	csrfToken: z.string().min(1),
 });

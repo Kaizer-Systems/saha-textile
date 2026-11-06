@@ -1,11 +1,11 @@
 /**
  * Double-submit CSRF policy for cookie-authenticated browser calls.
  *
- * The API sets the CSRF cookie WITHOUT `httpOnly` precisely so the client can echo it back
- * in the `x-csrf-token` header; on its own it authenticates nothing, which is why exposing
- * it is safe while the session cookies stay `httpOnly`. The API accepts two spellings — the
- * plain `st_csrf` name and the `__Host-st_csrf` prefixed form it uses in HTTPS deployments
- * without a pinned cookie domain — so both are tried rather than assuming one.
+ * The API returns the token in the body of its CSRF route and also sets it as a cookie; the
+ * client echoes the returned value in the `x-csrf-token` header. The client must NOT read the
+ * cookie: in every deployment the cookie belongs to the API host (`__Host-` prefix, no
+ * `Domain`), so `document.cookie` on the storefront or admin host can never see it. It only
+ * ever looked readable on `localhost`, where all ports count as one host.
  *
  * This module holds the POLICY, not the wiring. Each app's HTTP interceptor decides when to
  * call it; nothing here knows about Angular, RxJS or a particular app's routes.
@@ -13,22 +13,6 @@
 
 /** Header the API reads the echoed token from. Must match `CSRF_HEADER_NAME` in the API. */
 export const CSRF_HEADER_NAME = 'x-csrf-token';
-
-/**
- * Cookie names the API may have used, most-likely first.
- *
- * `__Host-st_csrf` is only valid when the cookie carries no `Domain` and the connection is
- * HTTPS, so the API falls back to the compact `st_*` spelling when a domain is pinned. A
- * client that knew only one name would silently stop sending the header in one of those
- * deployments and every mutation would 403.
- */
-export const CSRF_COOKIE_NAMES = ['st_csrf', '__Host-st_csrf'] as const;
-
-/**
- * The admin session's CSRF cookie. Admin sessions have their own cookie names so a storefront
- * session in the same browser can never overwrite or clear an operator's (API `cookieNames`).
- */
-export const ADMIN_CSRF_COOKIE_NAMES = ['st_admin_csrf', '__Host-st_admin_csrf'] as const;
 
 /** Methods the API treats as safe, and therefore does not CSRF-protect. */
 const SAFE_METHODS: readonly string[] = ['GET', 'HEAD', 'OPTIONS'];
@@ -39,55 +23,45 @@ export function isUnsafeMethod(method: string): boolean {
 }
 
 /**
- * Parses a `document.cookie`-shaped string and returns the first CSRF value found.
+ * The current CSRF token, held in memory only.
  *
- * Pure and jar-in/value-out so it is testable without a DOM. Splitting on a semicolon plus
- * optional whitespace, rather than the literal `'; '`, matters: the separator is only
- * conventionally a space, and a jar written by another library may omit it — in which case
- * the token would be invisible and every mutation would fail closed with no obvious cause.
- *
- * The name is compared exactly (split at the first `=`) rather than by prefix, so a
- * differently-named cookie that merely starts with `st_csrf` can never be mistaken for it.
+ * Memory is enough because the token is cheap to get back: a reload starts empty and the app
+ * asks the API again, and a token another tab rotated is refused once and re-fetched. Each
+ * app provides one instance per application (per request under SSR), never a module-level
+ * one, because a server process must not share a token between visitors.
  */
-export function readCsrfTokenFrom(
-	cookieJar: string | null | undefined,
-	names: readonly string[] = CSRF_COOKIE_NAMES,
-): string | null {
-	if (!cookieJar) return null;
+export class CsrfTokenHolder {
+	private token: string | null = null;
+	private inFlight: Promise<void> | null = null;
 
-	const entries = cookieJar.split(/;\s*/);
-	for (const name of names) {
-		for (const entry of entries) {
-			const separator = entry.indexOf('=');
-			if (separator === -1) continue;
-			if (entry.slice(0, separator) !== name) continue;
-
-			const raw = entry.slice(separator + 1);
-			if (raw === '') return null;
-			return safeDecode(raw);
-		}
+	current(): string | null {
+		return this.token;
 	}
-	return null;
-}
 
-/**
- * Reads the CSRF cookie from the ambient browser jar, or `null` when there is none.
- *
- * Returns `null` under SSR by construction: there is no cookie jar during server rendering,
- * and an unsafe request does not originate there. Reached through `globalThis` with a narrow
- * local type so this package needs no `DOM` lib and stays compilable in a Node test run.
- */
-export function readCsrfToken(names: readonly string[] = CSRF_COOKIE_NAMES): string | null {
-	return readCsrfTokenFrom(ambientCookieJar(), names);
+	remember(token: string): void {
+		this.token = token;
+	}
+
+	/**
+	 * Runs one fetch for all concurrent callers.
+	 *
+	 * Not an optimisation: when the API's stored token no longer matches, each fetch rotates
+	 * it, so two racing fetches could leave this tab holding the one that lost.
+	 */
+	acquire(fetchToken: () => Promise<void>): Promise<void> {
+		this.inFlight ??= fetchToken().finally(() => {
+			this.inFlight = null;
+		});
+		return this.inFlight;
+	}
 }
 
 /**
  * Whether this runtime has a browser cookie jar at all.
  *
- * Distinct from "is there a CSRF cookie": an empty jar in a browser is recoverable — the app
- * can ask the API for a token — whereas server rendering has no jar to populate and no user
- * agent to carry cookies, so session recovery there is meaningless rather than merely
- * missing a value. Collapsing the two makes SSR issue requests it can never benefit from.
+ * Server rendering has no jar to populate and no user agent to carry cookies, so session
+ * recovery there is meaningless rather than merely missing a value. Without this check SSR
+ * would issue requests it can never benefit from.
  */
 export function hasBrowserCookieJar(): boolean {
 	return ambientCookieJar() !== null;
@@ -100,17 +74,4 @@ interface CookieCarrier {
 function ambientCookieJar(): string | null {
 	const doc = (globalThis as { document?: CookieCarrier }).document;
 	return typeof doc?.cookie === 'string' ? doc.cookie : null;
-}
-
-/**
- * A cookie value is percent-encoded by the API, but a malformed jar must not throw out of an
- * interceptor and take down an otherwise fine request; an undecodable value is treated as
- * absent so the request fails closed at the API instead of failing hard in the browser.
- */
-function safeDecode(value: string): string | null {
-	try {
-		return decodeURIComponent(value);
-	} catch {
-		return null;
-	}
 }

@@ -11,19 +11,18 @@ import { inject, Injectable } from '@angular/core';
 import { Observable, catchError, firstValueFrom, from, switchMap, tap, throwError } from 'rxjs';
 
 import {
-	ADMIN_CSRF_COOKIE_NAMES,
 	CSRF_HEADER_NAME,
 	RefreshCoordinator,
 	hasBrowserCookieJar,
 	isForbidden,
 	isUnrecoverableRefusal,
 	isUnsafeMethod,
-	readCsrfToken,
 	readRefusalReason,
 	withBrowserLock,
 } from '@saha-textile/http-transport';
 
 import { AdminAuthGateway } from '@core/auth/auth-gateway';
+import { CsrfTokens } from '@core/auth/csrf-tokens';
 import { SESSION_REFRESH_LOCK } from '@core/auth/session-refresh-lock';
 import { AuthStore } from '@core/state/auth.store';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -39,7 +38,7 @@ import { NotificationService } from '@data-access/services/notification.service'
  * `withCredentials` is unconditional because the API is a separate origin in every
  * environment; the API pairs it with an exact CORS allowlist rather than a wildcard.
  *
- * The CSRF cookie names, the header name, the safe/unsafe method split and the refresh
+ * The CSRF header name, the safe/unsafe method split and the refresh
  * single-flight coordinator come from `@saha-textile/http-transport`. They are one half of a
  * contract with the API, identical for both audiences. What stays here is admin policy:
  * which store to clear and where to send the operator.
@@ -66,13 +65,12 @@ import { NotificationService } from '@data-access/services/notification.service'
  *    recovery means the credential was refused; rotating would be pointless, and rotating
  *    after a failed rotation would be infinite. The gateway classifies this, because the
  *    gateway is the file that owns route paths.
- * 4. **A missing CSRF cookie is acquired, not treated as defeat.** `st_admin_csrf` is a
- *    browser-session cookie while the refresh cookie persists, so closing the browser and
- *    returning leaves a valid session with no readable double-submit half. Rotation would
- *    403, so one is fetched first — the API's CSRF policy exists for exactly this.
- * 5. **The replay re-reads the CSRF cookie.** Rotation replaces `csrfSecretHash` server-side
- *    and issues a new `st_admin_csrf`, so replaying with the header captured before the rotation
- *    would fail closed with a 403 — and read as an auth failure.
+ * 4. **A missing CSRF token is acquired, not treated as defeat.** The token lives in memory,
+ *    so a reload or a returning visitor starts without one while the session is still valid.
+ *    Rotation would 403, so one is fetched — the API's CSRF policy exists for this.
+ * 5. **The replay uses the new CSRF token.** Rotation replaces `csrfSecretHash` server-side,
+ *    so `refreshSession` fetches the new token and `prepare` reads it for the replay.
+ *    Replaying with the old header would fail closed with a 403 and read as an auth failure.
  * 6. **One verdict per session.** `latchOnFailure` stops a failed rotation from being retried
  *    on every subsequent 401. It clears only on a response that PROVES a session exists —
  *    not on logout or a password reset, both of which succeed by ending one.
@@ -108,6 +106,7 @@ export class AuthInterceptor implements HttpInterceptor {
 	private authStore = inject(AuthStore);
 	private notificationService = inject(NotificationService);
 	private gateway = inject(AdminAuthGateway);
+	private csrfTokens = inject(CsrfTokens);
 
 	/**
 	 * Held on the interceptor because it is a singleton: one coordinator per application is
@@ -116,6 +115,11 @@ export class AuthInterceptor implements HttpInterceptor {
 	private readonly refresh = new RefreshCoordinator({ latchOnFailure: true });
 
 	intercept<T>(req: HttpRequest<T>, next: HttpHandler): Observable<HttpEvent<T>> {
+		return this.send(req, next, true);
+	}
+
+	/** `mayRecoverCsrf` is false on the replay, so a refused token is retried exactly once. */
+	private send<T>(req: HttpRequest<T>, next: HttpHandler, mayRecoverCsrf: boolean): Observable<HttpEvent<T>> {
 		const isCredentialCall = this.gateway.isCredentialEndpoint(req.url);
 
 		return next.handle(this.prepare(req)).pipe(
@@ -128,6 +132,9 @@ export class AuthInterceptor implements HttpInterceptor {
 				if (this.gateway.isSessionEstablishingEndpoint(req.url)) this.refresh.reset();
 			}),
 			catchError((error: HttpErrorResponse) => {
+				if (mayRecoverCsrf && readRefusalReason(error.error) === 'csrf_rejected') {
+					return this.reacquireCsrfAndReplay(req, next, error);
+				}
 				if (error.status !== 401) return throwError(() => error);
 
 				if (isCredentialCall || !this.canAttemptRefresh()) {
@@ -154,11 +161,28 @@ export class AuthInterceptor implements HttpInterceptor {
 	private prepare<T>(req: HttpRequest<T>): HttpRequest<T> {
 		const prepared = req.clone({ withCredentials: true });
 
-		const csrfToken = readCsrfToken(ADMIN_CSRF_COOKIE_NAMES);
+		const csrfToken = this.csrfTokens.current();
 		if (csrfToken && isUnsafeMethod(prepared.method)) {
 			return prepared.clone({ setHeaders: { [CSRF_HEADER_NAME]: csrfToken } });
 		}
 		return prepared;
+	}
+
+	/**
+	 * Recovers a refused CSRF token: this tab's copy is missing, or another tab rotated it.
+	 *
+	 * Replaying is safe because the guard refuses before any handler runs. If the token cannot
+	 * be fetched, the caller gets the original refusal: it asked about its request, not this.
+	 */
+	private reacquireCsrfAndReplay<T>(
+		req: HttpRequest<T>,
+		next: HttpHandler,
+		original: HttpErrorResponse,
+	): Observable<HttpEvent<T>> {
+		return from(this.csrfTokens.acquire(() => firstValueFrom(this.gateway.ensureCsrfToken()))).pipe(
+			catchError(() => throwError(() => original)),
+			switchMap(() => this.send(req, next, false)),
+		);
 	}
 
 	private rotateAndReplay<T>(
@@ -192,11 +216,10 @@ export class AuthInterceptor implements HttpInterceptor {
 	 * Rotates the session, acquiring a CSRF token only if the API says that is what was
 	 * missing.
 	 *
-	 * Rotation is an unsafe, cookie-authenticated POST, so it needs the readable half of the
-	 * double-submit pair — and `st_admin_csrf` is set WITHOUT a `maxAge`, making it a browser-session
-	 * cookie while the access and refresh cookies persist. Closing the browser and returning
-	 * therefore leaves a valid session with no readable CSRF value, and refusing to rotate
-	 * there used to log that user out.
+	 * Rotation is an unsafe, cookie-authenticated POST, so it needs the CSRF token — and the
+	 * token lives in memory while the access and refresh cookies persist. Closing the browser
+	 * and returning therefore leaves a valid session with no token in hand, and refusing to
+	 * rotate there used to log that user out.
 	 *
 	 * Acquiring the token FIRST fixed that, but charged the cost to the wrong people: every
 	 * anonymous visitor paid an extra round-trip on first paint to fetch a token for a session
@@ -204,7 +227,7 @@ export class AuthInterceptor implements HttpInterceptor {
 	 * distinguishable, which `apps/api/e2e/session-rotation.mjs` asserts rather than assumes:
 	 *
 	 * - **403** — session cookies present, CSRF half missing. Recoverable: fetch a token and
-	 *   retry once. The retry re-reads the cookie because the request is rebuilt by `prepare`.
+	 *   retry once. The retry picks up the token because the request is rebuilt by `prepare`.
 	 * - **401** — no session at all. Nothing to recover; let it fail and latch.
 	 *
 	 * So an anonymous first load costs one request instead of two, and a returning visitor
@@ -228,9 +251,8 @@ export class AuthInterceptor implements HttpInterceptor {
 	/**
 	 * Whether recovery is worth attempting at all.
 	 *
-	 * Only server rendering is excluded, and not because a value is missing: there is no
-	 * cookie jar to populate and no user agent to carry the result, so the requests could
-	 * never help. An empty jar in a real browser is recoverable — see `rotate()`.
+	 * Only server rendering is excluded: there is no cookie jar to populate and no user agent
+	 * to carry the result, so the requests could never help.
 	 */
 	private canAttemptRefresh(): boolean {
 		return hasBrowserCookieJar();

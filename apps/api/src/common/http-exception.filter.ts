@@ -3,6 +3,7 @@ import { type ApiErrorCode, ApiErrorResponse, type FieldIssue } from '@saha-text
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { SessionRefusal } from '../auth/session-refusal';
+import { CsrfRefusal } from './csrf-refusal';
 import { REQUEST_ID_HEADER } from './request-context';
 
 /** HTTP status → stable machine-readable error code. */
@@ -93,7 +94,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		// endpoint raises a plain `UnauthorizedException`, so it cannot pick up a reason
 		// however its message is worded — which is what keeps "wrong PIN" indistinguishable
 		// from "PIN locked" to an unauthenticated caller.
-		const reason = exception instanceof SessionRefusal ? exception.reason : undefined;
+		const reason =
+			exception instanceof SessionRefusal || exception instanceof CsrfRefusal ? exception.reason : undefined;
 
 		const body = ApiErrorResponse.parse({
 			error: {

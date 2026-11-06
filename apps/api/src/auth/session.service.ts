@@ -183,11 +183,14 @@ export class SessionService {
 	 *
 	 * Policy B (active session): do not replace a still-valid session-bound token on GET —
 	 * cross-site top-level navigations send SameSite=lax cookies and must not become a
-	 * session DoS primitive. If the readable cookie is missing or no longer matches the
+	 * session DoS primitive. If the cookie is missing or no longer matches the
 	 * stored hash, recover by atomically rotating `csrfSecretHash` and issuing the new
 	 * value. Anonymous callers still receive an unbound pre-session token.
 	 */
 	async issueCsrfToken(request: FastifyRequest, reply: FastifyReply): Promise<string> {
+		// The browser app reads this token from the response, so a cached copy would be a stale one.
+		void reply.header('Cache-Control', 'no-store');
+
 		const names = cookieNames(this.config, requestCookieAudience(request));
 		const session = await this.resolveLiveSessionFromRequest(request);
 		const presented = this.readCookie(request, names.csrf);

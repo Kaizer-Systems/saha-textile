@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import { Observable, catchError, map, of } from 'rxjs';
+import { Observable, catchError, map, of, switchMap, tap } from 'rxjs';
 
 import { runtimeConfig } from '@core/config/runtime-config';
 
@@ -21,6 +21,7 @@ import {
 	type StepUpProof,
 	StorefrontAuthGateway,
 } from './auth-gateway';
+import { CsrfTokens } from './csrf-tokens';
 
 /**
  * The single place storefront authentication route paths exist in this application.
@@ -125,6 +126,7 @@ interface MeResponse {
 @Injectable({ providedIn: 'root' })
 export class HttpStorefrontAuthGateway extends StorefrontAuthGateway {
 	private readonly http = inject(HttpClient);
+	private readonly csrfTokens = inject(CsrfTokens);
 
 	/** Read at call time, not construction: runtime config is filled by an app initializer. */
 	private url(path: string): string {
@@ -142,7 +144,10 @@ export class HttpStorefrontAuthGateway extends StorefrontAuthGateway {
 	}
 
 	override ensureCsrfToken(): Observable<void> {
-		return this.http.get<{ csrfToken: string }>(this.url(ROUTES.csrf)).pipe(map(() => undefined));
+		return this.http.get<{ csrfToken: string }>(this.url(ROUTES.csrf)).pipe(
+			tap((response) => this.csrfTokens.remember(response.csrfToken)),
+			map(() => undefined),
+		);
 	}
 
 	override startSignup(input: StartSignupInput): Observable<PendingSignupView> {
@@ -258,9 +263,12 @@ export class HttpStorefrontAuthGateway extends StorefrontAuthGateway {
 	}
 
 	override refreshSession(): Observable<void> {
-		// The response body carries the user and session envelope, but nothing here needs
-		// it: what matters is the rotated cookies the API sets alongside it.
-		return this.http.post<unknown>(this.url(ROUTES.refresh), {}).pipe(map(() => undefined));
+		// Rotation replaces the session's CSRF token and sets it only as an API-host cookie, so
+		// the new value has to be fetched. A failed fetch must not read as a failed rotation:
+		// the session is fine, and the next unsafe request recovers the token itself.
+		return this.http
+			.post<unknown>(this.url(ROUTES.refresh), {})
+			.pipe(switchMap(() => this.ensureCsrfToken().pipe(catchError(() => of(undefined)))));
 	}
 
 	/**

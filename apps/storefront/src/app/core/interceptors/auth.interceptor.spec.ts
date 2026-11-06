@@ -3,10 +3,11 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
-import { Observable, Subject, firstValueFrom, of, throwError } from 'rxjs';
+import { Observable, Subject, firstValueFrom, map, of, take, tap, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { StorefrontAuthGateway } from '@core/auth/auth-gateway';
+import { CsrfTokens } from '@core/auth/csrf-tokens';
 import { AuthStore } from '@core/state/auth.store';
 import { SettingStore } from '@core/state/setting.store';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -17,10 +18,7 @@ import { AuthInterceptor } from './auth.interceptor';
  * Behaviour of the storefront session transport: the CSRF contract (pass 3b) and 401 recovery
  * (pass 3c).
  *
- * Written against the observable contract with the API rather than the implementation. The
- * cookie is set through jsdom's real `document.cookie`, so these also exercise the shared
- * package's ambient reader in a browser-like environment rather than the pure jar-in/value-out
- * function its own unit tests use.
+ * Written against the observable contract with the API rather than the implementation.
  *
  * URLs here are deliberately ordinary routes. Whether a given path is a credential endpoint
  * is the GATEWAY's judgement — `http-auth.gateway.spec.ts` proves the real classification
@@ -53,17 +51,6 @@ class StubHandler implements HttpHandler {
 
 const unauthorized = () => new HttpErrorResponse({ status: 401 });
 
-function setCookie(pair: string): void {
-	document.cookie = `${pair}; path=/`;
-}
-
-function clearCookies(): void {
-	for (const entry of document.cookie.split(/;\s*/)) {
-		const name = entry.split('=')[0];
-		if (name) document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-	}
-}
-
 describe('storefront AuthInterceptor', () => {
 	let handler: StubHandler;
 	let interceptor: AuthInterceptor;
@@ -71,6 +58,8 @@ describe('storefront AuthInterceptor', () => {
 	let notificationService: { notification: boolean };
 	let refreshCalls: number;
 	let csrfCalls: number;
+	let csrfTokens: CsrfTokens;
+	let acquireCsrf: () => Observable<unknown>;
 	let refreshResult: (call: number) => Observable<void>;
 
 	beforeEach(() => {
@@ -80,17 +69,19 @@ describe('storefront AuthInterceptor', () => {
 		refreshCalls = 0;
 		csrfCalls = 0;
 		refreshResult = () => of(undefined);
-		clearCookies();
+		csrfTokens = new CsrfTokens();
+		acquireCsrf = () => of(undefined);
 
 		const gateway = {
 			isCredentialEndpoint: (url: string) => url === CREDENTIAL_URL || url === ESTABLISHING_URL,
 			isSessionEstablishingEndpoint: (url: string) => url === ESTABLISHING_URL,
 			ensureCsrfToken: () => {
 				csrfCalls += 1;
-				// The real endpoint sets the cookie; the fake must too, or the rotation that
-				// follows would still see an empty jar and the test would prove nothing.
-				setCookie('st_csrf=acquired-token');
-				return of(undefined);
+				return acquireCsrf().pipe(
+					take(1),
+					tap(() => csrfTokens.remember('acquired-token')),
+					map(() => undefined),
+				);
 			},
 			refreshSession: () => {
 				refreshCalls += 1;
@@ -105,16 +96,13 @@ describe('storefront AuthInterceptor', () => {
 				{ provide: AuthStore, useValue: { authClear } },
 				{ provide: NotificationService, useValue: notificationService },
 				{ provide: StorefrontAuthGateway, useValue: gateway },
+				{ provide: CsrfTokens, useValue: csrfTokens },
 				// The interceptor's constructor reads this through an `effect` to decide
 				// maintenance-mode routing; a signal of `null` is the not-yet-loaded state.
 				{ provide: SettingStore, useValue: { setting: signal(null) } },
 			],
 		});
 		interceptor = TestBed.inject(AuthInterceptor);
-	});
-
-	afterEach(() => {
-		clearCookies();
 	});
 
 	const run = (method: string, url = PROTECTED_URL) =>
@@ -128,23 +116,8 @@ describe('storefront AuthInterceptor', () => {
 			expect(handler.forwarded()[0]?.withCredentials).toBe(true);
 		});
 
-		it('echoes the CSRF cookie on an unsafe method', () => {
-			setCookie('st_csrf=tok-123');
-			run('POST').subscribe();
-
-			expect(handler.forwarded()[0]?.headers.get('x-csrf-token')).toBe('tok-123');
-		});
-
-		// Picks the right entry out of a populated jar rather than the first cookie it sees.
-		//
-		// The `__Host-st_csrf` spelling the API uses in HTTPS deployments is deliberately NOT
-		// exercised here: the prefix requires `Secure`, so jsdom's jar refuses it over the
-		// http://localhost test origin exactly as a real browser would. It is covered by
-		// `packages/http-transport/test/csrf.test.ts` against the pure jar-in/value-out reader.
-		it('finds the CSRF cookie among unrelated cookies', () => {
-			setCookie('language=en');
-			setCookie('st_csrf=tok-123');
-			setCookie('ngrx_cart=[]');
+		it('echoes the CSRF token on an unsafe method', () => {
+			csrfTokens.remember('tok-123');
 			run('POST').subscribe();
 
 			expect(handler.forwarded()[0]?.headers.get('x-csrf-token')).toBe('tok-123');
@@ -152,13 +125,13 @@ describe('storefront AuthInterceptor', () => {
 
 		// The API's guard only requires it on unsafe methods; sending it on a GET would be noise.
 		it('does not attach the header on a safe method', () => {
-			setCookie('st_csrf=tok-123');
+			csrfTokens.remember('tok-123');
 			run('GET').subscribe();
 
 			expect(handler.forwarded()[0]?.headers.has('x-csrf-token')).toBe(false);
 		});
 
-		it('attaches nothing when no CSRF cookie is present', () => {
+		it('attaches nothing when no CSRF token is held', () => {
 			run('POST').subscribe();
 
 			expect(handler.forwarded()[0]?.headers.has('x-csrf-token')).toBe(false);
@@ -168,9 +141,9 @@ describe('storefront AuthInterceptor', () => {
 
 	describe('401 recovery', () => {
 		beforeEach(() => {
-			// A readable CSRF cookie is the precondition for rotation: it is an unsafe,
+			// A CSRF token is the precondition for rotation: it is an unsafe,
 			// cookie-authenticated POST and cannot succeed without the double-submit half.
-			setCookie('st_csrf=first-token');
+			csrfTokens.remember('first-token');
 		});
 
 		it('rotates once and replays the request, keeping the session', async () => {
@@ -180,7 +153,7 @@ describe('storefront AuthInterceptor', () => {
 			await firstValueFrom(run('GET'));
 
 			expect(refreshCalls).toBe(1);
-			// The cookie was already readable, so no token needed acquiring first.
+			// A token was already held, so none needed acquiring first.
 			expect(csrfCalls).toBe(0);
 			expect(handler.forwarded()).toHaveLength(2);
 			expect(authClear).not.toHaveBeenCalled();
@@ -217,12 +190,12 @@ describe('storefront AuthInterceptor', () => {
 			expect(authClear).not.toHaveBeenCalled();
 		});
 
-		// Rotation replaces `csrfSecretHash` server-side and issues a new `st_csrf`. Replaying
+		// Rotation replaces `csrfSecretHash` server-side, so the gateway fetches the new token. Replaying
 		// with the value captured before the rotation would fail closed with a 403 — and read
 		// as an auth failure rather than the stale header it is.
-		it('re-reads the CSRF cookie for the replay', async () => {
+		it('sends the new CSRF token on the replay', async () => {
 			refreshResult = () => {
-				setCookie('st_csrf=rotated-token');
+				csrfTokens.remember('rotated-token');
 				return of(undefined);
 			};
 			handler.responder = (_req, index) =>
@@ -293,10 +266,77 @@ describe('storefront AuthInterceptor', () => {
 		});
 	});
 
+	describe('when the API refuses the CSRF token', () => {
+		const csrfRejected = () =>
+			new HttpErrorResponse({ status: 403, error: { error: { code: 'forbidden', reason: 'csrf_rejected' } } });
+		const forbidden = () => new HttpErrorResponse({ status: 403, error: { error: { code: 'forbidden' } } });
+
+		beforeEach(() => {
+			csrfTokens.remember('stale-token');
+		});
+
+		// Another tab rotated the session, so this tab's copy is stale. Same recovery as a tab
+		// that has only just reloaded and holds no token at all.
+		it('fetches a new token and replays with it', async () => {
+			handler.responder = (_req, index) =>
+				index === 0 ? throwError(csrfRejected) : of(new HttpResponse({ status: 200 }));
+
+			await firstValueFrom(run('POST'));
+
+			const [first, replay] = handler.forwarded();
+			expect(first?.headers.get('x-csrf-token')).toBe('stale-token');
+			expect(replay?.headers.get('x-csrf-token')).toBe('acquired-token');
+			expect(csrfCalls).toBe(1);
+			expect(refreshCalls).toBe(0);
+		});
+
+		it('fetches once for concurrent refusals', async () => {
+			const ready = new Subject<void>();
+			acquireCsrf = () => ready;
+			handler.responder = (_req, index) =>
+				index < 2 ? throwError(csrfRejected) : of(new HttpResponse({ status: 200 }));
+
+			const both = Promise.all([firstValueFrom(run('POST')), firstValueFrom(run('POST'))]);
+			ready.next();
+			ready.complete();
+			await both;
+
+			expect(csrfCalls).toBe(1);
+			expect(handler.forwarded()).toHaveLength(4);
+		});
+
+		it('retries once, then surfaces the refusal', async () => {
+			handler.responder = () => throwError(csrfRejected);
+
+			await expect(firstValueFrom(run('POST'))).rejects.toMatchObject({ status: 403 });
+
+			expect(handler.forwarded()).toHaveLength(2);
+			expect(csrfCalls).toBe(1);
+		});
+
+		// A permissions 403 may come from a handler that already ran, and would fail again anyway.
+		it('never retries a 403 that is not a CSRF refusal', async () => {
+			handler.responder = () => throwError(forbidden);
+
+			await expect(firstValueFrom(run('POST'))).rejects.toMatchObject({ status: 403 });
+
+			expect(handler.forwarded()).toHaveLength(1);
+			expect(csrfCalls).toBe(0);
+		});
+
+		it('surfaces the original refusal when the token cannot be fetched', async () => {
+			acquireCsrf = () => throwError(() => new Error('offline'));
+			handler.responder = () => throwError(csrfRejected);
+
+			await expect(firstValueFrom(run('POST'))).rejects.toMatchObject({ status: 403 });
+
+			expect(handler.forwarded()).toHaveLength(1);
+		});
+	});
+
 	describe('when the rotation is refused for its CSRF token', () => {
-		// `st_csrf` is set without a maxAge, so it dies when the browser closes while the
-		// access and refresh cookies persist. A returning user therefore arrives with a valid
-		// session and no readable double-submit half. Acquiring a token BEFORE trying to
+		// The token lives in memory, so it is gone after a reload while the access and refresh
+		// cookies persist. A returning user therefore arrives with a valid session and no token. Acquiring a token BEFORE trying to
 		// rotate fixed that, but charged an extra round-trip to every anonymous visitor on
 		// first paint. Asking first works because the API's two refusals differ: 403 means the
 		// token was missing, 401 means there is no session — asserted end to end in
@@ -372,7 +412,7 @@ describe('storefront AuthInterceptor', () => {
 
 	describe('latch lifetime', () => {
 		beforeEach(() => {
-			setCookie('st_csrf=first-token');
+			csrfTokens.remember('first-token');
 			refreshResult = () => throwError(() => new HttpErrorResponse({ status: 401 }));
 			handler.responder = (req) =>
 				req.url === PROTECTED_URL ? throwError(unauthorized) : of(new HttpResponse({ status: 200 }));
@@ -421,7 +461,7 @@ describe('storefront AuthInterceptor', () => {
 				},
 			});
 
-			setCookie('st_csrf=first-token');
+			csrfTokens.remember('first-token');
 			handler.responder = (_req, index) =>
 				index === 0 ? throwError(unauthorized) : of(new HttpResponse({ status: 200 }));
 
@@ -446,7 +486,7 @@ describe('storefront AuthInterceptor', () => {
 			});
 
 		it.each(['session_revoked', 'account_inactive'])('does not rotate after %s', async (reason) => {
-			setCookie('st_csrf=tok');
+			csrfTokens.remember('tok');
 			handler.responder = () => throwError(() => refusedWith(reason));
 
 			await expect(firstValueFrom(run('GET'))).rejects.toMatchObject({ status: 401 });
@@ -459,7 +499,7 @@ describe('storefront AuthInterceptor', () => {
 		it.each(['session_expired', 'session_missing', 'permissions_changed'])(
 			'still rotates after %s',
 			async (reason) => {
-				setCookie('st_csrf=tok');
+				csrfTokens.remember('tok');
 				handler.responder = (_req, index) =>
 					index === 0 ? throwError(() => refusedWith(reason)) : of(new HttpResponse({ status: 200 }));
 
@@ -471,7 +511,7 @@ describe('storefront AuthInterceptor', () => {
 		);
 
 		it('still rotates when the refusal names no reason at all', async () => {
-			setCookie('st_csrf=tok');
+			csrfTokens.remember('tok');
 			handler.responder = (_req, index) =>
 				index === 0 ? throwError(unauthorized) : of(new HttpResponse({ status: 200 }));
 
@@ -481,7 +521,7 @@ describe('storefront AuthInterceptor', () => {
 		});
 
 		it('still rotates when the reason is one this client does not recognise', async () => {
-			setCookie('st_csrf=tok');
+			csrfTokens.remember('tok');
 			handler.responder = (_req, index) =>
 				index === 0 ? throwError(() => refusedWith('pin_locked')) : of(new HttpResponse({ status: 200 }));
 

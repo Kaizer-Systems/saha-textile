@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -60,12 +60,17 @@ export class ForgotPassword {
 	public readonly pending = this.authStore.pending;
 	public readonly channel = signal<Channel>('email');
 
-	/** What the server looks the account up by — an address, or a phone in E.164. */
-	public readonly identifier = computed(() => {
-		if (this.channel() === 'email') return String(this.form?.value.email ?? '').trim();
-		const dial = String(this.form?.value.country_code ?? '91');
-		return `+${dial}${String(this.form?.value.phone ?? '').trim()}`;
-	});
+	/**
+	 * What the server looks the account up by — an address, or a phone in E.164.
+	 *
+	 * A method, not a `computed`: the form is not a signal, so a `computed` kept the first value
+	 * and a corrected address was never sent.
+	 */
+	public identifier(): string {
+		if (this.channel() === 'email') return String(this.form.value.email ?? '').trim();
+		const dial = String(this.form.value.country_code ?? '91');
+		return `+${dial}${String(this.form.value.phone ?? '').trim()}`;
+	}
 
 	constructor() {
 		this.form = this.formBuilder.group({

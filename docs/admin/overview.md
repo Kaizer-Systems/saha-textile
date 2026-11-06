@@ -4,7 +4,7 @@ wide: true
 description: Start here before changing the Angular administration application.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - apps/admin/src/app
     - apps/api/src/admin
@@ -16,7 +16,7 @@ source_of_truth:
 
 The admin application is the private operator workspace for catalogue, orders, customers, promotions, content, configuration, and reporting. It is an Angular 22 single-page application with a broad lazy-loaded feature tree.
 
-The routed UI surface is substantial. Auth, Account Security, idle soft-lock, roles/operators, notification settings, and CRM customers are live against the API; most other domain reads still come from static JSON and many writes remain explicitly unwired. Treat the admin as a mature UI scaffold with selected live operator workflows—not as a fully operational commerce back office.
+The routed UI surface is substantial. Auth, Account Security, idle soft-lock, roles/operators, notification settings, CRM customers, the product form, old-address redirects, add-on templates, FAQ and product questions are live against the API; most other domain reads still come from static JSON and many writes remain explicitly unwired. Treat the admin as a mature UI scaffold with selected live operator workflows—not as a fully operational commerce back office.
 
 ## Recommended reading sequence
 

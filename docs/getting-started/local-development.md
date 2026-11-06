@@ -4,7 +4,7 @@ description: Local setup checklist for the monorepo and developer portal.
 search_keywords: 'mongo rs0 config.json env docker setup pnpm mongo:up check:naming replica set'
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - package.json
     - pnpm-workspace.yaml
@@ -35,6 +35,21 @@ pnpm turbo run lint typecheck test
 ```
 
 `pnpm lint` runs repository-policy guards before package linting. `check:naming` enforces the brand law; `check:browser-auth` rejects browser tokens, bearer headers, browser session persistence and cross-audience gateway calls; `check:i18n-parity` keeps active translation keys aligned; `check:route-contracts` rejects unnamed controller-local request shapes and unstable operation identifiers; and `check:permission-registry` keeps declared permissions inside the canonical registry. Each script documents its narrow allow marker where a deliberate exception is valid. Run the root lint command before finishing any change.
+
+## Other commands
+
+| Command                                                                                                      | What it does                                            |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| `pnpm dev:storefront`, `pnpm dev:admin`                                                                      | Start one app with hot reload                           |
+| `pnpm start:storefront`, `pnpm start:admin`                                                                  | Serve one app's production build                        |
+| `pnpm format:check`                                                                                          | Check formatting without changing files                 |
+| `pnpm check:account-naming`, `pnpm check:route-authorization`                                                | Run one repository guard (both also run in `pnpm lint`) |
+| `pnpm e2e:session-rotation`                                                                                  | Run the session rotation end-to-end suite               |
+| `pnpm stack:status`, `pnpm stack:logs`, `pnpm stack:down`                                                    | Inspect or stop the full local stack                    |
+| `pnpm redis:down`                                                                                            | Stop local Redis                                        |
+| `pnpm auth:set-local-credentials`                                                                            | Set local test credentials                              |
+| `pnpm mongo:reconcile-indexes`                                                                               | Bring database indexes in line with the models          |
+| `pnpm mongo:split-admin-users`, `pnpm mongo:rename-admin-user-permissions`, `pnpm mongo:extract-credentials` | One-off data migrations, already run locally            |
 
 ## Environment and services
 

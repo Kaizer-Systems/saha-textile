@@ -4,7 +4,7 @@ wide: true
 description: Dependency direction, pure business logic, port contracts, swappability, and current gaps.
 status: scaffolded
 audience: [beginner, backend]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - packages/core-domain/src
     - packages/core-domain/test
@@ -49,38 +49,41 @@ These functions are tested. They are not a complete checkout pricing engine: tax
 
 ## Current port inventory
 
-| Port                                | Capability                                                                     | Current adapter/binding               |
-| ----------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------- |
-| `ProductRepository`                 | Product read/list/save/delete                                                  | Mongo bound                           |
-| `CategoryRepository`                | Category read/tree/save/delete                                                 | Mongo bound                           |
-| `CartRepository`                    | Cart lookup/save/delete                                                        | Mongo bound                           |
-| `OrderRepository`                   | Order lookup/list/save/status                                                  | Mongo bound                           |
-| `CustomerRepository`                | Customer account/credential operations and stable duplicate-identifier refusal | Mongo bound; address writes atomic    |
-| `AdminUserRepository`               | Operator account and credential operations                                     | Mongo bound                           |
-| `CurrencyRepository`                | Currency lookup/list/upsert                                                    | Mongo bound                           |
-| `PromotionRepository`               | Promotion lookup/list/save                                                     | Mongo bound                           |
-| `AuthPort`                          | Password hashing and JWT operations                                            | Argon2/JWT bound in API               |
-| `PaymentGatewayPort`                | Create/verify a gateway payment                                                | No provider adapter                   |
-| `ShippingPort`                      | Obtain shipping quotes                                                         | No provider adapter                   |
-| `FxRatePort`                        | Fetch INR-derived exchange rates                                               | No provider adapter                   |
-| `StoragePort`                       | Object storage and signed upload                                               | No provider adapter                   |
-| `SearchPort`                        | Index/remove/search products                                                   | No Meilisearch adapter/binding        |
-| `TransactionManagerPort`            | Opaque atomic-work boundary; nested work joins                                 | Mongo bound and rs0 rollback-proven   |
-| `NotificationPort`                  | Deliver or deliberately suppress messaging                                     | Console development adapter bound     |
-| `YouTubePort`                       | Discover channel-feed videos                                                   | No provider adapter                   |
-| `VideoTranscodePort`                | Enqueue edge-owned HLS transcoding                                             | No worker adapter                     |
-| `CustomerAuthRepository`            | Customer-population sessions, OTP, reset, verification                         | Mongo adapter; HTTP flows partial     |
-| `AdminUserAuthRepository`           | Operator-population sessions, OTP, reset, verification, invites                | Mongo adapter; HTTP flows partial     |
-| `RoleRepository`                    | Role definitions and normalized grants                                         | Mongo bound; admin CRUD API live      |
-| `AdminUserRoleAssignmentRepository` | Active operator-role grant/revoke/list capability                              | Mongo bound; admin authority API live |
-| `AuthIdentityRepository`            | Sole writer for provider-neutral subject links; customer mapping is read-only  | Mongo bound; identity flows live      |
-| `PendingSignupRepository`           | Short-lived server-held verified-before-creation state                         | Mongo bound; signup flow live         |
-| `PendingContactChangeRepository`    | Short-lived proof state for email/phone replacement                            | Mongo bound; account flow live        |
-| `OAuthVerifierPort`                 | Provider token verification expressed without SDK payload types                | Google/Facebook edge adapters         |
-| Media repository                    | References, orphan lifecycle and garbage collection                            | Mongo adapter tested; workflow open   |
-| Inventory repository                | Atomic deltas and FIFO consume/release                                         | Mongo adapter tested; workflow open   |
-| Governance repositories             | Audit, consent, notification settings/templates/outbox                         | Mongo adapters; consent API-bound     |
-| Extended catalog repositories       | Placements, facets, attributes, variants, bundles, relations, content/reviews  | Mongo adapters tested; HTTP open      |
+| Port                                               | Capability                                                                     | Current adapter/binding                                                |
+| -------------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `ProductRepository`                                | Product read/list/save/delete                                                  | Mongo bound                                                            |
+| `CategoryRepository`                               | Category read/tree/save/delete                                                 | Mongo bound                                                            |
+| `CartRepository`                                   | Cart lookup/save/delete                                                        | Mongo bound                                                            |
+| `OrderRepository`                                  | Order lookup/list/save/status                                                  | Mongo bound                                                            |
+| `CustomerRepository`                               | Customer account/credential operations and stable duplicate-identifier refusal | Mongo bound; address writes atomic                                     |
+| `AdminUserRepository`                              | Operator account and credential operations                                     | Mongo bound                                                            |
+| `CurrencyRepository`                               | Currency lookup/list/upsert                                                    | Mongo bound                                                            |
+| `PromotionRepository`                              | Promotion lookup/list/save                                                     | Mongo bound                                                            |
+| `AuthPort`                                         | Password hashing and JWT operations                                            | Argon2/JWT bound in API                                                |
+| `PaymentGatewayPort`                               | Create/verify a gateway payment                                                | No provider adapter                                                    |
+| `ShippingPort`                                     | Obtain shipping quotes                                                         | No provider adapter                                                    |
+| `FxRatePort`                                       | Fetch INR-derived exchange rates                                               | No provider adapter                                                    |
+| `StoragePort`                                      | Object storage and signed upload                                               | No provider adapter                                                    |
+| `SearchPort`                                       | Index/remove/search products                                                   | `MeilisearchSearch` in `apps/api/src/search`, bound in API composition |
+| `TransactionManagerPort`                           | Opaque atomic-work boundary; nested work joins                                 | Mongo bound and rs0 rollback-proven                                    |
+| `NotificationPort`                                 | Deliver or deliberately suppress messaging                                     | Console development adapter bound                                      |
+| `YouTubePort`                                      | Discover channel-feed videos                                                   | No provider adapter                                                    |
+| `VideoTranscodePort`                               | Enqueue edge-owned HLS transcoding                                             | No worker adapter                                                      |
+| `CustomerAuthRepository`                           | Customer-population sessions, OTP, reset, verification                         | Mongo adapter; HTTP flows partial                                      |
+| `AdminUserAuthRepository`                          | Operator-population sessions, OTP, reset, verification, invites                | Mongo adapter; HTTP flows partial                                      |
+| `RoleRepository`                                   | Role definitions and normalized grants                                         | Mongo bound; admin CRUD API live                                       |
+| `AdminUserRoleAssignmentRepository`                | Active operator-role grant/revoke/list capability                              | Mongo bound; admin authority API live                                  |
+| `AuthIdentityRepository`                           | Sole writer for provider-neutral subject links; customer mapping is read-only  | Mongo bound; identity flows live                                       |
+| `PendingSignupRepository`                          | Short-lived server-held verified-before-creation state                         | Mongo bound; signup flow live                                          |
+| `PendingContactChangeRepository`                   | Short-lived proof state for email/phone replacement                            | Mongo bound; account flow live                                         |
+| `OAuthVerifierPort`                                | Provider token verification expressed without SDK payload types                | Google/Facebook edge adapters                                          |
+| Media repository                                   | References, orphan lifecycle and garbage collection                            | Mongo adapter tested; workflow open                                    |
+| Inventory repository                               | Atomic deltas and FIFO consume/release                                         | Mongo adapter tested; workflow open                                    |
+| Governance repositories                            | Audit, consent, notification settings/templates/outbox                         | Mongo adapters; consent API-bound                                      |
+| Extended catalog repositories                      | Placements, facets, attributes, variants, bundles, relations, content/reviews  | Mongo adapters tested; HTTP open                                       |
+| `ImageCodecPort`, `MediaJobQueuePort`              | Image encoding and the media job queue                                         |
+| `CdnPurgePort`                                     | Removes deleted objects from the CDN edge                                      |
+| `SeoRedirectRepository`, `AddonTemplateRepository` | Old addresses and add-on templates                                             |
 
 An interface does not make an adapter, collection, or use case operational. Mongo implementations exist for the expanded repository families; roles and assignments are now API-bound while most other expanded families remain tested adapter capabilities rather than complete HTTP workflows. Core's `resolveEffectivePermissions` unions transitional embedded grants with active assignments, ignores revoked/dangling roles, and caps assigned authority at the holder's coarse tier. `DuplicateIdentifierError` carries an email/phone unique-index race across the persistence boundary without leaking a Mongo error. `TransactionManagerPort` is bound in API composition; order creation uses it for order-save plus cart-consume, signup uses it for customer/credential/provider identity, and contact confirmation uses it for proof consumption/identifier/audit. Idempotency and inventory, payment, order audit, and outbox participation remain open. Core also owns the auth rate-limit policy and the canonical permission/role boundary without importing infrastructure.
 
@@ -138,7 +141,7 @@ The boundary is mechanically enforced in both positions. ESLint permits contract
 
 ## Current search boundary
 
-`SearchPort` names the ratified self-hosted Meilisearch target. No Meilisearch adapter is bound yet; the current catalogue service still reaches an interim Mongo regular-expression search implementation. The interface is the durable seam, Mongo remains authoritative, and the future search index is derived and rebuildable.
+`SearchPort` is bound to `MeilisearchSearch` (`apps/api/src/search/meilisearch-search.ts`). The index holds ids and words, and prices are read back from Mongo. If the index is down, `GET /catalog/search` answers 503; it never falls back to a Mongo text query. Rebuild the index with `pnpm --filter @saha-textile/api search:rebuild`.
 
 ## Domain test strategy
 

@@ -3,7 +3,7 @@ title: Source of Truth and Freshness
 description: Authority, conflict resolution and review timing for portal content.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - AGENTS.md
     - docs/engineering-live-context/owner-decisions-log.mdx

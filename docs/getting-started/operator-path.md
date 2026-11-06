@@ -3,7 +3,7 @@ title: Operator Path
 description: Onboarding route for deployment and runtime operations.
 status: planned
 audience: [operator]
-last_verified: '2026-11-03'
+last_verified: '2026-11-06'
 source_of_truth:
     - docs/engineering-live-context/execution-roadmap.mdx
     - .cursor/rules/mcp-tools.mdc

@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-11-04",
+	"lastVerified": "2026-11-06",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
 		"docs/engineering-live-context/project-progress.mdx"
@@ -73,7 +73,7 @@
 			"title": "Catalog, SEO, search & merchandising",
 			"deps": ["B", "C"],
 			"blockingGates": [],
-			"summary": "Catalog + SEO + self-hosted Meilisearch behind SearchPort + merchandising; live-only public reads; search outbox. Locale routes follow the locked URL law (every route locale-prefixed).",
+			"summary": "Catalog + SEO + self-hosted Meilisearch behind SearchPort + merchandising; live-only public reads. The storefront and the admin product form now read and write the API, and search is live; the search outbox and back-in-stock sends are still open. Locale routes follow the locked URL law (every route locale-prefixed).",
 			"dod": "Public + admin catalog CRUD; Meili indexes live products only; search/facet tests."
 		},
 		{
@@ -105,7 +105,7 @@
 			"title": "Docs, seeds, verification & infra close-out",
 			"deps": ["D", "E", "F", "G", "H", "I"],
 			"blockingGates": [],
-			"summary": "OpenAPI, runbook and environment docs aligned with §0b–0d, seeds and bulk fixtures, full lint/typecheck/test, and detailed deploy scripts.",
+			"summary": "OpenAPI, runbook and environment docs aligned with §0b–0d, seeds and bulk fixtures, full lint/typecheck/test, and detailed deploy scripts. Production decisions are recorded (2026-11-06): host-only cookies, on-demand staging, Spaces backups and SSH through Cloudflare Tunnel. The deploy pipeline itself is not built, and secret delivery is open as DEC-SECRETS-DELIVERY.",
 			"dod": "Docs aligned; seeds; green gates; deploy scripts documented; deferred seams reported."
 		}
 	]

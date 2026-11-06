@@ -4,7 +4,7 @@ wide: true
 description: High-level architecture and dependency direction.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - AGENTS.md
     - apps/api/.env.example

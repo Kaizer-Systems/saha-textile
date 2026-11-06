@@ -4,7 +4,7 @@ wide: true
 description: Verified controller routes, present controls, missing production guarantees, and target ownership.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts
@@ -123,11 +123,12 @@ These routes derive the customer id from the storefront session. A caller cannot
 | `GET`    | `/auth/admin/invites`                | Privileged sanitized invite inventory                                        | Pagination is not yet represented                  |
 | `DELETE` | `/auth/admin/invites/:id`            | Privileged revocation                                                        | OpenAPI omits permission/error schemas             |
 | `POST`   | `/auth/admin/invites/accept`         | Single-use invite acceptance and credential establishment                    | Provider delivery remains an adapter seam          |
+| `GET`    | `/admin/audit-logs`                  | `audit.index`; audit record list                                             | Read-only                                          |
 | `POST`   | `/auth/admin/resume`                 | Current admin session plus PIN or password revalidation                      | Live admin idle-lock modal consumes this route     |
 
 Access and refresh credentials are cookie-only. The global `SessionGuard` protects by default, checks audience plus token/permission versions, and routes opt out explicitly with `@Public()`. Session establishment/refresh writes the readable CSRF cookie whose value must be echoed in `x-csrf-token` for unsafe cookie requests; the guard also verifies its hash belongs to that session.
 
-`GET /auth/csrf` returns a 32-byte token in the body and readable cookie. For an active session it preserves a valid bound token or atomically rotates `csrfSecretHash` to recover a missing/desynchronized cookie; before login it issues an unbound acquisition token. OpenAPI declares the cookie scheme but still omits per-operation security requirements.
+`GET /auth/csrf` returns a 32-byte token in the body, which the browser app keeps in memory and echoes, and sets the same value as an httpOnly cookie. The response is `no-store`. For an active session it preserves a valid bound token or atomically rotates `csrfSecretHash` to recover a missing/desynchronized cookie; before login it issues an unbound acquisition token. OpenAPI declares the cookie scheme but still omits per-operation security requirements.
 
 ### Admin authorization routes
 
@@ -187,12 +188,46 @@ Authentication and authorization are complete for Chunk D (2026-11-03). **Curren
 
 ## Public catalogue routes
 
-| Method | Route                         | Present behavior                                         | Current boundary/gap                                                       |
-| ------ | ----------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `GET`  | `/catalog/categories`         | Returns sorted category records                          | Current shape is a simplified tree, not the ratified multi-placement model |
-| `GET`  | `/catalog/categories/:slug`   | Lookup by slug                                           | No SEO route/redirect/retired behavior contract                            |
-| `GET`  | `/catalog/products`           | Pagination/category/tag/search; repository forces `live` | Regex search remains transitional; no complete target response DTO         |
-| `GET`  | `/catalog/products/:idOrSlug` | Lookup by id then slug; hidden statuses return 404       | No complete target public response DTO                                     |
+| Method | Route                                      | Present behavior                                                              | Current boundary/gap                                                        |
+| ------ | ------------------------------------------ | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `GET`  | `/catalog/home`                            | Home page rails                                                               | Cached for 60 seconds                                                       |
+| `GET`  | `/catalog/placements`                      | One category page of live cards, with paging and attribute filters            | Cached for 60 seconds                                                       |
+| `GET`  | `/catalog/cards`                           | Live cards for a personal list of slugs                                       | `no-store`, because the list is personal                                    |
+| `GET`  | `/catalog/recent-purchases`                | Product and time of real sales from the last 24 hours; empty hides the popup  | Never returns a customer or an invented sale                                |
+| `GET`  | `/catalog/live-paths`                      | Live product slugs and category paths for the storefront's address checks     | Cached for 60 seconds                                                       |
+| `GET`  | `/catalog/search`                          | Meilisearch through `SearchPort`; ids come back and cards are read from Mongo | Answers 503 `search_unavailable` when the index is down, never a Mongo scan |
+| `GET`  | `/catalog/categories`                      | Returns sorted category records                                               | Current shape is a simplified tree, not the ratified multi-placement model  |
+| `GET`  | `/catalog/categories/:slug`                | Lookup by slug                                                                | Not the storefront's page read; see `/catalog/placements`                   |
+| `GET`  | `/catalog/products`                        | Pagination/category/tag/search; repository forces `live`                      | The search box uses `/catalog/search`, not this `search` parameter          |
+| `GET`  | `/catalog/products/legacy-redirects`       | Approved old-address rows for the storefront's address resolver               | `no-store`                                                                  |
+| `GET`  | `/catalog/products/:idOrSlug`              | Lookup by id then slug; hidden statuses return 404                            | No complete target public response DTO                                      |
+| `GET`  | `/catalog/products/:idOrSlug/view`         | Product page: option groups, variants, measurements; optional `variant`       | Cached for 60 seconds                                                       |
+| `GET`  | `/catalog/products/:idOrSlug/gallery`      | Product gallery                                                               | Cached for 60 seconds                                                       |
+| `GET`  | `/catalog/products/:idOrSlug/relations`    | Related, upsell and cross-sell cards                                          | Cached for 60 seconds                                                       |
+| `POST` | `/catalog/products/:idOrSlug/stock-alerts` | Signed-in storefront session; one alert per customer and variant              | The back-in-stock send is not working yet                                   |
+| `GET`  | `/catalog/faq`                             | Public FAQ for a product or category                                          | Cached for 60 seconds                                                       |
+| `GET`  | `/catalog/questions`, `POST` same          | Public questions for a product; a shopper can ask one                         | Answers come from the admin route below                                     |
+
+## Admin catalogue routes
+
+All use the admin audience and answer `no-store`.
+
+| Method   | Route                                           | Authorization   | Present behavior                             |
+| -------- | ----------------------------------------------- | --------------- | -------------------------------------------- |
+| `GET`    | `/admin/catalog/products`                       | `product.index` | Paged product list                           |
+| `GET`    | `/admin/catalog/products/replacement-targets`   | `product.edit`  | Products a discontinued product can point to |
+| `GET`    | `/admin/catalog/products/:idOrSlug`             | `product.index` | Full product for the form                    |
+| `POST`   | `/admin/catalog/products/:idOrSlug`             | `product.edit`  | Saves the product form                       |
+| `POST`   | `/admin/catalog/products/:idOrSlug/discontinue` | `product.edit`  | Discontinues a product                       |
+| `GET`    | `/admin/catalog/redirects`                      | `product.index` | Old-address rows                             |
+| `POST`   | `/admin/catalog/redirects`                      | `product.edit`  | Saves a row                                  |
+| `DELETE` | `/admin/catalog/redirects?sourcePath=`          | `product.edit`  | Removes a row                                |
+| `GET`    | `/admin/catalog/addon-templates`                | `product.index` | Add-on and measurement templates             |
+| `POST`   | `/admin/catalog/addon-templates`                | `product.edit`  | Saves a template                             |
+| `DELETE` | `/admin/catalog/addon-templates/:code`          | `product.edit`  | Removes a template                           |
+| `GET`    | `/admin/catalog/faq`, `POST` same               | Admin session   | Lists and saves FAQ entries                  |
+| `GET`    | `/admin/catalog/questions`                      | Admin session   | Lists shopper questions                      |
+| `POST`   | `/admin/catalog/questions/:id/answer`           | Admin session   | Answers one                                  |
 
 ### Critical public-visibility rule
 

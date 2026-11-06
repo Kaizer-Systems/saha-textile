@@ -4,7 +4,7 @@ description: Verified Mongoose models, indexes, repositories, mappers, seed tool
 search_keywords: 'mongo rs0 replica set connection uri directConnection models indexes repositories'
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - packages/adapters-db-mongo/src/models
     - packages/adapters-db-mongo/src/repositories
@@ -36,6 +36,8 @@ The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps,
 | Catalogue/merchandising  | `categoryPlacements`, `categoryFacetConfigs`, `attributeDefinitions`, `productVariants`, `productBundles`, `productRelations`                                                 | Tested repositories exist; broad HTTP catalogue-management adoption remains open                                                                                          |
 | Media/inventory          | `mediaAssets`, `inventoryLedger`, `inventoryCostLayers`                                                                                                                       | Tested repository/index behavior exists; business workflow adoption remains open                                                                                          |
 | Governance/notifications | `auditLogs`, `notificationChannelSettings`, `notificationTemplates`, `messageOutbox`                                                                                          | Tested durable evidence/outbox stores exist; provider delivery and complete side-effect orchestration remain open                                                         |
+| Catalogue operations     | `addonTemplates`, `seoRedirects`                                                                                                                                              | Live through the admin catalogue routes                                                                                                                                   |
+| Content and settings     | `contentBlocks`, `mediaRoles`, `siteSettings`                                                                                                                                 | Live through the admin content, media and settings routes                                                                                                                 |
 | Content                  | `faqEntries`, `productQuestions`, `reviews`, `ratingAggregates`                                                                                                               | Tested repositories exist; public/admin content operations remain open                                                                                                    |
 
 ### Physical names are declared, not inferred
@@ -57,7 +59,7 @@ save/upsert → strip public id → findByIdAndUpdate($set) → mapper
 
 ### Current query behavior
 
-- Product listing supports category, tag, status, regex search, pagination, newest-first sort, and a `CatalogAudience` that defaults to public. Public list and direct reads are centrally restricted to `live`; public callers cannot widen the filter.
+- Product listing supports category, tag, status, Mongo search, pagination, newest-first sort, and a `CatalogAudience` that defaults to public. Public list and direct reads are centrally restricted to `live`; public callers cannot widen the filter.
 - Category tree returns a flat depth/display-order sort; hierarchy reconstruction is a consumer concern.
 - Active promotions use start/end-window filtering and priority sort.
 - Customer and admin-user credential lookups explicitly request otherwise hidden password/PIN hashes; public mapping returns neither. Password and provider identity records are stored outside account documents.

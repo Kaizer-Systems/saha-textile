@@ -3,7 +3,7 @@ title: PayPal
 description: Non-INR gateway. Section 1 (company-provided documentation) and section 2 (endpoints we use) are both empty until the PayPal documentation pass.
 status: deferred
 audience: [backend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 search_keywords: PayPal non-INR international gross-up
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts

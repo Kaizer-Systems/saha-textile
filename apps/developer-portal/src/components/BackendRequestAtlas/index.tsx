@@ -212,7 +212,7 @@ const requestPaths: RequestPath[] = [
 		path: '/search/typeahead',
 		summary: 'Serve typo-tolerant multilingual discovery without making a derived index authoritative.',
 		current:
-			'SearchPort names the ratified self-hosted Meilisearch target, but no Meilisearch adapter is bound. ProductRepository currently implements an escaped Mongo regular-expression fallback.',
+			'SearchPort is bound to self-hosted Meilisearch for the storefront search box. If the index is down the route answers 503; it never falls back to Mongo.',
 		target: 'Self-hosted Meilisearch implements SearchPort. Mongo changes enqueue an outbox, the index contains public derived data, facet configuration controls exposure, and a complete reindex rebuilds from Mongo.',
 		verify: 'Destroy and rebuild the index, test unpublished removal, Bengali/transliteration aliases, configured facets, no-result capture, stale outbox recovery, and graceful degraded behavior.',
 		layers: [

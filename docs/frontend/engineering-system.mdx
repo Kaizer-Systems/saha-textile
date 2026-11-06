@@ -4,7 +4,7 @@ wide: true
 description: Shared decision rules for state, contracts, layers, reusable UI, and cross-application behavior.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/admin/src/app/app.config.ts
@@ -57,7 +57,7 @@ Both apps read their public, non-secret configuration at boot from `public/confi
 - The committed `config.json` holds localhost defaults; deployments overwrite or mount it at container start.
 - Under SSR (no browser `fetch`), the loader reads `SAHA_TEXTILE_PUBLIC_CONFIG` from the environment, else falls back to defaults. A failed fetch never blocks boot.
 
-The auth interceptor sends `withCredentials: true` on every request so the httpOnly cookie sessions flow, and echoes the readable CSRF cookie (`st_csrf` on the storefront, `st_admin_csrf` in the admin) as `x-csrf-token` on unsafe methods. It attaches no bearer token: the API's `SessionGuard` reads the access cookie only, and the client holds no credential to forward. The framework-free `@saha-textile/http-transport` package owns the shared CSRF contract, refresh single-flight, audience-specific cross-tab locks, URL/request-id helpers and safe refusal mapping; each application gateway retains its own routes and business policy. Repository lint guards reject browser token storage, bearer headers and cross-audience auth calls.
+The auth interceptor sends `withCredentials: true` on every request so the httpOnly cookie sessions flow, and sends the CSRF token as `x-csrf-token` on unsafe methods. The token comes from the API's reply and lives in memory (`core/auth/csrf-tokens.ts`), because no script can read the API host's cookies. It attaches no bearer token: the API's `SessionGuard` reads the access cookie only, and the client holds no credential to forward. The framework-free `@saha-textile/http-transport` package owns the shared CSRF contract, refresh single-flight, audience-specific cross-tab locks, URL/request-id helpers and safe refusal mapping; each application gateway retains its own routes and business policy. Repository lint guards reject browser token storage, bearer headers and cross-audience auth calls.
 
 ## Contracts today
 
@@ -67,7 +67,7 @@ These contracts are the preferred trust boundary as real endpoints replace fixtu
 
 ## Reusable UI reality
 
-Both applications currently maintain their own extensive `shared/ui` trees. A repository-level `packages/ui` implementation is not present in the current snapshot.
+Both applications currently maintain their own extensive `shared/ui` trees. A repository-level shared UI package does not exist in the current snapshot.
 
 That means:
 

@@ -4,7 +4,7 @@ wide: true
 description: OpenAPI source-of-truth rules, current Scalar scaffold, completeness gates, Test Request security, and build topology.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - apps/api/src/openapi.ts
     - apps/api/src/generate-openapi.ts

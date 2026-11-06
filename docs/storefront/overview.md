@@ -4,7 +4,7 @@ wide: true
 description: Start here before changing the public Angular and AnalogJS storefront.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - apps/storefront/src/app
     - apps/storefront/vite.config.ts
@@ -35,7 +35,7 @@ flowchart LR
     Query --> Service["Typed data-access service"]
     Service --> Source{"Current source"}
     Source -->|Partial| API["Saha Textile API"]
-    Source -->|Transitional| JSON["Static JSON fixtures"]
+    Source -->|Transitional| JSON["Static JSON fixtures: demo cart, settings, and pages not yet moved"]
 ```
 
 The page layer should stay thin. A route identifies the customer journey and composes a feature. The feature owns presentation and user interaction. Query/store layers own asynchronous or shared state. Services own transport details.
@@ -46,7 +46,10 @@ The page layer should stay thin. A route identifies the customer journey and com
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Routing              | Approximately 40 page entry files, including dynamic slug and catch-all routes                                                                                                        | Implemented | Routes are discovered from filenames, not a central route array.                                                              |
 | Rendering            | Analog SSR enabled; Nitro emits a Node server                                                                                                                                         | Implemented | Static generation is disabled and no routes are prerendered.                                                                  |
-| Catalogue list       | `ProductService.getCatalog()` calls `/api/products`                                                                                                                                   | Scaffolded  | Product-detail and several related readers still use JSON data.                                                               |
+| Catalogue            | Home, category pages, cards, product page and redirects read the API (`/catalog/*`)                                                                                                   | Implemented | 390 demo products are seeded; the storefront no longer reads `product.json`                                                   |
+| Search               | Search box calls `/catalog/search` (Meilisearch)                                                                                                                                      | Implemented | Shows "search unavailable" when the index is down                                                                             |
+| First paint          | Header menu renders on the server; product pages show a skeleton; toasts and shop errors are readable                                                                                 | Implemented | Proven on the production build                                                                                                |
+| Purchase popup       | `/catalog/recent-purchases`                                                                                                                                                           | Implemented | Real sales only; hidden until paid orders exist                                                                               |
 | Product media        | 3:4 cards and the PDP gallery read the pipeline's `ResolvedImage` (`core/media/resolved-image.ts`): card `srcset`, gallery widths, 2000 px zoom; banners use `<picture>` per viewport | Scaffolded  | Real photos reach the demo catalogue only through the local `seed:local-catalog-photos` tool until catalog reads serve media. |
 | Cart                 | Classic NgRx reducer/effects/selectors plus browser persistence                                                                                                                       | Implemented | This is the current client cart, not the future authenticated server cart.                                                    |
 | Server data          | TanStack Angular Query functions exist across the data-access layer                                                                                                                   | Scaffolded  | Many query functions still wrap JSON-backed services.                                                                         |

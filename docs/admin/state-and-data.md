@@ -4,7 +4,7 @@ wide: true
 description: Ownership rules for TanStack Query, SignalStore, classic NgRx, services, interceptors, and transitional fixtures.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - apps/admin/src/app/app.config.ts
     - apps/admin/src/app/core/config/runtime-config.ts
@@ -20,14 +20,14 @@ The admin combines server-state queries, application stores, a client cart workf
 
 ## Ownership map
 
-| Concern                      | Current owner                  | Examples                                                                                                                     |
-| ---------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| Remote list/detail lifecycle | TanStack Angular Query         | Products, categories, orders, roles, users, customers, notifications                                                         |
-| Transport                    | Typed gateways / `HttpClient`  | Live admin gateways for roles, users, customers, notifications, media, banners, reviews, YouTube; fixture services elsewhere |
-| Session/shell state          | NgRx SignalStore               | Auth (incl. `/me` profile), menu, loader, settings                                                                           |
-| Create-order cart            | Classic NgRx                   | Cart reducer and effects                                                                                                     |
-| Form interaction             | Angular reactive forms/signals | Product, coupon, user, role, customer, account security forms                                                                |
-| Cross-cutting HTTP behavior  | Interceptors                   | Cookie credentials, CSRF, loader, error handling, SSR placeholder                                                            |
+| Concern                      | Current owner                  | Examples                                                                                                                                                                            |
+| ---------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Remote list/detail lifecycle | TanStack Angular Query         | Products, categories, orders, roles, users, customers, notifications                                                                                                                |
+| Transport                    | Typed gateways / `HttpClient`  | Live admin gateways for roles, users, customers, notifications, media, banners, reviews, YouTube, products, redirects, add-on templates, FAQ, questions; fixture services elsewhere |
+| Session/shell state          | NgRx SignalStore               | Auth (incl. `/me` profile), menu, loader, settings                                                                                                                                  |
+| Create-order cart            | Classic NgRx                   | Cart reducer and effects                                                                                                                                                            |
+| Form interaction             | Angular reactive forms/signals | Product, coupon, user, role, customer, account security forms                                                                                                                       |
+| Cross-cutting HTTP behavior  | Interceptors                   | Cookie credentials, CSRF, loader, error handling, SSR placeholder                                                                                                                   |
 
 ## Read path today
 

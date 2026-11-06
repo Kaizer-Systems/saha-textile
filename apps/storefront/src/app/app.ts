@@ -1,15 +1,17 @@
 import { Component, DOCUMENT, inject, NgZone } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { Meta, Title } from '@angular/platform-browser';
-import { Router, RouterModule } from '@angular/router';
+import { NavigationStart, Router, RouterModule } from '@angular/router';
 
 import { NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
-import { Observable } from 'rxjs';
+import { Observable, filter } from 'rxjs';
 
 import { SettingStore } from '@core/state/setting.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { Layout } from '@layout/layout';
+
+const SITE_TITLE = 'Saha Textile';
 
 @Component({
 	selector: 'app-root',
@@ -42,6 +44,7 @@ export class App {
 	private currentMessageIndex = 0;
 	private messages = ['⚡ Come Back !!', '🎉 Offers for you...'];
 	private currentMessage: string;
+	private pageTitle = SITE_TITLE;
 	private delay = 1000; // Delay between messages in milliseconds
 
 	constructor() {
@@ -88,22 +91,23 @@ export class App {
 			theme?.seo?.meta_description &&
 				this.meta.updateTag({ property: 'description', content: theme?.seo?.meta_description });
 			theme?.seo?.meta_tags && this.meta.updateTag({ property: 'keywords', content: theme?.seo?.meta_tags });
+		});
 
-			document.addEventListener('visibilitychange', () => {
-				this.ngZone.run(() => {
-					this.isTabInFocus = !document.hidden;
-					if (this.isTabInFocus) {
-						clearTimeout(this.timeoutId);
-						// Set site title
-						return this.titleService.setTitle(
-							theme?.general?.site_title && theme?.general?.site_tagline
-								? `${theme?.general?.site_title} | ${theme?.general?.site_tagline}`
-								: 'FastKart Marketplace: Where Vendors Shine Together',
-						);
-					} else {
-						this.updateMessage();
-					}
-				});
+		// A page without its own title must not keep the previous page's.
+		this.router.events
+			.pipe(filter((event) => event instanceof NavigationStart))
+			.subscribe(() => this.titleService.setTitle(SITE_TITLE));
+
+		document.addEventListener('visibilitychange', () => {
+			this.ngZone.run(() => {
+				this.isTabInFocus = !document.hidden;
+				if (this.isTabInFocus) {
+					clearTimeout(this.timeoutId);
+					this.titleService.setTitle(this.pageTitle);
+				} else {
+					this.pageTitle = this.titleService.getTitle();
+					this.updateMessage();
+				}
 			});
 		});
 	}

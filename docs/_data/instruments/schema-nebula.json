@@ -17,7 +17,8 @@
 		"packages/adapters-db-mongo/src/models",
 		"packages/adapters-db-mongo/test/collection-names.test.ts",
 		"packages/adapters-db-mongo/test/rbac-persistence.test.ts",
-		"packages/contracts/src/notification.ts"
+		"packages/contracts/src/notification.ts",
+		"packages/contracts/src/stock-alert.ts"
 	],
 	"sourceAliases": {
 		"catalog": "docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx",
@@ -26,7 +27,8 @@
 		"decisions": "docs/engineering-live-context/owner-decisions-log.mdx",
 		"pending": "docs/engineering-live-context/pending-decisions.mdx",
 		"knowledgeBase": "docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx",
-		"notifications": "packages/contracts/src/notification.ts"
+		"notifications": "packages/contracts/src/notification.ts",
+		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
 		"nodeCount": 70,
@@ -702,7 +704,7 @@
 			"label": "productInsightSets",
 			"cluster": "analytics-reporting",
 			"currentState": "existing",
-			"targetAction": "keep",
+			"targetAction": "refactor",
 			"owningChunks": ["H"],
 			"blockingDecisions": [],
 			"purpose": "Weekly persisted business inference sets for storefront rails and admin merchandising decisions.",
@@ -715,11 +717,11 @@
 			"label": "stockAlerts",
 			"cluster": "governance-messaging",
 			"currentState": "existing",
-			"targetAction": "keep",
+			"targetAction": "refactor",
 			"owningChunks": ["F"],
 			"blockingDecisions": [],
 			"purpose": "One signed-in customer waiting on one variant; unique per customer and variant, marked notified only after a real send.",
-			"source": "contracts StockAlert",
+			"source": "stockAlerts StockAlert",
 			"currentModel": "packages/adapters-db-mongo/src/models/stock-alert.model.ts",
 			"references": ["customers", "products", "productVariants"]
 		},

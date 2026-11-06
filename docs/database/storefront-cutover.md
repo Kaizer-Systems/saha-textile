@@ -8,7 +8,7 @@ source_of_truth:
     - packages/adapters-db-mongo/src/seed/seed-demo-catalogue.ts
     - packages/adapters-db-mongo/src/seed/legacy-addresses.ts
     - apps/api/src/search/meilisearch-search.ts
-    - apps/api/src/worker/weekly-insight.ts
+    - packages/core-domain/src/catalog/weekly-insight.ts
 ---
 
 The shop reads products from Mongo. Meilisearch is a private container in the local stack. It stores words and ids. The selling price is read back from Mongo. If search is down, a category page still renders and the search box says search is unavailable.

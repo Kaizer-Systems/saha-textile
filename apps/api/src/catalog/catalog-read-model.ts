@@ -1,5 +1,12 @@
 import type { Product, ProductVariant } from '@saha-textile/contracts';
-import { badgeSlots, cardPrice, mrpPriceINR, selectDefaultVariant, sellingPriceINR } from '@saha-textile/core-domain';
+import {
+	badgeSlots,
+	cardPrice,
+	mrpPriceINR,
+	selectDefaultVariant,
+	sellingPriceINR,
+	type CardPrice,
+} from '@saha-textile/core-domain';
 
 export interface PricedRow {
 	sellingINR: number;
@@ -39,11 +46,12 @@ export function skuView(row: ProductVariant, madeToOrder: boolean) {
 export function productReadModel(product: Product, rows: readonly ProductVariant[], variantSku?: string | null) {
 	const madeToOrder = product.madeToOrder && product.status === 'live';
 	const priced = rows.map((row) => pricedRow(row, madeToOrder));
+	// Rows nobody can buy show the product's own price, so a card always has one to show.
 	const price = cardPrice(
-		priced.length
+		priced.some((row) => row.live)
 			? priced
 			: [{ sellingINR: product.basePriceINR, mrpINR: null, buyable: true, live: true, quantity: 0 }],
-	);
+	) as CardPrice;
 	const sellable = priced.filter((row) => row.buyable).reduce((sum, row) => sum + row.quantity, 0);
 	const badges = badgeSlots({
 		now: new Date(),

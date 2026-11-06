@@ -7,7 +7,8 @@ import { environment } from '../../../../public/environments/environment';
  * browser-facing, NON-SECRET config is delivered per environment via
  * `public/config.json`, fetched at app init — never baked into the bundle
  * with fileReplacements. The committed config.json holds localhost defaults
- * only; deploys overwrite/mount it at container start (roadmap §0d).
+ * only; in deployments the edge Nginx serves the real one. Mounting it into the
+ * container does not work: the server would cut it to the committed file's size.
  */
 export interface RuntimeConfig {
 	/** NestJS API origin, e.g. https://localhost:4000 */

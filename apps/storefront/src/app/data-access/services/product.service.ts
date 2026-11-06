@@ -13,6 +13,7 @@ import {
 	pageToProduct,
 	placementToCatalog,
 } from '@core/catalog/from-api';
+import { backgroundRequest } from '@core/interceptors/background-request';
 import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProduct, IProductModel, IProductRelations } from '@data-access/interfaces/product.interface';
@@ -31,7 +32,7 @@ export class ProductService {
 	getProducts(payload?: Params): Observable<IProductModel> {
 		return this.http.get<IProductModel>(`${environment.URL}/product.json`, {
 			params: payload,
-			headers: { 'x-st-background': '1' },
+			context: backgroundRequest(),
 		});
 	}
 
@@ -50,7 +51,7 @@ export class ProductService {
 			.join('|');
 		return this.http
 			.get<ApiPlacement>(`${environment.apiUrl}/catalog/placements`, {
-				headers: { 'x-st-background': '1' },
+				context: backgroundRequest(),
 				params: {
 					path,
 					page: payload?.['page'] ?? 1,
@@ -62,16 +63,14 @@ export class ProductService {
 	}
 
 	home(): Observable<{ newArrivals: IProduct[]; bestsellers: IProduct[]; featured: IProduct[]; sale: IProduct[] }> {
-		return this.http
-			.get<ApiHome>(`${environment.apiUrl}/catalog/home`, { headers: { 'x-st-background': '1' } })
-			.pipe(
-				map((home) => ({
-					newArrivals: home.newArrivals.map(cardToProduct),
-					bestsellers: home.bestsellers.map(cardToProduct),
-					featured: home.featured.map(cardToProduct),
-					sale: home.sale.map(cardToProduct),
-				})),
-			);
+		return this.http.get<ApiHome>(`${environment.apiUrl}/catalog/home`, { context: backgroundRequest() }).pipe(
+			map((home) => ({
+				newArrivals: home.newArrivals.map(cardToProduct),
+				bestsellers: home.bestsellers.map(cardToProduct),
+				featured: home.featured.map(cardToProduct),
+				sale: home.sale.map(cardToProduct),
+			})),
+		);
 	}
 
 	search(term: string): Observable<IProduct[]> {
@@ -79,7 +78,7 @@ export class ProductService {
 			.get<{ items: Array<{ id: string; slug: string; title: string }> }>(
 				`${environment.apiUrl}/catalog/search`,
 				{
-					headers: { 'x-st-background': '1' },
+					context: backgroundRequest(),
 					params: { q: term },
 				},
 			)
@@ -104,7 +103,7 @@ export class ProductService {
 	cardsFor(slugs: string[]): Observable<IProduct[]> {
 		return this.http
 			.get<ApiCard[]>(`${environment.apiUrl}/catalog/cards`, {
-				headers: { 'x-st-background': '1' },
+				context: backgroundRequest(),
 				params: { slug: slugs },
 			})
 			.pipe(map((cards) => cards.map(cardToProduct)));

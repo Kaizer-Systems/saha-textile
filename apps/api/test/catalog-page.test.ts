@@ -150,3 +150,43 @@ describe('product page read', () => {
 		await expect(pageService('disabled').page('kurti-palazzo-set')).rejects.toBeInstanceOf(NotFoundException);
 	});
 });
+
+describe('category listing read', () => {
+	function listingService() {
+		const queries: { categoryId?: string }[] = [];
+		const products = {
+			list: async (query: { categoryId?: string }) => {
+				queries.push(query);
+				return { items: [], total: 0, page: 1, pageSize: 500 };
+			},
+		};
+		const placements = { findByPath: async () => null };
+		const service = new CatalogPublicService(
+			products as never,
+			{} as never,
+			placements as never,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		return { service, queries };
+	}
+
+	it('answers an empty path with the all-products listing', async () => {
+		const { service, queries } = listingService();
+
+		const page = await service.placement('');
+
+		expect(page).toMatchObject({ path: '', title: 'All products', breadcrumb: [], indexable: true });
+		expect(queries[0]?.categoryId).toBeUndefined();
+	});
+
+	it('still answers an unknown path as not found', async () => {
+		const { service } = listingService();
+
+		await expect(service.placement('no/such/path')).rejects.toBeInstanceOf(NotFoundException);
+	});
+});

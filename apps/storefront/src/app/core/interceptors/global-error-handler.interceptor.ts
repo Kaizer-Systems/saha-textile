@@ -1,12 +1,22 @@
-import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
+import {
+	HttpErrorResponse,
+	HttpEvent,
+	HttpHandler,
+	HttpInterceptor,
+	HttpRequest,
+	HttpResponse,
+} from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { isDomainRefusal } from '@saha-textile/http-transport';
-import { Observable, catchError, throwError } from 'rxjs';
+import { Observable, catchError, tap, throwError } from 'rxjs';
 
 import { ErrorService } from '@data-access/services/error.service';
 import { LoggingService } from '@data-access/services/logging.service';
 import { NotificationService } from '@data-access/services/notification.service';
+
+import { environment } from '../../../../public/environments/environment';
+import { BACKGROUND_REQUEST } from './background-request';
 
 @Injectable()
 export class GlobalErrorHandlerInterceptor implements HttpInterceptor {
@@ -14,8 +24,16 @@ export class GlobalErrorHandlerInterceptor implements HttpInterceptor {
 	private logger = inject(LoggingService);
 	private notifier = inject(NotificationService);
 
+	/** The current outage has been announced. A good API response ends the outage. */
+	private outageAnnounced = false;
+
 	intercept<T>(request: HttpRequest<T>, next: HttpHandler): Observable<HttpEvent<T>> {
 		return next.handle(request).pipe(
+			tap((event) => {
+				if (event instanceof HttpResponse && request.url.startsWith(environment.apiUrl)) {
+					this.outageAnnounced = false;
+				}
+			}),
 			catchError((error: HttpErrorResponse) => {
 				// A 401 is an authentication OUTCOME, not a user-facing error, and it belongs
 				// to `AuthInterceptor` alone. Two reasons this must not fall through here:
@@ -39,8 +57,16 @@ export class GlobalErrorHandlerInterceptor implements HttpInterceptor {
 
 				// Background catalogue and banner reads have their own empty state. Toasting
 				// every one of them put a repeating box on each navigation. A shopper action
-				// (add to cart, save, question) does not send this header, so it still says why.
-				if (request.headers.get('x-st-background') === '1') return throwError(() => error);
+				// (add to cart, save, question) is not marked, so it still says why.
+				if (request.context.get(BACKGROUND_REQUEST)) return throwError(() => error);
+
+				// One message per outage. Every read failing at once is one problem, so only the
+				// first says so. A shopper's own action always gets its answer.
+				const isOutage = error.status === 0 || error.status >= 500;
+				if (isOutage && request.method === 'GET') {
+					if (this.outageAnnounced) return throwError(() => error);
+					this.outageAnnounced = true;
+				}
 
 				// Handle HTTP errors here
 				console.error('HTTP Error:', error.error);

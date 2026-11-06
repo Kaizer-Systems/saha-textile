@@ -521,6 +521,11 @@ a {
 	background-image: none;
 	border: 1px solid $colour !important;
 
+	// ngx-toastr sets white text for its coloured card. This theme's card is white.
+	.toast-message {
+		color: $colour;
+	}
+
 	&::after {
 		@include pos;
 		left: 0;

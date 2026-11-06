@@ -74,8 +74,10 @@ export class App {
 			}
 
 			// Set Favicon
+			// The theme is empty until it loads. index.html already has a working icon.
+			const favicon = theme?.logo?.favicon_icon?.original_url;
 			this.favIcon = document.querySelector('#appIcon');
-			this.favIcon!.href = theme?.logo?.favicon_icon?.original_url;
+			if (favicon) this.favIcon!.href = favicon;
 
 			theme?.seo?.og_title && this.meta.updateTag({ property: 'og:title', content: theme?.seo?.og_title });
 			theme?.seo?.og_description &&

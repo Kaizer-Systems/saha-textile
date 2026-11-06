@@ -1,8 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { Meta, Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { cleanListingParams } from '@saha-textile/core-domain/listing';
 import { TranslocoService } from '@jsverse/transloco';
 
 import { combineLatest, Observable } from 'rxjs';
@@ -73,19 +75,22 @@ export class Collection {
 				.split('?')[0]
 				.replace(/^\/collections\/?/, '')
 				.replace(/\/$/, '');
-			const categoryPath = decodeURIComponent(path) || (query['category'] as string) || '';
+			const categoryPath = decodeURIComponent(path);
+			// Only well-formed filters reach the page, so a hand-edited address shows no junk chips.
+			const clean = cleanListingParams(query);
 			const next: Params = {
-				page: query['page'] ? query['page'] : 1,
+				page: clean['page'],
 				paginate: 25, // page size (see above)
 				status: 1,
 				field: query['field'] ? query['field'] : this.filter()['field'],
-				price: query['price'] ? query['price'] : '',
-				category: categoryPath,
+				price: clean['price'] ?? '',
+				path: categoryPath,
+				category: clean['category'] ?? '',
 				tag: query['tag'] ? query['tag'] : '',
 				sort: query['sort'] ? query['sort'] : '',
-				sortBy: query['sortBy'] ? query['sortBy'] : this.filter()['sortBy'],
-				rating: query['rating'] ? query['rating'] : '',
-				attribute: query['attribute'] ? query['attribute'] : '',
+				sortBy: clean['sortBy'] ?? '',
+				rating: clean['rating'] ?? '',
+				attribute: clean['attribute'] ?? '',
 			};
 			this.filter.set(next);
 		});
@@ -94,6 +99,14 @@ export class Collection {
 		// its canonical identity (so an extra-placement URL canonicalises to the home
 		// path) and returns the breadcrumb trail.
 		this.product$.subscribe((res) => this.applySeo(res));
+
+		// A path the catalogue does not have answers the real 404 page, at the same address.
+		effect(() => {
+			const error = this.productsQuery.error();
+			if (error instanceof HttpErrorResponse && error.status === 404) {
+				void this.router.navigate(['/404'], { skipLocationChange: true });
+			}
+		});
 	}
 
 	private applySeo(res: ICatalogResponse | undefined) {
@@ -113,7 +126,7 @@ export class Collection {
 				'@type': 'ListItem',
 				position: index + 1,
 				name: product.name,
-				url: `/product/${product.slug}`,
+				url: this.seo.absoluteUrl(`/product/${product.slug}`),
 			})),
 		});
 		this.seo.applyJsonLd('collection-crumbs', {
@@ -124,7 +137,7 @@ export class Collection {
 					'@type': 'ListItem',
 					position: index + 1,
 					name: crumb.name,
-					item: `/collections/${crumb.path}`,
+					item: this.seo.absoluteUrl(`/collections${crumb.path ? `/${crumb.path}` : ''}`),
 				}),
 			),
 		});
@@ -146,10 +159,5 @@ export class Collection {
 		// alternates follow it. Without a response (still loading, or the catalogue failed)
 		// the page keeps its own address rather than claiming to be the general page.
 		if (res) this.seo.setCanonicalPath(`/collections${cat ? '/' + cat.canonical_path : ''}`);
-
-		// Filtered / paged combinations are noindex,follow (protect crawl budget).
-		const f = this.filter();
-		const filtered = listingRobots(f) === 'noindex,follow';
-		this.meta.updateTag({ name: 'robots', content: filtered ? 'noindex,follow' : 'index,follow' });
 	}
 }

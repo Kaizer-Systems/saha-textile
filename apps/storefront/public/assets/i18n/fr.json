@@ -1,4 +1,9 @@
 {
+	"new_arrivals": "Nouveautés",
+	"recently_viewed": "Vus récemment",
+	"bestsellers": "Meilleures ventes",
+	"featured_products": "En vedette",
+	"on_sale": "Promotions",
 	"1": "un",
 	"2": "deux",
 	"3": "trois",
@@ -529,6 +534,7 @@
 	"sold": "Vendue",
 	"sold_by": "Vendu par",
 	"sold_out": "Épuisé",
+	"stock_alert_saved": "Nous vous enverrons un e-mail dès que cet article sera de nouveau disponible.",
 	"notify_me": "Prévenez-moi",
 	"stay_anonymous": "Rester anonyme",
 	"search_unavailable": "La recherche est indisponible",

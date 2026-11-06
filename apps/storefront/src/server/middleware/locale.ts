@@ -1,7 +1,7 @@
 import { defineEventHandler, getCookie, sendRedirect, setResponseHeaders } from 'h3';
 
 import { environment } from '../../../public/environments/environment';
-import { refreshLegacyCatalog, storefrontAddress } from '../../app/core/i18n/legacy-address';
+import { legacyCatalogReady, refreshLegacyCatalog, storefrontAddress } from '../../app/core/i18n/legacy-address';
 import { LOCALE_COOKIE } from '../../app/core/i18n/locale';
 
 /**
@@ -33,12 +33,13 @@ export default defineEventHandler(async (event) => {
 	if (!redirect) return;
 
 	if ('status' in redirect && redirect.status === 410 && !('location' in redirect)) {
+		// Before the catalogue has loaded this 410 may be wrong, so nothing may cache it.
 		setResponseHeaders(event, {
-			'Cache-Control': 'public, max-age=3600',
+			'Cache-Control': legacyCatalogReady() ? 'public, max-age=3600' : 'no-store',
 			'X-Robots-Tag': 'noindex',
 		});
 		event.node.res.statusCode = 410;
-		const gone = '/en/gone';
+		const gone = path.startsWith('/fr') ? '/fr/gone' : '/en/gone';
 		event.node.req.url = gone;
 		if ('originalUrl' in req) req.originalUrl = gone;
 		return;

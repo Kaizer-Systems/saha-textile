@@ -20,48 +20,12 @@ export class CollectionPriceFilter {
 	readonly filter = input<Params>();
 
 	public prices = [
-		{
-			id: 1,
-			price: 100,
-			text: 'below',
-			value: '100',
-		},
-		{
-			id: 2,
-			minPrice: 100,
-			maxPrice: 200,
-			value: '0-200',
-		},
-		{
-			id: 3,
-			minPrice: 200,
-			maxPrice: 400,
-			value: '200-400',
-		},
-		{
-			id: 4,
-			minPrice: 400,
-			maxPrice: 600,
-			value: '400-600',
-		},
-		{
-			id: 5,
-			minPrice: 600,
-			maxPrice: 800,
-			value: '600-800',
-		},
-		{
-			id: 6,
-			minPrice: 800,
-			maxPrice: 1000,
-			value: '800-1000',
-		},
-		{
-			id: 7,
-			price: 1000,
-			text: 'above',
-			value: '1000',
-		},
+		{ id: 1, price: 1000, text: 'below', value: '0-1000' },
+		{ id: 2, minPrice: 1000, maxPrice: 2500, value: '1000-2500' },
+		{ id: 3, minPrice: 2500, maxPrice: 5000, value: '2500-5000' },
+		{ id: 4, minPrice: 5000, maxPrice: 10000, value: '5000-10000' },
+		{ id: 5, minPrice: 10000, maxPrice: 20000, value: '10000-20000' },
+		{ id: 6, price: 20000, text: 'above', value: '20000-' },
 	];
 
 	public selectedPrices: string[] = [];

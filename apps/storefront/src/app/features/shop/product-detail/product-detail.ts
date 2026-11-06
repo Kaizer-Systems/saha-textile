@@ -1,4 +1,4 @@
-import { AsyncPipe, DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { AsyncPipe, isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, HostListener, PLATFORM_ID, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
@@ -47,6 +47,14 @@ import { YouMayAlsoLike } from './you-may-also-like/you-may-also-like';
  * reused detail widgets (info, delivery, tabs, related, FBT, sidebar) + sticky.
  * Mounted at `/<locale>/product/:slug`.
  */
+/** Schema.org's names for the options it knows. Anything else is named as the shop names it. */
+const VARIES_BY: Record<string, string> = {
+	color: 'https://schema.org/color',
+	size: 'https://schema.org/size',
+	material: 'https://schema.org/material',
+	pattern: 'https://schema.org/pattern',
+};
+
 const uniqueCards = (cards: IProduct[]): IProduct[] =>
 	cards.filter((card, index) => cards.findIndex((other) => other.id === card.id) === index);
 
@@ -104,11 +112,14 @@ export class ProductDetail {
 		const product = this.product();
 		const productLabel = this.transloco.translate('product');
 		if (!product) return { title: productLabel, items: [] };
+		const trail = product.breadcrumb_trail ?? [];
 		return {
 			title: product.name,
 			items: [
-				{ label: productLabel, active: true },
-				{ label: product.name, active: false },
+				...(trail.length
+					? trail.map((crumb) => ({ label: crumb.name, url: crumb.path, active: false }))
+					: [{ label: productLabel, active: false }]),
+				{ label: product.name, active: true },
 			],
 		};
 	});
@@ -124,8 +135,6 @@ export class ProductDetail {
 
 	private readonly galleryRef = viewChild(ProductGallery);
 	readonly owlCar = computed(() => this.galleryRef()?.carousel());
-
-	private readonly document = inject(DOCUMENT);
 
 	public isBrowser: boolean;
 
@@ -146,13 +155,15 @@ export class ProductDetail {
 		// of time leaves the page to the browser instead.
 		effect(() => {
 			const error = this.productQuery.error();
-			if (error instanceof HttpErrorResponse && error.status === 404) void this.router.navigate(['/404']);
+			if (error instanceof HttpErrorResponse && error.status === 404) {
+				void this.router.navigate(['/404'], { skipLocationChange: true });
+			}
 		});
 
 		effect(() => {
 			const product = this.product();
 			if (!this.isBrowser || !product?.slug) return;
-			rememberRecentView(window.sessionStorage, product.slug);
+			rememberRecentView(window.localStorage, product.slug);
 		});
 
 		// An unknown SKU redirects once to the clean path: a real 302 on the server, a replace in the browser.
@@ -171,62 +182,19 @@ export class ProductDetail {
 		effect(() => {
 			const product = this.product();
 			if (!product) return;
-			const scriptId = 'product-group';
-			let script = this.document.getElementById(scriptId) as HTMLScriptElement | null;
-			if (!script) {
-				script = this.document.createElement('script');
-				script.id = scriptId;
-				script.type = 'application/ld+json';
-				this.document.head.appendChild(script);
-			}
-			const variants = product.variations ?? [];
-			const offer = (variation: {
-				sku?: string;
-				name?: string;
-				sale_price?: number;
-				price?: number;
-				quantity?: number;
-			}) => ({
-				'@type': 'Offer',
-				priceCurrency: 'INR',
-				price: variation.sale_price || variation.price,
-				availability: variation.quantity ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-			});
-			script.textContent = JSON.stringify(
-				variants.length > 1
-					? {
-							'@context': 'https://schema.org',
-							'@type': 'ProductGroup',
-							name: product.name,
-							productGroupID: product.slug,
-							hasVariant: variants.map((variation) => ({
-								'@type': 'Product',
-								sku: variation.sku,
-								name: variation.name || product.name,
-								offers: offer(variation),
-							})),
-						}
-					: {
-							'@context': 'https://schema.org',
-							'@type': 'Product',
-							name: product.name,
-							sku: variants[0]?.sku || product.sku,
-							offers: offer(
-								variants[0] ?? {
-									sale_price: product.sale_price,
-									price: product.price,
-									quantity: product.quantity,
-								},
-							),
-						},
-			);
+			this.seo.applyJsonLd('product-group', this.structuredProduct(product));
 			this.seo.applyJsonLd('product-crumbs', {
 				'@context': 'https://schema.org',
 				'@type': 'BreadcrumbList',
 				itemListElement: [
-					{ '@type': 'ListItem', position: 1, name: 'Product', item: '/product' },
-					{ '@type': 'ListItem', position: 2, name: product.name, item: `/product/${product.slug}` },
-				],
+					...(product.breadcrumb_trail ?? []).map((crumb) => ({ name: crumb.name, path: crumb.path })),
+					{ name: product.name, path: `/product/${product.slug}` },
+				].map((crumb, index) => ({
+					'@type': 'ListItem',
+					position: index + 1,
+					name: crumb.name,
+					item: this.seo.absoluteUrl(crumb.path),
+				})),
 			});
 		});
 
@@ -240,6 +208,54 @@ export class ProductDetail {
 					image: product.product_meta_image?.original_url,
 				});
 		});
+	}
+
+	/**
+	 * Availability follows the buyable flag, so a made-to-order piece with no stock on hand
+	 * still reads as in stock. Every address and image is absolute, as search engines need.
+	 */
+	private structuredProduct(product: IProduct) {
+		const url = this.seo.absoluteUrl(`/product/${product.slug}`);
+		const thumbnail = product.product_thumbnail?.original_url;
+		const image = thumbnail ? this.seo.absoluteAsset(thumbnail) : undefined;
+		const offer = (price: number, inStock: boolean) => ({
+			'@type': 'Offer',
+			priceCurrency: 'INR',
+			price,
+			url,
+			availability: `https://schema.org/${inStock ? 'InStock' : 'OutOfStock'}`,
+		});
+		const variants = product.variations ?? [];
+		if (variants.length > 1) {
+			return {
+				'@context': 'https://schema.org',
+				'@type': 'ProductGroup',
+				name: product.name,
+				url,
+				image,
+				productGroupID: product.slug,
+				variesBy: product.attributes.map((attribute) => VARIES_BY[attribute.slug] ?? attribute.name),
+				hasVariant: variants.map((variation) => ({
+					'@type': 'Product',
+					sku: variation.sku,
+					name: variation.name || product.name,
+					image,
+					offers: offer(variation.sale_price || variation.price, variation.stock_status === 'in_stock'),
+				})),
+			};
+		}
+		const [only] = variants;
+		return {
+			'@context': 'https://schema.org',
+			'@type': 'Product',
+			name: product.name,
+			url,
+			image,
+			sku: only?.sku || product.sku,
+			offers: only
+				? offer(only.sale_price || only.price, only.stock_status === 'in_stock')
+				: offer(product.sale_price || product.price, product.stock_status === 'in_stock'),
+		};
 	}
 
 	@HostListener('window:scroll')

@@ -22,12 +22,12 @@ const catalogue: ICatalogResponse = {
 	last_page: 1,
 	facets: {
 		fabric: [
-			{ value: 'Pure silk', count: 2 },
-			{ value: 'Cotton', count: 1 },
+			{ value: 'Pure silk', label: 'Pure silk', count: 2 },
+			{ value: 'Cotton', label: 'Cotton', count: 1 },
 		],
 		occasion: [
-			{ value: 'Festive', count: 2 },
-			{ value: 'Everyday', count: 1 },
+			{ value: 'Festive', label: 'Festive', count: 2 },
+			{ value: 'Everyday', label: 'Everyday', count: 1 },
 		],
 	},
 	price_range: { min: 1200, max: 9800 },

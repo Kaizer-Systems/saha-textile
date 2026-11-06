@@ -1,4 +1,5 @@
 import { DOCUMENT } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Meta } from '@angular/platform-browser';
 import { NavigationEnd, Router } from '@angular/router';
@@ -7,11 +8,23 @@ import { RESPONSE } from '@analogjs/router/tokens';
 import { filter } from 'rxjs';
 
 import { runtimeConfig } from '@core/config/runtime-config';
+import { backgroundRequest } from '@core/interceptors/background-request';
+
+import { environment } from '../../../../public/environments/environment';
 
 import { ACTIVE_LOCALE } from './active-locale';
 import { SUPPORTED_LOCALES, isPrivatePath, withLocale } from './locale';
 
 const NOT_FOUND_KEY = 'notFound';
+
+/** Stored descriptions can hold markup; a search snippet cannot. */
+const plainText = (html: string): string =>
+	html
+		.replace(/<[^>]*>/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.slice(0, 160);
+
 const GONE_KEY = 'gone';
 
 /**
@@ -48,6 +61,7 @@ export class LocaleSeo {
 	private locale = inject(ACTIVE_LOCALE);
 	/** Present only while rendering on the server. */
 	private response = inject(RESPONSE, { optional: true });
+	private http = inject(HttpClient);
 
 	constructor() {
 		this.router.events
@@ -71,12 +85,23 @@ export class LocaleSeo {
 			this.doc.title = input.title;
 			this.meta.updateTag({ property: 'og:title', content: input.title });
 		}
-		if (input.description) {
-			this.meta.updateTag({ name: 'description', content: input.description });
-			this.meta.updateTag({ property: 'og:description', content: input.description });
+		const description = input.description && plainText(input.description);
+		if (description) {
+			this.meta.updateTag({ name: 'description', content: description });
+			this.meta.updateTag({ property: 'og:description', content: description });
 		}
 		if (input.robots) this.meta.updateTag({ name: 'robots', content: input.robots });
-		if (input.image) this.meta.updateTag({ property: 'og:image', content: input.image });
+		if (input.image) this.meta.updateTag({ property: 'og:image', content: this.absoluteAsset(input.image) });
+	}
+
+	/** A page address in this language, in full. */
+	absoluteUrl(appPath: string): string {
+		return this.absolute(withLocale(this.locale, appPath));
+	}
+
+	/** A stored file reference in full. Search engines and social cards ignore relative ones. */
+	absoluteAsset(url: string): string {
+		return /^https?:\/\//.test(url) ? url : this.absolute(`/${url.replace(/^\//, '')}`);
 	}
 
 	/**
@@ -97,7 +122,8 @@ export class LocaleSeo {
 		const path = appUrl.split(/[?#]/)[0] || '/';
 		const notFound = this.isNotFound();
 		const gone = this.isGone();
-		if (notFound && this.response) this.response.statusCode = 404;
+		// The address middleware may already have ruled this address gone; that answer stands.
+		if (notFound && this.response && this.response.statusCode !== 410) this.response.statusCode = 404;
 		if (gone && this.response) this.response.statusCode = 410;
 		if (notFound || gone || isPrivatePath(path)) {
 			this.meta.updateTag({ name: 'robots', content: 'noindex,follow' });
@@ -108,6 +134,27 @@ export class LocaleSeo {
 		}
 		this.meta.removeTag("name='robots'");
 		this.setCanonicalPath(path);
+		this.applySeoRoute(path);
+	}
+
+	/** Stored head data fills what a page did not set itself; the page's own values win. */
+	private applySeoRoute(appPath: string): void {
+		this.http
+			.get<{ route: { title: string; description: string; robots: string } | null }>(
+				`${environment.apiUrl}/catalog/seo-route`,
+				{ context: backgroundRequest(), params: { path: appPath, locale: this.locale } },
+			)
+			.subscribe({
+				next: ({ route }) => {
+					if (!route) return;
+					if (!this.meta.getTag("name='description'")?.content) {
+						this.applyDocument({ description: route.description });
+					}
+					if (!this.meta.getTag("name='robots'")) this.applyDocument({ robots: route.robots });
+				},
+				// The head defaults already stand; a page never fails over its meta tags.
+				error: () => undefined,
+			});
 	}
 
 	/** Whether the page now showing is declared a not-found page by its route. */

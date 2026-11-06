@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { HttpRequest } from '@angular/common/http';
+import { HttpErrorResponse, HttpRequest } from '@angular/common/http';
 import { InjectionToken, PLATFORM_ID, TransferState, inject, makeStateKey } from '@angular/core';
 
 import { QueryClient, hydrate, type DehydratedState } from '@tanstack/angular-query-experimental';
@@ -48,6 +48,10 @@ const PUBLIC_REQUESTS = [
 export const isPublicRequest = (request: HttpRequest<unknown>): boolean =>
 	!request.withCredentials && PUBLIC_REQUESTS.some((pattern) => pattern.test(request.url));
 
+/** A 4xx is the API's answer, not a hiccup: asking again gets the same one. */
+const isRefusal = (error: unknown): boolean =>
+	error instanceof HttpErrorResponse && error.status >= 400 && error.status < 500;
+
 /**
  * One QueryClient per application injector, so every server render gets its own cache.
  * A module-level client was shared by every request: it kept serving a product after it
@@ -58,7 +62,12 @@ export const QUERY_CLIENT = new InjectionToken<QueryClient>('st QueryClient', {
 	factory: () => {
 		const browser = isPlatformBrowser(inject(PLATFORM_ID));
 		const client = new QueryClient({
-			defaultOptions: { queries: { staleTime: STALE_TIME_MS, retry: browser ? 3 : false } },
+			defaultOptions: {
+				queries: {
+					staleTime: STALE_TIME_MS,
+					retry: (count, error) => browser && count < 3 && !isRefusal(error),
+				},
+			},
 		});
 		if (browser) {
 			const transfer = inject(TransferState);

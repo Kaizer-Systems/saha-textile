@@ -6,6 +6,7 @@ import { NavigationStart, Router, RouterModule } from '@angular/router';
 import { NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
 import { Observable, filter } from 'rxjs';
 
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { SettingStore } from '@core/state/setting.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
@@ -32,6 +33,7 @@ export class App {
 	private titleService = inject(Title);
 	private ngZone = inject(NgZone);
 	private meta = inject(Meta);
+	private seo = inject(LocaleSeo);
 
 	private settingStore = inject(SettingStore);
 	private siteConfigStore = inject(SiteConfigStore);
@@ -86,7 +88,10 @@ export class App {
 			theme?.seo?.og_description &&
 				this.meta.updateTag({ property: 'og:description', content: theme?.seo?.og_description });
 			theme?.seo?.og_image?.original_url &&
-				this.meta.updateTag({ property: 'og:image', content: theme?.seo?.og_image?.original_url });
+				this.meta.updateTag({
+					property: 'og:image',
+					content: this.seo.absoluteAsset(theme.seo.og_image.original_url),
+				});
 			theme?.seo?.meta_title && this.meta.updateTag({ property: 'title', content: theme?.seo?.meta_title });
 			theme?.seo?.meta_description &&
 				this.meta.updateTag({ property: 'description', content: theme?.seo?.meta_description });

@@ -1,12 +1,9 @@
 import { NgClass } from '@angular/common';
-import { Component, computed, effect, inject, input } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { Component, effect, inject, input } from '@angular/core';
 
 import { CarouselModule, OwlOptions } from 'ngx-owl-carousel-o';
-import { Observable } from 'rxjs';
 
-import { IProduct, IProductModel } from '@data-access/interfaces/product.interface';
-import { injectProductsQuery } from '@data-access/queries/product.queries';
+import { IProduct } from '@data-access/interfaces/product.interface';
 import { ProductService } from '@data-access/services/product.service';
 import { ProductBox } from '@shared/ui/product-box/product-box';
 import { SkeletonProductBox } from '@shared/ui/product-box/skeleton-product-box/skeleton-product-box';
@@ -23,14 +20,13 @@ export class Product {
 	productService = inject(ProductService);
 
 	readonly style = input<string>('vertical');
-	readonly productIds = input<Array<number | string>>([]);
 	readonly boxClass = input<string>();
 	readonly productStyle = input<string>('product-modern');
 	readonly layout = input<string>();
 	readonly sliderOption = input<OwlOptions>(data.productSlider);
 	readonly slider = input<boolean>();
 	readonly showItem = input<number>();
-	/** When set, the rail renders these products instead of filtering product.json. */
+	/** The cards this rail shows. */
 	readonly supplied = input<IProduct[] | null>(null);
 	/** `first` marks the leading image high and the rest of the row low. `below` is lazy. */
 	readonly fold = input<'first' | 'below'>('below');
@@ -40,9 +36,6 @@ export class Product {
 
 	public skeletonItems = Array.from({ length: 6 }, (_, index) => index);
 
-	private readonly productsQuery = injectProductsQuery(() => undefined);
-	product$: Observable<IProductModel | undefined> = toObservable(computed(() => this.productsQuery.data()));
-
 	constructor() {
 		effect(() => {
 			const supplied = this.supplied();
@@ -50,28 +43,13 @@ export class Product {
 				this.productService.skeletonLoader = true;
 				return;
 			}
-			if (supplied) {
-				this.products = supplied;
-				this.productService.skeletonLoader = false;
-				return;
-			}
-			this.productService.skeletonLoader = this.productsQuery.isFetching();
+			this.products = supplied ?? [];
+			this.productService.skeletonLoader = false;
 		});
 	}
 
 	priority(index: number): 'high' | 'low' | 'lazy' {
 		if (this.fold() !== 'first') return 'lazy';
 		return index === 0 ? 'high' : 'low';
-	}
-
-	ngOnChanges() {
-		if (this.supplied()) return;
-		if (Array.isArray(this.productIds())) {
-			this.product$.subscribe((products) => {
-				this.products = (products?.data ?? []).filter((product) =>
-					this.productIds()?.some((id) => String(id) === String(product?.id)),
-				);
-			});
-		}
 	}
 }

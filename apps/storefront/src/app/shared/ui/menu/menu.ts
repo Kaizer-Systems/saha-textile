@@ -9,23 +9,17 @@ import { Observable } from 'rxjs';
 import { IBlog, IBlogModel } from '@data-access/interfaces/blog.interface';
 import { ICategory } from '@data-access/interfaces/category.interface';
 import { IMenu } from '@data-access/interfaces/menu.interface';
-import { IProduct } from '@data-access/interfaces/product.interface';
 import { injectBlogsQuery } from '@data-access/queries/blog.queries';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
-import { injectDealProductsQuery } from '@data-access/queries/product.queries';
 import * as data from '@shared/data/menu';
-
-import { ProductBox } from '../product-box/product-box';
 
 @Component({
 	selector: 'app-menu',
 	templateUrl: './menu.html',
 	styleUrls: ['./menu.scss'],
-	imports: [NgTemplateOutlet, NgClass, RouterLink, ProductBox, DatePipe, TranslocoModule],
+	imports: [NgTemplateOutlet, NgClass, RouterLink, DatePipe, TranslocoModule],
 })
 export class Menu {
-	private readonly dealQuery = injectDealProductsQuery(() => ({ status: 1, paginate: 2 }));
-	product$: Observable<IProduct[]> = toObservable(computed(() => this.dealQuery.data() ?? []));
 	private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1, paginate: 10 }));
 	blog$: Observable<IBlogModel | undefined> = toObservable(computed(() => this.blogsQuery.data()));
 	// Real taxonomy for the header nav. Reference data (staleTime Infinity), shared cache with the rest of the app.
@@ -37,7 +31,6 @@ export class Menu {
 		const categories = this.categoriesQuery.data()?.data ?? [];
 		return categories.length ? this.buildMenu(categories, this.isMobileView()) : data.menu;
 	});
-	public products: IProduct[];
 	public blogs: IBlog[];
 
 	// < xl (1200px) = the offcanvas is in use. The theme can't render multi-level collapsible menus there
@@ -57,12 +50,6 @@ export class Menu {
 		if (isPlatformBrowser(this.platformId)) {
 			this.isMobileView.set(window.innerWidth < 1200);
 		}
-
-		this.product$.subscribe((product) => {
-			if (product) {
-				this.products = product.slice(0, 2);
-			}
-		});
 
 		this.blog$.subscribe((blog) => {
 			if (blog && blog.data) {

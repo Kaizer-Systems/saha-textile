@@ -10,6 +10,7 @@ import { CatalogService } from './catalog.service';
 import { CategoriesController } from './categories.controller';
 import { ContentService } from './content.service';
 import { ProductsController } from './products.controller';
+import { RecentPurchasesService } from './recent-purchases.service';
 import { StockAlertsController } from './stock-alerts.controller';
 import { StorefrontCatalogController } from './storefront-catalog.controller';
 
@@ -28,6 +29,6 @@ import { StorefrontCatalogController } from './storefront-catalog.controller';
 		QuestionsController,
 		AdminQuestionsController,
 	],
-	providers: [CatalogService, CatalogPublicService, ContentService],
+	providers: [CatalogService, CatalogPublicService, ContentService, RecentPurchasesService],
 })
 export class CatalogModule {}

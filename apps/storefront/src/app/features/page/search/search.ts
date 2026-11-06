@@ -7,7 +7,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
 
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
-import { injectProductsQuery } from '@data-access/queries/product.queries';
+import { injectCatalogQuery } from '@data-access/queries/product.queries';
 import { ProductService } from '@data-access/services/product.service';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
@@ -45,12 +45,13 @@ export class Search {
 		search: '',
 	});
 
-	private readonly productsQuery = injectProductsQuery(() => this.filter());
+	private readonly productsQuery = injectCatalogQuery(() => this.filter());
 
 	constructor() {
-		// Search filter drives the query; results + skeleton flag mirror its state
-		// (was a GetProductsAction dispatch reading the NGXS snapshot).
-		effect(() => (this.products = this.productsQuery.data()?.data ?? []));
+		// With no search term the page lists the catalogue; a term shows the search results below.
+		effect(() => {
+			if (!this.filter()['search']) this.products = this.productsQuery.data()?.data ?? [];
+		});
 		effect(() => (this.productService.skeletonLoader = this.productsQuery.isFetching()));
 
 		this.route.queryParams.subscribe((params) => {

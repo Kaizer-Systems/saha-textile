@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { OptionDisplayStyle, SemanticRole } from './attribute';
-import { Id, Slug } from './common';
+import { Id, IsoDateTime, Slug } from './common';
 import { ResolvedImage } from './media';
 
 const money = z.number().int().nonnegative();
@@ -50,6 +50,16 @@ export const CatalogHome = z.object({
 	sale: z.array(CatalogCard),
 });
 export type CatalogHome = z.infer<typeof CatalogHome>;
+
+/** A real recent sale. Product and time only: nothing here may identify the buyer or the order. */
+export const RecentPurchase = z.object({
+	card: CatalogCard,
+	purchasedAt: IsoDateTime,
+});
+export type RecentPurchase = z.infer<typeof RecentPurchase>;
+
+export const RecentPurchases = z.object({ items: z.array(RecentPurchase) });
+export type RecentPurchases = z.infer<typeof RecentPurchases>;
 
 const swatchImage = ResolvedImage.nullable().superRefine((image, ctx) => {
 	const roles = Object.keys(image?.roles ?? {});

@@ -5,10 +5,12 @@ import { firstValueFrom } from 'rxjs';
 
 import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
-import { IProduct, IProductModel } from '@data-access/interfaces/product.interface';
+import { IProduct } from '@data-access/interfaces/product.interface';
 import { ProductService } from '@data-access/services/product.service';
 
-/** Map the collection page's filter signal to the Nitro catalog route's query params. */
+const RECENT_PURCHASES_REFRESH_MS = 5 * 60 * 1000;
+
+/** Map the collection page's filter signal to the catalogue query params. */
 function toCatalogParams(f?: Params): Params {
 	const p: Params = { page: f?.['page'] ?? 1, limit: f?.['paginate'] ?? 25 };
 	if (f?.['category']) p['category'] = f['category'];
@@ -31,10 +33,9 @@ function toCatalogParams(f?: Params): Params {
 }
 
 /**
- * Category-listing query (Pass B) — hits the Nitro `/api/products` route for a
- * server-side filtered/sorted/paginated lean slice + disjunctive facets. Keyed on
- * the filter params; keepPreviousData holds the old page visible while the next
- * one loads. Replaces the "download product.json + client filter" path here.
+ * Category-listing query: the catalogue API's server-side filtered, paginated slice with
+ * disjunctive facets. Keyed on the filter params; keepPreviousData holds the old page
+ * visible while the next one loads.
  */
 export function injectCatalogQuery(params: () => Params | undefined) {
 	const productService = inject(ProductService);
@@ -42,99 +43,6 @@ export function injectCatalogQuery(params: () => Params | undefined) {
 		queryKey: ['catalog', toCatalogParams(params())],
 		queryFn: () => firstValueFrom(productService.getCatalog(toCatalogParams(params()))),
 		placeholderData: keepPreviousData,
-		staleTime: Infinity,
-	}));
-}
-
-/**
- * Client-side filter/sort/search transform, ported verbatim from the old
- * ProductState.getProducts reducer. The mock endpoint returns the full list and
- * ignores query params, so filtering/sorting happens here. On a real backend
- * this moves server-side and the transform can be dropped.
- */
-export function filterProducts(result: IProductModel, payload?: Params): IProductModel {
-	let products = result.data || [];
-
-	if (payload) {
-		products = result?.data?.filter(
-			(product) =>
-				(payload['store_slug'] && product?.store?.slug == payload['store_slug']) ||
-				(payload['category'] &&
-					product?.categories.length &&
-					product?.categories?.some((category) => payload['category']?.split(',')?.includes(category.slug))),
-		);
-
-		products = products && products.length ? products : result.data;
-
-		if (products) {
-			if (payload['sortBy']) {
-				if (payload['sortBy'] === 'asc') {
-					products = products.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-				} else if (payload['sortBy'] === 'desc') {
-					products = products.sort((a, b) => (a.id > b.id ? -1 : a.id < b.id ? 1 : 0));
-				} else if (payload['sortBy'] === 'a-z') {
-					products = products.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-				} else if (payload['sortBy'] === 'z-a') {
-					products = products.sort((a, b) => (a.name > b.name ? -1 : a.name < b.name ? 1 : 0));
-				} else if (payload['sortBy'] === 'low-high') {
-					products = products.sort((a, b) => (a.sale_price < b.sale_price ? -1 : a.price > b.price ? 1 : 0));
-				} else if (payload['sortBy'] === 'high-low') {
-					products = products.sort((a, b) => (a.sale_price > b.sale_price ? -1 : a.price < b.price ? 1 : 0));
-				}
-			} else if (!payload['ids']) {
-				products = products.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-			}
-		}
-
-		if (payload['search']) {
-			products = products.filter((product) =>
-				product.name.toLowerCase().includes(payload['search'].toLowerCase()),
-			);
-		}
-	}
-
-	return {
-		...result,
-		data: products,
-		total: result?.total ? result?.total : result.data ? result.data.length : 0,
-	};
-}
-
-/**
- * Product list (replaces ProductState.product + GetProductsAction). Keyed on the
- * filter params; the transform above is applied in `select`. Pass `undefined`
- * for the raw, untransformed list (theme widgets that filter by their own ids).
- */
-export function injectProductsQuery(params: () => Params | undefined, enabled: () => boolean = () => true) {
-	const productService = inject(ProductService);
-	return injectQuery(() => ({
-		queryKey: ['products', params()],
-		queryFn: () => firstValueFrom(productService.getProducts(params())),
-		enabled: enabled(),
-		select: (res: IProductModel): IProductModel => filterProducts(res, params()),
-		staleTime: Infinity,
-	}));
-}
-
-/**
- * Deal products (replaces ProductState.dealProducts + GetDealProductsAction).
- * Filters the list to the given ids, falling back to the last two products.
- */
-export function injectDealProductsQuery(params: () => Params | undefined) {
-	const productService = inject(ProductService);
-	return injectQuery(() => ({
-		queryKey: ['products', 'deal', params()],
-		queryFn: () => firstValueFrom(productService.getProducts(params())),
-		select: (res: IProductModel): IProduct[] => {
-			const ids = params()?.['ids'];
-			const matched = res?.data?.filter((product) =>
-				ids
-					?.split(',')
-					?.map((id: number) => Number(id))
-					.includes(product.id),
-			);
-			return matched && matched.length ? matched : res?.data?.reverse()?.slice(0, 2);
-		},
 		staleTime: Infinity,
 	}));
 }
@@ -154,6 +62,17 @@ export function injectProductBySlugQuery(slug: () => string | undefined, variant
 		placeholderData: (previous?: IProduct, previousQuery?: { queryKey: readonly unknown[] }) =>
 			previousQuery?.queryKey[2] === slug() ? previous : undefined,
 		staleTime: Infinity,
+	}));
+}
+
+/** Real sales for the popup. The browser asks every few minutes, so it notices new orders by itself. */
+export function injectRecentPurchasesQuery(enabled: () => boolean) {
+	const productService = inject(ProductService);
+	return injectQuery(() => ({
+		queryKey: ['catalog', 'recent-purchases'],
+		queryFn: () => firstValueFrom(productService.recentPurchases()),
+		enabled: enabled(),
+		refetchInterval: RECENT_PURCHASES_REFRESH_MS,
 	}));
 }
 

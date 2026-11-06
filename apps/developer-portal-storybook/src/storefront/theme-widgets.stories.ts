@@ -1,17 +1,13 @@
 import type {
 	IBundles,
-	IDealOfDays,
 	IIServices,
 	INewsLetter,
 	IOffer,
-	ISliderProductsTokyo,
 } from '../../../storefront/src/app/data-access/interfaces/theme.interface';
 import { Banner } from '../../../storefront/src/app/features/themes/widgets/banner/banner';
 import { Blog } from '../../../storefront/src/app/features/themes/widgets/blog/blog';
 import { Categorie } from '../../../storefront/src/app/features/themes/widgets/categorie/categorie';
 import { Collection as ThemeCollection } from '../../../storefront/src/app/features/themes/widgets/collection/collection ';
-import { Deal } from '../../../storefront/src/app/features/themes/widgets/deal/deal';
-import { FourColumnProduct } from '../../../storefront/src/app/features/themes/widgets/four-column-product/four-column-product';
 import { HomeBanner } from '../../../storefront/src/app/features/themes/widgets/home-banner/home-banner';
 import { Newsletter } from '../../../storefront/src/app/features/themes/widgets/newsletter/newsletter';
 import { Product } from '../../../storefront/src/app/features/themes/widgets/product/product';
@@ -49,50 +45,13 @@ const services: IIServices[] = [
 	{ title: 'Careful delivery', sub_title: 'Protected worldwide', image_url: imageUrl, status: true },
 ];
 const offers: IOffer[] = [{ coupon_code: 'LOOM10', image_url: imageUrl, status: true }];
-const productColumns: ISliderProductsTokyo = {
-	status: true,
-	product_slider_1: {
-		title: 'New arrivals',
-		description: 'Recently added',
-		product_ids: [901, 912, 934],
-		status: true,
-	},
-};
-const deal: IDealOfDays = {
-	title: 'Studio selection',
-	status: true,
-	image_url: imageUrl,
-	label: 'Limited',
-	deals: [
-		{
-			offer_title: 'Heritage weave release',
-			product_id: simpleProduct.id,
-			status: true,
-			end_date: '2027-07-26T00:00:00.000Z',
-			product: simpleProduct,
-		},
-	],
-};
-
 const meta = {
 	title: 'Storefront/Home/Theme Widget Library',
 	component: Service,
 	tags: ['autodocs'],
 	decorators: [
 		moduleMetadata({
-			imports: [
-				Banner,
-				Blog,
-				Categorie,
-				ThemeCollection,
-				Deal,
-				FourColumnProduct,
-				HomeBanner,
-				Newsletter,
-				Product,
-				Service,
-				WalletOffer,
-			],
+			imports: [Banner, Blog, Categorie, ThemeCollection, HomeBanner, Newsletter, Product, Service, WalletOffer],
 		}),
 	],
 	parameters: {
@@ -141,21 +100,8 @@ export const CollectionRail: Story = {
 
 export const ProductRail: Story = {
 	render: () => ({
-		template: '<app-theme-product [productIds]="[901, 912, 934]" style="horizontal" [showItem]="3" />',
-	}),
-};
-
-export const FourColumnProducts: Story = {
-	render: () => ({
-		props: { productColumns },
-		template: '<app-four-column-product [data]="productColumns" />',
-	}),
-};
-
-export const DealPanel: Story = {
-	render: () => ({
-		props: { deal },
-		template: '<app-deal [data]="deal" />',
+		props: { products: [simpleProduct] },
+		template: '<app-theme-product [supplied]="products" style="horizontal" [showItem]="3" />',
 	}),
 };
 

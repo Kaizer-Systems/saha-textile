@@ -893,6 +893,12 @@ Later owner decision (2026-11-05): the Redirects status field also allows 302, f
 - A live product that is only out of stock stays a normal page. Disabled is a 404 and reversible. Discontinued is a 410 unless one real replacement is named, in which case it is a 301. A retired collection goes to its nearest live parent, or 410.
 - Old WordPress addresses resolve in one hop: junk patterns, then `seoRedirects`, then a same-path `/en/` prefix only when that page exists, otherwise 410 on the original URL. The homepage is not the fallback. A real 301 lasts as long as its target. There is no calendar expiry.
 
+## Owner decision round (2026-11-06) — recent-purchase popup and demo cart
+
+- The "someone recently purchased" popup shows real sales only, and no claim is ever invented. It starts by itself once paid orders exist and stays hidden when there are none.
+- A real sale is an order in `paid`, `processing`, `shipped` or `delivered`, placed in the last 24 hours, for a product that is live and buyable. The time shown is the real moment of payment. Only the product and the time reach the browser.
+- The demo cart (`cart.json`) stays until Chunk G builds the real cart.
+
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

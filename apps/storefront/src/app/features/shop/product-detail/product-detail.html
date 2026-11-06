@@ -85,4 +85,21 @@
 
 <!-- Sticky Cart Box -->
 <app-sticky-checkout [product]="product" />
+} @else if (loading()) {
+<!-- min-vh-100 holds the footer below the fold, so it does not jump when the product lands. -->
+<section
+	class="product-section min-vh-100"
+	aria-busy="true"
+>
+	<div class="container-fluid-lg">
+		<div class="row g-4">
+			<div class="col-xxl-9 col-xl-8 col-lg-7">
+				<app-skeleton-page />
+			</div>
+			<div class="col-xxl-3 col-xl-4 col-lg-5 d-none d-lg-block">
+				<app-skeleton-page />
+			</div>
+		</div>
+	</div>
+</section>
 }

@@ -150,6 +150,9 @@ export function injectProductBySlugQuery(slug: () => string | undefined, variant
 		queryKey: ['catalog', 'product', slug(), variant() ?? ''],
 		queryFn: () => firstValueFrom(productService.getProductPage(slug()!, variant())),
 		enabled: !!slug(),
+		// Another variant of the same product keeps the page up; a different product starts clean.
+		placeholderData: (previous?: IProduct, previousQuery?: { queryKey: readonly unknown[] }) =>
+			previousQuery?.queryKey[2] === slug() ? previous : undefined,
 		staleTime: Infinity,
 	}));
 }

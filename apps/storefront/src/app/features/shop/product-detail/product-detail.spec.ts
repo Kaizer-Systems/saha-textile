@@ -2,17 +2,16 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Meta } from '@angular/platform-browser';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
-import { of, throwError } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { ProductService } from '@data-access/services/product.service';
-import { SiteConfigService } from '@data-access/services/site-config.service';
 
 import { ProductDetail } from './product-detail';
 
@@ -46,20 +45,61 @@ function harness(slug: string) {
 						slug === saree.slug ? of(saree) : throwError(() => new HttpErrorResponse({ status: 404 })),
 				},
 			},
-			{ provide: SiteConfigService, useValue: { preloader: signal(true) } },
 			{ provide: SiteConfigStore, useValue: { siteConfig: signal(null) } },
 		],
 	});
 	TestBed.overrideComponent(ProductDetail, {
 		set: {
 			imports: [],
-			template: `<h2 class="crumb">{{ breadcrumb().title }}</h2>
-				@if (product(); as product) {<section class="product-section">{{ product.name }}</section>}`,
+			template: THIN_TEMPLATE,
 		},
 	});
 	const fixture = TestBed.createComponent(ProductDetail);
 	fixture.autoDetectChanges();
 	return { fixture, navigate, meta: TestBed.inject(Meta) };
+}
+
+const THIN_TEMPLATE = `<h2 class="crumb">{{ breadcrumb().title }}</h2>
+	@if (product(); as product) {<section class="product-section">{{ product.name }}</section>}
+	@else if (loading()) {<section class="waiting"></section>}`;
+
+/** A page whose every product request stays open until the test answers it. */
+function waitingHarness() {
+	const params = new BehaviorSubject({ slug: saree.slug });
+	const query = new BehaviorSubject(convertToParamMap({}));
+	const requests: Subject<IProduct>[] = [];
+	TestBed.resetTestingModule();
+	TestBed.configureTestingModule({
+		imports: [ProductDetail, TranslocoTestingModule.forRoot({ langs: { en: { product: 'Product' } } })],
+		providers: [
+			provideTanStackQuery(new QueryClient({ defaultOptions: { queries: { retry: false } } })),
+			{
+				provide: ActivatedRoute,
+				useValue: { params, queryParamMap: query, snapshot: { params: { slug: saree.slug } } },
+			},
+			{ provide: Router, useValue: { navigate: vi.fn(), events: of() } },
+			{
+				provide: ProductService,
+				useValue: {
+					getProductPage: () => {
+						const request = new Subject<IProduct>();
+						requests.push(request);
+						return request;
+					},
+				},
+			},
+			{ provide: SiteConfigStore, useValue: { siteConfig: signal(null) } },
+		],
+	});
+	TestBed.overrideComponent(ProductDetail, { set: { imports: [], template: THIN_TEMPLATE } });
+	const fixture = TestBed.createComponent(ProductDetail);
+	fixture.autoDetectChanges();
+	const answer = (product: IProduct) => {
+		const request = requests[requests.length - 1];
+		request.next(product);
+		request.complete();
+	};
+	return { el: fixture.nativeElement as HTMLElement, params, query, requests, answer };
 }
 
 describe('the product detail page', () => {
@@ -77,5 +117,42 @@ describe('the product detail page', () => {
 
 		await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/404']));
 		expect(fixture.nativeElement.querySelector('.product-section')).toBeNull();
+	});
+
+	it('shows placeholders only until the first product arrives', async () => {
+		const { el, requests, answer } = waitingHarness();
+
+		await vi.waitFor(() => expect(requests).toHaveLength(1));
+		expect(el.querySelector('.waiting')).not.toBeNull();
+
+		answer(saree);
+		await vi.waitFor(() => expect(el.querySelector('.product-section')?.textContent).toBe(saree.name));
+		expect(el.querySelector('.waiting')).toBeNull();
+	});
+
+	it('keeps the product on screen while another variant of it loads', async () => {
+		const { el, query, requests, answer } = waitingHarness();
+		await vi.waitFor(() => expect(requests).toHaveLength(1));
+		answer(saree);
+		await vi.waitFor(() => expect(el.querySelector('.product-section')).not.toBeNull());
+
+		query.next(convertToParamMap({ variant: 'SKU-RED' }));
+
+		await vi.waitFor(() => expect(requests).toHaveLength(2));
+		expect(el.querySelector('.product-section')?.textContent).toBe(saree.name);
+		expect(el.querySelector('.waiting')).toBeNull();
+	});
+
+	it('goes back to placeholders when moving to a different product', async () => {
+		const { el, params, requests, answer } = waitingHarness();
+		await vi.waitFor(() => expect(requests).toHaveLength(1));
+		answer(saree);
+		await vi.waitFor(() => expect(el.querySelector('.product-section')).not.toBeNull());
+
+		params.next({ slug: 'kurti-palazzo-set' });
+
+		await vi.waitFor(() => expect(requests).toHaveLength(2));
+		await vi.waitFor(() => expect(el.querySelector('.waiting')).not.toBeNull());
+		expect(el.querySelector('.product-section')).toBeNull();
 	});
 });

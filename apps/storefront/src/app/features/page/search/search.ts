@@ -1,9 +1,9 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { EMPTY, catchError, debounceTime, distinctUntilChanged, map, switchMap, tap } from 'rxjs';
 
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
@@ -32,7 +32,6 @@ export class Search {
 	public breadcrumb = translatedBreadcrumb('search');
 
 	public unavailable = signal(false);
-	public products: IProduct[] = [];
 	public search = new FormControl();
 	public totalItems: number = 0;
 	public gridClass: string = 'row g-sm-4 g-3 row-cols-2 row-cols-md-3 cols-lg-4 row-cols-xxl-6 product-list-section';
@@ -47,32 +46,40 @@ export class Search {
 
 	private readonly productsQuery = injectCatalogQuery(() => this.filter());
 
-	constructor() {
-		// With no search term the page lists the catalogue; a term shows the search results below.
-		effect(() => {
-			if (!this.filter()['search']) this.products = this.productsQuery.data()?.data ?? [];
-		});
-		effect(() => (this.productService.skeletonLoader = this.productsQuery.isFetching()));
+	/** Results for the current term; null until they arrive. */
+	private readonly results = signal<IProduct[] | null>(null);
 
-		this.route.queryParams.subscribe((params) => {
-			const term = String(params['search'] ?? '');
-			this.search.patchValue(term);
-			this.filter.update((f) => ({ ...f, search: term }));
-			if (!term) {
-				this.unavailable.set(false);
-				return;
-			}
-			this.productService.search(term).subscribe({
-				next: (rows) => {
-					this.products = rows;
+	/** With no search term the page lists the catalogue. */
+	readonly products = computed<IProduct[]>(() =>
+		this.filter()['search'] ? (this.results() ?? []) : (this.productsQuery.data()?.data ?? []),
+	);
+	readonly loading = computed(() =>
+		this.filter()['search'] ? this.results() === null : this.productsQuery.isFetching(),
+	);
+
+	constructor() {
+		this.route.queryParams
+			.pipe(
+				map((params) => String(params['search'] ?? '')),
+				tap((term) => {
+					this.search.patchValue(term);
+					this.filter.update((f) => ({ ...f, search: term }));
+					this.results.set(null);
 					this.unavailable.set(false);
-				},
-				error: () => {
-					this.products = [];
-					this.unavailable.set(true);
-				},
-			});
-		});
+				}),
+				// switchMap drops an older term's answer that lands after a newer search.
+				switchMap((term) =>
+					term
+						? this.productService.search(term).pipe(
+								catchError(() => {
+									this.unavailable.set(true);
+									return [[]];
+								}),
+							)
+						: EMPTY,
+				),
+			)
+			.subscribe((rows) => this.results.set(rows));
 	}
 
 	ngOnInit() {

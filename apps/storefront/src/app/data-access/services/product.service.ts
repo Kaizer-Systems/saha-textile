@@ -80,29 +80,11 @@ export class ProductService {
 
 	search(term: string): Observable<IProduct[]> {
 		return this.http
-			.get<{ items: Array<{ id: string; slug: string; title: string }> }>(
-				`${environment.apiUrl}/catalog/search`,
-				{
-					context: backgroundRequest(),
-					params: { q: term },
-				},
-			)
-			.pipe(
-				map((page) =>
-					page.items.map(
-						(item) =>
-							({
-								id: 0,
-								name: item.title,
-								slug: item.slug,
-								price: 0,
-								sale_price: 0,
-								stock_status: 'in_stock',
-								product_thumbnail: undefined,
-							}) as unknown as IProduct,
-					),
-				),
-			);
+			.get<{ items: ApiCard[] }>(`${environment.apiUrl}/catalog/search`, {
+				context: backgroundRequest(),
+				params: { q: term },
+			})
+			.pipe(map((page) => page.items.map(cardToProduct)));
 	}
 
 	cardsFor(slugs: string[]): Observable<IProduct[]> {

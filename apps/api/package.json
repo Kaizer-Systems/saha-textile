@@ -28,6 +28,7 @@
     "seed:local-catalog-photos": "node --import tsx src/seed-local-catalog-photos.ts"
   },
   "dependencies": {
+    "@fastify/compress": "9.3.0",
     "@fastify/cookie": "11.1.3",
     "@fastify/helmet": "13.2.0",
     "@fastify/rate-limit": "11.2.1",

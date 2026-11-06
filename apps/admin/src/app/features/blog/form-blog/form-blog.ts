@@ -13,6 +13,7 @@ import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICategoryModel } from '@data-access/interfaces/category.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { injectTagsQuery } from '@data-access/queries/tag.queries';
+import { IBlog } from '@data-access/interfaces/blog.interface';
 import { BlogService } from '@data-access/services/blog.service';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
@@ -35,6 +36,7 @@ import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 	],
 })
 export class FormBlog {
+	public blog: IBlog | null = null;
 	private route = inject(ActivatedRoute);
 	private router = inject(Router);
 	private formBuilder = inject(FormBuilder);
@@ -89,6 +91,7 @@ export class FormBlog {
 			)
 			.subscribe((blog) => {
 				this.id = blog?.id!;
+				this.blog = blog;
 				this.selectedCategories = blog?.categories.map((value) => value?.id!)!;
 				this.selectedTags = blog?.tags.map((value) => value?.id!)!;
 				this.form.patchValue({

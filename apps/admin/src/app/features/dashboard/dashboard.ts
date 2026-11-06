@@ -42,6 +42,7 @@ import { IProduct, IProductModel } from '@data-access/interfaces/product.interfa
 import { IReviewModel } from '@data-access/interfaces/review.interface';
 import { IStoresModel } from '@data-access/interfaces/store.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
+import { injectBlogsQuery } from '@data-access/queries/blog.queries';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { injectRevenueChartQuery, injectStatisticsQuery } from '@data-access/queries/dashboard.queries';
 import { injectOrdersQuery } from '@data-access/queries/order.queries';
@@ -96,6 +97,8 @@ export class Dashboard {
 	private router = inject(Router);
 	private authStore = inject(AuthStore);
 
+	private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1, paginate: 2 }));
+	readonly blogs = computed(() => this.blogsQuery.data()?.data ?? []);
 	private readonly statisticsQuery = injectStatisticsQuery();
 	statistics$: Observable<IStatisticsCount | undefined> = toObservable(this.statisticsQuery.data);
 	private readonly revenueChartQuery = injectRevenueChartQuery();

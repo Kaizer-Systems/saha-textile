@@ -4,7 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { Params } from '@data-access/interfaces/core.interface';
-import { IFaqModel } from '@data-access/interfaces/faq.interface';
+import { FaqScope, IFaqModel } from '@data-access/interfaces/faq.interface';
 
 import { environment } from '../../../../public/environments/environment';
 
@@ -22,6 +22,9 @@ export class FaqService {
 					question: { en: string; fr?: string };
 					answer: { en: string; fr?: string };
 					status: string;
+					scope: FaqScope;
+					categoryIds: string[];
+					productIds: string[];
 				}>;
 				total: number;
 			}>(`${environment.apiUrl}/admin/catalog/faq`, { params: payload, withCredentials: true })
@@ -36,6 +39,9 @@ export class FaqService {
 						descriptionFr: row.answer.fr ?? '',
 						created_by_id: false,
 						status: row.status === 'live',
+						scope: row.scope,
+						categoryIds: row.categoryIds,
+						productIds: row.productIds,
 					})),
 					total: page.total,
 				})),
@@ -49,6 +55,9 @@ export class FaqService {
 		titleFr?: string;
 		descriptionFr?: string;
 		status: boolean;
+		scope?: FaqScope;
+		categoryIds?: string[];
+		productIds?: string[];
 	}) {
 		return this.http.post(
 			`${environment.apiUrl}/admin/catalog/faq`,
@@ -56,10 +65,18 @@ export class FaqService {
 				id: row.faqId,
 				question: { en: row.title, fr: row.titleFr || undefined },
 				answer: { en: row.description, fr: row.descriptionFr || undefined },
-				scope: 'global',
+				scope: row.scope ?? 'global',
+				categoryIds: row.categoryIds ?? [],
+				productIds: row.productIds ?? [],
 				status: row.status ? 'live' : 'draft',
 			},
 			{ withCredentials: true },
 		);
+	}
+
+	remove(faqId: string | undefined) {
+		return this.http.delete(`${environment.apiUrl}/admin/catalog/faq/${encodeURIComponent(faqId ?? '')}`, {
+			withCredentials: true,
+		});
 	}
 }

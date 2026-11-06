@@ -14,7 +14,7 @@
     "build": "vite build",
     "watch": "vite build --watch",
     "lint": "eslint .",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "typecheck": "ngc -p tsconfig.app.json --noEmit",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {

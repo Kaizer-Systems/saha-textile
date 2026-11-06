@@ -55,6 +55,8 @@ const STATIC_CHECKOUT: IOrderCheckout = {
 interface CheckoutCustomerView {
 	id: string;
 	address: CheckoutAddressView[];
+	point?: { balance: number };
+	wallet?: { balance: number };
 }
 
 function mapAddress(address: CustomerAddress): CheckoutAddressView {

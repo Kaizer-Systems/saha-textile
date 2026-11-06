@@ -24,7 +24,6 @@ import {
 	injectProductBySlugQuery,
 	injectProductRelationsQuery,
 } from '@data-access/queries/product.queries';
-import { SiteConfigService } from '@data-access/services/site-config.service';
 import { ProductSidebar } from '@features/shop/product-detail/sidebar/sidebar';
 import { PaymentOption } from '@features/shop/product-detail/widgets/payment-option/payment-option';
 import { ProductAction } from '@features/shop/product-detail/widgets/product-action/product-action';
@@ -34,6 +33,7 @@ import { ProductDetailsTabs } from '@features/shop/product-detail/widgets/produc
 import { ProductInformation } from '@features/shop/product-detail/widgets/product-information/product-information';
 import { ProductSocialShare } from '@features/shop/product-detail/widgets/product-social-share/product-social-share';
 import { StickyCheckout } from '@features/shop/product-detail/widgets/sticky-checkout/sticky-checkout';
+import { SkeletonPage } from '@features/page/skeleton-page/skeleton-page';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 
 import { BuyBox } from './buy-box/buy-box';
@@ -69,6 +69,7 @@ const uniqueCards = (cards: IProduct[]): IProduct[] =>
 		YouMayAlsoLike,
 		ProductBlogs,
 		StickyCheckout,
+		SkeletonPage,
 		AsyncPipe,
 	],
 })
@@ -78,7 +79,6 @@ export class ProductDetail {
 	private router = inject(Router);
 	private seo = inject(LocaleSeo);
 	private platformId = inject<Object>(PLATFORM_ID);
-	private siteConfigService = inject(SiteConfigService);
 	private queryClient = injectQueryClient();
 
 	private readonly locale = inject(ACTIVE_LOCALE);
@@ -97,6 +97,8 @@ export class ProductDetail {
 	 * the view dirty: the server render showed the product, but the hydrated page went blank.
 	 */
 	readonly product = computed<IProduct | undefined>(() => this.productQuery.data());
+	/** True only until a product first arrives; a variant change keeps the current one on screen. */
+	readonly loading = computed(() => this.productQuery.isPending());
 	readonly selectedVariation = signal<IVariation | null>(null);
 	readonly breadcrumb = computed<IBreadcrumb>(() => {
 		const product = this.product();
@@ -145,10 +147,6 @@ export class ProductDetail {
 		effect(() => {
 			const error = this.productQuery.error();
 			if (error instanceof HttpErrorResponse && error.status === 404) void this.router.navigate(['/404']);
-		});
-
-		effect(() => {
-			this.siteConfigService.preloader.set(this.productQuery.isFetching());
 		});
 
 		effect(() => {

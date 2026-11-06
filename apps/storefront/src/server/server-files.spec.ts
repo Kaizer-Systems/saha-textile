@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import locale from './locale';
-import seoFiles from './seo-files';
+import locale from './middleware/locale';
+import seoFiles from './middleware/seo-files';
 
 const h3 = vi.hoisted(() => ({
 	getCookie: vi.fn(() => undefined as string | undefined),
@@ -18,8 +18,8 @@ const address = vi.hoisted(() => ({
 }));
 
 vi.mock('h3', () => ({ ...h3, defineEventHandler: (handler: unknown) => handler }));
-vi.mock('../../app/core/i18n/legacy-address', () => address);
-vi.mock('../../../public/environments/environment', () => ({ environment: { apiUrl: 'https://api.test' } }));
+vi.mock('../app/core/i18n/legacy-address', () => address);
+vi.mock('../../public/environments/environment', () => ({ environment: { apiUrl: 'https://api.test' } }));
 
 type Handler = (event: unknown) => Promise<unknown>;
 

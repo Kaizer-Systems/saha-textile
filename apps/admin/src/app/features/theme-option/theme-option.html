@@ -36,7 +36,7 @@
 												<app-image-upload
 													[multipleImage]="false"
 													[helpText]="'*Upload image size 180x50px recommended'"
-													[image]="(themeOption$ | async)?.logo?.header_logo"
+													[image]="theme_option_data?.logo?.header_logo"
 													(selectedFiles)="selectHeaderLogo($event)"
 												/>
 											</app-form-fields>
@@ -50,7 +50,7 @@
 												<app-image-upload
 													[multipleImage]="false"
 													[helpText]="'*Upload image size 180x50px recommended'"
-													[image]="(themeOption$ | async)?.logo?.footer_logo"
+													[image]="theme_option_data?.logo?.footer_logo"
 													(selectedFiles)="selectFooterLogo($event)"
 												/>
 											</app-form-fields>
@@ -64,7 +64,7 @@
 												<app-image-upload
 													[multipleImage]="false"
 													[helpText]="'*Upload image size 16x16px recommended'"
-													[image]="(themeOption$ | async)?.logo?.favicon_icon"
+													[image]="theme_option_data?.logo?.favicon_icon"
 													(selectedFiles)="selectFaviconIcon($event)"
 												/>
 											</app-form-fields>
@@ -2833,7 +2833,7 @@
 												<app-image-upload
 													[multipleImage]="false"
 													[helpText]="'*Upload image size 1200x630px recommended'"
-													[image]="(themeOption$ | async)?.seo?.og_image"
+													[image]="theme_option_data?.seo?.og_image"
 													(selectedFiles)="selectOgImage($event)"
 												/>
 											</app-form-fields>

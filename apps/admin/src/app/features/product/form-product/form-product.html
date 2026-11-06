@@ -1021,7 +1021,7 @@
 								>
 									<app-image-upload
 										[multipleImage]="false"
-										[image]="(product$ | async)?.product_thumbnail"
+										[image]="product?.product_thumbnail"
 										[helpText]="'*Upload image size 600x600px recommended'"
 										(selectedFiles)="selectThumbnail($event)"
 									/>
@@ -1035,7 +1035,7 @@
 								>
 									<app-image-upload
 										[multipleImage]="true"
-										[images]="(product$ | async)?.product_galleries"
+										[images]="product?.product_galleries"
 										[helpText]="'*Upload image size 600x600px recommended'"
 										(selectedFiles)="selectImages($event)"
 									/>
@@ -1049,7 +1049,7 @@
 								>
 									<app-image-upload
 										[multipleImage]="false"
-										[image]="(product$ | async)?.size_chart_image"
+										[image]="product?.size_chart_image"
 										[helpText]="'*Upload an image showcasing the size chart tailored for fashion products. A table format image is suggested for easy reference.'"
 										(selectedFiles)="selectSizeImage($event)"
 									/>
@@ -1122,7 +1122,7 @@
 								>
 									<app-image-upload
 										[multipleImage]="false"
-										[image]="(product$ | async)?.product_meta_image"
+										[image]="product?.product_meta_image"
 										(selectedFiles)="selectMetaImage($event)"
 									/>
 								</app-form-fields>

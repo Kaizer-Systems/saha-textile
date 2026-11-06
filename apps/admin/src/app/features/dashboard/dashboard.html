@@ -315,9 +315,9 @@
 				[title]="'latest_blogs'"
 				*hasPermission="'blog.index'"
 			>
-				@if ((blog$ | async)?.data?.length) {
+				@if (blogs().length) {
 				<div class="row g-3">
-					@for (blog of ((blog$ | async)?.data | slice:0:2); track blog.id) {
+					@for (blog of (blogs() | slice:0:2); track blog.id) {
 					<div class="col-xxl-6">
 						<div class="blog-box">
 							<a
@@ -340,7 +340,7 @@
 					</div>
 					}
 				</div>
-				} @if (!(blog$ | async)?.data?.length) {
+				} @if (!blogs().length) {
 				<div class="no-data-added">
 					<h4>{{ 'no_records_found' | transloco }}</h4>
 				</div>

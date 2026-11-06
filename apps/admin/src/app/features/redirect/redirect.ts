@@ -14,6 +14,8 @@ import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { Table } from '@shared/ui/table/table';
 import { adminBreadcrumb } from '@shared/util/admin-breadcrumb';
 
+const AUTOMATIC_REASONS = new Set(['slug_change', 'product_archived', 'category_move', 'category_archived']);
+
 @Component({
 	selector: 'app-redirect',
 	templateUrl: './redirect.html',
@@ -34,6 +36,16 @@ export class Redirect {
 		{ value: '410', label: '410' },
 	];
 
+	readonly reasons = [
+		{ value: '', label: 'all' },
+		{ value: 'slug_change', label: 'rename' },
+		{ value: 'product_archived', label: 'discontinue' },
+		{ value: 'legacy_woo', label: 'legacy' },
+		{ value: 'manual', label: 'manual' },
+	];
+	readonly reasonFilter = signal('');
+	private search = '';
+
 	readonly form = this.fb.nonNullable.group({
 		sourcePath: ['', Validators.required],
 		statusCode: ['301', Validators.required],
@@ -47,6 +59,8 @@ export class Redirect {
 			{ title: 'status', dataField: 'statusCode' },
 			{ title: 'target', dataField: 'targetPath' },
 			{ title: 'reason', dataField: 'reason' },
+			{ title: 'entity', dataField: 'entityType' },
+			{ title: 'updated', dataField: 'updatedAt', type: 'date' },
 		],
 		rowActions: [
 			{ label: 'edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'product.edit' },
@@ -69,6 +83,8 @@ export class Redirect {
 				if (!encoded) return;
 				const row = rows.find((item) => item.sourcePath === decodeURIComponent(encoded));
 				if (!row) return;
+				// A row the system wrote keeps its path; only where it leads can change.
+				if (AUTOMATIC_REASONS.has(row.reason)) this.form.controls.sourcePath.disable();
 				this.form.patchValue({
 					sourcePath: row.sourcePath,
 					statusCode: String(row.statusCode),
@@ -81,11 +97,24 @@ export class Redirect {
 	}
 
 	onTableChange(params?: Params) {
-		const term = String(params?.['search'] ?? '').toLowerCase();
-		const filtered = this.rows().filter((row) =>
-			`${row.sourcePath} ${row.targetPath ?? ''} ${row.reason}`.toLowerCase().includes(term),
+		this.search = String(params?.['search'] ?? '').toLowerCase();
+		this.applyFilters();
+	}
+
+	setReason(reason: string) {
+		this.reasonFilter.set(reason);
+		this.applyFilters();
+	}
+
+	private applyFilters() {
+		const reason = this.reasonFilter();
+		this.show(
+			this.rows().filter(
+				(row) =>
+					(!reason || row.reason === reason) &&
+					`${row.sourcePath} ${row.targetPath ?? ''} ${row.reason}`.toLowerCase().includes(this.search),
+			),
 		);
-		this.show(filtered);
 	}
 
 	onAction(action: ITableClickedAction) {

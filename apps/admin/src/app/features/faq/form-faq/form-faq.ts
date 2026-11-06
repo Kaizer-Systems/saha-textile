@@ -3,18 +3,25 @@ import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } 
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
+import { Select2 } from 'ng-select2-component';
 import { map, of, Subject, switchMap, takeUntil } from 'rxjs';
 
-import { IFaq } from '@data-access/interfaces/faq.interface';
+import { FaqScope, IFaq } from '@data-access/interfaces/faq.interface';
 import { FaqService } from '@data-access/services/faq.service';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
+
+const idList = (value: string): string[] =>
+	value
+		.split(',')
+		.map((id) => id.trim())
+		.filter(Boolean);
 
 @Component({
 	selector: 'app-form-faq',
 	templateUrl: './form-faq.html',
 	styleUrls: ['./form-faq.scss'],
-	imports: [ReactiveFormsModule, FormFields, Button, TranslocoModule],
+	imports: [Select2, ReactiveFormsModule, FormFields, Button, TranslocoModule],
 })
 export class FormFaq {
 	private faqService = inject(FaqService);
@@ -23,6 +30,13 @@ export class FormFaq {
 	private formBuilder = inject(FormBuilder);
 
 	readonly type = input<string>(undefined);
+
+	readonly scopes = [
+		{ value: 'global', label: 'global' },
+		{ value: 'category', label: 'category' },
+		{ value: 'product', label: 'product' },
+		{ value: 'mixed', label: 'mixed' },
+	];
 
 	public form: FormGroup;
 	public faq: IFaq | null;
@@ -36,6 +50,9 @@ export class FormFaq {
 			titleFr: new FormControl(''),
 			descriptionFr: new FormControl(''),
 			status: new FormControl(true),
+			scope: new FormControl('global'),
+			categoryIds: new FormControl(''),
+			productIds: new FormControl(''),
 		});
 	}
 
@@ -58,6 +75,9 @@ export class FormFaq {
 					titleFr: this.faq?.titleFr,
 					descriptionFr: this.faq?.descriptionFr,
 					status: this.faq?.status,
+					scope: this.faq?.scope ?? 'global',
+					categoryIds: this.faq?.categoryIds?.join(', ') ?? '',
+					productIds: this.faq?.productIds?.join(', ') ?? '',
 				});
 			});
 	}
@@ -72,9 +92,17 @@ export class FormFaq {
 				titleFr: string;
 				descriptionFr: string;
 				status: boolean;
+				scope: FaqScope;
+				categoryIds: string;
+				productIds: string;
 			};
 			this.faqService
-				.save({ ...raw, faqId: this.faq?.faqId })
+				.save({
+					...raw,
+					categoryIds: idList(raw.categoryIds),
+					productIds: idList(raw.productIds),
+					faqId: this.faq?.faqId,
+				})
 				.pipe(takeUntil(this.destroy$))
 				.subscribe(() => void this.router.navigateByUrl('/faq'));
 		}

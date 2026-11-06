@@ -46,6 +46,40 @@
 		></textarea>
 	</app-form-fields>
 	<app-form-fields
+		[label]="'scope'"
+		[for]="'scope'"
+	>
+		<select2
+			class="custom-select d-block"
+			id="scope"
+			[data]="scopes"
+			formControlName="scope"
+		/>
+	</app-form-fields>
+	@if (form.value.scope === 'category' || form.value.scope === 'mixed') {
+	<app-form-fields
+		[label]="'category_ids'"
+		[for]="'categoryIds'"
+	>
+		<input
+			class="form-control"
+			id="categoryIds"
+			formControlName="categoryIds"
+		/>
+	</app-form-fields>
+	} @if (form.value.scope === 'product' || form.value.scope === 'mixed') {
+	<app-form-fields
+		[label]="'product_ids'"
+		[for]="'productIds'"
+	>
+		<input
+			class="form-control"
+			id="productIds"
+			formControlName="productIds"
+		/>
+	</app-form-fields>
+	}
+	<app-form-fields
 		[label]="'status'"
 		[for]="'status'"
 		[required]="false"

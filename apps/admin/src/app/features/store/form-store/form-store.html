@@ -10,7 +10,7 @@
 	>
 		<app-image-upload
 			[multipleImage]="false"
-			[image]="(store$ | async)?.store_logo"
+			[image]="store?.store_logo"
 			[helpText]="'*Upload image size 500x500px recommended'"
 			(selectedFiles)="selectStoreLogo($event)"
 		/>

@@ -6,6 +6,18 @@
 	<div class="alert alert-danger">{{ error() | transloco }}</div>
 	} @if (!formOnly()) {
 	<a routerLink="create">{{ 'create' | transloco }}</a>
+	<app-form-fields
+		[label]="'reason'"
+		[for]="'reasonFilter'"
+	>
+		<select2
+			class="custom-select d-block"
+			id="reasonFilter"
+			[data]="reasons"
+			[value]="reasonFilter()"
+			(update)="setReason($any($event.value))"
+		/>
+	</app-form-fields>
 	<app-table
 		[tableConfig]="tableConfig"
 		(tableChanged)="onTableChange($event)"

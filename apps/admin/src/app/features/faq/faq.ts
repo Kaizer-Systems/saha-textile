@@ -2,11 +2,13 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
+import { forkJoin } from 'rxjs';
 
 import { Params } from '@data-access/interfaces/core.interface';
 import { IFaq } from '@data-access/interfaces/faq.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { injectFaqsQuery } from '@data-access/queries/faq.queries';
+import { FaqService } from '@data-access/services/faq.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { Table } from '@shared/ui/table/table';
@@ -21,6 +23,7 @@ export class Faq {
 	router = inject(Router);
 
 	private readonly params = signal<Params>({});
+	private faqService = inject(FaqService);
 	readonly faqsQuery = injectFaqsQuery(() => this.params());
 
 	public tableConfig: ITableConfig = {
@@ -72,15 +75,16 @@ export class Faq {
 		void this.router.navigateByUrl(`/faq/edit/${data.id}`);
 	}
 
-	status(_data: IFaq) {
-		// Mock: status toggle has no backend yet.
+	status(data: IFaq) {
+		this.faqService.save({ ...data, status: !data.status }).subscribe(() => void this.faqsQuery.refetch());
 	}
 
-	delete(_data: IFaq) {
-		// Mock: delete has no backend yet.
+	delete(data: IFaq) {
+		this.faqService.remove(data.faqId).subscribe(() => void this.faqsQuery.refetch());
 	}
 
-	deleteAll(_ids: number[]) {
-		// Mock: bulk delete has no backend yet.
+	deleteAll(ids: number[]) {
+		const rows = (this.tableConfig.data as IFaq[]).filter((row) => ids.includes(Number(row.id)));
+		forkJoin(rows.map((row) => this.faqService.remove(row.faqId))).subscribe(() => void this.faqsQuery.refetch());
 	}
 }

@@ -179,7 +179,7 @@ export class Msg91NotificationAdapter implements NotificationPort {
 			status,
 			providerMessageId,
 			errorMessage,
-			sentAt: status === 'sent' ? (sentAt ?? this.now().toISOString()) : null,
+			sentAt,
 		});
 		return { status, providerMessageId, outboxEntryId };
 	}

@@ -1,4 +1,11 @@
-import { HttpErrorResponse, HttpEvent, HttpHandler, HttpRequest, HttpResponse } from '@angular/common/http';
+import {
+	HttpErrorResponse,
+	HttpEvent,
+	HttpEventType,
+	HttpHandler,
+	HttpRequest,
+	HttpResponse,
+} from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
@@ -106,6 +113,12 @@ describe('admin AuthInterceptor', () => {
 		interceptor.intercept(new HttpRequest(method as 'GET', url, method === 'GET' ? undefined : {}), handler);
 
 	describe('transport contract', () => {
+		it('passes progress events through untouched', async () => {
+			const sent: HttpEvent<unknown> = { type: HttpEventType.Sent };
+			const events = interceptor.intercept(new HttpRequest('GET', PROTECTED_URL), { handle: () => of(sent) });
+			await expect(firstValueFrom(events)).resolves.toBe(sent);
+		});
+
 		// Unconditional, because the API is a separate origin in every environment and cookies
 		// are not attached cross-origin without it.
 		it.each(['GET', 'POST'])('sends credentials on a %s', (method) => {

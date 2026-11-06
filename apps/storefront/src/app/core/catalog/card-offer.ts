@@ -44,11 +44,11 @@ export function cardOffer(product: IProduct): CardOffer {
 	const live = rows.filter((row) => row.status !== false);
 	const canBuy = live.filter(buyable);
 	const counted = canBuy.length ? canBuy : live.length ? live : rows;
-	const first = counted[0];
-	const same = counted.every((row) => sellingOf(row) === sellingOf(first!) && mrpOf(row) === mrpOf(first!));
+	const first = counted[0] as IVariation;
+	const same = counted.every((row) => sellingOf(row) === sellingOf(first) && mrpOf(row) === mrpOf(first));
 	const amounts = counted.map(sellingOf);
-	const selling = first ? sellingOf(first) : product.sale_price;
-	const mrp = first ? mrpOf(first) : product.price > product.sale_price ? product.price : null;
+	const selling = sellingOf(first);
+	const mrp = mrpOf(first);
 	const percentOff = mrp && mrp > selling ? Math.floor(((mrp - selling) / mrp) * 100) : null;
 	return {
 		kind: same ? 'single' : 'range',

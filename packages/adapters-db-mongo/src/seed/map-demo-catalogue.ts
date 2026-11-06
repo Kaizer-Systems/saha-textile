@@ -201,7 +201,7 @@ function demoGroup(group: DemoOptionGroup, role: 'named_add_on' | 'bundle_compon
 		requiredSelection: Boolean(group.required),
 		defaultTermCode: defaultCode,
 		terms: terms.map((term, index) => {
-			const termCode = slugify(term.code || term.label || `term-${index + 1}`);
+			const termCode = slugify((term.code || term.label) as string);
 			const requiresMeasurements = Boolean(term.requires_measurements);
 			return {
 				code: termCode,
@@ -299,12 +299,12 @@ function selectionsFor(
 	if (attributes.length > 0 && parts.length === attributes.length) {
 		return attributes.map((attribute, index) => {
 			const code = slugify(attribute.slug || attribute.name || `axis-${index}`);
+			const part = parts[index] as string;
 			const term = (attribute.attribute_values ?? []).find(
 				(candidate) =>
-					candidate.value?.toLowerCase() === parts[index]?.toLowerCase() ||
-					candidate.slug === slugify(parts[index] ?? ''),
+					candidate.value?.toLowerCase() === part.toLowerCase() || candidate.slug === slugify(part),
 			);
-			return { attributeCode: code, termCode: slugify(term?.slug || term?.value || parts[index] || 'term') };
+			return { attributeCode: code, termCode: slugify(term?.slug || term?.value || part) };
 		});
 	}
 	if (attributes.length === 1) {
@@ -478,7 +478,6 @@ export function mapDemoCatalogue(input: {
 	const definitions = new Map<string, AttributeDefinition>();
 	const rememberAttribute = (attribute: DemoAttribute, drivesVariation: boolean, frames: readonly string[]) => {
 		const code = slugify(attribute.slug || attribute.name || '');
-		if (!code) return;
 		const style = DISPLAY_STYLE[attribute.style ?? ''] ?? 'rectangle';
 		const existing = definitions.get(code);
 		const terms = (attribute.attribute_values ?? []).map((term, index) => {
@@ -542,7 +541,7 @@ export function mapDemoCatalogue(input: {
 				code: slugify(attribute.slug || attribute.name || 'axis'),
 				label: text(attribute.name, attribute.slug || 'Attribute'),
 				usedForVariations: variable,
-				terms: (attribute.attribute_values ?? []).map((term, termIndex) => {
+				terms: (attribute.attribute_values as DemoTerm[]).map((term, termIndex) => {
 					const label = term.value || term.slug || `Term ${termIndex + 1}`;
 					const hex =
 						typeof term.hex_color === 'string' && /^#[0-9a-fA-F]{6}$/.test(term.hex_color)
@@ -670,7 +669,7 @@ export function mapDemoCatalogue(input: {
 			return;
 		}
 
-		(product.variations ?? []).forEach((variation, variationIndex) => {
+		(product.variations as DemoVariation[]).forEach((variation, variationIndex) => {
 			const amount = rupee(variation.price ?? product.price);
 			const variantSale = rupee(variation.sale_price);
 			const variantOnSale = variantSale > 0 && variantSale < amount;

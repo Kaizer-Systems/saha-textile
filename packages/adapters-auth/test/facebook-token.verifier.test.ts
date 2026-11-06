@@ -151,6 +151,15 @@ describe('FacebookTokenVerifier', () => {
 		await expect(verifier.verify({ credential: 'tok', expectedNonce: null })).rejects.toThrow(/request failed/);
 	});
 
+	it('refuses when the failure is not an Error', async () => {
+		const rejecting = vi.fn(async () => {
+			throw 'offline';
+		}) as unknown as typeof fetch;
+		const verifier = new FacebookTokenVerifier(APP_ID, SECRET, rejecting);
+
+		await expect(verifier.verify({ credential: 'tok', expectedNonce: null })).rejects.toThrow(/network error/);
+	});
+
 	it('refuses when Graph answers a non-200', async () => {
 		const verifier = new FacebookTokenVerifier(APP_ID, SECRET, fakeFetch({ debugStatus: 500 }));
 

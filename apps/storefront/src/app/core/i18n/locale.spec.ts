@@ -70,6 +70,7 @@ describe('locale URL law (DEC-I18N-ROUTES)', () => {
 		it('puts an app URL under a language, home with its slash', () => {
 			expect(withLocale('fr', '/')).toBe('/fr/');
 			expect(withLocale('fr', '/cart')).toBe('/fr/cart');
+			expect(withLocale('fr', 'cart')).toBe('/fr/cart');
 			expect(withLocale('en', '/collections/sarees?page=2#top')).toBe('/en/collections/sarees?page=2#top');
 		});
 	});

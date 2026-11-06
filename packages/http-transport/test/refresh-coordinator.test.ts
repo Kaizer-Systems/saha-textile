@@ -236,3 +236,22 @@ describe('RefreshCoordinator with latchOnFailure', () => {
 		expect(coordinator.isLatched).toBe(true);
 	});
 });
+
+describe('RefreshCoordinator failure values', () => {
+	it('wraps a synchronous throw that is not an Error', async () => {
+		const coordinator = new RefreshCoordinator<string>({ latchOnFailure: true });
+		await expect(
+			coordinator.run(() => {
+				throw 'offline';
+			}),
+		).rejects.toThrow('offline');
+		expect(coordinator.isLatched).toBe(true);
+	});
+
+	it('keeps a real latch when the rotation rejects with nothing', async () => {
+		const coordinator = new RefreshCoordinator<string>({ latchOnFailure: true });
+		await expect(coordinator.run(() => Promise.reject(undefined))).rejects.toBeUndefined();
+		expect(coordinator.isLatched).toBe(true);
+		await expect(coordinator.run(() => Promise.resolve('never'))).rejects.toThrow('Session refresh failed');
+	});
+});

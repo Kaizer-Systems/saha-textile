@@ -1,9 +1,10 @@
+import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
-import { of } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { IProduct, IRecentPurchase } from '@data-access/interfaces/product.interface';
@@ -43,6 +44,39 @@ describe('the recent purchase popup', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('runs no timer on the server', async () => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			imports: [TranslocoTestingModule.forRoot({ langs: { en: {} } })],
+			providers: [
+				provideRouter([]),
+				provideTanStackQuery(new QueryClient()),
+				{ provide: PLATFORM_ID, useValue: 'server' },
+				{ provide: ProductService, useValue: { recentPurchases: () => of([]) } },
+			],
+		});
+		TestBed.overrideComponent(RecentPurchasePopup, { set: { imports: [], template: '' } });
+		const popup = TestBed.createComponent(RecentPurchasePopup).componentInstance;
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(popup.show()).toBe(false);
+	});
+
+	it('waits quietly while the sales are still loading', async () => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			imports: [TranslocoTestingModule.forRoot({ langs: { en: {} } })],
+			providers: [
+				provideRouter([]),
+				provideTanStackQuery(new QueryClient()),
+				{ provide: ProductService, useValue: { recentPurchases: () => NEVER } },
+			],
+		});
+		TestBed.overrideComponent(RecentPurchasePopup, { set: { imports: [], template: '' } });
+		const popup = TestBed.createComponent(RecentPurchasePopup).componentInstance;
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(popup.show()).toBe(false);
 	});
 
 	it('stays hidden while there are no real sales', async () => {

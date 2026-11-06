@@ -368,7 +368,7 @@ export class ThemeOption {
 					let array = option?.header.today_deals;
 					this.filter['paginate'] = array?.length >= 15 ? array?.length : 15;
 					this.filter['ids'] = array?.join();
-					this.filter['with_union_products'] = array?.length ? (array?.length >= 15 ? 0 : 1) : 0;
+					this.filter['with_union_products'] = array?.length >= 15 ? 0 : 1;
 				}
 
 				of(this.productParams.set({ ...this.filter })).subscribe({

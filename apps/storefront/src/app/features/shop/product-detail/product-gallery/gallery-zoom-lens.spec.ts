@@ -14,6 +14,29 @@ const image = {
 };
 
 describe('gallery zoom lens', () => {
+	const render = (hover: boolean) => {
+		window.matchMedia = () =>
+			({ matches: hover, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList;
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({ imports: [GalleryZoomLens] });
+		const fixture = TestBed.createComponent(GalleryZoomLens);
+		fixture.componentRef.setInput('image', image);
+		fixture.detectChanges();
+		return fixture;
+	};
+	const point = (pointerType: string) => ({ pointerType, clientX: 1, clientY: 1 }) as PointerEvent;
+
+	it('never magnifies for touch, or on a screen with no hover', () => {
+		const touch = render(true);
+		touch.componentInstance.enter(point('touch'));
+		touch.componentInstance.move(point('touch'));
+		expect(touch.componentInstance.active()).toBe(false);
+		const noHover = render(false);
+		noHover.componentInstance.enter(point('mouse'));
+		noHover.componentInstance.move(point('mouse'));
+		expect(noHover.componentInstance.active()).toBe(false);
+	});
+
 	it('does not request the zoom file until a mouse hover', () => {
 		window.matchMedia = () =>
 			({ matches: true, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList;

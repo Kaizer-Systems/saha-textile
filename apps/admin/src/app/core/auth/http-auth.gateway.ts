@@ -223,6 +223,6 @@ function pathOf(url: string): string {
 	try {
 		return new URL(url, 'http://placeholder.invalid').pathname;
 	} catch {
-		return url.split('?')[0] ?? url;
+		return url.split('?')[0] as string;
 	}
 }

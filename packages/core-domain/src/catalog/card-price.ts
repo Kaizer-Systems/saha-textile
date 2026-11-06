@@ -69,8 +69,6 @@ export function percentOff(sellingINR: number, mrpINR: number | null): number | 
 export function cardPrice(variants: readonly PricedVariant[]): CardPrice | null {
 	const buyable = variants.filter((variant) => variant.buyable);
 	const counted = buyable.length > 0 ? buyable : variants.filter((variant) => variant.live);
-	if (counted.length === 0) return null;
-
 	const first = counted[0];
 	if (!first) return null;
 	const same = counted.every((variant) => variant.sellingINR === first.sellingINR && variant.mrpINR === first.mrpINR);

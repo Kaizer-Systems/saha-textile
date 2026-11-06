@@ -175,7 +175,7 @@ export class NewsletterModal {
 	}
 
 	private quietPage(): boolean {
-		const path = this.router.url.split(/[?#]/)[0] ?? '';
+		const path = this.router.url.split(/[?#]/)[0] as string;
 		return QUIET_PATHS.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 	}
 

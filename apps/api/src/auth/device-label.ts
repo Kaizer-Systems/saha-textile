@@ -43,7 +43,7 @@ function fallbackLabel(userAgentHash: string | null): string {
 function shortHash(hash: string | null): string {
 	if (!hash) return '';
 	const hex = hash.replace(/[^a-fA-F0-9]/g, '');
-	return hex.slice(0, 8).toLowerCase() || '';
+	return hex.slice(0, 8).toLowerCase();
 }
 
 function detectBrowser(ua: string): string {

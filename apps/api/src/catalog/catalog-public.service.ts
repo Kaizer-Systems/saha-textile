@@ -552,9 +552,9 @@ function listingRow(
 		product,
 		id: product.id,
 		title: product.title.en,
-		minINR: price?.kind === 'range' ? price.minINR : (price?.sellingINR ?? product.basePriceINR),
-		maxINR: price?.kind === 'range' ? price.maxINR : (price?.sellingINR ?? product.basePriceINR),
-		percentOff: price?.kind === 'single' ? (price.percentOff ?? 0) : 0,
+		minINR: price.kind === 'range' ? price.minINR : price.sellingINR,
+		maxINR: price.kind === 'range' ? price.maxINR : price.sellingINR,
+		percentOff: price.kind === 'single' ? (price.percentOff ?? 0) : 0,
 		rating: product.ratingsSummary.avg,
 		categoryIds: product.categoryIds,
 		facets: product.optionGroups

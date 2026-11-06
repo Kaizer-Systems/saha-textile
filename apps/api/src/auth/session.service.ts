@@ -564,9 +564,8 @@ export class SessionService {
 		};
 	}
 
-	private hashHeader(value: unknown): string | null {
-		const text = Array.isArray(value) ? value[0] : value;
-		return typeof text === 'string' && text.length > 0 ? this.hash(text) : null;
+	private hashHeader(value: string | undefined): string | null {
+		return value ? this.hash(value) : null;
 	}
 
 	private readCookie(request: FastifyRequest, name: string): string | undefined {

@@ -44,22 +44,20 @@ export function insightWeekId(now = new Date()): string {
 export function boughtTogetherPairs(
 	orders: readonly { productIds: readonly string[] }[],
 ): Array<{ sourceProductId: string; targetId: string }> {
-	const counts = new Map<string, number>();
+	const pairs = new Map<string, { sourceProductId: string; targetId: string; count: number }>();
 	for (const order of orders) {
 		const ids = [...new Set(order.productIds)].sort();
-		for (const source of ids) {
-			for (const target of ids) {
-				if (source === target) continue;
-				const key = `${source}>${target}`;
-				counts.set(key, (counts.get(key) ?? 0) + 1);
+		for (const sourceProductId of ids) {
+			for (const targetId of ids) {
+				if (sourceProductId === targetId) continue;
+				const key = `${sourceProductId}>${targetId}`;
+				const pair = pairs.get(key) ?? { sourceProductId, targetId, count: 0 };
+				pairs.set(key, { ...pair, count: pair.count + 1 });
 			}
 		}
 	}
-	return [...counts.entries()]
-		.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+	return [...pairs.entries()]
+		.sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0]))
 		.slice(0, 24)
-		.map(([key]) => {
-			const [sourceProductId, targetId] = key.split('>');
-			return { sourceProductId: sourceProductId ?? '', targetId: targetId ?? '' };
-		});
+		.map(([, { sourceProductId, targetId }]) => ({ sourceProductId, targetId }));
 }

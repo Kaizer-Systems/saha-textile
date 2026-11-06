@@ -15,8 +15,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { Select2Data, Select2, Select2UpdateEvent } from 'ng-select2-component';
 import { injectMutation, injectQueryClient } from '@tanstack/angular-query-experimental';
+import { Select2Data, Select2, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable, lastValueFrom } from 'rxjs';
 
 import {
@@ -398,9 +398,8 @@ export class FormCustomer {
 		let localPhone = phone.replace(/\D/g, '');
 		if (phone.startsWith('+')) {
 			for (const item of this.codes) {
-				if (!('value' in item)) continue;
-				const dial = (item.data as { code?: string } | undefined)?.code?.replace(/\s/g, '');
-				if (!dial || !phone.startsWith(dial)) continue;
+				const dial = (item.data as { code: string }).code.replace(/\s/g, '');
+				if (!phone.startsWith(dial)) continue;
 				countryCode = String(item.value);
 				localPhone = phone.slice(dial.length).replace(/\D/g, '');
 				break;
@@ -422,9 +421,8 @@ export class FormCustomer {
 		if (!digits) return undefined;
 		let dial = `+${countryCode}`;
 		for (const item of this.codes) {
-			if (!('value' in item) || String(item.value) !== String(countryCode)) continue;
-			const nested = item.data as { code?: string } | undefined;
-			if (nested?.code) dial = nested.code.replace(/\s/g, '');
+			if (String(item.value) !== String(countryCode)) continue;
+			dial = (item.data as { code: string }).code.replace(/\s/g, '');
 			break;
 		}
 		return `${dial}${digits}`;

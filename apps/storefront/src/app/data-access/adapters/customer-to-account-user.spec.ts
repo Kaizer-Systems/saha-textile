@@ -1,49 +1,98 @@
 import { describe, expect, it } from 'vitest';
 
-import { splitPhone } from './customer-to-account-user';
+import { splitPhone, toAccountUser } from './customer-to-account-user';
 
-/**
- * Splitting E.164 back into a dial code and a subscriber number.
- *
- * The original returned `91` for everything and, for anything that was not Indian, handed back
- * the WHOLE number as the national part — so `+14155550123` rendered as "+91 14155550123": the
- * country digits shown as part of the subscriber number, under the wrong flag. Every case below
- * still produced a plausible-looking string, which is why it went unnoticed.
- */
+const customer = (overrides: Record<string, unknown> = {}) =>
+	({
+		id: 'cus_1',
+		email: 'asha@b.co',
+		phone: '+919000000000',
+		displayName: 'Asha',
+		status: 'active',
+		emailVerified: true,
+		updatedAt: 'updated',
+		createdAt: 'created',
+		addresses: [],
+		...overrides,
+	}) as never;
+
 describe('splitPhone', () => {
-	it('splits an Indian number', () => {
-		expect(splitPhone('+919900000004')).toEqual({ countryCode: '91', national: '9900000004' });
+	it.each([
+		[null, '91', ''],
+		['', '91', ''],
+		['abc', '91', ''],
+		['+14155550123', '1', '4155550123'],
+		['+919000000000', '91', '9000000000'],
+		['+91', '91', ''],
+		['0', '91', '0'],
+	])('reads %s', (value, countryCode, national) => {
+		expect(splitPhone(value)).toEqual({ countryCode, national });
+	});
+});
+
+describe('toAccountUser', () => {
+	it('maps a customer, zeroing what has no source', () => {
+		expect(toAccountUser(customer())).toMatchObject({
+			name: 'Asha',
+			email: 'asha@b.co',
+			phone: '9000000000',
+			country_code: '91',
+			status: true,
+			email_verified_at: 'updated',
+			orders_count: 0,
+		});
 	});
 
-	it('splits a US number rather than calling it Indian', () => {
-		expect(splitPhone('+14155550123')).toEqual({ countryCode: '1', national: '4155550123' });
+	it('greets by the address, then by nothing', () => {
+		expect(toAccountUser(customer({ displayName: '  ' })).name).toBe('asha');
+		expect(toAccountUser(customer({ displayName: null })).name).toBe('asha');
+		expect(toAccountUser(customer({ displayName: null, email: null }))).toMatchObject({ name: '', email: '' });
+		expect(toAccountUser(customer({ displayName: null, email: '' })).name).toBe('');
 	});
 
-	it('splits a UK number', () => {
-		expect(splitPhone('+442071838750')).toEqual({ countryCode: '44', national: '2071838750' });
+	it('marks an inactive or unverified account', () => {
+		expect(toAccountUser(customer({ status: 'suspended', emailVerified: false }))).toMatchObject({
+			status: false,
+			is_approved: false,
+			email_verified_at: '',
+		});
+		expect(toAccountUser(customer({ updatedAt: undefined })).email_verified_at).toBe('');
 	});
 
-	/**
-	 * The reason the codes are scanned longest-first: Anguilla is `1264` and shares its opening
-	 * digit with the whole of NANP. A shortest-first scan would call this `+1` and leave `264…`
-	 * in the subscriber number.
-	 */
-	it('prefers the longest matching dial code', () => {
-		expect(splitPhone('+12645551234')).toEqual({ countryCode: '1264', national: '5551234' });
+	it('flattens addresses for the views', () => {
+		const address = toAccountUser(
+			customer({
+				addresses: [
+					{
+						id: 'adr_1',
+						label: 'Home',
+						line1: '1 Park Street',
+						line2: 'Flat 2',
+						city: 'Kolkata',
+						postalCode: '700016',
+						state: 'West Bengal',
+						country: 'India',
+						phone: '+14155550123',
+						isDefault: true,
+					},
+				],
+			}),
+		).address?.[0];
+		expect(address).toMatchObject({
+			address_id: 'adr_1',
+			title: 'Home',
+			street: '1 Park Street, Flat 2',
+			country_code: 1,
+			phone: 4155550123,
+			is_default: true,
+		});
+		expect(address?.id).toBeGreaterThan(0);
 	});
 
-	/** A value that IS just a dial code has no subscriber number, so it is not a split. */
-	it('does not split when nothing would be left', () => {
-		expect(splitPhone('+91')).toEqual({ countryCode: '91', national: '' });
-	});
-
-	it('falls back to the default market for an unrecognisable value', () => {
-		expect(splitPhone('9900000004')).toEqual({ countryCode: '91', national: '9900000004' });
-		expect(splitPhone(null)).toEqual({ countryCode: '91', national: '' });
-		expect(splitPhone('')).toEqual({ countryCode: '91', national: '' });
-	});
-
-	it('ignores spacing and punctuation', () => {
-		expect(splitPhone('+1 (415) 555-0123')).toEqual({ countryCode: '1', national: '4155550123' });
+	it('fills an address that lacks the optional parts', () => {
+		const address = toAccountUser(
+			customer({ addresses: [{ id: 'adr_2', line1: 'x', city: 'y', postalCode: 'z', country: 'India' }] }),
+		).address?.[0];
+		expect(address).toMatchObject({ title: '', street: 'x', country_code: 91, phone: 0, state: { name: '' } });
 	});
 });

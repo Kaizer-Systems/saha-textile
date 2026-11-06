@@ -11,8 +11,8 @@ import {
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { Select2 } from 'ng-select2-component';
 import { injectMutation, injectQueryClient } from '@tanstack/angular-query-experimental';
+import { Select2 } from 'ng-select2-component';
 import { lastValueFrom } from 'rxjs';
 
 import { AdminCustomersGateway, type NotificationChannel } from '@core/admin-customers/admin-customers.gateway';
@@ -134,9 +134,8 @@ export class AddCustomerModal {
 		if (!digits) return undefined;
 		let dial = `+${countryCode}`;
 		for (const item of this.codes) {
-			if (!('value' in item) || String(item.value) !== String(countryCode)) continue;
-			const nested = item.data as { code?: string } | undefined;
-			if (nested?.code) dial = nested.code.replace(/\s/g, '');
+			if (String(item.value) !== String(countryCode)) continue;
+			dial = (item.data as { code: string }).code.replace(/\s/g, '');
 			break;
 		}
 		return `${dial}${digits}`;

@@ -4,7 +4,7 @@ import { Component, OnInit, PLATFORM_ID, computed, effect, inject, input, output
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 
 import { ICartAddOrUpdate, ICartLineConfig } from '@data-access/interfaces/cart.interface';
-import { ConfiguratorState, IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
+import { ConfiguratorState, IAddonGroup, IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 
 import { AddonGroup } from '../parts/addon-group/addon-group';
@@ -101,7 +101,7 @@ export class ProductConfigurator implements OnInit {
 	readonly summary = computed<IConfiguratorSummary>(() => ({
 		displayPrice: this.displayPrice(),
 		comparePrice: this.comparePrice(),
-		discount: this.discount() ?? 0,
+		discount: this.discount(),
 		unitPrice: this.unitPrice(),
 		purchasable: this.purchasable(),
 		soldOut: this.soldOut(),
@@ -189,7 +189,7 @@ export class ProductConfigurator implements OnInit {
 		};
 
 		if (this.hasAddon()) {
-			cfg.addon_options = (p.addon_groups ?? []).map((g) => {
+			cfg.addon_options = (p.addon_groups as IAddonGroup[]).map((g) => {
 				const term = g.terms.find(
 					(t) => t.code === (addonSel[g.code] ?? g.default_term_code ?? g.terms[0]?.code),
 				);

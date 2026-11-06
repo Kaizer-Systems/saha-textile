@@ -1,77 +1,131 @@
+import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
-import { EMPTY, Subject } from 'rxjs';
-import { describe, expect, it, vi } from 'vitest';
-
-import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
-import { BlogService } from '@data-access/services/blog.service';
-import { CategoryService } from '@data-access/services/category.service';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Menu } from './menu';
 
-const category = (id: number, name: string, level: number, parent_id: number | null) =>
-	({ id, name, level, parent_id, canonical_path: name.toLowerCase() }) as unknown as ICategory;
+const blogs = signal<unknown>(undefined);
+const categories = signal<unknown>(undefined);
+vi.mock('@data-access/queries/blog.queries', () => ({
+	injectBlogsQuery: (params: () => unknown) => {
+		params();
+		return { data: blogs };
+	},
+}));
+vi.mock('@data-access/queries/category.queries', () => ({
+	injectCategoriesQuery: (params: () => unknown) => {
+		params();
+		return { data: categories };
+	},
+}));
 
-const taxonomy = {
-	data: [category(1, 'Sarees', 1, null), category(2, 'Silk', 2, 1), category(3, 'Tussar', 3, 2)],
-} as ICategoryModel;
+const tree = {
+	data: [
+		{ id: 1, name: 'Sarees', level: 1, canonical_path: 'sarees' },
+		{ id: 2, name: 'Silk', level: 2, parent_id: 1, canonical_path: 'sarees/silk' },
+		{ id: 3, name: 'Banarasi', level: 3, parent_id: 2 },
+		{ id: 4, name: 'Loose', level: 1 },
+		{ id: 5, name: 'Unlinked', level: 2, parent_id: 4 },
+	],
+};
 
-/**
- * The server renders this menu, so it has to be derived with signals: a plain field written from
- * a subscription left the real links out of the server HTML. The real template (recursive
- * flyouts) is replaced with a thin one that reads the same binding.
- */
-function harness() {
-	const categories = new Subject<ICategoryModel>();
+const render = (platform = 'browser') => {
 	TestBed.resetTestingModule();
-	TestBed.configureTestingModule({
-		providers: [
-			provideTanStackQuery(new QueryClient()),
-			{ provide: CategoryService, useValue: { getCategories: () => categories } },
-			{ provide: BlogService, useValue: { getBlogs: () => EMPTY } },
-		],
-	});
-	TestBed.overrideComponent(Menu, {
-		set: {
-			imports: [],
-			template: `@for (item of menu(); track $index) {<p class="item">{{ item.title }}</p>}`,
-		},
-	});
-	const fixture = TestBed.createComponent(Menu);
-	fixture.autoDetectChanges();
-	const el: HTMLElement = fixture.nativeElement;
-	const titles = () => [...el.querySelectorAll('.item')].map((item) => item.textContent);
-	const answer = () => {
-		categories.next(taxonomy);
-		categories.complete();
-	};
-	return { fixture, titles, answer };
-}
+	TestBed.configureTestingModule({ providers: [{ provide: PLATFORM_ID, useValue: platform }] });
+	TestBed.overrideComponent(Menu, { set: { imports: [], template: '' } });
+	const menu = TestBed.createComponent(Menu).componentInstance;
+	TestBed.tick();
+	return menu;
+};
+const width = (value: number) => vi.stubGlobal('innerWidth', value);
 
-describe('the header menu', () => {
-	it('splices the real branches in after Home, with no change detection of its own', async () => {
-		const { titles, answer } = harness();
-		const demo = titles();
+afterEach(() => {
+	blogs.set(undefined);
+	categories.set(undefined);
+	vi.unstubAllGlobals();
+});
 
-		answer();
-
-		await vi.waitFor(() => expect(titles()).toHaveLength(demo.length + 1));
-		expect(titles()[0]).toBe(demo[0]);
-		expect(titles()[1]).toBe('Sarees');
+describe('Menu', () => {
+	it('keeps the demo menu until the taxonomy arrives', () => {
+		const menu = render();
+		const before = menu.menu().length;
+		categories.set({ data: [] });
+		expect(menu.menu()).toHaveLength(before);
 	});
 
-	it('gives the offcanvas the shallow tree when the screen narrows', async () => {
-		const { fixture, titles, answer } = harness();
-		answer();
-		await vi.waitFor(() => expect(titles()).toContain('Sarees'));
-		const sarees = () => fixture.componentInstance.menu()[1];
-		fixture.componentInstance.isMobileView.set(false);
-		expect(sarees().children?.[0]?.type).toBe('sub');
+	it('splices the full tree after Home on a desktop', () => {
+		width(1400);
+		categories.set(tree);
+		const [, sarees, loose] = render().menu();
+		expect(sarees).toMatchObject({
+			title: 'Sarees',
+			type: 'sub',
+			path: '/collections/sarees',
+			children: [
+				{
+					title: 'Silk',
+					type: 'sub',
+					path: '/collections/sarees/silk',
+					children: [{ title: 'Banarasi', type: 'link', path: undefined }],
+				},
+			],
+		});
+		expect(loose).toMatchObject({ title: 'Loose', path: undefined });
+	});
 
-		fixture.componentInstance.isMobileView.set(true);
+	it('uses the shallow tree on a phone, with View all', () => {
+		width(400);
+		categories.set(tree);
+		const [, sarees, loose] = render().menu();
+		expect(sarees?.children).toEqual([
+			{ id: 2, title: 'Silk', i18nTitle: false, type: 'link', path: '/collections/sarees/silk' },
+			{ title: 'view_all', titleParams: { name: 'Sarees' }, type: 'link', path: '/collections/sarees' },
+		]);
+		expect(loose?.children).toEqual([
+			{ id: 5, title: 'Unlinked', i18nTitle: false, type: 'link', path: undefined },
+		]);
+	});
 
-		expect(sarees().children?.[0]?.type).toBe('link');
-		expect(sarees().children?.at(-1)?.title).toBe('view_all');
+	it('follows the window across the breakpoint in the browser only', () => {
+		width(1400);
+		const menu = render();
+		width(400);
+		menu.onResize();
+		expect(menu.isMobileView()).toBe(true);
+		const server = render('server');
+		expect(server.isMobileView()).toBe(false);
+		server.onResize();
+		expect(server.isMobileView()).toBe(false);
+	});
+
+	it('keeps two posts for the mega menu', () => {
+		const menu = render();
+		expect(menu.blogs).toBeUndefined();
+		blogs.set({});
+		TestBed.tick();
+		expect(menu.blogs).toBeUndefined();
+		blogs.set({ data: [{ id: 1 }, { id: 2 }, { id: 3 }] });
+		TestBed.tick();
+		expect(menu.blogs).toHaveLength(2);
+	});
+
+	it('opens one item and closes the others', () => {
+		const menu = render();
+		const [first, second] = menu.menu();
+		first!.active = true;
+		menu.toggle(second!);
+		expect(first!.active).toBe(false);
+		expect(second!.active).toBe(true);
+		menu.toggle(second!);
+		expect(second!.active).toBe(false);
+	});
+
+	it('does not close the others for an item outside the top level', () => {
+		const menu = render();
+		const [first] = menu.menu();
+		first!.active = true;
+		menu.toggle({ active: false } as never);
+		expect(first!.active).toBe(true);
 	});
 });

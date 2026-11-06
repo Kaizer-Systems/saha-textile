@@ -1,4 +1,4 @@
-import { AsyncPipe, isPlatformBrowser } from '@angular/common';
+import { AsyncPipe, DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, computed, inject, input } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 
@@ -19,6 +19,7 @@ import { Button } from '@shared/ui/button/button';
 })
 export class Currency {
 	private platformId = inject<Object>(PLATFORM_ID);
+	private document = inject(DOCUMENT);
 	private settingStore = inject(SettingStore);
 
 	setting$: Observable<IValues> = toObservable(this.settingStore.setting) as Observable<IValues>;
@@ -51,7 +52,7 @@ export class Currency {
 		// Persisted to localStorage inside the store so it survives the reload.
 		this.settingStore.setCurrency(currency);
 		if (isPlatformBrowser(this.platformId)) {
-			window.location.reload();
+			this.document.location.reload();
 		}
 	}
 

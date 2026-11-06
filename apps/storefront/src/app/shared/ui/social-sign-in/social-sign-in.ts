@@ -1,3 +1,4 @@
+import { isPlatformBrowser } from '@angular/common';
 import {
 	Component,
 	DestroyRef,
@@ -11,7 +12,6 @@ import {
 	signal,
 	viewChild,
 } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
@@ -301,9 +301,9 @@ export class SocialSignIn {
 
 	/** Draws Google's own button into the mount, replacing whatever it drew before. */
 	private renderGoogleButton(): void {
-		const api = this.googleApi;
-		const mount = this.googleMountElement;
-		if (!api || !mount) return;
+		// Only reachable once arming has stored both, which is what `googleReady` records.
+		const api = this.googleApi as NonNullable<typeof this.googleApi>;
+		const mount = this.googleMountElement as HTMLElement;
 
 		api.accounts.id.renderButton(mount, {
 			theme: 'outline',
@@ -365,8 +365,8 @@ export class SocialSignIn {
 
 	/** True when the armed state is gone, spent, or too close to expiry to trust with a click. */
 	private googleStateIsStale(): boolean {
-		const state = this.googleState;
-		if (!state) return true;
+		// Asked only once `googleReady` is set, by which time a state has been stored.
+		const state = this.googleState as NonNullable<typeof this.googleState>;
 		return Date.parse(state.expiresAt) - Date.now() <= GOOGLE_STATE_REFRESH_MARGIN_MS;
 	}
 
@@ -474,12 +474,8 @@ export class SocialSignIn {
 			return;
 		}
 
-		const state = this.facebookState;
-		if (!state) {
-			this.status.set('social_unavailable');
-			this.busy.set(null);
-			return;
-		}
+		// The press that opened this dialog already required a state, and nothing clears one.
+		const state = this.facebookState as NonNullable<typeof this.facebookState>;
 
 		void this.completeProviderResult({
 			provider: 'facebook',

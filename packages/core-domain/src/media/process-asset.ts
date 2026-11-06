@@ -47,20 +47,21 @@ export const processMediaAsset = async (
 	if (!asset) return { status: 'not_claimed' };
 
 	try {
-		if (!asset.originalStorageKey) {
+		const originalKey = asset.originalStorageKey;
+		if (!originalKey) {
 			return await settle(deps, asset, { status: 'ready', rendered: 0, skipped: 0 }, asset.derivatives, []);
 		}
 
-		const bytes = await deps.storage.download(asset.originalStorageKey);
+		const bytes = await deps.storage.download(originalKey);
 		let probe;
 		try {
 			probe = await deps.codec.probe(bytes);
 		} catch (error) {
-			if (error instanceof ImageDecodeError) return await reject(deps, asset, 'not_an_image');
+			if (error instanceof ImageDecodeError) return await reject(deps, asset, originalKey, 'not_an_image');
 			throw error;
 		}
 		if (probe.format !== FORMAT_FOR_TYPE[asset.originalFormat]) {
-			return await reject(deps, asset, 'content_does_not_match_declared_type');
+			return await reject(deps, asset, originalKey, 'content_does_not_match_declared_type');
 		}
 
 		const ingest = checkIngest({
@@ -70,7 +71,7 @@ export const processMediaAsset = async (
 			width: probe.width,
 			height: probe.height,
 		});
-		if (ingest.refusal) return await reject(deps, asset, ingest.refusal.code);
+		if (ingest.refusal) return await reject(deps, asset, originalKey, ingest.refusal.code);
 
 		const placeholder = await deps.codec.placeholder(bytes);
 		const plan = planDerivatives({
@@ -176,14 +177,17 @@ const settle = async (
 };
 
 /** An upload that is not an acceptable image: its object goes, the asset records why. */
-const reject = async (deps: ProcessMediaAssetDeps, asset: MediaAsset, reason: string): Promise<ProcessOutcome> => {
+const reject = async (
+	deps: ProcessMediaAssetDeps,
+	asset: MediaAsset,
+	originalKey: string,
+	reason: string,
+): Promise<ProcessOutcome> => {
 	await deps.assets.update({
 		...asset,
 		originalStorageKey: null,
 		processing: { ...asset.processing, state: 'failed', error: reason },
 	});
-	if (asset.originalStorageKey) {
-		await deps.queue.enqueue({ type: 'delete-objects', keys: [asset.originalStorageKey], urls: [] });
-	}
+	await deps.queue.enqueue({ type: 'delete-objects', keys: [originalKey], urls: [] });
 	return { status: 'rejected', reason };
 };

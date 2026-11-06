@@ -74,7 +74,7 @@ function inLocale(targetPath: string, locale: string | null): string {
 }
 
 function isAsset(pathname: string): boolean {
-	const last = pathname.split('/').pop() ?? '';
+	const last = pathname.slice(pathname.lastIndexOf('/') + 1);
 	return last.includes('.') && !pathname.includes('/wp-');
 }
 
@@ -225,8 +225,10 @@ const WOO_FILTER = /^(orderby|order|min_price|max_price|rating_filter|query_type
 /** Sort and filter queries are not part of the address. `p` and builder keys stay. */
 function withoutWooFilters(query: string): string {
 	if (!query) return '';
-	const raw = query.startsWith('?') ? query.slice(1) : query;
-	const kept = raw.split('&').filter((part) => part && !WOO_FILTER.test(part.split('=')[0] ?? ''));
+	const kept = query
+		.slice(1)
+		.split('&')
+		.filter((part) => part && !WOO_FILTER.test(part.replace(/=.*$/, '')));
 	return kept.length > 0 ? `?${kept.join('&')}` : '';
 }
 
@@ -247,7 +249,8 @@ export function collapseRedirectTarget(
 	}
 	const seen = new Set<string>([withoutLocale(sourcePath)]);
 	let current = stripSlash(targetPath);
-	for (let hop = 0; hop < rows.length + 1; hop += 1) {
+	// Ends because `seen` grows every pass and there are only so many rows to follow.
+	for (;;) {
 		const bare = withoutLocale(current);
 		if (seen.has(bare)) return { error: 'loop' };
 		seen.add(bare);
@@ -256,7 +259,6 @@ export function collapseRedirectTarget(
 		if (next.statusCode === 410 || !next.targetPath) return { statusCode: 410 };
 		current = stripSlash(next.targetPath);
 	}
-	return { error: 'loop' };
 }
 
 /** The stored form of a source: lower case, no language, no trailing slash. */

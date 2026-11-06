@@ -62,7 +62,7 @@ export function isPrivatePath(appPath: string): boolean {
 /** Requests the locale rules leave alone: assets, the API, Vite and Nitro internals. */
 function isPagePath(pathname: string): boolean {
 	if (/^\/(api|_analog|@[\w-]+|__[\w-]*|node_modules|src|assets|\.well-known)(\/|$)/.test(pathname)) return false;
-	const last = pathname.split('/').pop() ?? '';
+	const last = pathname.split('/').pop() as string;
 	return !last.includes('.');
 }
 

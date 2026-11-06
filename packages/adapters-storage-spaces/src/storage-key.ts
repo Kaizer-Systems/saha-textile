@@ -28,9 +28,9 @@ export function assertValidStorageKey(key: string): void {
 	if (key.split('/').some((segment) => segment === '.' || segment === '..')) {
 		throw new Error('storage key must not contain relative path segments ("." or "..")');
 	}
-	for (const character of key) {
-		const codePoint = character.codePointAt(0) ?? 0;
-		if (codePoint <= CONTROL_CHAR_MAX || codePoint === DELETE_CHAR) {
+	for (let index = 0; index < key.length; index += 1) {
+		const code = key.charCodeAt(index);
+		if (code <= CONTROL_CHAR_MAX || code === DELETE_CHAR) {
 			throw new Error('storage key must not contain control characters');
 		}
 	}

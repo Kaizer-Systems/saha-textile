@@ -27,7 +27,6 @@ import {
 	NgbCollapse,
 	NgbDate,
 	NgbDateParserFormatter,
-	NgbDateStruct,
 	NgbInputDatepicker,
 	NgbNav,
 	NgbNavContent,
@@ -61,18 +60,15 @@ import { injectStoresQuery } from '@data-access/queries/store.queries';
 import { injectTagsQuery } from '@data-access/queries/tag.queries';
 import { injectTaxesQuery } from '@data-access/queries/tax.queries';
 import { ProductService } from '@data-access/services/product.service';
-import { environment } from '../../../../../public/environments/environment';
+import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
-import { YouTubeVideoField } from '@shared/ui/youtube-video-field/youtube-video-field';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
-import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
+import { YouTubeVideoField } from '@shared/ui/youtube-video-field/youtube-video-field';
 import { priceValidator } from '@shared/validators/price-validator';
 
-function convertToNgbDate(date: NgbDateStruct): NgbDate {
-	return new NgbDate(date.year, date.month, date.day);
-}
+import { environment } from '../../../../../public/environments/environment';
 
 /** Required in the vendor form, but not held by the catalogue API, so an edit never blocks on them. */
 const FIELDS_THE_API_DOES_NOT_SAVE = ['short_description', 'description', 'categories', 'tax_id', 'store_id'];
@@ -147,7 +143,7 @@ export class FormProduct {
 		is_approved: 1,
 	});
 	private readonly productsQuery = injectCatalogProductsQuery(() => ({
-		search: String(this.productParams()['search'] ?? '') || undefined,
+		search: String(this.productParams()['search']) || undefined,
 		pageSize: 100,
 	}));
 	products$: Observable<Select2Data> = toObservable(
@@ -584,12 +580,13 @@ export class FormProduct {
 	private filterAttributes(ids: string): Select2Data {
 		const attrIds = Array.from(new Set(ids.split(','))).map(Number);
 		const data = this.attributesQuery.data()?.data ?? [];
-		const filter = attrIds.length ? data.filter((attr) => !attrIds.includes(Number(attr.id!))) : data;
-		return filter.map((attribute) => ({
-			label: attribute?.name,
-			value: attribute?.id,
-			attribute_values: attribute?.attribute_values,
-		})) as Select2Data;
+		return data
+			.filter((attr) => !attrIds.includes(Number(attr.id!)))
+			.map((attribute) => ({
+				label: attribute?.name,
+				value: attribute?.id,
+				attribute_values: attribute?.attribute_values,
+			})) as Select2Data;
 	}
 
 	// Replicates the former AttributeState.attribute_value selector: values belonging to one attribute.
@@ -728,7 +725,7 @@ export class FormProduct {
 
 	selectTagItem(data: Number[]) {
 		if (Array.isArray(data)) {
-			this.form.controls['tags'].setValue(Array.isArray(data) ? data : []);
+			this.form.controls['tags'].setValue(data);
 		}
 	}
 

@@ -254,7 +254,7 @@ export class LoginMethods {
 	private requestFor(action: PendingAction, proof: StepUpProof) {
 		switch (action.kind) {
 			case 'password':
-				return this.gateway.setPassword({ newPassword: String(this.form.value.newPassword ?? ''), ...proof });
+				return this.gateway.setPassword({ newPassword: String(this.form.value.newPassword), ...proof });
 			case 'disconnect':
 				return this.gateway.disconnectIdentity({ provider: action.provider, ...proof });
 			case 'connect':

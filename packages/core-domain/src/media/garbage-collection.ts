@@ -54,7 +54,7 @@ export const runMediaGarbageCollection = async (
 			if (!options.dryRun) await deps.assets.softDelete(asset.id, now.toISOString());
 		}
 		if (page.length < PAGE) break;
-		afterId = page[page.length - 1]?.id ?? null;
+		afterId = (page[page.length - 1] as MediaAsset).id;
 	}
 
 	const deletedBefore = new Date(now.getTime() - MEDIA_INGEST_POLICY.gcGraceDays * 24 * HOUR).toISOString();

@@ -66,7 +66,7 @@ export function isLiveStorefrontPath(pathname: string): boolean {
 	if (pathname.startsWith('/account/')) return true;
 	if (pathname.startsWith('/auth/')) return true;
 	if (pathname.startsWith('/product/')) {
-		const slug = pathname.slice('/product/'.length).split('/')[0] ?? '';
+		const slug = pathname.slice('/product/'.length).split('/')[0] as string;
 		return slug.length > 0 && productSlugs.has(slug);
 	}
 	if (pathname.startsWith('/collections/')) {

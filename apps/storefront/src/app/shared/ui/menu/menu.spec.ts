@@ -7,7 +7,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
 import { BlogService } from '@data-access/services/blog.service';
 import { CategoryService } from '@data-access/services/category.service';
-import { ProductService } from '@data-access/services/product.service';
 
 import { Menu } from './menu';
 
@@ -30,7 +29,6 @@ function harness() {
 		providers: [
 			provideTanStackQuery(new QueryClient()),
 			{ provide: CategoryService, useValue: { getCategories: () => categories } },
-			{ provide: ProductService, useValue: { getProducts: () => EMPTY } },
 			{ provide: BlogService, useValue: { getBlogs: () => EMPTY } },
 		],
 	});

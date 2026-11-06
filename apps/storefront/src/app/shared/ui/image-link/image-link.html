@@ -117,7 +117,7 @@
 	}
 </a>
 } @else { @if (image()?.redirect_link?.link_type === 'product') {
-<a [routerLink]="['/product/', getProductSlug(image()?.redirect_link?.link, (product$ | async)?.data!)]">
+<a [routerLink]="['/product/', image()?.redirect_link?.link]">
 	@if (bgImage()) {
 	<div
 		class="bg-size h-100"
@@ -147,7 +147,7 @@
 } } } }
 <ng-template #product>
 	@if (image()?.redirect_link?.link_type === 'product') {
-	<a [routerLink]="['/product/', getProductSlug(image()?.redirect_link?.link, (product$ | async)?.data!)]">
+	<a [routerLink]="['/product/', image()?.redirect_link?.link]">
 		@if (bgImage()) {
 		<div
 			class="bg-size h-100"

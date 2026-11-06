@@ -339,6 +339,12 @@ export class CatalogPublicService {
 		return this.cards(found);
 	}
 
+	/** Cards for products still on sale; anything no longer public is left out. */
+	async cardsForIds(ids: readonly string[]): Promise<CatalogCard[]> {
+		const found = await Promise.all(ids.map((id) => this.products.findById(id, 'public')));
+		return this.cards(found.filter((product) => product !== null));
+	}
+
 	async relationCards(slug: string) {
 		const product = await this.requireLive(slug);
 		if (!this.relations) return { related: [], upsell: [], crossSell: [], boughtTogether: [] };

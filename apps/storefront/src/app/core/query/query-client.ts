@@ -34,8 +34,7 @@ export const isPublicQuery = (queryKey: readonly unknown[]): boolean =>
 	typeof queryKey[0] === 'string' && PUBLIC_QUERY_ROOTS.has(queryKey[0]);
 
 /**
- * Public GETs the HTTP transfer cache may replay in the browser. The demo `product.json`
- * is left out on purpose: it is megabytes, and only legacy widgets still read it.
+ * Public GETs the HTTP transfer cache may replay in the browser.
  */
 const PUBLIC_REQUESTS = [
 	/\/catalog\//,

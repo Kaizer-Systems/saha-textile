@@ -16,7 +16,7 @@ import {
 import { backgroundRequest } from '@core/interceptors/background-request';
 import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
-import { IProduct, IProductModel, IProductRelations } from '@data-access/interfaces/product.interface';
+import { IProduct, IProductRelations, IRecentPurchase } from '@data-access/interfaces/product.interface';
 
 import { environment } from '../../../../public/environments/environment';
 
@@ -27,14 +27,6 @@ export class ProductService {
 	private http = inject(HttpClient);
 
 	public skeletonLoader: boolean = false;
-
-	/** Raw full list (mock JSON) — still used by the PDP/related/deal readers that filter by id/slug. */
-	getProducts(payload?: Params): Observable<IProductModel> {
-		return this.http.get<IProductModel>(`${environment.URL}/product.json`, {
-			params: payload,
-			context: backgroundRequest(),
-		});
-	}
 
 	/**
 	 * Category-listing catalog (Pass A) — hits the Nitro route that filters/sorts/
@@ -71,6 +63,19 @@ export class ProductService {
 				sale: home.sale.map(cardToProduct),
 			})),
 		);
+	}
+
+	/** Real sales from the last day. Empty until there are paid orders, which keeps the popup hidden. */
+	recentPurchases(): Observable<IRecentPurchase[]> {
+		return this.http
+			.get<{
+				items: Array<{ card: ApiCard; purchasedAt: string }>;
+			}>(`${environment.apiUrl}/catalog/recent-purchases`, { context: backgroundRequest() })
+			.pipe(
+				map(({ items }) =>
+					items.map(({ card, purchasedAt }) => ({ product: cardToProduct(card), purchasedAt })),
+				),
+			);
 	}
 
 	search(term: string): Observable<IProduct[]> {

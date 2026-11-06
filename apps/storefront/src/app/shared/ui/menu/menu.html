@@ -75,22 +75,6 @@
 						</a>
 						} } }
 					</div>
-					} @if (menu.slider === 'product') {
-					<div class="dropdown-column col-xl-6 d-xl-block d-none">
-						<div class="menu-product-slider">
-							<div class="row">
-								@for (product of products; track product) {
-								<div class="col-6">
-									<app-product-box
-										[product]="product"
-										[class]="'product-box-3'"
-										[style]="'horizontal'"
-									/>
-								</div>
-								}
-							</div>
-						</div>
-					</div>
 					} @if (menu.slider === 'banner_portrait') {
 					<div class="dropdown-column col-xl-3 d-xl-block d-none">
 						<div class="menu-img-banner">

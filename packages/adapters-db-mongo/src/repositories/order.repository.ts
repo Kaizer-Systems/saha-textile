@@ -1,5 +1,11 @@
-import type { Order, OrderStatus } from '@saha-textile/contracts';
-import type { OrderRepository, PageQuery, Paginated, TransactionContext } from '@saha-textile/core-domain';
+import { type Order, type OrderStatus, PURCHASED_ORDER_STATUSES } from '@saha-textile/contracts';
+import type {
+	OrderRepository,
+	PageQuery,
+	Paginated,
+	PurchasedProduct,
+	TransactionContext,
+} from '@saha-textile/core-domain';
 
 import { toOrder } from '../mappers';
 import { type OrderDoc, OrderModel } from '../models/index';
@@ -29,6 +35,28 @@ export class MongoOrderRepository implements OrderRepository {
 			OrderModel.countDocuments({ userId }).exec(),
 		]);
 		return { items: docs.map(toOrder), total, page, pageSize };
+	}
+
+	async listRecentlyPurchased(since: string, limit: number): Promise<PurchasedProduct[]> {
+		const docs = await OrderModel.find({
+			status: { $in: PURCHASED_ORDER_STATUSES },
+			createdAt: { $gte: new Date(since) },
+		})
+			.sort({ createdAt: -1 })
+			.limit(limit)
+			.lean<OrderDoc[]>()
+			.exec();
+		const newest = new Map<string, string>();
+		for (const order of docs.map(toOrder)) {
+			const paid = order.statusTimeline.find((event) => event.status === 'paid')?.at ?? order.createdAt;
+			if (!paid) continue;
+			for (const line of order.lines) {
+				if (!newest.has(line.productId)) newest.set(line.productId, paid);
+			}
+		}
+		return [...newest]
+			.map(([productId, purchasedAt]) => ({ productId, purchasedAt }))
+			.sort((a, b) => b.purchasedAt.localeCompare(a.purchasedAt));
 	}
 
 	async save(order: Order, context?: TransactionContext): Promise<Order> {

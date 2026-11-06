@@ -3,7 +3,7 @@ import { signal } from '@angular/core';
 import type { ICatalogResponse } from '../../../../../storefront/src/app/data-access/interfaces/catalog.interface';
 import type {
 	IProduct,
-	IProductModel,
+	IRecentPurchase,
 } from '../../../../../storefront/src/app/data-access/interfaces/product.interface';
 
 import { namedAddonProduct, simpleProduct, variationProduct } from '../../../fixtures/storefront-products';
@@ -13,11 +13,6 @@ const products: IProduct[] = [
 	structuredClone(variationProduct),
 	structuredClone(namedAddonProduct),
 ];
-
-const productPage: IProductModel = {
-	data: products,
-	total: products.length,
-};
 
 const catalogue: ICatalogResponse = {
 	data: products,
@@ -50,20 +45,6 @@ export function injectCatalogQuery() {
 	};
 }
 
-export function injectProductsQuery() {
-	return {
-		...idleQuery,
-		data: signal<IProductModel | undefined>(productPage),
-	};
-}
-
-export function injectDealProductsQuery() {
-	return {
-		...idleQuery,
-		data: signal<IProduct[] | undefined>(products.slice(0, 2)),
-	};
-}
-
 export function injectProductBySlugQuery() {
 	return {
 		...idleQuery,
@@ -86,3 +67,10 @@ export function injectRelatedProductsData() {
 }
 
 export const RELATED_PRODUCTS_KEY = ['products', 'related', 'current'];
+
+export function injectRecentPurchasesQuery() {
+	return {
+		...idleQuery,
+		data: signal<IRecentPurchase[] | undefined>([]),
+	};
+}

@@ -8,6 +8,12 @@ import { IStores } from './store.interface';
 import { ITag } from './tag.interface';
 import { ITax } from './tax.interface';
 
+/** A real sale, as the popup shows it. Product and time only. */
+export interface IRecentPurchase {
+	product: IProduct;
+	purchasedAt: string;
+}
+
 export interface IProductModel extends IPaginateModel {
 	data: IProduct[];
 }

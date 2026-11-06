@@ -5,6 +5,7 @@ import { Public } from '../auth/session.guard';
 import { API_TAGS } from '../openapi-tags';
 import { CatalogEtagInterceptor } from './catalog-etag.interceptor';
 import { CatalogPublicService } from './catalog-public.service';
+import { RecentPurchasesService } from './recent-purchases.service';
 
 /**
  * Public catalogue reads for the storefront. Admin writes stay on `admin/catalog`.
@@ -15,7 +16,10 @@ import { CatalogPublicService } from './catalog-public.service';
 @Public()
 @UseInterceptors(CatalogEtagInterceptor)
 export class StorefrontCatalogController {
-	constructor(private readonly catalog: CatalogPublicService) {}
+	constructor(
+		private readonly catalog: CatalogPublicService,
+		private readonly recentPurchases: RecentPurchasesService,
+	) {}
 
 	@Get('home')
 	@Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
@@ -42,6 +46,16 @@ export class StorefrontCatalogController {
 	cards(@Query('slug') slug?: string | string[]) {
 		const slugs = Array.isArray(slug) ? slug : slug ? [slug] : [];
 		return this.catalog.cardsForSlugs(slugs);
+	}
+
+	@Get('recent-purchases')
+	@Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
+	@ApiOperation({
+		operationId: 'catalogRecentPurchases',
+		summary: 'Real sales from the last day, without buyer data',
+	})
+	recent() {
+		return this.recentPurchases.list();
 	}
 
 	@Get('live-paths')

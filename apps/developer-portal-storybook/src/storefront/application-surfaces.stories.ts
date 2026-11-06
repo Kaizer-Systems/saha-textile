@@ -46,9 +46,9 @@ class StorybookRecentPurchaseHost implements AfterViewInit {
 	private readonly changeDetector = inject(ChangeDetectorRef);
 
 	ngAfterViewInit(): void {
-		this.popup.product = simpleProduct;
-		this.popup.min = 3;
-		this.popup.show = true;
+		this.popup.purchase.set({ product: simpleProduct, purchasedAt: new Date().toISOString() });
+		this.popup.timeAgo.set('3 minutes ago');
+		this.popup.show.set(true);
 		this.changeDetector.detectChanges();
 	}
 }

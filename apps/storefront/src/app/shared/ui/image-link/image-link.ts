@@ -1,24 +1,16 @@
-import { AsyncPipe, NgClass, NgTemplateOutlet } from '@angular/common';
-import { Component, computed, input } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { NgClass, NgTemplateOutlet } from '@angular/common';
+import { Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { Observable } from 'rxjs';
-
-import { IProduct, IProductModel } from '@data-access/interfaces/product.interface';
 import { bannerSrc, bannerSrcset } from '@data-access/queries/banner.queries';
-import { injectProductsQuery } from '@data-access/queries/product.queries';
 
 @Component({
 	selector: 'app-image-link',
 	templateUrl: './image-link.html',
 	styleUrls: ['./image-link.scss'],
-	imports: [NgClass, NgTemplateOutlet, RouterLink, AsyncPipe],
+	imports: [NgClass, NgTemplateOutlet, RouterLink],
 })
 export class ImageLink {
-	private readonly productsQuery = injectProductsQuery(() => undefined);
-	product$: Observable<IProductModel | undefined> = toObservable(computed(() => this.productsQuery.data()));
-
 	// TODO: Skipped for migration because:
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
 	//  and migrating would break narrowing currently.
@@ -38,10 +30,4 @@ export class ImageLink {
 		banner.position === 'hero' && banner.slot === 'main';
 	readonly src = bannerSrc;
 
-	constructor() {}
-
-	getProductSlug(id: number, products: IProduct[] | undefined) {
-		let product = products?.find((product) => product.id === id);
-		return product ? product.slug : null;
-	}
 }

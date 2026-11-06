@@ -4,7 +4,7 @@ slug: /payments/ccavenue
 description: CCAvenue for the INR role. Section 1 is HDFC's documentation for K R MARKETING ONLINE; section 2 is the calls this project will make and where each one will live.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 search_keywords: CCAvenue HDFC VAS K R MARKETING ONLINE integration kit non-seamless initiateTransaction encResp orderStatusTracker refundOrder DoWebTrans working key access code
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts

@@ -3,7 +3,7 @@ title: Documentation Page Template
 description: Copyable template for new hand-written portal pages.
 status: implemented
 audience: [frontend, backend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - docs/governance/contribution-standard.md
     - scripts/validate-developer-portal.mjs

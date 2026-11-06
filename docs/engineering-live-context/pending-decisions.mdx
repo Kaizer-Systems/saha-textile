@@ -45,7 +45,7 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-SCOPE-GAPS`            | Missing business flows and launch scope                                                              | Whole product                                 |
 | `DEC-PAYPAL-FX`             | Treatment of PayPal FX-conversion markup                                                             | Foreign-currency pricing and margin           |
 | `DEC-INR-GATEWAY-TIMING`    | Timing of CCAvenue-to-Razorpay succession                                                            | Payment adapter delivery and operations       |
-| `DEC-DOMAIN-TOPOLOGY`       | Production cookie-domain rule — **hostnames settled 2026-11-03**                                     | Cookies, CORS, Nginx, deployment              |
+| `DEC-SECRETS-DELIVERY`      | How running containers receive secrets                                                               | Deploy scripts, API boot                      |
 | `DEC-PORTAL-PRIVATE-ACCESS` | Developer-portal identity policy and origin-protection mechanism                                     | Portal deployment, Cloudflare, service access |
 
 ---
@@ -656,74 +656,49 @@ Notes:
 
 ---
 
-## 22. `DEC-DOMAIN-TOPOLOGY` — Production hostname topology
+## 22. `DEC-SECRETS-DELIVERY` — How running containers receive secrets
 
 ### Decision needed
 
-Choose the permanent production topology for the storefront, admin, and API.
+Choose how staging and production containers get their secrets. Secrets stay out of images and
+the browser in every option.
 
 ### Why this matters
 
-The choice controls cookie domain/scope, credentialed CORS, CSRF origins, Nginx
-routing, Cloudflare records, CSP/connect-src, OAuth callbacks, public runtime
-config, and deployment/runbook paths.
+It sets the deploy scripts, whether the API needs a file-based secret loader, and whether another
+service can stop the shop starting.
 
 ### Recommended route
 
-Use explicit subdomains: `www.sahatextile.com`,
-`admin.sahatextile.com`, and `api.sahatextile.com`, with narrowly scoped
-cookies and exact CORS/CSRF allowlists.
+GitHub encrypted secrets written at deploy to root-only files, mounted read-only into each
+container.
 
 ### Options
 
-#### Option A — Separate subdomains (recommended)
+#### Option A — GitHub and mounted files (recommended)
 
-- Pros: clear application/deployment boundaries and explicit API origin.
-- Pros: straightforward Cloudflare/Nginx routing and operational ownership.
-- Cons: requires careful cookie scope, credentialed CORS, and OAuth callback
-  configuration.
+- Pros: $0; nothing new that can stop startup; values stay out of `docker inspect`.
+- Cons: needs a small API boot loader; GitHub cannot show a value again, so the owner keeps a master copy.
 
-#### Option B — Same-origin reverse-proxy paths
+#### Option B — GitHub and an env file
 
-- Example: storefront at `/`, admin at `/admin`, API at `/api`.
-- Pros: simpler browser-origin and cookie behavior.
-- Cons: more coupled routing/deployment and a more complex proxy namespace.
+- Pros: $0 and no code change.
+- Cons: values sit in plain text in Docker's container config and show in `docker inspect`.
 
-#### Option C — Hybrid
+#### Option C — A secrets service (Doppler, Infisical or Bitwarden)
 
-- Example: storefront/admin share the apex while API uses a subdomain.
-- Pros: may simplify one application boundary.
-- Cons: combines both models and needs a precise exception matrix.
+- Pros: one central place and easier rotation; each free tier covers local, staging and production.
+- Cons: fetched at startup, an outage can stop the shop returning after a reboot, and a login token
+  must live on the droplet. Having the deploy job fetch and write the mounted files avoids both.
+- Cons: free tiers offer little or no audit history.
 
-### Settled 2026-11-02 — no longer open
+### Status note (2026-11-06)
 
-- Separate per-application subdomains (Option A shape) for staging and production.
-- Single-level hostnames only, because Cloudflare's free Universal SSL covers just `*.sahatextile.com`.
-- Staging: `staging.sahatextile.com` (storefront), `admin-staging.sahatextile.com`, `api-staging.sahatextile.com`, `cdn-staging.sahatextile.com`.
-
-### Settled 2026-11-03 — no longer open
-
-- Production storefront: the bare `sahatextile.com`, which the live WordPress site already uses as
-  its main address; `www.sahatextile.com` permanently redirects to it. Keeping the host Google
-  already indexes avoids a host change on top of the URL migration.
-- Production admin, API and CDN: `admin.sahatextile.com`, `api.sahatextile.com`,
-  `cdn.sahatextile.com`.
-
-Still open: the cookie-domain rule — host-only cookies per application, or a shared
-`Domain=sahatextile.com` (the environment catalogue currently plans the apex for staging and
-production so the storefront server and the API can both read the session).
+The owner compared these and will decide later. This gate blocks the deploy scripts only.
 
 ### Owner answer
 
 Choice:
-
-Storefront hostname:
-
-Admin hostname:
-
-API hostname:
-
-Cookie-domain rule:
 
 Notes:
 

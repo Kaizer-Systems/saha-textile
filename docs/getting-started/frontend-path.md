@@ -3,7 +3,7 @@ title: Frontend Path
 description: Onboarding route for storefront and admin developers.
 status: scaffolded
 audience: [frontend]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - apps/storefront/src/app
     - apps/admin/src/app
@@ -40,7 +40,7 @@ Use this path for work in the Angular storefront, Angular admin application, sha
 - The storefront uses Analog file-based pages under `apps/storefront/src/app/pages`.
 - The storefront uses classic NgRx for heavily mutated state such as cart, wishlist and compare.
 - TanStack Angular Query is the server-state direction, with feature queries under `data-access/queries`.
-- The storefront catalogue currently mixes JSON fixture readers with a server-side catalogue route; check the service method used by your page before changing data behaviour.
+- The storefront catalogue reads the API, but some other pages still read JSON fixtures; check the service method used by your page before changing data behaviour.
 - The admin application has a broad route and feature scaffold with services still reading development JSON data in several areas.
 - Both applications use Transloco, interceptors and strict application configuration.
 - Storefront registration resumes server-held social/signup state after reload and discards it on in-app abandonment. Dynamic catalogue labels remain Machine-2 content rather than translation keys, and repeated templates require non-duplicating track identities.

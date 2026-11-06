@@ -3,7 +3,7 @@ title: Deployment Overview
 description: Deployment documentation landing page.
 status: planned
 audience: [operator, backend]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - apps/api/.env.example
     - docker/mongo/docker-compose.yml
@@ -53,7 +53,7 @@ to portal content or browser-delivered indexes.
 
 ## Runtime configuration and secrets model
 
-- **Secrets reach the API only.** GitHub Actions encrypted secrets are injected as root-owned env files / Docker Compose secrets into the **API container**. They never reach the Angular apps.
+- **Secrets reach only the containers that need them.** The API and worker get the app secrets, and MongoDB, Redis and Meilisearch get their own. They never reach the Angular apps. The delivery method is open as `DEC-SECRETS-DELIVERY`; the recommended route is GitHub encrypted secrets written to root-only files and mounted read-only.
 - **A deployment refuses unsafe settings.** With `NODE_ENV=production` and `DEPLOY_ENV` unset, `staging` or `production`, the API and worker list every unsafe setting (default or shared secrets, localhost CORS, console notifier, unauthenticated stores, unset media storage …) and exit 1 before connecting. Deploy scripts must set `DEPLOY_ENV`; the full rule list is in the environment-variables catalogue. A real staging proof is still owed (API roadmap, Chunk J).
 - **Angular apps get public config.** The storefront and admin apps receive a deploy-time public `config.json` (API/site URLs, locales, public client IDs) loaded at boot — no secret is ever baked into a browser build.
 - **Nginx serves the storefront's `config.json`.** Never mount it into the storefront container: its server sends public files at their build-time size, so a longer config is cut off and the browser silently falls back to `localhost`. The admin is plain Nginx and can keep its mount. A deploy must check that `/config.json` parses.
@@ -65,6 +65,15 @@ Product-only deployment builds must use `pnpm build:product-apps`, whose Turbo g
 `@saha-textile/storefront`, `@saha-textile/admin`, and `@saha-textile/api`. An unfiltered root
 `pnpm build` can include portal workspaces and must not be used as evidence that a three-image
 product deployment excludes the portal.
+
+## Decided for the production path (2026-11-06)
+
+- **Cookies** stay on the API host; `COOKIE_DOMAIN` stays empty in every environment.
+- **Staging** is an on-demand droplet, created by script and kept until the owner runs the destroy script by hand.
+- **Backups** run nightly, encrypted, to a private Spaces bucket in `sgp1`.
+- **Deploys** reach the droplet by SSH through Cloudflare Tunnel, with port 22 closed to the internet.
+
+None of these scripts exist yet. Known blockers before a first staging boot: MongoDB password login on a replica set needs a keyfile, and the Meilisearch key and production mode are not covered by the boot check.
 
 ## Images and the local production-shaped stack
 

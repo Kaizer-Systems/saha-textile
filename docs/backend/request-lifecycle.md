@@ -3,7 +3,7 @@ title: Request Lifecycle and Boundary Tracing
 description: How a request enters the API, crosses application and domain boundaries, reaches an adapter, and returns safely.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 wide: true
 search_keywords: 'flight simulator photon post orders idempotency transaction ghost stages trace'
 source_of_truth:
@@ -137,7 +137,7 @@ Use this worksheet when debugging or documenting an endpoint.
 The storefront checkout is currently a demo-data UI and does not call `POST /orders`. For a direct client that calls the existing API operation, current execution is:
 
 1. The global guard validates the httpOnly access cookie and establishes a principal.
-2. Because this is an unsafe cookie request, the CSRF guard requires the readable session-bound token in both cookie and `x-csrf-token` header.
+2. Because this is an unsafe cookie request, the CSRF guard requires the session-bound token in both the httpOnly cookie and the `x-csrf-token` header. The app holds its copy in memory, from the CSRF route's reply.
 3. `CreateOrderSchema` validates `cartId`, optional currency/gateway/coupon and accepts no user id.
 4. The service proves the cart belongs to the principal or is a guest cart backed by the caller's `st_guest` cookie before any write.
 5. Service loads the authorized cart and each product.

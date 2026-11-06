@@ -37,11 +37,10 @@ const atlases: Record<Application, AtlasItem[]> = {
 		},
 		{
 			name: 'Catalogue listing',
-			summary:
-				'The collection path has an API-backed catalogue query seam while adjacent catalogue readers still use JSON data.',
+			summary: 'Category pages, the home page, cards and the product page read the catalogue API.',
 			status: 'scaffolded',
 			runtime: 'Collection pages + shop feature components',
-			data: 'GET /api/products for catalogue responses; JSON remains for legacy-shaped readers.',
+			data: 'GET /catalog/* for catalogue responses; the demo cart and pages not yet moved still read JSON.',
 			sources: [
 				'apps/storefront/src/app/data-access/services/product.service.ts',
 				'apps/storefront/src/app/data-access/queries/product.queries.ts',

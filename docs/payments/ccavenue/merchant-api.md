@@ -3,7 +3,7 @@ title: CCAvenue merchant API
 description: The CCAvenue Merchant's API Implementation Guide (HDFC API Doc v1.3, kit revision) — envelope, all 24 commands, status vocabularies, and both error tables, transcribed as printed, plus the differences from the copy received earlier.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 search_keywords: CCAvenue DoWebTrans confirmOrder cancelOrder refundOrder orderStatusTracker orderLookup getPendingOrders getRefundDetails getSettlementDetails payoutSummary payIdDetails consolidatepayoutSummary error codes 51419 51407
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts

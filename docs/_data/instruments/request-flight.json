@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-11-04",
+	"lastVerified": "2026-11-06",
 	"sourceOfTruth": [
 		"apps/api/src/orders/orders.controller.ts",
 		"apps/api/src/orders/orders.service.ts",
@@ -39,7 +39,7 @@
 			"sublabel": "Fastify + NestJS",
 			"kind": "real",
 			"file": "apps/api/src/orders/orders.controller.ts",
-			"current": "The global SessionGuard authenticates from the httpOnly access cookie, and an unsafe request carrying session cookies must echo its session-bound readable CSRF cookie in x-csrf-token. The zod body never accepts a user id.",
+			"current": "The global SessionGuard authenticates from the httpOnly access cookie, and an unsafe request carrying session cookies must send its session-bound CSRF token in x-csrf-token, matching the httpOnly CSRF cookie. The zod body never accepts a user id.",
 			"target": "Keep the cookie-only session and double-submit CSRF boundary, then document its storefront audience and security requirements in OpenAPI."
 		},
 		{

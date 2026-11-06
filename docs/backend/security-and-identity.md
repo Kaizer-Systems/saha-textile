@@ -5,7 +5,7 @@ description: Current authentication scaffold, ratified browser-session architect
 search_keywords: 'cookies csrf st_access st_refresh st_admin_access otp msg91 jwt session bola audiences pin'
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - apps/api/src/auth
     - apps/api/src/admin
@@ -61,7 +61,7 @@ sequenceDiagram
     API->>AuthPort: verifyPassword
     API->>SessionStore: persist refresh family + CSRF hash
     API->>AuthPort: sign short-lived access JWT
-    API-->>Browser: httpOnly access/refresh + readable CSRF cookies and sanitized JSON
+    API-->>Browser: httpOnly access, refresh and CSRF cookies and sanitized JSON
     Browser->>API: cookies and X-CSRF-Token on unsafe requests
 ```
 
@@ -101,7 +101,7 @@ sequenceDiagram
     Browser->>API: Login credentials / verified provider token
     API->>API: Validate policy and audience
     API->>SessionStore: Create session + refresh-family hash
-    API-->>Browser: Set httpOnly access + refresh cookies and readable bound CSRF cookie
+    API-->>Browser: Set httpOnly access, refresh and bound CSRF cookies
     Browser->>API: Unsafe request + cookies + X-CSRF-Token
     API->>API: Check origin/fetch metadata, access audience, CSRF, permission, resource
     API-->>Browser: Actor-safe response
@@ -116,11 +116,11 @@ sequenceDiagram
 | -------------------------- | ----------------: | --------------------------------------------------- |
 | Access cookie              |                No | Short-lived authenticated requests                  |
 | Refresh cookie             |                No | Opaque rotation credential; hash stored server-side |
-| CSRF cookie                |               Yes | Double-submit value bound/signed to session         |
+| CSRF cookie                |                No | API half of double-submit, bound to the session     |
 | Guest cookie               |                No | Opaque authority for one guest cart only            |
 | Locale/currency preference |            May be | Non-secret presentation context                     |
 
-The base cookie names are `st_access`, `st_refresh`, and the browser-readable `st_csrf` (CSRF header `x-csrf-token`). Admin sessions use their own names — `st_admin_access`, `st_admin_refresh`, `st_admin_csrf` — so an admin and a storefront session on the same host never overwrite each other. `CookieAudienceGuard` runs before every other guard and records the route's `@Audience` on the request; the session and CSRF guards then read that audience's cookies, and the admin fetches its CSRF token from `GET /auth/admin/csrf`. Session cookies use `httpOnly`, `SameSite=Lax`, `Path=/`, and Secure-by-default configuration; the CSRF cookie is deliberately readable and is not a credential. The `__Host-` prefix is used when cookies are Secure and no cookie domain is pinned. An explicit insecure local opt-out or a pinned domain uses the compact `st_*` names. Auth responses return sanitized account/session metadata, never reusable access or refresh credentials.
+The base cookie names are `st_access`, `st_refresh`, and `st_csrf` (CSRF header `x-csrf-token`). Admin sessions use their own names — `st_admin_access`, `st_admin_refresh`, `st_admin_csrf` — so an admin and a storefront session on the same host never overwrite each other. `CookieAudienceGuard` runs before every other guard and records the route's `@Audience` on the request; the session and CSRF guards then read that audience's cookies, and the admin fetches its CSRF token from `GET /auth/admin/csrf`. Session cookies use `httpOnly`, `SameSite=Lax`, `Path=/`, and Secure-by-default configuration; the CSRF cookie is deliberately readable and is not a credential. The `__Host-` prefix is used when cookies are Secure and no cookie domain is pinned. An explicit insecure local opt-out or a pinned domain uses the compact `st_*` names. Auth responses return sanitized account/session metadata, never reusable access or refresh credentials.
 
 `GET /auth/storefront/me` is an identity probe, not a gated resource: a true guest (no access cookie and no refresh cookie) receives 200 `{ user: null }`. Expired access with a live refresh still 401s `session_expired` so the browser interceptor can rotate. It is not `@Public()`; a present access cookie is still validated.
 
@@ -129,10 +129,10 @@ The base cookie names are `st_access`, `st_refresh`, and the browser-readable `s
 For cookie-authenticated `POST`, `PUT`, `PATCH`, and `DELETE`, the global guard currently:
 
 1. allows safe methods and unsafe requests with no session cookie;
-2. otherwise requires the readable CSRF cookie and matching `x-csrf-token` header;
-3. compares them in constant time and rejects generically before mutation.
+2. otherwise requires the CSRF cookie and a matching `x-csrf-token` header;
+3. compares them in constant time, checks the session's stored hash, and rejects before mutation with 403 and `reason: csrf_rejected`, without saying which half failed.
 
-Login, OTP verification, and refresh issue the readable CSRF cookie together with a matching `authSessions.csrfSecretHash`; copy that cookie value into the header for unsafe requests. `GET /auth/csrf` remains useful before a session exists. For an active session it follows Policy B: preserve the still-valid bound token, and only atomically rotate `csrfSecretHash` when the readable cookie is missing or desynced. Unsafe requests that carry session cookies fail closed when no live session resolves.
+Every cookie stays on the API host (`COOKIE_DOMAIN` empty, `__Host-` prefix; owner decision 2026-11-06), so the storefront and admin cannot read any of them. They fetch the token from `GET /auth/csrf` (or `/auth/admin/csrf`), keep it in memory (`CsrfTokenHolder` in `packages/http-transport`), and echo it. The gateways fetch again after login and after rotation. On `csrf_rejected`, the interceptors fetch once and replay once; a 403 without that reason is never retried. A cross-site page cannot read the token because CORS allows only listed origins to read the response. For an active session `GET /auth/csrf` follows Policy B: preserve the still-valid bound token, and only atomically rotate `csrfSecretHash` when the readable cookie is missing or desynced. Unsafe requests that carry session cookies fail closed when no live session resolves.
 
 Never use `GET` for a state-changing operation.
 

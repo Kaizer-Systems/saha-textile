@@ -3,7 +3,7 @@ title: 'Owner Decisions'
 description: 'Authoritative record of currently locked Saha Textile owner decisions.'
 audience: [engineering, product, operator, agent]
 document_role: canonical
-last_verified: '2026-11-02'
+last_verified: '2026-11-06'
 search_keywords: 'owner decisions authoritative locked intent architecture product operations'
 ---
 
@@ -569,7 +569,7 @@ Roles live in the `mediaRoles` collection: seeded roles are undeletable and unre
     - mode 1 (dev hot reload) and mode 2 (local prod build) use the mkcert local CA (`pnpm setup:local-https`) — a locally trusted CA, not a self-signed certificate (self-signed would warn and block service workers);
     - mode 3 (full local stack) runs the same Dockerfiles later published to private GHCR, behind Nginx terminating TLS with the mkcert certificate, with runtime secrets from gitignored env files, never baked into images;
     - staging and prod use Cloudflare's edge certificate plus a Cloudflare Origin Certificate on Nginx (Full strict).
-- Hostnames are single-level subdomains (locked 2026-11-02), because Cloudflare's free Universal SSL covers only `*.sahatextile.com`. Staging: `staging.sahatextile.com` (storefront), `admin-staging.sahatextile.com`, `api-staging.sahatextile.com`, `cdn-staging.sahatextile.com`. Production (locked 2026-11-03): the storefront on the bare `sahatextile.com` (as the live WordPress site today; `www` permanently redirects to it), `admin.sahatextile.com`, `api.sahatextile.com`, `cdn.sahatextile.com`. Only the cookie-domain rule stays under `DEC-DOMAIN-TOPOLOGY`.
+- Hostnames are single-level subdomains (locked 2026-11-02), because Cloudflare's free Universal SSL covers only `*.sahatextile.com`. Staging: `staging.sahatextile.com` (storefront), `admin-staging.sahatextile.com`, `api-staging.sahatextile.com`, `cdn-staging.sahatextile.com`. Production (locked 2026-11-03): the storefront on the bare `sahatextile.com` (as the live WordPress site today; `www` permanently redirects to it), `admin.sahatextile.com`, `api.sahatextile.com`, `cdn.sahatextile.com`. Cookies are host-only (see the owner decision round of 2026-11-06).
 - Protected branches are changed only through reviewed PRs.
 
 ## Audit and retention
@@ -898,6 +898,15 @@ Later owner decision (2026-11-05): the Redirects status field also allows 302, f
 - The "someone recently purchased" popup shows real sales only, and no claim is ever invented. It starts by itself once paid orders exist and stays hidden when there are none.
 - A real sale is an order in `paid`, `processing`, `shipped` or `delivered`, placed in the last 24 hours, for a product that is live and buyable. The time shown is the real moment of payment. Only the product and the time reach the browser.
 - The demo cart (`cart.json`) stays until Chunk G builds the real cart.
+
+## Owner decision round (2026-11-06) — production path
+
+Closed: `DEC-DOMAIN-TOPOLOGY`.
+
+- **Cookies are host-only.** `COOKIE_DOMAIN` stays empty in every environment, so every cookie stays on the API host with the `__Host-` prefix and none reaches WordPress, staging or another subdomain. The storefront and admin take the CSRF token from the API's reply, not from a cookie. Double-submit CSRF itself is unchanged.
+- **Staging runs on demand.** A script creates the staging droplet, and it stays up until the owner runs the destroy script by hand. Nothing destroys it automatically. The destroy script removes everything billed for that droplet; the worst case for forgetting is about $24 a month.
+- **Backups go to Spaces only.** Nightly and encrypted, to a private bucket in `sgp1`. The server holds only the key to encrypt, so it cannot read old backups. The owner accepted the risk that a DigitalOcean account problem affects the shop and its backups together.
+- **Deploys reach the droplet by SSH through Cloudflare Tunnel.** Port 22 stays closed to the internet. DigitalOcean's web console is the fallback.
 
 ## Open decisions
 

@@ -3,7 +3,7 @@ title: CCAvenue web integration kit (non-seamless)
 description: The CCAvenue Integration Document v3.1 and the seven-language non-seamless sample kit, transcribed, with the encryption scheme the kit code implements.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 search_keywords: CCAvenue non-seamless initiateTransaction encRequest encResp working key AES-128-CBC MD5 IV redirect_url cancel_url Direct Connect initiatePayloadTransaction vault standing instruction
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts

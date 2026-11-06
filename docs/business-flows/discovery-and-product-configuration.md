@@ -4,7 +4,7 @@ wide: true
 description: Category, search, product-detail, semantic option, variant, add-on, bundle, pricing, and stock journey.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-04'
+last_verified: '2026-11-06'
 source_of_truth:
     - apps/storefront/src/app/pages/collections
     - apps/storefront/src/app/pages/product/[slug].page.ts
@@ -40,7 +40,7 @@ sequenceDiagram
     Catalog-->>SF: Validated line identity + computed display values
 ```
 
-The current code implements the route and presentation surface, but it still mixes a catalogue API request with fixture-backed detail and adjacent readers. The sequence above is the ratified target unless a step is explicitly marked current.
+Category pages, cards, the product page and search now read the catalogue API; the cart is still a demo fixture until Chunk G. The sequence above is the ratified target unless a step is explicitly marked current.
 
 ## Semantic option decision
 

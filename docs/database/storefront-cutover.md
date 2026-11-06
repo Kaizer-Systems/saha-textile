@@ -3,7 +3,7 @@ title: Storefront cutover
 description: What the catalogue cutover added for search, addresses, FAQ, and the home rails.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-05'
+last_verified: '2026-11-06'
 source_of_truth:
     - packages/adapters-db-mongo/src/seed/seed-demo-catalogue.ts
     - packages/adapters-db-mongo/src/seed/legacy-addresses.ts

@@ -108,6 +108,10 @@ cmd_up() {
 	[[ -f "$CERT_DIR/stack-cert.pem" ]] || { echo "Run: pnpm stack:certs" >&2; exit 1; }
 	[[ -f "$ENV_DIR/api.env" ]] || { echo "Run: pnpm stack:env" >&2; exit 1; }
 	"${COMPOSE[@]}" up -d --build --wait
+	# A broken config.json does not stop the app: the browser silently falls back to localhost.
+	curl -fsk "https://$STOREFRONT_HOST$PORT_SUFFIX/config.json" |
+		node -e 'JSON.parse(require("fs").readFileSync(0, "utf8"))' ||
+		{ echo "The storefront is not serving a valid config.json." >&2; exit 1; }
 	echo
 	echo "  storefront  https://$STOREFRONT_HOST$PORT_SUFFIX"
 	echo "  admin       https://$ADMIN_HOST$PORT_SUFFIX"

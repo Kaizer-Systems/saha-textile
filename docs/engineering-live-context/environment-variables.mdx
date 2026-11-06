@@ -114,7 +114,7 @@ Proven by unit tests and by spawning the real entrypoints (`apps/api/test/deploy
 
 ## Storefront (`apps/storefront/public/config.json`) — public runtime config (browser-exposed, no secrets)
 
-Fetched at app init by `src/app/core/config/runtime-config.ts` (`provideAppInitializer`); fills the mutable `environment`. Committed file = localhost defaults only; deploys write the real one (roadmap §0d). SSR may alternatively receive the same JSON via the `SAHA_TEXTILE_PUBLIC_CONFIG` env var.
+Fetched at app init by `src/app/core/config/runtime-config.ts` (`provideAppInitializer`); fills the mutable `environment`. Committed file = localhost defaults only. Deploys write the real file and **the edge Nginx serves it at `/config.json`**; it must not be mounted into the storefront container, whose server sends public files at their build-time size and would cut it off (`docker/stack/nginx/edge.conf`). SSR gets the same JSON through the `SAHA_TEXTILE_PUBLIC_CONFIG` env var.
 
 | Key (config.json)  | LOCAL                    | TEST-E2E                    | PROD-E2E               |
 | ------------------ | ------------------------ | --------------------------- | ---------------------- |

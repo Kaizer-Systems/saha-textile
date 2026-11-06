@@ -30,30 +30,27 @@ export class Menu {
 	blog$: Observable<IBlogModel | undefined> = toObservable(computed(() => this.blogsQuery.data()));
 	// Real taxonomy for the header nav. Reference data (staleTime Infinity), shared cache with the rest of the app.
 	private readonly categoriesQuery = injectCategoriesQuery(() => ({ status: 1 }));
-	category$: Observable<ICategory[]> = toObservable(computed(() => this.categoriesQuery.data()?.data ?? []));
 
-	// Starts as the static demo menu (renders instantly, incl. SSR) then the real Sarees / Dress
-	// Materials trees are spliced in once the taxonomy resolves. Kept a plain field (zone-based CD).
-	public menu: IMenu[] = data.menu;
+	// The static demo menu with the real Sarees / Dress Materials trees spliced in once the taxonomy
+	// resolves. A signal, so the server renders those links rather than only the demo menu.
+	readonly menu = computed<IMenu[]>(() => {
+		const categories = this.categoriesQuery.data()?.data ?? [];
+		return categories.length ? this.buildMenu(categories, this.isMobileView()) : data.menu;
+	});
 	public products: IProduct[];
 	public blogs: IBlog[];
 
 	// < xl (1200px) = the offcanvas is in use. The theme can't render multi-level collapsible menus there
 	// (nested toggles are hidden + submenus force-open = a flat dump), so the offcanvas gets a SHALLOWER
 	// tree (L1 → L2 links + "View all {L1}") while desktop keeps the full flyout. `isMobileView` drives
-	// both the tree shape (rebuildMenu) and the L1 routerLink null-on-mobile (template).
+	// both the tree shape (menu) and the L1 routerLink null-on-mobile (template).
 	private platformId = inject(PLATFORM_ID);
 	public isMobileView = signal(false);
-	private rawCategories: ICategory[] = [];
 
 	@HostListener('window:resize')
 	onResize() {
 		if (!isPlatformBrowser(this.platformId)) return;
-		const mobile = window.innerWidth < 1200;
-		if (mobile !== this.isMobileView()) {
-			this.isMobileView.set(mobile);
-			this.rebuildMenu(); // re-shape the tree only when we cross the xl breakpoint
-		}
+		this.isMobileView.set(window.innerWidth < 1200); // re-shapes the tree only across the xl breakpoint
 	}
 
 	constructor() {
@@ -72,20 +69,6 @@ export class Menu {
 				this.blogs = blog.data.slice(0, 2);
 			}
 		});
-
-		this.category$.subscribe((categories) => {
-			if (categories?.length) {
-				this.rawCategories = categories;
-				this.rebuildMenu();
-			}
-		});
-	}
-
-	/** Rebuild `this.menu` for the current viewport (full flyout on desktop, shallow tree in the offcanvas). */
-	private rebuildMenu(): void {
-		if (this.rawCategories.length) {
-			this.menu = this.buildMenu(this.rawCategories, this.isMobileView());
-		}
 	}
 
 	/**
@@ -159,8 +142,9 @@ export class Menu {
 
 	toggle(menu: IMenu) {
 		if (!menu.active) {
-			this.menu.forEach((item) => {
-				if (this.menu.includes(menu)) {
+			const items = this.menu();
+			items.forEach((item) => {
+				if (items.includes(menu)) {
 					item.active = false;
 				}
 			});

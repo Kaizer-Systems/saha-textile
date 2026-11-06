@@ -1,15 +1,14 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, PLATFORM_ID, inject, signal } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { Select2 } from 'ng-select2-component';
 
-import { clearNotifyIntent, readNotifyIntent } from '@core/catalog/notify-intent';
 import { ResendCountdown } from '@core/auth/resend-countdown';
-import { environment } from '../../../../../public/environments/environment';
+import { clearNotifyIntent, readNotifyIntent } from '@core/catalog/notify-intent';
 import { AuthStore } from '@core/state/auth.store';
 import { AuthService } from '@data-access/services/auth.service';
 import { Alert } from '@shared/ui/alert/alert';
@@ -18,6 +17,7 @@ import { Button } from '@shared/ui/button/button';
 import { SocialSignIn } from '@shared/ui/social-sign-in/social-sign-in';
 import { translatedBreadcrumb } from '@shared/util/breadcrumb-i18n';
 
+import { environment } from '../../../../../public/environments/environment';
 import * as data from '../../../shared/data/country-code';
 
 /** Owner lock: six-digit CSPRNG code, 10-minute expiry, five attempts. */
@@ -103,12 +103,17 @@ export class Login {
 	 */
 	public readonly existingAccountNotice = signal(false);
 
-	/** What the API is asked about — an address, or a phone in E.164. */
-	public readonly identifier = computed(() => {
-		if (this.channel() === 'email') return String(this.form?.value.email ?? '').trim();
-		const dial = String(this.form?.value.country_code ?? '91');
-		return `+${dial}${String(this.form?.value.phone ?? '').trim()}`;
-	});
+	/**
+	 * What the API is asked about — an address, or a phone in E.164.
+	 *
+	 * A method, not a `computed`: the form is not a signal, so a `computed` kept the first value
+	 * and a corrected address was never sent.
+	 */
+	public identifier(): string {
+		if (this.channel() === 'email') return String(this.form.value.email ?? '').trim();
+		const dial = String(this.form.value.country_code ?? '91');
+		return `+${dial}${String(this.form.value.phone ?? '').trim()}`;
+	}
 
 	constructor() {
 		// Empty, not pre-filled. The demo pair that used to sit here made the form look

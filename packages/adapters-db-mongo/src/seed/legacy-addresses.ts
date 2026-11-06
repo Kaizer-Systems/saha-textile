@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 /**
  * Approved legacy addresses. An unapproved row fails the seed by name.
  * The remaining sitemap rows stay out of this file until they are approved.
@@ -9,20 +12,10 @@ export interface LegacyAddressRow {
 	approved: boolean;
 }
 
-export const LEGACY_ADDRESSES: readonly LegacyAddressRow[] = [
-	{
-		sourcePath: '/product-tag/silk-sarees',
-		statusCode: 301,
-		targetPath: '/en/collections/sarees/pure-silk',
-		approved: true,
-	},
-	{ sourcePath: '/refund-request', statusCode: 302, targetPath: '/en/contact-us', approved: true },
-	{ sourcePath: '/return-request', statusCode: 302, targetPath: '/en/contact-us', approved: true },
-	{ sourcePath: '/exchange-request', statusCode: 302, targetPath: '/en/contact-us', approved: true },
-	{ sourcePath: '/cancel-request', statusCode: 302, targetPath: '/en/contact-us', approved: true },
-	{ sourcePath: '/request-form', statusCode: 302, targetPath: '/en/contact-us', approved: true },
-	{ sourcePath: '/videos', statusCode: 410, approved: true },
-];
+/** The reviewed map. It is data, so a change to it is a change to one reviewed file. */
+export const LEGACY_ADDRESSES: readonly LegacyAddressRow[] = JSON.parse(
+	readFileSync(resolve(__dirname, '../../data/legacy-addresses.json'), 'utf8'),
+) as LegacyAddressRow[];
 
 const STATIC_PAGES = new Set(['/contact-us', '/account', '/cart', '/checkout', '/blogs', '/search']);
 

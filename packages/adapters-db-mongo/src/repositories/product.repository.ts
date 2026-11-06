@@ -87,17 +87,18 @@ export class MongoProductRepository implements ProductRepository {
 		await ProductModel.deleteOne({ _id: id }).exec();
 	}
 
-	async saveStockAlert(customerId: string, productId: string, variantId: string): Promise<void> {
-		const id = `ntf_${customerId}_${variantId}`;
-		await ProductModel.db
-			.collection<{ _id: string; customerId: string; productId: string; variantId: string; createdAt: Date }>(
-				'stockAlerts',
-			)
-			.updateOne(
-				{ _id: id },
-				{ $setOnInsert: { customerId, productId, variantId, createdAt: new Date() } },
-				{ upsert: true },
-			);
+	async setInsightBadges(input: { bestseller: readonly string[]; trending: readonly string[] }): Promise<void> {
+		await ProductModel.updateMany(
+			{ insightBadges: { $in: ['bestseller', 'trending'] } },
+			{ $set: { insightBadges: [] } },
+		).exec();
+		for (const badge of ['bestseller', 'trending'] as const) {
+			if (input[badge].length === 0) continue;
+			await ProductModel.updateMany(
+				{ _id: { $in: input[badge] } },
+				{ $addToSet: { insightBadges: badge } },
+			).exec();
+		}
 	}
 
 	async listPublicSlugs(): Promise<string[]> {

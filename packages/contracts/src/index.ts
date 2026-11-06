@@ -39,3 +39,5 @@ export * from './admin-customer';
 export * from './consent';
 export * from './audit';
 export * from './notification';
+export * from './stock-alert';
+export * from './product-insight-set';

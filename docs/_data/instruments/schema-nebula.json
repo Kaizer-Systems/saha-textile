@@ -1,9 +1,9 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-11-05",
+	"lastVerified": "2026-11-06",
 	"route": "/database/schema-nebula",
 	"title": "Schema Nebula",
-	"summary": "A governed one-star-per-collection map of the 67 explicit MongoDB collection targets across the Saha Textile platform.",
+	"summary": "A governed one-star-per-collection map of the 68 explicit MongoDB collection targets across the Saha Textile platform.",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/owner-decisions-log.mdx",
 		"docs/engineering-live-context/account-separation-task-handoff.mdx",
@@ -29,9 +29,9 @@
 		"notifications": "packages/contracts/src/notification.ts"
 	},
 	"inventory": {
-		"nodeCount": 69,
-		"existingModelCount": 41,
-		"targetOnlyCount": 28,
+		"nodeCount": 70,
+		"existingModelCount": 43,
+		"targetOnlyCount": 27,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star becomes solid only when a tested current adapter model resolves to that exact ratified physical collection name. All 44 exported models declare explicit physical names; 41 match ratified graph nodes and are solid. authRateLimits, pendingSignups, and pendingContactChanges are transient runtime machinery outside the graph."
 	},
@@ -701,13 +701,27 @@
 			"id": "productInsightSets",
 			"label": "productInsightSets",
 			"cluster": "analytics-reporting",
-			"currentState": "planned",
-			"targetAction": "add",
+			"currentState": "existing",
+			"targetAction": "keep",
 			"owningChunks": ["H"],
 			"blockingDecisions": [],
 			"purpose": "Weekly persisted business inference sets for storefront rails and admin merchandising decisions.",
 			"source": "catalog §7.39",
+			"currentModel": "packages/adapters-db-mongo/src/models/stock-alert.model.ts",
 			"references": ["products", "analyticsDailyAggregates"]
+		},
+		{
+			"id": "stockAlerts",
+			"label": "stockAlerts",
+			"cluster": "governance-messaging",
+			"currentState": "existing",
+			"targetAction": "keep",
+			"owningChunks": ["F"],
+			"blockingDecisions": [],
+			"purpose": "One signed-in customer waiting on one variant; unique per customer and variant, marked notified only after a real send.",
+			"source": "contracts StockAlert",
+			"currentModel": "packages/adapters-db-mongo/src/models/stock-alert.model.ts",
+			"references": ["customers", "products", "productVariants"]
 		},
 		{
 			"id": "productBadgeAssignments",

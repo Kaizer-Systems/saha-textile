@@ -4,9 +4,20 @@ import { Logger } from '@nestjs/common';
 import { CloudflareCdnPurge } from '@saha-textile/adapters-cdn-cloudflare';
 import {
 	MongoAuditLogRepository,
+	MongoConsentRepository,
+	MongoCustomerRepository,
 	MongoMediaAssetRepository,
 	MongoMediaRoleRepository,
+	MongoMessageOutboxRepository,
+	MongoNotificationSettingsRepository,
+	MongoNotificationTemplateRepository,
+	MongoOrderRepository,
+	MongoProductInsightSetRepository,
+	MongoProductRelationRepository,
+	MongoProductRepository,
+	MongoProductVariantRepository,
 	MongoSiteSettingsRepository,
+	MongoStockAlertRepository,
 } from '@saha-textile/adapters-db-mongo';
 import { SharpImageCodec } from '@saha-textile/adapters-image-sharp';
 import { BullMqMediaJobQueue, type MediaJobHandlers, startMediaWorker } from '@saha-textile/adapters-queue-bullmq';
@@ -14,15 +25,17 @@ import { SpacesStorageAdapter } from '@saha-textile/adapters-storage-spaces';
 import { YouTubeDataApi } from '@saha-textile/adapters-youtube';
 import {
 	type CdnPurgePort,
+	deliverStockAlerts,
 	processMediaAsset,
 	reconcileSeededRoles,
 	refreshYouTubeFeed,
 	runMediaGarbageCollection,
+	runWeeklyInsight,
 } from '@saha-textile/core-domain';
 
-import { runWeeklyInsight } from './weekly-insight';
 import type { AppConfig } from '../config/app-config';
 import { LogOnlyCdnPurgeAdapter } from '../infra/log-only-cdn-purge.adapter';
+import { buildNotificationPort } from '../infra/notification-factory';
 
 /** Batch size for the 15-minute stale sweep: bounded work per tick, never one giant job. */
 const STALE_BATCH = 50;
@@ -55,6 +68,12 @@ export const composeMediaWorker = async (config: AppConfig) => {
 			: new LogOnlyCdnPurgeAdapter();
 	const youtube = config.media.youtubeApiKey ? new YouTubeDataApi({ apiKey: config.media.youtubeApiKey }) : null;
 	const now = () => new Date();
+	const notifications = buildNotificationPort(config, {
+		settings: new MongoNotificationSettingsRepository(),
+		templates: new MongoNotificationTemplateRepository(),
+		outbox: new MongoMessageOutboxRepository(),
+		consent: new MongoConsentRepository(),
+	});
 
 	const processDeps = { assets, roles, storage, codec, queue, now };
 
@@ -99,8 +118,26 @@ export const composeMediaWorker = async (config: AppConfig) => {
 			return { queued };
 		},
 		'weekly-insight': async () => {
-			const result = await runWeeklyInsight();
+			const result = await runWeeklyInsight({
+				orders: new MongoOrderRepository(),
+				products: new MongoProductRepository(),
+				relations: new MongoProductRelationRepository(),
+				insightSets: new MongoProductInsightSetRepository(),
+				now,
+			});
 			logger.log(`Weekly insight ${result.insightSetId}: ${result.relations} relations`);
+			return result;
+		},
+		'stock-alerts': async () => {
+			const result = await deliverStockAlerts({
+				alerts: new MongoStockAlertRepository(),
+				products: new MongoProductRepository(),
+				variants: new MongoProductVariantRepository(),
+				customers: new MongoCustomerRepository(),
+				notifications,
+				now,
+			});
+			logger.log(`Stock alerts: ${result.sent} sent, ${result.held} held, ${result.waiting} waiting`);
 			return result;
 		},
 	};

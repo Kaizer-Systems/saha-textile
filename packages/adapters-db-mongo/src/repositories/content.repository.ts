@@ -171,6 +171,18 @@ export class MongoProductQuestionRepository implements ProductQuestionRepository
 		return { items: docs.map(toQuestion), total, page, pageSize };
 	}
 
+	async findPendingDuplicate(input: {
+		productId: string;
+		askerEmail: string;
+		question: string;
+	}): Promise<ProductQuestion | null> {
+		const doc = await ProductQuestionModel.findOne({ ...input, status: 'pending' })
+			.select('+askerEmail')
+			.lean<ProductQuestionDoc>()
+			.exec();
+		return doc ? toQuestion(doc) : null;
+	}
+
 	async create(question: ProductQuestion): Promise<ProductQuestion> {
 		const { id, answeredAt, createdAt, ...rest } = question;
 		await ProductQuestionModel.create([

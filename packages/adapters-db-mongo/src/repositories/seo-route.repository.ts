@@ -1,4 +1,5 @@
 import type { SeoRoute } from '@saha-textile/contracts';
+import type { SeoRouteRepository } from '@saha-textile/core-domain';
 
 import { SeoRouteModel, type SeoRouteDoc } from '../models/seoRoute.model';
 
@@ -15,7 +16,7 @@ const toRoute = (doc: SeoRouteDoc): SeoRoute => ({
 	...(doc.entityId ? { entityId: doc.entityId } : {}),
 });
 
-export class MongoSeoRouteRepository {
+export class MongoSeoRouteRepository implements SeoRouteRepository {
 	async find(path: string, locale: 'en' | 'fr'): Promise<SeoRoute | null> {
 		const doc = await SeoRouteModel.findOne({ path, locale }).lean<SeoRouteDoc>().exec();
 		return doc ? toRoute(doc) : null;

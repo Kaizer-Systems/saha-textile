@@ -4,12 +4,15 @@ import type {
 	CategoryPlacement,
 	FaqEntry,
 	ProductBundle,
+	ProductInsightSet,
 	ProductQuestion,
 	ProductRelation,
 	ProductVariant,
 	RatingAggregate,
 	Review,
 	SeoRedirect,
+	SeoRoute,
+	StockAlert,
 } from '@saha-textile/contracts';
 
 import type { CatalogAudience } from '../catalog/product-visibility';
@@ -31,6 +34,8 @@ export interface CategoryPlacementRepository {
 	listChildren(parentCategoryId: string | null, audience?: CatalogAudience): Promise<CategoryPlacement[]>;
 	/** Canonical live paths, for the storefront allow-list and the sitemap. */
 	listLivePaths(): Promise<string[]>;
+	/** Paths of placements taken off sale, for the retired-collection redirects. */
+	listRetiredPaths(): Promise<string[]>;
 	listSubtree(rootPlacementId: string, audience?: CatalogAudience): Promise<CategoryPlacement[]>;
 	save(placement: CategoryPlacement, context?: TransactionContext): Promise<CategoryPlacement>;
 	/** Repoints a placement and recomputes every descendant path; returns the moved rows. */
@@ -84,6 +89,8 @@ export interface ProductVariantRepository {
 	findBySku(sku: string, audience?: CatalogAudience): Promise<ProductVariant | null>;
 	findByOptionSelectionHash(productId: string, hash: string): Promise<ProductVariant | null>;
 	listForProduct(productId: string, audience?: CatalogAudience): Promise<ProductVariant[]>;
+	/** One read for a whole listing. */
+	listForProducts(productIds: readonly string[], audience?: CatalogAudience): Promise<ProductVariant[]>;
 	list(filter: VariantFilter): Promise<Paginated<ProductVariant>>;
 	save(variant: ProductVariant, context?: TransactionContext): Promise<ProductVariant>;
 	saveMany(variants: readonly ProductVariant[], context?: TransactionContext): Promise<ProductVariant[]>;
@@ -163,6 +170,12 @@ export interface ProductQuestionRepository {
 	findById(questionId: string): Promise<ProductQuestion | null>;
 	listAnsweredForProduct(productId: string, page: PageQuery): Promise<Paginated<ProductQuestion>>;
 	list(filter: QuestionFilter): Promise<Paginated<ProductQuestion>>;
+	/** The same person asking the same thing, still unanswered. */
+	findPendingDuplicate(input: {
+		productId: string;
+		askerEmail: string;
+		question: string;
+	}): Promise<ProductQuestion | null>;
 	create(question: ProductQuestion): Promise<ProductQuestion>;
 	answer(input: {
 		questionId: string;
@@ -214,6 +227,32 @@ export interface ReviewRepository {
 }
 
 /** Old addresses. The stored target is never itself a redirect. */
+export interface StockAlertCursor {
+	createdAt: string;
+	id: string;
+}
+
+/** Back-in-stock requests. One row per customer and variant. */
+export interface StockAlertRepository {
+	/** A repeat for the same customer and variant is a no-op. */
+	save(input: { customerId: string; productId: string; variantId: string; now: string }): Promise<void>;
+	/** Un-notified rows, oldest first, after `cursor`. */
+	listPending(limit: number, cursor?: StockAlertCursor): Promise<StockAlert[]>;
+	markNotified(alertId: string, at: string): Promise<void>;
+	markFailed(alertId: string, error: string): Promise<void>;
+}
+
+export interface ProductInsightSetRepository {
+	save(set: ProductInsightSet): Promise<ProductInsightSet>;
+}
+
+/** One public address per language. Filtered, private and gone URLs are not rows. */
+export interface SeoRouteRepository {
+	find(path: string, locale: 'en' | 'fr'): Promise<SeoRoute | null>;
+	listIndexable(): Promise<SeoRoute[]>;
+	save(route: SeoRoute): Promise<SeoRoute>;
+}
+
 export interface SeoRedirectRepository {
 	list(): Promise<SeoRedirect[]>;
 	findBySource(sourcePath: string): Promise<SeoRedirect | null>;

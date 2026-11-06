@@ -84,6 +84,14 @@ export class MongoCategoryPlacementRepository implements CategoryPlacementReposi
 		return docs.map(toPlacement);
 	}
 
+	async listRetiredPaths(): Promise<string[]> {
+		const docs = await CategoryPlacementModel.find({ status: { $in: ['disabled', 'archived'] }, isCanonical: true })
+			.select('pathKey')
+			.lean<Array<{ pathKey: string }>>()
+			.exec();
+		return docs.map((doc) => doc.pathKey);
+	}
+
 	async listLivePaths(): Promise<string[]> {
 		const docs = await CategoryPlacementModel.find({ status: 'live', isCanonical: true })
 			.select('pathKey')

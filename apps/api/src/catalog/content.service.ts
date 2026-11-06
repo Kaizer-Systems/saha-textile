@@ -1,26 +1,22 @@
-import { HttpException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
 import { ProductQuestion, toPublicQuestion, type FaqEntry } from '@saha-textile/contracts';
 import type {
+	AuditLogRepository,
 	FaqRepository,
 	NotificationPort,
 	ProductQuestionRepository,
 	ProductRepository,
 } from '@saha-textile/core-domain';
 
-import { FAQ_REPOSITORY, NOTIFICATION_PORT, PRODUCT_QUESTION_REPOSITORY, PRODUCT_REPOSITORY } from '../infra/tokens';
-
-const hits = new Map<string, number[]>();
-
-function limited(key: string, max = 5, windowMs = 60_000): boolean {
-	const now = Date.now();
-	const recent = (hits.get(key) ?? []).filter((at) => now - at < windowMs);
-	if (recent.length >= max) return true;
-	recent.push(now);
-	hits.set(key, recent);
-	return false;
-}
+import {
+	AUDIT_LOG_REPOSITORY,
+	FAQ_REPOSITORY,
+	NOTIFICATION_PORT,
+	PRODUCT_QUESTION_REPOSITORY,
+	PRODUCT_REPOSITORY,
+} from '../infra/tokens';
 
 @Injectable()
 export class ContentService {
@@ -31,6 +27,7 @@ export class ContentService {
 		@Inject(PRODUCT_QUESTION_REPOSITORY)
 		private readonly questions: ProductQuestionRepository | null = null,
 		@Optional() @Inject(NOTIFICATION_PORT) private readonly notifications: NotificationPort | null = null,
+		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
 	) {}
 
 	async publicFaq(input: { productId?: string; categoryId?: string }) {
@@ -53,9 +50,17 @@ export class ContentService {
 		);
 	}
 
-	async saveFaq(entry: FaqEntry, _actorUserId: string | null) {
+	async saveFaq(entry: FaqEntry, actorUserId: string | null) {
 		if (!this.faqs) throw new NotFoundException('FAQ is unavailable');
-		return this.faqs.save(entry);
+		const saved = await this.faqs.save(entry);
+		await this.record(actorUserId, 'catalog.faq.save', saved.id, { scope: saved.scope, status: saved.status });
+		return saved;
+	}
+
+	async removeFaq(id: string, actorUserId: string | null): Promise<void> {
+		if (!this.faqs) throw new NotFoundException('FAQ is unavailable');
+		await this.faqs.deleteById(id);
+		await this.record(actorUserId, 'catalog.faq.remove', id, {});
 	}
 
 	async publicQuestions(productSlug: string) {
@@ -71,11 +76,15 @@ export class ContentService {
 		userId: string | null,
 	) {
 		if (!this.questions) throw new NotFoundException('Questions are unavailable');
-		if (limited(`question:${body.askerEmail.toLowerCase()}`)) {
-			throw new HttpException('Too many questions', 429);
-		}
 		const product = await this.products.findBySlug(body.productSlug, 'public');
 		if (!product) throw new NotFoundException('Product not found');
+		// A double submit answers with the first row instead of writing a second.
+		const repeat = await this.questions.findPendingDuplicate({
+			productId: product.id,
+			askerEmail: body.askerEmail,
+			question: body.question,
+		});
+		if (repeat) return { id: repeat.id, status: 'pending' as const };
 		const question: ProductQuestion = ProductQuestion.parse({
 			id: `q_${randomUUID()}`,
 			productId: product.id,
@@ -105,17 +114,18 @@ export class ContentService {
 			answeredAt: new Date().toISOString(),
 		});
 		if (!saved) throw new NotFoundException('Question not found');
+		await this.record(actorUserId, 'catalog.question.answer', saved.id, { productId: saved.productId });
 		let emailStatus: 'sent' | 'not_sent' = 'not_sent';
 		if (this.notifications) {
 			try {
 				await this.notifications.send({
 					channel: 'email',
 					category: 'transactional',
-					templateKey: 'product-question-answered',
+					templateKey: 'product_question_answered',
 					destination: saved.askerEmail,
 					userId: saved.userId ?? undefined,
 					idempotencyKey: `question-answer:${saved.id}`,
-					variables: { questionId: saved.id },
+					variables: { questionId: saved.id, productSlug: await this.slugOf(saved.productId) },
 				});
 				emailStatus = 'sent';
 			} catch {
@@ -123,5 +133,34 @@ export class ContentService {
 			}
 		}
 		return { id: saved.id, status: saved.status, emailStatus };
+	}
+
+	private async slugOf(productId: string): Promise<string> {
+		return (await this.products.findById(productId, 'admin'))?.slug ?? '';
+	}
+
+	private async record(
+		actorUserId: string | null,
+		action: string,
+		entityId: string,
+		metadata: Record<string, unknown>,
+	): Promise<void> {
+		await this.audit?.append({
+			id: `audit_${randomUUID()}`,
+			actorUserId,
+			targetUserId: null,
+			audience: 'admin',
+			action,
+			entityType: 'catalog',
+			entityId,
+			severity: 'info',
+			retentionTier: 'catalog_admin',
+			diffs: [],
+			metadata,
+			requestId: null,
+			ipHash: null,
+			userAgentHash: null,
+			createdAt: new Date().toISOString(),
+		});
 	}
 }

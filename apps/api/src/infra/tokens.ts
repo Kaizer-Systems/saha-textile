@@ -3,6 +3,7 @@ export const PRODUCT_REPOSITORY = Symbol('ProductRepository');
 export const PRODUCT_VARIANT_REPOSITORY = Symbol('ProductVariantRepository');
 export const SEO_REDIRECT_REPOSITORY = Symbol('SeoRedirectRepository');
 export const SEO_ROUTE_REPOSITORY = Symbol('SeoRouteRepository');
+export const STOCK_ALERT_REPOSITORY = Symbol('StockAlertRepository');
 export const FAQ_REPOSITORY = Symbol('FaqRepository');
 export const PRODUCT_QUESTION_REPOSITORY = Symbol('ProductQuestionRepository');
 export const PRODUCT_RELATION_REPOSITORY = Symbol('ProductRelationRepository');

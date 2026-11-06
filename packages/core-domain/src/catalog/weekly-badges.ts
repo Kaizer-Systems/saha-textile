@@ -1,19 +1,32 @@
+export interface UnitCount {
+	productId: string;
+	units: number;
+}
+
+const ranked = (counts: readonly UnitCount[]): string[] =>
+	[...counts]
+		.filter((row) => row.units > 0)
+		.sort((a, b) => b.units - a.units || a.productId.localeCompare(b.productId))
+		.map((row) => row.productId);
+
 /**
- * Weekly badge assignment from saved order counts.
+ * Weekly badge assignment from saved order counts. Bestsellers lead on all-time units;
+ * trending is what is selling now and is not already a bestseller.
  *
  * The storefront never calls this. The media worker runs it. The same counts
  * always produce the same ids, so running a week twice does not change the result.
  */
-export function weeklyBadges(counts: readonly { productId: string; units: number }[]): {
-	bestseller: string[];
-	trending: string[];
-} {
-	const ranked = [...counts]
-		.filter((row) => row.units > 0)
-		.sort((a, b) => b.units - a.units || a.productId.localeCompare(b.productId));
+export function weeklyBadges(
+	allTime: readonly UnitCount[],
+	recent: readonly UnitCount[] = [],
+): { bestseller: string[]; trending: string[] } {
+	const bestseller = ranked(allTime).slice(0, 8);
+	const taken = new Set(bestseller);
 	return {
-		bestseller: ranked.slice(0, 8).map((row) => row.productId),
-		trending: ranked.slice(8, 16).map((row) => row.productId),
+		bestseller,
+		trending: ranked(recent)
+			.filter((id) => !taken.has(id))
+			.slice(0, 8),
 	};
 }
 

@@ -1,9 +1,14 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import { SearchUnavailableError, type SearchPort } from '@saha-textile/core-domain';
+import type { FastifyRequest } from 'fastify';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { CatalogPublicService } from '../src/catalog/catalog-public.service';
+import type { CatalogRateLimit } from '../src/catalog/catalog-rate-limit';
 import { CatalogSearchController } from '../src/catalog/catalog-search.controller';
+
+const limits = { enforce: vi.fn().mockResolvedValue(undefined) } as unknown as CatalogRateLimit;
+const request = { ip: '127.0.0.1' } as FastifyRequest;
 
 describe('catalogue search', () => {
 	it('answers with full cards, so results carry their real price and photo', async () => {
@@ -13,9 +18,10 @@ describe('catalogue search', () => {
 		const controller = new CatalogSearchController(
 			{ search } as unknown as SearchPort,
 			{ cardsForIds } as unknown as CatalogPublicService,
+			limits,
 		);
 
-		await expect(controller.searchProducts('silk')).resolves.toEqual({ items: [card], total: 1 });
+		await expect(controller.searchProducts({ q: 'silk' }, request)).resolves.toEqual({ items: [card], total: 1 });
 		expect(cardsForIds).toHaveBeenCalledWith(['prd_silk']);
 	});
 
@@ -24,8 +30,11 @@ describe('catalogue search', () => {
 		const controller = new CatalogSearchController(
 			{ search } as unknown as SearchPort,
 			{ cardsForIds: vi.fn() } as unknown as CatalogPublicService,
+			limits,
 		);
 
-		await expect(controller.searchProducts('silk')).rejects.toBeInstanceOf(ServiceUnavailableException);
+		await expect(controller.searchProducts({ q: 'silk' }, request)).rejects.toBeInstanceOf(
+			ServiceUnavailableException,
+		);
 	});
 });

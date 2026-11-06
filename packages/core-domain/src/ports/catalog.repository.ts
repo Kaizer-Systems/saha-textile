@@ -35,8 +35,8 @@ export interface ProductRepository {
 	deleteById(id: string): Promise<void>;
 	/** Live product slugs for the storefront redirect allow-list. */
 	listPublicSlugs(): Promise<string[]>;
-	/** One row per email and product. Repeating it does not create a second row. */
-	saveStockAlert(customerId: string, productId: string, variantId: string): Promise<void>;
+	/** Replaces the weekly badges: every other product loses them. */
+	setInsightBadges(input: { bestseller: readonly string[]; trending: readonly string[] }): Promise<void>;
 }
 
 /** Persistence port for the category taxonomy. */

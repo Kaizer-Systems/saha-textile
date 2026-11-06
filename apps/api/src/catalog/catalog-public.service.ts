@@ -4,6 +4,7 @@ import {
 	CatalogGallery,
 	CatalogHome,
 	CatalogPlacementPage,
+	type CatalogPlacementQuery,
 	CatalogProductPage,
 	type CatalogSwatch,
 	type MediaAsset,
@@ -12,17 +13,26 @@ import {
 	type ResolvedImage,
 } from '@saha-textile/contracts';
 import {
+	listingFacets,
+	matchesListing,
+	retiredCollectionRow,
+	parseAttributeFilter,
+	parsePriceRanges,
 	resolveImage,
 	liveRelations,
-	SearchUnavailableError,
+	sortListing,
 	type AddonTemplateRepository,
 	type CategoryPlacementRepository,
+	type CategoryRepository,
+	type ListingFilters,
+	type ListingRow,
 	type MediaAssetRepository,
 	type ProductBundleRepository,
 	type ProductRelationRepository,
 	type ProductRepository,
 	type ProductVariantRepository,
-	type SearchPort,
+	type SeoRedirectRow,
+	type SeoRouteRepository,
 	type StoragePort,
 } from '@saha-textile/core-domain';
 
@@ -30,16 +40,20 @@ import { pricedRow, productReadModel, skuView } from './catalog-read-model';
 import {
 	ADDON_TEMPLATE_REPOSITORY,
 	CATEGORY_PLACEMENT_REPOSITORY,
+	CATEGORY_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
 	PRODUCT_BUNDLE_REPOSITORY,
 	PRODUCT_REPOSITORY,
 	PRODUCT_VARIANT_REPOSITORY,
 	PRODUCT_RELATION_REPOSITORY,
-	SEARCH_PORT,
+	SEO_ROUTE_REPOSITORY,
 	STORAGE_PORT,
 } from '../infra/tokens';
 
 const RAIL = 12;
+const LISTING_READ = 500;
+/** Matches no category, so an unknown slug empties the list instead of widening it. */
+const NO_CATEGORY = 'no-such-category';
 
 @Injectable()
 export class CatalogPublicService {
@@ -51,7 +65,6 @@ export class CatalogPublicService {
 		private readonly placements: CategoryPlacementRepository | null = null,
 		@Optional() @Inject(MEDIA_ASSET_REPOSITORY) private readonly media: MediaAssetRepository | null = null,
 		@Optional() @Inject(STORAGE_PORT) private readonly storage: StoragePort | null = null,
-		@Optional() @Inject(SEARCH_PORT) private readonly search: SearchPort | null = null,
 		@Optional()
 		@Inject(PRODUCT_RELATION_REPOSITORY)
 		private readonly relations: ProductRelationRepository | null = null,
@@ -61,6 +74,8 @@ export class CatalogPublicService {
 		@Optional()
 		@Inject(PRODUCT_BUNDLE_REPOSITORY)
 		private readonly bundles: ProductBundleRepository | null = null,
+		@Optional() @Inject(CATEGORY_REPOSITORY) private readonly categories: CategoryRepository | null = null,
+		@Optional() @Inject(SEO_ROUTE_REPOSITORY) private readonly seoRoutes: SeoRouteRepository | null = null,
 	) {}
 
 	/** The product page: one product read, one variant read, every option group the page renders. */
@@ -250,36 +265,29 @@ export class CatalogPublicService {
 		});
 	}
 
-	async placement(path: string, page = 1, pageSize = 24, attribute?: string): Promise<CatalogPlacementPage> {
+	async placement(query: CatalogPlacementQuery): Promise<CatalogPlacementPage> {
+		const { path, page, pageSize, sortBy } = query;
 		const slugs = path.split('/').filter(Boolean);
 		// No path is the all-products page, so only a named path has to exist.
 		const placement = slugs.length ? await this.requirePlacement(slugs, path) : null;
-		const listed = await this.products.list({
-			audience: 'public',
-			...(placement ? { categoryId: placement.categoryId } : {}),
-			page: 1,
-			pageSize: 500,
-		});
-		const filtered = attribute
-			? listed.items.filter((product) => matchesAttribute(product, attribute))
-			: listed.items;
-		const start = (Math.max(1, page) - 1) * pageSize;
-		const slice = filtered.slice(start, start + pageSize);
+		const products = await this.publicProducts(placement?.categoryId);
+		const variants = await this.variantsByProduct(products);
+		const filterable = new Set(
+			products.flatMap((product) =>
+				product.optionGroups.flatMap((group) =>
+					group.semanticRole === 'filter_only' ? group.attributeCode : [],
+				),
+			),
+		);
+		const rows = products.map((product) => listingRow(product, variants.get(product.id) ?? [], filterable));
+		const filters = await this.listingFilters(query);
+		const sorted = sortListing(
+			rows.filter((row) => matchesListing(row, filters)),
+			sortBy,
+		);
+		const start = (page - 1) * pageSize;
+		const slice = sorted.slice(start, start + pageSize).map((row) => row.product);
 		const names = placement?.pathLabel.split(' / ') ?? [];
-		let facets = facetsOf(filtered);
-		if (placement && this.search) {
-			try {
-				const fromSearch = await this.search.facets({ categoryId: placement.categoryId });
-				facets = fromSearch.map((facet) => ({
-					code: facet.code,
-					label: facet.code,
-					terms: facet.terms.map((term) => ({ code: term.label, label: term.label, count: term.count })),
-				}));
-			} catch (error) {
-				if (!(error instanceof SearchUnavailableError)) throw error;
-				facets = [];
-			}
-		}
 		return CatalogPlacementPage.parse({
 			path: placement?.pathSlugs.join('/') ?? '',
 			title: names.at(-1) ?? placement?.pathLabel ?? 'All products',
@@ -287,13 +295,56 @@ export class CatalogPublicService {
 				name: names[index] ?? slug,
 				path: `/collections/${pathSlugs.slice(0, index + 1).join('/')}`,
 			})),
-			products: await this.cards(slice),
-			total: filtered.length,
-			page: Math.max(1, page),
+			products: await this.cards(slice, variants),
+			total: sorted.length,
+			page,
 			pageSize,
-			facets,
-			indexable: !attribute,
+			facets: listingFacets(rows, filters),
+			indexable: isCleanListing(query),
 		});
+	}
+
+	private async publicProducts(categoryId: string | undefined): Promise<Product[]> {
+		const found: Product[] = [];
+		for (let page = 1; ; page += 1) {
+			const { items, total } = await this.products.list({
+				audience: 'public',
+				...(categoryId ? { categoryId } : {}),
+				page,
+				pageSize: LISTING_READ,
+			});
+			found.push(...items);
+			if (!items.length || found.length >= total) return found;
+		}
+	}
+
+	private async variantsByProduct(products: readonly Product[]): Promise<Map<string, ProductVariant[]>> {
+		const rows = await this.variants.listForProducts(
+			products.map((product) => product.id),
+			'public',
+		);
+		const grouped = new Map<string, ProductVariant[]>();
+		for (const row of rows) grouped.set(row.productId, [...(grouped.get(row.productId) ?? []), row]);
+		return grouped;
+	}
+
+	private async listingFilters(query: CatalogPlacementQuery): Promise<ListingFilters> {
+		const ratings = (query.rating ?? '').split(',').filter(Boolean).map(Number);
+		const groups = query.attribute === undefined ? [] : [query.attribute].flat();
+		return {
+			priceRanges: parsePriceRanges({ price: query.price, min: query.price_min, max: query.price_max }),
+			minRating: ratings.length ? Math.min(...ratings) : null,
+			categoryIds: await this.categoryIds(query.category),
+			attributes: parseAttributeFilter(groups),
+		};
+	}
+
+	/** A slug that matches nothing still filters, to nothing, rather than being ignored. */
+	private async categoryIds(category: string | undefined): Promise<string[]> {
+		if (!category || !this.categories) return [];
+		const found = await Promise.all(category.split(',').map((slug) => this.categories?.findBySlug(slug)));
+		const ids = found.flatMap((row) => (row ? [row.id] : []));
+		return ids.length ? ids : [NO_CATEGORY];
 	}
 
 	private async requirePlacement(slugs: string[], path: string) {
@@ -379,6 +430,39 @@ export class CatalogPublicService {
 		return { products, collections };
 	}
 
+	/** Redirects the taxonomy implies: each retired collection and where it now goes. */
+	async retiredCollectionRows(): Promise<SeoRedirectRow[]> {
+		if (!this.placements) return [];
+		const [retired, live] = await Promise.all([
+			this.placements.listRetiredPaths(),
+			this.placements.listLivePaths(),
+		]);
+		const liveSet = new Set(live);
+		return retired.filter((path) => !liveSet.has(path)).map((path) => retiredCollectionRow(path, liveSet));
+	}
+
+	/** The head data for one public address. Null when the address has no row. */
+	async seoRoute(path: string, locale: 'en' | 'fr') {
+		const route = (await this.seoRoutes?.find(path, locale)) ?? null;
+		return route && { ...route, description: plainText(route.description) };
+	}
+
+	/** Every address the sitemap may list: indexable, and still a live page. */
+	async sitemapPaths(): Promise<string[]> {
+		const [routes, { products, collections }] = await Promise.all([
+			this.seoRoutes?.listIndexable() ?? Promise.resolve([]),
+			this.livePaths(),
+		]);
+		const live = new Set([
+			...products.map((slug) => `/product/${slug}`),
+			...collections.map((path) => `/collections/${path}`),
+		]);
+		return routes
+			.filter((route) => route.entityType === 'page' || live.has(route.path))
+			.map((route) => (/^\/(en|fr)$/.test(route.canonicalPath) ? `${route.canonicalPath}/` : route.canonicalPath))
+			.sort();
+	}
+
 	private async requireLive(slug: string): Promise<Product> {
 		const product =
 			(await this.products.findBySlug(slug, 'public')) ?? (await this.products.findById(slug, 'public'));
@@ -386,16 +470,10 @@ export class CatalogPublicService {
 		return product;
 	}
 
-	private async cards(products: Product[]): Promise<CatalogCard[]> {
-		const rows = await Promise.all(
-			products.map(async (product) => ({
-				product,
-				variants: await this.variants.listForProduct(product.id, 'public'),
-			})),
-		);
-		const ids = rows.flatMap((row) => row.product.media.gallery.slice(0, 1));
-		const assets = await this.assetsFor(ids);
-		return rows.map((row) => this.card(row.product, row.variants, assets));
+	private async cards(products: Product[], known?: ReadonlyMap<string, ProductVariant[]>): Promise<CatalogCard[]> {
+		const variants = known ?? (await this.variantsByProduct(products));
+		const assets = await this.assetsFor(products.flatMap((product) => product.media.gallery.slice(0, 1)));
+		return products.map((product) => this.card(product, variants.get(product.id) ?? [], assets));
 	}
 
 	private card(product: Product, rows: ProductVariant[], assets: Map<string, MediaAsset>): CatalogCard {
@@ -457,37 +535,51 @@ function groupsFromAttributes(product: Product): Product['optionGroups'] {
 	}));
 }
 
-function matchesAttribute(product: Product, attribute: string): boolean {
-	const groups = attribute.split('|').filter(Boolean);
-	return groups.every((group) => {
-		const [code, values] = group.split(':');
-		if (!code || !values) return true;
-		const wanted = new Set(values.split(','));
-		const found = product.attributes.find((item) => item.code === code);
-		return found?.terms.some((term) => wanted.has(term.code)) ?? false;
-	});
+/**
+ * A facet exists where some product states the fact outright. A product that sells the same
+ * fact as a choice, such as colour, then counts toward it too. Add-ons and bundle choices
+ * describe an order, not a product.
+ */
+const FACET_ROLES = new Set(['filter_only', 'variation_axis']);
+
+function listingRow(
+	product: Product,
+	variants: ProductVariant[],
+	filterable: ReadonlySet<string>,
+): ListingRow & { product: Product } {
+	const { price } = productReadModel(product, variants);
+	return {
+		product,
+		id: product.id,
+		title: product.title.en,
+		minINR: price?.kind === 'range' ? price.minINR : (price?.sellingINR ?? product.basePriceINR),
+		maxINR: price?.kind === 'range' ? price.maxINR : (price?.sellingINR ?? product.basePriceINR),
+		percentOff: price?.kind === 'single' ? (price.percentOff ?? 0) : 0,
+		rating: product.ratingsSummary.avg,
+		categoryIds: product.categoryIds,
+		facets: product.optionGroups
+			.filter((group) => FACET_ROLES.has(group.semanticRole) && filterable.has(group.attributeCode))
+			.map((group) => ({
+				code: group.attributeCode,
+				label: group.label.en,
+				terms: group.terms.map((term) => ({ code: term.code, label: term.label.en })),
+			})),
+	};
 }
 
-function facetsOf(products: Product[]) {
-	const facets = new Map<string, { label: string; terms: Map<string, { label: string; count: number }> }>();
-	for (const product of products) {
-		for (const attribute of product.attributes) {
-			const facet = facets.get(attribute.code) ?? { label: attribute.label.en, terms: new Map() };
-			for (const term of attribute.terms) {
-				const current = facet.terms.get(term.code) ?? { label: term.label.en, count: 0 };
-				current.count += 1;
-				facet.terms.set(term.code, current);
-			}
-			facets.set(attribute.code, facet);
-		}
-	}
-	return [...facets.entries()].map(([code, facet]) => ({
-		code,
-		label: facet.label,
-		terms: [...facet.terms.entries()].map(([termCode, term]) => ({
-			code: termCode,
-			label: term.label,
-			count: term.count,
-		})),
-	}));
+/** Stored descriptions can hold markup; a search snippet cannot. */
+function plainText(html: string): string {
+	return html
+		.replace(/<[^>]*>/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.slice(0, 160);
+}
+
+/** Only the plain first page is worth indexing. */
+function isCleanListing(query: CatalogPlacementQuery): boolean {
+	const { attribute, price, price_min, price_max, rating, category, sortBy, page } = query;
+	return (
+		page === 1 && [attribute, price, price_min, price_max, rating, category, sortBy].every((v) => v === undefined)
+	);
 }

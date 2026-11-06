@@ -9,12 +9,20 @@ export interface PurchasedProduct {
 	purchasedAt: string;
 }
 
+/** The product lines of one paid order, for the weekly analytics. */
+export interface PurchasedOrder {
+	placedAt: string;
+	lines: Array<{ productId: string; quantity: number }>;
+}
+
 export interface OrderRepository {
 	findById(id: string): Promise<Order | null>;
 	findByOrderNumber(orderNumber: string): Promise<Order | null>;
 	listByUser(userId: string, query: PageQuery): Promise<Paginated<Order>>;
 	/** Newest first, each product once, from at most `limit` paid orders placed since `since`. */
 	listRecentlyPurchased(since: string, limit: number): Promise<PurchasedProduct[]>;
+	/** Every paid order. Cancelled, refunded and unpaid orders are not sales. */
+	listPurchased(): Promise<PurchasedOrder[]>;
 	save(order: Order, context?: TransactionContext): Promise<Order>;
 	updateStatus(id: string, status: OrderStatus, note?: string): Promise<Order>;
 }

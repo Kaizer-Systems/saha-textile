@@ -120,7 +120,7 @@ describe('catalog read model', () => {
 				targetPath: '/en/product/a',
 				reason: 'slug_change',
 			}),
-		).rejects.toThrow('redirect loop');
+		).rejects.toThrow('That redirect would loop');
 		expect(stored.has('/en/product/c')).toBe(false);
 	});
 });

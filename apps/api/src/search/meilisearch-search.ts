@@ -4,10 +4,12 @@ import {
 	SearchUnavailableError,
 	searchDocument,
 	type Paginated,
-	type SearchFacet,
 	type SearchPort,
 	type SearchQuery,
 } from '@saha-textile/core-domain';
+
+/** A hung index must not hold a page open. */
+const REQUEST_TIMEOUT_MS = 2000;
 
 /**
  * Meilisearch behind `SearchPort`. The index stores ids and words. Prices are
@@ -40,7 +42,7 @@ export class MeilisearchSearch implements SearchPort {
 				q: query.q,
 				offset: (page - 1) * pageSize,
 				limit: pageSize,
-				...(query.categoryId ? { filter: `categoryIds = "${query.categoryId}"` } : {}),
+				...(query.categoryId ? { filter: `categoryIds = ${JSON.stringify(query.categoryId)}` } : {}),
 			},
 		);
 		const ids = (body.hits ?? []).map((hit) => hit.id).filter((id): id is string => !!id);
@@ -55,23 +57,6 @@ export class MeilisearchSearch implements SearchPort {
 			page,
 			pageSize,
 		};
-	}
-
-	async facets(input: { categoryId?: string }): Promise<SearchFacet[]> {
-		const body = await this.send<{ facetDistribution?: Record<string, Record<string, number>> }>(
-			'/indexes/products/search',
-			'POST',
-			{
-				q: '',
-				limit: 0,
-				facets: ['categoryIds'],
-				...(input.categoryId ? { filter: `categoryIds = "${input.categoryId}"` } : {}),
-			},
-		);
-		return Object.entries(body.facetDistribution ?? {}).map(([code, terms]) => ({
-			code,
-			terms: Object.entries(terms).map(([label, count]) => ({ label, count })),
-		}));
 	}
 
 	private async ensureSettings(): Promise<void> {
@@ -94,6 +79,7 @@ export class MeilisearchSearch implements SearchPort {
 					...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {}),
 				},
 				...(body === undefined ? {} : { body: JSON.stringify(body) }),
+				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
 		} catch {
 			throw new SearchUnavailableError('Search is unavailable');

@@ -92,6 +92,8 @@ interface DemoMeasurement {
 
 interface DemoProduct {
 	id: number;
+	/** The facts the shop filters by, such as fabric and occasion. */
+	filter_attributes?: Record<string, string>;
 	name?: string;
 	slug?: string;
 	description?: string;
@@ -256,7 +258,11 @@ function optionGroupsFor(product: DemoProduct, variable: boolean, frames: readon
 	}
 	for (const group of product.addon_groups ?? []) add(demoGroup(group, 'named_add_on'));
 	for (const group of product.bundle?.option_groups ?? []) add(demoGroup(group, 'bundle_component_option'));
-	for (const fact of product.semantic_attributes ?? []) {
+	const facts = [
+		...(product.semantic_attributes ?? []),
+		...Object.entries(product.filter_attributes ?? {}).map(([code, value]) => ({ code, label: code, value })),
+	];
+	for (const fact of facts) {
 		const code = slugify(fact.code || fact.label || '');
 		const value = (fact.value ?? '').trim();
 		if (!code || !value) continue;

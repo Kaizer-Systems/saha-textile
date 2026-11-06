@@ -1,4 +1,4 @@
-import { BadRequestException, HttpException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import {
 	AdminProductDetail,
 	AdminProductList,
@@ -16,10 +16,14 @@ import {
 	type SeoRedirectWrite,
 } from '@saha-textile/contracts';
 import {
+	normaliseSourcePath,
+	repointedRows,
 	mrpPriceINR,
 	resolveImage,
 	sellingPriceINR,
 	type AddonTemplateRepository,
+	type SearchPort,
+	type StockAlertRepository,
 	type AuditLogRepository,
 	type CatalogAudience,
 	type CategoryPlacementRepository,
@@ -46,7 +50,9 @@ import {
 	PRODUCT_REPOSITORY,
 	PRODUCT_RELATION_REPOSITORY,
 	PRODUCT_VARIANT_REPOSITORY,
+	SEARCH_PORT,
 	SEO_REDIRECT_REPOSITORY,
+	STOCK_ALERT_REPOSITORY,
 	STORAGE_PORT,
 	TRANSACTION_MANAGER,
 } from '../infra/tokens';
@@ -55,6 +61,8 @@ const RELATION_TYPES = ['related', 'upsell', 'cross_sell'] as const;
 
 @Injectable()
 export class CatalogService {
+	private readonly logger = new Logger(CatalogService.name);
+
 	constructor(
 		@Inject(PRODUCT_REPOSITORY) private readonly products: ProductRepository,
 		@Inject(CATEGORY_REPOSITORY) private readonly categories: CategoryRepository,
@@ -73,6 +81,8 @@ export class CatalogService {
 		private readonly placements: CategoryPlacementRepository | null = null,
 		@Optional() @Inject(MEDIA_ASSET_REPOSITORY) private readonly media: MediaAssetRepository | null = null,
 		@Optional() @Inject(STORAGE_PORT) private readonly storage: StoragePort | null = null,
+		@Optional() @Inject(SEARCH_PORT) private readonly search: SearchPort | null = null,
+		@Optional() @Inject(STOCK_ALERT_REPOSITORY) private readonly stockAlerts: StockAlertRepository | null = null,
 	) {}
 
 	listProducts(filter: ProductFilter): Promise<Paginated<Product>> {
@@ -104,13 +114,37 @@ export class CatalogService {
 		return this.redirects.list();
 	}
 
+	/**
+	 * Saves by source path, so editing a row updates it. Rows that pointed at this source
+	 * are repointed, which keeps every old address one hop from its page.
+	 */
 	async saveRedirect(input: SeoRedirectWrite, actorUserId: string | null = null): Promise<SeoRedirect> {
-		const saved = await this.redirects.save({ ...input, id: randomUUID() });
-		await this.record(actorUserId, 'catalog.redirect.save', saved.id, {
-			sourcePath: saved.sourcePath,
-			statusCode: saved.statusCode,
-			targetPath: saved.targetPath ?? null,
+		const sourcePath = normaliseSourcePath(input.sourcePath);
+		let saved: SeoRedirect | undefined;
+		try {
+			await this.inTransaction(async () => {
+				saved = await this.upsertRedirect({ ...input, sourcePath });
+			});
+		} catch (error) {
+			if (error instanceof Error && error.message === 'redirect loop') {
+				throw new BadRequestException('That redirect would loop');
+			}
+			throw error;
+		}
+		const row = saved as unknown as SeoRedirect;
+		await this.record(actorUserId, 'catalog.redirect.save', row.id, {
+			sourcePath: row.sourcePath,
+			statusCode: row.statusCode,
+			targetPath: row.targetPath ?? null,
 		});
+		return row;
+	}
+
+	private async upsertRedirect(input: Omit<SeoRedirect, 'id'>): Promise<SeoRedirect> {
+		const existing = await this.redirects.findBySource(input.sourcePath);
+		const saved = await this.redirects.save({ ...input, id: existing?.id ?? `redir_${randomUUID()}` });
+		const others = (await this.redirects.list()).filter((row) => row.sourcePath !== saved.sourcePath);
+		for (const row of repointedRows(others, saved)) await this.redirects.save(row);
 		return saved;
 	}
 
@@ -127,8 +161,7 @@ export class CatalogService {
 			lifecycle: { ...product.lifecycle, discontinuedAt: new Date().toISOString() },
 			replacementTarget: replacement,
 		};
-		const redirect: SeoRedirect = {
-			id: `redir_${randomUUID()}`,
+		const redirect: Omit<SeoRedirect, 'id'> = {
 			sourcePath: `/product/${product.slug}`,
 			statusCode: replacement ? 301 : 410,
 			...(replacement ? { targetPath: replacement.path } : {}),
@@ -138,8 +171,9 @@ export class CatalogService {
 		};
 		await this.inTransaction(async () => {
 			await this.products.save(next);
-			await this.redirects.save(redirect);
+			await this.upsertRedirect(redirect);
 		});
+		await this.syncSearch(next);
 		await this.record(actorUserId, 'catalog.product.discontinue', product.id, {
 			statusCode: redirect.statusCode,
 			targetPath: replacement?.path ?? null,
@@ -315,6 +349,7 @@ export class CatalogService {
 		const next: Product = {
 			...product,
 			sku: body.sku,
+			slug: body.slug ?? product.slug,
 			status: body.status,
 			lifecycle: {
 				...product.lifecycle,
@@ -336,10 +371,33 @@ export class CatalogService {
 			basePriceINR: selling.length ? Math.min(...selling) : product.basePriceINR,
 			onSale: live.some((row) => row.salePriceINR !== null && row.salePriceINR < row.priceINR),
 		};
+		const stocked = (list: readonly ProductVariant[]) => list.reduce((sum, row) => sum + row.stock.quantity, 0);
+		const received = nextRows.reduce(
+			(sum, row) => sum + Math.max(0, row.stock.quantity - (rows.get(row.id)?.stock.quantity ?? 0)),
+			0,
+		);
+		next.lifetimeUnitsReceived = product.lifetimeUnitsReceived + received;
+		if (stocked([...rows.values()]) === 0 && stocked(nextRows) > 0) next.backInStockAt = now;
+		const renamed = next.slug !== product.slug;
+		if (renamed && (await this.products.findBySlug(next.slug, 'admin'))) {
+			throw new BadRequestException('That address is already taken');
+		}
 		await this.inTransaction(async () => {
 			await this.products.save(next);
 			for (const row of nextRows) await this.variants.save(row);
+			if (renamed) {
+				// One locale-free row: the resolver gives /en/ and /fr/ their own target.
+				await this.upsertRedirect({
+					sourcePath: `/product/${product.slug}`,
+					statusCode: 301,
+					targetPath: `/product/${next.slug}`,
+					reason: 'slug_change',
+					entityType: 'product',
+					entityId: product.id,
+				});
+			}
 		});
+		await this.syncSearch(next);
 		await this.record(actorUserId, 'catalog.product.save', product.id, {
 			sku: next.sku,
 			status: next.status,
@@ -348,7 +406,17 @@ export class CatalogService {
 		await this.replaceManualRelations(product.id, 'related', body.relatedProductIds);
 		await this.replaceManualRelations(product.id, 'upsell', body.upsellProductIds);
 		await this.replaceManualRelations(product.id, 'cross_sell', body.crossSellProductIds);
-		return { id: product.id, slug: product.slug };
+		return { id: product.id, slug: next.slug };
+	}
+
+	/** The index is derived and rebuildable, so a failed update never fails the save. */
+	private async syncSearch(product: Product): Promise<void> {
+		try {
+			if (product.status === 'live') await this.search?.indexProduct(product);
+			else await this.search?.removeProduct(product.id);
+		} catch (error) {
+			this.logger.warn(`Search index not updated for ${product.id}: ${String(error)}`);
+		}
 	}
 
 	private async inTransaction(write: () => Promise<void>) {
@@ -430,12 +498,16 @@ export class CatalogService {
 
 	async requestStockAlert(idOrSlug: string, variantSku: string, customerId: string | null) {
 		if (!customerId) throw new NotFoundException('Sign in to be notified');
-		if (stockAlertLimited(customerId)) throw new HttpException('Too many requests', 429);
 		const product = await this.getProduct(idOrSlug, 'public');
 		const rows = await this.variants.listForProduct(product.id, 'public');
 		const variant = rows.find((row) => row.sku === variantSku);
 		if (!variant) throw new NotFoundException('Variant not found');
-		await this.products.saveStockAlert(customerId, product.id, variant.id);
+		await this.stockAlerts?.save({
+			customerId,
+			productId: product.id,
+			variantId: variant.id,
+			now: new Date().toISOString(),
+		});
 		return { ok: true };
 	}
 
@@ -525,15 +597,4 @@ function isPublished(product: Product): boolean {
 
 function isBadgeCode(code: string): code is CatalogBadgeCode {
 	return CatalogBadgeCode.safeParse(code).success;
-}
-
-const stockAlertHits = new Map<string, number[]>();
-
-function stockAlertLimited(customerId: string): boolean {
-	const now = Date.now();
-	const recent = (stockAlertHits.get(customerId) ?? []).filter((at) => now - at < 60_000);
-	if (recent.length >= 5) return true;
-	recent.push(now);
-	stockAlertHits.set(customerId, recent);
-	return false;
 }

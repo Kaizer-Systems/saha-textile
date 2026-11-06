@@ -15,6 +15,8 @@ import {
 	SeoRouteModel,
 } from '../models/index';
 import { AddonTemplateModel } from '../models/merchandising.model';
+import { MongoNotificationTemplateRepository } from '../repositories/index';
+import { CATALOG_NOTIFICATION_TEMPLATES } from './notification-templates';
 import { LEGACY_ADDRESSES, approvedLegacyRows, legacyTargetIsLive } from './legacy-addresses';
 import { mapDemoCatalogue, type DemoCatalogue } from './map-demo-catalogue';
 
@@ -197,6 +199,9 @@ export async function seedDemoCatalogue(dbName: string | undefined): Promise<Dem
 		await upsertChanged(AddonTemplateModel, docs.addonTemplates as never, ['code']),
 		await upsertChanged(MediaAssetModel, missingPhotos as never),
 	].reduce((sum, count) => sum + count, 0);
+
+	const templates = new MongoNotificationTemplateRepository();
+	for (const template of CATALOG_NOTIFICATION_TEMPLATES) await templates.upsert(template);
 
 	const livePaths = new Set(
 		(

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { Slug } from './common';
 import { ProductShippingDefaults, ProductStatus } from './product';
 
 /** Every badge a card can show. Pinning wins inside its own slot; hiding skips it. */
@@ -58,6 +59,8 @@ export type AdminVariantWrite = z.infer<typeof AdminVariantWrite>;
 export const ProductMerchandisingWrite = z
 	.object({
 		sku: z.string().trim().min(1),
+		/** A new address. The old one then forwards here. */
+		slug: Slug.optional(),
 		status: z.enum(['live', 'disabled']),
 		featured: z.boolean(),
 		madeToOrder: z.boolean(),

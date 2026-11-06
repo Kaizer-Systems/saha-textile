@@ -56,8 +56,14 @@ export class ProductsController {
 	@Header('Cache-Control', 'no-store')
 	@ApiOperation({ operationId: 'listLegacyRedirects', summary: 'Redirect rows for the storefront resolver' })
 	async legacyRedirects() {
-		const rows = await this.catalog.listRedirects();
-		return rows.map((row) => publicRedirectView(row));
+		const [saved, retired] = await Promise.all([
+			this.catalog.listRedirects(),
+			this.publicCatalog.retiredCollectionRows(),
+		]);
+		// A row the merchant saved wins over the automatic one for the same collection.
+		const named = new Set(saved.map((row) => row.sourcePath));
+		const automatic = retired.filter((row) => !named.has(row.sourcePath));
+		return [...saved, ...automatic].map((row) => publicRedirectView(row));
 	}
 
 	@Get(':idOrSlug/relations')

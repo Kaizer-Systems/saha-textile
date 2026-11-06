@@ -13,7 +13,11 @@ export interface RedisConnectionConfig {
 
 /** Jobs that run on a schedule rather than on demand. */
 export type ScheduledMediaJob =
-	{ type: 'gc' } | { type: 'youtube-refresh' } | { type: 'reprocess-stale' } | { type: 'weekly-insight' };
+	| { type: 'gc' }
+	| { type: 'youtube-refresh' }
+	| { type: 'reprocess-stale' }
+	| { type: 'weekly-insight' }
+	| { type: 'stock-alerts' };
 export type MediaQueueJob = MediaJob | ScheduledMediaJob;
 
 const connectionOptions = (config: RedisConnectionConfig) => ({
@@ -97,6 +101,11 @@ export class BullMqMediaJobQueue implements MediaJobQueuePort {
 			'reprocess-stale',
 			{ every: 15 * 60_000 },
 			{ name: 'reprocess-stale', data: { type: 'reprocess-stale' } },
+		);
+		await this.queue.upsertJobScheduler(
+			'stock-alerts',
+			{ every: 15 * 60_000 },
+			{ name: 'stock-alerts', data: { type: 'stock-alerts' } },
 		);
 		await this.queue.upsertJobScheduler(
 			'weekly-insight',

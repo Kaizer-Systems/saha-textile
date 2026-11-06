@@ -3,17 +3,19 @@ import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { IncomingMessage } from 'node:http';
-import { gzipSync } from 'node:zlib';
 
+import compress from '@fastify/compress';
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { HttpException, HttpStatus } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule } from '@nestjs/swagger';
 
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/http-exception.filter';
+import { isPublicRead } from './common/public-read';
 import { REQUEST_ID_HEADER, resolveClientIp, resolveRequestId } from './common/request-context';
 import type { AppConfig } from './config/app-config';
 import { createOpenApiDocument } from './openapi';
@@ -117,22 +119,6 @@ export async function createApp(config: AppConfig): Promise<NestFastifyApplicati
 	// or a support ticket can always name the exact request.
 	instance.addHook('onSend', (request, reply, payload, done) => {
 		void reply.header(REQUEST_ID_HEADER, request.id);
-		const accept = request.headers['accept-encoding'];
-		const type = String(reply.getHeader('content-type') ?? '');
-		if (
-			typeof payload === 'string' &&
-			type.includes('application/json') &&
-			typeof accept === 'string' &&
-			accept.includes('gzip') &&
-			payload.length > 1024 &&
-			!reply.getHeader('content-encoding')
-		) {
-			const body = gzipSync(payload);
-			void reply.header('content-encoding', 'gzip');
-			void reply.header('vary', 'Accept-Encoding');
-			done(null, body);
-			return;
-		}
 		done();
 	});
 
@@ -140,6 +126,8 @@ export async function createApp(config: AppConfig): Promise<NestFastifyApplicati
 	// these cookies are not signed — session integrity comes from the opaque token's own
 	// entropy and its server-side hash, not from a cookie signature.
 	await app.register(cookie);
+	// Adds Accept-Encoding to Vary without losing Origin, so a shared cache keeps CORS right.
+	await app.register(compress, { threshold: 1024, encodings: ['br', 'gzip'] });
 	await app.register(helmet);
 	await app.register(rateLimit, {
 		max: config.rateLimitMax,
@@ -147,6 +135,12 @@ export async function createApp(config: AppConfig): Promise<NestFastifyApplicati
 		// Key on the REAL client IP; behind a proxy every request otherwise shares the
 		// proxy's address and one caller can exhaust the limit for everyone.
 		keyGenerator: (request) => resolveClientIp(request, config),
+		// Public reads answer from the CDN in production and server-rendered pages all arrive
+		// from one address, so counting them would take the shop down for everyone. Search and
+		// every write keep their limits.
+		allowList: (request) => isPublicRead(request.method, request.url),
+		// The plugin's own error is not an HttpException, so it would be reported as a 500.
+		errorResponseBuilder: () => new HttpException('Too many requests', HttpStatus.TOO_MANY_REQUESTS),
 	});
 
 	// Strict allowlist. `credentials: true` requires exact origins — never a wildcard —

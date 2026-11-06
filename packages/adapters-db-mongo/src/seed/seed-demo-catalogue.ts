@@ -75,10 +75,10 @@ function norm(value: unknown): unknown {
 }
 
 /** Compare only the keys the seed writes, so mongoose defaults do not force a rewrite. */
-function sameDocument(current: unknown, desired: unknown): boolean {
+export function sameDocument(current: unknown, desired: unknown): boolean {
 	const project = (stored: unknown, shape: unknown): unknown => {
 		if (Array.isArray(shape)) {
-			return Array.isArray(stored) ? shape.map((item, index) => project(stored[index], item)) : norm(shape);
+			return Array.isArray(stored) ? shape.map((item, index) => project(stored[index], item)) : norm(stored);
 		}
 		if (shape && typeof shape === 'object') {
 			const out: Record<string, unknown> = {};

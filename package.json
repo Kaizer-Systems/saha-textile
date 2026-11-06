@@ -25,6 +25,7 @@
     "check:permission-registry": "node scripts/check-permission-registry.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "e2e": "playwright test",
     "e2e:session-rotation": "turbo run build --filter=@saha-textile/api && pnpm --filter @saha-textile/api e2e:session-rotation",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -49,8 +50,10 @@
     "redis:down": "docker compose -f docker/redis/compose.yaml down"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@saha-textile/config": "workspace:*",
     "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "5.0.5",
     "eslint": "10.13.0",
     "prettier": "3.9.10",
     "prettier-plugin-tailwindcss": "0.8.1",

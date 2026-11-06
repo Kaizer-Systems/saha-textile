@@ -1,6 +1,7 @@
 import { afterNextRender, Component, computed, inject, signal } from '@angular/core';
 
 import { injectQuery } from '@tanstack/angular-query-experimental';
+import { TranslocoModule } from '@jsverse/transloco';
 import { CarouselModule } from 'ngx-owl-carousel-o';
 import { firstValueFrom } from 'rxjs';
 
@@ -41,12 +42,12 @@ const HERO_LAYOUT_THEME: Record<StorefrontBanners['heroLayout'], string | null> 
 	selector: 'app-home',
 	templateUrl: './home.html',
 	styleUrls: ['./home.scss'],
-	imports: [CarouselModule, ImageLink, Title, Product, Blog, Newsletter, HomeBanner],
+	imports: [CarouselModule, ImageLink, Title, Product, Blog, Newsletter, HomeBanner, TranslocoModule],
 })
 export class Home {
 	constructor() {
 		afterNextRender(() => {
-			const slugs = readRecentViews(sessionStorage).map((row) => row.slug);
+			const slugs = readRecentViews(localStorage).map((row) => row.slug);
 			if (slugs.length === 0) return;
 			this.productsApi.cardsFor(slugs).subscribe((cards) => this.recentRail.set(cards));
 		});

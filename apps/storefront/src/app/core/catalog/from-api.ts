@@ -253,7 +253,7 @@ export function placementToCatalog(page: ApiPlacement): ICatalogResponse {
 		facets: Object.fromEntries(
 			page.facets.map((facet) => [
 				facet.code,
-				facet.terms.map((term) => ({ value: term.label, count: term.count })),
+				facet.terms.map((term) => ({ value: term.code, label: term.label, count: term.count })),
 			]),
 		),
 		price_range: { min: prices.length ? Math.min(...prices) : 0, max: prices.length ? Math.max(...prices) : 0 },

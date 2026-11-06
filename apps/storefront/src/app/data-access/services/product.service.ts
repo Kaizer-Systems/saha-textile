@@ -28,28 +28,13 @@ export class ProductService {
 
 	public skeletonLoader: boolean = false;
 
-	/**
-	 * Category-listing catalog (Pass A) — hits the Nitro route that filters/sorts/
-	 * paginates server-side and returns a lean 25-card slice + disjunctive facets.
-	 * `params` carries category, page, limit, sortBy, rating, price_min/max and any
-	 * attribute facet (fabric/color/occasion/work) as comma-joined values.
-	 */
+	/** One page of a listing, with its filter counts. `params` come from `toCatalogParams`. */
 	getCatalog(payload?: Params): Observable<ICatalogResponse> {
-		const path = String(payload?.['category'] ?? '');
-		const reserved = new Set(['page', 'limit', 'category', 'sortBy', 'rating', 'price_min', 'price_max']);
-		const attribute = Object.entries(payload ?? {})
-			.filter(([key, value]) => !reserved.has(key) && value)
-			.map(([key, value]) => `${key}:${value}`)
-			.join('|');
+		const { limit, ...params } = payload ?? {};
 		return this.http
 			.get<ApiPlacement>(`${environment.apiUrl}/catalog/placements`, {
 				context: backgroundRequest(),
-				params: {
-					path,
-					page: payload?.['page'] ?? 1,
-					pageSize: payload?.['limit'] ?? 24,
-					...(attribute ? { attribute } : {}),
-				},
+				params: { ...params, pageSize: limit ?? 24 },
 			})
 			.pipe(map(placementToCatalog));
 	}

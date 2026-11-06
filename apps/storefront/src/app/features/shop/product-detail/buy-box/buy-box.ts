@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbRating } from '@ng-bootstrap/ng-bootstrap';
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 
@@ -17,6 +17,7 @@ import { IConfiguratorSummary } from '@data-access/interfaces/product-detail.int
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
+import { NotificationService } from '@data-access/services/notification.service';
 import { Button } from '@shared/ui/button/button';
 import { environment } from '../../../../../../public/environments/environment';
 import { ProductConfigurator } from '@shared/ui/product-config/product-configurator/product-configurator';
@@ -38,6 +39,8 @@ export class BuyBox {
 	private wishlistFacade = inject(WishlistFacade);
 	private compareFacade = inject(CompareFacade);
 	private cartFacade = inject(CartFacade);
+	private notification = inject(NotificationService);
+	private transloco = inject(TranslocoService);
 	private router = inject(Router);
 	private http = inject(HttpClient);
 	private authStore = inject(AuthStore);
@@ -99,7 +102,7 @@ export class BuyBox {
 				{ variantSku: variant },
 				{ withCredentials: true },
 			)
-			.subscribe();
+			.subscribe(() => this.notification.showSuccess(this.transloco.translate('stock_alert_saved')));
 	}
 
 	addToWishlist() {

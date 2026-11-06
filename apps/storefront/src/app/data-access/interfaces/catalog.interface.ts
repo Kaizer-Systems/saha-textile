@@ -2,7 +2,9 @@ import { IProduct } from './product.interface';
 
 /** One filter facet's value + its (disjunctive) count for the current query. */
 export interface IFacetValue {
+	/** The term code the filter sends. */
 	value: string;
+	label: string;
 	count: number;
 }
 

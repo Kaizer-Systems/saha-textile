@@ -1,4 +1,9 @@
 {
+	"new_arrivals": "New Arrivals",
+	"recently_viewed": "Recently Viewed",
+	"bestsellers": "Bestsellers",
+	"featured_products": "Featured",
+	"on_sale": "Sale",
 	"1": "1",
 	"2": "2",
 	"3": "3",
@@ -530,6 +535,7 @@
 	"sold_by": "Sold By",
 	"sold_out": "SOLD OUT",
 	"notify_me": "Notify me",
+	"stock_alert_saved": "We will email you when this is back in stock.",
 	"stay_anonymous": "Stay anonymous",
 	"search_unavailable": "Search is unavailable",
 	"someone_recently_purchased": "Someone Recently Purchased",

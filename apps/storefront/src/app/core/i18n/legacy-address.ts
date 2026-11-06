@@ -37,8 +37,13 @@ let rows: SeoRedirectRow[] = [];
 let productSlugs = new Set<string>();
 let collectionPaths = new Set<string>();
 let loadedAt = 0;
+let retryAt = 0;
+let backoffMs = 0;
+let catalogReady = false;
+let refreshing: Promise<void> | null = null;
 
 const CATALOG_TTL_MS = 15_000;
+const MAX_BACKOFF_MS = 60_000;
 
 export function setLegacyRedirectRows(next: readonly SeoRedirectRow[]): void {
 	rows = [...next];
@@ -48,6 +53,11 @@ export function setLegacyRedirectRows(next: readonly SeoRedirectRow[]): void {
 export function setLiveCatalog(next: { products?: readonly string[]; collections?: readonly string[] }): void {
 	if (next.products) productSlugs = new Set(next.products);
 	if (next.collections) collectionPaths = new Set(next.collections);
+}
+
+/** False until the live catalogue has loaded once, so a 410 cannot yet be trusted. */
+export function legacyCatalogReady(): boolean {
+	return catalogReady;
 }
 
 export function isLiveStorefrontPath(pathname: string): boolean {
@@ -76,53 +86,80 @@ export function storefrontAddress(
 	return localeRedirectFor(pathAndQuery, rememberedLocale);
 }
 
-/** Reloads redirect rows and the live catalogue. A save is visible on the next refresh. */
-export async function refreshLegacyCatalog(apiUrl: string): Promise<void> {
-	if (Date.now() - loadedAt < CATALOG_TTL_MS) return;
-	loadedAt = Date.now();
+interface LiveCatalog {
+	rows: SeoRedirectRow[];
+	products: string[];
+	collections: string[];
+}
+
+async function readJson(url: string, signal: AbortSignal): Promise<unknown> {
+	const response = await fetch(url, { signal });
+	if (!response.ok) throw new Error(`${response.status} ${url}`);
+	return response.json();
+}
+
+function toRows(body: unknown): SeoRedirectRow[] {
+	if (!Array.isArray(body)) return [];
+	return body.flatMap((row) => {
+		if (!row || typeof row !== 'object') return [];
+		const sourcePath = 'sourcePath' in row ? row.sourcePath : undefined;
+		const statusCode = 'statusCode' in row ? row.statusCode : undefined;
+		const targetPath = 'targetPath' in row ? row.targetPath : undefined;
+		if (typeof sourcePath !== 'string') return [];
+		if (statusCode !== 301 && statusCode !== 302 && statusCode !== 410) return [];
+		return [{ sourcePath, statusCode, targetPath: typeof targetPath === 'string' ? targetPath : undefined }];
+	});
+}
+
+const strings = (body: unknown, key: string): string[] => {
+	const value = body && typeof body === 'object' && key in body ? (body as Record<string, unknown>)[key] : null;
+	return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
+};
+
+async function loadCatalog(apiUrl: string): Promise<LiveCatalog> {
 	const signal = AbortSignal.timeout(3000);
+	const [redirects, live] = await Promise.all([
+		readJson(`${apiUrl}/catalog/products/legacy-redirects`, signal),
+		readJson(`${apiUrl}/catalog/live-paths`, signal),
+	]);
+	return { rows: toRows(redirects), products: strings(live, 'products'), collections: strings(live, 'collections') };
+}
+
+async function refresh(apiUrl: string): Promise<void> {
 	try {
-		const response = await fetch(`${apiUrl}/catalog/products/legacy-redirects`, { signal });
-		if (response.ok) {
-			const body: unknown = await response.json();
-			if (Array.isArray(body)) {
-				setLegacyRedirectRows(
-					body.flatMap((row) => {
-						if (!row || typeof row !== 'object') return [];
-						const sourcePath = 'sourcePath' in row ? row.sourcePath : undefined;
-						const statusCode = 'statusCode' in row ? row.statusCode : undefined;
-						const targetPath = 'targetPath' in row ? row.targetPath : undefined;
-						if (typeof sourcePath !== 'string') return [];
-						if (statusCode !== 301 && statusCode !== 302 && statusCode !== 410) return [];
-						return [
-							{
-								sourcePath,
-								statusCode,
-								targetPath: typeof targetPath === 'string' ? targetPath : undefined,
-							},
-						];
-					}),
-				);
-			}
-		}
+		const next = await loadCatalog(apiUrl);
+		setLegacyRedirectRows(next.rows);
+		setLiveCatalog(next);
+		catalogReady = true;
+		loadedAt = Date.now();
+		backoffMs = 0;
 	} catch {
-		loadedAt = 0;
+		// A failed read keeps the last good copy and waits longer each time.
+		backoffMs = Math.min(Math.max(backoffMs * 2, 1000), MAX_BACKOFF_MS);
+		retryAt = Date.now() + backoffMs;
+	} finally {
+		refreshing = null;
 	}
-	try {
-		const response = await fetch(`${apiUrl}/catalog/live-paths`, { signal });
-		if (!response.ok) return;
-		const body: unknown = await response.json();
-		if (!body || typeof body !== 'object') return;
-		const products =
-			'products' in body && Array.isArray(body.products)
-				? body.products.filter((slug) => typeof slug === 'string')
-				: [];
-		const collections =
-			'collections' in body && Array.isArray(body.collections)
-				? body.collections.filter((path) => typeof path === 'string')
-				: [];
-		setLiveCatalog({ products, collections });
-	} catch {
-		loadedAt = 0;
-	}
+}
+
+/**
+ * Reloads redirect rows and the live catalogue. A save shows up on the next refresh. Only the
+ * very first load holds a request back; after that a stale copy keeps serving while it refreshes.
+ */
+export async function refreshLegacyCatalog(apiUrl: string): Promise<void> {
+	const now = Date.now();
+	if (now - loadedAt >= CATALOG_TTL_MS && now >= retryAt) refreshing ??= refresh(apiUrl);
+	if (!catalogReady && refreshing) await refreshing;
+}
+
+/** Back to a server that has loaded nothing. */
+export function resetLegacyCatalog(): void {
+	rows = [];
+	productSlugs = new Set();
+	collectionPaths = new Set();
+	loadedAt = 0;
+	retryAt = 0;
+	backoffMs = 0;
+	catalogReady = false;
+	refreshing = null;
 }

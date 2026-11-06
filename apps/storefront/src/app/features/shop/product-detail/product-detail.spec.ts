@@ -115,7 +115,7 @@ describe('the product detail page', () => {
 	it('sends an unknown slug to the 404 page', async () => {
 		const { fixture, navigate } = harness('no-such-saree');
 
-		await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/404']));
+		await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/404'], { skipLocationChange: true }));
 		expect(fixture.nativeElement.querySelector('.product-section')).toBeNull();
 	});
 

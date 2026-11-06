@@ -1,4 +1,5 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -39,12 +40,14 @@ export class Search {
 	public productSlider6ItemMargin = data.productSlider6ItemMargin;
 	public filter = signal<Params>({
 		page: 1, // Current page number
-		paginate: 200, // Display per page,
+		paginate: 100, // Display per page,
 		status: 1,
 		search: '',
 	});
 
 	private readonly productsQuery = injectCatalogQuery(() => this.filter());
+
+	private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
 
 	/** Results for the current term; null until they arrive. */
 	private readonly results = signal<IProduct[] | null>(null);
@@ -69,7 +72,8 @@ export class Search {
 				}),
 				// switchMap drops an older term's answer that lands after a newer search.
 				switchMap((term) =>
-					term
+					// In the browser only: on the server every shopper would share one rate-limit address.
+					term && this.browser
 						? this.productService.search(term).pipe(
 								catchError(() => {
 									this.unavailable.set(true);

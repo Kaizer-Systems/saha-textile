@@ -155,7 +155,7 @@ export async function createApp(config: AppConfig): Promise<NestFastifyApplicati
 		origin: config.corsAllowedOrigins,
 		credentials: true,
 		methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-		allowedHeaders: ['content-type', 'accept', config.cookies.csrfHeader, REQUEST_ID_HEADER, 'x-st-background'],
+		allowedHeaders: ['content-type', 'accept', config.cookies.csrfHeader, REQUEST_ID_HEADER],
 		exposedHeaders: [REQUEST_ID_HEADER],
 		maxAge: 600,
 	});

@@ -251,13 +251,12 @@ export class CatalogPublicService {
 	}
 
 	async placement(path: string, page = 1, pageSize = 24, attribute?: string): Promise<CatalogPlacementPage> {
-		if (!this.placements) throw new NotFoundException('Catalogue placements are unavailable');
 		const slugs = path.split('/').filter(Boolean);
-		const placement = await this.placements.findByPath(slugs, 'public');
-		if (!placement) throw new NotFoundException(`Category not found: ${path}`);
+		// No path is the all-products page, so only a named path has to exist.
+		const placement = slugs.length ? await this.requirePlacement(slugs, path) : null;
 		const listed = await this.products.list({
 			audience: 'public',
-			categoryId: placement.categoryId,
+			...(placement ? { categoryId: placement.categoryId } : {}),
 			page: 1,
 			pageSize: 500,
 		});
@@ -266,9 +265,9 @@ export class CatalogPublicService {
 			: listed.items;
 		const start = (Math.max(1, page) - 1) * pageSize;
 		const slice = filtered.slice(start, start + pageSize);
-		const names = placement.pathLabel.split(' / ');
+		const names = placement?.pathLabel.split(' / ') ?? [];
 		let facets = facetsOf(filtered);
-		if (this.search) {
+		if (placement && this.search) {
 			try {
 				const fromSearch = await this.search.facets({ categoryId: placement.categoryId });
 				facets = fromSearch.map((facet) => ({
@@ -282,11 +281,11 @@ export class CatalogPublicService {
 			}
 		}
 		return CatalogPlacementPage.parse({
-			path: placement.pathSlugs.join('/'),
-			title: names.at(-1) ?? placement.pathLabel,
-			breadcrumb: placement.pathSlugs.map((slug, index) => ({
+			path: placement?.pathSlugs.join('/') ?? '',
+			title: names.at(-1) ?? placement?.pathLabel ?? 'All products',
+			breadcrumb: (placement?.pathSlugs ?? []).map((slug, index, pathSlugs) => ({
 				name: names[index] ?? slug,
-				path: `/collections/${placement.pathSlugs.slice(0, index + 1).join('/')}`,
+				path: `/collections/${pathSlugs.slice(0, index + 1).join('/')}`,
 			})),
 			products: await this.cards(slice),
 			total: filtered.length,
@@ -295,6 +294,13 @@ export class CatalogPublicService {
 			facets,
 			indexable: !attribute,
 		});
+	}
+
+	private async requirePlacement(slugs: string[], path: string) {
+		if (!this.placements) throw new NotFoundException('Catalogue placements are unavailable');
+		const placement = await this.placements.findByPath(slugs, 'public');
+		if (!placement) throw new NotFoundException(`Category not found: ${path}`);
+		return placement;
 	}
 
 	async gallery(slug: string): Promise<CatalogGallery> {

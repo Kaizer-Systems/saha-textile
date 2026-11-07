@@ -3,7 +3,7 @@ title: Storefront Cutover
 description: How catalogue data, search, old addresses and stock alerts fit together.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - packages/adapters-db-mongo/src/seed/seed-demo-catalogue.ts
     - packages/adapters-db-mongo/src/seed/legacy-addresses.ts

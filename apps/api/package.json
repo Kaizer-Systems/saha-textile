@@ -17,7 +17,7 @@
     "set:local-credentials": "node --import tsx src/set-local-test-credentials.ts",
     "reset:local-customer": "node --import tsx src/reset-local-customer.ts",
     "invite:local-admin": "node --import tsx src/invite-local-admin.ts",
-    "seed:local-auth-accounts": "nest build && node dist/seed-local-auth-accounts.js",
+    "seed:local-auth-accounts": "node --import tsx src/seed-local-auth-accounts.ts",
     "worker": "nest build && node dist/worker.js",
     "worker:dev": "node --import tsx --watch src/worker.ts",
     "e2e:media": "node --import tsx e2e/media-pipeline.e2e.ts",
@@ -25,7 +25,8 @@
     "e2e:review-photos": "node --import tsx e2e/review-photos.e2e.ts",
     "e2e:catalog-chunk-f": "node --import tsx e2e/catalog-chunk-f.e2e.ts",
     "search:rebuild": "node --import tsx src/rebuild-search-index.ts",
-    "release:prepare": "node --import tsx src/rebuild-search-index.ts",
+    "release:prepare": "node dist/rebuild-search-index.js",
+    "first-run:setup": "node dist/first-run-setup.js",
     "seed:local-catalog-photos": "node --import tsx src/seed-local-catalog-photos.ts",
     "seed:local-home-banners": "node --import tsx src/seed-local-home-banners.ts"
   },

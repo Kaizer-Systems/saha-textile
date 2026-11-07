@@ -131,3 +131,22 @@ describe('startMediaWorker', () => {
 		expect(workerOn).toHaveBeenCalledWith('failed', onFailed);
 	});
 });
+
+describe('BullMqMediaJobQueue.isReachable', () => {
+	const queue = () => new BullMqMediaJobQueue({ host: 'redis', port: 6379, db: 0 });
+
+	it('is true when Redis answers', async () => {
+		queueApi.count.mockResolvedValueOnce(0);
+		await expect(queue().isReachable()).resolves.toBe(true);
+	});
+
+	it('is false on a failed connection', async () => {
+		queueApi.count.mockRejectedValueOnce(new Error('down'));
+		await expect(queue().isReachable()).resolves.toBe(false);
+	});
+
+	it('gives up when Redis never answers', async () => {
+		queueApi.count.mockReturnValueOnce(new Promise(() => undefined));
+		await expect(queue().isReachable(5)).resolves.toBe(false);
+	});
+});

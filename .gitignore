@@ -45,6 +45,9 @@ apps/admin/public/assets/scss/app.gen.css
 # never commit a private key, even a locally-trusted development one.
 certs/
 
+# Throwaway root of scripts/production-proof.sh: it holds generated secrets and certificates.
+.production-proof/
+
 # Mode-3 stack runtime env (secrets copied from apps/api/.env) — never commit.
 docker/stack/env/*.env
 docker/stack/env/*.config.json

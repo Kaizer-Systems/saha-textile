@@ -29,6 +29,7 @@ interface Harness {
 	invite: { deliver: boolean };
 	createApp: Mock;
 	firstAdmin: Mock;
+	firstRun: Mock;
 	format: Mock;
 	purge: Mock;
 	resolveImage: Mock;
@@ -69,6 +70,7 @@ vi.mock('@saha-textile/adapters-db-mongo', () => {
 		};
 	const blank = repository(() => ({}));
 	return {
+		seedFirstRun: () => h.firstRun(),
 		connectMongo: () => h.mongo.connect(),
 		disconnectMongo: () => h.mongo.disconnect(),
 		MongoCustomerRepository: repository(() => h.customers),
@@ -188,6 +190,7 @@ const scripts = {
 	main: () => import('../src/main.js'),
 	worker: () => import('../src/worker.js'),
 	rebuild: () => import('../src/rebuild-search-index.js'),
+	firstRun: () => import('../src/first-run-setup.js'),
 	openapi: () => import('../src/generate-openapi.js'),
 	firstAdmin: () => import('../src/create-first-admin.js'),
 	reset: () => import('../src/reset-local-customer.js'),
@@ -354,7 +357,10 @@ describe('rebuild-search-index', () => {
 	it('reads every page and stops at the total', async () => {
 		h.products.list = vi
 			.fn()
-			.mockResolvedValueOnce({ items: [{ id: 'p1', categoryIds: ['cat_1', 'gone'], optionGroups: [] }], total: 2 })
+			.mockResolvedValueOnce({
+				items: [{ id: 'p1', categoryIds: ['cat_1', 'gone'], optionGroups: [] }],
+				total: 2,
+			})
 			.mockResolvedValueOnce({ items: [{ id: 'p2', categoryIds: [], optionGroups: [] }], total: 2 });
 		const result = await run('rebuild');
 		expect(h.products.list).toHaveBeenCalledTimes(2);
@@ -379,6 +385,33 @@ describe('rebuild-search-index', () => {
 		expect(result.err).toBe(`${text}\n`);
 		expect(result.code).toBe(1);
 		expect(h.mongo.disconnect).toHaveBeenCalledOnce();
+	});
+});
+
+describe('first-run-setup', () => {
+	it('sets up the database and always disconnects', async () => {
+		h.firstRun = vi.fn(async () => ({ currencies: 2, templates: 3 }));
+		const result = await run('firstRun');
+		expect(result.out).toContain('added 2 currencies and 3 templates');
+		expect(h.mongo.disconnect).toHaveBeenCalled();
+	});
+
+	it('reports a failure with exit code 1', async () => {
+		h.firstRun = vi.fn(async () => {
+			throw new Error('no database');
+		});
+		const result = await run('firstRun');
+		expect(result.err).toContain('no database');
+		expect(result.code).toBe(1);
+		expect(h.mongo.disconnect).toHaveBeenCalled();
+	});
+
+	it('reports something thrown that is not an Error', async () => {
+		h.firstRun = vi.fn(async () => {
+			throw 'text';
+		});
+		const result = await run('firstRun');
+		expect(result.err).toContain('text');
 	});
 });
 

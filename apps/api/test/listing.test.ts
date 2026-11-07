@@ -317,9 +317,26 @@ describe('MeilisearchSearch as the listing client', () => {
 		});
 		await search().replaceIndex(Array.from({ length: 501 }, () => entry));
 		const posts = fetcher.mock.calls.filter((call) => call[1].method === 'POST');
-		expect(posts).toHaveLength(2);
+		expect(posts.map((call) => call[0])).toEqual([
+			'http://meili.test/indexes/products_next/documents',
+			'http://meili.test/indexes/products_next/documents',
+			'http://meili.test/swap-indexes',
+		]);
+		expect(JSON.parse(posts[2]?.[1].body as string)).toEqual([{ indexes: ['products', 'products_next'] }]);
 		expect(fetcher.mock.calls.at(-1)?.[0]).toBe(`http://meili.test/tasks/${uid}`);
-		expect(fetcher.mock.calls.some((call) => call[1].method === 'DELETE')).toBe(true);
+		const touchedLive = fetcher.mock.calls.filter((call) =>
+			String(call[0]).includes('/indexes/products/documents'),
+		);
+		expect(touchedLive).toEqual([]);
+	});
+
+	it('reports the state of the index for the readiness probe', async () => {
+		fetcher.mockResolvedValueOnce(reply(200, { uid: 'products' }));
+		await expect(search().indexStatus()).resolves.toEqual({ up: true, detail: 'index ready' });
+		fetcher.mockResolvedValueOnce(reply(404));
+		await expect(search().indexStatus()).resolves.toEqual({ up: false, detail: 'unavailable or index missing' });
+		const unset = new MeilisearchSearch(undefined, undefined, async () => [], 'products', ['en']);
+		await expect(unset.indexStatus()).resolves.toEqual({ up: false, detail: 'not configured' });
 	});
 
 	it('polls a task still running', async () => {

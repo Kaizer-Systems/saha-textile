@@ -83,6 +83,8 @@ const deployment = (overrides: Record<string, string> = {}): Record<string, stri
 	SPACES_SECRET: 'spaces-secret-for-tests',
 	SPACES_BUCKET: 'saha-textile-media',
 	SPACES_CDN_URL: 'https://cdn.sahatextile.com',
+	MEILISEARCH_HOST: 'http://127.0.0.1:1',
+	MEILISEARCH_API_KEY: 'search-key-for-boot-tests',
 	PORT: '45991',
 	...overrides,
 });

@@ -31,6 +31,7 @@ export const MIN_SECRET_LENGTH = 64;
 const MIN_DISTINCT_SECRET_CHARACTERS = 12;
 
 /** Words that mark a value as a placeholder somebody meant to replace. Compared lower-case. */
+const MIN_SEARCH_KEY_LENGTH = 16;
 const PLACEHOLDER_MARKERS = ['change-me', 'change_me', 'changeme', 'replace', 'placeholder', 'example', 'dev-'];
 
 /** Hosts that only ever mean "this machine" — never a real browser origin in a deployment. */
@@ -142,6 +143,10 @@ export function deploymentHardeningProblems(config: AppConfig, env: NodeJS.Proce
 	if (!config.redis.password) {
 		problems.push('REDIS_PASSWORD must be set: the media job queue must not run open.');
 	}
+	if (!config.search.host) {
+		problems.push('MEILISEARCH_HOST must be set: without it search and typeahead stop working.');
+	}
+	problems.push(...searchKeyProblems(env.MEILISEARCH_API_KEY));
 	if (!config.spaces.configured) {
 		problems.push('Media storage must be configured: set SPACES_KEY, SPACES_SECRET and SPACES_BUCKET.');
 	}
@@ -174,6 +179,19 @@ function ccavenueHostProblems(config: AppConfig): string[] {
 		if (!staging && isTestHost) return [`${name} must not be a CCAvenue test host in production.`];
 		return [];
 	});
+}
+
+/** Meilisearch itself refuses a production master key under 16 bytes, so the API key gets the same floor. */
+function searchKeyProblems(key: string | undefined): string[] {
+	if (!key) return ['MEILISEARCH_API_KEY must be set: a production search server refuses unsigned requests.'];
+	const lower = key.toLowerCase();
+	if (lower.startsWith('local-') || PLACEHOLDER_MARKERS.some((marker) => lower.includes(marker))) {
+		return ['MEILISEARCH_API_KEY looks like a local or placeholder value.'];
+	}
+	if (key.length < MIN_SEARCH_KEY_LENGTH) {
+		return [`MEILISEARCH_API_KEY must be at least ${MIN_SEARCH_KEY_LENGTH} characters.`];
+	}
+	return [];
 }
 
 function secretProblem(name: string, value: string | undefined): string | null {

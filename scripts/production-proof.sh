@@ -1,0 +1,258 @@
+#!/usr/bin/env bash
+# Runs the real production stack on this machine, end to end, with throwaway secrets:
+#
+#   pnpm production:proof          build the images, then prove everything below
+#   pnpm production:proof clean    remove what a run left behind
+#
+# Proves: images by digest from a registry, password-protected data services, first run, origin
+# refusals, a bad deploy rolling back, manual rollback, backup, and a restore. It stands in a local
+# registry for GHCR, SeaweedFS for Spaces, and a self-made CA for Cloudflare's certificates. It uses its
+# own project and volumes, so it never touches the mode-3 stack or the developer database.
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROOF="$ROOT_DIR/.production-proof"
+export SAHA_TEXTILE_ROOT="$PROOF/root"
+export COMPOSE_PROJECT=saha-textile-proof
+REGISTRY_PORT="${REGISTRY_PORT:-5055}"
+EDGE_PORT="${EDGE_PORT:-9443}"
+REGISTRY="localhost:$REGISTRY_PORT"
+# Not `.localhost`: the API and apps treat that as a developer machine and skip their checks.
+SITE_HOST=proof.saha-textile.test
+ADMIN_HOST=admin-proof.saha-textile.test
+API_HOST=api-proof.saha-textile.test
+BIN="$ROOT_DIR/docker/production/bin"
+PASSED=0
+
+pass() { PASSED=$((PASSED + 1)); printf '  ok   %s\n' "$1"; }
+fail() { printf '  FAIL %s\n' "$1" >&2; exit 1; }
+expect() { [[ "$2" == "$3" ]] && pass "$1" || fail "$1: expected $3, got $2"; }
+
+clean() {
+	if [[ -d "$PROOF/releases" ]]; then
+		for release in "$PROOF"/releases/*; do
+			[[ -f "$release/release.env" ]] || continue
+			docker compose --project-name "$COMPOSE_PROJECT" --project-directory "$release" \
+				--env-file "$release/release.env" --file "$release/compose.yaml" --profile ops \
+				down --volumes --remove-orphans >/dev/null 2>&1 || true
+			break
+		done
+	fi
+	docker rm -f saha-textile-proof-registry saha-textile-proof-store >/dev/null 2>&1 || true
+	rm -rf "$PROOF"
+}
+
+if [[ "${1:-}" == clean ]]; then clean; exit 0; fi
+
+build_images() {
+	echo 'Building images'
+	docker run -d --name saha-textile-proof-registry -p "127.0.0.1:$REGISTRY_PORT:5000" registry:3 >/dev/null
+	for target in api storefront admin ops; do
+		docker build --quiet -f "$ROOT_DIR/docker/images/Dockerfile" --target "$target" \
+			-t "$REGISTRY/saha-textile-$target:proof" "$ROOT_DIR" >/dev/null
+		docker push --quiet "$REGISTRY/saha-textile-$target:proof" >/dev/null
+	done
+}
+
+digest_of() {
+	curl -fsSI -H 'Accept: application/vnd.oci.image.index.v1+json' -H 'Accept: application/vnd.oci.image.manifest.v1+json' \
+		"http://$REGISTRY/v2/saha-textile-$1/manifests/proof" | tr -d '\r' | sed -n 's/^[Dd]ocker-[Cc]ontent-[Dd]igest: //p'
+}
+
+make_certificates() {
+	local certs="$SAHA_TEXTILE_ROOT/certs"
+	mkdir -p "$certs" "$PROOF/client"
+	openssl req -x509 -newkey rsa:2048 -nodes -days 2 -subj '/CN=Proof Origin CA' \
+		-keyout "$PROOF/origin-ca.key" -out "$certs/origin-ca.pem" 2>/dev/null
+	openssl req -newkey rsa:2048 -nodes -subj "/CN=$SITE_HOST" \
+		-keyout "$certs/origin.key" -out "$PROOF/origin.csr" 2>/dev/null
+	printf 'subjectAltName=DNS:%s,DNS:%s,DNS:%s\n' "$SITE_HOST" "$ADMIN_HOST" "$API_HOST" >"$PROOF/san.ext"
+	openssl x509 -req -in "$PROOF/origin.csr" -CA "$certs/origin-ca.pem" -CAkey "$PROOF/origin-ca.key" \
+		-CAcreateserial -days 2 -extfile "$PROOF/san.ext" -out "$certs/origin.pem" 2>/dev/null
+	openssl req -x509 -newkey rsa:2048 -nodes -days 2 -subj '/CN=Proof Pull Client' \
+		-keyout "$PROOF/client/client.key" -out "$PROOF/client/client.pem" 2>/dev/null
+	cp "$PROOF/client/client.pem" "$certs/cloudflare-client-ca.pem"
+	openssl req -x509 -newkey rsa:2048 -nodes -days 2 -subj '/CN=Another Cloudflare Customer' \
+		-keyout "$PROOF/client/other.key" -out "$PROOF/client/other.pem" 2>/dev/null
+}
+
+make_secrets() {
+	local secrets="$PROOF/secrets"
+	mkdir -p "$secrets"
+	openssl rand -base64 96 | tr -d '\n' >"$secrets/mongo-keyfile"
+	printf 'proof_root' >"$secrets/mongo-root-username"
+	openssl rand -hex 24 | tr -d '\n' >"$secrets/mongo-root-password"
+	openssl rand -hex 24 | tr -d '\n' >"$secrets/mongo-app-password"
+	openssl rand -hex 24 | tr -d '\n' >"$secrets/redis-password"
+	printf 'master_key = "%s"\nenv = "production"\nno_analytics = true\n' "$(openssl rand -hex 24)" >"$secrets/meilisearch.toml"
+	cat >"$secrets/api.env" <<VARS
+NODE_ENV=production
+DEPLOY_ENV=staging
+PORT=4000
+JWT_ACCESS_SECRET=$(openssl rand -hex 48)
+JWT_REFRESH_SECRET=$(openssl rand -hex 48)
+CSRF_SECRET=$(openssl rand -hex 48)
+COOKIE_SECURE=true
+CORS_ALLOWED_ORIGINS=https://$SITE_HOST:$EDGE_PORT,https://$ADMIN_HOST:$EDGE_PORT
+TRUST_PROXY=true
+CLIENT_IP_HEADER=cf-connecting-ip
+NOTIFICATION_PROVIDER=msg91
+MSG91_AUTH_KEY=proof-only-no-messages-are-sent
+MONGODB_HOST=mongo
+MONGODB_PORT=27017
+MONGODB_REPLICA_SET=rs0
+MONGODB_DB_NAME=saha_textile_proof
+MONGODB_USERNAME=saha_textile_app
+MONGODB_PASSWORD=$(cat "$secrets/mongo-app-password")
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_PASSWORD=$(cat "$secrets/redis-password")
+MEILISEARCH_HOST=http://meilisearch:7700
+SPACES_KEY=proof-only
+SPACES_SECRET=proof-only-not-a-real-key
+SPACES_BUCKET=saha-textile-proof
+SPACES_CDN_URL=https://cdn-proof.saha-textile.test
+VARS
+}
+
+start_store() {
+	docker run -d --name saha-textile-proof-store --network "${COMPOSE_PROJECT}_private" \
+		--network-alias store chrislusf/seaweedfs:4.48 server -s3 -dir=/data >/dev/null
+	local tries
+	for tries in $(seq 1 30); do
+		docker run --rm --network "${COMPOSE_PROJECT}_private" --env-file "$PROOF/secrets/backup.env" \
+			"$REGISTRY/saha-textile-ops@$OPS_DIGEST" sh -c 'aws s3 mb "s3://$BACKUP_BUCKET" --endpoint-url "$BACKUP_ENDPOINT"' \
+			>/dev/null 2>&1 && return 0
+		sleep 2
+	done
+	fail 'the stand-in for Spaces did not start'
+}
+
+write_release() {
+	local name="$1" release="$PROOF/releases/$1"
+	mkdir -p "$release"
+	cp -R "$ROOT_DIR/docker/production/compose.yaml" "$ROOT_DIR/docker/production/nginx" \
+		"$ROOT_DIR/docker/production/required-secrets.txt" "$BIN" "$release/"
+	cp -R "$PROOF/secrets" "$release/secrets"
+	cat >"$release/release.env" <<VARS
+SAHA_TEXTILE_ROOT=$SAHA_TEXTILE_ROOT
+API_IMAGE=$REGISTRY/saha-textile-api@$API_DIGEST
+STOREFRONT_IMAGE=$REGISTRY/saha-textile-storefront@$STOREFRONT_DIGEST
+ADMIN_IMAGE=$REGISTRY/saha-textile-admin@$ADMIN_DIGEST
+OPS_IMAGE=$REGISTRY/saha-textile-ops@$OPS_DIGEST
+DEPLOY_ENV=staging
+EDGE_BIND=127.0.0.1
+PRIVATE_SUBNET=10.250.250.0/24
+PRIVATE_GATEWAY=10.250.250.1
+EDGE_PORT=$EDGE_PORT
+STOREFRONT_HOST=$SITE_HOST
+ADMIN_HOST=$ADMIN_HOST
+API_HOST=$API_HOST
+CDN_HOST=cdn-proof.saha-textile.test
+SPACES_HOST=sgp1.digitaloceanspaces.com
+CCAVENUE_HOST=test.ccavenue.com
+SITE_URL=https://$SITE_HOST:$EDGE_PORT
+API_URL=https://$API_HOST:$EDGE_PORT
+ADMIN_URL=https://$ADMIN_HOST:$EDGE_PORT
+GOOGLE_CLIENT_ID=
+FACEBOOK_APP_ID=
+VARS
+	echo "$release"
+}
+
+in_release() { docker compose --project-name "$COMPOSE_PROJECT" --project-directory "$1" --env-file "$1/release.env" --file "$1/compose.yaml" "${@:2}"; }
+
+status_code() {
+	curl -sk -o /dev/null -w '%{http_code}' --resolve "$1:$EDGE_PORT:127.0.0.1" "${@:3}" "https://$1:$EDGE_PORT$2"
+}
+
+with_pull_cert() { status_code "$1" "$2" --cert "$PROOF/client/client.pem" --key "$PROOF/client/client.key" -H 'CF-Connecting-IP: 203.0.113.9'; }
+
+clean
+mkdir -p "$SAHA_TEXTILE_ROOT" "$PROOF/releases"
+build_images
+API_DIGEST="$(digest_of api)"; STOREFRONT_DIGEST="$(digest_of storefront)"
+ADMIN_DIGEST="$(digest_of admin)"; OPS_DIGEST="$(digest_of ops)"
+make_certificates
+make_secrets
+docker run --rm "$REGISTRY/saha-textile-ops@$OPS_DIGEST" age-keygen >"$PROOF/backup-identity.txt" 2>/dev/null
+RECIPIENT="$(sed -n 's/^# public key: //p' "$PROOF/backup-identity.txt")"
+cat >"$PROOF/secrets/backup.env" <<VARS
+AWS_ACCESS_KEY_ID=proof-store
+AWS_SECRET_ACCESS_KEY=proof-store-password
+AWS_DEFAULT_REGION=us-east-1
+BACKUP_BUCKET=saha-textile-proof-backups
+BACKUP_ENDPOINT=http://store:8333
+BACKUP_AGE_RECIPIENT=$RECIPIENT
+VARS
+
+echo 'First deploy'
+FIRST="$(write_release first)"
+"$FIRST/bin/deploy.sh" "$FIRST"
+expect 'the first release is current' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$FIRST"
+
+echo 'Refusals at the origin'
+expect 'no certificate is refused' "$(status_code "$SITE_HOST" /en/)" 403
+expect 'another customer'"'"'s certificate is refused' \
+	"$(status_code "$SITE_HOST" /en/ --cert "$PROOF/client/other.pem" --key "$PROOF/client/other.key")" 400
+expect 'the right certificate reaches the shop' "$(with_pull_cert "$SITE_HOST" /en/)" 200
+expect 'the right certificate reaches admin' "$(with_pull_cert "$ADMIN_HOST" /)" 200
+expect 'the API answers through the edge' "$(with_pull_cert "$API_HOST" /health/live)" 200
+expect 'readiness is not public' "$(with_pull_cert "$API_HOST" /health/ready)" 404
+expect 'an unknown hostname is refused' "$(status_code localhost / --cert "$PROOF/client/client.pem" --key "$PROOF/client/client.key")" 421
+HEADERS="$(curl -skI --resolve "$ADMIN_HOST:$EDGE_PORT:127.0.0.1" --cert "$PROOF/client/client.pem" --key "$PROOF/client/client.key" "https://$ADMIN_HOST:$EDGE_PORT/")"
+grep -qi '^strict-transport-security' <<<"$HEADERS" && pass 'admin keeps HSTS beside its own frame rule' || fail 'admin lost HSTS'
+grep -qi '^content-security-policy' <<<"$HEADERS" && pass 'admin sends a CSP' || fail 'admin has no CSP'
+
+echo 'Private services'
+in_release "$FIRST" exec -T mongo mongosh --quiet --eval 'db.getSiblingDB("saha_textile_proof").getCollectionNames()' >/dev/null 2>&1 &&
+	fail 'MongoDB answered without a login' || pass 'MongoDB refuses an anonymous reader'
+PUBLISHED="$(in_release "$FIRST" ps --format '{{.Service}} {{.Ports}}' | grep -E '[0-9.:\]]+:[0-9]+->' | awk '$1 != "edge"' || true)"
+expect 'only the edge publishes a port' "$PUBLISHED" ''
+# Saved first: under pipefail, `grep -q` closing the pipe early would fail the logs command.
+in_release "$FIRST" logs --no-color >"$PROOF/stack.log" 2>&1
+grep -q 'hardening checks passed' "$PROOF/stack.log" && pass 'the API passed its startup checks' || fail 'no hardening line in the logs'
+SECRET_VALUE="$(sed -n 's/^CSRF_SECRET=//p' "$FIRST/secrets/api.env")"
+grep -qF "$SECRET_VALUE" "$PROOF/stack.log" && fail 'a secret reached the logs' || pass 'no secret in the logs'
+docker inspect "$(in_release "$FIRST" ps -q api)" | grep -qF "$SECRET_VALUE" && fail 'a secret shows in docker inspect' || pass 'no secret in docker inspect'
+
+echo 'First administrator'
+in_release "$FIRST" exec -T api node dist/create-first-admin.js --email owner@example.test >/dev/null && pass 'the first administrator can be created'
+
+echo 'A bad deploy rolls back'
+BAD="$(write_release bad)"
+sed -i.bak 's/^CSRF_SECRET=.*/CSRF_SECRET=change-me/' "$BAD/secrets/api.env"
+if HEALTH_TIMEOUT=60 "$BAD/bin/deploy.sh" "$BAD" >"$PROOF/bad-deploy.log" 2>&1; then fail 'a bad config went live'; fi
+pass 'a bad config exits with failure'
+expect 'the working release stays current' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$FIRST"
+expect 'the shop answers after the rollback' "$(with_pull_cert "$SITE_HOST" /en/)" 200
+
+echo 'A good second deploy, then manual rollback'
+SECOND="$(write_release second)"
+"$SECOND/bin/deploy.sh" "$SECOND" >/dev/null
+expect 'the second release is current' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$SECOND"
+"$SECOND/bin/rollback.sh" >/dev/null
+expect 'rollback returned to the first release' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$FIRST"
+expect 'the shop answers after the manual rollback' "$(with_pull_cert "$SITE_HOST" /en/)" 200
+
+echo 'Backup and restore'
+start_store
+ROOT_PASSWORD="$(cat "$PROOF/secrets/mongo-root-password")"
+mongo_eval() { in_release "$FIRST" exec -T mongo mongosh --quiet -u proof_root -p "$ROOT_PASSWORD" --authenticationDatabase admin saha_textile_proof --eval "$1"; }
+mongo_eval 'db.proofMarker.insertOne({ kept: true })' >/dev/null
+"$FIRST/bin/backup.sh" "$FIRST"
+STAMP="$(cat "$SAHA_TEXTILE_ROOT/status/last-backup")"
+OBJECTS="$(docker run --rm --network "${COMPOSE_PROJECT}_private" --env-file "$PROOF/secrets/backup.env" \
+	"$REGISTRY/saha-textile-ops@$OPS_DIGEST" sh -c 'aws s3 ls "s3://$BACKUP_BUCKET/daily/" --recursive --endpoint-url "$BACKUP_ENDPOINT"')"
+grep -q "$STAMP/mongo.archive.gz.age" <<<"$OBJECTS" && pass 'the MongoDB backup is in the bucket' || fail 'no MongoDB backup'
+grep -q "$STAMP/redis.rdb.age" <<<"$OBJECTS" && pass 'the Redis backup is in the bucket' || fail 'no Redis backup'
+mongo_eval 'db.proofMarker.deleteMany({})' >/dev/null
+expect 'the marker row is gone' "$(mongo_eval 'db.proofMarker.countDocuments()')" 0
+if "$FIRST/bin/restore.sh" "$STAMP" "$PROOF/backup-identity.txt" >/dev/null 2>&1; then fail 'restore ran without confirmation'; fi
+pass 'restore refuses without confirmation'
+CONFIRM_REPLACE_DATA=yes "$FIRST/bin/restore.sh" "$STAMP" "$PROOF/backup-identity.txt"
+expect 'the restore brought the row back' "$(mongo_eval 'db.proofMarker.countDocuments()')" 1
+expect 'the shop answers after the restore' "$(with_pull_cert "$SITE_HOST" /en/)" 200
+
+echo
+echo "Passed $PASSED checks. The stack is still running: pnpm production:proof clean removes it."

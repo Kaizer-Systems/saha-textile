@@ -16,6 +16,7 @@
 **/.env.*
 !**/.env.example
 certs
+.production-proof
 docker/stack/env/*.env
 .claude
 .cursor

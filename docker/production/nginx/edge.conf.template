@@ -1,0 +1,127 @@
+# Origin Nginx for staging and production. The official image fills in the ${...} values at
+# start; plain $variables stay for Nginx. Security headers sit at server level on purpose: an
+# add_header in a location would silently cancel every one inherited from above.
+
+client_max_body_size 2m;   # media bytes go straight to Spaces, never through here
+server_tokens off;
+
+# Docker's DNS. Upstreams resolve per request, so a recreated container is found at once
+# instead of answering 502 until Nginx reloads.
+resolver 127.0.0.11 valid=5s;
+
+map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+
+# Two kinds of caller reach this listener: Cloudflare from outside, and the storefront's server
+# from inside. The gateway address is what Docker shows for a published port, so it is outside.
+geo $from_inside {
+	default        0;
+	${PRIVATE_SUBNET}  1;
+	${PRIVATE_GATEWAY} 0;
+}
+
+# Outside callers must present our own Authenticated Origin Pulls certificate.
+map "$ssl_client_verify:$from_inside" $origin_refused {
+	default     1;
+	"SUCCESS:0" 0;
+	"SUCCESS:1" 0;
+	"NONE:1"    0;
+}
+
+# The refusal above means this header can only have come from Cloudflare.
+map $from_inside $client_ip {
+	0 $http_cf_connecting_ip;
+	1 $remote_addr;
+}
+
+log_format edge '$client_ip "$request" $status $body_bytes_sent $request_time "$host"';
+access_log /var/log/nginx/access.log edge;
+
+# Cloudflare's free rule is one coarse layer, and the API has its own limits behind this.
+limit_req_zone $client_ip zone=sign_in:10m rate=30r/m;
+limit_req_status 429;
+
+server {
+	listen ${EDGE_PORT} ssl;
+	http2 on;
+	server_name ${STOREFRONT_HOST};
+	include /etc/nginx/snippets/tls.conf;
+	if ($origin_refused) { return 403; }
+
+	add_header Strict-Transport-Security "max-age=31536000" always;
+	add_header X-Content-Type-Options nosniff always;
+	add_header Referrer-Policy strict-origin-when-cross-origin always;
+	add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
+	add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://connect.facebook.net; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://${CDN_HOST} https://*.googleusercontent.com https://i.ytimg.com https://*.fbcdn.net; media-src 'self' https://${CDN_HOST}; connect-src 'self' https://${API_HOST} https://${CDN_HOST} https://accounts.google.com https://*.facebook.com; frame-src https://accounts.google.com https://*.facebook.com https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com; form-action 'self' https://${CCAVENUE_HOST}; base-uri 'self'; object-src 'none'; frame-ancestors 'none'" always;
+
+	# Served here, never by the storefront container: its server sends public files at their
+	# build-time size, so a longer config.json is cut off and the app falls back to localhost.
+	location = /config.json {
+		alias /etc/nginx/public/storefront.config.json;
+		default_type application/json;
+		expires -1;
+	}
+
+	location / {
+		include /etc/nginx/snippets/proxy.conf;
+		set $upstream http://storefront:4200;
+		proxy_pass $upstream;
+	}
+}
+
+server {
+	listen ${EDGE_PORT} ssl;
+	http2 on;
+	server_name ${ADMIN_HOST};
+	include /etc/nginx/snippets/tls.conf;
+	if ($origin_refused) { return 403; }
+
+	add_header Strict-Transport-Security "max-age=31536000" always;
+	add_header X-Content-Type-Options nosniff always;
+	add_header Referrer-Policy strict-origin-when-cross-origin always;
+	add_header X-Frame-Options DENY always;
+	add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
+	add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://${CDN_HOST}; media-src 'self' https://${CDN_HOST}; connect-src 'self' https://${API_HOST} https://${SPACES_HOST}; base-uri 'self'; object-src 'none'; frame-ancestors 'none'" always;
+
+	location / {
+		include /etc/nginx/snippets/proxy.conf;
+		set $upstream http://admin:8080;
+		proxy_pass $upstream;
+	}
+}
+
+server {
+	listen ${EDGE_PORT} ssl;
+	http2 on;
+	server_name ${API_HOST};
+	include /etc/nginx/snippets/tls.conf;
+	if ($origin_refused) { return 403; }
+
+	# Dependency names are for the deploy, not the internet.
+	location = /health/ready {
+		if ($from_inside = 0) { return 404; }
+		include /etc/nginx/snippets/proxy.conf;
+		set $upstream http://api:4000;
+		proxy_pass $upstream;
+	}
+
+	location /auth/ {
+		limit_req zone=sign_in burst=20 nodelay;
+		include /etc/nginx/snippets/proxy.conf;
+		set $upstream http://api:4000;
+		proxy_pass $upstream;
+	}
+
+	location / {
+		include /etc/nginx/snippets/proxy.conf;
+		set $upstream http://api:4000;
+		proxy_pass $upstream;
+	}
+}
+
+# Anything else: refuse rather than guess.
+server {
+	listen ${EDGE_PORT} ssl default_server;
+	server_name _;
+	include /etc/nginx/snippets/tls.conf;
+	return 421;
+}

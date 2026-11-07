@@ -13,6 +13,7 @@
 		"src/reset-local-customer.ts",
 		"src/seed-local-catalog-photos.ts",
 		"src/seed-local-home-banners.ts",
+		"src/seed-local-auth-accounts.ts",
 		"src/invite-local-admin.ts"
 	]
 }

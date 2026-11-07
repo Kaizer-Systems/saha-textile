@@ -69,6 +69,26 @@ export class BullMqMediaJobQueue implements MediaJobQueuePort {
 		return this.instance;
 	}
 
+	/**
+	 * For the readiness probe. Bounded here because this connection waits for Redis forever by
+	 * design (`maxRetriesPerRequest: null`), and a probe must answer.
+	 */
+	async isReachable(timeoutMs = 1500): Promise<boolean> {
+		let timer: NodeJS.Timeout | undefined;
+		const expired = new Promise<boolean>((done) => {
+			timer = setTimeout(() => done(false), timeoutMs);
+		});
+		const answered = this.queue.count().then(
+			() => true,
+			() => false,
+		);
+		try {
+			return await Promise.race([answered, expired]);
+		} finally {
+			clearTimeout(timer);
+		}
+	}
+
 	async enqueue(job: MediaJob, options?: { delayMs?: number }): Promise<void> {
 		await this.queue.add(job.type, job, {
 			...(jobIdFor(job) ? { jobId: jobIdFor(job) } : {}),

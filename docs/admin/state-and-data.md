@@ -4,7 +4,7 @@ wide: true
 description: State ownership, data sources, interceptors and runtime configuration in the admin application.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/admin/src/app/app.config.ts
     - apps/admin/src/app/core/config/runtime-config.ts
@@ -90,7 +90,7 @@ Do not optimistically remove or approve records unless rollback is defined. High
 
 ## Runtime configuration
 
-The admin application loads `public/config.json` at startup, through `provideAppInitializer` in `core/config/runtime-config.ts`, and fills the mutable `environment` object with `apiUrl` and other non-secret values. The committed file holds localhost defaults. Deployments mount their own.
+The admin application loads `public/config.json` at startup, through `provideAppInitializer` in `core/config/runtime-config.ts`, and fills the mutable `environment` object with `apiUrl` and other non-secret values. The committed file holds localhost defaults. Deployments mount their own. On a host that is not local, the application refuses to start when the file is missing, cannot be parsed or points at localhost.
 
 ## Session and HTTP behaviour
 

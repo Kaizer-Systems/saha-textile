@@ -112,6 +112,7 @@ When the API or worker starts with `NODE_ENV=production` and `DEPLOY_ENV` is not
 - `NOTIFICATION_PROVIDER=msg91` with `MSG91_AUTH_KEY`; `OTP_LOCAL_FIXED_CODE` unset.
 - Facebook sign-in fully set or fully unset.
 - MongoDB credentials (`MONGODB_USERNAME` + `MONGODB_PASSWORD`, or a `MONGODB_URI` carrying them), `REDIS_PASSWORD`, the full `SPACES_KEY`/`SPACES_SECRET`/`SPACES_BUCKET` trio, and an `https` `SPACES_CDN_URL`.
+- `MEILISEARCH_HOST`, and a `MEILISEARCH_API_KEY` of at least 16 characters that is not a local or placeholder value.
 
 Proven by unit tests and by spawning the real entrypoints (`apps/api/test/deployment-hardening*.test.ts`). A real staging boot is still owed; see the API roadmap, Chunk J.
 

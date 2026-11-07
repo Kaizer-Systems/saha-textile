@@ -409,9 +409,8 @@ The full design and build order are in `production-deployment-plan.mdx`.
   to repeat. Until it has run, listings answer from Mongo automatically, so nothing breaks, but
   typeahead search answers 503. Set `MEILISEARCH_HOST`, `MEILISEARCH_API_KEY` and, on a shared
   server, `MEILISEARCH_INDEX` first.
-- **The first deployed database is built from a first-run setup command, plus hand entry.** That
-  command is still to build: no seed runs in the image, and the general seed adds demo customers
-  and promotions. No deployed database exists yet, so the local data edits of 2026-11-06 need no migration. Real products are entered
+- **The first deployed database is built by `node dist/first-run-setup.js`, plus hand entry.** The
+  general seed is not used: it adds demo customers and promotions. No deployed database exists yet, so the local data edits of 2026-11-06 need no migration. Real products are entered
   by hand in admin. Do not run the demo catalogue seed on staging or production.
 - **Deep review of all URL work before the DNS switch.** The redirect rows, the 410 rules and the
   old-address logic were designed as if WordPress were a working shop. It is not: nobody maintains

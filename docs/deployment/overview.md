@@ -21,13 +21,14 @@ This page describes how Saha Textile is packaged and configured for deployment. 
 
 ## Applications and images
 
-`docker/images/Dockerfile` builds three images from one file:
+`docker/images/Dockerfile` builds four images from one file:
 
 | Image        | Runs                                                                      |
 | ------------ | ------------------------------------------------------------------------- |
 | `api`        | The NestJS API. The same image runs the worker with `node dist/worker.js` |
 | `storefront` | The Analog and Nitro server                                               |
 | `admin`      | The static Angular build behind Nginx                                     |
+| `ops`        | Backup and check tools, run on demand                                     |
 
 Use `pnpm build:product-apps` for product builds. It targets only the storefront, admin application and API. An unfiltered `pnpm build` also includes the developer portal workspaces.
 
@@ -51,6 +52,14 @@ pnpm stack:down
 
 `STACK_HTTPS_PORT` moves the edge off port 443. The stack runs production images with development secrets, so `stack:env` sets `DEPLOY_ENV=local` to opt out of the startup checks. Media uses the development Spaces bucket. See `docker/stack/README.md`.
 
+## The production stack
+
+`docker/production/` holds the staging and production stack: Compose, Nginx and the deploy, rollback, backup and restore scripts. See `docker/production/README.md`.
+
+`pnpm production:proof` builds the images and runs the whole stack on one machine with throwaway secrets. It uses a local registry for GHCR, SeaweedFS for Spaces and a local CA for Cloudflare's certificates. `pnpm production:proof clean` removes it.
+
+`.github/workflows/publish-images.yml` runs on a merge into `staging`: CI, then the proof, then it pushes four images to GHCR, tagged by commit and by Git tree hash.
+
 ## Runtime configuration and secrets model
 
 - **Secrets reach only the containers that need them.** The API and worker receive the application secrets. MongoDB, Redis and Meilisearch receive their own. The Angular applications receive none.
@@ -58,6 +67,7 @@ pnpm stack:down
 - **Angular applications get public configuration.** Each receives a `config.json` with API and site URLs, locales and public client IDs, loaded at startup. No secret enters a browser build.
 - **Nginx serves the storefront's `config.json`.** Do not mount it into the storefront container: the server sends public files at their build-time size, so a longer file is cut off and the browser falls back to `localhost`. The admin application is plain Nginx and can keep its mount. A deployment must check that `/config.json` parses.
 - **`/sw.js` is never held by a cache.** The storefront sends it with `Cache-Control: no-cache`. Keep that through Nginx and Cloudflare, or shoppers stay on an old build until the cached copy expires. A content security policy must allow `worker-src 'self'` and `manifest-src 'self'`, and `img-src` must allow the media host, because the manifest's icons live there.
+- **The apps refuse a broken config when deployed.** The storefront server stops when `DEPLOY_ENV` is `staging` or `production` and its config is missing or points at localhost. In the browser, both apps refuse to start on a non-local host for the same reason, unless the device is offline.
 - **Same MongoDB profile everywhere.** Deployments run the Docker MongoDB single-node replica set on a private Docker network, with credentials supplied at deployment time.
 
 ## Planned hosting design
@@ -97,8 +107,6 @@ The repository is public. Private deployment does not make committed source priv
 
 ## Limitations
 
-- No deployment workflow, image publishing, production Compose file, droplet setup, backup or rollback script exists.
-- MongoDB password login on a replica set needs a keyfile, which the Compose files do not define.
-- The Meilisearch key and production mode are not covered by the startup checks.
-- No first-run setup command exists for a new database. Seed scripts do not run in the image.
+- The stack has not run on a real droplet or behind real Cloudflare. `pnpm production:proof` runs it on one machine with stand-ins.
+- No workflow deploys to a droplet yet, and no droplet setup exists.
 - The API image has no pnpm or tsx, so package scripts cannot run inside it. Use the compiled `dist` entry points.

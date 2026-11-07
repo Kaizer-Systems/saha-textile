@@ -15,6 +15,7 @@ import { CartService, toPublicCart } from '../src/cart/cart.service';
 import { CurrencyController } from '../src/currency/currency.controller';
 import { CurrencyService } from '../src/currency/currency.service';
 import { HealthController } from '../src/health/health.controller';
+import { readinessProbes } from '../src/health/readiness-probe';
 import { OrdersController } from '../src/orders/orders.controller';
 import { OrdersService } from '../src/orders/orders.service';
 import { PrivacyController } from '../src/privacy/privacy.controller';
@@ -411,7 +412,9 @@ describe('PrivacyController', () => {
 		expect(limits.enforce).toHaveBeenCalledWith('consent_write', { ip: '1.1.1.1' });
 		expect(consent.append).toHaveBeenLastCalledWith(expect.objectContaining({ userId: 'cus_1', guestId: null }));
 		await controller.updateConsent(body, { cookies: { st_guest: 'g' } } as never, undefined);
-		expect(consent.append).toHaveBeenLastCalledWith(expect.objectContaining({ userId: null, guestId: hashed('g') }));
+		expect(consent.append).toHaveBeenLastCalledWith(
+			expect.objectContaining({ userId: null, guestId: hashed('g') }),
+		);
 		await controller.updateConsent({ ...(body as object), consentId: 'c-1' } as never, {} as never, undefined);
 		expect(consent.append).toHaveBeenLastCalledWith(expect.objectContaining({ guestId: hashed('c-1') }));
 		await controller.updateConsent(body, {} as never, undefined);
@@ -489,22 +492,28 @@ describe('HealthController', () => {
 		return value;
 	};
 
+	const probe = (name: string, required: boolean, up: boolean) => ({
+		name,
+		required,
+		check: async () => ({ up, detail: up ? 'fine' : 'broken' }),
+	});
+
 	it('stays alive whatever the database does', () => {
-		const controller = new HealthController();
+		const controller = new HealthController([]);
 		expect(controller.live()).toMatchObject({ status: 'ok' });
 		expect(controller.check()).toMatchObject({ status: 'ok' });
 	});
 
-	it('reports ready only with Mongo', () => {
-		const controller = new HealthController();
+	it('reports ready only with Mongo', async () => {
+		const controller = new HealthController([]);
 		readyState.value = 1;
 		const up = reply();
-		controller.ready(up as never);
+		await controller.ready(up as never);
 		expect(up.status).toHaveBeenCalledWith(200);
 		expect(up.send).toHaveBeenCalledWith(expect.objectContaining({ status: 'ready' }));
 		readyState.value = 0;
 		const down = reply();
-		controller.ready(down as never);
+		await controller.ready(down as never);
 		expect(down.status).toHaveBeenCalledWith(503);
 		expect(down.send).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -513,5 +522,51 @@ describe('HealthController', () => {
 			}),
 		);
 		readyState.value = 1;
+	});
+
+	it('a required dependency down answers 503', async () => {
+		const down = reply();
+		await new HealthController([probe('redis', true, false)]).ready(down as never);
+		expect(down.status).toHaveBeenCalledWith(503);
+		expect(down.send).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'not_ready',
+				dependencies: expect.arrayContaining([{ name: 'redis', status: 'down', detail: 'broken' }]),
+			}),
+		);
+	});
+
+	it('an optional dependency down is reported but still serves', async () => {
+		const degraded = reply();
+		await new HealthController([probe('redis', true, true), probe('search', false, false)]).ready(
+			degraded as never,
+		);
+		expect(degraded.status).toHaveBeenCalledWith(200);
+		expect(degraded.send).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'ready',
+				dependencies: expect.arrayContaining([
+					{ name: 'redis', status: 'up', detail: 'fine' },
+					{ name: 'search', status: 'down', detail: 'broken' },
+				]),
+			}),
+		);
+	});
+});
+
+describe('readinessProbes', () => {
+	const search = { indexStatus: async () => ({ up: true, detail: 'index ready' }) };
+
+	it('needs Redis and only reports search', async () => {
+		const [redis, index] = readinessProbes({ isReachable: async () => true }, search);
+		expect(redis).toMatchObject({ name: 'redis', required: true });
+		await expect(redis!.check()).resolves.toEqual({ up: true, detail: 'connected' });
+		expect(index).toMatchObject({ name: 'search', required: false });
+		await expect(index!.check()).resolves.toEqual({ up: true, detail: 'index ready' });
+	});
+
+	it('names an unreachable Redis', async () => {
+		const [redis] = readinessProbes({ isReachable: async () => false }, search);
+		await expect(redis!.check()).resolves.toEqual({ up: false, detail: 'unreachable' });
 	});
 });

@@ -45,15 +45,37 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 		await this.send(`/indexes/${this.index}/documents`, 'POST', [listingDocument(entry, this.locales)]);
 	}
 
+	/**
+	 * Builds the new index beside the live one and swaps them, so a rebuild on a deploy never
+	 * shows shoppers an empty or half-filled list. Applying settings creates an index that does
+	 * not exist yet, and the swap needs both to exist.
+	 */
 	async replaceIndex(entries: readonly SearchEntry[]): Promise<void> {
-		this.settingsApplied = false;
-		await this.ensureSettings();
-		let task = await this.send<{ taskUid: number }>(`/indexes/${this.index}/documents`, 'DELETE');
+		const next = `${this.index}_next`;
+		await this.applySettings(this.index);
+		await this.applySettings(next);
+		this.settingsApplied = true;
+		let task = await this.send<{ taskUid: number }>(`/indexes/${next}/documents`, 'DELETE');
 		for (let start = 0; start < entries.length; start += BATCH) {
 			const documents = entries.slice(start, start + BATCH).map((entry) => listingDocument(entry, this.locales));
-			task = await this.send<{ taskUid: number }>(`/indexes/${this.index}/documents`, 'POST', documents);
+			task = await this.send<{ taskUid: number }>(`/indexes/${next}/documents`, 'POST', documents);
 		}
 		await this.waitFor(task.taskUid);
+		const swap = await this.send<{ taskUid: number }>('/swap-indexes', 'POST', [{ indexes: [this.index, next] }]);
+		await this.waitFor(swap.taskUid);
+		const removal = await this.send<{ taskUid: number }>(`/indexes/${next}`, 'DELETE');
+		await this.waitFor(removal.taskUid);
+	}
+
+	/** For the readiness probe. An authenticated read, so it proves the key as well as the host. */
+	async indexStatus(): Promise<{ up: boolean; detail: string }> {
+		if (!this.host) return { up: false, detail: 'not configured' };
+		try {
+			await this.send(`/indexes/${this.index}`, 'GET');
+			return { up: true, detail: 'index ready' };
+		} catch {
+			return { up: false, detail: 'unavailable or index missing' };
+		}
 	}
 
 	async removeProduct(productId: string): Promise<void> {
@@ -94,7 +116,12 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 
 	private async ensureSettings(): Promise<void> {
 		if (this.settingsApplied) return;
-		const task = await this.send<{ taskUid: number }>(`/indexes/${this.index}/settings`, 'PATCH', {
+		await this.applySettings(this.index);
+		this.settingsApplied = true;
+	}
+
+	private async applySettings(index: string): Promise<void> {
+		const task = await this.send<{ taskUid: number }>(`/indexes/${index}/settings`, 'PATCH', {
 			// Order is rank: a match in the name beats one in the facts, which beats the description.
 			searchableAttributes: ['words', 'facts', 'description'],
 			displayedAttributes: ['id'],
@@ -115,7 +142,6 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 			pagination: { maxTotalHits: 1_000_000 },
 		});
 		await this.waitFor(task.taskUid);
-		this.settingsApplied = true;
 	}
 
 	private async waitFor(taskUid: number): Promise<void> {

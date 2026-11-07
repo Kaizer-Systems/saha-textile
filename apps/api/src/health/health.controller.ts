@@ -1,9 +1,11 @@
-import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Inject, Res } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { getMongoose } from '@saha-textile/adapters-db-mongo';
 import type { FastifyReply } from 'fastify';
 import { Public } from '../auth/session.guard';
+import { READINESS_PROBES } from '../infra/tokens';
 import { API_TAGS } from '../openapi-tags';
+import type { ReadinessProbe } from './readiness-probe';
 
 interface LivenessStatus {
 	status: 'ok';
@@ -34,6 +36,8 @@ const MONGO_READY_STATE_CONNECTED = 1;
 /** Liveness and readiness must answer without a session — a probe has no cookies. */
 @Public()
 export class HealthController {
+	constructor(@Inject(READINESS_PROBES) private readonly probes: readonly ReadinessProbe[]) {}
+
 	/**
 	 * Liveness: is the PROCESS alive? Deliberately dependency-free — if this checked
 	 * MongoDB, a database blip would make the orchestrator kill and restart healthy API
@@ -58,9 +62,10 @@ export class HealthController {
 	@ApiOperation({ operationId: 'checkReadiness', summary: 'Readiness probe — required dependencies are usable' })
 	@ApiOkResponse({ description: 'Ready to serve traffic' })
 	@ApiResponse({ status: 503, description: 'A required dependency is unavailable' })
-	ready(@Res() reply: FastifyReply): void {
+	async ready(@Res() reply: FastifyReply): Promise<void> {
 		const readyState = getMongoose().connection.readyState;
 		const mongoUp = readyState === MONGO_READY_STATE_CONNECTED;
+		const probed = await Promise.all(this.probes.map(async (probe) => ({ probe, result: await probe.check() })));
 
 		const dependencies: DependencyStatus[] = [
 			{
@@ -68,16 +73,22 @@ export class HealthController {
 				status: mongoUp ? 'up' : 'down',
 				detail: mongoUp ? 'connected' : `readyState=${readyState}`,
 			},
+			...probed.map(({ probe, result }): DependencyStatus => ({
+				name: probe.name,
+				status: result.up ? 'up' : 'down',
+				detail: result.detail,
+			})),
 		];
+		const serving = mongoUp && probed.every(({ probe, result }) => result.up || !probe.required);
 
 		const body: ReadinessStatus = {
-			status: mongoUp ? 'ready' : 'not_ready',
+			status: serving ? 'ready' : 'not_ready',
 			service: SERVICE,
 			timestamp: new Date().toISOString(),
 			dependencies,
 		};
 
-		void reply.status(mongoUp ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE).send(body);
+		void reply.status(serving ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE).send(body);
 	}
 
 	/** Backwards-compatible alias for the original probe; prefer `/health/live`. */

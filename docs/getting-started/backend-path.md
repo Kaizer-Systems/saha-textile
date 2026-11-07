@@ -3,7 +3,7 @@ title: Backend Path
 description: Reading path for API, contract, domain and adapter work.
 status: scaffolded
 audience: [backend]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/api/src
     - packages/core-domain/src

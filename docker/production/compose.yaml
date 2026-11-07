@@ -1,0 +1,221 @@
+# =============================================================================
+#  Staging and production stack. One file for both; release.env sets the rest.
+#
+#  Nothing here is started by hand: bin/deploy.sh runs it, from one release folder.
+#  Each release keeps its own secrets and public config, so a rollback gets back
+#  the settings it ran with. Images come by digest from private GHCR. Only the edge publishes a port, and the DigitalOcean Cloud
+#  Firewall limits that port to Cloudflare. Docker's published ports bypass UFW.
+#
+#  See docs/engineering-live-context/production-deployment-plan.mdx.
+# =============================================================================
+
+x-hardened: &hardened
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: local
+
+x-app: &app
+  <<: *hardened
+  image: ${API_IMAGE}
+  environment:
+    DOTENV_CONFIG_PATH: /run/secrets/api.env
+  secrets:
+    - source: api_env
+      target: api.env
+  networks: [private]
+
+services:
+  mongo:
+    <<: *hardened
+    image: mongo:9.0.4
+    # mongod refuses a keyfile unless it is mode 400 and owned by its user, which a bind mount
+    # cannot promise on every host, so the keyfile is copied in with the right owner first.
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        install -o mongodb -g mongodb -m 400 /run/secrets/mongo-keyfile /data/configdb/keyfile &&
+        exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --auth
+        --keyFile /data/configdb/keyfile --wiredTigerCacheSizeGB 2
+    environment:
+      MONGO_INITDB_ROOT_USERNAME_FILE: /run/secrets/mongo-root-username
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongo-root-password
+    secrets:
+      - mongo-keyfile
+      - mongo-root-username
+      - mongo-root-password
+      - mongo-app-password
+    volumes:
+      - mongo_data:/data/db
+      - mongo_configdb:/data/configdb
+    mem_limit: 3g
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 10s
+      retries: 24
+      start_period: 15s
+    networks: [private]
+
+  redis:
+    <<: *hardened
+    image: redis:8.8.4-alpine
+    # BullMQ needs every job kept: never evict, and persist each second. The password goes
+    # through a config file so it never shows on a command line.
+    command:
+      - sh
+      - -c
+      - >-
+        umask 077 &&
+        printf 'requirepass %s\n' "$$(cat /run/secrets/redis-password)" > /tmp/redis.conf &&
+        exec redis-server /tmp/redis.conf --appendonly yes --appendfsync everysec
+        --maxmemory-policy noeviction --maxmemory 400mb
+    secrets:
+      - redis-password
+    volumes:
+      - redis_data:/data
+    mem_limit: 512m
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - REDISCLI_AUTH="$$(cat /run/secrets/redis-password)" redis-cli ping | grep -q PONG
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [private]
+
+  meilisearch:
+    <<: *hardened
+    image: getmeili/meilisearch:v1.16.0
+    environment:
+      MEILI_CONFIG_FILE_PATH: /run/secrets/meilisearch.toml
+    secrets:
+      - meilisearch.toml
+    volumes:
+      - meili_data:/meili_data
+    mem_limit: 1g
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:7700/health']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [private]
+
+  api:
+    <<: *app
+    mem_limit: 768m
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      meilisearch: { condition: service_healthy }
+
+  worker:
+    <<: *app
+    command: ['node', 'dist/worker.js']
+    # Encoding is the only CPU-heavy work on the box, so it can never starve the shop.
+    cpus: 2
+    mem_limit: 1536m
+    healthcheck:
+      disable: true
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  storefront:
+    <<: *hardened
+    image: ${STOREFRONT_IMAGE}
+    env_file: ./public/storefront.env
+    environment:
+      DEPLOY_ENV: ${DEPLOY_ENV}
+      # The server calls the API through the edge, which presents the Origin Certificate.
+      NODE_EXTRA_CA_CERTS: /certs/origin-ca.pem
+    volumes:
+      - ${SAHA_TEXTILE_ROOT}/certs/origin-ca.pem:/certs/origin-ca.pem:ro
+    mem_limit: 768m
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [private]
+
+  admin:
+    <<: *hardened
+    image: ${ADMIN_IMAGE}
+    volumes:
+      - ./public/admin.config.json:/usr/share/nginx/html/config.json:ro
+    mem_limit: 64m
+    networks: [private]
+
+  edge:
+    <<: *hardened
+    image: nginx:1.30.6-alpine
+    environment:
+      EDGE_PORT: ${EDGE_PORT}
+      STOREFRONT_HOST: ${STOREFRONT_HOST}
+      ADMIN_HOST: ${ADMIN_HOST}
+      API_HOST: ${API_HOST}
+      CDN_HOST: ${CDN_HOST}
+      SPACES_HOST: ${SPACES_HOST}
+      CCAVENUE_HOST: ${CCAVENUE_HOST}
+      PRIVATE_SUBNET: ${PRIVATE_SUBNET:-172.30.0.0/24}
+      PRIVATE_GATEWAY: ${PRIVATE_GATEWAY:-172.30.0.1}
+    ports:
+      - '${EDGE_BIND:-0.0.0.0}:${EDGE_PORT}:${EDGE_PORT}'
+    volumes:
+      - ./nginx/edge.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./nginx/proxy.conf:/etc/nginx/snippets/proxy.conf:ro
+      - ./nginx/tls.conf:/etc/nginx/snippets/tls.conf:ro
+      - ./public/storefront.config.json:/etc/nginx/public/storefront.config.json:ro
+      - ${SAHA_TEXTILE_ROOT}/certs/origin.pem:/etc/nginx/certs/origin.pem:ro
+      - ${SAHA_TEXTILE_ROOT}/certs/origin.key:/etc/nginx/certs/origin.key:ro
+      - ${SAHA_TEXTILE_ROOT}/certs/cloudflare-client-ca.pem:/etc/nginx/certs/cloudflare-client-ca.pem:ro
+    mem_limit: 128m
+    depends_on: [storefront, admin]
+    networks:
+      private:
+        # Containers reach the public hostnames through the edge, on the private listener rule.
+        aliases:
+          - ${STOREFRONT_HOST}
+          - ${ADMIN_HOST}
+          - ${API_HOST}
+
+  # Backup and check tools (age, aws, curl, jq). Runs on demand, never as a service.
+  ops:
+    image: ${OPS_IMAGE}
+    profiles: [ops]
+    env_file: ./secrets/backup.env
+    volumes:
+      - ${SAHA_TEXTILE_ROOT}/certs/origin-ca.pem:/certs/origin-ca.pem:ro
+    logging:
+      driver: local
+    networks: [private]
+
+secrets:
+  api_env:
+    file: ./secrets/api.env
+  mongo-keyfile:
+    file: ./secrets/mongo-keyfile
+  mongo-root-username:
+    file: ./secrets/mongo-root-username
+  mongo-root-password:
+    file: ./secrets/mongo-root-password
+  mongo-app-password:
+    file: ./secrets/mongo-app-password
+  redis-password:
+    file: ./secrets/redis-password
+  meilisearch.toml:
+    file: ./secrets/meilisearch.toml
+
+networks:
+  private:
+    ipam:
+      config:
+        # Fixed, because the edge tells inside callers from outside ones by this range.
+        - subnet: ${PRIVATE_SUBNET:-172.30.0.0/24}
+          gateway: ${PRIVATE_GATEWAY:-172.30.0.1}
+
+volumes:
+  mongo_data:
+  mongo_configdb:
+  redis_data:
+  meili_data:

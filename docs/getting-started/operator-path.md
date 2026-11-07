@@ -3,7 +3,7 @@ title: Operator Path
 description: Reading path for deployment and runtime operations.
 status: planned
 audience: [operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - docs/engineering-live-context/execution-roadmap.mdx
     - .cursor/rules/mcp-tools.mdc
@@ -16,7 +16,7 @@ Use this path for runtime readiness, deployment, rollback, monitoring, backup, r
 
 ## Scope
 
-The local stack runs the production images on a developer machine. Hosted environments, automated deployment and backup procedures are planned. The pages below state which procedures are available and which are planned.
+The local stack runs the production images on a developer machine. `pnpm production:proof` runs the staging and production stack, with its deploy, rollback, backup and restore scripts, on one machine. Hosted environments and the deploy workflows are planned. The pages below state which procedures are available and which are planned.
 
 ## Read in this order
 

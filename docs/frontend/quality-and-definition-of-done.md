@@ -4,7 +4,7 @@ wide: true
 description: Testing approach and completion checks for storefront and admin changes.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/storefront/vite.config.ts
     - apps/admin/package.json

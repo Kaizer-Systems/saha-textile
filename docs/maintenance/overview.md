@@ -3,7 +3,7 @@ title: Maintenance Overview
 description: Routine maintenance for dependencies, schemas, permissions and translations.
 status: planned
 audience: [frontend, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - package.json
     - docs/engineering-live-context/execution-roadmap.mdx

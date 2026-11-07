@@ -41,7 +41,7 @@ A release:
 
 ## 2. Images and GHCR
 
-- `docker/images/Dockerfile` builds `api` (also the worker), `storefront` and `admin`.
+- `docker/images/Dockerfile` builds `api` (also the worker), `storefront`, `admin` and `ops`. `ops` holds the backup and check tools, so the droplet needs only Docker.
 - Tags carry the commit and the tree hash. Deploys always use the digest.
 - Publishing from a workflow links each package to the repository and keeps it private.
 - A cleanup job keeps the last 20 builds plus anything released.
@@ -59,9 +59,9 @@ GitHub's docs name only a classic token outside Actions, so this is proved on th
 `DEC-SECRETS-DELIVERY` is closed: **GitHub Environment secrets written to mounted read-only files.**
 
 - One GitHub secret per value, per environment. The job renders the files and refuses to start if a name is missing.
-- Files live in a root-only folder and mount read-only into the containers that need them.
+- Each release folder keeps its own `secrets/` and `public/`, so a rollback returns to the settings it ran with. The folder is root-only, and files mount read-only into the containers that need them. `docker/production/README.md` lists every file.
 - API and worker set `DOTENV_CONFIG_PATH=/run/secrets/api.env`. No code change is needed: every entry point imports `dotenv/config`. Tested on 2026-11-07 in the real API image as its non-root user with dotenv 18.0.9.
-- MongoDB uses `MONGO_INITDB_ROOT_PASSWORD_FILE`. Redis reads its password from its file at start. Meilisearch uses a mounted config file.
+- MongoDB uses `MONGO_INITDB_ROOT_PASSWORD_FILE`. Redis reads its password from its file at start. Meilisearch uses a mounted config file. The API's search key is not a stored secret: each deploy reads the Default Admin API Key from the search server, using the master key.
 - A secrets service can replace GitHub later. The deploy job would fetch the values and write the same files, so nothing changes on the droplet.
 - The master copy lives in the owner's **Bitwarden** vault. The backup private key has a second copy in NordPass, because backups are unreadable without it. Both need two-factor sign-in.
 - Rotation: new value, GitHub, redeploy, check, revoke the old one. `CSRF_SECRET` rotates only after a leak: it signs everyone out and strands guest carts.
@@ -111,21 +111,23 @@ MongoDB's docs prefer X.509 for production, but a keyfile only protects traffic 
 
 ## 7. First run and every deploy
 
-**Once per environment, by hand over SSH:** start the replica set, create the database users, create the Meilisearch admin key, run the first-run setup command, then run `node dist/create-first-admin.js --email <address>` and save the credential in Bitwarden.
+**Once per environment, by hand over SSH:** run `node dist/create-first-admin.js --email <address>` in the API container, and save the credential in Bitwarden.
 
-**Every deploy, automatic:** check secrets, back up (production), pull by digest, restart apps, wait for health, run `node dist/rebuild-search-index.js`, check that `/config.json` parses on storefront and admin, run a smoke test through Cloudflare, record the release.
+**Every deploy, automatic (`docker/production/bin/deploy.sh`):** check the release and its secrets, back up (production), pull by digest, start data services, start the replica set and keep the app user's password in step, read the search key, run `node dist/first-run-setup.js`, start the apps, run `node dist/rebuild-search-index.js`, check that every dependency is up and that `/config.json` parses on storefront and admin, then record the release. All of it is safe to repeat.
 
-`pnpm … release:prepare` cannot run in the image: it has no pnpm or tsx (checked in the local image). That image predates the search script, so `dist/rebuild-search-index.js` itself is still to be run for real.
+First-run setup adds only what a new database cannot work without: the administrator role, currencies and notification templates. It skips rows that exist, so it never overwrites staff changes. Products, categories, customers and promotions are entered in admin.
+
+The search rebuild fills a second index and swaps it in, so shoppers never see an empty list during a deploy.
 
 Any database change must keep working with the previous release, or a rollback breaks.
 
 ## 8. Nginx
 
-The production config is new. `docker/stack/nginx/edge.conf` is not a base to copy unchanged:
+`docker/production/nginx/` is the production config. It differs from `docker/stack/nginx/edge.conf` on purpose:
 
-- It overwrites `CF-Connecting-IP`. Production must take the real IP only from connections Cloudflare made.
+- It overwrites `CF-Connecting-IP`. Production takes the real IP only from connections Cloudflare made.
 - The admin server's own `add_header` cancels the shared security headers, because of how Nginx inherits them.
-- It has no CSP. Production needs one covering Google sign-in, Meta, CCAvenue, PayPal and the CDN.
+- It has no CSP. Production has one covering Google sign-in, Meta, CCAvenue and the CDN. PayPal joins it when that adapter is built.
 
 It also adds rate limits for sign-in, OTP and checkout, refuses unknown hostnames, and requires the Cloudflare client certificate on the public listener.
 
@@ -163,6 +165,7 @@ The deploy script keeps the previous digests. If health or the smoke test fails,
 - **Retention:** 30 daily and 12 monthly, by lifecycle rule, with versioning on.
 - Spaces keys are Read or Read/Write/Delete per bucket, and Object Lock is not documented. The server cannot decrypt backups, but its key can delete them. Versioning stops accidents more than a careful attacker. The owner accepted this.
 - Nightly means a total disk loss can lose up to 24 hours of orders.
+- A backup holds the shop's database only, not the database users, so restoring on another server keeps that server's passwords. MongoDB offers a point-in-time dump only for the whole server, so a write landing during the few seconds of the night-time dump may be caught half-way. The next night's backup is whole again.
 - A restore drill on a throwaway droplet runs before launch and every quarter.
 - The staging destroy script saves staging's data, and the create script restores it, so each rebuild is also a restore test. Production data never goes to staging.
 
@@ -224,7 +227,7 @@ About **$53 a month**, plus staging hours. Usage charges for MSG91, payments and
 
 Every step touching GitHub settings, DigitalOcean or Cloudflare needs the owner's yes at that time.
 
-1. **Repository groundwork, no cloud account touched.** Production Compose and Nginx files. Safe first-run setup command. Remove `seed-local-auth-accounts` from the image. Fix `release:prepare`. Extend `/health/ready`. Add Meilisearch to the startup checks. Make the apps fail loudly on missing config. Publish workflow. Deploy, rollback, backup and restore scripts. Prove what can be proved on the local stack.
+1. **Repository groundwork, no cloud account touched. Done 2026-11-08.** `pnpm production:proof` runs all of it on one machine. The deploy workflows that call these scripts come with step 3, because they cannot be proved before a droplet exists.
 2. **GitHub.** Ruleset change, retire `qa`, Environments, secrets, Actions pins, two-factor required for the organisation.
 3. **Staging.** Droplet script, Cloudflare records, tunnel, Access, Origin Certificate, AOP. First deploy.
 4. **Staging proofs.** Listed below.

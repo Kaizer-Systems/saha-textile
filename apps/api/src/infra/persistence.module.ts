@@ -70,6 +70,7 @@ import { UnconfiguredStorageAdapter } from './unconfigured-storage.adapter';
 import { buildNotificationPort } from './notification-factory';
 import { MongoListing } from '../catalog/mongo-listing';
 import { ResilientListing } from '../catalog/resilient-listing';
+import { readinessProbes } from '../health/readiness-probe';
 import { MeilisearchListing } from '../search/meilisearch-listing';
 import { MeilisearchSearch } from '../search/meilisearch-search';
 import {
@@ -91,6 +92,7 @@ import {
 	PRODUCT_RELATION_REPOSITORY,
 	PRODUCT_BUNDLE_REPOSITORY,
 	LISTING_PORT,
+	READINESS_PROBES,
 	SEARCH_PORT,
 	ADDON_TEMPLATE_REPOSITORY,
 	ADMIN_INVITE_REPOSITORY,
@@ -248,6 +250,11 @@ import {
 		{ provide: SITE_SETTINGS_REPOSITORY, useClass: MongoSiteSettingsRepository },
 		{ provide: REVIEW_REPOSITORY, useClass: MongoReviewRepository },
 		{
+			provide: READINESS_PROBES,
+			useFactory: readinessProbes,
+			inject: [MEDIA_JOB_QUEUE, SEARCH_PORT],
+		},
+		{
 			provide: MEDIA_JOB_QUEUE,
 			useFactory: (config: AppConfig) => new BullMqMediaJobQueue(config.redis),
 			inject: [APP_CONFIG],
@@ -292,6 +299,7 @@ import {
 		PRODUCT_RELATION_REPOSITORY,
 		PRODUCT_BUNDLE_REPOSITORY,
 		LISTING_PORT,
+		READINESS_PROBES,
 		SEARCH_PORT,
 		ADDON_TEMPLATE_REPOSITORY,
 		ATTRIBUTE_DEFINITION_REPOSITORY,

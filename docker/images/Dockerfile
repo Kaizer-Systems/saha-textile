@@ -6,6 +6,7 @@
 #                `command: node dist/worker.js`
 #    storefront  Analog/Nitro SSR server
 #    admin       static Angular build behind nginx
+#    ops         backup and check tools; runs on demand, never as a service
 #
 #  The same Dockerfile builds the local mode-3 stack, CI, and the private GHCR
 #  images staging and production pull. Nothing secret is baked in: env files and
@@ -15,6 +16,7 @@
 # =============================================================================
 ARG NODE_IMAGE=node:24.22.1-alpine
 ARG NGINX_IMAGE=nginx:1.30.6-alpine
+ARG OPS_BASE_IMAGE=alpine:3.22
 
 FROM ${NODE_IMAGE} AS base
 RUN corepack enable && corepack prepare pnpm@12.15.0 --activate
@@ -63,3 +65,8 @@ FROM ${NGINX_IMAGE} AS admin
 COPY docker/images/admin-nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /repo/apps/admin/dist /usr/share/nginx/html
 EXPOSE 8080
+
+# ---- ops (backups and deploy checks) ------------------------------------------
+FROM ${OPS_BASE_IMAGE} AS ops
+RUN apk add --no-cache age aws-cli curl jq
+USER nobody

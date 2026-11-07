@@ -41,6 +41,8 @@ const deployment = (overrides: Record<string, string | undefined> = {}): NodeJS.
 		SPACES_SECRET: 'spaces-secret-for-tests',
 		SPACES_BUCKET: 'saha-textile-media',
 		SPACES_CDN_URL: 'https://cdn.sahatextile.com',
+		MEILISEARCH_HOST: 'http://meilisearch:7700',
+		MEILISEARCH_API_KEY: 'a'.repeat(8) + secret(),
 		...overrides,
 	};
 	for (const key of Object.keys(env)) if (env[key] === undefined) delete env[key];
@@ -329,6 +331,23 @@ describe('deployment hardening', () => {
 			expect(
 				problemsFor(deployment({ SPACES_KEY: undefined, SPACES_SECRET: undefined, SPACES_BUCKET: undefined })),
 			).toEqual(['Media storage must be configured: set SPACES_KEY, SPACES_SECRET and SPACES_BUCKET.']);
+		});
+
+		it('search needs a host and a real key', () => {
+			expect(problemsFor(deployment({ MEILISEARCH_HOST: undefined }))).toEqual([
+				'MEILISEARCH_HOST must be set: without it search and typeahead stop working.',
+			]);
+			expect(problemsFor(deployment({ MEILISEARCH_API_KEY: undefined }))).toEqual([
+				'MEILISEARCH_API_KEY must be set: a production search server refuses unsigned requests.',
+			]);
+			for (const key of ['local-saha-textile-meili', 'replace-this-search-key']) {
+				expect(problemsFor(deployment({ MEILISEARCH_API_KEY: key }))).toEqual([
+					'MEILISEARCH_API_KEY looks like a local or placeholder value.',
+				]);
+			}
+			expect(problemsFor(deployment({ MEILISEARCH_API_KEY: 'short' }))).toEqual([
+				'MEILISEARCH_API_KEY must be at least 16 characters.',
+			]);
 		});
 
 		it('requires the CDN URL, and over https', () => {

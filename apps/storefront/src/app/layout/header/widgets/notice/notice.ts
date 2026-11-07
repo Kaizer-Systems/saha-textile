@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, ElementRef, PLATFORM_ID, viewChild, inject, input } from '@angular/core';
+import { Component, ElementRef, NgZone, PLATFORM_ID, viewChild, inject, input } from '@angular/core';
 
 import SwiperCore from 'swiper';
 import { Autoplay, Navigation, Pagination } from 'swiper/modules';
@@ -17,6 +17,7 @@ SwiperCore.use([Navigation, Pagination, Autoplay]);
 })
 export class Notice {
 	private platformId = inject<Object>(PLATFORM_ID);
+	private zone = inject(NgZone);
 
 	readonly content = input<ITopBarContent[]>();
 
@@ -33,13 +34,16 @@ export class Notice {
 	};
 
 	ngAfterViewInit() {
-		if (isPlatformBrowser(this.platformId)) {
+		if (!isPlatformBrowser(this.platformId)) return;
+		// Outside the zone: autoplay's repeating timer would keep the app "unstable" for good, and
+		// Angular replays clicks made during hydration only once it is stable, so they were lost.
+		this.zone.runOutsideAngular(() => {
 			setTimeout(() => {
 				const swiperContainer = this.swiperContainer();
 				if (swiperContainer) {
 					new SwiperCore(swiperContainer.nativeElement, this.swiperConfig);
 				}
 			}, 2000);
-		}
+		});
 	}
 }

@@ -658,7 +658,9 @@ describe('saving the product form', () => {
 	it('gives search the names of its categories', async () => {
 		const { service, search } = build();
 		await service.syncSearch(product({ status: 'live', categoryIds: ['c1', 'gone'] }));
-		expect(search.indexProduct.mock.lastCall?.[0]).toMatchObject({ categoryNames: ['Silk', 'Soie'] });
+		expect(search.indexProduct).toHaveBeenLastCalledWith(
+			expect.objectContaining({ categoryNames: ['Silk', 'Soie'] }),
+		);
 	});
 
 	it('saves even when the search index is down', async () => {

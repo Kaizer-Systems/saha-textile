@@ -970,6 +970,14 @@ The owner reviewed the home page after PR 6 and said the removals below were nev
 - **Still removed:** the demo phone, address and about text, the product Unit line (replaced by D3), the old theme logos (replaced by the Brand Kit), and the attributes note on the product page.
 - **Cookie box:** the approved design stands. Labels stay on one line. Where the longest label cannot sit side by side, as in French, the buttons stack at equal width. This is a fix, not a new design.
 
+## Owner decision round (2026-11-07) — installable PWA
+
+- **Scope:** the storefront becomes an installable app now. Offline catalogue, offline cart queue and image caching are deferred, not dropped, and are built later in the same PWA chat. Until then the service worker has no `fetch` handler and there is no You're offline page.
+- **Icons and name:** the manifest reads the Brand Kit, so a white-label shop gets its own icon and name with no rebuild. Built-in neutral icons cover a shop with no seal yet.
+- **Brand icons:** square, padded and flattened on white, because an iPhone home screen fills transparency with black. The role change reprocesses existing seals from their retained originals, so no re-upload is needed.
+- **Updates:** silent. When a new build goes live, the next in-app link is a normal page load. No notice on screen.
+- **Consent:** the service worker is listed as Necessary. It stores no personal data and adds no cookie, so the policy version did not change.
+
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

@@ -13,5 +13,5 @@
 	// components untransformed ("you need plugins to import files that are not
 	// JavaScript"). The default Analog template can rely on the import graph;
 	// file routing cannot.
-	"include": ["src/**/*.d.ts", "src/app/**/*.ts"]
+	"include": ["src/**/*.d.ts", "src/app/**/*.ts", "src/service-worker/*.ts"]
 }

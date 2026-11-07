@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import locale from './middleware/locale';
 import seoFiles from './middleware/seo-files';
+import webManifest from './middleware/web-manifest';
 
 const h3 = vi.hoisted(() => ({
 	getCookie: vi.fn(() => undefined as string | undefined),
+	getQuery: vi.fn((): Record<string, unknown> => ({})),
 	getRequestURL: vi.fn(() => ({ protocol: 'https:', origin: 'https://origin.test' })),
 	send: vi.fn(async () => undefined),
 	sendRedirect: vi.fn(async () => undefined),
@@ -168,5 +170,63 @@ describe('SEO files', () => {
 			'Cache-Control': 'no-store',
 			'Retry-After': '60',
 		});
+	});
+});
+
+describe('web manifest middleware', () => {
+	const run = (input: unknown) => (webManifest as unknown as Handler)(input);
+	const sent = () => JSON.parse((h3.send.mock.calls as unknown[][])[0][1] as string) as Record<string, unknown>;
+	const brand = {
+		shopName: 'Sample Shop',
+		icons: { '192': 'https://cdn.test/192.png', '512': 'https://cdn.test/512.png' },
+	};
+
+	it('leaves everything else alone', async () => {
+		expect(await run({ ...event('/manifest.webmanifest'), method: 'POST' })).toBeUndefined();
+		expect(await run(event('/en/'))).toBeUndefined();
+		expect(h3.send).not.toHaveBeenCalled();
+	});
+
+	it('serves the Brand Kit in the language asked for', async () => {
+		h3.getQuery.mockReturnValue({ lang: 'fr' });
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({ ok: true, json: async () => brand })),
+		);
+		expect(await run(event('/manifest.webmanifest?lang=fr'))).toBe(true);
+		expect(fetch).toHaveBeenCalledWith('https://api.test/storefront/brand', expect.anything());
+		expect(sent()).toMatchObject({ name: 'Sample Shop', start_url: '/fr/' });
+		expect(h3.setResponseHeaders).toHaveBeenCalledWith(expect.anything(), {
+			'Cache-Control': 'public, max-age=300',
+		});
+		expect((h3.send.mock.calls as unknown[][])[0][2]).toBe('application/manifest+json; charset=utf-8');
+	});
+
+	it('reads the path the visitor asked for, and refuses an unknown language', async () => {
+		h3.getQuery.mockReturnValue({ lang: 'de' });
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({ ok: true, json: async () => brand })),
+		);
+		const input = { ...event('/index.html', { originalUrl: '/manifest.webmanifest?lang=de' }), method: 'HEAD' };
+		expect(await run(input)).toBe(true);
+		expect(sent()).toMatchObject({ start_url: '/en/' });
+	});
+
+	it('still answers, uncached, when the API fails or refuses', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => ({ ok: false })),
+		);
+		await run(event('/manifest.webmanifest'));
+		expect(sent()).toMatchObject({ name: 'Saha Textile' });
+		expect(h3.setResponseHeaders).toHaveBeenLastCalledWith(expect.anything(), { 'Cache-Control': 'no-store' });
+
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => Promise.reject(new Error('down'))),
+		);
+		expect(await run(event('/manifest.webmanifest'))).toBe(true);
+		expect(h3.setResponseHeaders).toHaveBeenLastCalledWith(expect.anything(), { 'Cache-Control': 'no-store' });
 	});
 });

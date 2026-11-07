@@ -12,7 +12,9 @@ const brand = {
 const head = () => document.head;
 
 afterEach(() => {
-	head().querySelectorAll('link, script').forEach((node) => node.remove());
+	head()
+		.querySelectorAll('link, meta, script')
+		.forEach((node) => node.remove());
 });
 
 describe('applyBrandHead', () => {
@@ -28,6 +30,14 @@ describe('applyBrandHead', () => {
 			url: 'https://shop.test/',
 			logo: 'https://cdn.test/512.png',
 		});
+	});
+
+	it('names the app for an iPhone home screen, once', () => {
+		applyBrandHead(document, brand, 'https://shop.test/');
+		applyBrandHead(document, { ...brand, shopName: 'Renamed' }, 'https://shop.test/');
+		const titles = head().querySelectorAll<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
+		expect(titles).toHaveLength(1);
+		expect(titles[0].content).toBe('Renamed');
 	});
 
 	it('reuses what is there on a second run', () => {

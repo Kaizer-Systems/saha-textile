@@ -5,6 +5,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 
 import { runtimeConfigReady } from '@core/config/runtime-config';
+import { manifestPath } from '@core/pwa/web-manifest';
 
 import { ACTIVE_LOCALE } from './active-locale';
 import { LocaleSeo } from './locale-seo';
@@ -28,7 +29,12 @@ export function provideLocaleRouting() {
 		provideAppInitializer(async () => {
 			const locale = inject(ACTIVE_LOCALE);
 			const transloco = inject(TranslocoService);
-			inject(DOCUMENT).documentElement.lang = locale;
+			const page = inject(DOCUMENT);
+			page.documentElement.lang = locale;
+			// An installed app opens in the language it was installed from, with no optional cookie.
+			page.head
+				.querySelector<HTMLLinkElement>('link[rel="manifest"]')
+				?.setAttribute('href', manifestPath(locale));
 
 			await runtimeConfigReady;
 			transloco.setActiveLang(locale);

@@ -44,6 +44,7 @@ import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { CatalogLocaleInterceptor } from './core/interceptors/catalog-locale.interceptor';
 import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from './core/interceptors/loader.interceptor';
+import { provideAppUpdate } from './core/pwa/app-update';
 import { QUERY_CLIENT, isPublicRequest } from './core/query/query-client';
 
 export const appConfig: ApplicationConfig = {
@@ -127,6 +128,7 @@ export const appConfig: ApplicationConfig = {
 		// are replayed from the server; clicks made before hydration are replayed too.
 		provideClientHydration(withHttpTransferCacheOptions({ filter: isPublicRequest }), withEventReplay()),
 		provideZoneChangeDetection({ eventCoalescing: true }),
+		provideAppUpdate(),
 		provideToastr({
 			positionClass: 'toast-top-center',
 			preventDuplicates: true,

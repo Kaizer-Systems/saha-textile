@@ -57,6 +57,15 @@ The page layer stays thin. A route identifies the customer journey and composes 
 | Newsletter     | The popup opens on half-page scroll, after 30 seconds or on desktop exit intent, and never on cart, checkout, account or sign-in pages |
 | SEO            | Canonical and `hreflang` tags, `/sitemap.xml`, `/robots.txt`, redirects and `410` answers                                              |
 
+## Installable app
+
+A production build is an installable app on Android, desktop Chrome and Edge, and iPhone and iPad through Add to Home Screen.
+
+- **Manifest.** `/manifest.webmanifest` is built by `src/server/middleware/web-manifest.ts` from the Brand Kit, so a shop's name and icons change without a rebuild. Each language has its own `start_url`, and `id` stays the same, so a browser sees one app. Built-in icons in `public/assets/images/app-icon-*.png` cover a shop with no seal yet.
+- **Service worker.** `src/service-worker/sw.ts` builds to `/sw.js` in production only. It has no `fetch` listener, so no request passes through it and nothing is cached.
+- **Updates.** `core/pwa/app-update.ts` registers the worker after the page loads and checks for a new build hourly. When one is live, the next in-app link becomes a normal page load. A long-open page that asks for a file the new build removed reloads the same way.
+- **Offline work.** New offline features go in `sw.ts` as their own routes. They must never cache API responses, auth, account, cart or checkout data, signed URLs or `/config.json`. Once the worker serves files, revisit taking over at once with `skipWaiting`, because a page could then mix files from two builds.
+
 ## Directory ownership
 
 | Directory                | Owns                                                | Should not own                   |
@@ -87,7 +96,7 @@ The page layer stays thin. A route identifies the customer journey and composes 
 - Checkout renders forms and totals but does not place an order or take a payment.
 - Order history, refunds, wallet, points, notifications, wishlist and compare read JSON files or client state.
 - The newsletter form has no subscribe endpoint.
-- Offline catalogue and cart support is planned. The PWA integration is not in the build.
+- Offline catalogue, offline cart and image caching are planned. The service worker has no `fetch` listener until then.
 
 :::warning A finished-looking screen may not be connected
 A polished screen can be JSON-backed or have no write path. Check the [state and data page](./state-and-data#data-sources) before you depend on it.

@@ -47,6 +47,16 @@ describe('provideLocaleRouting', () => {
 		expect(seo).toHaveBeenCalledOnce();
 	});
 
+	it('points the page at the manifest for its language', async () => {
+		const manifest = document.createElement('link');
+		manifest.rel = 'manifest';
+		manifest.setAttribute('href', '/manifest.webmanifest');
+		document.head.appendChild(manifest);
+		await boot(() => of({}));
+		expect(manifest.getAttribute('href')).toBe('/manifest.webmanifest?lang=fr');
+		manifest.remove();
+	});
+
 	it('still boots when the dictionary fails to load', async () => {
 		const { transloco } = await boot(() => throwError(() => new Error('down')));
 		expect(transloco.load).toHaveBeenCalledOnce();

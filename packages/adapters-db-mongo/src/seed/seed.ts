@@ -2,14 +2,12 @@ import {
 	MongoCategoryRepository,
 	MongoCurrencyRepository,
 	MongoCustomerRepository,
-	MongoProductRepository,
 	MongoPromotionRepository,
 } from '../repositories/index';
-import { seedCategories, seedCurrencies, seedCustomers, seedProducts, seedPromotions } from './data';
+import { seedCategories, seedCurrencies, seedCustomers, seedPromotions } from './data';
 
 export interface SeedResult {
 	categories: number;
-	products: number;
 	currencies: number;
 	promotions: number;
 	customers: number;
@@ -21,20 +19,17 @@ export interface SeedResult {
  */
 export async function seedDatabase(): Promise<SeedResult> {
 	const categories = new MongoCategoryRepository();
-	const products = new MongoProductRepository();
 	const currencies = new MongoCurrencyRepository();
 	const promotions = new MongoPromotionRepository();
 	const customers = new MongoCustomerRepository();
 
 	for (const category of seedCategories) await categories.save(category);
-	for (const product of seedProducts) await products.save(product);
 	for (const currency of seedCurrencies) await currencies.upsert(currency);
 	for (const promotion of seedPromotions) await promotions.save(promotion);
 	for (const customer of seedCustomers) await customers.save(customer);
 
 	return {
 		categories: seedCategories.length,
-		products: seedProducts.length,
 		currencies: seedCurrencies.length,
 		promotions: seedPromotions.length,
 		customers: seedCustomers.length,

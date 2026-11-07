@@ -329,66 +329,6 @@ export const menu: IMenu[] = [
 					},
 				],
 			},
-			{
-				children: [
-					{
-						title: 'email_template',
-						type: 'sub',
-					},
-					{
-						title: 'welcome_template',
-						type: 'external_link',
-						path: 'https://themes.pixelstrap.com/fastkart/email-templete/welcome.html',
-					},
-					{
-						title: 'abondonment',
-						type: 'external_link',
-						label: 'hot',
-						labelClass: 'warning-label',
-						path: 'https://themes.pixelstrap.com/fastkart/email-templete/abandonment-email.html',
-					},
-					{
-						title: 'offer_template',
-						type: 'external_link',
-						path: 'https://themes.pixelstrap.com/fastkart/email-templete/offer-template.html',
-					},
-					{
-						title: 'order_success',
-						type: 'external_link',
-						label: 'new',
-						path: 'https://themes.pixelstrap.com/fastkart/email-templete/order-success.html',
-					},
-					{
-						title: 'reset_password',
-						type: 'external_link',
-						path: 'https://themes.pixelstrap.com/fastkart/email-templete/reset-password.html',
-					},
-				],
-			},
-			{
-				children: [
-					{
-						title: 'invoice_template',
-						type: 'sub',
-					},
-					{
-						title: 'invoice_template_1',
-						type: 'external_link',
-						path: 'https://themes.pixelstrap.com/fastkart/invoice/invoice-1.html',
-					},
-					{
-						title: 'invoice_template_2',
-						type: 'external_link',
-						label: 'hot',
-						path: 'https://themes.pixelstrap.com/fastkart/invoice/invoice-2.html',
-					},
-					{
-						title: 'invoice_template_3',
-						type: 'external_link',
-						path: 'https://themes.pixelstrap.com/fastkart/invoice/invoice-3.html',
-					},
-				],
-			},
 		],
 	},
 	{

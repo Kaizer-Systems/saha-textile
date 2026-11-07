@@ -31,7 +31,7 @@ export class BlogDetails {
 	siteConfig$: Observable<ISiteConfig> = toObservable(inject(SiteConfigStore).siteConfig) as Observable<ISiteConfig>;
 
 	public breadcrumb: IBreadcrumb = {
-		title: 'Product',
+		title: '',
 		items: [],
 	};
 
@@ -45,7 +45,7 @@ export class BlogDetails {
 			if (!blog) return;
 			this.breadcrumb.items = [];
 			this.breadcrumb.title = blog.title;
-			this.breadcrumb.items.push({ label: 'IBlog', active: true }, { label: blog.title, active: false });
+			this.breadcrumb.items.push({ label: 'Blog', active: true }, { label: blog.title, active: false });
 			blog?.meta_title && this.meta.updateTag({ property: 'og:title', content: blog?.meta_title });
 			blog?.meta_description &&
 				this.meta.updateTag({ property: 'og:description', content: blog?.meta_description });

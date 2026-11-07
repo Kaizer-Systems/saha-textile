@@ -262,6 +262,7 @@ describe('Sidebar', () => {
 		events.next(new NavigationEnd(3, '/dashboard', '/dashboard'));
 		expect(item(sidebar, 1).active).toBe(true);
 		expect(item(sidebar, 2).active).toBe(false);
+		expect(item(sidebar, 3).active).toBe(false);
 	});
 
 	it('walks a path already holding its slash', () => {

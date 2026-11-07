@@ -33,7 +33,7 @@ export class ProductDetailsTabs {
 
 	readonly product = input<IProduct | null>();
 
-	private readonly qnaQuery = injectQuestionAnswersQuery(() => this.product()?.id);
+	private readonly qnaQuery = injectQuestionAnswersQuery(() => this.product()?.slug);
 	question$: Observable<IQnAModel> = toObservable(computed(() => this.qnaQuery.data() ?? { data: [], total: 0 }));
 	private readonly reviewQuery = injectReviewQuery(() => this.product()?.id);
 	review$: Observable<IReviewModel> = toObservable(computed(() => this.reviewQuery.data() ?? { data: [], total: 0 }));

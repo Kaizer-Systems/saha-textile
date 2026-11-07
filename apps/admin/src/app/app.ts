@@ -76,13 +76,14 @@ export class App {
 
 			// Set Favicon
 			this.favIcon = document.querySelector('#appIcon');
-			this.favIcon!.href = <string>setting?.general?.favicon_image?.original_url;
+			const favicon = setting?.general?.favicon_image?.original_url;
+			if (favicon) this.favIcon!.href = favicon;
 
 			// Set site title
 			this.titleService.setTitle(
 				setting?.general?.site_title && setting?.general?.site_tagline
 					? `${setting?.general?.site_title} | ${setting?.general?.site_tagline}`
-					: 'FastKart Marketplace: Where Vendors Shine Together',
+					: 'Saha Textile Admin',
 			);
 		});
 

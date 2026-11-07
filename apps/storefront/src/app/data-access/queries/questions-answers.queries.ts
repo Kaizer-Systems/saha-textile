@@ -7,15 +7,15 @@ import { QuestionsAnswersService } from '@data-access/services/questions-answers
 
 /**
  * TanStack Query for a product's Q&A (replaces NGXS QuestionAnswersState +
- * GetQuestionAnswersAction). Keyed on product id. The old FeedbackAction (local
- * like/dislike mutation) is now an optimistic queryClient.setQueryData on
- * ['qna', productId] from the display widget. Send/Update were no-op mocks.
+ * GetQuestionAnswersAction). Keyed on product slug, the only key the API accepts.
+ * The old FeedbackAction (local like/dislike mutation) is now an optimistic
+ * queryClient.setQueryData on ['qna', slug] from the display widget.
  */
-export function injectQuestionAnswersQuery(productId: () => number | string | undefined) {
+export function injectQuestionAnswersQuery(productSlug: () => string | undefined) {
 	const service = inject(QuestionsAnswersService);
 	return injectQuery(() => ({
-		queryKey: ['qna', productId()],
-		queryFn: () => firstValueFrom(service.getQuestionAnswers({ product_id: productId() })),
-		enabled: !!productId(),
+		queryKey: ['qna', productSlug()],
+		queryFn: () => firstValueFrom(service.getQuestionAnswers({ slug: productSlug() })),
+		enabled: !!productSlug(),
 	}));
 }

@@ -127,7 +127,7 @@ describe('BlogDetails', () => {
 
 	it('keeps the placeholder until the post arrives', () => {
 		const { page, meta } = render();
-		expect(page.breadcrumb.title).toBe('Product');
+		expect(page.breadcrumb.title).toBe('');
 		expect(meta.updateTag).not.toHaveBeenCalled();
 	});
 

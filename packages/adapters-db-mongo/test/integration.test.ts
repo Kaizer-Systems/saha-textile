@@ -6,6 +6,7 @@ import { connectMongo, disconnectMongo } from '../src/connection';
 import { ProductModel } from '../src/models/index';
 import { MongoCategoryRepository, MongoProductRepository } from '../src/repositories/index';
 import { seedDatabase } from '../src/seed/index';
+import { sampleProducts } from './sample-products';
 
 /**
  * Live integration tests against a real MongoDB (test M0). GATED: they only run
@@ -27,6 +28,8 @@ describe.skipIf(!hasMongoEnv())('MongoDB adapters (integration)', () => {
 	beforeAll(async () => {
 		await connectMongo();
 		await seedDatabase();
+		const repository = new MongoProductRepository();
+		for (const product of sampleProducts) await repository.save(product);
 	});
 
 	afterAll(async () => {

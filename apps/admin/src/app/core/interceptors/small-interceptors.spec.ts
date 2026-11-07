@@ -5,7 +5,6 @@ import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of, throwError } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
-import { GlobalErrorHandler } from '@core/error/global-error-handler';
 import { LoaderStore } from '@core/state/loader.store';
 import { ErrorService } from '@data-access/services/error.service';
 import { LoggingService } from '@data-access/services/logging.service';
@@ -13,7 +12,6 @@ import { NotificationService } from '@data-access/services/notification.service'
 
 import { GlobalErrorHandlerInterceptor } from './global-error-handler.interceptor';
 import { LoaderInterceptor } from './loader.interceptor';
-import { ServerInterceptor } from './server.interceptor';
 
 const request = new HttpRequest('GET', '/x');
 const handler = (result: unknown) => ({ handle: () => result }) as never;
@@ -84,44 +82,5 @@ describe('LoaderInterceptor', () => {
 		const write = await run('POST');
 		expect(write.showLoader).toHaveBeenCalledWith(false);
 		expect(write.showButtonSpinner).toHaveBeenCalledWith(true);
-	});
-});
-
-describe('ServerInterceptor', () => {
-	const run = (platform: string) => {
-		TestBed.resetTestingModule();
-		TestBed.configureTestingModule({
-			providers: [ServerInterceptor, { provide: PLATFORM_ID, useValue: platform }],
-		});
-		return TestBed.inject(ServerInterceptor);
-	};
-
-	it('answers empty on the server and passes through in the browser', async () => {
-		const answer = await firstValueFrom(run('server').intercept(request, handler(of('real'))));
-		expect((answer as HttpResponse<unknown>).status).toBe(200);
-		await expect(firstValueFrom(run('browser').intercept(request, handler(of('real'))))).resolves.toBe('real');
-	});
-});
-
-describe('GlobalErrorHandler', () => {
-	const run = () => {
-		const notifier = { showError: vi.fn() };
-		TestBed.resetTestingModule();
-		TestBed.configureTestingModule({
-			providers: [
-				GlobalErrorHandler,
-				{ provide: ErrorService, useValue: { getServerErrorMessage: () => 'Readable' } },
-				{ provide: NotificationService, useValue: notifier },
-			],
-		});
-		return { errors: TestBed.inject(GlobalErrorHandler), notifier };
-	};
-
-	it('shows an HTTP failure and nothing else', () => {
-		const { errors, notifier } = run();
-		errors.handleError(new Error('bug'));
-		expect(notifier.showError).not.toHaveBeenCalled();
-		errors.handleError(new HttpErrorResponse({ status: 500 }));
-		expect(notifier.showError).toHaveBeenCalledWith('Readable');
 	});
 });

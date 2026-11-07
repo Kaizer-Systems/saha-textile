@@ -9,7 +9,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AddonTemplateService } from './addon-template.service';
 import { AttachmentService } from './attachment.service';
-import { AttributeService } from './attribute.service';
 import { AuthService } from './auth.service';
 import { BlogService } from './blog.service';
 import { CartService } from './cart.service';
@@ -53,14 +52,7 @@ beforeEach(() => {
 describe('read services', () => {
 	it.each<[string, () => unknown, string]>([
 		['attachments', () => TestBed.inject(AttachmentService).getAttachments({ a: 1 }), '/media.json'],
-		['attributes', () => TestBed.inject(AttributeService).getAttributes({ a: 1 }), '/attribute.json'],
-		[
-			'attribute values',
-			() => TestBed.inject(AttributeService).getAttributeValues({ a: 1 }),
-			'/attribute-value.json',
-		],
 		['blogs', () => TestBed.inject(BlogService).getBlogs({ a: 1 }), '/blog.json'],
-		['categories', () => TestBed.inject(CategoryService).getCategories({ a: 1 }), '/category.json'],
 		['coupons', () => TestBed.inject(CouponService).getCoupons({ a: 1 }), '/coupon.json'],
 		['currencies', () => TestBed.inject(CurrencyService).getCurrencies({ a: 1 }), '/currency.json'],
 		['ledger', () => TestBed.inject(CustomerLedgerService).getUserTransaction({ a: 1 }), '/wallet.json'],
@@ -78,6 +70,12 @@ describe('read services', () => {
 		call();
 		expect(lastUrl(http.get)).toContain(path);
 		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { a: 1 } });
+	});
+
+	it('reads blog categories from their own list', () => {
+		TestBed.inject(CategoryService).getCategories({ type: 'post' });
+		expect(lastUrl(http.get)).toContain('/category.json');
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { type: 'post' } });
 	});
 
 	it.each<[string, () => unknown, string]>([

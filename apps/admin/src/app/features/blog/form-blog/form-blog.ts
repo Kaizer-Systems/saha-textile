@@ -50,7 +50,7 @@ export class FormBlog {
 
 	public form: FormGroup;
 	public id: number;
-	public selectedCategories: number[] = [];
+	public selectedCategories: string[] = [];
 	public selectedTags: number[] = [];
 	public html = '';
 	public editor: Editor;

@@ -1,5 +1,7 @@
 /** The API's admin catalogue shapes (`AdminProductList`, `AdminProductDetail`, `ProductMerchandisingWrite`). */
 
+import type { ProductContentWrite } from '@saha-textile/contracts';
+
 export type CatalogBadgeCode = 'sale' | 'featured' | 'bestseller' | 'trending' | 'new' | 'low_stock' | 'back_in_stock';
 
 export const CATALOG_BADGE_CODES: readonly CatalogBadgeCode[] = [
@@ -59,7 +61,7 @@ export interface CatalogProductDetail {
 	slug: string;
 	sku: string;
 	title: string;
-	type: 'simple' | 'variable';
+	type: 'simple' | 'variable' | 'bundle';
 	status: CatalogProductStatus;
 	published: boolean;
 	featured: boolean;
@@ -72,6 +74,8 @@ export interface CatalogProductDetail {
 	replacementPath: string | null;
 	shipping: CatalogShipping;
 	hsnCode: string | null;
+	content: ProductContentWrite;
+	images: Array<{ assetId: string; url: string }>;
 	relatedProductIds: string[];
 	upsellProductIds: string[];
 	crossSellProductIds: string[];
@@ -102,6 +106,8 @@ export interface CatalogProductWrite {
 	shipping: CatalogShipping;
 	hsnCode: string | null;
 	variants: CatalogVariantWrite[];
+	slug?: string;
+	content?: ProductContentWrite;
 	relatedProductIds?: string[];
 	upsellProductIds?: string[];
 	crossSellProductIds?: string[];

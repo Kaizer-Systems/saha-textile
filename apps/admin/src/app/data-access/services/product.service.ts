@@ -1,6 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
+import type {
+	GoLiveResult,
+	ProductBundle,
+	ProductBundleWrite,
+	ProductCreate,
+} from '@saha-textile/contracts';
 import { Observable } from 'rxjs';
 
 import {
@@ -48,6 +54,31 @@ export class ProductService {
 	saveCatalogProduct(idOrSlug: string, body: CatalogProductWrite): Observable<{ id: string; slug: string }> {
 		return this.http.post<{ id: string; slug: string }>(
 			`${environment.apiUrl}/admin/catalog/products/${encodeURIComponent(idOrSlug)}`,
+			body,
+		);
+	}
+
+	createCatalogProduct(body: ProductCreate): Observable<{ id: string; slug: string }> {
+		return this.http.post<{ id: string; slug: string }>(`${environment.apiUrl}/admin/catalog/products`, body);
+	}
+
+	/** The one check behind Go Live, for the form and the list. */
+	goLive(idOrSlug: string): Observable<GoLiveResult> {
+		return this.http.post<GoLiveResult>(
+			`${environment.apiUrl}/admin/catalog/products/${encodeURIComponent(idOrSlug)}/go-live`,
+			{},
+		);
+	}
+
+	getBundle(idOrSlug: string): Observable<ProductBundle | null> {
+		return this.http.get<ProductBundle | null>(
+			`${environment.apiUrl}/admin/catalog/products/${encodeURIComponent(idOrSlug)}/bundle`,
+		);
+	}
+
+	saveBundle(idOrSlug: string, body: ProductBundleWrite): Observable<ProductBundle> {
+		return this.http.post<ProductBundle>(
+			`${environment.apiUrl}/admin/catalog/products/${encodeURIComponent(idOrSlug)}/bundle`,
 			body,
 		);
 	}

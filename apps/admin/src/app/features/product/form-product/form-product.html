@@ -3,6 +3,12 @@
 	[formGroup]="form"
 	(ngSubmit)="submit()"
 >
+	<app-language-switch
+		[locales]="locales"
+		[active]="fields.locale()"
+		[missing]="missing()"
+		(changed)="switchLanguage($event)"
+	/>
 	<div class="vertical-tabs">
 		<div class="row">
 			<div class="col-xl-3 col-lg-4">
@@ -41,7 +47,9 @@
 										placeholder="{{ 'enter_product_name' | transloco }}"
 										formControlName="name"
 									/>
-									@if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
+									@if (fields.source('name'); as guide) {
+									<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+									} @if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
 									<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
@@ -50,7 +58,7 @@
 									[gridClass]="'col-sm-9'"
 									[label]="'short_description'"
 									[for]="'short_description'"
-									[required]="true"
+									[required]="false"
 								>
 									<textarea
 										class="form-control"
@@ -60,11 +68,8 @@
 										formControlName="short_description"
 									></textarea>
 									<p class="help-text">{{ '*Maximum length should be 300 characters.' }}</p>
-									@if (form.controls['short_description'].touched &&
-									form.controls['short_description'].errors?.['required']) {
-									<div class="invalid-feedback">
-										{{ 'short_description_is_required' | transloco }}
-									</div>
+									@if (fields.source('short_description'); as guide) {
+									<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
 									}
 								</app-form-fields>
 								<app-form-fields
@@ -72,7 +77,7 @@
 									[gridClass]="'col-sm-9'"
 									[label]="'description'"
 									[for]="'description'"
-									[required]="true"
+									[required]="false"
 								>
 									<div class="custom-editor">
 										@if(isBrowser) {
@@ -83,39 +88,37 @@
 											[placeholder]="'Type here...'"
 											formControlName="description"
 										/>
-										} @if (form.controls['description'].touched &&
-										form.controls['description'].errors?.['required']) {
-										<div class="invalid-feedback">{{ 'description_is_required' | transloco }}</div>
+										} @if (fields.source('description'); as guide) {
+										<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
 										}
 									</div>
 								</app-form-fields>
-								@if ((setting$ | async )?.activation?.multivendor) {
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'store'"
-									[for]="'store'"
-									[required]="true"
-								>
-									@if(isBrowser) {
-									<select2
-										class="custom-select"
-										[placeholder]="'select_store' | transloco"
-										[data]="(store$ | async)?.length ? (store$ | async) : []"
-										formControlName="store_id"
-										noResultMessage="{{ 'no_data_found' | transloco }}"
-										id="store_id"
-										resettable
-									/>
-									} @if (form.controls['store_id'].touched &&
-									form.controls['store_id'].errors?.['required']) {
-									<div class="invalid-feedback">{{ 'store_is_required' | transloco }}</div>
-									}
-								</app-form-fields>
-								}
 							</div>
 						</ng-template>
 					</li>
+					@if (form.controls['type'].value === 'bundle') {
+					<li
+						ngbNavItem="bundle"
+						id="bundle"
+					>
+						<a ngbNavLink>
+							<i class="ri-stack-line"></i>
+							{{ 'bundle' | transloco }}
+						</a>
+						<ng-template ngbNavContent>
+							<div
+								class="tab"
+								tab="bundle"
+							>
+								<app-product-bundle
+									[(value)]="bundle"
+									[products]="bundleProducts()"
+									[locale]="fields.locale()"
+								/>
+							</div>
+						</ng-template>
+					</li>
+					}
 					<li
 						ngbNavItem="inventory"
 						id="inventory"
@@ -255,8 +258,7 @@
 								>
 									<div class="input-group">
 										<span class="input-group-text">
-											{{(setting$ | async)?.general?.default_currency?.symbol ? (setting$ |
-											async)?.general?.default_currency?.symbol : '₹'}}
+											₹
 										</span>
 										<input
 											class="form-control"
@@ -397,73 +399,15 @@
 										}
 									</app-form-fields>
 								</div>
-								@if (form.controls['type'].value === 'classified' || catalogProduct) {
+								@if (form.controls['type'].value !== 'bundle') {
+								<app-option-groups
+									[(groups)]="optionGroups"
+									[definitions]="definitions()"
+									[locale]="fields.locale()"
+								/>
+								} @if (form.controls['type'].value === 'classified' || catalogProduct) {
 								<div class="variant-box border-top">
-									@if (!catalogProduct) {
-									<ng-container formArrayName="variants">
-										@for (variant of variantControl.controls; track variant ; let index = $index ) {
-										<div
-											class="row"
-											formGroupName="{{ index }}"
-										>
-											<div class="col-sm-5 variant-row">
-												<app-form-fields
-													[label]="'attribute'"
-													[for]="'attribute'+index"
-												>
-													@if(isBrowser) {
-													<select2
-														class="custom-select d-block"
-														[data]="(attribute$ | async)?.length ? (attribute$ | async) : []"
-														[placeholder]="'select_attribute' | transloco "
-														(update)="updateAttribute($event, index)"
-														formControlName="id"
-														noResultMessage="{{ 'no_data_found' | transloco }}"
-														resettable
-													/>
-													}
-												</app-form-fields>
-											</div>
-											<div class="col-sm-5 variant-row">
-												<app-form-fields
-													[label]="'value'"
-													[for]="'value'+index"
-												>
-													@if(isBrowser) {
-													<select2
-														class="custom-select d-block"
-														[data]="variant.get('variant_option')?.value?.length ? variant.get('variant_option').value : []"
-														[placeholder]="'select_value' | transloco "
-														formControlName="attribute_values"
-														(update)="updateAttributeValue($event, index)"
-														noResultMessage="{{ 'no_data_found' | transloco }}"
-														[multiple]="true"
-													/>
-													}
-												</app-form-fields>
-											</div>
-											<div class="col-sm-2 delete-variant">
-												<a
-													href="javascript:void(0)"
-													class="invalid-feedback"
-													(click)="removeVariant(index)"
-												>
-													{{ 'remove' | transloco }}
-												</a>
-											</div>
-										</div>
-										}
-									</ng-container>
-									@if ((attribute$ | async)?.length) {
-									<app-button
-										[class]="'btn btn-theme mb-4'"
-										[id]="'add_variant'"
-										[spinner]="false"
-										(click)="addVariant($event)"
-									>
-										{{ 'add_variant' | transloco }}
-									</app-button>
-									} } @if (variationControl.controls.length) {
+									@if (variationControl.controls.length) {
 									<div class="shipping-accordion variant-accordion">
 										<app-form-fields
 											[labelClass]="'form-label-title col-sm-3 mb-0'"
@@ -611,11 +555,7 @@
 																>
 																	<div class="input-group">
 																		<span class="input-group-text">
-																			{{ (setting$ |
-																			async)?.general?.default_currency?.symbol ?
-																			(setting$ |
-																			async)?.general?.default_currency?.symbol :
-																			'₹' }}
+																			₹
 																		</span>
 																		<input
 																			class="form-control"
@@ -635,11 +575,7 @@
 																>
 																	<div class="input-group">
 																		<span class="input-group-text">
-																			{{ (setting$ |
-																			async)?.general?.default_currency?.symbol ?
-																			(setting$ |
-																			async)?.general?.default_currency?.symbol :
-																			'₹' }}
+																			₹
 																		</span>
 																		<input
 																			class="form-control"
@@ -1012,34 +948,12 @@
 								class="tab"
 								tab="images"
 							>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'thumbnail'"
-									[for]="'product_thumbnail_id'"
-									[required]="false"
-								>
-									<app-image-upload
-										[multipleImage]="false"
-										[image]="product?.product_thumbnail"
-										[helpText]="'*Upload image size 600x600px recommended'"
-										(selectedFiles)="selectThumbnail($event)"
-									/>
-								</app-form-fields>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'images'"
-									[for]="'product_galleries_id'"
-									[required]="false"
-								>
-									<app-image-upload
-										[multipleImage]="true"
-										[images]="product?.product_galleries"
-										[helpText]="'*Upload image size 600x600px recommended'"
-										(selectedFiles)="selectImages($event)"
-									/>
-								</app-form-fields>
+								<app-product-images
+									[(value)]="images"
+									[(tiles)]="tiles"
+									[combinations]="combinations()"
+									[locale]="fields.locale()"
+								/>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -1086,6 +1000,24 @@
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
+									[label]="'url_slug'"
+									[for]="'slug'"
+									[required]="false"
+								>
+									<input
+										class="form-control"
+										id="slug"
+										type="text"
+										formControlName="slug"
+									/>
+									<p class="help-text">{{ 'url_slug_help' | transloco }}</p>
+									@if (form.controls['slug'].errors?.['pattern']) {
+									<div class="invalid-feedback d-block">{{ 'url_slug_invalid' | transloco }}</div>
+									}
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
 									[label]="'meta_title'"
 									[for]="'meta_title'"
 									[required]="false"
@@ -1097,6 +1029,9 @@
 										placeholder="{{'enter_meta_title' | transloco }}"
 										formControlName="meta_title"
 									/>
+									@if (fields.source('meta_title'); as guide) {
+									<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+									}
 								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
@@ -1112,6 +1047,9 @@
 										rows="3"
 										formControlName="meta_description"
 									></textarea>
+									@if (fields.source('meta_description'); as guide) {
+									<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+									}
 								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
@@ -1449,6 +1387,25 @@
 										</p>
 									</div>
 								</app-form-fields>
+								@if (goLiveGaps().length) {
+								<div class="alert alert-danger">
+									<strong>{{ 'go_live_blocked' | transloco }}</strong>
+									<ul class="mb-0 mt-2">
+										@for (gap of gapLabels(); track gap) {
+										<li>{{ gap }}</li>
+										}
+									</ul>
+								</div>
+								} @if (catalogProduct && catalogProduct.status !== 'live' && catalogProduct.status !== 'discontinued') {
+								<button
+									type="button"
+									id="go_live_btn"
+									class="btn btn-theme mb-4"
+									(click)="goLive()"
+								>
+									{{ 'go_live' | transloco }}
+								</button>
+								}
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"

@@ -13,11 +13,3 @@ export function injectAttributesQuery(params: () => Params) {
 		queryFn: () => firstValueFrom(attributeService.getAttributes(params())),
 	}));
 }
-
-export function injectAttributeValuesQuery(params: () => Params) {
-	const attributeService = inject(AttributeService);
-	return injectQuery(() => ({
-		queryKey: ['attribute-values', params()],
-		queryFn: () => firstValueFrom(attributeService.getAttributeValues(params())),
-	}));
-}

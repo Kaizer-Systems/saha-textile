@@ -9,7 +9,7 @@ export interface AttributeValueModel extends IPaginateModel {
 }
 
 export interface IAttribute {
-	id: number;
+	id: string;
 	name: string;
 	slug: string;
 	status: boolean;

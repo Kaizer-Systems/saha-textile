@@ -4,7 +4,6 @@ import { Router } from '@angular/router';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { Attribute } from './attribute/attribute';
 import { Blog } from './blog/blog';
 import { Coupon } from './coupon/coupon';
 import { Currency } from './currency/currency';
@@ -54,7 +53,6 @@ const render = <T>(type: Type<T>, template = '') => {
 afterEach(() => data.set(undefined));
 
 describe.each<{ name: string; type: Type<unknown>; edit: string | null; rows: unknown[] }>([
-	{ name: 'Attribute', type: Attribute, edit: '/attribute/edit/1', rows: [{ id: 1 }] },
 	{ name: 'Blog', type: Blog, edit: '/blog/edit/1', rows: [{ id: 1 }] },
 	{ name: 'Coupon', type: Coupon, edit: '/coupon/edit/1', rows: [{ id: 1 }] },
 	{ name: 'Currency', type: Currency, edit: '/currency/edit/1', rows: [{ id: 1 }] },

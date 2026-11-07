@@ -43,7 +43,7 @@ import {
 } from './admin-notifications.queries';
 import { injectAdminUserAuthorityQuery, injectAdminUsersQuery, injectRolesForInviteQuery } from './admin-users.queries';
 import { injectAttachmentsQuery } from './attachment.queries';
-import { injectAttributeValuesQuery, injectAttributesQuery } from './attribute.queries';
+import { injectAttributesQuery } from './attribute.queries';
 import { injectBlogsQuery } from './blog.queries';
 import { injectCategoriesQuery } from './category.queries';
 import { injectCountriesQuery } from './country.queries';
@@ -140,7 +140,6 @@ describe('list queries', () => {
 		['users', () => injectAdminUsersQuery(params as never), ['admin-users', { status: 1 }]],
 		['invite roles', () => injectRolesForInviteQuery(), ['admin-roles']],
 		['attributes', () => injectAttributesQuery(params), ['attributes', { status: 1 }]],
-		['attribute values', () => injectAttributeValuesQuery(params), ['attribute-values', { status: 1 }]],
 		['blogs', () => injectBlogsQuery(params), ['blogs', { status: 1 }]],
 		['categories', () => injectCategoriesQuery(params), ['categories', { status: 1 }]],
 		['countries', () => injectCountriesQuery(), ['countries']],

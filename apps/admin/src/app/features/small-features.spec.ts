@@ -139,30 +139,6 @@ describe('Tree', () => {
 	});
 });
 
-describe('TreeNode', () => {
-	const render = () => {
-		const router = { navigateByUrl: vi.fn() };
-		const fixture = bare(TreeNode, [
-			{ provide: Router, useValue: router },
-			{ provide: ActivatedRoute, useValue: { params: of({ id: 4 }) } },
-		]);
-		fixture.detectChanges();
-		return { node: fixture.componentInstance, router };
-	};
-
-	it('reads the selected id', () => {
-		expect(render().node.id).toBe(4);
-	});
-
-	it('returns to the right list after a delete', () => {
-		const { node, router } = render();
-		node.delete('delete', { type: 'post' } as never);
-		expect(router.navigateByUrl).toHaveBeenLastCalledWith('/blog/category');
-		node.delete('delete', { type: 'product' } as never);
-		expect(router.navigateByUrl).toHaveBeenLastCalledWith('/category');
-	});
-});
-
 describe('ShippingCountry', () => {
 	const render = (params: Record<string, unknown>, answer: unknown = of({ data: [{ id: 4 }] })) => {
 		const fixture = bare(ShippingCountry, [

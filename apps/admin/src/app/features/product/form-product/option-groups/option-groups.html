@@ -1,0 +1,135 @@
+<h4 class="fw-semibold mb-3">{{ 'options' | transloco }}</h4>
+<div class="shipping-accordion variant-accordion">
+	<div ngbAccordion>
+		@for (group of groups(); track group.attributeCode; let index = $index) {
+		<div
+			ngbAccordionItem
+			[collapsed]="false"
+		>
+			<div ngbAccordionHeader>
+				<button
+					ngbAccordionButton
+					type="button"
+				>
+					{{ title(group) }} · {{ group.semanticRole | transloco }}
+				</button>
+			</div>
+			<div ngbAccordionCollapse>
+				<div ngbAccordionBody>
+					<ng-template>
+						<app-form-fields
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
+							[label]="'role'"
+							[for]="'role_' + index"
+							[required]="true"
+						>
+							<select2
+								class="custom-select"
+								[id]="'role_' + index"
+								[data]="roleOptions"
+								[value]="group.semanticRole"
+								(update)="update(index, { semanticRole: $any($event.value) })"
+							/>
+							<p class="help-text">{{ 'role_help_' + group.semanticRole | transloco }}</p>
+						</app-form-fields>
+						<app-form-fields
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
+							[label]="'display_style'"
+							[for]="'style_' + index"
+							[required]="true"
+						>
+							<select2
+								class="custom-select"
+								[id]="'style_' + index"
+								[data]="styleOptions"
+								[value]="group.displayStyle"
+								(update)="update(index, { displayStyle: $any($event.value) })"
+							/>
+						</app-form-fields>
+						<app-form-fields
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
+							[label]="'values'"
+							[for]="'values_' + index"
+							[required]="true"
+						>
+							<select2
+								class="custom-select"
+								[id]="'values_' + index"
+								[data]="valueOptions(group)"
+								[value]="picked(group)"
+								[multiple]="true"
+								(update)="pick(index, group, $event)"
+							/>
+							@for (term of unnamed(group); track term.code) {
+							<div class="invalid-feedback d-block">
+								{{ 'value_needs_name' | transloco: { code: term.code } }}
+							</div>
+							}
+						</app-form-fields>
+						@if (group.semanticRole === 'named_add_on') {
+						<app-form-fields
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
+							[label]="'base_value'"
+							[for]="'base_' + index"
+							[required]="true"
+						>
+							<select2
+								class="custom-select"
+								[id]="'base_' + index"
+								[data]="baseOptions(group)"
+								[value]="group.defaultTermCode ?? ''"
+								(update)="update(index, { defaultTermCode: $any($event.value) })"
+							/>
+						</app-form-fields>
+						<app-form-fields
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
+							[label]="'override_price'"
+							[for]="'override_' + index"
+						>
+							@for (term of group.terms; track term.code) {
+							<div class="input-group mb-2">
+								<span class="input-group-text">{{ term.label[locale()] ?? term.code }}</span>
+								<input
+									class="form-control"
+									type="number"
+									min="0"
+									[value]="term.priceDeltaINR ?? ''"
+									(change)="setOverride(index, group, term.code, $any($event.target).value)"
+								/>
+							</div>
+							}
+							<p class="help-text">{{ 'override_price_help' | transloco }}</p>
+						</app-form-fields>
+						}
+						<a
+							class="invalid-feedback d-block cursor-pointer"
+							(click)="remove(index)"
+						>
+							{{ 'remove' | transloco }}
+						</a>
+					</ng-template>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+</div>
+<app-form-fields
+	[labelClass]="'form-label-title col-sm-3 mb-0'"
+	[gridClass]="'col-sm-9'"
+	[label]="'add_option_group'"
+	[for]="'add_option_group'"
+>
+	<select2
+		class="custom-select"
+		id="add_option_group"
+		[data]="attributeOptions()"
+		[placeholder]="'add_option_group' | transloco"
+		(update)="add($event)"
+	/>
+</app-form-fields>

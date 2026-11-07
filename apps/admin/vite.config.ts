@@ -63,6 +63,11 @@ export default defineConfig(() => ({
 			'@core': appPath('./src/app/core'),
 		},
 	},
+	// Found late, these make Vite rebundle mid-load, and the page then mixes two copies of Angular
+	// (NG0203 from the loading bar). Listing them keeps the first bundle complete.
+	optimizeDeps: {
+		include: ['@ngx-loading-bar/core', '@ngx-loading-bar/http-client', '@ngx-loading-bar/router'],
+	},
 	// SPA / client-rendered via the standalone Angular Vite plugin (no Nitro/SSR).
 	// The admin is internal (behind login) — SSR adds no SEO/first-paint value and
 	// conflicts with the zone.js-based Fastkart app. File-based routing + PWA come

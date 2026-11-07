@@ -4,7 +4,7 @@ wide: true
 description: What the admin application is, how it is organized, and what to check before changing it.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/admin/src/app
     - apps/api/src/admin

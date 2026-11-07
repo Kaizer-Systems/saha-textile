@@ -4,7 +4,7 @@ slug: /payments/ccavenue
 description: "The INR gateway role: HDFC's documentation and the calls this project will make."
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 search_keywords: CCAvenue HDFC VAS K R MARKETING ONLINE integration kit non-seamless initiateTransaction encResp orderStatusTracker refundOrder DoWebTrans working key access code
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts

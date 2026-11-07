@@ -571,6 +571,7 @@ Roles live in the `mediaRoles` collection: seeded roles are undeletable and unre
     - staging and prod use Cloudflare's edge certificate plus a Cloudflare Origin Certificate on Nginx (Full strict).
 - Hostnames are single-level subdomains (locked 2026-11-02), because Cloudflare's free Universal SSL covers only `*.sahatextile.com`. Staging: `staging.sahatextile.com` (storefront), `admin-staging.sahatextile.com`, `api-staging.sahatextile.com`, `cdn-staging.sahatextile.com`. Production (locked 2026-11-03): the storefront on the bare `sahatextile.com` (as the live WordPress site today; `www` permanently redirects to it), `admin.sahatextile.com`, `api.sahatextile.com`, `cdn.sahatextile.com`. Cookies are host-only (see the owner decision round of 2026-11-06).
 - Protected branches are changed only through reviewed PRs.
+- The full agreed deployment design is in `production-deployment-plan.mdx` (2026-11-08).
 
 ## Audit and retention
 
@@ -906,7 +907,7 @@ Closed: `DEC-DOMAIN-TOPOLOGY`.
 - **Cookies are host-only.** `COOKIE_DOMAIN` stays empty in every environment, so every cookie stays on the API host with the `__Host-` prefix and none reaches WordPress, staging or another subdomain. The storefront and admin take the CSRF token from the API's reply, not from a cookie. Double-submit CSRF itself is unchanged.
 - **Staging runs on demand.** A script creates the staging droplet, and it stays up until the owner runs the destroy script by hand. Nothing destroys it automatically. The destroy script removes everything billed for that droplet; the worst case for forgetting is about $24 a month.
 - **Backups go to Spaces only.** Nightly and encrypted, to a private bucket in `sgp1`. The server holds only the key to encrypt, so it cannot read old backups. The owner accepted the risk that a DigitalOcean account problem affects the shop and its backups together.
-- **Deploys reach the droplet by SSH through Cloudflare Tunnel.** Port 22 stays closed to the internet. DigitalOcean's web console is the fallback.
+- **Deploys reach the droplet by SSH through Cloudflare Tunnel.** Port 22 stays closed to the internet. The Recovery Console is the fallback (corrected 2026-11-08: the browser Droplet Console needs the SSH port open).
 
 ## Owner decision round (2026-11-07) — known gaps after Chunk F
 
@@ -938,6 +939,28 @@ Closed: `DEC-DOMAIN-TOPOLOGY`.
 - **D9:** the old `POST /orders` stays for Chunk G.
 - **Logos:** a Brand Kit in admin, through the media pipeline, so a new owner uploads their own after deployment. The TIFF is the master, and both versions are cut from it so the reds match. Wide places show the full logo with seal, name and tagline; small spaces show the seal. On dark or coloured areas the logo sits on white and keeps its own colours.
 - **Cookies:** the box has three equal buttons, and refusing takes one click. Cookie settings shows all six locked categories; empty ones say Not in use with no switch, and Accept all turns on only what is in use. `st_consent` holds the answer in the browser and `POST /privacy/consent` keeps the history. The Contact map waits for consent or a click. The Privacy Policy cookie section is a draft until the owner's lawyer or CA reviews it.
+
+## Owner decision round (2026-11-08) — deployment
+
+Closed: `DEC-SECRETS-DELIVERY`. The full design is in `production-deployment-plan.mdx`.
+
+- **Code moves `dev → staging → main` with normal merge commits.** This replaces squash-only on `main` and `staging`. Squash is for short-lived branches: between permanent branches it conflicted on the second release in a test, while normal merges ran six releases clean. `main` and `staging` lose the linear-history rule and keep signed commits, PR-only, no force-push and no deletion. `qa` retires.
+- **Images build once, when code merges into `staging`.** Production runs the same digests, found through the Git tree hash, which is the same on both branches.
+- **Merging to `main` starts the deploy, then it waits for the owner's approval in GitHub.**
+- **Every release passes the staging droplet,** with a logged emergency switch for a broken shop. CI and approval still apply.
+- **Staging create and destroy scripts run from the owner's Mac for now.** They move to a GitHub pipeline once secrets are stored more securely, so they stop depending on one device.
+- **Secrets are GitHub Environment secrets written to mounted read-only files,** with the option to move to a secrets service later. The master copy is in Bitwarden, with a second copy of the backup key in NordPass.
+- **The Recovery Console is the break-glass route,** with the admin user's password in Bitwarden.
+- **Reboots are the owner's call.** Security patches install automatically, an email says when a reboot is pending, and after 7 days the server reboots itself at 4 am IST. A super admin screen will show patch status and trigger the reboot with a PIN, with manual fallbacks.
+- **Data stays on the droplet's own disk.** No separate block volume.
+- **The catalogue will be large.** The 23 products and 40 SKUs figure described the old WordPress test site. Size against measured data.
+- **Origin lockdown adds Authenticated Origin Pulls with our own zone certificate,** on top of the firewall limit to Cloudflare's ranges.
+- **Staging sits behind a Cloudflare Access login wall** on `staging.` and `admin-staging.`. `api-staging.` stays reachable for webhooks.
+- **Deploy gap:** each app gets its own "back in a moment" page in its own look, served by Nginx as a static copy. The gap is measured on staging before anything more complex is built.
+- **Backups keep 30 daily and 12 monthly,** with versioning on. The owner accepted that the server's key can delete backups, because Spaces has no write-only key.
+- **Monitoring is DigitalOcean only.** A super admin screen shows metrics fetched by the API. It grows with the number of droplets: a named switcher, and a view comparing metrics across servers.
+- **The developer portal stays local for now.** `DEC-PORTAL-PRIVATE-ACCESS` stays open.
+- **What happens to WordPress hosting is decided at launch.** A full export before the switch stays required.
 
 ## Open decisions
 

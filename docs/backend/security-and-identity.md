@@ -5,7 +5,7 @@ description: Authentication, cookie sessions, CSRF, authorization and identity f
 search_keywords: 'cookies csrf st_access st_refresh st_admin_access otp msg91 jwt session bola audiences pin'
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/api/src/auth
     - apps/api/src/admin

@@ -4,7 +4,7 @@ wide: true
 description: Health endpoints, logging, metrics, test layers and the backend definition of done.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/api/src/health
     - apps/api/src/infra/persistence.module.ts

@@ -3,7 +3,7 @@ title: Documentation Status Model
 description: The five page statuses used in the portal.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - scripts/validate-developer-portal.mjs

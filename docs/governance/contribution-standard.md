@@ -3,7 +3,7 @@ title: Documentation Contribution Standard
 description: When to update the portal and how to write for it.
 status: implemented
 audience: [frontend, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - AGENTS.md
     - docs/engineering-live-context/owner-decisions-log.mdx

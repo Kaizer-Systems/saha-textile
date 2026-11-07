@@ -398,15 +398,20 @@ show as a placeholder tile; the review page shows them via signed URLs).
 - **BLOCKED — deployment:** `DEC-PORTAL-PRIVATE-ACCESS` is unanswered; whole-host default-deny identity and origin protection must be implemented and probed before promotion.
 - **PARTIAL — follow-up debt:** repository-level pnpm/peer/formatting issues and Storybook bundle/shell warnings remain tracked separately from the completed local portal foundation.
 
+#### Agreed plan (2026-11-08)
+
+The full design and build order are in `production-deployment-plan.mdx`.
+
 #### Open items carried into this chunk (2026-11-07)
 
-- **Every deploy runs `pnpm --filter @saha-textile/api release:prepare` after the API image
-  starts.** It applies the Meilisearch settings and rebuilds the index from Mongo, and it is safe
+- **Every deploy runs `node dist/rebuild-search-index.js` in the API container after it
+  starts** (the image has no pnpm or tsx, so `release:prepare` cannot run there). It applies the Meilisearch settings and rebuilds the index from Mongo, and it is safe
   to repeat. Until it has run, listings answer from Mongo automatically, so nothing breaks, but
   typeahead search answers 503. Set `MEILISEARCH_HOST`, `MEILISEARCH_API_KEY` and, on a shared
   server, `MEILISEARCH_INDEX` first.
-- **The first deployed database is built from seeds, plus hand entry.** No deployed database
-  exists yet, so the local data edits of 2026-11-06 need no migration. Real products are entered
+- **The first deployed database is built from a first-run setup command, plus hand entry.** That
+  command is still to build: no seed runs in the image, and the general seed adds demo customers
+  and promotions. No deployed database exists yet, so the local data edits of 2026-11-06 need no migration. Real products are entered
   by hand in admin. Do not run the demo catalogue seed on staging or production.
 - **Deep review of all URL work before the DNS switch.** The redirect rows, the 410 rules and the
   old-address logic were designed as if WordPress were a working shop. It is not: nobody maintains

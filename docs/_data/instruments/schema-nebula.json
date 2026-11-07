@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-11-07",
+	"lastVerified": "2026-11-08",
 	"route": "/database/schema-nebula",
 	"title": "Schema Nebula",
 	"summary": "A map of existing and planned MongoDB collections, with one star per collection.",

@@ -4,7 +4,7 @@ wide: true
 description: What the storefront is, how it is organized, and what to check before changing it.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/storefront/src/app
     - apps/storefront/vite.config.ts

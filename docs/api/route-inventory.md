@@ -4,7 +4,7 @@ wide: true
 description: Every API route with its access rule.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts
@@ -238,8 +238,8 @@ Admin catalogue reads answer `no-store`.
 | `GET`    | `/admin/content-blocks`               | `theme_option.index` | Banners by owner and position                                                |
 | `PUT`    | `/admin/content-blocks`               | `theme_option.edit`  | Create or replace the banner at its position and slot                        |
 | `DELETE` | `/admin/content-blocks/:key`          | `theme_option.edit`  | Remove a banner                                                              |
-| `GET`    | `/admin/settings/brand`               | `setting.index`      | The Brand Kit settings                                      |
-| `PUT`    | `/admin/settings/brand`               | `setting.edit`       | Set the shop name, logo and seal                            |
+| `GET`    | `/admin/settings/brand`               | `setting.index`      | The Brand Kit settings                                                       |
+| `PUT`    | `/admin/settings/brand`               | `setting.edit`       | Set the shop name, logo and seal                                             |
 | `GET`    | `/admin/settings/home-hero`           | `theme_option.index` | The selected home hero layout                                                |
 | `PUT`    | `/admin/settings/home-hero`           | `theme_option.edit`  | Select the home hero layout                                                  |
 | `POST`   | `/admin/youtube/validate`             | `product.edit`       | Normalise a pasted YouTube link and confirm the video                        |
@@ -295,7 +295,7 @@ The server enforces public visibility, not the caller. Public repository calls d
 | ------ | ---------------------------------------------- | ------------------ | ----------------------------------------------------------- |
 | `GET`  | `/media/upload-rules`                          | Public             | Size, type and count limits for uploads                     |
 | `GET`  | `/storefront/banners`                          | Public             | A page's live banners, resolved for the locale              |
-| `GET`  | `/storefront/brand`                            | Public            | The shop's name, logo, seal and icons |
+| `GET`  | `/storefront/brand`                            | Public             | The shop's name, logo, seal and icons                       |
 | `GET`  | `/storefront/youtube/rail`                     | Public             | Cached latest channel videos for a placement                |
 | `POST` | `/storefront/reviews/photos/presign`           | Storefront session | Start a review photo upload (verified buyers only)          |
 | `POST` | `/storefront/reviews/photos/:assetId/finalize` | Storefront session | The photo upload finished; queue processing                 |

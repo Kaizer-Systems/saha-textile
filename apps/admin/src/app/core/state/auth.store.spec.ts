@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 
@@ -56,11 +57,14 @@ class FakeGateway extends AdminAuthGateway {
 	override ensureCsrfToken(): Observable<void> {
 		return of(undefined);
 	}
+	/** The API's answer when a sign-in fails; a `401` is a refused credential. */
+	refusal: Error = new HttpErrorResponse({ status: 401 });
+
 	override loginWithPassword(): Observable<AdminSessionResult> {
-		return this.accept ? of(SESSION) : throwError(() => new Error('rejected'));
+		return this.accept ? of(SESSION) : throwError(() => this.refusal);
 	}
 	override loginWithPin(): Observable<AdminSessionResult> {
-		return this.accept ? of(SESSION) : throwError(() => new Error('rejected'));
+		return this.accept ? of(SESSION) : throwError(() => this.refusal);
 	}
 	override resumeWithPin(): Observable<AdminSessionResult> {
 		return this.accept ? of(SESSION) : throwError(() => new Error('rejected'));
@@ -188,6 +192,26 @@ describe('admin AuthStore', () => {
 
 		// Identical by design: the message must not reveal which method is configured.
 		expect(store.error()).toBe('invalid_credentials');
+	});
+
+	// A refusal that never read the password must not be reported as a wrong password: that
+	// is what sent an operator looking for a PIN they had never set (2026-11-07).
+	it.each([
+		['a CSRF refusal', new HttpErrorResponse({ status: 403 })],
+		['a rate limit', new HttpErrorResponse({ status: 429 })],
+		['a server error', new HttpErrorResponse({ status: 500 })],
+		['an unreachable API', new HttpErrorResponse({ status: 0 })],
+		['a failure with no response', new Error('no response')],
+	])('does not call %s wrong credentials', async (_name, refusal) => {
+		gateway.accept = false;
+		gateway.refusal = refusal;
+		const store = TestBed.inject(AuthStore);
+
+		await store.loginWithPassword({ identifier: 'operator', password: 'a-real-password' });
+		expect(store.error()).toBe('something_went_wrong_please_try_again');
+
+		await store.loginWithPin({ identifier: 'operator', pin: '135790' });
+		expect(store.error()).toBe('something_went_wrong_please_try_again');
 	});
 
 	it('authenticates only after /me confirms the session', async () => {

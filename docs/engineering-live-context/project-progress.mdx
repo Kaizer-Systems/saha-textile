@@ -3784,6 +3784,7 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
 - _(append)_
 
 ---
+- 2026-11-07 — [DONE] **Admin sign-in lock-out fixed.** Cookies for a session that no longer existed stayed in the browser, `CsrfGuard` answered `403 csrf_rejected` on login and refresh before the password was read, and the login screen reported that as wrong credentials with a PIN hint. `CsrfGuard` now treats dead cookies on a `@Public()` route as anonymous; routes that need a session stay fail-closed and a live session on a public route is still fully checked. The admin store calls only a `401` wrong credentials, the PIN hint shows only on the PIN form, and the Mongo adapter reports `password` as the preferred method whenever no PIN exists. Proved in the browser with a test admin in `saha_textile_admin_home`: `403` before the fix, `200` after, with the same cookies. Tool: claude-code.
 
 ## Media / Spaces
 

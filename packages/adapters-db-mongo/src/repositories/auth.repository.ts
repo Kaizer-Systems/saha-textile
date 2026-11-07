@@ -706,7 +706,10 @@ const toAdminUserAuthState = (
 	status: doc.status as AdminUserAuthState['status'],
 	passwordHash,
 	pinHash: pin?.pinHash ?? null,
-	preferredLoginMethod: (doc.preferredLoginMethod as AdminUserAuthState['preferredLoginMethod']) ?? 'password',
+	// Same rule as `toAdminUser`: without a PIN the only method left is the password.
+	preferredLoginMethod: pin?.pinHash
+		? ((doc.preferredLoginMethod as AdminUserAuthState['preferredLoginMethod']) ?? 'password')
+		: 'password',
 	permissions: doc.permissions ?? [],
 	tokenVersion: doc.tokenVersion ?? 0,
 	permissionsVersion: doc.permissionsVersion ?? 0,

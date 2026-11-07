@@ -660,6 +660,15 @@ describe.skipIf(!hasMongoEnv())('auth repositories (integration, rs0)', () => {
 			});
 		});
 
+		it('falls back to the password when the preferred PIN no longer exists', async () => {
+			await repo.setPreferredLoginMethod(id, 'pin');
+			await repo.setPinHash(id, null);
+			expect(await repo.findAuthStateById(id)).toMatchObject({
+				pinHash: null,
+				preferredLoginMethod: 'password',
+			});
+		});
+
 		it('locks a PIN, counts failures, and clears the lock', async () => {
 			expect(await repo.recordFailedPinAttempt(id)).toBe(1);
 			expect(await repo.recordFailedPinAttempt(`${P}none`)).toBe(0);

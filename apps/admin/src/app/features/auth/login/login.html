@@ -30,9 +30,11 @@
 						role="alert"
 					>
 						{{ error()! | transloco }}
+						@if (method() === 'pin') {
 						<div class="small mt-1">
 							{{ 'if_your_pin_is_locked_sign_in_with_your_password' | transloco }}
 						</div>
+						}
 					</div>
 					}
 					<div class="input-box">

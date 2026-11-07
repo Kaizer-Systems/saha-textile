@@ -339,4 +339,11 @@ describe('mappers keep a complete row', () => {
 			),
 		).toMatchObject({ username: 'a', pinConfigured: true, preferredLoginMethod: 'pin', lastLoginAt: iso });
 	});
+
+	it('never reports a PIN preference for an operator with no PIN', () => {
+		expect(toAdminUser({ _id: 'a', preferredLoginMethod: 'pin' } as never, false)).toMatchObject({
+			pinConfigured: false,
+			preferredLoginMethod: 'password',
+		});
+	});
 });

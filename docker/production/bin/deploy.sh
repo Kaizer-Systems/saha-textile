@@ -37,6 +37,20 @@ check_inputs() {
 	for name in origin.pem origin.key origin-ca.pem cloudflare-client-ca.pem; do
 		[[ -s "$SAHA_TEXTILE_ROOT/certs/$name" ]] || die "certs/$name is missing or empty."
 	done
+	check_payment_host
+}
+
+# The storefront's CSP lets forms post only to CCAVENUE_HOST. If that is not the host the API sends
+# customers to, the browser refuses the payment form. Skipped until CCAvenue is configured.
+check_payment_host() {
+	grep -q '^CCAVENUE_MERCHANT_ID=.' "$SECRETS/api.env" || return 0
+	local host
+	host="$(sed -n 's/^CCAVENUE_BASE_URL=//p' "$SECRETS/api.env" | tail -n 1)"
+	host="${host:-https://test.ccavenue.com}" # the API's default when the name is unset
+	host="${host#https://}"
+	host="${host%%/*}"
+	[[ "$host" == "$(release_value "$RELEASE" CCAVENUE_HOST)" ]] ||
+		die 'CCAVENUE_HOST in release.env must be the host of CCAVENUE_BASE_URL in secrets/api.env.'
 }
 
 render_public_config() {

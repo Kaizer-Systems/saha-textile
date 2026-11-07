@@ -358,6 +358,12 @@ review-photo upload and 3:4 cards. The demo catalogue now shows real photos thro
 | Live GC on the dev/prod buckets (`MEDIA_GC_LIVE`)                                         | Milestone 10 (ops)              | Dry-run until owner references are complete — today's demo-catalogue photos have no Mongo owner and would be collected. |
 | CDN purge on delete                                                                       | Milestone 10 (ops)              | Needs a DigitalOcean API token per environment (not the Spaces key).                                                    |
 
+**Open MSG91 work (2026-11-07):** no MSG91 template exists yet. The email matrix in
+`codex-msg91-console-setup-plan-prompt.mdx` § 6 now includes `back_in_stock` and
+`product_question_answered`; both are email-only, so neither needs DLT. Create them with the rest
+of that matrix. Until then those two sends record `lastError` and the alert stays pending. The
+reply to `leopard@msg91.com` is still unsent and is the owner's to send.
+
 **Optional, owner's call (not blocking):** a hero text-colour option for banners with text, and
 whether unapproved review photos should appear in the admin media library at all (today they
 show as a placeholder tile; the review page shows them via signed URLs).
@@ -391,6 +397,20 @@ show as a placeholder tile; the review page shows them via signed URLs).
 - **BLOCKED — database catalogue:** persistence schemas, nested validators/indexes, mappings, migrations, and deterministic sanitized examples are not stable enough for authoritative generation.
 - **BLOCKED — deployment:** `DEC-PORTAL-PRIVATE-ACCESS` is unanswered; whole-host default-deny identity and origin protection must be implemented and probed before promotion.
 - **PARTIAL — follow-up debt:** repository-level pnpm/peer/formatting issues and Storybook bundle/shell warnings remain tracked separately from the completed local portal foundation.
+
+#### Open items carried into this chunk (2026-11-07)
+
+- **Deep review of all URL work before the DNS switch.** The redirect rows, the 410 rules and the
+  old-address logic were designed as if WordPress were a working shop. It is not: nobody maintains
+  or uses it, and its products (`pure-silk-handloom-ikkat-saree-s1` to `s8`) are the owner's test
+  entries. Review every row and rule again once Search Console has data. The owner added the
+  `sahatextile.com` domain property on 2026-11-07 with the shop's own Google account; it was still
+  processing that day. Facts found on 2026-11-07: no noindex or nofollow anywhere, so demo pages are
+  open to Google; 72 addresses in the sitemaps, including 26 `?porto_builder=` theme pages; Google
+  also holds addresses outside them, such as `/product-tag/wedding-collection/` and
+  `www.sahatextile.com/Handloom_Cotton?page=2` from an older site, which now answers 404. Use
+  Search Console's indexed list and clicks to decide each address. Nothing here takes effect before
+  launch. The 33 unresolved addresses and the first proposal are in the 2026-11-07 notes.
 
 #### Open items carried into this chunk (2026-11-03)
 

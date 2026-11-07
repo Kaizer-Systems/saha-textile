@@ -897,7 +897,7 @@ Later owner decision (2026-11-05): the Redirects status field also allows 302, f
 
 - The "someone recently purchased" popup shows real sales only, and no claim is ever invented. It starts by itself once paid orders exist and stays hidden when there are none.
 - A real sale is an order in `paid`, `processing`, `shipped` or `delivered`, placed in the last 24 hours, for a product that is live and buyable. The time shown is the real moment of payment. Only the product and the time reach the browser.
-- The demo cart (`cart.json`) stays until Chunk G builds the real cart.
+- The demo cart (`cart.json`) stays until Chunk G builds the real cart. Replaced 2026-11-07: the real cart is built now, checkout later.
 
 ## Owner decision round (2026-11-06) — production path
 
@@ -907,6 +907,17 @@ Closed: `DEC-DOMAIN-TOPOLOGY`.
 - **Staging runs on demand.** A script creates the staging droplet, and it stays up until the owner runs the destroy script by hand. Nothing destroys it automatically. The destroy script removes everything billed for that droplet; the worst case for forgetting is about $24 a month.
 - **Backups go to Spaces only.** Nightly and encrypted, to a private bucket in `sgp1`. The server holds only the key to encrypt, so it cannot read old backups. The owner accepted the risk that a DigitalOcean account problem affects the shop and its backups together.
 - **Deploys reach the droplet by SSH through Cloudflare Tunnel.** Port 22 stays closed to the internet. DigitalOcean's web console is the fallback.
+
+## Owner decision round (2026-11-07) — known gaps after Chunk F
+
+- **Products are entered by hand in admin.** There is no importer. Add Product therefore has to work, and categories and attributes get real save routes, because neither waits on any open decision. Every other demo admin screen stays as it is until its own chunk, and forms that do not save stay silent.
+- **The WordPress site is not a live shop.** Nobody maintains or uses it. It was repaired and tested with a few demo products, including `pure-silk-handloom-ikkat-saree-s1` to `s8`. Everyone is waiting for this project. Those 8 products are not real catalogue and are not entered. See the Chunk J open item on URL work.
+- **Real cart now, checkout later.** The storefront moves to the real cart API with server-side prices. Checkout stays closed until its tax, shipping, numbering and stock decisions are made. This replaces the 2026-11-06 line about the demo cart.
+- **Listing and filter counts come from Meilisearch first, with MongoDB as the automatic fallback**, behind one port, with a shared test proving both give the same result. The product list and its counts always come from the same engine, so they agree; cart and checkout still check real stock. The reasons are scale and white-labelling: logic is built best in class, not only for today's catalogue size.
+- **All Playwright runs use the `saha_textile_e2e` database**, with a test admin created there. That database exists on developer machines and in CI only, never on staging or production, and each run rebuilds it from seed.
+- **Coverage means the test coverage of application code:** 100% of statements, lines, functions and branches across the apps and packages. Repo helper scripts are out of scope.
+- **The logo comes from the owner.** All Fastkart text goes now; the Fastkart logo stays until the owner's file arrives.
+- **Commits:** each finished slice may be committed after the whole suite passes, without asking. Nothing is pushed.
 
 ## Open decisions
 

@@ -41,11 +41,17 @@ export class Sidebar {
 		void this.router.events.subscribe((event) => {
 			if (event instanceof NavigationEnd) {
 				this.menuItems?.forEach((menu: IMenu) => {
-					menu.active = false;
+					this.clearActive(menu);
 					this.activeMenuRecursive(menu, event.url.split('?')[0].toString().split('/')[1].toString());
 				});
 			}
 		});
+	}
+
+	/** Clears a row and every child, so a page left behind stays unhighlighted. */
+	private clearActive(menu: IMenu) {
+		menu.active = false;
+		menu.children?.forEach((child: IMenu) => this.clearActive(child));
 	}
 
 	/** Parent row: show if the operator holds ANY of the listed codes. */

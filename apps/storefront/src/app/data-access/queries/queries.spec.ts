@@ -177,9 +177,10 @@ describe('keyed queries', () => {
 	});
 
 	it('questions and reviews wait for their product', async () => {
-		const questions = options(() => injectQuestionAnswersQuery(() => 7));
+		const questions = options(() => injectQuestionAnswersQuery(() => 'silk-saree'));
 		await questions.queryFn();
 		expect(questions.enabled).toBe(true);
+		expect(questions.queryKey).toEqual(['qna', 'silk-saree']);
 		expect(options(() => injectQuestionAnswersQuery(() => undefined)).enabled).toBe(false);
 		const reviews = options(() => injectReviewQuery(() => 7));
 		await reviews.queryFn();

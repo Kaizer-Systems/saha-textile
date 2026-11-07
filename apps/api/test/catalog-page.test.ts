@@ -214,6 +214,7 @@ describe('category listing read', () => {
 				const start = ((query.page ?? 1) - 1) * pageSize;
 				return { items: all.slice(start, start + pageSize), total: all.length, page: query.page, pageSize };
 			},
+			findById: async (id: string) => all.find((row) => row.id === id) ?? null,
 		};
 		const variants = {
 			listForProducts: async () => [priced('prd_silk', 5000, 4000), priced('prd_cotton', 1500)],

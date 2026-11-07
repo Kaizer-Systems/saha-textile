@@ -1,6 +1,6 @@
 import type { Product } from '@saha-textile/contracts';
 
-import type { SearchPort } from '../ports/search.port';
+import type { SearchEntry, SearchPort } from '../ports/search.port';
 
 /**
  * Two-way spellings Meilisearch will not correct on its own, because words
@@ -29,19 +29,11 @@ export function searchDocument(product: Pick<Product, 'id' | 'slug' | 'sku' | 't
 }
 
 /**
- * Rebuilds the derived search index from Mongo. Live products are upserted.
- * Anything else is removed. Running it again writes the same documents, so it
- * is safe to repeat. Storefront typeahead calls `SearchPort`, not a Mongo regex.
+ * Rebuilds the derived search index from Mongo, live products only. Running it again writes the
+ * same documents, so it is safe to repeat. Typeahead calls `SearchPort`, not a Mongo regex.
  */
-export async function rebuildSearchIndex(products: readonly Product[], search: SearchPort): Promise<number> {
-	let indexed = 0;
-	for (const product of products) {
-		if (product.status !== 'live') {
-			await search.removeProduct(product.id);
-			continue;
-		}
-		await search.indexProduct(product);
-		indexed += 1;
-	}
-	return indexed;
+export async function rebuildSearchIndex(entries: readonly SearchEntry[], search: SearchPort): Promise<number> {
+	const live = entries.filter((entry) => entry.product.status === 'live');
+	await search.replaceIndex(live);
+	return live.length;
 }

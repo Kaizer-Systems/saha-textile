@@ -14,6 +14,7 @@ interface Harness {
 	adminAuth: Repo;
 	customerAuth: Repo;
 	products: Repo;
+	variants: Repo;
 	assets: Repo;
 	media: Repo;
 	mongo: { connect: Mock; disconnect: Mock };
@@ -42,6 +43,7 @@ const h = vi.hoisted(
 			adminAuth: {},
 			customerAuth: {},
 			products: {},
+			variants: {},
 			assets: {},
 			media: {},
 			mongo: {},
@@ -74,6 +76,7 @@ vi.mock('@saha-textile/adapters-db-mongo', () => {
 		MongoAdminUserAuthRepository: repository(() => h.adminAuth),
 		MongoCustomerAuthRepository: repository(() => h.customerAuth),
 		MongoProductRepository: repository(() => h.products),
+		MongoProductVariantRepository: repository(() => h.variants),
 		MongoMediaAssetRepository: repository(() => h.assets),
 		MongoMediaRoleRepository: blank,
 		MongoAdminInviteRepository: blank,
@@ -341,6 +344,7 @@ describe('rebuild-search-index', () => {
 	beforeEach(() => {
 		h.config = { search: { host: 'http://search', apiKey: 'k' } };
 		h.search.rebuild = vi.fn(async (products: unknown[]) => products.length);
+		h.variants = { listForProducts: vi.fn(async () => [{ productId: undefined }]) };
 	});
 
 	it('reads every page and stops at the total', async () => {

@@ -68,7 +68,7 @@
 					class="accordion-button"
 					ngbAccordionButton
 				>
-					<span>{{ key | titleCase }}</span>
+					<span>{{ facetLabels()[key] ?? (key | titleCase) }}</span>
 				</button>
 			</h2>
 			<div ngbAccordionCollapse>

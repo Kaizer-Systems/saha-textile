@@ -8,6 +8,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { ErrorService } from '@data-access/services/error.service';
 import { NotificationService } from '@data-access/services/notification.service';
 
+import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
+
+import { CatalogLocaleInterceptor } from './catalog-locale.interceptor';
 import { ServerApiTimeoutInterceptor } from './server-api-timeout.interceptor';
 import { environment } from '../../../../public/environments/environment';
 
@@ -39,5 +42,24 @@ describe('ServerApiTimeoutInterceptor', () => {
 	it('keeps any other failure', async () => {
 		const failure = new Error('down');
 		await expect(firstValueFrom(run().intercept(api, handler(throwError(() => failure))))).rejects.toBe(failure);
+	});
+});
+
+describe('CatalogLocaleInterceptor', () => {
+	const run = (request: HttpRequest<unknown>) => {
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [CatalogLocaleInterceptor, { provide: ACTIVE_LOCALE, useValue: 'fr' }],
+		});
+		const next = { handle: vi.fn((seen: HttpRequest<unknown>) => of(seen as never)) };
+		TestBed.inject(CatalogLocaleInterceptor).intercept(request, next as never);
+		return next.handle.mock.calls[0]?.[0] as HttpRequest<unknown>;
+	};
+
+	it('names the language on catalogue reads only', () => {
+		environment.apiUrl = 'https://api.test';
+		expect(run(new HttpRequest('GET', 'https://api.test/catalog/home')).params.get('locale')).toBe('fr');
+		expect(run(new HttpRequest('GET', 'https://api.test/cart/1')).params.has('locale')).toBe(false);
+		expect(run(new HttpRequest('POST', 'https://api.test/catalog/x', {})).params.has('locale')).toBe(false);
 	});
 });

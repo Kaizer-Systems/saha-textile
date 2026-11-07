@@ -1,6 +1,11 @@
 import 'dotenv/config';
 
-import { MongoProductRepository, connectMongo, disconnectMongo } from '@saha-textile/adapters-db-mongo';
+import {
+	MongoProductRepository,
+	MongoProductVariantRepository,
+	connectMongo,
+	disconnectMongo,
+} from '@saha-textile/adapters-db-mongo';
 import type { Product } from '@saha-textile/contracts';
 import { rebuildSearchIndex } from '@saha-textile/core-domain';
 
@@ -23,9 +28,19 @@ async function main(): Promise<void> {
 			products.push(...items);
 			if (!items.length || products.length >= total) break;
 		}
-		const { host, apiKey, index } = loadConfig().search;
-		const search = new MeilisearchSearch(host, apiKey, async () => [], index);
-		const indexed = await rebuildSearchIndex(products, search);
+		const variants = new MongoProductVariantRepository();
+		const rows = await variants.listForProducts(
+			products.map((product) => product.id),
+			'public',
+		);
+		const entries = products.map((product) => ({
+			product,
+			variants: rows.filter((row) => row.productId === product.id),
+		}));
+		const config = loadConfig();
+		const { host, apiKey, index } = config.search;
+		const search = new MeilisearchSearch(host, apiKey, async () => [], index, config.locales);
+		const indexed = await rebuildSearchIndex(entries, search);
 		process.stdout.write(`Indexed ${indexed} live products of ${products.length}.\n`);
 	} finally {
 		await disconnectMongo();

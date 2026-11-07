@@ -6,6 +6,7 @@ import { Public } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { CatalogEtagInterceptor } from './catalog-etag.interceptor';
+import { CatalogLocaleInterceptor } from './catalog-locale';
 import { CatalogPublicService } from './catalog-public.service';
 import { RecentPurchasesService } from './recent-purchases.service';
 
@@ -16,7 +17,7 @@ import { RecentPurchasesService } from './recent-purchases.service';
 @ApiTags(API_TAGS.catalog)
 @Controller('catalog')
 @Public()
-@UseInterceptors(CatalogEtagInterceptor)
+@UseInterceptors(CatalogLocaleInterceptor, CatalogEtagInterceptor)
 export class StorefrontCatalogController {
 	constructor(
 		private readonly catalog: CatalogPublicService,

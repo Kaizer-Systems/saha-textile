@@ -66,6 +66,9 @@ import { LogOnlyCdnPurgeAdapter } from './log-only-cdn-purge.adapter';
 import { UnavailableYouTubeAdapter } from './unavailable-youtube.adapter';
 import { UnconfiguredStorageAdapter } from './unconfigured-storage.adapter';
 import { buildNotificationPort } from './notification-factory';
+import { MongoListing } from '../catalog/mongo-listing';
+import { ResilientListing } from '../catalog/resilient-listing';
+import { MeilisearchListing } from '../search/meilisearch-listing';
 import { MeilisearchSearch } from '../search/meilisearch-search';
 import {
 	AUTH_PORT,
@@ -84,6 +87,7 @@ import {
 	PRODUCT_QUESTION_REPOSITORY,
 	PRODUCT_RELATION_REPOSITORY,
 	PRODUCT_BUNDLE_REPOSITORY,
+	LISTING_PORT,
 	SEARCH_PORT,
 	ADDON_TEMPLATE_REPOSITORY,
 	ADMIN_INVITE_REPOSITORY,
@@ -148,8 +152,22 @@ import {
 						return found;
 					},
 					config.search.index,
+					config.locales,
 				),
 			inject: [PRODUCT_REPOSITORY, APP_CONFIG],
+		},
+		{
+			provide: LISTING_PORT,
+			useFactory: (
+				search: MeilisearchSearch,
+				products: MongoProductRepository,
+				variants: MongoProductVariantRepository,
+				config: AppConfig,
+			) => {
+				const mongo = new MongoListing(products, variants);
+				return config.search.host ? new ResilientListing(new MeilisearchListing(search), mongo) : mongo;
+			},
+			inject: [SEARCH_PORT, PRODUCT_REPOSITORY, PRODUCT_VARIANT_REPOSITORY, APP_CONFIG],
 		},
 		{ provide: ADDON_TEMPLATE_REPOSITORY, useClass: MongoAddonTemplateRepository },
 		{ provide: CATEGORY_REPOSITORY, useClass: MongoCategoryRepository },
@@ -263,7 +281,8 @@ import {
 		PRODUCT_QUESTION_REPOSITORY,
 		PRODUCT_RELATION_REPOSITORY,
 		PRODUCT_BUNDLE_REPOSITORY,
-		SEARCH_PORT,
+		LISTING_PORT,
+	SEARCH_PORT,
 		ADDON_TEMPLATE_REPOSITORY,
 		ATTRIBUTE_DEFINITION_REPOSITORY,
 		CATEGORY_PLACEMENT_REPOSITORY,

@@ -25,5 +25,7 @@ export interface ICatalogResponse {
 	/** L1→node trail (names + canonical paths) for the breadcrumb. */
 	breadcrumb?: { name: string; path: string }[];
 	facets: Record<string, IFacetValue[]>;
+	/** Each facet's title, in the page's language. */
+	facetLabels?: Record<string, string>;
 	price_range: { min: number; max: number };
 }

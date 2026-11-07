@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Query, Req, ServiceUnavailableException } from '@nestjs/common';
+import { Controller, Get, Header, Query, Req, ServiceUnavailableException, UseInterceptors } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CatalogSearchQuery } from '@saha-textile/contracts';
 import type { FastifyRequest } from 'fastify';
@@ -9,12 +9,14 @@ import { Public } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { SEARCH_PORT } from '../infra/tokens';
 import { API_TAGS } from '../openapi-tags';
+import { CatalogLocaleInterceptor } from './catalog-locale';
 import { CatalogPublicService } from './catalog-public.service';
 import { CatalogRateLimit } from './catalog-rate-limit';
 
 @ApiTags(API_TAGS.catalog)
 @Controller('catalog/search')
 @Public()
+@UseInterceptors(CatalogLocaleInterceptor)
 export class CatalogSearchController {
 	constructor(
 		@Inject(SEARCH_PORT) private readonly search: SearchPort,

@@ -9,6 +9,7 @@ export const PRODUCT_QUESTION_REPOSITORY = Symbol('ProductQuestionRepository');
 export const PRODUCT_RELATION_REPOSITORY = Symbol('ProductRelationRepository');
 export const PRODUCT_BUNDLE_REPOSITORY = Symbol('ProductBundleRepository');
 export const SEARCH_PORT = Symbol('SearchPort');
+export const LISTING_PORT = Symbol('ListingPort');
 export const ADDON_TEMPLATE_REPOSITORY = Symbol('AddonTemplateRepository');
 export const CATEGORY_REPOSITORY = Symbol('CategoryRepository');
 export const CATEGORY_PLACEMENT_REPOSITORY = Symbol('CategoryPlacementRepository');

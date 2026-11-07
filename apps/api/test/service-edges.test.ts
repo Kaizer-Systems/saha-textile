@@ -18,8 +18,10 @@ import { CartService } from '../src/cart/cart.service';
 import { csrfCookieOptions } from '../src/common/cookies';
 import { loadConfig } from '../src/config/app-config';
 import { deploymentHardeningProblems } from '../src/config/deployment-hardening';
+import { MongoListing } from '../src/catalog/mongo-listing';
+import { ResilientListing } from '../src/catalog/resilient-listing';
 import { PersistenceModule } from '../src/infra/persistence.module';
-import { AUTH_PORT } from '../src/infra/tokens';
+import { AUTH_PORT, LISTING_PORT, SEARCH_PORT } from '../src/infra/tokens';
 import { ContactChangeService } from '../src/storefront/contact-change.service';
 import { StorefrontAddressesController } from '../src/storefront/storefront-addresses.controller';
 import { StorefrontProfileController } from '../src/storefront/storefront-profile.controller';
@@ -493,6 +495,19 @@ describe('small rules', () => {
 			{},
 		);
 		expect(problems).toContain('OTP_LOCAL_FIXED_CODE must not be set: it makes every one-time code guessable.');
+	});
+
+	it('wires listings: search first when it is configured, otherwise Mongo alone', () => {
+		const providers = Reflect.getMetadata('providers', PersistenceModule) as Array<{
+			provide?: unknown;
+			useFactory?: (...deps: unknown[]) => unknown;
+		}>;
+		const factory = providers.find((row) => row.provide === LISTING_PORT)?.useFactory;
+		const config = (host?: string) => ({ search: { host } });
+		expect(factory?.({}, {}, {}, config('http://search'))).toBeInstanceOf(ResilientListing);
+		expect(factory?.({}, {}, {}, config())).toBeInstanceOf(MongoListing);
+		const search = providers.find((row) => row.provide === SEARCH_PORT)?.useFactory;
+		expect(search?.({ findById: async () => null }, loadConfig({ ...secrets }))).toBeDefined();
 	});
 
 	it('wires the auth port from the configuration', () => {

@@ -33,8 +33,112 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm turbo run lint
+      - name: Lint and repository guards
+        run: pnpm lint
 
       - name: Typecheck
         run: pnpm turbo run typecheck
+
+  coverage:
+    name: Tests at 100% coverage
+    runs-on: ubuntu-latest
+    env:
+      MONGODB_PORT: 27017
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm turbo run build --filter="./packages/*"
+
+      - name: Start MongoDB
+        run: pnpm mongo:up
+
+      - name: Tests and coverage
+        run: pnpm coverage
+
+  build:
+    name: Production builds
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the apps
+        run: pnpm build:product-apps
+
+  browser:
+    name: Browser tests on production builds
+    runs-on: ubuntu-latest
+    env:
+      MONGODB_PORT: 27017
+      MEILISEARCH_HOST: http://127.0.0.1:7700
+      MEILISEARCH_API_KEY: ci-only-search-key
+    services:
+      meilisearch:
+        image: getmeili/meilisearch:v1.16.0
+        ports:
+          - 7700:7700
+        env:
+          MEILI_MASTER_KEY: ci-only-search-key
+          MEILI_ENV: development
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start MongoDB and Redis
+        run: |
+          pnpm mongo:up
+          pnpm redis:up
+
+      - name: Local HTTPS certificates
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mkcert libnss3-tools
+          pnpm setup:local-https
+
+      - name: API settings for this run
+        run: |
+          cp apps/api/.env.example apps/api/.env
+          echo "JWT_ACCESS_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
+          echo "JWT_REFRESH_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
+          echo "CSRF_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
+
+      - name: Browser tests
+        run: pnpm e2e:stack

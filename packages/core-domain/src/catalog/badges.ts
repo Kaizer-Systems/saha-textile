@@ -64,7 +64,8 @@ function qualifies(input: BadgeInput): { promotions: Set<PromotionBadge>; facts:
 	const low =
 		replenished && input.sellableQuantity > 0 && input.sellableQuantity <= threshold && !hidden.has('low_stock');
 	if (low) facts.add('low_stock');
-	if (within(input.backInStockAt, input.now, BACK_IN_STOCK_WINDOW_MS) && !hidden.has('back_in_stock')) {
+	const buyable = input.sellableQuantity > 0;
+	if (buyable && within(input.backInStockAt, input.now, BACK_IN_STOCK_WINDOW_MS) && !hidden.has('back_in_stock')) {
 		facts.add('back_in_stock');
 	}
 	return { promotions, facts };

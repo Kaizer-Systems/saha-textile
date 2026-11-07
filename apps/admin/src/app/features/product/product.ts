@@ -38,7 +38,7 @@ export class Product {
 		pageSize: Number(this.params()['paginate']) || 15,
 	}));
 
-	public tableConfig: ITableConfig<ProductTableRow> = {
+	readonly tableConfig = signal<ITableConfig<ProductTableRow>>({
 		columns: [
 			{ title: 'No.', dataField: 'no', type: 'no' },
 			{
@@ -78,13 +78,13 @@ export class Product {
 		],
 		data: [],
 		total: 0,
-	};
+	});
 
 	constructor() {
 		effect(() => {
 			const page = this.productsQuery.data();
 			const stockStatus = (stock: number) => (stock > 0 ? 'in_stock' : 'out_of_stock');
-			this.tableConfig.data = (page?.items ?? []).map((row): ProductTableRow => ({
+			const data = (page?.items ?? []).map((row): ProductTableRow => ({
 				id: row.id,
 				slug: row.slug,
 				name: row.title,
@@ -95,7 +95,7 @@ export class Product {
 				store_name: '-',
 				status: row.status === 'live' ? 1 : 0,
 			}));
-			this.tableConfig.total = page?.total ?? 0;
+			this.tableConfig.update((config) => ({ ...config, data, total: page?.total ?? 0 }));
 		});
 	}
 

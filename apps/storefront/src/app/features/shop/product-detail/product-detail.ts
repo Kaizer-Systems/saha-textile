@@ -106,7 +106,16 @@ export class ProductDetail {
 	 */
 	readonly product = computed<IProduct | undefined>(() => this.productQuery.data());
 	/** True only until a product first arrives; a variant change keeps the current one on screen. */
-	readonly loading = computed(() => this.productQuery.isPending());
+	/**
+	 * A server render that ran out of time keeps the skeleton, so the page holds its shape while
+	 * the browser fetches the product. Only a real 404 leaves the skeleton behind.
+	 */
+	readonly loading = computed(() => {
+		if (this.productQuery.isPending()) return true;
+		const error = this.productQuery.error();
+		const missing = error instanceof HttpErrorResponse && error.status === 404;
+		return !this.isBrowser && !!error && !missing;
+	});
 	readonly selectedVariation = signal<IVariation | null>(null);
 	readonly breadcrumb = computed<IBreadcrumb>(() => {
 		const product = this.product();

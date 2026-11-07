@@ -35,7 +35,7 @@ export class AddonTemplate {
 		step: [0.5],
 	});
 
-	readonly tableConfig: ITableConfig = {
+	readonly tableConfig = signal<ITableConfig>({
 		columns: [
 			{ title: 'name', dataField: 'label', sortable: true },
 			{ title: 'code', dataField: 'code', sortable: true },
@@ -47,7 +47,7 @@ export class AddonTemplate {
 		],
 		data: [],
 		total: 0,
-	};
+	});
 
 	constructor() {
 		this.reload();
@@ -99,7 +99,7 @@ export class AddonTemplate {
 	}
 
 	private show(rows: AddonTemplateRow[]) {
-		this.tableConfig.data = rows.map((row) => ({ ...row, id: row.code }));
-		this.tableConfig.total = rows.length;
+		const data = rows.map((row) => ({ ...row, id: row.code }));
+		this.tableConfig.update((config) => ({ ...config, data, total: rows.length }));
 	}
 }

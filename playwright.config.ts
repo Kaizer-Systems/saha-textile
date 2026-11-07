@@ -22,7 +22,18 @@ export default defineConfig({
 		screenshot: 'only-on-failure',
 	},
 	projects: [
-		{ name: 'desktop', use: { ...devices['Desktop Chrome'], channel: 'chrome' } },
-		{ name: 'phone', use: { ...devices['Pixel 7'], channel: 'chrome' } },
+		{ name: 'desktop', testIgnore: /admin/, use: { ...devices['Desktop Chrome'], channel: 'chrome' } },
+		{ name: 'phone', testIgnore: /admin/, use: { ...devices['Pixel 7'], channel: 'chrome' } },
+		{ name: 'admin-setup', testMatch: /admin\.setup\.ts/, use: { channel: 'chrome' } },
+		{
+			name: 'admin',
+			testMatch: /admin\.spec\.ts/,
+			dependencies: ['admin-setup'],
+			use: {
+				...devices['Desktop Chrome'],
+				channel: 'chrome',
+				storageState: 'node_modules/.cache/playwright/admin-state.json',
+			},
+		},
 	],
 });

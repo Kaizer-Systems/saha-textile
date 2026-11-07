@@ -678,6 +678,6 @@
 	"badge_bestseller": "Bestseller",
 	"badge_trending": "Trending",
 	"badge_new": "New",
-	"badge_low_stock": "Low stock",
+	"badge_low_stock_left": "Only {{count}} left",
 	"badge_back_in_stock": "Back in stock"
 }

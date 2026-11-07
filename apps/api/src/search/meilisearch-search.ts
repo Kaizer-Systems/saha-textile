@@ -21,22 +21,23 @@ export class MeilisearchSearch implements SearchPort {
 		private readonly host: string | undefined,
 		private readonly apiKey: string | undefined,
 		private readonly loadProducts: (ids: readonly string[]) => Promise<Product[]>,
+		private readonly index: string,
 	) {}
 
 	async indexProduct(product: Product): Promise<void> {
 		await this.ensureSettings();
-		await this.send(`/indexes/products/documents`, 'POST', [searchDocument(product)]);
+		await this.send(`/indexes/${this.index}/documents`, 'POST', [searchDocument(product)]);
 	}
 
 	async removeProduct(productId: string): Promise<void> {
-		await this.send(`/indexes/products/documents/${encodeURIComponent(productId)}`, 'DELETE');
+		await this.send(`/indexes/${this.index}/documents/${encodeURIComponent(productId)}`, 'DELETE');
 	}
 
 	async search(query: SearchQuery): Promise<Paginated<Product>> {
 		const page = query.page && query.page > 0 ? query.page : 1;
 		const pageSize = query.pageSize && query.pageSize > 0 ? query.pageSize : 24;
 		const body = await this.send<{ hits?: Array<{ id?: string }>; estimatedTotalHits?: number }>(
-			'/indexes/products/search',
+			`/indexes/${this.index}/search`,
 			'POST',
 			{
 				q: query.q,
@@ -60,7 +61,7 @@ export class MeilisearchSearch implements SearchPort {
 	}
 
 	private async ensureSettings(): Promise<void> {
-		await this.send('/indexes/products/settings', 'PATCH', {
+		await this.send(`/indexes/${this.index}/settings`, 'PATCH', {
 			searchableAttributes: ['words'],
 			filterableAttributes: ['categoryIds'],
 			sortableAttributes: [],

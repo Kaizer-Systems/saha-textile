@@ -104,6 +104,25 @@ describe('ProductDetail data', () => {
 		expect(page.loading()).toBe(false);
 	});
 
+	it('keeps the skeleton on a timed-out server render, but not for a missing product', () => {
+		const { page } = render({ platform: 'server' });
+		pending.set(false);
+		failure.set(new HttpErrorResponse({ status: 504 }));
+		expect(page.loading()).toBe(true);
+		failure.set(new HttpErrorResponse({ status: 404 }));
+		expect(page.loading()).toBe(false);
+		failure.set(null);
+		expect(page.loading()).toBe(false);
+	});
+
+	it('leaves a failed browser read without the skeleton', () => {
+		const { page } = render();
+		pending.set(false);
+		failure.set(new HttpErrorResponse({ status: 500 }));
+		expect(page.loading()).toBe(false);
+		failure.set(null);
+	});
+
 	it('follows the address, with or without a query map', () => {
 		const { params } = render({ noQuery: true });
 		params.next({ slug: 'blue-saree' });

@@ -24,7 +24,7 @@ export class QuestionsAnswers {
 
 	readonly AnswersModal = viewChild<AnswersModal>('answersModal');
 
-	public tableConfig: ITableConfig = {
+	readonly tableConfig = signal<ITableConfig>({
 		columns: [
 			{ title: 'No.', dataField: 'no', type: 'no' },
 			{ title: 'Question', dataField: 'question' },
@@ -47,13 +47,16 @@ export class QuestionsAnswers {
 		],
 		data: [] as IQuestionAnswers[],
 		total: 0,
-	};
+	});
 
 	constructor() {
 		effect(() => {
 			const questionAnswers = this.questionAnswersQuery.data();
-			this.tableConfig.data = questionAnswers?.data ? questionAnswers.data : [];
-			this.tableConfig.total = questionAnswers?.total ? questionAnswers.total : 0;
+			this.tableConfig.update((config) => ({
+				...config,
+				data: questionAnswers?.data ? questionAnswers.data : [],
+				total: questionAnswers?.total ? questionAnswers.total : 0,
+			}));
 		});
 	}
 

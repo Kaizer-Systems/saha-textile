@@ -33,6 +33,7 @@ export interface ApiCard {
 		| { kind: 'single'; sellingINR: number; mrpINR: number | null; percentOff: number | null }
 		| { kind: 'range'; minINR: number; maxINR: number };
 	badges: string[];
+	lowStockLeft?: number | null;
 	sku: string | null;
 	image: ApiImage | null;
 	inStock: boolean;
@@ -142,6 +143,8 @@ export interface ApiProductPage {
 export interface CardBadges {
 	primary: string | null;
 	secondary: string | null;
+	/** Pieces left, sent only while the low-stock fact applies. */
+	left?: number | null;
 }
 
 const FACT_BADGES = new Set(['low_stock', 'back_in_stock']);
@@ -223,7 +226,7 @@ export function cardToProduct(card: ApiCard): IProduct {
 		sale_price: selling,
 		is_sale_enable: badges.primary === 'sale' ? 1 : 0,
 		is_featured: badges.primary === 'featured' ? 1 : 0,
-		card_badges: badges,
+		card_badges: { ...badges, left: card.lowStockLeft },
 		sku: card.sku ?? '',
 		quantity: card.inStock ? 1 : 0,
 		stock_status: card.inStock ? 'in_stock' : 'out_of_stock',

@@ -5,7 +5,7 @@
 	@if (!formOnly()) {
 	<a routerLink="create">{{ 'create' | transloco }}</a>
 	<app-table
-		[tableConfig]="tableConfig"
+		[tableConfig]="tableConfig()"
 		(tableChanged)="onTableChange($event)"
 		(rowClicked)="edit($event)"
 		(action)="onAction($event)"

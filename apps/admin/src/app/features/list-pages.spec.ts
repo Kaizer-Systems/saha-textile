@@ -164,10 +164,10 @@ describe('Questions and answers list', () => {
 		const { page } = render(QuestionsAnswers);
 		data.set({});
 		TestBed.tick();
-		expect(page.tableConfig).toMatchObject({ data: [], total: 0 });
+		expect(page.tableConfig()).toMatchObject({ data: [], total: 0 });
 		data.set({ data: [{ id: 1 }], total: 1 });
 		TestBed.tick();
-		expect(page.tableConfig.total).toBe(1);
+		expect(page.tableConfig().total).toBe(1);
 	});
 
 	it('opens the answer dialog, and ignores the actions that do nothing yet', () => {

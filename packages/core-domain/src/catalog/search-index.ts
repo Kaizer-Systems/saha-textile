@@ -4,15 +4,15 @@ import type { SearchPort } from '../ports/search.port';
 
 /**
  * Two-way spellings Meilisearch will not correct on its own, because words
- * shorter than five letters skip typo tolerance. `ikkatsilk` points one way
- * at the words "ikkat silk" and is not a synonym of the short spellings.
+ * shorter than five letters skip typo tolerance. `ikkatsilk` points one way at
+ * "ikkat", because a phrase alone misses titles such as "Pure Silk Ikkat Saree".
  */
 export const SEARCH_SYNONYMS: Record<string, string[]> = {
 	ikat: ['ikkat', 'ekat', 'ekkat'],
 	ikkat: ['ikat', 'ekat', 'ekkat'],
 	ekat: ['ikat', 'ikkat', 'ekkat'],
 	ekkat: ['ikat', 'ikkat', 'ekat'],
-	ikkatsilk: ['ikkat silk'],
+	ikkatsilk: ['ikkat silk', 'ikkat'],
 };
 
 /** Index document: ids and words. The selling price stays in Mongo. */

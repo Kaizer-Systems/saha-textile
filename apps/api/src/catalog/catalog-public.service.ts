@@ -486,6 +486,7 @@ export class CatalogPublicService {
 			path: `/product/${product.slug}`,
 			price: read.price,
 			badges: [read.badges.primary, read.badges.secondary].filter((badge) => badge !== null),
+			lowStockLeft: read.badges.secondary === 'low_stock' ? read.sellable : null,
 			sku: read.selected?.sku ?? product.sku,
 			image: primary ? this.image(assets.get(primary), ['card']) : null,
 			inStock: read.sellable > 0 || read.madeToOrder,

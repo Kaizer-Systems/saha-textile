@@ -1,7 +1,7 @@
 <div class="offer-product">
 	<a
 		[routerLink]="['/product/', product()?.slug]"
-		class="offer-image"
+		class="offer-image position-relative"
 	>
 		<img
 			[src]="product()?.product_thumbnail
@@ -13,10 +13,13 @@
 		/>
 		@if (offer(product()!).primary) {
 		<div class="product-label-tag"><span>{{ offer(product()!).primary! | transloco }}</span></div>
-		} @if (offer(product()!).secondary) {
-		<div class="product-label-tag warning-label-tag">
-			<span>{{ offer(product()!).secondary! | transloco }}</span>
-		</div>
+		} @if (offer(product()!).chip; as chip) {
+		<span
+			class="stock-chip"
+			[class]="'stock-chip-' + chip.tone"
+		>
+			{{ chip.key | transloco: { count: chip.count } }}
+		</span>
 		}
 	</a>
 	<div class="offer-detail">

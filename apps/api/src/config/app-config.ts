@@ -206,6 +206,11 @@ const ConfigSchema = z.object({
 	search: z.object({
 		host: AbsoluteUrl.optional(),
 		apiKey: z.string().min(1).optional(),
+		/** Separate names keep test runs out of the working index on a shared server. */
+		index: z
+			.string()
+			.regex(/^[a-z0-9_-]+$/)
+			.default('products'),
 	}),
 	spaces: SpacesConfigSchema,
 	/**
@@ -364,6 +369,7 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 		search: {
 			host: env.MEILISEARCH_HOST || undefined,
 			apiKey: env.MEILISEARCH_API_KEY || undefined,
+			index: env.MEILISEARCH_INDEX || undefined,
 		},
 		spaces: {
 			key: env.SPACES_KEY || undefined,

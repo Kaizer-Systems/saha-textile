@@ -11,7 +11,7 @@
 		<span>{{ primary | transloco }}</span>
 	</div>
 	}
-	<div class="product-image">
+	<div class="product-image position-relative">
 		<a [routerLink]="['/product/', product()?.slug]">
 			<img
 				[src]="product()?.product_thumbnail ?
@@ -27,7 +27,14 @@
 				[alt]="product()?.name || 'product'"
 			/>
 		</a>
-		@if (close()) {
+		@if (offer(product()!).chip; as chip) {
+		<span
+			class="stock-chip"
+			[class]="'stock-chip-' + chip.tone"
+		>
+			{{ chip.key | transloco: { count: chip.count } }}
+		</span>
+		} @if (close()) {
 		<div class="product-header-top">
 			<app-button
 				[class]="'btn wishlist-button close_button'"

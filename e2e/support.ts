@@ -3,6 +3,11 @@ import { expect, test as base, type Page } from '@playwright/test';
 /** The API a shop page talks to. Tests stub or block it by this pattern. */
 export const API = /localhost:4000/;
 
+export const ADMIN = 'https://localhost:4300';
+
+/** The signed-in test administrator, written by `admin.setup.ts`. */
+export const ADMIN_STATE = 'node_modules/.cache/playwright/admin-state.json';
+
 /** Everything the shop shouldn't do on a healthy page, collected per test. */
 interface Problems {
 	errors: string[];

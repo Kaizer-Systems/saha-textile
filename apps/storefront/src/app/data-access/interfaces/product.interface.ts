@@ -95,7 +95,7 @@ export interface IProduct {
 	created_by_id: number;
 	is_approved: boolean;
 	/** The two badge slots the API chose: one promotion, one stock fact. */
-	card_badges?: { primary: string | null; secondary: string | null };
+	card_badges?: { primary: string | null; secondary: string | null; left?: number | null };
 	unknown_variant?: boolean;
 	breadcrumb_trail?: Array<{ name: string; path: string }>;
 	total_in_approved_products: number;

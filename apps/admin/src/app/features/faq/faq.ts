@@ -26,7 +26,7 @@ export class Faq {
 	private faqService = inject(FaqService);
 	readonly faqsQuery = injectFaqsQuery(() => this.params());
 
-	public tableConfig: ITableConfig = {
+	readonly tableConfig = signal<ITableConfig>({
 		columns: [
 			{ title: 'No.', dataField: 'no', type: 'no' },
 			{ title: 'title', dataField: 'title', sortable: true, sort_direction: 'desc' },
@@ -50,13 +50,16 @@ export class Faq {
 		],
 		data: [] as IFaq[],
 		total: 0,
-	};
+	});
 
 	constructor() {
 		effect(() => {
 			const faq = this.faqsQuery.data();
-			this.tableConfig.data = faq ? faq.data : [];
-			this.tableConfig.total = faq ? faq.total : 0;
+			this.tableConfig.update((config) => ({
+				...config,
+				data: faq ? faq.data : [],
+				total: faq ? faq.total : 0,
+			}));
 		});
 	}
 
@@ -84,7 +87,7 @@ export class Faq {
 	}
 
 	deleteAll(ids: number[]) {
-		const rows = (this.tableConfig.data as IFaq[]).filter((row) => ids.includes(Number(row.id)));
+		const rows = (this.tableConfig().data as IFaq[]).filter((row) => ids.includes(Number(row.id)));
 		forkJoin(rows.map((row) => this.faqService.remove(row.faqId))).subscribe(() => void this.faqsQuery.refetch());
 	}
 }

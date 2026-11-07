@@ -3385,3 +3385,36 @@
 .fire-img {
 	width: 15px;
 }
+
+// The stock fact on a card: one small chip on the photo's corner, so the promotion flag keeps the
+// top of the photo to itself. Colours keep white text at WCAG AA contrast.
+.stock-chip {
+	position: absolute;
+	left: 8px;
+	bottom: 8px;
+	z-index: 2;
+	padding: 4px 9px;
+	border-radius: 4px;
+	color: $white;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1.2;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+
+	body.rtl & {
+		left: unset;
+		right: 8px;
+	}
+
+	&.stock-chip-critical {
+		background-color: #c92a2a;
+	}
+
+	&.stock-chip-low {
+		background-color: #b45309;
+	}
+
+	&.stock-chip-back {
+		background-color: #0b7a5b;
+	}
+}

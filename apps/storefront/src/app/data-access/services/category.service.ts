@@ -20,6 +20,8 @@ export interface ApiMenuCategory {
 	path: string;
 	imageUrl: string | null;
 	iconUrl: string | null;
+	productCount: number;
+	coverUrl: string | null;
 }
 
 const attachment = (url: string | null): IAttachment | undefined =>
@@ -36,7 +38,8 @@ const toCategory = (row: ApiMenuCategory): ICategory => ({
 	canonical_path: row.path,
 	category_image: attachment(row.imageUrl),
 	category_icon: attachment(row.iconUrl),
-	products_count: 0,
+	cover_image: attachment(row.coverUrl),
+	products_count: row.productCount,
 	status: true,
 });
 

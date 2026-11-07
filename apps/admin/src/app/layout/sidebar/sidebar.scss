@@ -1,0 +1,58 @@
+
+// The logo keeps its own colours on a white band, level with the white top bar. The collapse
+// button sits beside it, not over it. `!important` because the theme sets these on a selector
+// five levels deep.
+:host .logo-wrapper {
+	display: flex !important;
+	align-items: center;
+	min-height: 82px;
+	padding: 0 44px 0 14px !important;
+	background: #fff !important;
+	box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+
+	.sidebar-logo img {
+		display: block;
+		width: 216px !important;
+		max-width: 216px !important;
+		height: auto;
+	}
+
+	.logo-sm {
+		display: none !important;
+	}
+
+	.toggle-sidebar {
+		top: 50% !important;
+		right: 12px !important;
+		left: auto !important;
+		color: #231f20 !important;
+		transform: translateY(-50%);
+
+		i {
+			color: #231f20 !important;
+		}
+	}
+}
+
+// Collapsed and not hovered: only the seal fits, and menu labels stay out of the 81 px rail.
+:host-context(.sidebar-wrapper.close_icon:not(:hover)) {
+	.logo-wrapper {
+		justify-content: center;
+		padding: 0 !important;
+
+		.sidebar-logo {
+			display: none;
+		}
+
+		.logo-sm {
+			display: block !important;
+			width: 58px;
+			height: 58px;
+			margin: 0 auto;
+		}
+	}
+
+	.sidebar-main-link {
+		display: none;
+	}
+}

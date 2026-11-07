@@ -1,4 +1,4 @@
-import { Component, inject, input, signal, output } from '@angular/core';
+import { Component, DOCUMENT, inject, input, output, signal } from '@angular/core';
 import { FormGroup, FormBuilder, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -9,7 +9,7 @@ import { Select2 } from 'ng-select2-component';
 import { Subject, of } from 'rxjs';
 import { switchMap, map, takeUntil } from 'rxjs/operators';
 
-import { ADMIN_LOCALES, LocalizedFields } from '@core/i18n/localized-fields';
+import { ADMIN_LOCALES, focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICategory } from '@data-access/interfaces/category.interface';
 import { CategoryService } from '@data-access/services/category.service';
@@ -45,6 +45,7 @@ const picked = (id: unknown): string | null => (id ? String(id) : null);
 	],
 })
 export class FormCategory {
+	private page = inject<Document>(DOCUMENT);
 	private route = inject(ActivatedRoute);
 	private router = inject(Router);
 	private formBuilder = inject(FormBuilder);
@@ -65,7 +66,7 @@ export class FormCategory {
 	readonly fields: LocalizedFields;
 	/** The tree beside this form follows its language. */
 	readonly localeChange = output<string>();
-	readonly missing = signal<Record<string, number>>({});
+	readonly gaps = signal<Record<string, LanguageGap[]>>({});
 
 	private destroy$ = new Subject<void>();
 
@@ -133,8 +134,13 @@ export class FormCategory {
 		this.refreshMissing();
 	}
 
+	openLanguageGap({ key, locale }: { key: string; locale: string }) {
+		this.switchLanguage(locale);
+		focusField(this.page, key);
+	}
+
 	private refreshMissing() {
-		this.missing.set(Object.fromEntries(this.locales.map((locale) => [locale, this.fields.missing(locale)])));
+		this.gaps.set(gapsByLocale((locale) => this.fields.gaps(locale)));
 	}
 
 	/** A top-level category and its children, for the second-parent dropdown. */

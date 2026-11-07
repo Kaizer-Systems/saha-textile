@@ -1,8 +1,19 @@
 <app-breadcrumb [breadcrumb]="breadcrumb()" />
 <section class="cart-section section-b-space">
 	<div class="container-fluid-lg">
-		@if ((cartItem$ | async)?.length) {
-		<div class="row g-xl-5 g-sm-4 g-3">
+		@if ((cartItem$ | async)?.length) { @if (!online()) {
+		<div
+			class="alert alert-warning d-flex align-items-center gap-2"
+			role="status"
+		>
+			<i class="ri-wifi-off-line"></i>
+			{{ 'cart_offline_notice' | transloco }}
+		</div>
+		}
+		<div
+			class="row g-xl-5 g-sm-4 g-3"
+			[attr.inert]="online() ? null : ''"
+		>
 			<div class="col-xxl-9 col-xl-8">
 				<div class="cart-table">
 					<div class="table-responsive">
@@ -39,11 +50,6 @@
 													</li>
 													} @if (item.line_config) {
 													<li><app-cart-line-config [config]="item.line_config" /></li>
-													} @if (item.product && item.product.unit) {
-													<li class="text-content">
-														<span class="text-title">{{ 'unit' | transloco }}:</span>
-														{{item.product.unit}}
-													</li>
 													}
 													<li>
 														<h5 class="text-content d-inline-block">

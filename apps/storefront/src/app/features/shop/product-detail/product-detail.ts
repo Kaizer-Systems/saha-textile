@@ -11,6 +11,7 @@ import { injectQueryClient } from '@tanstack/angular-query-experimental';
 import { Observable } from 'rxjs';
 
 import { rememberRecentView } from '@core/catalog/recent-views';
+import { ConsentStore } from '@core/consent/consent.store';
 import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
 import { withLocale } from '@core/i18n/locale';
 import { LocaleSeo } from '@core/i18n/locale-seo';
@@ -82,6 +83,7 @@ const uniqueCards = (cards: IProduct[]): IProduct[] =>
 	],
 })
 export class ProductDetail {
+	private readonly consent = inject(ConsentStore);
 	private route = inject(ActivatedRoute);
 	private transloco = inject(TranslocoService);
 	private router = inject(Router);
@@ -171,7 +173,7 @@ export class ProductDetail {
 
 		effect(() => {
 			const product = this.product();
-			if (!this.isBrowser || !product?.slug) return;
+			if (!this.isBrowser || !product?.slug || !this.consent.allows('functional')) return;
 			rememberRecentView(window.localStorage, product.slug);
 		});
 

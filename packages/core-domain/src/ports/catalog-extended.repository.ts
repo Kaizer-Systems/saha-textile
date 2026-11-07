@@ -275,6 +275,7 @@ export interface AddonTemplateRow {
 		max: number | null;
 		step: number | null;
 	}>;
+	sizeGuide: Array<{ size: string; values: Readonly<Record<string, number>> }>;
 }
 
 export interface AddonTemplateRepository {

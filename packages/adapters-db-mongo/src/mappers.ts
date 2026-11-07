@@ -83,6 +83,8 @@ export function toProduct(doc: ProductDoc): Product {
 		backInStockAt: isoOrNull(doc.backInStockAt),
 		replacementTarget: doc.replacementTarget ?? null,
 		addonTemplateCode: doc.addonTemplateCode ?? null,
+		sareeLengthM: doc.sareeLengthM ?? null,
+		blousePieceM: doc.blousePieceM ?? null,
 		addonPriceINR: doc.addonPriceINR ?? null,
 		onSale: doc.onSale ?? false,
 		shippingDefaults: doc.shippingDefaults ?? { weightGrams: null, lengthCm: null, widthCm: null, heightCm: null },

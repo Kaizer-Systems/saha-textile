@@ -68,7 +68,8 @@ export type AuthRateLimitAction =
 	| 'product_question'
 	| 'stock_alert'
 	| 'catalog_search'
-	| 'cart_write';
+	| 'cart_write'
+	| 'consent_write';
 
 const MINUTES = 60;
 const HOURS = 60 * MINUTES;
@@ -147,6 +148,11 @@ export const AUTH_RATE_LIMIT_POLICY: Readonly<Record<AuthRateLimitAction, RateLi
 	cart_write: {
 		counting: 'attempts',
 		ip: { max: 120, windowSeconds: 1 * MINUTES },
+	},
+	/** Anyone may record a choice, so this keeps one address from filling the history. */
+	consent_write: {
+		counting: 'attempts',
+		ip: { max: 30, windowSeconds: 1 * MINUTES },
 	},
 };
 

@@ -7,10 +7,9 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
 import { AuthStore } from '@core/state/auth.store';
+import { injectBrandQuery } from '@core/brand/brand.gateway';
 import { MenuStore } from '@core/state/menu.store';
-import { SettingStore } from '@core/state/setting.store';
 import { IMenu } from '@data-access/interfaces/menu.interface';
-import { IValues } from '@data-access/interfaces/setting.interface';
 import { NavService } from '@data-access/services/nav.service';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
@@ -29,7 +28,7 @@ export class Sidebar {
 
 	readonly class = input<string>('');
 
-	setting$: Observable<IValues | null> = toObservable(inject(SettingStore).setting);
+	readonly brand = injectBrandQuery();
 	readonly menu = this.menuStore.menu;
 
 	public item: IMenu;

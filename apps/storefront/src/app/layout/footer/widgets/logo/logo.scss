@@ -1,0 +1,10 @@
+// `!important` because the theme fixes footer logo widths with a longer selector.
+:host .footer-logo-plate {
+	box-sizing: border-box;
+	width: 280px !important;
+	max-width: 100%;
+	height: auto;
+	padding: 12px 14px;
+	border-radius: 10px;
+	background: #fff;
+}

@@ -83,6 +83,7 @@ function pageService(status: Product['status'] = 'live') {
 						label: { en: 'Blouse measurements' },
 						priceINR: 0,
 						fields: [{ code: 'chest', label: { en: 'Chest' }, unit: 'in', min: 24, max: 50, step: 0.5 }],
+						sizeGuide: [{ size: 'M', values: { chest: 36 } }],
 					}
 				: null,
 	};
@@ -144,6 +145,7 @@ describe('product page read', () => {
 			templateCode: null,
 			priceINR: 0,
 			fields: [{ code: 'shoulder', label: 'Shoulder', unit: 'in', min: null, max: null, step: null }],
+			sizeGuide: [],
 		});
 	});
 

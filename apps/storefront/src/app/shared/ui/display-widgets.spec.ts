@@ -1,8 +1,9 @@
 import { signal, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
+import { TranslocoService } from '@jsverse/transloco';
 import { of } from 'rxjs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
@@ -47,12 +48,17 @@ import { Title } from './title/title';
  * These components hold inputs and nothing else: what they show lives in their templates, so
  * this proves only that each one can be created. The Playwright run is what proves they render.
  */
+vi.mock('@data-access/queries/brand.queries', () => ({
+	injectBrandQuery: () => ({ data: () => undefined }),
+}));
+
 const create = <T>(type: Type<T>): T => {
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: SiteConfigStore, useValue: { siteConfig: signal(null) } },
 			{ provide: WishlistFacade, useValue: { wishlistItems$: of({ data: [], total: 0 }) } },
+			{ provide: TranslocoService, useValue: { getActiveLang: () => 'en' } },
 		],
 	});
 	TestBed.overrideComponent(type, { set: { imports: [], template: '' } });
@@ -96,6 +102,38 @@ const widgets: [string, Type<unknown>][] = [
 	['Wishlist', Wishlist],
 	['YouMayAlsoLike', YouMayAlsoLike],
 ];
+
+describe('ProductInformation', () => {
+	it('writes metres the way the language writes numbers', () => {
+		const widget = create(ProductInformation) as ProductInformation;
+		expect(widget.metres(5.5)).toBe('5.5 m');
+	});
+});
+
+describe('Logos', () => {
+	it('read the Brand Kit', () => {
+		expect((create(Logo) as Logo).brand()).toBeUndefined();
+		expect((create(FooterLogo) as FooterLogo).brand()).toBeUndefined();
+	});
+});
+
+describe('About', () => {
+	it('links the address to a map search', () => {
+		const about = (() => {
+			create(About);
+			return TestBed.createComponent(About);
+		})();
+		expect(about.componentInstance.encodedAddress()).toBe('');
+		about.componentRef.setInput('data', { footer: { about_address: 'No. 29, Barasat' } });
+		expect(about.componentInstance.encodedAddress()).toBe('No.%2029%2C%20Barasat');
+	});
+});
+
+describe('Links', () => {
+	it('leaves the Cookie settings link off by default', () => {
+		expect((create(Links) as Links).cookieSettings()).toBe(false);
+	});
+});
 
 describe('display-only widgets', () => {
 	it.each(widgets)('%s can be created', (_name, type) => {

@@ -1,10 +1,17 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, DOCUMENT, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 
-import { ADMIN_LOCALES, LocalizedFields, SOURCE_LOCALE } from '@core/i18n/localized-fields';
+import {
+	ADMIN_LOCALES,
+	focusField,
+	gapsByLocale,
+	type LanguageGap,
+	LocalizedFields,
+	SOURCE_LOCALE,
+} from '@core/i18n/localized-fields';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { AddonTemplateRow, AddonTemplateService } from '@data-access/services/addon-template.service';
@@ -31,6 +38,7 @@ const number = (text: string): number | null => (text.trim() === '' ? null : Num
 	imports: [PageWrapper, ReactiveFormsModule, TranslocoModule, FormFields, Table, Button, RouterLink, LanguageSwitch],
 })
 export class AddonTemplate {
+	private page = inject<Document>(DOCUMENT);
 	private api = inject(AddonTemplateService);
 	private fb = inject(FormBuilder);
 	private router = inject(Router);
@@ -38,6 +46,7 @@ export class AddonTemplate {
 
 	readonly rows = signal<AddonTemplateRow[]>([]);
 	readonly measures = signal<Measure[]>([]);
+	readonly sizeGuide = signal<AddonTemplateRow['sizeGuide']>([]);
 
 	readonly form = this.fb.nonNullable.group({
 		code: ['', Validators.required],
@@ -47,15 +56,17 @@ export class AddonTemplate {
 
 	readonly locales = ADMIN_LOCALES;
 	readonly text = new LocalizedFields(this.form, ['label']);
-	private readonly nameMissing = signal<Record<string, number>>({});
+	private readonly nameGaps = signal<Record<string, LanguageGap[]>>({});
 	/** Name plus every field label, per language, for the Language switch. */
-	readonly missing = computed(() =>
-		Object.fromEntries(
-			this.locales.map((locale) => [
-				locale,
-				(this.nameMissing()[locale] ?? 0) + this.measures().filter((row) => !row.label[locale]?.trim()).length,
-			]),
-		),
+	readonly gaps = computed(() =>
+		gapsByLocale((locale) => [
+			...(this.nameGaps()[locale] ?? []).map((gap) => ({ ...gap, label: 'name' })),
+			...this.measures().flatMap((row, index) =>
+				row.label[locale]?.trim()
+					? []
+					: [{ key: `field_${index}`, label: 'measurement_field', name: this.guide(row) || String(index + 1) }],
+			),
+		]),
 	);
 
 	readonly tableConfig = signal<ITableConfig>({
@@ -92,6 +103,7 @@ export class AddonTemplate {
 				this.form.patchValue({ code: row.code, priceINR: row.priceINR });
 				this.text.load({ label: row.label });
 				this.measures.set(row.fields);
+				this.sizeGuide.set(row.sizeGuide);
 				this.refreshMissing();
 			},
 			error: () => this.show([]),
@@ -103,12 +115,47 @@ export class AddonTemplate {
 		this.refreshMissing();
 	}
 
+	openLanguageGap({ key, locale }: { key: string; locale: string }) {
+		this.switchLanguage(locale);
+		focusField(this.page, key);
+	}
+
 	refreshMissing() {
-		this.nameMissing.set(Object.fromEntries(this.locales.map((locale) => [locale, this.text.missing(locale)])));
+		this.nameGaps.set(gapsByLocale((locale) => this.text.gaps(locale)));
 	}
 
 	guide(row: Measure): string {
 		return row.label[SOURCE_LOCALE] ?? '';
+	}
+
+	/** A new field has no code until it is saved, so the guide keys it the way saving will. */
+	fieldCode(row: Measure): string {
+		return row.code || codeOf(this.guide(row));
+	}
+
+	addGuideRow() {
+		this.sizeGuide.update((rows) => [...rows, { size: '', values: {} }]);
+	}
+
+	removeGuideRow(index: number) {
+		this.sizeGuide.update((rows) => rows.filter((_, position) => position !== index));
+	}
+
+	setGuideSize(index: number, size: string) {
+		this.sizeGuide.update((rows) =>
+			rows.map((row, position) => (position === index ? { ...row, size: size.trim() } : row)),
+		);
+	}
+
+	setGuideValue(index: number, code: string, text: string) {
+		const value = number(text);
+		this.sizeGuide.update((rows) =>
+			rows.map((row, position) => {
+				if (position !== index) return row;
+				const { [code]: _old, ...others } = row.values;
+				return { ...row, values: value ? { ...others, [code]: value } : others };
+			}),
+		);
 	}
 
 	addField() {
@@ -171,9 +218,16 @@ export class AddonTemplate {
 		const { code, priceINR } = this.form.getRawValue();
 		const fields = this.measures()
 			.filter((row) => row.label[SOURCE_LOCALE]?.trim())
-			.map((row) => ({ ...row, code: row.code || codeOf(row.label[SOURCE_LOCALE] as string) }));
+			.map((row) => ({ ...row, code: this.fieldCode(row) }));
+		const kept = new Set(fields.map((row) => row.code));
+		const sizeGuide = this.sizeGuide()
+			.filter((row) => row.size)
+			.map(({ size, values }) => ({
+				size,
+				values: Object.fromEntries(Object.entries(values).filter(([key]) => kept.has(key))),
+			}));
 		this.api
-			.save({ code, label, priceINR: Number(priceINR), fields })
+			.save({ code, label, priceINR: Number(priceINR), fields, sizeGuide })
 			.subscribe({ next: () => void this.router.navigate([this.section]) });
 	}
 

@@ -21,26 +21,32 @@
 		</app-button>
 	</div>
 	<div class="modal-box flex-lg-row-reverse">
+		@if (image(); as art) {
 		<div class="modal-image d-none d-lg-block">
 			<img
-				[src]="image().src"
-				[attr.srcset]="image().srcset"
+				[src]="art.src"
+				[attr.srcset]="art.srcset"
 				sizes="400px"
-				[attr.width]="image().width"
-				[attr.height]="image().height"
+				[attr.width]="art.width"
+				[attr.height]="art.height"
 				class="img-fluid"
-				[alt]="image().alt"
+				[alt]="art.alt"
 				loading="lazy"
 				decoding="async"
 			/>
 		</div>
+		}
 		<div class="modal-content content-padding">
 			<div>
+				@if (brand.data()?.logo; as logo) {
 				<img
-					src="assets/images/logo/1.png"
+					[src]="logo.url"
+					[attr.srcset]="logo.srcset"
+					sizes="300px"
 					class="modal-logo"
-					alt="Saha Textile"
+					[alt]="brand.data()?.shopName"
 				/>
+				}
 				<h2 id="newsletter-modal-title">{{ 'newsletter_popup_title' | transloco }}</h2>
 				<p>{{ 'newsletter_popup_body' | transloco }}</p>
 				<form

@@ -13,6 +13,11 @@ import { SettingStore } from '@core/state/setting.store';
 
 import { App } from './app';
 
+const brand = vi.hoisted(() => ({ data: undefined as unknown }));
+vi.mock('@core/brand/brand.gateway', () => ({
+	injectBrandQuery: () => ({ data: () => brand.data }),
+}));
+
 const render = (url = '/dashboard') => {
 	const setting = signal<unknown>(null);
 	const status = signal('unknown');
@@ -89,12 +94,19 @@ describe('Admin App', () => {
 		expect(visitor.router.navigate).not.toHaveBeenCalled();
 	});
 
-	it('applies right-to-left, the icon and the title', () => {
+	it('uses the Brand Kit icon once there is one', () => {
+		brand.data = { icons: { '32': 'https://cdn.test/i.png' } };
+		render();
+		TestBed.tick();
+		expect((document.querySelector('#appIcon') as HTMLLinkElement).href).toBe('https://cdn.test/i.png');
+		brand.data = undefined;
+	});
+
+	it('applies right-to-left, and the title', () => {
 		const { setting, title } = render();
 		setting.set({
 			general: {
 				admin_site_language_direction: 'rtl',
-				favicon_image: { original_url: 'https://cdn.test/i.png' },
 				site_title: 'Shop',
 				site_tagline: 'Sarees',
 			},
@@ -102,7 +114,6 @@ describe('Admin App', () => {
 		TestBed.tick();
 		expect(document.documentElement.getAttribute('dir')).toBe('rtl');
 		expect(document.body.classList.contains('rtl')).toBe(true);
-		expect((document.querySelector('#appIcon') as HTMLLinkElement).href).toBe('https://cdn.test/i.png');
 		expect(title.setTitle).toHaveBeenLastCalledWith('Shop | Sarees');
 	});
 

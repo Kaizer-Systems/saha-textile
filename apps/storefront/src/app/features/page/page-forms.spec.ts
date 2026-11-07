@@ -52,6 +52,13 @@ describe('ContactUs', () => {
 		return { form, siteConfig };
 	};
 
+	it('keeps the map back until there is consent or a click', () => {
+		const { form } = render();
+		expect(form.mapShown()).toBe(false);
+		form.mapRequested.set(true);
+		expect(form.mapShown()).toBe(true);
+	});
+
 	it('reads the contact details', () => {
 		const { form, siteConfig } = render();
 		expect(form.contactData).toBeUndefined();

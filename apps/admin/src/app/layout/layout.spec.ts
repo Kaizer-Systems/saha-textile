@@ -25,6 +25,11 @@ import { Loader } from './loader/loader';
 import { PageWrapper } from './page-wrapper/page-wrapper';
 import { Sidebar } from './sidebar/sidebar';
 
+const brandData = () => undefined;
+vi.mock('@core/brand/brand.gateway', () => ({
+	injectBrandQuery: () => ({ data: brandData }),
+}));
+
 const notifications = signal<unknown>(undefined);
 vi.mock('@data-access/queries/notification.queries', () => ({
 	injectNotificationsQuery: () => ({ data: notifications }),

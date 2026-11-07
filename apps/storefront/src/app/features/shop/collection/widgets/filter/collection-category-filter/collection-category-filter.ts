@@ -1,10 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { Observable } from 'rxjs';
-
-import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
+import { childCategories } from '@core/catalog/category-scope';
 import { Params } from '@data-access/interfaces/core.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 
@@ -19,20 +16,14 @@ export class CollectionCategoryFilter {
 	private router = inject(Router);
 
 	private readonly categoriesQuery = injectCategoriesQuery();
-	category$: Observable<ICategoryModel> = toObservable(
-		computed(() => this.categoriesQuery.data() ?? { data: [], total: 0 }),
-	);
 
 	readonly filter = input<Params>();
 
-	public categories: ICategory[];
+	/** Only this page's children. A last-level category has nothing to narrow. */
+	readonly categories = computed(() =>
+		childCategories(this.categoriesQuery.data()?.data ?? [], this.filter()?.['path']),
+	);
 	public selectedCategories: string[] = [];
-
-	constructor() {
-		this.category$.subscribe(
-			(res) => (this.categories = res?.data?.filter((category) => category.type == 'product')),
-		);
-	}
 
 	ngOnChanges() {
 		const filter = this.filter();

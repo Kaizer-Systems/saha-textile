@@ -8,6 +8,7 @@ import { NgbNavConfig } from '@ng-bootstrap/ng-bootstrap';
 import { LoadingBarRouterModule } from '@ngx-loading-bar/router';
 import { Observable } from 'rxjs';
 
+import { injectBrandQuery } from '@core/brand/brand.gateway';
 import { IdleLockService } from '@core/auth/idle-lock.service';
 import { AuthStore } from '@core/state/auth.store';
 import { SettingStore } from '@core/state/setting.store';
@@ -30,12 +31,18 @@ export class App {
 
 	setting$: Observable<IValues | null> = toObservable(this.settingStore.setting);
 
-	public favIcon: HTMLLinkElement | null;
+	private readonly brand = injectBrandQuery();
 
 	/** True after this tab has held an authenticated session — drives clean login redirect. */
 	private hadAuthenticatedSession = false;
 
 	constructor() {
+		const page = inject<Document>(DOCUMENT);
+		effect(() => {
+			const icon = this.brand.data()?.icons['32'];
+			const link = page.querySelector<HTMLLinkElement>('#appIcon');
+			if (icon && link) link.href = icon;
+		});
 		const config = inject(NgbNavConfig);
 		const document = inject<Document>(DOCUMENT);
 
@@ -73,11 +80,6 @@ export class App {
 				document.getElementsByTagName('html')[0].removeAttribute('dir');
 				document.body.classList.remove('rtl');
 			}
-
-			// Set Favicon
-			this.favIcon = document.querySelector('#appIcon');
-			const favicon = setting?.general?.favicon_image?.original_url;
-			if (favicon) this.favIcon!.href = favicon;
 
 			// Set site title
 			this.titleService.setTitle(

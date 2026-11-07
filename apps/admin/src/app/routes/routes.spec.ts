@@ -38,5 +38,7 @@ describe('route tables', () => {
 	it('loads the notification settings screen', async () => {
 		const route = settingRoutes.find((entry) => entry.path === 'notifications') as Loadable;
 		await expect(route.loadComponent?.()).resolves.toBeDefined();
+		const brand = settingRoutes.find((entry) => entry.path === 'brand') as Loadable;
+		await expect(brand.loadComponent?.()).resolves.toBeDefined();
 	}, 30_000);
 });

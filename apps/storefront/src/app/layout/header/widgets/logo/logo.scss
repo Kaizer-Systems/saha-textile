@@ -1,0 +1,13 @@
+// Set here so the theme's small logo width cannot squeeze the tagline.
+:host .web-logo img {
+	display: block;
+	width: 300px;
+	max-width: 100%;
+	height: auto;
+}
+
+@media (max-width: 767.98px) {
+	:host .web-logo img {
+		width: 50px;
+	}
+}

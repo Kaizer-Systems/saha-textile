@@ -22,16 +22,19 @@ function lowerTitles(product: Product, locales: readonly string[]): Record<strin
 }
 
 /** What a shopper may search for beyond the name, ranked below it. */
-function factWords(product: Product, categoryNames: readonly string[]): string {
+function factWords(product: Product, categoryNames: readonly string[], searchWords: readonly string[]): string {
 	const terms = product.optionGroups.flatMap((group) => group.terms.flatMap((term) => Object.values(term.label)));
-	return [...new Set([...categoryNames, ...terms])].join(' ');
+	return [...new Set([...categoryNames, ...terms, ...searchWords])].join(' ');
 }
 
-export function listingDocument({ product, variants, categoryNames = [] }: SearchEntry, locales: readonly string[]) {
+export function listingDocument(
+	{ product, variants, categoryNames = [], searchWords = [] }: SearchEntry,
+	locales: readonly string[],
+) {
 	const groups = product.optionGroups.filter((group) => FACET_ROLES.has(group.semanticRole));
 	return {
 		...searchDocument(product),
-		facts: factWords(product, categoryNames),
+		facts: factWords(product, categoryNames, searchWords),
 		description: Object.values(product.shortDescription).join(' '),
 		...listingPrice(product, variants),
 		idOrder: idOrder(product.id),

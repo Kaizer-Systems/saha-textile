@@ -4,9 +4,11 @@ import { Component, DestroyRef, PLATFORM_ID, TemplateRef, inject, signal, viewCh
 import { Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { injectBrandQuery } from '@data-access/queries/brand.queries';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { firstValueFrom } from 'rxjs';
 
+import { ConsentStore } from '@core/consent/consent.store';
 import { runtimeConfig, runtimeConfigReady } from '@core/config/runtime-config';
 
 import { Button } from '../../button/button';
@@ -32,15 +34,6 @@ interface PopupImage {
 	height: number | null;
 	alt: string;
 }
-
-/** Theme artwork until an admin sets the `newsletter_popup` banner. */
-const FALLBACK_IMAGE: PopupImage = {
-	src: 'assets/images/newsletter/3.jpg',
-	srcset: null,
-	width: null,
-	height: null,
-	alt: '',
-};
 
 interface BannerSource {
 	url: string;
@@ -79,7 +72,10 @@ export class NewsletterModal {
 	private readonly destroyRef = inject(DestroyRef);
 
 	readonly template = viewChild.required<TemplateRef<unknown>>('newsletterModal');
-	readonly image = signal<PopupImage>(FALLBACK_IMAGE);
+	/** The `newsletter_popup` banner. With none set, the popup is text only. */
+	readonly image = signal<PopupImage | null>(null);
+	readonly brand = injectBrandQuery();
+	private readonly consent = inject(ConsentStore);
 	readonly notice = signal<string | null>(null);
 	readonly neverAgain = signal(false);
 
@@ -126,7 +122,7 @@ export class NewsletterModal {
 	}
 
 	private async open(): Promise<void> {
-		if (this.suppressed() || this.quietPage()) return;
+		if (this.suppressed() || this.quietPage() || !this.consent.decided()) return;
 		this.disarm?.();
 		this.document.defaultView?.sessionStorage.setItem(SESSION_FLAG, '1');
 		await this.loadImage();
@@ -170,7 +166,7 @@ export class NewsletterModal {
 				});
 			}
 		} catch {
-			// The popup still works with the theme artwork.
+			// The popup still works without a picture.
 		}
 	}
 
@@ -184,7 +180,9 @@ export class NewsletterModal {
 		return this.document.cookie.split('; ').some((entry) => entry.startsWith(`${COOKIE}=`));
 	}
 
+	/** Without consent the answer lasts this visit, through the session flag `open` already set. */
 	private writeCookie(value: string, maxAge: number): void {
+		if (!this.consent.allows('functional')) return;
 		const current = this.document.cookie.split('; ').find((entry) => entry.startsWith(`${COOKIE}=`));
 		if (current === `${COOKIE}=subscribed`) return;
 		this.document.cookie = `${COOKIE}=${value}; Max-Age=${maxAge}; Path=/; SameSite=Lax; Secure`;

@@ -925,6 +925,20 @@ Closed: `DEC-DOMAIN-TOPOLOGY`.
 - **Card badges changed.** One promotion flag stays top left on the photo. The stock fact is a small chip at the photo's bottom left, with white text: Only 1 left in red `#C92A2A`, Only N left in amber `#B45309`, Back in stock in green `#0B7A5B`. French: "Plus que N", "De retour en stock". Low stock wins over Back in stock. This replaces the top-right fact slot in B4.
 - **Back in stock** starts when a product's total stock goes from 0 to above 0 on a save, lasts 14 days, and ends at once if stock reaches 0. "In Stock" stays as plain text on every buyable card.
 
+## Owner decision round (2026-11-07) — builder polish, Brand Kit, and cookie consent
+
+- **D1:** the Language switch count opens a to-do list; a line switches language, opens the tab and focuses the field.
+- **D2:** search words are one list per value for any language and reach the search index. A shop-wide synonym screen is a later chunk.
+- **D3:** the Unit field is replaced by Saree length and Blouse piece, in metres, for products under Sarees.
+- **D4:** a size guide lives on the measurement template and replaces the per-product size chart image. Inches first, with a switch to centimetres.
+- **D5:** offline, the cart shows read-only with a notice and re-reads on reconnect. The offline queue stays in Milestone 8.
+- **D6:** card names show two lines at a fixed height.
+- **D7:** category tiles and the Categories filter show children only, with photos and product counts. A last-level page shows the categories beside it and no filter.
+- **D8:** theme leftovers removed, including placeholder banners and the demo menu sections. Contact details come from the live site.
+- **D9:** the old `POST /orders` stays for Chunk G.
+- **Logos:** a Brand Kit in admin, through the media pipeline, so a new owner uploads their own after deployment. The TIFF is the master, and both versions are cut from it so the reds match. Wide places show the full logo with seal, name and tagline; small spaces show the seal. On dark or coloured areas the logo sits on white and keeps its own colours.
+- **Cookies:** the box has three equal buttons, and refusing takes one click. Cookie settings shows all six locked categories; empty ones say Not in use with no switch, and Accept all turns on only what is in use. `st_consent` holds the answer in the browser and `POST /privacy/consent` keeps the history. The Contact map waits for consent or a click. The Privacy Policy cookie section is a draft until the owner's lawyer or CA reviews it.
+
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

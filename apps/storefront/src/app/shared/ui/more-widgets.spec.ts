@@ -17,7 +17,6 @@ import { findStateByName, resolveAddressLocation } from '@shared/util/address-lo
 
 import { Alert } from './alert/alert';
 import { CartLineConfig } from './cart-line-config/cart-line-config';
-import { Cookie } from './cookie/cookie';
 import { FeatherIcons } from './feather-icons/feather-icons';
 import { VariationAxis } from './product-config/parts/variation-axis/variation-axis';
 import { StickyCompare } from './sticky-compare/sticky-compare';
@@ -45,17 +44,6 @@ describe('Alert', () => {
 		expect(fixture.componentInstance.alert).toEqual({ type: 'error', message: 'No' });
 		fixture.destroy();
 		expect(service.notification).toBe(true);
-	});
-});
-
-describe('Cookie', () => {
-	it('follows the store and records the answer', () => {
-		const store = { cookies: signal(false), updateSession: vi.fn() };
-		const cookie = bare(Cookie, [{ provide: SiteConfigStore, useValue: store }]).componentInstance;
-		TestBed.tick();
-		expect(cookie.cookies).toBe(false);
-		cookie.acceptCookies(true);
-		expect(store.updateSession).toHaveBeenCalledWith('cookies', true);
 	});
 });
 

@@ -19,8 +19,9 @@
 		<app-language-switch
 			[locales]="locales"
 			[active]="text.locale()"
-			[missing]="missing()"
+			[gaps]="gaps()"
 			(changed)="switchLanguage($event)"
+			(gapChosen)="openLanguageGap($event)"
 		/>
 		<app-form-fields
 			[label]="'name'"
@@ -139,6 +140,68 @@
 				</button>
 			</div>
 		</div>
+		<app-form-fields
+			[label]="'size_guide'"
+			[for]="'add_guide_row_btn'"
+		>
+			<p class="help-text">{{ 'size_guide_help' | transloco }}</p>
+			@if (sizeGuide().length) {
+			<div class="table-responsive">
+				<table class="table table-bordered">
+					<thead>
+						<tr>
+							<th scope="col">{{ 'size' | transloco }}</th>
+							@for (row of measures(); track $index) {
+							<th scope="col">{{ row.label[text.locale()] || guide(row) }} ({{ row.unit }})</th>
+							}
+							<th scope="col"></th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (guideRow of sizeGuide(); track $index; let index = $index) {
+						<tr>
+							<td>
+								<input
+									class="form-control"
+									[id]="'guide_size_' + index"
+									[value]="guideRow.size"
+									(change)="setGuideSize(index, $any($event.target).value)"
+								/>
+							</td>
+							@for (row of measures(); track $index) {
+							<td>
+								<input
+									class="form-control"
+									type="number"
+									step="0.5"
+									[value]="guideRow.values[fieldCode(row)] ?? ''"
+									(change)="setGuideValue(index, fieldCode(row), $any($event.target).value)"
+								/>
+							</td>
+							}
+							<td>
+								<a
+									class="invalid-feedback d-block cursor-pointer"
+									(click)="removeGuideRow(index)"
+								>
+									{{ 'remove' | transloco }}
+								</a>
+							</td>
+						</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+			}
+			<button
+				type="button"
+				id="add_guide_row_btn"
+				class="btn btn-theme"
+				(click)="addGuideRow()"
+			>
+				{{ 'add_size' | transloco }}
+			</button>
+		</app-form-fields>
 		<app-button
 			[id]="'save-addon'"
 			[type]="'submit'"

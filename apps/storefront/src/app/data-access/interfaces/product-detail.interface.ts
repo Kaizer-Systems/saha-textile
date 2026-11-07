@@ -152,3 +152,9 @@ export interface IBundle {
 	measurement_fields?: IMeasurementField[];
 	note?: string;
 }
+
+/** A measurement template's size table. Numbers are in each field's own unit. */
+export interface ISizeGuide {
+	fields: { code: string; label: string; unit: 'in' | 'cm' }[];
+	rows: { size: string; values: Readonly<Record<string, number>> }[];
+}

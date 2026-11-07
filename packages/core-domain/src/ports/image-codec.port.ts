@@ -19,8 +19,10 @@ export interface ImageRenderSpec {
 	width: number;
 	height: number | null;
 	fit: 'inside' | 'cover' | 'pad' | 'blur';
-	format: 'image/webp' | 'image/jpeg';
+	format: 'image/webp' | 'image/jpeg' | 'image/png';
 	quality: number;
+	/** Logos keep their see-through background. Everything else is flattened onto white. */
+	keepAlpha?: boolean;
 }
 
 export interface RenderedImage {

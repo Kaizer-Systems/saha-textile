@@ -139,6 +139,7 @@ export interface AddonTemplateDoc {
 	label: Record<string, string> | string;
 	priceINR: number;
 	fields?: unknown[];
+	sizeGuide?: Array<{ size: string; values: Record<string, number> }>;
 }
 
 const AddonTemplateSchema = new Schema<AddonTemplateDoc>(
@@ -148,6 +149,7 @@ const AddonTemplateSchema = new Schema<AddonTemplateDoc>(
 		label: { type: Schema.Types.Mixed, required: true },
 		priceINR: { type: Number, required: true },
 		fields: { type: [Schema.Types.Mixed], default: [] },
+		sizeGuide: { type: [Schema.Types.Mixed], default: [] },
 	},
 	{ collection: 'addonTemplates', timestamps: true },
 );

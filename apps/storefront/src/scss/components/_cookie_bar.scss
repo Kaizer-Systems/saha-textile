@@ -154,3 +154,403 @@
 		}
 	}
 }
+
+/**=====================
+     Cookie box additions
+==========================**/
+.cookie-bar-box {
+	z-index: 1040;
+
+	.cookie-contain a {
+		color: var(--theme-color);
+		text-decoration: underline;
+	}
+
+	.button-group {
+		button.ok-button + button.ok-button {
+			border-left: 1px solid $white;
+		}
+
+		button.cookie-choose-button {
+			width: 100%;
+			border-top: 1px solid #e6e6e6;
+			background: $white;
+		}
+	}
+
+	// The bottom menu shows below md; the box sits above it.
+	@media (max-width: 767.98px) {
+		bottom: calc(81px + env(safe-area-inset-bottom));
+	}
+}
+
+/**=====================
+     Cookie settings popup
+==========================**/
+.cookie-settings-modal {
+	--cookie-gap: clamp(14px, 2.4vw, 20px);
+	--cookie-edge: clamp(16px, 3vw, 28px);
+}
+
+.theme-modal .modal-dialog.cookie-settings {
+	display: flex;
+	align-items: center;
+	width: min(720px, calc(100vw - 32px));
+	max-width: none;
+	height: 100dvh;
+	margin: 0 auto;
+	padding: clamp(12px, 3vh, 32px) 0;
+
+	.modal-content {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		max-height: 100%;
+		padding: 0;
+		overflow: hidden;
+		border: 0;
+		border-radius: 16px;
+	}
+
+	.modal-content .modal-header {
+		display: flex;
+		flex: none;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 16px;
+		margin: 0;
+		padding: var(--cookie-edge) var(--cookie-edge) var(--cookie-gap);
+		border-bottom: 1px solid #eceff1;
+
+		h3 {
+			margin: 0 0 4px;
+			font-size: clamp(20px, 2.4vw, 24px);
+			font-weight: 700;
+		}
+
+		p {
+			margin: 0;
+			padding: 0;
+			font-size: 15px;
+			line-height: 1.5;
+			color: #4a5568;
+		}
+
+		a {
+			color: var(--theme-color);
+			text-decoration: underline;
+		}
+
+		.btn-close {
+			position: static;
+			display: grid;
+			flex: none;
+			place-items: center;
+			width: 40px;
+			height: 40px;
+			min-width: 40px;
+			margin: 0;
+			padding: 0;
+			border-radius: 50%;
+			background: #f2f4f6;
+			box-shadow: none;
+			opacity: 1;
+			transform: none;
+
+			i {
+				font-size: 20px;
+				line-height: 1;
+				color: #222;
+			}
+		}
+	}
+
+	.modal-content .modal-body {
+		display: grid;
+		flex: 1 1 auto;
+		align-content: start;
+		gap: 12px;
+		min-height: 0;
+		overflow-y: auto;
+		padding: var(--cookie-gap) var(--cookie-edge);
+	}
+
+	.cookie-group {
+		padding: clamp(14px, 2vw, 18px);
+		border: 1px solid #e6e9ec;
+		border-radius: 12px;
+
+		h4 {
+			margin: 0 0 2px;
+			font-size: 17px;
+			font-weight: 600;
+		}
+	}
+
+	.cookie-group-head {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 16px;
+
+		p {
+			margin: 0;
+			font-size: 15px;
+			line-height: 1.45;
+			color: #4a5568;
+		}
+	}
+
+	.cookie-state {
+		flex: none;
+		padding-top: 2px;
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--theme-color);
+	}
+
+	.cookie-switch {
+		flex: none;
+		min-height: 0;
+		padding: 0;
+
+		.form-check-input {
+			float: none;
+			width: 46px;
+			height: 26px;
+			margin: 0;
+			cursor: pointer;
+
+			&:checked {
+				border-color: var(--theme-color);
+				background-color: var(--theme-color);
+			}
+		}
+	}
+
+	.cookie-effect {
+		display: flex;
+		gap: 6px;
+		margin: 8px 0 0;
+		font-size: 14px;
+		line-height: 1.4;
+		color: #8a5a00;
+
+		i {
+			margin-top: 1px;
+		}
+	}
+
+	.cookie-more {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+		min-height: 32px;
+		margin: 4px 0 -4px;
+		padding: 6px 0;
+		border: 0;
+		background: none;
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--theme-color);
+	}
+
+	.cookie-list {
+		display: grid;
+		margin: 6px 0 0;
+		padding: 0;
+		list-style: none;
+
+		li {
+			display: grid;
+			grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.5fr) minmax(0, 0.8fr);
+			gap: 12px;
+			width: 100%;
+			padding: 10px 0;
+			border-top: 1px solid #eef0f2;
+			font-size: 14px;
+			line-height: 1.4;
+		}
+
+		strong {
+			font-weight: 600;
+			overflow-wrap: anywhere;
+		}
+
+		span {
+			color: #4a5568;
+		}
+
+		small {
+			font-size: 14px;
+			color: #6b7280;
+		}
+	}
+
+	.cookie-group-quiet {
+		border-color: #f0f2f4;
+		background: #f8f9fa;
+	}
+
+	.cookie-empty {
+		display: grid;
+		gap: 10px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+
+		li {
+			display: flex;
+			align-items: baseline;
+			justify-content: space-between;
+			gap: 12px;
+			width: 100%;
+			font-size: 14px;
+		}
+
+		strong {
+			margin-right: 8px;
+			font-size: 15px;
+			font-weight: 600;
+		}
+
+		span {
+			color: #6b7280;
+		}
+
+		em {
+			flex: none;
+			font-style: normal;
+			font-weight: 600;
+			color: #6b7280;
+		}
+	}
+
+	.cookie-note {
+		margin: 12px 0 0;
+		font-size: 13.5px;
+		line-height: 1.5;
+		color: #6b7280;
+	}
+
+	.modal-content .cookie-actions {
+		display: grid;
+		flex: none;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 10px;
+		margin: 0;
+		padding: var(--cookie-gap) var(--cookie-edge) calc(var(--cookie-gap) + env(safe-area-inset-bottom));
+		border-top: 1px solid #eceff1;
+		background: $white;
+		box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.04);
+
+		.btn {
+			width: 100%;
+			min-height: 48px;
+			margin: 0;
+			padding: 10px 12px;
+			border-radius: 10px;
+			font-size: 15px;
+			font-weight: 700;
+			line-height: 1.2;
+			white-space: normal;
+		}
+
+		.cookie-solid {
+			border: 1.5px solid var(--theme-color);
+			background: var(--theme-color);
+			color: $white;
+		}
+
+		.cookie-save {
+			border: 1.5px solid var(--theme-color);
+			background: $white;
+			color: var(--theme-color);
+		}
+	}
+
+	@media (max-width: 575.98px) {
+		align-items: flex-end;
+		width: 100%;
+		padding: 0;
+
+		.modal-content {
+			max-height: 92dvh;
+			border-radius: 18px 18px 0 0;
+		}
+
+		.modal-content .cookie-actions {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+
+			.cookie-save {
+				grid-column: 1 / -1;
+			}
+		}
+
+		.cookie-list li {
+			grid-template-columns: 1fr auto;
+			gap: 2px 12px;
+
+			strong {
+				grid-column: 1;
+			}
+
+			small {
+				grid-column: 2;
+				grid-row: 1;
+				text-align: right;
+			}
+
+			span {
+				grid-column: 1 / -1;
+			}
+		}
+
+		.cookie-empty li {
+			align-items: flex-start;
+
+			> div {
+				display: grid;
+			}
+		}
+	}
+
+	@media (max-height: 480px) {
+		align-items: stretch;
+		padding: 0;
+
+		.modal-content {
+			max-height: 100dvh;
+			border-radius: 0;
+		}
+
+		.modal-content .modal-header {
+			padding-block: 12px;
+		}
+
+		.modal-content .cookie-actions {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+
+			.cookie-save {
+				grid-column: auto;
+			}
+
+			.btn {
+				min-height: 42px;
+			}
+		}
+	}
+}
+
+// The bottom menu used to push the page 14 px wider than a 320 px phone.
+.mobile-menu {
+	right: 0;
+	left: 0;
+	width: auto;
+	max-width: 100%;
+	overflow: hidden;
+
+	ul {
+		max-width: 100%;
+	}
+}

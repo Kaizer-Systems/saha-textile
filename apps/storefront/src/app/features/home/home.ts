@@ -5,7 +5,6 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { CarouselModule } from 'ngx-owl-carousel-o';
 import { firstValueFrom } from 'rxjs';
 
-import { INewsLetter } from '@data-access/interfaces/theme.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { ProductService } from '@data-access/services/product.service';
 import { readRecentViews } from '@core/catalog/recent-views';
@@ -88,18 +87,6 @@ export class Home {
 		product_ids: [934, 936, 922, 917, 923, 921, 926, 903],
 	};
 
-	// Two side-by-side promo banners (Denver's two_column_banners section).
-	public twoColumnBanners = {
-		banner_1: {
-			image_url: 'assets/images/data/themes/berlin/2.jpg',
-			redirect_link: { link: 'fashion', link_type: 'collection' },
-		},
-		banner_2: {
-			image_url: 'assets/images/data/themes/berlin/3.jpg',
-			redirect_link: { link: 'fashion', link_type: 'collection' },
-		},
-	};
-
 	// Featured blog rail ported from Osaka's home. The blog widget fetches blogs
 	// itself and filters to these ids.
 	public featuredBlogs = {
@@ -108,15 +95,12 @@ export class Home {
 		blog_ids: [24, 23, 22, 21, 20, 19],
 	};
 
-	// Hero slides — Denver full-width banner images (assets/images/data/themes/denver).
-	// Same shape as the theme JSON's banner slice: image_url + redirect_link. Add,
-	// remove or repoint these freely; the carousel adapts to the count.
 	private readonly bannersQuery = injectBannersQuery(() => 'home');
 
 	/**
 	 * The admin's hero (owner log § Media → Banners). `hero_full` keeps this page's carousel;
 	 * the other layouts reuse the theme's own hero markup, rendered in our colours, through
-	 * `app-theme-home-banner`. With no live hero banners the theme artwork below stays.
+	 * `app-theme-home-banner`. With no live hero banners the page starts at its first product row.
 	 */
 	readonly heroTheme = computed(() => {
 		const data = this.bannersQuery.data();
@@ -137,7 +121,7 @@ export class Home {
 		};
 	});
 
-	/** `hero_full` slides from the API, or null to keep the theme artwork. */
+	/** `hero_full` slides from the API, or null when none is live. */
 	readonly heroSlides = computed(() => {
 		const data = this.bannersQuery.data();
 		const main = (data?.banners ?? []).filter((banner) => banner.position === 'hero' && banner.slot === 'main');
@@ -145,26 +129,4 @@ export class Home {
 		return main.map((banner) => ({ image_url: bannerSrc(banner.images.desktop), resolved: banner }));
 	});
 
-	public heroBanners = [
-		{
-			image_url: 'assets/images/data/themes/denver/1.jpg',
-			redirect_link: { link: 'fashion', link_type: 'collection' },
-		},
-		{
-			image_url: 'assets/images/data/themes/denver/2.jpg',
-			redirect_link: { link: 'fashion', link_type: 'collection' },
-		},
-		{
-			image_url: 'assets/images/data/themes/denver/3.jpg',
-			redirect_link: { link: 'fashion', link_type: 'collection' },
-		},
-	];
-
-	// "Join our newsletter" section — same copy/image as Denver's news_letter block.
-	public newsletter: INewsLetter = {
-		title: 'Join Our Newsletter And Get...',
-		sub_title: '$20 discount for your first order',
-		image_url: 'assets/images/data/newsletter.jpg',
-		status: true,
-	};
 }

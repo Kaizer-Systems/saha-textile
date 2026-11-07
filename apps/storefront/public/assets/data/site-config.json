@@ -73,7 +73,7 @@
 				}
 			],
 			"page_top_bar_dark": false,
-			"support_number": "+1-555-186-5359",
+			"support_number": "+91 98366 63137",
 			"today_deals": [1, 12, 8],
 			"category_ids": [1, 2, 3, 4, 5, 6, 7, 8]
 		},
@@ -81,10 +81,8 @@
 			"footer_style": "light_mode",
 			"footer_copyright": true,
 			"copyright_content": "©2026 Saha Textile. All rights reserved",
-			"footer_about": "Discover convenience redefined at our multipurpose store. From fresh groceries to the latest fashion trends, find everything you need under one roof. Your one-stop shopping destination for a diverse range of products.",
-			"about_address": "1418 Riverwood Drive, CA 96052, US",
+			"about_address": "No. 29, KB Basu Rd, Champadali, Haritala, Barasat, Kolkata, West Bengal 700124",
 			"about_email": "wecare@sahatextile.com",
-			"footer_categories": [6, 5, 4, 3, 2, 1],
 			"help_center": [
 				{
 					"label": "My Account",
@@ -155,15 +153,12 @@
 					"link": "shipping-policy"
 				}
 			],
-			"support_number": "+1-555-186-5359",
+			"support_number": "+91 98366 63137",
 			"support_email": "wecare@sahatextile.com",
-			"play_store_url": "https://play.google.com/",
-			"app_store_url": "https://apple.com/",
 			"social_media_enable": true,
-			"facebook": "https://facebook.com/",
-			"instagram": "https://instagram.com/",
-			"twitter": "https://twitter.com/",
-			"pinterest": "https://pinterest.com/"
+			"facebook": "https://www.facebook.com/SahaTextile/",
+			"instagram": "https://www.instagram.com/saha_textile/",
+			"twitter": "https://x.com/saha_textile"
 		},
 		"collection": {
 			"collection_layout": "collection_category_slider",
@@ -172,7 +167,7 @@
 		"product": {
 			"product_layout": "product_thumbnail",
 			"is_trending_product": true,
-			"banner_enable": true,
+			"banner_enable": false,
 			"banner_image_url": "assets/images/data/banner-1.png",
 			"safe_checkout": true,
 			"safe_checkout_image": "assets/images/data/payments.png",

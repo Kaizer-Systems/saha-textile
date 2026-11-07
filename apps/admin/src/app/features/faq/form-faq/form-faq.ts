@@ -1,4 +1,4 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, DOCUMENT, inject, input, signal } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -6,7 +6,14 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { Select2 } from 'ng-select2-component';
 import { map, of, Subject, switchMap, takeUntil } from 'rxjs';
 
-import { ADMIN_LOCALES, LocalizedFields, SOURCE_LOCALE } from '@core/i18n/localized-fields';
+import {
+	ADMIN_LOCALES,
+	focusField,
+	gapsByLocale,
+	type LanguageGap,
+	LocalizedFields,
+	SOURCE_LOCALE,
+} from '@core/i18n/localized-fields';
 import { FaqScope, IFaq } from '@data-access/interfaces/faq.interface';
 import { FaqService } from '@data-access/services/faq.service';
 import { Button } from '@shared/ui/button/button';
@@ -26,6 +33,7 @@ const idList = (value: string): string[] =>
 	imports: [Select2, ReactiveFormsModule, FormFields, Button, TranslocoModule, LanguageSwitch],
 })
 export class FormFaq {
+	private page = inject<Document>(DOCUMENT);
 	private faqService = inject(FaqService);
 	private router = inject(Router);
 	private route = inject(ActivatedRoute);
@@ -44,7 +52,7 @@ export class FormFaq {
 	public faq: IFaq | null;
 	readonly fields: LocalizedFields;
 	readonly locales = ADMIN_LOCALES;
-	readonly missing = signal<Record<string, number>>({});
+	readonly gaps = signal<Record<string, LanguageGap[]>>({});
 
 	private destroy$ = new Subject<void>();
 
@@ -69,8 +77,13 @@ export class FormFaq {
 		this.refreshMissing();
 	}
 
+	openLanguageGap({ key, locale }: { key: string; locale: string }) {
+		this.switchLanguage(locale);
+		focusField(this.page, key);
+	}
+
 	refreshMissing() {
-		this.missing.set(Object.fromEntries(this.locales.map((locale) => [locale, this.fields.missing(locale)])));
+		this.gaps.set(gapsByLocale((locale) => this.fields.gaps(locale)));
 	}
 
 	ngOnInit() {

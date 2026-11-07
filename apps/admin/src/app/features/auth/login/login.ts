@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 
+import { injectBrandQuery } from '@core/brand/brand.gateway';
 import { AuthStore } from '@core/state/auth.store';
 import { Alert } from '@shared/ui/alert/alert';
 import { Button } from '@shared/ui/button/button';
@@ -33,6 +34,7 @@ const PIN_LENGTH = 6;
 	imports: [Alert, ReactiveFormsModule, RouterLink, TranslocoModule, Button, PinPad],
 })
 export class Login {
+	readonly brand = injectBrandQuery();
 	private authStore = inject(AuthStore);
 	private router = inject(Router);
 	private formBuilder = inject(FormBuilder);

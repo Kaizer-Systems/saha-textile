@@ -58,7 +58,6 @@ export class Collection {
 		items: [{ label: this.collectionsLabel, active: true }],
 	});
 
-	public categorySlider = data.categorySlider;
 	public skeleton: boolean = true;
 
 	private router = inject(Router);

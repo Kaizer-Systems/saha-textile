@@ -414,7 +414,6 @@ describe('FormProduct pickers', () => {
 	it('stores single images, clears them, and ignores lists', () => {
 		const { page } = render();
 		const single = [
-			['selectSizeImage', 'size_chart_image_id'],
 			['selectMetaImage', 'product_meta_image_id'],
 		] as const;
 		for (const [method, control] of single) {
@@ -434,6 +433,88 @@ describe('FormProduct pickers', () => {
 		expect(page.variationControl.at(0).value.variation_image_id).toBe(4);
 		page.selectVariationImage(null as never, 0);
 		expect(page.variationControl.at(0).value.variation_image_id).toBe('');
+	});
+});
+
+describe('FormProduct language to-do list', () => {
+	const group = {
+		attributeCode: 'color',
+		label: { en: 'Colour' },
+		terms: [
+			{ code: 'red', label: { en: 'Red', fr: 'Rouge' } },
+			{ code: 'blue', label: { en: 'Blue' } },
+			{ code: 'pink', label: {} },
+		],
+	};
+
+	it('lists fields, option names and values for a language', () => {
+		const { page } = render({ params: { id: 'p1' } });
+		page.optionGroups.set([group, { attributeCode: 'size', label: {}, terms: [] }] as never);
+		TestBed.tick();
+		const keys = page.gaps()['fr']?.map((gap) => [gap.key, gap.name]);
+		expect(keys).toContainEqual(['option:color', 'Colour']);
+		expect(keys).toContainEqual(['option:size', 'size']);
+		expect(keys).toContainEqual(['value:color:blue', 'Blue']);
+		expect(keys).toContainEqual(['value:color:pink', 'pink']);
+		expect(keys).not.toContainEqual(['value:color:red', 'Red']);
+	});
+
+	it('adds an image gap only a Go Live attempt can report', () => {
+		const { page } = render({ params: { id: 'p1' } });
+		page.goLiveGaps.set([
+			{ field: 'image_alt', locale: 'fr' },
+			{ field: 'image_alt', locale: 'en' },
+			{ field: 'price', locale: null },
+		] as never);
+		TestBed.tick();
+		expect(page.gaps()['fr']).toContainEqual({ key: 'image_alt', label: 'gap_image_alt' });
+		expect(page.gaps()['fr']?.filter((gap) => gap.key === 'image_alt')).toHaveLength(1);
+	});
+
+	it('keeps the list current while typing', () => {
+		vi.useFakeTimers();
+		const { page } = render({ params: { id: 'p1' } });
+		page.switchLanguage('fr');
+		page.form.patchValue({ name: 'Soie' });
+		vi.advanceTimersByTime(300);
+		expect(page.gaps()['fr']?.map((gap) => gap.key)).not.toContain('name');
+		vi.useRealTimers();
+	});
+
+	it('opens the tab and the language of a line', () => {
+		const { page } = render({ params: { id: 'p1' } });
+		page.openLanguageGap({ key: 'estimated_delivery_text', locale: 'fr' });
+		expect(page.fields.locale()).toBe('fr');
+	});
+});
+
+describe('FormProduct saree lengths', () => {
+	const tree = {
+		data: [
+			{ id: 'a', slug: 'sarees', subcategories: [{ id: 'b', slug: 'silk' }] },
+			{ id: 'c', slug: 'suits' },
+		],
+	};
+
+	it('shows for anything under Sarees, and sends nothing otherwise', () => {
+		categories.set(tree);
+		const { page } = render({ params: { id: 'p1' } });
+		page.selectCategoryItem(['c'] as never);
+		expect(page.showsLengths()).toBe(false);
+		page.selectCategoryItem(['b'] as never);
+		expect(page.showsLengths()).toBe(true);
+		const lengths = page['content']({ saree_length_m: '5.5', blouse_piece_m: '' });
+		expect([lengths.sareeLengthM, lengths.blousePieceM]).toEqual([5.5, null]);
+		page.selectCategoryItem(['c'] as never);
+		expect(page['content']({ saree_length_m: '5.5' }).sareeLengthM).toBeNull();
+		categories.set(undefined);
+	});
+
+	it('is off with no catalogue yet', () => {
+		categories.set(undefined);
+		const { page } = render({ params: { id: 'p1' } });
+		page.selectCategoryItem(['b'] as never);
+		expect(page.showsLengths()).toBe(false);
 	});
 });
 
@@ -487,6 +568,8 @@ describe('FormProduct.submit', () => {
 				optionGroups: [],
 				addonTemplateCode: null,
 				estimatedDeliveryText: { en: ' 3 days ' },
+				sareeLengthM: null,
+				blousePieceM: null,
 				imageMode: 'simple',
 				gallery: ['m1'],
 				compound: [],

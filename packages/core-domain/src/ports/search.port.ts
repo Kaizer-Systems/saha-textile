@@ -21,6 +21,8 @@ export interface SearchEntry {
 	variants: readonly ProductVariant[];
 	/** Names of its categories, so "budget range" finds what its titles do not say. */
 	categoryNames?: readonly string[];
+	/** Staff's search words for the values it carries, in any language. */
+	searchWords?: readonly string[];
 }
 
 export interface SearchPort {

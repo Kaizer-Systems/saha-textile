@@ -6,8 +6,9 @@
 	<app-language-switch
 		[locales]="locales"
 		[active]="fields.locale()"
-		[missing]="missing()"
+		[gaps]="gaps()"
 		(changed)="switchLanguage($event)"
+		(gapChosen)="openLanguageGap($event)"
 	/>
 	<div class="vertical-tabs">
 		<div class="row">
@@ -153,24 +154,42 @@
 									<div class="invalid-feedback">{{ 'type_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
+								@if (showsLengths()) {
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
-									[label]="'unit'"
-									[for]="'unit'"
+									[label]="'saree_length'"
+									[for]="'saree_length_m'"
 									[required]="false"
 								>
 									<input
 										class="form-control"
-										id="unit"
-										type="text"
-										placeholder="{{ 'enter_unit' | transloco }}"
-										formControlName="unit"
+										id="saree_length_m"
+										type="number"
+										min="0"
+										step="0.1"
+										formControlName="saree_length_m"
 									/>
-									<p class="help-text">
-										{{ '*Specify the measurement unit, such as 10 Pieces, 1 KG, 1 Ltr, etc.' }}
-									</p>
+									<p class="help-text">{{ 'saree_length_help' | transloco }}</p>
 								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'blouse_piece'"
+									[for]="'blouse_piece_m'"
+									[required]="false"
+								>
+									<input
+										class="form-control"
+										id="blouse_piece_m"
+										type="number"
+										min="0"
+										step="0.1"
+										formControlName="blouse_piece_m"
+									/>
+									<p class="help-text">{{ 'blouse_piece_help' | transloco }}</p>
+								</app-form-fields>
+								}
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -958,20 +977,6 @@
 									[combinations]="combinations()"
 									[locale]="fields.locale()"
 								/>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'Size Chart'"
-									[for]="'size_chart_image_id'"
-									[required]="false"
-								>
-									<app-image-upload
-										[multipleImage]="false"
-										[image]="product?.size_chart_image"
-										[helpText]="'*Upload an image showcasing the size chart tailored for fashion products. A table format image is suggested for easy reference.'"
-										(selectedFiles)="selectSizeImage($event)"
-									/>
-								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"

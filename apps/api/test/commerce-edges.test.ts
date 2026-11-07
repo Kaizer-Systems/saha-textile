@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import {
 	BadRequestException,
 	ForbiddenException,
@@ -382,7 +384,8 @@ describe('PrivacyController', () => {
 			findLatestForGuest: vi.fn(async () => null as unknown),
 			append: vi.fn(async () => {}),
 		};
-		return { consent, controller: new PrivacyController(consent as never, config) };
+		const limits = { enforce: vi.fn(async () => {}) };
+		return { consent, limits, controller: new PrivacyController(consent as never, config, limits as never) };
 	};
 	const latest = { categories: { necessary: true }, policyVersion: 'v1', createdAt: 'at' };
 
@@ -401,12 +404,16 @@ describe('PrivacyController', () => {
 	});
 
 	it('records a decision for a person or a guest', async () => {
-		const { controller, consent } = harness();
+		const { controller, consent, limits } = harness();
 		const body = { categories: { necessary: true }, policyVersion: 'v1' } as never;
-		await controller.updateConsent(body, {} as never, shopper);
+		const hashed = (raw: string) => createHash('sha256').update(raw).digest('hex');
+		await controller.updateConsent(body, { ip: '1.1.1.1' } as never, shopper);
+		expect(limits.enforce).toHaveBeenCalledWith('consent_write', { ip: '1.1.1.1' });
 		expect(consent.append).toHaveBeenLastCalledWith(expect.objectContaining({ userId: 'cus_1', guestId: null }));
 		await controller.updateConsent(body, { cookies: { st_guest: 'g' } } as never, undefined);
-		expect(consent.append).toHaveBeenLastCalledWith(expect.objectContaining({ userId: null, guestId: 'g' }));
+		expect(consent.append).toHaveBeenLastCalledWith(expect.objectContaining({ userId: null, guestId: hashed('g') }));
+		await controller.updateConsent({ ...(body as object), consentId: 'c-1' } as never, {} as never, undefined);
+		expect(consent.append).toHaveBeenLastCalledWith(expect.objectContaining({ guestId: hashed('c-1') }));
 		await controller.updateConsent(body, {} as never, undefined);
 		expect(consent.append).toHaveBeenLastCalledWith(expect.objectContaining({ guestId: null }));
 	});

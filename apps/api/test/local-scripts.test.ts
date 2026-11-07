@@ -77,6 +77,7 @@ vi.mock('@saha-textile/adapters-db-mongo', () => {
 		MongoCustomerAuthRepository: repository(() => h.customerAuth),
 		MongoProductRepository: repository(() => h.products),
 		MongoProductVariantRepository: repository(() => h.variants),
+		MongoAttributeDefinitionRepository: repository(() => ({ listAll: async () => [] })),
 		MongoCategoryRepository: repository(() => ({
 			tree: async () => [{ id: 'cat_1', name: { en: 'Sarees', fr: 'Saris' } }],
 		})),
@@ -353,8 +354,8 @@ describe('rebuild-search-index', () => {
 	it('reads every page and stops at the total', async () => {
 		h.products.list = vi
 			.fn()
-			.mockResolvedValueOnce({ items: [{ id: 'p1', categoryIds: ['cat_1', 'gone'] }], total: 2 })
-			.mockResolvedValueOnce({ items: [{ id: 'p2', categoryIds: [] }], total: 2 });
+			.mockResolvedValueOnce({ items: [{ id: 'p1', categoryIds: ['cat_1', 'gone'], optionGroups: [] }], total: 2 })
+			.mockResolvedValueOnce({ items: [{ id: 'p2', categoryIds: [], optionGroups: [] }], total: 2 });
 		const result = await run('rebuild');
 		expect(h.products.list).toHaveBeenCalledTimes(2);
 		expect(result.out).toContain('Indexed 2 live products of 2.');

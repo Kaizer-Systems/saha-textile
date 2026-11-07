@@ -153,3 +153,17 @@ test.describe.serial('Cart across a sign-in', () => {
 		}
 	});
 });
+
+test.describe('Offline', () => {
+	test('the saved cart stays readable with a notice, and changes pause', async ({ page, context }) => {
+		await addToCart(page);
+		await page.goto('/en/cart');
+		await expect(page.locator('.cart-section .product-box-contain').first()).toBeVisible();
+		await context.setOffline(true);
+		await expect(page.locator('.cart-section .alert-warning')).toBeVisible();
+		await expect(page.locator('.cart-section [inert]')).toHaveCount(1);
+		await context.setOffline(false);
+		await expect(page.locator('.cart-section .alert-warning')).toHaveCount(0);
+		await expect(page.locator('.cart-section [inert]')).toHaveCount(0);
+	});
+});

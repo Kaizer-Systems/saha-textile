@@ -13,6 +13,8 @@ export function applyProductContent(product: Product, content: ProductContentWri
 		description: { en: '', ...content.description },
 		seo: { title: content.metaTitle, description: content.metaDescription },
 		estimatedDeliveryText: leadTime ? { ...content.estimatedDeliveryText, en: leadTime } : null,
+		sareeLengthM: content.sareeLengthM,
+		blousePieceM: content.blousePieceM,
 		categoryIds: content.categoryIds,
 		optionGroups: content.optionGroups,
 		addonTemplateCode: content.addonTemplateCode,

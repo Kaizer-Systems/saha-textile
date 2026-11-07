@@ -40,7 +40,6 @@ export class App {
 
 	siteConfig$: Observable<ISiteConfig> = toObservable(this.siteConfigStore.siteConfig) as Observable<ISiteConfig>;
 
-	public favIcon: HTMLLinkElement | null;
 	public isTabInFocus = true;
 	public timeoutId: ReturnType<typeof setTimeout>;
 	private currentMessageIndex = 0;
@@ -77,12 +76,6 @@ export class App {
 				document.getElementsByTagName('html')[0].removeAttribute('dir');
 				document.body.classList.remove('rtl');
 			}
-
-			// Set Favicon
-			// The theme is empty until it loads. index.html already has a working icon.
-			const favicon = theme?.logo?.favicon_icon?.original_url;
-			this.favIcon = document.querySelector('#appIcon');
-			if (favicon) this.favIcon!.href = favicon;
 
 			theme?.seo?.og_title && this.meta.updateTag({ property: 'og:title', content: theme?.seo?.og_title });
 			theme?.seo?.og_description &&

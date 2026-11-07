@@ -15,13 +15,13 @@
 		[data]="heroThemeData()"
 	/>
 </section>
-} @else {
+} @else if (heroSlides(); as slides) {
 <section class="home-section-2 home-section-bg pt-md-0 overflow-hidden pt-2">
 	<div class="home-slider-carousel container-fluid ratio_30 p-0">
 		<div class="row">
 			<div class="col-12">
 				<owl-carousel-o [options]="heroSlider">
-					@for (banner of heroSlides() ?? heroBanners; track banner.image_url; let first = $first) {
+					@for (banner of slides; track banner.image_url; let first = $first) {
 					<ng-template carouselSlide>
 						<app-image-link
 							[image]="banner"
@@ -80,26 +80,6 @@
 	</div>
 </section>
 }
-
-<!-- ===== Two side-by-side promo banners (Denver two_column_banners) ===== -->
-<section>
-	<div class="container-fluid-lg">
-		<div class="row g-4">
-			<div class="col-xxl-8 col-xl-12 col-md-7">
-				<app-image-link
-					[image]="twoColumnBanners.banner_1"
-					[bgImage]="false"
-				/>
-			</div>
-			<div class="col-xxl-4 col-xl-12 col-md-5">
-				<app-image-link
-					[image]="twoColumnBanners.banner_2"
-					[bgImage]="false"
-				/>
-			</div>
-		</div>
-	</div>
-</section>
 
 <section class="product-section product-section-3">
 	<div class="container-fluid-lg">
@@ -176,9 +156,14 @@
 	</div>
 </section>
 
-<!-- ===== Join Our Newsletter (same as Denver) ===== -->
-@if (newsletter.status) {
+<!-- ===== Join Our Newsletter ===== -->
 <section class="newsletter-section section-b-space">
-	<app-newsletter [data]="newsletter" />
+	<app-newsletter
+		[data]="{
+			title: 'newsletter_section_title' | transloco,
+			sub_title: 'newsletter_section_subtitle' | transloco,
+			image_url: 'assets/images/data/newsletter.jpg',
+			status: true,
+		}"
+	/>
 </section>
-}

@@ -17,6 +17,10 @@ import { CollectionSidebar } from './sidebar/sidebar';
 const data = signal<unknown>(undefined);
 const pending = signal(true);
 const fetching = signal(false);
+const categories = signal<unknown>(undefined);
+vi.mock('@data-access/queries/category.queries', () => ({
+	injectCategoriesQuery: () => ({ data: categories }),
+}));
 vi.mock('@data-access/queries/product.queries', () => ({
 	injectCatalogQuery: (filter: () => unknown) => {
 		filter();
@@ -106,6 +110,25 @@ describe('CollectionSidebar', () => {
 		TestBed.tick();
 		return { widget, service };
 	};
+
+	it('hides the Categories filter on a last-level category', () => {
+		const { widget } = render();
+		const fixture = TestBed.createComponent(CollectionSidebar);
+		categories.set({
+			data: [
+				{ id: 'a', slug: 'sarees', canonical_path: 'sarees' },
+				{ id: 'b', slug: 'silk', canonical_path: 'sarees/silk', parent_id: 'a' },
+			],
+		});
+		fixture.componentRef.setInput('filter', { path: 'sarees' });
+		expect(fixture.componentInstance.hasChildCategories()).toBe(true);
+		fixture.componentRef.setInput('filter', { path: 'sarees/silk' });
+		expect(fixture.componentInstance.hasChildCategories()).toBe(false);
+		expect(widget.hasChildCategories()).toBe(true);
+		categories.set({});
+		expect(widget.hasChildCategories()).toBe(false);
+		categories.set(undefined);
+	});
 
 	it('reads the facets, none until loaded', () => {
 		const { widget } = render();

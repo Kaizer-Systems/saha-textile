@@ -1,7 +1,19 @@
 import { isPlatformBrowser, AsyncPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, computed, DOCUMENT, inject, input, PLATFORM_ID, Renderer2, signal, viewChild } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
+import {
+	Component,
+	computed,
+	DOCUMENT,
+	effect,
+	inject,
+	input,
+	PLATFORM_ID,
+	Renderer2,
+	signal,
+	untracked,
+	viewChild,
+} from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import {
 	AbstractControl,
 	FormArray,
@@ -50,7 +62,15 @@ import { Observable, of, Subject } from 'rxjs';
 import { debounceTime, switchMap, takeUntil } from 'rxjs/operators';
 
 import { goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
-import { ADMIN_LOCALES, LocalizedFields, type LocalizedText } from '@core/i18n/localized-fields';
+import {
+	ADMIN_LOCALES,
+	focusField,
+	gapsByLocale,
+	type LanguageGap,
+	LocalizedFields,
+	type LocalizedText,
+	SOURCE_LOCALE,
+} from '@core/i18n/localized-fields';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import {
 	CATALOG_BADGE_CODES,
@@ -58,7 +78,7 @@ import {
 	CatalogProductDetail,
 	CatalogProductWrite,
 } from '@data-access/interfaces/catalog-product.interface';
-import { ICategoryModel } from '@data-access/interfaces/category.interface';
+import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
@@ -86,9 +106,24 @@ import { environment } from '../../../../../public/environments/environment';
 
 const LANGUAGE_FIELDS = ['name', 'short_description', 'description', 'meta_title', 'meta_description', 'estimated_delivery_text'];
 
+const SAREE_ROOT_SLUG = 'sarees';
+
+/** The Sarees category and everything under it. */
+function sareeCategoryIds(tree: readonly ICategory[], inside = false): Set<string> {
+	const found = new Set<string>();
+	for (const row of tree) {
+		const saree = inside || row.slug === SAREE_ROOT_SLUG;
+		if (saree) found.add(String(row.id));
+		for (const id of sareeCategoryIds(row.subcategories ?? [], saree)) found.add(id);
+	}
+	return found;
+}
+
 /** Where each Go Live gap is fixed. Anything else is an option, value or price on Inventory. */
 const GAP_TABS: Readonly<Record<string, string>> = {
 	title: 'general',
+	name: 'general',
+	estimated_delivery_text: 'shipping',
 	short_description: 'general',
 	description: 'general',
 	category: 'general',
@@ -215,6 +250,12 @@ export class FormProduct {
 	public statusOptions: Select2Data = [];
 	public availabilityOptions: Select2Data = [];
 	public selectedCategories: string[] = [];
+	private readonly chosenCategories = signal<string[]>([]);
+	/** Saree length and blouse piece apply to anything under the Sarees category. */
+	readonly showsLengths = computed(() => {
+		const sarees = sareeCategoryIds(this.categoriesQuery.data()?.data ?? []);
+		return this.chosenCategories().some((id) => sarees.has(String(id)));
+	});
 	public selectedTags: Number[] = [];
 	public fromDate: NgbDate | null;
 	public toDate: NgbDate | null;
@@ -265,7 +306,7 @@ export class FormProduct {
 	readonly locales = ADMIN_LOCALES;
 	/** Language-bound fields behind the Language switch. */
 	readonly fields: LocalizedFields;
-	readonly missing = signal<Record<string, number>>({});
+	readonly gaps = signal<Record<string, LanguageGap[]>>({});
 	readonly definitions = signal<AttributeDefinition[]>([]);
 	readonly imageSizes = signal<ReadonlyMap<string, readonly [number, number]>>(new Map());
 	/** Axes that already have saved variant rows, so a role change asks first. */
@@ -317,7 +358,8 @@ export class FormProduct {
 			description: new FormControl(''),
 			slug: new FormControl('', [Validators.pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)]),
 			type: new FormControl('simple', [Validators.required]),
-			unit: new FormControl(),
+			saree_length_m: new FormControl(),
+			blouse_piece_m: new FormControl(),
 			weight: new FormControl(),
 			stock_status: new FormControl('in_stock', []),
 			sku: new FormControl('', [Validators.required]),
@@ -334,7 +376,6 @@ export class FormProduct {
 			cross_sell_products: new FormControl([]),
 			product_thumbnail_id: new FormControl(),
 			product_galleries_id: new FormControl(),
-			size_chart_image_id: new FormControl(),
 			variations: this.formBuilder.array([], []),
 			meta_title: new FormControl(),
 			meta_description: new FormControl(),
@@ -363,6 +404,12 @@ export class FormProduct {
 			status: new FormControl<string>('disabled'),
 		});
 		this.fields = new LocalizedFields(this.form, LANGUAGE_FIELDS, ['estimated_delivery_text']);
+		this.form.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => this.refreshMissing());
+		effect(() => {
+			this.optionGroups();
+			this.goLiveGaps();
+			untracked(() => this.refreshMissing());
+		});
 
 		this.transloco.selectTranslation().subscribe(() => this.buildOptions());
 	}
@@ -463,6 +510,11 @@ export class FormProduct {
 		this.form.get('type')?.disable({ emitEvent: false });
 		this.form.patchValue({ categories: content.categoryIds }, { emitEvent: false });
 		this.selectedCategories = content.categoryIds;
+		this.chosenCategories.set(content.categoryIds);
+		this.form.patchValue(
+			{ saree_length_m: content.sareeLengthM, blouse_piece_m: content.blousePieceM },
+			{ emitEvent: false },
+		);
 		this.optionGroups.set(content.optionGroups);
 		this.addonTemplateCode.set(content.addonTemplateCode);
 		this.images.set({
@@ -476,7 +528,6 @@ export class FormProduct {
 		this.savedAxes.set(
 			content.optionGroups.filter((row) => row.semanticRole === 'variation_axis').map((row) => row.attributeCode),
 		);
-		this.refreshMissing();
 		if (detail.type === 'bundle') {
 			this.productService
 				.getBundle(detail.id)
@@ -660,18 +711,13 @@ export class FormProduct {
 	selectCategoryItem(data: string[]) {
 		if (Array.isArray(data)) {
 			this.form.controls['categories'].setValue(data);
+			this.chosenCategories.set(data);
 		}
 	}
 
 	selectTagItem(data: Number[]) {
 		if (Array.isArray(data)) {
 			this.form.controls['tags'].setValue(data);
-		}
-	}
-
-	selectSizeImage(data: IAttachment) {
-		if (!Array.isArray(data)) {
-			this.form.controls['size_chart_image_id'].setValue(data ? data.id : null);
 		}
 	}
 
@@ -693,7 +739,35 @@ export class FormProduct {
 	}
 
 	private refreshMissing() {
-		this.missing.set(Object.fromEntries(this.locales.map((locale) => [locale, this.fields.missing(locale)])));
+		this.gaps.set(gapsByLocale((locale) => this.languageGaps(locale)));
+	}
+
+	/** What Go Live would refuse for a language: fields as typed, option names and values. */
+	private languageGaps(locale: string): LanguageGap[] {
+		const options = this.optionGroups().flatMap((group) => {
+			const name = group.label[SOURCE_LOCALE] ?? group.attributeCode;
+			const label = group.label[locale]?.trim()
+				? []
+				: [{ key: `option:${group.attributeCode}`, label: 'gap_option', name }];
+			const values = group.terms
+				.filter((term) => !term.label[locale]?.trim())
+				.map((term) => ({
+					key: `value:${group.attributeCode}:${term.code}`,
+					label: 'gap_value',
+					name: term.label[SOURCE_LOCALE] ?? term.code,
+				}));
+			return [...label, ...values];
+		});
+		// The image's own alt text lives in the library, so only a Go Live attempt can report it.
+		const images = this.goLiveGaps()
+			.filter((gap) => gap.field === 'image_alt' && gap.locale === locale)
+			.map(() => ({ key: 'image_alt', label: 'gap_image_alt' }));
+		return [...this.fields.gaps(locale), ...options, ...images];
+	}
+
+	openLanguageGap({ key, locale }: { key: string; locale: string }) {
+		this.openGap({ field: key, locale });
+		focusField(this.document, key);
 	}
 
 	private content(raw: Record<string, unknown>): ProductContentWrite {
@@ -705,6 +779,8 @@ export class FormProduct {
 			metaTitle: text('meta_title'),
 			metaDescription: text('meta_description'),
 			estimatedDeliveryText: text('estimated_delivery_text'),
+			sareeLengthM: this.showsLengths() ? blankToNull(raw['saree_length_m']) : null,
+			blousePieceM: this.showsLengths() ? blankToNull(raw['blouse_piece_m']) : null,
 			categoryIds: Array.isArray(raw['categories']) ? raw['categories'].map(String) : [],
 			optionGroups: this.optionGroups(),
 			addonTemplateCode: this.addonTemplateCode(),

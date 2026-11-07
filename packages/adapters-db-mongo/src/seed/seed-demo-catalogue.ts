@@ -160,6 +160,7 @@ function documents(mapped: DemoCatalogue) {
 			label: template.label,
 			priceINR: 0,
 			fields: template.fields,
+			sizeGuide: template.sizeGuide,
 		})),
 		photoAssets: mapped.photoAssets.map(({ id, ...rest }) => ({ _id: id, ...rest })),
 	};

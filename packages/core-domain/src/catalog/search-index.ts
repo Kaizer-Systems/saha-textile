@@ -1,4 +1,4 @@
-import type { Product } from '@saha-textile/contracts';
+import type { AttributeDefinition, Product } from '@saha-textile/contracts';
 
 import type { SearchEntry, SearchPort } from '../ports/search.port';
 
@@ -62,6 +62,18 @@ export const SEARCH_STOP_WORDS: readonly string[] = [
 	'un',
 	'une',
 ];
+
+/** The search words staff wrote for each value a product carries. One list serves every language. */
+export function valueSearchWords(
+	product: Pick<Product, 'optionGroups'>,
+	definitions: readonly Pick<AttributeDefinition, 'code' | 'terms'>[],
+): string[] {
+	const byCode = new Map(definitions.map((row) => [row.code, row]));
+	return product.optionGroups.flatMap((group) => {
+		const terms = byCode.get(group.attributeCode)?.terms ?? [];
+		return group.terms.flatMap((term) => terms.find((row) => row.code === term.code)?.aliases ?? []);
+	});
+}
 
 /** Index document: ids and words. The selling price stays in Mongo. */
 export function searchDocument(product: Pick<Product, 'id' | 'slug' | 'sku' | 'title' | 'categoryIds'>): {

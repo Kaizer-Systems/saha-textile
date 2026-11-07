@@ -5,6 +5,7 @@ import {
 	type ProductFilter,
 	type ProductRepository,
 	resolveProductStatusFilter,
+	type CategorySummary,
 } from '@saha-textile/core-domain';
 
 import { toProduct } from '../mappers';
@@ -39,6 +40,22 @@ export class MongoProductRepository implements ProductRepository {
 			.lean<ProductDoc>()
 			.exec();
 		return doc ? toProduct(doc) : null;
+	}
+
+	async categorySummaries(): Promise<CategorySummary[]> {
+		const rows = await ProductModel.aggregate<{ _id: string; count: number; cover: string | null }>([
+			{ $match: statusClause('public') },
+			{ $sort: { _id: 1 } },
+			{ $unwind: '$categoryIds' },
+			{
+				$group: {
+					_id: '$categoryIds',
+					count: { $sum: 1 },
+					cover: { $first: { $arrayElemAt: ['$media.gallery', 0] } },
+				},
+			},
+		]).exec();
+		return rows.map((row) => ({ categoryId: row._id, productCount: row.count, coverAssetId: row.cover ?? null }));
 	}
 
 	async list(filter: ProductFilter): Promise<Paginated<Product>> {

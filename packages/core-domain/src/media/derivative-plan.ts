@@ -56,7 +56,8 @@ export const planDerivatives = (input: {
 				skipped.push({ role: role.key, width });
 				continue;
 			}
-			derivatives.push({ role: role.key, roleVersion: role.version, spec });
+			const keepAlpha = asset.purpose === 'brand' ? { keepAlpha: true } : {};
+			derivatives.push({ role: role.key, roleVersion: role.version, spec: { ...spec, ...keepAlpha } });
 		}
 	}
 

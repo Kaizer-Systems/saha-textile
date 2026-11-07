@@ -728,7 +728,10 @@ describe('media controllers', () => {
 			getSettings: vi.fn(async () => 'settings'),
 			updateSettings: vi.fn(async () => 'updated'),
 		};
-		const controller = new AdminContentController(blocks as never, youtube as never);
+		const brand = { settingsValue: vi.fn(async () => 'kit'), save: vi.fn(async () => 'kept') };
+		const controller = new AdminContentController(blocks as never, youtube as never, brand as never);
+		expect(await controller.brandKit()).toBe('kit');
+		expect(await controller.saveBrandKit({} as never)).toBe('kept');
 		expect(await controller.list({} as never)).toBe('blocks');
 		expect(await controller.save({} as never)).toBe('saved');
 		await controller.remove('k');
@@ -755,7 +758,9 @@ describe('media controllers', () => {
 			{ uploadRules: () => 'rules' } as never,
 			{ storefront: async () => 'banners' } as never,
 			{ rail: async () => 'rail' } as never,
+			{ storefront: async () => 'brand' } as never,
 		);
+		expect(await controller.brandKit()).toBe('brand');
 		expect(controller.rules()).toBe('rules');
 		expect(await controller.banners({} as never)).toBe('banners');
 		expect(await controller.rail({ placement: 'home' } as never)).toBe('rail');

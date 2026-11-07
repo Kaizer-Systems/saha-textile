@@ -49,8 +49,6 @@
 								<h6>
 									{{ product.sale_price | currencySymbol }} @if (product.discount) {
 									<del>{{ product.price | currencySymbol }}</del>
-									} @if (product.unit) {
-									<span>{{ product.unit }}</span>
 									}
 								</h6>
 							</a>

@@ -46,8 +46,40 @@ export const YouTubeFeedCache = z.object({
 });
 export type YouTubeFeedCache = z.infer<typeof YouTubeFeedCache>;
 
+/**
+ * `brand` — the Brand Kit. Images live in the media library, so a new owner of this codebase
+ * uploads their own after deployment and no brand sits in the code.
+ */
+export const BrandSettings = z.object({
+	shopName: z.string().trim().max(80).default(''),
+	/** The full logo: seal, name and tagline. */
+	logoAssetId: z.string().min(1).nullable().default(null),
+	/** The small mark for tight spaces and every icon. */
+	sealAssetId: z.string().min(1).nullable().default(null),
+});
+export type BrandSettings = z.infer<typeof BrandSettings>;
+
+const BrandImage = z.object({
+	url: z.string(),
+	srcset: z.string(),
+	width: z.number().int().positive(),
+	height: z.number().int().positive(),
+});
+export type BrandImage = z.infer<typeof BrandImage>;
+
+/** `GET /storefront/brand`. With nothing uploaded, screens show `shopName` as text. */
+export const StorefrontBrand = z.object({
+	shopName: z.string(),
+	logo: BrandImage.nullable(),
+	seal: BrandImage.nullable(),
+	/** PNG icon address by pixel size. */
+	icons: z.record(z.string(), z.string()),
+});
+export type StorefrontBrand = z.infer<typeof StorefrontBrand>;
+
 /** Every setting key and its schema. */
 export const SITE_SETTING_SCHEMAS = {
+	brand: BrandSettings,
 	'storefront.home': StorefrontHomeSettings,
 	youtube: YouTubeSettings,
 	'youtube.feed': YouTubeFeedCache,

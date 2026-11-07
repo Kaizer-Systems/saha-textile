@@ -1,4 +1,5 @@
 import { Component, computed, inject, input, model, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
@@ -54,7 +55,11 @@ export class OptionGroups {
 		this.templates().map((row) => ({ value: row.code, label: labelIn(row.label, this.locale()) || row.code })),
 	);
 
-	readonly roleOptions = ROLES.map((value) => ({ value, label: value }));
+	private readonly translations = toSignal(this.transloco.selectTranslation());
+	readonly roleOptions = computed(() => {
+		this.translations();
+		return ROLES.map((value) => ({ value, label: this.transloco.translate(`role_name_${value}`) }));
+	});
 	readonly styleOptions = STYLES.map((value) => ({ value, label: value }));
 	readonly attributeOptions = computed(() =>
 		this.definitions()

@@ -88,6 +88,16 @@ describe('showcase catalogue', () => {
 		expect(again.products.map((row) => row.slug)).toEqual(showcase.products.map((row) => row.slug));
 	});
 
+	it('gives sarees a length, and suits a template with a size guide', () => {
+		const lengths = catalogue.products.filter((row) => row.sareeLengthM !== null);
+		expect(lengths.length).toBeGreaterThan(500);
+		expect(lengths.every((row) => row.tags.includes('suits'))).toBe(false);
+		const suits = catalogue.products.filter((row) => row.addonTemplateCode === 'suit-measurements');
+		expect(suits.length).toBeGreaterThan(100);
+		const guide = catalogue.addonTemplates.find((row) => row.code === 'suit-measurements')?.sizeGuide;
+		expect(guide?.map((row) => row.size)).toEqual(['S', 'M', 'L', 'XL', 'XXL']);
+	});
+
 	it('leaves no shopper word without French', () => {
 		const words = catalogue.products.flatMap((row) => row.optionGroups.flatMap((group) => [group.label, ...group.terms.map((term) => term.label)]));
 		const untranslated = new Set(

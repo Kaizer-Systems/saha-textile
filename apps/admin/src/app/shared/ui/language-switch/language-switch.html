@@ -1,20 +1,44 @@
 <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
 	<span class="form-label-title me-1">{{ 'language' | transloco }}</span>
 	@for (locale of locales(); track locale) {
-	<button
-		type="button"
-		class="btn btn-sm"
-		[class.btn-theme]="locale === active()"
-		[class.btn-outline]="locale !== active()"
-		[attr.aria-pressed]="locale === active()"
-		(click)="changed.emit(locale)"
+	<div
+		class="btn-group"
+		ngbDropdown
 	>
-		{{ name(locale) }} @if (missing()[locale]; as left) {
-		<span class="badge bg-danger ms-1">{{ 'language_left' | transloco: { count: left } }}</span>
-		} @else {
-		<span class="badge bg-success ms-1">{{ 'language_done' | transloco }}</span>
+		<button
+			type="button"
+			class="btn btn-sm"
+			[class.btn-theme]="locale === active()"
+			[class.btn-outline]="locale !== active()"
+			[attr.aria-pressed]="locale === active()"
+			(click)="changed.emit(locale)"
+		>
+			{{ name(locale) }} @if (!gaps()[locale]?.length) {
+			<span class="badge bg-success ms-1">{{ 'language_done' | transloco }}</span>
+			}
+		</button>
+		@if (gaps()[locale]?.length) {
+		<button
+			type="button"
+			class="btn btn-sm btn-outline"
+			ngbDropdownToggle
+		>
+			<span class="badge bg-danger">{{ 'language_left' | transloco: { count: gaps()[locale]?.length } }}</span>
+		</button>
+		<div ngbDropdownMenu>
+			<h6 class="dropdown-header">{{ 'language_to_do' | transloco: { language: name(locale) } }}</h6>
+			@for (gap of gaps()[locale]; track gap.key) {
+			<button
+				type="button"
+				ngbDropdownItem
+				(click)="gapChosen.emit({ key: gap.key, locale })"
+			>
+				{{ gap.label | transloco }}@if (gap.name) {: {{ gap.name }}}
+			</button>
+			}
+		</div>
 		}
-	</button>
+	</div>
 	} @if (active() !== locales()[0]) {
 	<span class="help-text mb-0 ms-2">{{ 'language_help' | transloco }}</span>
 	}

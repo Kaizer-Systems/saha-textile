@@ -1,14 +1,17 @@
 import { isPlatformBrowser, AsyncPipe } from '@angular/common';
-import { Component, inject, PLATFORM_ID } from '@angular/core';
+import { Component, DOCUMENT, effect, inject, PLATFORM_ID } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterOutlet } from '@angular/router';
 
 import { LoadingBarModule } from '@ngx-loading-bar/core';
 import { Observable } from 'rxjs';
 
+import { applyBrandHead } from '@core/brand/brand-head';
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { AccountStore } from '@core/state/account.store';
 import { AuthStore } from '@core/state/auth.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
+import { injectBrandQuery } from '@data-access/queries/brand.queries';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { SiteConfigService } from '@data-access/services/site-config.service';
 import { Footer } from '@layout/footer/footer';
@@ -48,24 +51,25 @@ export class Layout {
 	private authStore = inject(AuthStore);
 
 	siteConfig$: Observable<ISiteConfig> = toObservable(this.siteConfigStore.siteConfig) as Observable<ISiteConfig>;
-	cookies$: Observable<boolean> = toObservable(this.siteConfigStore.cookies);
 
-	public cookies: boolean;
 	public isBrowser: boolean;
 	public isLoading: boolean = true;
 
-	// Single app-wide chrome (Denver): logo + dark footer. Static — the old
-	// per-theme pathname branching in setLogo() was removed with the theme concept.
-	// Bound as plain fields (not a method call) so they don't re-run every CD cycle.
-	public readonly headerLogo = 'assets/images/logo/6.png';
+	// Single app-wide chrome: the dark footer. Logos come from the Brand Kit.
 	public readonly footerData = {
-		footer_logo: 'assets/images/logo/4.png',
 		footer_class: 'footer-section-2 footer-color-3',
 	};
 
+	private readonly brand = injectBrandQuery();
+	private readonly page = inject<Document>(DOCUMENT);
+	private readonly seo = inject(LocaleSeo);
+
 	constructor() {
+		effect(() => {
+			const brand = this.brand.data();
+			if (brand) applyBrandHead(this.page, brand, this.seo.absoluteUrl('/'));
+		});
 		this.isBrowser = isPlatformBrowser(this.platformId);
-		this.cookies$.subscribe((res) => (this.cookies = res));
 		this.siteConfigService.preloader.set(true);
 		// Only when there IS a session. A guest `/me` is 200 with `user: null`; this profile
 		// load is for chrome that needs the full customer, not for discovering whether one exists.

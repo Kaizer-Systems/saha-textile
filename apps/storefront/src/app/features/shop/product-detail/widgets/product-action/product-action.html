@@ -17,12 +17,12 @@
 		</div>
 	</div>
 </div>
-} @if (product()?.size_chart_image || (policy && product()?.is_return)) {
+} @if (product()?.size_guide || (policy && product()?.is_return)) {
 <div class="size-delivery-info">
-	@if (product()?.size_chart_image) {
+	@if (product()?.size_guide; as guide) {
 	<a
 		href="javascript:void(0)"
-		(click)="SizeChartModal()?.openModal(product()!.size_chart_image)"
+		(click)="SizeChartModal()?.openModal(guide)"
 	>
 		<i class="ri-ruler-line"></i>
 		{{ 'size_chart' | transloco }}

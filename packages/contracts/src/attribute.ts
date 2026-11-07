@@ -125,6 +125,13 @@ export const AddonTemplateField = z.object({
 });
 export type AddonTemplateField = z.infer<typeof AddonTemplateField>;
 
+/** One size of a size guide: its name and body measures, by field code, in each field's unit. */
+export const SizeGuideRow = z.object({
+	size: z.string().trim().min(1).max(20),
+	values: z.record(z.string(), z.number().positive()),
+});
+export type SizeGuideRow = z.infer<typeof SizeGuideRow>;
+
 /**
  * Reusable tailoring/customization template entity (`addonTemplates`), with
  * conditional visibility (e.g. blouse measurements apply only when the selected
@@ -136,6 +143,8 @@ export const AddonTemplate = z.object({
 	code: z.string().min(1),
 	label: I18nString,
 	fields: z.array(AddonTemplateField).min(1),
+	/** Written once here, shown on every product using this template. Empty hides the link. */
+	sizeGuide: z.array(SizeGuideRow).default([]),
 	/** Show these fields only when the referenced attribute has one of these terms selected. */
 	appliesWhen: z
 		.array(
@@ -174,5 +183,6 @@ export const AddonTemplateWrite = z.object({
 	label: z.record(z.string(), z.string()),
 	priceINR: CatalogRupee,
 	fields: z.array(AddonTemplateFieldWrite).max(30).default([]),
+	sizeGuide: z.array(SizeGuideRow).max(20).default([]),
 });
 export type AddonTemplateWrite = z.infer<typeof AddonTemplateWrite>;

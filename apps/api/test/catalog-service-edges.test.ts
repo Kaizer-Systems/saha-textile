@@ -713,7 +713,7 @@ describe('add-on templates', () => {
 	it('lists, saves and removes with an audit row', async () => {
 		const { service, audit, addons } = build();
 		expect(await service.listAddonTemplates()).toEqual(['template']);
-		await service.saveAddonTemplate({ code: 'fall', label: { en: 'Fall' }, priceINR: 1, fields: [] }, 'a1');
+		await service.saveAddonTemplate({ code: 'fall', label: { en: 'Fall' }, priceINR: 1, fields: [], sizeGuide: [] }, 'a1');
 		await service.removeAddonTemplate('fall');
 		expect(addons.remove).toHaveBeenCalledWith('fall');
 		expect(actions(audit)).toEqual(['catalog.addon-template.save', 'catalog.addon-template.remove']);
@@ -722,7 +722,7 @@ describe('add-on templates', () => {
 	it('answers nothing, or refuses, with no store', async () => {
 		const { service } = build({ bare: true });
 		expect(await service.listAddonTemplates()).toEqual([]);
-		await expect(service.saveAddonTemplate({ code: 'x', label: { en: 'X' }, priceINR: 1, fields: [] })).rejects.toBeInstanceOf(
+		await expect(service.saveAddonTemplate({ code: 'x', label: { en: 'X' }, priceINR: 1, fields: [], sizeGuide: [] })).rejects.toBeInstanceOf(
 			NotFoundException,
 		);
 		await expect(service.removeAddonTemplate('x')).rejects.toBeInstanceOf(NotFoundException);

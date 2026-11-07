@@ -25,6 +25,7 @@
 		class="accordion custome-accordion"
 		ngbAccordion
 	>
+		@if (hasChildCategories()) {
 		<div
 			class="accordion-item"
 			ngbAccordionItem
@@ -54,6 +55,7 @@
 				</div>
 			</div>
 		</div>
+		}
 		@if (!filter()!['store_slug']) { @for (key of facetKeys(); track key) {
 		<div
 			class="accordion-item"

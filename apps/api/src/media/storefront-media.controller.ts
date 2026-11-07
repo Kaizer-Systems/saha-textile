@@ -9,6 +9,7 @@ import {
 	ReviewSubmitRequest,
 	StorefrontBannersQuery,
 	type StorefrontBannersResponse,
+	type StorefrontBrand,
 	YouTubeRailQuery,
 	type YouTubeRailResponse,
 } from '@saha-textile/contracts';
@@ -17,6 +18,7 @@ import { Principal } from '../auth/ownership';
 import { type AuthenticatedPrincipal, Audience, Public } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
+import { BrandService } from './brand.service';
 import { ContentBlocksService } from './content-blocks.service';
 import { MediaService } from './media.service';
 import { ReviewsService } from './reviews.service';
@@ -30,7 +32,15 @@ export class StorefrontMediaController {
 		private readonly media: MediaService,
 		private readonly blocks: ContentBlocksService,
 		private readonly youtube: YouTubeService,
+		private readonly brand: BrandService,
 	) {}
+
+	@Get('storefront/brand')
+	@Public()
+	@ApiOperation({ operationId: 'storefrontBrand', summary: "The shop's name, logo, seal and icons" })
+	brandKit(): Promise<StorefrontBrand> {
+		return this.brand.storefront();
+	}
 
 	@Get('media/upload-rules')
 	@Public()

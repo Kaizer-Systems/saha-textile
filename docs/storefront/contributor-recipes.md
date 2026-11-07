@@ -3,7 +3,7 @@ title: Storefront Contributor Recipes
 description: Step-by-step recipes for routes, server queries, client state, translations and server-safe UI.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/storefront/src/app/pages
     - apps/storefront/src/app/features
@@ -73,7 +73,7 @@ If classic NgRx is justified:
 
 1. Render a stable server-safe baseline.
 2. Inject `PLATFORM_ID`.
-3. Guard only the browser-dependent operation.
+3. Guard only the browser-dependent operation. `afterNextRender` is not a guard on its own: the storefront's server renderer runs those callbacks too, so check `isPlatformBrowser` inside them before touching `localStorage` or `window`.
 4. Avoid accessing browser globals during field initialization.
 5. Verify server render and hydration without console errors.
 6. Respect reduced motion and keyboard/touch input.

@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { of } from 'rxjs';
@@ -34,11 +34,14 @@ const banner = (position: string, slot: string, url: string) => ({
 	images: { desktop: { url } },
 });
 
-const render = (cards = vi.fn(() => of<unknown[]>([{ id: 1 }]))) => {
+const render = (cards = vi.fn(() => of<unknown[]>([{ id: 1 }])), platform = 'browser') => {
 	const home = vi.fn(() => of({ newArrivals: [] }));
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
-		providers: [{ provide: ProductService, useValue: { home, cardsFor: cards } }],
+		providers: [
+			{ provide: ProductService, useValue: { home, cardsFor: cards } },
+			{ provide: PLATFORM_ID, useValue: platform },
+		],
 	});
 	TestBed.overrideComponent(Home, { set: { imports: [], template: '' } });
 	const fixture = TestBed.createComponent(Home);
@@ -89,6 +92,14 @@ describe('Home rails', () => {
 		await seen.fixture.whenStable();
 		expect(seen.cards).toHaveBeenCalledWith(['red-saree']);
 		expect(seen.page.recentRail()).toEqual([{ id: 1 }]);
+	});
+
+	it('leaves the recently viewed rail to the browser when rendering on the server', async () => {
+		localStorage.setItem('st_recent', JSON.stringify([{ slug: 'red-saree', at: Date.now() }]));
+		const server = render(undefined, 'server');
+		await server.fixture.whenStable();
+		expect(server.cards).not.toHaveBeenCalled();
+		expect(server.page.recentRail()).toEqual([]);
 	});
 });
 

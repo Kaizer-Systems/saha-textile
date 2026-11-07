@@ -1,4 +1,5 @@
-import { afterNextRender, Component, computed, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { afterNextRender, Component, computed, inject, PLATFORM_ID, signal } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { CarouselModule } from 'ngx-owl-carousel-o';
@@ -55,7 +56,10 @@ const HERO_LAYOUT_TILES: Record<StorefrontBanners['heroLayout'], [string | null,
 })
 export class Home {
 	constructor() {
+		// The server renderer runs this hook too, and it has no storage: the rail fills in the browser.
+		const isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 		afterNextRender(() => {
+			if (!isBrowser) return;
 			const slugs = readRecentViews(localStorage).map((row) => row.slug);
 			if (slugs.length === 0) return;
 			this.productsApi.cardsFor(slugs).subscribe((cards) => this.recentRail.set(cards));

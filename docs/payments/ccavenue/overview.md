@@ -308,6 +308,17 @@ A decrypted callback is not URL-encoded, so text a customer types on the billing
 | Invoice calls, `updateMerchantParams`, `updateBillingDetails`                             | No invoice or pay-link product in scope.                                                                                                                                                   |
 | Custom checkout form, Direct Connect (`initiatePayloadTransaction`)                       | Card data would touch our servers.                                                                                                                                                         |
 
+### During a restart
+
+The production stack answers 503 while the API restarts ([Deploy gap](/engineering-live-context/production-deployment-plan#deploy-gap)). This is how CCAvenue meets that gap, as far as the material received shows.
+
+- **No webhook is used.** The payment return (call 2) is the customer's browser posting CCAvenue's form once. Nothing received says CCAvenue sends it again. Dynamic Event Notification is a separate server-to-server post that HDFC turns on when given a URL. The material says nothing about its retries, timing or signing, so it is not planned, and CCAvenue needs no Cloudflare webhook rule.
+- **A return during the gap is lost.** The browser gets the 503 and `encResp` never reaches the API. Re-posting the same form later is a replay, which `decidePaymentResult` answers `duplicate` or `apply` as for any return. The payment itself happened at CCAvenue and is unaffected.
+- **Call 3 settles it.** HDFC makes the status enquiry mandatory because the return may not arrive. Checkout needs a sweep that runs call 3 for every attempt still `pending` once CCAvenue's 15-minute payment-page session has passed, and applies `decidePaymentResult` with no callback. A lost return then delays the order instead of losing it.
+- **What the customer sees.** The return address is on the API host, where the gap answers a short JSON 503 meant for scripts. The return path needs the human "back in a moment" page, or the return address must sit on the storefront host. HDFC registers the return address, so this is settled before test credentials are requested.
+
+Staging proves it: post a return during a restart, then watch the sweep settle the attempt.
+
 ### Open questions for HDFC
 
 These come from the kits and are not answered by the material received.
@@ -316,6 +327,7 @@ These come from the kits and are not answered by the material received.
 2. **API host.** The guide says `api.ccavenue.com` / `apitest.ccavenue.com`; the HDFC kits use `login.ccavenue.com` and a staging IP. Which does HDFC expect?
 3. **Server IP.** Which public IP will be registered for API calls (staging and production droplets)?
 4. **STRING format.** The kit revision documents XML and JSON only, but its ASP.NET sample still sends `request_type=STRING`. Only JSON is planned here.
+5. **Dynamic Event Notification.** If it is ever used: does CCAvenue retry a post that gets an error, how often and for how long, and how is the post authenticated? The status-enquiry sweep does not depend on the answer.
 
 ## Limitations
 

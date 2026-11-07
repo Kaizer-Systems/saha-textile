@@ -140,7 +140,7 @@ Each app gets its own "back in a moment" page, in its own look, so it feels fami
 - The logo comes from the CDN, with the shop name as a fallback.
 - The gap is measured on staging. Running old and new side by side is added only if the gap is long.
 - It needs a `DEC-UI-REUSE` brief first, reusing each app's error page.
-- Staging must prove a payment return and webhook during a restart. The CCAvenue work must confirm how the gateway retries.
+- CCAvenue sends no webhook, and nothing received says it repeats a payment return. A return posted during the gap is lost, and the checkout's status-enquiry sweep settles that attempt instead. The return path needs the human page, not the API's JSON 503. See [CCAvenue § During a restart](/payments/ccavenue#during-a-restart).
 
 ## 9. Cloudflare
 
@@ -246,5 +246,6 @@ Every step touching GitHub settings, DigitalOcean or Cloudflare needs the owner'
 - Sign-in, reload and two open tabs with host-only cookies.
 - AOP, the firewall, and direct requests to the droplet's IP being refused.
 - `/config.json` correct on both apps; storefront SSR through the private listener.
-- Rollback, a measured deploy gap, the maintenance pages, and a payment return during a restart.
+- Rollback, a measured deploy gap, the maintenance pages, and a payment return during a restart, settled afterwards by the status-enquiry sweep.
+- A release whose `CCAVENUE_HOST` differs from the host of `CCAVENUE_BASE_URL` is refused by `bin/deploy.sh`, because the CSP would block the payment form.
 - Checkout, webhook and notification paths, once those chunks are built.

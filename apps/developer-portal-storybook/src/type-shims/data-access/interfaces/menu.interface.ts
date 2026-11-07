@@ -3,8 +3,8 @@ export interface IMenuModel {
 }
 
 export interface IMenu {
-	id?: number;
-	parent_id?: number;
+	id?: number | string;
+	parent_id?: number | string;
 	title?: string;
 	/** False when `title` is catalog/taxonomy copy and must not go through Transloco. */
 	i18nTitle?: boolean;
@@ -38,7 +38,7 @@ export interface IMenu {
 }
 
 export interface IMobileMenu {
-	id?: number;
+	id?: number | string;
 	active?: boolean;
 	title?: string;
 	icon?: string;

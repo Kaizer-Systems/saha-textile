@@ -152,6 +152,12 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 			});
 		});
 
+		it('lists a customer with no linked sign-in', async () => {
+			await insertRaw(CustomerModel, { _id: `${P}plain`, status: 'active', displayName: `${P}Plain Row` });
+			const found = await repo.list({ page: 1, pageSize: 5, q: `${P}Plain` } as never);
+			expect(found.items[0]?.identities).toEqual([]);
+		});
+
 		it('patches only what is given', async () => {
 			expect((await repo.update(id, {}))?.id).toBe(id);
 			expect((await repo.update(id, { displayName: `${P}New` }))?.displayName).toBe(`${P}New`);

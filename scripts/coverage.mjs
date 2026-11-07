@@ -68,6 +68,7 @@ function measure(name, { dir, angular, mongo }) {
 		'--coverage.exclude=**/*.d.ts',
 		'--coverage.exclude=**/*.spec.ts',
 		'--coverage.reporter=json-summary',
+		'--coverage.reporter=json',
 		`--coverage.reportsDirectory=${report}`,
 	];
 	const env = {
@@ -114,11 +115,24 @@ function measure(name, { dir, angular, mongo }) {
 					console.log(
 						`      ${file.replace(`${ROOT}/`, '')}  ${METRICS.map((m) => `${m[0]} ${values[m].pct}`).join(' ')}`,
 					);
+					console.log(`        lines ${missedLines(join(report, 'coverage-final.json'), file).join(', ')}`);
 				}
 			}
 		}
 	}
 	return ok;
+}
+
+/** Where a file lost its statements and branches, so a CI failure names the line. */
+function missedLines(reportFile, file) {
+	const entry = JSON.parse(readFileSync(reportFile, 'utf8'))[file];
+	const statements = Object.entries(entry.s).filter(([, hits]) => hits === 0);
+	const branches = Object.entries(entry.b).filter(([, hits]) => hits.includes(0));
+	const lines = [
+		...statements.map(([id]) => entry.statementMap[id].start.line),
+		...branches.map(([id]) => entry.branchMap[id].loc.start.line),
+	];
+	return [...new Set(lines)].sort((a, b) => a - b);
 }
 
 const wanted = process.argv.slice(2).filter((arg) => arg !== '--');

@@ -12,7 +12,7 @@ const categoryPage: ICategoryModel = {
 	total: categories.length,
 };
 
-export function injectCategoriesQuery() {
+export function injectCategoriesQuery(_params?: () => unknown) {
 	return {
 		data: signal<ICategoryModel | undefined>(categoryPage),
 		isFetching: signal(false),

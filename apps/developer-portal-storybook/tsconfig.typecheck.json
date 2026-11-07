@@ -22,6 +22,7 @@
 			"@core/state/setting.store": ["./src/type-shims/core/state/setting.store.ts"],
 			"@data-access/interfaces/menu.interface": ["./src/type-shims/data-access/interfaces/menu.interface.ts"],
 			"@data-access/interfaces/refund.interface": ["../admin/src/app/data-access/interfaces/refund.interface.ts"],
+			"@data-access/queries/category.queries": ["./src/type-shims/data-access/queries/category.queries.ts"],
 			"@data-access/queries/notification.queries": [
 				"./src/type-shims/data-access/queries/notification.queries.ts"
 			],
@@ -40,10 +41,7 @@
 		"../storefront/src/app/core/state/loader.store.ts",
 		"../admin/src/app/core/state/auth.store.ts",
 		"../storefront/src/app/core/state/auth.store.ts",
-		"../admin/src/app/core/state/cart/**/*.ts",
-		"../admin/src/app/data-access/queries/category.queries.ts",
 		"../admin/src/app/data-access/queries/notification.queries.ts",
-		"../admin/src/app/data-access/services/category.service.ts",
 		"../admin/src/app/shared/directives/out-side-directive.ts",
 		"../admin/src/app/shared/data/menu.ts",
 		"../admin/src/app/shared/pipes/**/*.ts"

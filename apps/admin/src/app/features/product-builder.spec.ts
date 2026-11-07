@@ -191,7 +191,7 @@ describe('OptionGroups', () => {
 
 		afterEach(() => vi.restoreAllMocks());
 
-		it('asks before retiring saved variant rows, and keeps the role on a no', () => {
+		it('asks before retiring saved variant rows, and keeps the role on a no', async () => {
 			const confirm = ask(false);
 			const page = mount(OptionGroups, providers, {
 				groups: [axis()],
@@ -202,7 +202,8 @@ describe('OptionGroups', () => {
 			page.setRole(0, page.groups()[0] as never, 'filter_only');
 			expect(confirm).toHaveBeenCalledWith('role_change_confirm');
 			expect(page.groups()[0]?.semanticRole).toBe('variation_axis');
-			expect(page.revision()).toBe(1);
+			expect(page.redrawing()).toBe(true);
+			await vi.waitFor(() => expect(page.redrawing()).toBe(false));
 			confirm.mockReturnValue(true);
 			page.setRole(0, page.groups()[0] as never, 'filter_only');
 			expect(page.groups()[0]?.semanticRole).toBe('filter_only');

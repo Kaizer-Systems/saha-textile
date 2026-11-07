@@ -19,6 +19,8 @@ export interface SearchEntry {
 	product: Product;
 	/** The product's live variants, which decide its price range. */
 	variants: readonly ProductVariant[];
+	/** Names of its categories, so "budget range" finds what its titles do not say. */
+	categoryNames?: readonly string[];
 }
 
 export interface SearchPort {

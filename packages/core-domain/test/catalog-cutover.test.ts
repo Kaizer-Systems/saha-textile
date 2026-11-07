@@ -19,6 +19,8 @@ describe('search document', () => {
 	it('links the short ikat spellings both ways and ikkatsilk only toward the two words', () => {
 		expect(SEARCH_SYNONYMS.ikat).toContain('ikkat');
 		expect(SEARCH_SYNONYMS.ikkat).toContain('ikat');
+		expect(SEARCH_SYNONYMS.kanjivaram).toContain('kanchipuram');
+		expect(SEARCH_SYNONYMS.kanchipuram).not.toContain('kanchipuram');
 		expect(SEARCH_SYNONYMS.ikkatsilk).toEqual(['ikkat silk', 'ikkat']);
 		expect(SEARCH_SYNONYMS.ikat).not.toContain('ikkatsilk');
 	});

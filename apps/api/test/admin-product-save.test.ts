@@ -66,7 +66,7 @@ function harness(start: ProductRow = product()) {
 		findBySource: async () => null,
 		list: async () => redirects,
 	};
-	const catalog = new CatalogService(products as never, {} as never, variantRepo as never, redirectRepo as never);
+	const catalog = new CatalogService(products as never, { findById: async () => null } as never, variantRepo as never, redirectRepo as never);
 	return { catalog, variants, redirects, current: () => saved };
 }
 

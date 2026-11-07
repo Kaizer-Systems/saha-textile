@@ -143,6 +143,9 @@ describe('listingDocument', () => {
 			filterCodes: ['fabric'],
 			titleOrder: { en: 'silk saree', fr: 'saree en soie' },
 		});
+		expect(doc.facts).toContain('Soie');
+		const named = listingDocument({ product: product(), variants: [], categoryNames: ['Budget Range'] }, ['en']);
+		expect(named.facts).toContain('Budget Range');
 		expect(JSON.parse(doc.facetValues[0] as string)).toMatchObject({
 			code: 'fabric',
 			term: 'silk',

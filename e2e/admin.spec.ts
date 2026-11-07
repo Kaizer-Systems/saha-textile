@@ -420,6 +420,121 @@ test.describe('What admin makes reaches the shop', () => {
 		}
 	});
 
+	test('choosing a category image saves it, and the shop menu can show it', async ({ page, request }) => {
+		const slug = `e2e-image-${Date.now()}`;
+		await open(page, '/category');
+		await page.locator('input[formcontrolname="name"]').fill('Picture Category');
+		await page.locator('#slug').fill(slug);
+		await page.locator('app-language-switch button', { hasText: 'Français' }).click();
+		await expect(page.locator('input[formcontrolname="name"]')).toHaveValue('');
+		await page.locator('input[formcontrolname="name"]').fill('Catégorie illustrée');
+		await page.locator('app-image-upload .choosefile-input').first().click();
+		await page.locator('.modal .library-box label').first().click();
+		await page.locator('#media_btn button, button#media_btn').first().click();
+		await expect(page.locator('.modal')).toHaveCount(0);
+		await page.locator('#category_btn button, button#category_btn').first().click();
+		await expect
+			.poll(() => withDatabase((db) => db.collection('categories').countDocuments({ slug })))
+			.toBe(1);
+		try {
+			const row = await withDatabase((db) => db.collection('categories').findOne({ slug }));
+			expect(row?.['media']?.bannerImage).toEqual(expect.any(String));
+			const menu = await request.get('https://localhost:4000/catalog/categories/menu?locale=fr');
+			const rows = (await menu.json()) as { slug: string; imageUrl: string | null }[];
+			expect(rows.find((category) => category.slug === slug)?.imageUrl).toMatch(/^https?:/);
+		} finally {
+			await withDatabase(async (db) => {
+				await db.collection('categories').deleteMany({ slug });
+				await db.collection('categoryPlacements').deleteMany({ pathKey: slug });
+			});
+		}
+	});
+
+	test('the category tree follows the language of the form', async ({ page }) => {
+		await open(page, '/category');
+		const tree = page.locator('app-tree');
+		await expect(tree).toContainText('Sarees');
+		await page.locator('app-language-switch button', { hasText: 'Français' }).click();
+		await expect(tree).toContainText('Saris');
+		await page.locator('app-language-switch button', { hasText: 'English' }).click();
+		await expect(tree).toContainText('Sarees');
+	});
+
+	test('a role change that would retire saved variants asks first', async ({ page }) => {
+		const product = await withDatabase((db) => db.collection('products').findOne({ slug: 'designer-saree-with-blouse' }));
+		await open(page, `/product/edit/${String(product?._id)}`);
+		await page.locator('.nav-link', { hasText: 'Inventory' }).first().click();
+		const asked: string[] = [];
+		page.once('dialog', (dialog) => {
+			asked.push(dialog.message());
+			void dialog.dismiss();
+		});
+		await page.locator('#role_0 .select2-selection').click();
+		await page.locator('.select2-results__option', { hasText: /filter/i }).first().click();
+		await expect.poll(() => asked.length).toBe(1);
+		expect(asked[0]).toContain('retires its saved variants');
+		await expect(page.locator('#role_0 .select2-selection')).toContainText(/variation/i);
+	});
+
+	test('an image off 3:4 warns, and a swatch without its colour stops Go Live', async ({ page }) => {
+		const slug = 'chikankari-cotton-kurti';
+		const original = await withDatabase((db) => db.collection('products').findOne({ slug }));
+		const assetId = (original?.['media'] as { gallery: string[] }).gallery[0];
+		const asset = await withDatabase((db) => db.collection('mediaAssets').findOne({ _id: assetId as never }));
+		const groups = (original?.['optionGroups'] as Array<Record<string, unknown>>).map((group, index) =>
+			index === 0
+				? {
+						...group,
+						displayStyle: 'color_swatch',
+						terms: (group['terms'] as Array<Record<string, unknown>>).map(({ hex: _hex, ...term }) => term),
+					}
+				: group,
+		);
+		await withDatabase(async (db) => {
+			await db.collection('mediaAssets').updateOne({ _id: assetId as never }, { $set: { width: 1000, height: 1000 } });
+			await db.collection('products').updateOne({ slug }, { $set: { status: 'disabled', optionGroups: groups } });
+		});
+		try {
+			await open(page, `/product/edit/${String(original?._id)}`);
+			await page.locator('.nav-link', { hasText: 'Images' }).first().click();
+			await expect(page.locator('body')).toContainText('Not 3:4, so it may be cropped: 1');
+			await page.locator('.nav-link', { hasText: 'Status' }).first().click();
+			await page.locator('#go_live_btn').click();
+			await expect(page.locator('.alert-danger')).toContainText('Add a colour for');
+		} finally {
+			await withDatabase(async (db) => {
+				await db
+					.collection('mediaAssets')
+					.updateOne({ _id: assetId as never }, { $set: { width: asset?.['width'], height: asset?.['height'] } });
+				await db.collection('products').replaceOne({ slug }, original as never);
+			});
+		}
+	});
+
+	test('compound photos set in the admin form reach the shop', async ({ page, request }) => {
+		const slug = 'designer-saree-with-blouse';
+		const original = await withDatabase((db) => db.collection('products').findOne({ slug }));
+		await open(page, `/product/edit/${String(original?._id)}`);
+		await page.locator('.nav-link', { hasText: 'Images' }).first().click();
+		await page.locator('input[name="image_mode"]').nth(1).check();
+		await page.locator('app-product-images .variant-accordion .choosefile-input:visible').first().click();
+		await page.locator('.modal .library-box label').first().click();
+		await page.locator('#media_btn button, button#media_btn').first().click();
+		await expect(page.locator('.modal')).toHaveCount(0);
+		try {
+			await page.getByRole('button', { name: /update product/i }).click();
+			await expect(page).toHaveURL(/\/product$/);
+			const saved = await withDatabase((db) => db.collection('products').findOne({ slug }));
+			expect(saved).toMatchObject({ imageMode: 'compound', status: 'live' });
+			const view = await request.get(`https://localhost:4000/catalog/products/${slug}/view`);
+			expect(view.status(), await view.text()).toBe(200);
+			const body = (await view.json()) as { variants: { galleryIndexes: number[] }[] };
+			expect(body.variants.some((row) => row.galleryIndexes.length === 1)).toBe(true);
+		} finally {
+			await withDatabase((db) => db.collection('products').replaceOne({ slug }, original as never));
+		}
+	});
+
 	test('the FAQ form holds both languages behind one switch', async ({ page }) => {
 		const title = `E2E question ${Date.now()}`;
 		await open(page, '/faq/create');

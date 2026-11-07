@@ -94,7 +94,7 @@ test.describe('search', () => {
 
 	test('understands a common misspelling', async ({ page }) => {
 		await page.goto('/en/search?search=kanjeevaram');
-		await expect(page.locator('app-product-box').first()).toContainText('Kanjivaram');
+		await expect(page.locator('app-product-box').first()).toContainText(/Kanjivaram|Kanchipuram/);
 	});
 
 	test('says so when nothing matches', async ({ page }) => {

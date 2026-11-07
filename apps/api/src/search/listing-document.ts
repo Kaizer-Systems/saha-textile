@@ -21,10 +21,18 @@ function lowerTitles(product: Product, locales: readonly string[]): Record<strin
 	);
 }
 
-export function listingDocument({ product, variants }: SearchEntry, locales: readonly string[]) {
+/** What a shopper may search for beyond the name, ranked below it. */
+function factWords(product: Product, categoryNames: readonly string[]): string {
+	const terms = product.optionGroups.flatMap((group) => group.terms.flatMap((term) => Object.values(term.label)));
+	return [...new Set([...categoryNames, ...terms])].join(' ');
+}
+
+export function listingDocument({ product, variants, categoryNames = [] }: SearchEntry, locales: readonly string[]) {
 	const groups = product.optionGroups.filter((group) => FACET_ROLES.has(group.semanticRole));
 	return {
 		...searchDocument(product),
+		facts: factWords(product, categoryNames),
+		description: Object.values(product.shortDescription).join(' '),
 		...listingPrice(product, variants),
 		idOrder: idOrder(product.id),
 		createdOrder: product.createdAt ?? '',

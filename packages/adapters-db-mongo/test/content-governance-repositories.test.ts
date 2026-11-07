@@ -523,6 +523,17 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 			expect(await repo.hasVerifiedPurchase({ userId: `${P}ruser`, productId: `${P}other` })).toBe(false);
 		});
 
+		it('does not count an order that is not delivered yet', async () => {
+			await insertRaw(OrderModel, {
+				_id: `${P}shipped`,
+				orderNumber: `${P}shipped`,
+				userId: `${P}suser`,
+				status: 'shipped',
+				lines: [{ productId: `${P}rprod` }],
+			});
+			expect(await repo.hasVerifiedPurchase({ userId: `${P}suser`, productId: `${P}rprod` })).toBe(false);
+		});
+
 		it('moderates with and without a note or images, and misses a stranger', async () => {
 			const input = { status: 'approved' as const, moderatedByUserId: 'm', moderatedAt: at };
 			const noted = await new MongoTransactionManager().withTransaction((context) =>

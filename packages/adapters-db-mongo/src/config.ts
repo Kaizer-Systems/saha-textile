@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /**
- * MongoDB connection config for the self-hosted Docker MongoDB 8.3
+ * MongoDB connection config for the self-hosted Docker MongoDB 9.0.4
  * single-node replica set (`rs0`) — the same profile locally and in prod
  * (never Atlas). Credentials are taken RAW from env and percent-encoded at
  * runtime via encodeURIComponent (so a literal `@` becomes `%40`), then the

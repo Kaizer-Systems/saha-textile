@@ -89,7 +89,7 @@ const BOUNDARIES: Boundary[] = [
 		sub: 'MongoDB rs0 · providers',
 		angle: -150,
 		doc: '/database/current-adapter-map',
-		detail: 'Self-hosted Docker MongoDB 8.3 single-node replica set (rs0) is the source of truth — the same profile locally (pnpm mongo:up) and in production. Meilisearch and external providers sit behind their adapters.',
+		detail: 'Self-hosted Docker MongoDB 9.0.4 single-node replica set (rs0) is the source of truth — the same profile locally (pnpm mongo:up) and in production. Meilisearch and external providers sit behind their adapters.',
 	},
 ];
 

@@ -300,7 +300,7 @@ export class MongoReviewRepository implements ReviewRepository {
 		const count = await OrderModel.countDocuments({
 			userId: input.userId,
 			'lines.productId': input.productId,
-			status: { $in: ['delivered', 'completed'] },
+			status: 'delivered',
 		}).exec();
 		return count > 0;
 	}

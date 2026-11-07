@@ -125,11 +125,11 @@ The price policy is `sum_components`, `fixed_bundle_price` or `discounted_compon
 
 A relation links a product to another product for discovery, and changes neither price nor stock. The types are `related`, `upsell`, `cross_sell`, `bought_together`, `complete_the_look`, `substitute` and `same_collection`.
 
-`related` and `upsell` are always curated by hand. `cross_sell` and `bought_together` can also come from the weekly insight job, which replaces its rows as one set. Public reads return only live relations inside their schedule, in rank order.
+`related` and `upsell` are always curated by hand. `cross_sell` and `bought_together` can also come from the weekly insight job, which replaces its rows as one set. Public reads return only live relations inside their schedule, in rank order. Discontinuing a product disables every relation that points to it, in the same transaction as the product change.
 
 ## Reviews, questions and FAQ
 
-- **Reviews.** A customer can review a product they received. There is one review per customer, product and order, with up to five photos. A review stays pending until an operator decides. Approve publishes it and its photos. Reject deletes the photos. Public ratings count approved reviews only.
+- **Reviews.** A customer can review a product they received. There is one review per customer, product and order, with up to five photos. A review stays pending until an operator decides. Approve publishes it and its photos. Reject deletes the photos. Public ratings count approved reviews only, and the decision and the rating recount commit in one transaction. Only an order with status `delivered` counts as a purchase.
 - **Questions.** Anyone can ask, with a name and email. The email stays in the admin view, and "stay anonymous" hides the name in public. A repeat of a pending question returns the first one. Only answered questions are public, and answering sends the `product_question_answered` email.
 - **FAQ.** An entry is global, or targets categories, products or both. A page shows the global entries plus those matching it, each once.
 

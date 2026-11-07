@@ -443,6 +443,8 @@ Then say which chunk/section you are working (e.g. “Chunk C — Mongo + env sy
 
 ---
 
+- 2026-11-08 — [DONE] **Three API gaps found in the portal rewrite, closed.** Review moderation and the rating recount now run in one transaction (`ReviewsService.moderate`, optional `TRANSACTION_MANAGER`). Discontinuing a product calls `disableForTarget` inside the same transaction, so relations pointing at it are disabled (catalog plan: archived target pauses the relation). `hasVerifiedPurchase` counts `delivered` orders only; `completed` was never an order status. The MongoDB 8.3 text in the adapter config, README and Architecture Reactor now says 9.0.4. Dropped as already covered: the nested-bundle guard (the product builder calls `isBundleProduct`) and the unregistered storefront `ServerInterceptor` (deleted in 46a20ad). Left as designed: `applyDelta` and `consumeFifo` have no caller until checkout (Chunk G). Tool: claude-code.
+
 ## Core domain & contracts (`packages/core-domain`, `packages/contracts`)
 
 - 2026-08-13 — [DONE] **Admin Customer CRM contracts + `CustomerRepository` port expansion.**

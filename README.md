@@ -24,7 +24,7 @@ apps/        storefront (Angular + Analog PWA, :4200) · admin (Angular, :4300) 
              api (NestJS + Fastify, :4000) · developer-portal (Docusaurus)
 packages/    contracts · core-domain · config · adapters-db-mongo · (more adapters as built)
 vendor/      Fastkart (Angular storefront + admin reference — UI/behaviour only, never forked)
-docker/      mongo/ — local MongoDB 8.3 single-node replica set (rs0)
+docker/      mongo/ — local MongoDB 9.0.4 single-node replica set (rs0)
 docs/        developer-portal content, including engineering-live-context/ (canonical live KB)
 project-context/   nextjs-context/ (superseded — ignore)
 ```
@@ -37,7 +37,7 @@ nvm use            # reads .nvmrc (Node 24)
 corepack enable    # activates the pinned pnpm
 
 pnpm install
-pnpm mongo:up      # local Docker MongoDB 8.3 replica set (rs0); needs Docker running
+pnpm mongo:up      # local Docker MongoDB 9.0.4 replica set (rs0); needs Docker running
 pnpm lint          # includes the brand naming guard (scripts/check-naming.sh)
 pnpm typecheck
 pnpm test

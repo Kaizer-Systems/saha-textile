@@ -181,6 +181,8 @@ export class CatalogService {
 		await this.inTransaction(async () => {
 			await this.products.save(next);
 			await this.upsertRedirect(redirect);
+			// Auto-pause: other products stop offering this one as related, upsell or cross-sell.
+			await this.relations?.disableForTarget(product.id);
 		});
 		await this.syncSearch(next);
 		await this.record(actorUserId, 'catalog.product.discontinue', product.id, {

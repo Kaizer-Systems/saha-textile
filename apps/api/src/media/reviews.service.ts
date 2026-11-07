@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { HttpStatus } from '@nestjs/common';
 import type {
 	AdminReviewListQuery,
@@ -20,6 +20,7 @@ import {
 	type ProductRepository,
 	type ReviewRepository,
 	type StoragePort,
+	type TransactionManagerPort,
 	checkReviewPhotos,
 	discardReviewPhotos,
 	publishReviewPhotos,
@@ -36,6 +37,7 @@ import {
 	PRODUCT_REPOSITORY,
 	REVIEW_REPOSITORY,
 	STORAGE_PORT,
+	TRANSACTION_MANAGER,
 } from '../infra/tokens';
 import { MediaService } from './media.service';
 
@@ -61,6 +63,7 @@ export class ReviewsService {
 		@Inject(MEDIA_JOB_QUEUE) private readonly queue: MediaJobQueuePort,
 		private readonly media: MediaService,
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		@Optional() @Inject(TRANSACTION_MANAGER) private readonly transactions: TransactionManagerPort | null = null,
 	) {}
 
 	async presignPhoto(customerId: string, request: ReviewPhotoPresignRequest): Promise<MediaPresignResponse> {
@@ -169,17 +172,22 @@ export class ReviewsService {
 		if (request.decision === 'approve') await publishReviewPhotos(deps, review.imageAssetIds);
 		else await discardReviewPhotos(deps, review.imageAssetIds);
 
-		const moderated = await this.reviews.moderate({
-			reviewId,
-			status: request.decision === 'approve' ? 'approved' : 'rejected',
-			moderatedByUserId: actorId,
-			moderatedAt: new Date().toISOString(),
-			note: request.note ?? undefined,
-			...(request.decision === 'reject' ? { imageAssetIds: [] } : {}),
-		});
-		await this.reviews.recomputeAggregate(review.productId);
-		if (!moderated) throw new NotFoundException('No such review');
-		return moderated;
+		// The decision and the rating it changes commit together, so the public rating never
+		// disagrees with the approved reviews behind it.
+		const decide = async () => {
+			const moderated = await this.reviews.moderate({
+				reviewId,
+				status: request.decision === 'approve' ? 'approved' : 'rejected',
+				moderatedByUserId: actorId,
+				moderatedAt: new Date().toISOString(),
+				note: request.note ?? undefined,
+				...(request.decision === 'reject' ? { imageAssetIds: [] } : {}),
+			});
+			if (!moderated) throw new NotFoundException('No such review');
+			await this.reviews.recomputeAggregate(review.productId);
+			return moderated;
+		};
+		return this.transactions ? this.transactions.withTransaction(decide) : decide();
 	}
 
 	/** Thumb and full URLs per photo: public when approved, short-lived signed while private. */

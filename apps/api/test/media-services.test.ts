@@ -296,6 +296,7 @@ describe('ReviewsService', () => {
 			review?: unknown;
 			moderated?: unknown;
 			locales?: string[];
+			transactional?: boolean;
 		} = {},
 	) => {
 		const reviews = {
@@ -325,6 +326,7 @@ describe('ReviewsService', () => {
 		};
 		const queue = { enqueue: vi.fn(async () => {}) };
 		const media = { presign: vi.fn(async () => 'presigned') };
+		const transactions = { withTransaction: vi.fn(async (work: () => Promise<unknown>) => work()) };
 		const service = new ReviewsService(
 			reviews as never,
 			assets as never,
@@ -335,8 +337,9 @@ describe('ReviewsService', () => {
 			queue as never,
 			media as never,
 			{ locales: overrides.locales ?? ['en', 'fr'] } as never,
+			overrides.transactional === false ? null : (transactions as never),
 		);
-		return { service, reviews, assets, products, customers, storage, media };
+		return { service, reviews, assets, products, customers, storage, media, transactions };
 	};
 	const submit = { orderId: 'o1', productId: 'p1', rating: 5, title: 'T', body: 'B', imageAssetIds: [] } as never;
 
@@ -456,15 +459,16 @@ describe('ReviewsService', () => {
 	});
 
 	it('approves, keeping the photos', async () => {
-		const { service, reviews } = build();
+		const { service, reviews, transactions } = build();
 		await service.moderate('a1', 'r1', { decision: 'approve', note: 'Good' } as never);
+		expect(transactions.withTransaction).toHaveBeenCalledTimes(1);
 		expect(reviews.moderate).toHaveBeenCalledWith(expect.objectContaining({ status: 'approved', note: 'Good' }));
 		expect(reviews.moderate.mock.calls[0]?.[0 as never]).not.toHaveProperty('imageAssetIds');
 		expect(reviews.recomputeAggregate).toHaveBeenCalledWith('p1');
 	});
 
-	it('rejects, dropping the photos', async () => {
-		const { service, reviews } = build();
+	it('rejects, dropping the photos, without a transaction manager too', async () => {
+		const { service, reviews } = build({ transactional: false });
 		await service.moderate('a1', 'r1', { decision: 'reject' } as never);
 		expect(reviews.moderate).toHaveBeenCalledWith(
 			expect.objectContaining({ status: 'rejected', note: undefined, imageAssetIds: [] }),
@@ -475,9 +479,11 @@ describe('ReviewsService', () => {
 		await expect(
 			build({ review: null }).service.moderate('a1', 'r1', { decision: 'approve' } as never),
 		).rejects.toBeInstanceOf(NotFoundException);
-		await expect(
-			build({ moderated: null }).service.moderate('a1', 'r1', { decision: 'approve' } as never),
-		).rejects.toBeInstanceOf(NotFoundException);
+		const vanished = build({ moderated: null });
+		await expect(vanished.service.moderate('a1', 'r1', { decision: 'approve' } as never)).rejects.toBeInstanceOf(
+			NotFoundException,
+		);
+		expect(vanished.reviews.recomputeAggregate).not.toHaveBeenCalled();
 	});
 });
 

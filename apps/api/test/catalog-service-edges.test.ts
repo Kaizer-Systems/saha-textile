@@ -134,6 +134,7 @@ const build = (options: Options = {}) => {
 		listForProduct: vi.fn(async () => options.relations ?? []),
 		deleteById: vi.fn(async () => {}),
 		save: vi.fn(async (saved: unknown) => saved),
+		disableForTarget: vi.fn(async () => 0),
 	};
 	const placements = {
 		findByPath: vi.fn(async () => options.placement ?? null),
@@ -271,7 +272,7 @@ describe('redirects', () => {
 
 describe('discontinue', () => {
 	it('writes a 410 with no replacement, and takes the product out of search', async () => {
-		const { service, products, search, stored } = build();
+		const { service, products, search, stored, relations, transactions } = build();
 		expect(await service.discontinue('red-saree', null, 'a1')).toEqual({
 			slug: 'red-saree',
 			statusCode: 410,
@@ -283,6 +284,8 @@ describe('discontinue', () => {
 		});
 		expect(stored[0]).toMatchObject({ sourcePath: '/product/red-saree', statusCode: 410 });
 		expect(search.removeProduct).toHaveBeenCalledWith('prd_1');
+		expect(relations.disableForTarget).toHaveBeenCalledWith('prd_1');
+		expect(transactions.withTransaction).toHaveBeenCalledTimes(1);
 	});
 
 	it('writes a 301 to a live product', async () => {
@@ -713,7 +716,10 @@ describe('add-on templates', () => {
 	it('lists, saves and removes with an audit row', async () => {
 		const { service, audit, addons } = build();
 		expect(await service.listAddonTemplates()).toEqual(['template']);
-		await service.saveAddonTemplate({ code: 'fall', label: { en: 'Fall' }, priceINR: 1, fields: [], sizeGuide: [] }, 'a1');
+		await service.saveAddonTemplate(
+			{ code: 'fall', label: { en: 'Fall' }, priceINR: 1, fields: [], sizeGuide: [] },
+			'a1',
+		);
 		await service.removeAddonTemplate('fall');
 		expect(addons.remove).toHaveBeenCalledWith('fall');
 		expect(actions(audit)).toEqual(['catalog.addon-template.save', 'catalog.addon-template.remove']);
@@ -722,9 +728,9 @@ describe('add-on templates', () => {
 	it('answers nothing, or refuses, with no store', async () => {
 		const { service } = build({ bare: true });
 		expect(await service.listAddonTemplates()).toEqual([]);
-		await expect(service.saveAddonTemplate({ code: 'x', label: { en: 'X' }, priceINR: 1, fields: [], sizeGuide: [] })).rejects.toBeInstanceOf(
-			NotFoundException,
-		);
+		await expect(
+			service.saveAddonTemplate({ code: 'x', label: { en: 'X' }, priceINR: 1, fields: [], sizeGuide: [] }),
+		).rejects.toBeInstanceOf(NotFoundException);
 		await expect(service.removeAddonTemplate('x')).rejects.toBeInstanceOf(NotFoundException);
 	});
 });

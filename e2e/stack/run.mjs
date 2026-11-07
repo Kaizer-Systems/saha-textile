@@ -123,7 +123,10 @@ process.on('SIGINT', () => {
 // Node reads the local CA from the system store, as the storefront's server-side fetches need.
 env.NODE_OPTIONS = '--use-system-ca';
 
-run('Build the apps', 'pnpm', ['build:product-apps']);
+// apps/api/.env says NODE_ENV=development, which would build the shop in Angular's development
+// mode and leave the service worker off. Only the build is forced: a production API refuses the
+// fixed test OTP.
+run('Build the apps', 'pnpm', ['build:product-apps'], { env: { ...env, NODE_ENV: 'production' } });
 await resetDatabase();
 run('Seed reference data', 'pnpm', ['--filter', '@saha-textile/adapters-db-mongo', 'seed']);
 run('Seed the demo catalogue', 'pnpm', ['--filter', '@saha-textile/adapters-db-mongo', 'seed:demo-catalogue']);

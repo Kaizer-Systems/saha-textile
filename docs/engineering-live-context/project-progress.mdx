@@ -3844,6 +3844,7 @@ test` **69/69** · admin build clean · `git diff --check` clean. No API or DB s
 - _(append)_
 
 ---
+- 2026-11-08 — [DONE] **Combined branch `feat/combined-after-pr6`.** Merged the CCAvenue, admin home, home page, PWA and deployment plan branches from `dev`; only the owner log and one `core-domain` export line conflicted, and both sides were kept. `e2e/stack/run.mjs` now forces production app builds, because `NODE_ENV=development` in `apps/api/.env` built the shop in Angular development mode and left the service worker off. Verified: lint, typecheck, 100% coverage, product builds, and `pnpm e2e:stack` with 331 passed, 0 failed, 16 skipped on phone by design. Tool: claude-code.
 
 ## Integration (storefront ↔ API ↔ admin ↔ DB ↔ Meili ↔ Spaces)
 

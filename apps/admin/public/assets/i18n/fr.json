@@ -1066,5 +1066,10 @@
 	"addon_template": "Modèle de supplément",
 	"needs_measurements": "Mesures requises",
 	"gap_addon_template": "Choisissez un modèle pour les options qui demandent des mesures",
-	"gap_lead_time": "Texte de délai"
+	"gap_lead_time": "Texte de délai",
+	"image_not_portrait": "Pas au format 3:4, l'image peut être recadrée : {{positions}}",
+	"role_change_confirm": "Changer ce rôle retire ses variantes enregistrées. Continuer ?",
+	"gap_swatch_colour": "Ajoutez une couleur pour",
+	"gap_swatch_image": "Ajoutez une image pour",
+	"gap_image_sizes": "L'image principale est encore en préparation"
 }

@@ -1066,5 +1066,10 @@
 	"addon_template": "Add-on template",
 	"needs_measurements": "Needs measurements",
 	"gap_addon_template": "Choose a template for options that need measurements",
-	"gap_lead_time": "Lead-time text"
+	"gap_lead_time": "Lead-time text",
+	"image_not_portrait": "Not 3:4, so it may be cropped: {{positions}}",
+	"role_change_confirm": "Changing this role retires its saved variants. Continue?",
+	"gap_swatch_colour": "Add a colour for",
+	"gap_swatch_image": "Add an image for",
+	"gap_image_sizes": "The primary image is still being prepared"
 }

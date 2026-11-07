@@ -86,6 +86,20 @@ import { environment } from '../../../../../public/environments/environment';
 
 const LANGUAGE_FIELDS = ['name', 'short_description', 'description', 'meta_title', 'meta_description', 'estimated_delivery_text'];
 
+/** Where each Go Live gap is fixed. Anything else is an option, value or price on Inventory. */
+const GAP_TABS: Readonly<Record<string, string>> = {
+	title: 'general',
+	short_description: 'general',
+	description: 'general',
+	category: 'general',
+	meta_title: 'seo',
+	meta_description: 'seo',
+	primary_image: 'images',
+	image_alt: 'images',
+	image_sizes: 'images',
+	lead_time: 'shipping',
+};
+
 const blankToNull = (value: unknown): number | null =>
 	value === '' || value === null || value === undefined || Number.isNaN(Number(value)) ? null : Number(value);
 
@@ -253,6 +267,9 @@ export class FormProduct {
 	readonly fields: LocalizedFields;
 	readonly missing = signal<Record<string, number>>({});
 	readonly definitions = signal<AttributeDefinition[]>([]);
+	readonly imageSizes = signal<ReadonlyMap<string, readonly [number, number]>>(new Map());
+	/** Axes that already have saved variant rows, so a role change asks first. */
+	readonly savedAxes = signal<string[]>([]);
 	readonly addonTemplates = signal<AddonTemplateRow[]>([]);
 	readonly addonTemplateCode = signal<string | null>(null);
 	readonly optionGroups = signal<ProductOptionGroup[]>([]);
@@ -455,6 +472,10 @@ export class FormProduct {
 			altOverrides: content.altOverrides,
 		});
 		this.tiles.set(new Map(detail.images.map((image) => [image.assetId, image.url])));
+		this.imageSizes.set(new Map(detail.images.map((image) => [image.assetId, [image.width, image.height]])));
+		this.savedAxes.set(
+			content.optionGroups.filter((row) => row.semanticRole === 'variation_axis').map((row) => row.attributeCode),
+		);
 		this.refreshMissing();
 		if (detail.type === 'bundle') {
 			this.productService
@@ -700,6 +721,12 @@ export class FormProduct {
 			goLiveToast(result, this.notifier, (key) => this.transloco.translate(key));
 			if (result.live) void this.router.navigateByUrl('/product');
 		});
+	}
+
+	/** A line of the Go Live alert opens the tab, and the language, where the gap can be fixed. */
+	openGap({ field, locale }: GoLiveGap) {
+		if (locale) this.switchLanguage(locale);
+		this.nav()?.select(GAP_TABS[field.split(':')[0] as string] ?? 'inventory');
 	}
 
 	gapLabels(): string[] {

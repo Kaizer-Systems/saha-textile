@@ -469,8 +469,9 @@ export class CatalogService {
 		const ids = [...new Set([...product.media.gallery, ...productGallery(product)])];
 		const assets = await this.assetsFor(ids);
 		return ids.flatMap((assetId) => {
-			const url = this.thumbnail(assets.get(assetId));
-			return url ? [{ assetId, url }] : [];
+			const asset = assets.get(assetId);
+			const url = this.thumbnail(asset);
+			return asset && url ? [{ assetId, url, width: asset.width, height: asset.height }] : [];
 		});
 	}
 

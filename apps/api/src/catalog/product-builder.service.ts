@@ -104,6 +104,7 @@ export class ProductBuilderService {
 			variants: rows,
 			locales: this.config.locales,
 			assetAlt: () => assetAlt(asset),
+			primaryRoles: asset ? asset.derivatives.map((row) => row.role) : null,
 		});
 		if (gaps.length) return GoLiveResult.parse({ live: false, gaps });
 		if (product.status !== 'live') {

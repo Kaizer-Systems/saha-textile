@@ -1,5 +1,5 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, input } from '@angular/core';
+import { Component, input, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterModule } from '@angular/router';
 
@@ -26,6 +26,7 @@ export class Category {
 	//  and migrating would break narrowing currently.
 	readonly type = input<string>('create');
 	readonly categoryType = input<string | null>('product');
+	readonly locale = signal('en');
 
 	private readonly categoriesQuery = injectCategoriesQuery(() => ({ type: this.categoryType() }));
 	category$: Observable<ICategoryModel | undefined> = toObservable(this.categoriesQuery.data);

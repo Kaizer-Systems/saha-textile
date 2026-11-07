@@ -14,6 +14,8 @@ export interface IAttachment {
 	conversions_disk: string;
 	size: string;
 	original_url: string;
+	width?: number;
+	height?: number;
 	created_by_id: number;
 	created_at?: string;
 	updated_at?: string;

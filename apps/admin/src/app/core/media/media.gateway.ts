@@ -38,6 +38,8 @@ interface MediaLibraryItem {
 		purpose: string;
 		originalFormat: string;
 		originalByteSize: number;
+		width: number;
+		height: number;
 		createdAt?: string;
 		processing: { state: string };
 	};
@@ -74,6 +76,8 @@ const toAttachment = (item: MediaLibraryItem): IAttachment =>
 		conversions_disk: 'spaces',
 		size: String(item.asset.originalByteSize),
 		original_url: previewOf(item),
+		width: item.asset.width,
+		height: item.asset.height,
 		created_by_id: 0,
 		created_at: item.asset.createdAt,
 	}) as unknown as IAttachment;

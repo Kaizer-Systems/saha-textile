@@ -33,6 +33,7 @@ export class TreeNode {
 	//  and migrating would break narrowing currently.
 	readonly recursionKey = input<string>(undefined);
 	readonly displayKey = input<string>(undefined);
+	readonly locale = input('en');
 	readonly categoryType = input<string | null>('product');
 
 	readonly DeleteModal = viewChild<DeleteModal>('deleteModal');
@@ -42,6 +43,12 @@ export class TreeNode {
 
 	ngOnInit() {
 		this.route.params.subscribe((params) => (this.id = params['id']));
+	}
+
+	/** The name in the language on screen, or the English one until it has a translation. */
+	label(): string {
+		const node = this.node();
+		return node.row?.name[this.locale()] || node[this.displayKey()] || node.name;
 	}
 
 	delete(_actionType: string, data: ICategory) {

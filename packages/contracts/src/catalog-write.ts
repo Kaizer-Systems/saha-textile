@@ -198,7 +198,7 @@ export const AdminProductDetail = z.object({
 	/** The form's language-bound text, options and images, as stored. */
 	content: ProductContentWrite,
 	/** Picture of each attached image, for the form's tiles. */
-	images: z.array(z.object({ assetId: z.string(), url: z.string() })),
+	images: z.array(z.object({ assetId: z.string(), url: z.string(), width: z.number(), height: z.number() })),
 	relatedProductIds: z.array(z.string()),
 	upsellProductIds: z.array(z.string()),
 	crossSellProductIds: z.array(z.string()),

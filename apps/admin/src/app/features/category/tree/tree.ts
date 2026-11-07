@@ -19,6 +19,7 @@ export class Tree {
 	readonly data = input<ICategory[]>(undefined);
 	readonly recursionKey = input<string>(undefined);
 	readonly displayKey = input<string>('name');
+	readonly locale = input('en');
 	readonly categoryType = input<string | null>('product');
 
 	public treeSearch = new FormControl('');

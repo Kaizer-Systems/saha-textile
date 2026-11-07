@@ -151,6 +151,8 @@ test.describe('Product builder', () => {
 		await page.locator('#go_live_btn').click();
 		await expect(page.locator('.alert-danger')).toContainText('Français: Name');
 		await expect(page.locator('.alert-danger')).toContainText('Choose at least one category');
+		await page.locator('.alert-danger a', { hasText: 'Meta title' }).first().click();
+		await expect(page.locator('#meta_title')).toBeVisible();
 		expect((await stored())?.['status']).toBe('disabled');
 	});
 
@@ -179,6 +181,10 @@ test.describe('Product builder', () => {
 		await open(page, '/product');
 		await withDatabase(async (db) => {
 			const asset = await db.collection('mediaAssets').findOne({});
+			const [first] = asset?.['derivatives'] as Record<string, unknown>[];
+			await db
+				.collection('mediaAssets')
+				.updateOne({ _id: asset?._id }, { $push: { derivatives: { ...first, role: 'thumb' } } as never });
 			await db.collection('products').updateOne(
 				{ sku },
 				{
@@ -309,6 +315,8 @@ test.describe('What admin makes reaches the shop', () => {
 		await page.locator('#field_1').blur();
 		await page.locator('app-language-switch button', { hasText: 'Français' }).click();
 		await expect(page.locator('#label')).toHaveValue('');
+		await expect(page.locator('#field_0')).toHaveValue('');
+		await expect(page.locator('#field_1')).toHaveValue('');
 		await page.locator('#label').fill('Blouse ajustée');
 		await page.locator('#field_0').fill('Poitrine');
 		await page.locator('#field_0').blur();
@@ -346,6 +354,67 @@ test.describe('What admin makes reaches the shop', () => {
 		} finally {
 			await withDatabase(async (db) => {
 				await db.collection('addonTemplates').deleteMany({ code });
+				await db.collection('products').replaceOne({ slug }, original as never);
+			});
+		}
+	});
+
+	test('a renamed value reaches the product that uses it', async ({ page, request }) => {
+		const slug = 'printed-blouse-piece';
+		const code = `e2e-finish-${Date.now()}`;
+		const name = (en: string) => ({ en, fr: `${en} fr` });
+		const term = { code: 'matte', slug: 'matte', label: name('Matte'), aliases: [], isBase: false, hidden: false };
+		const original = await withDatabase((db) => db.collection('products').findOne({ slug }));
+		await withDatabase(async (db) => {
+			await db.collection('attributeDefinitions').insertOne({
+				_id: `attr_${code}` as never,
+				code,
+				label: name('Finish'),
+				defaultRole: 'descriptive',
+				defaultDisplayStyle: 'rectangle',
+				valueType: 'term',
+				terms: [term],
+			});
+			await db.collection('products').updateOne(
+				{ slug },
+				{
+					$push: {
+						optionGroups: {
+							attributeCode: code,
+							label: name('Finish'),
+							semanticRole: 'filter_only',
+							displayStyle: 'rectangle',
+							requiredSelection: false,
+							defaultTermCode: null,
+							terms: [
+								{
+									code: 'matte',
+									label: name('Matte'),
+									isBase: false,
+									addonTemplateIds: [],
+									requiresMeasurements: false,
+									sortOrder: 0,
+								},
+							],
+						},
+					} as never,
+				},
+			);
+		});
+		try {
+			await open(page, `/attribute/edit/${code}`);
+			await expect(page.locator('#value_0')).toHaveValue('Matte');
+			await page.locator('#value_0').fill('Satin');
+			await page.locator('#value_0').blur();
+			await page.locator('#attribute_btn button, button#attribute_btn').first().click();
+			await expect(page).toHaveURL(/\/attribute$/);
+			const view = await request.get(`https://localhost:4000/catalog/products/${slug}/view?locale=en`);
+			expect(view.status(), await view.text()).toBe(200);
+			const body = (await view.json()) as { optionGroups: { code: string; terms: { label: string }[] }[] };
+			expect(body.optionGroups.find((group) => group.code === code)?.terms[0]?.label).toBe('Satin');
+		} finally {
+			await withDatabase(async (db) => {
+				await db.collection('attributeDefinitions').deleteMany({ code });
 				await db.collection('products').replaceOne({ slug }, original as never);
 			});
 		}

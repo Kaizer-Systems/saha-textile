@@ -18,7 +18,7 @@ export type HomeHeroLayout = z.infer<typeof HomeHeroLayout>;
 
 /** Which slots each hero layout renders, in reading order. */
 export const HERO_LAYOUT_SLOTS: Readonly<Record<HomeHeroLayout, readonly string[]>> = {
-	hero_full: ['main'],
+	hero_full: ['main', 'slide_2', 'slide_3'],
 	hero_main_side: ['main', 'side'],
 	hero_main_stack: ['main', 'side_top', 'side_bottom'],
 	hero_center_sides: ['left', 'main', 'right'],
@@ -40,7 +40,7 @@ export type BannerPosition = z.infer<typeof BannerPosition>;
 
 /** Slots each position accepts. */
 export const BANNER_POSITION_SLOTS: Readonly<Record<BannerPosition, readonly string[]>> = {
-	hero: ['main', 'side', 'side_top', 'side_bottom', 'left', 'right'],
+	hero: ['main', 'slide_2', 'slide_3', 'side', 'side_top', 'side_bottom', 'left', 'right'],
 	promo_cards: ['card_1', 'card_2', 'card_3', 'card_4'],
 	promo_wide: ['item_1', 'item_2'],
 	strip: ['main'],
@@ -54,10 +54,11 @@ export const BANNER_POSITION_SLOTS: Readonly<Record<BannerPosition, readonly str
 /**
  * Wide shapes shrink to a sliver on a phone (a 10:3 hero is ~108 px tall at 360 px), so
  * when their image carries text a separate phone image is mandatory. `hero.main` counts
- * as wide in every layout: even the 1.5:1 variants leave baked-in text unreadable.
+ * as wide in every layout: even the 1.5:1 variants leave baked-in text unreadable. The extra
+ * `hero_full` slides are the same shape as `main`.
  */
 export const isWideBannerSlot = (position: BannerPosition, slot: string): boolean =>
-	(position === 'hero' && slot === 'main') ||
+	(position === 'hero' && ['main', 'slide_2', 'slide_3'].includes(slot)) ||
 	position === 'strip' ||
 	position === 'bar' ||
 	position === 'category_banner';

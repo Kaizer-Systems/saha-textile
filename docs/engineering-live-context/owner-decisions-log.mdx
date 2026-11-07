@@ -487,7 +487,7 @@ Roles live in the `mediaRoles` collection: seeded roles are undeletable and unre
 ### Banners and content blocks
 
 - Banners are `contentBlocks` records — one record per page position, named by **position and shape, never by a Fastkart theme**. The storefront keeps one theme and colour scheme; other themes' hero styles become admin-selectable layouts rendered in our colours.
-- Home hero layout is one setting: `hero_full` (one 10:3 banner), `hero_main_side` (main + one tall tile), `hero_main_stack` (main + two stacked tiles), `hero_center_sides` (centre + tall tiles left and right). Slots within a layout: `main`, `side`, `side_top`, `side_bottom`, `left`, `right`. Record key form: `home.hero.main`.
+- Home hero layout is one setting: `hero_full` (a 10:3 carousel of up to three slides, changed in the 2026-11-07 home page round below), `hero_main_side` (main + one tall tile), `hero_main_stack` (main + two stacked tiles), `hero_center_sides` (centre + tall tiles left and right). Slots within a layout: `main`, `side`, `side_top`, `side_bottom`, `left`, `right`. Record key form: `home.hero.main`.
 - Other positions: `promo_cards`, `promo_wide`, `strip`, `bar`, `sidebar_tall`, `category_banner`, `product_sidebar`, `newsletter_popup`.
 - Banner boxes never crop: the box takes the shape of the image chosen for the current viewport width. Up to three images per slot — desktop (required), tablet 768–1199 (optional, falls back to desktop), phone below 768 (portrait or square). Landscape phones get the tablet/desktop image.
 - One "Image contains text" switch per slot. **Off (default):** a text-free photo with live heading/subheading/CTA per locale over it. **On:** the phone image is mandatory on wide slots, live-text fields hide, alt must repeat the image's words, and an optional per-locale image set overrides the default (empty falls back to it). No safe zones or hard boundaries. Designer brief: one design exported as artboards — desktop 2880×864, phone 1080×1350 or 1080×1080.
@@ -938,6 +938,20 @@ Closed: `DEC-DOMAIN-TOPOLOGY`.
 - **D9:** the old `POST /orders` stays for Chunk G.
 - **Logos:** a Brand Kit in admin, through the media pipeline, so a new owner uploads their own after deployment. The TIFF is the master, and both versions are cut from it so the reds match. Wide places show the full logo with seal, name and tagline; small spaces show the seal. On dark or coloured areas the logo sits on white and keeps its own colours.
 - **Cookies:** the box has three equal buttons, and refusing takes one click. Cookie settings shows all six locked categories; empty ones say Not in use with no switch, and Accept all turns on only what is in use. `st_consent` holds the answer in the browser and `POST /privacy/consent` keeps the history. The Contact map waits for consent or a click. The Privacy Policy cookie section is a draft until the owner's lawyer or CA reviews it.
+
+## Owner decision round (2026-11-07) — home page restored
+
+The owner reviewed the home page after PR 6 and said the removals below were never authorised. This round reverses the menu and hero part of D8 above. The contact details from the live site stay.
+
+- **No visible removal under a broad label.** Demo menu links, page sections and layouts stay until the owner names that exact removal. A brief must list each visible item it removes, with a before and after. A missing image means the layout stays with a stand-in image through Spaces, so only the image changes later.
+- **The header menu is back in full:** Home, the real categories, Product, Mega Menu, Blog and Pages, on desktop and in the phone menu. The Mega Menu email and invoice template columns are back too, on the owner's request. They still link to the Fastkart demo site and are the one exception to "All Fastkart text goes".
+- **Demo product links open real products.** Their old slugs left with the demo catalogue, so the menu fills them from the live product rails.
+- **The full-width hero is a carousel of up to three slides.** `hero_full` gains the `slide_2` and `slide_3` slots beside `main`. This replaces "one 10:3 banner". The Home banners screen shows one form per slide, using the existing form.
+- **The two promo banners under the hero are back** as `promo_wide` `item_1` and `item_2`, set on the Home banners screen with the same form.
+- **Restored as they were:** the footer Google Play and App Store badges, the Pinterest icon, and the product page side banner. There is no app or Pinterest page yet, so those links open the general sites until real addresses exist.
+- **Stand-in images stay until real art arrives.** Ten banners went through the media pipeline to Spaces in `saha_textile_local`, filling every hero slot so all four layouts work at once. `seed:local-home-banners` repeats this and never overwrites a filled slot.
+- **Still removed:** the demo phone, address and about text, the product Unit line (replaced by D3), the old theme logos (replaced by the Brand Kit), and the attributes note on the product page.
+- **Cookie box:** the approved design stands. Labels stay on one line. Where the longest label cannot sit side by side, as in French, the buttons stack at equal width. This is a fix, not a new design.
 
 ## Open decisions
 

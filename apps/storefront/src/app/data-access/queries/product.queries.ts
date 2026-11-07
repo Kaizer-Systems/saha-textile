@@ -23,6 +23,15 @@ function toCatalogParams(f?: Params): Params {
 	};
 }
 
+/** The home page's product rails. The menu reads the same cached answer for real product links. */
+export function injectHomeRailsQuery() {
+	const productService = inject(ProductService);
+	return injectQuery(() => ({
+		queryKey: ['catalog', 'home'],
+		queryFn: () => firstValueFrom(productService.home()),
+	}));
+}
+
 /**
  * Category-listing query: the catalogue API's server-side filtered, paginated slice with
  * disjunctive facets. Keyed on the filter params; keepPreviousData holds the old page

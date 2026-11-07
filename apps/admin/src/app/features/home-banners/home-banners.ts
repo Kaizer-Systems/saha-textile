@@ -19,7 +19,7 @@ import { BannerSlotForm } from './banner-slot-form/banner-slot-form';
  *
  * The hero layout is one setting, picked from the theme-options `selection-box` cards. The
  * storefront renders each layout with the theme's own hero markup in our colours. Below it,
- * one form per slot of the chosen layout, and the newsletter popup image.
+ * one form per slot of the chosen layout, the two promo banners, and the newsletter popup image.
  */
 @Component({
 	selector: 'app-home-banners',
@@ -33,10 +33,12 @@ export class HomeBanners implements OnInit {
 	readonly layouts: HeroLayout[] = ['hero_full', 'hero_main_side', 'hero_main_stack', 'hero_center_sides'];
 	readonly layout = signal<HeroLayout>('hero_full');
 	readonly heroBlocks = signal<ContentBlock[]>([]);
+	readonly promoBlocks = signal<ContentBlock[]>([]);
 	readonly popupBlock = signal<ContentBlock | null>(null);
 	readonly loaded = signal(false);
 
 	readonly slots = computed(() => HERO_LAYOUT_SLOTS[this.layout()]);
+	readonly promoSlots = ['item_1', 'item_2'];
 
 	async ngOnInit(): Promise<void> {
 		await this.reload();
@@ -44,6 +46,10 @@ export class HomeBanners implements OnInit {
 
 	block(slot: string): ContentBlock | null {
 		return this.heroBlocks().find((block) => block.slot === slot) ?? null;
+	}
+
+	promoBlock(slot: string): ContentBlock | null {
+		return this.promoBlocks().find((block) => block.slot === slot) ?? null;
 	}
 
 	async chooseLayout(layout: HeroLayout): Promise<void> {
@@ -63,6 +69,7 @@ export class HomeBanners implements OnInit {
 		]);
 		this.layout.set(layout);
 		this.heroBlocks.set(home.filter((block) => block.position === 'hero'));
+		this.promoBlocks.set(home.filter((block) => block.position === 'promo_wide'));
 		this.popupBlock.set(global.find((block) => block.position === 'newsletter_popup') ?? null);
 		this.loaded.set(true);
 	}

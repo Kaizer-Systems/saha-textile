@@ -92,6 +92,25 @@ describe('Home rails', () => {
 	});
 });
 
+describe('Home promo banners', () => {
+	it('stays away until one is live', () => {
+		const { page } = render();
+		expect(page.promoBanners()).toBeNull();
+		bannerData.set({ heroLayout: 'hero_full', banners: [banner('hero', 'main', 'x')] });
+		expect(page.promoBanners()).toBeNull();
+	});
+
+	it('places each banner in its own slot', () => {
+		const { page } = render();
+		const second = banner('promo_wide', 'item_2', 'https://cdn/2.webp');
+		bannerData.set({ heroLayout: 'hero_full', banners: [second] });
+		expect(page.promoBanners()).toEqual({
+			first: null,
+			second: { image_url: 'https://cdn/2.webp', resolved: second },
+		});
+	});
+});
+
 describe('Home hero', () => {
 	it('keeps the theme artwork with no data or no live hero', () => {
 		const { page } = render();
@@ -109,6 +128,32 @@ describe('Home hero', () => {
 		bannerData.set({ heroLayout: 'hero_full', banners: [main, banner('hero', 'side', 'https://cdn/2.webp')] });
 		expect(page.heroTheme()).toBeNull();
 		expect(page.heroSlides()).toEqual([{ image_url: 'https://cdn/1.webp', resolved: main }]);
+	});
+
+	it('plays the slides in order, whatever order they arrive in', () => {
+		const { page } = render();
+		const first = banner('hero', 'main', 'https://cdn/1.webp');
+		const second = banner('hero', 'slide_2', 'https://cdn/2.webp');
+		const third = banner('hero', 'slide_3', 'https://cdn/3.webp');
+		bannerData.set({ heroLayout: 'hero_full', banners: [third, first, second] });
+		expect(page.heroSlides()?.map((slide) => slide.resolved)).toEqual([first, second, third]);
+	});
+
+	it('reads only the tiles of the chosen layout when every slot is live', () => {
+		const { page } = render();
+		const left = banner('hero', 'left', 'https://cdn/l.webp');
+		const right = banner('hero', 'right', 'https://cdn/r.webp');
+		const side = banner('hero', 'side', 'https://cdn/s.webp');
+		const top = banner('hero', 'side_top', 'https://cdn/t.webp');
+		const bottom = banner('hero', 'side_bottom', 'https://cdn/b.webp');
+		const banners = [left, right, side, bottom, top];
+		bannerData.set({ heroLayout: 'hero_main_stack', banners });
+		expect(page.heroThemeData()).toMatchObject({
+			sub_banner_1: { resolved: top },
+			sub_banner_2: { resolved: bottom },
+		});
+		bannerData.set({ heroLayout: 'hero_main_side', banners });
+		expect(page.heroThemeData()).toMatchObject({ sub_banner_1: { resolved: side }, sub_banner_2: null });
 	});
 
 	it('maps the other layouts onto the theme hero, filling each slot', () => {

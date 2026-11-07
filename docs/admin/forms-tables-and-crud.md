@@ -121,7 +121,7 @@ The product form writes through `POST /admin/catalog/products/:idOrSlug`.
 
 ## Banner rules
 
-Each banner has one record per position and slot, keyed as `{ownerType}:{ownerId}:{position}:{slot}`. The home hero has four layouts, chosen in one setting: `hero_full`, `hero_main_side`, `hero_main_stack` and `hero_center_sides`. Each layout sets its own slots. Every image must be a processed banner upload, and an active banner needs alt text in every active locale.
+Each banner has one record per position and slot, keyed as `{ownerType}:{ownerId}:{position}:{slot}`. The home hero has four layouts, chosen in one setting: `hero_full`, `hero_main_side`, `hero_main_stack` and `hero_center_sides`. Each layout sets its own slots: `hero_full` is a carousel of `main`, `slide_2` and `slide_3`. The two promo banners under the hero use `promo_wide`, with `item_1` and `item_2`. Every image must be a processed banner upload, and an active banner needs alt text in every active locale.
 
 A slot takes a desktop image, with optional tablet and phone images. Phone applies below 768 px, tablet from 768 to 1199 px, and desktop from 1200 px. Images are not cropped. When the art contains text, the live-text fields are ignored and the alt text must repeat the words. A wide slot with text in its art needs a phone image.
 

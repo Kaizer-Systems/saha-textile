@@ -39,6 +39,17 @@
 	/>
 	}
 
+	<h5 class="mt-5 mb-3">{{ 'promo_banners' | transloco }}</h5>
+	@for (slot of promoSlots; track slot) {
+	<h5 class="mt-4 mb-3">{{ 'promo_slot_' + slot | transloco }}</h5>
+	<app-banner-slot-form
+		[position]="'promo_wide'"
+		[slot]="slot"
+		[existing]="promoBlock(slot)"
+		(saved)="reload()"
+	/>
+	}
+
 	<h5 class="mt-5 mb-3">{{ 'newsletter_popup_image' | transloco }}</h5>
 	<app-banner-slot-form
 		[ownerType]="'global'"

@@ -1,14 +1,13 @@
 import { afterNextRender, Component, computed, inject, signal } from '@angular/core';
 
-import { injectQuery } from '@tanstack/angular-query-experimental';
 import { TranslocoModule } from '@jsverse/transloco';
 import { CarouselModule } from 'ngx-owl-carousel-o';
-import { firstValueFrom } from 'rxjs';
 
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { ProductService } from '@data-access/services/product.service';
 import { readRecentViews } from '@core/catalog/recent-views';
 import { bannerSrc, injectBannersQuery, StorefrontBanners } from '@data-access/queries/banner.queries';
+import { injectHomeRailsQuery } from '@data-access/queries/product.queries';
 import { Blog } from '@features/themes/widgets/blog/blog';
 import { HomeBanner } from '@features/themes/widgets/home-banner/home-banner';
 import { Newsletter } from '@features/themes/widgets/newsletter/newsletter';
@@ -37,6 +36,17 @@ const HERO_LAYOUT_THEME: Record<StorefrontBanners['heroLayout'], string | null> 
 	hero_center_sides: 'tokyo',
 };
 
+/** The full-width hero's slides, in the order they play. */
+const HERO_FULL_SLOTS = ['main', 'slide_2', 'slide_3'];
+
+/** The tiles beside `main` in each layout. Other layouts' banners can be live at the same time. */
+const HERO_LAYOUT_TILES: Record<StorefrontBanners['heroLayout'], [string | null, string | null]> = {
+	hero_full: [null, null],
+	hero_main_side: ['side', null],
+	hero_main_stack: ['side_top', 'side_bottom'],
+	hero_center_sides: ['left', 'right'],
+};
+
 @Component({
 	selector: 'app-home',
 	templateUrl: './home.html',
@@ -52,10 +62,7 @@ export class Home {
 		});
 	}
 	private readonly productsApi = inject(ProductService);
-	private readonly homeQuery = injectQuery(() => ({
-		queryKey: ['catalog', 'home'],
-		queryFn: () => firstValueFrom(this.productsApi.home()),
-	}));
+	private readonly homeQuery = injectHomeRailsQuery();
 	readonly railsLoading = computed(() => this.homeQuery.isPending());
 	readonly newArrivals = computed(() => this.homeQuery.data()?.newArrivals ?? []);
 	readonly bestsellers = computed(() => this.homeQuery.data()?.bestsellers ?? []);
@@ -109,24 +116,32 @@ export class Home {
 	});
 
 	readonly heroThemeData = computed(() => {
-		const hero = (this.bannersQuery.data()?.banners ?? []).filter((banner) => banner.position === 'hero');
-		const slot = (...names: string[]) => {
-			const banner = hero.find((candidate) => names.includes(candidate.slot));
+		const data = this.bannersQuery.data();
+		const hero = (data?.banners ?? []).filter((banner) => banner.position === 'hero');
+		const slot = (name: string | null) => {
+			const banner = hero.find((candidate) => candidate.slot === name);
 			return banner ? { image_url: bannerSrc(banner.images.desktop), resolved: banner } : null;
 		};
-		return {
-			main_banner: slot('main'),
-			sub_banner_1: slot('side', 'side_top', 'left'),
-			sub_banner_2: slot('side_bottom', 'right'),
-		};
+		const [firstTile, secondTile] = HERO_LAYOUT_TILES[data?.heroLayout ?? 'hero_full'];
+		return { main_banner: slot('main'), sub_banner_1: slot(firstTile), sub_banner_2: slot(secondTile) };
 	});
 
 	/** `hero_full` slides from the API, or null when none is live. */
 	readonly heroSlides = computed(() => {
 		const data = this.bannersQuery.data();
-		const main = (data?.banners ?? []).filter((banner) => banner.position === 'hero' && banner.slot === 'main');
-		if (data?.heroLayout !== 'hero_full' || main.length === 0) return null;
-		return main.map((banner) => ({ image_url: bannerSrc(banner.images.desktop), resolved: banner }));
+		const hero = (data?.banners ?? []).filter((banner) => banner.position === 'hero');
+		const slides = HERO_FULL_SLOTS.flatMap((slot) => hero.filter((banner) => banner.slot === slot));
+		if (data?.heroLayout !== 'hero_full' || slides.length === 0) return null;
+		return slides.map((banner) => ({ image_url: bannerSrc(banner.images.desktop), resolved: banner }));
 	});
 
+	/** The two promo banners under the hero, or null when neither is live. */
+	readonly promoBanners = computed(() => {
+		const promos = (this.bannersQuery.data()?.banners ?? []).filter((banner) => banner.position === 'promo_wide');
+		const slot = (name: string) => {
+			const banner = promos.find((candidate) => candidate.slot === name);
+			return banner ? { image_url: bannerSrc(banner.images.desktop), resolved: banner } : null;
+		};
+		return promos.length > 0 ? { first: slot('item_1'), second: slot('item_2') } : null;
+	});
 }

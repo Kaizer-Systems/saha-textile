@@ -68,11 +68,10 @@ export const CurrentConfiguration: Story = {};
 
 export const BrandAndCategories: Story = {
 	render: () => ({
-		props: { data: siteConfig, footer: { footer_class: 'footer-section-2', footer_logo: '' } },
 		template: `
 			<footer class="storybookComponentStage storybookComponentStage--wide storybookComponentStage--stack">
-				<app-footer-logo [data]="data" [footer]="footer" />
-				<app-footer-categories [data]="data" />
+				<app-footer-logo />
+				<app-footer-categories />
 			</footer>
 		`,
 	}),
@@ -80,7 +79,7 @@ export const BrandAndCategories: Story = {
 
 export const CompleteFooter: Story = {
 	render: () => ({
-		props: { data: siteConfig, footer: { footer_class: 'footer-section-2', footer_logo: '' } },
+		props: { data: siteConfig, footer: { footer_class: 'footer-section-2' } },
 		template: '<app-basic-footer [data]="data" [footer]="footer" />',
 	}),
 };

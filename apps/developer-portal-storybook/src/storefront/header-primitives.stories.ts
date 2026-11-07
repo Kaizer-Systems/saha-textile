@@ -67,7 +67,7 @@ export const HeaderUtilities: Story = {
 			<section class="storybookComponentStage storybookComponentStage--wide storybookComponentStage--stack">
 				<app-topbar [data]="data" />
 				<div class="storybookComponentGrid">
-					<app-logo [data]="data" logo="" />
+					<app-logo />
 					<app-search style="basic" />
 					<app-currency style="basic" />
 					<app-language style="basic" />
@@ -84,6 +84,6 @@ export const HeaderUtilities: Story = {
 export const CompleteHeader: Story = {
 	render: () => ({
 		props: { data: siteConfig },
-		template: '<app-minimal-header [data]="data" logo="" [sticky]="true" />',
+		template: '<app-minimal-header [data]="data" [sticky]="true" />',
 	}),
 };

@@ -107,6 +107,7 @@ const build = (options: Options = {}) => {
 	const categories = {
 		tree: vi.fn(async () => ['tree']),
 		findBySlug: vi.fn(async (slug: string) => (slug === 'silk' ? { id: 'c1' } : null)),
+		findById: vi.fn(async (id: string) => (id === 'c1' ? { name: { en: 'Silk', fr: 'Soie' } } : null)),
 	};
 	const variants = { listForProduct: vi.fn(async () => rows), save: vi.fn(async (saved: unknown) => saved) };
 	const redirects = {
@@ -652,6 +653,12 @@ describe('saving the product form', () => {
 				form({ slug: 'crimson' }),
 			),
 		).rejects.toThrow('already taken');
+	});
+
+	it('gives search the names of its categories', async () => {
+		const { service, search } = build();
+		await service.syncSearch(product({ status: 'live', categoryIds: ['c1', 'gone'] }));
+		expect(search.indexProduct.mock.lastCall?.[0]).toMatchObject({ categoryNames: ['Silk', 'Soie'] });
 	});
 
 	it('saves even when the search index is down', async () => {

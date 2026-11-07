@@ -157,7 +157,7 @@ function documents(mapped: DemoCatalogue) {
 		addonTemplates: mapped.addonTemplates.map((template) => ({
 			_id: template.id,
 			code: template.code,
-			label: template.label.en,
+			label: template.label,
 			priceINR: 0,
 			fields: template.fields,
 		})),
@@ -171,11 +171,21 @@ function documents(mapped: DemoCatalogue) {
  * so a real pipeline upload is left alone.
  */
 export async function seedDemoCatalogue(dbName: string | undefined): Promise<DemoCatalogueSeedResult> {
+	return writeCatalogue(
+		dbName,
+		mapDemoCatalogue({
+			products: dataFile('product.json').data as never,
+			attributes: dataFile('attribute.json').data as never,
+		}),
+	);
+}
+
+/** Writes a mapped catalogue. Only documents that differ are touched. */
+export async function writeCatalogue(
+	dbName: string | undefined,
+	mapped: DemoCatalogue,
+): Promise<DemoCatalogueSeedResult> {
 	assertLocalDatabase(dbName);
-	const mapped = mapDemoCatalogue({
-		products: dataFile('product.json').data as never,
-		attributes: dataFile('attribute.json').data as never,
-	});
 	const docs = documents(mapped);
 	const existingPhotos = await MediaAssetModel.find({ _id: { $in: docs.photoAssets.map((asset) => asset._id) } })
 		.select('_id')

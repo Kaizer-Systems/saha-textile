@@ -1,5 +1,6 @@
 import type { Product } from '@saha-textile/contracts';
 import {
+	SEARCH_STOP_WORDS,
 	SEARCH_SYNONYMS,
 	SearchUnavailableError,
 	type Paginated,
@@ -94,7 +95,9 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 	private async ensureSettings(): Promise<void> {
 		if (this.settingsApplied) return;
 		const task = await this.send<{ taskUid: number }>(`/indexes/${this.index}/settings`, 'PATCH', {
-			searchableAttributes: ['words'],
+			// Order is rank: a match in the name beats one in the facts, which beats the description.
+			searchableAttributes: ['words', 'facts', 'description'],
+			displayedAttributes: ['id'],
 			filterableAttributes: ['categoryIds', 'terms', 'filterCodes', 'facetValues', 'minINR', 'maxINR', 'rating'],
 			sortableAttributes: [
 				'idOrder',
@@ -104,6 +107,10 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 				...this.locales.map((locale) => `titleOrder.${locale}`),
 			],
 			synonyms: SEARCH_SYNONYMS,
+			stopWords: [...SEARCH_STOP_WORDS],
+			// Weave names are short, so a typo in a four-letter word still has to find it.
+			typoTolerance: { minWordSizeForTypos: { oneTypo: 4, twoTypos: 8 } },
+			searchCutoffMs: 150,
 			faceting: { maxValuesPerFacet: 10_000, sortFacetValuesBy: { '*': 'alpha' } },
 			pagination: { maxTotalHits: 1_000_000 },
 		});

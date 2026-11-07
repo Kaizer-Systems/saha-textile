@@ -1,6 +1,7 @@
 import 'dotenv/config';
 
 import {
+	MongoCategoryRepository,
 	MongoProductRepository,
 	MongoProductVariantRepository,
 	connectMongo,
@@ -33,9 +34,13 @@ async function main(): Promise<void> {
 			products.map((product) => product.id),
 			'public',
 		);
+		const names = new Map(
+			(await new MongoCategoryRepository().tree()).map((row) => [row.id, Object.values(row.name)]),
+		);
 		const entries = products.map((product) => ({
 			product,
 			variants: rows.filter((row) => row.productId === product.id),
+			categoryNames: product.categoryIds.flatMap((id) => names.get(id) ?? []),
 		}));
 		const config = loadConfig();
 		const { host, apiKey, index } = config.search;

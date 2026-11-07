@@ -44,8 +44,8 @@ export class OptionGroups {
 	readonly templates = input<readonly AddonTemplateRow[]>([]);
 	/** Attributes whose variant rows are already saved. */
 	readonly savedAxes = input<readonly string[]>([]);
-	/** Redraws the groups, so a select shows the old role after a refused change. */
-	readonly revision = signal(0);
+	/** A select keeps what was clicked, so a refused role change draws it again from the data. */
+	readonly redrawing = signal(false);
 	private transloco = inject(TranslocoService);
 	/** One measurement template per product, asked for by any option that measures. */
 	readonly templateCode = model<string | null>(null);
@@ -133,7 +133,8 @@ export class OptionGroups {
 		const losesRows = group.semanticRole === 'variation_axis' && semanticRole !== 'variation_axis';
 		if (losesRows && this.savedAxes().includes(group.attributeCode)) {
 			if (!window.confirm(this.transloco.translate('role_change_confirm'))) {
-				this.revision.update((value) => value + 1);
+				this.redrawing.set(true);
+				setTimeout(() => this.redrawing.set(false));
 				return;
 			}
 		}

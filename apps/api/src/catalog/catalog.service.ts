@@ -438,7 +438,9 @@ export class CatalogService {
 		try {
 			if (product.status === 'live') {
 				const variants = await this.variants.listForProduct(product.id, 'public');
-				await this.search?.indexProduct({ product, variants });
+				const categories = await Promise.all(product.categoryIds.map((id) => this.categories.findById(id)));
+				const categoryNames = categories.flatMap((row) => Object.values(row?.name ?? {}));
+				await this.search?.indexProduct({ product, variants, categoryNames });
 			} else await this.search?.removeProduct(product.id);
 		} catch (error) {
 			this.logger.warn(`Search index not updated for ${product.id}: ${String(error)}`);

@@ -617,6 +617,7 @@
 	"cookie_item_csrf": "Protège vos formulaires contre la falsification",
 	"cookie_item_cart": "Conservent votre panier",
 	"cookie_item_consent": "Retient ce choix",
+	"cookie_item_app": "Permet d’installer la boutique comme une application et la tient à jour. Ne contient aucune donnée personnelle",
 	"cookie_item_sign_in": "Uniquement sur les pages de connexion, pour ces boutons",
 	"cookie_item_language": "Retient votre langue",
 	"cookie_item_currency": "Retient votre devise",

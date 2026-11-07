@@ -617,6 +617,7 @@
 	"cookie_item_csrf": "Protects your forms from forgery",
 	"cookie_item_cart": "Hold your cart",
 	"cookie_item_consent": "Remembers this choice",
+	"cookie_item_app": "Lets you install the shop as an app and keeps it up to date. Holds no personal data",
 	"cookie_item_sign_in": "Only on the sign-in pages, for those buttons",
 	"cookie_item_language": "Remembers your language",
 	"cookie_item_currency": "Remembers your currency",

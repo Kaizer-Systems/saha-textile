@@ -56,7 +56,8 @@ export const planDerivatives = (input: {
 				skipped.push({ role: role.key, width });
 				continue;
 			}
-			const keepAlpha = asset.purpose === 'brand' ? { keepAlpha: true } : {};
+			// A padded image sits on white. Left see-through, an iPhone home screen fills it with black.
+			const keepAlpha = asset.purpose === 'brand' && role.fit !== 'pad' ? { keepAlpha: true } : {};
 			derivatives.push({ role: role.key, roleVersion: role.version, spec: { ...spec, ...keepAlpha } });
 		}
 	}

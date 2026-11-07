@@ -11,6 +11,15 @@ function link(page: Document, rel: string): HTMLLinkElement {
 	return created;
 }
 
+/** The name under an iPhone's home screen icon. Other platforms read it from the manifest. */
+function appTitle(page: Document, name: string): void {
+	const found = page.head.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
+	const meta = found ?? page.createElement('meta');
+	meta.name = 'apple-mobile-web-app-title';
+	meta.content = name;
+	if (!found) page.head.appendChild(meta);
+}
+
 /** The tab icon, home screen icon and Google's organization card, from the Brand Kit. */
 export function applyBrandHead(page: Document, brand: StorefrontBrand, origin: string): void {
 	const tabIcon = brand.icons['32'];
@@ -22,6 +31,7 @@ export function applyBrandHead(page: Document, brand: StorefrontBrand, origin: s
 	const homeIcon = brand.icons['180'];
 	if (homeIcon) link(page, 'apple-touch-icon').href = homeIcon;
 	if (!brand.shopName) return;
+	appTitle(page, brand.shopName);
 
 	const id = 'brand-organization';
 	const script = page.getElementById(id) ?? page.createElement('script');

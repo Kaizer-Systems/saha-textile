@@ -45,7 +45,7 @@ function writeDenominator(cwd) {
 	const imports = listed.stdout
 		.split('\n')
 		.filter((file) => /\.ts$/.test(file))
-		.filter((file) => !/\.spec\.ts$|\.d\.ts$|test-setup|main\.ts$|main\.server|\/server\/|interfaces\//.test(file))
+		.filter((file) => !/\.spec\.ts$|\.d\.ts$|test-setup|main\.ts$|main\.server|\/server\/|service-worker\/|interfaces\//.test(file))
 		.filter((file) => existsSync(join(cwd, file)))
 		.map((file) => `import './${file.replace(/^src\//, '').replace(/\.ts$/, '')}';`);
 	writeFileSync(

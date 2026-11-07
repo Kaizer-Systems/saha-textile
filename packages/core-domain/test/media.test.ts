@@ -150,18 +150,20 @@ describe('planDerivatives — the locked ladder', () => {
 });
 
 describe('planDerivatives — the Brand Kit', () => {
-	it('keeps a logo see-through, with PNG icons', () => {
+	it('keeps a logo see-through, with square PNG icons on white', () => {
 		const plan = planDerivatives({
 			asset: asset({ purpose: 'brand' }),
-			source: { width: 1200, height: 1200 },
+			source: { width: 960, height: 957 },
 			roles: SEEDED_MEDIA_ROLES,
 			servesAsPrimary: false,
 		});
 		expect(widthsOf(plan, 'brand_icon')).toEqual([32, 48, 180, 192, 512]);
-		expect(plan.derivatives.find((row) => row.role === 'brand_icon')?.spec).toMatchObject({
-			format: 'image/png',
-			keepAlpha: true,
-		});
+		const icons = plan.derivatives.filter((row) => row.role === 'brand_icon').map((row) => row.spec);
+		for (const icon of icons) {
+			expect(icon).toMatchObject({ format: 'image/png', fit: 'pad', height: icon.width });
+			expect(icon).not.toHaveProperty('keepAlpha');
+		}
+		expect(plan.derivatives.find((row) => row.role === 'brand_logo')?.spec).toMatchObject({ keepAlpha: true });
 	});
 });
 

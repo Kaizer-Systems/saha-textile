@@ -25,7 +25,6 @@
     "format": "prettier --write \"**/*.{ts,html,scss,css,js,json,md}\""
   },
   "dependencies": {
-    "@saha-textile/core-domain": "workspace:*",
     "@analogjs/router": "^2.9.2",
     "@angular/animations": "^22.2.3",
     "@angular/cdk": "^22.2.4",
@@ -47,6 +46,7 @@
     "@ngrx/store": "^22.0.1",
     "@ngx-loading-bar/core": "^7.0.1",
     "@ngx-loading-bar/router": "^7.0.1",
+    "@saha-textile/core-domain": "workspace:*",
     "@saha-textile/http-transport": "workspace:*",
     "@tanstack/angular-query-experimental": "^5.104.5",
     "bootstrap": "^5.3.8",
@@ -86,6 +86,9 @@
     "sass": "^1.106.1",
     "typescript": "~6.0.3",
     "vite": "^8.3.5",
-    "vitest": "^5.0.5"
+    "vite-plugin-pwa": "2.0.0",
+    "vitest": "^5.0.5",
+    "workbox-build": "7.4.1",
+    "workbox-window": "7.4.1"
   }
 }

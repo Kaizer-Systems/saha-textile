@@ -6,6 +6,8 @@ import { fileURLToPath, URL } from 'node:url';
 import analog from '@analogjs/platform';
 import { defineConfig } from 'vite';
 
+import { serviceWorkerPlugins } from './service-worker.vite.ts';
+
 const appPath = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 /**
@@ -32,7 +34,7 @@ const localHttps = (() => {
 // (Angular-CLI + @angular/ssr Express -> Analog Vite + Nitro); the app still
 // uses the Angular Router config + NGXS + ngx-translate. File-based routing and
 // the state-layer migration land in later phases on top of this platform.
-export default defineConfig(() => ({
+export default defineConfig(({ command }) => ({
 	// Pin the project root to this file's dir (as the Analog template does) so
 	// Vite behaves identically regardless of the launch cwd — otherwise resolution
 	// (incl. the sass importer) drifts when started from the workspace root vs the
@@ -103,6 +105,8 @@ export default defineConfig(() => ({
 	// Full Analog platform: Vite + Nitro SSR (ssr defaults on). Nitro emits a
 	// node-server for production (`node dist/analog/server/index.mjs`).
 	plugins: [
+		// Production only: development has no `sw.js`, so a page there is never held by an old one.
+		...(command === 'build' ? serviceWorkerPlugins() : []),
 		analog({
 			ssr: true,
 			static: false,
@@ -125,6 +129,11 @@ export default defineConfig(() => ({
 				prerender: {
 					crawlLinks: false,
 					routes: [],
+				},
+				// The browser must always be able to see a new service worker. Without this, an
+				// edge cache could hold the old file back and shoppers would stay on the old build.
+				routeRules: {
+					'/sw.js': { headers: { 'Cache-Control': 'no-cache' } },
 				},
 			},
 		}),

@@ -86,6 +86,6 @@ For any backend change, answer these questions in order:
 
 ## Limitations
 
-- Payment, shipping and exchange-rate ports have no adapter.
+- Shipping and exchange-rate ports have no adapter. The CCAvenue payment adapter is bound, and no route calls it.
 - Order creation has no idempotency, stock reservation or payment step.
 - Readiness checks MongoDB only.

@@ -9,13 +9,15 @@ source_of_truth:
     - apps/api/src/orders
     - packages/contracts/src/order.ts
     - packages/core-domain/src/ports/payment-gateway.port.ts
+    - packages/core-domain/src/payments/decide-payment-result.ts
+    - packages/adapters-payments/src
     - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
     - docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx
 ---
 
 # Payment and order lifecycle
 
-This page describes how orders and payments relate, and the rules a payment integration must follow. Orders exist in the API. Payment is a design with a port and no adapter.
+This page describes how orders and payments relate, and the rules a payment integration must follow. Orders exist in the API. The payment port, the rule that judges a gateway's answers, and a CCAvenue adapter exist, and no route uses them yet.
 
 ## Gateway selection
 
@@ -100,6 +102,7 @@ Quote, label, pickup, transit, delivery, failure and cancellation are shipment e
 - Provider callbacks are authenticated and checked against the stored amount, currency, order and attempt.
 - Repeated valid callbacks return the existing result.
 - A browser return URL is not proof of payment.
+- `decidePaymentResult` applies these rules for every gateway. Only a direct status enquiry can change an attempt; a callback is checked against it and against the stored attempt.
 - Unknown, mismatched or stale callbacks fail closed and enter an auditable review path.
 
 ## Ownership and authorization
@@ -131,7 +134,7 @@ Do not generate production numbers from database counts, random ids, timestamps 
 ## Limitations
 
 - `POST /orders` creates a `pending` order and removes the cart in one transaction. It has no idempotency key, stock step or payment step.
-- No provider adapter, hosted handoff, callback route or webhook exists.
+- The CCAvenue adapter is bound in the API, and no route calls it. No payment collection, hosted handoff, callback route or webhook exists.
 - `OrdersService` generates an interim order number.
 - Status changes have no legal-transition rule, version check or audit record.
 

@@ -9,6 +9,8 @@ last_verified: '2026-11-07'
 search_keywords: payments CCAvenue Razorpay PayPal HDFC VAS clearing
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
+    - packages/core-domain/src/payments/decide-payment-result.ts
+    - packages/adapters-payments/src
     - docs/business-flows/payment-and-order-lifecycle.md
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/pending-decisions.mdx
@@ -20,7 +22,7 @@ import { PaymentClearing } from '@site/src/components/PaymentClearing';
 
 This section holds provider reference material for payment gateways. The business rules for orders, attempts and callbacks are on [Payment and order lifecycle](/business-flows/payment-and-order-lifecycle).
 
-Currency selects a gateway role. INR uses the Indian online gateway role, and any other enabled currency uses PayPal. `PaymentGatewayPort` defines `createPayment` and `verifyCallback`. No payment adapter is in this repository.
+Currency selects a gateway role. INR uses the Indian online gateway role, and any other enabled currency uses PayPal. `PaymentGatewayPort` defines `createPayment`, `verifyCallback`, `fetchPaymentStatus`, `refundPayment` and `fetchRefunds`. `decidePaymentResult` is the one rule for what a gateway's answers do to a stored attempt. The CCAvenue adapter is in `packages/adapters-payments`, and no route uses it yet.
 
 <PaymentClearing />
 

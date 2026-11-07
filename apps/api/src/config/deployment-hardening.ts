@@ -36,6 +36,8 @@ const PLACEHOLDER_MARKERS = ['change-me', 'change_me', 'changeme', 'replace', 'p
 /** Hosts that only ever mean "this machine" — never a real browser origin in a deployment. */
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1', '0.0.0.0']);
 
+const CCAVENUE_TEST_HOSTS = new Set(['test.ccavenue.com', 'apitest.ccavenue.com']);
+
 /**
  * Raised at boot when a strict deployment is misconfigured.
  *
@@ -149,7 +151,29 @@ export function deploymentHardeningProblems(config: AppConfig, env: NodeJS.Proce
 		problems.push('SPACES_CDN_URL must be an https URL.');
 	}
 
+	// --- Payments ---------------------------------------------------------------------------
+	problems.push(...ccavenueHostProblems(config));
+
 	return problems;
+}
+
+/**
+ * The three-environment plan: staging takes test payments only, and production takes real ones
+ * only. Applies once CCAvenue is configured, because a deployment may run before it is.
+ */
+function ccavenueHostProblems(config: AppConfig): string[] {
+	const { ccavenue } = config.payments;
+	if (!ccavenue.configured) return [];
+	const staging = config.deployEnv === 'staging';
+	return [
+		{ name: 'CCAVENUE_BASE_URL', url: ccavenue.baseUrl },
+		{ name: 'CCAVENUE_API_URL', url: ccavenue.apiUrl },
+	].flatMap(({ name, url }) => {
+		const isTestHost = CCAVENUE_TEST_HOSTS.has(new URL(url).hostname);
+		if (staging && !isTestHost) return [`${name} must be a CCAvenue test host on staging.`];
+		if (!staging && isTestHost) return [`${name} must not be a CCAvenue test host in production.`];
+		return [];
+	});
 }
 
 function secretProblem(name: string, value: string | undefined): string | null {

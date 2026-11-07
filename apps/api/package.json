@@ -43,6 +43,7 @@
     "@saha-textile/adapters-db-mongo": "workspace:*",
     "@saha-textile/adapters-image-sharp": "workspace:*",
     "@saha-textile/adapters-notifications-msg91": "workspace:*",
+    "@saha-textile/adapters-payments": "workspace:*",
     "@saha-textile/adapters-queue-bullmq": "workspace:*",
     "@saha-textile/adapters-storage-spaces": "workspace:*",
     "@saha-textile/adapters-youtube": "workspace:*",

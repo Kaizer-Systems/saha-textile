@@ -63,6 +63,7 @@ import type {
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { Argon2JwtAuth } from './argon2-jwt.auth';
 import { LogOnlyCdnPurgeAdapter } from './log-only-cdn-purge.adapter';
+import { buildInrPaymentGateway } from './payment-gateway-factory';
 import { UnavailableYouTubeAdapter } from './unavailable-youtube.adapter';
 import { UnconfiguredStorageAdapter } from './unconfigured-storage.adapter';
 import { buildNotificationPort } from './notification-factory';
@@ -123,6 +124,7 @@ import {
 	MEDIA_JOB_QUEUE,
 	CDN_PURGE,
 	YOUTUBE_PORT,
+	INR_PAYMENT_GATEWAY,
 } from './tokens';
 
 @Global()
@@ -266,6 +268,11 @@ import {
 			inject: [APP_CONFIG],
 		},
 		{
+			provide: INR_PAYMENT_GATEWAY,
+			useFactory: buildInrPaymentGateway,
+			inject: [APP_CONFIG],
+		},
+		{
 			provide: AUTH_PORT,
 			useFactory: (config: AppConfig) => new Argon2JwtAuth(config),
 			inject: [APP_CONFIG],
@@ -282,7 +289,7 @@ import {
 		PRODUCT_RELATION_REPOSITORY,
 		PRODUCT_BUNDLE_REPOSITORY,
 		LISTING_PORT,
-	SEARCH_PORT,
+		SEARCH_PORT,
 		ADDON_TEMPLATE_REPOSITORY,
 		ATTRIBUTE_DEFINITION_REPOSITORY,
 		CATEGORY_PLACEMENT_REPOSITORY,
@@ -324,6 +331,7 @@ import {
 		MEDIA_JOB_QUEUE,
 		CDN_PURGE,
 		YOUTUBE_PORT,
+		INR_PAYMENT_GATEWAY,
 	],
 })
 export class PersistenceModule implements OnApplicationBootstrap, OnApplicationShutdown {

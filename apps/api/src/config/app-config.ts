@@ -73,6 +73,46 @@ const SpacesConfigSchema = z
 		configured: Boolean(spaces.key && spaces.secret && spaces.bucket),
 	}));
 
+/**
+ * CCAvenue, the INR gateway behind `PaymentGatewayPort`.
+ *
+ * Unconfigured is a normal state: the API boots and a payment call answers "not configured".
+ * Half-configured is a typo and refuses to boot, naming the variables and never a value. The
+ * hosts default to the test system, so a forgotten variable can never reach the live gateway.
+ * The adapter applies the stricter rules for each value when it is built.
+ */
+const CcavenueConfigSchema = z
+	.object({
+		merchantId: z.string().min(1).optional(),
+		accessCode: z.string().min(1).optional(),
+		workingKey: z.string().min(1).optional(),
+		returnUrl: z.string().min(1).optional(),
+		baseUrl: AbsoluteUrl.default('https://test.ccavenue.com'),
+		apiUrl: AbsoluteUrl.default('https://apitest.ccavenue.com'),
+	})
+	.superRefine((ccavenue, ctx) => {
+		const required = [
+			['CCAVENUE_MERCHANT_ID', ccavenue.merchantId],
+			['CCAVENUE_ACCESS_CODE', ccavenue.accessCode],
+			['CCAVENUE_WORKING_KEY', ccavenue.workingKey],
+			['CCAVENUE_RETURN_URL', ccavenue.returnUrl],
+		] as const;
+		const missing = required.filter(([, value]) => !value).map(([name]) => name);
+		if (missing.length > 0 && missing.length < required.length) {
+			ctx.addIssue({
+				code: 'custom',
+				message:
+					`CCAvenue is partially configured — missing ${missing.join(', ')}. ` +
+					'Set all four of them, or none.',
+			});
+		}
+	})
+	.transform(({ merchantId, accessCode, workingKey, returnUrl, baseUrl, apiUrl }) =>
+		merchantId && accessCode && workingKey && returnUrl
+			? { configured: true as const, merchantId, accessCode, workingKey, returnUrl, baseUrl, apiUrl }
+			: { configured: false as const, baseUrl, apiUrl },
+	);
+
 /** Runtime configuration, validated once at boot from process.env. */
 const ConfigSchema = z.object({
 	nodeEnv: z.enum(['development', 'test', 'production']).default('development'),
@@ -213,6 +253,7 @@ const ConfigSchema = z.object({
 			.default('products'),
 	}),
 	spaces: SpacesConfigSchema,
+	payments: z.object({ ccavenue: CcavenueConfigSchema }),
 	/**
 	 * Redis, used solely as the BullMQ broker for media derivative and transcode jobs.
 	 *
@@ -378,6 +419,16 @@ function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
 			region: env.SPACES_REGION || undefined,
 			endpoint: env.SPACES_ENDPOINT || undefined,
 			cdnUrl: env.SPACES_CDN_URL || undefined,
+		},
+		payments: {
+			ccavenue: {
+				merchantId: env.CCAVENUE_MERCHANT_ID || undefined,
+				accessCode: env.CCAVENUE_ACCESS_CODE || undefined,
+				workingKey: env.CCAVENUE_WORKING_KEY || undefined,
+				returnUrl: env.CCAVENUE_RETURN_URL || undefined,
+				baseUrl: env.CCAVENUE_BASE_URL || undefined,
+				apiUrl: env.CCAVENUE_API_URL || undefined,
+			},
 		},
 		redis: {
 			host: env.REDIS_HOST || undefined,

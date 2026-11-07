@@ -36,6 +36,8 @@ export const AUTH_RATE_LIMIT_REPOSITORY = Symbol('AuthRateLimitRepository');
 export const OAUTH_STATE_REPOSITORY = Symbol('OauthStateRepository');
 export const NOTIFICATION_PORT = Symbol('NotificationPort');
 export const STORAGE_PORT = Symbol('StoragePort');
+/** The INR gateway role. Which vendor fills it is decided only where this token is bound. */
+export const INR_PAYMENT_GATEWAY = Symbol('InrPaymentGateway');
 export const NOTIFICATION_SETTINGS_REPOSITORY = Symbol('NotificationSettingsRepository');
 export const NOTIFICATION_TEMPLATE_REPOSITORY = Symbol('NotificationTemplateRepository');
 export const MESSAGE_OUTBOX_REPOSITORY = Symbol('MessageOutboxRepository');

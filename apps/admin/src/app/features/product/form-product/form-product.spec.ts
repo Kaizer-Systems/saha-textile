@@ -9,24 +9,18 @@ import { NgbDate, NgbDateParserFormatter } from '@ng-bootstrap/ng-bootstrap';
 import { BehaviorSubject, firstValueFrom, of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { SettingStore } from '@core/state/setting.store';
+import { AttributeService } from '@data-access/services/attribute.service';
+import { NotificationService } from '@data-access/services/notification.service';
 import { ProductService } from '@data-access/services/product.service';
 
 import { FormProduct } from './form-product';
 
 const catalog = signal<unknown>(undefined);
-const stores = signal<unknown>(undefined);
 const categories = signal<unknown>(undefined);
 const taxes = signal<unknown>(undefined);
-const attributes = signal<unknown>(undefined);
-const attributeValues = signal<unknown>(undefined);
-const setting = signal<unknown>(null);
 
 vi.mock('@data-access/queries/product.queries', () => ({
 	injectCatalogProductsQuery: (p: () => unknown) => (p(), { data: catalog }),
-}));
-vi.mock('@data-access/queries/store.queries', () => ({
-	injectStoresQuery: (p: () => unknown) => (p(), { data: stores }),
 }));
 vi.mock('@data-access/queries/category.queries', () => ({
 	injectCategoriesQuery: (p: () => unknown) => (p(), { data: categories }),
@@ -36,10 +30,6 @@ vi.mock('@data-access/queries/tag.queries', () => ({
 }));
 vi.mock('@data-access/queries/tax.queries', () => ({
 	injectTaxesQuery: (p: () => unknown) => (p(), { data: taxes }),
-}));
-vi.mock('@data-access/queries/attribute.queries', () => ({
-	injectAttributesQuery: (p: () => unknown) => (p(), { data: attributes }),
-	injectAttributeValuesQuery: (p: () => unknown) => (p(), { data: attributeValues }),
 }));
 
 const variant = (overrides: Record<string, unknown> = {}) => ({
@@ -56,6 +46,20 @@ const variant = (overrides: Record<string, unknown> = {}) => ({
 	barcode: ' 123 ',
 	hsnCode: ' 5007 ',
 	available: true,
+	...overrides,
+});
+const content = (overrides: Record<string, unknown> = {}) => ({
+	title: { en: 'Silk', fr: 'Soie' },
+	shortDescription: { en: 'Short' },
+	description: { en: 'Long' },
+	metaTitle: {},
+	metaDescription: {},
+	categoryIds: ['c1'],
+	optionGroups: [],
+	imageMode: 'simple',
+	gallery: ['m1'],
+	compound: [],
+	altOverrides: {},
 	...overrides,
 });
 const detail = (overrides: Record<string, unknown> = {}) => ({
@@ -76,6 +80,8 @@ const detail = (overrides: Record<string, unknown> = {}) => ({
 	replacementPath: null,
 	addonPriceINR: null,
 	featured: true,
+	content: content(),
+	images: [{ assetId: 'm1', url: 'https://cdn.test/m1.webp' }],
 	relatedProductIds: ['a', ''],
 	upsellProductIds: [],
 	crossSellProductIds: [],
@@ -96,7 +102,12 @@ const render = (
 		),
 		discontinueCatalogProduct: vi.fn(() => of({})),
 		saveCatalogProduct: vi.fn(() => of({})),
+		createCatalogProduct: vi.fn(() => of({ id: 'p1', slug: 'silk' })),
+		goLive: vi.fn(() => of({ live: true, gaps: [] })),
+		getBundle: vi.fn(() => of(null)),
+		saveBundle: vi.fn(() => of({})),
 	};
+	const toasts = { showSuccess: vi.fn(), showError: vi.fn() };
 	const router = { navigateByUrl: vi.fn() };
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
@@ -106,7 +117,8 @@ const render = (
 			{ provide: HttpClient, useValue: {} },
 			{ provide: PLATFORM_ID, useValue: options.platform ?? 'browser' },
 			{ provide: ActivatedRoute, useValue: { params: new BehaviorSubject(options.params ?? {}) } },
-			{ provide: SettingStore, useValue: { setting } },
+			{ provide: AttributeService, useValue: { getDefinitions: () => of([]) } },
+			{ provide: NotificationService, useValue: toasts },
 			{
 				provide: TranslocoService,
 				useValue: {
@@ -121,15 +133,14 @@ const render = (
 	fixture.componentRef.setInput('type', options.type ?? 'edit');
 	fixture.detectChanges();
 	TestBed.tick();
-	return { fixture, page: fixture.componentInstance, service, router };
+	return { fixture, page: fixture.componentInstance, service, router, toasts };
 };
 const editing = (overrides: Record<string, unknown> = {}) =>
 	render({ params: { id: 'p1' }, product: detail(overrides) });
 const day = (value: number) => new NgbDate(2026, 11, value);
 
 afterEach(() => {
-	for (const value of [catalog, stores, categories, taxes, attributes, attributeValues]) value.set(undefined);
-	setting.set(null);
+	for (const value of [catalog, categories, taxes]) value.set(undefined);
 	vi.useRealTimers();
 	document.body.classList.remove('loader-none');
 	document.body.innerHTML = '';
@@ -139,8 +150,6 @@ describe('FormProduct lists', () => {
 	it('starts empty', async () => {
 		const { page } = render();
 		expect(await firstValueFrom(page.products$)).toEqual([]);
-		expect(await firstValueFrom(page.store$)).toEqual([]);
-		expect(await firstValueFrom(page.attribute$)).toEqual([]);
 		expect(page.taxes()).toEqual([]);
 		expect(page.collectionProduct).toEqual([]);
 	});
@@ -164,63 +173,20 @@ describe('FormProduct lists', () => {
 		expect(page.collectionProduct).toHaveLength(1);
 	});
 
-	it('maps stores and taxes', async () => {
-		const { page } = render();
-		stores.set({ data: [{ id: 1, store_name: 'One' }] });
+	it('maps taxes', () => {
 		taxes.set({ data: [{ id: 2, name: 'GST' }] });
-		TestBed.tick();
-		expect(await firstValueFrom(page.store$)).toEqual([{ label: 'One', value: 1 }]);
-		expect(page.taxes()).toEqual([{ label: 'GST', value: 2 }]);
+		expect(render().page.taxes()).toEqual([{ label: 'GST', value: 2 }]);
 	});
 
-	it('hides attributes already used, and lists values for one', async () => {
-		const { page } = render({ type: 'create' });
-		attributes.set({
-			data: [
-				{ id: 1, name: 'Colour' },
-				{ id: 2, name: 'Size' },
-			],
-		});
-		attributeValues.set({
-			data: [
-				{ id: 7, attribute_id: 1, value: 'Red' },
-				{ id: 8, attribute_id: 2, value: 'L' },
-			],
-		});
-		TestBed.tick();
-		expect(await firstValueFrom(page.attribute$)).toHaveLength(2);
-		expect(await firstValueFrom(page.getAttributeValues(1))).toEqual([{ label: 'Red', value: 7 }]);
-		expect(await firstValueFrom(page.getAttributeValues(null))).toEqual([]);
-		vi.useFakeTimers();
-		page.variantControl.at(0).patchValue({ id: 1 });
-		vi.advanceTimersByTime(200);
-		TestBed.tick();
-		vi.useRealTimers();
-		expect(await firstValueFrom(page.attribute$)).toEqual([expect.objectContaining({ value: 2 })]);
-	});
 
-	it('copes with attribute values that have not loaded', async () => {
-		const { page } = render();
-		expect(await firstValueFrom(page.getAttributeValues(1))).toEqual([]);
-	});
 
-	it('requires a store only on a multivendor shop', () => {
-		const { page } = render();
-		setting.set({ activation: { multivendor: true } });
-		TestBed.tick();
-		expect(page.form.controls['store_id']?.hasValidator).toBeDefined();
-		page.form.controls['store_id']?.updateValueAndValidity();
-		expect(page.form.controls['store_id']?.invalid).toBe(true);
-		setting.set({ activation: { multivendor: false } });
-		TestBed.tick();
-	});
 });
 
 describe('FormProduct reading', () => {
 	it('fills from the catalog and removes the fields it does not save', () => {
 		const { page } = editing();
 		expect(page.id).toBe('p1');
-		expect(page.form.value).toMatchObject({ name: 'Silk', type: 'classified', weight: 500 });
+		expect(page.form.getRawValue()).toMatchObject({ name: 'Silk', type: 'classified', weight: 500 });
 		expect(page.form.get('price')).toBeNull();
 		expect(page.variationControl.at(0).value).toMatchObject({ id: 'v1', availability: 'available' });
 		expect(page.statusOptions.map((row) => 'value' in row && row.value)).toEqual([
@@ -232,7 +198,7 @@ describe('FormProduct reading', () => {
 
 	it('reads a simple product, a published SKU and an unavailable row', () => {
 		const { page } = editing({ type: 'simple', published: true, variants: [variant({ available: false })] });
-		expect(page.form.value.type).toBe('simple');
+		expect(page.form.getRawValue().type).toBe('simple');
 		expect(page.form.get('sku')?.disabled).toBe(true);
 		expect(page.variationControl.at(0).get('availability')?.value).toBe('unavailable');
 		expect(page.variationControl.at(0).get('sku')?.disabled).toBe(true);
@@ -382,109 +348,6 @@ describe('FormProduct search', () => {
 	});
 });
 
-describe('FormProduct variants', () => {
-	const event = () => ({ preventDefault: vi.fn() }) as never;
-
-	it('adds rows and keeps at least one', () => {
-		const { page } = render({ type: 'create' });
-		expect(page.variantControl.length).toBe(1);
-		page.removeVariant(0);
-		expect(page.variantControl.length).toBe(1);
-		page.addVariant(event());
-		expect(page.variantControl.length).toBe(2);
-		page.removeVariant(1);
-		expect(page.variantControl.length).toBe(1);
-	});
-
-	it('builds combinations from single and multiple options', () => {
-		const { page } = render();
-		expect(page.generateCombinations([])).toEqual([]);
-		expect(
-			page.generateCombinations([
-				{ id: 1, attribute_values: [5], options: [{ label: 'Red', value: 5 }] },
-				{
-					id: 2,
-					attribute_values: [6, 7],
-					options: [
-						{ label: 'S', value: 6 },
-						{ label: 'L', value: 7 },
-					],
-				},
-			] as never),
-		).toEqual([
-			{ name: 'Red/S', attribute_values: [5, 6] },
-			{ name: 'Red/L', attribute_values: [5, 7] },
-		]);
-		expect(page.generateCombinations([{ id: 1, attribute_values: [5], options: null }] as never)).toEqual([]);
-	});
-
-	it('rebuilds the rows when the picks change, keeping known values', () => {
-		const { page } = render({ type: 'create' });
-		page.variations = [
-			{ id: 9, name: 'Kept', sku: 'K', price: 20, sale_price: 10, quantity: 1, attribute_values: [{ id: 5 }] },
-		] as never;
-		vi.useFakeTimers();
-		page.variantControl.at(0).patchValue({
-			id: 1,
-			attribute_values: [5, 6],
-			options: [
-				{ label: 'Red', value: 5 },
-				{ label: 'Blue', value: 6 },
-			],
-		});
-		vi.advanceTimersByTime(200);
-		expect(page.form.value.attributes_ids).toEqual([1]);
-		expect(page.variationControl.length).toBe(2);
-		expect(page.variationControl.at(0).value).toMatchObject({ id: 9, name: 'Kept', mrp: 20, price: 10 });
-		page.variations = [];
-		page.variantControl.at(0).patchValue({ attribute_values: null });
-		vi.advanceTimersByTime(200);
-		expect(page.variationControl.length).toBe(0);
-	});
-
-	it('flags a selling price above the MRP on a new row', () => {
-		const { page } = render();
-		page.variationCombinations = [{ name: 'Red', attribute_values: [5] }] as never;
-		page.addVariation();
-		const row = page.variationControl.at(0);
-		row.patchValue({ mrp: 10, price: 20 });
-		expect(row.errors).toEqual({ sellingAboveMrp: true });
-	});
-
-	it('keeps at least one variation row', () => {
-		const { page } = editing({ variants: [variant(), variant({ id: 'v2' })] });
-		page.removeVariation(0);
-		expect(page.variationControl.length).toBe(1);
-		page.removeVariation(0);
-		expect(page.variationControl.length).toBe(1);
-	});
-
-	it('resets a row when its attribute changes, unless restoring', () => {
-		const { page } = render({ type: 'create' });
-		attributeValues.set({ data: [{ id: 7, attribute_id: 1, value: 'Red' }] });
-		page.variantControl.at(0).patchValue({ attribute_values: [7], options: [1] });
-		page.retrieveVariants = true;
-		page.updateAttribute({ value: 1 } as never, 0);
-		expect(page.variantControl.at(0).value).toMatchObject({
-			attribute_values: [7],
-			variant_option: [{ label: 'Red', value: 7 }],
-		});
-		expect(page.retrieveVariants).toBe(false);
-		page.updateAttribute(null as never, 0);
-		expect(page.variantControl.at(0).value).toMatchObject({
-			attribute_values: null,
-			options: null,
-			variant_option: [],
-		});
-	});
-
-	it('stores the chosen values', () => {
-		const { page } = render({ type: 'create' });
-		page.updateAttributeValue({ options: [{ value: 1 }] } as never, 0);
-		expect(page.variantControl.at(0).value.options).toEqual([{ value: 1 }]);
-	});
-});
-
 describe('FormProduct dates', () => {
 	it('builds a range and restarts on an earlier pick', () => {
 		const { page } = render();
@@ -545,7 +408,6 @@ describe('FormProduct pickers', () => {
 	it('stores single images, clears them, and ignores lists', () => {
 		const { page } = render();
 		const single = [
-			['selectThumbnail', 'product_thumbnail_id'],
 			['selectSizeImage', 'size_chart_image_id'],
 			['selectMetaImage', 'product_meta_image_id'],
 		] as const;
@@ -559,13 +421,6 @@ describe('FormProduct pickers', () => {
 		}
 	});
 
-	it('stores the gallery', () => {
-		const { page } = render();
-		page.selectImages([{ id: 1 }, { id: 2 }] as never);
-		expect(page.form.value.product_galleries_id).toEqual([1, 2]);
-		page.selectImages(image);
-		expect(page.form.value.product_galleries_id).toEqual([]);
-	});
 
 	it('stores a variation image', () => {
 		const { page } = editing();
@@ -577,12 +432,6 @@ describe('FormProduct pickers', () => {
 });
 
 describe('FormProduct.submit', () => {
-	it('refuses to save a product the catalog never loaded', () => {
-		const { page, service } = render();
-		page.submit();
-		expect(page.tabError).toBe('general');
-		expect(service.saveCatalogProduct).not.toHaveBeenCalled();
-	});
 
 	it('saves the cleaned values', () => {
 		const { page, service, router } = editing();
@@ -622,6 +471,19 @@ describe('FormProduct.submit', () => {
 					hsnCode: '5007',
 				},
 			],
+			content: {
+				title: { en: 'Silk', fr: 'Soie' },
+				shortDescription: { en: 'Short' },
+				description: { en: 'Long' },
+				metaTitle: { en: '' },
+				metaDescription: { en: '' },
+				categoryIds: ['c1'],
+				optionGroups: [],
+				imageMode: 'simple',
+				gallery: ['m1'],
+				compound: [],
+				altOverrides: {},
+			},
 			relatedProductIds: ['a'],
 			upsellProductIds: [],
 			crossSellProductIds: [],

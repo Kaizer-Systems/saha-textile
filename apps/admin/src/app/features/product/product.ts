@@ -1,11 +1,14 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 
+import { goLiveToast } from '@core/catalog/go-live-report';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { injectCatalogProductsQuery } from '@data-access/queries/product.queries';
+import { NotificationService } from '@data-access/services/notification.service';
+import { ProductService } from '@data-access/services/product.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { Table } from '@shared/ui/table/table';
@@ -30,6 +33,9 @@ interface ProductTableRow {
 })
 export class Product {
 	private router = inject(Router);
+	private products = inject(ProductService);
+	private notifier = inject(NotificationService);
+	private transloco = inject(TranslocoService);
 
 	private readonly params = signal<Params>({});
 	readonly productsQuery = injectCatalogProductsQuery(() => ({
@@ -70,6 +76,12 @@ export class Product {
 				permission: 'product.edit',
 			},
 			{
+				label: 'Go Live',
+				actionToPerform: 'go_live',
+				icon: 'ri-rocket-line',
+				permission: 'product.edit',
+			},
+			{
 				label: 'Delete',
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
@@ -105,6 +117,7 @@ export class Product {
 
 	onActionClicked(action: ITableClickedAction) {
 		if (action.actionToPerform == 'edit') this.edit(action.data);
+		else if (action.actionToPerform == 'go_live') this.goLive(action.data);
 		else if (action.actionToPerform == 'is_approved') this.approve(action.data);
 		else if (action.actionToPerform == 'status') this.status(action.data);
 		else if (action.actionToPerform == 'delete') this.delete(action.data);
@@ -114,6 +127,14 @@ export class Product {
 
 	edit(data: ProductTableRow) {
 		void this.router.navigateByUrl(`/product/edit/${data.id}`);
+	}
+
+	/** The same call and the same toast as the product form. */
+	goLive(data: ProductTableRow) {
+		this.products.goLive(data.id).subscribe((result) => {
+			goLiveToast(result, this.notifier, (key) => this.transloco.translate(key));
+			if (result.live) void this.productsQuery.refetch();
+		});
 	}
 
 	approve(_data: ProductTableRow) {

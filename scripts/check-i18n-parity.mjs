@@ -37,6 +37,8 @@ const CATALOGUES = [
 const SHARED_VALUE = /^(?:[A-Z]{2,6}|\d+|[\s\p{P}]*)$/u;
 const SHARED_WORDS = new Set([
 	'saha textile',
+	'simple',
+	'{{count}} images',
 	'action',
 	'actions',
 	'activation',

@@ -14,6 +14,7 @@ import { AdminUsersGateway } from '@core/admin-users/admin-users.gateway';
 import { ReviewsGateway } from '@core/media/reviews.gateway';
 import { AddonTemplateService } from '@data-access/services/addon-template.service';
 import { FaqService } from '@data-access/services/faq.service';
+import { ProductService } from '@data-access/services/product.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { RedirectService } from '@data-access/services/redirect.service';
 
@@ -289,9 +290,15 @@ describe('Stores list', () => {
 	});
 });
 
+const productDeps = () => [
+	{ provide: ProductService, useValue: { goLive: vi.fn() } },
+	{ provide: NotificationService, useValue: { showSuccess: vi.fn(), showError: vi.fn() } },
+	{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+];
+
 describe('Product list', () => {
 	it('passes only a text search on to the catalogue', () => {
-		const { page } = render(Product);
+		const { page } = render(Product, productDeps());
 		const params = lastParams;
 		page.onTableChange({ search: 'silk', page: 2, paginate: 30 });
 		expect(params?.()).toEqual({ search: 'silk', page: 2, pageSize: 30 });
@@ -300,7 +307,7 @@ describe('Product list', () => {
 	});
 
 	it('maps the catalogue rows', () => {
-		const { page } = render(Product);
+		const { page } = render(Product, productDeps());
 		expect(page.tableConfig().total).toBe(0);
 		data.set({
 			items: [
@@ -335,7 +342,7 @@ describe('Product list', () => {
 	});
 
 	it('opens a row, and passes the table state to the query', () => {
-		const { page, router } = render(Product);
+		const { page, router } = render(Product, productDeps());
 		page.onTableChange({ search: 'silk', page: 2, paginate: 10 });
 		TestBed.tick();
 		page.onActionClicked({ actionToPerform: 'edit', data: { id: 'p1' } } as never);

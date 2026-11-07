@@ -93,17 +93,19 @@ export class TaxonomyService {
 			description: body.description,
 			seo: { title: body.seoTitle, description: body.seoDescription },
 		});
+		const current = await this.placements.findCanonical(categoryId);
+		const oldPaths = current ? await this.subtreePaths(current.id) : new Map<string, string>();
 		await this.catalog.inTransaction(async () => {
 			await this.categories.save(category);
 			await this.syncPlacements(category, existing, body.alsoUnder);
 		});
+		await this.forwardMovedPaths(category, oldPaths);
 		await this.catalog.record(actorUserId, 'catalog.category.save', categoryId, { slug: body.slug });
 		return { id: categoryId };
 	}
 
 	private async syncPlacements(category: Category, before: Category | null, alsoUnder: readonly string[]) {
 		const canonical = await this.placements.findCanonical(category.id);
-		const oldPaths = canonical ? await this.subtreePaths(canonical.id) : new Map<string, string>();
 		if (!canonical) {
 			await this.placements.save(await this.newPlacement(category, category.parentId, true));
 		} else {
@@ -114,20 +116,6 @@ export class TaxonomyService {
 				});
 			}
 			if (before?.slug !== category.slug) await this.renameInPaths(category, canonical.id);
-			for (const [placementId, oldPath] of oldPaths) {
-				const moved = await this.placements.findById(placementId);
-				const nextPath = moved ? collectionPath(moved) : oldPath;
-				if (nextPath !== oldPath) {
-					await this.catalog.upsertRedirect({
-						sourcePath: oldPath,
-						statusCode: 301,
-						targetPath: nextPath,
-						reason: 'category_move',
-						entityType: 'category',
-						entityId: category.id,
-					});
-				}
-			}
 		}
 		const current = (await this.placements.listForCategory(category.id)).filter((row) => !row.isCanonical);
 		for (const row of current) {
@@ -136,6 +124,24 @@ export class TaxonomyService {
 		const held = new Set(current.map((row) => row.parentCategoryId));
 		for (const parentId of alsoUnder) {
 			if (!held.has(parentId)) await this.placements.save(await this.newPlacement(category, parentId, false));
+		}
+	}
+
+	/** Runs after the save commits, so it reads the new paths. */
+	private async forwardMovedPaths(category: Category, oldPaths: ReadonlyMap<string, string>) {
+		for (const [placementId, oldPath] of oldPaths) {
+			const moved = await this.placements.findById(placementId);
+			const nextPath = moved ? collectionPath(moved) : oldPath;
+			if (nextPath !== oldPath) {
+				await this.catalog.upsertRedirect({
+					sourcePath: oldPath,
+					statusCode: 301,
+					targetPath: nextPath,
+					reason: 'category_move',
+					entityType: 'category',
+					entityId: category.id,
+				});
+			}
 		}
 	}
 

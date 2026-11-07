@@ -1,0 +1,47 @@
+// The small overlay on an image tile: its position, and buttons to reorder and make it primary.
+.image-order-tile {
+	position: relative;
+
+	img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+}
+
+.image-order-position {
+	position: absolute;
+	top: 5px;
+	left: 5px;
+	z-index: 3;
+	padding: 1px 6px;
+	border-radius: 4px;
+	background: #444;
+	color: #fff;
+	font-size: 11px;
+
+	&.is-primary {
+		background: var(--theme-color);
+	}
+}
+
+.image-order-actions {
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	display: flex;
+	align-items: center;
+	justify-content: space-around;
+	height: 24px;
+	border-radius: 0 0 10px 10px;
+	background: rgba(0, 0, 0, 0.6);
+
+	button {
+		padding: 0;
+		border: 0;
+		background: none;
+		color: #fff;
+		line-height: 1;
+	}
+}

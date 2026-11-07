@@ -1,0 +1,149 @@
+<app-form-fields
+	[labelClass]="'form-label-title col-sm-3 mb-0'"
+	[gridClass]="'col-sm-9'"
+	[label]="'image_mode'"
+	[for]="'image_mode'"
+>
+	<div class="d-flex gap-4">
+		<label class="form-check-label">
+			<input
+				class="form-check-input me-2"
+				type="radio"
+				name="image_mode"
+				[checked]="value().imageMode === 'simple'"
+				(change)="setMode('simple')"
+			/>
+			{{ 'image_mode_simple' | transloco }}
+		</label>
+		<label class="form-check-label">
+			<input
+				class="form-check-input me-2"
+				type="radio"
+				name="image_mode"
+				[checked]="value().imageMode === 'compound'"
+				(change)="setMode('compound')"
+			/>
+			{{ 'image_mode_compound' | transloco }}
+		</label>
+	</div>
+	<p class="help-text">{{ 'image_mode_help' | transloco }}</p>
+</app-form-fields>
+
+<ng-template
+	#galleryList
+	let-hash
+>
+	<ul class="image-select-list cursor-pointer">
+		<li
+			class="choosefile-input"
+			(click)="open(hash)"
+		>
+			<i class="ri-add-line"></i>
+		</li>
+		@for (id of gallery(hash); track id; let index = $index) {
+		<li class="image-order-tile">
+			<span
+				class="image-order-position"
+				[class.is-primary]="index === 0"
+			>
+				{{ index === 0 ? ('primary_image' | transloco) : '#' + (index + 1) }}
+			</span>
+			<img
+				[src]="tiles().get(id) ?? 'assets/images/product.png'"
+				alt="image"
+				class="img-fluid"
+			/>
+			<a
+				href="javascript:void(0)"
+				class="remove-icon"
+				(click)="remove(hash, index)"
+			>
+				<i class="ri-close-line text-white"></i>
+			</a>
+			<div class="image-order-actions">
+				<button
+					type="button"
+					[attr.aria-label]="'move_earlier' | transloco"
+					(click)="move(hash, index, -1)"
+				>
+					<i class="ri-arrow-left-s-line"></i>
+				</button>
+				<button
+					type="button"
+					[attr.aria-label]="'make_primary' | transloco"
+					(click)="makePrimary(hash, index)"
+				>
+					<i [class]="index === 0 ? 'ri-star-fill' : 'ri-star-line'"></i>
+				</button>
+				<button
+					type="button"
+					[attr.aria-label]="'move_later' | transloco"
+					(click)="move(hash, index, 1)"
+				>
+					<i class="ri-arrow-right-s-line"></i>
+				</button>
+			</div>
+		</li>
+		}
+	</ul>
+</ng-template>
+
+@if (value().imageMode === 'simple') {
+<app-form-fields
+	[labelClass]="'form-label-title col-sm-3 mb-0'"
+	[gridClass]="'col-sm-9'"
+	[label]="'images'"
+	[for]="'product_images'"
+>
+	<ng-container *ngTemplateOutlet="galleryList; context: { $implicit: null }" />
+	<p class="help-text">{{ 'images_help' | transloco }}</p>
+</app-form-fields>
+} @else {
+<div class="shipping-accordion variant-accordion mb-4">
+	<div ngbAccordion>
+		@for (row of combinations(); track row.hash) {
+		<div
+			ngbAccordionItem
+			[collapsed]="$index > 0"
+		>
+			<div ngbAccordionHeader>
+				<button
+					ngbAccordionButton
+					type="button"
+				>
+					{{ row.label }} · {{ 'image_count' | transloco: { count: gallery(row.hash).length } }}
+				</button>
+			</div>
+			<div ngbAccordionCollapse>
+				<div ngbAccordionBody>
+					<ng-template>
+						<ng-container *ngTemplateOutlet="galleryList; context: { $implicit: row.hash }" />
+					</ng-template>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+</div>
+} @if (primary()) {
+<app-form-fields
+	[labelClass]="'form-label-title col-sm-3 mb-0'"
+	[gridClass]="'col-sm-9'"
+	[label]="'primary_alt_text'"
+	[for]="'primary_alt'"
+>
+	<input
+		class="form-control"
+		id="primary_alt"
+		[value]="alt()"
+		(change)="setAlt($any($event.target).value)"
+	/>
+	<p class="help-text">{{ 'alt_text_help' | transloco }}</p>
+</app-form-fields>
+}
+<app-media-modal
+	#picker
+	[multipleImage]="true"
+	[purpose]="'product'"
+	(selectImage)="add($event)"
+/>

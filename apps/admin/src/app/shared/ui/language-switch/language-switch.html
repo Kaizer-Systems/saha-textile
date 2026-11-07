@@ -1,0 +1,21 @@
+<div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+	<span class="form-label-title me-1">{{ 'language' | transloco }}</span>
+	@for (locale of locales(); track locale) {
+	<button
+		type="button"
+		class="btn btn-sm"
+		[class.btn-theme]="locale === active()"
+		[class.btn-outline]="locale !== active()"
+		[attr.aria-pressed]="locale === active()"
+		(click)="changed.emit(locale)"
+	>
+		{{ name(locale) }} @if (missing()[locale]; as left) {
+		<span class="badge bg-danger ms-1">{{ 'language_left' | transloco: { count: left } }}</span>
+		} @else {
+		<span class="badge bg-success ms-1">{{ 'language_done' | transloco }}</span>
+		}
+	</button>
+	} @if (active() !== locales()[0]) {
+	<span class="help-text mb-0 ms-2">{{ 'language_help' | transloco }}</span>
+	}
+</div>

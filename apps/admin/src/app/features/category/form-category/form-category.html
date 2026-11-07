@@ -7,6 +7,12 @@
 		[formGroup]="form"
 		(ngSubmit)="submit()"
 	>
+		<app-language-switch
+			[locales]="locales"
+			[active]="fields.locale()"
+			[missing]="missing()"
+			(changed)="switchLanguage($event)"
+		/>
 		<app-form-fields
 			[label]="'name' | transloco"
 			[for]="'name'"
@@ -18,8 +24,26 @@
 				placeholder="{{ 'enter_name' | transloco }}"
 				formControlName="name"
 			/>
-			@if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
+			@if (fields.source('name'); as guide) {
+			<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+			} @if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
 			<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'url_slug' | transloco"
+			[for]="'slug'"
+			[required]="true"
+		>
+			<input
+				class="form-control"
+				id="slug"
+				type="text"
+				formControlName="slug"
+			/>
+			<p class="help-text">{{ 'category_slug_help' | transloco }}</p>
+			@if (form.controls['slug'].errors?.['pattern']) {
+			<div class="invalid-feedback d-block">{{ 'url_slug_invalid' | transloco }}</div>
 			}
 		</app-form-fields>
 		<app-form-fields
@@ -33,33 +57,10 @@
 				formControlName="description"
 				rows="3"
 			></textarea>
+			@if (fields.source('description'); as guide) {
+			<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+			}
 		</app-form-fields>
-		@if (categoryType() === 'product') {
-		<app-form-fields
-			[label]="'commission_rate' | transloco "
-			[for]="'commission_rate'"
-			[required]="false"
-		>
-			<div class="input-group">
-				<input
-					class="form-control"
-					id="commission_rate"
-					type="number"
-					min="0"
-					max="100"
-					oninput="
-						if (value > 100) value = 100;
-						if (value < 0) value = 0;
-					"
-					placeholder="Enter Commision Rate"
-					formControlName="commission_rate"
-					numbersOnly
-				/>
-				<span class="input-group-text">%</span>
-			</div>
-			<p class="help-text">{{ '*Define the percentage of earnings retained as commission.' }}</p>
-		</app-form-fields>
-		}
 		<app-form-fields
 			[label]="'select_parent' | transloco "
 			[for]="'category'"
@@ -67,11 +68,25 @@
 		>
 			<app-advanced-dropdown
 				[selectSingle]="true"
-				[selectedOption]="category && category.parent_id ? [category.parent_id] : []"
+				[selectedOption]="form.controls['parent_id'].value ? [form.controls['parent_id'].value] : []"
 				[options]="categories()"
 				[subArrayKey]="'subcategories'"
 				(selectedItem)="selectItem($event)"
 			/>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'also_appears_under' | transloco"
+			[for]="'also_under'"
+			[required]="false"
+		>
+			<select2
+				class="custom-select"
+				id="also_under"
+				[data]="placementOptions()"
+				[multiple]="true"
+				formControlName="also_under"
+			/>
+			<p class="help-text">{{ 'also_appears_under_help' | transloco }}</p>
 		</app-form-fields>
 		<app-form-fields
 			[label]="'image' | transloco "
@@ -94,6 +109,36 @@
 				[image]="category?.category_icon"
 				(selectedFiles)="selectCategoryIcon($event)"
 			/>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'seo_title' | transloco"
+			[for]="'seo_title'"
+			[required]="false"
+		>
+			<input
+				class="form-control"
+				id="seo_title"
+				type="text"
+				formControlName="seo_title"
+			/>
+			@if (fields.source('seo_title'); as guide) {
+			<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'seo_description' | transloco"
+			[for]="'seo_description'"
+			[required]="false"
+		>
+			<textarea
+				class="form-control"
+				id="seo_description"
+				rows="2"
+				formControlName="seo_description"
+			></textarea>
+			@if (fields.source('seo_description'); as guide) {
+			<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+			}
 		</app-form-fields>
 		<app-form-fields
 			[label]="'status' | transloco "

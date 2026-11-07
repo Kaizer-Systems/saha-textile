@@ -36,12 +36,21 @@ import {
 	NgbNavLinkBase,
 	NgbNavOutlet,
 } from '@ng-bootstrap/ng-bootstrap';
-import { Select2, Select2Data, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
+import type {
+	AttributeDefinition,
+	GoLiveGap,
+	ProductBundleWrite,
+	ProductContentWrite,
+	ProductCreate,
+	ProductOptionGroup,
+} from '@saha-textile/contracts';
+import { Select2, Select2Data, Select2SearchEvent } from 'ng-select2-component';
 import { Editor, NgxEditorModule } from 'ngx-editor';
 import { Observable, of, Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, map, switchMap, takeUntil } from 'rxjs/operators';
+import { debounceTime, switchMap, takeUntil } from 'rxjs/operators';
 
-import { SettingStore } from '@core/state/setting.store';
+import { goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
+import { ADMIN_LOCALES, LocalizedFields, type LocalizedText } from '@core/i18n/localized-fields';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import {
 	CATALOG_BADGE_CODES,
@@ -51,27 +60,30 @@ import {
 } from '@data-access/interfaces/catalog-product.interface';
 import { ICategoryModel } from '@data-access/interfaces/category.interface';
 import { Params } from '@data-access/interfaces/core.interface';
-import { IProduct, IVariant, IVariation, IVariationCombination } from '@data-access/interfaces/product.interface';
-import { IValues } from '@data-access/interfaces/setting.interface';
-import { injectAttributesQuery, injectAttributeValuesQuery } from '@data-access/queries/attribute.queries';
+import { IProduct } from '@data-access/interfaces/product.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { injectCatalogProductsQuery } from '@data-access/queries/product.queries';
-import { injectStoresQuery } from '@data-access/queries/store.queries';
 import { injectTagsQuery } from '@data-access/queries/tag.queries';
 import { injectTaxesQuery } from '@data-access/queries/tax.queries';
+import { AttributeService } from '@data-access/services/attribute.service';
+import { NotificationService } from '@data-access/services/notification.service';
 import { ProductService } from '@data-access/services/product.service';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 import { YouTubeVideoField } from '@shared/ui/youtube-video-field/youtube-video-field';
 import { priceValidator } from '@shared/validators/price-validator';
 
+import { OptionGroups } from './option-groups/option-groups';
+import { ProductBundleForm } from './product-bundle/product-bundle';
+import { ImageCombination, ProductImages } from './product-images/product-images';
+import { variantCombinations } from './variant-combinations';
 import { environment } from '../../../../../public/environments/environment';
 
-/** Required in the vendor form, but not held by the catalogue API, so an edit never blocks on them. */
-const FIELDS_THE_API_DOES_NOT_SAVE = ['short_description', 'description', 'categories', 'tax_id', 'store_id'];
+const LANGUAGE_FIELDS = ['name', 'short_description', 'description', 'meta_title', 'meta_description'];
 
 const blankToNull = (value: unknown): number | null =>
 	value === '' || value === null || value === undefined || Number.isNaN(Number(value)) ? null : Number(value);
@@ -111,6 +123,10 @@ function sellingWithinMrp(group: AbstractControl): ValidationErrors | null {
 		NgbAccordionCollapse,
 		NgbAccordionBody,
 		ImageUpload,
+		LanguageSwitch,
+		OptionGroups,
+		ProductBundleForm,
+		ProductImages,
 		YouTubeVideoField,
 		AdvancedDropdown,
 		NgbNavOutlet,
@@ -130,6 +146,8 @@ export class FormProduct {
 	private renderer = inject(Renderer2);
 	private transloco = inject(TranslocoService);
 	private document = inject<Document>(DOCUMENT);
+	private attributes = inject(AttributeService);
+	private notifier = inject(NotificationService);
 
 	readonly type = input<string>(undefined);
 
@@ -163,26 +181,12 @@ export class FormProduct {
 				})),
 		),
 	);
-	private readonly storesQuery = injectStoresQuery(() => ({ status: 1, is_approved: 1 }));
-	store$: Observable<Select2Data> = toObservable(
-		computed(
-			() => this.storesQuery.data()?.data.map((store) => ({ label: store.store_name, value: store.id })) ?? [],
-		),
-	);
 	private readonly categoriesQuery = injectCategoriesQuery(() => ({ type: 'product', status: 1 }));
 	category$: Observable<ICategoryModel | undefined> = toObservable(this.categoriesQuery.data);
 	readonly tagsQuery = injectTagsQuery(() => ({ type: 'product', status: 1 }));
 	private readonly taxesQuery = injectTaxesQuery(() => ({ status: 1 }));
 	readonly taxes = computed(
 		() => this.taxesQuery.data()?.data.map((tax) => ({ label: tax.name, value: tax.id })) ?? [],
-	);
-	setting$: Observable<IValues | null> = toObservable(inject(SettingStore).setting);
-
-	private readonly attributesQuery = injectAttributesQuery(() => ({ status: 1 }));
-	private readonly attributeValuesQuery = injectAttributeValuesQuery(() => ({ status: 1 }));
-	private readonly selectedAttrIds = signal<string>('');
-	public attribute$: Observable<Select2Data> = toObservable(
-		computed(() => this.filterAttributes(this.selectedAttrIds())),
 	);
 	public active = 'general';
 	public tabError: string | null;
@@ -194,11 +198,8 @@ export class FormProduct {
 	public badgeOptions: Select2Data = [];
 	public statusOptions: Select2Data = [];
 	public availabilityOptions: Select2Data = [];
-	public selectedCategories: Number[] = [];
+	public selectedCategories: string[] = [];
 	public selectedTags: Number[] = [];
-	public variationCombinations: IVariationCombination[] = [];
-	public retrieveVariants: boolean = false;
-	public variantCount: number = 0;
 	public fromDate: NgbDate | null;
 	public toDate: NgbDate | null;
 	public hoveredDate: NgbDate | null = null;
@@ -214,7 +215,11 @@ export class FormProduct {
 		},
 		{
 			value: 'classified',
-			label: 'Classified',
+			label: 'Variable',
+		},
+		{
+			value: 'bundle',
+			label: 'Bundle',
 		},
 	];
 
@@ -237,18 +242,46 @@ export class FormProduct {
 		is_approved: 1,
 	};
 
-	public variants: IVariant[] = [
-		{
-			id: null,
-			attribute_values: null,
-			options: null,
-			variant_option: null,
-		},
-	];
-	public variations: IVariation[] = [];
 	private search = new Subject<string>();
 	public editor: Editor;
 	public html = '';
+
+	readonly locales = ADMIN_LOCALES;
+	/** Language-bound fields behind the Language switch. */
+	readonly fields: LocalizedFields;
+	readonly missing = signal<Record<string, number>>({});
+	readonly definitions = signal<AttributeDefinition[]>([]);
+	readonly optionGroups = signal<ProductOptionGroup[]>([]);
+	readonly images = signal<Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides'>>({
+		imageMode: 'simple',
+		gallery: [],
+		compound: [],
+		altOverrides: {},
+	});
+	readonly tiles = signal<ReadonlyMap<string, string>>(new Map());
+	readonly bundle = signal<ProductBundleWrite>({
+		bundleType: 'fixed_kit',
+		pricePolicy: 'sum_components',
+		fixedPriceINR: null,
+		groups: [],
+	});
+	readonly goLiveGaps = signal<GoLiveGap[]>([]);
+	readonly bundleProducts = signal<Select2Data>([]);
+
+	/** Every combination of the variation axes, for the compound image galleries. */
+	readonly combinations = computed<ImageCombination[]>(() => {
+		const locale = this.fields.locale();
+		return variantCombinations(this.optionGroups()).map(({ selections, hash }) => ({
+			hash,
+			label: selections
+				.map(({ attributeCode, termCode }) => {
+					const group = this.optionGroups().find((row) => row.attributeCode === attributeCode);
+					const term = group?.terms.find((row) => row.code === termCode);
+					return term?.label[locale] ?? term?.label['en'] ?? termCode;
+				})
+				.join(' / '),
+		}));
+	});
 
 	constructor() {
 		const platformId = inject(PLATFORM_ID);
@@ -258,10 +291,10 @@ export class FormProduct {
 		this.form = this.formBuilder.group({
 			/** Validated YouTube video id for the PDP (catalog chunk persists it). */
 			youtube_video_id: new FormControl<string | null>(null),
-			name: new FormControl('', [Validators.required]),
-			short_description: new FormControl('', [Validators.required]),
-			description: new FormControl('', [Validators.required]),
-			store_id: new FormControl(),
+			name: new FormControl(''),
+			short_description: new FormControl(''),
+			description: new FormControl(''),
+			slug: new FormControl('', [Validators.pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)]),
 			type: new FormControl('simple', [Validators.required]),
 			unit: new FormControl(),
 			weight: new FormControl(),
@@ -273,7 +306,7 @@ export class FormProduct {
 			sale_starts_at: new FormControl(),
 			sale_expired_at: new FormControl(),
 			tags: new FormControl(),
-			categories: new FormControl('', [Validators.required]),
+			categories: new FormControl([]),
 			is_random_related_products: new FormControl(0),
 			related_products: new FormControl(),
 			upsell_products: new FormControl([]),
@@ -281,9 +314,7 @@ export class FormProduct {
 			product_thumbnail_id: new FormControl(),
 			product_galleries_id: new FormControl(),
 			size_chart_image_id: new FormControl(),
-			variants: this.formBuilder.array([], []),
 			variations: this.formBuilder.array([], []),
-			attributes_ids: new FormControl([]),
 			meta_title: new FormControl(),
 			meta_description: new FormControl(),
 			product_meta_image_id: new FormControl(),
@@ -293,7 +324,7 @@ export class FormProduct {
 			encourage_order: new FormControl(1),
 			encourage_view: new FormControl(1),
 			is_free_shipping: new FormControl(0),
-			tax_id: new FormControl('', [Validators.required]),
+			tax_id: new FormControl(''),
 			estimated_delivery_text: new FormControl(),
 			made_to_order: new FormControl(false),
 			low_stock_threshold: new FormControl(null),
@@ -308,8 +339,9 @@ export class FormProduct {
 			return_policy_text: new FormControl(),
 			is_featured: new FormControl(0),
 			is_return: new FormControl(1),
-			status: new FormControl<string>('live'),
+			status: new FormControl<string>('disabled'),
 		});
+		this.fields = new LocalizedFields(this.form, LANGUAGE_FIELDS);
 
 		this.transloco.selectTranslation().subscribe(() => this.buildOptions());
 	}
@@ -321,7 +353,8 @@ export class FormProduct {
 			{ value: 'available', label: t('available') },
 			{ value: 'unavailable', label: t('not_available') },
 		];
-		const statuses = ['live', 'disabled', 'discontinued'];
+		const statuses = ['disabled', 'discontinued'];
+		if (this.catalogProduct?.status === 'live') statuses.unshift('live');
 		if (this.catalogProduct?.status === 'draft') statuses.unshift('draft');
 		this.statusOptions = statuses.map((status) => ({
 			value: status,
@@ -373,15 +406,11 @@ export class FormProduct {
 		this.catalogProduct = detail;
 		this.id = detail.id;
 		this.buildOptions();
-		for (const name of FIELDS_THE_API_DOES_NOT_SAVE) {
-			this.form.get(name)?.clearValidators();
-			this.form.get(name)?.updateValueAndValidity({ emitEvent: false });
-		}
 		this.form.patchValue(
 			{
-				name: detail.title,
+				slug: detail.slug,
 				sku: detail.sku,
-				type: detail.type === 'variable' ? 'classified' : 'simple',
+				type: detail.type === 'variable' ? 'classified' : detail.type,
 				weight: detail.shipping.weightGrams,
 				length_cm: detail.shipping.lengthCm,
 				width_cm: detail.shipping.widthCm,
@@ -402,6 +431,34 @@ export class FormProduct {
 			},
 			{ emitEvent: false },
 		);
+		const { content } = detail;
+		this.fields.load({
+			name: content.title,
+			short_description: content.shortDescription,
+			description: content.description,
+			meta_title: content.metaTitle,
+			meta_description: content.metaDescription,
+		});
+		this.form.get('type')?.disable({ emitEvent: false });
+		this.form.patchValue({ categories: content.categoryIds }, { emitEvent: false });
+		this.selectedCategories = content.categoryIds;
+		this.optionGroups.set(content.optionGroups);
+		this.images.set({
+			imageMode: content.imageMode,
+			gallery: content.gallery,
+			compound: content.compound,
+			altOverrides: content.altOverrides,
+		});
+		this.tiles.set(new Map(detail.images.map((image) => [image.assetId, image.url])));
+		this.refreshMissing();
+		if (detail.type === 'bundle') {
+			this.productService
+				.getBundle(detail.id)
+				.pipe(takeUntil(this.destroy$))
+				.subscribe((saved) => {
+					if (saved) this.bundle.set(saved);
+				});
+		}
 		// Price and stock live on the variant rows; the product-level inputs do not apply.
 		for (const name of ['price', 'quantity']) this.form.removeControl(name, { emitEvent: false });
 		if (detail.published) this.form.get('sku')?.disable({ emitEvent: false });
@@ -433,10 +490,6 @@ export class FormProduct {
 		}
 	}
 
-	get variantControl(): FormArray {
-		return this.form.get('variants') as FormArray;
-	}
-
 	get variationControl(): FormArray {
 		return this.form.get('variations') as FormArray;
 	}
@@ -457,6 +510,10 @@ export class FormProduct {
 			.subscribe((detail) => {
 				if (detail) this.applyCatalogProduct(detail);
 			});
+		this.attributes
+			.getDefinitions()
+			.pipe(takeUntil(this.destroy$))
+			.subscribe((rows) => this.definitions.set(rows));
 		this.productService
 			.getReplacementTargets()
 			.pipe(takeUntil(this.destroy$))
@@ -469,45 +526,11 @@ export class FormProduct {
 					}));
 			});
 
-		if (this.type() == 'create') {
-			this.variants.forEach((variant) =>
-				this.variantControl.push(
-					this.formBuilder.group({
-						id: new FormControl(variant?.id, []),
-						attribute_values: new FormControl(variant?.attribute_values, []),
-						options: new FormControl(variant?.attribute_values, []),
-						variant_option: new FormControl(variant?.variant_option, []),
-					}),
-				),
-			);
-		}
-
-		this.variantControl.valueChanges.pipe(debounceTime(200), distinctUntilChanged()).subscribe((variantValue) => {
-			let selectedAttr = variantValue.filter((el: any) => el.id != null).map((val: IVariant) => val.id);
-			this.selectedAttrIds.set(selectedAttr.join(','));
-
-			let variantValues = variantValue.filter((el: any) => el.attribute_values != null);
-			let attributesIds = variantValues?.map((attr: IVariant) => attr.id);
-
-			this.form.controls['attributes_ids'].setValue(attributesIds);
-
-			this.variationCombinations = this.generateCombinations(variantValues);
-
-			this.addVariation();
-		});
-
 		this.products$.subscribe((product) => {
-			this.collectionProduct = product?.length
-				? product.filter((res) => res?.data?.type == 'simple' && res?.data?.stock_status == 'in_stock')
-				: [];
-		});
-
-		this.setting$.subscribe((setting) => {
-			if (setting?.activation?.multivendor) {
-				this.form.controls['store_id'].setValidators([Validators.required]);
-			} else {
-				this.form.controls['store_id'].removeValidators([]);
-			}
+			this.collectionProduct = product.filter(
+				(res) => res?.data?.type == 'simple' && res?.data?.stock_status == 'in_stock',
+			);
+			this.bundleProducts.set(product.filter((res) => res?.data?.type === 'simple'));
 		});
 
 		// Made to order is live-only, and its switch locks once the status leaves live.
@@ -552,65 +575,6 @@ export class FormProduct {
 
 	searchProduct(event: Select2SearchEvent) {
 		this.search.next(event.search);
-	}
-
-	addVariant(event: Event) {
-		event.preventDefault();
-		this.variantControl.push(
-			this.formBuilder.group({
-				id: new FormControl(),
-				attribute_values: new FormControl(),
-				options: new FormControl(),
-				variant_option: new FormControl(),
-			}),
-		);
-	}
-
-	removeVariant(index: number) {
-		if (this.variantControl.length <= 1) return;
-		this.variantControl.removeAt(index);
-	}
-
-	getAttributeValues(id: number | null): Observable<Select2Data> {
-		return of(this.filterAttributeValues(id ? id : null));
-	}
-
-	// Replicates the former AttributeState.attributes selector over the TanStack query data:
-	// maps attributes to Select2 options, optionally excluding ids already chosen in other variant rows.
-	private filterAttributes(ids: string): Select2Data {
-		const attrIds = Array.from(new Set(ids.split(','))).map(Number);
-		const data = this.attributesQuery.data()?.data ?? [];
-		return data
-			.filter((attr) => !attrIds.includes(Number(attr.id!)))
-			.map((attribute) => ({
-				label: attribute?.name,
-				value: attribute?.id,
-				attribute_values: attribute?.attribute_values,
-			})) as Select2Data;
-	}
-
-	// Replicates the former AttributeState.attribute_value selector: values belonging to one attribute.
-	private filterAttributeValues(id: number | null): Select2Data {
-		if (!id) return [];
-		return (this.attributeValuesQuery.data()?.data ?? [])
-			.filter((attrVal) => +attrVal.attribute_id === id)
-			.map((value) => ({ label: value?.value, value: value?.id })) as Select2Data;
-	}
-
-	updateAttribute(data: Select2UpdateEvent, index: number) {
-		const variantControl = this.form.get('variants') as FormArray; // get the variants FormArray
-		const control = variantControl.at(index); // get the control at the specified index
-
-		let variant_option = null;
-		this.getAttributeValues(data ? +data?.value : null).subscribe((option) => (variant_option = option));
-		control.patchValue({ variant_option: variant_option }); // patch the new value
-		this.variantCount++;
-		if (!this.retrieveVariants) {
-			control.patchValue({ attribute_values: null, options: null }); // patch the new value
-		}
-		if (this.variantCount == this.variants?.length) {
-			this.retrieveVariants = false;
-		}
 	}
 
 	onDateSelection(date: NgbDate) {
@@ -661,63 +625,12 @@ export class FormProduct {
 		return parsed && this.calendar.isValid(NgbDate.from(parsed)) ? NgbDate.from(parsed) : currentValue;
 	}
 
-	updateAttributeValue(data: Select2UpdateEvent, index: number) {
-		const variantControl = this.form.get('variants') as FormArray;
-		const control = variantControl.at(index);
-		control.patchValue({ options: data?.options });
-	}
-
 	clearVariations() {
 		const variantsControl = this.form.get('variations') as FormArray; // assuming your FormArray group is named 'variations'
 		variantsControl.clear(); // remove all the controls from the FormArray
 	}
 
-	addVariation() {
-		this.clearVariations();
-		if (this.variationCombinations.length) {
-			this.variationCombinations.forEach((variation) => {
-				const index = this.variations.findIndex((value) =>
-					value.attribute_values.every((item) => variation?.attribute_values.includes(+item?.id!)),
-				);
-				let variationValue;
-				if (index != -1 && this.variations[index]) {
-					variationValue = this.variations[index];
-				}
-				this.variationControl.push(
-					this.formBuilder.group(
-						{
-							id: new FormControl(variationValue?.id, []),
-							variation_name: new FormControl(variation?.name, []),
-							name: new FormControl(variationValue?.name, [Validators.required]),
-							sku: new FormControl(variationValue?.sku, [Validators.required]),
-							mrp: new FormControl(variationValue?.price, []),
-							price: new FormControl(variationValue?.sale_price, [Validators.required, priceValidator]),
-							discount: new FormControl(variationValue?.discount, []),
-							quantity: new FormControl(variationValue?.quantity, [Validators.required]),
-							weight_grams: new FormControl(),
-							length_cm: new FormControl(),
-							width_cm: new FormControl(),
-							height_cm: new FormControl(),
-							barcode: new FormControl(),
-							hsn: new FormControl(),
-							availability: new FormControl('available', [Validators.required]),
-							variation_image_id: new FormControl(variationValue?.variation_image_id, []),
-							variation_image: new FormControl(variationValue?.variation_image, []),
-							attribute_values: new FormControl(variation?.attribute_values, []),
-						},
-						{ validators: sellingWithinMrp },
-					),
-				);
-			});
-		}
-	}
-
-	removeVariation(index: number) {
-		if (this.variationControl.length <= 1) return;
-		this.variationControl.removeAt(index);
-	}
-
-	selectCategoryItem(data: Number[]) {
+	selectCategoryItem(data: string[]) {
 		if (Array.isArray(data)) {
 			this.form.controls['categories'].setValue(data);
 		}
@@ -727,17 +640,6 @@ export class FormProduct {
 		if (Array.isArray(data)) {
 			this.form.controls['tags'].setValue(data);
 		}
-	}
-
-	selectThumbnail(data: IAttachment) {
-		if (!Array.isArray(data)) {
-			this.form.controls['product_thumbnail_id'].setValue(data ? data.id : null);
-		}
-	}
-
-	selectImages(data: IAttachment) {
-		let ids = Array.isArray(data) ? data?.map((image) => image.id) : [];
-		this.form.controls['product_galleries_id'].setValue(ids);
 	}
 
 	selectSizeImage(data: IAttachment) {
@@ -758,58 +660,64 @@ export class FormProduct {
 		control.patchValue({ variation_image_id: data ? data.id : '' });
 	}
 
-	// Combination Of Variations
-	generateCombinations(attributes: IVariant[], index = 0, prefix = '', attribute_values: number[] = []): any {
-		if (index >= attributes.length) {
-			if (!attribute_values.length) return [];
-			// End of recursion
-			return [{ name: prefix.replace(/\/$/, ''), attribute_values }];
-		}
+	switchLanguage(locale: string) {
+		this.fields.switchTo(locale);
+		this.refreshMissing();
+	}
 
-		const currentAttribute = attributes[index];
-		const currentOptions = currentAttribute.options;
-		const combinations = [];
+	private refreshMissing() {
+		this.missing.set(Object.fromEntries(this.locales.map((locale) => [locale, this.fields.missing(locale)])));
+	}
 
-		if (currentOptions?.length === 1) {
-			// If attribute has only one option, include it in the prefix and IDs
-			const currentOption = currentOptions[0];
-			const newPrefix = `${prefix}${currentOption.label}/`;
-			const newIds: number[] = [...attribute_values, ...currentAttribute?.attribute_values!];
+	private content(raw: Record<string, unknown>): ProductContentWrite {
+		const text = (field: string): LocalizedText => this.fields.text(field);
+		return {
+			title: text('name'),
+			shortDescription: text('short_description'),
+			description: text('description'),
+			metaTitle: text('meta_title'),
+			metaDescription: text('meta_description'),
+			categoryIds: Array.isArray(raw['categories']) ? raw['categories'].map(String) : [],
+			optionGroups: this.optionGroups(),
+			...this.images(),
+		};
+	}
 
-			const childCombinations = this.generateCombinations(attributes, index + 1, newPrefix, newIds);
+	/** Go Live: the same call and the same toast as the product list. */
+	goLive() {
+		const product = this.catalogProduct;
+		if (!product) return;
+		this.productService.goLive(product.id).subscribe((result) => {
+			this.goLiveGaps.set(result.gaps);
+			goLiveToast(result, this.notifier, (key) => this.transloco.translate(key));
+			if (result.live) void this.router.navigateByUrl('/product');
+		});
+	}
 
-			combinations.push(...childCombinations);
-		} else {
-			// If attribute has multiple options, generate separate combinations for each option
-			for (let i = 0; i < currentOptions?.length!; i++) {
-				const currentOption = currentOptions?.[i]!;
-				const currentValue = currentOption?.value;
-				const newPrefix = `${prefix}${currentOption.label}/`;
-				const newIds: number[] = [...attribute_values, currentValue];
-
-				const childCombinations = this.generateCombinations(attributes, index + 1, newPrefix, newIds);
-
-				combinations.push(...childCombinations);
-			}
-		}
-
-		return combinations;
+	gapLabels(): string[] {
+		return goLiveLabels(this.goLiveGaps(), (key) => this.transloco.translate(key));
 	}
 
 	submit() {
 		this.form.markAllAsTouched();
-		const product = this.catalogProduct;
-		if (!product) {
-			// Creating a product needs a catalogue create endpoint, which the API does not have yet.
+		const raw = this.form.getRawValue() as Record<string, unknown>;
+		if (!this.fields.text('name')['en']?.trim()) {
+			this.switchLanguage('en');
+			this.form.get('name')?.setErrors({ required: true });
+			this.nav()?.select('general');
 			this.tabError = 'general';
 			return;
 		}
-		const raw = this.form.getRawValue() as Record<string, unknown>;
 		const leadTime = textOrNull(raw['estimated_delivery_text']);
 		const leadTimeControl = this.form.get('estimated_delivery_text');
 		if (raw['made_to_order'] && !leadTime) leadTimeControl?.setErrors({ leadTimeRequired: true });
 		if (!this.form.valid) {
 			this.showInvalidTab();
+			return;
+		}
+		const product = this.catalogProduct;
+		if (!product) {
+			this.create(raw);
 			return;
 		}
 		if (this.isDiscontinuing) {
@@ -818,13 +726,43 @@ export class FormProduct {
 			});
 			return;
 		}
+		this.save(product, raw);
+	}
+
+	/** Makes the product, then saves everything typed so far onto it. */
+	private create(raw: Record<string, unknown>) {
+		const typed = Object.fromEntries(LANGUAGE_FIELDS.map((field) => [field, this.fields.text(field)]));
+		const groups = this.optionGroups();
+		const images = this.images();
+		const body: ProductCreate = {
+			type: raw['type'] === 'classified' ? 'variable' : (raw['type'] as ProductCreate['type']),
+			sku: String(raw['sku']).trim(),
+			title: { en: (typed['name'] as LocalizedText)['en'] as string },
+			basePriceINR: blankToNull(raw['price']) ?? 0,
+		};
+		this.productService
+			.createCatalogProduct(body)
+			.pipe(switchMap(({ id }) => this.productService.getCatalogProduct(id)))
+			.subscribe((detail) => {
+				this.applyCatalogProduct(detail);
+				this.fields.load({ ...typed });
+				this.optionGroups.set(groups);
+				this.images.set(images);
+				this.variationControl.at(0)?.patchValue({ quantity: blankToNull(raw['quantity']) ?? 0 });
+				this.save(detail, this.form.getRawValue() as Record<string, unknown>);
+			});
+	}
+
+	private save(product: CatalogProductDetail, raw: Record<string, unknown>) {
 		const ids = (value: unknown) => (Array.isArray(value) ? value.map(String).filter(Boolean) : []);
+		const slug = textOrNull(raw['slug']);
 		const body: CatalogProductWrite = {
 			sku: String(raw['sku'] ?? product.sku).trim(),
-			status: raw['status'] === 'disabled' ? 'disabled' : 'live',
+			...(slug && slug !== product.slug ? { slug } : {}),
+			status: product.status === 'live' && raw['status'] === 'live' ? 'live' : 'disabled',
 			featured: Boolean(raw['is_featured']),
 			madeToOrder: Boolean(raw['made_to_order']),
-			estimatedDeliveryText: leadTime,
+			estimatedDeliveryText: textOrNull(raw['estimated_delivery_text']),
 			lowStockThreshold: blankToNull(raw['low_stock_threshold']),
 			pinnedBadges: ids(raw['pinned_badges']) as CatalogBadgeCode[],
 			hiddenBadges: ids(raw['hidden_badges']) as CatalogBadgeCode[],
@@ -853,11 +791,17 @@ export class FormProduct {
 					hsnCode: textOrNull(row['hsn']),
 				};
 			}),
+			content: this.content(raw),
 			relatedProductIds: ids(raw['related_products']),
 			upsellProductIds: ids(raw['upsell_products']),
 			crossSellProductIds: ids(raw['cross_sell_products']),
 		};
-		this.productService.saveCatalogProduct(product.id, body).subscribe({
+		const saved: Observable<unknown> = this.productService.saveCatalogProduct(product.id, body);
+		const bundled = product.type === 'bundle' && this.bundle().groups.length > 0;
+		const finished = bundled
+			? saved.pipe(switchMap(() => this.productService.saveBundle(product.id, this.bundle())))
+			: saved;
+		finished.subscribe({
 			next: () => {
 				this.tabError = null;
 				void this.router.navigateByUrl('/product');

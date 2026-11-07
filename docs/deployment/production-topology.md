@@ -69,13 +69,13 @@ Every name is one level below the domain, because Cloudflare's free edge certifi
 | MongoDB     | `mongo:9.0.4`                  | 3 GiB      | about 325 MB     | Single-node replica set, password login and keyfile               |
 | Redis       | `redis:8.8.4-alpine`           | 512 MiB    | about 15 MB      | Password from a file, saved every second, never evicts            |
 | Meilisearch | `getmeili/meilisearch:v1.16.0` | 1 GiB      | about 95 MB      | Production mode; the API uses the admin key, never the master key |
-| API         | `api`                          | 768 MiB    | about 130 MB     | Refuses to start on unsafe settings                               |
+| API         | `api`                          | 768 MiB    | about 130 MB     | Two copies. Refuses to start on unsafe settings                   |
 | Worker      | `api`                          | 1.5 GiB    | about 115 MB     | Limited to 2 CPUs                                                 |
-| Storefront  | `storefront`                   | 768 MiB    | about 120 MB     | Calls the API through the internal listener                       |
+| Storefront  | `storefront`                   | 768 MiB    | about 120 MB     | Two copies. Calls the API through the internal listener           |
 | Admin       | `admin`                        | 64 MiB     | about 13 MB      | Static files and a mounted `config.json`                          |
 | Nginx edge  | `nginx:1.30.6-alpine`          | 128 MiB    | about 20 MB      | Reloads its config in place                                       |
 
-The measurements come from `pnpm production:proof` with an empty catalogue. MongoDB and Meilisearch grow with the catalogue: 1,000 products with 1,918 variants take about 13 MB in MongoDB and 38 MB in Meilisearch. Product photos live in Spaces, not on the droplet.
+Caps and measurements are per copy. Nginx spreads requests over both copies and retries a refused connection on the other, so one copy crashing or hanging stops nothing. The measurements come from `pnpm production:proof` with an empty catalogue. MongoDB and Meilisearch grow with the catalogue: 1,000 products with 1,918 variants take about 13 MB in MongoDB and 38 MB in Meilisearch. Product photos live in Spaces, not on the droplet.
 
 | Droplet    | Size                              | Price                                          |
 | ---------- | --------------------------------- | ---------------------------------------------- |

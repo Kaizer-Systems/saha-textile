@@ -75,7 +75,7 @@ Lightweight distributions such as k3s, MicroK8s and k0s run a complete Kubernete
 
 k3s documents a 2-core, 2 GB floor for a server node and measured about 1.6 GB on a single node running a simple workload. The whole shop uses about 1 GB at rest, so on an 8 GB droplet the cluster's own machinery would take more memory than the shop.
 
-Compose already provides most of the single-node benefits: the side-by-side swap gives deploys without a gap, and two copies of a service behind Nginx would give process redundancy.
+Compose already provides the main single-node benefits: the side-by-side swap gives deploys without a gap, and the API and storefront each run two copies behind Nginx, so one process crashing or hanging stops nothing.
 
 ## Kubernetes across several servers
 

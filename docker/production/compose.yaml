@@ -103,8 +103,12 @@ services:
       retries: 20
     networks: [private]
 
+  # Two copies each of the API and storefront: Nginx spreads requests over both and retries a
+  # refused connection on the other, so one copy crashing or hanging never stops the shop. Each
+  # uses about 130 MB at rest; the caps are ceilings, not reservations.
   api:
     <<: *app
+    scale: 2
     mem_limit: 768m
     depends_on:
       mongo: { condition: service_healthy }
@@ -126,6 +130,7 @@ services:
   storefront:
     <<: *hardened
     image: ${STOREFRONT_IMAGE}
+    scale: 2
     env_file: ./public/storefront.env
     environment:
       DEPLOY_ENV: ${DEPLOY_ENV}

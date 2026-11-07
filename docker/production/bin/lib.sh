@@ -28,6 +28,16 @@ release_value() {
 	sed -n "s/^$2=//p" "$1/release.env" | tail -n 1
 }
 
+# Runs a command in one running copy of a service. Compose's own `exec` picks copy number 1, which
+# a side-by-side swap has usually replaced.
+exec_one() {
+	local release="$1" service="$2" container
+	shift 2
+	container="$(compose_for "$release" ps --quiet "$service" | head -n 1)"
+	[[ -n "$container" ]] || die "No running $service container."
+	docker exec -i "$container" "$@"
+}
+
 ops() {
 	local release="$1"
 	shift
@@ -56,23 +66,31 @@ wait_ready() {
 	return 1
 }
 
+# Works for any number of copies: the API and storefront run two each, so one crashing or hanging
+# never stops the shop. During a swap the new copies run beside the old ones, then the old ones go.
 swap_in() {
-	local release="$1" service="$2" old new
+	local release="$1" service="$2" old new count container
 	old="$(compose_for "$release" ps --quiet "$service")"
 	if [[ -z "$old" ]]; then
 		compose_for "$release" up --detach --no-deps --wait --wait-timeout "${HEALTH_TIMEOUT:-180}" "$service" >/dev/null
 		return
 	fi
-	compose_for "$release" up --detach --no-deps --no-recreate --scale "$service=2" "$service" >/dev/null 2>&1
-	new="$(compose_for "$release" ps --quiet "$service" | grep -v -x -F "$old" | head -n 1)"
-	if [[ -z "$new" ]] || ! wait_ready "$new"; then
-		[[ -n "$new" ]] && docker rm --force "$new" >/dev/null 2>&1
-		return 1
-	fi
-	# Nginx re-reads Docker's DNS every second; give it time to send traffic to the new one.
+	count="$(printf '%s\n' "$old" | wc -l | tr -d ' ')"
+	compose_for "$release" up --detach --no-deps --no-recreate --scale "$service=$((count * 2))" "$service" >/dev/null 2>&1
+	new="$(compose_for "$release" ps --quiet "$service" | grep -v -x -F "$old" || true)"
+	for container in $new; do
+		if ! wait_ready "$container"; then
+			for container in $new; do docker rm --force "$container" >/dev/null 2>&1; done
+			return 1
+		fi
+	done
+	[[ -n "$new" ]] || return 1
+	# Nginx re-reads Docker's DNS every second; give it time to send traffic to the new copies.
 	sleep 3
-	docker stop --time 30 "$old" >/dev/null
-	docker rm "$old" >/dev/null
+	for container in $old; do
+		docker stop --time 30 "$container" >/dev/null
+		docker rm "$container" >/dev/null
+	done
 }
 
 # The edge reads its config from a fixed folder, so a new release reloads it instead of restarting.

@@ -251,8 +251,21 @@ SECRET_VALUE="$(sed -n 's/^CSRF_SECRET=//p' "$FIRST/secrets/api.env")"
 grep -qF "$SECRET_VALUE" "$PROOF/stack.log" && fail 'a secret reached the logs' || pass 'no secret in the logs'
 docker inspect "$(in_release "$FIRST" ps -q api)" | grep -qF "$SECRET_VALUE" && fail 'a secret shows in docker inspect' || pass 'no secret in docker inspect'
 
+echo 'Two copies of each web service'
+expect 'the API runs two copies' "$(in_release "$FIRST" ps --quiet api | wc -l | tr -d ' ')" 2
+expect 'the storefront runs two copies' "$(in_release "$FIRST" ps --quiet storefront | wc -l | tr -d ' ')" 2
+load_start
+sleep 2
+docker kill "$(in_release "$FIRST" ps --quiet api | head -n 1)" >/dev/null
+docker kill "$(in_release "$FIRST" ps --quiet storefront | head -n 1)" >/dev/null
+sleep 8
+load_stop
+no_visible_gap 'one copy of each crashing stopped nothing'
+in_release "$FIRST" up --detach --no-deps --wait --wait-timeout 120 api storefront >/dev/null 2>&1
+expect 'the crashed copies are back' "$(in_release "$FIRST" ps --quiet api storefront | wc -l | tr -d ' ')" 4
+
 echo 'First administrator'
-in_release "$FIRST" exec -T api node dist/create-first-admin.js --email owner@example.test >/dev/null && pass 'the first administrator can be created'
+docker exec "$(in_release "$FIRST" ps --quiet api | head -n 1)" node dist/create-first-admin.js --email owner@example.test >/dev/null && pass 'the first administrator can be created'
 
 echo 'A bad deploy rolls back'
 BAD="$(write_release bad)"

@@ -58,5 +58,6 @@ The first administrator is the one step that stays manual, because it prints a c
 over SSH, never from a workflow:
 
 ```bash
-docker compose --project-name saha-textile exec api node dist/create-first-admin.js --email <address>
+docker exec -it "$(docker compose --project-name saha-textile ps --quiet api | head -n 1)" \
+	node dist/create-first-admin.js --email <address>
 ```

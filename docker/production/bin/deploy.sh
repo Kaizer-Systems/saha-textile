@@ -135,7 +135,7 @@ start_apps() {
 	compose_for "$RELEASE" run --rm --no-deps -T api node dist/first-run-setup.js >/dev/null
 	swap_apps "$RELEASE"
 	say 'Rebuilding the search index'
-	compose_for "$RELEASE" exec -T api node dist/rebuild-search-index.js >/dev/null
+	exec_one "$RELEASE" api node dist/rebuild-search-index.js >/dev/null
 	check_running
 }
 

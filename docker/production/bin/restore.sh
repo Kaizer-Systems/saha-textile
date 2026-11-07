@@ -34,5 +34,5 @@ ops "$RELEASE" sh -c '
 		exit $status'
 
 say 'Rebuilding the search index'
-compose_for "$RELEASE" exec -T api node dist/rebuild-search-index.js >/dev/null
+exec_one "$RELEASE" api node dist/rebuild-search-index.js >/dev/null
 say 'Restore finished'

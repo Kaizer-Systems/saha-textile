@@ -402,6 +402,9 @@ show as a placeholder tile; the review page shows them via signed URLs).
 
 The full design and build order are in `production-deployment-plan.mdx`.
 
+- **The staging droplet waits until full development is complete.** All staging proofs listed in the plan wait with it.
+- **Kubernetes is deferred**; see `kubernetes-evaluation.mdx` before raising it again.
+
 #### Open items carried into this chunk (2026-11-07)
 
 - **Every deploy runs `node dist/rebuild-search-index.js` in the API container after it

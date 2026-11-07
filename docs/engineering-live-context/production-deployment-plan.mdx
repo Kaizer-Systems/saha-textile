@@ -135,7 +135,7 @@ It also adds rate limits for sign-in, OTP and checkout, refuses unknown hostname
 
 A deploy never stops the shop (owner decision 2026-11-08). `bin/lib.sh` swaps each app side by side:
 
-1. The new API container starts next to the old one.
+1. New API containers start next to the old ones, as many as are running.
 2. The deploy waits for its health check. A new container that never gets healthy is removed, and the old one keeps serving.
 3. Nginx finds both through Docker's DNS, which it re-reads every second, and retries a refused connection on the other.
 4. The old container stops gently: it finishes the requests it holds, then exits.
@@ -159,7 +159,11 @@ A reboot or a crash can still stop the shop briefly. For those moments, each app
 
 ### Kubernetes and more servers
 
-Not now. Several servers behind a load balancer would also survive a dead server, which a single droplet cannot. At current DigitalOcean prices that is at least two droplets, a $12 load balancer and $40 for a highly available Kubernetes control plane, plus a three-member MongoDB: roughly $150 to $250 a month against $53, and much more to run. The images by digest, health checks, apps that hold no data and outside configuration already fit Kubernetes, so moving later rebuilds the deploy layer only.
+Not now. Several servers behind a load balancer would also survive a dead server, which a single droplet cannot. At current DigitalOcean prices that is at least two droplets, a $12 load balancer and $40 for a highly available Kubernetes control plane, plus a three-member MongoDB: roughly $150 to $250 a month against $53, and much more to run. The images by digest, health checks, apps that hold no data and outside configuration already fit Kubernetes, so moving later rebuilds the deploy layer only. The full evaluation, including free single-node k3s, is in `kubernetes-evaluation.mdx`.
+
+### Two copies of each web service
+
+The API and storefront run two copies each (`scale: 2`). Nginx spreads requests over both and retries a refused connection on the other, so one copy crashing or hanging stops nothing. `pnpm production:proof` kills one copy of each under load and requires zero failed requests. Each copy uses about 130 MB at rest; a deploy briefly runs four of each.
 
 ## 9. Cloudflare
 
@@ -248,7 +252,7 @@ Every step touching GitHub settings, DigitalOcean or Cloudflare needs the owner'
 
 1. **Repository groundwork, no cloud account touched. Done 2026-11-08.** `pnpm production:proof` runs all of it on one machine. The deploy workflows that call these scripts come with step 3, because they cannot be proved before a droplet exists.
 2. **GitHub.** Ruleset change, retire `qa`, Environments, secrets, Actions pins, two-factor required for the organisation.
-3. **Staging.** Droplet script, Cloudflare records, tunnel, Access, Origin Certificate, AOP. First deploy.
+3. **Staging.** Droplet script, Cloudflare records, tunnel, Access, Origin Certificate, AOP. First deploy. **Waits until full development is complete (owner, 2026-11-08):** the staging droplet is procured then, not before.
 4. **Staging proofs.** Listed below.
 5. **Backup and restore drill.**
 6. **Maintenance pages.** Brief first.

@@ -1,0 +1,90 @@
+---
+title: 'Kubernetes Evaluation'
+description: 'Whether Kubernetes, including free single-node Kubernetes, should replace Docker Compose for Saha Textile, with figures, gains, costs and the conclusion.'
+audience: [engineering, operator, agent]
+document_role: canonical
+last_verified: 2026-11-08
+search_keywords: 'kubernetes k3s microk8s compose pods load balancer single node droplet high availability'
+---
+
+# Kubernetes Evaluation — Saha Textile
+
+**Status:** Discussed with the owner on 2026-11-08. Kept for future use. The owner studies cloud computing (MTech) and has run Docker and Kubernetes assignments locally, and asked whether proper load balancing and Kubernetes could run without extra cost, possibly on the single droplet.
+
+**Outcome:** stay on Docker Compose, and run two copies each of the API and storefront behind Nginx, which gives the main single-droplet benefit at no memory cost for a control plane. Kubernetes waits until the shop needs to survive a dead server. A k3s version of the stack may be kept as a learning lab, never as the staging or production platform while the other runs on Compose.
+
+**Related:** `production-deployment-plan.mdx` (the platform as built); portal page `docs/deployment/compose-and-kubernetes.md`.
+
+## Docker and Kubernetes: what each one is
+
+**Docker** packs an app and everything it needs into an **image**, a sealed box, and runs it as a **container**. Kubernetes runs the same kind of image: our images would work there unchanged. Strictly, modern Kubernetes uses `containerd` rather than Docker itself, but it is the same image format.
+
+The real difference is **who manages the containers**:
+
+- **Docker Compose (what we use):** one file describes the containers, and Docker starts them on **one machine**. Its built-in smarts are simple: restart a crashed container, run a health check, keep the start order. Anything cleverer is in our scripts, such as the side-by-side swap in `docker/production/bin/lib.sh`. Once a script ends, nothing is "watching" except Docker's restart rule.
+- **Kubernetes:** a **control plane** runs all the time: an API server, a database (etcd or SQLite), a scheduler and controllers. You tell it what you want ("3 copies of the API, each healthy"), and it keeps making reality match, across **many machines**.
+
+## The pieces map onto each other like this
+
+| Our setup                                          | Kubernetes equivalent                                                        |
+| -------------------------------------------------- | ---------------------------------------------------------------------------- |
+| A container in Compose                             | **Pod** (one or more containers sharing an address)                          |
+| `api` service, swapped side by side by `deploy.sh` | **Deployment** with a rolling update                                         |
+| Nginx finding containers through Docker's DNS      | **Service**, a stable address that spreads traffic over pods                 |
+| Nginx routing by hostname                          | **Ingress** (Traefik, ingress-nginx)                                         |
+| `/health/live`, `/health/ready`                    | **Liveness and readiness probes**, the same idea (ours are named after them) |
+| Files in `secrets/`                                | **Secrets / ConfigMaps**                                                     |
+| MongoDB with a named volume                        | **StatefulSet** with a **PersistentVolume**                                  |
+| `deploy.sh` over SSH                               | `kubectl apply` or a GitOps tool                                             |
+
+## Can we run Kubernetes free on our one droplet?
+
+**Yes.** Lightweight distributions such as **k3s** (also MicroK8s, k0s) run a full, real Kubernetes on a single server. There is no licence fee and no DigitalOcean charge. k3s even ships its own load balancer and ingress. You could run 2 or 3 pods of the API on that one droplet, and a Service would spread traffic between them.
+
+It is not free in **memory**. k3s's own documentation sets a 2 GB floor for a server node, and measured about 1.6 GB on a single node running a simple workload. Our whole shop uses about 1 GB (measured with `pnpm production:proof`). So on our 8 GB droplet, the cluster's own machinery would take more memory than the shop.
+
+## What we would actually gain on one droplet
+
+- **Several copies of the API and storefront.** If one process crashes or hangs, another keeps serving. That is real, but Compose can do the same with two copies behind Nginx, at no extra memory cost for a control plane. **Built on 2026-11-08 at the owner's request.**
+- **Built-in rolling updates.** Our side-by-side deploy gives the same result.
+- **A standard, declarative setup.** Manifests are a widely known format: good for learning and for a future team.
+- **A cluster ready to grow.** Adding a second server later would mean joining it to the cluster, not redesigning.
+
+## What we would not gain
+
+- **Surviving a dead server.** This is the big one, and the main reason companies use Kubernetes. With one droplet, if the machine dies, every pod dies with it. Load balancing between pods on the same machine does not add capacity either: they share the same CPU and memory. It only protects against one process failing.
+- **More speed or capacity.** Same hardware.
+
+## What it would cost us in effort
+
+- **Rework.** The proven Compose files, deploy scripts and the `pnpm production:proof` checks would be rewritten as manifests. Cloudflare Tunnel, Authenticated Origin Pulls and secrets would all move into Kubernetes resources.
+- **Running it.** k3s itself needs upgrades, and running MongoDB as a StatefulSet takes care. Debugging also has more layers.
+- **Project rules.** It pulls against the `AGENTS.md` rule to keep boutique-shop complexity, while adding no availability.
+
+## Kubernetes across several servers
+
+Surviving a dead server needs at least two nodes, a load balancer in front, and a database that survives a node: a three-member MongoDB replica set. At DigitalOcean prices checked on 2026-11-08:
+
+| Item                                      | Monthly                                                     |
+| ----------------------------------------- | ----------------------------------------------------------- |
+| Two Basic droplets, 4 vCPU / 8 GiB        | $96                                                         |
+| Regional load balancer                    | $12 per node                                                |
+| Highly available Kubernetes control plane | $40                                                         |
+| Third database member and storage         | extra                                                       |
+| **Total**                                 | **roughly $150 to $250**, against about $53 for one droplet |
+
+The managed control plane without high availability is free; high availability adds the $40.
+
+## My honest view (recommendation given to the owner)
+
+- **For the shop now:** stay on Compose. It is built, proven, and gives deploys with no visible gap. Single-server Kubernetes would cost about 1.6 GB of memory and a rewrite, without protecting against the one thing it is best at.
+- **For learning:** k3s is a good fit, locally (`kind` is already installed on the owner's Mac) or as a set of Kubernetes manifests for this shop kept beside the Compose files as a lab. Staging should not run k3s while production runs Compose: staging is only useful if it matches production.
+- **When it becomes right:** once sales justify a second server. Then the real enterprise pattern applies: 2 to 3 nodes, k3s across them or DigitalOcean Kubernetes, and a three-member MongoDB. Because the images, health checks and outside configuration already follow Kubernetes conventions, that move rebuilds the deploy layer only, not the shop.
+
+## Sources
+
+- [k3s requirements](https://docs.k3s.io/installation/requirements)
+- [k3s resource profiling](https://docs.k3s.io/reference/resource-profiling)
+- [k3s quick start](https://docs.k3s.io/quick-start)
+- [DigitalOcean Kubernetes pricing](https://docs.digitalocean.com/products/kubernetes/details/pricing/)
+- [DigitalOcean Load Balancer pricing](https://docs.digitalocean.com/products/networking/load-balancers/details/pricing/)

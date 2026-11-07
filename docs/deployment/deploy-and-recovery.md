@@ -83,7 +83,7 @@ sequenceDiagram
     end
 ```
 
-The API, storefront and admin swap this way, one after another. The worker restarts, because no visitor talks to it and its jobs wait in Redis. Nginx reloads its config in place and restarts only when a hostname or port changes.
+The API, storefront and admin swap this way, one after another. The API and storefront run two copies each, so two new copies start beside the two old ones. The worker restarts, because no visitor talks to it and its jobs wait in Redis. Nginx reloads its config in place and restarts only when a hostname or port changes.
 
 Every app container is replaced on every deploy, even with the same image, because Compose does not notice a changed secret file. A rotated secret must reach the running apps.
 
@@ -102,7 +102,8 @@ An API started with unsafe settings exits with code 1 and a list of the problems
 The only manual step. It prints a credential, so it runs over SSH and never in a workflow:
 
 ```bash
-docker compose --project-name saha-textile exec api node dist/create-first-admin.js --email <address>
+docker exec -it "$(docker compose --project-name saha-textile ps --quiet api | head -n 1)" \
+	node dist/create-first-admin.js --email <address>
 ```
 
 ## Rollback

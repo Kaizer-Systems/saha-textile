@@ -1,10 +1,10 @@
 ---
 title: OpenAPI and Scalar Reference
 wide: true
-description: OpenAPI source-of-truth rules, current Scalar scaffold, completeness gates, Test Request security, and build topology.
+description: How the OpenAPI document is produced, how to use Test Request, and its limitations.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/api/src/openapi.ts
     - apps/api/src/generate-openapi.ts
@@ -21,169 +21,96 @@ source_of_truth:
 
 # OpenAPI and Scalar reference
 
-The API-reference standard is ratified:
+OpenAPI is the machine-readable description of the API. Scalar renders that document as a readable reference with a Test Request client.
 
-- OpenAPI is the machine-readable API source of truth.
-- Scalar is the single human reference and approved interactive client.
-- Do not maintain parallel long-term API-reference or separate console surfaces.
+## How the document is produced
 
-## Current state
-
-NestJS creates one OpenAPI document through `apps/api/src/openapi.ts`. The API exposes it at `/openapi.json`, and the portal build now generates the same document without a MongoDB connection, publishes it at `/api/openapi.json`, and renders it through Scalar at `/api/reference/`.
-
-The surface is deliberately labelled **scaffolded**. The document contains the current controller routes; the evidence base includes split storefront/admin cookie-auth families, email verification, admin recovery/invites/resume, privacy routes, the admin role/permission/user-authority family, health probes, and the backwards-compatible `/health` alias. The public `GET /catalog/products` operation has `page`, `pageSize`, `categoryId`, `tag`, and `search` query parameters—**not `status`**. Scalar makes the current evidence navigable; it does not repair or conceal its omissions.
-
-Scalar’s **Test Request** control is enabled. Authentication is not persisted by Scalar, no external request proxy is configured, and the generated document declares `https://localhost:4000` so Test Request can present `__Host-` session cookies against the same origin the local apps use. CORS, CSRF, audience, ownership, and rate-limit controls still apply; Test Request does not bypass them.
-
-Session establishment and refresh write a session-bound CSRF cookie alongside the access and refresh cookies. All three are httpOnly and stay on the API host, so a browser app cannot read them. For an unsafe request carrying that session:
-
-1. call `GET /auth/csrf` (or `GET /auth/admin/csrf`) after signup finalisation, login, OTP verification, or refresh, and keep the returned `csrfToken`;
-2. copy that value into the `x-csrf-token` request header; and
-3. send the unsafe request with the access/refresh and CSRF cookies.
-
-Missing, mismatched, or cross-session values fail with `403` and `reason: csrf_rejected`. Fetch the token again and retry once; a `403` without that reason is a permissions refusal and must not be retried. The CSRF token does not create a session, grant a role, prove object ownership, or increase the caller’s rate-limit allowance.
-
-`GET /auth/csrf` works both before and during a session. For an active session, Policy B preserves a still-valid bound token; if the cookie is missing or desynchronized, the session service atomically rotates `csrfSecretHash` before issuing the replacement. Anonymous callers receive an unbound pre-session token. The route grants no identity or authorization by itself.
-
-## Current authentication and authorization boundary
-
-The authentication and authorization implementation is **partial**, not absent and not complete. Cookie sessions use tested Mongo repositories backed by separated customer and operator populations; access and opaque rotating refresh tokens live only in httpOnly cookies, refresh reuse revokes the family, CSRF is checked against the current session, and storefront/admin audiences are isolated. Storefront verified-before-creation signup, pending-signup resume/discard, password and OTP login by email or phone, Google and Facebook token verification, identity linking, password management, sessions, profile/address/contact self-service, guest-cart adoption, and `me` are implemented. Customer, credential, and provider-identity creation commit as one transaction; contact-change proof consumption, identifier replacement, and audit recording also commit together. Admin recovery, password/PIN login, PIN setup, invites, HTTP resume, Account Security, the 15-minute idle soft-lock, the closed **92-code** permission registry, assignment resolution, deny-by-default administration, operator bootstrap, CRM, consent/privacy, and ownership checks are also implemented.
-
-The remaining boundary is explicit:
-
-- Cookie session issue/refresh/revoke is implemented, with reuse-triggered family revocation, session-bound CSRF, and storefront/admin audience guards.
-- Storefront signup creates no customer until both email and phone are verified. The pending flow can be resumed after reload and explicitly discarded after in-app abandonment. Google and Facebook verifier adapters, provider-neutral identity links, step-up connect/disconnect, login-method discovery, session management, and authenticated password setup are implemented. Real provider use still depends on credentials, approved origins, provider-console configuration, and a complete browser/account round trip.
-- Admin password recovery, PIN login/setup/lockout, invites, HTTP resume, Account Security client, idle soft-lock orchestration, audience guards, active assignment-based permission resolution, role/permission/user-authority APIs, no-delegation, last-admin protection, offboarding, permission-version invalidation, and operator-only first-admin bootstrap are implemented; real-browser PIN-login proof coverage remains open.
-- Consent/privacy seams, order BOLA, cart Principal/`st_guest` ownership, order-create cart adoption, and signup/social-login guest-cart adoption are implemented; pending-intent continuation and checkout idempotency remain open work. Soft-delete revive/ops rules remain gated by `DEC-CUSTOMER-SOFT-DELETE-OPS`.
-
-Scalar must distinguish these active controls from the residual gaps. A route appearing in OpenAPI is not proof that its request/response/security semantics are fully documented.
-
-## Generated evidence snapshot
-
-| Measurement                              | Generated result                                         | Meaning                                                                                                                                                                                                                               |
-| ---------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Paths / operations                       | **122 paths / 144 operations**                           | Current controller routes, including the media, banner, YouTube and review routes, the customer recycle bin and restore, pending-signup resume/discard, storefront identity/account self-service and admin operations, are published. |
-| Declared servers                         | One: `https://localhost:4000`                            | Matches local `__Host-` cookie topology. Test Request has no production target or proxy.                                                                                                                                              |
-| Operation tags                           | 144 / 144 operations; 11 declared tags                   | Operations are grouped under the governed tag vocabulary.                                                                                                                                                                             |
-| Explicit operation security              | 0 / 144 operations                                       | The document declares `sessionCookie`, but no operation attaches security or its audience/permission rules.                                                                                                                           |
-| Request bodies / component schemas       | 0 / 0                                                    | Controller-local zod bodies are not represented as reusable OpenAPI request contracts.                                                                                                                                                |
-| Responses with content schemas           | 0 / 144 operations                                       | Runtime response values—including `ApiErrorResponse`—are not yet represented as generated response schemas.                                                                                                                           |
-| Explicit non-success operation responses | 1 / 144 operations (`GET /health/ready` documents `503`) | Operation-specific error documentation is still almost entirely absent.                                                                                                                                                               |
-
-Two generation runs produced byte-identical output without opening a MongoDB connection. That proves the current source generator is deterministic in this environment; it is not yet the required CI generation and drift gate.
-
-:::warning OpenAPI security gap
-
-The document declares the cookie-based `sessionCookie` scheme, but no operation attaches a security requirement. It therefore cannot teach Scalar which routes require a storefront/admin cookie audience, roles, ownership, or CSRF.
-
-:::
-
-## Promotion-gate status
-
-The stable portal publication path and source-only generation without production secrets are real. The runtime platform also now returns one safe `ApiErrorResponse` envelope for every failure and correlates it with the `x-request-id` response header. However, that runtime error behavior is not encoded into operation response components or examples in the generated document.
-
-Scalar therefore remains **scaffolded**. Promotion is still blocked by:
-
-- complete request and response schemas;
-- cookie-session, CSRF, storefront/admin audience, role and ownership semantics in the document;
-- documentation of the implemented assignment, permission, no-delegation, last-admin, offboarding, bootstrap, Account Security, storefront identity/account, and idle-lock/resume semantics, plus real-browser provider and PIN-login proof coverage;
-- documentation of cart guest/user ownership, order-create adoption, guest-cart adoption during authentication, and pending-intent continuation;
-- route-specific rate-limit semantics in the document;
-- operation-specific error and idempotency examples;
-- transactional, audit, outbox, notification, and provider side-effect documentation;
-- CI generation plus required-path/tag/security and breaking-drift tests; and
-- an approved non-production interaction target and policy.
-
-## Target portal routes
-
-```text
-/api/reference/     Scalar reference + approved interactive requests
-/api/openapi.json   Machine-readable OpenAPI contract
-```
-
-The API may continue generating its internal `/openapi.json`; the portal build publishes or securely proxies the verified artifact at the stable portal route.
-
-## Operation completeness
-
-Every operation must document:
-
-- purpose and owning audience;
-- authentication and token/cookie audience;
-- CSRF requirements;
-- roles, permissions, ownership, or provider-signature policy;
-- path/query/header/body schemas;
-- response schemas by status;
-- validation and business error codes;
-- rate-limit behavior;
-- idempotency/version requirements;
-- pagination/filter/sort semantics;
-- collections or external systems affected;
-- audit/outbox/notification/provider side effects;
-- examples that contain no secrets or real PII.
-
-## Source pipeline
+NestJS builds one OpenAPI document in `apps/api/src/openapi.ts`. The API serves it at `/openapi.json`. The portal build generates the same document without a database connection, using `pnpm --filter @saha-textile/api generate:openapi`, and publishes it.
 
 ```mermaid
 flowchart LR
-    Contracts["Shared zod request/response contracts"] --> Controllers["Nest operation metadata"]
-    Controllers --> Generator["Nest OpenAPI generation"]
-    Generator --> Test["Schema and route smoke tests"]
-    Test --> Artifact["Versioned OpenAPI artifact"]
-    Artifact --> Scalar["Protected Scalar reference"]
-    Artifact --> Clients["Typed clients / contract checks later"]
+    Controllers["Controllers and operation metadata"] --> Generator["Nest OpenAPI generation"]
+    Generator --> Check["check:openapi tag check"]
+    Generator --> Document["Published OpenAPI document"]
+    Document --> Scalar["Scalar reference"]
 ```
 
-Do not manually maintain a second OpenAPI file that can drift from controllers/contracts.
+| Route               | Content                        |
+| ------------------- | ------------------------------ |
+| `/api/reference/`   | Scalar reference               |
+| `/api/openapi.json` | The published OpenAPI document |
 
-## Contract-completeness promotion gate
+Do not maintain a second OpenAPI file by hand.
 
-The scaffold must not be promoted to an implemented/complete contract until all of these are true:
+## Tags
 
-1. the API emits OpenAPI during CI without requiring production secrets;
-2. core route families have explicit request/response schemas;
-3. auth, CSRF, audience, permission, error and idempotency semantics are represented;
-4. smoke tests assert required paths/tags/security schemes;
-5. the artifact has a stable portal publication path;
-6. approved development/staging server URLs and CORS/CSRF behavior are defined;
-7. production interaction is disabled or protected with the complete private portal;
-8. no secrets/default credentials are embedded in examples or configuration.
+Each operation carries one tag from the fixed list in `apps/api/src/openapi-tags.ts`: `health`, `catalog`, `currency`, `promotions`, `cart`, `orders`, `auth`, `storefront-account`, `privacy`, `media` and `reviews`. `pnpm --filter @saha-textile/api check:openapi` rejects any other tag.
 
-## Interactive-request security
+## Using Test Request
 
-The API client must obey the same controls as a real frontend:
+The document declares one server, `https://localhost:4000`. It must be HTTPS on `localhost` because session cookies use the `__Host-` prefix, which requires `Secure` and is bound to one host.
 
-- approved development/staging origins only;
-- normal cookie behavior for the current browser client class;
-- CSRF on unsafe cookie requests;
-- server-side authorization and rate limits;
-- no production secret storage;
-- no auth bypass, privileged default token, or “try it” production mutation surface;
-- sanitised saved examples and history.
+All normal controls apply to Test Request: CORS, authentication, CSRF, audience, ownership and rate limits. It has no privileged token and no proxy.
 
-Private portal authentication does not replace API authorization.
+To send a state-changing request from a session:
 
-## Environment selector policy
+1. Sign in, or complete signup, OTP verification or refresh.
+2. Call `GET /auth/csrf`, or `GET /auth/admin/csrf` for an admin session, and copy `csrfToken` from the reply.
+3. Send the token in the `x-csrf-token` header, with the session cookies.
 
-The current scaffold shows its local-development server from the document itself. Before adding another environment, show an explicit badge/selector with an approved safe base URL. Prefer read-only or development fixtures by default. Dangerous operations require the same application permissions and should be visibly identified; the portal must not invent a separate superuser channel.
+A missing or mismatched token returns `403` with `reason: csrf_rejected`. Fetch the token again and retry once. A `403` without that reason is a permissions refusal; do not retry it.
 
-## Contract drift gates
+`GET /auth/csrf` works with or without a session. For a live session it keeps a valid token, and it replaces the token only if the cookie is missing or does not match. Anonymous callers get a token that is not bound to a session. The token does not create a session or grant any access.
 
-- Generate the document in CI.
-- Fail if required route/tag/security schemes disappear unexpectedly.
-- Diff breaking changes deliberately.
-- Run example/schema validation.
-- Link operation changes to frontend/backend work.
-- Update human guidance for business semantics the schema cannot express alone.
+## Interactive-request rules
 
-## Current limitations to fix before contract promotion
+The API client follows the same rules as a real frontend:
 
-- controller-local zod body schemas do not automatically become complete OpenAPI component schemas;
-- many response types are inferred from implementation rather than declared DTOs;
-- query/path validation is incomplete;
-- the shared runtime error envelope exists, but operation-specific errors, ownership, permissions, CSRF, rate limits, idempotency and side effects are still sparsely represented in OpenAPI;
-- public versus admin tag/route segregation is incomplete;
-- the cookie component exists, but no operation declares its cookie-session, audience, permission, ownership, or CSRF requirements.
+- It targets approved development or staging servers only.
+- It stores no production secrets.
+- It has no authentication bypass and no privileged default token.
+- Saved examples contain no secrets or real personal data.
 
-## Umbrella placement
+Portal access does not replace API authorization.
 
-Scalar is one generated surface under Docusaurus. The portal provides onboarding, architecture, workflows, failure recovery, database mappings, and operational context around it. Scalar owns operation-level API reading/execution; it does not replace those narrative responsibilities.
+## Operation documentation standard
+
+Each operation should document:
+
+- Purpose and audience.
+- Authentication and CSRF requirements.
+- Roles, permissions, ownership or provider-signature rules.
+- Path, query, header and body schemas.
+- Response schemas by status.
+- Validation and business error codes.
+- Rate-limit behaviour.
+- Idempotency and version requirements.
+- Pagination, filter and sort behaviour.
+- Collections or external systems affected.
+- Audit, outbox, notification and provider side effects.
+- Examples without secrets or real personal data.
+
+## Limitations
+
+The generated document lists every controller route with its summary and tag, but it is incomplete in these ways:
+
+- Operations do not declare the `sessionCookie` security scheme, so Scalar cannot show which routes need a session, audience, permission or CSRF token.
+- Request bodies and response schemas are not generated from the zod contracts.
+- `ApiErrorResponse` is not published as a response schema.
+- Error codes, rate limits, idempotency and side effects are not described per operation.
+- The document is not generated or checked in CI.
+
+Scalar therefore carries the **Scaffolded** status. It can move to **Implemented** when:
+
+1. CI generates the document without production secrets.
+2. Core route families have explicit request and response schemas.
+3. Authentication, CSRF, audience, permission, error and idempotency rules are represented.
+4. Tests assert required paths, tags and security schemes.
+5. Approved development and staging server URLs are defined.
+6. Production interaction is disabled or protected.
+
+## Related pages
+
+- [Route inventory](./route-inventory)
+- [Scalar](/tools/scalar)
+- [Security and identity](../backend/security-and-identity)

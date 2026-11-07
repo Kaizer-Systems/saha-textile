@@ -1,9 +1,9 @@
 ---
 title: PayPal
-description: Non-INR gateway. Section 1 (company-provided documentation) and section 2 (endpoints we use) are both empty until the PayPal documentation pass.
+description: The non-INR gateway role.
 status: deferred
 audience: [backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 search_keywords: PayPal non-INR international gross-up
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -16,16 +16,16 @@ source_of_truth:
 
 # PayPal
 
-Non-INR checkout uses the PayPal role. The owner log states that PayPal foreign pricing uses a versioned, admin-editable percentage and fixed-fee gross-up, and that gateway secrets stay server-side.
+PayPal is the gateway role for non-INR checkout. Foreign pricing uses a versioned, admin-editable percentage and fixed-fee gross-up. Gateway secrets stay on the server.
 
-Like every gateway landing page, this page has two sections. **Section 1** holds the vendor's own documentation; **section 2** holds the calls this project makes, in the format used on [CCAvenue § 2](/payments/ccavenue#2-endpoints-we-use).
+This page follows the same two-section format as [CCAvenue](/payments/ccavenue#2-endpoints-we-use).
 
 ## 1. Company-provided documentation
 
-Not written yet. No PayPal business account documentation or kit has been transcribed. That pass is logged under **Payments / shipping / FX** in [Project progress](/engineering-live-context/project-progress).
+No PayPal documentation is included.
 
 ## 2. Endpoints we use
 
-**Status: none wired.** The shared contract enum `PaymentGateway` includes `paypal`, and [Environment variables](/engineering-live-context/environment-variables) catalogues `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET` and `PAYPAL_ENV` (sandbox for staging, live for production). No code reads them, and `PaymentGatewayPort` has no PayPal adapter behind it. When the adapter is built in Chunk G, its calls are listed here the same way [CCAvenue § 2](/payments/ccavenue#2-endpoints-we-use) lists CCAvenue's.
+None. The shared contract enum `PaymentGateway` includes `paypal`, and the [environment catalogue](/engineering-live-context/environment-variables) lists `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET` and `PAYPAL_ENV`. No code reads these values, and no adapter implements `PaymentGatewayPort` for PayPal.
 
 Return to [Payments](/payments).

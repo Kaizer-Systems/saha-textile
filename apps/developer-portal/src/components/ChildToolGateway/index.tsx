@@ -75,7 +75,7 @@ function gatewayPersona(symbol: ChildToolSymbol): GatewayPersona {
 				phases: [
 					'Opening the observatory',
 					'Acquiring model signals',
-					'Resolving schema evidence',
+					'Resolving schema data',
 					'Projecting the source catalogue',
 				],
 			};

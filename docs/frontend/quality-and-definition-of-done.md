@@ -1,10 +1,10 @@
 ---
 title: Frontend Quality and Definition of Done
 wide: true
-description: Verification contract for storefront and admin changes, including the current test-coverage boundary.
+description: Testing approach and completion checks for storefront and admin changes.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/storefront/vite.config.ts
     - apps/admin/package.json
@@ -15,11 +15,9 @@ source_of_truth:
 
 # Frontend quality and definition of done
 
-The frontend application-unit foundation is focused but no longer empty. Storefront has **57** tests for its auth gateway, interceptor and session store; admin has **61** across the same transport/state boundary plus route protection. These do not yet constitute broad feature or component coverage.
+This page defines the testing approach and completion checks for storefront and admin work.
 
-Storybook is a separate component-rendering boundary: its automated inventory accounts for 141/141 reusable components across 294 Angular components, including the real social-sign-in component specimen. That does not cover the admin `App` shell, provider-account journeys, or replace feature/integration/Playwright tests.
-
-This page defines the verification standard for new work while preserving an accurate baseline.
+Both applications have unit tests beside their source. The Playwright suite in `e2e/` covers shopper journeys on desktop and phone. Storybook renders reusable components in isolation. It does not replace feature, integration or browser tests.
 
 ## Risk-based test pyramid
 
@@ -47,12 +45,12 @@ Use Playwright for a small number of business-critical paths rather than duplica
 - cart → checkout handoff;
 - login/account boundaries;
 - social signup continuation across provider result → registration → reload/abandonment;
-- admin list → create/edit operation once real writes exist; and
+- admin list → create or edit, for features with real writes; and
 - authorization denial for privileged operations.
 
 ## Definition of done
 
-A frontend change is not done because it renders once on a developer machine.
+A change is done when it passes these checks, not when it renders once.
 
 ### Architecture
 
@@ -61,29 +59,29 @@ A frontend change is not done because it renders once on a developer machine.
 - [ ] Frontend code imports no server adapter.
 - [ ] API shapes use shared zod contracts when the endpoint is real.
 
-### Behavior
+### Behaviour
 
-- [ ] Loading, empty, error, success, and retry behavior are intentional.
+- [ ] Loading, empty, error, success, and retry behaviour are intentional.
 - [ ] Duplicate submissions and destructive actions are controlled.
 - [ ] Repeated templates use a stable domain id, or a positional key only when the source has no unique identity.
-- [ ] Fixture-backed and unwired seams remain clearly labelled until replaced.
+- [ ] JSON-backed and unconnected behaviour is clearly labelled.
 - [ ] Price, stock, identity, and authorization assumptions are server-revalidated.
 
 ### Rendering and interaction
 
 - [ ] Storefront direct SSR navigation and hydration were checked.
 - [ ] Admin deep-link refresh reaches the correct shell.
-- [ ] Keyboard, focus, touch target, screen-reader label, and reduced-motion behavior were checked.
+- [ ] Keyboard, focus, touch target, screen-reader label, and reduced-motion behaviour were checked.
 - [ ] Dense tables/forms remain usable at supported widths.
 
 ### Verification
 
 - [ ] TypeScript, formatting, lint, and relevant tests pass.
 - [ ] High-risk logic has focused automated coverage.
-- [ ] Provider popups, user-gesture constraints, navigation/reload semantics, and multi-page social flows have real-browser evidence; unit doubles are not presented as proof of those behaviors.
+- [ ] Provider popups, user-gesture limits, reload behaviour and multi-page social flows are tested in a real browser.
 - [ ] No browser secrets or sensitive logs were introduced.
-- [ ] The portal status, evidence paths, and verification date were updated.
+- [ ] The portal status, sources and verification date are updated.
 
-## Status advancement rule
+## Changing a status
 
-Visual completeness does not advance a capability from scaffolded to implemented. Advance only after the real data/write/security boundary and its tests satisfy the documented definition of done.
+A finished-looking screen does not make a capability **Implemented**. Change the status once real data, writes, security and tests meet the definition of done.

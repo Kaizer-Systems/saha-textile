@@ -1,11 +1,11 @@
 ---
 title: Schema Nebula
-description: Interactive governed map of all 69 explicit target MongoDB collections, their current evidence, bounded contexts, ownership, decisions and relationships.
+description: Interactive map of existing and planned MongoDB collections and their relationships.
 slug: /database/schema-nebula
 wide: true
 status: implemented
 audience: [beginner, backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 search_keywords: 'schema nebula collections database mongodb star map models ghosts graph relationships bounded context DEC'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -22,6 +22,7 @@ source_of_truth:
     - packages/adapters-db-mongo/test/rbac-persistence.test.ts
     - packages/contracts/src/notification.ts
     - packages/contracts/src/stock-alert.ts
+    - packages/contracts/src/stock-alert.ts
     - docs/_data/portal-manifest.json
     - docs/_data/instruments/schema-nebula.json
     - apps/developer-portal/plugins/portal-data/compiler.js
@@ -35,47 +36,34 @@ import { SchemaNebula } from '@site/src/components/SchemaNebula';
 
 <SchemaNebula />
 
-## How to read the constellation
+## How to read the map
 
-Schema Nebula is a **governed architecture map**, not a live database browser and not a claim that all 69 collections exist.
+Schema Nebula is an interactive map of the MongoDB collections in the platform design. Each star is one physical collection. The map is not a live database browser, and it does not show data.
 
-| Signal             | Meaning                                                                                          |
-| ------------------ | ------------------------------------------------------------------------------------------------ |
-| Solid star         | A corresponding Mongo adapter model exists in the current repository.                            |
-| Dashed ghost       | The collection is part of the ratified target architecture but has no adapter model yet.         |
-| Gravity well       | A visual bounded-context cluster. It never collapses several physical collections into one node. |
-| Cyan relationship  | The selected collection references that collection.                                              |
-| Amber relationship | Another collection references the selected collection.                                           |
-| Decision badge     | A stable `DEC-*` decision still affects the collection’s final policy or shape.                  |
+| Signal             | Meaning                                                |
+| ------------------ | ------------------------------------------------------ |
+| Solid star         | A Mongo model exists for this collection.              |
+| Dashed star        | The collection is planned and has no model.            |
+| Cluster            | A visual grouping by business context.                 |
+| Cyan relationship  | The selected collection references that collection.    |
+| Amber relationship | Another collection references the selected collection. |
+| Decision badge     | An open decision affects the collection's final shape. |
 
-Forty-one solid stars represent graph collections backed by exact physical-name model and test evidence. The remaining 28 stars stay target-only ghosts until equivalent adapter evidence exists.
-
-The current adapter contains 44 exported Mongoose models. Every model declares an exact physical collection name, and adapter tests assert those names. Forty-one models resolve to graph nodes. `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime machinery deliberately outside the graph. Schema Nebula stands at **69 / 41 / 28**: `seoRoutes` now has a model beside the 2026-11-02 media additions.
+`authRateLimits`, `pendingSignups` and `pendingContactChanges` are short-lived runtime collections and do not appear on the map.
 
 ## Controls
 
-- Search by collection name, purpose, context, roadmap chunk or decision identifier.
-- Use **All**, **Solid** and **Ghost** to compare current implementation with the target.
-- Select a bounded-context lens to isolate one gravity well without moving the graph.
-- Use the zoom controls—or `+`, `-` and `0` while focused on the map—to inspect dense clusters.
-- Tab to stars and use the arrow keys, Home/End and Enter/Space without a mouse.
-- Select a relationship chip in the evidence panel to travel directly to that collection.
+- Search by collection name, purpose, context or decision identifier.
+- Use **All**, **Solid** and **Ghost** to compare existing and planned collections.
+- Select a context to isolate one cluster.
+- Use the zoom controls, or `+`, `-` and `0` while the map has focus.
+- Tab to stars, and use the arrow keys, Home, End, Enter and Space without a mouse.
+- Select a relationship chip to move to that collection.
 
-## Truth and freshness contract
+## How the data is maintained
 
-The authored inventory lives in `docs/_data/instruments/schema-nebula.json`. The shared build-time compiler refuses to publish it unless all of the following agree:
+The collection list is in `docs/_data/instruments/schema-nebula.json`. The portal build compares it with the model files in `packages/adapters-db-mongo/src/models`, the collection references, the open decision register and the page metadata. Adding or removing a model without updating the file fails the build.
 
-1. the ratified route and **69 / 41 / 28** inventory;
-2. the current files under `packages/adapters-db-mongo/src/models`, including grouped files that implement several distinct physical collections, with three runtime-only collections excluded from star promotion;
-3. the catalog, auth, notification and roadmap sources;
-4. all collection-to-collection references;
-5. every remaining `DEC-*` blocker in the 28-item open decision register;
-6. the portal manifest, page provenance and verification date.
+## Related pages
 
-Adding or removing a model therefore makes a stale constellation fail the portal build. The implementation change and its dataset state must be updated and reviewed together.
-
-## What remains separate
-
-Schema Nebula answers **which ratified physical collections are current or targeted and how they relate**. The separate source-only database catalogue generates fields, indexes, defaults, enums, select policy, and sanitized examples for all 44 current Mongoose models, including the three current runtime-only collections. That broader catalogue evidence does not change the constellation’s 69-node boundary; stable DTO, migration, and retention coverage remains incomplete. Do not treat a target star as implemented schema documentation or deployment proof.
-
-Continue with the [current Mongo adapter map](./current-adapter-map) for implemented model/repository evidence, [transactions and generation](./transactions-and-generation) for the future catalogue contract, and [Mission Control](/mission-control) for roadmap ownership.
+Schema Nebula shows which collections exist and how they relate. For fields and indexes, use the [database catalogue](/tools/database-catalogue). For repositories and commands, use the [Mongo adapter map](./current-adapter-map).

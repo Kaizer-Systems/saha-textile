@@ -4,7 +4,7 @@
  * WHAT: the third-act completion surface for a governed persona flight.
  * WHY: a contributor needs a concise handoff from guided reading back to
  * independent work without the portal pretending that reading proves mastery.
- * HOW: checkpoint count, lifecycle mix, evidence cautions, and mission outcome
+ * HOW: checkpoint count, lifecycle mix, cautions, and mission outcome
  * are derived exclusively from the compiled persona dataset. Persistence copy
  * reflects the validated device-local record supplied by the progress adapter.
  * TUNING: layout and responsive treatment live in hud.module.css.
@@ -138,11 +138,11 @@ export function MissionDebrief({
 					</div>
 					<div>
 						<strong>{lifecycleMix.length}</strong>
-						<span>lifecycle states</span>
+						<span>page statuses</span>
 					</div>
 					<div>
 						<strong>{cautionCount}</strong>
-						<span>evidence cautions</span>
+						<span>cautions</span>
 					</div>
 				</div>
 

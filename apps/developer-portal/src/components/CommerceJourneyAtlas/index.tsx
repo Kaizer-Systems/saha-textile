@@ -1,9 +1,9 @@
 /* ============================================================================
  * NEXT-GEN-UI · Business and commerce journey atlas
- * What: interactive current/target/recovery lenses across platform journeys.
- * Why: onboarding requires end-to-end intent without overstating partial runtime.
- * How: filterable evidence cards connect journey steps to precise source paths.
- * Tuning knobs: journey copy, lifecycle filters, evidence lenses, and step labels.
+ * What: interactive views of platform journeys: current code, target design, failure recovery.
+ * Why: a reader needs the whole journey without mistaking design for working code.
+ * How: filterable cards connect journey steps to source paths.
+ * Tuning knobs: journey copy, status filters, view labels and step labels.
  * ========================================================================= */
 
 import React, { useMemo, useRef, useState } from 'react';
@@ -34,10 +34,10 @@ const journeys: Journey[] = [
 		area: 'discovery',
 		status: 'scaffolded',
 		summary: 'Move from category or search intent to one public, purchasable product configuration.',
-		current: 'File routes, collection UI, product detail UI, JSON readers, and a partial catalogue API seam exist.',
-		target: 'Meilisearch-backed discovery returns items, configured facets, counts/ranges, and SEO metadata while MongoDB remains authoritative.',
+		current: 'Category pages, search and product pages read the catalogue API, with facets and SEO data.',
+		target: 'Discovery returns items, configured facets, counts and SEO data, and MongoDB stays the source of truth.',
 		recovery:
-			'Unknown or retired routes resolve through redirects, 410 responses, or a relevant category—not a misleading purchasable page.',
+			'An unknown address answers 404. A retired one answers 410, or a 301 when a live replacement is named.',
 		steps: [
 			'Resolve locale and route',
 			'Query category or search',
@@ -46,8 +46,8 @@ const journeys: Journey[] = [
 			'Verify publish and purchase state',
 		],
 		sources: [
-			'apps/storefront/src/app/pages/en/collections',
-			'apps/storefront/src/app/pages/en/product/[slug].page.ts',
+			'apps/storefront/src/app/pages/collections.page.ts',
+			'apps/storefront/src/app/pages/product/[slug].page.ts',
 			'apps/api/src/catalog',
 			'docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx',
 		],
@@ -60,10 +60,10 @@ const journeys: Journey[] = [
 		summary:
 			'Resolve variation axes, named add-ons, measurements, bundles, media, price deltas, and stock into one cart-line signature.',
 		current:
-			'Product configurator, variation, add-on, measurement, bundle, and cart-line UI structures exist with fixture-shaped data.',
-		target: 'Only variation axes create SKU/stock combinations; named add-ons customize included services; bundles consume component inventory; descriptive values remain filters.',
+			'The product page reads option groups, variants, measurements and bundles from the API, and the configurator builds a cart line.',
+		target: 'Only variation axes create SKU and stock rows. Named add-ons customize included services, bundles consume component stock, and descriptive values stay as filters.',
 		recovery:
-			'Block incomplete or invalid configurations, retain the shopper’s valid choices, and explain exactly which selection needs attention.',
+			'Block an incomplete configuration, keep the shopper’s valid choices, and say which selection needs attention.',
 		steps: [
 			'Load semantic option roles',
 			'Select purchasable variant',
@@ -82,10 +82,10 @@ const journeys: Journey[] = [
 		title: 'Add, persist, and merge a cart',
 		area: 'commerce',
 		status: 'scaffolded',
-		summary: 'Keep guest-friendly cart behavior fast while treating server validation as authoritative.',
+		summary: 'Keep the guest cart fast, with server validation as the authority.',
 		current:
-			'Classic NgRx implements browser cart events, selectors, persistence, configuration replacement, and stock-shaped checks. The API enforces user or st_guest cart ownership, but frontend adoption, server validation, offline synchronization, and guest-to-user merge remain incomplete.',
-		target: 'An opaque guest cookie owns a 30-day sliding server cart. Login merges guest lines transactionally before any pending intent is replayed.',
+			'Classic NgRx holds the browser cart, with persistence. The API has a separate cart with user or st_guest ownership, and merges a guest cart at sign-in. The storefront does not call the cart API.',
+		target: 'An opaque guest cookie owns a 30-day server cart. Sign-in merges guest lines in a transaction before any pending action replays.',
 		recovery:
 			'Unavailable products are line errors, insufficient stock adjusts or blocks quantities, and invalid lines are reported rather than silently discarded.',
 		steps: [
@@ -109,8 +109,8 @@ const journeys: Journey[] = [
 		status: 'scaffolded',
 		summary: 'Authenticate without losing the shopper’s origin, cart, or one account-bound action.',
 		current:
-			'Cookie-session register/password/OTP/email-verification, refresh, logout and reset routes are live. Admin recovery, password/PIN, invite and HTTP-resume flows plus registry-backed role/authority APIs and first-admin bootstrap are live. Both Angular clients use the shared cookie transport; guest-cart merge, OAuth, Security Settings and the admin idle-lock client remain incomplete.',
-		target: 'API-set secure cookies, CSRF validation, rotating refresh sessions, guest-cart merge, and a single server-side pending intent restore the correct continuation.',
+			'Verified signup, password and OTP sign-in, Google and Facebook, refresh, recovery and guest-cart merge work through cookie sessions. Only Notify me replays after sign-in.',
+		target: 'After sign-in, the guest cart merges and one server-side pending action resumes.',
 		recovery:
 			'Expired or invalid intent is not replayed. Show a safe explanation and return the user to the most relevant valid screen.',
 		steps: [
@@ -135,10 +135,10 @@ const journeys: Journey[] = [
 		summary:
 			'Turn an authenticated cart, destination, promotions, tax, currency, and shipping quote into an expiring server-calculated total.',
 		current:
-			'Checkout forms and blocks exist, but totals are a static client object and place-order navigates to a stub detail page.',
-		target: 'The API recalculates INR canonical prices, promotions, tax, FX, gateway gross-up, and shipping; the browser formats returned values only.',
+			'Checkout forms exist, but totals are a static client object and placing an order only navigates to a detail page.',
+		target: 'The API recalculates INR prices, promotions, tax, exchange rates, gateway gross-up and shipping. The browser only formats returned values.',
 		recovery:
-			'Stale quotes, changed prices, invalid coupons, address failures, and unavailable stock return structured corrections before payment begins.',
+			'Stale quotes, changed prices, invalid coupons, address failures and unavailable stock return structured corrections before payment.',
 		steps: [
 			'Require authenticated cart',
 			'Validate address and lines',
@@ -160,10 +160,10 @@ const journeys: Journey[] = [
 		status: 'scaffolded',
 		summary: 'Create a durable order and separate payment attempt without exposing gateway secrets to Angular.',
 		current:
-			'Order contracts and operations exist, and order save plus cart consumption commit transactionally after ownership validation. Idempotency, inventory, payment-attempt persistence, storefront payment execution, and provider adapters are not wired.',
-		target: 'INR selects CCAvenue and non-INR selects PayPal server-side. Atomic writes snapshot order lines, prices, FX, tax, promotions, shipping, and payment attempt.',
+			'POST /orders saves the order and removes the cart in one transaction. Idempotency, stock, payment attempts and provider adapters do not exist.',
+		target: 'The server selects CCAvenue for INR and PayPal for other currencies. One atomic write snapshots order lines, prices, exchange rate, tax, promotions, shipping and the payment attempt.',
 		recovery:
-			'Idempotency prevents duplicate orders. Failed, cancelled, pending, and callback-delayed payments remain distinct and recoverable.',
+			'An idempotency key prevents duplicate orders. Failed, cancelled, pending and delayed payments stay distinct and recoverable.',
 		steps: [
 			'Freeze checkout snapshot',
 			'Select gateway server-side',
@@ -184,11 +184,10 @@ const journeys: Journey[] = [
 		area: 'operations',
 		status: 'planned',
 		summary: 'Keep order, shipment, return, and financial reversal lifecycles separate but traceable.',
-		current:
-			'Customer/admin order, refund, and shipping screens exist; production provider and financial flows are not connected.',
-		target: 'Separate transactional records preserve immutable order snapshots, shipment events, item-level returns, and payment-linked refunds.',
+		current: 'Order, refund and shipping screens read JSON files. No provider or financial flow exists.',
+		target: 'Separate records hold order snapshots, shipment events, item-level returns and payment-linked refunds.',
 		recovery:
-			'Partial fulfilment, failed labels, lost callbacks, rejected returns, partial refunds, and manual intervention retain an auditable state history.',
+			'Partial fulfilment, failed labels, lost callbacks, rejected returns and partial refunds keep an auditable history.',
 		steps: [
 			'Move order to processing',
 			'Create shipment and label',
@@ -210,10 +209,10 @@ const journeys: Journey[] = [
 		status: 'scaffolded',
 		summary: 'Protect privileged operations without destroying complex in-progress operator work.',
 		current:
-			'The API implements admin recovery, password and PIN sessions, PIN lockout, invites, HTTP resume, audience checks, permission-version invalidation, permission-gated role/authority management, escalation controls, offboarding and first-admin bootstrap. Angular resolves cookie session state and protects both work shells, but Security Settings, the soft-lock overlay/orchestration and role-management UI adoption remain absent.',
-		target: 'API authorization, audit events, permission-version checks, a 15-minute soft lock, quick resume, and feature-owned drafts protect operations and progress.',
+			'Password and PIN sessions, invites, recovery, role management, Account Security and the 15-minute idle lock work. Complex forms have no draft recovery.',
+		target: 'Feature-owned drafts add recovery for complex forms, on top of API authorization, audit records and the idle lock.',
 		recovery:
-			'Permission loss fails closed; stale drafts re-enter normal validation; blocked unsafe requests replay only after session, permission, and entity-version checks.',
+			'A lost permission fails closed. A stale draft goes through normal validation. A blocked request replays only after session, permission and version checks.',
 		steps: [
 			'Authorize route and action',
 			'Preserve in-memory workflow',
@@ -233,17 +232,16 @@ const journeys: Journey[] = [
 		title: 'Public order tracking',
 		area: 'operations',
 		status: 'deferred',
-		summary:
-			'A public lookup experience is deliberately postponed until payment and shipment lifecycles are complete.',
+		summary: 'A public order lookup is postponed until payment and shipment lifecycles exist.',
 		current: 'No production public tracking contract or verified lookup model exists.',
-		target: 'Define the minimum safe lookup factors only after real shipment events and privacy constraints are understood.',
+		target: 'Define the lookup after shipment events and privacy needs are known.',
 		recovery: 'Do not invent a weak order-number-only lookup that could expose customer or shipment information.',
 		steps: [
 			'Complete order lifecycle',
 			'Complete shipment events',
 			'Define privacy-safe lookup',
 			'Threat-model enumeration',
-			'Implement only after governance review',
+			'Implement after a privacy review',
 		],
 		sources: ['docs/engineering-live-context/owner-decisions-log.mdx'],
 	},
@@ -267,7 +265,7 @@ const statusLabels: Record<JourneyStatus | 'all', string> = {
 
 const lensLabels: Record<Lens, string> = {
 	current: 'Current code',
-	target: 'Ratified target',
+	target: 'Target design',
 	recovery: 'Failure recovery',
 };
 
@@ -326,10 +324,10 @@ export function CommerceJourneyAtlas(): React.ReactNode {
 					</div>
 				</div>
 				<div>
-					<span className={styles.filterLabel}>Lifecycle status</span>
+					<span className={styles.filterLabel}>Status</span>
 					<div
 						className={styles.areaFilters}
-						aria-label="Filter journeys by lifecycle status"
+						aria-label="Filter journeys by status"
 					>
 						{(['all', ...availableStatuses] as Array<JourneyStatus | 'all'>).map((candidate) => (
 							<button
@@ -424,7 +422,7 @@ export function CommerceJourneyAtlas(): React.ReactNode {
 					</div>
 
 					<details className={styles.evidence}>
-						<summary>Evidence and authority paths</summary>
+						<summary>Sources</summary>
 						<ul>
 							{selectedJourney.sources.map((source) => (
 								<li key={source}>

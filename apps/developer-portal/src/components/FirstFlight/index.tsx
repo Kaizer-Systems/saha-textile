@@ -102,10 +102,9 @@ export function FirstFlight(): React.ReactNode {
 			<header className={styles.header}>
 				<div>
 					<p className={styles.eyebrow}>First Flight · Launch Bay</p>
-					<h2 id="first-flight-title">Choose a mission profile.</h2>
+					<h2 id="first-flight-title">Choose your role.</h2>
 					<p className={styles.lede}>
-						The portal will shape a verified reading flight around your role. Inspect the entire route
-						before opening its first checkpoint.
+						Each role has an ordered tour of the portal. Review the checkpoints before you start.
 					</p>
 				</div>
 				<div
@@ -113,10 +112,10 @@ export function FirstFlight(): React.ReactNode {
 					aria-label="First Flight contract"
 				>
 					<span>
-						<strong>{personas.length}</strong> personas
+						<strong>{personas.length}</strong> roles
 					</span>
 					<span>
-						<strong>{totalStops}</strong> governed stops
+						<strong>{totalStops}</strong> checkpoints
 					</span>
 					<span>
 						<strong>{progressPolicy.telemetry ? 'On' : 'Off'}</strong> telemetry
@@ -127,7 +126,7 @@ export function FirstFlight(): React.ReactNode {
 			<div
 				className={styles.personaGrid}
 				role="group"
-				aria-label="Choose an onboarding persona"
+				aria-label="Choose a role"
 			>
 				{personas.map((persona, index) => {
 					const active = persona.id === selected.id;
@@ -262,7 +261,7 @@ export function FirstFlight(): React.ReactNode {
 										else progress.forget(selected.id);
 									}}
 								/>
-								<span>Remember this persona on this device</span>
+								<span>Remember this role on this device</span>
 							</label>
 						</div>
 						{launchStop ? (

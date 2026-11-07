@@ -1,10 +1,10 @@
 ---
 title: Storefront Orientation
 wide: true
-description: Start here before changing the public Angular and AnalogJS storefront.
+description: What the storefront is, how it is organized, and what to check before changing it.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/storefront/src/app
     - apps/storefront/vite.config.ts
@@ -13,16 +13,14 @@ source_of_truth:
 
 # Storefront orientation
 
-The storefront is the public, search-facing Saha Textile shopping experience. It is an Angular 22 application hosted by AnalogJS, rendered dynamically through Nitro, and organized around file-based routes in `apps/storefront/src/app/pages`.
-
-This area is **scaffolded**, not production-complete. The customer-facing page and feature surface is broad, but its data sources are mixed: catalogue listing has a real API seam, many readers still load JSON fixtures, identity and core account self-service use the API, and checkout, refunds, reviews, pending-intent continuation, and full server-cart reconciliation remain incomplete.
+The storefront is the public Saha Textile shop. It is an Angular 22 application hosted by AnalogJS and rendered on the server by Nitro. Routes are file-based, under `apps/storefront/src/app/pages`.
 
 ## Recommended reading sequence
 
-1. [Application atlas](./application-atlas) — discover what exists and filter it by implementation status.
-2. [Routing and rendering](./routing-and-rendering) — understand how a URL becomes an SSR-rendered Angular page.
-3. [State and data ownership](./state-and-data) — choose between TanStack Query, SignalStore, classic NgRx, and local signals.
-4. [Contributor recipes](./contributor-recipes) — follow safe, beginner-oriented implementation checklists.
+1. [Application atlas](./application-atlas): see what exists and which parts are complete.
+2. [Routing and rendering](./routing-and-rendering): how a URL becomes a rendered page.
+3. [State and data ownership](./state-and-data): choose between TanStack Query, SignalStore, classic NgRx and local signals.
+4. [Contributor recipes](./contributor-recipes): step-by-step checklists.
 
 ## Mental model
 
@@ -33,55 +31,64 @@ flowchart LR
     Page --> Feature["Feature composition"]
     Feature --> Query["TanStack query or NgRx selector"]
     Query --> Service["Typed data-access service"]
-    Service --> Source{"Current source"}
-    Source -->|Partial| API["Saha Textile API"]
-    Source -->|Transitional| JSON["Static JSON fixtures: demo cart, settings, and pages not yet moved"]
+    Service --> Source{"Data source"}
+    Source --> API["Saha Textile API"]
+    Source --> JSON["Static JSON files in public/assets/data"]
 ```
 
-The page layer should stay thin. A route identifies the customer journey and composes a feature. The feature owns presentation and user interaction. Query/store layers own asynchronous or shared state. Services own transport details.
+The page layer stays thin. A route identifies the customer journey and composes a feature. The feature owns presentation and interaction. Query and store layers own asynchronous or shared state. Services own transport.
 
-## Current implementation snapshot
+## Capabilities
 
-| Concern              | Current evidence                                                                                                                                                                      | Status      | Important boundary                                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Routing              | Approximately 40 page entry files, including dynamic slug and catch-all routes                                                                                                        | Implemented | Routes are discovered from filenames, not a central route array.                                                              |
-| Rendering            | Analog SSR enabled; Nitro emits a Node server                                                                                                                                         | Implemented | Static generation is disabled and no routes are prerendered.                                                                  |
-| Catalogue            | Home, category pages, cards, product page and redirects read the API (`/catalog/*`)                                                                                                   | Implemented | 390 demo products are seeded; the storefront no longer reads `product.json`                                                   |
-| Search               | Search box calls `/catalog/search` (Meilisearch)                                                                                                                                      | Implemented | Shows "search unavailable" when the index is down                                                                             |
-| First paint          | Header menu renders on the server; product pages show a skeleton; toasts and shop errors are readable                                                                                 | Implemented | Proven on the production build                                                                                                |
-| Purchase popup       | `/catalog/recent-purchases`                                                                                                                                                           | Implemented | Real sales only; hidden until paid orders exist                                                                               |
-| Product media        | 3:4 cards and the PDP gallery read the pipeline's `ResolvedImage` (`core/media/resolved-image.ts`): card `srcset`, gallery widths, 2000 px zoom; banners use `<picture>` per viewport | Scaffolded  | Real photos reach the demo catalogue only through the local `seed:local-catalog-photos` tool until catalog reads serve media. |
-| Cart                 | Classic NgRx reducer/effects/selectors plus browser persistence                                                                                                                       | Implemented | This is the current client cart, not the future authenticated server cart.                                                    |
-| Server data          | TanStack Angular Query functions exist across the data-access layer                                                                                                                   | Scaffolded  | Many query functions still wrap JSON-backed services.                                                                         |
-| Authentication       | Resumable verified signup, email/phone login, provider controls, recovery, sessions, guarded account routes, atomic profile/address/contact writes                                    | Scaffolded  | Real Google and Facebook round trips proven 2026-10-25; pending-intent continuation remains open.                             |
-| Checkout             | UI, address, totals, delivery, and payment-selection surfaces exist                                                                                                                   | Scaffolded  | Order placement and payment execution are not connected.                                                                      |
-| Internationalization | Transloco loader and switcher are wired                                                                                                                                               | Scaffolded  | `en/fr` configured; locale URL law locked 2026-10-31, routes not yet migrated (only product and category are prefixed).       |
-| PWA/offline          | Product requirement is ratified                                                                                                                                                       | Planned     | The Vite PWA and Workbox integration is not present in current configuration.                                                 |
+| Capability     | How it works                                                                                                                           |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Routing        | About 40 page files, including dynamic slug and catch-all routes                                                                       |
+| Rendering      | Dynamic server rendering through Nitro. Nothing is prerendered                                                                         |
+| Locale URLs    | Every page is served under `/en/` or `/fr/`. The router base carries the locale                                                        |
+| Catalogue      | Home, category pages, cards, product pages and redirects read `/catalog/*`                                                             |
+| Search         | The search box calls `/catalog/search` and reports when search is unavailable                                                          |
+| First paint    | The header menu renders on the server; product pages show a skeleton while loading                                                     |
+| Purchase popup | `/catalog/recent-purchases` shows real sales from the last day, and stays hidden without any                                           |
+| Product media  | Cards and the gallery use `ResolvedImage` with `srcset`, and banners use `<picture>`                                                   |
+| Cart           | Classic NgRx state with browser persistence                                                                                            |
+| Authentication | Verified signup, email or phone sign-in, social sign-in, recovery and guarded account routes                                           |
+| Account        | Profile, addresses, sign-in methods, sessions and contact changes use the API                                                          |
+| Stock alerts   | **Notify me** on a sold-out variant, with replay after sign-in                                                                         |
+| Newsletter     | The popup opens on half-page scroll, after 30 seconds or on desktop exit intent, and never on cart, checkout, account or sign-in pages |
+| SEO            | Canonical and `hreflang` tags, `/sitemap.xml`, `/robots.txt`, redirects and `410` answers                                              |
 
 ## Directory ownership
 
-| Directory               | Owns                                                  | Should not own                         |
-| ----------------------- | ----------------------------------------------------- | -------------------------------------- |
-| `pages/`                | URL entry points, route metadata, feature composition | Business logic or transport code       |
-| `features/`             | Customer journeys and feature-level presentation      | Raw HTTP construction                  |
-| `data-access/queries/`  | Server-state keys, caching, selection, invalidation   | Reusable visual components             |
-| `data-access/services/` | HTTP calls and response typing                        | Cross-page UI state                    |
-| `core/state/`           | Application-wide client state and effects             | Remote-cache duplication without cause |
-| `layout/`               | Header, footer, page shells                           | Catalogue or checkout rules            |
-| `shared/ui/`            | Reusable presentational building blocks               | Feature-specific orchestration         |
-| `shared/util/`          | Pure reusable helpers                                 | Angular component state                |
+| Directory                | Owns                                                | Should not own                   |
+| ------------------------ | --------------------------------------------------- | -------------------------------- |
+| `pages/`                 | URL entry points, route metadata, composition       | Business logic or transport code |
+| `features/`              | Customer journeys and feature presentation          | Raw HTTP construction            |
+| `data-access/queries/`   | Server-state keys, caching and invalidation         | Reusable visual components       |
+| `data-access/services/`  | HTTP calls and response typing                      | Cross-page UI state              |
+| `core/catalog/`          | Mapping API catalogue responses to view models      | Page presentation                |
+| `core/state/`            | Application-wide client state and effects           | Copies of remote data            |
+| `layout/`                | Header, footer and page shells                      | Catalogue or checkout rules      |
+| `shared/ui/`             | Reusable presentational components                  | Feature-specific orchestration   |
+| `shared/util/`           | Pure helpers                                        | Angular component state          |
+| `src/server/middleware/` | Locale redirects, old addresses, sitemap and robots | Page rendering                   |
 
 ## Before making a storefront change
 
-- Identify the URL or feature that owns the behavior.
-- Check whether the data is server-owned, browser-owned, or component-local.
-- Check the atlas for fixture/API boundaries.
-- Preserve SSR safety: browser globals require an explicit platform guard.
-- Validate external data at the boundary when real API contracts are introduced.
-- Add tests and update the portal evidence in the same change.
+- Identify the URL or feature that owns the behaviour.
+- Check whether the data is server-owned, browser-owned or component-local.
+- Check whether the service reads the API or a JSON file.
+- Keep server rendering safe: browser globals need a platform guard.
+- Validate external data at the boundary.
+- Add tests and update the portal in the same change.
 
-:::warning Do not infer readiness from visual completeness
+## Limitations
 
-A polished screen can still be JSON-backed or mutation-free. The implementation atlas and page provenance are the authoritative indicators.
+- The cart is client-side. It does not call the cart API, and its totals are not authoritative.
+- Checkout renders forms and totals but does not place an order or take a payment.
+- Order history, refunds, wallet, points, notifications, wishlist and compare read JSON files or client state.
+- The newsletter form has no subscribe endpoint.
+- Offline catalogue and cart support is planned. The PWA integration is not in the build.
 
+:::warning A finished-looking screen may not be connected
+A polished screen can be JSON-backed or have no write path. Check the [state and data page](./state-and-data#data-sources) before you depend on it.
 :::

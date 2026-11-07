@@ -50,12 +50,11 @@ export function GateConsole(): React.ReactNode {
 		>
 			<div className={styles.head}>
 				<p className={styles.eyebrow}>Decision Gate Console</p>
-				<h2>Decisions that still constrain implementation.</h2>
+				<h2>Open project decisions</h2>
 				<p className={styles.lede}>
-					Each switch is a governed decision gate. Sealed (amber) gates block a slice of the build until
-					resolved; cleared (green) gates are complete. Select a gate to light its blast radius—the roadmap
-					chunks and database collections whose final behaviour waits on it. Foundations and seams still
-					proceed.
+					Each switch is a project decision. Amber gates are open and block part of the build. Green gates are
+					resolved. Select a gate to highlight what it affects: the roadmap stages and database collections
+					that depend on it. Other work can continue while a gate is open.
 				</p>
 				<p className={styles.summary}>
 					<strong>{openGateCount}</strong> of {gates.length} gates open · compiled from the roadmap and
@@ -145,7 +144,7 @@ export function GateConsole(): React.ReactNode {
 			{/* Impact board */}
 			<div className={styles.board}>
 				<div className={styles.boardCol}>
-					<p className={styles.boardHead}>Roadmap chunks</p>
+					<p className={styles.boardHead}>Roadmap stages</p>
 					<div className={styles.chips}>
 						{impactChunks.map((c) => (
 							<Link
@@ -153,7 +152,7 @@ export function GateConsole(): React.ReactNode {
 								to="/mission-control"
 								className={styles.chip}
 								data-blocked={blockedChunks.has(c) ? 'true' : 'false'}
-								title={`Chunk ${c}`}
+								title={`Stage ${c}`}
 							>
 								{c}
 							</Link>

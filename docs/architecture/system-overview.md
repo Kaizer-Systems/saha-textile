@@ -4,7 +4,7 @@ wide: true
 description: High-level architecture and dependency direction.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - AGENTS.md
     - apps/api/.env.example
@@ -17,40 +17,44 @@ import { ArchitectureReactor } from '@site/src/components/ArchitectureReactor';
 
 # System overview
 
-Saha Textile is a boutique e-commerce platform split into deployable storefront, admin, API, and private developer-portal apps inside one pnpm/Turborepo monorepo.
+Saha Textile is an e-commerce platform for a Kolkata saree and textile retailer. It consists of a storefront, an admin application, an API with a background worker, and a private developer portal, all in one pnpm and Turborepo monorepo.
 
-The application follows a hexagonal architecture. Domain rules live in `packages/core-domain`; infrastructure lives in adapters; deployable apps compose ports to adapters at the edge.
+The platform follows a hexagonal architecture. Domain rules live in `packages/core-domain`. Infrastructure lives in adapters. Each deployable application connects ports to adapters at startup.
 
 ```mermaid
 flowchart LR
-    Storefront["Storefront app"] --> API["API app"]
-    Admin["Admin app"] --> API
-    API --> Core["core-domain ports and use cases"]
-    MongoAdapter["Mongo adapter"] --> Core
-    PaymentAdapter["Payment adapters"] --> Core
-    ShippingAdapter["Shipping adapter"] --> Core
-    SearchAdapter["Search adapter"] --> Core
-    StorageAdapter["Storage adapter"] --> Core
+    Storefront --> API
+    Admin --> API
+    API --> Core[Core domain]
+    Worker --> Core
+    Core --> Ports
+    Adapters -. implement .-> Ports
+    Adapters --> Mongo[(MongoDB)]
+    Adapters --> External[External services]
 ```
 
-The same architecture, live — hover, tap or arrow through a boundary to inspect what exists today:
+The interactive diagram below shows the same architecture. Hover, tap or use the arrow keys to inspect a boundary.
 
 <ArchitectureReactor />
 
 ## Dependency rule
 
-Imports point inward. Core domain code does not import NestJS, Angular, MongoDB, payment SDKs, storage SDKs, or other adapters. The ratified contracts exception is type-only: core may reference project-owned contract shapes through runtime-erased `import type`, while value imports remain forbidden.
+Imports point inward. Core domain code does not import NestJS, Angular, MongoDB, payment SDKs, storage SDKs or other adapters. Core may reference shapes from `packages/contracts` through `import type`, which is erased at compile time. Value imports are forbidden.
 
 ## Swap test
 
-Replacing an edge concern should require a new adapter and DI binding, not edits across core use cases or UI packages.
+Replacing an edge concern requires a new adapter and a dependency-injection binding. It must not require edits to core use cases or UI packages.
 
 ## Runtime configuration and secrets boundary
 
-Configuration is injected at runtime, not baked into builds, and secrets cross exactly one boundary:
+Configuration is injected at runtime and is not compiled into builds.
 
-- The **API** receives all secrets through its environment (local `.env`; deploy-time env files / Docker Compose secrets).
-- The **Angular apps** receive only a public `config.json`, loaded at boot, carrying non-secret values (API/site URLs, locales, public client IDs). No secret ever reaches a browser build.
-- The **local developer portal** receives one separate username/password pair in its gitignored `.env.local`. Only the native loopback server reads it; child builds receive a stripped environment, and no API, MongoDB, or commerce identity code participates.
+- The **API and worker** read secrets from their environment.
+- The **Angular applications** read a public `config.json` at startup. It holds non-secret values such as API and site URLs, locales and public client IDs.
+- The **local developer portal** reads one username and password from its gitignored `.env.local`. Only the portal server reads them, and child builds receive an environment without them.
 
-Identity Loom is a local process boundary, not the production private-access design. It protects the complete composite with an in-memory browser session and refuses non-loopback binding. Any hosted developer portal still waits for `DEC-PORTAL-PRIVATE-ACCESS` and a separately approved identity/origin/deployment architecture.
+## Related pages
+
+- [Monorepo map](./monorepo-map)
+- [Backend platform atlas](/backend/overview)
+- [Deployment overview](/deployment/overview)

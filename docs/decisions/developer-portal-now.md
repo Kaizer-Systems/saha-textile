@@ -3,7 +3,7 @@ title: Start Developer Portal Early
 description: ADR for starting the portal before all generated artifacts exist.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - docs/engineering-live-context/execution-roadmap.mdx
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -18,22 +18,21 @@ Accepted.
 
 ## Context
 
-The roadmap says the Docusaurus developer portal should grow incrementally during every phase. Some portal sections depend on real implementation artifacts, including OpenAPI output, Mongo schemas, Storybook builds, TypeDoc, Scalar API Reference, and Pagefind indexes.
+The developer portal should grow with the product. Some sections depend on implementation artifacts: OpenAPI output, Mongo schemas, Storybook builds and TypeDoc.
 
 ## Decision
 
-Start the portal with stable structure, navigation, source-of-truth rules, high-level architecture pages, business-flow templates, and evidence-gated generated sections. Integrate a generated surface only when its source artifact exists, and keep its lifecycle visibly scaffolded until the documented promotion gate passes.
+Start the portal with stable structure, navigation, source-of-truth rules, architecture pages and business-flow pages. Add a generated reference only when its source exists, and label it **Scaffolded** until it meets its completion criteria.
 
 ## Consequences
 
-- Documentation habits start early.
-- Future PRs have a known place to update operator-facing and developer-facing behavior.
-- Storybook and TypeDoc are generated from current source; Scalar and the database catalogue are generated but visibly scaffolded behind their evidence gates.
-- The portal can build before the full app surface is complete.
-- The complete local umbrella opens through Identity Loom and one portal-local credential pair. This boundary is in-memory, loopback-only, and separate from the API, MongoDB, commerce users, and hosted-access decisions.
-- Identity Loom preserves the requested deep link, provides an accessible native form and executes a five-stage fibre-loom/Jacquard/reactor handoff. The header exposes an icon-only lock control directly beside the colour-mode switcher, while the command palette retains replay and lock actions.
-- `DEC-PORTAL-PRIVATE-ACCESS` remains unresolved; the local entrance is never evidence that remote deployment is approved or protected.
+- Documentation is written alongside the code.
+- Each change has a known place for operator and developer documentation.
+- Storybook and TypeDoc are generated from source. Scalar and the database catalogue are generated and carry the **Scaffolded** status.
+- The portal builds before the full application surface is complete.
+- The complete portal runs behind a local sign-in. That sign-in is loopback-only and separate from the API, MongoDB and customer accounts.
+- `DEC-PORTAL-PRIVATE-ACCESS` covers hosted access. The local sign-in does not settle that decision.
 
 ## Related
 
-- [Decision Gate Console](/decisions/gate-console) — the live cockpit of unresolved decision gates and the roadmap chunks and collections each one blocks.
+- [Decision Gate Console](/decisions/gate-console)

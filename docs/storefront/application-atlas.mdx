@@ -1,9 +1,9 @@
 ---
 title: Storefront Application Atlas
-description: Interactive, evidence-backed map of storefront capabilities and implementation boundaries.
+description: Interactive map of storefront capabilities.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/storefront/src/app
     - apps/storefront/vite.config.ts
@@ -15,38 +15,31 @@ import { ApplicationAtlas } from '@site/src/components/ApplicationAtlas';
 
 # Storefront application atlas
 
-Use the filters and search field to answer two questions before editing the storefront:
-
-1. What customer capability already exists?
-2. Which part of it is real, transitional, or still planned?
+Use the filters and search field to find a customer capability and see how much of it is built.
 
 <ApplicationAtlas application="storefront" />
 
-## How to interpret the cards
+## How to read the cards
 
-- **Implemented** describes working current behavior, but only within the stated boundary.
-- **Scaffolded** means the route, component, or state seam is real while integrations remain incomplete.
-- **Planned** is a ratified direction that must not be represented as available behavior.
-- Expand **Evidence paths** to see the code or decision record supporting each statement.
+- **Implemented** describes working behaviour within the stated limits.
+- **Scaffolded** means the route, component or state exists while integrations are incomplete.
+- **Planned** is approved direction, not available behaviour.
+- Expand **Source files** to see the code behind each statement.
 
-## Highest-risk misunderstandings
+## Common misunderstandings
 
-### “The catalogue uses the API”
+### "The cart is implemented"
 
-Only part of it does. Catalogue listing has an API request path, while product detail and several related readers still derive records from the JSON product collection. Always identify the exact query function before changing a catalogue flow.
+The browser cart works: actions, effects, selectors, optimistic updates and persistence exist. It does not use the server cart API. Ownership, pricing, stock reservation and checkout are separate concerns.
 
-### “The cart is implemented”
+### "Server rendering makes everything server-safe"
 
-The current browser cart behavior is implemented: actions, effects, selectors, optimistic updates, and persistence exist. Server ownership, identity reconciliation, pricing revalidation, stock reservation, and checkout transactionality are separate backend concerns.
+Dynamic rendering is enabled, but browser-dependent components still need `isPlatformBrowser()` or an equivalent guard. Public data is fetched on the server, with a 2.5-second timeout per API call. Past that limit the page renders without the data and the browser fetches it after hydration.
 
-### “SSR means everything is server-safe”
+### "Language switching means Bengali is ready"
 
-No. Dynamic SSR is enabled, but browser-dependent components still need `isPlatformBrowser()` or an equivalent guarded boundary. The server interceptor also returns a placeholder response for server-side HTTP requests, so a browser-successful reader is not automatically an SSR-complete reader.
+Transloco runs with English and French. Locale membership is configuration, not a fixed contract, so Bengali can be added once its content and validation are ready. Every page sits under a locale prefix, and the switcher is a set of links to the same page in the other language.
 
-### “Language switching means Bengali is ready”
+### "A social callback means signup is complete"
 
-No. Transloco is wired, and the present application configuration lists English and French. Locale membership is configuration rather than a fixed contract enum; Bengali can be enabled only when its catalogue/content coverage and validation are ready. Locale URLs are locked (every route prefixed with its locale, shared slugs, no automatic language redirect), but today only product and category routes carry the prefix and the switcher still stores the choice in the browser rather than the URL.
-
-### “A social callback means signup is complete”
-
-No. An unknown provider subject creates server-held pending signup state and navigates to registration. That page resumes the projection after reload, locks provider-verified email, removes irrelevant password/provider choices, and collects the remaining phone proof. Leaving through in-app navigation discards the record. Real Google and Facebook round trips were proven end to end on 2026-10-25, and a provider-proven email that already has an account is offered a one-time code instead of a signup.
+An unknown provider identity creates a server-held pending signup and opens registration. The page restores the record after a reload, locks a provider-verified email, hides password and provider choices that do not apply, and collects the remaining phone proof. Leaving through in-app navigation discards the record. A provider-proven email that already has an account is offered a one-time code instead.

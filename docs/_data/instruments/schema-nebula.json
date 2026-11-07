@@ -1,9 +1,9 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-11-06",
+	"lastVerified": "2026-11-07",
 	"route": "/database/schema-nebula",
 	"title": "Schema Nebula",
-	"summary": "A governed one-star-per-collection map of the 68 explicit MongoDB collection targets across the Saha Textile platform.",
+	"summary": "A map of existing and planned MongoDB collections, with one star per collection.",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/owner-decisions-log.mdx",
 		"docs/engineering-live-context/account-separation-task-handoff.mdx",
@@ -35,7 +35,7 @@
 		"existingModelCount": 43,
 		"targetOnlyCount": 27,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
-		"statusPolicy": "A star becomes solid only when a tested current adapter model resolves to that exact ratified physical collection name. All 44 exported models declare explicit physical names; 41 match ratified graph nodes and are solid. authRateLimits, pendingSignups, and pendingContactChanges are transient runtime machinery outside the graph."
+		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map."
 	},
 	"clusters": [
 		{
@@ -71,7 +71,7 @@
 		{
 			"id": "payments-fx-shipping",
 			"label": "Payments, FX & shipping configuration",
-			"summary": "Currency truth, exchange-rate history, gateway rules, provider configuration, and quote evidence.",
+			"summary": "Currency truth, exchange-rate history, gateway rules, provider configuration and quotes.",
 			"owningChunks": ["G"]
 		},
 		{
@@ -89,7 +89,7 @@
 		{
 			"id": "identity-access",
 			"label": "Identity, access & privacy",
-			"summary": "Accounts, credentials, sessions, challenges, invitations, roles, pending actions, and consent evidence.",
+			"summary": "Accounts, credentials, sessions, challenges, invitations, roles, pending actions and consent records.",
 			"owningChunks": ["D"]
 		},
 		{
@@ -304,7 +304,7 @@
 			"targetAction": "refactor",
 			"owningChunks": ["F", "I"],
 			"blockingDecisions": [],
-			"purpose": "Reusable Spaces-backed media catalogue, localized alt text, derivative metadata, lifecycle, and SEO evidence.",
+			"purpose": "Reusable Spaces-backed media catalogue, localized alt text, derivative metadata, lifecycle and SEO data.",
 			"source": "catalog §7.15",
 			"currentModel": "packages/adapters-db-mongo/src/models/media.model.ts",
 			"references": ["mediaRoles"]
@@ -561,7 +561,7 @@
 			"targetAction": "add",
 			"owningChunks": ["G"],
 			"blockingDecisions": ["DEC-PAYPAL-FX"],
-			"purpose": "Persisted exchange-rate history and audit evidence for INR-derived currency conversion.",
+			"purpose": "Exchange-rate history and audit records for INR-derived currency conversion.",
 			"source": "catalog §7.29",
 			"references": ["currencies"]
 		},
@@ -771,7 +771,7 @@
 			"targetAction": "refactor",
 			"owningChunks": ["D"],
 			"blockingDecisions": [],
-			"purpose": "Many-to-one login identities for password, OTP, OAuth, and future identity seams.",
+			"purpose": "Many-to-one login identities for password, OTP and OAuth.",
 			"source": "auth §7.2",
 			"currentModel": "packages/adapters-db-mongo/src/models/credential.model.ts",
 			"references": ["customers", "adminUsers"]
@@ -797,7 +797,7 @@
 			"targetAction": "refactor",
 			"owningChunks": ["D"],
 			"blockingDecisions": [],
-			"purpose": "Password-grade admin and staff PIN hashes, lockout state, and login preference evidence.",
+			"purpose": "Password-grade admin and staff PIN hashes, lockout state and login preference.",
 			"source": "auth §7.3A",
 			"currentModel": "packages/adapters-db-mongo/src/models/credential.model.ts",
 			"references": ["adminUsers"]
@@ -836,7 +836,7 @@
 			"targetAction": "refactor",
 			"owningChunks": ["D"],
 			"blockingDecisions": [],
-			"purpose": "Short-lived OAuth state, nonce, verifier, redirect, and guest-cart continuation evidence.",
+			"purpose": "Short-lived OAuth state, nonce, verifier, redirect and guest-cart continuation data.",
 			"source": "auth §7.6",
 			"currentModel": "packages/adapters-db-mongo/src/models/auth-challenge.model.ts",
 			"references": ["carts"]

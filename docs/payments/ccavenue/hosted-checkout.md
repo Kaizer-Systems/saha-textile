@@ -3,7 +3,7 @@ title: CCAvenue hosted checkout
 description: HDFC VAS integration-guide section 2, transcribed as printed, including samples.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 search_keywords: CCAvenue initiateTransaction encRequest access_code AES-128 redirect_url
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts

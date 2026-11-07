@@ -1,9 +1,9 @@
 ---
 title: Storefront Contributor Recipes
-description: Beginner-safe recipes for adding routes, server queries, client state, translations, and SSR-safe UI.
+description: Step-by-step recipes for routes, server queries, client state, translations and server-safe UI.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/storefront/src/app/pages
     - apps/storefront/src/app/features
@@ -13,7 +13,7 @@ source_of_truth:
 
 # Storefront contributor recipes
 
-These recipes are guardrails, not copy-paste substitutes for understanding the owning feature. Start with the smallest relevant recipe and follow its verification checklist.
+These recipes give step-by-step checklists for common storefront changes. Start with the smallest relevant recipe and follow its checklist.
 
 ## Recipe: add a customer page
 
@@ -21,10 +21,10 @@ These recipes are guardrails, not copy-paste substitutes for understanding the o
 
 1. Choose the file-based URL shape under `src/app/pages` — without a locale segment. The router's base serves it at `/en/…` and `/fr/…`, so links to it are written locale-free too (`/cart`, never `/en/cart`).
 2. Build the real feature under `src/app/features`; keep the page entry thin.
-3. Add `routeMeta` only for required guards or route behavior.
+3. Add `routeMeta` only for required guards or route behaviour.
 4. Reuse the shared layout rather than rebuilding header/footer composition.
 5. Verify direct SSR request, hydrated navigation, browser back/forward, and unknown parameters.
-6. Add metadata/SEO behavior when the route is indexable. A customer-only page goes in `PRIVATE_PREFIXES` (`core/i18n/locale.ts`) so it gets `noindex` and no language alternates.
+6. Add metadata/SEO behaviour when the route is indexable. A customer-only page goes in `PRIVATE_PREFIXES` (`core/i18n/locale.ts`) so it gets `noindex` and no language alternates.
 
 **Done means:** the URL works on refresh, not only after navigating from the home page.
 
@@ -82,11 +82,11 @@ If classic NgRx is justified:
 
 1. Use semantic translation keys for interface chrome rather than copying visible English into templates.
 2. Update every active locale file in the same change.
-3. Verify parameter interpolation and plural behavior.
+3. Verify parameter interpolation and plural behaviour.
 4. Test narrow layouts because translated strings expand.
-5. Do not mark Bengali implemented until the active runtime locale configuration and content coverage enable it.
+5. Run `pnpm check:i18n-parity`.
 
-Catalogue option, add-on, attribute, taxonomy, and measurement labels are Machine-2 content. Render those returned values directly; do not invent Transloco keys for dynamic catalogue data.
+Catalogue option, add-on, attribute, taxonomy and measurement labels are data. Render those values directly, and do not create Transloco keys for them.
 
 ## Recipe: render a repeated collection
 
@@ -99,10 +99,10 @@ Catalogue option, add-on, attribute, taxonomy, and measurement labels are Machin
 
 - [ ] The change lives in the correct directory and layer.
 - [ ] External data has a typed, validated contract boundary.
-- [ ] Fixture-backed or unwired behavior is labelled and not mistaken for a backend capability.
+- [ ] JSON-backed behaviour is labelled and not mistaken for a backend capability.
 - [ ] SSR and browser navigation were both checked.
 - [ ] Loading, error, empty, and success states are intentional.
 - [ ] Repeated templates have a stable, non-duplicating track key.
-- [ ] Keyboard, touch, focus, and reduced-motion behavior were considered.
+- [ ] Keyboard, touch, focus, and reduced-motion behaviour were considered.
 - [ ] Unit/e2e coverage matches the risk.
-- [ ] Portal status, sources, and verification date were updated when behavior changed.
+- [ ] Portal status, sources and verification date are updated if behaviour changed.

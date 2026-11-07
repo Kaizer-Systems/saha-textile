@@ -1,11 +1,11 @@
 ---
 title: Decision Gate Console
-description: Governed decision gates as a cockpit of sealed switches, showing the roadmap chunks and collections each one blocks.
+description: Open project decisions and the roadmap stages and collections they affect.
 slug: /decisions/gate-console
 wide: true
 status: implemented
 audience: [beginner, backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
     - docs/engineering-live-context/owner-decisions-log.mdx
@@ -24,8 +24,8 @@ import { GateConsole } from '@site/src/components/GateConsole';
 
 ## How to read this
 
-A **gate** is a governed decision that must be resolved before a slice of the build can finalize. Sealed (amber) gates are open; cleared (green) gates are resolved. Selecting a gate lights its **blast radius**—the roadmap chunks (linked to [Mission Control](/mission-control)) and database collections whose final behavior depends on it. Foundations and seams may continue while a gate is sealed; only the dependent policy remains blocked.
+The Decision Gate Console shows the decisions that affect the roadmap. A gate is a decision that must be made before a piece of the build can be finished. Amber gates are open and green gates are resolved. Selecting a gate highlights the roadmap stages and database collections that depend on it. Other work can continue while a gate is open.
 
-Gate questions and blast radii live in `docs/_data/instruments/decision-gates.json`; live state comes from the marked Portal truth snapshot in `project-progress.mdx`. The build-time compiler cross-checks that state against the roadmap gate table and ratified decision log before publishing the typed dataset.
+Gate questions are in `docs/_data/instruments/decision-gates.json`. Their state comes from the Portal truth snapshot in `project-progress.mdx`. The build checks that state against the roadmap and the decision log.
 
-The wider decision register contains **27 open decisions**. `G-I18N-ROUTES` cleared on 2026-10-31 with the locale URL law. The compiler derives this count from `pending-decisions.mdx` and rejects a resolved id that remains in the pending register or lacks decision-log evidence. The interactive console intentionally shows only the stable roadmap gates with an explicit chunk or collection blast radius; it is not a duplicate of the complete decision inbox.
+The console shows only decisions tied to a roadmap stage or collection. For the full list, see [Pending decisions](/engineering-live-context/pending-decisions).

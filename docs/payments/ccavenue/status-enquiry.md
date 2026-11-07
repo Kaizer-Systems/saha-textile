@@ -3,7 +3,7 @@ title: CCAvenue status enquiry
 description: HDFC VAS integration-guide section 3, transcribed as printed, plus the ASP.NET, Java and PHP Status API sample kits.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 search_keywords: orderStatusTracker enc_request DoWebTrans tracking_id status enquiry
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -207,7 +207,7 @@ Status API platforms printed: ASP.NET, JAVA, PHP.
 
 ## Status API sample kits
 
-Source: `API_Document_Sample_Code-New.zip`, received 2026-11-04 with the [merchant API guide](/payments/ccavenue/merchant-api). Section 3.6 above names the same three platforms. Credentials in the kits are replaced or omitted here.
+Source: `API_Document_Sample_Code-New.zip`, supplied with the [merchant API guide](/payments/ccavenue/merchant-api). Section 3.6 above names the same three platforms. Credentials in the kits are replaced or omitted here.
 
 | File in the archive                                                                                                                   | What it does                                                                                                                                                                                                                                                                                                          |
 | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

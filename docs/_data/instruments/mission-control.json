@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-11-06",
+	"lastVerified": "2026-11-07",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
 		"docs/engineering-live-context/project-progress.mdx"
@@ -41,47 +41,47 @@
 			"title": "Contracts & core ports",
 			"deps": ["A"],
 			"blockingGates": [],
-			"summary": "The shared zod contract families and every planned core port now exist. Type-only contract coupling is mechanically linted, emitted runtime purity is tested, and contract plus port-conformance coverage is in place.",
-			"dod": "Complete: boundary lint and runtime-purity tests are green; contract and port suites cover the delivered surface."
+			"summary": "Shared zod contracts and core ports, with type-only coupling linted and runtime purity tested.",
+			"dod": "Boundary lint and runtime-purity tests pass; contract and port suites cover the surface."
 		},
 		{
 			"id": "C",
 			"title": "API security foundation, replica-set profile & env sync",
 			"deps": ["A"],
 			"blockingGates": [],
-			"summary": "Fastify now issues and echoes request ids, redacts sensitive logs, returns the shared safe error envelope, resolves trusted client IPs for rate limiting, applies strict CORS, splits liveness/readiness, and enforces the cookie/CSRF foundation. The Mongo transaction manager is bound and proven against rs0.",
-			"dod": "Complete: API boot and health probes, CSRF matrix, and replica-set commit/rollback proof are green."
+			"summary": "Request ids, redacted logs, safe errors, client-IP rate limiting, strict CORS, health probes, the CSRF foundation and the Mongo transaction manager.",
+			"dod": "API startup, health probes, the CSRF matrix and replica-set commit and rollback tests pass."
 		},
 		{
 			"id": "D",
 			"title": "Cookie-session auth, PIN, OTP & OAuth",
 			"deps": ["C"],
 			"blockingGates": [],
-			"summary": "Cookie sessions, atomic refresh rotation/reuse revocation, session-bound CSRF, storefront/admin audiences, resumable verified-before-creation signup, transactional customer/credential/provider-identity finalisation, password and OTP login by email or phone, Google and Facebook verification adapters, identity linking, transactional contact confirmation, atomic address writes, remember-me lifetime alignment, password management, account self-service, guest-cart adoption, PIN lockout, admin invites and HTTP resume, a closed 89-code permission registry, active role-assignment resolution, deny-by-default administration, consent/privacy seams, ownership checks, Account Security, and the admin idle soft-lock are implemented. The chunk remains partial until complete provider-account round trips and Meta console acceptance are proven, PIN is proven in a supported browser, pending-intent continuation is implemented, and older privileged routes finish granular-permission adoption.",
-			"dod": "Partial: the server and storefront identity/account paths are implemented, with focused provider-SDK and pending-signup browser evidence. Complete Google/Meta account journeys, Meta console verification, PIN-login browser proof, pending-intent continuation, and granular-permission adoption remain."
+			"summary": "Cookie sessions, verified signup, password and OTP sign-in, Google and Facebook, account self-service, admin PIN, invites, resume, Account Security, the permission registry, roles and customer CRM.",
+			"dod": "Sign-in, session, authority and CRM flows are tested, including real provider accounts and browser PIN sign-in."
 		},
 		{
 			"id": "E",
 			"title": "Mongo persistence & transaction adoption",
 			"deps": ["C"],
 			"blockingGates": [],
-			"summary": "Chunk E persistence is complete. The adapter exports 43 Mongoose models covering the original surface plus separated customer/operator identity, credentials, pending verification state, authorization, consent, catalogue structure, variants, bundles, relations, inventory, media, audit, notifications, FAQ, Q&A, reviews and rating aggregates. Provider identities have one writer; signup and contact-change units join the ambient rs0 transaction; customer address writes are single-statement atomic; storage enums derive from shared option sources.",
-			"dod": "Complete: adapter integration evidence covers uniqueness, TTL, visibility, concurrent address writes, transaction rollback, order/cart and identity/contact atomicity, role assignments, and response-safe mapping."
+			"summary": "Mongoose models, repositories and transactions for accounts, catalogue, media, inventory, governance and content.",
+			"dod": "Adapter integration tests cover uniqueness, TTL, visibility, rollback and response-safe mapping."
 		},
 		{
 			"id": "F",
 			"title": "Catalog, SEO, search & merchandising",
 			"deps": ["B", "C"],
 			"blockingGates": [],
-			"summary": "Catalog + SEO + self-hosted Meilisearch behind SearchPort + merchandising; live-only public reads. The storefront and the admin product form now read and write the API, and search is live; the search outbox and back-in-stock sends are still open. Locale routes follow the locked URL law (every route locale-prefixed).",
-			"dod": "Public + admin catalog CRUD; Meili indexes live products only; search/facet tests."
+			"summary": "Catalogue reads and writes, SEO, Meilisearch search and merchandising. The storefront and admin product form use the API. Search outbox work is open.",
+			"dod": "Public and admin catalogue, indexed live products, and search and facet tests."
 		},
 		{
 			"id": "G",
 			"title": "Cart, checkout, orders & payment/shipping ports",
 			"deps": ["B", "E", "F"],
 			"blockingGates": ["G-NUM-ORDER"],
-			"summary": "Cart and guest adoption, a pricing-engine shell (INR canonical, FX, PayPal gross-up), Payment/Shipping ports with non-production implementations, and order/payment/shipment/return/refund shapes with ownership, idempotency and transaction seams. Customer-facing order numbers wait on the numbering gate.",
+			"summary": "Server cart and guest adoption, pricing engine, payment and shipping ports, and order, payment, shipment, return and refund shapes. Customer-facing order numbers wait on the numbering decision.",
 			"dod": "Cart adoption, quote, non-production payment/shipping implementations and ownership tests; order placement remains internal-id-only or gated."
 		},
 		{
@@ -89,24 +89,24 @@
 			"title": "Inventory, purchase invoices, reporting & insights",
 			"deps": ["E", "G"],
 			"blockingGates": ["G-NUM-PI"],
-			"summary": "Inventory ledger + FIFO cost layers, analytics aggregates, insight/badge job seams, and purchase-invoice drafts. Posting PIs that assign numbers waits on the PI numbering gate.",
-			"dod": "Ledger + aggregates; PI posting gated until the numbering lock."
+			"summary": "Inventory ledger and FIFO layers, analytics aggregates, weekly insights and purchase-invoice drafts. Posting purchase invoices waits on the numbering decision.",
+			"dod": "Ledger + aggregates; purchase-invoice posting waits on the numbering decision."
 		},
 		{
 			"id": "I",
 			"title": "Privacy, content, FAQ, reviews & media",
 			"deps": ["B", "C"],
 			"blockingGates": [],
-			"summary": "Consent + analytics gating, FAQ / Q&A / reviews, media assets + Spaces SGP presign, and the image-derivative worker on the locked size ladder. The image pipeline is built and verified (2026-11-03): presigned upload, BullMQ/sharp worker, size roles, banners, YouTube, review photos and moderation, admin and storefront screens. Catalog media fields, email thumbnails, PWA caching and live GC wait on their owning chunks.",
-			"dod": "Consent gating; moderation model; media presign; derivative skeleton."
+			"summary": "Consent, FAQ, questions, reviews, and the image pipeline: presigned upload, worker, size roles, banners, YouTube and moderation. Email thumbnails, PWA caching and live garbage collection are open.",
+			"dod": "Consent gating, moderation model, media presign and derivatives."
 		},
 		{
 			"id": "J",
 			"title": "Docs, seeds, verification & infra close-out",
 			"deps": ["D", "E", "F", "G", "H", "I"],
 			"blockingGates": [],
-			"summary": "OpenAPI, runbook and environment docs aligned with §0b–0d, seeds and bulk fixtures, full lint/typecheck/test, and detailed deploy scripts. Production decisions are recorded (2026-11-06): host-only cookies, on-demand staging, Spaces backups and SSH through Cloudflare Tunnel. The deploy pipeline itself is not built, and secret delivery is open as DEC-SECRETS-DELIVERY.",
-			"dod": "Docs aligned; seeds; green gates; deploy scripts documented; deferred seams reported."
+			"summary": "OpenAPI, runbooks, seeds, verification and deployment scripts. Production decisions are recorded in the decision log. The deployment pipeline is not built, and secret delivery is an open decision.",
+			"dod": "Docs aligned, seeds complete, checks green and deployment scripts documented."
 		}
 	]
 }

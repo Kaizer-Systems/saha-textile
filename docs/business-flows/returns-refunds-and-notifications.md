@@ -4,7 +4,7 @@ wide: true
 description: Item return, financial reversal, shipment consequences, and multi-channel communication boundaries.
 status: planned
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/storefront/src/app/shared/ui/modal/refund-modal
     - apps/admin/src/app/features/refund
@@ -20,7 +20,7 @@ source_of_truth:
 
 # Returns, refunds, and notifications
 
-Customer refund UI and admin refund/notification surfaces exist, but their production backend workflows are not connected. The target separates physical return logistics, financial reversal, shipment state, and customer communication.
+This page describes how returns, refunds and customer messages work together. Notifications are built. Returns and refunds are planned: the storefront and admin have refund screens, but no backend.
 
 ## Separate lifecycles
 
@@ -42,66 +42,82 @@ A refund can exist without a physical return, and a return can be rejected witho
 
 An item-level return records:
 
-- order and line identity;
-- quantity;
-- reason code and optional condition;
-- customer/actor ownership;
-- request, approval/rejection, receipt, and close timestamps; and
-- restock, repair, or do-not-restock decision.
+- Order and line identity.
+- Quantity.
+- Reason code and optional condition.
+- Customer or actor ownership.
+- Request, approval, receipt and close timestamps.
+- A restock, repair or do-not-restock decision.
 
-Eligibility is based on immutable order-line facts plus current policy—not the current product page.
+Eligibility comes from immutable order-line facts and current policy, not the current product page.
 
 ## Refund facts
 
 A financial reversal records:
 
-- order and optional return/payment identifiers;
-- amount and currency;
-- INR equivalent;
-- reason;
-- pending/processed/failed status; and
-- provider refund reference.
+- Order and optional return and payment identifiers.
+- Amount and currency.
+- INR equivalent.
+- Reason.
+- Pending, processed or failed status.
+- Provider refund reference.
 
-Partial refunds must never accidentally move an entire payment/order into a fully refunded state.
+A partial refund must never move a whole payment or order into a fully refunded state.
 
 ## Notifications
 
-Customer messaging flows through `NotificationPort`, with SMS, WhatsApp, and email behind swappable adapters. The ratified primary provider is **MSG91** (SMS, WhatsApp, and email, including authentication OTP), with an optional email fallback (`resend`, `ses`, or `smtp`) that is never primary. The API validates provider configuration and currently binds a `ConsoleNotificationAdapter` development seam used by live OTP orchestration. Mongo models and repositories persist notification settings, templates, usage and outbox facts, consent events, and broad audit evidence. A production MSG91 adapter, fallback adapters, and complete notification workflow and side-effect orchestration remain planned, so provider delivery is not production-implemented. Transactional and marketing controls are separate.
+Customer messages go through `NotificationPort`.
 
-| Category              | Examples                                               | Consent/availability rule                                                             |
-| --------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| Transactional/utility | OTP, payment, order status, shipment, refund, security | Keep available subject to legal/provider rules; use an enabled fallback where defined |
-| Marketing             | Campaigns, promotions, abandoned-cart marketing        | Explicit consent and independent caps/kill switches                                   |
+| Setting                                | Adapter                      | Behaviour                                                                               |
+| -------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------- |
+| `NOTIFICATION_PROVIDER=msg91`, key set | `Msg91NotificationAdapter`   | Sends email, SMS and WhatsApp through MSG91                                             |
+| `console`, or `msg91` without a key    | `ConsoleNotificationAdapter` | Logs that a message would be sent, with the destination hashed and the content withheld |
 
-Channel/settings mutations are restricted, server-authorized, versioned, and audited. Hiding the admin menu is not enough.
+The MSG91 adapter applies channel kill-switches, plan limits and marketing consent, and records each message in the outbox. A repeated idempotency key returns the first result. Email uses the template key as the MSG91 template id, SMS uses the Flow id and WhatsApp uses the approved template name. These values are stored in `notificationTemplates` and edited from the admin notification screens. The MSG91 key stays in the API environment.
 
-## Delivery semantics
+| Category      | Examples                                      | Rule                                                        |
+| ------------- | --------------------------------------------- | ----------------------------------------------------------- |
+| Transactional | OTP, order status, shipment, refund, security | Sent subject to legal and provider rules                    |
+| Marketing     | Campaigns, promotions, abandoned cart         | Needs explicit consent, with its own caps and kill-switches |
 
-- Business state changes do not roll back merely because a notification provider is temporarily unavailable.
-- Durable outbox/log records distinguish queued, sent, delivered, failed, and suppressed outcomes.
+## Channel settings
+
+Each channel and category pair has one settings row, held in the database and changed only by holders of `setting.edit`. A row can record a plan limit and a warning threshold, which defaults to 80%. With `autoDisableAtLimit` on, reaching the limit stops the pair. Settings hold no provider secrets.
+
+Every attempt writes an outbox row with a hashed destination. A suppressed send is an expected outcome, not an error. Its status is `suppressed_channel_disabled`, `suppressed_no_consent` or `suppressed_plan_limit`.
+
+## Delivery rules
+
+- A business state change does not roll back because a provider is unavailable.
+- Outbox records distinguish queued, sent, delivered, failed and suppressed outcomes.
 - Provider retries are idempotent.
-- Templates are versioned and localized according to their content machine.
-- Disabled channel/category combinations short-circuit before provider calls.
-- No sensitive data is placed in a message beyond the approved template requirement.
+- Disabled channel and category combinations stop before any provider call.
+- No sensitive data appears in a message beyond the approved template.
 
 ## Failure matrix
 
-| Failure                           | Required behavior                                                            |
-| --------------------------------- | ---------------------------------------------------------------------------- |
-| Return line not owned by customer | Deny without exposing order details                                          |
-| Return window/condition invalid   | Explain policy outcome; do not create refund                                 |
-| Provider refund fails             | Keep refund failed/pending with retry/manual review; do not claim completion |
-| Duplicate refund command          | Return existing idempotent result                                            |
-| Notification provider unavailable | Queue/retry or use approved fallback; preserve business state                |
-| Marketing consent absent          | Suppress marketing message and record why                                    |
-| Transactional channel disabled    | Use an approved enabled channel or escalate operationally                    |
+| Failure                            | Required behaviour                                         |
+| ---------------------------------- | ---------------------------------------------------------- |
+| Return line not owned by customer  | Deny without exposing order details                        |
+| Return window or condition invalid | Explain the outcome; create no refund                      |
+| Provider refund fails              | Keep the refund failed or pending with retry or review     |
+| Duplicate refund command           | Return the existing result                                 |
+| Notification provider unavailable  | Retry or use an approved fallback; preserve business state |
+| Marketing consent absent           | Suppress the message and record why                        |
+| Transactional channel disabled     | Use an enabled channel or escalate                         |
 
 ## Operator checklist
 
-- Verify actor, order, line, quantity, and eligibility.
-- Inspect captured payment currency and refundable amount.
+- Verify the actor, order, line, quantity and eligibility.
+- Inspect the payment currency and refundable amount.
 - Keep return and refund statuses separate.
 - Require confirmation and permission for manual financial actions.
-- Record provider reference and audit event.
-- Communicate only after the durable state transition succeeds.
-- Never expose raw provider payloads or secrets in the portal/UI.
+- Record the provider reference and audit event.
+- Notify only after the durable state change succeeds.
+- Never expose raw provider payloads or secrets in the UI.
+
+## Limitations
+
+- No return or refund collection, route or provider call exists.
+- Optional email fallback providers are configuration values only; no fallback adapter exists.
+- The SMS adapter sends the Flow id as both `template_id` and `flow_id`, until a live send confirms which field MSG91 uses.

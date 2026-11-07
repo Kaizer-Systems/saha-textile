@@ -1,9 +1,9 @@
 ---
 title: Portal Experience Layer
-description: The developer portal's own next-gen interaction layer, its code map, and the convention that these stylings stay comment-marked.
+description: The developer portal's own interactive layer and its code map.
 status: implemented
 audience: [frontend]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/project-progress.mdx
@@ -33,141 +33,125 @@ source_of_truth:
 
 # Portal experience layer
 
-This page documents the developer portal's own **next-gen interaction layer** — the futuristic UI built on top of the Docusaurus theme — and records the standing convention for how such work is written and marked.
-
-Unlike the rest of the portal (which documents the Saha Textile platform), this page documents the portal application itself, so contributors can learn from, extend, and iterate on the interaction layer.
+This page documents the portal's own interactive layer, built on the Docusaurus theme. It is for contributors who extend the portal application itself.
 
 ## Feature inventory
 
-Seven self-contained, dependency-free features (pure Canvas / SVG / CSS / React), all theme-aware for light and dark and all `prefers-reduced-motion`-safe:
+The layer has seven features, built with Canvas, SVG, CSS and React and no extra dependencies. All support light and dark themes and reduced motion.
 
-| Feature                       | What it does                                                                                                                |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Ambient reactor**           | A fixed behind-content canvas constellation that drifts and leans toward the cursor.                                        |
-| **Holographic scanlines**     | A faint CRT-line veil plus a slow drifting scan sweep over the ambient field.                                               |
-| **Command palette (⌘K)**      | A keyboard-first warp navigator over every page plus governed `trace`, `gate`, and `status` action verbs.                   |
-| **Architecture reactor**      | The hexagonal architecture as a live orbital with animated data pulses; homepage + system-overview.                         |
-| **First Flight system**       | Launch Bay, URL-carried spotlight guide, explicit device-local resume, reset controls, and a compiled-data Mission Debrief. |
-| **Living micro-interactions** | Cursor-spotlight cards, magnetic buttons, scroll-reveal, a read-progress beam, breathing status dots.                       |
-| **Identity Loom**             | Local-only native credential instrument, fibre/shuttle loom, punch-card compiler, synthesized sound and route aperture.     |
+| Feature                   | What it does                                                                                    |
+| ------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Ambient reactor**       | A background canvas that drifts and responds to the cursor.                                     |
+| **Holographic scanlines** | A faint line overlay above the background.                                                      |
+| **Command palette (⌘K)**  | Keyboard search over every page, with `trace`, `gate` and `status` commands.                    |
+| **Architecture reactor**  | An animated diagram of the hexagonal architecture, on the home page and system overview.        |
+| **First Flight**          | The guided tour: role selection, page highlights, optional device resume and a closing summary. |
+| **Micro-interactions**    | Card highlights, button motion, scroll reveal and a reading progress bar.                       |
+| **Identity Loom**         | The local sign-in screen, with its animation and sound.                                         |
 
 ## Code map
 
-Every file carries a `NEXT-GEN-UI` banner comment — run `grep -rn NEXT-GEN-UI apps/developer-portal/src` to enumerate the whole layer.
+Every file carries a `NEXT-GEN-UI` banner comment. To list the whole layer, run `grep -rn NEXT-GEN-UI apps/developer-portal/src`.
 
-| Path                                                               | Responsibility                                                             |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| `src/theme/Root.tsx`                                               | Mounts the client-only layer once, on every route (swizzle target).        |
-| `src/components/PortalExperience/index.tsx`                        | Orchestrator: composes the overlays, re-scans on SPA navigation.           |
-| `src/components/PortalExperience/AmbientReactor.tsx`               | The living constellation canvas.                                           |
-| `src/components/PortalExperience/CommandPalette.tsx`               | The ⌘K dialog and launcher pill.                                           |
-| `src/components/PortalExperience/commandIndex.ts`                  | Shared search-entry type + fuzzy scorer (no page list).                    |
-| `src/components/PortalExperience/ScrollBeam.tsx`                   | Read-depth progress beam.                                                  |
-| `src/components/PortalExperience/useMicroInteractions.ts`          | Spotlight, magnetic pull, scroll-reveal (delegated listeners).             |
-| `src/components/PortalExperience/styles.module.css`                | Styles for the above (ambient, scanlines, beam, palette).                  |
-| `src/components/PortalArrival`                                     | Short authenticated handoff plus full command-palette entrance replay.     |
-| `src/components/PortalLockButton`                                  | Labelled icon-only circuit breaker beside the colour-mode control.         |
-| `src/components/PortalSession`                                     | Shared local lock request and safe return-route handling.                  |
-| `src/theme/Navbar`                                                 | Desktop/mobile placement immediately after the colour-mode switcher.       |
-| `local-auth/{index.html,identity-loom.css,identity-loom.js}`       | Standalone pre-bundle login instrument, Canvas loom and Web Audio engine.  |
-| `../../scripts/developer-portal-local-auth.mjs`                    | Loopback, credential comparison, return-path and process-session boundary. |
-| `../../scripts/serve-developer-portal-persistent.mjs`              | Whole-composite gate, login routes and protected static serving.           |
-| `src/components/ArchitectureReactor/{index.tsx,styles.module.css}` | The signature hexagonal reactor.                                           |
-| `src/css/custom.css` (NEXT-GEN-UI block)                           | Global glass chrome, cursor spotlight, scroll-reveal, glow accents.        |
-| `plugins/portal-search`                                            | Build-time plugin: indexes every page's frontmatter → global data → ⌘K.    |
-| `plugins/portal-data`                                              | Governed manifest/KB compiler shared by instruments and validation.        |
-| `docs/_data/portal-manifest.json`                                  | Versioned instrument registry, Wave status, routes and dataset bindings.   |
-| `docs/_data/instruments/*.json`                                    | Authored instrument structure; project status is injected from KB truth.   |
-| `src/data/*.ts`                                                    | Typed React adapters over compiled plugin data; contains no project facts. |
-| `src/components/{MissionControl,FlightSimulator,GateConsole}`      | The Wave-1 interactive instruments (see interactive-instruments).          |
-| `src/components/SchemaNebula`                                      | The governed 64-collection Wave-2 constellation.                           |
-| `src/components/FirstFlight/index.tsx`                             | Persona Launch Bay and governed checkpoint dossier.                        |
-| `src/components/FirstFlight/FirstFlightHUD.tsx`                    | Global URL-driven guide, target focus, route controls and status warnings. |
-| `src/components/FirstFlight/MissionDebrief.tsx`                    | Final-checkpoint handoff derived from compiled persona and lifecycle data. |
-| `src/components/FirstFlight/useFirstFlightProgress.ts`             | Versioned opt-in local progress parser, synchronizer and reset boundary.   |
-| `src/components/FirstFlight/{styles,hud}.module.css`               | Responsive Launch Bay, route HUD, resume and debrief visual systems.       |
-| `src/components/PaymentClearing/{index.tsx,styles.module.css}`     | Payments landing lanes: solid CCAvenue pulse, dashed later lanes.          |
-| `src/data/command-verbs.ts`                                        | Typed adapter for the compiled palette grammar and targets.                |
-| `src/data/first-flight.ts`                                         | Typed adapter for the governed persona paths and spotlight targets.        |
+| Path                                                               | Responsibility                                                       |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| `src/theme/Root.tsx`                                               | Mounts the client-only layer once, on every route (swizzle target).  |
+| `src/components/PortalExperience/index.tsx`                        | Composes the overlays and rescans on navigation.                     |
+| `src/components/PortalExperience/AmbientReactor.tsx`               | The background canvas.                                               |
+| `src/components/PortalExperience/CommandPalette.tsx`               | The ⌘K dialog and launcher pill.                                     |
+| `src/components/PortalExperience/commandIndex.ts`                  | Search-entry type and fuzzy scorer.                                  |
+| `src/components/PortalExperience/ScrollBeam.tsx`                   | Reading progress bar.                                                |
+| `src/components/PortalExperience/useMicroInteractions.ts`          | Card highlight, button motion and scroll reveal.                     |
+| `src/components/PortalExperience/styles.module.css`                | Styles for the background, scanlines, progress bar and palette.      |
+| `src/components/PortalArrival`                                     | Transition after sign-in, and its replay.                            |
+| `src/components/PortalLockButton`                                  | Lock button beside the colour-mode control.                          |
+| `src/components/PortalSession`                                     | Shared local lock request and safe return-route handling.            |
+| `src/theme/Navbar`                                                 | Desktop/mobile placement immediately after the colour-mode switcher. |
+| `local-auth/{index.html,identity-loom.css,identity-loom.js}`       | Standalone sign-in page, animation and sound.                        |
+| `../../scripts/developer-portal-local-auth.mjs`                    | Loopback checks, credential comparison and session handling.         |
+| `../../scripts/serve-developer-portal-persistent.mjs`              | Sign-in gate, routes and protected file serving.                     |
+| `src/components/ArchitectureReactor/{index.tsx,styles.module.css}` | The architecture diagram.                                            |
+| `src/css/custom.css` (NEXT-GEN-UI block)                           | Global panel, highlight and scroll-reveal styles.                    |
+| `plugins/portal-search`                                            | Build-time plugin that indexes page front matter for ⌘K.             |
+| `plugins/portal-data`                                              | Data compiler shared by instruments and validation.                  |
+| `docs/_data/portal-manifest.json`                                  | Instrument registry, routes and data bindings.                       |
+| `docs/_data/instruments/*.json`                                    | Authored instrument data.                                            |
+| `src/data/*.ts`                                                    | Typed adapters over compiled plugin data.                            |
+| `src/components/{MissionControl,FlightSimulator,GateConsole}`      | Interactive instruments.                                             |
+| `src/components/SchemaNebula`                                      | The collection map.                                                  |
+| `src/components/FirstFlight/index.tsx`                             | Role selection and checkpoint list.                                  |
+| `src/components/FirstFlight/FirstFlightHUD.tsx`                    | The guide that runs across pages.                                    |
+| `src/components/FirstFlight/MissionDebrief.tsx`                    | Closing summary.                                                     |
+| `src/components/FirstFlight/useFirstFlightProgress.ts`             | Optional local progress storage.                                     |
+| `src/components/FirstFlight/{styles,hud}.module.css`               | Tour styles.                                                         |
+| `src/components/PaymentClearing/{index.tsx,styles.module.css}`     | Payments landing diagram.                                            |
+| `src/data/command-verbs.ts`                                        | Typed adapter for palette commands.                                  |
+| `src/data/first-flight.ts`                                         | Typed adapter for tour paths.                                        |
 
-## Dynamic by construction
+## How search and instruments get their data
 
-⌘K is **not** a hand-maintained page list. The `portal-search` plugin reads every page through the same shared frontmatter compiler used by validation and publishes the search index to Docusaurus global data, so any new page appears automatically. A page can enrich its own terms with a `search_keywords` frontmatter field.
+The ⌘K palette has no hand-maintained page list. The `portal-search` plugin reads every page's front matter at build time and publishes the search index to Docusaurus global data, so a new page appears automatically. A page can add search terms with the `search_keywords` field.
 
-Wave instruments use a parallel governed path: `docs/_data/portal-manifest.json` + versioned instrument JSON + the machine-readable Portal truth snapshot in `project-progress.mdx` → `portal-data` build compiler → validated Docusaurus global data → typed `src/data/*.ts` React adapters. Source paths, routes, catalog membership, chunk/gate state and page verification dates are checked before the site builds. Wide instrument pages opt in with `wide: true`.
+Instruments use a parallel path: manifest and data files, then the `portal-data` compiler, then typed adapters in `src/data`. See [Interactive instruments](./interactive-instruments#how-the-data-is-maintained). Wide pages opt in with `wide: true`.
 
-First Flight extends that contract with a live Launch Bay and route-spanning HUD: its four persona paths live in governed JSON, while the compiler proves that every route and stable heading target still exists and injects the destination page title, lifecycle status, and source path. The persona console owns only the current selection. The global guide owns navigation, target focus, and the URL-carried active step—not onboarding facts or completion history.
+## Local sign-in
 
-## Identity Loom local boundary
+The portal's sign-in cannot be a normal Docusaurus route, because serving Docusaurus JavaScript would expose private page data before authentication. The `portal:persistent` server therefore exposes only the standalone sign-in page and its assets until a session exists. Every Docusaurus and generated route stays behind the session.
 
-The local login cannot be a normal Docusaurus route: serving the Docusaurus JavaScript first would also serve build-indexed private documentation data before authentication. The native `portal:persistent` server therefore exposes only the standalone Identity Loom HTML, shared theme contract, two local font files, logo, CSS and JavaScript until the process-memory session cookie validates. Every Docusaurus and child-tool route or asset—including the live reload stream—stays behind that boundary.
+The form is a native HTML form and works with password managers. The animation receives only the field, the input operation and the current length. It never receives password characters. The server compares digests in constant time, issues a random session token held only in memory, and removes the credentials before starting any build process.
 
-The form itself remains native and password-manager compatible. Canvas receives only field identity, input operation (`insert`, `delete`, paste/replacement burst) and current length; it never receives password characters. Username characters launch blue shuttles and leave persistent threads; password length produces abstract green encrypted cells; backspace retracts the newest threads for that field; and paste, replacement, autofill or completed IME input becomes a punch-card ingestion burst rather than a misleading sequence of individual keystrokes. The server compares digests in constant time, issues an opaque random session token, keeps it only in memory, and strips both local credential variables before spawning any documentation build subprocess.
+A rejected attempt clears only the password and shows one generic error. A successful sign-in plays a five-second transition, shortened under reduced motion, and then opens the requested page. Sound is synthesized locally after the first interaction, and a mute control stays visible.
 
-Rejection visibly misaligns the woven field, sends an amber fault wave through the instrument, clears only the password and announces one generic error. Success runs an unskippable five-second state machine: identity lock, warp tension, Jacquard compile, architecture fold and route breach. It writes only a one-use session-storage handoff marker. `PortalArrival` consumes and deletes that marker after full-document navigation, then reveals the already-loaded requested route through a growing aperture. Reduced motion receives a short non-cinematic handoff.
-
-Web Audio is synthesized locally after the first real user interaction. Interface, mechanical, fault and ceremony buses feed a compressor and master bus, allowing tactile keystrokes and a phase-synchronized transition without clipping; the always-visible mute choice persists locally. The command palette owns the full replay action and a secondary lock action. An icon-only, accessibly labelled circuit breaker sits immediately after the colour-mode switcher in desktop and mobile headers for direct locking without text clutter; it preserves the current safe route for the next authenticated handoff.
-
-This mechanism is local-only and refuses non-loopback binding. It has no account model, database, product API dependency, remote-hosting override, or production-auth claim; `DEC-PORTAL-PRIVATE-ACCESS` remains unresolved for deployment.
+The command palette offers replay and lock actions, and the header has a lock button. The mechanism works on loopback only.
 
 ## First Flight navigation
 
-Selecting **Begin guided flight** adds the governed `firstFlight` and `step` query parameters, then opens the selected persona’s first checkpoint. `PortalExperience` reads those parameters on every route and mounts one global HUD:
+**Begin guided flight** adds the `firstFlight` and `step` query parameters and opens the first checkpoint. `PortalExperience` reads them on every route and mounts one guide:
 
-1. the persona and step resolve against compiled First Flight data;
-2. the current pathname must match the governed stop;
-3. the stable heading id is located, focused, observed for size changes, and measured;
-4. a fixed aperture receives direct `left`/`top`/`width`/`height` writes inside `requestAnimationFrame`;
-5. next/back dispatch the next governed route, while exit removes only the two flight parameters.
+1. The role and step resolve against compiled data.
+2. The pathname must match the expected stop.
+3. The target heading is located, focused and measured.
+4. A highlight is positioned with direct style writes inside `requestAnimationFrame`.
+5. Next and back open the next route, and exit removes the two parameters.
 
-The heading target remains the documentation’s real element. The guide temporarily adds focus and description attributes, then restores their prior values on route change or exit. An invalid persona/step fails closed in the UI; a valid step on the wrong route offers a course correction instead of spotlighting unrelated content.
+The guide restores any attributes it adds when you move on. An invalid role or step fails safely, and a valid step on the wrong route offers a way back.
 
-The HUD displays each destination’s compiler-injected lifecycle status and a matching evidence boundary. In particular, `planned`, `deferred`, and `deprecated` surfaces use a warning treatment and explicitly refuse to present target intent as working runtime behavior.
+Query parameters make the view shareable but are not a completion record. Device resume is an opt-in per role. Its stored record holds only the role id, the furthest stop id, a completion flag and an optional timestamp. Each read is checked against compiled ids, and invalid records are ignored with an option to reset. Without storage access, the guide runs for the session only.
 
-URL state remains distinct from progress persistence: it makes the active view shareable and browser-history-aware but is not a completion record.
-
-Device-local resume uses an explicit per-persona opt-in. Its versioned payload contains only persona id, furthest governed stop id, completion state, and an optional completion timestamp. Every read is narrowed against the current compiled persona and stop ids; malformed or stale payloads are ignored and surfaced for reset. Same-tab components synchronize through a portal-local event, while the browser’s storage event covers other tabs. Storage denial degrades to session-only guidance.
-
-The final checkpoint opens Mission Debrief whether or not persistence was enabled. Its checkpoint count, lifecycle-state mix, evidence cautions, outcome and route manifest are derived from compiled data. Completion persists only for an opted-in persona, and the copy explicitly refuses to equate reaching the final checkpoint with studying every page, implementation approval, production readiness or mastery.
-
-The browser boundary prevents Launch Bay from navigating through a pre-hydration placeholder state. Invalid saved payloads keep persistence disabled while exposing a recovery reset; HUD progress uses native progressbar semantics; minimize and restore preserve keyboard focus; and Mission Debrief blocks background interaction, moves focus into a labelled modal, cycles focus within it, and supports Escape. Reduced-motion and forced-colour treatments remain part of the shared visual contract.
+The closing summary is an accessible modal that traps focus and supports Escape.
 
 ## Command verbs
 
-The palette now recognizes an exact **verb as the first token** and switches from page-search mode into a scoped, read-only action mode:
+The palette recognizes a command as the first word and switches from page search to a read-only action:
 
-| Grammar            | Compiled target source                                                                                                         | Result                                                                                           |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| `trace <journey>`  | Every current `/business-flows/*` page plus the Request Flight Simulator, derived from documentation frontmatter at build time | Opens the best-matching journey or request trace.                                                |
-| `gate <decision>`  | The governed Decision Gate dataset, including current sealed/cleared state                                                     | Opens the Decision Gate Console with that validated gate selected through a deep-link parameter. |
-| `status <surface>` | Every portal page carrying the required lifecycle frontmatter                                                                  | Opens the matching surface and shows its `implemented`/`scaffolded`/`planned`/etc. state in ⌘K.  |
+| Grammar            | Compiled target source                                          | Result                                                                                           |
+| ------------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `trace <journey>`  | Every `/business-flows/*` page and the Request Flight Simulator | Opens the best-matching journey or request trace.                                                |
+| `gate <decision>`  | The decision gate data, with its open or resolved state         | Opens the Decision Gate Console with that validated gate selected through a deep-link parameter. |
+| `status <surface>` | Every portal page                                               | Opens the matching surface and shows its `implemented`/`scaffolded`/`planned`/etc. state in ⌘K.  |
 
-Try `trace checkout`, `gate numbering`, or `status api`. The chips below the input make the grammar discoverable without hiding normal fuzzy page search.
+Try `trace checkout`, `gate numbering` or `status api`. The chips below the input list the commands, and ordinary page search keeps working.
 
-This is deliberately **navigation-only**. A command cannot resolve a decision gate, change project status, call an API, or mutate the repository. The compiler derives and validates every target route; React owns only the current query, active row, focus, and open or closed state.
+Commands only navigate. They cannot change a decision, call an API or modify the repository.
 
 ## Layering model
 
-The trick worth internalising: the ambient canvas, the scanlines, and a single **uniform scrim** are all `position: fixed; z-index: -1`, so they paint above the page background but below all content. Content surfaces (`main-wrapper`, sidebar, footer) are **transparent**, so the field is dimmed exactly once — by the scrim — and therefore reads at one consistent strength everywhere, with no per-surface "cut line". Only the thin app bar keeps a glass fill.
+The background canvas, the scanlines and one uniform scrim are all `position: fixed; z-index: -1`, so they paint above the page background and below all content. Content surfaces (`main-wrapper`, sidebar, footer) are transparent, so the scrim dims the background once and it looks the same everywhere. Only the app bar keeps a glass fill.
 
-The **`.scrim` background alpha** (in `PortalExperience/styles.module.css`) is the master dial: lower values produce a more vivid field; higher values produce a calmer, more text-legible field. Per-surface dimming creates visible seams, so the interaction layer uses one uniform scrim.
+The `.scrim` background alpha in `PortalExperience/styles.module.css` sets the strength. A lower value makes the background more vivid, and a higher value makes text easier to read. Dimming each surface separately would create visible edges.
 
-Two CSS gotchas recorded here:
+Two CSS rules apply:
 
-1. An element with `backdrop-filter` becomes the containing block for any `position: fixed` descendant. The glass `.navbar` therefore must not have fixed-positioned children (that is why the color-mode toggle stays in normal flow at the navbar's right edge).
-2. A `z-index: -1` fixed layer paints in its stacking-context root's negative band — which is **below that root's in-flow boxes, including `<body>`'s own background**. Docusaurus paints an opaque background on both `<html>` and `<body>`, so a solid `<body>` background will completely cover the field. Keep the opaque base colour on `<html>` only and make `<body>` transparent (`custom.css`).
+1. An element with `backdrop-filter` becomes the containing block for any `position: fixed` descendant. The glass `.navbar` therefore must not have fixed-positioned children, so the colour-mode toggle stays in normal flow at its right edge.
+2. A `z-index: -1` fixed layer paints below its stacking root's in-flow boxes, including the `<body>` background. A solid `<body>` background would cover it. Keep the opaque base colour on `<html>` only, and leave `<body>` transparent (`custom.css`).
 
 ## Guarantees
 
-- **No dependencies** — everything is Canvas 2D, SVG/SMIL, CSS, and React 19.
-- **SSR-safe** — the layer is mounted through `<BrowserOnly>`; the architecture reactor renders deterministic markup so its hydration matches.
-- **Reduced-motion** — every animation is disabled or reduced to a static state under `prefers-reduced-motion`; JS effects check the media query too.
-- **No-JS safe** — the scroll-reveal hidden state is applied by JavaScript only, so pages stay fully visible without it.
+- **No dependencies.** Everything is Canvas 2D, SVG, CSS and React 19.
+- **Safe under server rendering.** The layer mounts through `<BrowserOnly>`, and the architecture reactor renders deterministic markup, so hydration matches.
+- **Reduced motion.** Every animation stops or becomes static under `prefers-reduced-motion`, and script effects check the same media query.
+- **Works without JavaScript.** Only script applies the scroll-reveal hidden state, so pages stay fully visible without it.
 
 ## NEXT-GEN-UI source convention
 
-This interaction layer is intentionally kept as an educational reference. The standing rule for the developer portal:
-
-> Any next-generation or non-obvious styling and interaction work on the portal is marked with a `NEXT-GEN-UI` banner comment and explanatory notes describing **what**, **why**, and **how**, including the tuning knobs. Future changes preserve and extend these comments.
-
-This keeps the signature interaction surfaces legible for learning and safe to evolve. New effects carry the `NEXT-GEN-UI` marker and appear in the code map above.
+Mark non-obvious styling and interaction work with a `NEXT-GEN-UI` banner comment. State what it does, why, how, and its tuning values. Preserve these comments when you change the code, and add new effects to the code map above.

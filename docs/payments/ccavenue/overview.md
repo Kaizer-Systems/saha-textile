@@ -1,10 +1,10 @@
 ---
 title: CCAvenue
 slug: /payments/ccavenue
-description: CCAvenue for the INR role. Section 1 is HDFC's documentation for K R MARKETING ONLINE; section 2 is the calls this project will make and where each one will live.
+description: "The INR gateway role: HDFC's documentation and the calls this project will make."
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 search_keywords: CCAvenue HDFC VAS K R MARKETING ONLINE integration kit non-seamless initiateTransaction encResp orderStatusTracker refundOrder DoWebTrans working key access code
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -18,23 +18,21 @@ source_of_truth:
 
 # CCAvenue
 
-CCAvenue is the current preference for the INR online-gateway role, provided through HDFC Bank for merchant **K R MARKETING ONLINE**. Razorpay is the preferred successor, and `DEC-INR-GATEWAY-TIMING` in [Pending decisions](/engineering-live-context/pending-decisions) is still open. Payment work belongs to Chunk G, which has not started.
+CCAvenue is the INR online gateway, provided through HDFC Bank for merchant **K R MARKETING ONLINE**.
 
-This page has two sections. **Section 1** is what HDFC and CCAvenue provided, transcribed in full on the pages it links to. **Section 2** is the calls this project will actually make, in the project's API-documentation format, with where each one will be used. No CCAvenue code exists yet, so every entry in section 2 is marked **not wired**.
+This page has two sections. **Section 1** is what HDFC and CCAvenue provided, transcribed in full on the pages it links to. **Section 2** is the calls this project will actually make, in the project's API-documentation format, with where each one will be used. No CCAvenue code exists, so every entry in section 2 is marked **not wired**.
 
 ## 1. Company-provided documentation
 
-### Documents received
+### Documents included
 
-| Received   | File                                                        | What it is                                                                                                                       | Transcribed on                                                                                                                                                        |
-| ---------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-26 | Integration and Audit checklist (PDF, 3 pages)              | URL, transaction-flow, and status-API requirements, plus the seven security-audit checks.                                        | [Audit and go-live](/payments/ccavenue/audit-and-go-live)                                                                                                             |
-| 2026-10-26 | HDFC VAS CCAvenue integration guide (PDF, 35 pages, Public) | Hosted checkout, status enquiry, hygiene, go-live, and best practices.                                                           | [Hosted checkout](/payments/ccavenue/hosted-checkout), [Status enquiry](/payments/ccavenue/status-enquiry), [Audit and go-live](/payments/ccavenue/audit-and-go-live) |
-| 2026-10-26 | HDFC API Doc v1.3 (PDF), earlier copy                       | Merchant's API Implementation Guide. Superseded by the kit revision below.                                                       | [Merchant API § Differences](/payments/ccavenue/merchant-api#differences-from-the-earlier-copy)                                                                       |
-| 2026-11-04 | `Web_Integration_Non_Seamless.zip` — "integration kits"     | CCAvenue Integration Document v3.1 (47 pages) and non-seamless kits for ASP.NET, JSP, Node JS, Perl, PHP, Python, Ruby on Rails. | [Web integration kit](/payments/ccavenue/web-integration-kit)                                                                                                         |
-| 2026-11-04 | `API_Document_Sample_Code-New.zip` — "API sample kits"      | HDFC API Doc v1.3 (172 pages, 2023-05-12 revision) and Status API kits for ASP.NET, Java, and PHP.                               | [Merchant API](/payments/ccavenue/merchant-api), [Status enquiry § kits](/payments/ccavenue/status-enquiry#status-api-sample-kits)                                    |
-
-The two archives are the "integration kits" and "API sample kits" links in the HDFC PG Helpdesk mail of 2026-10-27 (TID 76034653, problem statement "Setup Query"). That mail also asks HDFC's team to help with "the remaining two queries mentioned in the mail trail"; those queries are not recorded in this repository.
+| File                                                        | What it is                                                                                                                       | Transcribed on                                                                                                                                                        |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Integration and Audit checklist (PDF, 3 pages)              | URL, transaction-flow, and status-API requirements, plus the seven security-audit checks.                                        | [Audit and go-live](/payments/ccavenue/audit-and-go-live)                                                                                                             |
+| HDFC VAS CCAvenue integration guide (PDF, 35 pages, Public) | Hosted checkout, status enquiry, hygiene, go-live, and best practices.                                                           | [Hosted checkout](/payments/ccavenue/hosted-checkout), [Status enquiry](/payments/ccavenue/status-enquiry), [Audit and go-live](/payments/ccavenue/audit-and-go-live) |
+| HDFC API Doc v1.3 (PDF), earlier copy                       | Merchant's API Implementation Guide. Superseded by the kit revision below.                                                       | [Merchant API differences](/payments/ccavenue/merchant-api#differences-from-the-earlier-copy)                                                                         |
+| `Web_Integration_Non_Seamless.zip` — "integration kits"     | CCAvenue Integration Document v3.1 (47 pages) and non-seamless kits for ASP.NET, JSP, Node JS, Perl, PHP, Python, Ruby on Rails. | [Web integration kit](/payments/ccavenue/web-integration-kit)                                                                                                         |
+| `API_Document_Sample_Code-New.zip` — "API sample kits"      | HDFC API Doc v1.3 (172 pages, May 2023 revision) and Status API kits for ASP.NET, Java, and PHP.                                 | [Merchant API](/payments/ccavenue/merchant-api), [Status enquiry § kits](/payments/ccavenue/status-enquiry#status-api-sample-kits)                                    |
 
 ### Credentials
 
@@ -46,7 +44,7 @@ Every CCAvenue document says the same three values come from the CCAvenue **M.A.
 | Access Code                         | Sent in clear beside every encrypted payload (`access_code`) | `CCAVENUE_ACCESS_CODE` (server env)         |
 | Working Key (also "Encryption Key") | AES key material for every request and response              | `CCAVENUE_WORKING_KEY` (server env, secret) |
 
-The variable names are those already catalogued in [Environment variables](/engineering-live-context/environment-variables), with `CCAVENUE_BASE_URL`; they are not read by any code yet. The merchant API also requires the server's **public IP** to be registered with CCAvenue before any API call works.
+The variable names are those already catalogued in [Environment variables](/engineering-live-context/environment-variables), with `CCAVENUE_BASE_URL`; no code reads them. The merchant API also requires the server's **public IP** to be registered with CCAvenue before any API call works.
 
 The kits ship with hard-coded keys and access codes that belong to someone else. None of them has been copied into this repository; every sample on these pages uses `<MERCHANT_ID>`, `<ACCESS_CODE>`, and `<WORKING_KEY>`.
 
@@ -73,17 +71,17 @@ A transaction request encrypts a `name=value&…` string. A merchant-API request
 
 ### Integration methods offered
 
-| Method                                   | Card data on the merchant server?                                    | Fits `AGENTS.md`?                          |
-| ---------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------ |
-| CCAvenue billing page (**non-seamless**) | No — the customer enters it on CCAvenue                              | Yes. This is the kit HDFC sent.            |
-| Custom checkout form                     | Yes — `card_number`, `cvv_number`, expiry are posted by the merchant | No. "Card data never touches our servers." |
-| Direct Connect                           | Yes, and the merchant drives the bank 3-D Secure redirect            | No.                                        |
+| Method                                   | Card data on the merchant server?                                    | Allowed?                                  |
+| ---------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------- |
+| CCAvenue billing page (**non-seamless**) | No — the customer enters it on CCAvenue                              | Yes. This is the kit HDFC sent.           |
+| Custom checkout form                     | Yes — `card_number`, `cvv_number`, expiry are posted by the merchant | No. Card data must not reach our servers. |
+| Direct Connect                           | Yes, and the merchant drives the bank 3-D Secure redirect            | No.                                       |
 
 ### Status vocabularies
 
 CCAvenue uses two different `order_status` sets. The hosted-checkout response uses **Success, Failure, Aborted, Invalid, Timeout**. The merchant API (Status, Lookup, Pending) uses **Aborted, Auto-Cancelled, Auto-Reversed, Awaited, Cancelled, Chargeback, Invalid, Fraud, Initiated, Refunded, Shipped, Successful, Systemrefund, Unsuccessful, Timeout**. The HDFC VAS guide prints a third, shorter list for its status enquiry. The pages keep them separate.
 
-Two operational points from the merchant API that the hosted flow does not mention: **only confirmed orders are settled**, and unconfirmed orders are **auto-cancelled** after 12 days (5 days in one place in the kit revision). Whether this merchant account auto-confirms is not stated in anything received; see [Open questions](#open-questions-for-hdfc-or-the-owner).
+Two operational points from the merchant API that the hosted flow does not mention: **only confirmed orders are settled**, and unconfirmed orders are **auto-cancelled** after 12 days (5 days in one place in the kit revision). Whether this merchant account auto-confirms is not stated; see [Open questions](#open-questions-for-hdfc).
 
 ### Transcription pages
 
@@ -95,16 +93,16 @@ Two operational points from the merchant API that the hosted flow does not menti
 
 ## 2. Endpoints we use
 
-**Status: not wired.** No CCAvenue adapter, no payment route, and no payment use case exists. `PaymentGatewayPort` (`packages/core-domain/src/ports/payment-gateway.port.ts`) defines `createPayment(input)` and `verifyCallback(payload)` only, and the shared contract enum `PaymentGateway` is `ccavenue | paypal`. [Route inventory](/api/route-inventory) lists no payment route. The entries below say where each call **will** be used under the plan in [Payment and order lifecycle](/business-flows/payment-and-order-lifecycle) and Chunk G of the roadmap; nothing here is a claim about current behaviour.
+**Status: not wired.** No CCAvenue adapter, no payment route, and no payment use case exists. `PaymentGatewayPort` (`packages/core-domain/src/ports/payment-gateway.port.ts`) defines `createPayment(input)` and `verifyCallback(payload)` only, and the shared contract enum `PaymentGateway` is `ccavenue | paypal`. [Route inventory](/api/route-inventory) lists no payment route. The entries below say where each call will be used, under the design in [Payment and order lifecycle](/business-flows/payment-and-order-lifecycle).
 
-Each entry follows the record that [Route inventory § Adding a route](/api/route-inventory#adding-a-route) requires before a route is built: owner and actor, method and path, authentication, request and response contracts, idempotency, side effects, and the tests that will prove it. When the callback route lands, it is described in OpenAPI and appears in [Scalar](/api/openapi-and-scalar) like every other route; this page remains the vendor-side reference.
+Each entry follows the record that [Route inventory § Adding a route](/api/route-inventory#adding-a-route) requires before a route is built: owner and actor, method and path, authentication, request and response contracts, idempotency, side effects, and the tests that will prove it. The callback route will appear in OpenAPI and [Scalar](/api/openapi-and-scalar) like every other route. This page is the vendor-side reference.
 
 ### Summary
 
 | #   | Direction                | Method | Vendor endpoint                                                 | Our caller (planned)                                                                  | Status    |
 | --- | ------------------------ | ------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------- | --------- |
 | 1   | Browser → CCAvenue       | `POST` | `/transaction/transaction.do?command=initiateTransaction`       | `PaymentGatewayPort.createPayment` in a CCAvenue adapter; payment-initiation use case | Not wired |
-| 2   | CCAvenue → browser → API | `POST` | Our `redirect_url` / `cancel_url` receives `encResp`, `orderNo` | `PaymentGatewayPort.verifyCallback`; an API payment-return route not yet named        | Not wired |
+| 2   | CCAvenue → browser → API | `POST` | Our `redirect_url` / `cancel_url` receives `encResp`, `orderNo` | `PaymentGatewayPort.verifyCallback`; an API payment-return route                      | Not wired |
 | 3   | API → CCAvenue (S2S)     | `POST` | `/apis/servlet/DoWebTrans` `command=orderStatusTracker`         | No port method yet; required by HDFC's checklist                                      | Not wired |
 | 4   | API → CCAvenue (S2S)     | `POST` | `/apis/servlet/DoWebTrans` `command=refundOrder`                | No port method yet; refund flow                                                       | Not wired |
 
@@ -112,17 +110,17 @@ Calls not planned are listed at the end of this section with the reason.
 
 ### 1. Initiate hosted payment — `initiateTransaction`
 
-| Field                    | Value                                                                                                                                                                                                                                                                                                                |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Owner / actor            | Payment context; the signed-in or guest customer at checkout.                                                                                                                                                                                                                                                        |
-| Method / URL             | `POST https://test.ccavenue.com/transaction/transaction.do?command=initiateTransaction` (test); `https://secure.ccavenue.com/…` (production). Sent by the **customer's browser** as an auto-submitting form, not by the API.                                                                                         |
-| Authentication           | `access_code` in clear plus `encRequest` encrypted with the working key. The working key never leaves the API.                                                                                                                                                                                                       |
-| Request contract         | Form fields `encRequest` (hex) and `access_code`. Encrypted payload: `merchant_id`, `order_id`, `currency`, `amount`, `redirect_url`, `cancel_url`, `language` required; billing/delivery, `merchant_param1`–`5`, `tid` optional ([full table](/payments/ccavenue/web-integration-kit#request-parameters-required)). |
-| Response contract        | None to the API. CCAvenue shows its billing page; the outcome arrives through call 2.                                                                                                                                                                                                                                |
-| Idempotency              | `order_id` is ours and CCAvenue does not check uniqueness. One payment attempt per `order_id` value; a retry is a new attempt with a new `order_id`, per the lifecycle's "one order, many attempts".                                                                                                                 |
-| Side effects             | Before the hand-off, the order and a pending payment attempt are saved in one transaction ([lifecycle diagram](/business-flows/payment-and-order-lifecycle#initiation-and-confirmation)).                                                                                                                            |
-| Where it will be used    | A CCAvenue adapter implementing `PaymentGatewayPort.createPayment`; it returns `PaymentIntent { id, redirectUrl, raw }`. How the form fields reach the storefront (the `redirectUrl` alone cannot carry a POST body) is a Chunk G design point, not decided.                                                         |
-| Tests that will prove it | Adapter unit test: known plaintext + test working key → expected hex, and round-trip decrypt. No real key in fixtures.                                                                                                                                                                                               |
+| Field                 | Value                                                                                                                                                                                                                                                                                                                |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Actor                 | Payment context; the signed-in or guest customer at checkout.                                                                                                                                                                                                                                                        |
+| Method / URL          | `POST https://test.ccavenue.com/transaction/transaction.do?command=initiateTransaction` (test); `https://secure.ccavenue.com/…` (production). Sent by the **customer's browser** as an auto-submitting form, not by the API.                                                                                         |
+| Authentication        | `access_code` in clear plus `encRequest` encrypted with the working key. The working key never leaves the API.                                                                                                                                                                                                       |
+| Request contract      | Form fields `encRequest` (hex) and `access_code`. Encrypted payload: `merchant_id`, `order_id`, `currency`, `amount`, `redirect_url`, `cancel_url`, `language` required; billing/delivery, `merchant_param1`–`5`, `tid` optional ([full table](/payments/ccavenue/web-integration-kit#request-parameters-required)). |
+| Response contract     | None to the API. CCAvenue shows its billing page; the outcome arrives through call 2.                                                                                                                                                                                                                                |
+| Idempotency           | `order_id` is ours and CCAvenue does not check uniqueness. One payment attempt per `order_id` value; a retry is a new attempt with a new `order_id`, per the lifecycle's "one order, many attempts".                                                                                                                 |
+| Side effects          | Before the hand-off, the order and a pending payment attempt are saved in one transaction ([lifecycle diagram](/business-flows/payment-and-order-lifecycle#initiation-and-confirmation)).                                                                                                                            |
+| Where it will be used | A CCAvenue adapter implementing `PaymentGatewayPort.createPayment`; it returns `PaymentIntent { id, redirectUrl, raw }`. How the form fields reach the storefront is undecided, because `redirectUrl` alone cannot carry a POST body.                                                                                |
+| Tests                 | Adapter unit test: known plaintext + test working key → expected hex, and round-trip decrypt. No real key in fixtures.                                                                                                                                                                                               |
 
 Sample request (what the browser posts):
 
@@ -142,18 +140,18 @@ merchant_id=<MERCHANT_ID>&order_id=<payment attempt id>&currency=INR&amount=1499
 
 ### 2. Payment return — `redirect_url` / `cancel_url` callback
 
-| Field                    | Value                                                                                                                                                                                                                                                                                                                                                 |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Owner / actor            | Payment context; actor is the customer's browser carrying CCAvenue's auto-posted form. It is not a server-to-server webhook.                                                                                                                                                                                                                          |
-| Method / URL             | `POST` to the URL we send as `redirect_url` (and `cancel_url`). The route is not named yet and is not in [Route inventory](/api/route-inventory). If `redirect_url` is omitted, CCAvenue posts to the URL in M.A.R.S "dynamic event notifications", or shows its own page.                                                                            |
-| Authentication           | None from the browser; trust comes only from decrypting `encResp` with our working key and then re-checking with call 3. It arrives cross-site, so it cannot carry our CSRF cookie and needs its own exemption with this compensating check.                                                                                                          |
-| Request contract         | `encResp` (hex) and `orderNo` (plain text). Decrypted: `order_id`, `tracking_id`, `bank_ref_no`, `order_status` (Success, Failure, Aborted, Invalid, Timeout), `failure_message`, `payment_mode`, `card_name`, `status_code`, `status_message`, `currency`, `amount`, … ([full table](/payments/ccavenue/web-integration-kit#8-response-parameters)). |
-| Response contract        | A redirect to a storefront result page. The browser must never be shown decrypted fields.                                                                                                                                                                                                                                                             |
-| Validation               | CCAvenue: "Kindly ensure this value received in response is validated before providing services" for `order_id`, `currency`, `Amount`. HDFC audit: response-tampering and duplicate-entry checks ([Audit](/payments/ccavenue/audit-and-go-live)).                                                                                                     |
-| Idempotency              | The same `encResp` can be replayed or re-posted (Back/Refresh is CCAvenue error 41004). The attempt transition must be idempotent on `tracking_id`.                                                                                                                                                                                                   |
-| Side effects             | Payment attempt and order state transition in one transaction; no rewrite of purchased facts ([lifecycle](/business-flows/payment-and-order-lifecycle#why-order-and-payment-are-separate)).                                                                                                                                                           |
-| Where it will be used    | `PaymentGatewayPort.verifyCallback(payload)` in the CCAvenue adapter, returning `PaymentVerification { ok, orderId, gateway: 'ccavenue', raw }`; called from an API controller added in Chunk G.                                                                                                                                                      |
-| Tests that will prove it | Decrypt fixture produced with a test key; tampered amount/currency/order rejected; replayed `tracking_id` is a no-op; unknown `order_status` fails closed.                                                                                                                                                                                            |
+| Field                 | Value                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Actor                 | Payment context; actor is the customer's browser carrying CCAvenue's auto-posted form. It is not a server-to-server webhook.                                                                                                                                                                                                                          |
+| Method / URL          | `POST` to the URL we send as `redirect_url` (and `cancel_url`). The route has no name and is not in [Route inventory](/api/route-inventory). If `redirect_url` is omitted, CCAvenue posts to the URL in M.A.R.S "dynamic event notifications", or shows its own page.                                                                                 |
+| Authentication        | None from the browser; trust comes only from decrypting `encResp` with our working key and then re-checking with call 3. It arrives cross-site, so it cannot carry our CSRF cookie and needs its own exemption with this compensating check.                                                                                                          |
+| Request contract      | `encResp` (hex) and `orderNo` (plain text). Decrypted: `order_id`, `tracking_id`, `bank_ref_no`, `order_status` (Success, Failure, Aborted, Invalid, Timeout), `failure_message`, `payment_mode`, `card_name`, `status_code`, `status_message`, `currency`, `amount`, … ([full table](/payments/ccavenue/web-integration-kit#8-response-parameters)). |
+| Response contract     | A redirect to a storefront result page. The browser must never be shown decrypted fields.                                                                                                                                                                                                                                                             |
+| Validation            | CCAvenue: "Kindly ensure this value received in response is validated before providing services" for `order_id`, `currency`, `Amount`. HDFC audit: response-tampering and duplicate-entry checks ([Audit](/payments/ccavenue/audit-and-go-live)).                                                                                                     |
+| Idempotency           | The same `encResp` can be replayed or re-posted (Back/Refresh is CCAvenue error 41004). The attempt transition must be idempotent on `tracking_id`.                                                                                                                                                                                                   |
+| Side effects          | Payment attempt and order state transition in one transaction; no rewrite of purchased facts ([lifecycle](/business-flows/payment-and-order-lifecycle#why-order-and-payment-are-separate)).                                                                                                                                                           |
+| Where it will be used | `PaymentGatewayPort.verifyCallback(payload)` in the CCAvenue adapter, returning `PaymentVerification { ok, orderId, gateway: 'ccavenue', raw }`; called from a payment-return API controller.                                                                                                                                                         |
+| Tests                 | Decrypt fixture produced with a test key; tampered amount/currency/order rejected; replayed `tracking_id` is a no-op; unknown `order_status` fails closed.                                                                                                                                                                                            |
 
 Sample request (what CCAvenue makes the browser post):
 
@@ -174,17 +172,17 @@ Values are not URL-encoded; split on `&`, then on the first `=`.
 
 ### 3. Status enquiry — `orderStatusTracker`
 
-| Field                    | Value                                                                                                                                                                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Owner / actor            | Payment context; the API itself (after call 2, and from a reconciliation job for attempts left pending).                                                                                                                                    |
-| Method / URL             | `POST https://apitest.ccavenue.com/apis/servlet/DoWebTrans` (staging); `https://api.ccavenue.com/apis/servlet/DoWebTrans` (production). Server-to-server from a registered public IP.                                                       |
-| Authentication           | `access_code` plus `enc_request` encrypted with the working key; IP allow-listing at CCAvenue.                                                                                                                                              |
-| Request contract         | Form body `enc_request`, `access_code`, `command=orderStatusTracker`, `request_type=JSON`, `response_type=JSON`, `version=1.2`. Encrypted JSON: `reference_no` (= `tracking_id`) and/or `order_no` (= our `order_id`).                      |
-| Response contract        | `status=0&enc_response=<hex>&enc_error_code=` or `status=1&enc_response=<plain error>&enc_error_code=<code>`. Decrypted fields: [order record fields](/payments/ccavenue/merchant-api#order-record-fields).                                 |
-| Errors                   | [API call errors](/payments/ccavenue/merchant-api#api-call-errors-status-1) (514xx) and [failure reasons](/payments/ccavenue/merchant-api#failure-reasons-for-api-calls) (510xx–513xx).                                                     |
-| Idempotency              | Read-only; safe to retry.                                                                                                                                                                                                                   |
-| Where it will be used    | Not decided. HDFC's checklist makes it **mandatory** ("dual enquiry") and asks for its request and response logs at audit. `PaymentGatewayPort` has no method for it today; Chunk G must either add one or call it inside `verifyCallback`. |
-| Tests that will prove it | Adapter test with a recorded `status=0` and `status=1` body; decrypted amount/currency mismatch fails closed.                                                                                                                               |
+| Field                 | Value                                                                                                                                                                                                                              |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Actor                 | Payment context; the API itself (after call 2, and from a reconciliation job for attempts left pending).                                                                                                                           |
+| Method / URL          | `POST https://apitest.ccavenue.com/apis/servlet/DoWebTrans` (staging); `https://api.ccavenue.com/apis/servlet/DoWebTrans` (production). Server-to-server from a registered public IP.                                              |
+| Authentication        | `access_code` plus `enc_request` encrypted with the working key; IP allow-listing at CCAvenue.                                                                                                                                     |
+| Request contract      | Form body `enc_request`, `access_code`, `command=orderStatusTracker`, `request_type=JSON`, `response_type=JSON`, `version=1.2`. Encrypted JSON: `reference_no` (= `tracking_id`) and/or `order_no` (= our `order_id`).             |
+| Response contract     | `status=0&enc_response=<hex>&enc_error_code=` or `status=1&enc_response=<plain error>&enc_error_code=<code>`. Decrypted fields: [order record fields](/payments/ccavenue/merchant-api#order-record-fields).                        |
+| Errors                | [API call errors](/payments/ccavenue/merchant-api#api-call-errors-status-1) (514xx) and [failure reasons](/payments/ccavenue/merchant-api#failure-reasons-for-api-calls) (510xx–513xx).                                            |
+| Idempotency           | Read-only; safe to retry.                                                                                                                                                                                                          |
+| Where it will be used | Not decided. HDFC's checklist makes it **mandatory** ("dual enquiry") and asks for its request and response logs at audit. `PaymentGatewayPort` has no method for it. The adapter must add one or call it inside `verifyCallback`. |
+| Tests                 | Adapter test with a recorded `status=0` and `status=1` body; decrypted amount/currency mismatch fails closed.                                                                                                                      |
 
 Sample request:
 
@@ -226,16 +224,16 @@ status=0&enc_response=<hex>&enc_error_code=
 
 ### 4. Refund — `refundOrder`
 
-| Field                    | Value                                                                                                                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Owner / actor            | Payment/refund context; an admin with refund permission, through the API. No refund permission or route exists yet.                                                                         |
-| Method / URL             | Same `DoWebTrans` endpoint as call 3, `command=refundOrder`.                                                                                                                                |
-| Authentication           | As call 3.                                                                                                                                                                                  |
-| Request contract         | Encrypted JSON `reference_no`, `refund_amount` (full or partial), `refund_ref_no` (ours, AlphaNumeric (30), unique).                                                                        |
-| Response contract        | Decrypted `refund_status` (0 success, 1 failure), `reason`, `error_code`. Follow-up state through `getRefundDetails` (TS-REFC, TS-REFA, TS-REFF, TS-REFD).                                  |
-| Idempotency              | `refund_ref_no` is our idempotency handle; 51309 "Ensure that merchant reference number parameter is not repeated", 51311/51328 "Multiple refunds not allowed".                             |
-| Where it will be used    | Not decided. The lifecycle model gives each payment zero or more refunds; `PaymentGatewayPort` has no refund method. Returns and refunds are later than the first payment slice of Chunk G. |
-| Tests that will prove it | Adapter test for success and each refusal code; duplicate `refund_ref_no` does not double-refund.                                                                                           |
+| Field                 | Value                                                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Actor                 | Payment/refund context; an admin with refund permission, through the API. No refund permission or route exists yet.                                                |
+| Method / URL          | Same `DoWebTrans` endpoint as call 3, `command=refundOrder`.                                                                                                       |
+| Authentication        | As call 3.                                                                                                                                                         |
+| Request contract      | Encrypted JSON `reference_no`, `refund_amount` (full or partial), `refund_ref_no` (ours, AlphaNumeric (30), unique).                                               |
+| Response contract     | Decrypted `refund_status` (0 success, 1 failure), `reason`, `error_code`. Follow-up state through `getRefundDetails` (TS-REFC, TS-REFA, TS-REFF, TS-REFD).         |
+| Idempotency           | `refund_ref_no` is our idempotency handle; 51309 "Ensure that merchant reference number parameter is not repeated", 51311/51328 "Multiple refunds not allowed".    |
+| Where it will be used | Not decided. The lifecycle model gives each payment zero or more refunds; `PaymentGatewayPort` has no refund method. Refunds follow the first payment integration. |
+| Tests                 | Adapter test for success and each refusal code; duplicate `refund_ref_no` does not double-refund.                                                                  |
 
 Encrypted JSON (sample from the merchant API guide):
 
@@ -258,17 +256,16 @@ Decrypted responses:
 | Call                                                                                                          | Why not                                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `confirmOrder`, `cancelOrder`, `getPendingOrders`                                                             | Only needed if the account does not auto-confirm. Not known — see open questions. If it does not, unconfirmed orders auto-cancel and are never settled, so this would move into section 2. |
-| `orderLookup`, `getRefundDetails`, `getSettlementDetails`, `payoutSummary`, `payIdDetails`, consolidate calls | Reconciliation and finance reporting. Useful later; not in the Chunk G payment slice.                                                                                                      |
+| `orderLookup`, `getRefundDetails`, `getSettlementDetails`, `payoutSummary`, `payIdDetails`, consolidate calls | Reconciliation and finance reporting. Not part of the first payment integration.                                                                                                           |
 | Customer vault calls, `addCustomerPaymentOption`                                                              | Card storage; `addCustomerPaymentOption` posts a card number from the merchant server.                                                                                                     |
 | Invoice calls, `updateMerchantParams`, `updateBillingDetails`                                                 | No invoice or pay-link product in scope.                                                                                                                                                   |
 | Custom checkout form, Direct Connect (`initiatePayloadTransaction`)                                           | Card data would touch our servers.                                                                                                                                                         |
 
-### Open questions for HDFC or the owner
+### Open questions for HDFC
 
-These come from the kits and are not answered by anything received. None is a new `DEC-*` gate yet.
+These come from the kits and are not answered by the material received.
 
 1. **Auto-confirm.** Does K R MARKETING ONLINE's account auto-confirm successful orders, or must we call `confirmOrder`? The merchant API says only confirmed orders settle.
 2. **API host.** The guide says `api.ccavenue.com` / `apitest.ccavenue.com`; the HDFC kits use `login.ccavenue.com` and a staging IP. Which does HDFC expect?
 3. **Server IP.** Which public IP will be registered for API calls (staging and production droplets)?
 4. **STRING format.** The kit revision documents XML and JSON only, but its ASP.NET sample still sends `request_type=STRING`. Only JSON is planned here.
-5. **"The remaining two queries"** in the 2026-10-27 mail trail are not recorded in the repository.

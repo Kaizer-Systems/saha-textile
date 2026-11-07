@@ -4,7 +4,7 @@ wide: true
 description: Cross-journey troubleshooting map for catalogue, cart, auth, checkout, payment, order, shipment, and admin failures.
 status: planned
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/storefront/src/app
     - apps/admin/src/app
@@ -15,7 +15,7 @@ source_of_truth:
 
 # Failure recovery and debugging
 
-Debug business journeys from the first broken invariant, not from the final error toast. A payment-looking failure may have begun with stale stock; an authorization-looking failure may be an expired session; an order mismatch may be a snapshot or ownership problem.
+Debug a business journey from the first broken rule, not from the final error toast. A payment-looking failure may have begun with stale stock; an authorization-looking failure may be an expired session; an order mismatch may be a snapshot or ownership problem.
 
 ## Universal trace
 
@@ -30,7 +30,7 @@ flowchart TD
     Version -->|Yes| Domain{"Domain invariant passed?"}
     Domain -->|No| Explain["Structured business correction"]
     Domain -->|Yes| Edge{"Adapter/provider/database result?"}
-    Edge --> Evidence["Audit-safe evidence and recovery"]
+    Edge --> Records["Audit-safe records and recovery"]
 ```
 
 ## Symptom map
@@ -53,7 +53,7 @@ flowchart TD
 | Refund stuck                          | Payment/refund identifiers and provider reference | Idempotency, amount, currency, provider outcome     | Mark processed before confirmation       |
 | Notification missing                  | Channel/category switch and consent               | Outbox/provider delivery state                      | Roll back the business event             |
 
-## Evidence to capture safely
+## Information to capture safely
 
 - request/correlation identifier;
 - actor type and sanitized identifier;
@@ -74,17 +74,17 @@ Never capture passwords, OTPs, access/refresh tokens, guest-token plaintext, car
 4. **Use idempotency.** Retrying payment, order, refund, and notification commands must not duplicate side effects.
 5. **Separate business and communication state.** A failed notification does not erase a successful order transition.
 6. **Reconcile from authority.** Replace browser assumptions with validated server truth after reconnect, auth, or conflict.
-7. **Audit privileged/manual actions.** Operator overrides need reason, actor, time, and before/after evidence.
-8. **Use the right proof layer.** Unit tests prove rules and refusals; provider popups, user-gesture constraints, navigation/reload behavior, and complete multi-page social journeys require a real browser plus before/after persistence evidence.
+7. **Audit privileged/manual actions.** Operator overrides need reason, actor, time, and before and after values.
+8. **Test at the right layer.** Unit tests cover rules and refusals. Provider popups, user-gesture limits, reload behaviour and multi-page social journeys need a real browser.
 
 ## Diagnostic checklist
 
 - [ ] Reproduce using the direct route, not only client navigation.
-- [ ] Identify current code versus ratified target; do not debug an unimplemented integration as if it exists.
+- [ ] Check whether the behaviour exists or is planned. Do not debug an integration that is not built.
 - [ ] Find the route/page, feature, query/store, service, contract, controller, use case, and port involved.
 - [ ] Inspect structured validation or business errors before logs.
 - [ ] Check ownership and state versions.
 - [ ] Check server-calculated values before rendered formatting.
-- [ ] Verify retry/idempotency behavior.
+- [ ] Verify retry/idempotency behaviour.
 - [ ] Remove sensitive test data from screenshots and issue reports.
-- [ ] Update portal evidence when the underlying behavior changes.
+- [ ] Update the portal when behaviour changes.

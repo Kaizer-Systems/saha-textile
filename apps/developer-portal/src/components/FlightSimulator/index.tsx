@@ -231,7 +231,7 @@ export function FlightSimulator(): React.ReactNode {
 							className={mode === m ? styles.modeActive : styles.mode}
 							onClick={() => setMode(m)}
 						>
-							{m === 'current' ? 'Current execution' : 'Ratified target'}
+							{m === 'current' ? 'Current execution' : 'Target design'}
 						</button>
 					))}
 				</div>
@@ -344,7 +344,7 @@ export function FlightSimulator(): React.ReactNode {
 						<p>{selected.current}</p>
 					</div>
 					<div className={`${styles.lens} ${mode === 'target' ? styles.lensEmphasis : ''}`}>
-						<span className={styles.lensLabel}>Ratified target</span>
+						<span className={styles.lensLabel}>Target design</span>
 						<p>{selected.target}</p>
 					</div>
 				</div>

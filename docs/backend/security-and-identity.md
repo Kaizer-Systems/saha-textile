@@ -1,11 +1,11 @@
 ---
 title: Security, Sessions, and Authorization
 wide: true
-description: Current authentication scaffold, ratified browser-session architecture, CSRF, authorization, BOLA, and security verification.
+description: Authentication, cookie sessions, CSRF, authorization and identity flows.
 search_keywords: 'cookies csrf st_access st_refresh st_admin_access otp msg91 jwt session bola audiences pin'
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/api/src/auth
     - apps/api/src/admin
@@ -36,16 +36,16 @@ source_of_truth:
 
 # Security, sessions, and authorization
 
-Security status is **scaffolded** because the identity and authorization foundation, now browser-proven end to end (Chunk D done 2026-11-03), still has deployment gaps. Browser auth uses audience-bound httpOnly access/refresh cookies, opaque refresh rotation with reuse-triggered family revocation, session `sid` checks, session-bound double-submit CSRF, current-account/version checks, role/permission enforcement, and object ownership. Storefront identity includes verified-before-creation signup with server-held resume/discard state, password and OTP login by email or phone, Google and Facebook verifier adapters, provider-neutral identity links, step-up credential management, aligned remember-me lifetimes, session management, and guest-cart adoption. Signup account/credential/identity writes and contact-change proof/identifier/audit writes now use bounded transactions; duplicate identifier races become stable domain refusals. The admin boundary includes a closed **92-code** registry, active assignment resolution, permission-gated authority routes, no-delegation-above-self, last-administrator protection, offboarding/session revocation, operator bootstrap, Account Security, and idle-lock resume. Strict credentialed CORS, Helmet, trusted client-IP rate limiting, request correlation, log redaction, and the safe error envelope also exist. Google and Facebook signup, sign-in, connect and disconnect were proven end to end with real provider accounts on 2026-10-25. Production configuration now fails closed: with `NODE_ENV=production` and `DEPLOY_ENV` not `local`, the API and worker refuse to start on default, short or shared secrets, a missing `CSRF_SECRET`, insecure cookies, localhost/http/wildcard CORS, no proxy IP trust, the console notifier, a fixed OTP, half-set Facebook credentials, unauthenticated Mongo, an open Redis, or unset media storage (2026-11-03; real staging proof owed under Chunk J). Remaining gaps include pending-intent continuation, provider-backed delivery, granular-permission migration for older privileged routes, and portal private-access deployment (`DEC-PORTAL-PRIVATE-ACCESS`). Customer soft delete ends sessions, spends outstanding links and codes and releases provider identities, and the recycle bin restores behind `customer.restore` (`DEC-CUSTOMER-SOFT-DELETE-OPS`, `DEC-SOFT-DELETED-IDENTITY-REUSE`, 2026-11-03).
+This page describes how the API authenticates callers, protects sessions and authorizes actions. It covers storefront customers, admin operators and guest carts.
 
 ## Authentication versus authorization
 
 - **Authentication:** Who is the caller?
 - **Authorization:** May this caller perform this action on this resource now?
 
-A valid token proves identity and live session membership; object-level cart/order ownership is enforced separately and fails closed as not-found on mismatch.
+A valid token proves identity and session membership. Object-level ownership of carts, orders and sessions is checked separately, and a mismatch returns not-found.
 
-## Current browser auth
+## Browser sign-in
 
 ```mermaid
 sequenceDiagram
@@ -65,30 +65,7 @@ sequenceDiagram
     Browser->>API: cookies and X-CSRF-Token on unsafe requests
 ```
 
-Important current gaps:
-
-- both Angular applications use cookie-only typed auth gateways with no browser-held credential; the shared transport coordinates CSRF, one refresh attempt and cross-tab refresh exclusion;
-- signup and password-management flows enforce the shared 12-character minimum and the domain common-password policy;
-- OTP request/verify is live through `NotificationPort`. DI selects `Msg91NotificationAdapter` when `NOTIFICATION_PROVIDER=msg91` and `MSG91_AUTH_KEY` is set; otherwise `ConsoleNotificationAdapter` (local/test / missing key fallback). Local development may set `OTP_LOCAL_FIXED_CODE` to six digits while the provider is `console`; boot refuses that value in production or with any other provider. The code is still stored as an HMAC, single-use, attempt-capped, and short-lived;
-- signup holds identifiers and proof server-side until both email and phone are verified; the browser can recover the server projection after reload and discard it when leaving registration; Google and Facebook verification, OAuth state/nonce validation, and identity connect/disconnect routes are implemented;
-- whether an identifier already has an account is disclosed only once control of it is proven: after its signup code for email or phone, and at the provider callback for an address the provider proved (Google). Meta proves nothing about its address, so a Facebook signup earns that answer through the email code. Accounts are never linked on a matching address; the owner signs in and connects the provider behind step-up. Where a signup CODE proved the value, the person may sign in to that account at once (`signup/sign-in-existing`: active accounts only, pending record consumed, nothing from the signup attached); a Google-proven address is offered a one-time code instead, because `email_verified` alone is never accepted as sign-in proof. A social sign-in stamps the identity's `lastUsedAt`;
-- the storefront's login, registration, one-time-code and forgot-password screens are guest-only, and a domain refusal (`issues[].path = ['request']`) is rendered by the screen that asked rather than repeated as a global toast;
-- signup finalisation resolves ownership before consuming proof, then commits customer, password credential when applicable, and provider identity in one transaction; unique-index races return `signup_identifier_taken`, and failure to merge a guest cart does not revoke an otherwise valid login;
-- contact-change confirmation consumes the pending proof, changes the identifier, and records its audit event in one transaction; a competing unique write returns `contact_in_use`;
-- admin password recovery, password/PIN login, PIN setup/lockout, invite lifecycle, HTTP resume, Account Security at `/account`, idle soft-lock PIN/password resume, first-admin bootstrap and fine-grained assignment enforcement on the admin management surfaces are live;
-- consent/privacy, order ownership, cart Principal/`st_guest` ownership, order-create cart adoption, and guest-cart adoption during signup/social login are live; pending-intent continuation and checkout idempotency remain Chunk G;
-- production configuration still needs a fail-closed secret check.
-
-## Chunk D status boundary
-
-Chunk D1's tested stores are bound into the HTTP flow. The current adapter suite also proves atomic refresh rotation, replay lookup, family revocation, one-active OTP handling, single-use token consumption, concurrency-safe rate-limit counters, role-assignment uniqueness, secret-field exclusion, and TTL policy against rs0.
-
-| Pass | Current evidence                                                                                                                                                                                                                                                                                                                                    | Remaining boundary                                                                      |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| D2   | **Done:** cookie issue/refresh/revoke, sid-bound access invalidation, reuse-family revocation, session-bound CSRF (Policy B) and storefront/admin audience guards                                                                                                                                                                                   | None in the defined D2 scope                                                            |
-| D3   | **Partial:** verified-before-creation signup with resumable/discardable pending state, atomic account/credential/identity creation, password/OTP login by email or phone, Google/Facebook verification, identity management, password/session management, atomic contact confirmation, account self-service and guest-cart adoption are implemented | Pending-intent continuation (real-account provider round trips proven 2026-10-25)       |
-| D4   | **Partial:** admin recovery, password/PIN login, PIN setup/lockout, invites, HTTP resume, Account Security client, idle soft-lock orchestration, bootstrap, registry-backed assignments, deny-by-default admin management, no-delegation, last-admin/offboarding controls and version invalidation                                                  | Real-browser PIN-login proof coverage and granular migration of older privileged routes |
-| D5   | **Partial:** consent/privacy, order BOLA, cart/`st_guest` ownership, order-create cart adoption, and authentication-time guest-cart adoption                                                                                                                                                                                                        | Checkout idempotency and pending-intent continuation (Chunk G)                          |
+Both Angular applications use cookie-only auth gateways and hold no credential. `packages/http-transport` coordinates the CSRF token, one refresh attempt and cross-tab refresh locking.
 
 ## Browser session architecture
 
@@ -110,49 +87,73 @@ sequenceDiagram
     API-->>Browser: New cookie pair or revoke family
 ```
 
-### Cookie roles
+### Cookies
 
-| Cookie/token               | Browser readable? | Purpose                                             |
-| -------------------------- | ----------------: | --------------------------------------------------- |
-| Access cookie              |                No | Short-lived authenticated requests                  |
-| Refresh cookie             |                No | Opaque rotation credential; hash stored server-side |
-| CSRF cookie                |                No | API half of double-submit, bound to the session     |
-| Guest cookie               |                No | Opaque authority for one guest cart only            |
-| Locale/currency preference |            May be | Non-secret presentation context                     |
+| Cookie               | Readable by script? | Purpose                                                  |
+| -------------------- | ------------------: | -------------------------------------------------------- |
+| Access               |                  No | Short-lived JWT for authenticated requests               |
+| Refresh              |                  No | Opaque rotation credential; its hash is stored           |
+| CSRF                 |                  No | API half of the double-submit pair, bound to the session |
+| Guest (`st_guest`)   |                  No | Opaque proof of ownership of one guest cart              |
+| Signup (`st_signup`) |                  No | Ties an in-progress signup to one browser                |
+| Locale (`st_locale`) |                 Yes | The visitor's language choice                            |
 
-The base cookie names are `st_access`, `st_refresh`, and `st_csrf` (CSRF header `x-csrf-token`). Admin sessions use their own names — `st_admin_access`, `st_admin_refresh`, `st_admin_csrf` — so an admin and a storefront session on the same host never overwrite each other. `CookieAudienceGuard` runs before every other guard and records the route's `@Audience` on the request; the session and CSRF guards then read that audience's cookies, and the admin fetches its CSRF token from `GET /auth/admin/csrf`. Session cookies use `httpOnly`, `SameSite=Lax`, `Path=/`, and Secure-by-default configuration; the CSRF cookie is deliberately readable and is not a credential. The `__Host-` prefix is used when cookies are Secure and no cookie domain is pinned. An explicit insecure local opt-out or a pinned domain uses the compact `st_*` names. Auth responses return sanitized account/session metadata, never reusable access or refresh credentials.
+Storefront sessions use `st_access`, `st_refresh` and `st_csrf`. Admin sessions use `st_admin_access`, `st_admin_refresh` and `st_admin_csrf`, so the two never overwrite each other. `CookieAudienceGuard` selects the right names from the route's `@Audience`.
 
-`GET /auth/storefront/me` is an identity probe, not a gated resource: a true guest (no access cookie and no refresh cookie) receives 200 `{ user: null }`. Expired access with a live refresh still 401s `session_expired` so the browser interceptor can rotate. It is not `@Public()`; a present access cookie is still validated.
+All session cookies are `httpOnly`, `SameSite=Lax`, `Path=/` and `Secure`. With `Secure` on and `COOKIE_DOMAIN` empty, names carry the `__Host-` prefix, which binds each cookie to the API host. Every environment uses this configuration. Auth responses return sanitized account and session data, never reusable credentials.
+
+### Session lifetimes
+
+| Session                    | Idle lifetime | Absolute lifetime |
+| -------------------------- | ------------: | ----------------: |
+| Storefront, "remember me"  |       30 days |           90 days |
+| Storefront, not remembered |         1 day |           90 days |
+| Admin                      |        1 hour |          12 hours |
+
+Access tokens last 15 minutes by default. Without "remember me", cookies have no expiry and end with the browser session. Admin screens lock after 15 minutes of inactivity; see [Admin idle lock](#admin-idle-lock).
+
+The device list (`GET /auth/{audience}/sessions`) shows a label, country and timestamps. It leaves out every token hash and the device hashes.
+
+### Refresh rotation
+
+Refresh tokens are 256-bit opaque values stored as hashes. Each refresh issues a new token and CSRF value, and stores the previous hash. Presenting a previous token proves a leak, so `RefreshReuseGuard` revokes the whole token family, ahead of the CSRF check. Two concurrent refreshes are safe: one wins, and the loser counts as reuse.
+
+`SessionGuard` loads the session by the JWT's `sid` on each request. It rejects a session that is missing, revoked, expired or mismatched, and it compares `tokenVersion` and `permissionsVersion` with the account's current values.
+
+`GET /auth/storefront/me` is an identity probe. A guest with no session cookies receives 200 with `{ user: null }`. An expired access cookie with a live refresh cookie returns 401 `session_expired`, so the browser rotates the session.
 
 ## CSRF rule
 
-For cookie-authenticated `POST`, `PUT`, `PATCH`, and `DELETE`, the global guard currently:
+For cookie-authenticated `POST`, `PUT`, `PATCH` and `DELETE` requests, `CsrfGuard`:
 
-1. allows safe methods and unsafe requests with no session cookie;
-2. otherwise requires the CSRF cookie and a matching `x-csrf-token` header;
-3. compares them in constant time, checks the session's stored hash, and rejects before mutation with 403 and `reason: csrf_rejected`, without saying which half failed.
+1. Allows safe methods, and unsafe requests with no session cookie.
+2. Requires the CSRF cookie and a matching `x-csrf-token` header.
+3. Compares them in constant time and checks the session's stored hash.
+4. Rejects with 403 and `reason: csrf_rejected`, without saying which half failed.
 
-Every cookie stays on the API host (`COOKIE_DOMAIN` empty, `__Host-` prefix; owner decision 2026-11-06), so the storefront and admin cannot read any of them. They fetch the token from `GET /auth/csrf` (or `/auth/admin/csrf`), keep it in memory (`CsrfTokenHolder` in `packages/http-transport`), and echo it. The gateways fetch again after login and after rotation. On `csrf_rejected`, the interceptors fetch once and replay once; a 403 without that reason is never retried. A cross-site page cannot read the token because CORS allows only listed origins to read the response. For an active session `GET /auth/csrf` follows Policy B: preserve the still-valid bound token, and only atomically rotate `csrfSecretHash` when the readable cookie is missing or desynced. Unsafe requests that carry session cookies fail closed when no live session resolves.
+The storefront and admin cannot read cookies on the API host. They fetch the token from `GET /auth/csrf` or `GET /auth/admin/csrf` and keep it in memory (`CsrfTokenHolder` in `packages/http-transport`). The gateways fetch it again after sign-in and rotation. On `csrf_rejected`, the interceptors fetch once and replay once. A 403 without that reason is never retried. A cross-site page cannot read the token, because CORS lets only listed origins read the reply.
+
+For a live session, `GET /auth/csrf` keeps a valid bound token. It rotates the stored hash only when the cookie is missing or does not match, because a cross-site navigation must not be able to invalidate a session's token.
 
 Never use `GET` for a state-changing operation.
 
 ## Audience and privilege separation
 
-| Actor               | Audience          | Allowed surface                                    |
-| ------------------- | ----------------- | -------------------------------------------------- |
-| Guest cart identity | none/accountless  | Only its cart and public catalogue actions         |
-| Customer            | `storefront`      | Own account/cart/orders and allowed public writes  |
-| Staff/admin         | `admin`           | Explicit admin routes permitted by role/permission |
-| Provider webhook    | signature-based   | One verified callback capability                   |
-| Internal job        | internal identity | Narrow scheduled capability                        |
+| Actor            | Audience        | Allowed surface                                       |
+| ---------------- | --------------- | ----------------------------------------------------- |
+| Guest cart owner | None            | Its own cart and public catalogue actions             |
+| Customer         | `storefront`    | Own account, cart, orders and permitted public writes |
+| Staff or admin   | `admin`         | Admin routes permitted by role and permission         |
+| Provider webhook | Signature-based | One verified callback capability                      |
+| Internal job     | Internal        | A narrow scheduled capability                         |
 
-An admin session must not automatically become customer authority, and a storefront session must never authorize an admin route.
+Customers and operators are separate populations in separate collections, `customers` and `adminUsers`. An admin session never becomes customer authority, and a storefront session never authorizes an admin route.
 
 ## Object-level authorization
 
-Customer order reads compare `order.userId` with the authenticated subject and return not-found on a mismatch; staff/admin have an explicit support bypass. Cart routes remain `@Public()` for guest add-to-cart but enforce Principal ownership or the hashed `st_guest` proof, and order creation validates ownership/adoption before any write.
+Order reads compare `order.userId` with the principal and return not-found on a mismatch. An admin holding `order.index` may read any order. Cart routes are public for guest add-to-cart, but enforce the session owner or the hashed `st_guest` proof. Account routes take the customer id from the session and accept none from the caller.
 
-Prefer ownership-scoped repository methods/use cases:
+Prefer ownership-scoped repository methods:
 
 ```text
 getCustomerOrder({ actorUserId, orderId })
@@ -161,80 +162,143 @@ getCustomerOrder({ actorUserId, orderId })
 → CustomerOrderDetailResponse
 ```
 
-Repeat this pattern for carts, addresses, returns, refunds, wishlist, saved items, media drafts, and admin tenant/resource scopes.
+Apply the same pattern to carts, addresses, returns, refunds, wishlists and media drafts.
 
 ## Role versus permission
 
-The current guard accepts `customer | staff | admin` roles, enforces explicit permissions when a route declares them, and compares token/permission versions with current user state on each guarded request. It resolves effective permissions from the user's transitional embedded grants and active role assignments, ignores revoked/dangling assignments, and refuses contributions above the user's coarse-role tier. Routes with no `@RequirePermissions` declaration do not trigger assignment resolution.
+Operators hold one coarse role, `staff` or `admin`, plus permissions. Permission codes form a closed registry in `packages/contracts/src/permission.ts`, so `@RequirePermissions` fails to compile on a mistyped code. Codes that no navigation entry gates are published with `serverOnly: true`. `seed:system-roles` writes the one system role, `administrator`, which holds every code.
 
-- Role groups permissions.
-- Permission authorizes an action such as `orders.status.update`.
-- Resource policy checks the specific order/entity and legal transition.
-- UI hiding is convenience only.
-- Every privileged write produces an audit event.
+- A role groups permissions.
+- A permission authorizes an action, such as `order.update`.
+- A resource rule checks the specific record and transition.
+- Hiding UI is a convenience, not a control.
+- Every privileged write produces an audit record.
 
-### Current admin authority controls
+Effective permissions are the union of the account's embedded grants and its active role assignments. `resolveEffectivePermissions` ignores revoked assignments and caps each role at the holder's tier. The guard resolves them only for routes that declare a permission. If assignments cannot be read, the account keeps only its embedded grants.
 
-- `GET /admin/permissions` publishes the compile-time closed **92-code** registry; clients cannot mint free-form privileges.
-- `/admin/roles` CRUD is admin-audience and permission-gated; system roles cannot be edited or deleted.
-- `/admin/users/:userId/authority` returns server-resolved roles and effective permissions.
-- Role grants cannot exceed the actor's tier or permission set.
-- Revoking or disabling the last administrator is refused, as is self-disable.
-- Offboarding bumps token version and revokes every session.
-- Assignment/role mutations write security-retention audit evidence and invalidate affected permission versions.
-- The operator-only bootstrap creates the first administrator with a generated one-time password, records a critical actorless audit event, exposes no HTTP route, and refuses once administrative authority exists.
+### Admin authority controls
 
-Recorded direct-API and browser campaigns cover audience isolation, BOLA, no-delegation, last-administrator protection, offboarding, permission-version behavior, password login, cookie-only reload, CSRF-protected authority changes, refusal recovery, expiry recovery, logout, pending social-signup rendering, reload survival, in-app abandonment, Google grant revocation dispatch, and the Facebook button reaching the live SDK object. These focused probes do not prove a complete Google or Facebook account round trip. PIN login and the provider-account last mile still require supported-browser proof. The idle soft-lock client is live in the admin shell (`IdleLockService` + `idle-lock-modal` + `POST /auth/admin/resume`).
+- `GET /admin/permissions` publishes the registry. Clients cannot create free-form permissions.
+- System roles cannot be edited or deleted.
+- `GET /admin/users/:userId/authority` returns roles and resolved permissions.
+- An actor cannot grant a role above their own tier, or permissions they do not hold.
+- Revoking or disabling the last administrator is refused, and so is disabling yourself.
+- Disabling an account increases its token version and revokes every session.
+- Role changes write audit records and invalidate the permission version of each holder.
+- `bootstrap:first-admin` creates the first administrator from the command line. It refuses to run once administrative authority exists.
+
+## Customer identity
+
+### Signup
+
+Signup creates no customer until both email and phone are verified. The server holds the identifiers and proof in `pendingSignups`, keyed by the `st_signup` cookie. The record slides for 15 minutes, up to 30 minutes in total. A browser can read the record back after a reload and discard it when leaving registration.
+
+Each field allows five code sends, with increasing waits of 0 seconds, 30 seconds, 2 minutes, 10 minutes and 1 hour. The budget follows the field, not the value, so changing a number does not earn a new send.
+
+Finalisation checks ownership before spending the proof, then commits the customer, password credential and provider identity in one transaction. A unique-index race returns `signup_identifier_taken`. A failed guest-cart merge does not undo a successful sign-in.
+
+The finalise request carries no email, phone or provider id. The server uses the values it verified, so a request cannot name someone else's address. A pending record reserves nothing: two people can hold the same address, and the unique index decides at finalisation. Editing a field clears its verified flag in the same write.
+
+### Provider tokens
+
+An identity is the provider plus its stable subject, never the email. Each round trip uses single-use state, stored as a hash.
+
+- **Google.** The API verifies the ID token's signature, issuer, audience, expiry, nonce and subject.
+- **Facebook.** The API checks the token through Graph `debug_token`, using an app token built on the server. Its email is only a prefill, so the path always needs an email code. A Facebook id is scoped to one Meta app, so ids from a development app do not carry over to a production app.
+
+An unconfigured provider refuses with `oauth_provider_unavailable`. A token that fails any check is refused, and the reason goes to logs only.
+
+### Disclosure rules
+
+Whether an identifier has an account is disclosed only after control of it is proven:
+
+- After a signup code for email or phone. The person can then sign in directly through `signup/sign-in-existing`, which allows active accounts only and attaches nothing from the signup.
+- At the provider callback for an address Google proved. The person is offered a one-time code instead, because `email_verified` alone is never accepted as sign-in proof.
+
+Meta proves nothing about its address, so a Facebook signup finds out through the email code. Accounts are never linked on a matching address. The owner signs in and connects the provider behind step-up.
+
+### Sign-in and account changes
+
+- Customers sign in with a password or one-time code, using email or phone, or with Google or Facebook.
+- Login, registration, one-time-code and forgot-password screens are for guests only.
+- Connecting or disconnecting a provider, setting a password and changing contact details need a step-up proof: the password if one exists, otherwise a one-time code.
+- The last way into an account cannot be removed. The refusal code is `last_credential`.
+- A contact change keeps the old value until the new one is proven. Starting a change to a taken value looks the same as any other start, and no code is delivered. Confirmation spends the proof, changes the identifier and writes the audit record in one transaction. A race returns `contact_in_use`.
+- `signup`, `step-up` and contact-change refusals use stable codes, shown by the screen that asked rather than as a toast.
+
+## Admin identity
+
+- Operators sign in with a password or a six-digit PIN, using email or username. There is no self-registration and no social sign-in.
+- An operator account comes from an invite, valid for seven days, or from the first-administrator command.
+- Account Security at `/account` manages the PIN, password and sessions.
+- Five failed PIN attempts lock PIN use for 15 minutes. Password sign-in stays available.
+- A password reset suspends the PIN until the new password has been used once.
+- A password change ends every session, including the current one.
+
+### Admin idle lock
+
+After 15 minutes of inactivity the admin shell opens a lock screen. `POST /auth/admin/resume` accepts the PIN or password and extends the same session, so the open route and form state survive. The lock proves presence. The one-hour idle lifetime still ends the session on the server.
 
 ## Password, PIN, and OTP policies
 
 ### Password
 
-- Minimum 12 characters for storefront and admin.
-- Common-password denylist.
+- Minimum 12 characters, for storefront and admin.
+- A denylist of common base words, checked after removing case, punctuation and trailing digits. Brand and locality words are included.
+- Short groups typed repeatedly are refused.
+- Maximum 256 characters.
 - Argon2id hash.
 - Generic login failure.
-- Rate limiting/backoff.
-- Password change revokes sessions/increments token version.
+- Rate limits count failures, per identifier and per address.
+- A change revokes sessions and increases the token version.
 
 ### Admin PIN
 
-- Six digits, chosen only after a password credential exists.
-- Reject repeated, sequential, known-weak, keyboard/calendar-like patterns.
-- Strong hash, never plaintext.
-- Stricter rate limit/lockout due to low entropy.
-- Same secure session after successful verification.
+- Six digits, set only after a password exists.
+- Repeating groups, consecutive runs (including across 9 to 0) and a denylist of common values are refused. Date-shaped PINs are allowed.
+- Stored as a strong hash.
+- Set and change require the current password.
 
 ### OTP
 
-- Six-digit CSPRNG value.
-- Store HMAC with server pepper, not plaintext.
-- Ten-minute expiry, maximum five attempts, single active challenge per identifier/purpose.
-- Signup sends are budgeted per field: five per pending signup, waiting 0 s, 30 s, 2 min, 10 min, then 1 h between them. The budget follows the field, not the value, so changing a number does not buy a fresh send. The registration screen shows where the code went, the code box only once one was sent, and the remaining wait from the server's `resendAvailableAt`.
-- Atomic constant-time verification and single-use consumption.
-- Generic anti-enumeration responses.
-- Channel-direct delivery through the ratified notification abstraction and provider; no code or token logs.
+- Six-digit value from a secure random source, stored as an HMAC.
+- Ten-minute expiry, five attempts, one active challenge per identifier and purpose.
+- Verification is atomic, constant-time and single-use.
+- Responses do not reveal whether an account exists.
+- Codes are never logged or returned.
 
-The PIN/OTP/session DTOs and persistence shapes are active in the HTTP lifecycle. Storefront signup/login/contact-change OTP flows, Google and Facebook verification adapters, admin recovery, PIN setup/login/lockout, invite acceptance, Account Security, idle soft-lock resume, and the resume endpoint are implemented. Provider-backed MSG91 delivery and its console activation, and real-browser PIN-login proof, remain outside the current evidence.
+In local development `OTP_LOCAL_FIXED_CODE` can fix the code. It is refused in production and with any provider other than `console`.
 
-## Configuration fail-closed rule
+## Rate limits
 
-Current config falls back to predictable development JWT secrets. Production bootstrap must reject defaults/missing secrets. Test this directly by setting production mode with each required security value absent.
+`packages/core-domain/src/auth/rate-limit-policy.ts` defines limits per action. Login and OTP verification count failures, so honest customers behind a shared carrier address do not use up a budget. Actions that spend a real resource, such as sending a code, count every attempt. Identifier-scoped refusals keep the generic error, so an attacker cannot time them. Address-scoped refusals return 429 with `Retry-After`.
 
-## Security verification matrix
+## Secrets at startup
 
-| Boundary          | Minimum proof                                                           |
+A strict deployment refuses to start with unsafe secrets or settings. See [Deployment hardening](./composition-and-adapters#deployment-hardening).
+
+`CSRF_SECRET` also keys the HMAC for refresh tokens, guest cart tokens and one-time codes. Rotating it signs everyone out and strands guest carts.
+
+## Security test matrix
+
+| Boundary          | Minimum test                                                            |
 | ----------------- | ----------------------------------------------------------------------- |
-| Login/register    | cookies set, no tokens in JSON, password policy, enumeration resistance |
-| CSRF              | all unsafe cookie routes reject missing/wrong/cross-session token       |
-| Refresh           | atomic rotation, replay revokes family, concurrent refresh handled      |
-| Audience          | storefront cannot call admin; admin cannot bypass customer ownership    |
-| BOLA              | cross-user ids fail for every owned resource                            |
-| Permissions       | stale/downgraded/disabled admin fails quickly                           |
-| Secrets           | production fails without secure config; logs/responses redacted         |
-| OTP/PIN           | entropy/policy/attempts/expiry/race/reuse tests                         |
-| Provider callback | signature, replay, amount/order correlation, legal transition           |
+| Sign-in           | Cookies set, no tokens in JSON, password policy, enumeration resistance |
+| CSRF              | Unsafe cookie routes reject missing, wrong and cross-session tokens     |
+| Refresh           | Atomic rotation, replay revokes the family, concurrent refresh handled  |
+| Audience          | Storefront cannot call admin; admin cannot bypass customer ownership    |
+| Ownership         | Cross-user ids fail for every owned resource                            |
+| Permissions       | Stale, downgraded and disabled admins fail quickly                      |
+| Secrets           | Production fails without secure config; logs and responses are redacted |
+| OTP and PIN       | Attempts, expiry, race and reuse                                        |
+| Provider callback | Signature, replay, amount and order correlation, legal transition       |
 
-## Incident evidence
+## Audit records
 
-Security audit logs should identify request/session/actor, action, target, decision, timestamp, and safe context. Never record passwords, PINs, OTP values, access/refresh tokens, provider secrets, raw IPs, or full PII payloads.
+Security audit records identify the request, session, actor, action, target, decision, time and safe context. They never contain passwords, PINs, OTP values, tokens, provider secrets, raw IPs or full personal data. Each record has a retention tier: `financial_security` keeps it for seven years, and `catalog_admin` for five. Authority and credential events use the seven-year tier. The trail is read-only over HTTP, through `GET /admin/audit-logs`, which caps a page at 200 rows and omits the IP and user-agent hashes. Offboarding an operator sets `disabled`, so the record keeps its subject and the email stays claimed.
+
+## Limitations
+
+- Pending-intent continuation is partial: a guest's stock-alert request replays after sign-in, while wishlist and checkout intent do not.
+- `POST /orders` has no idempotency key.
+- Hosted access to the developer portal is not designed yet.

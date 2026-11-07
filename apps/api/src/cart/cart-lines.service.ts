@@ -169,13 +169,12 @@ export class CartLinesService {
 				lineTotalINR: 0,
 				options: [],
 				measurements: [],
-				components: [],
 				problem: 'unavailable',
 			};
 		}
 		const row: PricedCartLine = priced.line;
 		const { sku, variationId, variantLabel, available, basePriceINR, unitPriceINR, mrpINR } = row;
-		const { options, measurements, components } = row;
+		const { options, measurements } = row;
 		return {
 			...identity,
 			image: page.gallery[row.galleryIndex ?? 0] ?? null,
@@ -189,7 +188,6 @@ export class CartLinesService {
 			lineTotalINR: unitPriceINR * line.quantity,
 			options,
 			measurements,
-			components,
 			problem: lineProblem(row, line.quantity),
 		};
 	}

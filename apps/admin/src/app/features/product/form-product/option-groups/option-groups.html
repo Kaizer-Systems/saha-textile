@@ -88,6 +88,20 @@
 						<app-form-fields
 							[labelClass]="'form-label-title col-sm-3 mb-0'"
 							[gridClass]="'col-sm-9'"
+							[label]="'addon_template'"
+							[for]="'template_' + index"
+						>
+							<select2
+								class="custom-select"
+								[id]="'template_' + index"
+								[data]="templateOptions()"
+								[value]="templateCode() ?? ''"
+								(update)="templateCode.set($any($event.value))"
+							/>
+						</app-form-fields>
+						<app-form-fields
+							[labelClass]="'form-label-title col-sm-3 mb-0'"
+							[gridClass]="'col-sm-9'"
 							[label]="'override_price'"
 							[for]="'override_' + index"
 						>
@@ -101,6 +115,23 @@
 									[value]="term.priceDeltaINR ?? ''"
 									(change)="setOverride(index, group, term.code, $any($event.target).value)"
 								/>
+								<div class="input-group-text">
+									<div class="form-check form-switch mb-0">
+										<input
+											class="form-check-input"
+											type="checkbox"
+											[id]="'measures_' + index + '_' + term.code"
+											[checked]="term.requiresMeasurements"
+											(change)="setMeasures(index, group, term.code, $any($event.target).checked)"
+										/>
+										<label
+											class="form-check-label"
+											[for]="'measures_' + index + '_' + term.code"
+										>
+											{{ 'needs_measurements' | transloco }}
+										</label>
+									</div>
+								</div>
 							</div>
 							}
 							<p class="help-text">{{ 'override_price_help' | transloco }}</p>

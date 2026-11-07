@@ -11,7 +11,6 @@ export interface PricedCartOption {
 	termCode: string;
 	group: string;
 	value: string;
-	role: 'named_add_on' | 'bundle_component_option';
 	priceDeltaINR: number;
 }
 
@@ -20,19 +19,23 @@ export interface PricedCartLine {
 	variationId: string | null;
 	variantLabel: string | null;
 	galleryIndex: number | null;
-	/** The variant or bundle price, before add-ons. */
+	/** The variant price, before add-ons. */
 	basePriceINR: number;
 	unitPriceINR: number;
 	mrpINR: number | null;
-	/** Units that can be bought now. Null means no limit: made to order, or a bundle. */
+	/** Units that can be bought now. Null means no limit, as for made to order. */
 	available: number | null;
 	buyable: boolean;
 	options: PricedCartOption[];
 	measurements: { code: string; label: string; value: number; unit: 'in' | 'cm' }[];
-	components: { title: string; sku: string; priceINR: number }[];
 }
 
-export type CartLineRefusal = 'unknown_variant' | 'unknown_option' | 'measurements_required' | 'measurement_out_of_range';
+export type CartLineRefusal =
+	| 'bundle_not_on_sale'
+	| 'unknown_variant'
+	| 'unknown_option'
+	| 'measurements_required'
+	| 'measurement_out_of_range';
 
 export type CartLinePricing = { ok: true; line: PricedCartLine } | { ok: false; reason: CartLineRefusal };
 
@@ -55,19 +58,6 @@ function variantLabel(page: CatalogProductPage, selections: Readonly<Record<stri
 }
 
 function baseRow(page: CatalogProductPage, variationId: string | null): BaseRow | null {
-	if (page.bundle) {
-		const required = page.bundle.groups.flatMap((group) => group.components.filter((row) => row.required));
-		return {
-			sku: page.selected?.sku ?? page.slug,
-			variationId: null,
-			variantLabel: null,
-			galleryIndex: null,
-			basePriceINR: page.bundle.priceINR,
-			mrpINR: null,
-			available: null,
-			buyable: required.every((row) => row.inStock),
-		};
-	}
 	if (page.variants.length > 0) {
 		const row = page.variants.find((variant) => variant.id === variationId);
 		if (!row) return null;
@@ -100,11 +90,13 @@ function baseRow(page: CatalogProductPage, variationId: string | null): BaseRow 
  * so a shopper is charged what they saw, and nothing the browser sends can change it.
  */
 export function priceCartLine(page: CatalogProductPage, choice: CartLineChoice): CartLinePricing {
+	// A bundle is not buyable until the Chunk G pricing engine exists (brief B12).
+	if (page.bundle) return { ok: false, reason: 'bundle_not_on_sale' };
 	const base = baseRow(page, choice.variationId);
 	if (!base) return { ok: false, reason: 'unknown_variant' };
 
 	const groups = page.optionGroups.filter(
-		(group) => group.role === 'named_add_on' || group.role === 'bundle_component_option',
+		(group) => group.role === 'named_add_on',
 	);
 	const fields = page.measurements?.fields ?? [];
 	const picked = new Map(choice.addons.map((addon) => [addon.code, addon.value]));
@@ -126,7 +118,6 @@ export function priceCartLine(page: CatalogProductPage, choice: CartLineChoice):
 			termCode: term.code,
 			group: group.label,
 			value: term.label,
-			role: group.role as PricedCartOption['role'],
 			priceDeltaINR: term.priceDeltaINR ?? 0,
 		});
 	}
@@ -149,9 +140,6 @@ export function priceCartLine(page: CatalogProductPage, choice: CartLineChoice):
 			unitPriceINR: options.reduce((sum, option) => sum + option.priceDeltaINR, basePriceINR),
 			options,
 			measurements,
-			components: (page.bundle?.groups ?? []).flatMap((group) =>
-				group.components.map((row) => ({ title: row.title, sku: row.sku, priceINR: row.sellingINR })),
-			),
 		},
 	};
 }

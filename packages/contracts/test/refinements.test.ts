@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-	AddonTemplateOptionWrite,
+	AddonTemplateFieldWrite,
 	AdminVariantWrite,
 	CatalogCard,
 	CatalogGallery,
@@ -28,31 +28,30 @@ import {
 const messages = (result: { success: boolean; error?: { issues: { message: string }[] } }) =>
 	result.error?.issues.map((issue) => issue.message) ?? [];
 
-describe('AddonTemplateOptionWrite', () => {
+describe('AddonTemplateFieldWrite', () => {
 	const option = (overrides: Record<string, unknown>) => ({
 		code: 'fall',
-		label: 'Fall',
-		priceINR: 100,
+		label: { en: 'Fall' },
 		...overrides,
 	});
 
 	it('skips the range check without a range, or with an empty 0 to 0 range', () => {
-		expect(AddonTemplateOptionWrite.safeParse(option({})).success).toBe(true);
-		expect(AddonTemplateOptionWrite.safeParse(option({ min: 10 })).success).toBe(true);
-		expect(AddonTemplateOptionWrite.safeParse(option({ max: 10 })).success).toBe(true);
-		expect(AddonTemplateOptionWrite.safeParse(option({ min: 0, max: 0 })).success).toBe(true);
+		expect(AddonTemplateFieldWrite.safeParse(option({})).success).toBe(true);
+		expect(AddonTemplateFieldWrite.safeParse(option({ min: 10 })).success).toBe(true);
+		expect(AddonTemplateFieldWrite.safeParse(option({ max: 10 })).success).toBe(true);
+		expect(AddonTemplateFieldWrite.safeParse(option({ min: 0, max: 0 })).success).toBe(true);
 	});
 
 	it('accepts a range starting at zero, with or without a step', () => {
-		expect(AddonTemplateOptionWrite.safeParse(option({ min: 0, max: 10 })).success).toBe(true);
-		expect(AddonTemplateOptionWrite.safeParse(option({ min: 30, max: 44, step: 0.5 })).success).toBe(true);
+		expect(AddonTemplateFieldWrite.safeParse(option({ min: 0, max: 10 })).success).toBe(true);
+		expect(AddonTemplateFieldWrite.safeParse(option({ min: 30, max: 44, step: 0.5 })).success).toBe(true);
 	});
 
 	it('refuses a backwards range and a step that does not divide it', () => {
-		expect(messages(AddonTemplateOptionWrite.safeParse(option({ min: 10, max: 10 })))).toContain(
+		expect(messages(AddonTemplateFieldWrite.safeParse(option({ min: 10, max: 10 })))).toContain(
 			'min must be below max',
 		);
-		expect(messages(AddonTemplateOptionWrite.safeParse(option({ min: 0, max: 10, step: 3 })))).toContain(
+		expect(messages(AddonTemplateFieldWrite.safeParse(option({ min: 0, max: 10, step: 3 })))).toContain(
 			'the range must divide evenly by the step',
 		);
 	});

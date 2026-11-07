@@ -18,7 +18,7 @@ export class CollectionCategoryFilter {
 	private route = inject(ActivatedRoute);
 	private router = inject(Router);
 
-	private readonly categoriesQuery = injectCategoriesQuery(() => ({ status: 1 }));
+	private readonly categoriesQuery = injectCategoriesQuery();
 	category$: Observable<ICategoryModel> = toObservable(
 		computed(() => this.categoriesQuery.data() ?? { data: [], total: 0 }),
 	);

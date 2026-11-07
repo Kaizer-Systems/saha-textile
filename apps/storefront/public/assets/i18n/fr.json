@@ -687,5 +687,6 @@
 	"cart_line_limited": "Plus que {{count}} en stock. Veuillez réduire la quantité.",
 	"checkout_closed": "Les commandes en ligne ouvrent bientôt",
 	"checkout_closed_detail": "Votre panier est enregistré. Vous ne pouvez pas encore passer commande sur ce site.",
-	"back_to_cart": "Retour au panier"
+	"back_to_cart": "Retour au panier",
+	"bundle_not_on_sale": "Cet ensemble n'est pas encore en vente."
 }

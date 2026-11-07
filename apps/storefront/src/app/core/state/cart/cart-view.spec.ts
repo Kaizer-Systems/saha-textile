@@ -19,7 +19,6 @@ const line = (over: Partial<ApiCartLine> = {}): ApiCartLine => ({
 	lineTotalINR: 2000,
 	options: [],
 	measurements: [],
-	components: [],
 	problem: null,
 	...over,
 });
@@ -51,43 +50,26 @@ describe('cartItem', () => {
 		expect(made.line_config).toBeUndefined();
 	});
 
-	it('splits options, and keeps the raw choice for editing', () => {
-		const option = (code: string, role: 'named_add_on' | 'bundle_component_option') => ({
-			code,
-			termCode: `${code}_term`,
-			group: code,
-			value: 'V',
-			role,
-			priceDeltaINR: 50,
-		});
+	it('shows options, and keeps the raw choice for editing', () => {
 		const config = cartItem(
 			line({
-				unitPriceINR: 1100,
-				options: [option('fall', 'named_add_on'), option('kit', 'bundle_component_option')],
+				unitPriceINR: 1050,
+				options: [{ code: 'fall', termCode: 'yes', group: 'Fall', value: 'Yes', priceDeltaINR: 50 }],
 				measurements: [{ code: 'bust', label: 'Bust', value: 34, unit: 'in' }],
-				components: [{ title: 'Blouse', sku: 'B', priceINR: 300 }],
 			}),
 		).line_config;
 		expect(config).toMatchObject({
-			addon_options: [{ group: 'fall', value: 'V', price_delta: 50 }],
-			bundle_options: [{ group: 'kit' }],
-			bundle_components: [{ name: 'Blouse', sku: 'B', price: 300 }],
+			addon_options: [{ group: 'Fall', value: 'Yes', price_delta: 50 }],
 			measurements: [{ label: 'Bust', value: 34, unit: 'in' }],
 			base_price: 1000,
-			delta_total: 100,
-			raw: {
-				variation_id: null,
-				addon_selections: { fall: 'fall_term' },
-				bundle_selections: { kit: 'kit_term' },
-				measurements: { bust: 34 },
-			},
+			delta_total: 50,
+			raw: { variation_id: null, addon_selections: { fall: 'yes' }, measurements: { bust: 34 } },
 		});
 	});
 
-	it('shows a config for measurements or components alone', () => {
+	it('shows a config for measurements alone', () => {
 		const measured = line({ measurements: [{ code: 'b', label: 'B', value: 1, unit: 'in' }] });
 		expect(cartItem(measured).line_config).toBeDefined();
-		expect(cartItem(line({ components: [{ title: 'T', sku: 'S', priceINR: 1 }] })).line_config).toBeDefined();
 	});
 });
 

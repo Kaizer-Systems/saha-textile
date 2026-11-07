@@ -85,6 +85,9 @@ export interface ApiProductPage {
 	path: string;
 	title: string;
 	description: string;
+	shortDescription: string;
+	metaTitle: string;
+	metaDescription: string;
 	price: ApiCard['price'];
 	badges: { primary: string | null; secondary: string | null };
 	madeToOrder: boolean;
@@ -102,6 +105,7 @@ export interface ApiProductPage {
 		quantity: number;
 		buyable: boolean;
 		galleryIndex: number | null;
+		galleryIndexes: number[];
 	}>;
 	measurements: {
 		templateCode: string | null;
@@ -347,6 +351,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 			sku: variant.sku,
 			quantity: variant.quantity,
 			variation_image: variant.galleryIndex !== null ? ordered[variant.galleryIndex] : undefined,
+			variation_galleries: variant.galleryIndexes.map((index) => ordered[index]),
 			variation_image_id: variant.galleryIndex !== null ? variant.galleryIndex + 1 : undefined,
 			variation_options: [],
 			attribute_values: values,
@@ -421,7 +426,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 		name: page.title,
 		slug: page.slug,
 		description: page.description,
-		short_description: page.description,
+		short_description: page.shortDescription,
 		type: axes.length ? 'classified' : 'simple',
 		price: mrp,
 		sale_price: selling,
@@ -444,8 +449,8 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 		categories: [],
 		related_products: [],
 		cross_sell_products: [],
-		meta_title: page.title,
-		meta_description: page.description,
+		meta_title: page.metaTitle,
+		meta_description: page.metaDescription,
 		unknown_variant: page.unknownVariant,
 		breadcrumb_trail: page.breadcrumb,
 	} as unknown as IProduct;

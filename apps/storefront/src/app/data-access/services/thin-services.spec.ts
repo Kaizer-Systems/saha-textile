@@ -52,7 +52,7 @@ beforeEach(() => {
 const reads: [string, () => unknown, string, unknown][] = [
 	['attributes', () => TestBed.inject(AttributeService).getAttributes({ a: 1 }), '/attribute.json', { a: 1 }],
 	['blogs', () => TestBed.inject(BlogService).getBlogs({ a: 1 }), '/blog.json', { a: 1 }],
-	['categories', () => TestBed.inject(CategoryService).getCategories({ a: 1 }), '/category.json', { a: 1 }],
+	['blog categories', () => TestBed.inject(CategoryService).getBlogCategories({ a: 1 }), '/category.json', { a: 1 }],
 	['coupons', () => TestBed.inject(CouponService).getCoupons({ a: 1 }), '/coupon.json', { a: 1 }],
 	['currencies', () => TestBed.inject(CurrencyService).getCurrencies({ a: 1 }), '/currency.json', { a: 1 }],
 	['order status', () => TestBed.inject(OrderStatusService).getOrderStatus({ a: 1 }), '/order-status.json', { a: 1 }],
@@ -86,6 +86,37 @@ describe('read services', () => {
 	it.each(plainReads)('%s reads its file', (_name, call, path) => {
 		call();
 		expect(String(http.get.mock.lastCall?.[0])).toContain(path);
+	});
+});
+
+describe('CategoryService', () => {
+	it('maps the menu into the shape the screens read', async () => {
+		const row = {
+			id: 'cat_1',
+			name: 'Saris',
+			slug: 'sarees',
+			description: '',
+			parentId: null,
+			level: 1,
+			path: 'sarees',
+			imageUrl: 'https://cdn.test/i.webp',
+			iconUrl: null,
+		};
+		http.get.mockReturnValue(of([row, { ...row, id: 'cat_2', parentId: 'cat_1', level: 2 }]));
+		const model = await firstValueFrom(TestBed.inject(CategoryService).getCategories());
+		expect(http.get.mock.lastCall?.[0]).toMatch(/\/catalog\/categories\/menu$/);
+		expect(model.total).toBe(2);
+		expect(model.data[0]).toMatchObject({
+			id: 'cat_1',
+			name: 'Saris',
+			type: 'product',
+			level: 1,
+			canonical_path: 'sarees',
+			category_image: { original_url: 'https://cdn.test/i.webp' },
+		});
+		expect(model.data[0]?.parent_id).toBeUndefined();
+		expect(model.data[0]?.category_icon).toBeUndefined();
+		expect(model.data[1]?.parent_id).toBe('cat_1');
 	});
 });
 

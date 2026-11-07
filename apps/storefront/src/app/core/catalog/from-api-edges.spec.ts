@@ -42,6 +42,9 @@ const page = (overrides: Partial<ApiProductPage> = {}): ApiProductPage => ({
 	path: '/product/red',
 	title: 'Red',
 	description: '',
+	shortDescription: 'Short',
+	metaTitle: 'Meta title',
+	metaDescription: 'Meta text',
 	price: { kind: 'single', sellingINR: 900, mrpINR: null, percentOff: null },
 	badges: { primary: null, secondary: null },
 	madeToOrder: false,
@@ -89,6 +92,7 @@ const variant = (overrides: Record<string, unknown> = {}) =>
 		quantity: 1,
 		buyable: true,
 		galleryIndex: null,
+		galleryIndexes: [],
 		...overrides,
 	}) as ApiProductPage['variants'][number];
 
@@ -273,6 +277,18 @@ describe('pageToProduct gallery', () => {
 });
 
 describe('pageToProduct options', () => {
+	it('gives a variant its own photos', () => {
+		const photo = (name: string) => image({ gallery: [source(900, name)] });
+		const product = pageToProduct(
+			page({
+				gallery: [photo('a'), photo('b')],
+				optionGroups: [group()],
+				variants: [variant({ galleryIndexes: [1] })],
+			}),
+		);
+		expect(product.variations?.[0]?.variation_galleries?.map((frame) => frame.original_url)).toEqual(['b']);
+	});
+
 	it('builds attributes, styles and hex colours', () => {
 		const swatch = image({ swatch_image: [source(80), source(160, 'big')] });
 		const product = pageToProduct(

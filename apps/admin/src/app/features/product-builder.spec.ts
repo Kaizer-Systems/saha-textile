@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
 import { LocalizedFields } from '@core/i18n/localized-fields';
+import { AddonTemplateService } from '@data-access/services/addon-template.service';
 import { AttributeService } from '@data-access/services/attribute.service';
 import { CategoryService } from '@data-access/services/category.service';
 import { NotificationService } from '@data-access/services/notification.service';
@@ -90,6 +91,17 @@ describe('LocalizedFields', () => {
 		expect(fields.missing('fr')).toBe(2);
 		fields.switchTo('fr');
 		expect(fields.source('unknown')).toBe('');
+	});
+});
+
+describe('LocalizedFields with an optional field', () => {
+	it('asks for other languages only once English is written', () => {
+		const form = new FormGroup({ note: new FormControl('') });
+		const fields = new LocalizedFields(form, ['note'], ['note']);
+		expect(fields.missing('fr')).toBe(0);
+		form.patchValue({ note: 'Soon' });
+		expect(fields.missing('en')).toBe(0);
+		expect(fields.missing('fr')).toBe(1);
 	});
 });
 
@@ -226,6 +238,24 @@ describe('OptionGroups', () => {
 		const orphan = render([group({ attributeCode: 'gone' })]);
 		orphan.pick(0, orphan.groups()[0] as never, { value: ['x'] } as never);
 		expect(orphan.groups()[0]?.terms).toEqual([]);
+	});
+
+	it('names templates in this language, and marks an option as measuring', () => {
+		const page = mount(OptionGroups, [], {
+			groups: [group({ terms: [{ code: 'a', label: both }, { code: 'b', label: both }] })],
+			definitions: [],
+			locale: 'fr',
+			templates: [
+				{ code: 't1', label: { en: 'Blouse', fr: 'Blouse fr' } },
+				{ code: 't2', label: { en: 'Fall' } },
+			],
+		});
+		expect(page.templateOptions()).toEqual([
+			{ value: 't1', label: 'Blouse fr' },
+			{ value: 't2', label: 't2' },
+		]);
+		page.setMeasures(0, page.groups()[0] as never, 'b', true);
+		expect(page.groups()[0]?.terms.map((term) => term.requiresMeasurements)).toEqual([undefined, true]);
 	});
 
 	it('sets and clears an override, rounding to whole rupees', () => {
@@ -367,8 +397,10 @@ const detail = (over: Record<string, unknown> = {}) => ({
 		description: {},
 		metaTitle: {},
 		metaDescription: {},
+		estimatedDeliveryText: {},
 		categoryIds: [],
 		optionGroups: [],
+		addonTemplateCode: null,
 		imageMode: 'simple',
 		gallery: [],
 		compound: [],
@@ -418,6 +450,7 @@ describe('FormProduct builder', () => {
 				{ provide: PLATFORM_ID, useValue: 'server' },
 				{ provide: ActivatedRoute, useValue: { params: new BehaviorSubject(options.id ? { id: options.id } : {}) } },
 				{ provide: AttributeService, useValue: { getDefinitions: () => of([definition()]) } },
+				{ provide: AddonTemplateService, useValue: { list: () => of([{ code: 't1' }]) } },
 				{ provide: NotificationService, useValue: toasts },
 				{ provide: TranslocoService, useValue: translate },
 			],
@@ -429,6 +462,7 @@ describe('FormProduct builder', () => {
 	it('loads definitions, and refuses a save with no English name', () => {
 		const { page, service } = render();
 		expect(page.definitions()).toHaveLength(1);
+		expect(page.addonTemplates()).toEqual([{ code: 't1' }]);
 		page.switchLanguage('fr');
 		page.submit();
 		expect(page.fields.locale()).toBe('en');
@@ -551,6 +585,8 @@ describe('FormCategory', () => {
 		alsoUnder: ['cat_9'],
 		path: 'sarees',
 		productCount: 0,
+		image: { id: 'a1', url: 'https://cdn.test/a1' },
+		icon: null,
 	};
 	const render = (id?: string, inputs: Record<string, unknown> = {}, save = () => of({ id: 'cat_1' }) as never) => {
 		const service = { getCategoryRows: () => of([row]), saveCategory: vi.fn(save) };
@@ -576,7 +612,18 @@ describe('FormCategory', () => {
 		const { page } = render('cat_1');
 		expect(page.form.value).toMatchObject({ name: 'Sarees', slug: 'sarees', parent_id: 'cat_0' });
 		expect(page.missing()['fr']).toBe(3);
+		expect(page.form.value).toMatchObject({ category_image_id: 'a1', category_icon_id: '' });
+		expect(page.category.category_image?.original_url).toBe('https://cdn.test/a1');
+		expect(page.category.category_icon).toBeUndefined();
 		expect(render('nope').page.id).toBeUndefined();
+	});
+
+	it('starts with no images when none are saved', () => {
+		row.image = null as never;
+		const { page } = render('cat_1');
+		row.image = { id: 'a1', url: 'https://cdn.test/a1' };
+		expect(page.form.value.category_image_id).toBe('');
+		expect(page.category.category_image).toBeUndefined();
 	});
 
 	it('takes its type, and stores images', () => {
@@ -630,7 +677,7 @@ describe('FormCategory', () => {
 		edited.page.submit();
 		expect(edited.service.saveCategory.mock.calls[0]).toMatchObject([
 			'cat_1',
-			{ name: { en: 'Sarees', fr: 'Saris' }, parentId: 'cat_0', alsoUnder: ['cat_9'] },
+			{ name: { en: 'Sarees', fr: 'Saris' }, parentId: 'cat_0', alsoUnder: ['cat_9'], imageId: 'a1', iconId: null },
 		]);
 	});
 

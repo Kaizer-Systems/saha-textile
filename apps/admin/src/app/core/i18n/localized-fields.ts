@@ -19,6 +19,8 @@ export class LocalizedFields {
 	constructor(
 		private readonly form: FormGroup,
 		private readonly fields: readonly string[],
+		/** Fields that may stay empty, and need other languages only once English is written. */
+		private readonly optional: readonly string[] = [],
 	) {
 		this.values = Object.fromEntries(fields.map((field) => [field, {}]));
 	}
@@ -50,7 +52,10 @@ export class LocalizedFields {
 	/** How many of these fields are empty in a language. */
 	missing(locale: string): number {
 		this.capture();
-		return this.fields.filter((field) => !this.values[field]?.[locale]?.trim()).length;
+		return this.fields.filter((field) => {
+			const needed = !this.optional.includes(field) || this.values[field]?.[SOURCE_LOCALE]?.trim();
+			return needed && !this.values[field]?.[locale]?.trim();
+		}).length;
 	}
 
 	private capture(): void {

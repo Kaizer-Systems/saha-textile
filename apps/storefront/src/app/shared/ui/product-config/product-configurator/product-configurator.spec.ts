@@ -128,11 +128,10 @@ describe('can it be bought', () => {
 		expect(component.purchasable()).toBe(true);
 	});
 
-	it('trusts the bundle for its stock, and the product otherwise', () => {
+	it('never sells a bundle yet, and follows the stock otherwise', () => {
 		const kit = render(product({ bundle: bundle() })).component;
-		expect(kit.purchasable()).toBe(false);
 		kit.onBundleChange({ delta: 0, valid: true } as never);
-		expect(kit.purchasable()).toBe(true);
+		expect(kit.purchasable()).toBe(false);
 		expect(render(product({ stock_status: 'out_of_stock' })).component.purchasable()).toBe(false);
 	});
 

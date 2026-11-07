@@ -564,14 +564,17 @@ describe('Redirects', () => {
 });
 
 describe('Add-on templates', () => {
-	const rows = [{ code: 'fall', label: 'Fall', priceINR: 100 }];
+	const chest = { code: 'chest', label: { en: 'Chest', fr: 'Poitrine' }, unit: 'in', min: 24, max: 50, step: 0.5 };
+	const rows = [{ code: 'fall', label: { en: 'Fall', fr: 'Pli' }, priceINR: 100, fields: [chest] }];
 	const setup = (url = '/addon-template', answer: unknown = of(rows)) => {
 		const api = { list: vi.fn(() => answer), remove: vi.fn(() => of(undefined)), save: vi.fn(() => of({})) };
 		return { ...render(AddonTemplate, [{ provide: AddonTemplateService, useValue: api }], url), api };
 	};
 
 	it('loads the list, or nothing on failure', () => {
-		expect(setup().page.tableConfig().data).toEqual([{ ...rows[0], id: 'fall' }]);
+		expect(setup().page.tableConfig().data).toEqual([{ ...rows[0], id: 'fall', name: 'Fall' }]);
+		const bare = setup('/addon-template', of([{ code: 'x', label: {}, priceINR: 0, fields: [] }]));
+		expect(bare.page.tableConfig().data[0]).toMatchObject({ name: 'x' });
 		expect(
 			setup(
 				'/addon-template',
@@ -581,9 +584,41 @@ describe('Add-on templates', () => {
 	});
 
 	it('fills the form from the address', () => {
-		expect(setup('/addon-template/edit/fall?x=1').page.form.getRawValue().code).toBe('fall');
+		const { page } = setup('/addon-template/edit/fall?x=1');
+		expect(page.form.getRawValue()).toMatchObject({ code: 'fall', label: 'Fall', priceINR: 100 });
+		expect(page.measures()).toEqual([chest]);
+		expect(page.missing()).toEqual({ en: 0, fr: 0 });
 		expect(setup('/addon-template/edit/none').page.form.getRawValue().code).toBe('');
 		expect(setup('/addon-template/create').page.formOnly()).toBe(true);
+	});
+
+	it('finds a template that has no English name by its code', () => {
+		const { page } = setup('/addon-template', of([{ code: 'bare', label: {}, priceINR: 0, fields: [] }]));
+		page.onTableChange({ search: 'bare' });
+		expect(page.tableConfig().total).toBe(1);
+	});
+
+	it('edits fields in the language on screen, and counts what is missing', () => {
+		const { page } = setup('/addon-template/create');
+		expect(page.missing()).toEqual({ en: 0, fr: 0 });
+		expect(page.onSourceLanguage).toBe(true);
+		page.addField();
+		page.addField();
+		page.setLabel(0, page.measures()[0] as never, 'Waist');
+		page.setUnit(0, 'cm');
+		page.setUnit(1, 'in');
+		page.setLimit(0, 'min', '22');
+		page.setLimit(0, 'max', '');
+		expect(page.measures()[0]).toMatchObject({ label: { en: 'Waist' }, unit: 'cm', min: 22, max: null });
+		expect(page.guide(page.measures()[0] as never)).toBe('Waist');
+		expect(page.guide(page.measures()[1] as never)).toBe('');
+		page.switchLanguage('fr');
+		expect(page.onSourceLanguage).toBe(false);
+		page.setLabel(0, page.measures()[0] as never, 'Taille');
+		expect(page.measures()[0]?.label).toEqual({ en: 'Waist', fr: 'Taille' });
+		expect(page.missing()['fr']).toBe(2);
+		page.removeField(1);
+		expect(page.measures()).toHaveLength(1);
 	});
 
 	it('filters by text', () => {
@@ -606,15 +641,32 @@ describe('Add-on templates', () => {
 		page.onAction({ actionToPerform: 'other', data: rows[0] } as never);
 	});
 
-	it('saves a valid form and resets it', () => {
-		const { page, api } = setup();
-		page.form.patchValue({ code: '' });
+	it('needs an English name and a code, then saves and returns to the list', () => {
+		const { page, api, router } = setup('/measurement/create');
+		page.switchLanguage('fr');
+		page.save();
+		expect(page.onSourceLanguage).toBe(true);
+		expect(page.form.controls.label.errors).toEqual({ required: true });
+		page.form.patchValue({ label: 'Blouse' });
 		page.save();
 		expect(api.save).not.toHaveBeenCalled();
-		page.form.patchValue({ code: 'c', label: 'L', priceINR: '50' as never });
+		page.form.patchValue({ code: 'c', priceINR: '50' as never });
+		page.addField();
+		page.addField();
+		page.setLabel(0, page.measures()[0] as never, 'Upper Arm');
 		page.save();
-		expect(api.save.mock.lastCall).toBeDefined();
-		expect((api.save.mock.lastCall as unknown[])[0]).toMatchObject({ priceINR: 50 });
-		expect(page.form.getRawValue().code).toBe('');
+		expect((api.save.mock.lastCall as unknown[])[0]).toMatchObject({
+			code: 'c',
+			label: { en: 'Blouse' },
+			priceINR: 50,
+			fields: [{ code: 'upper-arm', label: { en: 'Upper Arm' } }],
+		});
+		expect(router.navigate).toHaveBeenLastCalledWith(['/measurement']);
+	});
+
+	it('keeps the code of a saved field', () => {
+		const { page, api } = setup('/addon-template/edit/fall');
+		page.save();
+		expect((api.save.mock.lastCall as unknown[])[0]).toMatchObject({ fields: [{ code: 'chest' }] });
 	});
 });

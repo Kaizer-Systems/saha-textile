@@ -497,17 +497,52 @@ describe('FormFaq', () => {
 
 	it('saves, splitting the id lists, and returns to the list', () => {
 		const { page, service, router } = setup();
+		page.switchLanguage('fr');
 		page.submit();
 		expect(service.save).not.toHaveBeenCalled();
-		page.form.patchValue({ title: 'Q', description: 'A', categoryIds: ' c1, ,c2 ', productIds: '' });
+		expect(page.fields.locale()).toBe('en');
+		expect(page.form.get('title')?.errors).toEqual({ required: true });
+		expect(page.form.get('description')?.errors).toEqual({ required: true });
+		page.form.patchValue({ title: 'Q', categoryIds: ' c1, ,c2 ', productIds: '' });
 		page.submit();
-		expect(service.save.mock.lastCall).toBeDefined();
+		expect(page.form.get('title')?.errors).toBeNull();
+		expect(service.save).not.toHaveBeenCalled();
+		page.form.patchValue({ description: 'A' });
+		page.switchLanguage('fr');
+		expect(page.onSourceLanguage).toBe(false);
+		page.form.patchValue({ title: 'Question' });
+		page.refreshMissing();
+		expect(page.missing()['fr']).toBe(1);
+		page.submit();
 		expect((service.save.mock.lastCall as unknown[])[0]).toMatchObject({
+			title: 'Q',
+			description: 'A',
+			titleFr: 'Question',
+			descriptionFr: '',
 			categoryIds: ['c1', 'c2'],
 			productIds: [],
 			faqId: undefined,
 		});
 		expect(router.navigateByUrl).toHaveBeenCalledWith('/faq');
+	});
+
+	it('asks only for what is missing, and saves English alone', () => {
+		const { page, service } = setup();
+		page.form.patchValue({ description: 'A' });
+		page.submit();
+		expect(page.form.get('title')?.errors).toEqual({ required: true });
+		expect(page.form.get('description')?.errors).toBeNull();
+		page.form.patchValue({ title: 'Q' });
+		page.submit();
+		expect((service.save.mock.lastCall as unknown[])[0]).toMatchObject({ titleFr: '', descriptionFr: '' });
+	});
+
+	it('keeps the French text of a saved question', () => {
+		const { page } = setup({ id: 1 }, [{ id: 1, title: 'Q', titleFr: 'Question', description: 'A', descriptionFr: 'R' }]);
+		page.switchLanguage('fr');
+		expect(page.form.value).toMatchObject({ title: 'Question', description: 'R' });
+		expect(page.fields.source('title')).toBe('Q');
+		expect(page.onSourceLanguage).toBe(false);
 	});
 });
 

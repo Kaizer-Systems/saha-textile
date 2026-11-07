@@ -133,6 +133,7 @@ export interface IVariation {
 	discount: number;
 	quantity: number;
 	variation_image: IAttachment;
+	variation_galleries?: IAttachment[];
 	variation_image_id: number;
 	variation_options: IVariationOption[];
 	attribute_values: IAttributeValue[];

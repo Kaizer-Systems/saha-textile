@@ -41,6 +41,10 @@ export function goLiveGaps({ product, variants, locales, assetAlt }: GoLiveInput
 			gaps.push(...text(`value:${group.attributeCode}:${term.code}`, term.label, locales));
 		}
 	}
+	const leadTime = product.estimatedDeliveryText;
+	if (leadTime && filled(leadTime['en'])) gaps.push(...text('lead_time', leadTime, locales));
+	const measures = product.optionGroups.some((group) => group.terms.some((term) => term.requiresMeasurements));
+	if (measures && !product.addonTemplateCode) gaps.push({ field: 'addon_template', locale: null });
 	if (!product.categoryIds.length) gaps.push({ field: 'category', locale: null });
 	const priced = variants.some((row) => row.priceINR > 0);
 	if (!priced) gaps.push({ field: 'price', locale: null });

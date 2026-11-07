@@ -7,18 +7,18 @@ export interface ICategoryModel extends IPaginateModel {
 
 /** One placement of a category in the taxonomy DAG (canonical parent + optional extra merchandising spots). */
 export interface ICategoryPlacement {
-	parent_id: number | null;
+	parent_id: number | string | null;
 	path: string;
 	canonical: boolean;
 }
 
 export interface ICategory {
-	id: number;
+	id: number | string;
 	name: string;
 	slug: string;
 	description: string;
 	type: string;
-	parent_id?: number;
+	parent_id?: number | string;
 	/** DAG depth: 1 = top-level, 2/3/… = nested. From category.json. */
 	level?: number;
 	/** Single canonical URL path, e.g. `sarees/pure-silk/katan-banarasi`. From category.json. */

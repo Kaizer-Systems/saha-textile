@@ -82,7 +82,7 @@ function pageService(status: Product['status'] = 'live') {
 						code,
 						label: { en: 'Blouse measurements' },
 						priceINR: 0,
-						fields: [{ code: 'chest', label: 'Chest', unit: 'in', min: 24, max: 50, step: 0.5 }],
+						fields: [{ code: 'chest', label: { en: 'Chest' }, unit: 'in', min: 24, max: 50, step: 0.5 }],
 					}
 				: null,
 	};

@@ -6,13 +6,16 @@ import { variantMatrix } from '@saha-textile/core-domain';
 export function applyProductContent(product: Product, content: ProductContentWrite): Partial<Product> {
 	const english = content.title['en']?.trim();
 	if (!english) throw new BadRequestException('A product needs an English name');
+	const leadTime = content.estimatedDeliveryText['en']?.trim();
 	return {
 		title: { ...content.title, en: english },
 		shortDescription: content.shortDescription,
 		description: { en: '', ...content.description },
 		seo: { title: content.metaTitle, description: content.metaDescription },
+		estimatedDeliveryText: leadTime ? { ...content.estimatedDeliveryText, en: leadTime } : null,
 		categoryIds: content.categoryIds,
 		optionGroups: content.optionGroups,
+		addonTemplateCode: content.addonTemplateCode,
 		imageMode: content.imageMode,
 		media: { gallery: content.gallery, compound: content.compound, altOverrides: content.altOverrides },
 	};

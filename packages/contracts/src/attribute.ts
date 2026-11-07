@@ -149,22 +149,30 @@ export const AddonTemplate = z.object({
 });
 export type AddonTemplate = z.infer<typeof AddonTemplate>;
 
-/** A priced add-on option. Whole rupees. A product may override this amount. */
-export const AddonTemplateOptionWrite = z
+/** One measurement a template asks for. An empty range means anything goes. */
+export const AddonTemplateFieldWrite = z
 	.object({
 		code: z.string().min(1),
-		label: z.string().min(1),
-		priceINR: CatalogRupee,
-		unit: z.enum(['in', 'cm']).optional(),
-		min: z.number().optional(),
-		max: z.number().optional(),
-		step: z.number().positive().optional(),
+		label: z.record(z.string(), z.string()),
+		unit: z.enum(['in', 'cm']).default('in'),
+		min: z.number().nullable().default(null),
+		max: z.number().nullable().default(null),
+		step: z.number().positive().nullable().default(null),
 	})
 	.superRefine(({ min, max, step }, ctx) => {
-		if (min === undefined || max === undefined || (min === 0 && max === 0)) return;
+		if (min === null || max === null || (min === 0 && max === 0)) return;
 		if (min >= max) ctx.addIssue({ code: 'custom', message: 'min must be below max', path: ['min'] });
 		if (step && !Number.isInteger(Number(((max - min) / step).toFixed(6)))) {
 			ctx.addIssue({ code: 'custom', message: 'the range must divide evenly by the step', path: ['step'] });
 		}
 	});
-export type AddonTemplateOptionWrite = z.infer<typeof AddonTemplateOptionWrite>;
+export type AddonTemplateFieldWrite = z.infer<typeof AddonTemplateFieldWrite>;
+
+/** A priced add-on and what it measures. Whole rupees. A product may override this amount. */
+export const AddonTemplateWrite = z.object({
+	code: z.string().min(1),
+	label: z.record(z.string(), z.string()),
+	priceINR: CatalogRupee,
+	fields: z.array(AddonTemplateFieldWrite).max(30).default([]),
+});
+export type AddonTemplateWrite = z.infer<typeof AddonTemplateWrite>;

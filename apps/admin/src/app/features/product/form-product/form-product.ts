@@ -65,6 +65,7 @@ import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { injectCatalogProductsQuery } from '@data-access/queries/product.queries';
 import { injectTagsQuery } from '@data-access/queries/tag.queries';
 import { injectTaxesQuery } from '@data-access/queries/tax.queries';
+import { AddonTemplateRow, AddonTemplateService } from '@data-access/services/addon-template.service';
 import { AttributeService } from '@data-access/services/attribute.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { ProductService } from '@data-access/services/product.service';
@@ -83,7 +84,7 @@ import { ImageCombination, ProductImages } from './product-images/product-images
 import { variantCombinations } from './variant-combinations';
 import { environment } from '../../../../../public/environments/environment';
 
-const LANGUAGE_FIELDS = ['name', 'short_description', 'description', 'meta_title', 'meta_description'];
+const LANGUAGE_FIELDS = ['name', 'short_description', 'description', 'meta_title', 'meta_description', 'estimated_delivery_text'];
 
 const blankToNull = (value: unknown): number | null =>
 	value === '' || value === null || value === undefined || Number.isNaN(Number(value)) ? null : Number(value);
@@ -147,6 +148,7 @@ export class FormProduct {
 	private transloco = inject(TranslocoService);
 	private document = inject<Document>(DOCUMENT);
 	private attributes = inject(AttributeService);
+	private templates = inject(AddonTemplateService);
 	private notifier = inject(NotificationService);
 
 	readonly type = input<string>(undefined);
@@ -251,6 +253,8 @@ export class FormProduct {
 	readonly fields: LocalizedFields;
 	readonly missing = signal<Record<string, number>>({});
 	readonly definitions = signal<AttributeDefinition[]>([]);
+	readonly addonTemplates = signal<AddonTemplateRow[]>([]);
+	readonly addonTemplateCode = signal<string | null>(null);
 	readonly optionGroups = signal<ProductOptionGroup[]>([]);
 	readonly images = signal<Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides'>>({
 		imageMode: 'simple',
@@ -341,7 +345,7 @@ export class FormProduct {
 			is_return: new FormControl(1),
 			status: new FormControl<string>('disabled'),
 		});
-		this.fields = new LocalizedFields(this.form, LANGUAGE_FIELDS);
+		this.fields = new LocalizedFields(this.form, LANGUAGE_FIELDS, ['estimated_delivery_text']);
 
 		this.transloco.selectTranslation().subscribe(() => this.buildOptions());
 	}
@@ -353,13 +357,13 @@ export class FormProduct {
 			{ value: 'available', label: t('available') },
 			{ value: 'unavailable', label: t('not_available') },
 		];
-		const statuses = ['disabled', 'discontinued'];
-		if (this.catalogProduct?.status === 'live') statuses.unshift('live');
-		if (this.catalogProduct?.status === 'draft') statuses.unshift('draft');
-		this.statusOptions = statuses.map((status) => ({
+		// The list never changes shape: a select that loses the current value mid-load clears it,
+		// which saved every live product as disabled. Only Go Live can make a product live.
+		const current = this.catalogProduct?.status;
+		this.statusOptions = ['live', 'draft', 'disabled', 'discontinued'].map((status) => ({
 			value: status,
 			label: t(`product_status_${status}`),
-			disabled: status === 'draft',
+			disabled: status === 'draft' || (status === 'live' && current !== 'live'),
 		}));
 	}
 
@@ -416,7 +420,6 @@ export class FormProduct {
 				width_cm: detail.shipping.widthCm,
 				height_cm: detail.shipping.heightCm,
 				hsn_code: detail.hsnCode,
-				estimated_delivery_text: detail.estimatedDeliveryText,
 				made_to_order: detail.madeToOrder,
 				low_stock_threshold: detail.lowStockThreshold,
 				pinned_badges: detail.pinnedBadges,
@@ -438,11 +441,13 @@ export class FormProduct {
 			description: content.description,
 			meta_title: content.metaTitle,
 			meta_description: content.metaDescription,
+			estimated_delivery_text: content.estimatedDeliveryText,
 		});
 		this.form.get('type')?.disable({ emitEvent: false });
 		this.form.patchValue({ categories: content.categoryIds }, { emitEvent: false });
 		this.selectedCategories = content.categoryIds;
 		this.optionGroups.set(content.optionGroups);
+		this.addonTemplateCode.set(content.addonTemplateCode);
 		this.images.set({
 			imageMode: content.imageMode,
 			gallery: content.gallery,
@@ -514,6 +519,7 @@ export class FormProduct {
 			.getDefinitions()
 			.pipe(takeUntil(this.destroy$))
 			.subscribe((rows) => this.definitions.set(rows));
+		this.templates.list().pipe(takeUntil(this.destroy$)).subscribe((rows) => this.addonTemplates.set(rows));
 		this.productService
 			.getReplacementTargets()
 			.pipe(takeUntil(this.destroy$))
@@ -677,8 +683,10 @@ export class FormProduct {
 			description: text('description'),
 			metaTitle: text('meta_title'),
 			metaDescription: text('meta_description'),
+			estimatedDeliveryText: text('estimated_delivery_text'),
 			categoryIds: Array.isArray(raw['categories']) ? raw['categories'].map(String) : [],
 			optionGroups: this.optionGroups(),
+			addonTemplateCode: this.addonTemplateCode(),
 			...this.images(),
 		};
 	}
@@ -708,7 +716,7 @@ export class FormProduct {
 			this.tabError = 'general';
 			return;
 		}
-		const leadTime = textOrNull(raw['estimated_delivery_text']);
+		const leadTime = textOrNull(this.fields.text('estimated_delivery_text')['en']);
 		const leadTimeControl = this.form.get('estimated_delivery_text');
 		if (raw['made_to_order'] && !leadTime) leadTimeControl?.setErrors({ leadTimeRequired: true });
 		if (!this.form.valid) {
@@ -762,7 +770,7 @@ export class FormProduct {
 			status: product.status === 'live' && raw['status'] === 'live' ? 'live' : 'disabled',
 			featured: Boolean(raw['is_featured']),
 			madeToOrder: Boolean(raw['made_to_order']),
-			estimatedDeliveryText: textOrNull(raw['estimated_delivery_text']),
+			estimatedDeliveryText: textOrNull(this.fields.text('estimated_delivery_text')['en']),
 			lowStockThreshold: blankToNull(raw['low_stock_threshold']),
 			pinnedBadges: ids(raw['pinned_badges']) as CatalogBadgeCode[],
 			hiddenBadges: ids(raw['hidden_badges']) as CatalogBadgeCode[],

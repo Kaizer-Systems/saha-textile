@@ -16,6 +16,7 @@ import type {
 	ProductRepository,
 } from '@saha-textile/core-domain';
 
+import { CatalogPublicService } from './catalog-public.service';
 import { CatalogService } from './catalog.service';
 import {
 	ATTRIBUTE_DEFINITION_REPOSITORY,
@@ -26,6 +27,12 @@ import {
 
 const collectionPath = (placement: CategoryPlacement): string => `/collections/${placement.pathSlugs.join('/')}`;
 
+/** Undefined leaves an image alone, and null clears it. */
+function imageChange(key: 'bannerImage' | 'iconImage', id: string | null | undefined, existing: Category | null) {
+	const kept = id === undefined ? existing?.media?.[key] : (id ?? undefined);
+	return { [key]: kept };
+}
+
 /** Categories and attributes: the helpers the product form picks from. */
 @Injectable()
 export class TaxonomyService {
@@ -35,14 +42,22 @@ export class TaxonomyService {
 		@Inject(CATEGORY_PLACEMENT_REPOSITORY) private readonly placements: CategoryPlacementRepository,
 		@Inject(ATTRIBUTE_DEFINITION_REPOSITORY) private readonly attributes: AttributeDefinitionRepository,
 		@Inject(PRODUCT_REPOSITORY) private readonly products: ProductRepository,
+		private readonly publicCatalog: CatalogPublicService,
 	) {}
 
 	async listCategories(): Promise<AdminCategoryRow[]> {
 		const categories = await this.categories.tree();
-		return Promise.all(categories.map((category) => this.categoryRow(category)));
+		const images = await this.publicCatalog.categoryImages(
+			categories.flatMap((category) => [category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat()),
+		);
+		return Promise.all(categories.map((category) => this.categoryRow(category, images)));
 	}
 
-	private async categoryRow(category: Category): Promise<AdminCategoryRow> {
+	private async categoryRow(category: Category, images: ReadonlyMap<string, string>): Promise<AdminCategoryRow> {
+		const shown = (id: string | undefined) => {
+			const url = id ? images.get(id) : undefined;
+			return id && url ? { id, url } : null;
+		};
 		const placements = await this.placements.listForCategory(category.id);
 		const canonical = placements.find((row) => row.isCanonical) ?? null;
 		const { total } = await this.products.list({
@@ -64,6 +79,8 @@ export class TaxonomyService {
 			),
 			path: canonical ? canonical.pathSlugs.join('/') : null,
 			productCount: total,
+			image: shown(category.media?.bannerImage),
+			icon: shown(category.media?.iconImage),
 		});
 	}
 
@@ -89,9 +106,14 @@ export class TaxonomyService {
 			ancestors,
 			path: [...ancestors, categoryId],
 			depth: ancestors.length,
-			displayOrder: body.displayOrder,
+			displayOrder: body.displayOrder ?? existing?.displayOrder ?? 0,
 			description: body.description,
 			seo: { title: body.seoTitle, description: body.seoDescription },
+			media: {
+				...existing?.media,
+				...imageChange('bannerImage', body.imageId, existing),
+				...imageChange('iconImage', body.iconId, existing),
+			},
 		});
 		const current = await this.placements.findCanonical(categoryId);
 		const oldPaths = current ? await this.subtreePaths(current.id) : new Map<string, string>();

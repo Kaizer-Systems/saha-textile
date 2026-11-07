@@ -192,6 +192,8 @@ export const CatalogPageVariant = z.object({
 	buyable: z.boolean(),
 	/** Position of this variant's photo in `gallery`, when it has one. */
 	galleryIndex: z.number().int().nonnegative().nullable(),
+	/** This variant's own photos in `gallery`, in order. Empty when it shares the product's. */
+	galleryIndexes: z.array(z.number().int().nonnegative()).default([]),
 });
 export type CatalogPageVariant = z.infer<typeof CatalogPageVariant>;
 
@@ -237,6 +239,21 @@ export const CatalogPageBundle = z.object({
 	),
 });
 
+/** One category in the shop menu, in the language asked for. */
+export const CatalogMenuCategory = z.object({
+	id: Id,
+	name: z.string(),
+	slug: Slug,
+	description: z.string(),
+	parentId: Id.nullable(),
+	level: z.number().int().positive(),
+	/** Canonical path under `/collections/`. */
+	path: z.string().min(1),
+	imageUrl: z.string().nullable(),
+	iconUrl: z.string().nullable(),
+});
+export type CatalogMenuCategory = z.infer<typeof CatalogMenuCategory>;
+
 /** The product page read model. Prices are whole rupees from Mongo; images are resolved URLs. */
 export const CatalogProductPage = z.object({
 	id: Id,
@@ -244,6 +261,9 @@ export const CatalogProductPage = z.object({
 	path: z.string().min(1),
 	title: z.string(),
 	description: z.string(),
+	shortDescription: z.string(),
+	metaTitle: z.string(),
+	metaDescription: z.string(),
 	price: CatalogCardPrice,
 	badges: z.object({ primary: z.string().nullable(), secondary: z.string().nullable() }),
 	madeToOrder: z.boolean(),

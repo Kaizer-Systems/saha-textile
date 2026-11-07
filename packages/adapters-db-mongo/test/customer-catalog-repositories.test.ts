@@ -280,6 +280,7 @@ describe.skipIf(!hasMongoEnv())('customer, catalogue and inventory repositories 
 
 		it('lists live and retired paths', async () => {
 			expect(await repo.listLivePaths()).toContain(a.toLowerCase());
+			expect((await repo.listCanonicalLive()).map((row) => row.id)).toContain(`${P}a`);
 			expect(await repo.listRetiredPaths()).toContain(d.toLowerCase());
 		});
 

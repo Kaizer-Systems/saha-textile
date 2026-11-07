@@ -92,6 +92,13 @@ export class MongoCategoryPlacementRepository implements CategoryPlacementReposi
 		return docs.map((doc) => doc.pathKey);
 	}
 
+	async listCanonicalLive(): Promise<CategoryPlacement[]> {
+		const docs = await CategoryPlacementModel.find({ status: 'live', isCanonical: true })
+			.lean<CategoryPlacementDoc[]>()
+			.exec();
+		return docs.map(toPlacement);
+	}
+
 	async listLivePaths(): Promise<string[]> {
 		const docs = await CategoryPlacementModel.find({ status: 'live', isCanonical: true })
 			.select('pathKey')

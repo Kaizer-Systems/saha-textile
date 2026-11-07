@@ -51,8 +51,9 @@ describe.runIf(hasMongoEnv())('add-on template persistence (rs0)', () => {
 		await disconnectMongo();
 	});
 
-	it('keeps every field when the list screen saves a price with one unit and range', async () => {
-		await repo.save({ code, label: 'Blouse measurements', priceINR: 900, unit: 'in', min: 10, max: 24, step: 0.5 });
+	it('keeps every field through a save of the whole template', async () => {
+		const before = await repo.findByCode(code);
+		await repo.save({ code, label: { en: 'Blouse measurements' }, priceINR: 900, fields: before?.fields ?? [] });
 
 		const saved = await repo.findByCode(code);
 		expect(saved?.priceINR).toBe(900);

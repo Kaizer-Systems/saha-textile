@@ -26,3 +26,73 @@ export async function withDatabase<T>(work: (connection: Connection) => Promise<
 		await connection.close();
 	}
 }
+
+/** Stand-in rows for the live banners on the home page: three hero slides and two promos. */
+export async function ensureHomeBanners(): Promise<void> {
+	const slots = [
+		['hero', 'main'],
+		['hero', 'slide_2'],
+		['hero', 'slide_3'],
+		['promo_wide', 'item_1'],
+		['promo_wide', 'item_2'],
+	] as const;
+	await withDatabase(async (db) => {
+		for (const [position, slot] of slots) {
+			const assetId = `med_e2e_${position}_${slot}`;
+			const key = `home:-:${position}:${slot}`;
+			await db.collection('mediaAssets').updateOne(
+				{ _id: assetId as never },
+				{
+					$set: {
+						kind: 'image',
+						purpose: 'banner',
+						slug: `e2e-${position}-${slot}`,
+						width: 2789,
+						height: 825,
+						derivatives: [
+							{
+								role: 'banner',
+								storageKey: `media/${assetId}/banner-480w.webp`,
+								width: 480,
+								height: 142,
+								byteSize: 2468,
+								format: 'image/webp',
+								roleVersion: 1,
+							},
+						],
+						processing: { state: 'ready', attempts: 1, error: null },
+						status: 'live',
+						deletedAt: null,
+						text: { alt: {}, title: {}, caption: {} },
+					},
+				},
+				{ upsert: true },
+			);
+			await db.collection('contentBlocks').updateOne(
+				{ key },
+				{
+					$set: {
+						ownerType: 'home',
+						ownerId: null,
+						position,
+						slot,
+						images: { desktop: assetId, tablet: null, phone: null },
+						containsText: false,
+						localeImages: {},
+						heading: {},
+						subheading: {},
+						ctaLabel: {},
+						link: { href: '/collections', external: false },
+						alt: { en: 'Saha Textile collection', fr: 'Collection Saha Textile' },
+						status: 'active',
+						startsAt: null,
+						endsAt: null,
+						assetIds: [assetId],
+					},
+					$setOnInsert: { _id: `cbk_e2e_${position}_${slot}` as never },
+				},
+				{ upsert: true },
+			);
+		}
+	});
+}

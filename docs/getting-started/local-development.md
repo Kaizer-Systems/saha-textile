@@ -147,6 +147,14 @@ pnpm --filter @saha-textile/api seed:local-catalog-photos -- --i-am-local ~/phot
 
 On macOS, convert a phone HEIC first with `sips -s format jpeg photo.heic --out photo.jpg`. The tool uploads each photo as an admin upload would, waits for the worker, then rewrites the demo JSON. Photos do not enter Git; only their CDN URLs do. `--assets=med_…,med_…` reuses uploaded photos, and `--clean` removes them and restores the placeholder. The tool refuses to run without `--i-am-local`, under `NODE_ENV=production`, against a non-loopback MongoDB, or against a database whose name does not end in `_local`.
 
+The home page banners use stand-in images until real art arrives. To fill every empty hero and promo slot through the pipeline:
+
+```bash
+pnpm --filter @saha-textile/api seed:local-home-banners -- --i-am-local
+```
+
+It leaves a slot that already holds a banner alone, and it has the same safety checks as the photo tool.
+
 ## Developer portal commands
 
 Create the gitignored local credential file before starting the complete portal; the example has

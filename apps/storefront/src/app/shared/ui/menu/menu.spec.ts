@@ -3,10 +3,14 @@ import { TestBed } from '@angular/core/testing';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { IMenu } from '@data-access/interfaces/menu.interface';
+import * as data from '@shared/data/menu';
+
 import { Menu } from './menu';
 
 const blogs = signal<unknown>(undefined);
 const categories = signal<unknown>(undefined);
+const rails = signal<unknown>(undefined);
 vi.mock('@data-access/queries/blog.queries', () => ({
 	injectBlogsQuery: (params: () => unknown) => {
 		params();
@@ -15,6 +19,9 @@ vi.mock('@data-access/queries/blog.queries', () => ({
 }));
 vi.mock('@data-access/queries/category.queries', () => ({
 	injectCategoriesQuery: () => ({ data: categories }),
+}));
+vi.mock('@data-access/queries/product.queries', () => ({
+	injectHomeRailsQuery: () => ({ data: rails }),
 }));
 
 const tree = {
@@ -40,10 +47,49 @@ const width = (value: number) => vi.stubGlobal('innerWidth', value);
 afterEach(() => {
 	blogs.set(undefined);
 	categories.set(undefined);
+	rails.set(undefined);
 	vi.unstubAllGlobals();
 });
 
+/** Every link in the tree, at any depth. */
+const paths = (items: IMenu[]): string[] =>
+	items.flatMap((item) => [...(item.path ? [item.path] : []), ...paths(item.children ?? [])]);
+
 describe('Menu', () => {
+	it('keeps every demo section after Home', () => {
+		expect(
+			render()
+				.menu()
+				.map((item) => item.title),
+		).toEqual(['home', 'product', 'mega_menu', 'blog', 'pages']);
+	});
+
+	it('leaves the demo product links alone until real products arrive', () => {
+		const menu = render();
+		expect(menu.menu()).toBe(data.menu);
+		expect(menu.featuredProductPath()).toBe('/collections');
+	});
+
+	it('opens real products from the demo links, in turn, without touching the demo data', () => {
+		const menu = render();
+		rails.set({
+			newArrivals: [{ slug: 'red-saree' }],
+			bestsellers: [{ slug: 'red-saree' }, { slug: 'blue-saree' }],
+			featured: [],
+			sale: [{ slug: 'green-saree' }],
+		});
+		const products = paths(menu.menu()).filter((path) => path.startsWith('product/'));
+		expect(products.length).toBeGreaterThan(3);
+		expect(products.slice(0, 4)).toEqual([
+			'product/red-saree',
+			'product/blue-saree',
+			'product/green-saree',
+			'product/red-saree',
+		]);
+		expect(menu.featuredProductPath()).toBe('/product/red-saree');
+		expect(paths(data.menu)).toContain('product/deliciously-sweet-watermelon');
+	});
+
 	it('keeps the demo menu until the taxonomy arrives', () => {
 		const menu = render();
 		const before = menu.menu().length;

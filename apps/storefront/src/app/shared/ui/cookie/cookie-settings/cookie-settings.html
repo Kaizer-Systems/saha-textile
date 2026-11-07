@@ -82,7 +82,10 @@
 			<p class="cookie-note">{{ 'cookie_not_in_use_note' | transloco }}</p>
 		</section>
 	</div>
-	<div class="modal-footer cookie-actions">
+	<div
+		class="modal-footer cookie-actions"
+		[style.--cookie-label-chars]="longest('cookie_save' | transloco, 'cookie_necessary_only' | transloco, 'cookie_accept_all' | transloco)"
+	>
 		<button
 			type="button"
 			class="btn cookie-save"

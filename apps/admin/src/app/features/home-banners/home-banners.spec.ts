@@ -59,6 +59,20 @@ describe('HomeBanners', () => {
 		expect(page.block('none')).toBeNull();
 	});
 
+	it('offers a form per slide of the full hero, and both promo banners', async () => {
+		const { page, gateway } = render();
+		gateway.list.mockImplementation((owner: string) =>
+			of(owner === 'home' ? [{ position: 'promo_wide', slot: 'item_1' }] : []),
+		);
+		await page.ngOnInit();
+		page.layout.set('hero_full');
+		expect(page.slots()).toEqual(['main', 'slide_2', 'slide_3']);
+		expect(page.promoSlots).toEqual(['item_1', 'item_2']);
+		expect(page.promoBlock('item_1')).toMatchObject({ slot: 'item_1' });
+		expect(page.promoBlock('item_2')).toBeNull();
+		expect(page.heroBlocks()).toEqual([]);
+	});
+
 	it('copes with no popup block', async () => {
 		const { page, gateway } = render();
 		gateway.list.mockReturnValue(of([]));

@@ -26,7 +26,8 @@
     "e2e:catalog-chunk-f": "node --import tsx e2e/catalog-chunk-f.e2e.ts",
     "search:rebuild": "node --import tsx src/rebuild-search-index.ts",
     "release:prepare": "node --import tsx src/rebuild-search-index.ts",
-    "seed:local-catalog-photos": "node --import tsx src/seed-local-catalog-photos.ts"
+    "seed:local-catalog-photos": "node --import tsx src/seed-local-catalog-photos.ts",
+    "seed:local-home-banners": "node --import tsx src/seed-local-home-banners.ts"
   },
   "dependencies": {
     "@fastify/compress": "9.3.0",

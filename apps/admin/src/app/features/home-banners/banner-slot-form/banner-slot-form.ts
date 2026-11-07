@@ -16,7 +16,14 @@ import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 export const BANNER_LOCALES = ['en', 'fr'] as const;
 
 type Band = 'desktop' | 'tablet' | 'phone';
-const WIDE_SLOTS = new Set(['hero:main', 'strip:main', 'bar:main', 'category_banner:main']);
+const WIDE_SLOTS = new Set([
+	'hero:main',
+	'hero:slide_2',
+	'hero:slide_3',
+	'strip:main',
+	'bar:main',
+	'category_banner:main',
+]);
 
 const localizedGroup = () =>
 	new FormGroup(
@@ -44,7 +51,7 @@ export class BannerSlotForm implements OnInit {
 	private readonly notifications = inject(NotificationService);
 
 	readonly ownerType = input<'home' | 'global'>('home');
-	readonly position = input<'hero' | 'newsletter_popup'>('hero');
+	readonly position = input<'hero' | 'promo_wide' | 'newsletter_popup'>('hero');
 	readonly slot = input.required<string>();
 	readonly existing = input<ContentBlock | null>(null);
 	readonly saved = output<void>();

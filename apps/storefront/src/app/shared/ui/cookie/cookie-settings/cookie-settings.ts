@@ -8,6 +8,9 @@ import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { ConsentStore } from '@core/consent/consent.store';
 import { EMPTY_CATEGORIES, FUNCTIONAL_ITEMS, NECESSARY_ITEMS } from '@core/consent/cookie-catalogue';
 
+/** The longest label's length: the buttons use it to decide how many fit on a row. */
+export const longestLabel = (...labels: string[]): number => Math.max(...labels.map((label) => label.length));
+
 /** The choice in full. Empty categories say so instead of offering a switch that does nothing. */
 @Component({
 	selector: 'app-cookie-settings',
@@ -22,6 +25,7 @@ export class CookieSettings {
 	readonly necessary = NECESSARY_ITEMS;
 	readonly functionalItems = FUNCTIONAL_ITEMS;
 	readonly empty = EMPTY_CATEGORIES;
+	readonly longest = longestLabel;
 
 	readonly functional = signal(false);
 	readonly openList = signal<'necessary' | 'functional' | null>(null);

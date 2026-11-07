@@ -8,13 +8,19 @@ import { ConsentStore } from '@core/consent/consent.store';
 import { AuthStore } from '@core/state/auth.store';
 
 import { Cookie } from './cookie';
-import { CookieSettings } from './cookie-settings/cookie-settings';
+import { CookieSettings, longestLabel } from './cookie-settings/cookie-settings';
 
 const consentDouble = (functional = false) => ({
 	settingsRequests: signal(0),
 	allows: vi.fn(() => functional),
 	save: vi.fn(),
 	syncAccount: vi.fn(async () => {}),
+});
+
+describe('longestLabel', () => {
+	it('gives the length of the longest label', () => {
+		expect(longestLabel('Accept all', 'Necessary only', 'OK')).toBe(14);
+	});
 });
 
 describe('CookieSettings', () => {

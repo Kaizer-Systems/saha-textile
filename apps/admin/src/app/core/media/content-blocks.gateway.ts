@@ -10,7 +10,7 @@ export type HeroLayout = 'hero_full' | 'hero_main_side' | 'hero_main_stack' | 'h
 
 /** Slots each layout renders, in reading order (`HERO_LAYOUT_SLOTS`). */
 export const HERO_LAYOUT_SLOTS: Record<HeroLayout, string[]> = {
-	hero_full: ['main'],
+	hero_full: ['main', 'slide_2', 'slide_3'],
 	hero_main_side: ['main', 'side'],
 	hero_main_stack: ['main', 'side_top', 'side_bottom'],
 	hero_center_sides: ['left', 'main', 'right'],
@@ -22,7 +22,7 @@ export type Localized = Record<string, string>;
 export interface ContentBlockInput {
 	ownerType: 'home' | 'global';
 	ownerId: null;
-	position: 'hero' | 'newsletter_popup';
+	position: 'hero' | 'promo_wide' | 'newsletter_popup';
 	slot: string;
 	images: { desktop: string; tablet: string | null; phone: string | null };
 	containsText: boolean;

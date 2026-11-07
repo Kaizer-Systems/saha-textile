@@ -38,6 +38,33 @@
 </section>
 }
 
+<!-- ===== Two side-by-side promo banners ===== -->
+@if (promoBanners(); as promos) {
+<section>
+	<div class="container-fluid-lg">
+		<div class="row g-4">
+			@if (promos.first; as banner) {
+			<div class="col-xxl-8 col-xl-12 col-md-7">
+				<app-image-link
+					[image]="banner"
+					[bgImage]="false"
+					[sizes]="'(min-width: 1400px) 66vw, (min-width: 1200px) 100vw, (min-width: 768px) 58vw, 100vw'"
+				/>
+			</div>
+			} @if (promos.second; as banner) {
+			<div class="col-xxl-4 col-xl-12 col-md-5">
+				<app-image-link
+					[image]="banner"
+					[bgImage]="false"
+					[sizes]="'(min-width: 1400px) 33vw, (min-width: 1200px) 100vw, (min-width: 768px) 42vw, 100vw'"
+				/>
+			</div>
+			}
+		</div>
+	</div>
+</section>
+}
+
 <!-- ===== New Arrivals — first product row. One image is high priority. ===== -->
 <section class="product-section product-section-3">
 	<div class="container-fluid-lg">

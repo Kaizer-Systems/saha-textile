@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { serverApiUrl } from './api-url';
 import locale from './middleware/locale';
 import seoFiles from './middleware/seo-files';
 import webManifest from './middleware/web-manifest';
@@ -37,6 +38,22 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.unstubAllGlobals();
+	delete process.env['SAHA_TEXTILE_PUBLIC_CONFIG'];
+});
+
+describe('serverApiUrl', () => {
+	it("reads the deployment's config, which Angular's start-up never applies here", () => {
+		process.env['SAHA_TEXTILE_PUBLIC_CONFIG'] = JSON.stringify({ apiUrl: 'https://api.shop.test' });
+		expect(serverApiUrl()).toBe('https://api.shop.test');
+	});
+
+	it('falls back to the local default when the config is missing, empty or broken', () => {
+		expect(serverApiUrl()).toBe('https://api.test');
+		for (const value of ['', '{"siteUrl":"https://shop.test"}', '{"apiUrl":5}', '{"apiUrl":""}', 'not json']) {
+			process.env['SAHA_TEXTILE_PUBLIC_CONFIG'] = value;
+			expect(serverApiUrl()).toBe('https://api.test');
+		}
+	});
 });
 
 describe('locale middleware', () => {
@@ -196,6 +213,10 @@ describe('web manifest middleware', () => {
 		expect(await run(event('/manifest.webmanifest?lang=fr'))).toBe(true);
 		expect(fetch).toHaveBeenCalledWith('https://api.test/storefront/brand', expect.anything());
 		expect(sent()).toMatchObject({ name: 'Sample Shop', start_url: '/fr/' });
+
+		process.env['SAHA_TEXTILE_PUBLIC_CONFIG'] = JSON.stringify({ apiUrl: 'https://api.shop.test' });
+		await run(event('/manifest.webmanifest?lang=fr'));
+		expect(fetch).toHaveBeenLastCalledWith('https://api.shop.test/storefront/brand', expect.anything());
 		expect(h3.setResponseHeaders).toHaveBeenCalledWith(expect.anything(), {
 			'Cache-Control': 'public, max-age=300',
 		});

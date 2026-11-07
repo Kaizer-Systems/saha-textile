@@ -1,8 +1,8 @@
 import { defineEventHandler, getQuery, send, setResponseHeaders } from 'h3';
 
-import { environment } from '../../../public/environments/environment';
 import { DEFAULT_LOCALE, isLocale } from '../../app/core/i18n/locale';
 import { MANIFEST_PATH, webManifest } from '../../app/core/pwa/web-manifest';
+import { serverApiUrl } from '../api-url';
 
 /**
  * `/manifest.webmanifest`, built from the Brand Kit so a shop's name and icons change without a
@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
 
 	let brand = null;
 	try {
-		const response = await fetch(`${environment.apiUrl}/storefront/brand`, { signal: AbortSignal.timeout(3000) });
+		const response = await fetch(`${serverApiUrl()}/storefront/brand`, { signal: AbortSignal.timeout(3000) });
 		if (response.ok) brand = await response.json();
 	} catch {
 		// Falls through to the built-in icons.

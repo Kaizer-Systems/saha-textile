@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-11-06",
+	"lastVerified": "2026-11-07",
 	"datasets": {
 		"missionControl": {
 			"file": "docs/_data/instruments/mission-control.json",
@@ -37,7 +37,7 @@
 		{
 			"id": 1,
 			"key": "mission-control",
-			"catalogHeading": "Mission Control — Chunk Constellation",
+			"catalogHeading": "Mission Control",
 			"wave": 1,
 			"waveLabel": "Mission Control",
 			"status": "built",
@@ -85,7 +85,7 @@
 		{
 			"id": 5,
 			"key": "first-flight",
-			"catalogHeading": "First Flight — guided onboarding copilot",
+			"catalogHeading": "First Flight",
 			"wave": 2,
 			"waveLabel": "First Flight",
 			"status": "built",

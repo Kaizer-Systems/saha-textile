@@ -1,10 +1,10 @@
 ---
-title: Current Mongo Adapter Map
-description: Verified Mongoose models, indexes, repositories, mappers, seed tooling, and present persistence limitations.
+title: Mongo Adapter Map
+description: Mongoose models, repositories, mappers, seed tools and local replica-set commands.
 search_keywords: 'mongo rs0 replica set connection uri directConnection models indexes repositories'
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - packages/adapters-db-mongo/src/models
     - packages/adapters-db-mongo/src/repositories
@@ -19,143 +19,142 @@ source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
 ---
 
-# Current Mongo adapter map
+# Mongo adapter map
 
-The Mongo adapter is real but partial. It uses Mongoose, string ids, timestamps, lean reads, explicit mappers, upsert-style saves, and several indexes.
+This page maps the models, repositories and mappers in `packages/adapters-db-mongo`, and lists the local commands for the replica set.
 
-## Current model inventory
+## Model inventory
 
-| Family                   | Physical collections                                                                                                                                                          | Current evidence boundary                                                                                                                                                 |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Remaining original core  | `categories`, `products`, `promotions`, `orders`, `currencies`, `carts`                                                                                                       | Existing catalogue/commerce APIs; product lifecycle/indexes, cart/`st_guest` ownership and order+cart transactional create are current; checkout idempotency remains open |
-| Separated populations    | `customers`, `adminUsers`                                                                                                                                                     | Storefront shoppers and back-office operators are distinct collections and contracts (`DEC-ACCOUNT-SEPARATION`)                                                           |
-| Credentials and identity | `passwordCredentials`, `pinCredentials`, `authIdentities`                                                                                                                     | Credential material stays selected-out by default; provider-neutral identity links serve storefront flows                                                                 |
-| Auth runtime             | `authSessions`, `otpChallenges`, `oauthStates`, `passwordResetTokens`, `emailVerificationTokens`, `adminInvites`, `authRateLimits`, `pendingSignups`, `pendingContactChanges` | Sessions, recovery, verified signup, identity and contact-change flows use these stores; transient proof/counters are TTL-bound                                           |
-| Authorization            | `roles`, `adminUserRoleAssignments`                                                                                                                                           | Repositories/indexes are rs0-proven and API-bound for role/permission/operator-authority administration                                                                   |
-| Privacy                  | `consentEvents`                                                                                                                                                               | Consent history and privacy request seams are API-bound                                                                                                                   |
-| Catalogue/merchandising  | `categoryPlacements`, `categoryFacetConfigs`, `attributeDefinitions`, `productVariants`, `productBundles`, `productRelations`                                                 | Tested repositories exist; broad HTTP catalogue-management adoption remains open                                                                                          |
-| Media/inventory          | `mediaAssets`, `inventoryLedger`, `inventoryCostLayers`                                                                                                                       | Tested repository/index behavior exists; business workflow adoption remains open                                                                                          |
-| Governance/notifications | `auditLogs`, `notificationChannelSettings`, `notificationTemplates`, `messageOutbox`                                                                                          | Tested durable evidence/outbox stores exist; provider delivery and complete side-effect orchestration remain open                                                         |
-| Catalogue operations     | `addonTemplates`, `seoRedirects`                                                                                                                                              | Live through the admin catalogue routes                                                                                                                                   |
-| Content and settings     | `contentBlocks`, `mediaRoles`, `siteSettings`                                                                                                                                 | Live through the admin content, media and settings routes                                                                                                                 |
-| Content                  | `faqEntries`, `productQuestions`, `reviews`, `ratingAggregates`                                                                                                               | Tested repositories exist; public/admin content operations remain open                                                                                                    |
+| Family                   | Physical collections                                                                                                                                                          | Used by                                         |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Catalogue                | `categories`, `products`, `productVariants`, `categoryPlacements`, `categoryFacetConfigs`, `attributeDefinitions`, `productBundles`, `productRelations`                       | Public catalogue and admin product form         |
+| Catalogue operations     | `addonTemplates`, `seoRedirects`, `seoRoutes`                                                                                                                                 | Admin catalogue routes and storefront head data |
+| Merchandising            | `stockAlerts`, `productInsightSets`                                                                                                                                           | Stock alert route and weekly worker jobs        |
+| Commerce                 | `carts`, `orders`, `promotions`, `currencies`                                                                                                                                 | Cart, order, promotion and currency routes      |
+| Accounts                 | `customers`, `adminUsers`                                                                                                                                                     | Storefront and admin                            |
+| Credentials and identity | `passwordCredentials`, `pinCredentials`, `authIdentities`                                                                                                                     | Sign-in and identity linking                    |
+| Auth runtime             | `authSessions`, `otpChallenges`, `oauthStates`, `passwordResetTokens`, `emailVerificationTokens`, `adminInvites`, `authRateLimits`, `pendingSignups`, `pendingContactChanges` | Session, recovery, signup and contact flows     |
+| Authorization            | `roles`, `adminUserRoleAssignments`                                                                                                                                           | Admin authority routes                          |
+| Privacy                  | `consentEvents`                                                                                                                                                               | Consent routes                                  |
+| Governance               | `auditLogs`, `notificationChannelSettings`, `notificationTemplates`, `messageOutbox`                                                                                          | Audit, notification settings, MSG91 adapter     |
+| Media and settings       | `mediaAssets`, `mediaRoles`, `contentBlocks`, `siteSettings`                                                                                                                  | Media library, banners, YouTube settings        |
+| Content                  | `faqEntries`, `productQuestions`, `reviews`, `ratingAggregates`                                                                                                               | FAQ, questions and reviews                      |
+| Inventory                | `inventoryLedger`, `inventoryCostLayers`                                                                                                                                      | Repository only; no HTTP workflow               |
 
-### Physical names are declared, not inferred
+### Declared collection names
 
-Every schema passes an explicit `collection` option, and `packages/adapters-db-mongo/src/collection-names.ts` is the single declaration checked by `test/collection-names.test.ts`. `pnpm mongo:align-collections` aligns legacy inferred names with the ratified names; it is idempotent, refuses to merge when both names hold data, and never runs at application boot.
+Every schema passes an explicit `collection` option. `packages/adapters-db-mongo/src/collection-names.ts` is the single declaration, checked by `test/collection-names.test.ts`. `pnpm mongo:align-collections` moves data from inferred names to declared names. It is idempotent, refuses to merge when both names hold data, and never runs at startup.
 
-The generated catalogue confirms all 44 physical names directly from Mongoose metadata: 529 fields and 115 indexes. Forty-one names map to ratified Schema Nebula nodes (**69 / 41 / 28**). `authRateLimits`, `pendingSignups`, and `pendingContactChanges` are transient runtime collections outside the graph.
-
-## Current repository inventory
-
-Repository adapters cover the original domain stores plus customer/operator auth, provider identities, pending proof, authorization roles/assignments, consent, catalogue structure, merchandising, inventory, media, governance and content. Identity adapters are bound into session, OTP, signup, provider, password, contact-change, recovery, verification, invite, and admin flows. `AuthIdentityRepository` is the only provider-link writer; customer saves no longer replace the identity projection. Signup repositories join one ambient transaction for customer, credential, and provider identity, while contact confirmation joins proof consumption, identifier mutation, and audit recording. Role and assignment adapters drive effective-permission resolution and deny-by-default admin authority APIs; catalogue/media/inventory/governance/content adapters remain tested capabilities whose wider HTTP workflows are incomplete.
-
-### Common pattern
+## Repository pattern
 
 ```text
 find/read → lean document → mapper → contract-shaped value
 save/upsert → strip public id → findByIdAndUpdate($set) → mapper
 ```
 
-### Current query behavior
+- `AuthIdentityRepository` is the only provider-link writer.
+- Signup repositories join one ambient transaction for the customer, credential and provider identity.
+- Contact confirmation joins proof consumption, the identifier write and the audit record.
 
-- Product listing supports category, tag, status, Mongo search, pagination, newest-first sort, and a `CatalogAudience` that defaults to public. Public list and direct reads are centrally restricted to `live`; public callers cannot widen the filter.
-- Category tree returns a flat depth/display-order sort; hierarchy reconstruction is a consumer concern.
-- Active promotions use start/end-window filtering and priority sort.
-- Customer and admin-user credential lookups explicitly request otherwise hidden password/PIN hashes; public mapping returns neither. Password and provider identity records are stored outside account documents.
-- Customer email/phone unique-index races translate into core `DuplicateIdentifierError`; API callers map that stable fact to their operation-specific refusal without exposing driver details.
-- Customer address add/update uses one Mongo statement. Default insertion uses a `$literal`-protected aggregation pipeline; targeted updates use fixed field paths and array filters, preventing concurrent read-modify-write loss.
-- Session/challenge/token repositories explicitly select hidden hashes only inside credential verification paths and never expose plaintext secrets.
-- Order listing scopes by `userId`; the controller applies customer ownership to single-order reads and gives staff/admin an explicit support bypass.
-- Order status update appends a timeline value but throws a generic adapter error when missing.
+## Query behaviour
+
+- Product listing supports category, tag, status, search, pagination and newest-first sorting, with a `CatalogAudience` that defaults to public. Public reads resolve to `live`, and public callers cannot widen the filter.
+- The category tree returns a flat sort by depth and display order. Consumers rebuild the hierarchy.
+- Active promotions use a start and end window with priority sorting.
+- Credential lookups explicitly request hidden hashes, and public mapping returns none of them.
+- Customer email and phone unique-index races become `DuplicateIdentifierError`.
+- Customer address writes use one MongoDB statement, so concurrent edits cannot lose data.
+- Session, challenge and token repositories select hidden hashes only inside verification paths.
+- Order listing is scoped by `userId`.
+
+## Inventory rules
+
+Stock lives on variants. `applyDelta` moves stock with one conditional update, so two writers cannot both spend the same units, and a decrease that would go below zero is refused unless the variant is untracked or allows backorder. Each move appends a ledger row with its `balanceAfter`. The ledger has no update path: a mistake is corrected with a new row.
+
+A manual adjustment needs a reason code, and `other` also needs a note. FIFO cost layers are consumed oldest first, and a sale with too few costed units fails rather than costing the rest at zero. Cost data is never customer-facing.
+
+## Index rules
+
+| Collection                 | Rule                                                                          |
+| -------------------------- | ----------------------------------------------------------------------------- |
+| `customers`                | Email and phone are unique among statuses other than `deleted`                |
+| `adminUserRoleAssignments` | One active row per operator and role. A revoked role can be granted again     |
+| `otpChallenges`            | One unconsumed challenge per identifier and purpose                           |
+| `adminInvites`             | One open invite per address. Accepted invites have no TTL and stay as records |
+| `categoryPlacements`       | A joined `pathKey` is unique, and each category has one canonical placement   |
+| `reviews`                  | One review per product, customer and order                                    |
+| `messageOutbox`            | One row per idempotency key                                                   |
+
+Sessions expire on their absolute limit. Audit logs, consent events and the stock ledger have no TTL.
 
 ## Mapper boundary
 
-Mappers correctly translate:
+Mappers translate:
 
-- Mongo `_id` to public `id`/currency `code`;
-- Mongoose `Date` to ISO strings;
-- secret password hash exclusion;
-- adapter documents to contract-friendly objects.
+- Mongo `_id` to public `id`, or to `code` for currencies.
+- Mongoose `Date` to ISO strings.
+- Adapter documents to contract-shaped objects, without secret hashes.
 
-Current risks:
+Nested `Mixed` fields are cast, not parsed. Values are often returned as broad public contracts rather than operation-specific responses.
 
-- nested `Mixed` fields are type-cast, not runtime-parsed;
-- adapter values are often returned as broad public entity contracts rather than operation-specific response DTOs;
-- compatibility defaults can mask model/contract widening until the planned user-model migration lands;
-- order save/cart consumption, signup finalisation, and contact-change confirmation share their required transaction contexts; most other multi-record workflows and entity-version policies remain open;
-- no migration/version discriminator protects historical shapes.
+## Connection behaviour
 
-## Current connection behavior
-
-`connectMongo` is idempotent while Mongoose reports a connected state. `buildMongoConfig` accepts a pre-encoded `MONGODB_URI` (which must already include `replicaSet=rs0`) or assembles a plain `mongodb://` URI from `MONGODB_HOST/PORT/REPLICA_SET/DB_NAME`. Raw credentials are percent-encoded at runtime (`@` becomes `%40`), and the query string always appends `replicaSet=rs0&directConnection=true&retryWrites=true&w=majority`. Local development runs the Docker replica set without auth; deployed profiles set both username and password (setting only one is rejected).
-
-This implements the ratified deployment model:
+`buildMongoConfig` accepts a pre-encoded `MONGODB_URI`, which must include `replicaSet=rs0`, or assembles a URI from `MONGODB_HOST`, `MONGODB_PORT`, `MONGODB_REPLICA_SET` and `MONGODB_DB_NAME`. Credentials are percent-encoded at runtime. The query string appends `replicaSet=rs0&directConnection=true&retryWrites=true&w=majority`. Local development runs without authentication. Deployed profiles set both username and password; setting only one is rejected.
 
 ```text
 Local: Docker Desktop → MongoDB 9.0.4 single-node replica set (rs0)
 Production: private Docker network → MongoDB 9.0.4 single-node replica set (rs0)
 ```
 
-The `mongodb+srv`/hosted-cluster assumption has been removed. The liveness/readiness split and transaction-capable rs0 proof now exist. Remaining operational work includes authenticated deploy-time secret injection, connection-pool and timeout tuning, private networking, resource caps, backup and restore, and transaction adoption across additional workflows.
-
 ### Local replica-set lifecycle
 
-The same Docker profile is used locally and in production for parity. From the repository root:
+Run these from the repository root:
 
 | Command             | Effect                                                           |
 | ------------------- | ---------------------------------------------------------------- |
 | `pnpm mongo:up`     | Start `rs0` and wait until healthy (`rs.initiate` is idempotent) |
-| `pnpm mongo:status` | Compose state plus replica-set status                            |
-| `pnpm mongo:down`   | Stop the container, keep the data volume                         |
+| `pnpm mongo:status` | Show Compose state and replica-set status                        |
+| `pnpm mongo:down`   | Stop the container and keep the data volume                      |
 | `pnpm mongo:wipe`   | Stop and delete the data volume (destructive)                    |
 
-Definition in `docker/mongo/docker-compose.yml`. The canonical host port is `27017`; a per-machine `MONGO_HOST_PORT` override (gitignored `docker/mongo/.env`) moves only the Mac-side doorway, so the container port, `rs0` name, and URI shape stay identical. The host connection string is `mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directConnection=true`.
+The definition is in `docker/mongo/docker-compose.yml`. The default host port is `27017`. A `MONGO_HOST_PORT` override in a gitignored `docker/mongo/.env` moves only the host-side port. The host connection string is `mongodb://127.0.0.1:27017/saha_textile_local?replicaSet=rs0&directConnection=true`.
 
-## Seed tooling
+## Seed and migration tools
 
-`seedDatabase` idempotently upserts:
+| Command (in `@saha-textile/adapters-db-mongo`) | Effect                                                                                                                |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `seed`                                         | Base categories, products, currencies, a promotion and 70 sample customers                                            |
+| `seed:demo-catalogue`                          | The demo catalogue, placements, variants, templates and old addresses. Refuses a database without `local` in its name |
+| `seed:system-roles`                            | System roles. Run after adding a permission                                                                           |
+| `reconcile:indexes`                            | Bring database indexes in line with the models. Drops any index a model does not declare, and has a dry run           |
+| `align:collections`                            | Move data to declared collection names                                                                                |
+| `split:admin-users`                            | Move operators out of `customers` and rewrite their ids                                                               |
+| `extract:credentials`                          | Move embedded hashes into the credential collections                                                                  |
+| `rename:admin-user-permissions`                | Rewrite retired permission codes in stored grants                                                                     |
 
-- six simplified categories;
-- three products covering simple and variation examples;
-- INR and USD currency records;
-- one color-scoped promotion.
+Old-address rows are in `src/seed/legacy-addresses.ts`. The seed writes only approved rows, and an unapproved row fails the seed. The first administrator is created by a [separate command](/api/route-inventory#admin-authorization-routes), not by seed data.
 
-The seed is useful for early schema tests. It is not a complete domain seed: multi-placement categories, semantic option roles, named add-on saree behavior, bundle/composite, search dictionary, sessions, payments, inventory, and operational records remain absent. First-administrator creation deliberately lives in the separate operator-only bootstrap CLI rather than general seed data.
+## Integration tests
 
-## Integration-test boundary
-
-The Mongo package has source-only collection-name checks and integration suites that connect to rs0 for baseline repositories, transaction behavior, identity/authority persistence, catalogue structure/merchandising, inventory/media, governance/content, and transactional order/cart work. The integration group runs only when `RUN_DB_IT=1` and Mongo configuration is present.
-
-Limitations:
-
-- normal runs execute source-only checks and skip rs0 integration tests unless `RUN_DB_IT=1` and Mongo configuration are present;
-- the suite does not start the replica set itself — bring it up first with `pnpm mongo:up`;
-- it does not exercise indexes/uniqueness broadly;
-- six transaction tests prove commit, rollback after a successful write, error propagation, return values, nested-session joining, and inner-failure rollback of outer writes;
-- auth-persistence tests prove default secret exclusion, explicit credential reads, session rotation/reuse-family support, atomic single-use challenge/token consumption, TTL/index declarations and atomic rate-limit increments;
-- dedicated catalogue, inventory/media, governance/content, identity, and contact-change suites cover repository/index behavior;
-- order/cart transaction checks cover commit and rollback of order save with cart consumption;
-- RBAC persistence tests prove role storage and the partial unique active-assignment index;
-- it does not cover every repository/mapper.
+Integration suites connect to `rs0` and cover repositories, transactions, identity and authority persistence, catalogue structure, inventory, media, governance and content. They run only when `RUN_DB_IT=1` and MongoDB configuration is present. They do not start the replica set, so run `pnpm mongo:up` first.
 
 ## Model review checklist
 
 For every model, verify:
 
-1. domain ownership and retention;
-2. complete field types/nullability/defaults;
-3. nested schemas instead of unjustified `Mixed`;
-4. unique/compound/partial/TTL indexes;
-5. concurrency/version strategy;
-6. sensitive-field selection and encryption policy;
-7. domain and response mapping;
-8. transaction participation;
-9. migration history/compatibility;
-10. backup, restore, archive and erasure behavior;
-11. generated catalogue output and sanitized example;
-12. tests against the real replica-set profile.
+1. Domain ownership and retention.
+2. Field types, nullability and defaults.
+3. Nested schemas instead of unjustified `Mixed`.
+4. Unique, compound, partial and TTL indexes.
+5. Concurrency and version strategy.
+6. Sensitive-field selection and encryption.
+7. Domain and response mapping.
+8. Transaction participation.
+9. Migration history and compatibility.
+10. Backup, restore, archive and erasure behaviour.
+11. Generated catalogue output and sanitized examples.
+12. Tests against the real replica set.
 
 ## What MongoDB is authoritative for
 
-MongoDB is authoritative for durable platform facts. Meilisearch is a derived public discovery index; IndexedDB/service-worker caches are browser-side convenience; Spaces stores media/archive objects; provider systems report external lifecycle facts that are verified and reconciled into platform records.
+MongoDB is authoritative for durable platform facts. Meilisearch is a derived index. Browser caches are a convenience. Spaces stores media objects. Provider systems report external facts, which are verified and reconciled into platform records.

@@ -4,7 +4,7 @@ wide: true
 description: Shared decision rules for state, contracts, layers, reusable UI, and cross-application behavior.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/storefront/src/app/app.config.ts
     - apps/admin/src/app/app.config.ts
@@ -19,7 +19,7 @@ import { FrontendDecisionLab } from '@site/src/components/ApplicationAtlas';
 
 # Frontend engineering system
 
-Storefront and admin share core architectural choices but serve different users and runtimes. Reuse decisions and contracts where they are truly common; do not force customer and operator presentation into one component merely because both applications use Angular.
+This page describes what the storefront and admin application share, and how they differ. They use the same architecture but serve different users and runtimes. Share decisions and contracts where they are truly common, and keep customer and operator presentation separate.
 
 ## State ownership lab
 
@@ -51,31 +51,30 @@ Angular applications may consume contracts and non-secret shared configuration. 
 
 ## Runtime configuration
 
-Both apps read their public, non-secret configuration at boot from `public/config.json` rather than baking URLs into the bundle. `provideAppInitializer(loadRuntimeConfig)` (in `core/config/runtime-config.ts`) fetches the file and fills a mutable `runtimeConfig` singleton plus the legacy `environment` object that existing consumers still import.
+Both applications read public, non-secret configuration at startup from `/config.json`. `provideAppInitializer(loadRuntimeConfig)` in `core/config/runtime-config.ts` fetches the file and fills a mutable `runtimeConfig` singleton and the `environment` object that services import.
 
-- The file carries only non-secret values (API/site URLs, locales, public client IDs) — a secret never reaches a browser build.
-- The committed `config.json` holds localhost defaults; deployments overwrite or mount it at container start.
-- Under SSR (no browser `fetch`), the loader reads `SAHA_TEXTILE_PUBLIC_CONFIG` from the environment, else falls back to defaults. A failed fetch never blocks boot.
+- The file holds non-secret values only: API and site URLs, locales and public client IDs.
+- The committed `config.json` holds localhost defaults. Deployments supply their own.
+- During server rendering the loader reads `SAHA_TEXTILE_PUBLIC_CONFIG` from the environment, then falls back to defaults. A failed fetch does not stop startup.
 
-The auth interceptor sends `withCredentials: true` on every request so the httpOnly cookie sessions flow, and sends the CSRF token as `x-csrf-token` on unsafe methods. The token comes from the API's reply and lives in memory (`core/auth/csrf-tokens.ts`), because no script can read the API host's cookies. It attaches no bearer token: the API's `SessionGuard` reads the access cookie only, and the client holds no credential to forward. The framework-free `@saha-textile/http-transport` package owns the shared CSRF contract, refresh single-flight, audience-specific cross-tab locks, URL/request-id helpers and safe refusal mapping; each application gateway retains its own routes and business policy. Repository lint guards reject browser token storage, bearer headers and cross-audience auth calls.
+The auth interceptor sends `withCredentials: true` so that cookie sessions flow, and sends the CSRF token as `x-csrf-token` on unsafe methods. The token comes from the API's reply and lives in memory. No bearer token exists, because the API reads the access cookie only.
 
-## Contracts today
+`@saha-textile/http-transport` is framework-free. It owns the CSRF contract, single-flight refresh, cross-tab locks, URL and request-id helpers and refusal mapping. Each application keeps its own routes and business rules. Repository lint guards reject browser token storage, bearer headers and cross-audience calls.
 
-`packages/contracts/src` contains zod-backed common locale/money/pagination/error primitives and families for catalogue placements/attributes/options/variants/bundles/relations, media, inventory, content, cart, order, currency, promotion, shipping, customer, admin-user, signup, OAuth, storefront account, auth/session/admin auth, authority, permissions, roles, consent, audit, and notifications. `PendingSignupResponse` gives registration a safe server-owned resume projection; it does not expose provider subjects or proof internals. Named contract/domain option sets also feed persistence enums so browser/API/storage allowed values do not drift into hand-copied lists. The active locale set is runtime configuration, not a contract enum. The 92-code permission registry and admin authority contracts back API authority routes and `GET /auth/admin/me` effective permissions. Most other expanded families describe validated boundaries without Angular workflow or current API-operation adoption.
+## Contracts
 
-These contracts are the preferred trust boundary as real endpoints replace fixtures. Existing application-local interfaces still describe many fixture/view shapes; migrate deliberately rather than renaming them “contracts.”
+`packages/contracts/src` holds the zod schemas shared with the API. Use them as the trust boundary wherever an endpoint exists. Application-local interfaces describe JSON and view shapes; do not rename them as contracts.
 
-## Reusable UI reality
+See [Contracts and validation](/backend/contracts-and-validation) for the full list.
 
-Both applications currently maintain their own extensive `shared/ui` trees. A repository-level shared UI package does not exist in the current snapshot.
+## Reusable UI
 
-That means:
+Each application has its own `shared/ui` tree. There is no shared UI package, so:
 
-- reuse within an application is implemented;
-- cross-application component reuse is not yet a real package capability; and
-- new work should not import a package that does not exist or duplicate a complex widget solely to anticipate one.
+- Reuse within an application is the norm.
+- Do not import a package that does not exist, or duplicate a complex widget to prepare for one.
 
-When repeated behavior becomes genuinely stable across both applications, extract the smallest framework-compatible primitive with accessibility and test coverage.
+When behaviour becomes stable across both applications, extract the smallest shared primitive, with accessibility and test coverage.
 
 ## Layer choice
 
@@ -107,7 +106,7 @@ Before importing across boundaries, ask:
 
 1. Is the dependency a contract, configuration value, or genuinely reusable UI primitive?
 2. Does it point inward toward a stable abstraction?
-3. Does it expose secrets, persistence shapes, or adapter behavior?
+3. Does it expose secrets, persistence shapes, or adapter behaviour?
 4. Would replacing the backend adapter force this frontend import to change?
 
 If the last two answers are yes, the dependency is in the wrong layer.

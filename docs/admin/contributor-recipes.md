@@ -1,9 +1,9 @@
 ---
 title: Admin Contributor Recipes
-description: Beginner-safe recipes for routes, lists, forms, mutations, permissions, and operator verification.
+description: Step-by-step recipes for routes, lists, forms, API actions and permissions.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/admin/src/app/routes
     - apps/admin/src/app/features
@@ -21,7 +21,7 @@ source_of_truth:
 4. Add typed interfaces or shared contracts before transport methods.
 5. Add query functions for server-owned reads.
 6. Reuse shared table, fields, modal, pagination, and upload primitives when appropriate.
-7. Add navigation only after the route and permission behavior are defined.
+7. Add navigation only after the route and permission behaviour are defined.
 8. Update the application atlas.
 
 ## Recipe: add a list screen
@@ -44,9 +44,9 @@ source_of_truth:
 7. Invalidate the exact list/detail queries after success.
 8. Handle invalid IDs, 403, conflict, and validation responses.
 
-## Recipe: connect an unwired action
+## Recipe: connect an action to the API
 
-Trace the explicit no-op, fixture-backed, or navigation-only boundary before implementing. Then:
+Find the method that has no effect, reads JSON or only navigates. Then:
 
 1. Confirm the API route and shared contract exist.
 2. Add a typed mutation at the data-access boundary.
@@ -54,10 +54,10 @@ Trace the explicit no-op, fixture-backed, or navigation-only boundary before imp
 4. Add confirmation for destructive or high-impact actions.
 5. Add pending/success/failure states.
 6. Reconcile cache data.
-7. Remove obsolete no-op comments and fixture assumptions.
-8. Advance portal status only after verification.
+7. Remove the old comments and JSON assumptions.
+8. Update the portal status once tests pass.
 
-Live CRM soft-delete already follows this path: the default list hides deleted customers, and the recycle bin (`DEC-CUSTOMER-SOFT-DELETE-OPS`, built 2026-11-03 from an approved UI brief) is a header `select2` filter plus a Restore row action. A recycle-bin action is declared with `deletedRows: true` on `ITableAction`, so the shared table shows it only on deleted rows; `confirm: true` routes it through the table's existing confirmation modal; and `deleteMessage` replaces the delete modal's "deleted permanently" text where a delete is really a soft one. Keep the table config in a signal (`tableConfig.set(...)` from the query effect): in this zoneless app a field write from an effect does not re-render.
+The customer recycle bin shows the pattern. The default list hides deleted customers, and a header `select2` filter switches to the deleted view with a Restore row action. Declare such an action with `deletedRows: true` on `ITableAction`, so the shared table shows it only on deleted rows. `confirm: true` routes it through the confirmation modal, and `deleteMessage` replaces the modal's "deleted permanently" text for a soft delete. Keep the table config in a signal (`tableConfig.set(...)` from the query effect), because this application is zoneless and a field write from an effect does not re-render.
 
 ## Recipe: phone dial with country flags
 
@@ -69,7 +69,7 @@ Live CRM soft-delete already follows this path: the default list hides deleted c
 
 1. Name the action in domain language.
 2. Decide whether unavailable actions are hidden or disabled with explanation.
-3. Use the shared permission presentation seam.
+3. Use the shared permission directive.
 4. Send the request normally when invoked.
 5. Require the API to authorize actor, action, and resource.
 6. Handle 403 without treating it as a generic system failure.
@@ -86,12 +86,12 @@ Live CRM soft-delete already follows this path: the default list hides deleted c
 ## Operator verification checklist
 
 - [ ] Deep-link refresh reaches the correct shell and feature.
-- [ ] The screen does not imply a real write when the action remains unwired.
+- [ ] The screen does not imply a real write when the action has no backend.
 - [ ] Keyboard users can reach and invoke every action.
-- [ ] Search, sorting, filters, pagination, and reset behavior agree.
+- [ ] Search, sorting, filters, pagination, and reset behaviour agree.
 - [ ] Validation messages explain how to recover.
 - [ ] Destructive actions show exact scope and confirmation.
 - [ ] Pending actions prevent accidental duplicates.
 - [ ] 401, 403, validation, conflict, and unexpected failures are distinct.
 - [ ] Narrow desktop/tablet layouts remain usable for dense tables and forms.
-- [ ] The portal source evidence and verification date remain current.
+- [ ] The portal sources and verification date are up to date.

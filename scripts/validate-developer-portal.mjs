@@ -19,6 +19,33 @@ const {
 const allowedStatuses = new Set(['implemented', 'scaffolded', 'planned', 'deferred', 'deprecated']);
 const blockedTerms = [['fast', 'kart'].join('')];
 const engineeringLiveContextPrefix = 'docs/engineering-live-context/';
+// Portal pages describe the system. Project tracking belongs in Engineering Live Context.
+const bannedWording = [
+	/\bchunks?\b/i,
+	/\b(?:phase|wave) \d/i,
+	/\bratified\b/i,
+	/\bowner (?:lock|log|decision|decided|chose|received)/i,
+	/\b(?:currently|right now|not yet|no longer|recently)\b/i,
+	/\bseams?\b/i,
+	/\bevidence\b/i,
+	/\bgoverned\b/i,
+	/\bpolicy b\b/i,
+	/\bmachine-2\b/i,
+	/\bgotcha/i,
+	/\bDEC-[A-Z]/,
+	/\b20\d\d-\d\d-\d\d\b/,
+];
+const wordingExemptPrefixes = [
+	engineeringLiveContextPrefix,
+	'docs/decisions/',
+	'docs/mission-control.md',
+	'docs/governance/contribution-standard.md',
+	'docs/payments/ccavenue/merchant-api.md',
+	'docs/payments/ccavenue/web-integration-kit.md',
+	'docs/payments/ccavenue/status-enquiry.md',
+	'docs/payments/ccavenue/hosted-checkout.md',
+	'docs/payments/ccavenue/audit-and-go-live.md',
+];
 const scannedExtensions = new Set(['.css', '.js', '.jsx', '.json', '.md', '.mdx', '.ts', '.tsx']);
 const currentDate = new Date();
 const today = [
@@ -177,6 +204,20 @@ for (const filePath of [...documentationFiles, ...portalFiles]) {
 	}
 }
 
+for (const filePath of documentationFiles) {
+	const repositoryPath = relativePath(filePath);
+	if (wordingExemptPrefixes.some((prefix) => repositoryPath.startsWith(prefix))) continue;
+	const content = await readFile(filePath, 'utf8');
+	const prose = content
+		.replace(/^---\n[\s\S]*?\n---\n/, '')
+		.replace(/^```[\s\S]*?^```$/gm, '')
+		.replace(/`[^`\n]*`/g, '');
+	for (const pattern of bannedWording) {
+		const match = prose.match(pattern);
+		if (match) failures.push(`${repositoryPath} uses project-tracking wording: "${match[0]}".`);
+	}
+}
+
 const routeToPage = new Map(pages.map((page) => [page.route, page]));
 for (const page of pages) {
 	const displayPath = page.repositoryPath;
@@ -228,7 +269,7 @@ for (const page of pages) {
 		}
 		if (staleSources.length > 0) {
 			failures.push(
-				`${displayPath} was verified ${frontMatter.last_verified}, before newer evidence: ${staleSources.join(', ')}.`,
+				`${displayPath} was verified ${frontMatter.last_verified}, before newer sources: ${staleSources.join(', ')}.`,
 			);
 		}
 	}
@@ -283,6 +324,6 @@ if (failures.length > 0) {
 	process.exitCode = 1;
 } else {
 	console.log(
-		`Developer portal validation passed: ${pages.length} pages, ${routeToPage.size} routes, governed instrument data, provenance freshness, deep links, and ${portalFiles.length} portal source files.`,
+		`Developer portal validation passed: ${pages.length} pages, ${routeToPage.size} routes, instrument data, provenance freshness, deep links, and ${portalFiles.length} portal source files.`,
 	);
 }

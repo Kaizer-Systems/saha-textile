@@ -41,11 +41,11 @@ const STATUS_LABEL: Record<PortalPageStatus, string> = {
 };
 
 const STATUS_GUIDANCE: Record<PortalPageStatus, string> = {
-	implemented: 'Evidence-backed checkpoint. Confirm the linked source before changing behavior.',
-	scaffolded: 'Partial implementation. Separate working seams from guarantees that are still missing.',
-	planned: 'Ratified intent only. Do not describe this checkpoint as working runtime behavior.',
-	deferred: 'Approved but deliberately postponed. Do not implement it through this tour.',
-	deprecated: 'Historical or transitional surface. Follow its replacement guidance before editing.',
+	implemented: 'This page describes built behaviour. Check the linked source before changing it.',
+	scaffolded: 'This area is partly built. Read the page limitations.',
+	planned: 'This page describes planned behaviour.',
+	deferred: 'This work is postponed.',
+	deprecated: 'This surface has a replacement. Use the replacement.',
 };
 
 type FlightResolution =
@@ -77,7 +77,7 @@ function resolveFlight(
 
 	const persona = personas.find((candidate) => candidate.id === personaId);
 	if (!persona) {
-		return { kind: 'invalid', reason: `Unknown First Flight persona “${personaId}”.` };
+		return { kind: 'invalid', reason: `Unknown First Flight role “${personaId}”.` };
 	}
 
 	const rawStep = params.get(policy.stepParam) ?? '0';
@@ -412,7 +412,7 @@ export function FirstFlightHUD(): React.ReactNode {
 			>
 				<p className={styles.eyebrow}>First Flight · Off course</p>
 				<h2>{resolution.stop.title}</h2>
-				<p>This URL carries a valid flight step, but the current page is not its governed destination.</p>
+				<p>This URL carries a valid flight step, but this is not its page.</p>
 				<div className={styles.warningActions}>
 					<button
 						type="button"
@@ -530,7 +530,7 @@ export function FirstFlightHUD(): React.ReactNode {
 							aria-atomic="true"
 						>
 							{targetState === 'found'
-								? 'Target ratified'
+								? 'Planned'
 								: targetState === 'missing'
 									? 'Target unavailable'
 									: 'Acquiring target'}
@@ -568,7 +568,7 @@ export function FirstFlightHUD(): React.ReactNode {
 						className={styles.statusGuidance}
 						data-status={resolution.stop.pageStatus}
 					>
-						<strong>{STATUS_LABEL[resolution.stop.pageStatus]} evidence boundary</strong>
+						<strong>{STATUS_LABEL[resolution.stop.pageStatus]} page</strong>
 						<span>{STATUS_GUIDANCE[resolution.stop.pageStatus]}</span>
 					</div>
 					<details className={styles.whyPanel}>

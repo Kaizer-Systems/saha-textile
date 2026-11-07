@@ -1,9 +1,9 @@
 ---
 title: Admin Application Atlas
-description: Interactive, evidence-backed map of admin capabilities and integration boundaries.
+description: Interactive map of admin capabilities.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/admin/src/app/app.routes.ts
     - apps/admin/src/app/routes
@@ -17,32 +17,32 @@ import { ApplicationAtlas } from '@site/src/components/ApplicationAtlas';
 
 # Admin application atlas
 
-Filter the atlas before working on an operator workflow. A screen can look complete while its records and actions remain disconnected from the backend.
+Filter the atlas before you work on an operator workflow. A complete-looking screen can still be disconnected from the backend.
 
 <ApplicationAtlas application="admin" />
 
-## Scaffolded capability criteria
+## What scaffolded means here
 
 For most admin feature families, scaffolded means:
 
-- a lazy route exists;
-- a standalone component and template exist;
-- list/detail query functions exist;
-- the service reads a typed JSON fixture;
-- table/form interaction is present; and
-- create/update/delete/approve/bulk behavior is absent, no-op, or navigation-only.
+- A lazy route exists.
+- A standalone component and template exist.
+- List and detail queries exist.
+- The service reads a typed JSON file.
+- Table and form interaction is present.
+- Create, update, delete, approve and bulk actions are absent, have no effect, or only navigate.
 
-**Current exceptions (live, not fixture-only):** Account Security at `/account`; idle soft-lock resume; roles/operators authority; notification settings; CRM customers at `/customer`, `/customer/create`, `/customer/edit/:id` plus `/customer-ledger` against `/admin/customers/**` (soft-delete hides deleted by default; a Live/Deleted header filter and a confirmed Restore row action, both gated by `customer.restore`, form the recycle bin under `DEC-CUSTOMER-SOFT-DELETE-OPS`, built 2026-11-03). Dial flags use HTML labels in `country-code.ts` and `/assets/images/flags/flags.png`.
+Features that use the API are listed in [Capabilities](./overview#capabilities).
 
 ## Operational readiness test
 
-Do not call an admin workflow implemented until all of these are true:
+An admin workflow is complete when:
 
 1. The API contract is validated at the boundary.
-2. Authentication uses the current cookie-session gateway and the API authorizes the operator/resource.
-3. The API authorizes the action and target resource.
+2. Authentication uses the cookie-session gateway.
+3. The API authorizes the action and the target resource.
 4. Reads and writes use real endpoints.
-5. The UI handles pending, success, validation, conflict, failure, and retry states.
-6. Audit/event requirements are satisfied.
+5. The UI handles pending, success, validation, conflict, failure and retry states.
+6. Audit requirements are met.
 7. Tests cover the critical operator path.
-8. Portal evidence and status are updated.
+8. Portal pages are updated.

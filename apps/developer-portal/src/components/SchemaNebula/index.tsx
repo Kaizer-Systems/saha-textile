@@ -271,7 +271,7 @@ export function SchemaNebula(): React.ReactNode {
 		<section
 			ref={rootRef}
 			className={styles.nebula}
-			aria-label="Schema Nebula — governed MongoDB collection constellation"
+			aria-label="Schema Nebula: MongoDB collection map"
 		>
 			<header className={styles.head}>
 				<div>
@@ -312,7 +312,7 @@ export function SchemaNebula(): React.ReactNode {
 					<input
 						type="search"
 						value={query}
-						placeholder="products, consent, Chunk G…"
+						placeholder="products, consent…"
 						onChange={(event) => setQuery(event.target.value)}
 						onKeyDown={(event) => {
 							if (event.key === 'Escape') {
@@ -700,7 +700,7 @@ export function SchemaNebula(): React.ReactNode {
 					<p className={styles.purpose}>{selected.purpose}</p>
 
 					<div className={styles.evidence}>
-						<span>Current evidence</span>
+						<span>Model</span>
 						{selected.currentModel ? (
 							<>
 								<strong>Adapter model exists</strong>
@@ -728,7 +728,7 @@ export function SchemaNebula(): React.ReactNode {
 					</dl>
 
 					<div className={styles.tagSection}>
-						<span>Owning roadmap chunks</span>
+						<span>Roadmap stages</span>
 						<div>
 							{selected.owningChunks.map((chunk) => (
 								<Link
@@ -736,7 +736,7 @@ export function SchemaNebula(): React.ReactNode {
 									to="/mission-control"
 									className={styles.chunkTag}
 								>
-									Chunk {chunk}
+									Stage {chunk}
 								</Link>
 							))}
 						</div>
@@ -788,7 +788,7 @@ export function SchemaNebula(): React.ReactNode {
 								))}
 							</div>
 						) : (
-							<p className={styles.noRelationships}>No governed collection references recorded.</p>
+							<p className={styles.noRelationships}>No collection references recorded.</p>
 						)}
 					</div>
 				</aside>

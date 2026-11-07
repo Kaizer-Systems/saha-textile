@@ -4,7 +4,7 @@ wide: true
 description: Guest cart, authenticated cart, pending-action replay, merge, expiry, and reconnect behavior.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/storefront/src/app/core/state/cart
     - apps/api/src/cart
@@ -15,18 +15,20 @@ source_of_truth:
 
 # Cart, pending intent, and offline reconciliation
 
-The current storefront has a capable browser cart implemented with classic NgRx. The API also exposes cart operations. The ratified launch architecture goes further: the server cart is authoritative for both guests and users, while browser state provides immediate UI and an offline mutation queue.
+This page describes how carts work for guests and signed-in customers, and how an action interrupted by sign-in resumes. It also covers the planned offline behaviour.
+
+The storefront's cart is classic NgRx state with browser persistence. The API exposes a separate server cart with guest and user ownership. In the target design the server cart is authoritative, and browser state provides immediate UI and an offline queue.
 
 ## Time and ownership model
 
-| Record                 | Owner                     | Lifetime                                          | Purpose                                    |
-| ---------------------- | ------------------------- | ------------------------------------------------- | ------------------------------------------ |
-| Guest cart             | Opaque guest cookie/token | 30-day sliding expiry                             | Normal guest shopping continuity           |
-| User cart              | Authenticated user        | Business-defined persistence                      | Cross-session/device cart                  |
-| Pending intent         | Guest/session             | Maximum 30 minutes                                | Resume one account-bound action after auth |
-| Offline mutation queue | Current browser           | Until synced, cleared, or browser storage is lost | Temporary offline interaction only         |
+| Record                 | Owner                    | Lifetime                                 | Purpose                         |
+| ---------------------- | ------------------------ | ---------------------------------------- | ------------------------------- |
+| Guest cart             | Opaque `st_guest` cookie | 30 days                                  | Guest shopping continuity       |
+| User cart              | Signed-in customer       | Business-defined                         | Cross-device cart               |
+| Pending intent         | Guest session            | Maximum 30 minutes                       | Resume one account-bound action |
+| Offline mutation queue | Browser                  | Until synced, cleared or storage is lost | Temporary offline interaction   |
 
-The latest pending intent wins. It is not an unbounded command queue.
+The latest pending intent wins. It is not an unbounded queue.
 
 ## Add-to-cart journey
 
@@ -47,7 +49,7 @@ sequenceDiagram
     UI->>UI: Replace/reconcile local state
 ```
 
-Add-to-cart never requires login. Guest checkout, however, is not available at launch.
+Add-to-cart never requires sign-in. Checkout does.
 
 ## Proceed-to-checkout journey
 
@@ -68,57 +70,57 @@ sequenceDiagram
     Intent-->>SF: Resume checkout once
 ```
 
-The order is mandatory: authenticate → merge cart → revalidate intent → replay once → clear intent.
+The order is fixed: authenticate, merge the cart, revalidate the intent, replay once, clear the intent.
 
-Current signup/social authentication attempts guest-cart adoption after the account session is established. A merge failure is logged and does not invalidate an otherwise successful login; the customer can recover the cart path separately. The broader target still requires authoritative merge notices, pending-intent revalidation, one-time replay, and explicit clearing. Do not describe the current non-fatal adoption hook as complete pending-intent continuation.
+After signup or sign-in, the API attempts to adopt the guest cart. A failed merge is logged and does not invalidate the sign-in.
 
 ## Merge policy
 
-Duplicate lines merge when product, variant, variation values, named add-ons, measurements/customization, and bundle selections match. Quantities merge only up to current stock.
+Duplicate lines merge when product, variant, add-ons and configuration match. Quantities are summed. In the target design, quantities merge only up to available stock, and invalid lines are not dropped silently:
 
-Invalid lines are not silently dropped:
-
-- retired product → terminal line error;
-- missing/invalid variant → line error;
-- insufficient stock → adjusted or unavailable quantity;
-- stale add-on/measurement choice → explain required reconfiguration; and
-- changed price/promotion → show the new validated values before checkout.
+- Retired product: terminal line error.
+- Missing or invalid variant: line error.
+- Insufficient stock: adjusted or unavailable quantity.
+- Stale add-on or measurement choice: explain the required change.
+- Changed price or promotion: show the new values before checkout.
 
 ## Account-bound intent matrix
 
-| Action              | Guest behavior                | Replay rule                                                          |
-| ------------------- | ----------------------------- | -------------------------------------------------------------------- |
-| Wishlist            | Save one intent, authenticate | Revalidate product, then add and return to origin                    |
-| Save for later      | Authenticate from cart        | Revalidate line, then move it; distinct from wishlist                |
-| Notify me           | Authenticate                  | Recheck selected product/variant is still out of stock               |
-| Review              | Authenticate                  | Recheck verified-purchase eligibility                                |
-| Proceed to checkout | Authenticate                  | Merge cart first, then resume checkout                               |
-| Product question    | No forced login               | Allow name/email submission; keep identity private in public display |
-| Reorder             | Already authenticated         | Revalidate every historical item; allow partial success              |
-| Public track order  | Deferred                      | Do not invent a lookup model yet                                     |
+| Action              | Guest behaviour               | Replay rule                                            |
+| ------------------- | ----------------------------- | ------------------------------------------------------ |
+| Wishlist            | Save one intent, authenticate | Revalidate the product, add it, return to origin       |
+| Save for later      | Authenticate from the cart    | Revalidate the line, then move it                      |
+| Notify me           | Authenticate                  | Replays the alert request for the selected variant     |
+| Review              | Authenticate                  | Recheck verified-purchase eligibility                  |
+| Proceed to checkout | Authenticate                  | Merge the cart first, then resume checkout             |
+| Product question    | No sign-in needed             | Accept name and email; keep identity private in public |
+| Reorder             | Already signed in             | Revalidate every item; allow partial success           |
+| Public track order  | Not offered                   | Not applicable                                         |
 
 ## Offline reconciliation
 
-Offline catalogue and cart support is planned but not wired in the current Vite configuration. The ratified reconnect flow is:
+Offline catalogue and cart support is planned. The reconnect flow is:
 
-1. Determine whether the session is still valid.
-2. Sync queued mutations to the guest or user cart.
-3. Check product/variant lifecycle first.
-4. If active, check stock second.
+1. Determine whether the session is valid.
+2. Sync queued changes to the guest or user cart.
+3. Check product and variant lifecycle.
+4. If active, check stock.
 5. Recalculate pricing and other authoritative facts.
-6. Replace local state with server truth and show line-level notices.
+6. Replace local state with server values and show line-level notices.
 
-Never cache auth tokens, refresh tokens, payment data, account/order PII, admin responses, or secrets in the offline queue.
+Never cache auth tokens, payment data, account or order personal data, admin responses or secrets in the offline queue.
 
-## Current and target boundary
+## Limitations
 
-Current NgRx effects perform useful client-side variation, quantity, stock-shaped, and configuration transitions. Current reducer IDs and totals can still be generated in the browser. These are UI behaviors—not proof that the server-authoritative merge, ownership, validation, TTL, or offline synchronization contract is complete.
+- The storefront does not call the cart API.
+- Only **Notify me** replays after sign-in. Wishlist, save-for-later and checkout intent do not.
+- Server cart lines are not validated against product, price or stock.
+- Offline support is not in the build.
 
 ## Debugging checkpoints
 
 - Compare the browser line signature with the API cart line.
-- Check guest/user ownership and token/session state.
-- Check whether the pending intent expired or was replaced by a newer one.
-- Inspect line-level merge notices before investigating checkout.
-- Confirm the local cart was replaced with server truth after reconnect/login.
-- Never “fix” a mismatch by trusting browser totals or silently dropping a line.
+- Check guest and user ownership, and session state.
+- Check whether a pending intent expired or was replaced.
+- Inspect line-level notices before investigating checkout.
+- Never resolve a mismatch by trusting browser totals or dropping a line silently.

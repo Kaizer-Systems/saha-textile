@@ -4,7 +4,7 @@ wide: true
 description: Gateway selection, hosted payment, idempotency, atomic order records, status transitions, and ownership.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/api/src/orders
     - packages/contracts/src/order.ts
@@ -15,16 +15,16 @@ source_of_truth:
 
 # Payment and order lifecycle
 
-The API currently provides order creation, list, detail, and status operations, and the core domain defines a payment gateway port. Order creation proves cart ownership and commits order save plus cart consumption transactionally. Provider adapters, customer payment execution, hosted handoff, callback or webhook verification, idempotency, and the wider inventory, payment, audit, and outbox transaction boundary are not wired.
+This page describes how orders and payments relate, and the rules a payment integration must follow. Orders exist in the API. Payment is a design with a port and no adapter.
 
 ## Gateway selection
 
-| Paid currency                | Gateway  | Decision owner                |
-| ---------------------------- | -------- | ----------------------------- |
-| INR                          | CCAvenue | API checkout/payment use case |
-| Any enabled non-INR currency | PayPal   | API checkout/payment use case |
+| Paid currency                | Gateway role                  | Decided by            |
+| ---------------------------- | ----------------------------- | --------------------- |
+| INR                          | INR online gateway (CCAvenue) | API checkout use case |
+| Any enabled non-INR currency | PayPal                        | API checkout use case |
 
-Angular does not choose a trusted gateway from an arbitrary client flag. The server derives it from the validated paid currency and active configuration.
+Angular does not choose a gateway. The server derives it from the validated paid currency and active configuration.
 
 ## Initiation and confirmation
 
@@ -49,11 +49,11 @@ sequenceDiagram
     API-->>SF: Safe status lookup result
 ```
 
-Gateway credentials, encryption/signing keys, and webhook secrets remain server-side behind `PaymentGatewayPort`.
+Gateway credentials, encryption keys and webhook secrets stay on the server behind `PaymentGatewayPort`.
 
 ## Why order and payment are separate
 
-One order can have multiple payment attempts. A failed attempt must not erase the shopping record, and a gateway callback must not rewrite immutable purchased facts.
+One order can have several payment attempts. A failed attempt must not erase the shopping record, and a gateway callback must not rewrite purchased facts.
 
 ```mermaid
 erDiagram
@@ -66,84 +66,89 @@ erDiagram
 
 ## Order snapshot
 
-Every purchased line freezes enough information to remain correct after product edits or archival:
+Every purchased line freezes enough information to stay correct after product edits or archival:
 
-- product and optional variant identifiers;
-- title, slug, SKU, product type, and category context;
-- chosen variation attributes;
-- named add-ons and captured measurements;
-- image/asset reference;
-- unit and line totals in INR and paid currency;
-- resolved promotion and tax lines;
-- return/refund eligibility facts; and
-- product status at purchase.
+- Product and optional variant identifiers.
+- Title, slug, SKU, product type and category context.
+- Chosen variation attributes.
+- Named add-ons and captured measurements.
+- Image reference.
+- Unit and line totals in INR and the paid currency.
+- Resolved promotion and tax lines.
+- Return and refund eligibility facts.
+- Product status at purchase.
 
-Order history must render from the snapshot, not from the current product document.
+Order history renders from the snapshot, not from the current product.
 
 ## Lifecycle separation
 
 ### Order
 
-`pending → paid → processing → shipped → delivered`, with explicit cancellation/refund paths. Real business rules may add finer internal states, but transitions must be validated and appended to a timeline.
+`pending → paid → processing → shipped → delivered`, with cancellation and refund paths. Transitions must be validated and appended to a timeline.
 
 ### Payment attempt
 
-`initiated → authorized/captured` or `failed`, with later partial/full refund states. Callback arrival order and retries must be idempotent.
+`initiated → authorized/captured` or `failed`, with later partial or full refund states. Callback order and retries must be idempotent.
 
 ### Shipment
 
-Quote, label, pickup, transit, delivery, failure, and cancellation remain shipment events—not overloaded order/payment fields.
+Quote, label, pickup, transit, delivery, failure and cancellation are shipment events, not order or payment fields.
 
 ## Idempotency and callback safety
 
 - Client retries reuse an idempotency key tied to the same priced snapshot.
-- Provider callbacks are authenticated and verified against stored amount/currency/order/attempt.
-- Repeated valid callbacks return the existing result rather than creating another order.
-- Browser return URLs are not payment proof.
-- Unknown, mismatched, or stale callbacks fail closed and enter an auditable investigation path.
+- Provider callbacks are authenticated and checked against the stored amount, currency, order and attempt.
+- Repeated valid callbacks return the existing result.
+- A browser return URL is not proof of payment.
+- Unknown, mismatched or stale callbacks fail closed and enter an auditable review path.
 
 ## Ownership and authorization
 
-Customer order list and detail operations verify that the authenticated customer owns the resource. Cross-customer detail reads fail as not-found, while staff and admin support access uses an explicit bypass. Admin and staff transitions require an authenticated cookie session, CSRF, and role enforcement; complete permission, transition, version, and audit policy remains incomplete. A guarded route or supplied order id is never sufficient authorization.
+Customers can read only their own orders. A mismatch returns not-found. An admin holding `order.index` can read any order. `PATCH /orders/:id/status` needs an admin session, CSRF and `order.update`. A guarded route or a supplied order id is never sufficient authorization.
 
-The current controller proves cookie-session and CSRF enforcement, customer object ownership, and the order-and-cart atomic pair. Production readiness still requires idempotency, complete immutable snapshots, stock and payment orchestration, provider confirmation, legal transition policy, audit and outbox side effects, and broader HTTP proof.
+## Document numbering
 
-## Mandatory numbering decision gate
+The numbering policy for orders, tax invoices and purchase invoices is an open decision. Before you implement it, the decision log must define:
 
-The contracts reserve an `orderNumber`, but the legal and business numbering policy remains unresolved. Before implementing order, tax-invoice, purchase-invoice, or adjacent numbering behavior, the decision register must define:
+- Financial-year reset or perpetual sequence.
+- Company code, separators and zero-padding.
+- Gapless requirements and cancellation handling.
+- Separate sequences for each document type.
 
-- financial-year reset versus perpetual sequence;
-- company code, separators, and zero-padding;
-- consecutive/gapless requirements and cancellation handling; and
-- separate sequences for order, tax invoice, and purchase invoice.
-
-Do not generate production numbering from database counts, random IDs, timestamps, or a frontend formatter. India financial-year boundaries are calculated in IST, and issued invoice evidence must remain immutable.
+Do not generate production numbers from database counts, random ids, timestamps or a frontend formatter. India financial-year boundaries are calculated in IST, and issued invoices must stay immutable.
 
 ## Failure matrix
 
-| Situation                       | Order                                         | Payment                              | Customer experience                  |
-| ------------------------------- | --------------------------------------------- | ------------------------------------ | ------------------------------------ |
-| Provider handoff fails          | Remains pending/abandoned according to policy | Attempt failed/not started           | Retry safely without duplicate order |
-| Browser closes                  | Durable pending state remains                 | Await callback/status reconciliation | Resume from account/order status     |
-| Callback delayed                | Do not mark paid from browser return          | Pending                              | Explain processing and poll safely   |
-| Amount mismatch                 | Do not fulfil                                 | Flag/failed review                   | Safe generic message; operator alert |
-| Duplicate callback              | No duplicate transition                       | Return existing result               | Stable confirmation                  |
-| Stock changed before initiation | Do not initiate                               | None                                 | Return to corrected checkout         |
+| Situation                       | Order                               | Payment                        | Customer experience                    |
+| ------------------------------- | ----------------------------------- | ------------------------------ | -------------------------------------- |
+| Provider handoff fails          | Stays pending or abandoned          | Attempt failed or not started  | Retry safely without a duplicate order |
+| Browser closes                  | Pending state remains               | Await callback or status check | Resume from account or order status    |
+| Callback delayed                | Not marked paid from browser return | Pending                        | Explain processing and poll safely     |
+| Amount mismatch                 | Not fulfilled                       | Flagged or failed              | Safe generic message; operator alert   |
+| Duplicate callback              | No duplicate transition             | Existing result returned       | Stable confirmation                    |
+| Stock changed before initiation | Not initiated                       | None                           | Return to corrected checkout           |
+
+## Limitations
+
+- `POST /orders` creates a `pending` order and removes the cart in one transaction. It has no idempotency key, stock step or payment step.
+- No provider adapter, hosted handoff, callback route or webhook exists.
+- `OrdersService` generates an interim order number.
+- Status changes have no legal-transition rule, version check or audit record.
 
 ## Debugging checkpoints
 
-1. Trace the checkout snapshot ID/version and idempotency key.
+1. Trace the checkout snapshot id and idempotency key.
 2. Check the server-derived gateway and paid currency.
-3. Inspect order and payment attempt independently.
-4. Verify provider signature and amount/currency match.
-5. Inspect the append-only status timeline/audit evidence.
-6. Confirm ownership/permission checks before exposing detail.
-7. Never rely on the browser success page as settlement evidence.
+3. Inspect the order and the payment attempt separately.
+4. Verify the provider signature, amount and currency.
+5. Inspect the status timeline and audit records.
+6. Confirm ownership and permission checks.
+7. Never rely on the browser success page.
 
 ## Provider documents
 
-Gateway behavior recorded from provider material lives under [Payments](/payments):
+Provider reference material is under [Payments](/payments):
 
-- [CCAvenue](/payments/ccavenue) transcribes the HDFC VAS and CCAvenue documents received for the INR role. No adapter performs those calls yet.
-- [Razorpay](/payments/razorpay) is the preferred later INR gateway and is deferred.
-- [PayPal](/payments/paypal) is the non-INR role and its provider notes are deferred.
+- [CCAvenue](/payments/ccavenue): the INR gateway role.
+- [Razorpay](/payments/razorpay): a possible later INR gateway.
+- [PayPal](/payments/paypal): the non-INR role.

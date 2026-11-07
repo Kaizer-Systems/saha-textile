@@ -3,7 +3,7 @@ title: CCAvenue web integration kit (non-seamless)
 description: The CCAvenue Integration Document v3.1 and the seven-language non-seamless sample kit, transcribed, with the encryption scheme the kit code implements.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 search_keywords: CCAvenue non-seamless initiateTransaction encRequest encResp working key AES-128-CBC MD5 IV redirect_url cancel_url Direct Connect initiatePayloadTransaction vault standing instruction
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -14,13 +14,13 @@ source_of_truth:
 
 # CCAvenue web integration kit (non-seamless)
 
-Source: `Web_Integration_Non_Seamless.zip`, the "integration kits" link in the HDFC PG Helpdesk mail of 2026-10-27 for merchant **K R MARKETING ONLINE**. The owner received the file on 2026-11-04.
+Source: `Web_Integration_Non_Seamless.zip`, the integration kit from HDFC for merchant **K R MARKETING ONLINE**.
 
 The archive holds one PDF, **CCAvenue Integration Document, Version 3.1** (47 pages, created 2023-04-10), and seven sample kits: ASP.NET, JSP, Node JS, Perl (folder printed "Pearl"), PHP, Python (folder printed "Phyton"), and Ruby on Rails. Sections 1 to 8 below transcribe the PDF. Section 9 records what the kit source code does, because the PDF never states the cipher mode, IV, padding, or key derivation.
 
 Every merchant ID, access code, and working key that appears in the kit or the PDF has been replaced with a placeholder on this page. The real values were not copied into this repository.
 
-Nothing here is wired. No CCAvenue adapter exists, and `PaymentGatewayPort` defines only `createPayment` and `verifyCallback`.
+No CCAvenue adapter exists, and `PaymentGatewayPort` defines only `createPayment` and `verifyCallback`.
 
 ## 1. Introduction
 
@@ -51,7 +51,7 @@ Printed: CCAvenue supports collecting payment information using following method
 2. **Custom checkout form.** Merchants can build a custom checkout form to collect order and payment information and pass the same to CCAvenue server for payment processing. CCAvenue can also store the payment information of the customer to expedite the payment process in future.
 3. **CCAvenue "Direct Connect".** This integration enables you to deliver payment services directly through your website without redirecting your users to CCAvenue. This integration is fast and secure. It gives you control to not only build your own custom checkout form, but also control the payment request process with the banks.
 
-The kit received is the non-seamless one, method 1. Methods 2 and 3 have the customer's card number, expiry, and CVV posted by the merchant, which conflicts with the rule in `AGENTS.md` that card data never touches our servers.
+The kit received is the non-seamless one, method 1. Methods 2 and 3 have the customer's card number, expiry, and CVV posted by the merchant, which conflicts with the rule that card data never touches our servers.
 
 ## 4. Processing orders using the CCAvenue billing page (non-seamless)
 

@@ -112,7 +112,7 @@ export function MissionControl({ variant = 'full' }: { variant?: 'full' | 'tease
 				</div>
 				<ol
 					className={styles.teaserTrack}
-					aria-label="Roadmap chunks A–J"
+					aria-label="Roadmap stages A–J"
 				>
 					{chunks.map((chunk) => (
 						<li
@@ -135,15 +135,15 @@ export function MissionControl({ variant = 'full' }: { variant?: 'full' | 'tease
 	return (
 		<section
 			className={styles.mission}
-			aria-label="Mission Control — roadmap chunk constellation"
+			aria-label="Mission Control: project roadmap"
 		>
 			<div className={styles.head}>
 				<p className={styles.eyebrow}>Mission Control</p>
-				<h2>The build, in orbit.</h2>
+				<h2>Project status</h2>
 				<p className={styles.lede}>
-					Every API/DB roadmap chunk (A–J) as a station around the core. Colour is status; a ring pulse is
-					build flow; an amber halo means an open decision gate blocks part of the chunk. Hover, tap, or use
-					the arrow keys to open its flight plan. Status is compiled from the roadmap and progress log.
+					Each API and database roadmap stage appears as a station around the core. Colour is status; a ring
+					pulse is build flow; an amber halo means an open decision gate blocks part of the chunk. Hover, tap,
+					or use the arrow keys to open its details. Status is compiled from the roadmap and progress log.
 				</p>
 				<div
 					className={styles.legend}
@@ -153,7 +153,7 @@ export function MissionControl({ variant = 'full' }: { variant?: 'full' | 'tease
 					<span className={styles.legPartial}>In progress</span>
 					<span className={styles.legNext}>Ready next</span>
 					<span className={styles.legPlanned}>Planned</span>
-					<span className={styles.legGated}>Gate-blocked</span>
+					<span className={styles.legGated}>Blocked by a decision</span>
 				</div>
 			</div>
 
@@ -310,7 +310,7 @@ export function MissionControl({ variant = 'full' }: { variant?: 'full' | 'tease
 									className={`${styles.node} ${statusClass(node)} ${active ? styles.nodeActive : ''}`}
 									role="button"
 									tabIndex={0}
-									aria-label={`Chunk ${node.id}: ${node.title} — ${STATUS_LABEL[node.status]}${gated ? ', gate-blocked' : ''}`}
+									aria-label={`Stage ${node.id}: ${node.title} — ${STATUS_LABEL[node.status]}${gated ? ', blocked by a decision' : ''}`}
 									aria-pressed={active}
 									onMouseEnter={() => setSelectedId(node.id)}
 									onFocus={() => setSelectedId(node.id)}
@@ -371,7 +371,7 @@ export function MissionControl({ variant = 'full' }: { variant?: 'full' | 'tease
 
 					<div className={styles.card}>
 						<div className={styles.cardHead}>
-							<span className={styles.cardKicker}>Chunk {selected.id}</span>
+							<span className={styles.cardKicker}>Stage {selected.id}</span>
 							<span className={`${styles.statusPill} ${statusClass(selected)}`}>
 								{STATUS_LABEL[selected.status]}
 							</span>
@@ -392,7 +392,7 @@ export function MissionControl({ variant = 'full' }: { variant?: 'full' | 'tease
 									aria-hidden="true"
 								/>
 								<span>
-									Gate-blocked by{' '}
+									Blocked by a decision by{' '}
 									{selectedGates.map((g) => (
 										<Link
 											key={g!.id}
@@ -419,7 +419,7 @@ export function MissionControl({ variant = 'full' }: { variant?: 'full' | 'tease
 				className={styles.gates}
 				id="gates"
 			>
-				<p className={styles.gatesHead}>Governed decision gates</p>
+				<p className={styles.gatesHead}>Open decision gates</p>
 				<div className={styles.gateGrid}>
 					{gates.map((gate) => (
 						<div

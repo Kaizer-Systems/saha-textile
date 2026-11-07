@@ -3,7 +3,7 @@ title: Overview
 description: Start here when maintaining the Saha Textile platform.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - docs/engineering-live-context/owner-decisions-log.mdx
     - docs/engineering-live-context/execution-roadmap.mdx
@@ -11,24 +11,35 @@ source_of_truth:
 
 # Developer portal overview
 
-This portal is the private engineering manual for the Saha Textile platform. It provides the business context, architecture, runtime behavior, operational procedures, and evidence boundaries required to understand and maintain the system.
+The developer portal is the private engineering manual for the Saha Textile platform. It describes the business context, architecture, runtime behaviour and operating procedures that engineers need to maintain the system.
 
 ## Documentation scope
 
-- Stable decisions from `docs/engineering-live-context`.
-- Monorepo maps, phase boundaries, and dependency rules.
-- Business flows at the level ratified by the canonical knowledge base.
-- Generated Storybook and TypeDoc children plus visibly scaffolded current-evidence Scalar and MongoDB catalogue surfaces.
+The portal contains:
 
-## Generated-reference boundaries
+- Architecture, repository layout and dependency rules.
+- Business journeys for shoppers and operators.
+- Guides for the storefront, admin application, API and database.
+- Provider reference material for payments.
+- Generated references for components, TypeScript types, HTTP operations and database models.
 
-- Scalar renders the current generated OpenAPI at its stable route; the operation contract remains scaffolded until its completeness gates pass.
-- The source-generated database catalogue renders all 40 current Mongoose models, but stays scaffolded until its model, mapping, migration, retention, and validator gates pass.
-- Storybook is built with one Angular renderer and a green 141/141 reusable-component coverage gate; application-shell and complete provider-account behavior remain integration/browser-test scope.
-- Pagefind remains a deferred optional full-text layer. The current ⌘K palette already receives a build-generated index from every page's frontmatter, so new routes appear without maintaining a static command list.
+Engineering Live Context is a separate section. It holds the project roadmap, the decision log and progress records.
 
-The complete local umbrella opens through Identity Loom. Its single credential pair and in-memory session belong only to the loopback portal server; they do not create application users or resolve the hosted private-access release gate.
+## Generated references
 
-## Source-of-truth rule
+| Reference                                       | Content                                         | Route                  |
+| ----------------------------------------------- | ----------------------------------------------- | ---------------------- |
+| [Storybook](/tools/storybook)                   | Storefront, admin and shared Angular components | `/storybook/`          |
+| [TypeDoc](/tools/typedoc)                       | Exported contracts and core-domain symbols      | `/typedoc/`            |
+| [Scalar](/tools/scalar)                         | HTTP operations generated from OpenAPI          | `/api/reference/`      |
+| [Database catalogue](/tools/database-catalogue) | Mongoose models, fields and indexes             | `/database/catalogue/` |
 
-Use [Source of Truth and Freshness](/governance/source-of-truth-and-freshness) to resolve conflicts. The portal presents evidence; it does not override tested implementation or ratified engineering decisions.
+The command palette (⌘K) searches every page. Its index is generated from page front matter at build time.
+
+## Access
+
+The complete portal runs on a local server that accepts loopback connections only and requires a local username and password. See [Developer portal commands](/getting-started/local-development#developer-portal-commands). These credentials belong to the portal server and are unrelated to storefront or admin accounts.
+
+## Resolving conflicts
+
+Tested code describes current behaviour. The decision log describes intended behaviour. If the portal disagrees with either, follow [Source of truth and freshness](/governance/source-of-truth-and-freshness).

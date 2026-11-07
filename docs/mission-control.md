@@ -1,11 +1,11 @@
 ---
 title: Mission Control
-description: Live API and database roadmap dashboard showing chunks A–J, dependencies, status, and blocking decision gates.
+description: Project status view of the API and database roadmap, with stage status and blocking decisions.
 slug: /mission-control
 wide: true
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
     - docs/engineering-live-context/project-progress.mdx
@@ -20,8 +20,8 @@ import { MissionControl } from '@site/src/components/MissionControl';
 
 ## How to read this
 
-Mission Control is a **compiled view of the roadmap and progress log**, not an independent status source. Each station represents one API/database roadmap chunk (A–J); color indicates current status, and an amber halo indicates that an open [decision gate](/decisions/developer-portal-now) blocks part of the chunk while foundations and seams may continue.
+Mission Control is the project status view. It shows the API and database roadmap. Each station is one roadmap stage. Color shows its status, and an amber halo shows that an open [decision](/decisions/gate-console) blocks part of the stage.
 
-Authored structure lives in `docs/_data/instruments/mission-control.json`; live chunk and gate status comes from the marked Portal truth snapshot in `project-progress.mdx`. The shared build-time compiler validates both against roadmap and decision-log evidence before Docusaurus builds. The React component receives only the compiled dataset.
+This page is compiled from the roadmap and the progress log in Engineering Live Context. It is not a separate source of status. The structure is in `docs/_data/instruments/mission-control.json`, and the status comes from the Portal truth snapshot in `project-progress.mdx`.
 
-For the concept catalog of every interactive instrument the portal is growing, see [Interactive instruments](/frontend/interactive-instruments).
+The rest of the portal describes the system. Only this page and the [Decision Gate Console](/decisions/gate-console) track project progress.

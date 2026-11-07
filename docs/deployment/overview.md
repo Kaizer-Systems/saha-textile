@@ -1,9 +1,9 @@
 ---
 title: Deployment Overview
-description: Deployment documentation landing page.
+description: How the platform is packaged and configured for deployment.
 status: planned
 audience: [operator, backend]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/api/.env.example
     - docker/mongo/docker-compose.yml
@@ -16,71 +16,81 @@ source_of_truth:
 
 # Deployment overview
 
-Deployment documentation will be completed in the security and CI/CD phase.
+This page describes how Saha Textile is packaged and configured for deployment. Hosted environments and the deployment pipeline are planned. The images and the local stack are available.
 
-The intended portal deployment model is static output protected as one private
-host. Basic authentication alone is no longer an approved final design; the
-identity allowlist, session policy, and Cloudflare Tunnel versus
-authenticated-origin/JWT mechanism remain gated by
-`DEC-PORTAL-PRIVATE-ACCESS`.
+## Applications and images
 
-## Developer-portal private-access release blocker
+`docker/images/Dockerfile` builds three images from one file:
 
-Do not deploy the portal until all of the following are implemented and tested:
+| Image        | Runs                                                                      |
+| ------------ | ------------------------------------------------------------------------- |
+| `api`        | The NestJS API. The same image runs the worker with `node dist/worker.js` |
+| `storefront` | The Analog and Nitro server                                               |
+| `admin`      | The static Angular build behind Nginx                                     |
 
-- default-deny access covers HTML, JavaScript/CSS/assets, search payloads,
-  Engineering Live Context, Storybook, Scalar, TypeDoc, and generated
-  database-catalogue output;
-- there is no unrestricted “Everyone” or unrestricted email-OTP policy;
-- direct-origin bypass is closed through the approved Tunnel or
-  authenticated-origin/JWT design;
-- human identities are explicitly allowlisted and machine access uses scoped
-  service tokens;
-- unauthorized probes fail for both a portal route and a known static asset, and
-  the origin cannot be reached directly;
-- `noindex` and robots directives remain defense-in-depth only;
-- local persistent serving is hard loopback-only and refuses broader exposure.
-
-The Identity Loom username/password screen is local development infrastructure, not the hosted
-access design. It stores no user collection, imports no API/business-auth code, and creates no
-deployable portal image. A future remote portal requires a separately approved identity service,
-origin protection, deployment credentials, and—if durable accounts are needed—a database
-separate from the commerce database.
-
-The repository is public. Private deployment access does not make committed
-source private, so confidential values and credentials must never be committed
-to portal content or browser-delivered indexes.
-
-## Runtime configuration and secrets model
-
-- **Secrets reach only the containers that need them.** The API and worker get the app secrets, and MongoDB, Redis and Meilisearch get their own. They never reach the Angular apps. The delivery method is open as `DEC-SECRETS-DELIVERY`; the recommended route is GitHub encrypted secrets written to root-only files and mounted read-only.
-- **A deployment refuses unsafe settings.** With `NODE_ENV=production` and `DEPLOY_ENV` unset, `staging` or `production`, the API and worker list every unsafe setting (default or shared secrets, localhost CORS, console notifier, unauthenticated stores, unset media storage …) and exit 1 before connecting. Deploy scripts must set `DEPLOY_ENV`; the full rule list is in the environment-variables catalogue. A real staging proof is still owed (API roadmap, Chunk J).
-- **Angular apps get public config.** The storefront and admin apps receive a deploy-time public `config.json` (API/site URLs, locales, public client IDs) loaded at boot — no secret is ever baked into a browser build.
-- **Nginx serves the storefront's `config.json`.** Never mount it into the storefront container: its server sends public files at their build-time size, so a longer config is cut off and the browser silently falls back to `localhost`. The admin is plain Nginx and can keep its mount. A deploy must check that `/config.json` parses.
-- **Same Mongo profile as local.** Deployments run the same self-hosted Docker MongoDB 9.0.4 single-node replica set (`rs0`) profile used locally, on a private Docker network with credentials injected at deploy time.
-
-The automated deploy workflow and detailed injection scripts are **not yet implemented**. This section documents the ratified target architecture, not an available deployment pipeline.
-
-Product-only deployment builds must use `pnpm build:product-apps`, whose Turbo graph targets only
-`@saha-textile/storefront`, `@saha-textile/admin`, and `@saha-textile/api`. An unfiltered root
-`pnpm build` can include portal workspaces and must not be used as evidence that a three-image
-product deployment excludes the portal.
-
-## Decided for the production path (2026-11-06)
-
-- **Cookies** stay on the API host; `COOKIE_DOMAIN` stays empty in every environment.
-- **Staging** is an on-demand droplet, created by script and kept until the owner runs the destroy script by hand.
-- **Backups** run nightly, encrypted, to a private Spaces bucket in `sgp1`.
-- **Deploys** reach the droplet by SSH through Cloudflare Tunnel, with port 22 closed to the internet.
-
-None of these scripts exist yet. Known blockers before a first staging boot: MongoDB password login on a replica set needs a keyfile, and the Meilisearch key and production mode are not covered by the boot check.
+Use `pnpm build:product-apps` for product builds. It targets only the storefront, admin application and API. An unfiltered `pnpm build` also includes the developer portal workspaces.
 
 ## Images and the local production-shaped stack
 
-`docker/images/Dockerfile` builds the product images from one multi-stage file: `api` (also run as
-the media worker with `node dist/worker.js`), `storefront` (Analog SSR) and `admin` (static build
-behind Nginx). `docker/stack/compose.yaml` runs them locally with MongoDB 9.0.4 (`rs0`), Redis and
-an Nginx edge that terminates HTTPS with the mkcert certificate on single-level hostnames
-(`local.`, `admin-local.` and `api-local.saha-textile.localhost`): `pnpm stack:certs`, `pnpm
-stack:env`, `pnpm stack:up`; `STACK_HTTPS_PORT` moves the edge off 443. The stack runs production images with development secrets, so `stack:env` writes `DEPLOY_ENV=local` to opt out of the deployment checks. The stack proves the image
-and edge shape; the deploy workflow, secret injection and rollback scripts are still future work.
+`docker/stack/compose.yaml` runs the images locally with MongoDB (`rs0`), Redis, Meilisearch and an Nginx edge that terminates HTTPS:
+
+```bash
+pnpm stack:certs   # once: create the local certificate
+pnpm stack:env     # once: write the runtime environment file
+pnpm stack:up      # build, start and wait until healthy
+pnpm stack:logs api
+pnpm stack:down
+```
+
+| Host                                         | Service    |
+| -------------------------------------------- | ---------- |
+| `https://local.saha-textile.localhost`       | Storefront |
+| `https://admin-local.saha-textile.localhost` | Admin      |
+| `https://api-local.saha-textile.localhost`   | API        |
+
+`STACK_HTTPS_PORT` moves the edge off port 443. The stack runs production images with development secrets, so `stack:env` sets `DEPLOY_ENV=local` to opt out of the startup checks. Media uses the development Spaces bucket. See `docker/stack/README.md`.
+
+## Runtime configuration and secrets model
+
+- **Secrets reach only the containers that need them.** The API and worker receive the application secrets. MongoDB, Redis and Meilisearch receive their own. The Angular applications receive none.
+- **A deployment refuses unsafe settings.** The API and worker list every unsafe setting and exit with code 1 before connecting. See [Deployment hardening](/backend/composition-and-adapters#deployment-hardening). Deployment scripts must set `DEPLOY_ENV`.
+- **Angular applications get public configuration.** Each receives a `config.json` with API and site URLs, locales and public client IDs, loaded at startup. No secret enters a browser build.
+- **Nginx serves the storefront's `config.json`.** Do not mount it into the storefront container: the server sends public files at their build-time size, so a longer file is cut off and the browser falls back to `localhost`. The admin application is plain Nginx and can keep its mount. A deployment must check that `/config.json` parses.
+- **Same MongoDB profile everywhere.** Deployments run the Docker MongoDB single-node replica set on a private Docker network, with credentials supplied at deployment time.
+
+## Planned hosting design
+
+| Concern  | Design                                                                      |
+| -------- | --------------------------------------------------------------------------- |
+| Traffic  | Visitor → Cloudflare → Nginx on the droplet → containers                    |
+| Images   | Private GHCR packages, tagged by commit                                     |
+| Staging  | An on-demand droplet, created by script and removed by a destroy script     |
+| Access   | SSH through Cloudflare Tunnel, with port 22 closed to the internet          |
+| Cookies  | Host-only on the API host. `COOKIE_DOMAIN` stays empty in every environment |
+| Backups  | Nightly and encrypted, to a private Spaces bucket in `sgp1`                 |
+| Media    | Spaces in `sgp1`, one bucket per environment, served through the CDN        |
+| Rollback | Redeploy the previous image when a health check fails                       |
+
+The delivery method for secrets is an open decision, tracked in [Pending decisions](/engineering-live-context/pending-decisions).
+
+## Developer portal
+
+The developer portal is not part of the product images. It runs locally on a loopback-only server.
+
+Before any hosted deployment, these conditions must be met and tested:
+
+- Default-deny access covers HTML, assets, search data, Engineering Live Context, Storybook, Scalar, TypeDoc and the database catalogue.
+- No unrestricted access policy exists.
+- Direct access to the origin is closed.
+- Human identities are allowlisted, and machine access uses scoped service tokens.
+- Unauthorized requests fail for both a page and a static asset.
+
+`noindex` and robots directives are not access control. The local sign-in screen is not a hosted access design.
+
+The repository is public. Private deployment does not make committed source private, so never commit credentials or confidential values.
+
+## Limitations
+
+- No deployment workflow, image publishing, production Compose file, droplet setup, backup or rollback script exists.
+- MongoDB password login on a replica set needs a keyfile, which the Compose files do not define.
+- The Meilisearch key and production mode are not covered by the startup checks.

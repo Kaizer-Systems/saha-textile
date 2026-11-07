@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-11-06",
+	"lastVerified": "2026-11-07",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
 		"docs/engineering-live-context/owner-decisions-log.mdx",
@@ -44,7 +44,7 @@
 			"blocksChunks": [],
 			"blocksCollections": [],
 			"blocksFeatures": [],
-			"seamsOk": "Cleared — Chunk B may expand contracts/ports under the rule below.",
+			"seamsOk": "Resolved: core may use contract types only.",
 			"resolvedNote": "Option C: `import type`-only coupling, mechanically enforced by restricted-import lint plus emitted-JavaScript runtime-purity tests."
 		},
 		{
@@ -55,7 +55,7 @@
 			"blocksChunks": [],
 			"blocksCollections": [],
 			"blocksFeatures": [],
-			"seamsOk": "Cleared — locale routes follow the locked URL law.",
+			"seamsOk": "Resolved: every route carries a locale prefix.",
 			"resolvedNote": "Every route locale-prefixed (default included, private routes noindex); slugs shared across locales at launch; no automatic language redirect; reciprocal hreflang with x-default → /."
 		},
 		{
@@ -66,7 +66,7 @@
 			"blocksChunks": [],
 			"blocksCollections": [],
 			"blocksFeatures": [],
-			"seamsOk": "Cleared — sizes and caps follow the locked media rules.",
+			"seamsOk": "Resolved: sizes and caps are set.",
 			"resolvedNote": "3:4 product/category photos; card 200/400/700/960, gallery 600/900/1200/1600, zoom 2000w, thumb 150/300, swatches square; 25 MB / 8000 px / 50 MP max, 1600 px short-edge minimum (owner log § Media, 2026-11-02)."
 		}
 	]

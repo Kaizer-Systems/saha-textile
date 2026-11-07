@@ -1,9 +1,9 @@
 ---
-title: Storefront cutover
-description: What the catalogue cutover added for search, addresses, FAQ, and the home rails.
+title: Storefront Cutover
+description: How catalogue data, search, old addresses and stock alerts fit together.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - packages/adapters-db-mongo/src/seed/seed-demo-catalogue.ts
     - packages/adapters-db-mongo/src/seed/legacy-addresses.ts
@@ -11,8 +11,24 @@ source_of_truth:
     - packages/core-domain/src/catalog/weekly-insight.ts
 ---
 
-The shop reads products from Mongo. Meilisearch is a private container in the local stack. It stores words and ids. The selling price is read back from Mongo. If search is down, a category page still renders and the search box says search is unavailable.
+# Storefront cutover
 
-Old addresses live in `packages/adapters-db-mongo/src/seed/legacy-addresses.ts`. The seed writes a row only when it is approved. An unapproved row fails the seed and names itself. The rows approved on 5 November 2026 are the silk-sarees tag, the old request forms, and `/videos`.
+This page explains how the storefront's catalogue data, search, old addresses and related features fit together.
 
-Notify Me is a signed-in request for one variant. A guest click stores a short pending intent and replays it after login. FAQ and product questions use the admin screens that already existed. Related and upsell are saved from the product form. Cross-sell and bought-together are written by the weekly job on the media worker.
+## Catalogue data
+
+The storefront reads products from MongoDB through the API. Meilisearch runs as a private container and stores ids and words. Selling prices are always read back from MongoDB. If search is down, category pages render normally and the search box reports that search is unavailable.
+
+## Old addresses
+
+Addresses from the previous website are listed in `packages/adapters-db-mongo/src/seed/legacy-addresses.ts`. The seed writes a row only when it is approved. An unapproved row fails the seed and names itself.
+
+The storefront resolves an old address in one hop. It checks WordPress patterns first, then an exact redirect row, then the same path under `/en` if that page exists. Anything else answers `410`; the home page is never a fallback. Admin operators manage rows on the redirect screen. A retired collection gets an automatic row unless an operator has saved one for it.
+
+## Stock alerts
+
+**Notify me** is a signed-in request for one variant. A guest's click is held in session storage and replayed after sign-in. The worker checks alerts every 15 minutes and sends a message when the variant can be bought.
+
+## Content and relations
+
+FAQ entries and product questions use the admin FAQ and questions screens. Related and upsell products are saved from the product form. Cross-sell and bought-together relations are written by the weekly insight job on the worker, which also assigns the bestseller and trending badges.

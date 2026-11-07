@@ -1,9 +1,9 @@
 ---
 title: Backend Path
-description: Onboarding route for API, contracts, domain and adapter work.
+description: Reading path for API, contract, domain and adapter work.
 status: scaffolded
 audience: [backend]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/api/src
     - packages/core-domain/src
@@ -13,13 +13,19 @@ source_of_truth:
 
 # Backend path
 
-Use this path for NestJS controllers, contracts, domain use cases, persistence, authentication or an external integration adapter.
+Use this path for NestJS controllers, contracts, domain logic, persistence, authentication or an external integration adapter.
 
-## Current implementation snapshot
+## Backend components
 
-The repository already contains an API composition root, health/auth/storefront-account/admin-authorization/media/catalog/cart/order/currency/promotion modules, a BullMQ media worker, OpenAPI generation, domain ports and a Mongo adapter with models, indexes and repositories. Cookie-session auth, resumable verified-before-creation signup, transactional account/credential/provider-identity finalisation, password/OTP login by email or phone, Google and Facebook verifier adapters, identity linking, transactional contact confirmation, atomic address writes, guest-cart adoption, account self-service, the closed **92-code** permission registry, active role assignments, deny-by-default admin authority routes, Account Security, idle soft-lock resume, and operator-only first-admin bootstrap are real. Complete provider-account round trips, Meta console verification, pending-intent continuation, real-browser PIN-login proof coverage, and later commerce/provider workflows remain incomplete. This is a working scaffold and partial implementation—not a finished production API.
+The backend is a NestJS API on Fastify. It includes:
 
-The portal publishes a human-facing Scalar scaffold and a source-only 40-model MongoDB catalogue. Both expose current evidence and limitations; neither represents a complete contract. The existing framework API documentation UI is transitional and deprecated.
+- Authentication for storefront customers and admin operators, using cookie sessions.
+- Catalogue, search, cart, order, currency and promotion modules.
+- Media, banner, YouTube and review modules, with a BullMQ worker for background jobs.
+- Privacy, consent and audit modules.
+- A hexagonal core in `packages/core-domain`, with adapters for MongoDB, Spaces, MSG91, Cloudflare and other providers.
+
+Payment, shipping and exchange-rate adapters are not part of the API. The ports exist in the core domain.
 
 ## Read in this order
 
@@ -30,26 +36,23 @@ The portal publishes a human-facing Scalar scaffold and a source-only 40-model M
 5. [Contracts and validation](/backend/contracts-and-validation)
 6. [Core domain and ports](/backend/core-domain-and-ports)
 7. [Security and identity](/backend/security-and-identity)
-8. [Current API route inventory](/api/route-inventory)
-9. [Current Mongo adapter map](/database/current-adapter-map), if persistence is involved
-10. The exact shared contract, use case, port, controller and adapter source paths
+8. [API route inventory](/api/route-inventory)
+9. [Mongo adapter map](/database/current-adapter-map), if persistence is involved
+10. The shared contract, port, controller and adapter source files
 
 ## Required dependency direction
 
 ```text
-HTTP controller
-→ application/domain port
-→ domain use case
-← adapter implementation bound at composition time
+Applications and adapters → packages/core-domain ← packages/contracts (types only)
 ```
 
-The domain package must not import NestJS, Mongoose, provider SDKs, adapters, or UI types. The ratified `G-CORE-CONTRACTS` exception permits project-owned contract shapes through `import type` only, preserving a runtime-pure core; value imports from contracts remain forbidden. Persistence models must be mapped at the adapter boundary and must not leak into public contracts.
+The core domain must not import NestJS, Mongoose, provider SDKs, adapters or UI types. It may reference contract shapes through `import type` only. Value imports from contracts are forbidden. Persistence models are mapped at the adapter boundary and never appear in public contracts.
 
 ## Completion checklist
 
-- Validate every external boundary with zod.
-- Add authorization checks at object level, not only route level.
-- Update the OpenAPI contract and examples.
-- Test the use case and adapter behaviour.
+- Validate every external input with zod.
+- Enforce authorization on the object, not only on the route.
+- Update the OpenAPI output and examples.
+- Test the use case and the adapter.
 - Document collections, indexes, side effects, retries and failure modes.
-- Prove liveness/readiness, negative authorization, idempotency and transaction behavior where applicable.
+- Cover negative authorization, idempotency and transactions where they apply.

@@ -1,9 +1,9 @@
 ---
 title: Interactive Instruments
-description: Governed interactive references for architecture, delivery status, request flow, decisions, data, and onboarding.
+description: Interactive reference components in the portal, and how their data is maintained.
 status: scaffolded
 audience: [frontend]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
     - docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx
@@ -26,38 +26,32 @@ source_of_truth:
 
 # Interactive instruments
 
-Interactive instruments turn Saha Textile architecture, request flow, decisions, data, and delivery status into explorable reference surfaces. The governed catalogue and build state live in `docs/_data/portal-manifest.json`; this page explains their purpose and evidence boundaries.
-
-**Status: Scaffolded.** Six instruments are **built and live** (Mission Control, Request Flight Simulator, Decision Gate Console, Schema Nebula, First Flight and ⌘K Verbs — marked ✅ below). Treat the remaining un-built surfaces as intended design.
-
-## Why the portal can do this
-
-The roadmap chunks (A–J), governed decision gates, 69-node explicit collection inventory, and cross-tool progress log exist as structured truth. The portal manifest binds those sources to versioned JSON and routes; a shared build-time compiler validates and publishes typed datasets. Components render the compiled result and contain no fallback project facts.
-
-## Shared design and data contract
-
-Every instrument reuses the existing system: `--portal-*` tokens, glass panels, the ambient reactor field, the hexagon/orbital + traveling-pulse grammar, ⌘K, and the `NEXT-GEN-UI` comment convention — with zero new dependencies, SSR/no-JS/reduced-motion safe.
+Interactive instruments are reference components built into portal pages. They present architecture, request flow, decisions and data in a form you can explore. This page lists them and explains how their data is maintained.
 
 ## Instrument catalogue
 
-| #   | Instrument                                                         | What it does                                                                                                                                                                                                                                 | Tier      |
-| --- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| 1   | **[Mission Control](/mission-control)** ✅ live                    | Chunks A–J as an orbital constellation; glow by status; amber halo = blocking gate; click for a chunk's flight plan. The live dashboard of progress.                                                                                         | **Built** |
-| 2   | **[Request Flight Simulator](/backend/request-lifecycle)** ✅ live | Auto-play + step-through trace of `POST /orders`; request IDs, the uniform error envelope, cart ownership and the order+cart transaction are real, while idempotency and atomic inventory/payment/audit side effects remain ghosts.          | **Built** |
-| 3   | **[Decision Gate Console](/decisions/gate-console)** ✅ live       | Governed gates as a cockpit of sealed switches; select a gate to light its blast radius across roadmap chunks and database collections.                                                                                                      | **Built** |
-| 4   | **[Schema Nebula](/database/schema-nebula)** ✅ live               | The 69 explicit target collections as a zoomable star map; 41 graph-backed solid stars and 28 ghosts. It remains distinct from the scaffolded source-generated catalogue of all 44 current models, including three runtime-only collections. | **Built** |
-| 5   | **[First Flight](/getting-started/first-flight)** ✅ live          | Beginner/frontend/backend/operator onboarding: governed Launch Bay, URL-carried spotlight HUD, explicit per-persona device resume, recoverable reset controls and an accessible compiled-data Mission Debrief.                               | **Built** |
-| 6   | **Journey Cinematics**                                             | Animated storyboards on business-flow pages whose failure branches ignite on hover.                                                                                                                                                          | Soon      |
-| 7   | **Alt-Lens Evidence HUD**                                          | Hold Alt to inspect any element's evidence (file, status, verified date). Governance made tactile.                                                                                                                                           | Soon      |
-| 8   | **[⌘K Verbs](/frontend/portal-experience-layer)** ✅ live          | Governed, read-only palette grammar: `trace` derives journeys from current pages, `gate` derives decision targets and selected deep links, and `status` derives every page’s lifecycle metadata. Normal page search remains fully dynamic.   | **Built** |
-| 9   | **Systems Board**                                                  | Dev-only telemetry gauges for `/health`, Mongo rs0, Meili; later embedded Scalar API reference.                                                                                                                                              | When live |
-| 10  | **Transaction Theater**                                            | Animated place-order commit and rollback replay after idempotency and the full inventory, payment, audit, and outbox transaction boundary are implemented.                                                                                   | When live |
+| Instrument                                                  | What it does                                                               |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [Mission Control](/mission-control)                         | Shows roadmap stages with their status and blocking decisions              |
+| [Request Flight Simulator](/backend/request-lifecycle)      | Steps through a `POST /orders` request, showing what each stage does       |
+| [Decision Gate Console](/decisions/gate-console)            | Shows open decisions and the stages and collections they affect            |
+| [Schema Nebula](/database/schema-nebula)                    | Maps existing and planned MongoDB collections and their relationships      |
+| [First Flight](/getting-started/first-flight)               | Guides each role through an ordered set of pages                           |
+| [⌘K verbs](/frontend/portal-experience-layer#command-verbs) | Adds read-only `trace`, `gate` and `status` commands to the search palette |
 
-## Build order
+Three further instruments are planned: animated journey storyboards, a hover panel for page sources, and a health dashboard for local services.
 
-- **Wave 1:** Mission Control · Flight Simulator · Gate Console
-- **Wave 2:** Schema Nebula · ⌘K Verbs · First Flight
-- **Wave 3:** Journey Cinematics · Alt-Lens HUD
-- **Wave 4 (needs live code):** Systems Board · Transaction Theater
+## Shared design
 
-See the [portal experience layer](./portal-experience-layer) for the design system these instruments extend.
+Every instrument uses the `--portal-*` design tokens, the portal's glass panels and the ⌘K palette. They add no dependencies, and they work with server rendering, without JavaScript and with reduced motion.
+
+## How the data is maintained
+
+Components contain no project facts. Each instrument reads compiled data:
+
+1. `docs/_data/portal-manifest.json` lists the instruments and their routes.
+2. `docs/_data/instruments/*.json` holds each instrument's authored data.
+3. The Portal truth snapshot in `project-progress.mdx` supplies roadmap and decision status.
+4. The `portal-data` plugin validates all of this and publishes typed data during the build.
+
+A broken route, heading target or source path fails the build. See the [portal experience layer](./portal-experience-layer) for the design these instruments extend.

@@ -3,7 +3,7 @@ title: CCAvenue merchant API
 description: The CCAvenue Merchant's API Implementation Guide (HDFC API Doc v1.3, kit revision) — envelope, all 24 commands, status vocabularies, and both error tables, transcribed as printed, plus the differences from the copy received earlier.
 status: planned
 audience: [backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 search_keywords: CCAvenue DoWebTrans confirmOrder cancelOrder refundOrder orderStatusTracker orderLookup getPendingOrders getRefundDetails getSettlementDetails payoutSummary payIdDetails consolidatepayoutSummary error codes 51419 51407
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts
@@ -14,9 +14,9 @@ source_of_truth:
 
 # CCAvenue merchant API
 
-Source: **HDFC API Doc v1.3.pdf**, cover title "Merchant's API Implementation Guide", 172 pages, created 2023-05-12. It is the PDF inside `API_Document_Sample_Code-New.zip`, the "API sample kits" link in the HDFC PG Helpdesk mail of 2026-10-27 for merchant **K R MARKETING ONLINE**. The owner received the file on 2026-11-04.
+Source: **HDFC API Doc v1.3.pdf**, cover title "Merchant's API Implementation Guide", 172 pages, created 2023-05-12. It is the PDF inside `API_Document_Sample_Code-New.zip`, the API sample kit from HDFC for merchant **K R MARKETING ONLINE**.
 
-This revision replaces the copy of the same file name that was transcribed on 2026-11-03. The two copies differ; [Differences from the earlier copy](#differences-from-the-earlier-copy) records every difference found, so nothing from the earlier transcription is lost.
+This revision replaces an earlier copy with the same file name. The two copies differ; [Differences from the earlier copy](#differences-from-the-earlier-copy) records every difference found, so nothing from the earlier transcription is lost.
 
 Descriptions are copied as printed. The PDF's text extraction runs words together in places ("Ensurethatthe Reference"); words have been re-spaced where the meaning is certain and left as extracted in the error tables. Access codes printed in the samples have been replaced with `<ACCESS_CODE>`. The vendor's sample personal data is kept as printed.
 
@@ -822,7 +822,7 @@ Response: `customer_id`, `customer_card_id`, `deletion_status` (0 – Deletion s
 
 Printed: The Add Customer Payment Option API call is used to add another payment option for the customer of the merchant. The index says to pass version 1.2.
 
-This call posts a full card number to CCAvenue from the merchant server. Under `AGENTS.md` card data never touches our servers, so it is recorded for completeness only.
+This call posts a full card number to CCAvenue from the merchant server. Card data must not reach our servers, so this call is recorded for completeness only.
 
 | Name                                 | Description as printed                                    | Note as printed                                                                  |
 | ------------------------------------ | --------------------------------------------------------- | -------------------------------------------------------------------------------- |
@@ -1428,9 +1428,9 @@ Printed: Note: Failure Reason for API call. 197 rows, in the PDF's order (which 
 
 ## Differences from the earlier copy
 
-The copy transcribed on 2026-11-03 carried the same file name, "HDFC API Doc v1.3". Comparing that transcription with this kit revision:
+The earlier copy carried the same file name, "HDFC API Doc v1.3". Comparing that transcription with this kit revision:
 
-| Topic                       | Earlier copy (2026-10-26 mail)                                                                                 | Kit revision (2026-11-04)                           |
+| Topic                       | Earlier copy                                                                                                   | Kit revision                                        |
 | --------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | Number of commands in index | 25                                                                                                             | 24                                                  |
 | Bin Details                 | Index item 19: "Fetch the card details for a bin number."                                                      | Not present                                         |

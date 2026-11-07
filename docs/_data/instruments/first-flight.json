@@ -1,9 +1,9 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-11-06",
+	"lastVerified": "2026-11-07",
 	"route": "/getting-started/first-flight",
 	"title": "First Flight",
-	"summary": "A persona-led, route-spanning orientation that teaches contributors how to find current evidence, follow the architecture, and stop safely when the portal exposes planned intent.",
+	"summary": "A guided tour of the portal for each role.",
 	"sourceOfTruth": [
 		"docs/engineering-live-context/owner-decisions-log.mdx",
 		"docs/engineering-live-context/project-progress.mdx",
@@ -44,16 +44,16 @@
 			"id": "beginner",
 			"label": "New contributor",
 			"summary": "Build a safe mental model before touching application code.",
-			"outcome": "You can identify the owning surface, distinguish evidence from intent, run the basic repository commands, and prepare a small change safely.",
+			"outcome": "You can identify the owning application, tell existing from planned behaviour, run the basic commands and prepare a small change.",
 			"durationMinutes": 8,
 			"stops": [
 				{
 					"id": "truth-first",
 					"route": "/getting-started/choose-your-path",
 					"anchor": "the-universal-first-five-minutes",
-					"title": "Read truth before instructions",
-					"instruction": "Inspect lifecycle status, verification date, and provenance before trusting a procedure.",
-					"why": "The portal distinguishes current implementation from ratified target intent."
+					"title": "Check a page before trusting it",
+					"instruction": "Check the page status, verification date and sources before you follow a procedure.",
+					"why": "Each page separates existing behaviour from planned behaviour."
 				},
 				{
 					"id": "surface-map",
@@ -61,7 +61,7 @@
 					"anchor": "repository-orientation",
 					"title": "Map the four surfaces",
 					"instruction": "Locate the storefront, admin, API, and developer portal responsibilities.",
-					"why": "A correct first change begins by identifying which application owns the behavior."
+					"why": "A correct first change starts with the application that owns the behaviour."
 				},
 				{
 					"id": "dependency-rule",
@@ -76,8 +76,8 @@
 					"route": "/governance/status-model",
 					"anchor": "status-is-not-progress-percentage",
 					"title": "Interpret lifecycle labels",
-					"instruction": "Learn why implemented, scaffolded, planned, deferred, and deprecated are evidence labels rather than percentages.",
-					"why": "A polished page is not proof that its described runtime behavior exists."
+					"instruction": "Learn what implemented, scaffolded, planned, deferred and deprecated mean, and why they are not percentages.",
+					"why": "A page's status tells you whether the behaviour it describes exists."
 				},
 				{
 					"id": "repository-commands",
@@ -85,15 +85,15 @@
 					"anchor": "repository-commands",
 					"title": "Learn the safe command surface",
 					"instruction": "Identify the package-manager, workspace, build, test, and portal commands used by this repository.",
-					"why": "Using the repository's own entry points avoids hidden environment and dependency drift."
+					"why": "The repository's own commands keep your environment consistent."
 				},
 				{
 					"id": "handoff-standard",
 					"route": "/governance/contribution-standard",
 					"anchor": "pull-request-checklist",
-					"title": "Close with evidence",
+					"title": "Finish a change properly",
 					"instruction": "Use the documentation pull-request checklist to prepare a reviewable handoff.",
-					"why": "A change is easier to trust when code, docs, verification, and known gaps move together."
+					"why": "Code, docs and tests change together."
 				}
 			]
 		},
@@ -107,10 +107,10 @@
 				{
 					"id": "frontend-reality",
 					"route": "/getting-started/frontend-path",
-					"anchor": "current-implementation-snapshot",
-					"title": "Start from the current frontend reality",
-					"instruction": "Review which state and data paths are working, transitional, fixture-backed, or unwired.",
-					"why": "Current behavior must remain visibly separate from the target frontend architecture."
+					"anchor": "frontend-stack",
+					"title": "Learn the frontend stack",
+					"instruction": "Review which state tools each application uses, and which data comes from the API or JSON files.",
+					"why": "Know which state and data tools each application uses."
 				},
 				{
 					"id": "storefront-mental-model",
@@ -118,7 +118,7 @@
 					"anchor": "mental-model",
 					"title": "Orient inside the storefront",
 					"instruction": "Map a public experience from the file-based page into feature and data-access layers.",
-					"why": "Pages should stay thin while reusable behavior remains in the appropriate feature boundary."
+					"why": "Pages stay thin, and behaviour lives in the feature that owns it."
 				},
 				{
 					"id": "routing",
@@ -148,24 +148,24 @@
 					"id": "frontend-done",
 					"route": "/frontend/quality-and-definition-of-done",
 					"anchor": "definition-of-done",
-					"title": "Prove the frontend change",
-					"instruction": "Close the flight with architecture, behavior, rendering, interaction, and verification checks.",
-					"why": "Responsive visuals alone do not prove loading, failure, keyboard, SSR, or contract behavior."
+					"title": "Check a frontend change",
+					"instruction": "Finish with the architecture, behaviour, rendering, interaction and verification checks.",
+					"why": "A change must handle loading, failure, keyboard and server rendering."
 				}
 			]
 		},
 		{
 			"id": "backend",
 			"label": "Backend developer",
-			"summary": "Trace a request from its validated contract through the domain ports, adapters, persistence evidence, and decision gates.",
-			"outcome": "You can place a backend change at the correct boundary and identify the runtime, schema, and decision evidence required to call it complete.",
+			"summary": "Trace a request from its validated contract through the domain ports, adapters, persistence and open decisions.",
+			"outcome": "You can place a backend change in the right layer and know what completes it.",
 			"durationMinutes": 12,
 			"stops": [
 				{
 					"id": "inward-dependency",
 					"route": "/getting-started/backend-path",
 					"anchor": "required-dependency-direction",
-					"title": "Lock the dependency direction",
+					"title": "Learn the dependency direction",
 					"instruction": "Read the controller-to-port-to-use-case-to-adapter flow before opening implementation files.",
 					"why": "Provider and persistence concerns must remain replaceable at the edges."
 				},
@@ -196,43 +196,43 @@
 				{
 					"id": "request-trace",
 					"route": "/backend/request-lifecycle",
-					"anchor": "current-request-path",
+					"anchor": "request-path",
 					"title": "Trace a real request",
-					"instruction": "Follow the current request path and compare it with the ratified target before proposing missing stages.",
-					"why": "The request trace exposes which boundaries are real today and which remain planned."
+					"instruction": "Follow the request path, and compare it with the target design before you propose a new stage.",
+					"why": "The trace shows what each stage of a request does."
 				},
 				{
 					"id": "persistence-evidence",
 					"route": "/database/schema-nebula",
-					"anchor": "how-to-read-the-constellation",
-					"title": "Inspect persistence evidence",
-					"instruction": "Use the constellation to distinguish 37 graph-backed current nodes from 30 target ghosts and the separate 40-model source catalogue.",
-					"why": "An architecture plan does not make a collection implemented."
+					"anchor": "how-to-read-the-map",
+					"title": "Explore the collections",
+					"instruction": "Use the map to tell existing collections from planned ones.",
+					"why": "The map separates existing collections from planned ones."
 				},
 				{
 					"id": "owner-gates",
 					"route": "/decisions/gate-console",
 					"anchor": "how-to-read-this",
-					"title": "Check governed decision gates",
-					"instruction": "Inspect unresolved decisions and their blast radius before crossing a blocked seam.",
-					"why": "A technically plausible default must not silently replace an unresolved product or architecture decision."
+					"title": "Check open decisions",
+					"instruction": "Check open decisions and what they affect before you build on them.",
+					"why": "Do not assume an answer to an open product or architecture decision."
 				}
 			]
 		},
 		{
 			"id": "operator",
 			"label": "Platform operator",
-			"summary": "Move from verified readiness boundaries through configuration, health evidence, local persistence, and recovery entry points.",
-			"outcome": "You can distinguish a successful build from operational readiness and identify the evidence required before running or documenting a production procedure.",
+			"summary": "Move through scope, configuration, health checks, local persistence and recovery.",
+			"outcome": "You can tell a successful build from a healthy deployment, and know what to check before running a procedure.",
 			"durationMinutes": 12,
 			"stops": [
 				{
 					"id": "honesty-boundary",
 					"route": "/getting-started/operator-path",
-					"anchor": "current-scope",
-					"title": "Start with the current scope",
-					"instruction": "Identify which runbooks define ratified structure and which procedures have been exercised.",
-					"why": "Planned operations content is not production evidence."
+					"anchor": "scope",
+					"title": "Start with the scope",
+					"instruction": "Identify which procedures are available and which are planned.",
+					"why": "The page states which operations are available and which are planned."
 				},
 				{
 					"id": "local-services",
@@ -240,30 +240,30 @@
 					"anchor": "environment-and-services",
 					"title": "Map environment and services",
 					"instruction": "Review local configuration, Docker Mongo replica-set assumptions, and browser runtime config.",
-					"why": "Local parity depends on starting the same supporting boundaries the applications expect."
+					"why": "The applications expect these supporting services."
 				},
 				{
 					"id": "secrets-boundary",
 					"route": "/deployment/overview",
 					"anchor": "runtime-configuration-and-secrets-model",
 					"title": "Separate secrets from public config",
-					"instruction": "Trace server-only secrets and deploy-time browser configuration through their approved injection paths.",
+					"instruction": "Trace how server secrets and public browser configuration each reach the running application.",
 					"why": "Browser bundles must never receive server credentials or provider secrets."
 				},
 				{
 					"id": "operations-reality",
 					"route": "/operations/overview",
-					"anchor": "what-exists-now",
-					"title": "Inventory operational reality",
-					"instruction": "Separate existing workflow and infrastructure artifacts from the remaining deployment work.",
-					"why": "A repository file can establish intent without proving a running environment."
+					"anchor": "available-operations",
+					"title": "Review available operations",
+					"instruction": "Separate the tools that exist from the deployment work that remains.",
+					"why": "Know which tools and jobs exist."
 				},
 				{
 					"id": "health-contract",
 					"route": "/backend/readiness-testing-and-observability",
-					"anchor": "target-health-contract",
-					"title": "Read the target health contract",
-					"instruction": "Distinguish liveness from dependency readiness and the evidence each signal must carry.",
+					"anchor": "health-endpoints",
+					"title": "Read the health endpoints",
+					"instruction": "Tell liveness from readiness, and learn what each endpoint checks.",
 					"why": "A responsive process can still be unable to serve real traffic."
 				},
 				{
@@ -271,7 +271,7 @@
 					"route": "/database/current-adapter-map",
 					"anchor": "local-replica-set-lifecycle",
 					"title": "Verify the local Mongo lifecycle",
-					"instruction": "Review the single-node replica-set lifecycle and the evidence available from the current adapter.",
+					"instruction": "Review the single-node replica-set commands and what each one reports.",
 					"why": "Transaction-capable topology and application connectivity require separate checks."
 				},
 				{
@@ -279,8 +279,8 @@
 					"route": "/troubleshooting/overview",
 					"anchor": "troubleshooting-overview",
 					"title": "Enter recovery through symptoms",
-					"instruction": "Use the troubleshooting map to move from an observed symptom toward the relevant evidence and runbook.",
-					"why": "Recovery should begin with scoped evidence, not speculative configuration changes."
+					"instruction": "Use the troubleshooting tables to move from a symptom to its likely cause and fix.",
+					"why": "Start recovery from the symptom."
 				}
 			]
 		}

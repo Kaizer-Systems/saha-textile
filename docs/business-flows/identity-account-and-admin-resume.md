@@ -4,7 +4,7 @@ wide: true
 description: Storefront sessions, OTP/OAuth, account boundaries, admin authorization, soft lock, and draft recovery.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-06'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/storefront/src/app/pages/auth
     - apps/admin/src/app/features/auth
@@ -21,19 +21,36 @@ source_of_truth:
 
 # Identity, account, and admin resume
 
-The API executes cookie-session auth for storefront and admin audiences. Storefront capabilities include verified-before-creation signup with server-held resume/discard state, password and OTP login by email or phone, Google/Facebook verification, identity connect/disconnect, password/session management, profile/address/contact self-service, guest-cart adoption, logout, refresh, recovery, and `me`. Admin capabilities include recovery, password/PIN login, PIN management/lockout, invites, HTTP resume, logout, refresh, `me`, Account Security, and the idle soft lock. Admin authority uses a closed **92-code** permission registry, active role assignments, deny-by-default management routes, no-delegation/last-administrator/offboarding controls, and operator bootstrap. Responses are sanitized and reusable credentials stay in httpOnly cookies. Both Angular applications consume sessions through typed gateways with no browser-held token. Google and Facebook signup, sign-in, connect and disconnect were proven with real provider accounts on 2026-10-25. Remaining work includes real-browser PIN-login proof, granular adoption by older privileged routes, protected deep-link/pending-intent continuation, portal private-access deployment, and soft-delete operations.
+This page describes how customers and operators sign in, manage their accounts and resume work. For the security rules behind these flows, see [Security, sessions, and authorization](/backend/security-and-identity).
 
 ## Storefront methods
 
-Email or phone can identify password and OTP login. Signup creates no customer until both email and phone are verified, and finalisation reads those proven values from server-held pending state. `GET /auth/storefront/signup` lets the browser recover that safe projection after a reload; `DELETE /auth/storefront/signup` explicitly abandons it. Finalisation resolves identifier ownership before consuming proof, then commits the customer row, optional password credential, and provider identity together. Google and Facebook verifier adapters and storefront provider controls are live against the local credentials and approved `https://localhost:4200` origin. Each signup field (email, phone) takes its code only once one has been sent, shows where it went, and waits out the server's backoff before offering another; "Change" on a verified field reopens it without spending a send. Guest browsing remains first-class: public pages do not 401 a true guest. Login, registration, one-time-code, and forgot-password are guest-only screens: a signed-in customer is redirected to `/account/dashboard`. Returning social sign-in reads the `customer` payload and stamps `authIdentities.lastUsedAt`. `GET /auth/storefront/me` is an identity probe that returns 200 `{ user: null }` when neither access nor refresh cookies are present; expired access with a live refresh still 401s so rotation can run. Cart routes enforce Principal ownership or hashed `st_guest` proof, and signup or social sign-in attempts to adopt a proven guest cart without invalidating a successful authentication when merge fails. Gated `/account/*` uses the storefront AuthGuard redirect rather than manufacturing a 401. Pending-intent continuation remains open.
+Customers can sign in with a password or a one-time code, using email or phone, or with Google or Facebook.
 
-### Social-signup continuation and abandonment
+Signup creates no customer until both email and phone are verified. The finalisation step reads those values from server-held pending state.
 
-A provider address that is already registered never starts a signup when the provider proved it: a Google sign-in whose email belongs to an existing account returns `account_exists` with that address (or `account_not_accessible` for a disabled or locked one), and the login card switches to its one-time-code mode with the address filled in. The code, not Google's claim, signs the person in; Google is then connected from Sign-in methods. When a signup code proves an email or phone that already has an account, the registration alert offers "Sign in to that account" — no second code — or "Use different details". Facebook's address is unproven, so a Facebook sign-in still begins a signup and learns about an existing account when its email code is verified. Accounts are never linked on an address.
+- `GET /auth/storefront/signup` restores the safe projection after a reload.
+- `DELETE /auth/storefront/signup` abandons the signup.
+- Each field shows where its code went and waits out the server's backoff before offering another.
+- **Change** on a verified field reopens it without spending a send.
 
-An unknown Google or Facebook subject begins a server-held signup and navigates to `/auth/register`. When that signup starts on the registration page itself, the form is told directly, because a navigation to the current URL does not rebuild it. On every browser arrival, registration reads the pending projection before presenting the form. Provider-supplied name and email are prefilled, a provider-verified email is locked, social-origin flows do not request a password, other provider controls are hidden, and the remaining phone proof is made explicit. Refresh preserves the record. In-app navigation away runs a non-blocking discard request; TTL expiry is the fallback.
+Guest browsing is always available, and public pages never return 401 to a guest. Login, registration, one-time-code and forgot-password are guest-only screens: a signed-in customer is redirected to `/account/dashboard`. `/account/*` routes redirect guests through the storefront `AuthGuard`.
 
-Abandoning a Google-origin signup also asks Google Identity Services to revoke this site's grant for that email hint. This does not sign the person out of Google; it means a later attempt may require account selection and consent again. A completed signup keeps the grant, and a Google button already on screen redraws once Google confirms the revoke, so it stops reading "Sign in as …" without a reload. Facebook initialization waits for `fbAsyncInit`, reads the current `window.FB` at call time, and keeps `FB.login()` synchronous with the user gesture; separate initialization and callback watchdogs settle unavailable/stranded states. OAuth state is re-armed after refusals or staleness. Connect mode emits the provider credential to the step-up owner for both providers rather than entering the sign-in flow.
+After sign-in the API attempts to adopt a proven guest cart. A failed merge does not undo the sign-in.
+
+Password recovery accepts an email or phone, but the phone only finds the account. The reset link always goes to the email on the account, and the answer is the same for a known or unknown identifier.
+
+### Social signup and abandonment
+
+A provider address that is already registered does not start a signup when the provider proved it. A Google sign-in whose email has an account returns `account_exists` with that address, or `account_not_accessible` for a disabled or locked account. The login card then switches to one-time-code mode with the address filled in. The code signs the person in, and they can connect Google from **Sign-in methods**.
+
+When a signup code proves an email or phone that already has an account, the registration alert offers **Sign in to that account**, without a second code, or **Use different details**. Facebook does not prove its address, so a Facebook sign-in begins a signup and finds out at the email code. Accounts are never linked on an address.
+
+An unknown Google or Facebook identity begins a server-held signup and opens `/auth/register`. On every arrival the page reads the pending record. It prefills the name and email, locks a provider-verified email, hides the password and other provider controls, and asks for the remaining phone proof. A reload keeps the record. In-app navigation away discards it, and the record expires on its own otherwise.
+
+Abandoning a Google-origin signup also asks Google Identity Services to revoke this site's grant for that email hint. This does not sign the person out of Google. A later attempt may ask for account selection and consent again. A completed signup keeps the grant.
+
+Facebook initialization waits for `fbAsyncInit`, reads `window.FB` at call time and keeps `FB.login()` synchronous with the user gesture. OAuth state is single-use and is issued again after a refusal. Connect mode passes the provider credential to step-up instead of starting a sign-in.
 
 ## Browser session model
 
@@ -53,26 +70,34 @@ sequenceDiagram
     API-->>Angular: Authorized resource or structured 401/403
 ```
 
-Angular stores sanitized user/session status, never access or refresh secrets.
+Angular stores sanitized user and session status, never access or refresh secrets.
 
 ## Authentication outcome rules
 
-- Login failure is enumeration-safe.
-- OTP/reset requests respond generically regardless of whether an account exists.
-- OTPs are short-lived, rate-limited, single-purpose, and one-time-use.
-- OAuth validates state, provider, redirect, nonce, and verified identity facts.
-- Provider state is single-use and re-armed after refusal/staleness; connect mode never silently becomes sign-in.
-- Disabled/locked/deleted users receive no new session.
-- Refresh rotation invalidates the previous token; reuse revokes the family.
-- Password/role changes invalidate affected sessions or permission versions.
+- Login failure does not reveal whether an account exists.
+- OTP and reset requests respond the same way for known and unknown accounts.
+- OTPs are short-lived, rate-limited, single-purpose and single-use.
+- OAuth validates state, provider, nonce and verified identity facts.
+- Connect mode never becomes a sign-in.
+- Disabled, locked or deleted users receive no new session.
+- Refresh rotation invalidates the previous token, and reuse revokes the family.
+- Password and role changes invalidate affected sessions or permission versions.
 
 ## Account data
 
-The current account API owns the signed-in customer profile name, addresses, login methods, sessions, and pending email/phone changes. Account screens read the authenticated customer rather than a static account record. Address add/update operations use one atomic Mongo statement so concurrent customer/operator edits do not replace the whole array. Contact confirmation consumes the proof, changes the unique identifier, and records the audit event in one transaction; a unique-index race returns `contact_in_use`. Order history, wishlists, reviews, saved items, notifications, points, and wallet/credit remain separate capabilities and must not be inferred from the account shell. Personalized records are not public offline cache, and object lookups enforce ownership.
+The account API owns the customer's profile name, addresses, sign-in methods, sessions and pending email or phone changes.
+
+Address add and update use one atomic MongoDB statement, so concurrent edits do not replace the whole array. Contact confirmation consumes the proof, changes the identifier and writes the audit record in one transaction. A unique-index race returns `contact_in_use`.
+
+Personal records are never public offline cache, and object lookups enforce ownership.
 
 ## Admin authentication
 
-Admin/staff password and PIN login accept email-or-username, and the global guard enforces audience, role, declared permissions, and current permission versions. Effective permissions combine transitional embedded grants with active assignments under a coarse-tier ceiling. Password recovery, invite create/list/revoke/acceptance and authenticated HTTP resume are exposed. The permission registry, role CRUD, authority inspection, role grant/revoke and account-status APIs are live with named permission checks, audit evidence, no-delegation-above-self, last-administrator protection and offboarding session revocation. Self-registration and social login are not admin launch methods; older privileged routes that declare only roles have not all migrated to granular permissions.
+Operators sign in with a password or PIN, using email or username. The guard enforces audience, role, declared permissions and current permission versions. There is no self-registration or social sign-in.
+
+Accounts come from an invite, or from the first-administrator command. Accepting an invite creates the account but no session, so the new operator signs in afterwards.
+
+Recovery uses a single-use emailed token, never an OTP. The route `/auth/otp` is a step for pasting that token. It verifies nothing and cannot sign anyone in. The PIN is entered on an on-screen keypad with no text field, and digit keys on a physical keyboard work too.
 
 ## Admin deep-link and soft-lock flow
 
@@ -87,23 +112,25 @@ stateDiagram-v2
     Restoring --> Blocked: stale draft, changed permission, or changed entity
 ```
 
-This diagram reflects the live admin soft-lock client. After 15 minutes of inactivity the shell opens the idle-lock modal; resume uses the preferred method (PIN when configured, otherwise password) through `POST /auth/admin/resume`. The API also enforces admin session idle lifetime and PIN lockout. Reload/crash/route-exit recovery for complex forms still requires feature-owned drafts or autosave.
+After 15 minutes of inactivity the shell opens the idle lock. Resume uses the preferred method, PIN when configured and otherwise password, through `POST /auth/admin/resume`. The API also enforces the admin idle lifetime and PIN lockout.
 
 ## Safe admin resume order
 
-1. Preserve only allowed workflow state.
-2. Reauthenticate using the preferred quick-resume method.
-3. Revalidate active user, session, token version, and permission version.
-4. Revalidate the target entity/version.
-5. Restore draft through the normal form mapping/validation path.
-6. Retry a blocked unsafe request only when explicitly safe and idempotent.
+1. Keep only allowed workflow state.
+2. Reauthenticate with the preferred quick-resume method.
+3. Revalidate the active user, session, token version and permission version.
+4. Revalidate the target entity and version.
+5. Restore a draft through the normal form mapping and validation.
+6. Retry a blocked unsafe request only when it is safe and idempotent.
 
-RBAC failures are not queued. A 403 remains blocked until permissions actually change.
+Authorization failures are not queued. A 403 stays blocked until permissions change.
 
 ## Dynamic draft requirements
 
-Complex product/order/invoice forms need enough draft metadata to reconstruct conditional controls, including product type, option semantic roles, generated variant inputs, add-on groups, measurements, current step/tab, and unsaved media references. Draft restoration must never bypass normal validation.
+Complex product, order and invoice forms need enough draft metadata to rebuild conditional controls: product type, option roles, generated variant inputs, add-on groups, measurements, the current step and unsaved media references. Restoring a draft must never bypass validation.
 
-## Current and target boundary
+## Limitations
 
-The API session lifecycle, resumable verified signup/provider/account flows, transactional identity/contact writes, authentication-time guest-cart adoption, recovery/invite endpoints, operator bootstrap, fine-grained admin management APIs, Account Security, idle-lock resume, and cart/order ownership checks are implemented, and both Angular clients use the shared cookie transport. Browser evidence covers real Google and Facebook account round trips (signup, sign-in, connect, disconnect, mid-signup provider switches, refresh and Back), but real-browser PIN-login proof, complete granular migration, and protected deep-link/pending-intent continuation keep the end-to-end capability incomplete.
+- Pending-intent continuation covers **Notify me** only.
+- Order history, wishlist, reviews, saved items, notifications, points and wallet are separate capabilities, and most read JSON data.
+- Reload and crash recovery for complex admin forms is not built.

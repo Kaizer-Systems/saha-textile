@@ -31,11 +31,10 @@ import {
 	ApexXAxis,
 	ApexYAxis,
 } from 'ng-apexcharts';
-import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
+import { Select2Data, Select2, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
-import { AccountStore } from '@core/state/account.store';
-import { IAccountUser } from '@data-access/interfaces/account.interface';
+import { AuthStore } from '@core/state/auth.store';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IRevenueChart, IStatisticsCount } from '@data-access/interfaces/dashboard.interface';
 import { IOrder, IOrderModel } from '@data-access/interfaces/order.interface';
@@ -43,6 +42,7 @@ import { IProduct, IProductModel } from '@data-access/interfaces/product.interfa
 import { IReviewModel } from '@data-access/interfaces/review.interface';
 import { IStoresModel } from '@data-access/interfaces/store.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
+import { injectBlogsQuery } from '@data-access/queries/blog.queries';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { injectRevenueChartQuery, injectStatisticsQuery } from '@data-access/queries/dashboard.queries';
 import { injectOrdersQuery } from '@data-access/queries/order.queries';
@@ -77,7 +77,7 @@ export interface ChartOptions {
 	imports: [
 		PageWrapper,
 		HasPermissionDirective,
-		Select2Module,
+		Select2,
 		Table,
 		RouterModule,
 		NgbRating,
@@ -95,8 +95,10 @@ export class Dashboard {
 	private platformId = inject(PLATFORM_ID);
 	private document = inject<Document>(DOCUMENT);
 	private router = inject(Router);
-	private accountStore = inject(AccountStore);
+	private authStore = inject(AuthStore);
 
+	private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1, paginate: 2 }));
+	readonly blogs = computed(() => this.blogsQuery.data()?.data ?? []);
 	private readonly statisticsQuery = injectStatisticsQuery();
 	statistics$: Observable<IStatisticsCount | undefined> = toObservable(this.statisticsQuery.data);
 	private readonly revenueChartQuery = injectRevenueChartQuery();
@@ -143,7 +145,8 @@ export class Dashboard {
 	readonly storesQuery = injectStoresQuery(() => this.sellerParams());
 	store$: Observable<IStoresModel | undefined> = toObservable(this.storesQuery.data);
 
-	user$: Observable<IAccountUser | null> = toObservable(this.accountStore.user);
+	/** Operators are never Fastkart vendors — keep template branches on live role. */
+	readonly isVendor = computed(() => this.authStore.user()?.role === 'vendor');
 	readonly chart = viewChild.required<ElementRef>('chart');
 	public chartOptions!: Partial<ChartOptions>;
 	// Revenue is no longer persisted, so it arrives asynchronously. We create the chart once BOTH the

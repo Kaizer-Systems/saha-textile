@@ -45,5 +45,6 @@
 />
 <app-delete-modal
 	#deleteModal
+	[message]="'media_deleted_message'"
 	(deleteItem)="onActionClicked($event.actionToPerform)"
 />

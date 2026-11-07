@@ -1,4 +1,4 @@
-import { isPlatformBrowser } from '@angular/common';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, inject, input } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
@@ -16,6 +16,7 @@ import { environment } from '../../../../../../../public/environments/environmen
 })
 export class ProductSocialShare {
 	private platformId = inject<Object>(PLATFORM_ID);
+	private document = inject(DOCUMENT);
 
 	// TODO: Skipped for migration because:
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
@@ -58,7 +59,7 @@ export class ProductSocialShare {
 			const subject = 'Check out this awesome product!';
 			const body = `I thought you might be interested in this product: ${this.url + '/product/' + slug}`;
 			const emailShareUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-			window.location.href = emailShareUrl; // Use location.href to open the default email client
+			this.document.location.href = emailShareUrl; // Use location.href to open the default email client
 		}
 	}
 }

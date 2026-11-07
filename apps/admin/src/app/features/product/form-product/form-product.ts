@@ -1,10 +1,32 @@
 import { isPlatformBrowser, AsyncPipe } from '@angular/common';
-import { Component, computed, DOCUMENT, inject, input, PLATFORM_ID, Renderer2, signal, viewChild } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
-import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import {
+	Component,
+	computed,
+	DOCUMENT,
+	effect,
+	inject,
+	input,
+	PLATFORM_ID,
+	Renderer2,
+	signal,
+	untracked,
+	viewChild,
+} from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import {
+	AbstractControl,
+	FormArray,
+	FormBuilder,
+	FormControl,
+	FormGroup,
+	ReactiveFormsModule,
+	ValidationErrors,
+	Validators,
+} from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import {
 	NgbAccordionBody,
 	NgbAccordionButton,
@@ -17,7 +39,6 @@ import {
 	NgbCollapse,
 	NgbDate,
 	NgbDateParserFormatter,
-	NgbDateStruct,
 	NgbInputDatepicker,
 	NgbNav,
 	NgbNavContent,
@@ -27,32 +48,103 @@ import {
 	NgbNavLinkBase,
 	NgbNavOutlet,
 } from '@ng-bootstrap/ng-bootstrap';
-import { Select2, Select2Data, Select2Module, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
+import type {
+	AttributeDefinition,
+	GoLiveGap,
+	ProductBundleWrite,
+	ProductContentWrite,
+	ProductCreate,
+	ProductOptionGroup,
+} from '@saha-textile/contracts';
+import { Select2, Select2Data, Select2SearchEvent } from 'ng-select2-component';
 import { Editor, NgxEditorModule } from 'ngx-editor';
 import { Observable, of, Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, map, switchMap, takeUntil } from 'rxjs/operators';
+import { debounceTime, switchMap, takeUntil } from 'rxjs/operators';
 
-import { SettingStore } from '@core/state/setting.store';
+import { goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
+import {
+	ADMIN_LOCALES,
+	focusField,
+	gapsByLocale,
+	type LanguageGap,
+	LocalizedFields,
+	type LocalizedText,
+	SOURCE_LOCALE,
+} from '@core/i18n/localized-fields';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
-import { ICategoryModel } from '@data-access/interfaces/category.interface';
+import {
+	CATALOG_BADGE_CODES,
+	CatalogBadgeCode,
+	CatalogProductDetail,
+	CatalogProductWrite,
+} from '@data-access/interfaces/catalog-product.interface';
+import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
 import { Params } from '@data-access/interfaces/core.interface';
-import { IProduct, IVariant, IVariation, IVariationCombination } from '@data-access/interfaces/product.interface';
-import { IValues } from '@data-access/interfaces/setting.interface';
-import { injectAttributesQuery, injectAttributeValuesQuery } from '@data-access/queries/attribute.queries';
+import { IProduct } from '@data-access/interfaces/product.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
-import { injectProductsQuery } from '@data-access/queries/product.queries';
-import { injectStoresQuery } from '@data-access/queries/store.queries';
+import { injectCatalogProductsQuery } from '@data-access/queries/product.queries';
 import { injectTagsQuery } from '@data-access/queries/tag.queries';
 import { injectTaxesQuery } from '@data-access/queries/tax.queries';
+import { AddonTemplateRow, AddonTemplateService } from '@data-access/services/addon-template.service';
+import { AttributeService } from '@data-access/services/attribute.service';
+import { NotificationService } from '@data-access/services/notification.service';
 import { ProductService } from '@data-access/services/product.service';
+import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
+import { YouTubeVideoField } from '@shared/ui/youtube-video-field/youtube-video-field';
 import { priceValidator } from '@shared/validators/price-validator';
 
-function convertToNgbDate(date: NgbDateStruct): NgbDate {
-	return new NgbDate(date.year, date.month, date.day);
+import { OptionGroups } from './option-groups/option-groups';
+import { ProductBundleForm } from './product-bundle/product-bundle';
+import { ImageCombination, ProductImages } from './product-images/product-images';
+import { variantCombinations } from './variant-combinations';
+import { environment } from '../../../../../public/environments/environment';
+
+const LANGUAGE_FIELDS = ['name', 'short_description', 'description', 'meta_title', 'meta_description', 'estimated_delivery_text'];
+
+const SAREE_ROOT_SLUG = 'sarees';
+
+/** The Sarees category and everything under it. */
+function sareeCategoryIds(tree: readonly ICategory[], inside = false): Set<string> {
+	const found = new Set<string>();
+	for (const row of tree) {
+		const saree = inside || row.slug === SAREE_ROOT_SLUG;
+		if (saree) found.add(String(row.id));
+		for (const id of sareeCategoryIds(row.subcategories ?? [], saree)) found.add(id);
+	}
+	return found;
+}
+
+/** Where each Go Live gap is fixed. Anything else is an option, value or price on Inventory. */
+const GAP_TABS: Readonly<Record<string, string>> = {
+	title: 'general',
+	name: 'general',
+	estimated_delivery_text: 'shipping',
+	short_description: 'general',
+	description: 'general',
+	category: 'general',
+	meta_title: 'seo',
+	meta_description: 'seo',
+	primary_image: 'images',
+	image_alt: 'images',
+	image_sizes: 'images',
+	lead_time: 'shipping',
+};
+
+const blankToNull = (value: unknown): number | null =>
+	value === '' || value === null || value === undefined || Number.isNaN(Number(value)) ? null : Number(value);
+
+const textOrNull = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
+
+/** MRP may be empty; when set, the selling price may not be above it. */
+function sellingWithinMrp(group: AbstractControl): ValidationErrors | null {
+	const mrp = blankToNull(group.get('mrp')?.value);
+	const selling = blankToNull(group.get('price')?.value);
+	return mrp !== null && selling !== null && selling > mrp ? { sellingAboveMrp: true } : null;
 }
 
 @Component({
@@ -69,7 +161,7 @@ function convertToNgbDate(date: NgbDateStruct): NgbDate {
 		NgbNavContent,
 		FormFields,
 		NgxEditorModule,
-		Select2Module,
+		Select2,
 		NgbInputDatepicker,
 		Button,
 		NgbAccordionDirective,
@@ -81,21 +173,32 @@ function convertToNgbDate(date: NgbDateStruct): NgbDate {
 		NgbAccordionCollapse,
 		NgbAccordionBody,
 		ImageUpload,
+		LanguageSwitch,
+		OptionGroups,
+		ProductBundleForm,
+		ProductImages,
+		YouTubeVideoField,
 		AdvancedDropdown,
 		NgbNavOutlet,
 		TranslocoModule,
 		AsyncPipe,
+		CurrencySymbolPipe,
 	],
 })
 export class FormProduct {
 	private productService = inject(ProductService);
 	private route = inject(ActivatedRoute);
 	private router = inject(Router);
+	private http = inject(HttpClient);
 	private formBuilder = inject(FormBuilder);
 	private calendar = inject(NgbCalendar);
 	formatter = inject(NgbDateParserFormatter);
 	private renderer = inject(Renderer2);
+	private transloco = inject(TranslocoService);
 	private document = inject<Document>(DOCUMENT);
+	private attributes = inject(AttributeService);
+	private templates = inject(AddonTemplateService);
+	private notifier = inject(NotificationService);
 
 	readonly type = input<string>(undefined);
 
@@ -108,28 +211,25 @@ export class FormProduct {
 		with_union_products: 0,
 		is_approved: 1,
 	});
-	private readonly productsQuery = injectProductsQuery(() => this.productParams());
+	private readonly productsQuery = injectCatalogProductsQuery(() => ({
+		search: String(this.productParams()['search']) || undefined,
+		pageSize: 100,
+	}));
 	products$: Observable<Select2Data> = toObservable(
 		computed(() =>
-			(this.productsQuery.data()?.data ?? [])
-				.filter((res) => res.id !== this.id)
-				.map((res) => ({
-					label: res?.name,
-					value: res?.id,
+			(this.productsQuery.data()?.items ?? [])
+				.filter((row) => row.id !== this.id)
+				.map((row) => ({
+					label: row.title,
+					value: row.id,
 					data: {
-						type: res.type,
-						name: res.name,
-						slug: res.slug,
-						stock_status: res.stock_status,
-						image: res.product_thumbnail ? res.product_thumbnail.original_url : 'assets/images/product.png',
+						type: row.variantCount > 1 ? 'classified' : 'simple',
+						name: row.title,
+						slug: row.slug,
+						stock_status: row.stock > 0 ? 'in_stock' : 'out_of_stock',
+						image: row.thumbnailUrl ?? 'assets/images/product.png',
 					},
 				})),
-		),
-	);
-	private readonly storesQuery = injectStoresQuery(() => ({ status: 1, is_approved: 1 }));
-	store$: Observable<Select2Data> = toObservable(
-		computed(
-			() => this.storesQuery.data()?.data.map((store) => ({ label: store.store_name, value: store.id })) ?? [],
 		),
 	);
 	private readonly categoriesQuery = injectCategoriesQuery(() => ({ type: 'product', status: 1 }));
@@ -139,23 +239,24 @@ export class FormProduct {
 	readonly taxes = computed(
 		() => this.taxesQuery.data()?.data.map((tax) => ({ label: tax.name, value: tax.id })) ?? [],
 	);
-	setting$: Observable<IValues | null> = toObservable(inject(SettingStore).setting);
-
-	private readonly attributesQuery = injectAttributesQuery(() => ({ status: 1 }));
-	private readonly attributeValuesQuery = injectAttributeValuesQuery(() => ({ status: 1 }));
-	private readonly selectedAttrIds = signal<string>('');
-	public attribute$: Observable<Select2Data> = toObservable(
-		computed(() => this.filterAttributes(this.selectedAttrIds())),
-	);
 	public active = 'general';
 	public tabError: string | null;
 	public form: FormGroup;
-	public id: number;
-	public selectedCategories: Number[] = [];
+	public id: string;
+	/** The product as the catalogue API holds it; set on edit. */
+	public catalogProduct: CatalogProductDetail | null = null;
+	public replacementTargets: Select2Data = [];
+	public badgeOptions: Select2Data = [];
+	public statusOptions: Select2Data = [];
+	public availabilityOptions: Select2Data = [];
+	public selectedCategories: string[] = [];
+	private readonly chosenCategories = signal<string[]>([]);
+	/** Saree length and blouse piece apply to anything under the Sarees category. */
+	readonly showsLengths = computed(() => {
+		const sarees = sareeCategoryIds(this.categoriesQuery.data()?.data ?? []);
+		return this.chosenCategories().some((id) => sarees.has(String(id)));
+	});
 	public selectedTags: Number[] = [];
-	public variationCombinations: IVariationCombination[] = [];
-	public retrieveVariants: boolean = false;
-	public variantCount: number = 0;
 	public fromDate: NgbDate | null;
 	public toDate: NgbDate | null;
 	public hoveredDate: NgbDate | null = null;
@@ -171,7 +272,11 @@ export class FormProduct {
 		},
 		{
 			value: 'classified',
-			label: 'Classified',
+			label: 'Variable',
+		},
+		{
+			value: 'bundle',
+			label: 'Bundle',
 		},
 	];
 
@@ -194,18 +299,51 @@ export class FormProduct {
 		is_approved: 1,
 	};
 
-	public variants: IVariant[] = [
-		{
-			id: null,
-			attribute_values: null,
-			options: null,
-			variant_option: null,
-		},
-	];
-	public variations: IVariation[] = [];
 	private search = new Subject<string>();
 	public editor: Editor;
 	public html = '';
+
+	readonly locales = ADMIN_LOCALES;
+	/** Language-bound fields behind the Language switch. */
+	readonly fields: LocalizedFields;
+	readonly gaps = signal<Record<string, LanguageGap[]>>({});
+	readonly definitions = signal<AttributeDefinition[]>([]);
+	readonly imageSizes = signal<ReadonlyMap<string, readonly [number, number]>>(new Map());
+	/** Axes that already have saved variant rows, so a role change asks first. */
+	readonly savedAxes = signal<string[]>([]);
+	readonly addonTemplates = signal<AddonTemplateRow[]>([]);
+	readonly addonTemplateCode = signal<string | null>(null);
+	readonly optionGroups = signal<ProductOptionGroup[]>([]);
+	readonly images = signal<Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides'>>({
+		imageMode: 'simple',
+		gallery: [],
+		compound: [],
+		altOverrides: {},
+	});
+	readonly tiles = signal<ReadonlyMap<string, string>>(new Map());
+	readonly bundle = signal<ProductBundleWrite>({
+		bundleType: 'fixed_kit',
+		pricePolicy: 'sum_components',
+		fixedPriceINR: null,
+		groups: [],
+	});
+	readonly goLiveGaps = signal<GoLiveGap[]>([]);
+	readonly bundleProducts = signal<Select2Data>([]);
+
+	/** Every combination of the variation axes, for the compound image galleries. */
+	readonly combinations = computed<ImageCombination[]>(() => {
+		const locale = this.fields.locale();
+		return variantCombinations(this.optionGroups()).map(({ selections, hash }) => ({
+			hash,
+			label: selections
+				.map(({ attributeCode, termCode }) => {
+					const group = this.optionGroups().find((row) => row.attributeCode === attributeCode);
+					const term = group?.terms.find((row) => row.code === termCode);
+					return term?.label[locale] ?? term?.label['en'] ?? termCode;
+				})
+				.join(' / '),
+		}));
+	});
 
 	constructor() {
 		const platformId = inject(PLATFORM_ID);
@@ -213,32 +351,32 @@ export class FormProduct {
 		this.isBrowser = isPlatformBrowser(platformId);
 
 		this.form = this.formBuilder.group({
-			name: new FormControl('', [Validators.required]),
-			short_description: new FormControl('', [Validators.required]),
-			description: new FormControl('', [Validators.required]),
-			store_id: new FormControl(),
+			/** Validated YouTube video id for the PDP (catalog chunk persists it). */
+			youtube_video_id: new FormControl<string | null>(null),
+			name: new FormControl(''),
+			short_description: new FormControl(''),
+			description: new FormControl(''),
+			slug: new FormControl('', [Validators.pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)]),
 			type: new FormControl('simple', [Validators.required]),
-			unit: new FormControl(),
+			saree_length_m: new FormControl(),
+			blouse_piece_m: new FormControl(),
 			weight: new FormControl(),
 			stock_status: new FormControl('in_stock', []),
 			sku: new FormControl('', [Validators.required]),
 			quantity: new FormControl('', [Validators.required]),
 			price: new FormControl('', [Validators.required, priceValidator]),
 			discount: new FormControl(),
-			is_sale_enable: new FormControl(false),
 			sale_starts_at: new FormControl(),
 			sale_expired_at: new FormControl(),
 			tags: new FormControl(),
-			categories: new FormControl('', [Validators.required]),
+			categories: new FormControl([]),
 			is_random_related_products: new FormControl(0),
 			related_products: new FormControl(),
+			upsell_products: new FormControl([]),
 			cross_sell_products: new FormControl([]),
 			product_thumbnail_id: new FormControl(),
 			product_galleries_id: new FormControl(),
-			size_chart_image_id: new FormControl(),
-			variants: this.formBuilder.array([], []),
 			variations: this.formBuilder.array([], []),
-			attributes_ids: new FormControl([]),
 			meta_title: new FormControl(),
 			meta_description: new FormControl(),
 			product_meta_image_id: new FormControl(),
@@ -248,18 +386,185 @@ export class FormProduct {
 			encourage_order: new FormControl(1),
 			encourage_view: new FormControl(1),
 			is_free_shipping: new FormControl(0),
-			tax_id: new FormControl('', [Validators.required]),
+			tax_id: new FormControl(''),
 			estimated_delivery_text: new FormControl(),
+			made_to_order: new FormControl(false),
+			low_stock_threshold: new FormControl(null),
+			pinned_badges: new FormControl<CatalogBadgeCode[]>([]),
+			hidden_badges: new FormControl<CatalogBadgeCode[]>([]),
+			replacement_path: new FormControl<string | null>(null),
+			length_cm: new FormControl(),
+			width_cm: new FormControl(),
+			height_cm: new FormControl(),
+			hsn_code: new FormControl(),
+			addon_price_inr: new FormControl(null),
 			return_policy_text: new FormControl(),
 			is_featured: new FormControl(0),
-			is_trending: new FormControl(0),
 			is_return: new FormControl(1),
-			status: new FormControl(1),
+			status: new FormControl<string>('disabled'),
 		});
+		this.fields = new LocalizedFields(this.form, LANGUAGE_FIELDS, ['estimated_delivery_text']);
+		this.form.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => this.refreshMissing());
+		effect(() => {
+			this.optionGroups();
+			this.goLiveGaps();
+			untracked(() => this.refreshMissing());
+		});
+
+		this.transloco.selectTranslation().subscribe(() => this.buildOptions());
 	}
 
-	get variantControl(): FormArray {
-		return this.form.get('variants') as FormArray;
+	private buildOptions() {
+		const t = (key: string) => this.transloco.translate(key);
+		this.badgeOptions = CATALOG_BADGE_CODES.map((code) => ({ value: code, label: t(`badge_${code}`) }));
+		this.availabilityOptions = [
+			{ value: 'available', label: t('available') },
+			{ value: 'unavailable', label: t('not_available') },
+		];
+		// The list never changes shape: a select that loses the current value mid-load clears it,
+		// which saved every live product as disabled. Only Go Live can make a product live.
+		const current = this.catalogProduct?.status;
+		this.statusOptions = ['live', 'draft', 'disabled', 'discontinued'].map((status) => ({
+			value: status,
+			label: t(`product_status_${status}`),
+			disabled: status === 'draft' || (status === 'live' && current !== 'live'),
+		}));
+	}
+
+	/** Whole-rupee price for a percent off the MRP, rounded half up, shown before save. */
+	percentPreview(variation: AbstractControl): { price: number; percent: number } | null {
+		const mrp = blankToNull(variation.get('mrp')?.value);
+		const selling = blankToNull(variation.get('price')?.value);
+		if (mrp === null || selling === null || mrp <= 0 || selling >= mrp) return null;
+		return { price: selling, percent: Math.floor(((mrp - selling) / mrp) * 100) };
+	}
+
+	applyPercent(variation: AbstractControl) {
+		const mrp = blankToNull(variation.get('mrp')?.value);
+		const percent = blankToNull(variation.get('discount')?.value);
+		if (mrp === null || percent === null) return;
+		variation.get('price')?.setValue(this.saleRupee(mrp, percent));
+	}
+
+	/** "450 · from product" placeholder for an empty variant measure that inherits. */
+	fromProduct(control: string): string {
+		const value = this.form.get(control)?.value;
+		return value === null || value === undefined || value === ''
+			? ''
+			: this.transloco.translate('from_product', { value });
+	}
+
+	get isDiscontinuing(): boolean {
+		return this.form.get('status')?.value === 'discontinued';
+	}
+
+	get madeToOrderAllowed(): boolean {
+		return this.catalogProduct?.status === 'live' && this.form.get('status')?.value === 'live';
+	}
+
+	saleRupee(price: unknown, percent: unknown): number {
+		const mrp = Number(price);
+		const off = Number(percent);
+		if (!Number.isFinite(mrp) || !Number.isFinite(off)) return 0;
+		return Math.round((mrp * (100 - off)) / 100);
+	}
+
+	/** Fills the form from the catalogue API. Fields the API does not hold keep their defaults. */
+	private applyCatalogProduct(detail: CatalogProductDetail) {
+		this.catalogProduct = detail;
+		this.id = detail.id;
+		this.buildOptions();
+		this.form.patchValue(
+			{
+				slug: detail.slug,
+				sku: detail.sku,
+				type: detail.type === 'variable' ? 'classified' : detail.type,
+				weight: detail.shipping.weightGrams,
+				length_cm: detail.shipping.lengthCm,
+				width_cm: detail.shipping.widthCm,
+				height_cm: detail.shipping.heightCm,
+				hsn_code: detail.hsnCode,
+				made_to_order: detail.madeToOrder,
+				low_stock_threshold: detail.lowStockThreshold,
+				pinned_badges: detail.pinnedBadges,
+				hidden_badges: detail.hiddenBadges,
+				replacement_path: detail.replacementPath,
+				addon_price_inr: detail.addonPriceINR,
+				is_featured: detail.featured,
+				status: detail.status,
+				related_products: detail.relatedProductIds,
+				upsell_products: detail.upsellProductIds,
+				cross_sell_products: detail.crossSellProductIds,
+			},
+			{ emitEvent: false },
+		);
+		const { content } = detail;
+		this.fields.load({
+			name: content.title,
+			short_description: content.shortDescription,
+			description: content.description,
+			meta_title: content.metaTitle,
+			meta_description: content.metaDescription,
+			estimated_delivery_text: content.estimatedDeliveryText,
+		});
+		this.form.get('type')?.disable({ emitEvent: false });
+		this.form.patchValue({ categories: content.categoryIds }, { emitEvent: false });
+		this.selectedCategories = content.categoryIds;
+		this.chosenCategories.set(content.categoryIds);
+		this.form.patchValue(
+			{ saree_length_m: content.sareeLengthM, blouse_piece_m: content.blousePieceM },
+			{ emitEvent: false },
+		);
+		this.optionGroups.set(content.optionGroups);
+		this.addonTemplateCode.set(content.addonTemplateCode);
+		this.images.set({
+			imageMode: content.imageMode,
+			gallery: content.gallery,
+			compound: content.compound,
+			altOverrides: content.altOverrides,
+		});
+		this.tiles.set(new Map(detail.images.map((image) => [image.assetId, image.url])));
+		this.imageSizes.set(new Map(detail.images.map((image) => [image.assetId, [image.width, image.height]])));
+		this.savedAxes.set(
+			content.optionGroups.filter((row) => row.semanticRole === 'variation_axis').map((row) => row.attributeCode),
+		);
+		if (detail.type === 'bundle') {
+			this.productService
+				.getBundle(detail.id)
+				.pipe(takeUntil(this.destroy$))
+				.subscribe((saved) => {
+					if (saved) this.bundle.set(saved);
+				});
+		}
+		// Price and stock live on the variant rows; the product-level inputs do not apply.
+		for (const name of ['price', 'quantity']) this.form.removeControl(name, { emitEvent: false });
+		if (detail.published) this.form.get('sku')?.disable({ emitEvent: false });
+		this.clearVariations();
+		for (const row of detail.variants) {
+			const group = this.formBuilder.group(
+				{
+					id: new FormControl(row.id),
+					variation_name: new FormControl(row.label),
+					name: new FormControl({ value: row.label, disabled: true }),
+					sku: new FormControl({ value: row.sku, disabled: detail.published }, [Validators.required]),
+					mrp: new FormControl(row.mrpINR, [Validators.min(0)]),
+					price: new FormControl(row.sellingINR, [Validators.required, priceValidator]),
+					discount: new FormControl(),
+					quantity: new FormControl(row.quantity, [Validators.required, Validators.min(0)]),
+					weight_grams: new FormControl(row.weightGrams),
+					length_cm: new FormControl(row.lengthCm),
+					width_cm: new FormControl(row.widthCm),
+					height_cm: new FormControl(row.heightCm),
+					barcode: new FormControl(row.barcode),
+					hsn: new FormControl(row.hsnCode),
+					availability: new FormControl(row.available ? 'available' : 'unavailable', [Validators.required]),
+					variation_image_id: new FormControl(),
+					variation_image: new FormControl(),
+				},
+				{ validators: sellingWithinMrp },
+			);
+			this.variationControl.push(group);
+		}
 	}
 
 	get variationControl(): FormArray {
@@ -276,176 +581,43 @@ export class FormProduct {
 
 		this.route.params
 			.pipe(
-				switchMap((params) => {
-					if (!params['id']) return of();
-					return this.productService
-						.getProducts()
-						.pipe(map((res) => res.data.find((product) => product.id == params['id']) ?? null));
-				}),
+				switchMap((params) => (params['id'] ? this.productService.getCatalogProduct(params['id']) : of(null))),
 				takeUntil(this.destroy$),
 			)
-			.subscribe((product) => {
-				if (product?.related_products && product?.cross_sell_products) {
-					let array = [...product?.related_products, ...product?.cross_sell_products];
-					this.filter['paginate'] = array?.length >= 15 ? array?.length : 15;
-					this.filter['ids'] = array?.join();
-					this.filter['with_union_products'] = array?.length ? (array?.length >= 15 ? 0 : 1) : 0;
-				}
-				of(this.productParams.set({ ...this.filter })).subscribe({
-					next: () => {
-						this.fromDate = product?.sale_starts_at
-							? convertToNgbDate(this.formatter.parse(product?.sale_starts_at)!)
-							: null;
-						this.toDate = product?.sale_expired_at
-							? convertToNgbDate(this.formatter.parse(product?.sale_expired_at)!)
-							: null;
-
-						this.selectedCategories = product?.categories.map((value) => value?.id!)!;
-						this.selectedTags = product?.tags.map((value) => value?.id!)!;
-
-						let attributes = product?.attributes.map((value) => value?.id);
-						let galleries = product?.product_galleries.map((value) => value?.id);
-						if (product) this.product = product;
-						this.id = product?.id!;
-						this.form.patchValue({
-							name: product?.name,
-							short_description: product?.short_description,
-							description: product?.description,
-							store_id: product?.store_id,
-							type: product?.type,
-							unit: product?.unit,
-							weight: product?.weight,
-							stock_status: product?.stock_status,
-							sku: product?.sku,
-							quantity: product?.quantity,
-							price: product?.price,
-							discount: product?.discount,
-							is_sale_enable: product?.is_sale_enable,
-							sale_starts_at: product?.sale_starts_at,
-							sale_expired_at: product?.sale_expired_at,
-							tags: this.selectedTags,
-							categories: this.selectedCategories,
-							is_random_related_products: product?.is_random_related_products,
-							related_products: product?.related_products,
-							cross_sell_products: product?.cross_sell_products,
-							product_thumbnail_id: product?.product_thumbnail_id,
-							product_galleries_id: galleries,
-							size_chart_image_id: product?.size_chart_image_id,
-							attributes_ids: attributes,
-							meta_title: product?.meta_title,
-							meta_description: product?.meta_description,
-							product_meta_image_id: product?.product_meta_image_id,
-							safe_checkout: product?.safe_checkout,
-							secure_checkout: product?.secure_checkout,
-							social_share: product?.social_share,
-							encourage_order: product?.encourage_order,
-							encourage_view: product?.encourage_view,
-							is_free_shipping: product?.is_free_shipping,
-							is_return: product?.is_return,
-							tax_id: product?.tax_id,
-							estimated_delivery_text: product?.estimated_delivery_text,
-							return_policy_text: product?.return_policy_text,
-							is_featured: product?.is_featured,
-							is_trending: product?.is_trending,
-							status: product?.status,
-						});
-
-						// Create Variants
-						let variants = attributes?.map((attr) => {
-							let matchingVariations = product?.variations.filter((variation) => {
-								return variation.attribute_values.some((attrVal) => attrVal?.attribute_id == attr);
-							});
-
-							let attributeValues = matchingVariations?.reduce((acc: any, variation) => {
-								let values = variation.attribute_values
-									.filter((attrVal) => attrVal?.attribute_id == attr)
-									.map((attrVal) => attrVal?.id);
-								return values ? [...new Set([...acc, ...values])] : acc;
-							}, []);
-
-							let options = matchingVariations?.reduce((acc: any, variation) => {
-								let attrVal = variation.attribute_values.find(
-									(attrVal) => attrVal.attribute_id == attr,
-								);
-								if (!acc.some((opt: any) => opt?.value == attrVal?.id)) {
-									acc.push({ label: attrVal?.value, value: attrVal?.id });
-								}
-								return acc;
-							}, []);
-
-							return {
-								id: attr,
-								attribute_values: attributeValues,
-								options: options,
-								variant_option: [],
-							};
-						});
-
-						// Set Variants and Variations
-						this.variants = variants;
-						this.variations = product?.variations!;
-
-						if (product?.type == 'classified') {
-							this?.variants?.forEach((variant) => {
-								this.variantControl.push(
-									this.formBuilder.group({
-										id: new FormControl(variant?.id, []),
-										attribute_values: new FormControl(variant?.attribute_values, []),
-										options: new FormControl(variant?.options, []),
-										variant_option: new FormControl(variant?.variant_option, []),
-									}),
-								);
-							});
-							this.retrieveVariants = true;
-						} else {
-							this.clearVariations();
-						}
-					},
-				});
+			.subscribe((detail) => {
+				if (detail) this.applyCatalogProduct(detail);
+			});
+		this.attributes
+			.getDefinitions()
+			.pipe(takeUntil(this.destroy$))
+			.subscribe((rows) => this.definitions.set(rows));
+		this.templates.list().pipe(takeUntil(this.destroy$)).subscribe((rows) => this.addonTemplates.set(rows));
+		this.productService
+			.getReplacementTargets()
+			.pipe(takeUntil(this.destroy$))
+			.subscribe((targets) => {
+				this.replacementTargets = targets
+					.filter((target) => target.path !== `/product/${this.catalogProduct?.slug}`)
+					.map((target) => ({
+						value: target.path,
+						label: `${target.label} · ${target.path}`,
+					}));
 			});
 
-		if (this.type() == 'create') {
-			this.variants.forEach((variant) =>
-				this.variantControl.push(
-					this.formBuilder.group({
-						id: new FormControl(variant?.id, []),
-						attribute_values: new FormControl(variant?.attribute_values, []),
-						options: new FormControl(variant?.attribute_values, []),
-						variant_option: new FormControl(variant?.variant_option, []),
-					}),
-				),
-			);
-		}
-
-		this.variantControl.valueChanges.pipe(debounceTime(200), distinctUntilChanged()).subscribe((variantValue) => {
-			let selectedAttr = variantValue.filter((el: any) => el.id != null).map((val: IVariant) => val.id);
-			this.selectedAttrIds.set(selectedAttr.join(','));
-
-			let variantValues = variantValue.filter((el: any) => el.attribute_values != null);
-			let attributesIds = variantValues?.map((attr: IVariant) => attr.id);
-
-			this.form.controls['attributes_ids'].setValue(attributesIds);
-
-			this.variationCombinations = this.generateCombinations(variantValues);
-
-			this.addVariation();
-		});
-
 		this.products$.subscribe((product) => {
-			this.collectionProduct = product?.length
-				? product.filter((res) => res?.data?.type == 'simple' && res?.data?.stock_status == 'in_stock')
-				: [];
+			this.collectionProduct = product.filter(
+				(res) => res?.data?.type == 'simple' && res?.data?.stock_status == 'in_stock',
+			);
+			this.bundleProducts.set(product.filter((res) => res?.data?.type === 'simple'));
 		});
 
-		this.setting$.subscribe((setting) => {
-			if (setting?.activation?.multivendor) {
-				this.form.controls['store_id'].setValidators([Validators.required]);
-			} else {
-				this.form.controls['store_id'].removeValidators([]);
-			}
+		// Made to order is live-only, and its switch locks once the status leaves live.
+		this.form.controls['status'].valueChanges.pipe(takeUntil(this.destroy$)).subscribe((status) => {
+			if (status !== 'live') this.form.get('made_to_order')?.setValue(false);
 		});
 
 		this.form.controls['type'].valueChanges.subscribe((value) => {
+			if (this.catalogProduct) return;
 			if (value == 'simple') {
 				this.form.setControl('quantity', new FormControl('', [Validators.required]));
 				this.form.setControl('price', new FormControl('', [Validators.required]));
@@ -481,64 +653,6 @@ export class FormProduct {
 
 	searchProduct(event: Select2SearchEvent) {
 		this.search.next(event.search);
-	}
-
-	addVariant(event: Event) {
-		event.preventDefault();
-		this.variantControl.push(
-			this.formBuilder.group({
-				id: new FormControl(),
-				attribute_values: new FormControl(),
-				options: new FormControl(),
-				variant_option: new FormControl(),
-			}),
-		);
-	}
-
-	removeVariant(index: number) {
-		if (this.variantControl.length <= 1) return;
-		this.variantControl.removeAt(index);
-	}
-
-	getAttributeValues(id: number | null): Observable<Select2Data> {
-		return of(this.filterAttributeValues(id ? id : null));
-	}
-
-	// Replicates the former AttributeState.attributes selector over the TanStack query data:
-	// maps attributes to Select2 options, optionally excluding ids already chosen in other variant rows.
-	private filterAttributes(ids: string): Select2Data {
-		const attrIds = Array.from(new Set(ids.split(','))).map(Number);
-		const data = this.attributesQuery.data()?.data ?? [];
-		const filter = attrIds.length ? data.filter((attr) => !attrIds.includes(Number(attr.id!))) : data;
-		return filter.map((attribute) => ({
-			label: attribute?.name,
-			value: attribute?.id,
-			attribute_values: attribute?.attribute_values,
-		})) as Select2Data;
-	}
-
-	// Replicates the former AttributeState.attribute_value selector: values belonging to one attribute.
-	private filterAttributeValues(id: number | null): Select2Data {
-		if (!id) return [];
-		return (this.attributeValuesQuery.data()?.data ?? [])
-			.filter((attrVal) => +attrVal.attribute_id === id)
-			.map((value) => ({ label: value?.value, value: value?.id })) as Select2Data;
-	}
-
-	updateAttribute(data: Select2UpdateEvent, index: number) {
-		const variantControl = this.form.get('variants') as FormArray; // get the variants FormArray
-		const control = variantControl.at(index); // get the control at the specified index
-
-		let variant_option = null;
-		this.getAttributeValues(data ? +data?.value : null).subscribe((option) => (variant_option = option));
-		control.patchValue({ variant_option: variant_option }); // patch the new value
-		this.variantCount++;
-		if (!this.retrieveVariants) {
-			control.patchValue({ attribute_values: null, options: null }); // patch the new value
-		}
-		if (this.variantCount == this.variants?.length) {
-			this.retrieveVariants = false;
-		}
 	}
 
 	onDateSelection(date: NgbDate) {
@@ -589,82 +703,21 @@ export class FormProduct {
 		return parsed && this.calendar.isValid(NgbDate.from(parsed)) ? NgbDate.from(parsed) : currentValue;
 	}
 
-	updateAttributeValue(data: Select2UpdateEvent, index: number) {
-		const variantControl = this.form.get('variants') as FormArray;
-		const control = variantControl.at(index);
-		control.patchValue({ options: data?.options });
-	}
-
 	clearVariations() {
 		const variantsControl = this.form.get('variations') as FormArray; // assuming your FormArray group is named 'variations'
 		variantsControl.clear(); // remove all the controls from the FormArray
 	}
 
-	addVariation() {
-		this.clearVariations();
-		if (this.variationCombinations.length) {
-			this.variationCombinations.forEach((variation) => {
-				const index = this.variations.findIndex((value) =>
-					value.attribute_values.every((item) => variation?.attribute_values.includes(+item?.id!)),
-				);
-				let variationValue;
-				if (index != -1 && this.variations[index]) {
-					variationValue = this.variations[index];
-				}
-				this.variationControl.push(
-					this.formBuilder.group({
-						id: new FormControl(variationValue?.id, []),
-						variation_name: new FormControl(variation?.name, []),
-						name: new FormControl(variationValue?.name, [Validators.required]),
-						price: new FormControl(variationValue?.price, [Validators.required, priceValidator]),
-						discount: new FormControl(variationValue?.discount, []),
-						stock_status: new FormControl(
-							variationValue?.stock_status ? variationValue?.stock_status : 'in_stock',
-							[Validators.required],
-						),
-						sku: new FormControl(variationValue?.sku, [Validators.required]),
-						quantity: new FormControl(variationValue?.quantity, [Validators.required]),
-						variation_image_id: new FormControl(variationValue?.variation_image_id, []),
-						variation_image: new FormControl(variationValue?.variation_image, []),
-						attribute_values: new FormControl(variation?.attribute_values, []),
-						status: new FormControl(variationValue ? +variationValue?.status : 1),
-					}),
-				);
-			});
-		}
-	}
-
-	removeVariation(index: number) {
-		if (this.variationControl.length <= 1) return;
-		this.variationControl.removeAt(index);
-	}
-
-	selectCategoryItem(data: Number[]) {
+	selectCategoryItem(data: string[]) {
 		if (Array.isArray(data)) {
 			this.form.controls['categories'].setValue(data);
+			this.chosenCategories.set(data);
 		}
 	}
 
 	selectTagItem(data: Number[]) {
 		if (Array.isArray(data)) {
-			this.form.controls['tags'].setValue(Array.isArray(data) ? data : []);
-		}
-	}
-
-	selectThumbnail(data: IAttachment) {
-		if (!Array.isArray(data)) {
-			this.form.controls['product_thumbnail_id'].setValue(data ? data.id : null);
-		}
-	}
-
-	selectImages(data: IAttachment) {
-		let ids = Array.isArray(data) ? data?.map((image) => image.id) : [];
-		this.form.controls['product_galleries_id'].setValue(ids);
-	}
-
-	selectSizeImage(data: IAttachment) {
-		if (!Array.isArray(data)) {
-			this.form.controls['size_chart_image_id'].setValue(data ? data.id : null);
+			this.form.controls['tags'].setValue(data);
 		}
 	}
 
@@ -680,68 +733,204 @@ export class FormProduct {
 		control.patchValue({ variation_image_id: data ? data.id : '' });
 	}
 
-	// Combination Of Variations
-	generateCombinations(attributes: IVariant[], index = 0, prefix = '', attribute_values: number[] = []): any {
-		if (index >= attributes.length) {
-			if (!attribute_values.length) return [];
-			// End of recursion
-			return [{ name: prefix.replace(/\/$/, ''), attribute_values }];
-		}
+	switchLanguage(locale: string) {
+		this.fields.switchTo(locale);
+		this.refreshMissing();
+	}
 
-		const currentAttribute = attributes[index];
-		const currentOptions = currentAttribute.options;
-		const combinations = [];
+	private refreshMissing() {
+		this.gaps.set(gapsByLocale((locale) => this.languageGaps(locale)));
+	}
 
-		if (currentOptions?.length === 1) {
-			// If attribute has only one option, include it in the prefix and IDs
-			const currentOption = currentOptions[0];
-			const newPrefix = `${prefix}${currentOption.label}/`;
-			const newIds: number[] = [...attribute_values, ...currentAttribute?.attribute_values!];
+	/** What Go Live would refuse for a language: fields as typed, option names and values. */
+	private languageGaps(locale: string): LanguageGap[] {
+		const options = this.optionGroups().flatMap((group) => {
+			const name = group.label[SOURCE_LOCALE] ?? group.attributeCode;
+			const label = group.label[locale]?.trim()
+				? []
+				: [{ key: `option:${group.attributeCode}`, label: 'gap_option', name }];
+			const values = group.terms
+				.filter((term) => !term.label[locale]?.trim())
+				.map((term) => ({
+					key: `value:${group.attributeCode}:${term.code}`,
+					label: 'gap_value',
+					name: term.label[SOURCE_LOCALE] ?? term.code,
+				}));
+			return [...label, ...values];
+		});
+		// The image's own alt text lives in the library, so only a Go Live attempt can report it.
+		const images = this.goLiveGaps()
+			.filter((gap) => gap.field === 'image_alt' && gap.locale === locale)
+			.map(() => ({ key: 'image_alt', label: 'gap_image_alt' }));
+		return [...this.fields.gaps(locale), ...options, ...images];
+	}
 
-			const childCombinations = this.generateCombinations(attributes, index + 1, newPrefix, newIds);
+	openLanguageGap({ key, locale }: { key: string; locale: string }) {
+		this.openGap({ field: key, locale });
+		focusField(this.document, key);
+	}
 
-			combinations.push(...childCombinations);
-		} else {
-			// If attribute has multiple options, generate separate combinations for each option
-			for (let i = 0; i < currentOptions?.length!; i++) {
-				const currentOption = currentOptions?.[i]!;
-				const currentValue = currentOption?.value;
-				const newPrefix = `${prefix}${currentOption.label}/`;
-				const newIds: number[] = [...attribute_values, currentValue];
+	private content(raw: Record<string, unknown>): ProductContentWrite {
+		const text = (field: string): LocalizedText => this.fields.text(field);
+		return {
+			title: text('name'),
+			shortDescription: text('short_description'),
+			description: text('description'),
+			metaTitle: text('meta_title'),
+			metaDescription: text('meta_description'),
+			estimatedDeliveryText: text('estimated_delivery_text'),
+			sareeLengthM: this.showsLengths() ? blankToNull(raw['saree_length_m']) : null,
+			blousePieceM: this.showsLengths() ? blankToNull(raw['blouse_piece_m']) : null,
+			categoryIds: Array.isArray(raw['categories']) ? raw['categories'].map(String) : [],
+			optionGroups: this.optionGroups(),
+			addonTemplateCode: this.addonTemplateCode(),
+			...this.images(),
+		};
+	}
 
-				const childCombinations = this.generateCombinations(attributes, index + 1, newPrefix, newIds);
+	/** Go Live: the same call and the same toast as the product list. */
+	goLive() {
+		const product = this.catalogProduct;
+		if (!product) return;
+		this.productService.goLive(product.id).subscribe((result) => {
+			this.goLiveGaps.set(result.gaps);
+			goLiveToast(result, this.notifier, (key) => this.transloco.translate(key));
+			if (result.live) void this.router.navigateByUrl('/product');
+		});
+	}
 
-				combinations.push(...childCombinations);
-			}
-		}
+	/** A line of the Go Live alert opens the tab, and the language, where the gap can be fixed. */
+	openGap({ field, locale }: GoLiveGap) {
+		if (locale) this.switchLanguage(locale);
+		this.nav()?.select(GAP_TABS[field.split(':')[0] as string] ?? 'inventory');
+	}
 
-		return combinations;
+	gapLabels(): string[] {
+		return goLiveLabels(this.goLiveGaps(), (key) => this.transloco.translate(key));
 	}
 
 	submit() {
 		this.form.markAllAsTouched();
-
-		// If product type simple then clear all variation
-		if (this.form.controls['type'].value == 'simple') {
-			this.form.controls['attributes_ids'].setValue([]);
-			this.clearVariations();
+		const raw = this.form.getRawValue() as Record<string, unknown>;
+		if (!this.fields.text('name')['en']?.trim()) {
+			this.switchLanguage('en');
+			this.form.get('name')?.setErrors({ required: true });
+			this.nav()?.select('general');
+			this.tabError = 'general';
+			return;
 		}
+		const leadTime = textOrNull(this.fields.text('estimated_delivery_text')['en']);
+		const leadTimeControl = this.form.get('estimated_delivery_text');
+		if (raw['made_to_order'] && !leadTime) leadTimeControl?.setErrors({ leadTimeRequired: true });
+		if (!this.form.valid) {
+			this.showInvalidTab();
+			return;
+		}
+		const product = this.catalogProduct;
+		if (!product) {
+			this.create(raw);
+			return;
+		}
+		if (this.isDiscontinuing) {
+			this.productService.discontinueCatalogProduct(product.id, textOrNull(raw['replacement_path'])).subscribe({
+				next: () => void this.router.navigateByUrl('/product'),
+			});
+			return;
+		}
+		this.save(product, raw);
+	}
 
-		if (this.form.valid) {
-			// Create/update have no backend yet — reset image fields and navigate back.
-			this.form.controls['product_thumbnail_id'].setValue('');
-			this.form.controls['product_galleries_id'].setValue('');
-			void this.router.navigateByUrl('/product');
-			this.tabError = null;
-		} else {
-			const invalidField = Object?.keys(this.form?.controls).find((key) => this.form.controls[key].invalid);
-			if (this.isBrowser) {
-				const div = document.querySelector(`#${invalidField}`)?.closest('div.tab')?.getAttribute('tab');
-				if (div) {
-					this.nav().select(div);
-					this.tabError = div;
-				}
-			}
+	/** Makes the product, then saves everything typed so far onto it. */
+	private create(raw: Record<string, unknown>) {
+		const typed = Object.fromEntries(LANGUAGE_FIELDS.map((field) => [field, this.fields.text(field)]));
+		const groups = this.optionGroups();
+		const images = this.images();
+		const body: ProductCreate = {
+			type: raw['type'] === 'classified' ? 'variable' : (raw['type'] as ProductCreate['type']),
+			sku: String(raw['sku']).trim(),
+			title: { en: (typed['name'] as LocalizedText)['en'] as string },
+			basePriceINR: blankToNull(raw['price']) ?? 0,
+		};
+		this.productService
+			.createCatalogProduct(body)
+			.pipe(switchMap(({ id }) => this.productService.getCatalogProduct(id)))
+			.subscribe((detail) => {
+				this.applyCatalogProduct(detail);
+				this.fields.load({ ...typed });
+				this.optionGroups.set(groups);
+				this.images.set(images);
+				this.variationControl.at(0)?.patchValue({ quantity: blankToNull(raw['quantity']) ?? 0 });
+				this.save(detail, this.form.getRawValue() as Record<string, unknown>);
+			});
+	}
+
+	private save(product: CatalogProductDetail, raw: Record<string, unknown>) {
+		const ids = (value: unknown) => (Array.isArray(value) ? value.map(String).filter(Boolean) : []);
+		const slug = textOrNull(raw['slug']);
+		const body: CatalogProductWrite = {
+			sku: String(raw['sku'] ?? product.sku).trim(),
+			...(slug && slug !== product.slug ? { slug } : {}),
+			status: product.status === 'live' && raw['status'] === 'live' ? 'live' : 'disabled',
+			featured: Boolean(raw['is_featured']),
+			madeToOrder: Boolean(raw['made_to_order']),
+			estimatedDeliveryText: textOrNull(this.fields.text('estimated_delivery_text')['en']),
+			lowStockThreshold: blankToNull(raw['low_stock_threshold']),
+			pinnedBadges: ids(raw['pinned_badges']) as CatalogBadgeCode[],
+			hiddenBadges: ids(raw['hidden_badges']) as CatalogBadgeCode[],
+			addonPriceINR: blankToNull(raw['addon_price_inr']),
+			shipping: {
+				weightGrams: blankToNull(raw['weight']),
+				lengthCm: blankToNull(raw['length_cm']),
+				widthCm: blankToNull(raw['width_cm']),
+				heightCm: blankToNull(raw['height_cm']),
+			},
+			hsnCode: textOrNull(raw['hsn_code']),
+			variants: this.variationControl.controls.map((group) => {
+				const row = (group as FormGroup).getRawValue() as Record<string, unknown>;
+				return {
+					id: String(row['id']),
+					sku: String(row['sku']).trim(),
+					mrpINR: blankToNull(row['mrp']),
+					sellingINR: Math.round(Number(row['price'])),
+					quantity: Math.round(Number(row['quantity'])),
+					available: row['availability'] !== 'unavailable',
+					weightGrams: blankToNull(row['weight_grams']),
+					lengthCm: blankToNull(row['length_cm']),
+					widthCm: blankToNull(row['width_cm']),
+					heightCm: blankToNull(row['height_cm']),
+					barcode: textOrNull(row['barcode']),
+					hsnCode: textOrNull(row['hsn']),
+				};
+			}),
+			content: this.content(raw),
+			relatedProductIds: ids(raw['related_products']),
+			upsellProductIds: ids(raw['upsell_products']),
+			crossSellProductIds: ids(raw['cross_sell_products']),
+		};
+		const saved: Observable<unknown> = this.productService.saveCatalogProduct(product.id, body);
+		const bundled = product.type === 'bundle' && this.bundle().groups.length > 0;
+		const finished = bundled
+			? saved.pipe(switchMap(() => this.productService.saveBundle(product.id, this.bundle())))
+			: saved;
+		finished.subscribe({
+			next: () => {
+				this.tabError = null;
+				void this.router.navigateByUrl('/product');
+			},
+		});
+	}
+
+	private showInvalidTab() {
+		if (!this.isBrowser) return;
+		const invalidField =
+			Object.keys(this.form.controls).find((key) => this.form.controls[key].invalid) ?? 'variations';
+		const tab = this.document
+			.querySelector(`#${invalidField}, [formarrayname="${invalidField}"]`)
+			?.closest('div.tab')
+			?.getAttribute('tab');
+		if (tab) {
+			this.nav()?.select(tab);
+			this.tabError = tab;
 		}
 	}
 }

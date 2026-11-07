@@ -133,12 +133,15 @@
 								<tr>
 									<td>{{ 'password'| transloco}} :</td>
 									<td>
-										●●●●●●
-										<a
-											href="javascript:void(0)"
-											(click)="PasswordModal()?.openModal()"
-										>
-											{{ 'edit' | transloco }}
+										<!--
+											Links to the security screen rather than opening a dialog here. The
+											dialog it used to open called a store method with an empty body, so
+											the form submitted and nothing happened, silently. It also could
+											not have worked: changing a sign-in method needs step-up proof, and
+											an account signed up through a provider has no password to show.
+										-->
+										<a [routerLink]="['/account/login-methods']">
+											{{ 'sign_in_methods' | transloco }}
 										</a>
 									</td>
 								</tr>
@@ -160,4 +163,3 @@
 	</div>
 </div>
 <app-edit-profile-modal #profileModal />
-<app-change-password-modal #passwordModal />

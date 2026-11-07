@@ -4,7 +4,7 @@
 	<input
 		type="search"
 		class="form-control"
-		placeholder="Search here.."
+		placeholder="{{ 'search_here' | transloco }}"
 		[formControl]="term"
 	/>
 	<app-button
@@ -45,7 +45,7 @@
 	<input
 		type="text"
 		class="form-control"
-		placeholder="Search for products, styles,brands..."
+		placeholder="{{ 'search_products_styles_brands' | transloco }}"
 		[formControl]="term"
 	/>
 	<app-button
@@ -65,7 +65,7 @@
 	<input
 		type="search"
 		class="form-control"
-		placeholder="search for product, delivered to your door..."
+		placeholder="{{ 'search_delivered_to_your_door' | transloco }}"
 	/>
 	<app-button
 		[type]="'button'"
@@ -90,7 +90,7 @@
 		<input
 			type="text"
 			class="form-control search-type"
-			placeholder="Search here.."
+			placeholder="{{ 'search_here' | transloco }}"
 			[formControl]="term"
 		/>
 		<span

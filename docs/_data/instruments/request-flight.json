@@ -1,0 +1,138 @@
+{
+	"schemaVersion": 1,
+	"lastVerified": "2026-11-07",
+	"sourceOfTruth": [
+		"apps/api/src/orders/orders.controller.ts",
+		"apps/api/src/orders/orders.service.ts",
+		"apps/api/src/auth/session.guard.ts",
+		"apps/api/src/auth/ownership.ts",
+		"apps/api/src/common/csrf.guard.ts",
+		"apps/api/src/common/request-context.ts",
+		"apps/api/src/common/http-exception.filter.ts",
+		"apps/api/src/infra/persistence.module.ts",
+		"packages/core-domain/src/pricing",
+		"packages/core-domain/src/ports/transaction-manager.port.ts",
+		"packages/adapters-db-mongo/src/transaction-manager.ts",
+		"packages/adapters-db-mongo/test/transaction.test.ts",
+		"packages/adapters-db-mongo/test/order-cart-transaction.test.ts",
+		"apps/api/src/cart/cart.service.ts",
+		"packages/adapters-db-mongo/src/repositories/order.repository.ts",
+		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx"
+	],
+	"method": "POST",
+	"path": "/orders",
+	"title": "Place an order",
+	"summary": "Trace a place-order request stage by stage. Solid stages exist. Dashed stages are planned.",
+	"stages": [
+		{
+			"id": "client",
+			"label": "Client",
+			"sublabel": "Storefront checkout",
+			"kind": "real",
+			"file": "apps/storefront/src/app/features/shop/checkout",
+			"current": "The storefront checkout does not call POST /orders. The operation exists for direct clients.",
+			"target": "The storefront sends an owned cart plus Idempotency-Key through the cookie session and never supplies a user id."
+		},
+		{
+			"id": "transport",
+			"label": "Transport",
+			"sublabel": "Fastify + NestJS",
+			"kind": "real",
+			"file": "apps/api/src/orders/orders.controller.ts",
+			"current": "The global SessionGuard authenticates from the httpOnly access cookie, and an unsafe request carrying session cookies must send its CSRF token in x-csrf-token, matching the httpOnly CSRF cookie. The zod body never accepts a user id.",
+			"target": "Keep the cookie-only session and double-submit CSRF boundary, then document its storefront audience and security requirements in OpenAPI."
+		},
+		{
+			"id": "ownership",
+			"label": "Ownership",
+			"sublabel": "Cart check",
+			"kind": "real",
+			"file": "apps/api/src/cart/cart.service.ts",
+			"current": "OrdersService resolves the cart through getCartForOrder before any write. A user cart must match the authenticated principal; a guest cart requires the httpOnly st_guest cookie whose hash is stored server-side. Cross-owner failures return not-found.",
+			"target": "Resolve the caller's owned cart from session or guest cookie before price, inventory or order work begins."
+		},
+		{
+			"id": "idempotency",
+			"label": "Idempotency",
+			"sublabel": "Dedupe by key",
+			"kind": "ghost",
+			"chunk": "Planned",
+			"file": "planned — checkout use case",
+			"current": "A repeated submit can create a second order.",
+			"target": "The idempotency key is checked first; a replay returns the original order instead of creating a new one."
+		},
+		{
+			"id": "request-context",
+			"label": "Request context",
+			"sublabel": "Correlation + client IP",
+			"kind": "real",
+			"file": "apps/api/src/common/request-context.ts",
+			"current": "Every request receives a correlation id that is echoed as x-request-id; trusted proxy configuration controls inbound ids and real-client-IP rate-limit keys.",
+			"target": "The same correlation identity continues through audit, outbox, provider, and idempotency records."
+		},
+		{
+			"id": "application",
+			"label": "Application",
+			"sublabel": "OrdersService.createFromCart",
+			"kind": "real",
+			"file": "apps/api/src/orders/orders.service.ts",
+			"current": "Loads the cart, reads each product sequentially, computes a subtotal and applies a coupon.",
+			"target": "Re-validates ownership, stock and price, then orchestrates the write inside a unit of work."
+		},
+		{
+			"id": "domain",
+			"label": "Domain",
+			"sublabel": "Pricing invariants",
+			"kind": "real",
+			"file": "packages/core-domain/src/pricing",
+			"current": "Pure helpers round money, convert from the canonical INR and apply the discount.",
+			"target": "Same pure helpers, extended with tax, shipping and a frozen price snapshot."
+		},
+		{
+			"id": "transaction",
+			"label": "Transaction",
+			"sublabel": "Unit of work",
+			"kind": "real",
+			"file": "apps/api/src/orders/orders.service.ts",
+			"current": "OrdersService calls TransactionManagerPort.withTransaction and passes one context to the order save and cart removal. Integration tests on rs0 check commit and rollback.",
+			"target": "withTransaction() spans order, payment, inventory, cart and audit; any failure rolls all of them back."
+		},
+		{
+			"id": "adapter",
+			"label": "Port + Adapter",
+			"sublabel": "Order/Cart repositories → Mongo",
+			"kind": "real",
+			"file": "packages/adapters-db-mongo/src/repositories/order.repository.ts",
+			"current": "MongoOrderRepository saves the order and MongoCartRepository consumes the cart with the same transaction context supplied by the order service.",
+			"target": "Session-aware repositories accept the transaction context and participate in the atomic write."
+		},
+		{
+			"id": "side-effects",
+			"label": "Side effects",
+			"sublabel": "Payment · inventory · audit",
+			"kind": "ghost",
+			"chunk": "Planned",
+			"file": "planned — order side effects (see apps/api/src/orders/orders.service.ts)",
+			"current": "Inventory ledgers, cost layers, audit logs and the outbox exist, but this service does not call them. Placing an order writes no payment attempt, stock reservation or audit record.",
+			"target": "A payment attempt, inventory reservation/ledger and an immutable audit event commit atomically with the order."
+		},
+		{
+			"id": "persistence",
+			"label": "Persistence",
+			"sublabel": "MongoDB rs0",
+			"kind": "real",
+			"file": "docker/mongo/docker-compose.yml",
+			"current": "The order document lands in the self-hosted single-node replica set.",
+			"target": "The whole set of records commits together, or none do."
+		},
+		{
+			"id": "error-response",
+			"label": "Error response",
+			"sublabel": "Safe envelope + correlation",
+			"kind": "real",
+			"file": "apps/api/src/common/http-exception.filter.ts",
+			"current": "Every failure returns the shared ApiErrorResponse envelope with a safe status message, validation issues when applicable, and the same request id used by server logs.",
+			"target": "Operation-specific OpenAPI responses enumerate the stable error codes and recovery semantics without exposing internal causes."
+		}
+	]
+}

@@ -16,13 +16,13 @@
 	[basePrice]="effectiveBase()"
 	[initialSelections]="addonSeed()"
 	[initialMeasurements]="measurementSeed()"
-	(change)="onAddonChange($event)"
+	(stateChange)="onAddonChange($event)"
 />
 } @if (hasBundle()) {
 <app-bundle-configurator
 	[product]="product()"
 	[initialSelections]="bundleSeed()"
 	[initialMeasurements]="measurementSeed()"
-	(change)="onBundleChange($event)"
+	(stateChange)="onBundleChange($event)"
 />
 }

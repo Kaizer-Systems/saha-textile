@@ -1,8 +1,16 @@
-import type { Order, OrderStatus } from '@saha-textile/contracts';
-import type { OrderRepository, PageQuery, Paginated } from '@saha-textile/core-domain';
+import { type Order, type OrderStatus, PURCHASED_ORDER_STATUSES } from '@saha-textile/contracts';
+import type {
+	OrderRepository,
+	PageQuery,
+	Paginated,
+	PurchasedOrder,
+	PurchasedProduct,
+	TransactionContext,
+} from '@saha-textile/core-domain';
 
 import { toOrder } from '../mappers';
 import { type OrderDoc, OrderModel } from '../models/index';
+import { sessionFrom } from '../transaction-manager';
 
 export class MongoOrderRepository implements OrderRepository {
 	async findById(id: string): Promise<Order | null> {
@@ -30,12 +38,44 @@ export class MongoOrderRepository implements OrderRepository {
 		return { items: docs.map(toOrder), total, page, pageSize };
 	}
 
-	async save(order: Order): Promise<Order> {
+	async listPurchased(): Promise<PurchasedOrder[]> {
+		const docs = await OrderModel.find({ status: { $in: PURCHASED_ORDER_STATUSES } })
+			.lean<OrderDoc[]>()
+			.exec();
+		return docs.map(toOrder).map((order) => ({
+			placedAt: order.createdAt ?? new Date(0).toISOString(),
+			lines: order.lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
+		}));
+	}
+
+	async listRecentlyPurchased(since: string, limit: number): Promise<PurchasedProduct[]> {
+		const docs = await OrderModel.find({
+			status: { $in: PURCHASED_ORDER_STATUSES },
+			createdAt: { $gte: new Date(since) },
+		})
+			.sort({ createdAt: -1 })
+			.limit(limit)
+			.lean<OrderDoc[]>()
+			.exec();
+		const newest = new Map<string, string>();
+		for (const order of docs.map(toOrder)) {
+			const paid = order.statusTimeline.find((event) => event.status === 'paid')?.at ?? order.createdAt;
+			if (!paid) continue;
+			for (const line of order.lines) {
+				if (!newest.has(line.productId)) newest.set(line.productId, paid);
+			}
+		}
+		return [...newest]
+			.map(([productId, purchasedAt]) => ({ productId, purchasedAt }))
+			.sort((a, b) => b.purchasedAt.localeCompare(a.purchasedAt));
+	}
+
+	async save(order: Order, context?: TransactionContext): Promise<Order> {
 		const { id, ...rest } = order;
 		const doc = await OrderModel.findByIdAndUpdate(
 			id,
 			{ $set: rest },
-			{ upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
+			{ upsert: true, returnDocument: 'after', setDefaultsOnInsert: true, session: sessionFrom(context) },
 		)
 			.lean<OrderDoc>()
 			.exec();

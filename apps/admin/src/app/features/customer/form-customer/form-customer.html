@@ -1,0 +1,777 @@
+<form
+	class="theme-form theme-form-2 mega-form"
+	[formGroup]="form"
+	(ngSubmit)="submit()"
+>
+	<app-form-fields
+		[label]="'name'"
+		[for]="'displayName'"
+		[required]="true"
+	>
+		<input
+			class="form-control"
+			type="text"
+			placeholder="{{ 'enter_name' | transloco }}"
+			name="displayName"
+			formControlName="displayName"
+		/>
+		@if (form.controls['displayName'].touched && form.controls['displayName'].errors?.['required']) {
+		<div class="invalid-feedback d-block">{{ 'name_is_required' | transloco }}</div>
+		}
+	</app-form-fields>
+	<app-form-fields
+		[label]="'email'"
+		[for]="'email'"
+		[required]="true"
+	>
+		<input
+			class="form-control"
+			type="email"
+			placeholder="{{ 'enter_email' | transloco }}"
+			name="email"
+			formControlName="email"
+		/>
+		@if (form.controls['email'].touched && form.controls['email'].errors?.['required']) {
+		<div class="invalid-feedback d-block">{{ 'email_is_required' | transloco }}</div>
+		} @if (form.controls['email'].touched && form.controls['email'].errors?.['email']) {
+		<div class="invalid-feedback d-block">{{ 'enter_valid_email' | transloco }}</div>
+		}
+	</app-form-fields>
+	<app-form-fields
+		[label]="'phone'"
+		[for]="'phone'"
+		[required]="true"
+		[class]="'mb-4 row align-items-center g-2'"
+	>
+		@if (isBrowser) {
+		<select2
+			class="custom-select intl-tel-input"
+			[templates]="{ option: template, templateSelection: template }"
+			[data]="codes"
+			formControlName="country_code"
+		>
+			<ng-template
+				#template
+				let-data="data"
+			>
+				<div class="country">
+					<div class="flag-box">
+						<div class="iti-flag {{ data?.class }}"></div>
+					</div>
+					<span class="dial-code">{{ data.code }}</span>
+				</div>
+			</ng-template>
+		</select2>
+		}
+		<input
+			type="number"
+			class="form-control intl-input-padding"
+			formControlName="phone"
+			placeholder="{{ 'enter_phone_number' | transloco }}"
+			name="phone"
+		/>
+		@if (form.controls['phone'].touched && form.controls['phone'].errors?.['required']) {
+		<div class="invalid-feedback d-block">{{ 'phone_number_is_required' | transloco }}</div>
+		} @if (form.controls['phone'].touched && form.controls['phone'].errors?.['pattern']) {
+		<div class="invalid-feedback d-block">{{ 'phone_number_is_invalid' | transloco }}</div>
+		}
+	</app-form-fields>
+	<app-form-fields
+		[label]="'status'"
+		[for]="'status'"
+		[required]="true"
+	>
+		@if (isBrowser) {
+		<select2
+			class="custom-select"
+			[data]="statusOptions"
+			[placeholder]="'status' | transloco"
+			formControlName="status"
+			noResultMessage="{{ 'no_data_found' | transloco }}"
+		/>
+		}
+	</app-form-fields>
+
+	@if (type() === 'create') {
+	<app-form-fields
+		[label]="'activation'"
+		[for]="'activation_channels'"
+		[required]="true"
+	>
+		<div class="form-check form-switch">
+			<input
+				class="checkbox_animated form-check-input"
+				type="checkbox"
+				id="channel_email"
+				formControlName="channelEmail"
+			/>
+			<label
+				class="form-check-label form-label m-0"
+				for="channel_email"
+			>
+				{{ 'email' | transloco }}
+			</label>
+		</div>
+		<div class="form-check form-switch">
+			<input
+				class="checkbox_animated form-check-input"
+				type="checkbox"
+				id="channel_sms"
+				formControlName="channelSms"
+			/>
+			<label
+				class="form-check-label form-label m-0"
+				for="channel_sms"
+			>
+				{{ 'sms' | transloco }}
+			</label>
+		</div>
+		<div class="form-check form-switch">
+			<input
+				class="checkbox_animated form-check-input"
+				type="checkbox"
+				id="channel_whatsapp"
+				formControlName="channelWhatsapp"
+			/>
+			<label
+				class="form-check-label form-label m-0"
+				for="channel_whatsapp"
+			>
+				{{ 'whatsapp' | transloco }}
+			</label>
+		</div>
+		@if (form.touched && form.errors?.['channelsRequired']) {
+		<div class="invalid-feedback d-block">{{ 'at_least_one_channel_required' | transloco }}</div>
+		} @if (form.touched && form.errors?.['emailRequiredForChannel']) {
+		<div class="invalid-feedback d-block">{{ 'email_required_for_activation_channel' | transloco }}</div>
+		} @if (form.touched && form.errors?.['phoneRequiredForChannel']) {
+		<div class="invalid-feedback d-block">{{ 'phone_required_for_activation_channel' | transloco }}</div>
+		}
+	</app-form-fields>
+	}
+
+	<div class="d-flex justify-content-end">
+		<app-button
+			[class]="'btn btn-theme'"
+			[id]="'customer_btn'"
+		>
+			{{ 'save' | transloco }}
+		</app-button>
+	</div>
+</form>
+
+@if (type() === 'edit' && canResendActivation()) {
+<form
+	class="theme-form theme-form-2 mega-form mt-4"
+	[formGroup]="activationForm"
+	(ngSubmit)="resendActivation()"
+>
+	<h4 class="fw-semibold mb-3">{{ 'resend_activation' | transloco }}</h4>
+	<app-form-fields
+		[label]="'activation'"
+		[for]="'resend_activation_channels'"
+		[required]="true"
+	>
+		<div class="form-check form-switch">
+			<input
+				class="checkbox_animated form-check-input"
+				type="checkbox"
+				id="resend_channel_email"
+				formControlName="channelEmail"
+			/>
+			<label
+				class="form-check-label form-label m-0"
+				for="resend_channel_email"
+			>
+				{{ 'email' | transloco }}
+			</label>
+		</div>
+		<div class="form-check form-switch">
+			<input
+				class="checkbox_animated form-check-input"
+				type="checkbox"
+				id="resend_channel_sms"
+				formControlName="channelSms"
+			/>
+			<label
+				class="form-check-label form-label m-0"
+				for="resend_channel_sms"
+			>
+				{{ 'sms' | transloco }}
+			</label>
+		</div>
+		<div class="form-check form-switch">
+			<input
+				class="checkbox_animated form-check-input"
+				type="checkbox"
+				id="resend_channel_whatsapp"
+				formControlName="channelWhatsapp"
+			/>
+			<label
+				class="form-check-label form-label m-0"
+				for="resend_channel_whatsapp"
+			>
+				{{ 'whatsapp' | transloco }}
+			</label>
+		</div>
+		@if (activationForm.touched && activationForm.errors?.['channelsRequired']) {
+		<div class="invalid-feedback d-block">{{ 'at_least_one_channel_required' | transloco }}</div>
+		} @if (activationForm.touched && activationForm.errors?.['emailRequiredForChannel']) {
+		<div class="invalid-feedback d-block">{{ 'email_required_for_activation_channel' | transloco }}</div>
+		} @if (activationForm.touched && activationForm.errors?.['phoneRequiredForChannel']) {
+		<div class="invalid-feedback d-block">{{ 'phone_required_for_activation_channel' | transloco }}</div>
+		}
+	</app-form-fields>
+	<div class="d-flex justify-content-end">
+		<app-button
+			[class]="'btn btn-theme'"
+			[id]="'resend_activation_btn'"
+		>
+			{{ 'resend_activation' | transloco }}
+		</app-button>
+	</div>
+</form>
+} @if (type() === 'create' || type() === 'edit') {
+<div class="mt-4">
+	<div class="title-header option-title">
+		<h5>{{ 'addresses' | transloco }}</h5>
+		<div class="ms-auto">
+			<button
+				type="button"
+				class="align-items-center btn btn-theme d-flex"
+				(click)="openAddressModal()"
+			>
+				<i class="ri-add-line me-2"></i>
+				{{ 'add_new' | transloco }} {{ 'address' | transloco }}
+			</button>
+		</div>
+	</div>
+
+	@if (!addressForms.length) {
+	<div class="empty-box">
+		<h2>{{ 'no_address_found' | transloco }}</h2>
+	</div>
+	}
+
+	<div class="checkout-detail">
+		@for (group of addressForms.controls; track group.get('id')?.value; let i = $index) {
+		<div
+			class="delivery-address-box theme-form theme-form-2 mb-3"
+			[formGroup]="addressGroupAt(i)"
+		>
+			<div class="d-flex align-items-start gap-3">
+				<i class="ri-map-pin-line fs-5 mt-1 flex-shrink-0"></i>
+				<div class="min-w-0 flex-grow-1">
+					<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+						<div class="d-flex align-items-center gap-2">
+							<label
+								class="form-label-title fw-semibold mb-0"
+								for="addr_{{ i }}_label"
+							>
+								{{ 'title' | transloco }}
+							</label>
+							<input
+								class="form-control"
+								id="addr_{{ i }}_label"
+								type="text"
+								style="max-width: 280px"
+								placeholder="{{ 'untitled_address' | transloco }}"
+								formControlName="label"
+							/>
+						</div>
+						<ul
+							id="actions"
+							class="mb-0"
+						>
+							<li>
+								<a
+									href="javascript:void(0)"
+									(click)="confirmDeleteAddress(i)"
+								>
+									<i class="ri-delete-bin-line text-danger fs-5"></i>
+								</a>
+							</li>
+						</ul>
+					</div>
+
+					<div class="row g-3">
+						<div class="col-md-6 col-lg-4 col-12">
+							<label
+								class="form-label-title"
+								for="addr_{{ i }}_fullName"
+							>
+								{{ 'name' | transloco }}
+								<span class="theme-color required-dot ms-2">*</span>
+							</label>
+							<input
+								class="form-control"
+								id="addr_{{ i }}_fullName"
+								type="text"
+								placeholder="{{ 'enter_full_name' | transloco }}"
+								formControlName="fullName"
+							/>
+							@if ( addressGroupAt(i).controls['fullName'].touched &&
+							addressGroupAt(i).controls['fullName'].errors?.['required'] ) {
+							<div class="invalid-feedback d-block">{{ 'name_is_required' | transloco }}</div>
+							}
+						</div>
+						<div class="col-md-6 col-lg-4 col-12">
+							<app-form-fields
+								[label]="'phone'"
+								[for]="'addr_' + i + '_phone'"
+								[required]="true"
+								[class]="'mb-0'"
+								[labelClass]="'form-label-title'"
+								[gridClass]="'col-12'"
+							>
+								@if (isBrowser) {
+								<select2
+									class="custom-select intl-tel-input"
+									[templates]="{ option: template, templateSelection: template }"
+									[data]="codes"
+									formControlName="country_code"
+								>
+									<ng-template
+										#template
+										let-data="data"
+									>
+										<div class="country">
+											<div class="flag-box">
+												<div class="iti-flag {{ data?.class }}"></div>
+											</div>
+											<span class="dial-code">{{ data.code }}</span>
+										</div>
+									</ng-template>
+								</select2>
+								}
+								<input
+									type="number"
+									class="form-control intl-input-padding"
+									id="addr_{{ i }}_phone"
+									formControlName="phone"
+									placeholder="{{ 'enter_phone' | transloco }}"
+								/>
+								@if ( addressGroupAt(i).controls['phone'].touched &&
+								addressGroupAt(i).controls['phone'].errors?.['required'] ) {
+								<div class="invalid-feedback d-block">{{ 'phone_number_is_required' | transloco }}</div>
+								} @if ( addressGroupAt(i).controls['phone'].touched &&
+								addressGroupAt(i).controls['phone'].errors?.['pattern'] ) {
+								<div class="invalid-feedback d-block">{{ 'phone_number_is_invalid' | transloco }}</div>
+								}
+							</app-form-fields>
+						</div>
+						<div class="col-md-6 col-lg-4 col-12">
+							<label
+								class="form-label-title"
+								for="addr_{{ i }}_line1"
+							>
+								{{ 'address' | transloco }}
+								<span class="theme-color required-dot ms-2">*</span>
+							</label>
+							<input
+								class="form-control"
+								id="addr_{{ i }}_line1"
+								type="text"
+								placeholder="{{ 'enter_address' | transloco }}"
+								formControlName="line1"
+							/>
+							@if ( addressGroupAt(i).controls['line1'].touched &&
+							addressGroupAt(i).controls['line1'].errors?.['required'] ) {
+							<div class="invalid-feedback d-block">{{ 'street_is_required' | transloco }}</div>
+							}
+						</div>
+						<div class="col-md-6 col-lg-4 col-12">
+							<label
+								class="form-label-title"
+								for="addr_{{ i }}_line2"
+							>
+								{{ 'address' | transloco }} 2
+							</label>
+							<input
+								class="form-control"
+								id="addr_{{ i }}_line2"
+								type="text"
+								placeholder="{{ 'enter_address' | transloco }}"
+								formControlName="line2"
+							/>
+						</div>
+						<div class="col-md-6 col-lg-4 col-12">
+							<label
+								class="form-label-title"
+								for="addr_{{ i }}_city"
+							>
+								{{ 'city' | transloco }}
+								<span class="theme-color required-dot ms-2">*</span>
+							</label>
+							<input
+								class="form-control"
+								id="addr_{{ i }}_city"
+								type="text"
+								placeholder="{{ 'enter_city' | transloco }}"
+								formControlName="city"
+							/>
+							@if (addressGroupAt(i).controls['city'].touched &&
+							addressGroupAt(i).controls['city'].errors?.['required']) {
+							<div class="invalid-feedback d-block">{{ 'city_is_required' | transloco }}</div>
+							}
+						</div>
+						<div class="col-md-6 col-lg-4 col-12">
+							<label
+								class="form-label-title"
+								for="addr_{{ i }}_country"
+							>
+								{{ 'country' | transloco }}
+								<span class="theme-color required-dot ms-2">*</span>
+							</label>
+							@if (isBrowser) {
+							<select2
+								class="custom-select"
+								id="addr_{{ i }}_country"
+								[data]="(countries$ | async)?.length ? (countries$ | async) : []"
+								[placeholder]="'select_country' | transloco"
+								formControlName="country_id"
+								(update)="addressCountryChange(i, $event)"
+								resettable
+							/>
+							} @if ( addressGroupAt(i).controls['country_id'].touched &&
+							addressGroupAt(i).controls['country_id'].errors?.['required'] ) {
+							<div class="invalid-feedback d-block">{{ 'country_is_required' | transloco }}</div>
+							}
+						</div>
+						<div class="col-md-6 col-lg-4 col-12">
+							<label
+								class="form-label-title"
+								for="addr_{{ i }}_state"
+							>
+								{{ 'state' | transloco }}
+								<span class="theme-color required-dot ms-2">*</span>
+							</label>
+							@if (isBrowser) {
+							<select2
+								class="custom-select"
+								id="addr_{{ i }}_state"
+								[data]="statesForGroup(addressGroupAt(i))"
+								[placeholder]="'select_state' | transloco"
+								formControlName="state_id"
+								resettable
+							/>
+							} @if ( addressGroupAt(i).controls['state_id'].touched &&
+							addressGroupAt(i).controls['state_id'].errors?.['required'] ) {
+							<div class="invalid-feedback d-block">{{ 'state_is_required' | transloco }}</div>
+							}
+						</div>
+						<div class="col-md-6 col-lg-4 col-12">
+							<label
+								class="form-label-title"
+								for="addr_{{ i }}_postalCode"
+							>
+								{{ 'pincode' | transloco }}
+								<span class="theme-color required-dot ms-2">*</span>
+							</label>
+							<input
+								class="form-control"
+								id="addr_{{ i }}_postalCode"
+								type="text"
+								placeholder="{{ 'enter_pincode' | transloco }}"
+								formControlName="postalCode"
+							/>
+							@if ( addressGroupAt(i).controls['postalCode'].touched &&
+							addressGroupAt(i).controls['postalCode'].errors?.['required'] ) {
+							<div class="invalid-feedback d-block">{{ 'pincode_is_required' | transloco }}</div>
+							}
+						</div>
+					</div>
+
+					<div class="d-flex align-items-center justify-content-end mt-3 flex-wrap gap-3">
+						<div class="d-flex align-items-center mb-0 gap-2">
+							<label class="switch mb-0">
+								<input
+									type="checkbox"
+									id="customer_default_address_{{ i }}"
+									[checked]="!!addressGroupAt(i).get('isDefault')?.value"
+									(change)="onDefaultToggle(i, $event)"
+								/>
+								<span class="switch-state"></span>
+							</label>
+							<em class="fst-italic mb-0">{{ 'mark_as_default' | transloco }}</em>
+						</div>
+						<app-button
+							[class]="'btn btn-theme'"
+							[type]="'button'"
+							[id]="'update_address_btn_' + i"
+							(click)="saveAddressAt(i)"
+						>
+							{{ 'update_address' | transloco }}
+						</app-button>
+					</div>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+</div>
+
+<app-delete-modal
+	#deleteModal
+	(deleteItem)="onDeleteConfirmed($event)"
+/>
+
+<ng-template
+	#addAddressModal
+	let-modal
+>
+	<div class="modal-header">
+		<h3 class="fw-semibold d-flex align-items-center mb-0 gap-2">
+			<i class="ri-map-pin-line"></i>
+			<span>{{ 'add' | transloco }} {{ 'address' | transloco }}</span>
+		</h3>
+		<app-button
+			[class]="'btn btn-close'"
+			[spinner]="false"
+			[id]="'customer_address_modal_close_btn'"
+			(click)="modal.dismiss('Cross click')"
+		>
+			<i class="ri-close-line"></i>
+		</app-button>
+	</div>
+	<div class="modal-body">
+		<form
+			class="theme-form theme-form-2"
+			[formGroup]="addressForm"
+			(ngSubmit)="submitAddress()"
+		>
+			<div class="d-flex align-items-center mb-3 gap-2">
+				<label
+					class="form-label-title fw-semibold mb-0"
+					for="address_label"
+				>
+					{{ 'title' | transloco }}
+				</label>
+				<input
+					class="form-control"
+					id="address_label"
+					type="text"
+					style="max-width: 280px"
+					placeholder="{{ 'untitled_address' | transloco }}"
+					formControlName="label"
+				/>
+			</div>
+
+			<div class="row g-3">
+				<div class="col-md-6 col-12">
+					<label
+						class="form-label-title"
+						for="address_fullName"
+					>
+						{{ 'name' | transloco }}
+						<span class="theme-color required-dot ms-2">*</span>
+					</label>
+					<input
+						class="form-control"
+						id="address_fullName"
+						type="text"
+						placeholder="{{ 'enter_full_name' | transloco }}"
+						formControlName="fullName"
+					/>
+					@if (addressForm.controls['fullName'].touched &&
+					addressForm.controls['fullName'].errors?.['required']) {
+					<div class="invalid-feedback d-block">{{ 'name_is_required' | transloco }}</div>
+					}
+				</div>
+				<div class="col-md-6 col-12">
+					<app-form-fields
+						[label]="'phone'"
+						[for]="'address_phone'"
+						[required]="true"
+						[class]="'mb-0'"
+						[labelClass]="'form-label-title'"
+						[gridClass]="'col-12'"
+					>
+						@if (isBrowser) {
+						<select2
+							class="custom-select intl-tel-input"
+							[templates]="{ option: template, templateSelection: template }"
+							[data]="codes"
+							formControlName="country_code"
+						>
+							<ng-template
+								#template
+								let-data="data"
+							>
+								<div class="country">
+									<div class="flag-box">
+										<div class="iti-flag {{ data?.class }}"></div>
+									</div>
+									<span class="dial-code">{{ data.code }}</span>
+								</div>
+							</ng-template>
+						</select2>
+						}
+						<input
+							type="number"
+							class="form-control intl-input-padding"
+							id="address_phone"
+							formControlName="phone"
+							placeholder="{{ 'enter_phone' | transloco }}"
+						/>
+						@if (addressForm.controls['phone'].touched &&
+						addressForm.controls['phone'].errors?.['required']) {
+						<div class="invalid-feedback d-block">{{ 'phone_number_is_required' | transloco }}</div>
+						} @if (addressForm.controls['phone'].touched &&
+						addressForm.controls['phone'].errors?.['pattern']) {
+						<div class="invalid-feedback d-block">{{ 'phone_number_is_invalid' | transloco }}</div>
+						}
+					</app-form-fields>
+				</div>
+				<div class="col-12">
+					<label
+						class="form-label-title"
+						for="address_line1"
+					>
+						{{ 'address' | transloco }}
+						<span class="theme-color required-dot ms-2">*</span>
+					</label>
+					<input
+						class="form-control"
+						id="address_line1"
+						type="text"
+						placeholder="{{ 'enter_address' | transloco }}"
+						formControlName="line1"
+					/>
+					@if (addressForm.controls['line1'].touched && addressForm.controls['line1'].errors?.['required']) {
+					<div class="invalid-feedback d-block">{{ 'street_is_required' | transloco }}</div>
+					}
+				</div>
+				<div class="col-12">
+					<label
+						class="form-label-title"
+						for="address_line2"
+					>
+						{{ 'address' | transloco }} 2
+					</label>
+					<input
+						class="form-control"
+						id="address_line2"
+						type="text"
+						placeholder="{{ 'enter_address' | transloco }}"
+						formControlName="line2"
+					/>
+				</div>
+				<div class="col-md-6 col-12">
+					<label
+						class="form-label-title"
+						for="address_city"
+					>
+						{{ 'city' | transloco }}
+						<span class="theme-color required-dot ms-2">*</span>
+					</label>
+					<input
+						class="form-control"
+						id="address_city"
+						type="text"
+						placeholder="{{ 'enter_city' | transloco }}"
+						formControlName="city"
+					/>
+					@if (addressForm.controls['city'].touched && addressForm.controls['city'].errors?.['required']) {
+					<div class="invalid-feedback d-block">{{ 'city_is_required' | transloco }}</div>
+					}
+				</div>
+				<div class="col-md-6 col-12">
+					<label
+						class="form-label-title"
+						for="address_country_id"
+					>
+						{{ 'country' | transloco }}
+						<span class="theme-color required-dot ms-2">*</span>
+					</label>
+					@if (isBrowser) {
+					<select2
+						class="custom-select"
+						id="address_country_id"
+						[data]="(countries$ | async)?.length ? (countries$ | async) : []"
+						[placeholder]="'select_country' | transloco"
+						formControlName="country_id"
+						(update)="modalCountryChange($event)"
+						resettable
+					/>
+					} @if (addressForm.controls['country_id'].touched &&
+					addressForm.controls['country_id'].errors?.['required']) {
+					<div class="invalid-feedback d-block">{{ 'country_is_required' | transloco }}</div>
+					}
+				</div>
+				<div class="col-md-6 col-12">
+					<label
+						class="form-label-title"
+						for="address_state_id"
+					>
+						{{ 'state' | transloco }}
+						<span class="theme-color required-dot ms-2">*</span>
+					</label>
+					@if (isBrowser) {
+					<select2
+						class="custom-select"
+						id="address_state_id"
+						[data]="(modalStates$ | async)?.length ? (modalStates$ | async) : []"
+						[placeholder]="'select_state' | transloco"
+						formControlName="state_id"
+						resettable
+					/>
+					} @if (addressForm.controls['state_id'].touched &&
+					addressForm.controls['state_id'].errors?.['required']) {
+					<div class="invalid-feedback d-block">{{ 'state_is_required' | transloco }}</div>
+					}
+				</div>
+				<div class="col-md-6 col-12">
+					<label
+						class="form-label-title"
+						for="address_postalCode"
+					>
+						{{ 'pincode' | transloco }}
+						<span class="theme-color required-dot ms-2">*</span>
+					</label>
+					<input
+						class="form-control"
+						id="address_postalCode"
+						type="text"
+						placeholder="{{ 'enter_pincode' | transloco }}"
+						formControlName="postalCode"
+					/>
+					@if (addressForm.controls['postalCode'].touched &&
+					addressForm.controls['postalCode'].errors?.['required']) {
+					<div class="invalid-feedback d-block">{{ 'pincode_is_required' | transloco }}</div>
+					}
+				</div>
+			</div>
+
+			<div class="d-flex align-items-center justify-content-end mt-4 flex-wrap gap-3">
+				<div class="d-flex align-items-center mb-0 gap-2">
+					<label class="switch mb-0">
+						<input
+							type="checkbox"
+							id="address_is_default"
+							formControlName="isDefault"
+						/>
+						<span class="switch-state"></span>
+					</label>
+					<em class="fst-italic mb-0">{{ 'mark_as_default' | transloco }}</em>
+				</div>
+				<app-button
+					[class]="'btn-md fw-bold btn btn-secondary'"
+					[type]="'button'"
+					[spinner]="false"
+					[id]="'cancel_customer_address_btn'"
+					(click)="modal.dismiss('Cancel')"
+				>
+					{{ 'Cancel' | transloco }}
+				</app-button>
+				<app-button
+					[class]="'btn-theme btn-md fw-bold btn'"
+					[id]="'submit_customer_address_btn'"
+				>
+					{{ 'add' | transloco }}
+				</app-button>
+			</div>
+		</form>
+	</div>
+</ng-template>
+}

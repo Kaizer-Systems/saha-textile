@@ -1,32 +1,74 @@
 import type { Product } from '@saha-textile/contracts';
-import type { Paginated, ProductFilter, ProductRepository } from '@saha-textile/core-domain';
+import {
+	type CatalogAudience,
+	type Paginated,
+	type ProductFilter,
+	type ProductRepository,
+	resolveProductStatusFilter,
+	type CategorySummary,
+} from '@saha-textile/core-domain';
 
 import { toProduct } from '../mappers';
 import { type ProductDoc, ProductModel } from '../models/index';
+import { sessionFrom } from '../transaction-manager';
 
 function escapeRegex(input: string): string {
 	return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * Builds the status clause for a query. The audience defaults to `public`, so a
+ * caller that forgets to pass one gets the storefront-visible set — hiding data, never
+ * leaking it. An empty allow-list (a public caller asking for `draft`) is expressed as
+ * `$in: []`, which matches nothing.
+ */
+function statusClause(audience: CatalogAudience | undefined, requested?: Product['status']) {
+	const statuses = resolveProductStatusFilter(audience ?? 'public', requested);
+	return statuses === undefined ? {} : { status: { $in: statuses } };
+}
+
 export class MongoProductRepository implements ProductRepository {
-	async findById(id: string): Promise<Product | null> {
-		const doc = await ProductModel.findById(id).lean<ProductDoc>().exec();
+	async findById(id: string, audience: CatalogAudience = 'public'): Promise<Product | null> {
+		const doc = await ProductModel.findOne({ _id: id, ...statusClause(audience) })
+			.lean<ProductDoc>()
+			.exec();
 		return doc ? toProduct(doc) : null;
 	}
 
-	async findBySlug(slug: string): Promise<Product | null> {
-		const doc = await ProductModel.findOne({ slug }).lean<ProductDoc>().exec();
+	async findBySlug(slug: string, audience: CatalogAudience = 'public'): Promise<Product | null> {
+		const doc = await ProductModel.findOne({ slug, ...statusClause(audience) })
+			.lean<ProductDoc>()
+			.exec();
 		return doc ? toProduct(doc) : null;
+	}
+
+	async categorySummaries(): Promise<CategorySummary[]> {
+		const rows = await ProductModel.aggregate<{ _id: string; count: number; cover: string | null }>([
+			{ $match: statusClause('public') },
+			{ $sort: { _id: 1 } },
+			{ $unwind: '$categoryIds' },
+			{
+				$group: {
+					_id: '$categoryIds',
+					count: { $sum: 1 },
+					cover: { $first: { $arrayElemAt: ['$media.gallery', 0] } },
+				},
+			},
+		]).exec();
+		return rows.map((row) => ({ categoryId: row._id, productCount: row.count, coverAssetId: row.cover ?? null }));
 	}
 
 	async list(filter: ProductFilter): Promise<Paginated<Product>> {
-		const query: Record<string, unknown> = {};
+		const query: Record<string, unknown> = { ...statusClause(filter.audience, filter.status) };
 		if (filter.categoryId) query.categoryIds = filter.categoryId;
+		if (filter.categoryIds && filter.categoryIds.length > 0) query.categoryIds = { $in: filter.categoryIds };
+		if (filter.featured) query.featured = true;
+		if (filter.onSale) query.onSale = true;
+		if (filter.insight) query.insightBadges = filter.insight;
 		if (filter.tag) query.tags = filter.tag;
-		if (filter.status) query.status = filter.status;
 		if (filter.search) {
 			const rx = new RegExp(escapeRegex(filter.search), 'i');
-			query.$or = [{ slug: rx }, { sku: rx }, { tags: rx }];
+			query.$or = [{ slug: rx }, { sku: rx }, { 'title.en': rx }, { tags: rx }];
 		}
 
 		const page = filter.page && filter.page > 0 ? filter.page : 1;
@@ -34,7 +76,8 @@ export class MongoProductRepository implements ProductRepository {
 
 		const [docs, total] = await Promise.all([
 			ProductModel.find(query)
-				.sort({ createdAt: -1 })
+				// `_id` breaks ties. Rows sharing a date otherwise repeat across pages and others go missing.
+				.sort({ createdAt: -1, _id: 1 })
 				.skip((page - 1) * pageSize)
 				.limit(pageSize)
 				.lean<ProductDoc[]>()
@@ -50,7 +93,7 @@ export class MongoProductRepository implements ProductRepository {
 		const doc = await ProductModel.findByIdAndUpdate(
 			id,
 			{ $set: rest },
-			{ upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
+			{ upsert: true, returnDocument: 'after', setDefaultsOnInsert: true, session: sessionFrom() },
 		)
 			.lean<ProductDoc>()
 			.exec();
@@ -59,5 +102,24 @@ export class MongoProductRepository implements ProductRepository {
 
 	async deleteById(id: string): Promise<void> {
 		await ProductModel.deleteOne({ _id: id }).exec();
+	}
+
+	async setInsightBadges(input: { bestseller: readonly string[]; trending: readonly string[] }): Promise<void> {
+		await ProductModel.updateMany(
+			{ insightBadges: { $in: ['bestseller', 'trending'] } },
+			{ $set: { insightBadges: [] } },
+		).exec();
+		for (const badge of ['bestseller', 'trending'] as const) {
+			if (input[badge].length === 0) continue;
+			await ProductModel.updateMany(
+				{ _id: { $in: input[badge] } },
+				{ $addToSet: { insightBadges: badge } },
+			).exec();
+		}
+	}
+
+	async listPublicSlugs(): Promise<string[]> {
+		const docs = await ProductModel.find({ status: 'live' }).select('slug').lean<Array<{ slug: string }>>().exec();
+		return docs.map((doc) => doc.slug);
 	}
 }

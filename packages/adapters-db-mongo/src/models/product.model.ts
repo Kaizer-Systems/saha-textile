@@ -1,17 +1,21 @@
+import { ProductStatus, ProductType } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 export interface ProductDoc {
 	_id: string;
-	type: 'simple' | 'variable';
+	type: 'simple' | 'variable' | 'bundle';
 	sku: string;
 	title: Record<string, string>;
 	slug: string;
 	description?: Record<string, string>;
+	shortDescription?: Record<string, string>;
+	imageMode?: 'simple' | 'compound';
 	categoryIds: string[];
 	tags: string[];
 	basePriceINR: number;
-	media: { gallery: string[] };
+	media: { gallery: string[]; compound?: unknown[]; altOverrides?: Record<string, unknown> };
 	attributes: unknown[];
+	optionGroups?: unknown[];
 	variations: unknown[];
 	addons: unknown[];
 	relatedProductIds: string[];
@@ -19,7 +23,37 @@ export interface ProductDoc {
 	upsellIds: string[];
 	seo?: Record<string, unknown>;
 	ratingsSummary: { avg: number; count: number };
-	status: 'draft' | 'published' | 'archived';
+	/** Owner lock: only `live` is storefront-queryable. See core-domain product-visibility. */
+	status: 'draft' | 'live' | 'disabled' | 'discontinued';
+	lifecycle?: {
+		liveAt?: Date | null;
+		disabledAt?: Date | null;
+		discontinuedAt?: Date | null;
+		richDataPurgedAt?: Date | null;
+		statusReason?: string | null;
+	};
+	madeToOrder?: boolean;
+	estimatedDeliveryText?: Record<string, string> | null;
+	lowStockThreshold?: number | null;
+	lifetimeUnitsReceived?: number;
+	featured?: boolean;
+	insightBadges?: Array<'bestseller' | 'trending'>;
+	pinnedBadges?: string[];
+	hiddenBadges?: string[];
+	backInStockAt?: Date | null;
+	replacementTarget?: { kind: 'product' | 'collection'; path: string } | null;
+	addonTemplateCode?: string | null;
+	sareeLengthM?: number | null;
+	blousePieceM?: number | null;
+	addonPriceINR?: number | null;
+	onSale?: boolean;
+	shippingDefaults?: {
+		weightGrams: number | null;
+		lengthCm: number | null;
+		widthCm: number | null;
+		heightCm: number | null;
+	} | null;
+	hsnCode?: string | null;
 	createdAt?: Date;
 	updatedAt?: Date;
 }
@@ -27,16 +61,19 @@ export interface ProductDoc {
 const ProductSchema = new Schema<ProductDoc>(
 	{
 		_id: { type: String, required: true },
-		type: { type: String, enum: ['simple', 'variable'], required: true },
+		type: { type: String, enum: ProductType.options, required: true },
 		sku: { type: String, required: true },
 		title: { type: Schema.Types.Mixed, required: true },
 		slug: { type: String, required: true },
 		description: { type: Schema.Types.Mixed },
+		shortDescription: { type: Schema.Types.Mixed, default: {} },
+		imageMode: { type: String, enum: ['simple', 'compound'], default: 'simple' },
 		categoryIds: { type: [String], default: [] },
 		tags: { type: [String], default: [] },
 		basePriceINR: { type: Number, required: true },
 		media: { type: Schema.Types.Mixed, default: { gallery: [] } },
 		attributes: { type: [Schema.Types.Mixed], default: [] },
+		optionGroups: { type: [Schema.Types.Mixed], default: [] },
 		variations: { type: [Schema.Types.Mixed], default: [] },
 		addons: { type: [Schema.Types.Mixed], default: [] },
 		relatedProductIds: { type: [String], default: [] },
@@ -44,9 +81,27 @@ const ProductSchema = new Schema<ProductDoc>(
 		upsellIds: { type: [String], default: [] },
 		seo: { type: Schema.Types.Mixed },
 		ratingsSummary: { type: Schema.Types.Mixed, default: { avg: 0, count: 0 } },
-		status: { type: String, enum: ['draft', 'published', 'archived'], default: 'draft' },
+		status: { type: String, enum: ProductStatus.options, default: 'draft' },
+		lifecycle: { type: Schema.Types.Mixed, default: {} },
+		madeToOrder: { type: Boolean, default: false },
+		estimatedDeliveryText: { type: Schema.Types.Mixed, default: null },
+		lowStockThreshold: { type: Number, default: null },
+		lifetimeUnitsReceived: { type: Number, default: 0 },
+		featured: { type: Boolean, default: false },
+		insightBadges: { type: [String], default: [] },
+		pinnedBadges: { type: [String], default: [] },
+		hiddenBadges: { type: [String], default: [] },
+		backInStockAt: { type: Date, default: null },
+		replacementTarget: { type: Schema.Types.Mixed, default: null },
+		addonTemplateCode: { type: String, default: null },
+		sareeLengthM: { type: Number, default: null },
+		blousePieceM: { type: Number, default: null },
+		addonPriceINR: { type: Number, default: null },
+		onSale: { type: Boolean, default: false },
+		shippingDefaults: { type: Schema.Types.Mixed, default: null },
+		hsnCode: { type: String, default: null },
 	},
-	{ timestamps: true },
+	{ collection: 'products', timestamps: true },
 );
 
 ProductSchema.index({ slug: 1 }, { unique: true });
@@ -54,6 +109,14 @@ ProductSchema.index({ sku: 1 }, { unique: true });
 ProductSchema.index({ categoryIds: 1 });
 ProductSchema.index({ tags: 1 });
 ProductSchema.index({ status: 1 });
+// Public listings always filter on status first, then narrow by category/recency.
+ProductSchema.index({ status: 1, categoryIds: 1, createdAt: -1 });
+ProductSchema.index({ status: 1, featured: 1, createdAt: -1 });
+ProductSchema.index({ status: 1, onSale: 1, createdAt: -1 });
+ProductSchema.index({ status: 1, insightBadges: 1, createdAt: -1 });
+ProductSchema.index({ status: 1, slug: 1 });
+// Retention job: find discontinued products whose window has elapsed and that still hold rich data.
+ProductSchema.index({ status: 1, 'lifecycle.discontinuedAt': 1 });
 
 export const ProductModel: Model<ProductDoc> =
 	(models.Product as Model<ProductDoc>) ?? model<ProductDoc>('Product', ProductSchema);

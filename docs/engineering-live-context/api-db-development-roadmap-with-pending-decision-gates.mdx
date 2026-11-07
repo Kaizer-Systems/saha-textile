@@ -1,0 +1,454 @@
+---
+title: 'API and Database Development Roadmap'
+description: 'Canonical A-J backend delivery plan, decision gates, and verification contract.'
+audience: [backend, operator, agent]
+document_role: canonical
+last_verified: 2026-08-09
+search_keywords: 'api database roadmap backend chunks gates verification deployment'
+---
+
+# API + DB Development Roadmap
+
+**Status:** Detailed A–J backend delivery plan.
+
+**Current progress:** `project-progress.mdx`
+
+**Open owner choices:** `pending-decisions.mdx`
+
+**Last reconciled:** 2026-08-09
+
+## Authority order
+
+1. `AGENTS.md`
+2. `owner-decisions-log.mdx`
+3. tested code/runtime and current contracts/models
+4. this roadmap
+5. auth/catalog/technical references
+6. `pending-decisions.mdx` for unanswered choices only
+
+## Required reading
+
+### Every API/DB session
+
+1. `AGENTS.md`
+2. `docs/engineering-live-context/project-progress.mdx`
+3. this roadmap
+4. `docs/engineering-live-context/owner-decisions-log.mdx`
+5. `docs/engineering-live-context/api-db-local-environment-bootstrap.mdx`
+6. `docs/engineering-live-context/environment-variables.mdx`
+
+### Add by domain
+
+| Domain                                | Reference                                               |
+| ------------------------------------- | ------------------------------------------------------- |
+| Auth, cookies, OTP, PIN, privacy      | `codex-auth-architecture-db-and-request-plan.mdx`       |
+| Catalog, collections, search, content | `codex-catalog-db-architecture-assessment-and-plan.mdx` |
+| Whole-system invariants               | `saha-textile-technical-knowledgebase.mdx`              |
+| Whole-product sequencing              | `execution-roadmap.mdx`                                 |
+| Unanswered policy                     | `pending-decisions.mdx`                                 |
+
+## Markers
+
+| Marker       | Meaning                                                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| **SAFE NOW** | Current locks are sufficient for final implementation.                                                              |
+| **SEAM NOW** | Build contracts, ports, indexes, stubs, and reversible policy boundaries; final behavior waits for an owner answer. |
+| **BLOCKED**  | Do not allocate irreversible identifiers or ship final policy behavior.                                             |
+
+## Implementation gates
+
+| Gate                                                           | Decision source                    | Blocks                                                                   |
+| -------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------ |
+| **G-NUM-ORDER** — order/tax-invoice numbering                  | `DEC-NUMBERING`                    | Issuing customer-facing order/tax-invoice numbers and final invoice PDFs |
+| **G-NUM-PI** — purchase-invoice numbering                      | `DEC-NUMBERING`                    | Posting purchase invoices with final business numbers                    |
+| **G-CORE-CONTRACTS** — core/contracts direction — **RESOLVED** | owner decision: type-only coupling | Nothing; ESLint-enforced and unblocked                                   |
+| **G-I18N-ROUTES** — canonical locale URL law — **RESOLVED**    | owner decision 2026-10-31          | Nothing; every route locale-prefixed, rules in the owner log             |
+| **G-IMG-PX** — image dimensions and ingest limits              | `DEC-IMG-PX`, `DEC-MEDIA-CAPS`     | **Resolved 2026-11-02** — owner log § Media                              |
+
+Other open decisions block only their own final policy engine. Reversible schemas, contracts, ports, and seams may proceed.
+
+## Cross-cutting invariants
+
+- Angular never connects to MongoDB, Meilisearch, Spaces, or providers directly.
+- `packages/contracts` owns shared Zod shapes.
+- Core may consume contract shapes through `import type` only and stays runtime-pure.
+- MongoDB is self-hosted 8.3 with replica-set transactions.
+- MongoDB is source of truth; Meilisearch is derived and rebuildable.
+- Canonical price is INR and final money math runs server-side.
+- Browser auth uses cookies plus CSRF; no browser token happy path.
+- Object-level authorization is mandatory.
+- Admin mutations are audited.
+- Provider integrations remain behind ports.
+- Production providers wait for approved credentials and current official documentation.
+
+---
+
+### Chunk A — Delta, dependency pins, and evidence baseline
+
+**Marker:** SAFE NOW
+**Progress authority:** `project-progress.mdx`
+
+#### Deliver
+
+- Inventory current modules, contracts, ports, collections, routes, tests, and stale assumptions.
+- Pin exact compatible dependency versions.
+- Record missing/refactor/keep decisions without implementing later chunks.
+
+#### Definition of Done
+
+- Delta is reflected in the roadmap/progress—not a permanent separate report.
+- Dependency pins are exact and lockfile-consistent.
+- Existing lint/typecheck/test/naming gates pass.
+
+---
+
+### Chunk B — Contracts and core ports
+
+**Marker:** SAFE NOW
+
+#### Deliver
+
+- Shared primitives: IDs, money, localized content, pagination, errors, audit metadata.
+- Auth/session/consent/notification/audit contracts.
+- Catalog/search/cart/checkout/order/inventory/pricing/content/media contracts.
+- Repository, transaction, search, storage, auth, notification, payment, shipping, FX, YouTube, and video-transcode ports.
+- Strict public/admin/internal response separation.
+
+#### Definition of Done
+
+- Representative valid/invalid Zod tests.
+- No secrets/internal fields in public DTOs.
+- Core runtime output has zero contracts/Zod imports.
+- Boundary lint is green.
+
+---
+
+### Chunk C — API platform, config, and replica-set proof
+
+**Marker:** SAFE NOW
+
+#### Deliver
+
+- Fastify request ID, redacted logging, global validation/error mapping.
+- proxy/client-IP handling and strict CORS.
+- security headers, cookies, CSRF foundation, rate-limit foundations.
+- `/health/live` and `/health/ready`.
+- local/CI MongoDB replica-set transaction profile.
+- config validation aligned with `environment-variables.mdx`.
+
+#### Definition of Done
+
+- API boot and health probes pass.
+- Readiness reflects required dependencies.
+- Transaction commit/rollback tests run against a real replica set.
+- No Atlas/Brevo/`blr1`/browser-secret config remains active.
+
+---
+
+### Chunk D — Identity, sessions, OTP, OAuth, PIN, privacy
+
+**Marker:** SAFE NOW for locked mechanics; SEAM NOW for optional future methods
+
+#### Pass boundary
+
+- **D1 — auth persistence (done):** tested session, OTP, OAuth-state, reset-token,
+  verification-token, admin-invite, role, user-role-assignment, and auth-rate-limit
+  repositories/models; secret fields excluded by default; atomic consume/rotation,
+  rate-limit and unique-active-assignment mechanics proven against rs0. Explicit
+  physical names now align every target-backed model with the locked camelCase Schema
+  Nebula graph. `authRateLimits` remains intentional current adapter evidence outside
+  that graph. Persistence capability alone does not prove HTTP adoption.
+- **D2 — session lifecycle (done):** issue, refresh, revoke, refresh-reuse family
+  revocation, session-bound CSRF, and storefront/admin audience guards are implemented
+  and live-proven through httpOnly cookies.
+- **D3 — storefront auth endpoints (done):** register, password login, logout, me,
+  refresh, password reset, email-verification completion/resend, and OTP use generic
+  anti-enumeration responses. Google and Facebook sign-up/sign-in were proven end to end
+  with the owner's real provider accounts on 2026-10-25.
+- **D4 — admin auth (done):** password/PIN login, password recovery, PIN
+  setup/lockout, invite create/list/revoke/acceptance, HTTP quick-resume, audience guards,
+  and permission-version invalidation exist. The closed **103-code** permission registry,
+  active role-assignment resolution, deny-by-default role/permission/user-authority routes,
+  no-delegation-above-self, last-administrator protection, audited offboarding, and the
+  operator-only first-administrator bootstrap are implemented and negative-tested. Account
+  Security at `/account` (PIN/password/sessions) and the 15-minute idle soft-lock
+  (`IdleLockService` + `idle-lock-modal` + `POST /auth/admin/resume` with PIN or password)
+  are live. A real browser has proven password login, cookie-only reload, refresh recovery,
+  role grant/revoke, permission invalidation, last-admin refusal, and logout. On 2026-11-03
+  the admin accept-invitation page (`/auth/accept-invite`) was added and a real browser proved
+  invite → acceptance (weak PIN refused without spending the invite) → PIN sign-in → wrong
+  PIN → five-failure lock refusing even the right PIN → password sign-in clearing the lock.
+  Route migration is complete: `check-route-authorization` (in `pnpm lint`) holds every route
+  to a permission or a written self-service justification.
+- **D5 — consent, privacy, and ownership (done for this chunk):** consent history, export/erase
+  seams, order-read BOLA, cart ownership/`st_guest` proof, and order-create cart
+  ownership/adoption are implemented. Cart routes remain `@Public()` for guest
+  add-to-cart but enforce Principal/guest-token proof in the service boundary. Guest→user
+  merge, pending intents, and checkout idempotency remain Chunk G.
+
+**Chunk D is done (2026-11-03, owner-confirmed).** Guest→user cart merge, pending intents
+and checkout idempotency are carried by Chunk G, which owns the cart and checkout they act on.
+The 2026-08-11 reassessment that kept D partial predates the real-account OAuth run, the
+accept-invitation page and the browser PIN proof.
+
+#### Deliver
+
+- Cookie session issue/refresh/revoke/reuse detection.
+- CSRF enforcement.
+- storefront/admin audience guards.
+- password, reset, email verification, OTP challenges.
+- Google/Facebook backend verification.
+- admin invite, PIN setup/login/lockout/quick-resume.
+- consent state/events and privacy export/delete seams.
+- role, permission-version, token-version, and ownership authorization.
+
+#### Definition of Done
+
+- Auth/session/CSRF/audience/ownership tests pass.
+- Tokens never appear in browser response bodies or logs.
+- Generic anti-enumeration behavior is tested.
+- Admin and storefront sessions cannot cross audiences.
+
+---
+
+### Chunk E — Mongo persistence and transaction boundary
+
+**Marker:** SAFE NOW for stable collections; SEAM NOW for open policies
+
+#### Deliver
+
+- Models, indexes, validators, mappers, repositories, and unit-of-work support.
+- TTL/unique/partial/compound indexes with explicit purpose.
+- persistence-to-domain mapping without Mongoose leakage.
+- idempotency and outbox patterns for multi-fact workflows.
+
+#### Definition of Done
+
+- Model/index tests cover uniqueness, TTL, public visibility, and ownership lookups.
+- Transaction rollback/retry tests prove atomic workflows.
+- Mapper tests prove response-safe domain shapes.
+
+---
+
+### Chunk F — Catalog, content, and search
+
+**Marker:** SAFE NOW
+
+#### Deliver
+
+- categories, placements, products, variants, option definitions/terms.
+- add-ons, bundles, relations, groups, facets, SEO routes/redirects.
+- FAQ, product Q&A, reviews, media metadata.
+- Meilisearch adapter, projection, outbox, dictionary, suggestions, no-result analytics.
+
+#### Definition of Done
+
+- Public reads enforce published visibility.
+- Admin CRUD is authorized/audited.
+- Search sync is idempotent and rebuildable.
+- Listing responses include configured facet counts/ranges.
+- Locale routes follow the 2026-10-31 locale URL law (G-I18N-ROUTES resolved): every route locale-prefixed, same slug across locales at launch.
+
+---
+
+### Chunk G — Cart, pricing, checkout, orders, payments, shipping
+
+**Marker:** SAFE NOW for seams; SEAM NOW for open policies; BLOCKED for numbering
+
+#### Deliver
+
+- guest/user carts, guest-token authorization, merge, pending intents.
+- pricing, promotion, tax, FX, shipping quote, order snapshot.
+- inventory reservation/release boundaries.
+- order/payment/shipment state and idempotent transaction orchestration.
+- payment/shipping ports plus stubs/sandbox adapters.
+
+#### Open policy sources
+
+- `DEC-TAX-HSN`
+- `DEC-SHIPPING`
+- `DEC-PROMO-STACK`
+- `DEC-STOCK-RESERVE`
+- `DEC-BACKORDER`
+- `DEC-ORDER-SNAPSHOT`
+- `DEC-ADDRESS`
+- `DEC-RETURNS`
+- `DEC-PAYPAL-FX`
+- `DEC-INR-GATEWAY-TIMING`
+
+#### Definition of Done
+
+- Pricing is server-authoritative.
+- Ownership/BOLA tests cover carts/orders.
+- Place-order transaction is idempotent and rollback-tested.
+- Provider callbacks are authenticated and idempotent.
+- **BLOCKED:** G-NUM-ORDER for final customer-facing numbers.
+
+#### Open items carried into this chunk
+
+- **Admin CRM customer → Orders tab paging (found 2026-11-03).**
+  `AdminCustomersService.listOrders` fetches ONE page from `OrderRepository.listByUser`, then
+  applies the search and date filters in memory and reports `total`/`totalPages` from that
+  filtered page. Past the first page, totals, search and date filters are wrong. Fix by moving
+  `q`/`startDate`/`endDate` into the repository query (index-backed) and returning the
+  repository's own count. Owner: do it here, when real orders exist to page through.
+
+---
+
+### Chunk H — Inventory, purchasing, analytics, and reporting
+
+**Marker:** SAFE NOW for ledger/FIFO/aggregates; BLOCKED for PI numbering
+
+#### Deliver
+
+- inventory ledger and typed provenance.
+- FIFO cost layers.
+- purchase-invoice draft/post/void compensation.
+- analytics rollups, insight sets, badge assignments, report snapshots.
+
+#### Definition of Done
+
+- Stock/cost mutations are atomic and audited.
+- FIFO tests cover partial allocation and reversal.
+- Analytics read aggregates rather than unbounded raw scans.
+- **BLOCKED:** G-NUM-PI for final purchase-invoice numbers.
+
+---
+
+### Chunk I — Media and notifications
+
+**Marker:** SAFE NOW for metadata/ports/jobs; SEAM NOW for providers; BLOCKED for image enforcement
+
+#### Deliver
+
+- media asset lifecycle, presign, usage, orphan cleanup.
+- image/video job contracts and worker seams.
+- notification settings/templates/outbox/callbacks/usage controls.
+- MSG91 adapter only after approved credentials/templates.
+
+#### Definition of Done
+
+- Direct upload and asset ownership/security tests pass.
+- Workers are idempotent and failure-recoverable.
+- Notification kill-switch and consent tests pass.
+- G-IMG-PX resolved 2026-11-02: sizes and caps follow owner log § Media.
+
+#### Media pipeline status — 2026-11-03
+
+**Standalone image pipeline: done and verified locally.** Contracts, core policy, size planner,
+Mongo and Spaces adapters, sharp/BullMQ/Cloudflare/YouTube adapters, the API (admin library,
+presign/finalize/status, roles, banners, YouTube settings, review photos and moderation), the
+worker and its schedulers (GC, YouTube refresh, stale-role reprocess), the mode-3 Docker stack,
+admin library/banner/review/YouTube screens, and the storefront gallery, banner `<picture>`,
+review-photo upload and 3:4 cards. The demo catalogue now shows real photos through
+`seed:local-catalog-photos` (local only).
+
+**Waiting on other chunks — do not build here:**
+
+| Item                                                                                      | Owner chunk                     | Why it waits                                                                                                            |
+| ----------------------------------------------------------------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Product/category/blog media fields; catalog reads return `ResolvedImage`                  | Milestone 4 (catalog)           | No product/category documents exist in Mongo yet; the storefront reads vendor demo JSON.                                |
+| `servesAsPrimary` → `share` (1200×630 blur) and `feed_square` derivatives; PDP `og:image` | Milestone 4 + 8                 | Primary-only roles render when an asset becomes a product's primary image — an attach that the catalog owns.            |
+| Variant swatch images (`swatch_image`, `swatch_image_v2`) in `variant-attributes`         | Milestone 4                     | Swatch images belong to option terms/variants, which the catalog chunk defines.                                         |
+| Category tile and icon images (`category_icon`)                                           | Milestone 4                     | Same: category documents and their media fields.                                                                        |
+| Review photos end to end (customer submits on a real purchase)                            | Milestone 4 + 6                 | Upload and moderation work; submission needs real products and delivered orders.                                        |
+| Email thumbnails (`email_thumb`, JPEG)                                                    | Milestone 7 (notifications)     | Rendered by order/notification templates (MSG91), not built yet.                                                        |
+| Newsletter subscribe endpoint behind the popup                                            | Milestone 7 (marketing consent) | Needs consent storage and the marketing kill-switch.                                                                    |
+| PWA runtime caching of CDN images                                                         | Milestone 8 (PWA)               | Belongs with the offline-catalogue cache budget and strategy.                                                           |
+| Live GC on the dev/prod buckets (`MEDIA_GC_LIVE`)                                         | Milestone 10 (ops)              | Dry-run until owner references are complete — today's demo-catalogue photos have no Mongo owner and would be collected. |
+| CDN purge on delete                                                                       | Milestone 10 (ops)              | Needs a DigitalOcean API token per environment (not the Spaces key).                                                    |
+
+**Open MSG91 work (2026-11-07):** no MSG91 template exists yet. The email matrix in
+`codex-msg91-console-setup-plan-prompt.mdx` § 6 now includes `back_in_stock` and
+`product_question_answered`; both are email-only, so neither needs DLT. Create them with the rest
+of that matrix. Until then those two sends record `lastError` and the alert stays pending. The
+reply to `leopard@msg91.com` is still unsent and is the owner's to send.
+
+**Optional, owner's call (not blocking):** a hero text-colour option for banners with text, and
+whether unapproved review photos should appear in the admin media library at all (today they
+show as a placeholder tile; the review page shows them via signed URLs).
+
+---
+
+### Chunk J — OpenAPI, portal, deployment, and production proof
+
+**Marker:** SAFE NOW for documentation/automation; credentials required for provider E2E
+
+#### Deliver
+
+- complete OpenAPI with security/error examples.
+- protected Scalar integration.
+- deterministic database catalogue when stable.
+- Docker builds, runtime config rendering, deploy/rollback/backup/restore scripts.
+- readiness-gated promotion, monitoring, alerts, incident/runbooks.
+
+#### Definition of Done
+
+- Portal validator, TypeScript, build, links, provenance, and routes pass.
+- Deployment uses commit-SHA images.
+- Backup restore is drilled.
+- Staging E2E covers auth, checkout, webhook, notification, and rollback paths.
+- Human approval precedes production promotion.
+
+#### Current developer-portal status — 2026-07-26
+
+- **DONE:** canonical Engineering Live Context, dynamic LIVE/search indexing, shared theme, one Angular Storybook, scoped TypeDoc, and the verified persistent composite local runner.
+- **BLOCKED — Scalar/Test Request:** OpenAPI completeness, deterministic CI generation, security/error/idempotency semantics, drift tests, and an approved non-production target are not complete.
+- **BLOCKED — database catalogue:** persistence schemas, nested validators/indexes, mappings, migrations, and deterministic sanitized examples are not stable enough for authoritative generation.
+- **BLOCKED — deployment:** `DEC-PORTAL-PRIVATE-ACCESS` is unanswered; whole-host default-deny identity and origin protection must be implemented and probed before promotion.
+- **PARTIAL — follow-up debt:** repository-level pnpm/peer/formatting issues and Storybook bundle/shell warnings remain tracked separately from the completed local portal foundation.
+
+#### Open items carried into this chunk (2026-11-07)
+
+- **Every deploy runs `pnpm --filter @saha-textile/api release:prepare` after the API image
+  starts.** It applies the Meilisearch settings and rebuilds the index from Mongo, and it is safe
+  to repeat. Until it has run, listings answer from Mongo automatically, so nothing breaks, but
+  typeahead search answers 503. Set `MEILISEARCH_HOST`, `MEILISEARCH_API_KEY` and, on a shared
+  server, `MEILISEARCH_INDEX` first.
+- **The first deployed database is built from seeds, plus hand entry.** No deployed database
+  exists yet, so the local data edits of 2026-11-06 need no migration. Real products are entered
+  by hand in admin. Do not run the demo catalogue seed on staging or production.
+- **Deep review of all URL work before the DNS switch.** The redirect rows, the 410 rules and the
+  old-address logic were designed as if WordPress were a working shop. It is not: nobody maintains
+  or uses it, and its products (`pure-silk-handloom-ikkat-saree-s1` to `s8`) are the owner's test
+  entries. Review every row and rule again once Search Console has data. The owner added the
+  `sahatextile.com` domain property on 2026-11-07 with the shop's own Google account; it was still
+  processing that day. Facts found on 2026-11-07: no noindex or nofollow anywhere, so demo pages are
+  open to Google; 72 addresses in the sitemaps, including 26 `?porto_builder=` theme pages; Google
+  also holds addresses outside them, such as `/product-tag/wedding-collection/` and
+  `www.sahatextile.com/Handloom_Cotton?page=2` from an older site, which now answers 404. Use
+  Search Console's indexed list and clicks to decide each address. Nothing here takes effect before
+  launch. The 33 unresolved addresses and the first proposal are in the 2026-11-07 notes.
+
+#### Open items carried into this chunk (2026-11-03)
+
+- **Prove deployment hardening on a real environment.** The API and worker refuse to start
+  when a strict deployment (`NODE_ENV=production`, `DEPLOY_ENV` not `local`) has unsafe settings
+  (`apps/api/src/config/deployment-hardening.ts`; rules in `environment-variables.mdx`). It is
+  proven locally by unit tests, by spawning the real entrypoints, and by the mode-3 stack still
+  booting as `DEPLOY_ENV=local`. Still owed on staging: (1) the deploy scripts set
+  `DEPLOY_ENV=staging`/`production` and every required variable; (2) a staging boot logs
+  `Strict deployment (staging): hardening checks passed.` and then connects to the
+  authenticated Mongo, password-protected Redis and the staging Spaces bucket; (3) one
+  deliberate negative deploy (e.g. `CSRF_SECRET` removed) fails with exit 1 and the listed
+  problem, and the orchestrator marks it failed rather than restart-looping; (4) the container
+  log shows no secret value. Tick these in `project-progress.mdx` when done.
+- **Lint warning clean-up — deferred by the owner (2026-11-03).** About 95 warnings (52
+  `no-explicit-any` in admin, 36 `import/order`, a few unused variables and one `no-console`),
+  almost all in kept Fastkart demo files that later chunks rewrite. Fixing them now would be
+  throwaway work. Do it as a late pre-launch pass, then raise `--max-warnings` to 0 in CI so
+  they cannot return.
+
+## Owner lock order
+
+Recommended order for the fastest reduction of blocked behavior:
+
+1. `DEC-NUMBERING`
+2. `DEC-STOCK-RESERVE`
+3. `DEC-BACKORDER`
+4. `DEC-TAX-HSN`
+5. `DEC-SHIPPING`
+6. `DEC-RETURNS`
+7. `DEC-I18N-ROUTES`
+8. ~~`DEC-IMG-PX`~~ — resolved 2026-11-02
+9. ~~`DEC-MEDIA-CAPS`~~ — resolved 2026-11-02

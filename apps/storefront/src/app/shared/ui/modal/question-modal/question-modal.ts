@@ -7,6 +7,8 @@ import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { IQuestionAnswers } from '@data-access/interfaces/questions-answers.interface';
+import { QuestionsAnswersService } from '@data-access/services/questions-answers.service';
+import { AuthStore } from '@core/state/auth.store';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 
 import { Button } from '../../button/button';
@@ -21,6 +23,8 @@ import { Button } from '../../button/button';
 export class QuestionModal {
 	private modalService = inject(NgbModal);
 	private platformId = inject<Object>(PLATFORM_ID);
+	private questionsApi = inject(QuestionsAnswersService);
+	private authStore = inject(AuthStore);
 
 	readonly QuestionModal = viewChild<TemplateRef<string>>('questionModal');
 
@@ -29,6 +33,9 @@ export class QuestionModal {
 
 	public product: IProduct;
 	public question = new FormControl();
+	public askerName = new FormControl('');
+	public askerEmail = new FormControl('');
+	public stayAnonymous = new FormControl(false);
 	public type = 'crate';
 	public id: number;
 
@@ -40,6 +47,8 @@ export class QuestionModal {
 				this.question.patchValue(qna.question);
 			}
 			this.product = product;
+			this.askerName.patchValue(this.authStore.email() ? this.authStore.email().split('@')[0] : '');
+			this.askerEmail.patchValue(this.authStore.email());
 			this.modalOpen = true;
 			this.modalService
 				.open(this.QuestionModal(), {
@@ -69,14 +78,18 @@ export class QuestionModal {
 	}
 
 	submit() {
-		const data = {
-			question: this.question.value,
-			product_id: this.product.id,
-			answer: '',
-		};
-		if (data.question || data.product_id) {
-			// Ask/edit question has no backend yet — was Send/UpdateQuestionAnswersAction.
-			this.modalService.dismissAll();
-		}
+		const question = String(this.question.value ?? '').trim();
+		const askerName = String(this.askerName.value ?? '').trim();
+		const askerEmail = String(this.askerEmail.value ?? '').trim();
+		if (!question || !askerName || !askerEmail || !this.product?.slug) return;
+		this.questionsApi
+			.ask({
+				productSlug: this.product.slug,
+				question,
+				askerName,
+				askerEmail,
+				isAnonymous: this.stayAnonymous.value === true,
+			})
+			.subscribe(() => this.modalService.dismissAll());
 	}
 }

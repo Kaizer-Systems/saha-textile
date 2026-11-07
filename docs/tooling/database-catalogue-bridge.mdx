@@ -1,0 +1,33 @@
+---
+title: MongoDB Catalogue
+slug: /tools/database-catalogue
+description: Entry page for the generated MongoDB catalogue.
+status: scaffolded
+audience: [beginner, backend, operator]
+last_verified: '2026-11-07'
+wide: true
+hide_table_of_contents: true
+source_of_truth:
+    - packages/adapters-db-mongo/src/models
+    - packages/adapters-db-mongo/scripts/generate-catalogue.ts
+    - apps/developer-portal/src/components/ChildToolGateway
+    - scripts/serve-developer-portal-persistent.mjs
+---
+
+import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
+
+<ChildToolGateway
+	toolName="MongoDB catalogue"
+	target="/database/catalogue/"
+	eyebrow="Schema Observatory · Field reference"
+	title="Inspect the persistence models."
+	description="Read fields, defaults, enums, select rules and indexes for every Mongoose model, generated from source without touching a database."
+	launchLabel="Open Schema Observatory"
+	symbol="schema-observatory"
+/>
+
+This page opens the database catalogue, generated from the Mongoose models. It covers every model, with fields, defaults, enums, select rules and indexes.
+
+Excluded-by-default fields, such as hashes and tokens, are named but left out of synthetic examples. `Mixed` fields are marked as temporary. Generation never connects to a database.
+
+For relationships and planned collections, use [Schema Nebula](/database/schema-nebula).

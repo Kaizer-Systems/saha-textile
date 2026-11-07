@@ -1,9 +1,9 @@
 ---
 title: Backend Path
-description: Onboarding route for API, contracts, domain and adapter work.
+description: Reading path for API, contract, domain and adapter work.
 status: scaffolded
 audience: [backend]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/api/src
     - packages/core-domain/src
@@ -13,13 +13,19 @@ source_of_truth:
 
 # Backend path
 
-Use this path for NestJS controllers, contracts, domain use cases, persistence, authentication or an external integration adapter.
+Use this path for NestJS controllers, contracts, domain logic, persistence, authentication or an external integration adapter.
 
-## Current implementation snapshot
+## Backend components
 
-The repository already contains an API composition root, health/auth/catalog/cart/order/currency/promotion modules, OpenAPI generation, domain ports and a Mongo adapter with models, indexes and repositories. This is a working scaffold and partial implementation—not a finished production API.
+The backend is a NestJS API on Fastify. It includes:
 
-The human-facing Scalar route has not been integrated into the portal. Generated database catalogue pages have not been built. The existing API documentation UI is transitional and is marked deprecated by the portal decision.
+- Authentication for storefront customers and admin operators, using cookie sessions.
+- Catalogue, search, cart, order, currency and promotion modules.
+- Media, banner, YouTube and review modules, with a BullMQ worker for background jobs.
+- Privacy, consent and audit modules.
+- A hexagonal core in `packages/core-domain`, with adapters for MongoDB, Spaces, MSG91, Cloudflare and other providers.
+
+Payment, shipping and exchange-rate adapters are not part of the API. The ports exist in the core domain.
 
 ## Read in this order
 
@@ -30,26 +36,23 @@ The human-facing Scalar route has not been integrated into the portal. Generated
 5. [Contracts and validation](/backend/contracts-and-validation)
 6. [Core domain and ports](/backend/core-domain-and-ports)
 7. [Security and identity](/backend/security-and-identity)
-8. [Current API route inventory](/api/route-inventory)
-9. [Current Mongo adapter map](/database/current-adapter-map), if persistence is involved
-10. The exact shared contract, use case, port, controller and adapter source paths
+8. [API route inventory](/api/route-inventory)
+9. [Mongo adapter map](/database/current-adapter-map), if persistence is involved
+10. The shared contract, port, controller and adapter source files
 
 ## Required dependency direction
 
 ```text
-HTTP controller
-→ application/domain port
-→ domain use case
-← adapter implementation bound at composition time
+Applications and adapters → packages/core-domain ← packages/contracts (types only)
 ```
 
-The domain package must not import NestJS, Mongoose, provider SDKs or UI types. Persistence models must be mapped at the adapter boundary and must not leak into contracts.
+The core domain must not import NestJS, Mongoose, provider SDKs, adapters or UI types. It may reference contract shapes through `import type` only. Value imports from contracts are forbidden. Persistence models are mapped at the adapter boundary and never appear in public contracts.
 
-## Before handing off
+## Completion checklist
 
-- Validate every external boundary with zod.
-- Add authorization checks at object level, not only route level.
-- Update the OpenAPI contract and examples.
-- Test the use case and adapter behaviour.
+- Validate every external input with zod.
+- Enforce authorization on the object, not only on the route.
+- Update the OpenAPI output and examples.
+- Test the use case and the adapter.
 - Document collections, indexes, side effects, retries and failure modes.
-- Prove liveness/readiness, negative authorization, idempotency and transaction behavior where applicable.
+- Cover negative authorization, idempotency and transactions where they apply.

@@ -23,11 +23,13 @@
 				[recursionKey]="'subcategories'"
 				[type]="type()"
 				[categoryType]="categoryType()"
+				[locale]="locale()"
 			/>
 		</app-page-wrapper>
 	</div>
 	<div class="col-xl-8 p-0">
 		<app-form-category
+			(localeChange)="locale.set($event)"
 			[categories]="(category$ | async)?.data"
 			[type]="type()"
 			[categoryType]="categoryType()"

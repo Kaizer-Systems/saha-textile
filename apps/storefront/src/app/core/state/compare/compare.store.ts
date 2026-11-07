@@ -40,7 +40,7 @@ export const CompareActions = createActionGroup({
 		'Get Compare': emptyProps(),
 		'Load Compare Success': props<{ items: IProduct[]; total: number }>(),
 		'Add To Compare': props<{ payload: Params }>(),
-		'Delete Compare': props<{ id: number }>(),
+		'Delete Compare': props<{ id: number | string }>(),
 	},
 });
 
@@ -51,7 +51,7 @@ export const compareReducer = createReducer(
 		total,
 	})),
 	on(CompareActions.deleteCompare, (state, { id }) => ({
-		...compareAdapter.removeOne(id, state),
+		...(typeof id === 'string' ? compareAdapter.removeOne(id, state) : compareAdapter.removeOne(id, state)),
 		total: state.total - 1,
 	})),
 );
@@ -112,7 +112,7 @@ export class CompareFacade {
 	addToCompare(payload: Params): void {
 		this.store.dispatch(CompareActions.addToCompare({ payload }));
 	}
-	deleteCompare(id: number): void {
+	deleteCompare(id: number | string): void {
 		this.store.dispatch(CompareActions.deleteCompare({ id }));
 	}
 }

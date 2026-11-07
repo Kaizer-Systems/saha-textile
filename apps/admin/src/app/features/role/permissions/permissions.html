@@ -1,7 +1,7 @@
 <div class="row g-sm-4 g-2">
 	<div class="col-xl-12">
 		<div class="row roles-form">
-			@for (module of modules$ | async; track module; let i = $index) {
+			@for (module of modules$ | async; track module.id; let i = $index) {
 			<div class="col-12">
 				<ul>
 					<li>{{ module?.name.replace('_', ' ') | titlecase }}</li>
@@ -10,13 +10,13 @@
 							<input
 								class="checkbox_animated form-check-input checkall"
 								type="checkbox"
-								id="role-{{module.id}}"
+								id="role-{{ module.id }}"
 								[checked]="module.isChecked"
 								(change)="checkUncheckAll($event, module)"
 							/>
 							<label
 								class="form-check-label form-label m-0"
-								for="role-{{module.id}}"
+								for="role-{{ module.id }}"
 							>
 								{{ 'All' }}
 							</label>
@@ -30,9 +30,17 @@
 								[name]="permission.name"
 								type="checkbox"
 								id="{{ permission.permission_id }}"
-								[checked]="selectedPermission.includes(+permission.permission_id) || permission.isChecked ? true : false"
+								[checked]="
+									selectedPermission.includes('' + permission.permission_id) || permission.isChecked
+										? true
+										: false
+								"
 								[value]="permission.permission_id"
-								(change)="permission.name === 'index' && permission.isChecked ? checkIndex($event, module) : onPermissionChecked($event, module)"
+								(change)="
+									permission.name === 'index' && permission.isChecked
+										? checkIndex($event, module)
+										: onPermissionChecked($event, module)
+								"
 							/>
 							<label
 								class="form-check-label form-label m-0"

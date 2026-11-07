@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { I18nString, Id, SeoMeta, Slug } from './common';
+import { I18nString, Id, LocalizedText, SeoMeta, Slug } from './common';
 
 /**
  * Taxonomy node. Arbitrary nesting via adjacency-list + materialized path.
@@ -20,10 +20,12 @@ export const Category = z.object({
 	/** Distinguishes curated collections (e.g. "Wedding") from strict taxonomy. */
 	isBannerCollection: z.boolean().default(false),
 	displayOrder: z.number().int().default(0),
+	description: LocalizedText.default({}),
 	seo: SeoMeta.optional(),
 	media: z
 		.object({
 			bannerImage: z.string().optional(),
+			iconImage: z.string().optional(),
 		})
 		.optional(),
 });

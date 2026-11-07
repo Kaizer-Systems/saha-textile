@@ -16,4 +16,6 @@ export class ProductBox {
 	readonly style = input<string>('horizontal');
 	readonly class = input<string>();
 	readonly close = input<boolean>(false);
+	/** `high` is the one large image. `low` is the rest of the first row. `lazy` is below it. */
+	readonly imagePriority = input<'high' | 'low' | 'lazy'>('lazy');
 }

@@ -1,0 +1,34 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'customers'"
+>
+	<div
+		class="d-flex flex-wrap gap-2"
+		button
+	>
+		<select2
+			*hasPermission="'customer.restore'"
+			class="custom-select min-w-cls"
+			[data]="viewOptions()"
+			[value]="view()"
+			[placeholder]="'filter_by' | transloco"
+			(update)="onViewChange($event)"
+		/>
+		<a
+			*hasPermission="'customer.create'"
+			[routerLink]="['/customer/create']"
+			class="align-items-center btn btn-theme"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'add_customer' | transloco }}
+		</a>
+	</div>
+	<app-table
+		[tableConfig]="tableConfig()"
+		[hasCheckbox]="false"
+		[deleteMessage]="'customer_deleted_message'"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="edit($event)"
+		(action)="onActionClicked($event)"
+	/>
+</app-page-wrapper>

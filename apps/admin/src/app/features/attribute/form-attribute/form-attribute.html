@@ -3,6 +3,13 @@
 	[formGroup]="form"
 	(ngSubmit)="submit()"
 >
+	<app-language-switch
+		[locales]="locales"
+		[active]="fields.locale()"
+		[gaps]="gaps()"
+		(changed)="switchLanguage($event)"
+		(gapChosen)="openLanguageGap($event)"
+	/>
 	<app-form-fields
 		[label]="'attribute_name' | transloco"
 		[for]="'name'"
@@ -11,88 +18,146 @@
 		<input
 			class="form-control"
 			type="text"
+			id="name"
 			placeholder="{{ 'attribute_name' | transloco }}"
 			name="name"
 			formControlName="name"
+			(change)="refreshMissing()"
 		/>
-		@if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
+		@if (fields.source('name'); as text) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: text } }}</p>
+		} @if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
 		<div class="invalid-feedback">{{ 'attribute_name_is_required' | transloco }}</div>
 		}
+	</app-form-fields>
+	<app-form-fields
+		[label]="'attribute_default_role'"
+		[for]="'default_role'"
+		[required]="true"
+	>
+		<select2
+			class="custom-select d-block"
+			id="default_role"
+			[data]="roleOptions()"
+			formControlName="default_role"
+		/>
 	</app-form-fields>
 	<app-form-fields
 		[label]="'style'"
 		[for]="'style'"
 		[required]="true"
 	>
-		@if(isBrowser) {
 		<select2
 			class="custom-select d-block"
-			[data]="variantStyle?.length ? variantStyle : []"
+			id="style"
+			[data]="styleOptions"
 			[placeholder]="'select_style' | transloco"
 			formControlName="style"
-			noResultMessage="{{ 'no_data_found' | transloco }}"
 		/>
-		}
-		<p class="help-text">
-			{{ '*Choose the desired shape style, such as rectangle or circle. Based on your selection, variant options
-			will be displayed on product page.' }}
-		</p>
 	</app-form-fields>
-	<ng-container formArrayName="value">
-		@for (val of valueControl.controls; track val; let index = $index) {
-		<app-form-fields
-			[label]="'value' | transloco"
-			[for]="'value'"
-			[required]="true"
-			formGroupName="{{ index }}"
-		>
-			<div class="row g-sm-4 g-3 align-items-center">
-				<div [class]="form.get('style').value === 'color' ? 'col-sm-7 col-9': 'col-sm-10 col-9'">
+	<app-form-fields
+		[label]="'use_as_filter'"
+		[for]="'use_as_filter'"
+	>
+		<div class="d-flex align-items-center gap-3">
+			<div class="form-check form-switch ps-0">
+				<label class="switch">
 					<input
-						class="form-control"
-						type="text"
-						formControlName="value"
-						placeholder="{{ 'attribute_value' | transloco }}"
+						type="checkbox"
+						id="use_as_filter"
+						formControlName="use_as_filter"
 					/>
-					@if (val.get('value').touched && val.get('value').errors?.['required']) {
-					<div class="invalid-feedback">{{ 'value_is_required' | transloco }}</div>
-					}
-				</div>
-				@if (form.get('style').value === 'color') {
-				<div class="col-sm-3 col-9">
-					<div class="color-box">
-						<input
-							class="form-control"
-							type="color"
-							formControlName="hex_color"
-						/>
-						<h6>{{ val.get('hex_color')?.value }}</h6>
-					</div>
-				</div>
-				} @if (valueControl?.controls?.length > 1) {
-				<div class="col-sm-2 col-3">
-					<a
-						class="invalid-feedback h-100 w-100 cursor-pointer"
-						(click)="remove(index)"
-					>
-						{{ 'remove' | transloco }}
-					</a>
-				</div>
+					<span class="switch-state"></span>
+				</label>
+			</div>
+			<div class="flex-grow-1">
+				<select2
+					class="custom-select d-block"
+					[data]="facetStyleOptions"
+					formControlName="facet_style"
+				/>
+			</div>
+		</div>
+	</app-form-fields>
+	@for (term of terms(); track $index; let index = $index) {
+	<app-form-fields
+		[label]="'value' | transloco"
+		[for]="'value_' + index"
+		[required]="true"
+	>
+		<div class="row g-2 align-items-center">
+			@if (isColour) {
+			<div class="col-1">
+				<input
+					class="form-control form-control-color w-100"
+					type="color"
+					[disabled]="!onSourceLanguage"
+					[value]="term.hex ?? '#000000'"
+					(change)="setHex(index, $any($event.target).value)"
+				/>
+			</div>
+			}
+			<div class="col">
+				<input
+					class="form-control"
+					[class.is-invalid]="!term.label[fields.locale()]"
+					[id]="'value_' + index"
+					[value]="term.label[fields.locale()] ?? ''"
+					[placeholder]="'attribute_value' | transloco"
+					(change)="setName(index, term, $any($event.target).value)"
+				/>
+				@if (!onSourceLanguage) {
+				<p class="help-text mb-0">{{ 'english_guide' | transloco: { text: guide(term) } }}</p>
 				}
 			</div>
-		</app-form-fields>
-		}
-	</ng-container>
+			@if (onSourceLanguage) {
+			<div class="col-3">
+				<input
+					class="form-control"
+					[value]="term.slug"
+					placeholder="slug"
+					(change)="setSlug(index, $any($event.target).value)"
+				/>
+			</div>
+			}
+			<div class="col-3">
+				<input
+					class="form-control"
+					[value]="term.aliases.join(', ')"
+					[placeholder]="'search_words' | transloco"
+					(change)="setAliases(index, $any($event.target).value)"
+				/>
+			</div>
+			<div class="col-auto">
+				@if (term.code) {
+				<a
+					class="cursor-pointer"
+					(click)="toggleHidden(index, term)"
+				>
+					{{ (term.hidden ? 'show' : 'hide') | transloco }}
+				</a>
+				} @else {
+				<a
+					class="invalid-feedback d-block cursor-pointer"
+					(click)="remove(index)"
+				>
+					{{ 'remove' | transloco }}
+				</a>
+				}
+			</div>
+		</div>
+	</app-form-fields>
+	}
 	<div class="row">
 		<div class="offset-sm-2 col-2">
-			<app-button
-				[id]="'add_value_btn'"
-				[class]="'btn btn-theme'"
-				[spinner]="false"
-				(click)="add($event)"
+			<button
+				type="button"
+				id="add_value_btn"
+				class="btn btn-theme"
+				(click)="add()"
 			>
 				{{ 'add_value' | transloco }}
-			</app-button>
+			</button>
 		</div>
 	</div>
 	<div class="border-up-class mt-4">

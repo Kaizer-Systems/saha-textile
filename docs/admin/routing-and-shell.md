@@ -1,9 +1,10 @@
 ---
 title: Admin Routing and Shell
+wide: true
 description: How admin guards, layouts, lazy routes, and feature families compose the operator workspace.
 status: implemented
 audience: [beginner, frontend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/admin/src/app/app.routes.ts
     - apps/admin/src/app/routes/content.routes.ts
@@ -14,7 +15,7 @@ source_of_truth:
 
 # Admin routing and shell
 
-The admin uses an explicit Angular route graph. The root configuration delegates to two layout shells and lazy-loads feature-specific route arrays.
+This page explains how an admin URL reaches a feature. The application uses an explicit Angular route graph: the root configuration delegates to two layout shells and lazy-loads feature route arrays.
 
 ## Root route order
 
@@ -37,22 +38,23 @@ Route order matters because both shells use an empty parent path. The feature ch
 
 ### Content shell
 
-Used for the operator workspace. It composes navigation, header, content outlet, footer, loader, and page-level wrapper behavior.
+Used for the operator workspace. It composes navigation, header, content outlet, footer, loader, and page-level wrapper behaviour.
 
 ### Full shell
 
 Used for full-page experiences such as authentication and errors where admin navigation should not appear.
 
-## Guard behavior today
+## Guard behaviour
 
-`AuthGuard.canActivate()` checks whether `AuthStore` has an access token. On success it initializes menu badges and account details; otherwise it returns a redirect tree for `/auth/login`.
+`AuthGuard` checks the sanitized session state resolved from `/auth/admin/me`. The `/auth` family stays unguarded so login, PIN login and recovery are reachable; both back-office shells use `canActivate` and `canActivateChild`, redirecting anonymous navigation to `/auth/login`. On success the content shell loads the menu badges. Permissions are already in `AuthStore` from `/auth/admin/me`.
 
-Important limitations:
+Keep these rules in mind:
 
-- The stored token is a demo value.
-- `canActivateChild()` currently returns `true` without permission checks.
-- Loading account permissions is not the same as enforcing authorization.
-- Browser persistence of the demo session is transitional behavior.
+- The guard is presentation and navigation policy, not API authorization.
+- `canActivateChild()` inherits authentication from the protected shell; it does not check permissions.
+- `PermissionGuard` reads `route.data.permission`, which may be one code or a list that must all be held, and sends a missing grant to `/error/403`.
+- Permissions held in the store shape UI only. The API rechecks audience, role, declared permission and current versions.
+- After 15 minutes of inactivity the shell opens the idle lock, which accepts the PIN when configured, otherwise the password, through `POST /auth/admin/resume`.
 
 ## Feature route convention
 
@@ -64,7 +66,7 @@ Most feature families follow a recognizable shape:
 | `/feature/create`   | Creation form          |
 | `/feature/edit/:id` | Edit form              |
 
-Orders add `/order/details/:id`, `/order/create`, and `/order/checkout`. Blog adds category and tag management routes. Shipping and category currently expose narrower route subsets.
+Orders add `/order/details/:id`, `/order/create` and `/order/checkout`. Blog adds category and tag routes. Shipping and category have fewer routes.
 
 ## Add a route safely
 
@@ -76,7 +78,7 @@ Orders add `/order/details/:id`, `/order/create`, and `/order/checkout`. Blog ad
 6. Verify deep-link refresh, browser back/forward, invalid IDs, and missing permissions.
 7. Keep data loading in query/service layers rather than a route file.
 
-## Future authorization shape
+## Authorization flow
 
 ```mermaid
 sequenceDiagram
@@ -99,4 +101,4 @@ sequenceDiagram
     end
 ```
 
-The UI permission layer is an affordance. The API policy is the security boundary.
+The UI permission layer is a convenience. The API enforces access.

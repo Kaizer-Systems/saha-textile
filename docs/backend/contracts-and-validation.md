@@ -1,65 +1,71 @@
 ---
 title: Contracts, Validation, and Serialization
+wide: true
 description: Zod contract ownership, request parsing, persistence mapping, response safety, and evolution rules.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
     - packages/contracts/src
     - packages/contracts/test
     - apps/api/src/common/zod-validation.pipe.ts
     - apps/api/src
     - packages/adapters-db-mongo/src/mappers.ts
-    - project-context/angular-context/codex-api-app-build-instructional-prompt.md
+    - packages/adapters-db-mongo/src/models/auth-session.model.ts
+    - packages/adapters-db-mongo/src/models/auth-challenge.model.ts
+    - packages/adapters-db-mongo/src/models/auth-token.model.ts
+    - packages/adapters-db-mongo/src/models/auth-rate-limit.model.ts
+    - packages/adapters-db-mongo/src/repositories/auth.repository.ts
+    - packages/adapters-db-mongo/test/auth-persistence.test.ts
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
 ---
 
 # Contracts, validation, and serialization
 
-`packages/contracts` is the shared runtime boundary. Its zod schemas can validate unknown data and infer TypeScript types from the same source.
+`packages/contracts` holds zod schemas shared by the API and both Angular applications. A schema validates unknown data at runtime and provides its TypeScript type.
 
-That does **not** mean one schema should represent every layer.
+One schema does not represent every layer.
 
 ## Four different shapes
 
-| Shape                | Purpose                    |              May contain secrets? | Current state                                  |
-| -------------------- | -------------------------- | --------------------------------: | ---------------------------------------------- |
-| Request DTO          | What one operation accepts |                                No | Many controller-local schemas                  |
-| Domain input/entity  | Business-meaningful value  |          No infrastructure fields | Partial contract/core overlap                  |
-| Persistence document | How an adapter stores data |    Sometimes internal-only values | Mongoose interfaces/models exist               |
-| Response DTO         | What one actor may receive | Never secret/internal-only fields | Mostly public entity schemas returned directly |
+| Shape                | Purpose                    |     May contain secrets? | Location             |
+| -------------------- | -------------------------- | -----------------------: | -------------------- |
+| Request contract     | What one operation accepts |                       No | `packages/contracts` |
+| Domain entity        | Business-meaningful value  | No infrastructure fields | Contracts and core   |
+| Persistence document | How an adapter stores data | Sometimes, internal only | Mongoose interfaces  |
+| Response contract    | What one actor may receive |                    Never | `packages/contracts` |
 
-An API request for account registration should not accept `role`, `emailVerified`, `passwordHash`, or internal flags merely because those fields exist somewhere in a user model.
+A signup-finalisation request must not accept `role`, verified identifiers, provider subjects, credential hashes or internal flags merely because those fields exist in storage. The final values come from server-held proof.
 
-## Current contract families
+## Contract families
 
-| File           | Principal schemas                                          | Notable invariant                              |
-| -------------- | ---------------------------------------------------------- | ---------------------------------------------- |
-| `common.ts`    | locale, localized text, id, slug, INR price, datetime, SEO | canonical price is non-negative INR            |
-| `category.ts`  | category                                                   | current shape models parent/path/ancestors     |
-| `product.ts`   | product, variation, attribute, add-on                      | variation price/stock and configurable add-ons |
-| `promotion.ts` | promotion and conditions                                   | discount scope/type and timing                 |
-| `cart.ts`      | cart and cart line                                         | user/guest identifiers and selected add-ons    |
-| `order.ts`     | order, lines, status events                                | INR and paid-currency snapshots                |
-| `currency.ts`  | currency                                                   | INR-derived rate and PayPal fee inputs         |
-| `shipping.ts`  | quote                                                      | value and currency always travel together      |
-| `user.ts`      | public user, identities, addresses, consent                | password hash intentionally absent             |
+| Files                                                                                  | Principal schemas                                                 | Key rule                                                     |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------ |
+| `common.ts`                                                                            | Locales, localized text, ids, money, pagination, errors           | The locale set is configuration; failures share one envelope |
+| `catalog.ts`, `category.ts`, `category-placement.ts`                                   | Category lifecycle, placements, facets, SEO                       | One canonical placement per category                         |
+| `catalog-read.ts`, `catalog-write.ts`                                                  | Storefront cards, listings and product pages; admin product forms | Read models carry resolved prices and images                 |
+| `attribute.ts`, `product.ts`, `product-options.ts`, `product-variant.ts`               | Attributes, lifecycle, option groups, variants                    | Only `live` is public; an option's role sets its behaviour   |
+| `product-bundle.ts`, `product-relation.ts`, `product-insight-set.ts`, `stock-alert.ts` | Bundles, relations, weekly insights, stock alerts                 | Bundles do not nest                                          |
+| `seo-redirect.ts`, `seo-route.ts`                                                      | Redirect rows and head data                                       | One hop from any old address                                 |
+| `media.ts`, `content-block.ts`, `site-settings.ts`                                     | Assets, size roles, banners, typed settings                       | Clients receive resolved image URLs                          |
+| `inventory.ts`, `content.ts`                                                           | Ledger and FIFO layers; FAQ, questions, reviews                   | Review photos stay private until approved                    |
+| `cart.ts`, `order.ts`, `currency.ts`, `shipping.ts`, `promotion.ts`                    | Commerce aggregates, snapshots, quotes                            | Canonical product price is INR                               |
+| `customer.ts`, `admin-user.ts`, `admin-role.ts`, `admin-customer.ts`                   | Customer and operator profiles, CRM requests                      | Credential material is absent                                |
+| `session.ts`, `auth.ts`, `signup.ts`, `oauth.ts`, `admin-auth.ts`                      | Sessions and sign-in flows                                        | No reusable token in any body                                |
+| `storefront-account.ts`                                                                | Own profile, address, session and contact requests                | Customer identity comes from the session                     |
+| `auth-internal.ts`                                                                     | OTP, OAuth, reset, invite and rate-limit storage                  | Codes and tokens are represented by hashes                   |
+| `consent.ts`, `audit.ts`, `notification.ts`                                            | Consent, audit, notification settings and outbox                  | Records are append-only                                      |
+| `permission.ts`, `role.ts`                                                             | Permission registry, roles, assignments                           | Grants normalize against the registry                        |
 
-These schemas are useful scaffolds. They do not yet express the complete locked catalogue, auth/session, consent, checkout, payment, inventory, notification, reporting, audit, or database model.
+`AttributeValueType`, `ProductRelationTargetType`, `AuthRateLimitScope` and `AuthRateLimitAction` are named exports, so Mongoose schemas derive their allowed values from them instead of copying lists.
 
-## Boundary validation today
+## Boundary validation
 
-`ZodValidationPipe` correctly treats input as `unknown`, calls `safeParse`, and returns a sanitized `400` issue list. Current limitations:
+`ZodValidationPipe` treats input as `unknown`, calls `safeParse`, and returns a sanitized `400` issue list. `pnpm check:route-contracts` rejects unnamed controller-local request shapes.
 
-- controllers define many body schemas locally;
-- path/query values are often plain strings or manually converted numbers;
-- there is no shared request/response schema naming system;
-- OpenAPI does not automatically receive complete zod shape information from the local pipe;
-- returned values are not consistently parsed through explicit response schemas;
-- Mongoose `Mixed` nested arrays are cast by mappers without runtime revalidation.
+## Naming convention
 
-## Target naming convention
-
-Use bounded-context and operation names rather than one overloaded entity name.
+Use module and operation names, not one overloaded entity name.
 
 ```text
 CatalogProductResponse
@@ -88,32 +94,30 @@ flowchart LR
     Context --> UseCase["Application use case input"]
 ```
 
-- Apply defaults only when the API truly owns the default.
-- Coerce only deliberate transport representations such as numeric query strings.
-- Reject unknown privileged fields or strip them by an explicit, tested policy.
-- Do not trust a TypeScript type assertion; it performs no runtime validation.
-- Validate provider/webhook payloads even after signature verification.
+- Apply defaults only when the API owns the default.
+- Coerce only deliberate transport forms, such as numeric query strings.
+- Reject or strip unknown privileged fields by an explicit, tested rule.
+- A TypeScript type assertion performs no runtime validation.
+- Validate provider and webhook payloads even after signature verification.
 
 ## Response serialization rule
 
-Response contracts are an allowlist. They should make it impossible to leak:
+Response contracts are an allowlist. They must make it impossible to leak:
 
-- password/PIN/OTP hashes;
-- refresh-token/session hashes;
-- provider credentials or raw provider payloads;
-- internal fraud/risk flags;
-- cost layers and supplier terms to customers;
-- admin-only notes;
-- hidden product states or embargoed content;
-- full audit metadata not appropriate to the actor.
+- Password, PIN or OTP hashes.
+- Refresh-token or session hashes.
+- Provider credentials or raw provider payloads.
+- Internal fraud or risk flags.
+- Cost layers and supplier terms.
+- Admin-only notes.
+- Hidden product states.
+- Audit metadata not meant for the actor.
 
-Storefront, admin, and internal-job responses may legitimately use different DTOs for the same underlying aggregate.
+Storefront, admin and internal job responses may use different contracts for the same aggregate.
 
 ## Persistence mapping
 
-Current mappers translate `_id` and `Date` values into contract-friendly ids and ISO strings. That is the correct adapter responsibility. The risk is that several nested fields use `unknown[]`/`Mixed` and then cast directly to contract types.
-
-Target mapping sequence:
+Mappers translate `_id` and `Date` values into contract-friendly ids and ISO strings. The preferred sequence is:
 
 ```text
 Mongoose lean document
@@ -123,42 +127,45 @@ Mongoose lean document
 → actor-specific response parse
 ```
 
-Parsing twice is acceptable at trust boundaries when it prevents persistence drift or response leakage. Optimize only after measuring and preserving the guarantees.
+Parsing twice is acceptable at trust boundaries when it prevents drift or leakage.
 
 ## Evolution rules
 
 ### Backward-compatible changes
 
 - Add an optional response field.
-- Add an optional request field with server-owned default.
-- Add a new enum only when every consumer handles unknown/future values safely.
-- Add a new endpoint without changing existing semantics.
+- Add an optional request field with a server-owned default.
+- Add an enum value only when every consumer handles unknown values safely.
+- Add an endpoint without changing existing behaviour.
 
 ### Potentially breaking changes
 
-- Rename/remove a field.
-- Change nullability, unit, currency, or timestamp meaning.
+- Rename or remove a field.
+- Change nullability, unit, currency or timestamp meaning.
 - Make an optional request field required.
-- Change pagination, sorting, error, idempotency, or authorization behavior.
-- Reuse an enum value for a different lifecycle meaning.
+- Change pagination, sorting, error, idempotency or authorization behaviour.
+- Reuse an enum value for a different meaning.
 
-When a breaking change is required, version the HTTP contract or execute a coordinated migration. Do not silently reinterpret persisted data.
+For a breaking change, version the HTTP contract or run a coordinated migration. Do not reinterpret stored data silently.
 
 ## Contract test matrix
 
 For every important schema, test:
 
-1. minimum valid input;
-2. full valid input;
-3. defaults;
-4. each boundary value;
-5. malformed primitives;
-6. missing required fields;
-7. invalid enum/identifier/date/currency;
-8. privileged or secret-field injection;
-9. safe serialization;
-10. compatibility fixture from the previous released contract.
+1. Minimum valid input.
+2. Full valid input.
+3. Defaults.
+4. Each boundary value.
+5. Malformed primitives.
+6. Missing required fields.
+7. Invalid enum, identifier, date or currency.
+8. Privileged or secret-field injection.
+9. Safe serialization.
+10. A fixture from the previous released contract.
 
-## Current reconciliation warning
+## Limitations
 
-The current product/category contracts reflect an earlier simplified model. Locked architecture now requires multi-placement categories, semantic option roles, true bundles, richer inventory and search-facet configuration. Do not extend the simplified shape ad hoc; implement the relevant backend phase from the reconciled catalogue plan.
+- Some path and query values are parsed manually.
+- Many responses are returned without being parsed through a response schema.
+- Mongoose `Mixed` arrays are cast without runtime validation.
+- A contract does not mean a route uses it. Inventory, bundle and several other families have no HTTP workflow.

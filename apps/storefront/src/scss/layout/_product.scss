@@ -853,7 +853,11 @@
 		}
 
 		img {
-			@include pseudowh($width: 100%, $height: calc(100px + (140 - 100) * ((100vw - 320px) / (1920 - 320))));
+			// 3:4 product photos (owner log § Media): the box takes the photo's shape instead of a
+			// fixed height, so a saree is never cropped; `contain` letterboxes any off-shape image.
+			width: 100%;
+			height: auto;
+			aspect-ratio: 3 / 4;
 			object-fit: contain;
 			transition:
 				opacity 0.5s,
@@ -3218,8 +3222,10 @@
 			background-color: #f8f8f8;
 
 			img {
-				height: calc(180px + (250 - 180) * ((100vw - 320px) / (1920 - 320)));
-				object-fit: cover;
+				// 3:4 like every product card; `contain`, not `cover`, so nothing is cropped.
+				height: auto;
+				aspect-ratio: 3 / 4;
+				object-fit: contain;
 				margin-bottom: 20px;
 			}
 		}
@@ -3378,4 +3384,37 @@
 
 .fire-img {
 	width: 15px;
+}
+
+// The stock fact on a card: one small chip on the photo's corner, so the promotion flag keeps the
+// top of the photo to itself. Colours keep white text at WCAG AA contrast.
+.stock-chip {
+	position: absolute;
+	left: 8px;
+	bottom: 8px;
+	z-index: 2;
+	padding: 4px 9px;
+	border-radius: 4px;
+	color: $white;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1.2;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+
+	body.rtl & {
+		left: unset;
+		right: 8px;
+	}
+
+	&.stock-chip-critical {
+		background-color: #c92a2a;
+	}
+
+	&.stock-chip-low {
+		background-color: #b45309;
+	}
+
+	&.stock-chip-back {
+		background-color: #0b7a5b;
+	}
 }

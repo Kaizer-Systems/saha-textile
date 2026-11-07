@@ -1,5 +1,6 @@
 import { AsyncPipe } from '@angular/common';
 import {
+	ChangeDetectorRef,
 	Component,
 	DOCUMENT,
 	effect,
@@ -51,6 +52,7 @@ import { Pagination } from '../pagination/pagination';
 export class MediaBox {
 	private document = inject<Document>(DOCUMENT);
 	private renderer = inject(Renderer2);
+	private changeDetector = inject(ChangeDetectorRef);
 
 	readonly DeleteModal = viewChild<DeleteModal>('deleteModal');
 
@@ -65,7 +67,7 @@ export class MediaBox {
 	readonly deleteAction = input<boolean>(true);
 
 	readonly setImage = output<[] | any>();
-	readonly setDeleteImage = output<number>();
+	readonly setDeleteImage = output<number | string>();
 
 	public term = new FormControl();
 	public filter = {
@@ -84,7 +86,11 @@ export class MediaBox {
 	constructor() {
 		this.attachment$.subscribe((attachment) => (this.totalItems = attachment?.total!));
 		effect(() => {
+			// `loading` is a plain field the page may also bind, so writing it from an effect
+			// does not re-render on its own. With cached library data the query never refetches,
+			// and the picker sat on "Loading" until something else changed.
 			this.loading = this.attachmentsQuery.isFetching();
+			this.changeDetector.markForCheck();
 		});
 		this.term.valueChanges.pipe(debounceTime(400), distinctUntilChanged()).subscribe((data: string) => {
 			this.filter.search = data;

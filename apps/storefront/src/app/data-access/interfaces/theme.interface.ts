@@ -82,6 +82,5 @@ export interface IIServices {
 }
 
 export interface IFooter {
-	footer_logo?: string;
 	footer_class?: string;
 }

@@ -1,0 +1,112 @@
+{
+	"schemaVersion": 1,
+	"lastVerified": "2026-11-07",
+	"sourceOfTruth": [
+		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
+		"docs/engineering-live-context/project-progress.mdx"
+	],
+	"gates": [
+		{
+			"id": "G-NUM-ORDER",
+			"label": "Order / tax-invoice numbering"
+		},
+		{
+			"id": "G-NUM-PI",
+			"label": "Purchase-invoice numbering"
+		},
+		{
+			"id": "G-CORE-CONTRACTS",
+			"label": "Core ↔ contracts dependency"
+		},
+		{
+			"id": "G-I18N-ROUTES",
+			"label": "Locale URL policy"
+		},
+		{
+			"id": "G-IMG-PX",
+			"label": "Image ladder px + caps"
+		}
+	],
+	"chunks": [
+		{
+			"id": "A",
+			"title": "Context, delta & dependency pin",
+			"deps": [],
+			"blockingGates": [],
+			"summary": "Inspect the four packages, write the keep/refactor/missing delta report, and pin dependency versions.",
+			"dod": "Written delta + pinned versions; decision review only for latest-together conflicts."
+		},
+		{
+			"id": "B",
+			"title": "Contracts & core ports",
+			"deps": ["A"],
+			"blockingGates": [],
+			"summary": "Shared zod contracts and core ports, with type-only coupling linted and runtime purity tested.",
+			"dod": "Boundary lint and runtime-purity tests pass; contract and port suites cover the surface."
+		},
+		{
+			"id": "C",
+			"title": "API security foundation, replica-set profile & env sync",
+			"deps": ["A"],
+			"blockingGates": [],
+			"summary": "Request ids, redacted logs, safe errors, client-IP rate limiting, strict CORS, health probes, the CSRF foundation and the Mongo transaction manager.",
+			"dod": "API startup, health probes, the CSRF matrix and replica-set commit and rollback tests pass."
+		},
+		{
+			"id": "D",
+			"title": "Cookie-session auth, PIN, OTP & OAuth",
+			"deps": ["C"],
+			"blockingGates": [],
+			"summary": "Cookie sessions, verified signup, password and OTP sign-in, Google and Facebook, account self-service, admin PIN, invites, resume, Account Security, the permission registry, roles and customer CRM.",
+			"dod": "Sign-in, session, authority and CRM flows are tested, including real provider accounts and browser PIN sign-in."
+		},
+		{
+			"id": "E",
+			"title": "Mongo persistence & transaction adoption",
+			"deps": ["C"],
+			"blockingGates": [],
+			"summary": "Mongoose models, repositories and transactions for accounts, catalogue, media, inventory, governance and content.",
+			"dod": "Adapter integration tests cover uniqueness, TTL, visibility, rollback and response-safe mapping."
+		},
+		{
+			"id": "F",
+			"title": "Catalog, SEO, search & merchandising",
+			"deps": ["B", "C"],
+			"blockingGates": [],
+			"summary": "Catalogue reads and writes, SEO, Meilisearch search and merchandising. The storefront and admin product form use the API. Search outbox work is open.",
+			"dod": "Public and admin catalogue, indexed live products, and search and facet tests."
+		},
+		{
+			"id": "G",
+			"title": "Cart, checkout, orders & payment/shipping ports",
+			"deps": ["B", "E", "F"],
+			"blockingGates": ["G-NUM-ORDER"],
+			"summary": "Server cart and guest adoption, pricing engine, payment and shipping ports, and order, payment, shipment, return and refund shapes. Customer-facing order numbers wait on the numbering decision.",
+			"dod": "Cart adoption, quote, non-production payment/shipping implementations and ownership tests; order placement remains internal-id-only or gated."
+		},
+		{
+			"id": "H",
+			"title": "Inventory, purchase invoices, reporting & insights",
+			"deps": ["E", "G"],
+			"blockingGates": ["G-NUM-PI"],
+			"summary": "Inventory ledger and FIFO layers, analytics aggregates, weekly insights and purchase-invoice drafts. Posting purchase invoices waits on the numbering decision.",
+			"dod": "Ledger + aggregates; purchase-invoice posting waits on the numbering decision."
+		},
+		{
+			"id": "I",
+			"title": "Privacy, content, FAQ, reviews & media",
+			"deps": ["B", "C"],
+			"blockingGates": [],
+			"summary": "Consent, FAQ, questions, reviews, and the image pipeline: presigned upload, worker, size roles, banners, YouTube and moderation. Email thumbnails, PWA caching and live garbage collection are open.",
+			"dod": "Consent gating, moderation model, media presign and derivatives."
+		},
+		{
+			"id": "J",
+			"title": "Docs, seeds, verification & infra close-out",
+			"deps": ["D", "E", "F", "G", "H", "I"],
+			"blockingGates": [],
+			"summary": "OpenAPI, runbooks, seeds, verification and deployment scripts. Production decisions are recorded in the decision log. The deployment pipeline is not built, and secret delivery is an open decision.",
+			"dod": "Docs aligned, seeds complete, checks green and deployment scripts documented."
+		}
+	]
+}

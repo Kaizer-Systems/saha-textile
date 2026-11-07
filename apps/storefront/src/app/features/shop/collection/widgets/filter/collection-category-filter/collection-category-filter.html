@@ -1,6 +1,6 @@
-@if (categories && categories.length) {
+@if (categories().length) {
 <ul class="category-list custom-padding custom-height">
-	@for (category of categories; track category) {
+	@for (category of categories(); track category.id) {
 	<li>
 		<div class="form-check category-list-box m-0 ps-0">
 			<input

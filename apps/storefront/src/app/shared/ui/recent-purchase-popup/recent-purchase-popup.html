@@ -1,11 +1,11 @@
-@if (product) {
+@if (purchase(); as purchase) {
 <div
 	class="media recently-purchase"
-	[class.show]="popup_enable ? show : popup_enable"
+	[class.show]="show()"
 >
 	<img
-		[src]="product.product_thumbnail ?
-                product.product_thumbnail.original_url :
+		[src]="purchase.product.product_thumbnail ?
+                purchase.product.product_thumbnail.original_url :
                 'assets/images/product.png'"
 		class="media-height"
 		alt="product"
@@ -13,10 +13,10 @@
 	<div class="media-body">
 		<div>
 			<div class="title d-block mb-0">{{ 'someone_recently_purchased' | transloco }}</div>
-			<a [routerLink]="['/en/product/', product.slug]">
-				<span class="product-name">{{ product.name }}</span>
+			<a [routerLink]="['/product/', purchase.product.slug]">
+				<span class="product-name">{{ purchase.product.name }}</span>
 			</a>
-			<small class="timeAgo">{{ min }} {{ 'minutes_ago' | transloco }}</small>
+			<small class="timeAgo">{{ timeAgo() }}</small>
 		</div>
 	</div>
 	<a

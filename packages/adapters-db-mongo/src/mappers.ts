@@ -1,9 +1,33 @@
-import type { Cart, Category, Currency, Order, Product, Promotion, User } from '@saha-textile/contracts';
+import type { AdminUser, Cart, Category, Currency, Customer, Order, Product, Promotion } from '@saha-textile/contracts';
 
-import type { CartDoc, CategoryDoc, CurrencyDoc, OrderDoc, ProductDoc, PromotionDoc, UserDoc } from './models/index';
+import type {
+	AdminUserDoc,
+	CartDoc,
+	CategoryDoc,
+	CurrencyDoc,
+	CustomerDoc,
+	OrderDoc,
+	ProductDoc,
+	PromotionDoc,
+} from './models/index';
 
 function iso(d?: Date): string | undefined {
 	return d ? new Date(d).toISOString() : undefined;
+}
+
+function isoOrNull(d?: Date | null): string | null {
+	return d ? new Date(d).toISOString() : null;
+}
+
+/** Maps the persisted lifecycle sub-document to the contract shape, filling defaults. */
+function toProductLifecycle(doc: ProductDoc['lifecycle']): Product['lifecycle'] {
+	return {
+		liveAt: isoOrNull(doc?.liveAt),
+		disabledAt: isoOrNull(doc?.disabledAt),
+		discontinuedAt: isoOrNull(doc?.discontinuedAt),
+		richDataPurgedAt: isoOrNull(doc?.richDataPurgedAt),
+		statusReason: doc?.statusReason ?? null,
+	};
 }
 
 export function toCategory(doc: CategoryDoc): Category {
@@ -17,6 +41,7 @@ export function toCategory(doc: CategoryDoc): Category {
 		depth: doc.depth ?? 0,
 		isBannerCollection: doc.isBannerCollection ?? false,
 		displayOrder: doc.displayOrder ?? 0,
+		description: doc.description ?? {},
 		seo: doc.seo as Category['seo'],
 		media: doc.media as Category['media'],
 	};
@@ -30,11 +55,14 @@ export function toProduct(doc: ProductDoc): Product {
 		title: doc.title as Product['title'],
 		slug: doc.slug,
 		description: doc.description as Product['description'],
+		shortDescription: doc.shortDescription ?? {},
+		imageMode: doc.imageMode ?? 'simple',
 		categoryIds: doc.categoryIds ?? [],
 		tags: doc.tags ?? [],
 		basePriceINR: doc.basePriceINR,
-		media: (doc.media ?? { gallery: [] }) as Product['media'],
+		media: { compound: [], altOverrides: {}, ...(doc.media ?? { gallery: [] }) } as Product['media'],
 		attributes: (doc.attributes ?? []) as Product['attributes'],
+		optionGroups: (doc.optionGroups ?? []) as Product['optionGroups'],
 		variations: (doc.variations ?? []) as Product['variations'],
 		addons: (doc.addons ?? []) as Product['addons'],
 		relatedProductIds: doc.relatedProductIds ?? [],
@@ -43,6 +71,24 @@ export function toProduct(doc: ProductDoc): Product {
 		seo: doc.seo as Product['seo'],
 		ratingsSummary: doc.ratingsSummary ?? { avg: 0, count: 0 },
 		status: doc.status,
+		lifecycle: toProductLifecycle(doc.lifecycle),
+		madeToOrder: doc.madeToOrder ?? false,
+		estimatedDeliveryText: (doc.estimatedDeliveryText ?? null) as Product['estimatedDeliveryText'],
+		lowStockThreshold: doc.lowStockThreshold ?? null,
+		lifetimeUnitsReceived: doc.lifetimeUnitsReceived ?? 0,
+		featured: doc.featured ?? false,
+		insightBadges: doc.insightBadges ?? [],
+		pinnedBadges: doc.pinnedBadges ?? [],
+		hiddenBadges: doc.hiddenBadges ?? [],
+		backInStockAt: isoOrNull(doc.backInStockAt),
+		replacementTarget: doc.replacementTarget ?? null,
+		addonTemplateCode: doc.addonTemplateCode ?? null,
+		sareeLengthM: doc.sareeLengthM ?? null,
+		blousePieceM: doc.blousePieceM ?? null,
+		addonPriceINR: doc.addonPriceINR ?? null,
+		onSale: doc.onSale ?? false,
+		shippingDefaults: doc.shippingDefaults ?? { weightGrams: null, lengthCm: null, widthCm: null, heightCm: null },
+		hsnCode: doc.hsnCode ?? null,
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),
 	};
@@ -112,18 +158,41 @@ export function toOrder(doc: OrderDoc): Order {
 	};
 }
 
-export function toUser(doc: UserDoc): User {
+export function toCustomer(doc: CustomerDoc, identities: Customer['identities'] = []): Customer {
 	return {
 		id: doc._id,
 		email: doc.email ?? null,
 		emailVerified: doc.emailVerified ?? false,
+		phone: doc.phone ?? null,
+		phoneVerified: doc.phoneVerified ?? false,
+		status: (doc.status as Customer['status']) ?? 'active',
 		displayName: doc.displayName,
-		role: doc.role as User['role'],
-		identities: (doc.identities ?? []) as User['identities'],
-		addresses: (doc.addresses ?? []) as User['addresses'],
+		identities,
+		addresses: (doc.addresses ?? []) as Customer['addresses'],
+		contacts: (doc.contacts ?? []) as Customer['contacts'],
+		savedSizes: (doc.savedSizes ?? []) as Customer['savedSizes'],
+		measurementProfiles: (doc.measurementProfiles ?? []) as Customer['measurementProfiles'],
 		guestCartId: doc.guestCartId ?? null,
-		consent: doc.consent as User['consent'],
+		consent: doc.consent as Customer['consent'],
 		createdAt: iso(doc.createdAt),
 		updatedAt: iso(doc.updatedAt),
+	};
+}
+
+export function toAdminUser(doc: AdminUserDoc, pinConfigured = false): AdminUser {
+	return {
+		id: doc._id,
+		email: doc.email ?? null,
+		emailVerified: doc.emailVerified ?? false,
+		username: doc.username ?? null,
+		displayName: doc.displayName,
+		phone: doc.phone ?? null,
+		role: doc.role,
+		status: (doc.status as AdminUser['status']) ?? 'active',
+		pinConfigured,
+		preferredLoginMethod: (doc.preferredLoginMethod as AdminUser['preferredLoginMethod']) ?? 'password',
+		adminProfile: doc.adminProfile as AdminUser['adminProfile'],
+		lastLoginAt: doc.lastLoginAt ? new Date(doc.lastLoginAt).toISOString() : null,
+		createdAt: iso(doc.createdAt),
 	};
 }

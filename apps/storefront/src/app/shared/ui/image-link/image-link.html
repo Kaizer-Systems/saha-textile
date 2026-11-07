@@ -1,4 +1,83 @@
-@if (image()?.redirect_link?.link_type === 'external_url') {
+<!--
+	Admin banners (owner log § Media → Banners): a real <picture>, never a CSS background, so
+	the browser downloads one right-sized file and the hero can be the LCP image. The art is
+	chosen by viewport width — phone below 768 px, tablet to 1199 px, then desktop — and the
+	box takes the chosen image's shape, so baked-in text is never cropped. Live text uses the
+	theme's own `.home-detail` overlay.
+-->
+@if (image()?.resolved; as banner) {
+<ng-template #bannerArt>
+	<picture>
+		@if (banner.images.phone) {
+		<source
+			media="(max-width: 767px)"
+			[attr.srcset]="srcset(banner.images.phone)"
+			sizes="100vw"
+			[attr.width]="banner.images.phone.width"
+			[attr.height]="banner.images.phone.height"
+		/>
+		} @if (banner.images.tablet) {
+		<source
+			media="(max-width: 1199px)"
+			[attr.srcset]="srcset(banner.images.tablet)"
+			[attr.sizes]="sizes()"
+			[attr.width]="banner.images.tablet.width"
+			[attr.height]="banner.images.tablet.height"
+		/>
+		}
+		<img
+			[src]="src(banner.images.desktop)"
+			[attr.srcset]="srcset(banner.images.desktop)"
+			[attr.sizes]="sizes()"
+			[attr.width]="banner.images.desktop.width"
+			[attr.height]="banner.images.desktop.height"
+			[attr.loading]="priority() || isHeroMain(banner) ? 'eager' : 'lazy'"
+			[attr.fetchpriority]="priority() || isHeroMain(banner) ? 'high' : null"
+			[style.background-color]="banner.images.desktop.dominantColor"
+			decoding="async"
+			class="img-fluid h-auto w-100"
+			[alt]="banner.alt"
+		/>
+	</picture>
+	@if (!banner.containsText && banner.heading) {
+	<div class="home-detail p-center-left">
+		<div>
+			@if (banner.subheading) {
+			<h6 class="ls-expanded text-uppercase">{{ banner.subheading }}</h6>
+			}
+			<h1>{{ banner.heading }}</h1>
+			@if (banner.ctaLabel) {
+			<span class="btn btn-animation mt-xxl-4 mt-2">{{ banner.ctaLabel }}</span>
+			}
+		</div>
+	</div>
+	}
+</ng-template>
+<div
+	class="position-relative h-100"
+	[ngClass]="class()"
+>
+	@if (banner.link?.external) {
+	<a
+		[href]="banner.link?.href"
+		target="_blank"
+		rel="noopener"
+		class="d-block"
+	>
+		<ng-container [ngTemplateOutlet]="bannerArt" />
+	</a>
+	} @else if (banner.link) {
+	<a
+		[routerLink]="banner.link.href"
+		class="d-block"
+	>
+		<ng-container [ngTemplateOutlet]="bannerArt" />
+	</a>
+	} @else {
+	<ng-container [ngTemplateOutlet]="bannerArt" />
+	}
+</div>
+} @else { @if (image()?.redirect_link?.link_type === 'external_url') {
 <a
 	href="{{ image()?.redirect_link?.link }}"
 	target="_blank"
@@ -14,7 +93,7 @@
 	<img
 		src="{{ image()?.image_url }}"
 		class="bg-img h-100 w-100"
-		alt="{{ image()?.image_url }}"
+		[alt]="image()?.alt ?? ''"
 	/>
 	}
 </a>
@@ -33,12 +112,12 @@
 	<img
 		src="{{ image()?.image_url }}"
 		class="bg-img h-100 w-100"
-		alt="{{ image()?.image_url }}"
+		[alt]="image()?.alt ?? ''"
 	/>
 	}
 </a>
 } @else { @if (image()?.redirect_link?.link_type === 'product') {
-<a [routerLink]="['/en/product/', getProductSlug(image()?.redirect_link?.link, (product$ | async)?.data!)]">
+<a [routerLink]="['/product/', image()?.redirect_link?.link]">
 	@if (bgImage()) {
 	<div
 		class="bg-size h-100"
@@ -49,7 +128,7 @@
 	<img
 		src="{{ image()?.image_url }}"
 		class="bg-img h-100 w-100"
-		alt="{{ image()?.image_url }}"
+		[alt]="image()?.alt ?? ''"
 	/>
 	}
 </a>
@@ -63,12 +142,12 @@
 <img
 	src="{{ image()?.image_url }}"
 	class="bg-img h-100 w-100"
-	alt="{{ image()?.image_url }}"
+	[alt]="image()?.alt ?? ''"
 />
 } } } }
 <ng-template #product>
 	@if (image()?.redirect_link?.link_type === 'product') {
-	<a [routerLink]="['/en/product/', getProductSlug(image()?.redirect_link?.link, (product$ | async)?.data!)]">
+	<a [routerLink]="['/product/', image()?.redirect_link?.link]">
 		@if (bgImage()) {
 		<div
 			class="bg-size h-100"
@@ -79,7 +158,7 @@
 		<img
 			src="{{ image()?.image_url }}"
 			class="bg-img h-100 w-100"
-			alt="{{ image()?.image_url }}"
+			[alt]="image()?.alt ?? ''"
 		/>
 		}
 	</a>
@@ -93,7 +172,9 @@
 	<img
 		src="{{ image()?.image_url }}"
 		class="bg-img h-100 w-100"
-		alt="{{ image()?.image_url }}"
+		[alt]="image()?.alt ?? ''"
 	/>
 	} }
 </ng-template>
+
+}

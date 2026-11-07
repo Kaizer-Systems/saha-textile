@@ -22,6 +22,7 @@ node_modules/
 dist/
 build/
 .docusaurus/
+.generated/
 .next/
 .turbo/
 .angular/
@@ -34,7 +35,16 @@ coverage/
 Thumbs.db
 
 # ---- Vendor Theme Files ----
-vendor
+/vendor/
 
 # Generated: dart-sass precompiled theme css (analog SSR dev sass-importer workaround)
 apps/storefront/src/scss/app.gen.css
+apps/admin/public/assets/scss/app.gen.css
+
+# Local HTTPS certificates (mkcert). Regenerate with scripts/setup-local-https.sh —
+# never commit a private key, even a locally-trusted development one.
+certs/
+
+# Mode-3 stack runtime env (secrets copied from apps/api/.env) — never commit.
+docker/stack/env/*.env
+docker/stack/env/*.config.json

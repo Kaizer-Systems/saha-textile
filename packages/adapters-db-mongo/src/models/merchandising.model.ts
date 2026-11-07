@@ -1,0 +1,160 @@
+import {
+	BundlePricePolicy,
+	BundleType,
+	CatalogStatus,
+	ProductRelationSource,
+	ProductRelationTargetType,
+	ProductRelationType,
+} from '@saha-textile/contracts';
+import { type Model, Schema, model, models } from 'mongoose';
+
+/** Bundles (`productBundles`) — a compound product that resolves to component lines. */
+export interface ProductBundleDoc {
+	_id: string;
+	productId: string;
+	bundleType: string;
+	pricePolicy: string;
+	fixedPriceINR: number | null;
+	groups: unknown[];
+	status: string;
+	createdAt?: Date;
+	updatedAt?: Date;
+}
+
+const ProductBundleSchema = new Schema<ProductBundleDoc>(
+	{
+		_id: { type: String, required: true },
+		productId: { type: String, required: true },
+		bundleType: { type: String, enum: BundleType.options, required: true },
+		pricePolicy: {
+			type: String,
+			enum: BundlePricePolicy.options,
+			required: true,
+		},
+		fixedPriceINR: { type: Number, default: null },
+		groups: { type: [Schema.Types.Mixed], default: [] },
+		status: { type: String, enum: CatalogStatus.options, default: 'draft' },
+	},
+	{ collection: 'productBundles', timestamps: true },
+);
+
+/**
+ * One bundle per product. This is also the index `isBundleProduct()` reads to enforce
+ * `DEC-BUNDLE-NESTING` at the write path — the lookup has to be cheap because it runs for
+ * every component of every bundle being saved.
+ */
+ProductBundleSchema.index({ productId: 1 }, { unique: true });
+
+export const ProductBundleModel: Model<ProductBundleDoc> =
+	(models.ProductBundle as Model<ProductBundleDoc>) ?? model<ProductBundleDoc>('ProductBundle', ProductBundleSchema);
+
+/** Merchandising relations (`productRelations`) — discovery only, never pricing. */
+export interface ProductRelationDoc {
+	_id: string;
+	sourceProductId: string;
+	relationType: string;
+	targetType: string;
+	targetId: string;
+	surfaces: string[];
+	rank: number;
+	source: string;
+	insightSetId: string | null;
+	reason: string | null;
+	startsAt: Date | null;
+	endsAt: Date | null;
+	status: string;
+	createdAt?: Date;
+	updatedAt?: Date;
+}
+
+const ProductRelationSchema = new Schema<ProductRelationDoc>(
+	{
+		_id: { type: String, required: true },
+		sourceProductId: { type: String, required: true },
+		relationType: {
+			type: String,
+			enum: ProductRelationType.options,
+			required: true,
+		},
+		targetType: { type: String, enum: ProductRelationTargetType.options, default: 'product' },
+		targetId: { type: String, required: true },
+		surfaces: { type: [String], default: [] },
+		rank: { type: Number, default: 0 },
+		source: { type: String, enum: ProductRelationSource.options, default: 'manual' },
+		insightSetId: { type: String, default: null },
+		reason: { type: String, default: null },
+		startsAt: { type: Date, default: null },
+		endsAt: { type: Date, default: null },
+		status: { type: String, enum: CatalogStatus.options, default: 'draft' },
+	},
+	{ collection: 'productRelations', timestamps: true },
+);
+
+/** The rail query: relations of one type for one product, in display order. */
+ProductRelationSchema.index({ sourceProductId: 1, relationType: 1, status: 1, rank: 1 });
+/** Auto-pause sweeps by target when a product leaves `live`. */
+ProductRelationSchema.index({ targetId: 1, status: 1 });
+/** Replacing a weekly insight set rewrites its rows as a unit. */
+ProductRelationSchema.index({ insightSetId: 1 });
+/** The same relationship must not be recorded twice for one surface set. */
+ProductRelationSchema.index({ sourceProductId: 1, relationType: 1, targetId: 1 }, { unique: true });
+
+export const ProductRelationModel: Model<ProductRelationDoc> =
+	(models.ProductRelation as Model<ProductRelationDoc>) ??
+	model<ProductRelationDoc>('ProductRelation', ProductRelationSchema);
+
+export interface SeoRedirectDoc {
+	_id: string;
+	sourcePath: string;
+	statusCode: 301 | 302 | 410;
+	targetPath?: string;
+	reason: string;
+	entityType?: string;
+	entityId?: string;
+	createdAt?: Date;
+	updatedAt?: Date;
+}
+
+const SeoRedirectSchema = new Schema<SeoRedirectDoc>(
+	{
+		_id: { type: String, required: true },
+		sourcePath: { type: String, required: true },
+		statusCode: { type: Number, enum: [301, 302, 410], required: true },
+		targetPath: { type: String },
+		reason: { type: String, required: true },
+		entityType: { type: String },
+		entityId: { type: String },
+	},
+	{ collection: 'seoRedirects', timestamps: true },
+);
+
+SeoRedirectSchema.index({ sourcePath: 1 }, { unique: true });
+
+export const SeoRedirectModel: Model<SeoRedirectDoc> =
+	(models.SeoRedirect as Model<SeoRedirectDoc>) ?? model<SeoRedirectDoc>('SeoRedirect', SeoRedirectSchema);
+
+export interface AddonTemplateDoc {
+	_id: string;
+	code: string;
+	label: Record<string, string> | string;
+	priceINR: number;
+	fields?: unknown[];
+	sizeGuide?: Array<{ size: string; values: Record<string, number> }>;
+}
+
+const AddonTemplateSchema = new Schema<AddonTemplateDoc>(
+	{
+		_id: { type: String, required: true },
+		code: { type: String, required: true },
+		label: { type: Schema.Types.Mixed, required: true },
+		priceINR: { type: Number, required: true },
+		fields: { type: [Schema.Types.Mixed], default: [] },
+		sizeGuide: { type: [Schema.Types.Mixed], default: [] },
+	},
+	{ collection: 'addonTemplates', timestamps: true },
+);
+
+AddonTemplateSchema.index({ code: 1 }, { unique: true });
+
+export const AddonTemplateModel: Model<AddonTemplateDoc> =
+	(models.AddonTemplate as Model<AddonTemplateDoc>) ?? model<AddonTemplateDoc>('AddonTemplate', AddonTemplateSchema);

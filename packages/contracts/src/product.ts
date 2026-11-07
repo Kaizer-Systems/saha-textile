@@ -1,12 +1,45 @@
 import { z } from 'zod';
 
-import { I18nString, Id, PriceINR, SeoMeta, Slug } from './common';
+import { CatalogRupee, I18nString, Id, IsoDateTime, LocalizedText, PriceINR, SeoMeta, Slug } from './common';
+import { ProductOptionGroupSet } from './product-options';
 
-export const ProductType = z.enum(['simple', 'variable']);
+export const ProductType = z.enum(['simple', 'variable', 'bundle']);
 export type ProductType = z.infer<typeof ProductType>;
 
-export const ProductStatus = z.enum(['draft', 'published', 'archived']);
+/**
+ * Product lifecycle status (owner lock, catalog section).
+ *
+ * - `draft`        — never published; invisible to every storefront surface.
+ * - `live`         — the ONLY storefront-queryable status (listing, search, sitemap).
+ * - `disabled`     — hidden everywhere, full data and media retained; fully reversible.
+ * - `discontinued` — hidden everywhere and starts the retention window, after which rich
+ *                    data and Spaces media are purged down to a minimal tombstone
+ *                    (name, SKU, audit references). Order-line snapshots survive.
+ *
+ * Supersedes the earlier `draft|published|archived` enum and the 5-value
+ * `draft|published|hidden|archived|discontinued` sketch in the catalog architecture
+ * reference, which predates this lock.
+ */
+export const ProductStatus = z.enum(['draft', 'live', 'disabled', 'discontinued']);
 export type ProductStatus = z.infer<typeof ProductStatus>;
+
+/**
+ * Lifecycle timestamps behind the status. Nullable because a product only acquires
+ * them as it moves through the lifecycle; `richDataPurgedAt` is stamped by the
+ * retention job when a discontinued product has been reduced to its tombstone.
+ *
+ * The retention WINDOW itself is not stored here — it is configuration read by the
+ * retention job (locked at 30 days), so changing it never requires a data migration.
+ */
+export const ProductLifecycle = z.object({
+	liveAt: IsoDateTime.nullable().default(null),
+	disabledAt: IsoDateTime.nullable().default(null),
+	discontinuedAt: IsoDateTime.nullable().default(null),
+	richDataPurgedAt: IsoDateTime.nullable().default(null),
+	/** Free-text admin reason captured on disable/discontinue; audited separately. */
+	statusReason: z.string().max(500).nullable().default(null),
+});
+export type ProductLifecycle = z.infer<typeof ProductLifecycle>;
 
 /**
  * One selectable term of an attribute. `isBase` marks the material-only option
@@ -74,6 +107,15 @@ export const RatingsSummary = z.object({
 });
 export type RatingsSummary = z.infer<typeof RatingsSummary>;
 
+/** Product-level weight and box size. A variant's empty measure inherits these. */
+export const ProductShippingDefaults = z.object({
+	weightGrams: z.number().nonnegative().nullable().default(null),
+	lengthCm: z.number().nonnegative().nullable().default(null),
+	widthCm: z.number().nonnegative().nullable().default(null),
+	heightCm: z.number().nonnegative().nullable().default(null),
+});
+export type ProductShippingDefaults = z.infer<typeof ProductShippingDefaults>;
+
 export const Product = z.object({
 	id: Id,
 	type: ProductType,
@@ -81,16 +123,30 @@ export const Product = z.object({
 	title: I18nString,
 	slug: Slug,
 	description: I18nString.optional(),
+	/** The card and search summary, in each language. */
+	shortDescription: LocalizedText.default({}),
 	categoryIds: z.array(Id).default([]),
 	tags: z.array(z.string()).default([]),
 	/** Canonical base price in INR. */
 	basePriceINR: PriceINR,
+	/** Simple is one gallery; compound is one per variant combination. Switching parks the other. */
+	imageMode: z.enum(['simple', 'compound']).default('simple'),
 	media: z
 		.object({
+			/** Asset ids in order. Position 1 is the primary image. */
 			gallery: z.array(z.string()).default([]),
+			/** One ordered gallery per variant combination, kept while in simple mode. */
+			compound: z.array(z.object({ selectionHash: z.string().min(1), gallery: z.array(z.string()) })).default([]),
+			/** Alt text set here, per asset, in each language. Empty inherits the media library. */
+			altOverrides: z.record(z.string(), LocalizedText).default({}),
 		})
-		.default({ gallery: [] }),
+		.default({ gallery: [], compound: [], altOverrides: {} }),
 	attributes: z.array(Attribute).default([]),
+	/**
+	 * Per-product option groups: variation axes, named add-ons, filter-only facts, and bundle
+	 * options. `semanticRole` decides behaviour; `displayStyle` only decides the look.
+	 */
+	optionGroups: ProductOptionGroupSet.default([]),
 	variations: z.array(Variation).default([]),
 	addons: z.array(Addon).default([]),
 	relatedProductIds: z.array(Id).default([]),
@@ -99,6 +155,49 @@ export const Product = z.object({
 	seo: SeoMeta.optional(),
 	ratingsSummary: RatingsSummary.default({ avg: 0, count: 0 }),
 	status: ProductStatus.default('draft'),
+	lifecycle: ProductLifecycle.default({
+		liveAt: null,
+		disabledAt: null,
+		discontinuedAt: null,
+		richDataPurgedAt: null,
+		statusReason: null,
+	}),
+	/** Live products only. Lead time is `estimated` delivery text while this is on. */
+	madeToOrder: z.boolean().default(false),
+	/** The made-to-order lead time, shown on the product page only. */
+	estimatedDeliveryText: I18nString.nullable().default(null),
+	/** Null uses the shop default of 2. A set value also badges a one-off. */
+	lowStockThreshold: z.number().int().nonnegative().nullable().default(null),
+	lifetimeUnitsReceived: z.number().int().nonnegative().default(0),
+	featured: z.boolean().default(false),
+	insightBadges: z.array(z.enum(['bestseller', 'trending'])).default([]),
+	pinnedBadges: z.array(z.string()).default([]),
+	hiddenBadges: z.array(z.string()).default([]),
+	backInStockAt: IsoDateTime.nullable().default(null),
+	replacementTarget: z
+		.object({
+			kind: z.enum(['product', 'collection']),
+			path: z.string().min(1),
+		})
+		.nullable()
+		.default(null),
+	/** Saree length and blouse piece, in metres. One number serves every language. */
+	sareeLengthM: z.number().positive().max(20).nullable().default(null),
+	blousePieceM: z.number().positive().max(5).nullable().default(null),
+	/** Reusable measurement template. Null when the product has no tailoring fields. */
+	addonTemplateCode: z.string().min(1).nullable().default(null),
+	/** Whole-rupee override of the template price. Null inherits the template. */
+	addonPriceINR: CatalogRupee.nullable().default(null),
+	/** True when a live variant is selling below its MRP. Home's Sale rail reads this. */
+	onSale: z.boolean().default(false),
+	shippingDefaults: ProductShippingDefaults.default({
+		weightGrams: null,
+		lengthCm: null,
+		widthCm: null,
+		heightCm: null,
+	}),
+	/** Product-level HSN. A variant's empty HSN inherits it. */
+	hsnCode: z.string().min(1).nullable().default(null),
 	createdAt: z.string().optional(),
 	updatedAt: z.string().optional(),
 });

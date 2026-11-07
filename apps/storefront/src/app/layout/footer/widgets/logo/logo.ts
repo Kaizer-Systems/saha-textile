@@ -1,9 +1,9 @@
-import { Component, input } from '@angular/core';
+import { Component, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
-import { IFooter } from '@data-access/interfaces/theme.interface';
+import { injectBrandQuery } from '@data-access/queries/brand.queries';
 
+/** The footer is dark, so the logo sits on a white plate and keeps its own colours. */
 @Component({
 	selector: 'app-footer-logo',
 	templateUrl: './logo.html',
@@ -11,12 +11,7 @@ import { IFooter } from '@data-access/interfaces/theme.interface';
 	imports: [RouterLink],
 })
 export class FooterLogo {
-	// TODO: Skipped for migration because:
-	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
-	//  and migrating would break narrowing currently.
-	readonly data = input<ISiteConfig>();
-	// TODO: Skipped for migration because:
-	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
-	//  and migrating would break narrowing currently.
-	readonly footer = input<IFooter>();
+	private readonly brandQuery = injectBrandQuery();
+
+	readonly brand = computed(() => this.brandQuery.data());
 }

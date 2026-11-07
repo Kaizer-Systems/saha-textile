@@ -1,0 +1,91 @@
+---
+title: First Flight
+description: A guided tour of the portal for each role, with optional progress saved on your device.
+status: implemented
+audience: [beginner, frontend, backend, operator]
+last_verified: '2026-11-07'
+source_of_truth:
+    - docs/engineering-live-context/owner-decisions-log.mdx
+    - docs/engineering-live-context/project-progress.mdx
+    - docs/frontend/interactive-instruments.md
+    - docs/getting-started
+    - docs/_data/portal-manifest.json
+    - docs/_data/instruments/first-flight.json
+    - apps/developer-portal/plugins/portal-data/compiler.js
+    - apps/developer-portal/src/data/portal-data.ts
+    - apps/developer-portal/src/data/first-flight.ts
+    - apps/developer-portal/src/components/FirstFlight
+wide: true
+hide_table_of_contents: true
+search_keywords: onboarding guided tour launch bay beginner frontend backend operator first contribution
+---
+
+import { FirstFlight } from '@site/src/components/FirstFlight';
+
+# First Flight
+
+First Flight is the portal's guided tour. On this page, called **Launch Bay**, you choose a role, review each checkpoint and its page status, and start a guide that takes you through the pages in order.
+
+<FirstFlight />
+
+## Start a guided flight
+
+To start a tour:
+
+1. Choose **New contributor**, **Frontend developer**, **Backend developer** or **Platform operator**.
+2. Review the expected duration, the ordered checkpoints, their page statuses and the outcome.
+3. Expand any checkpoint to see why it matters and which documentation source will open.
+4. Select **Begin guided flight** to start the guide, or open one checkpoint directly.
+
+If you explicitly enable **Remember this role on this device**, the primary action changes to the furthest saved checkpoint, or to **Review Mission Debrief** after a saved completion. Without that setting, a tour writes no progress.
+
+Every route and heading target is checked during the portal build. Renaming or removing a destination without updating `docs/_data/instruments/first-flight.json` fails validation.
+
+## During a guided flight
+
+The guide highlights the current heading and leaves the page in place. It provides:
+
+- **Previous** and **Next** to move between checkpoints in order;
+- **Recenter** to bring the current target back into view;
+- **Minimize** to collapse the console while retaining the active checkpoint;
+- **Exit** to remove First Flight from the URL without recording completion;
+- a page status badge, with a warning on planned or scaffolded pages;
+- the reason for the checkpoint and its source path, in an expandable section;
+- an **Enable device resume** control to remember a tour after it starts.
+
+Keyboard controls are available outside text fields: <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> moves between checkpoints, <kbd>R</kbd> recenters, <kbd>M</kbd> minimizes or restores, and <kbd>Esc</kbd> exits.
+
+The active persona and zero-based checkpoint travel in the URL as `firstFlight=<persona>&step=<index>`. You can link to the current view, and browser history works as usual. These parameters show the current position only. They are not a completion record.
+
+The guide exposes its position as an accessible progress indicator and keeps keyboard focus when it minimizes or restores. Screen readers hear each new target, not the whole panel.
+
+## Device-local resume
+
+Saving is off by default and separate for each role. When you opt in, the local record contains only:
+
+- the role id;
+- the furthest stop id reached while the guide was active;
+- whether the final checkpoint was completed;
+- an optional local completion timestamp.
+
+It does not store routes, documentation text, source paths, search or browsing history, user identity, free text, telemetry, or application data. Returning to a saved checkpoint is a navigation convenience, not proof that preceding material was studied.
+
+Clear the device-resume control to forget a tour. Launch Bay also provides a two-step **Reset all saved flights** action.
+
+## Mission Debrief
+
+At the final checkpoint, **Complete flight** opens Mission Debrief. The debrief lists the checkpoint count, page statuses, route list and role outcome.
+
+Mission Debrief records only that you reached the final checkpoint. Without device resume, the debrief lasts for the session. With it, you can reopen the debrief from Launch Bay.
+
+The debrief is an accessible modal. Background interaction is blocked, focus stays inside the dialog, <kbd>Esc</kbd> exits, and it works without motion or colour cues.
+
+Opening a checkpoint from its details is ordinary navigation. Select **Begin guided flight** when you want the guide and ordered controls.
+
+## Privacy and control
+
+First Flight stores only optional, resettable progress on your device. It sends no telemetry and makes no application API calls. If browser storage is blocked, the guide works for the session and reports that saving is unavailable. If a saved record is invalid, First Flight ignores it and offers a reset.
+
+## When to skip the tour
+
+You can skip First Flight and use [Choose your path](/getting-started/choose-your-path). This suits you if you already know the area, need one exact reference, or prefer to explore freely.

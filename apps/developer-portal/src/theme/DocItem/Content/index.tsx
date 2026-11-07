@@ -47,6 +47,7 @@ export default function DocItemContent({ children }: Props): ReactNode {
 	const syntheticTitle = useSyntheticTitle();
 	const [copyState, setCopyState] = useState<CopyState>('idle');
 	const portalFrontMatter = frontMatter as Record<string, unknown>;
+	const isCanonical = portalFrontMatter.document_role === 'canonical';
 	const status = isDocumentationStatus(portalFrontMatter.status) ? portalFrontMatter.status : 'scaffolded';
 	const audiences = normalizeList(portalFrontMatter.audience);
 	const sources = normalizeList(portalFrontMatter.source_of_truth);
@@ -73,8 +74,20 @@ export default function DocItemContent({ children }: Props): ReactNode {
 
 	const copyLabel = copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : 'Copy page';
 
+	// NEXT-GEN-UI: `wide: true` frontmatter widens the whole content column (the
+	// width rules read --portal-content-max-width, which cascades to the toolbar,
+	// provenance and markdown together). Instrument pages opt in so their wide
+	// visuals use the horizontal space instead of being boxed at the prose width.
+	const isWide = portalFrontMatter.wide === true;
+	const wideStyle = isWide
+		? ({ ['--portal-content-max-width' as string]: '1120px' } as React.CSSProperties)
+		: undefined;
+
 	return (
-		<div className={clsx(ThemeClassNames.docs.docMarkdown, 'markdown')}>
+		<div
+			className={clsx(ThemeClassNames.docs.docMarkdown, 'markdown')}
+			style={wideStyle}
+		>
 			<div className="portalDocToolbar">
 				<span className="portalDocToolbar__context">Developer portal</span>
 				<button
@@ -104,13 +117,13 @@ export default function DocItemContent({ children }: Props): ReactNode {
 			>
 				<div
 					className="portalProvenance__status"
-					data-status={status}
+					data-status={isCanonical ? 'canonical' : status}
 				>
 					<span
 						className="portalProvenance__dot"
 						aria-hidden="true"
 					/>
-					<span>{humanize(status)}</span>
+					<span>{isCanonical ? 'Canonical source' : humanize(status)}</span>
 				</div>
 				<div className="portalProvenance__fact">
 					<span>Audience</span>
@@ -120,16 +133,23 @@ export default function DocItemContent({ children }: Props): ReactNode {
 					<span>Verified</span>
 					<strong>{lastVerified}</strong>
 				</div>
-				<details className="portalProvenance__sources">
-					<summary>{sources.length === 1 ? '1 source' : `${sources.length} sources`}</summary>
-					<ul>
-						{sources.map((source) => (
-							<li key={source}>
-								<code>{source}</code>
-							</li>
-						))}
-					</ul>
-				</details>
+				{isCanonical ? (
+					<div className="portalProvenance__fact">
+						<span>Role</span>
+						<strong>Engineering live context</strong>
+					</div>
+				) : (
+					<details className="portalProvenance__sources">
+						<summary>{sources.length === 1 ? '1 source' : `${sources.length} sources`}</summary>
+						<ul>
+							{sources.map((source) => (
+								<li key={source}>
+									<code>{source}</code>
+								</li>
+							))}
+						</ul>
+					</details>
+				)}
 			</aside>
 
 			<MDXContent>{children}</MDXContent>

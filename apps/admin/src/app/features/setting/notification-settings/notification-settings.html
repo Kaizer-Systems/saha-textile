@@ -1,0 +1,217 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'notification_settings'"
+>
+	<div
+		class="theme-form theme-form-2 mega-form"
+		*hasPermission="'setting.index'"
+	>
+		@if (provider(); as status) {
+		<div
+			class="alert"
+			[class.alert-success]="status.configured"
+			[class.alert-warning]="!status.configured"
+			role="status"
+		>
+			<p class="mb-1">
+				{{ 'provider' | transloco }}:
+				<strong>{{ status.provider }}</strong>
+				— @if (status.configured) { {{ 'configured' | transloco }} } @else { {{ 'not_configured' | transloco }}
+				}
+			</p>
+			<p class="small mb-0">
+				{{ 'email_from' | transloco }}: {{ status.emailFrom }} · sender: {{ status.senderIdConfigured ? ('yes' |
+				transloco) : ('no' | transloco) }} · domain: {{ status.emailDomainConfigured ? ('yes' | transloco) :
+				('no' | transloco) }} · WhatsApp: {{ status.whatsappNumberConfigured ? ('yes' | transloco) : ('no' |
+				transloco) }}
+			</p>
+			<p class="small text-muted mt-2 mb-0">{{ 'msg91_authkey_env_only_hint' | transloco }}</p>
+		</div>
+		}
+
+		<h5 class="mb-3">{{ 'channel_kill_switches' | transloco }}</h5>
+		<div class="table-responsive mb-4">
+			<table class="table">
+				<thead>
+					<tr>
+						<th>{{ 'channel' | transloco }}</th>
+						<th>{{ 'category' | transloco }}</th>
+						<th>{{ 'enabled' | transloco }}</th>
+						<th>{{ 'used_this_period' | transloco }}</th>
+						<th>{{ 'plan_limit' | transloco }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					@for (row of channels(); track row.id) {
+					<tr>
+						<td>{{ row.channel }}</td>
+						<td>{{ row.category }}</td>
+						<td>
+							<div class="form-check form-switch">
+								<input
+									class="checkbox_animated form-check-input"
+									type="checkbox"
+									[checked]="row.enabled"
+									(change)="onEnabledChange(row, $event)"
+									[attr.aria-label]="row.channel + ' ' + row.category"
+								/>
+							</div>
+						</td>
+						<td>{{ row.usedThisPeriod }}</td>
+						<td>{{ row.planLimit ?? '—' }}</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+
+		<h5 class="mb-3">{{ 'notification_templates' | transloco }}</h5>
+		<div class="table-responsive mb-4">
+			<table class="table">
+				<thead>
+					<tr>
+						<th>{{ 'key' | transloco }}</th>
+						<th>{{ 'channel' | transloco }}</th>
+						<th>{{ 'status' | transloco }}</th>
+						<th>{{ 'provider_ids' | transloco }}</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody>
+					@for (template of templates(); track template.id) {
+					<tr>
+						<td>{{ template.key }}</td>
+						<td>{{ template.channel }}</td>
+						<td>{{ template.status }}</td>
+						<td class="small">
+							@if (template.channel === 'sms') { flow: {{ template.dltTemplateId || '—' }} } @else if
+							(template.channel === 'whatsapp') { wa: {{ template.whatsappTemplateId || '—' }} } @else {
+							email key → MSG91 template_id }
+						</td>
+						<td>
+							<button
+								type="button"
+								class="btn btn-sm btn-outline-primary"
+								(click)="editTemplate(template)"
+							>
+								{{ 'edit' | transloco }}
+							</button>
+						</td>
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+
+		<form
+			class="theme-form"
+			[formGroup]="templateForm"
+			(ngSubmit)="submitTemplate()"
+		>
+			<h6 class="mb-3">{{ editingKey() ? ('edit_template' | transloco) : ('add_template' | transloco) }}</h6>
+			<app-form-fields
+				[label]="'key'"
+				[for]="'ntpl_key'"
+				[required]="true"
+			>
+				<input
+					id="ntpl_key"
+					type="text"
+					class="form-control"
+					formControlName="key"
+					[readonly]="editingKey() !== null"
+				/>
+			</app-form-fields>
+			<app-form-fields
+				[label]="'name'"
+				[for]="'ntpl_name'"
+				[required]="true"
+			>
+				<input
+					id="ntpl_name"
+					type="text"
+					class="form-control"
+					formControlName="name"
+				/>
+			</app-form-fields>
+			<app-form-fields
+				[label]="'channel'"
+				[for]="'ntpl_channel'"
+			>
+				<select
+					id="ntpl_channel"
+					class="form-select"
+					formControlName="channel"
+				>
+					<option value="email">email</option>
+					<option value="sms">sms</option>
+					<option value="whatsapp">whatsapp</option>
+				</select>
+			</app-form-fields>
+			<app-form-fields
+				[label]="'category'"
+				[for]="'ntpl_category'"
+			>
+				<select
+					id="ntpl_category"
+					class="form-select"
+					formControlName="category"
+				>
+					<option value="transactional">transactional</option>
+					<option value="marketing">marketing</option>
+				</select>
+			</app-form-fields>
+			<app-form-fields
+				[label]="'status'"
+				[for]="'ntpl_status'"
+			>
+				<select
+					id="ntpl_status"
+					class="form-select"
+					formControlName="status"
+				>
+					<option value="draft">draft</option>
+					<option value="pending_approval">pending_approval</option>
+					<option value="approved">approved</option>
+					<option value="disabled">disabled</option>
+				</select>
+			</app-form-fields>
+			<app-form-fields
+				[label]="'dlt_header_id'"
+				[for]="'ntpl_dlt_header'"
+			>
+				<input
+					id="ntpl_dlt_header"
+					type="text"
+					class="form-control"
+					formControlName="dltHeaderId"
+				/>
+			</app-form-fields>
+			<app-form-fields
+				[label]="'msg91_flow_id'"
+				[for]="'ntpl_flow'"
+			>
+				<input
+					id="ntpl_flow"
+					type="text"
+					class="form-control"
+					formControlName="dltTemplateId"
+				/>
+			</app-form-fields>
+			<app-form-fields
+				[label]="'whatsapp_template_id'"
+				[for]="'ntpl_wa'"
+			>
+				<input
+					id="ntpl_wa"
+					type="text"
+					class="form-control"
+					formControlName="whatsappTemplateId"
+				/>
+			</app-form-fields>
+			<div class="justify-content-end d-flex ms-auto">
+				<app-button [id]="'save_notification_template'">{{ 'save' | transloco }}</app-button>
+			</div>
+		</form>
+	</div>
+</app-page-wrapper>

@@ -8,6 +8,7 @@ import { CartFacade } from '@core/state/cart/cart.facade';
 import { ICart } from '@data-access/interfaces/cart.interface';
 import { IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
+import { ProductService } from '@data-access/services/product.service';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { Button } from '@shared/ui/button/button';
 import { ProductConfigurator } from '@shared/ui/product-config/product-configurator/product-configurator';
@@ -29,8 +30,11 @@ export class ProductConfigModal {
 	private modalService = inject(NgbModal);
 	private platformId = inject<Object>(PLATFORM_ID);
 	private cartFacade = inject(CartFacade);
+	private productService = inject(ProductService);
 
 	readonly product = input.required<IProduct>();
+	/** A cart line carries only what its row shows, so an edit reads the whole product first. */
+	private readonly fullProduct = signal<IProduct | null>(null);
 
 	readonly configModal = viewChild<TemplateRef<unknown>>('configModal');
 
@@ -48,7 +52,7 @@ export class ProductConfigModal {
 	 * without weakening store immutability or touching the shared swatch.
 	 */
 	readonly configProduct = computed<IProduct>(() => {
-		const p = this.product();
+		const p = this.fullProduct() ?? this.product();
 		return p ? (JSON.parse(JSON.stringify(p)) as IProduct) : p;
 	});
 	readonly purchasable = computed(() => this.summary()?.purchasable ?? false);
@@ -57,7 +61,18 @@ export class ProductConfigModal {
 
 	openModal(line?: ICart | null) {
 		if (!isPlatformBrowser(this.platformId)) return;
-		this.editLine.set(line ?? null);
+		if (!line) {
+			this.show(null);
+			return;
+		}
+		this.productService.getProductPage(line.product.slug).subscribe((product) => {
+			this.fullProduct.set(product);
+			this.show(line);
+		});
+	}
+
+	private show(line: ICart | null) {
+		this.editLine.set(line);
 		this.productQty.set(line?.quantity ?? 1);
 		this.summary.set(null);
 		this.modalService.open(this.configModal(), {

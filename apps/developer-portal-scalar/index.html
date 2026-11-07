@@ -1,0 +1,52 @@
+<!doctype html>
+<!--
+	NEXT-GEN-UI
+	What: Scalar's generated-reference entry shell and persistent status bar.
+	Why: keeps scaffold status and the return path visible outside Docusaurus routing.
+	How: Scalar mounts below a dependency-free, shared-token-themed child header.
+	Tuning knobs: status copy and responsive adapter rules in src/styles.css.
+-->
+<html
+	lang="en"
+	data-theme="dark"
+>
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0"
+		/>
+		<meta
+			name="robots"
+			content="noindex, nofollow, noarchive"
+		/>
+		<title>Saha Textile · Scalar API Reference</title>
+	</head>
+	<body>
+		<div
+			class="portal-scalar-status"
+			role="note"
+		>
+			<span
+				class="portal-scalar-status__signal"
+				aria-hidden="true"
+			></span>
+			<div>
+				<strong>Current-contract scaffold</strong>
+				<span>Test Request uses only servers declared by this generated OpenAPI document.</span>
+			</div>
+			<a
+				class="portal-scalar-gateway"
+				href="/tools/scalar"
+				aria-label="Return to the Scalar gateway"
+			>
+				Return to gateway
+			</a>
+		</div>
+		<div id="app"></div>
+		<script
+			type="module"
+			src="/src/main.ts"
+		></script>
+	</body>
+</html>

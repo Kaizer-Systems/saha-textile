@@ -39,6 +39,46 @@
 			<div class="review-box">
 				<label
 					class="form-label"
+					for="askerName"
+				>
+					{{ 'name' | transloco }} *
+				</label>
+				<input
+					class="form-control"
+					id="askerName"
+					[formControl]="askerName"
+				/>
+			</div>
+			<div class="review-box">
+				<label
+					class="form-label"
+					for="askerEmail"
+				>
+					{{ 'email' | transloco }} *
+				</label>
+				<input
+					class="form-control"
+					id="askerEmail"
+					type="email"
+					[formControl]="askerEmail"
+				/>
+			</div>
+			<div class="review-box">
+				<label
+					class="form-label"
+					for="stayAnonymous"
+				>
+					<input
+						id="stayAnonymous"
+						type="checkbox"
+						[formControl]="stayAnonymous"
+					/>
+					{{ 'stay_anonymous' | transloco }}
+				</label>
+			</div>
+			<div class="review-box">
+				<label
+					class="form-label"
 					for="content"
 				>
 					{{ 'your_questions' | transloco }} *

@@ -5,7 +5,7 @@ import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } 
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
+import { Select2Data, Select2, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
 import { injectCountriesQuery } from '@data-access/queries/country.queries';
@@ -23,7 +23,7 @@ import { FormFields } from '@shared/ui/form-fields/form-fields';
 		Button,
 		ReactiveFormsModule,
 		FormFields,
-		Select2Module,
+		Select2,
 		NumberDirective,
 		TitleCasePipe,
 		TranslocoModule,

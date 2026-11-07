@@ -19,7 +19,7 @@ import { IBlog } from '@data-access/interfaces/blog.interface';
 import { ICategoryModel } from '@data-access/interfaces/category.interface';
 import { ITagModel } from '@data-access/interfaces/tag.interface';
 import { injectRecentBlogsQuery } from '@data-access/queries/blog.queries';
-import { injectCategoriesQuery } from '@data-access/queries/category.queries';
+import { injectBlogCategoriesQuery } from '@data-access/queries/category.queries';
 import { injectTagsQuery } from '@data-access/queries/tag.queries';
 import { BlogService } from '@data-access/services/blog.service';
 
@@ -60,7 +60,7 @@ export class BlogSidebar {
 	resentBlog$: Observable<IBlog[]> = toObservable(computed(() => this.recentBlogsQuery.data() ?? []));
 	private readonly tagsQuery = injectTagsQuery(() => ({ status: 1, type: 'post' }));
 	tag$: Observable<ITagModel> = toObservable(computed(() => this.tagsQuery.data() ?? { data: [], total: 0 }));
-	private readonly categoriesQuery = injectCategoriesQuery(() => ({ status: 1 }));
+	private readonly categoriesQuery = injectBlogCategoriesQuery(() => ({ status: 1 }));
 	category$: Observable<ICategoryModel> = toObservable(
 		computed(() => this.categoriesQuery.data() ?? { data: [], total: 0 }),
 	);

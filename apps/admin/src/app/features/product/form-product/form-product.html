@@ -3,6 +3,13 @@
 	[formGroup]="form"
 	(ngSubmit)="submit()"
 >
+	<app-language-switch
+		[locales]="locales"
+		[active]="fields.locale()"
+		[gaps]="gaps()"
+		(changed)="switchLanguage($event)"
+		(gapChosen)="openLanguageGap($event)"
+	/>
 	<div class="vertical-tabs">
 		<div class="row">
 			<div class="col-xl-3 col-lg-4">
@@ -41,7 +48,9 @@
 										placeholder="{{ 'enter_product_name' | transloco }}"
 										formControlName="name"
 									/>
-									@if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
+									@if (fields.source('name'); as guide) {
+									<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+									} @if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
 									<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
@@ -50,7 +59,7 @@
 									[gridClass]="'col-sm-9'"
 									[label]="'short_description'"
 									[for]="'short_description'"
-									[required]="true"
+									[required]="false"
 								>
 									<textarea
 										class="form-control"
@@ -60,11 +69,8 @@
 										formControlName="short_description"
 									></textarea>
 									<p class="help-text">{{ '*Maximum length should be 300 characters.' }}</p>
-									@if (form.controls['short_description'].touched &&
-									form.controls['short_description'].errors?.['required']) {
-									<div class="invalid-feedback">
-										{{ 'short_description_is_required' | transloco }}
-									</div>
+									@if (fields.source('short_description'); as guide) {
+									<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
 									}
 								</app-form-fields>
 								<app-form-fields
@@ -72,7 +78,7 @@
 									[gridClass]="'col-sm-9'"
 									[label]="'description'"
 									[for]="'description'"
-									[required]="true"
+									[required]="false"
 								>
 									<div class="custom-editor">
 										@if(isBrowser) {
@@ -83,39 +89,37 @@
 											[placeholder]="'Type here...'"
 											formControlName="description"
 										/>
-										} @if (form.controls['description'].touched &&
-										form.controls['description'].errors?.['required']) {
-										<div class="invalid-feedback">{{ 'description_is_required' | transloco }}</div>
+										} @if (fields.source('description'); as guide) {
+										<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
 										}
 									</div>
 								</app-form-fields>
-								@if ((setting$ | async )?.activation?.multivendor) {
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'store'"
-									[for]="'store'"
-									[required]="true"
-								>
-									@if(isBrowser) {
-									<select2
-										class="custom-select"
-										[placeholder]="'select_store' | transloco"
-										[data]="(store$ | async)?.length ? (store$ | async) : []"
-										formControlName="store_id"
-										noResultMessage="{{ 'no_data_found' | transloco }}"
-										id="store_id"
-										resettable
-									/>
-									} @if (form.controls['store_id'].touched &&
-									form.controls['store_id'].errors?.['required']) {
-									<div class="invalid-feedback">{{ 'store_is_required' | transloco }}</div>
-									}
-								</app-form-fields>
-								}
 							</div>
 						</ng-template>
 					</li>
+					@if (form.controls['type'].value === 'bundle') {
+					<li
+						ngbNavItem="bundle"
+						id="bundle"
+					>
+						<a ngbNavLink>
+							<i class="ri-stack-line"></i>
+							{{ 'bundle' | transloco }}
+						</a>
+						<ng-template ngbNavContent>
+							<div
+								class="tab"
+								tab="bundle"
+							>
+								<app-product-bundle
+									[(value)]="bundle"
+									[products]="bundleProducts()"
+									[locale]="fields.locale()"
+								/>
+							</div>
+						</ng-template>
+					</li>
+					}
 					<li
 						ngbNavItem="inventory"
 						id="inventory"
@@ -150,24 +154,42 @@
 									<div class="invalid-feedback">{{ 'type_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
+								@if (showsLengths()) {
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
-									[label]="'unit'"
-									[for]="'unit'"
+									[label]="'saree_length'"
+									[for]="'saree_length_m'"
 									[required]="false"
 								>
 									<input
 										class="form-control"
-										id="unit"
-										type="text"
-										placeholder="{{ 'enter_unit' | transloco }}"
-										formControlName="unit"
+										id="saree_length_m"
+										type="number"
+										min="0"
+										step="0.1"
+										formControlName="saree_length_m"
 									/>
-									<p class="help-text">
-										{{ '*Specify the measurement unit, such as 10 Pieces, 1 KG, 1 Ltr, etc.' }}
-									</p>
+									<p class="help-text">{{ 'saree_length_help' | transloco }}</p>
 								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'blouse_piece'"
+									[for]="'blouse_piece_m'"
+									[required]="false"
+								>
+									<input
+										class="form-control"
+										id="blouse_piece_m"
+										type="number"
+										min="0"
+										step="0.1"
+										formControlName="blouse_piece_m"
+									/>
+									<p class="help-text">{{ 'blouse_piece_help' | transloco }}</p>
+								</app-form-fields>
+								}
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -184,7 +206,7 @@
 									/>
 									<p class="help-text">{{ '*Specify the weight of this product in Gms.' }}</p>
 								</app-form-fields>
-								@if (form.controls['type'].value === 'simple') {
+								@if (form.controls['type'].value === 'simple' && !catalogProduct) {
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -225,7 +247,7 @@
 									<div class="invalid-feedback">{{ 'sku_is_required' | transloco}}</div>
 									}
 								</app-form-fields>
-								@if (form.controls['type'].value === 'simple') {
+								@if (form.controls['type'].value === 'simple' && !catalogProduct) {
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -245,7 +267,7 @@
 									<div class="invalid-feedback">{{ 'quantity_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
-								} @if (form.controls['type'].value === 'simple') {
+								} @if (form.controls['type'].value === 'simple' && !catalogProduct) {
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -255,8 +277,7 @@
 								>
 									<div class="input-group">
 										<span class="input-group-text">
-											{{(setting$ | async)?.general?.default_currency?.symbol ? (setting$ |
-											async)?.general?.default_currency?.symbol : '$'}}
+											₹
 										</span>
 										<input
 											class="form-control"
@@ -274,7 +295,7 @@
 									<div class="invalid-feedback">{{ 'please_enter_a_valid_price' | transloco }}</div>
 									}
 								</app-form-fields>
-								} @if (form.controls['type'].value === 'simple') {
+								} @if (form.controls['type'].value === 'simple' && !catalogProduct) {
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
@@ -299,49 +320,8 @@
 										<span class="input-group-text">%</span>
 									</div>
 								</app-form-fields>
-								} @if (form.controls['type'].value === 'simple') {
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'sale_price'"
-									[for]="'sale_price'"
-									[required]="false"
-								>
-									<div class="input-group">
-										<span class="input-group-text">
-											{{ (setting$ | async)?.general?.default_currency?.symbol ? (setting$ |
-											async)?.general?.default_currency?.symbol : '$' }}
-										</span>
-										<input
-											class="form-control disabled"
-											id="sale_price"
-											type="number"
-											placeholder="sale price"
-											value="{{ (form.get('price')?.value - (form.get('price')?.value * form.get('discount')?.value)/100).toFixed(2)}}"
-											readonly
-										/>
-									</div>
-								</app-form-fields>
 								}
 
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'sale_status'"
-									[for]="'is_sale_enable'"
-									[required]="false"
-								>
-									<div class="form-check form-switch ps-0">
-										<label class="switch">
-											<input
-												type="checkbox"
-												id="is_sale_enable"
-												formControlName="is_sale_enable"
-											/>
-											<span class="switch-state"></span>
-										</label>
-									</div>
-								</app-form-fields>
 								<div>
 									<app-form-fields
 										[labelClass]="'form-label-title col-sm-3 mb-0'"
@@ -438,73 +418,102 @@
 										}
 									</app-form-fields>
 								</div>
-								@if (form.controls['type'].value === 'classified') {
+								@if (form.controls['type'].value !== 'bundle') {
+								<app-option-groups
+									[(groups)]="optionGroups"
+									[(templateCode)]="addonTemplateCode"
+									[templates]="addonTemplates()"
+									[savedAxes]="savedAxes()"
+									[definitions]="definitions()"
+									[locale]="fields.locale()"
+								/>
+								} @if (form.controls['type'].value === 'classified' || catalogProduct) {
 								<div class="variant-box border-top">
-									<ng-container formArrayName="variants">
-										@for (variant of variantControl.controls; track variant ; let index = $index ) {
-										<div
-											class="row"
-											formGroupName="{{ index }}"
-										>
-											<div class="col-sm-5 variant-row">
-												<app-form-fields
-													[label]="'attribute'"
-													[for]="'attribute'+index"
-												>
-													@if(isBrowser) {
-													<select2
-														class="custom-select d-block"
-														[data]="(attribute$ | async)?.length ? (attribute$ | async) : []"
-														[placeholder]="'select_attribute' | transloco "
-														(update)="updateAttribute($event, index)"
-														formControlName="id"
-														noResultMessage="{{ 'no_data_found' | transloco }}"
-														resettable
-													/>
-													}
-												</app-form-fields>
-											</div>
-											<div class="col-sm-5 variant-row">
-												<app-form-fields
-													[label]="'value'"
-													[for]="'value'+index"
-												>
-													@if(isBrowser) {
-													<select2
-														class="custom-select d-block"
-														[data]="variant.get('variant_option')?.value?.length ? variant.get('variant_option').value : []"
-														[placeholder]="'select_value' | transloco "
-														formControlName="attribute_values"
-														(update)="updateAttributeValue($event, index)"
-														noResultMessage="{{ 'no_data_found' | transloco }}"
-														[multiple]="true"
-													/>
-													}
-												</app-form-fields>
-											</div>
-											<div class="col-sm-2 delete-variant">
-												<a
-													href="javascript:void(0)"
-													class="invalid-feedback"
-													(click)="removeVariant(index)"
-												>
-													{{ 'remove' | transloco }}
-												</a>
-											</div>
-										</div>
-										}
-									</ng-container>
-									@if ((attribute$ | async)?.length) {
-									<app-button
-										[class]="'btn btn-theme mb-4'"
-										[id]="'add_variant'"
-										[spinner]="false"
-										(click)="addVariant($event)"
-									>
-										{{ 'add_variant' | transloco }}
-									</app-button>
-									} @if (variationControl.controls.length) {
+									@if (variationControl.controls.length) {
 									<div class="shipping-accordion variant-accordion">
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'made_to_order'"
+											[for]="'made_to_order'"
+										>
+											<div class="form-check form-switch ps-0">
+												<label class="switch">
+													<input
+														type="checkbox"
+														id="made_to_order"
+														formControlName="made_to_order"
+														[attr.disabled]="madeToOrderAllowed ? null : true"
+													/>
+													<span class="switch-state"></span>
+												</label>
+											</div>
+											@if (!madeToOrderAllowed) {
+											<p class="help-text">{{ 'made_to_order_live_only' | transloco }}</p>
+											}
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'low_stock_threshold'"
+											[for]="'low_stock_threshold'"
+										>
+											<input
+												class="form-control"
+												id="low_stock_threshold"
+												type="number"
+												formControlName="low_stock_threshold"
+											/>
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'pinned_badges'"
+											[for]="'pinned_badges'"
+										>
+											@if(isBrowser) {
+											<select2
+												class="custom-select"
+												id="pinned_badges"
+												[data]="badgeOptions"
+												[multiple]="true"
+												[placeholder]="'pinned_badges' | transloco"
+												noResultMessage="{{ 'no_data_found' | transloco }}"
+												formControlName="pinned_badges"
+											/>
+											}
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'hidden_badges'"
+											[for]="'hidden_badges'"
+										>
+											@if(isBrowser) {
+											<select2
+												class="custom-select"
+												id="hidden_badges"
+												[data]="badgeOptions"
+												[multiple]="true"
+												[placeholder]="'hidden_badges' | transloco"
+												noResultMessage="{{ 'no_data_found' | transloco }}"
+												formControlName="hidden_badges"
+											/>
+											}
+										</app-form-fields>
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'addon_price'"
+											[for]="'addon_price_inr'"
+										>
+											<input
+												class="form-control"
+												id="addon_price_inr"
+												type="number"
+												formControlName="addon_price_inr"
+											/>
+										</app-form-fields>
 										<h3 class="form-label-title mb-2">{{ 'variants' | transloco }}</h3>
 										<ng-container formArrayName="variations">
 											<div ngbAccordion>
@@ -528,46 +537,98 @@
 																	[gridClass]="'col-sm-9'"
 																	[label]="'name' | transloco"
 																	[for]="'variation_name'+i"
-																	[required]="true"
 																>
 																	<input
 																		class="form-control"
 																		[id]="'variation_name'+i"
 																		type="text"
-																		placeholder="Enter Name"
 																		formControlName="name"
 																	/>
-																	@if (variation.get('name')?.touched &&
-																	variation.get('name')?.errors?.['required']) {
+																</app-form-fields>
+																<app-form-fields
+																	[labelClass]="'form-label-title col-sm-3 mb-0'"
+																	[gridClass]="'col-sm-9'"
+																	[label]="'sku'"
+																	[for]="'sku'+i"
+																	[required]="true"
+																>
+																	<input
+																		class="form-control"
+																		[id]="'sku'+i"
+																		type="text"
+																		formControlName="sku"
+																	/>
+																	@if (catalogProduct?.published) {
+																	<p class="help-text">
+																		{{ 'sku_frozen' | transloco }}
+																	</p>
+																	} @if (variation.get('sku')?.touched &&
+																	variation.get('sku')?.errors?.['required']) {
 																	<div class="invalid-feedback">
-																		{{ 'name_is_required' | transloco }}
+																		{{ 'sku_is_required' | transloco }}
 																	</div>
 																	}
 																</app-form-fields>
 																<app-form-fields
 																	[labelClass]="'form-label-title col-sm-3 mb-0'"
 																	[gridClass]="'col-sm-9'"
-																	[label]="'Price'"
+																	[label]="'mrp'"
+																	[for]="'mrp'+i"
+																>
+																	<div class="input-group">
+																		<span class="input-group-text">
+																			₹
+																		</span>
+																		<input
+																			class="form-control"
+																			[id]="'mrp'+i"
+																			type="number"
+																			min="0"
+																			formControlName="mrp"
+																		/>
+																	</div>
+																</app-form-fields>
+																<app-form-fields
+																	[labelClass]="'form-label-title col-sm-3 mb-0'"
+																	[gridClass]="'col-sm-9'"
+																	[label]="'selling_price'"
 																	[for]="'price'+i"
 																	[required]="true"
 																>
 																	<div class="input-group">
 																		<span class="input-group-text">
-																			{{ (setting$ |
-																			async)?.general?.default_currency?.symbol ?
-																			(setting$ |
-																			async)?.general?.default_currency?.symbol :
-																			'$' }}
+																			₹
 																		</span>
 																		<input
 																			class="form-control"
 																			[id]="'price'+i"
 																			type="number"
-																			placeholder="Enter Price"
+																			min="0"
 																			formControlName="price"
 																		/>
+																		<input
+																			class="form-control"
+																			[id]="'discount_value'+i"
+																			type="number"
+																			min="0"
+																			max="100"
+																			[attr.placeholder]="'or_percent_off' | transloco"
+																			formControlName="discount"
+																			(input)="applyPercent(variation)"
+																		/>
+																		<span class="input-group-text">%</span>
 																	</div>
-																	@if (variation.get('price')?.touched &&
+																	@if (percentPreview(variation); as preview) {
+																	<p class="help-text">
+																		{{ 'price_preview' | transloco: { price:
+																		(preview.price | currencySymbol), percent:
+																		preview.percent } }}
+																	</p>
+																	} @if (variation.errors?.['sellingAboveMrp']) {
+																	<div class="invalid-feedback">
+																		{{ 'selling_above_mrp' | transloco }}
+																	</div>
+																	} @if (variation.get('price')?.touched &&
 																	variation.get('price')?.errors?.['required']) {
 																	<div class="invalid-feedback">
 																		{{ 'price_is_required' | transloco }}
@@ -582,55 +643,6 @@
 																<app-form-fields
 																	[labelClass]="'form-label-title col-sm-3 mb-0'"
 																	[gridClass]="'col-sm-9'"
-																	[label]="'discount' | transloco "
-																	[for]="'discount_value'+i"
-																	[required]="false"
-																>
-																	<div class="input-group">
-																		<input
-																			class="form-control"
-																			[id]="'discount_value'+i"
-																			type="number"
-																			min="0"
-																			max="100"
-																			oninput="
-																				if (value > 100) value = 100;
-																				if (value < 0) value = 0;
-																			"
-																			placeholder="{{ 'enter_discount' | transloco }}"
-																			formControlName="discount"
-																		/>
-																		<span class="input-group-text">%</span>
-																	</div>
-																</app-form-fields>
-																<app-form-fields
-																	[labelClass]="'form-label-title col-sm-3 mb-0'"
-																	[gridClass]="'col-sm-9'"
-																	[label]="'sale_price'"
-																	[for]="'sale_price'+i"
-																	[required]="false"
-																>
-																	<div class="input-group">
-																		<span class="input-group-text">
-																			{{ (setting$ |
-																			async)?.general?.default_currency?.symbol ?
-																			(setting$ | async
-																			)?.general?.default_currency?.symbol : '$'
-																			}}
-																		</span>
-																		<input
-																			class="form-control"
-																			[id]="'sale_price'+i"
-																			type="number"
-																			placeholder="Enter sale price"
-																			value="{{ (variation.get('price')?.value - (variation.get('price')?.value * variation.get('discount')?.value)/100).toFixed(2)}}"
-																			readonly
-																		/>
-																	</div>
-																</app-form-fields>
-																<app-form-fields
-																	[labelClass]="'form-label-title col-sm-3 mb-0'"
-																	[gridClass]="'col-sm-9'"
 																	[label]="'stock_quantity' | transloco"
 																	[for]="'quantity'+i"
 																	[required]="true"
@@ -639,7 +651,6 @@
 																		class="form-control"
 																		[id]="'quantity'+i"
 																		type="number"
-																		placeholder="Enter Quantity"
 																		formControlName="quantity"
 																	/>
 																	@if (variation.get('quantity')?.touched &&
@@ -652,45 +663,100 @@
 																<app-form-fields
 																	[labelClass]="'form-label-title col-sm-3 mb-0'"
 																	[gridClass]="'col-sm-9'"
-																	[label]="'sku'"
-																	[for]="'sku'+i"
-																	[required]="true"
+																	[label]="'weight_grams'"
+																	[for]="'weight_grams'+i"
 																>
 																	<input
 																		class="form-control"
-																		[id]="'sku'+i"
-																		type="text"
-																		placeholder="Enter SKU"
-																		formControlName="sku"
+																		[id]="'weight_grams'+i"
+																		type="number"
+																		formControlName="weight_grams"
+																		[attr.placeholder]="fromProduct('weight')"
 																	/>
-																	@if (variation.get('sku')?.touched &&
-																	variation.get('sku')?.errors?.['required']) {
-																	<div class="invalid-feedback">
-																		{{ 'sku_is_required' | transloco }}
-																	</div>
-																	}
 																</app-form-fields>
 																<app-form-fields
 																	[labelClass]="'form-label-title col-sm-3 mb-0'"
 																	[gridClass]="'col-sm-9'"
-																	[label]="'stock_status'"
-																	[for]="'stock_status'+i"
+																	[label]="'length_cm'"
+																	[for]="'length_cm'+i"
+																>
+																	<input
+																		class="form-control"
+																		[id]="'length_cm'+i"
+																		type="number"
+																		formControlName="length_cm"
+																		[attr.placeholder]="fromProduct('length_cm')"
+																	/>
+																</app-form-fields>
+																<app-form-fields
+																	[labelClass]="'form-label-title col-sm-3 mb-0'"
+																	[gridClass]="'col-sm-9'"
+																	[label]="'width_cm'"
+																	[for]="'width_cm'+i"
+																>
+																	<input
+																		class="form-control"
+																		[id]="'width_cm'+i"
+																		type="number"
+																		formControlName="width_cm"
+																		[attr.placeholder]="fromProduct('width_cm')"
+																	/>
+																</app-form-fields>
+																<app-form-fields
+																	[labelClass]="'form-label-title col-sm-3 mb-0'"
+																	[gridClass]="'col-sm-9'"
+																	[label]="'height_cm'"
+																	[for]="'height_cm'+i"
+																>
+																	<input
+																		class="form-control"
+																		[id]="'height_cm'+i"
+																		type="number"
+																		formControlName="height_cm"
+																		[attr.placeholder]="fromProduct('height_cm')"
+																	/>
+																</app-form-fields>
+																<app-form-fields
+																	[labelClass]="'form-label-title col-sm-3 mb-0'"
+																	[gridClass]="'col-sm-9'"
+																	[label]="'barcode'"
+																	[for]="'barcode'+i"
+																>
+																	<input
+																		class="form-control"
+																		[id]="'barcode'+i"
+																		type="text"
+																		formControlName="barcode"
+																	/>
+																</app-form-fields>
+																<app-form-fields
+																	[labelClass]="'form-label-title col-sm-3 mb-0'"
+																	[gridClass]="'col-sm-9'"
+																	[label]="'hsn'"
+																	[for]="'hsn'+i"
+																>
+																	<input
+																		class="form-control"
+																		[id]="'hsn'+i"
+																		type="text"
+																		formControlName="hsn"
+																		[attr.placeholder]="fromProduct('hsn_code')"
+																	/>
+																</app-form-fields>
+																<app-form-fields
+																	[labelClass]="'form-label-title col-sm-3 mb-0'"
+																	[gridClass]="'col-sm-9'"
+																	[label]="'availability'"
+																	[for]="'availability'+i"
 																	[required]="true"
 																>
 																	@if(isBrowser) {
 																	<select2
 																		class="custom-select"
-																		[placeholder]="'select_stock_status' | transloco"
-																		[data]="stocks.length ? stocks : []"
+																		[data]="availabilityOptions"
 																		noResultMessage="{{ 'no_data_found' | transloco }}"
-																		formControlName="stock_status"
+																		formControlName="availability"
 																	/>
-																	} @if (variation.get('stock_status')?.touched &&
-																	variation.get('stock_status')?.errors?.['required'])
-																	{
-																	<div class="invalid-feedback">
-																		{{ 'stock_is_required' | transloco }}
-																	</div>
 																	}
 																</app-form-fields>
 																<app-form-fields
@@ -698,30 +764,12 @@
 																	[gridClass]="'col-sm-9'"
 																	[label]="'image'"
 																	[for]="'variation_image_id'+i"
-																	[required]="false"
 																>
 																	<app-image-upload
 																		[multipleImage]="false"
 																		[image]="variation.get('variation_image')?.value"
 																		(selectedFiles)="selectVariationImage($event, i)"
 																	/>
-																</app-form-fields>
-																<app-form-fields
-																	[labelClass]="'form-label-title col-sm-3 mb-0'"
-																	[gridClass]="'col-sm-9'"
-																	[label]="'status'"
-																	[for]="'active_variation_status'+i"
-																>
-																	<div class="form-check form-switch ps-0">
-																		<label class="switch">
-																			<input
-																				type="checkbox"
-																				[id]="'active_variation_status'+i"
-																				formControlName="status"
-																			/>
-																			<span class="switch-state"></span>
-																		</label>
-																	</div>
 																</app-form-fields>
 															</ng-template>
 														</div>
@@ -847,6 +895,23 @@
 										{{ '*Choose a maximum of 6 products for effective related products display.' }}
 									</p>
 								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'upsell_products'"
+									[for]="'upsell_products'"
+									[required]="false"
+								>
+									@if(isBrowser) {
+									<select2
+										class="custom-select"
+										[data]="(products$ | async)?.length ? (products$ | async) : []"
+										[placeholder]="'select_product' | transloco"
+										formControlName="upsell_products"
+										[multiple]="true"
+									/>
+									}
+								</app-form-fields>
 								}
 
 								<app-form-fields
@@ -905,46 +970,23 @@
 								class="tab"
 								tab="images"
 							>
+								<app-product-images
+									[(value)]="images"
+									[(tiles)]="tiles"
+									[(sizes)]="imageSizes"
+									[combinations]="combinations()"
+									[locale]="fields.locale()"
+								/>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
-									[label]="'thumbnail'"
-									[for]="'product_thumbnail_id'"
+									[label]="'product_video'"
+									[for]="'youtube_video_id'"
 									[required]="false"
 								>
-									<app-image-upload
-										[multipleImage]="false"
-										[image]="(product$ | async)?.product_thumbnail"
-										[helpText]="'*Upload image size 600x600px recommended'"
-										(selectedFiles)="selectThumbnail($event)"
-									/>
-								</app-form-fields>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'images'"
-									[for]="'product_galleries_id'"
-									[required]="false"
-								>
-									<app-image-upload
-										[multipleImage]="true"
-										[images]="(product$ | async)?.product_galleries"
-										[helpText]="'*Upload image size 600x600px recommended'"
-										(selectedFiles)="selectImages($event)"
-									/>
-								</app-form-fields>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
-									[label]="'Size Chart'"
-									[for]="'size_chart_image_id'"
-									[required]="false"
-								>
-									<app-image-upload
-										[multipleImage]="false"
-										[image]="(product$ | async)?.size_chart_image"
-										[helpText]="'*Upload an image showcasing the size chart tailored for fashion products. A table format image is suggested for easy reference.'"
-										(selectedFiles)="selectSizeImage($event)"
+									<app-youtube-video-field
+										[id]="'youtube_video_id'"
+										[control]="$any(form.controls['youtube_video_id'])"
 									/>
 								</app-form-fields>
 							</div>
@@ -967,6 +1009,24 @@
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
+									[label]="'url_slug'"
+									[for]="'slug'"
+									[required]="false"
+								>
+									<input
+										class="form-control"
+										id="slug"
+										type="text"
+										formControlName="slug"
+									/>
+									<p class="help-text">{{ 'url_slug_help' | transloco }}</p>
+									@if (form.controls['slug'].errors?.['pattern']) {
+									<div class="invalid-feedback d-block">{{ 'url_slug_invalid' | transloco }}</div>
+									}
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
 									[label]="'meta_title'"
 									[for]="'meta_title'"
 									[required]="false"
@@ -978,6 +1038,9 @@
 										placeholder="{{'enter_meta_title' | transloco }}"
 										formControlName="meta_title"
 									/>
+									@if (fields.source('meta_title'); as guide) {
+									<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+									}
 								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
@@ -993,6 +1056,9 @@
 										rows="3"
 										formControlName="meta_description"
 									></textarea>
+									@if (fields.source('meta_description'); as guide) {
+									<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+									}
 								</app-form-fields>
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
@@ -1003,7 +1069,7 @@
 								>
 									<app-image-upload
 										[multipleImage]="false"
-										[image]="(product$ | async)?.product_meta_image"
+										[image]="product?.product_meta_image"
 										(selectedFiles)="selectMetaImage($event)"
 									/>
 								</app-form-fields>
@@ -1067,6 +1133,62 @@
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
+									[label]="'length_cm'"
+									[for]="'length_cm'"
+									[required]="false"
+								>
+									<input
+										class="form-control"
+										id="length_cm"
+										type="number"
+										formControlName="length_cm"
+									/>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'width_cm'"
+									[for]="'width_cm'"
+									[required]="false"
+								>
+									<input
+										class="form-control"
+										id="width_cm"
+										type="number"
+										formControlName="width_cm"
+									/>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'height_cm'"
+									[for]="'height_cm'"
+									[required]="false"
+								>
+									<input
+										class="form-control"
+										id="height_cm"
+										type="number"
+										formControlName="height_cm"
+									/>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'hsn'"
+									[for]="'hsn_code'"
+									[required]="false"
+								>
+									<input
+										class="form-control"
+										id="hsn_code"
+										type="text"
+										formControlName="hsn_code"
+									/>
+								</app-form-fields>
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
 									[label]="'estimated_delivery_text'"
 									[for]="'estimated_delivery_text'"
 									[required]="false"
@@ -1078,6 +1200,14 @@
 										placeholder="{{'enter_estimated_delivery_text' | transloco }}"
 										formControlName="estimated_delivery_text"
 									/>
+									@if (fields.source('estimated_delivery_text')) {
+									<p class="help-text mb-0">
+										{{ 'english_guide' | transloco: { text: fields.source('estimated_delivery_text') } }}
+									</p>
+									}
+									@if (form.controls['estimated_delivery_text'].errors?.['leadTimeRequired']) {
+									<div class="invalid-feedback">{{ 'lead_time_is_required' | transloco }}</div>
+									}
 									<p class="help-text">
 										{{ '*Specify delivery text e.g Your order is likely to reach you within 5 to 10
 										days.' }}
@@ -1253,28 +1383,6 @@
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
-									[label]="'trending'"
-									[for]="'is_trending'"
-									[required]="false"
-								>
-									<div class="form-check form-switch ps-0">
-										<label class="switch">
-											<input
-												type="checkbox"
-												id="is_trending"
-												formControlName="is_trending"
-											/>
-											<span class="switch-state"></span>
-										</label>
-										<p class="help-text">
-											{{ '*Enabling this will showcase the product in the sidebar of the product
-											page as a trending item.' }}
-										</p>
-									</div>
-								</app-form-fields>
-								<app-form-fields
-									[labelClass]="'form-label-title col-sm-3 mb-0'"
-									[gridClass]="'col-sm-9'"
 									[label]="'return'"
 									[for]="'return'"
 									[required]="false"
@@ -1293,28 +1401,72 @@
 										</p>
 									</div>
 								</app-form-fields>
+								@if (goLiveGaps().length) {
+								<div class="alert alert-danger">
+									<strong>{{ 'go_live_blocked' | transloco }}</strong>
+									<ul class="mb-0 mt-2">
+										@for (gap of goLiveGaps(); track $index; let index = $index) {
+										<li>
+											<a
+												class="alert-link cursor-pointer"
+												(click)="openGap(gap)"
+											>
+												{{ gapLabels()[index] }}
+											</a>
+										</li>
+										}
+									</ul>
+								</div>
+								} @if (catalogProduct && catalogProduct.status !== 'live' && catalogProduct.status !== 'discontinued') {
+								<button
+									type="button"
+									id="go_live_btn"
+									class="btn btn-theme mb-4"
+									(click)="goLive()"
+								>
+									{{ 'go_live' | transloco }}
+								</button>
+								}
 								<app-form-fields
 									[labelClass]="'form-label-title col-sm-3 mb-0'"
 									[gridClass]="'col-sm-9'"
 									[label]="'status'"
 									[for]="'status'"
+									[required]="true"
+								>
+									@if(isBrowser) {
+									<select2
+										class="custom-select"
+										id="status"
+										[data]="statusOptions"
+										[placeholder]="'select_status' | transloco"
+										noResultMessage="{{ 'no_data_found' | transloco }}"
+										formControlName="status"
+									/>
+									}
+								</app-form-fields>
+								@if (isDiscontinuing) {
+								<app-form-fields
+									[labelClass]="'form-label-title col-sm-3 mb-0'"
+									[gridClass]="'col-sm-9'"
+									[label]="'replacement'"
+									[for]="'replacement_path'"
 									[required]="false"
 								>
-									<div class="form-check form-switch ps-0">
-										<label class="switch">
-											<input
-												type="checkbox"
-												id="status"
-												formControlName="status"
-											/>
-											<span class="switch-state"></span>
-										</label>
-										<p class="help-text">
-											{{ '*Toggle between Enabled and Disabled to control the availability of the
-											product for purchase.' }}
-										</p>
-									</div>
+									@if(isBrowser) {
+									<select2
+										class="custom-select"
+										id="replacement_path"
+										[data]="replacementTargets"
+										[placeholder]="'replacement' | transloco"
+										noResultMessage="{{ 'no_data_found' | transloco }}"
+										formControlName="replacement_path"
+										resettable
+									/>
+									}
+									<p class="help-text">{{ 'replacement_help' | transloco }}</p>
 								</app-form-fields>
+								}
 							</div>
 						</ng-template>
 					</li>

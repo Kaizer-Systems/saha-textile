@@ -42,7 +42,7 @@
 					<div
 						class="content-section drop-files-sec"
 						ngx-dropzone
-						[accept]="'image/*'"
+						[accept]="'image/jpeg,image/png'"
 						(change)="onSelect($event)"
 					>
 						<ngx-dropzone-label>
@@ -75,6 +75,7 @@
 			<app-button
 				[class]="'align-items-center btn btn-theme d-flex'"
 				[id]="'media_btn'"
+				[disabled]="uploading"
 				(click)="active === 'upload' ? addMedia(nav) : selectedMedia(modal)"
 			>
 				{{ 'insert_media' | transloco }}

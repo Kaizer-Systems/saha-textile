@@ -3,27 +3,54 @@ title: Request Lifecycle and Boundary Tracing
 description: How a request enters the API, crosses application and domain boundaries, reaches an adapter, and returns safely.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
+wide: true
+search_keywords: 'flight simulator photon post orders idempotency transaction ghost stages trace'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/app.module.ts
     - apps/api/src
+    - apps/api/src/common/request-context.ts
+    - apps/api/src/common/http-exception.filter.ts
+    - apps/api/src/common/csrf.guard.ts
+    - apps/api/src/common/cookie-audience.guard.ts
+    - apps/api/src/auth/session.guard.ts
+    - apps/api/src/auth/ownership.ts
+    - apps/api/src/infra/persistence.module.ts
+    - apps/api/src/orders/orders.controller.ts
+    - apps/api/src/cart/cart.service.ts
     - packages/core-domain/src
+    - packages/core-domain/src/ports/transaction-manager.port.ts
+    - packages/core-domain/src/pricing
     - packages/adapters-db-mongo/src
-    - project-context/angular-context/codex-api-app-build-instructional-prompt.md
+    - packages/adapters-db-mongo/src/transaction-manager.ts
+    - packages/adapters-db-mongo/test/transaction.test.ts
+    - packages/adapters-db-mongo/test/order-cart-transaction.test.ts
+    - apps/api/src/orders/orders.service.ts
+    - apps/storefront/src/app/features/shop/checkout
+    - packages/adapters-db-mongo/src/repositories/order.repository.ts
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
+    - docs/_data/portal-manifest.json
+    - docs/_data/instruments/request-flight.json
+    - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
 ---
+
+import { FlightSimulator } from '@site/src/components/FlightSimulator';
 
 # Request lifecycle and boundary tracing
 
-A request is not “handled by the controller.” The controller is one checkpoint in a longer chain. A safe backend makes each checkpoint visible, testable, and replaceable.
+A request passes through several checkpoints before and after the controller. This page describes that path and gives a template for tracing an endpoint.
 
-## Current request path
+<FlightSimulator />
+
+## Request path
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Client
     participant Fastify as Fastify/Nest bootstrap
+    participant Context as Request context + global guards
     participant Pipe as ZodValidationPipe
     participant Guard as Optional guards
     participant Controller
@@ -32,8 +59,9 @@ sequenceDiagram
     participant Mongo as Mongo repository/model
 
     Client->>Fastify: HTTP request
-    Fastify->>Guard: Authenticate/authorize when decorated
-    Guard-->>Fastify: Claims or exception
+    Fastify->>Context: Resolve request id/client IP, CORS, rate limit, session, CSRF
+    Fastify->>Guard: Enforce default auth, audience, role, permission and ownership policy
+    Guard-->>Fastify: Principal or exception
     Fastify->>Pipe: Parse selected request bodies
     Pipe-->>Controller: Typed value or 400
     Controller->>Service: Application call
@@ -41,18 +69,35 @@ sequenceDiagram
     Port->>Mongo: Mongoose query/write
     Mongo-->>Service: Contract-shaped mapped value
     Service-->>Client: Nest serializes return value
+    Context-->>Client: x-request-id and safe ApiErrorResponse on failure
 ```
 
-This path exists, but it is inconsistent:
+Four global guards run in this order, as registered in `apps/api/src/app.module.ts`:
 
-- not every route uses guards;
-- body validation schemas usually live inside controllers rather than shared contract families;
-- query/path parameters are often parsed manually;
-- there is no global safe error envelope or explicit response serializer;
-- authorization is sometimes a role check and sometimes absent;
-- multi-record writes have no transaction context.
+1. `CookieAudienceGuard` records which session's cookies the route reads: storefront `st_*` or admin `st_admin_*`, from `@Audience`. It never refuses a request.
+2. `RefreshReuseGuard` runs on routes marked `@RotatesSession()`. It detects a replayed refresh token and revokes the family, before CSRF can reject the request.
+3. `CsrfGuard` checks unsafe methods that carry a session cookie.
+4. `SessionGuard` authenticates by default. Routes opt out with `@Public()`.
 
-## Target request path
+After the guards:
+
+- `ZodValidationPipe` parses the body and query where a contract is declared.
+- The controller calls a service, and the service calls ports.
+- Ownership checks return 404 on mismatch for orders, carts and sessions.
+- `HttpExceptionFilter` turns every failure into `ApiErrorResponse`.
+
+Session refusals carry a stable optional reason: `session_missing`, `session_expired`, `session_revoked`, `permissions_changed` or `account_inactive`. CSRF refusals carry `csrf_rejected`. Domain refusals travel in `issues[]` with a stable `code`.
+
+Multi-record writes use transactions:
+
+- Signup finalisation commits the customer, password credential and provider identity together.
+- Contact confirmation commits proof consumption, the identifier change and the audit record together.
+- Order creation commits the order and cart removal together.
+- A customer soft delete commits the status change, provider release and audit record together.
+
+## Ideal request path
+
+The diagram shows the full order of checks for a new endpoint.
 
 ```mermaid
 flowchart TD
@@ -78,95 +123,86 @@ flowchart TD
 
 ## Trace template
 
-Use this worksheet when debugging or documenting an endpoint.
+Use this worksheet to debug or document an endpoint.
 
-| Question           | Record                                                                        |
-| ------------------ | ----------------------------------------------------------------------------- |
-| Method and route   | Example: `POST /checkout/place-order`                                         |
-| Actor and audience | Customer cookie session, admin cookie session, provider webhook, internal job |
-| Authentication     | Required, optional, or forbidden                                              |
-| Authorization      | Ownership, role, permission, consent, provider signature                      |
-| CSRF               | Required for cookie-authenticated unsafe methods                              |
-| Rate-limit bucket  | Global plus route-specific key and threshold                                  |
-| Request contract   | Shared zod schema and version                                                 |
-| Use case           | One application service method with explicit input/context                    |
-| Domain invariants  | Stock, price, transition, identity, consent, idempotency                      |
-| Ports              | Repository/provider capabilities used                                         |
-| Transaction        | Records that must commit or roll back together                                |
-| Response contract  | Actor-safe DTO; forbidden internal fields                                     |
-| Errors             | Validation, authorization, conflict, dependency, unexpected                   |
-| Side effects       | Audit, notification, search outbox, analytics, provider call                  |
-| Proof              | Unit, integration, authorization, transaction, OpenAPI, runtime probe         |
+| Question           | Record                                                          |
+| ------------------ | --------------------------------------------------------------- |
+| Method and route   | Example: `POST /orders`                                         |
+| Actor and audience | Customer session, admin session, provider webhook, internal job |
+| Authentication     | Required, optional or forbidden                                 |
+| Authorization      | Ownership, role, permission, consent, provider signature        |
+| CSRF               | Required for cookie-authenticated unsafe methods                |
+| Rate-limit bucket  | Global plus route-specific key and threshold                    |
+| Request contract   | Shared zod schema and version                                   |
+| Use case           | One application service method                                  |
+| Domain rules       | Stock, price, transition, identity, consent, idempotency        |
+| Ports              | Repository and provider capabilities used                       |
+| Transaction        | Records that must commit or roll back together                  |
+| Response contract  | Actor-safe response; forbidden internal fields                  |
+| Errors             | Validation, authorization, conflict, dependency, unexpected     |
+| Side effects       | Audit, notification, search index, analytics, provider call     |
+| Tests              | Unit, integration, authorization, transaction, OpenAPI, runtime |
 
-## Example: current order creation
+## Example: order creation
 
-Current execution:
+`POST /orders` runs as follows:
 
-1. Bearer guard validates an access JWT.
-2. `CreateOrderSchema` validates `cartId`, optional currency/gateway/coupon.
-3. Controller attaches `user.sub`, but the service does not verify cart ownership.
-4. Service loads the cart and each product.
-5. Service computes a partial INR/conversion/coupon total.
-6. Service saves the order.
-7. Service deletes the cart in a separate write.
+1. `SessionGuard` validates the httpOnly access cookie and sets the principal.
+2. `CsrfGuard` requires the session-bound token in both the cookie and the `x-csrf-token` header.
+3. `CreateOrderRequest` validates `cartId`, optional currency, gateway and coupon. It accepts no user id.
+4. `OrdersService` confirms that the cart belongs to the principal, or is a guest cart backed by the caller's `st_guest` cookie.
+5. The service loads each product and calculates INR totals, conversion and coupon discount.
+6. `TransactionManagerPort.withTransaction` saves the order and deletes the cart together.
 
-What is missing before this can be a production place-order flow:
+### Limitations
 
-- owned cart resolution;
-- server quote/version and expiry;
-- idempotency key;
-- purchase eligibility and stock reservation;
-- tax and shipping decisions;
-- provider/gateway policy;
-- separate payment attempt;
-- immutable complete snapshots;
-- one transaction across required records;
-- rollback and replay tests.
+This operation creates a `pending` order only. It has no quote, idempotency key, stock reservation, tax or shipping calculation, or payment attempt. The storefront checkout does not call it.
 
 ## Error taxonomy
 
-| Class             | Example                    | Client behavior                    | Log behavior                              |
-| ----------------- | -------------------------- | ---------------------------------- | ----------------------------------------- |
-| Validation        | Malformed quantity         | Correct highlighted input          | Request id and safe issue paths           |
-| Authentication    | Missing/expired session    | Start or resume auth               | No token contents                         |
-| Authorization     | Another user's order       | Generic forbidden/not found policy | Actor id, resource type/id hash, decision |
-| Business conflict | Stock changed              | Refresh affected line/quote        | Invariant code and current version        |
-| Idempotent replay | Order already placed       | Return/reconcile original outcome  | Original operation id                     |
-| Dependency        | Search/payment unavailable | Degrade or retry by policy         | Adapter, latency, safe provider code      |
-| Unexpected        | Programming/data error     | Stable generic 500                 | Redacted stack and correlation id         |
+| Class             | Example                    | Client behaviour               | Log behaviour                        |
+| ----------------- | -------------------------- | ------------------------------ | ------------------------------------ |
+| Validation        | Malformed quantity         | Correct the highlighted input  | Request id and safe issue paths      |
+| Authentication    | Missing or expired session | Start or resume sign-in        | No token contents                    |
+| Authorization     | Another user's order       | Generic not-found or forbidden | Actor id, resource type, decision    |
+| Business conflict | Stock changed              | Refresh the affected line      | Rule code and current version        |
+| Idempotent replay | Order already placed       | Show the original outcome      | Original operation id                |
+| Dependency        | Search unavailable         | Degrade or retry by policy     | Adapter, latency, safe provider code |
+| Unexpected        | Programming error          | Stable generic 500             | Redacted stack and correlation id    |
 
-Never send stack traces, database documents, provider payloads, secrets, tokens, OTPs, raw IPs, or full address/customer data to the client.
+Never send stack traces, database documents, provider payloads, secrets, tokens, OTPs, raw IPs or full address and customer data to the client.
 
 ## Read versus write checklist
 
 ### Read
 
-- Scope the query by visibility and actor ownership, not after fetching when avoidable.
+- Scope the query by visibility and owner in the query itself.
 - Enforce pagination limits and deterministic sorting.
 - Select only response-safe fields.
 - Treat cache keys and `Vary` dimensions as part of correctness.
-- Prevent non-public records from entering public search/cache layers.
+- Keep non-public records out of public search and cache layers.
 
 ### Write
 
-- Authenticate, authorize the resource, and validate CSRF before mutation.
-- Validate entity version when concurrent edits matter.
-- Recalculate business truth server-side.
+- Authenticate, authorize the resource and validate CSRF before the write.
+- Validate the entity version when concurrent edits matter.
+- Recalculate business values on the server.
 - Use idempotency for retryable high-value actions.
 - Open a transaction when several durable facts must agree.
-- Emit audit/outbox records inside the same consistency boundary when required.
-- Return a versioned response DTO rather than a persistence document.
+- Let repositories join the ambient adapter session when their ports expose no transaction context. Pass the opaque context only through ports that declare it.
+- Write audit and outbox records inside the same consistency boundary where required.
+- Return a response contract, not a persistence document.
 
 ## Webhook variation
 
 A provider callback is not a trusted internal call. Replace browser session checks with:
 
-1. raw-body/signature verification;
-2. replay/idempotency check;
-3. known payment/shipment correlation;
-4. legal state transition;
-5. transactional write;
-6. durable acknowledgement;
-7. safe asynchronous follow-up.
+1. Raw-body or signature verification.
+2. A replay and idempotency check.
+3. A known payment or shipment correlation.
+4. A legal state transition.
+5. A transactional write.
+6. A durable acknowledgement.
+7. Safe asynchronous follow-up.
 
-The provider's “success” field alone never authorizes an order/payment transition.
+A provider's "success" field alone never authorizes an order or payment transition.

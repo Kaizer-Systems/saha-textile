@@ -1,0 +1,34 @@
+import { Body, Controller, Header, Param, Post, Req } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { StockAlertWrite } from '@saha-textile/contracts';
+import type { FastifyRequest } from 'fastify';
+
+import { Principal } from '../auth/ownership';
+import { Audience, type AuthenticatedPrincipal } from '../auth/session.guard';
+import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { API_TAGS } from '../openapi-tags';
+import { CatalogRateLimit } from './catalog-rate-limit';
+import { CatalogService } from './catalog.service';
+
+@ApiTags(API_TAGS.catalog)
+@Audience('storefront')
+@Controller('catalog/products')
+export class StockAlertsController {
+	constructor(
+		private readonly catalog: CatalogService,
+		private readonly limits: CatalogRateLimit,
+	) {}
+
+	@Post(':idOrSlug/stock-alerts')
+	@Header('Cache-Control', 'no-store')
+	@ApiOperation({ operationId: 'requestStockAlert', summary: 'Ask to be told when a variant can be bought' })
+	async stockAlert(
+		@Param('idOrSlug') idOrSlug: string,
+		@Body(new ZodValidationPipe(StockAlertWrite)) body: StockAlertWrite,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Req() request: FastifyRequest,
+	) {
+		await this.limits.enforce('stock_alert', { identifier: principal?.userId ?? '', ip: request.ip });
+		return this.catalog.requestStockAlert(idOrSlug, body.variantSku, principal?.userId ?? null);
+	}
+}

@@ -15,7 +15,7 @@
 		</a>
 	</div>
 	<app-table
-		[tableConfig]="tableConfig"
+		[tableConfig]="tableConfig()"
 		[hasCheckbox]="true"
 		[hasDuplicate]="true"
 		(tableChanged)="onTableChange($event)"

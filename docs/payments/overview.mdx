@@ -1,0 +1,37 @@
+---
+title: Payments
+slug: /payments
+wide: true
+description: Gateway roles for INR and international checkout, and where each provider reference lives.
+status: planned
+audience: [beginner, backend, operator]
+last_verified: '2026-11-07'
+search_keywords: payments CCAvenue Razorpay PayPal HDFC VAS clearing
+source_of_truth:
+    - packages/core-domain/src/ports/payment-gateway.port.ts
+    - docs/business-flows/payment-and-order-lifecycle.md
+    - docs/engineering-live-context/owner-decisions-log.mdx
+    - docs/engineering-live-context/pending-decisions.mdx
+---
+
+import { PaymentClearing } from '@site/src/components/PaymentClearing';
+
+# Payments
+
+This section holds provider reference material for payment gateways. The business rules for orders, attempts and callbacks are on [Payment and order lifecycle](/business-flows/payment-and-order-lifecycle).
+
+Currency selects a gateway role. INR uses the Indian online gateway role, and any other enabled currency uses PayPal. `PaymentGatewayPort` defines `createPayment` and `verifyCallback`. No payment adapter is in this repository.
+
+<PaymentClearing />
+
+## Gateway pages
+
+Every gateway page has two sections: **1. Company-provided documentation**, a faithful reference from the vendor's own kit, and **2. Endpoints we use**, the calls this project makes, with samples and where each one is used.
+
+1. [CCAvenue](/payments/ccavenue): the INR gateway role, provided through HDFC Bank.
+2. [Razorpay](/payments/razorpay): a possible later INR gateway.
+3. [PayPal](/payments/paypal): the non-INR role.
+
+## Open questions
+
+The open questions for HDFC are listed on [CCAvenue](/payments/ccavenue#open-questions-for-hdfc). The choice and timing of the INR gateway is tracked in [Pending decisions](/engineering-live-context/pending-decisions).

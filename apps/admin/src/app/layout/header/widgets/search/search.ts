@@ -55,13 +55,13 @@ export class Search {
 				}
 				if (!menuItems.children) return false;
 				menuItems.children.filter((subItems: IMenu) => {
-					if (subItems?.title.toLowerCase().includes(term!) && subItems.type === 'link') {
+					if (subItems.title?.toLowerCase().includes(term!) && subItems.type === 'link') {
 						subItems.icon = menuItems.icon;
 						items.push(subItems);
 					}
 					if (!subItems.children) return false;
 					subItems.children.filter((suSubItems: IMenu) => {
-						if (suSubItems.title.toLowerCase().includes(term!)) {
+						if (suSubItems.title?.toLowerCase().includes(term!)) {
 							suSubItems.icon = menuItems.icon;
 							items.push(suSubItems);
 						}

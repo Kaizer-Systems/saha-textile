@@ -1,26 +1,40 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import { Observable } from 'rxjs';
+import type { AdminAttributeWrite, AttributeDefinition } from '@saha-textile/contracts';
+import { Observable, map } from 'rxjs';
 
-import { IAttributeModel, AttributeValueModel } from '@data-access/interfaces/attribute.interface';
+import { IAttribute, IAttributeModel } from '@data-access/interfaces/attribute.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 
 import { environment } from '../../../../public/environments/environment';
+
+function toRow(definition: AttributeDefinition): IAttribute {
+	return { id: definition.code, name: definition.label.en, definition } as unknown as IAttribute;
+}
 
 @Injectable({
 	providedIn: 'root',
 })
 export class AttributeService {
 	private http = inject(HttpClient);
+	private base = () => `${environment.apiUrl}/admin/catalog/attributes`;
 
-	getAttributes(payload?: Params): Observable<IAttributeModel> {
-		return this.http.get<IAttributeModel>(`${environment.URL}/attribute.json`, { params: payload });
+	getAttributes(_payload?: Params): Observable<IAttributeModel> {
+		return this.getDefinitions().pipe(
+			map((rows) => ({ data: rows.map(toRow), total: rows.length }) as IAttributeModel),
+		);
 	}
 
-	getAttributeValues(payload?: Params): Observable<AttributeValueModel> {
-		return this.http.get<AttributeValueModel>(`${environment.URL}/attribute-value.json`, {
-			params: payload,
-		});
+	getDefinitions(): Observable<AttributeDefinition[]> {
+		return this.http.get<AttributeDefinition[]>(this.base());
+	}
+
+	saveAttribute(body: AdminAttributeWrite): Observable<AttributeDefinition> {
+		return this.http.post<AttributeDefinition>(this.base(), body);
+	}
+
+	deleteAttribute(code: string): Observable<void> {
+		return this.http.delete<void>(`${this.base()}/${encodeURIComponent(code)}`);
 	}
 }

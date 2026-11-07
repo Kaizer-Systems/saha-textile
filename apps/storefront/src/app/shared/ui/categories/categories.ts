@@ -2,12 +2,14 @@ import { isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, computed, inject, input, output } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { CarouselModule, OwlOptions } from 'ngx-owl-carousel-o';
 import { Observable } from 'rxjs';
 
+import { browseCategories } from '@core/catalog/category-scope';
+import { isConfiguredCategory } from '@core/catalog/configured-category';
 import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 
@@ -17,13 +19,13 @@ import { Button } from '../button/button';
 	selector: 'app-categories',
 	templateUrl: './categories.html',
 	styleUrls: ['./categories.scss'],
-	imports: [Button, CarouselModule, ReactiveFormsModule, TranslocoModule],
+	imports: [Button, CarouselModule, ReactiveFormsModule, RouterLink, TranslocoModule],
 })
 export class Categories {
 	private route = inject(ActivatedRoute);
 	private router = inject(Router);
 
-	private readonly categoriesQuery = injectCategoriesQuery(() => ({ status: 1 }));
+	private readonly categoriesQuery = injectCategoriesQuery();
 	category$: Observable<ICategoryModel> = toObservable(
 		computed(() => this.categoriesQuery.data() ?? { data: [], total: 0 }),
 	);
@@ -42,8 +44,13 @@ export class Categories {
 	readonly sliderOption = input<OwlOptions>();
 	readonly selectedCategoryId = input<number>();
 	readonly bgImage = input<string>();
+	/** The collection page's path, for the `browse` style. */
+	readonly path = input<string>();
 
-	readonly selectedCategory = output<number>();
+	/** Plain links in the first HTML, so shoppers and search engines can go one level deeper. */
+	readonly browse = computed(() => browseCategories(this.categoriesQuery.data()?.data ?? [], this.path()));
+
+	readonly selectedCategory = output<number | string>();
 
 	public categories: ICategory[];
 	public selectedCategorySlug: string[] = [];
@@ -65,12 +72,12 @@ export class Categories {
 		const categoryIds = this.categoryIds();
 		if (categoryIds && categoryIds.length) {
 			this.category$.subscribe(
-				(res) => (this.categories = res.data.filter((category) => this.categoryIds()?.includes(category.id))),
+				(res) => (this.categories = res.data.filter((category) => isConfiguredCategory(category, this.categoryIds() ?? []))),
 			);
 		}
 	}
 
-	selectCategory(id: number) {
+	selectCategory(id: number | string) {
 		this.selectedCategory.emit(id);
 	}
 

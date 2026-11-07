@@ -23,7 +23,7 @@
 							[options]="productMainThumbSlider"
 							#owlCar
 						>
-							@for (image of product()?.product_galleries; track image; let i = $index) {
+							@for (image of displayGalleries(); track image; let i = $index) {
 							<ng-template
 								carouselSlide
 								[id]="image.id.toString()"
@@ -31,6 +31,8 @@
 								<img
 									[src]="( image ? image.original_url
                                           : 'assets/images/product.png')"
+									[attr.loading]="i === 0 ? 'eager' : 'lazy'"
+									[attr.fetchpriority]="i === 0 ? 'high' : 'low'"
 									class="img-fluid"
 									alt="product"
 								/>
@@ -38,11 +40,11 @@
 							}
 						</owl-carousel-o>
 					</div>
-					@if (product()?.product_galleries?.length) {
+					@if (displayGalleries().length) {
 					<div class="col-12">
 						<div class="bottom-slider-image left-slider no-arrow slick-top">
 							<owl-carousel-o [options]="productThumbSlider">
-								@for (image of product()?.product_galleries; track image) {
+								@for (image of displayGalleries(); track image) {
 								<ng-template
 									carouselSlide
 									[id]="image.id.toString()"

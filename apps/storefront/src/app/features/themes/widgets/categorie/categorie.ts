@@ -19,11 +19,11 @@ export class Categorie {
 	readonly sliderOption = input<OwlOptions>();
 	readonly selectedCategoryId = input<number>();
 
-	readonly selectedCategory = output<number>();
+	readonly selectedCategory = output<number | string>();
 
 	constructor() {}
 
-	selectCategory(id: number) {
+	selectCategory(id: number | string) {
 		this.selectedCategory.emit(id);
 	}
 }

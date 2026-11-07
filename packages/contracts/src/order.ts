@@ -5,6 +5,14 @@ import { I18nString, Id, IsoDateTime, PriceINR } from './common';
 export const OrderStatus = z.enum(['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']);
 export type OrderStatus = z.infer<typeof OrderStatus>;
 
+/** Orders the shop was actually paid for. `pending`, `cancelled` and `refunded` are not purchases. */
+export const PURCHASED_ORDER_STATUSES = [
+	'paid',
+	'processing',
+	'shipped',
+	'delivered',
+] as const satisfies readonly OrderStatus[];
+
 export const PaymentGateway = z.enum(['ccavenue', 'paypal']);
 export type PaymentGateway = z.infer<typeof PaymentGateway>;
 
@@ -73,3 +81,23 @@ export const Order = z.object({
 	updatedAt: IsoDateTime.optional(),
 });
 export type Order = z.infer<typeof Order>;
+
+/**
+ * Request shapes for the order routes. Previously declared inside
+ * `apps/api/src/orders/orders.controller.ts`; see the note on the cart requests for why that
+ * is a problem rather than a detail.
+ */
+export const CreateOrderRequest = z.object({
+	cartId: z.string().min(1),
+	currency: z.string().length(3).optional(),
+	gateway: PaymentGateway.optional(),
+	couponCode: z.string().min(1).optional(),
+});
+export type CreateOrderRequest = z.infer<typeof CreateOrderRequest>;
+
+/** Staff-only transition. `status` is the shared enum, so the two cannot drift apart. */
+export const UpdateOrderStatusRequest = z.object({
+	status: OrderStatus,
+	note: z.string().min(1).optional(),
+});
+export type UpdateOrderStatusRequest = z.infer<typeof UpdateOrderStatusRequest>;

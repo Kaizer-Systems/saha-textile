@@ -66,6 +66,21 @@
 		<a
 			class="nav-link"
 			[routerLinkActive]="['active']"
+			[routerLink]="['/account/login-methods']"
+			(click)="openMenu(false)"
+		>
+			<i class="ri-shield-keyhole-line me-2"></i>
+			{{ 'sign_in_methods' | transloco }}
+		</a>
+	</li>
+
+	<li
+		class="nav-item"
+		role="presentation"
+	>
+		<a
+			class="nav-link"
+			[routerLinkActive]="['active']"
 			[routerLink]="['/account/notifications']"
 			(click)="openMenu(false)"
 		>

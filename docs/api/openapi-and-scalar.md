@@ -1,121 +1,116 @@
 ---
 title: OpenAPI and Scalar Reference
-description: OpenAPI source-of-truth rules, completeness gates, Scalar integration trigger, security, and future build topology.
-status: deferred
+wide: true
+description: How the OpenAPI document is produced, how to use Test Request, and its limitations.
+status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
-    - apps/api/src/main.ts
+    - apps/api/src/openapi.ts
+    - apps/api/src/generate-openapi.ts
     - apps/api/src
+    - apps/developer-portal-scalar
+    - packages/adapters-db-mongo/src/repositories/auth.repository.ts
+    - packages/adapters-db-mongo/test/auth-persistence.test.ts
     - packages/contracts/src
-    - project-context/angular-context/owner-decisions-log.md
-    - project-context/angular-context/private-developer-portal-documentation-plan.md
+    - docs/engineering-live-context/project-progress.mdx
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
+    - docs/engineering-live-context/owner-decisions-log.mdx
+    - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
 ---
 
 # OpenAPI and Scalar reference
 
-The decision is locked:
+OpenAPI is the machine-readable description of the API. Scalar renders that document as a readable reference with a Test Request client.
 
-- OpenAPI is the machine-readable API source of truth.
-- Scalar is the single human reference and approved interactive client.
-- Do not maintain parallel long-term Swagger UI, Redoc, or separate console surfaces.
+## How the document is produced
 
-## Current state
-
-NestJS creates an OpenAPI document and exposes it at `/openapi.json`. A transitional framework UI is mounted at `/docs`.
-
-Scalar remains **deferred** because the current document is not yet a complete, reliable operation contract. Installing a polished viewer would not repair missing schemas, security semantics, errors, authorization, idempotency, or side-effect documentation.
-
-## Target portal routes
-
-```text
-/api/reference      Scalar reference + approved interactive requests
-/api/openapi.json   Machine-readable OpenAPI contract
-```
-
-The API may continue generating its internal `/openapi.json`; the portal build publishes or securely proxies the verified artifact at the stable portal route.
-
-## Operation completeness
-
-Every operation must document:
-
-- purpose and owning audience;
-- authentication and token/cookie audience;
-- CSRF requirements;
-- roles, permissions, ownership, or provider-signature policy;
-- path/query/header/body schemas;
-- response schemas by status;
-- validation and business error codes;
-- rate-limit behavior;
-- idempotency/version requirements;
-- pagination/filter/sort semantics;
-- collections or external systems affected;
-- audit/outbox/notification/provider side effects;
-- examples that contain no secrets or real PII.
-
-## Source pipeline
+NestJS builds one OpenAPI document in `apps/api/src/openapi.ts`. The API serves it at `/openapi.json`. The portal build generates the same document without a database connection, using `pnpm --filter @saha-textile/api generate:openapi`, and publishes it.
 
 ```mermaid
 flowchart LR
-    Contracts["Shared zod request/response contracts"] --> Controllers["Nest operation metadata"]
-    Controllers --> Generator["Nest OpenAPI generation"]
-    Generator --> Test["Schema and route smoke tests"]
-    Test --> Artifact["Versioned OpenAPI artifact"]
-    Artifact --> Scalar["Protected Scalar reference"]
-    Artifact --> Clients["Typed clients / contract checks later"]
+    Controllers["Controllers and operation metadata"] --> Generator["Nest OpenAPI generation"]
+    Generator --> Check["check:openapi tag check"]
+    Generator --> Document["Published OpenAPI document"]
+    Document --> Scalar["Scalar reference"]
 ```
 
-Do not manually maintain a second OpenAPI file that can drift from controllers/contracts.
+| Route               | Content                        |
+| ------------------- | ------------------------------ |
+| `/api/reference/`   | Scalar reference               |
+| `/api/openapi.json` | The published OpenAPI document |
 
-## Scalar integration trigger
+Do not maintain a second OpenAPI file by hand.
 
-Integrate Scalar only after all of these are true:
+## Tags
 
-1. the API emits OpenAPI during CI without requiring production secrets;
-2. core route families have explicit request/response schemas;
-3. auth, CSRF, audience, permission, error and idempotency semantics are represented;
-4. smoke tests assert required paths/tags/security schemes;
-5. the artifact has a stable portal publication path;
-6. approved development/staging server URLs and CORS/CSRF behavior are defined;
-7. production interaction is disabled or protected with the complete private portal;
-8. no secrets/default credentials are embedded in examples or configuration.
+Each operation carries one tag from the fixed list in `apps/api/src/openapi-tags.ts`: `health`, `catalog`, `currency`, `promotions`, `cart`, `orders`, `auth`, `storefront-account`, `privacy`, `media` and `reviews`. `pnpm --filter @saha-textile/api check:openapi` rejects any other tag.
 
-## Interactive-request security
+## Using Test Request
 
-The API client must obey the same controls as a real frontend:
+The document declares one server, `https://localhost:4000`. It must be HTTPS on `localhost` because session cookies use the `__Host-` prefix, which requires `Secure` and is bound to one host.
 
-- approved development/staging origins only;
-- normal cookie/bearer behavior for the selected client class;
-- CSRF on unsafe cookie requests;
-- server-side authorization and rate limits;
-- no production secret storage;
-- no auth bypass, privileged default token, or “try it” production mutation surface;
-- sanitised saved examples and history.
+All normal controls apply to Test Request: CORS, authentication, CSRF, audience, ownership and rate limits. It has no privileged token and no proxy.
 
-Private portal authentication does not replace API authorization.
+To send a state-changing request from a session:
 
-## Environment selector policy
+1. Sign in, or complete signup, OTP verification or refresh.
+2. Call `GET /auth/csrf`, or `GET /auth/admin/csrf` for an admin session, and copy `csrfToken` from the reply.
+3. Send the token in the `x-csrf-token` header, with the session cookies.
 
-When the reference becomes interactive, show an explicit environment badge/selector with safe base URLs. Prefer read-only or development fixtures by default. Dangerous operations require the same application permissions and should be visibly identified; the portal must not invent a separate superuser channel.
+A missing or mismatched token returns `403` with `reason: csrf_rejected`. Fetch the token again and retry once. A `403` without that reason is a permissions refusal; do not retry it.
 
-## Contract drift gates
+`GET /auth/csrf` works with or without a session. For a live session it keeps a valid token, and it replaces the token only if the cookie is missing or does not match. Anonymous callers get a token that is not bound to a session. The token does not create a session or grant any access.
 
-- Generate the document in CI.
-- Fail if required route/tag/security schemes disappear unexpectedly.
-- Diff breaking changes deliberately.
-- Run example/schema validation.
-- Link operation changes to frontend/backend work.
-- Update human guidance for business semantics the schema cannot express alone.
+## Interactive-request rules
 
-## Current limitations to fix before integration
+The API client follows the same rules as a real frontend:
 
-- controller-local zod body schemas do not automatically become complete OpenAPI component schemas;
-- many response types are inferred from implementation rather than declared DTOs;
-- query/path validation is incomplete;
-- errors, ownership, permissions, CSRF, rate limits, idempotency and side effects are sparsely represented;
-- public versus admin tag/route segregation is incomplete;
-- current bearer security scheme is transitional.
+- It targets approved development or staging servers only.
+- It stores no production secrets.
+- It has no authentication bypass and no privileged default token.
+- Saved examples contain no secrets or real personal data.
 
-## Future umbrella placement
+Portal access does not replace API authorization.
 
-Scalar is one generated surface under Docusaurus. The portal provides onboarding, architecture, workflows, failure recovery, database mappings, and operational context around it. Scalar owns operation-level API reading/execution; it does not replace those narrative responsibilities.
+## Operation documentation standard
+
+Each operation should document:
+
+- Purpose and audience.
+- Authentication and CSRF requirements.
+- Roles, permissions, ownership or provider-signature rules.
+- Path, query, header and body schemas.
+- Response schemas by status.
+- Validation and business error codes.
+- Rate-limit behaviour.
+- Idempotency and version requirements.
+- Pagination, filter and sort behaviour.
+- Collections or external systems affected.
+- Audit, outbox, notification and provider side effects.
+- Examples without secrets or real personal data.
+
+## Limitations
+
+The generated document lists every controller route with its summary and tag, but it is incomplete in these ways:
+
+- Operations do not declare the `sessionCookie` security scheme, so Scalar cannot show which routes need a session, audience, permission or CSRF token.
+- Request bodies and response schemas are not generated from the zod contracts.
+- `ApiErrorResponse` is not published as a response schema.
+- Error codes, rate limits, idempotency and side effects are not described per operation.
+- The document is not generated or checked in CI.
+
+Scalar therefore carries the **Scaffolded** status. It can move to **Implemented** when:
+
+1. CI generates the document without production secrets.
+2. Core route families have explicit request and response schemas.
+3. Authentication, CSRF, audience, permission, error and idempotency rules are represented.
+4. Tests assert required paths, tags and security schemes.
+5. Approved development and staging server URLs are defined.
+6. Production interaction is disabled or protected.
+
+## Related pages
+
+- [Route inventory](./route-inventory)
+- [Scalar](/tools/scalar)
+- [Security and identity](../backend/security-and-identity)

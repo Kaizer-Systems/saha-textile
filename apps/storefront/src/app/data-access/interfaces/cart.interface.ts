@@ -34,7 +34,7 @@ export interface ICartConfigMeasurement {
  * same selections when a cart line is re-opened for editing.
  */
 export interface ICartConfigRaw {
-	variation_id?: number | null;
+	variation_id?: number | string | null;
 	addon_selections?: Record<string, string>; // group code -> term code
 	bundle_selections?: Record<string, string>; // group code -> term code
 	measurements?: Record<string, number>; // field code -> value
@@ -51,11 +51,13 @@ export interface ICartLineConfig {
 	raw?: ICartConfigRaw; // machine-readable snapshot for edit prefill (not displayed)
 }
 
+export type CartLineProblem = 'unavailable' | 'out_of_stock' | 'limited';
+
 export interface ICart {
-	id: number;
-	product_id: number;
+	id: string;
+	product_id: number | string;
 	variation: IVariation;
-	variation_id: number | null;
+	variation_id: number | string | null;
 	consumer_id?: number;
 	quantity: number;
 	sub_total: number;
@@ -63,6 +65,10 @@ export interface ICart {
 	/** Composed per-unit price (base + add-on/bundle deltas); falls back to variation/product sale price when absent. */
 	unit_price?: number;
 	line_config?: ICartLineConfig;
+	/** Why this line cannot be bought as it stands. */
+	problem?: CartLineProblem | null;
+	/** Units that can be bought now. Null means no limit. */
+	available?: number | null;
 	created_by_id?: number;
 	created_at?: string;
 	updated_at?: string;
@@ -70,11 +76,11 @@ export interface ICart {
 }
 
 export interface ICartAddOrUpdate {
-	id: number | null;
+	id: string | null;
 	product: IProduct | null;
-	product_id: number;
+	product_id: number | string;
 	variation: IVariation | null;
-	variation_id: number | null;
+	variation_id: number | string | null;
 	quantity: number;
 	unit_price?: number;
 	line_config?: ICartLineConfig;

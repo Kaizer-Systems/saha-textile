@@ -1,9 +1,9 @@
 ---
 title: Storefront Contributor Recipes
-description: Beginner-safe recipes for adding routes, server queries, client state, translations, and SSR-safe UI.
+description: Step-by-step recipes for routes, server queries, client state, translations and server-safe UI.
 status: scaffolded
 audience: [beginner, frontend]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/storefront/src/app/pages
     - apps/storefront/src/app/features
@@ -13,18 +13,18 @@ source_of_truth:
 
 # Storefront contributor recipes
 
-These recipes are guardrails, not copy-paste substitutes for understanding the owning feature. Start with the smallest relevant recipe and follow its verification checklist.
+These recipes give step-by-step checklists for common storefront changes. Start with the smallest relevant recipe and follow its checklist.
 
 ## Recipe: add a customer page
 
 **Use when:** a new stable customer URL is required.
 
-1. Choose the file-based URL shape under `src/app/pages`.
+1. Choose the file-based URL shape under `src/app/pages` — without a locale segment. The router's base serves it at `/en/…` and `/fr/…`, so links to it are written locale-free too (`/cart`, never `/en/cart`).
 2. Build the real feature under `src/app/features`; keep the page entry thin.
-3. Add `routeMeta` only for required guards or route behavior.
+3. Add `routeMeta` only for required guards or route behaviour.
 4. Reuse the shared layout rather than rebuilding header/footer composition.
 5. Verify direct SSR request, hydrated navigation, browser back/forward, and unknown parameters.
-6. Add metadata/SEO behavior when the route is indexable.
+6. Add metadata/SEO behaviour when the route is indexable. A customer-only page goes in `PRIVATE_PREFIXES` (`core/i18n/locale.ts`) so it gets `noindex` and no language alternates.
 
 **Done means:** the URL works on refresh, not only after navigating from the home page.
 
@@ -80,19 +80,29 @@ If classic NgRx is justified:
 
 ## Recipe: add or change a translation
 
-1. Use semantic translation keys rather than copying visible English into templates.
+1. Use semantic translation keys for interface chrome rather than copying visible English into templates.
 2. Update every active locale file in the same change.
-3. Verify parameter interpolation and plural behavior.
+3. Verify parameter interpolation and plural behaviour.
 4. Test narrow layouts because translated strings expand.
-5. Do not mark Bengali implemented until the runtime locale inventory and content coverage match the locked `en/bn` decision.
+5. Run `pnpm check:i18n-parity`.
+
+Catalogue option, add-on, attribute, taxonomy and measurement labels are data. Render those values directly, and do not create Transloco keys for them.
+
+## Recipe: render a repeated collection
+
+1. Track a stable domain id when the record has one; cart lines use `item.id`.
+2. Use the positional index only for presentation lists with no unique identity, such as source-authored notices or menu fragments.
+3. Never track a value known to repeat, such as a path or display label, merely because it is convenient.
+4. Exercise duplicate-looking records so Angular's duplicate-key diagnostic cannot hide behind ideal fixture data.
 
 ## Pull-request checklist
 
 - [ ] The change lives in the correct directory and layer.
 - [ ] External data has a typed, validated contract boundary.
-- [ ] Mock behavior is labelled and not mistaken for a backend capability.
+- [ ] JSON-backed behaviour is labelled and not mistaken for a backend capability.
 - [ ] SSR and browser navigation were both checked.
 - [ ] Loading, error, empty, and success states are intentional.
-- [ ] Keyboard, touch, focus, and reduced-motion behavior were considered.
+- [ ] Repeated templates have a stable, non-duplicating track key.
+- [ ] Keyboard, touch, focus, and reduced-motion behaviour were considered.
 - [ ] Unit/e2e coverage matches the risk.
-- [ ] Portal status, sources, and verification date were updated when behavior changed.
+- [ ] Portal status, sources and verification date are updated if behaviour changed.

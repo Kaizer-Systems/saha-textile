@@ -9,7 +9,7 @@ import * as feather from 'feather-icons';
 	standalone: true,
 })
 export class FeatherIcons {
-	@Input('icon') public icon: string;
+	@Input('icon') public icon = '';
 
 	constructor() {}
 

@@ -205,7 +205,7 @@
 								id="table-checkbox-item-{{ columnData.id }}"
 								[disabled]="columnData['system_reserve'] === '1'"
 								[value]="columnData?.id"
-								[checked]="columnData['system_reserve'] !== '1' && selected?.length && selected.includes(columnData?.id)"
+								[checked]="columnData['system_reserve'] !== '1' && selected?.length && selected.includes($any(columnData?.id))"
 								(change)="onItemChecked($event)"
 							/>
 							<label
@@ -282,20 +282,24 @@
 							<a href="javascript:void(0)">
 								<i [class]="'ri-lock-line'"></i>
 							</a>
-							} @else { @for ( action of tableConfig?.rowActions; track action) {
+							} @else { @for ( action of tableConfig?.rowActions; track action) { @if
+							((columnData['status'] === 'deleted') === !!action.deletedRows) {
 							<ng-container *hasPermission="action.permission">
 								<li>
 									<a
 										href="javascript:void(0)"
+										[attr.aria-label]="action.label"
 										(click)="action?.actionToPerform === 'delete' 
                                                                 ? DeleteModal().openModal('delete', columnData) 
+                                                                : action.confirm
+                                                                ? ConfirmationModal().openModal(action.actionToPerform, columnData)
                                                                 : onActionClicked(action?.actionToPerform.toString(), columnData)"
 									>
 										<i [class]="action?.icon"></i>
 									</a>
 								</li>
 							</ng-container>
-							} }
+							} } }
 						</ul>
 					</td>
 					}
@@ -328,6 +332,7 @@
 }
 <app-delete-modal
 	#deleteModal
+	[message]="deleteMessage()"
 	(deleteItem)="onActionClicked($event?.actionToPerform, $event?.data)"
 />
 

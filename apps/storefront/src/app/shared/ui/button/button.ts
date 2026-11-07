@@ -21,7 +21,7 @@ export class Button {
 	readonly spinner = input<boolean>(true);
 	readonly disabled = input<boolean>(false);
 
-	public buttonId: string | null;
+	public buttonId: string | null = null;
 
 	private loaderStore = inject(LoaderStore);
 	spinnerStatus$: Observable<boolean> = toObservable(this.loaderStore.button_spinner);

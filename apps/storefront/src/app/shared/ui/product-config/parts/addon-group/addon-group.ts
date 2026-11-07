@@ -32,7 +32,7 @@ export class AddonGroup implements OnInit {
 	readonly initialSelections = input<Record<string, string>>();
 	/** Prefill measurement values (field code -> value) for editing. */
 	readonly initialMeasurements = input<Record<string, number>>();
-	readonly change = output<ConfiguratorState>();
+	readonly stateChange = output<ConfiguratorState>();
 
 	readonly base = computed(() => this.basePrice() ?? this.product().price);
 
@@ -84,7 +84,7 @@ export class AddonGroup implements OnInit {
 	}
 
 	private emit() {
-		this.change.emit({
+		this.stateChange.emit({
 			total: this.total(),
 			delta: this.delta(),
 			valid: this.valid(),

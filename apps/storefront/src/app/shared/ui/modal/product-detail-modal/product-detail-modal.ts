@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, TemplateRef, PLATFORM_ID, inject, viewChild, input } from '@angular/core';
+import { Component, TemplateRef, PLATFORM_ID, computed, inject, signal, viewChild, input } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal, NgbRating } from '@ng-bootstrap/ng-bootstrap';
@@ -7,8 +7,10 @@ import { CarouselModule } from 'ngx-owl-carousel-o';
 import { Observable } from 'rxjs';
 
 import { CartFacade } from '@core/state/cart/cart.facade';
+import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
+import { ProductService } from '@data-access/services/product.service';
 import * as data from '@shared/data/owl-carousel';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
@@ -27,6 +29,9 @@ export class ProductDetailModal {
 	private modalService = inject(NgbModal);
 	private platformId = inject<Object>(PLATFORM_ID);
 	private cartFacade = inject(CartFacade);
+	private products = inject(ProductService);
+	readonly frames = signal<IAttachment[] | null>(null);
+	readonly displayGalleries = computed(() => this.frames() ?? this.product()?.product_galleries ?? []);
 
 	readonly productDetailModal = viewChild<TemplateRef<IProduct>>('productDetailModal');
 
@@ -63,6 +68,8 @@ export class ProductDetailModal {
 	}
 
 	async openModal() {
+		const slug = this.product()?.slug;
+		if (slug) this.products.getGallery(slug).subscribe((galleries) => this.frames.set(galleries ?? []));
 		if (isPlatformBrowser(this.platformId)) {
 			this.modalOpen = true;
 			this.modalService
@@ -112,7 +119,7 @@ export class ProductDetailModal {
 						? this.cartItem.id
 						: null,
 				product_id: product?.id!,
-				product: product ? product : null,
+				product,
 				variation: this.selectedVariation ? this.selectedVariation : null,
 				variation_id: this.selectedVariation?.id ? this.selectedVariation?.id! : null,
 				quantity: this.productQty,

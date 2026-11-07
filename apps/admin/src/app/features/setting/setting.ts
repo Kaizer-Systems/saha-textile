@@ -13,7 +13,7 @@ import {
 	NgbNavLinkBase,
 	NgbNavOutlet,
 } from '@ng-bootstrap/ng-bootstrap';
-import { Select2Data, Select2Module } from 'ng-select2-component';
+import { Select2Data, Select2 } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -44,7 +44,7 @@ import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 		NgbNavContent,
 		FormFields,
 		ImageUpload,
-		Select2Module,
+		Select2,
 		Button,
 		NgbNavOutlet,
 		HasPermissionDirective,
@@ -130,10 +130,6 @@ export class Setting {
 
 		this.form = formBuilder.group({
 			general: new FormGroup({
-				light_logo_image_id: new FormControl(),
-				dark_logo_image_id: new FormControl(),
-				tiny_logo_image_id: new FormControl(),
-				favicon_image_id: new FormControl(),
 				site_title: new FormControl('', Validators.required),
 				site_tagline: new FormControl(),
 				default_timezone: new FormControl('Asia/Kolkata', Validators.required),
@@ -262,10 +258,6 @@ export class Setting {
 			.subscribe((option) => {
 				this.form.patchValue({
 					general: {
-						light_logo_image_id: option?.general?.light_logo_image_id,
-						dark_logo_image_id: option?.general?.dark_logo_image_id,
-						favicon_image_id: option?.general?.favicon_image_id,
-						tiny_logo_image_id: option?.general?.tiny_logo_image_id,
 						site_title: option?.general?.site_title,
 						site_tagline: option?.general?.site_tagline,
 						default_timezone: option?.general?.default_timezone,
@@ -385,30 +377,6 @@ export class Setting {
 					),
 				);
 			});
-	}
-
-	selectLightLogo(data: IAttachment) {
-		if (!Array.isArray(data)) {
-			(<FormGroup>this.form.controls['general']).controls['light_logo_image_id'].setValue(data ? data?.id : null);
-		}
-	}
-
-	selectDarkLogo(data: IAttachment) {
-		if (!Array.isArray(data)) {
-			(<FormGroup>this.form.controls['general']).controls['dark_logo_image_id'].setValue(data ? data?.id : null);
-		}
-	}
-
-	selectTinyLogo(data: IAttachment) {
-		if (!Array.isArray(data)) {
-			(<FormGroup>this.form.controls['general']).controls['tiny_logo_image_id'].setValue(data ? data?.id : null);
-		}
-	}
-
-	selectFavicon(data: IAttachment) {
-		if (!Array.isArray(data)) {
-			(<FormGroup>this.form.controls['general']).controls['favicon_image_id'].setValue(data ? data?.id : null);
-		}
 	}
 
 	selectMaintenance(data: IAttachment) {

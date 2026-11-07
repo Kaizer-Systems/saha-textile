@@ -29,13 +29,6 @@
 	(summaryChange)="onSummary($event)"
 />
 
-@if (product().sale_starts_at && product().sale_expired_at) {
-<app-sale-timer
-	[startDate]="product().sale_starts_at"
-	[endDate]="product().sale_expired_at"
-/>
-}
-
 <div class="note-box product-package">
 	<div class="cart_qty qty-box product-qty">
 		<div class="input-group">
@@ -111,5 +104,14 @@
 	>
 		{{ (soldOut() ? 'sold_out' : 'add_to_cart') | transloco }}
 	</app-button>
-	}
+	@if (soldOut()) {
+	<app-button
+		[id]="'notifybtn-' + product().id"
+		[class]="'btn btn-md btn-outline-dark'"
+		[spinner]="false"
+		(click)="notify()"
+	>
+		{{ 'notify_me' | transloco }}
+	</app-button>
+	} }
 </div>

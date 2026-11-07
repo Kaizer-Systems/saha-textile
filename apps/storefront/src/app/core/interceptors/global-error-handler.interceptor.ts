@@ -1,11 +1,22 @@
-import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
+import {
+	HttpErrorResponse,
+	HttpEvent,
+	HttpHandler,
+	HttpInterceptor,
+	HttpRequest,
+	HttpResponse,
+} from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import { Observable, catchError, throwError } from 'rxjs';
+import { isDomainRefusal } from '@saha-textile/http-transport';
+import { Observable, catchError, tap, throwError } from 'rxjs';
 
 import { ErrorService } from '@data-access/services/error.service';
 import { LoggingService } from '@data-access/services/logging.service';
 import { NotificationService } from '@data-access/services/notification.service';
+
+import { environment } from '../../../../public/environments/environment';
+import { BACKGROUND_REQUEST } from './background-request';
 
 @Injectable()
 export class GlobalErrorHandlerInterceptor implements HttpInterceptor {
@@ -13,15 +24,58 @@ export class GlobalErrorHandlerInterceptor implements HttpInterceptor {
 	private logger = inject(LoggingService);
 	private notifier = inject(NotificationService);
 
+	/** The current outage has been announced. A good API response ends the outage. */
+	private outageAnnounced = false;
+
 	intercept<T>(request: HttpRequest<T>, next: HttpHandler): Observable<HttpEvent<T>> {
 		return next.handle(request).pipe(
+			tap((event) => {
+				if (event instanceof HttpResponse && request.url.startsWith(environment.apiUrl)) {
+					this.outageAnnounced = false;
+				}
+			}),
 			catchError((error: HttpErrorResponse) => {
+				// A 401 is an authentication OUTCOME, not a user-facing error, and it belongs
+				// to `AuthInterceptor` alone. Two reasons this must not fall through here:
+				//
+				// 1. The anonymous `/me` probe at startup answers 401 by design. Logging and
+				//    toasting it made every first page load look broken.
+				// 2. Since pass 3c a 401 is frequently RECOVERED — rotated and replayed
+				//    transparently. This interceptor sits downstream of the auth one, so it
+				//    sees that failure before the recovery happens; shouting here would put
+				//    an error toast on screen during a refresh that then succeeds.
+				//
+				// An unrecoverable 401 is not silent: the auth interceptor clears the session
+				// and the app returns the user to login.
+				if (error.status === 401) return throwError(() => error);
+
+				// A domain refusal (`otp_invalid`, `last_credential`, …) belongs to the screen that
+				// asked: it renders the translated reason beside the control. Toasting it as well put
+				// the API's English fallback on top of that — two messages, one of them contradicting
+				// the other and neither in the reader's language twice.
+				if (isDomainRefusal(error)) return throwError(() => error);
+
+				// Background catalogue and banner reads have their own empty state. Toasting
+				// every one of them put a repeating box on each navigation. A shopper action
+				// (add to cart, save, question) is not marked, so it still says why.
+				if (request.context.get(BACKGROUND_REQUEST)) return throwError(() => error);
+
+				// One message per outage. Every read failing at once is one problem, so only the
+				// first says so. A shopper's own action always gets its answer.
+				const isOutage = error.status === 0 || error.status >= 500;
+				if (isOutage && request.method === 'GET') {
+					if (this.outageAnnounced) return throwError(() => error);
+					this.outageAnnounced = true;
+				}
+
 				// Handle HTTP errors here
 				console.error('HTTP Error:', error.error);
 
 				// You can perform additional error handling tasks here,
 				// such as logging the error, displaying a notification, etc.
-				const errorMessage = this.errorService.getClientErrorMessage(error.error);
+				// The WHOLE response, not `error.error`: the resolver unwraps the envelope itself and
+				// also wants the status. Passing the body was how the real message got lost.
+				const errorMessage = this.errorService.getClientErrorMessage(error);
 				this.logger.logError(errorMessage);
 				this.notifier.showError(errorMessage);
 

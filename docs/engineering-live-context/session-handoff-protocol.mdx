@@ -1,0 +1,221 @@
+---
+title: 'Session Handoff Protocol'
+description: 'Tool-agnostic instructions for generating a complete, context-aware handoff document when a work session ends, for any area of the project.'
+audience: [engineering, operator, agent]
+document_role: canonical
+last_verified: '2026-08-11'
+search_keywords: 'session handoff protocol continuation brief context transfer prompt generator agent switch chat thread'
+---
+
+# Session handoff protocol
+
+**Status:** Standing instruction. Owner lock 2026-08-11.
+
+**Why this file exists.** Transferring context between chat threads and between tools was being
+requested by hand, in prose, every single time — and a hand-written request necessarily
+under-specifies, because the person writing it is remembering rather than inspecting. The
+result was handoffs shaped by whichever words happened to be used that day. This file replaces
+that. Point any tool at it and it produces the same thorough handoff regardless of who asks,
+which tool reads it, or what the session was about.
+
+**It is deliberately domain-neutral.** Nothing below assumes the session was about
+authentication, the admin app, the API, the database, the storefront, the developer portal,
+deployment, testing, or documentation. A handoff for a Mongo indexing session and a handoff for
+a storefront CSS session are produced by the same procedure and must be equally complete. Where
+the instructions say "the work", substitute whatever this session actually did.
+
+---
+
+## 0. When to run this
+
+Run it whenever ANY of these is true:
+
+- the owner asks for a handoff, summary, context transfer, or continuation prompt, in any words;
+- a session is ending with work in progress, whether finished, blocked, or abandoned;
+- the owner signals a thread switch ("continue this in another chat", "I'm switching tools");
+- the context window is close enough to full that the next compaction may lose detail;
+- a long or branching session has accumulated decisions that exist nowhere but the transcript.
+
+Do not wait to be asked twice. A handoff written late is a handoff written from memory.
+
+---
+
+## 1. Read before writing — the handoff must be derived, never recalled
+
+Produce nothing until you have re-read the current state. A handoff assembled from what you
+remember is exactly the failure this protocol exists to prevent, and the more confident the
+recollection the more dangerous it is.
+
+Read, in this order:
+
+1. `AGENTS.md` — the constitution, including the reuse and brief-before-custom rules.
+2. `docs/engineering-live-context/project-progress.mdx` — the dated cross-tool log. Read at
+   minimum every entry in the sections your session touched, plus the file's own maintenance
+   rules. If you cannot read it all, say which parts you read and which you did not.
+3. `docs/engineering-live-context/owner-decisions-log.mdx` — locked decisions. These override
+   older architecture prose everywhere.
+4. `docs/engineering-live-context/pending-decisions.mdx` — open owner questions. Never invent
+   an answer to anything recorded here as open, and never silently close one.
+5. Whichever canonical documents govern the area worked on. Find them rather than assuming:
+   the KB index in `AGENTS.md` §9 lists them, and the area's own continuation brief, if one
+   exists, is usually the shortest path.
+6. Any continuation brief from a previous session in the same area, so the new document
+   supplements rather than silently contradicts it.
+
+Then inspect reality, because documents go stale and transcripts lie by omission:
+
+- `git status --short`, `git diff --cached --name-only`, `git log --oneline` for the session's
+  commit range, and the current HEAD;
+- the actual source of anything the handoff will make a claim about;
+- real command output for every number quoted — test counts, route counts, index counts,
+  bundle sizes, whatever the area measures. Re-run rather than quote from earlier in the
+  transcript if there is any doubt that the numbers still hold.
+
+---
+
+## 2. What the handoff must contain
+
+The list below is a floor, not a template to fill mechanically. If the session produced
+something that does not fit any heading here, add a heading — an omission because "there was
+no section for it" is the worst possible failure of a handoff.
+
+**Adapt every heading to the session's own subject matter.** For a database session, "what was
+delivered" means collections, indexes, migrations and explain-plan evidence. For a UI session
+it means screens, components, classes reused and visual verification. For an infrastructure
+session it means services, configuration, secrets handling and rollback. Do not force the
+session's work into vocabulary borrowed from a different area.
+
+### 2.1 Where the work sits
+
+Branch. Current HEAD with its short SHA. Whether the working tree is clean, and if not, an
+exact list of modified and untracked paths with a one-line explanation of what each contains
+and why it was not committed. Whether anything is staged. Whether any commit in the session
+was amended, reverted, or force-anything.
+
+### 2.2 What was delivered, in order
+
+Every pass and sub-pass, chronologically, each with:
+
+- what it changed, in terms of behaviour rather than file names alone;
+- the files and boundaries touched;
+- the reasoning behind non-obvious choices — especially any choice a later reader would be
+  tempted to "simplify" without knowing why it is that way;
+- the verification that was actually run, with real numbers;
+- its commit SHA, or an explicit statement that it is uncommitted.
+
+### 2.3 Decisions taken, and by whom
+
+Separate cleanly:
+
+- decisions the OWNER made, quoted or closely paraphrased, with the alternatives that were
+  offered and rejected, because a future session must not silently re-open a settled question;
+- decisions the AGENT made under its own judgement, flagged as such, because those are the ones
+  a later reader is entitled to overturn;
+- decisions deliberately DEFERRED, with what is blocked by each.
+
+Record where each locked decision was written down. A decision that lives only in a handoff
+will be lost at the next handoff.
+
+### 2.4 Corrections, wrong turns and disproved theories
+
+**This section is mandatory and must not be flattering.** Record every claim made during the
+session that turned out to be wrong, every bug introduced and then fixed, every theory
+investigated and disproved, and every assumption that reality contradicted. For each: what was
+believed, what was actually true, and how the discrepancy surfaced.
+
+This is the highest-value section in the document. It is what stops the next session spending
+an afternoon rediscovering that a thing does not work the way it looks like it works. A handoff
+that reads as an unbroken series of successes is a handoff that has been edited for
+presentation, and it should be rewritten.
+
+Include near-misses: mistakes a guard, test or reviewer caught before they landed, and what
+caught them.
+
+### 2.5 Everything owed
+
+Comprehensive and blunt. Include, at minimum:
+
+- work explicitly deferred, and why;
+- work implied by what was built but not done — a built API with no client, a client with no
+  test, a migration with no rollback, a screen with no browser verification;
+- anything verified only partially, and precisely which part was not verified;
+- anything that could not be verified at all, with the reason (missing credentials, no test
+  host, an expired session, a service that would not start);
+- known defects consciously left in place, with their severity and blast radius;
+- gaps NOTICED IN PASSING while doing something else, even when entirely unrelated to the
+  session's own scope. These are otherwise lost completely, and they are frequently the most
+  valuable thing in the document;
+- anything that was asked for but not delivered, stated plainly rather than buried.
+
+Present this as a table as well as prose. A reader triaging work needs to scan it.
+
+### 2.6 How to verify
+
+The exact commands, with their expected results as of the handoff. Include environment
+specifics that are not guessable: ports, container names, environment variables, which scripts
+build before running and which silently use a stale artefact, which suites are opt-in and how
+to opt in.
+
+### 2.7 Traps
+
+Everything that cost time this session and would cost it again. Tool quirks, formatter
+collisions, framework behaviour that contradicts its documentation, caches that must be
+cleared, processes that must be restarted, selectors or APIs that behave differently from how
+they read. Be specific enough that a reader recognises the trap before falling into it.
+
+### 2.8 The next step
+
+An ordered list of what to do next, in dependency order, with the first item concrete enough to
+start immediately. State what each depends on. Where the next step needs an owner decision
+first, say so and state the decision.
+
+---
+
+## 3. Rules for the writing itself
+
+- **Never invent.** If something is unknown, write that it is unknown. An honest gap is
+  useful; a plausible fabrication is a trap that will be trusted.
+- **Never round or approximate a measured number.** Quote what the command printed. If a number
+  was not re-verified, mark it as unverified rather than presenting it as current.
+- **Attribute claims to evidence.** "The suite is green" is worth less than the command and its
+  output. Prefer "X, proven by Y" to "X".
+- **Distinguish observed from inferred.** "The endpoint returns 403" and "the endpoint should
+  return 403" are different statements and must read differently.
+- **Do not summarise away the reasoning.** The conclusion without the reasoning is exactly what
+  a future session will overturn by accident.
+- **Do not delete or rewrite prior handoffs.** Supplement them, and say explicitly which of
+  their statements are now superseded and why.
+- **No secrets.** No passwords, tokens, keys, connection strings carrying credentials, or
+  provider payloads — in the handoff or anywhere else. If a credential was disclosed during the
+  session, say that it was disclosed and must be rotated, without repeating its value.
+- **Length is not a virtue, but completeness is.** Do not pad. Do not trim something real to
+  make the document shorter.
+
+---
+
+## 4. Where the handoff goes
+
+Write it as a new `.mdx` in `docs/engineering-live-context/`, named for the area and the point
+it hands off from, so several can coexist without collision. Follow the existing frontmatter
+convention in that directory.
+
+Then, separately and in the same session:
+
+- append a dated entry to `project-progress.mdx` per that file's own format rules;
+- record any newly locked decision in `owner-decisions-log.mdx`, not only in the handoff;
+- add or remove entries in `pending-decisions.mdx` if the session opened or closed a question;
+- update `AGENTS.md` only if a rule of general application changed.
+
+Do not touch developer-portal derived pages. A separate tool reconciles those.
+
+---
+
+## 5. What to hand the next thread
+
+Alongside the document, produce a short opening prompt the owner can paste into any tool. It
+must, at minimum: name the branch and HEAD; name the documents to read and in what order; carry
+the operating rules in force; state the immediate next step; and instruct the reader to verify
+current source and `git status --short` before trusting any status claim in the handoff,
+including the handoff's own.
+
+Keep that prompt short. Its job is to route the reader to the document, not to duplicate it.

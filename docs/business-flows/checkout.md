@@ -1,9 +1,10 @@
 ---
 title: Checkout, Pricing, Tax, Currency, and Shipping
+wide: true
 description: Authenticated checkout calculation, quote, promotion, tax, FX, shipping, and correction flow.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/storefront/src/app/features/shop/checkout
     - apps/api/src/cart
@@ -11,22 +12,22 @@ source_of_truth:
     - apps/api/src/currency
     - packages/contracts/src/order.ts
     - packages/contracts/src/shipping.ts
-    - project-context/angular-context/codex-catalog-db-architecture-assessment-and-plan.md
+    - docs/engineering-live-context/codex-catalog-db-architecture-assessment-and-plan.mdx
 ---
 
 # Checkout, pricing, tax, currency, and shipping
 
-Checkout is the server-owned calculation and validation boundary between a cart and a payment attempt. The current storefront presents checkout forms, addresses, delivery, payment choices, coupons, and totals, but it uses a static totals object and navigates to a stub order detail. It is not a production transaction.
+Checkout is the server-owned step between a cart and a payment attempt. It calculates and validates what a customer will pay. This page describes the target design and the rules that apply to it.
 
 ## Preconditions
 
-- The customer is authenticated; guest checkout is unavailable at launch.
-- Guest cart merge has completed.
-- Every line has a valid product, variant, semantic option, add-on, measurement, and bundle signature.
-- Shipping and billing addresses satisfy the current contract.
-- Selected currency is enabled.
+- The customer is signed in. Guest checkout is not available.
+- The guest cart merge is complete.
+- Every line has a valid product, variant, option, add-on, measurement and bundle signature.
+- Shipping and billing addresses satisfy the contract.
+- The selected currency is enabled.
 
-## Target calculation sequence
+## Calculation sequence
 
 ```mermaid
 sequenceDiagram
@@ -50,19 +51,19 @@ sequenceDiagram
     Checkout-->>SF: Expiring priced snapshot + corrections
 ```
 
-The browser renders the snapshot. It does not reconstruct the total from product cards, local cart state, or stale display prices.
+The browser renders the snapshot. It does not rebuild the total from product cards, local cart state or display prices.
 
 ## Amount ownership
 
-| Amount                        | Source of truth                 | Snapshot requirement                        |
-| ----------------------------- | ------------------------------- | ------------------------------------------- |
-| Product/variant selling price | Canonical INR catalogue row     | INR and paid-currency unit/line totals      |
-| Add-on/bundle deltas          | Validated configuration         | Selected options plus resolved deltas       |
-| Promotion                     | API promotion engine            | Rule/id/code and applied INR value          |
-| Tax                           | Tax class/rule resolution       | HSN/class/rate/base/amount/inclusive flag   |
-| Shipping                      | Shipping provider quote         | Value, currency, INR value, provider/method |
-| FX                            | Latest good stored rate         | Rate, source, fetched date, display result  |
-| Gateway gross-up              | Versioned payment configuration | Rule/config version and charged amount      |
+| Amount                    | Source                          | Snapshot requirement                           |
+| ------------------------- | ------------------------------- | ---------------------------------------------- |
+| Product and variant price | Canonical INR catalogue row     | INR and paid-currency unit and line totals     |
+| Add-on and bundle prices  | Validated configuration         | Selected options and resolved amounts          |
+| Promotion                 | API promotion engine            | Rule, code and applied INR value               |
+| Tax                       | Tax class and rule resolution   | HSN, class, rate, base, amount, inclusive flag |
+| Shipping                  | Shipping provider quote         | Value, currency, INR value, provider, method   |
+| Exchange rate             | Latest good stored rate         | Rate, source, fetched date                     |
+| Gateway gross-up          | Versioned payment configuration | Rule version and charged amount                |
 
 ## Canonical price and currency
 
@@ -73,34 +74,32 @@ effectiveSellingINR = activeSalePriceINR ?? priceINR;
 displayNet = roundCurrency(effectiveSellingINR * rateFromINR, currency);
 ```
 
-INR uses a rate of `1`. If rate refresh fails, keep the latest good rate and mark it stale; never overwrite it with a null/invalid value.
+INR uses a rate of `1`. If a rate refresh fails, keep the latest good rate and mark it stale. Never overwrite it with an invalid value.
 
-For the non-INR PayPal path, the base gross-up formula is:
+For the non-INR PayPal path, the gross-up formula is:
 
 ```text
 G = (N + f) / (1 - p)
 ```
 
-`N` is the intended net amount in the paid currency, `p` is the configured percentage fee, `f` is the configured fixed fee, and `G` is the charge before currency rounding. Policies for extra FX/GST-on-fee gross-up must be explicit versioned configuration, not hidden constants.
+`N` is the intended net amount in the paid currency, `p` is the percentage fee, `f` is the fixed fee and `G` is the charge before currency rounding. Extra exchange-rate or GST-on-fee rules must be explicit versioned configuration.
 
 ## Shipping selection
 
-- India destination → domestic shipping adapter.
-- Non-India destination → international shipping adapter.
-- Provider response must include value and currency.
-- Shipping cost is converted with stored FX.
-- International shipping receives PayPal gross-up only when the active rule explicitly enables it.
-- A deliberate fallback may be used when no courier is serviceable; it must be identifiable in the quote.
+- An India destination uses the domestic shipping adapter.
+- Any other destination uses the international adapter.
+- A provider response must include value and currency.
+- Shipping cost is converted with the stored rate.
+- International shipping receives PayPal gross-up only when the active rule enables it.
+- A fallback for an unserviceable address must be identifiable in the quote.
 
-## Tax boundary
+## Tax
 
-Tax resolves at checkout from product/variant tax profile and applicable tax rules. The order line freezes the resolved result. The exact customer display policy remains an owner/accountant decision and must not be guessed in Angular.
+Tax resolves at checkout from the product or variant tax profile and the applicable rules. The order line freezes the result. The customer-facing tax display is an open accounting decision and must not be guessed in Angular.
 
-## Promotions and unsupported UI seams
+## Promotions
 
-The current API exposes active-promotion and coupon-validation scaffolds. Final checkout must re-evaluate coupon validity, timing, scope, priority, stacking, and cart conditions against current INR facts.
-
-Current checkout UI also exposes points and wallet-shaped controls inherited from scaffolding. A production loyalty/points engine is a future seam, and these controls must not be described as operational value until the ledger/rules/transaction path exists.
+`GET /promotions/active` and `POST /promotions/validate` support coupon entry. Final checkout must re-evaluate coupon validity, timing, scope, priority, stacking and cart conditions against INR values.
 
 ## Checkout state machine
 
@@ -118,23 +117,30 @@ stateDiagram-v2
 
 ## Correction matrix
 
-| Failure                | Response                                                                       |
-| ---------------------- | ------------------------------------------------------------------------------ |
-| Product retired        | Mark line terminal/unavailable; require removal or replacement                 |
-| Stock reduced          | Adjust/block quantity with explicit line notice                                |
-| Price changed          | Show old/new values and require reconfirmation                                 |
-| Coupon invalid/expired | Keep cart; remove discount and explain                                         |
-| Address invalid        | Map structured errors to address fields                                        |
-| No shipping service    | Offer valid fallback/manual contact only if configured                         |
-| Quote expired          | Requote before payment                                                         |
-| FX stale               | Use latest acceptable rate with policy/alert; block if beyond safety threshold |
+| Failure             | Response                                                       |
+| ------------------- | -------------------------------------------------------------- |
+| Product retired     | Mark the line unavailable; require removal or replacement      |
+| Stock reduced       | Adjust or block the quantity with a line notice                |
+| Price changed       | Show old and new values and require confirmation               |
+| Coupon invalid      | Keep the cart, remove the discount and explain                 |
+| Address invalid     | Map structured errors to address fields                        |
+| No shipping service | Offer a configured fallback or manual contact                  |
+| Quote expired       | Requote before payment                                         |
+| Exchange rate stale | Use the latest acceptable rate, or block past the safety limit |
+
+## Limitations
+
+- The storefront checkout renders forms, addresses, delivery and payment choices with a static totals object. It does not call the API.
+- No quote endpoint, tax engine or shipping adapter exists.
+- Exchange rates are stored values. No refresh job or `FxRatePort` adapter exists.
+- Points and wallet controls in the checkout UI have no backend.
 
 ## Debugging checkpoints
 
-1. Confirm guest-cart merge finished and the user session is valid.
-2. Compare cart version/signature with the priced snapshot.
+1. Confirm that the cart merge finished and the session is valid.
+2. Compare the cart version and signature with the priced snapshot.
 3. Inspect line corrections before promotion or shipping calculations.
-4. Verify canonical INR inputs before checking converted values.
-5. Inspect the exact FX and gross-up configuration versions.
-6. Check shipping destination, package facts, quote currency, and expiry.
-7. Never debug a total only from the rendered Angular numbers.
+4. Check canonical INR inputs before converted values.
+5. Inspect the exchange-rate and gross-up configuration versions.
+6. Check the shipping destination, package facts, quote currency and expiry.
+7. Never debug a total from the rendered Angular numbers alone.

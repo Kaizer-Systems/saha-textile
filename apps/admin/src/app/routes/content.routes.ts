@@ -14,16 +14,34 @@ export const content: Routes = [
 		loadChildren: () => import('@features/role/role.routes'),
 	},
 	{
-		path: 'user',
+		// `admin-user`, not `user`: this app administers both populations, and `/customer`
+		// sits directly below. A bare `/user` here would be the one word that means either.
+		path: 'admin-user',
 		loadChildren: () => import('@features/user/user.routes'),
+	},
+	{
+		path: 'customer',
+		loadChildren: () => import('@features/customer/customer.routes'),
 	},
 	{
 		path: 'attribute',
 		loadChildren: () => import('@features/attribute/attribute.routes'),
 	},
 	{
+		path: 'measurement',
+		loadChildren: () => import('@features/addon-template/addon-template.routes'),
+	},
+	{
+		path: 'addon-template',
+		loadChildren: () => import('@features/addon-template/addon-template.routes'),
+	},
+	{
 		path: 'tag',
 		loadChildren: () => import('@features/tag/tag.routes'),
+	},
+	{
+		path: 'redirect',
+		loadChildren: () => import('@features/redirect/redirect.routes'),
 	},
 	{
 		path: 'blog',
@@ -88,6 +106,10 @@ export const content: Routes = [
 	{
 		path: 'theme-option',
 		loadChildren: () => import('@features/theme-option/theme-option.routes'),
+	},
+	{
+		path: 'home-banners',
+		loadChildren: () => import('@features/home-banners/home-banners.routes'),
 	},
 	{
 		path: 'review',

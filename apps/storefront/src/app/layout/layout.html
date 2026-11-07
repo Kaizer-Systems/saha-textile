@@ -11,7 +11,7 @@
 }
 
 <!-- Layout Partial -->
-<app-header [logo]="headerLogo" />
+<app-header />
 <router-outlet />
 <app-footer [footer]="footerData" />
 
@@ -28,6 +28,3 @@
 </div>
 <app-newsletter-modal />
 <app-cookie />
-@if (exit) {
-<app-exit-modal />
-}

@@ -3,7 +3,18 @@
 	class="swiper notification-slider"
 >
 	<div class="swiper-wrapper">
-		@for (item of content(); track item.id; let i = $index) {
+		<!--
+			Tracked by position, not by `item.id`.
+
+			`ITopBarContent` declares an `id`, but `site-config.json` has never carried one — so
+			`track item.id` was `undefined` for every entry, Angular saw three identical keys, and
+			with Swiper's `loop: true` re-rendering constantly it emitted thousands of NG0955
+			warnings per page load. Enough to make the console unusable.
+
+			These are three fixed lines of marketing copy that are never reordered and have no
+			natural identity, which is exactly the case `$index` is for.
+		-->
+		@for (item of content(); track $index; let i = $index) {
 		<div class="swiper-slide">
 			<div class="d-flex justify-content-xxl-center">
 				<div class="timer-notification">

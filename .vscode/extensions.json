@@ -9,6 +9,7 @@
 		"yoavbls.pretty-ts-errors",
 		"mongodb.mongodb-vscode",
 		"ms-azuretools.vscode-docker",
-		"github.vscode-github-actions"
+		"github.vscode-github-actions",
+		"unifiedjs.vscode-mdx"
 	]
 }

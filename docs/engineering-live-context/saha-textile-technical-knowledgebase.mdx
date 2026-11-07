@@ -1,0 +1,362 @@
+---
+title: 'Saha Textile Technical Knowledge Base'
+description: 'Canonical retained whole-system technical reference and durable architecture invariants.'
+audience: [engineering, operator, agent]
+document_role: canonical
+last_verified: 2026-07-25
+search_keywords: 'technical knowledge base architecture invariants commerce platform'
+---
+
+# Saha Textile Technical Knowledge Base
+
+**Status:** Retained whole-system technical reference
+**Last reconciled:** 2026-07-25
+**Current delivery status:** `project-progress.mdx`
+**Locked owner intent:** `owner-decisions-log.mdx`
+**Unanswered choices:** `pending-decisions.mdx`
+
+This file summarizes durable technical invariants and how the system fits
+together. It is not a second owner log, an implementation-status report, or a
+vendor-pricing snapshot. Detailed backend sequencing lives in the API/DB
+roadmap; detailed catalog and auth designs live in their retained architecture
+files.
+
+## 1. Product and scope
+
+Saha Textile is a custom rebuild of `sahatextile.com` for a single Kolkata
+saree/textile retailer. The observed live catalog is boutique scale
+(approximately 23 public products and 40 SKUs at the time of discovery), while
+the architecture must tolerate ordinary growth without marketplace complexity.
+
+In scope:
+
+- public storefront PWA;
+- private admin application;
+- API and background workers;
+- private developer portal;
+- product discovery, content, cart, checkout, online payment, shipping,
+  notifications, account/order flows, reporting, and operations.
+
+Out of scope:
+
+- marketplace or multi-vendor behavior;
+- seller commissions;
+- warehouse-management suites;
+- recommendation ML;
+- Amazon/Flipkart-scale abstractions without demonstrated need.
+
+Fastkart is a UI/behavior reference only. Saha Textile uses its own contracts,
+domain model, UI components, styling, accessibility, tests, and integrations;
+Fastkart code is never forked.
+
+## 2. Applications and pinned stack
+
+| Area         | Technology                                                            | Role                                 |
+| ------------ | --------------------------------------------------------------------- | ------------------------------------ |
+| Monorepo     | pnpm workspaces + Turborepo                                           | Build/test orchestration             |
+| Storefront   | Angular 22 + AnalogJS                                                 | SSR/SSG public PWA                   |
+| Admin        | Angular 22                                                            | Private operations UI                |
+| API          | NestJS 12 + Fastify 5                                                 | HTTP composition root                |
+| Portal       | Docusaurus                                                            | Private developer documentation      |
+| Database     | MongoDB 9.0.4                                                         | Operational source of truth          |
+| Search       | Self-hosted Meilisearch                                               | Derived searchable index             |
+| Media        | DigitalOcean Spaces, SGP                                              | Object storage/CDN origin            |
+| Styling      | Bootstrap 5 + ng-bootstrap + SCSS                                     | Shared UI foundation                 |
+| Client state | TanStack Angular Query + signals/SignalStore + selective classic NgRx | Server, UI, and heavy mutation state |
+| i18n         | Transloco plus DB-localized content                                   | Runtime UI and authored content      |
+| Validation   | Zod                                                                   | Every external boundary              |
+| Tests        | Vitest + Playwright                                                   | Unit/integration and browser         |
+
+Pinned majors must not be silently upgraded. Use version-correct official
+documentation when implementing or upgrading a dependency.
+
+## 3. Repository boundaries
+
+```text
+apps/
+  storefront/          public Angular/Analog application
+  admin/               private Angular application
+  api/                 NestJS/Fastify composition root
+  developer-portal/    Docusaurus application
+packages/
+  core-domain/         entities, policies, use cases, ports
+  contracts/           Zod request/response schemas
+  adapters-*/          database/provider implementations
+  config/              shared non-secret configuration helpers
+  ui/                  reusable UI primitives
+docs/                  authored source rendered by developer portal
+project-context/
+  engineering-live-context/     retained live KB and roadmaps
+  nextjs-context/      superseded; always ignore
+```
+
+Root `docs/` is authored developer-portal content. It is a maintained,
+evidence-backed projection of code/runtime and locked plans; it is not the
+owner-decision source of truth. `apps/developer-portal/` is the portal codebase
+that renders and validates those docs. Both change when implementation or KB
+truth changes, but they never override the owner log, contracts, tested runtime,
+or adapter definitions.
+
+## 4. Hexagonal architecture
+
+- All dependency arrows point inward.
+- Core owns entities, value objects, policies, use cases, and port interfaces.
+- Core imports no NestJS, Fastify, Mongoose, provider SDK, Angular, or adapter
+  code.
+- `packages/contracts` is the shared Zod/API-shape authority.
+- Core may import contract types with `import type` only; it has no runtime
+  contract/Zod dependency.
+- Adapters translate external/persistence shapes to domain shapes.
+- The API composition root binds concrete adapters through dependency
+  injection.
+- Angular applications call the API only.
+- Replacing MongoDB, search, payment, shipping, storage, FX, auth, or
+  notification providers must be adapter-plus-DI work, not a domain/UI rewrite.
+
+Important ports include repositories plus `StoragePort`, `PaymentGatewayPort`,
+`ShippingPort`, `FxRatePort`, `SearchPort`, `AuthPort`, `NotificationPort`,
+`YouTubePort`, and `VideoTranscodePort`.
+
+## 5. Configuration and secrets
+
+- The repository is public; secret hygiene is non-negotiable.
+- API secrets exist only in server runtime configuration.
+- Local secrets use gitignored `apps/api/.env`.
+- Deployed secrets flow from approved GitHub encrypted secrets to root-owned
+  runtime env/Compose secrets.
+- Storefront/admin receive non-secret runtime `public/config.json`.
+- Do not bake deployment URLs through Angular file replacements.
+- Never expose MongoDB, Meilisearch admin keys, JWT/CSRF secrets, OAuth secrets,
+  provider credentials, payment keys, or storage secrets to a browser bundle.
+- The canonical catalogue of names and placement is
+  `environment-variables.mdx`.
+
+Canonical local ports:
+
+- storefront: `4200`;
+- admin: `4300`;
+- API: `4000`;
+- MongoDB host mapping: normally `27017`.
+
+## 6. Data and transaction foundations
+
+- MongoDB 9.0.4 is self-hosted in Docker in local/test/production.
+- Use a single-node replica set so transaction behavior is available in every
+  phase.
+- MongoDB is private-network-only in deployed environments.
+- Persistent storage, health checks, resource caps, restart policy, backups,
+  restore drills, and monitoring are required.
+- Mongoose documents never leak into core or API contracts.
+- Multi-fact commerce writes use a transaction plus idempotency/outbox patterns
+  as appropriate.
+- Store timestamps in UTC.
+- Compute legal/accounting boundaries in `Asia/Kolkata`.
+- Indian financial year is 1 April through 31 March.
+
+## 7. Catalog and content model
+
+The detailed design is
+`codex-catalog-db-architecture-assessment-and-plan.mdx`.
+
+Core rules:
+
+- Categories use a multi-placement DAG, not a forced single-parent tree.
+- Products support simple, variant/SKU, customization, relations, and real
+  bundle/composite patterns.
+- First-class variants own SKU-level price, stock, availability, and media
+  overrides.
+- Semantic option behavior is independent of presentation style.
+- Supported semantic roles are `filter_only`, `variation_axis`,
+  `named_add_on`, and `bundle_component_option`.
+- Supported display styles include rectangle, circle, image/color swatch,
+  radio, and dropdown.
+- Measurements are cart-line customization input, not variant axes.
+- Product/category/variant/content routes use locale-keyed authored fields.
+- FAQ is editorial content. Product Q&A and verified-purchase reviews are
+  separate moderated capabilities.
+- Archived/disabled/discontinued products stay in MongoDB at launch but are
+  excluded from public discovery, search, and sitemap surfaces.
+- Order lines preserve immutable purchase-time snapshots.
+
+## 8. Search and SEO
+
+- MongoDB is source of truth; Meilisearch is a rebuildable derived index.
+- `SearchPort` isolates Meilisearch from core and UI.
+- Public search indexes published/discoverable projections only.
+- Search supports typo tolerance, aliases, locale-aware dictionaries,
+  transliteration where configured, suggestions, no-result analytics, and
+  admin tuning.
+- Category/listing facets come through `SearchPort`.
+- Facet configuration is per category/placement and controls visibility,
+  ordering, display style, counts, and responsive presentation.
+- Mongo regex/`$text` is not the storefront typeahead implementation.
+- Arbitrary faceted URLs are `noindex,follow` and canonicalize to the base
+  listing unless explicitly modeled as SEO landing pages.
+- SSR/SSG output must contain user-visible content, canonical metadata,
+  structured data, and correct locale alternatives.
+- Locale URL/canonical behavior is locked (owner log § Locale URLs, 2026-10-31): every route locale-prefixed, same slug across locales, no automatic language redirect, reciprocal hreflang with `x-default` → `/`.
+
+## 9. Internationalization
+
+There are two distinct translation machines:
+
+1. Developer-owned UI chrome uses reactive Transloco keys.
+2. Admin-authored catalog/CMS/media/measurement/SEO values use locale-keyed DB
+   fields resolved by the API.
+
+English is primary. The active target locale pair is English and French.
+Bengali is a likely next locale, not a locked current pair. Adding any locale requires a
+coordinated checklist across UI JSON, DB content, media alt/SEO, notification
+templates, SEO defaults, hreflang, and compiled payloads.
+
+Never pass DB-authored localized text through Transloco, and never use
+one-time imperative translation for reactive TS-origin labels.
+
+## 10. Pricing, currency, tax, inventory, and reporting
+
+- Canonical product price is always INR.
+- Catalog prices are stored/displayed tax-inclusive.
+- Tax-exclusive values are reverse-calculated only for invoice/reporting needs.
+- Final tax/HSN rules remain gated by `DEC-TAX-HSN`.
+- Non-INR display amounts are derived server-side using persisted FX rates.
+- PayPal gross-up uses versioned admin-editable policy; the remaining FX markup
+  choice is `DEC-PAYPAL-FX`.
+- Angular never owns authoritative price, tax, promotion, shipping, or FX math.
+- Inventory costing uses hidden FIFO cost layers.
+- Manual adjustments use the locked reason-code set and audit evidence.
+- Orders, payments, shipments, returns, and refunds remain separate durable
+  records.
+- Persist rollups/insight sets for dashboards and merchandising rather than
+  running expensive analytics joins on customer requests.
+- Raw analytics expire after aggregate rollup according to retention policy.
+
+## 11. Cart, offline behavior, and pending intents
+
+- Guest and user carts are server-authoritative.
+- Guest identity uses an opaque `st_guest` httpOnly cookie; persist only its
+  hash.
+- Guest cart TTL is 30 days sliding.
+- Guest checkout is not supported at launch.
+- Authentication merges the cart transactionally, reports invalid lines, then
+  revalidates and replays one eligible latest pending intent.
+- Pending intent expires within 30 minutes unless the feature needs less.
+- Wishlist, Save for Later, and Notify Me are account-bound.
+- IndexedDB/Cache Storage may cache public catalog and queue cart mutations.
+- Never store auth/session tokens, payment data, admin data, or account/order
+  PII offline.
+- Reconnect revalidates availability, price, stock, and ownership.
+
+## 12. Authentication, authorization, and privacy
+
+The detailed design is `codex-auth-architecture-db-and-request-plan.mdx`.
+
+- Browser auth uses API-set `httpOnly`, `Secure`, `SameSite` cookies.
+- Use short access state, rotating opaque refresh tokens, reuse detection, and
+  double-submit CSRF.
+- Password minimum is 12 characters with a common-password denylist.
+- Storefront methods: password, email OTP, Google, and Facebook.
+- Admin: email/username plus password and optional hardened six-digit PIN.
+- Admin soft-lock is 15 minutes and preserves mounted UI state.
+- Every owned-resource endpoint performs object-level authorization.
+- Rate-limit auth, OTP, checkout, and search.
+- Consent is granular; non-essential scripts wait for consent.
+- Privacy export/erasure flows are required.
+- Card data never touches Saha Textile servers.
+
+## 13. Notifications
+
+- `NotificationPort` is the customer-messaging boundary.
+- MSG91 is primary for programmatic email, SMS, and WhatsApp.
+- Saha Textile owns OTP generation/verification; MSG91 only delivers it.
+- Resend, SES, or SMTP may exist only as optional email fallback adapters.
+- Google Workspace team mailboxes are operational mail, not programmatic
+  notification infrastructure.
+- Transactional/utility and marketing kill-switches are separate per channel.
+- Disabled paths stop before provider invocation.
+- Marketing sends require consent and approved templates where applicable.
+- Provider usage/spend thresholds, RBAC, and audit are required.
+
+## 14. Payments, FX, and shipping
+
+- Launch uses online payment only: no COD, manual payment proof, or split
+  payment.
+- Currency selects a gateway role, not a vendor:
+    - INR uses the Indian online-gateway role;
+    - non-INR uses the PayPal role.
+- Current INR operational preference is CCAvenue, with Razorpay the preferred
+  successor.
+- Payment vendor SDKs remain inside payment adapters.
+- FX is fetched daily, persisted, audited, and falls back to the last valid
+  non-stale policy result.
+- Shipping is behind `ShippingPort`; Shiprocket is the preferred adapter when
+  approved credentials are available.
+- Webhooks/callbacks are authenticated, idempotent, replay-safe, and audited.
+
+## 15. Media
+
+- DigitalOcean Spaces uses `sgp1`.
+- Upload normal media directly with presigned operations; do not proxy routine
+  bytes through the API.
+- `mediaAssets` is first-class and reusable.
+- Images retain the original (review photos excepted) and produce WebP role
+  derivatives through BullMQ plus sharp at the adapter/worker edge.
+- No AVIF at launch or in the near-term plan.
+- Image dimensions, ingest limits, banners, review photos, and the rendering
+  standard are locked in owner log § Media (2026-11-02).
+- Uploaded video is dropped at launch; the HLS seams stay dormant behind an
+  off-by-default flag.
+- Core never imports Spaces, BullMQ, sharp, ffmpeg, or player libraries.
+- YouTube latest-video discovery uses `YouTubePort` and a daily cached refresh.
+- The image pipeline is complete as a standalone unit (2026-11-03). What still uses it —
+  catalog media fields, swatches, primary-only roles, email thumbnails, PWA caching, live GC —
+  is owned by later chunks; see the API roadmap, Chunk I "Media pipeline status".
+- Locally, `seed:local-catalog-photos` puts real photos through the pipeline and points the
+  storefront demo catalogue at them; the photos stay out of git.
+
+## 16. Security and audit baseline
+
+- Validate all external input with Zod.
+- Use strict CORS, safe proxy/IP handling, Cloudflare-fronted Nginx security
+  headers, redacted structured logging, and stable public errors.
+- Fail closed on missing required security configuration/dependencies.
+- Every admin mutation writes an audit event.
+- Financial/security audit retention is seven years.
+- Catalog/general-admin audit retention is five years.
+- Never audit secrets, passwords, PINs, OTPs, full tokens, card data, or gateway
+  working keys.
+- Dependency audits, pinned images, backups, restore drills, and incident
+  runbooks are launch work, not optional post-launch documentation.
+
+## 17. Developer portal and truth model
+
+- Root `docs/` contains authored Markdown/MDX rendered by the developer portal.
+- `apps/developer-portal/` contains portal application code, components,
+  plugins, and build tooling.
+- Portal content is maintained alongside implementation and KB changes.
+- OpenAPI is API machine truth; Scalar is the single human API-reference
+  surface at `/api/reference`.
+- Portal pages distinguish implemented, scaffolded, planned, deferred, and
+  deprecated behavior.
+- Pages declare audience, verification date, and precise source paths.
+- Portal validation must reject missing/stale provenance and forbidden
+  terminology.
+- Interactive requests are limited to approved development/staging environments
+  and never bypass auth, CSRF, RBAC, or rate limits.
+
+## 18. Delivery and verification
+
+Follow `execution-roadmap.mdx` for whole-program order and
+`api-db-development-roadmap-with-pending-decision-gates.mdx` for A–J backend
+chunks.
+
+For each coherent unit:
+
+1. Read current progress, owner locks, relevant architecture, and `DEC-*` gates.
+2. Implement inside the correct layer.
+3. Update tests, contracts/OpenAPI, and portal docs with the code.
+4. Run proportional typecheck, lint, unit/integration, build, and route checks.
+5. Record the evidence in `project-progress.mdx`.
+6. Deliver through a focused PR to protected branches.
+
+This file contains no open-question register. All unresolved choices live in
+`pending-decisions.mdx`.

@@ -1,10 +1,12 @@
-import { Component, inject, viewChild, input } from '@angular/core';
+import { Component, computed, inject, viewChild, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { NgbRatingConfig, NgbRating } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 
+import { cardOffer } from '@core/catalog/card-offer';
+import { roleSrcset } from '@core/media/resolved-image';
 import { CartFacade } from '@core/state/cart/cart.facade';
 import { CompareFacade } from '@core/state/compare/compare.store';
 import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
@@ -16,6 +18,9 @@ import { ProductConfigModal } from '@shared/ui/modal/product-config-modal/produc
 import { ProductDetailModal } from '@shared/ui/modal/product-detail-modal/product-detail-modal';
 
 import { Button } from '../../button/button';
+
+/** Rendered card width per breakpoint: 2 columns on phones, ~206 px in desktop rails and grids. */
+const CARD_SIZES = '(max-width: 575px) 48vw, (max-width: 991px) 33vw, 240px';
 
 @Component({
 	selector: 'app-product-box-horizontal',
@@ -42,8 +47,22 @@ export class ProductBoxHorizontal {
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
 	//  and migrating would break narrowing currently.
 	readonly product = input<IProduct>();
+	readonly imagePriority = input<'high' | 'low' | 'lazy'>('lazy');
+	readonly offer = cardOffer;
 	readonly class = input<string>();
 	readonly close = input<boolean>();
+
+	/** The pipeline's `card` widths, so a phone downloads the 400 px file and a retina desktop the 700. */
+	readonly thumbnail = computed(() => {
+		const image = this.product()?.product_thumbnail?.image;
+		const srcset = roleSrcset(image, 'card');
+		return {
+			srcset,
+			sizes: srcset ? CARD_SIZES : null,
+			width: image?.width ?? null,
+			height: image?.height ?? null,
+		};
+	});
 
 	cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
 
@@ -89,15 +108,15 @@ export class ProductBoxHorizontal {
 		this.cartFacade.addToCart(params);
 	}
 
-	addToWishlist(id: number) {
+	addToWishlist(id: number | string) {
 		this.wishlistFacade.addToWishlist({ product_id: id });
 	}
 
-	removeWishlist(id: number) {
+	removeWishlist(id: number | string) {
 		this.wishlistFacade.deleteWishlist(id);
 	}
 
-	addToCompar(id: number) {
+	addToCompar(id: number | string) {
 		this.compareFacade.addToCompare({ product_id: id });
 	}
 }

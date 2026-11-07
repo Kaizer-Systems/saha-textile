@@ -1,0 +1,32 @@
+---
+title: Angular Storybook
+slug: /tools/storybook
+description: Entry page for the generated Angular Storybook.
+status: implemented
+audience: [beginner, frontend]
+last_verified: '2026-11-07'
+wide: true
+hide_table_of_contents: true
+source_of_truth:
+    - apps/developer-portal-storybook
+    - apps/developer-portal/src/components/ChildToolGateway
+    - scripts/serve-developer-portal-persistent.mjs
+---
+
+import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
+
+<ChildToolGateway
+	toolName="Angular Storybook"
+	target="/storybook/"
+	eyebrow="Component Forge · Angular renderer"
+	title="Explore the Angular components."
+	description="Browse storefront, admin and shared components rendered by the real Angular code."
+	launchLabel="Open Storybook"
+	symbol="component-forge"
+/>
+
+This page opens Storybook, the component reference. One Angular renderer serves storefront, admin and shared stories, with the portal's visual theme.
+
+The catalogue includes the Admin PIN Pad, idle-lock modal and YouTube video field. `shared/ui/social-sign-in` has a specimen covering provider states. Route and page orchestration belongs to integration and Playwright tests. The storefront full-page loader is a deliberately permanent specimen.
+
+See [Generated surfaces](/tooling/generated-surfaces-and-runtime) for coverage rules and commands.

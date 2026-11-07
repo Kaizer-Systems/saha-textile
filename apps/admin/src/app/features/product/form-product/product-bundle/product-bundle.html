@@ -1,0 +1,135 @@
+<app-form-fields
+	[labelClass]="'form-label-title col-sm-3 mb-0'"
+	[gridClass]="'col-sm-9'"
+	[label]="'bundle_type'"
+	[for]="'bundle_type'"
+	[required]="true"
+>
+	<select2
+		class="custom-select"
+		id="bundle_type"
+		[data]="typeOptions"
+		[value]="value().bundleType"
+		(update)="set({ bundleType: $any($event.value) })"
+	/>
+</app-form-fields>
+<app-form-fields
+	[labelClass]="'form-label-title col-sm-3 mb-0'"
+	[gridClass]="'col-sm-9'"
+	[label]="'price_policy'"
+	[for]="'price_policy'"
+	[required]="true"
+>
+	<select2
+		class="custom-select"
+		id="price_policy"
+		[data]="policyOptions"
+		[value]="value().pricePolicy"
+		(update)="set({ pricePolicy: $any($event.value) })"
+	/>
+	<p class="help-text">{{ 'price_policy_help' | transloco }}</p>
+</app-form-fields>
+@for (group of value().groups; track group.code; let index = $index) {
+<div class="border rounded p-3 mb-3">
+	<app-form-fields
+		[labelClass]="'form-label-title col-sm-3 mb-0'"
+		[gridClass]="'col-sm-9'"
+		[label]="'group_name'"
+		[for]="'group_' + index"
+		[required]="true"
+	>
+		<input
+			class="form-control"
+			[id]="'group_' + index"
+			[value]="group.label[locale()] ?? ''"
+			(change)="setName(index, group, $any($event.target).value)"
+		/>
+	</app-form-fields>
+	<app-form-fields
+		[labelClass]="'form-label-title col-sm-3 mb-0'"
+		[gridClass]="'col-sm-9'"
+		[label]="'selections'"
+		[for]="'min_' + index"
+	>
+		<div class="row g-2">
+			<div class="col-6">
+				<div class="input-group">
+					<span class="input-group-text">{{ 'min' | transloco }}</span>
+					<input
+						class="form-control"
+						type="number"
+						[id]="'min_' + index"
+						[value]="group.minSelections"
+						(change)="setLimit(index, 'minSelections', $any($event.target).value)"
+					/>
+				</div>
+			</div>
+			<div class="col-6">
+				<div class="input-group">
+					<span class="input-group-text">{{ 'max' | transloco }}</span>
+					<input
+						class="form-control"
+						type="number"
+						[value]="group.maxSelections"
+						(change)="setLimit(index, 'maxSelections', $any($event.target).value)"
+					/>
+				</div>
+			</div>
+		</div>
+	</app-form-fields>
+	@for (component of group.components; track component.productId; let row = $index) {
+	<div class="row g-2 align-items-center mb-2">
+		<div class="col-6">{{ productName(component.productId) }}</div>
+		<div class="col-2">
+			<input
+				class="form-control"
+				type="number"
+				min="1"
+				[value]="component.quantity"
+				(change)="setComponent(index, group, row, { quantity: +$any($event.target).value })"
+			/>
+		</div>
+		<div class="col-3 d-flex align-items-center gap-2">
+			<div class="form-check form-switch ps-0">
+				<label class="switch">
+					<input
+						type="checkbox"
+						[checked]="component.required"
+						(change)="setComponent(index, group, row, { required: $any($event.target).checked })"
+					/>
+					<span class="switch-state"></span>
+				</label>
+			</div>
+			<span>{{ 'required' | transloco }}</span>
+		</div>
+		<div class="col-1">
+			<a
+				class="cursor-pointer"
+				(click)="removeComponent(index, group, row)"
+			>
+				<i class="ri-close-line"></i>
+			</a>
+		</div>
+	</div>
+	}
+	<select2
+		class="custom-select"
+		[data]="products()"
+		[placeholder]="'add_component' | transloco"
+		(update)="addComponent(index, group, $event.value)"
+	/>
+	<a
+		class="invalid-feedback d-block cursor-pointer mt-2"
+		(click)="removeGroup(index)"
+	>
+		{{ 'remove' | transloco }}
+	</a>
+</div>
+}
+<button
+	type="button"
+	class="btn btn-theme mb-4"
+	(click)="addGroup()"
+>
+	{{ 'add_group' | transloco }}
+</button>

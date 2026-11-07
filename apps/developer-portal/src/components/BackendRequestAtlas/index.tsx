@@ -1,3 +1,12 @@
+/* ============================================================================
+ * NEXT-GEN-UI · Backend request-path atlas
+ * ----------------------------------------------------------------------------
+ * WHAT: an interactive view of representative backend paths: current code, target design, checks.
+ * WHY: engineers need existing behaviour shown apart from intended behaviour.
+ * HOW: filterable request cards render path records with their source files.
+ * TUNING: keep path status, risk, lens labels and sources aligned with the code.
+ * ========================================================================= */
+
 import React, { useMemo, useRef, useState } from 'react';
 
 import styles from './styles.module.css';
@@ -32,12 +41,11 @@ const requestPaths: RequestPath[] = [
 		risk: 'critical',
 		method: 'GET',
 		path: '/catalog/products',
-		summary:
-			'Read a public catalogue page without exposing non-public inventory or using Mongo as storefront search.',
+		summary: 'Read a public catalogue page without exposing non-public products.',
 		current:
-			'The controller accepts an optional status query and the repository applies it only when supplied. A public request can therefore omit status or request draft/archived records. Search uses a Mongo regular expression over slug, SKU, and tags.',
-		target: 'Public catalogue reads force published and purchasable visibility server-side. Listing/search flows use SearchPort and self-hosted Meilisearch for configured facets while MongoDB remains the rebuildable source of truth.',
-		verify: 'Test anonymous requests for every non-public status, confirm field-level response safety, probe category/facet combinations, and prove the public handler cannot select an admin-only visibility state.',
+			'The public controller accepts no status query. The repository defaults to the public audience, so lists and direct reads return live products only. The storefront reads `/catalog/placements`, `/catalog/home` and `/catalog/cards`.',
+		target: 'Public catalogue reads force live visibility on the server. MongoDB stays the source of truth.',
+		verify: 'Send anonymous requests for every non-public status. Check the response fields, try category and facet combinations, and confirm the public handler cannot select an admin-only state.',
 		layers: [
 			{ label: 'Request', detail: 'Query parameters' },
 			{ label: 'Controller', detail: 'ProductsController' },
@@ -50,7 +58,7 @@ const requestPaths: RequestPath[] = [
 			'apps/api/src/catalog/products.controller.ts',
 			'apps/api/src/catalog/catalog.service.ts',
 			'packages/adapters-db-mongo/src/repositories/product.repository.ts',
-			'project-context/angular-context/owner-decisions-log.md',
+			'docs/engineering-live-context/owner-decisions-log.mdx',
 		],
 	},
 	{
@@ -63,9 +71,9 @@ const requestPaths: RequestPath[] = [
 		path: '/cart/:id/lines',
 		summary: 'Change only the cart owned by the authenticated user or opaque guest identity.',
 		current:
-			'Cart routes accept a cart id without an authentication guard, guest-cookie proof, or ownership check. They append contract-shaped lines but do not validate product publication, selected variation, price, or stock.',
-		target: 'An httpOnly opaque guest cookie or authenticated session resolves the cart without trusting a caller-supplied owner id. Every mutation revalidates product, configuration, stock, and the line signature before persistence.',
-		verify: 'Attempt cross-cart reads and writes, forged guest tokens, retired variants, excessive quantities, and replayed offline mutations. Assert line-level safe errors and no silent data loss.',
+			'Cart routes enforce session ownership for user carts, or the hashed httpOnly st_guest cookie for guest carts. Cross-owner access returns not-found. Line changes do not validate product, variation, price or stock.',
+		target: 'The session or guest cookie resolves the cart, with no owner id from the caller. Every change revalidates the product, configuration, stock and line signature before saving.',
+		verify: 'Try cross-cart reads and writes, forged guest tokens, retired variants and excessive quantities. Expect line-level errors and no silent data loss.',
 		layers: [
 			{ label: 'Identity', detail: 'User or guest cookie' },
 			{ label: 'Controller', detail: 'CartController' },
@@ -78,7 +86,7 @@ const requestPaths: RequestPath[] = [
 			'apps/api/src/cart',
 			'packages/core-domain/src/ports/cart.repository.ts',
 			'packages/adapters-db-mongo/src/models/cart.model.ts',
-			'project-context/angular-context/owner-decisions-log.md',
+			'docs/engineering-live-context/owner-decisions-log.mdx',
 		],
 	},
 	{
@@ -88,25 +96,25 @@ const requestPaths: RequestPath[] = [
 		status: 'scaffolded',
 		risk: 'critical',
 		method: 'POST',
-		path: '/auth/login',
+		path: '/auth/storefront/login/password',
 		summary: 'Authenticate a browser without exposing reusable session credentials to Angular storage.',
 		current:
-			'Login/register return access and refresh JWTs in JSON. The guard reads Authorization: Bearer only; refresh tokens are signed JWTs with no persisted family, rotation record, or reuse detection. Password minimum is eight characters.',
-		target: 'The API sets audience-bound httpOnly Secure cookies, rotates opaque refresh tokens, validates signed double-submit CSRF, enforces the locked password/PIN policies, and separates storefront from admin authority.',
-		verify: 'Prove tokens never enter browser-readable storage, unsafe cookie-authenticated methods reject missing CSRF, refresh reuse revokes the family, and storefront identity cannot authorize admin routes.',
+			'The API sets httpOnly access and refresh cookies for one audience, stores refresh families and a per-session CSRF hash, rotates atomically and revokes a family on reuse. It returns only sanitized user and session data. Both Angular applications use cookie-only gateways with single-flight refresh and cross-tab locks.',
+		target: 'Sessions stay in httpOnly cookies, CSRF stays double-submit, and storefront and admin authority stay separate.',
+		verify: 'Confirm that tokens never reach browser storage, an unsafe request without CSRF fails, refresh reuse revokes the family, and a storefront session cannot use admin routes.',
 		layers: [
 			{ label: 'Credentials', detail: 'Validated secret' },
 			{ label: 'Controller', detail: 'AuthController' },
 			{ label: 'Application', detail: 'AuthService' },
 			{ label: 'Port', detail: 'AuthPort + user repo' },
 			{ label: 'Adapter', detail: 'Argon2 + JWT / Mongo' },
-			{ label: 'Session', detail: 'Current JSON tokens' },
+			{ label: 'Session', detail: 'Cookie + persisted family' },
 		],
 		sources: [
 			'apps/api/src/auth',
 			'apps/api/src/infra/argon2-jwt.auth.ts',
 			'packages/core-domain/src/ports/auth.port.ts',
-			'project-context/angular-context/codex-auth-architecture-db-and-request-plan.md',
+			'docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx',
 		],
 	},
 	{
@@ -119,12 +127,12 @@ const requestPaths: RequestPath[] = [
 		path: '/orders/:id',
 		summary: 'Return an order only when the actor owns it or holds an explicitly authorized operator permission.',
 		current:
-			'The route requires a valid bearer token but passes only the requested id to OrdersService. The service and repository fetch by id without comparing order.userId to the authenticated subject.',
-		target: 'A storefront query is ownership-scoped by construction. Admin access uses a separate route/audience and explicit resource permission, with sensitive fields serialized according to actor.',
-		verify: 'Create two users and prove neither can read the other order by changing the id. Repeat for staff roles, disabled users, stale permissions, missing records, and fields excluded from storefront responses.',
+			'The route compares order.userId with the authenticated subject and returns not-found on a mismatch. An admin holding order.index can read any order.',
+		target: 'A storefront read is scoped to its owner in the query. Admin access uses a separate route and permission, and each actor receives its own response shape.',
+		verify: 'Create two customers and confirm neither can read the other customer’s order by changing the id. Repeat for staff roles, disabled accounts, stale permissions and missing records.',
 		layers: [
 			{ label: 'Identity', detail: 'Token claims' },
-			{ label: 'Guard', detail: 'JwtAuthGuard' },
+			{ label: 'Guard', detail: 'SessionGuard + ownership' },
 			{ label: 'Controller', detail: 'OrdersController' },
 			{ label: 'Application', detail: 'OrdersService' },
 			{ label: 'Port', detail: 'OrderRepository' },
@@ -134,7 +142,7 @@ const requestPaths: RequestPath[] = [
 			'apps/api/src/orders/orders.controller.ts',
 			'apps/api/src/orders/orders.service.ts',
 			'packages/adapters-db-mongo/src/repositories/order.repository.ts',
-			'project-context/angular-context/saha-textile-technical-knowledgebase.md',
+			'docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx',
 		],
 	},
 	{
@@ -147,13 +155,13 @@ const requestPaths: RequestPath[] = [
 		path: '/orders',
 		summary: 'Convert an owned, revalidated cart into one durable commerce outcome exactly once.',
 		current:
-			'The service reads products sequentially, calculates a partial subtotal/coupon result, saves one order, then deletes the cart. There is no cart ownership check, idempotency key, transaction, stock reservation, tax/shipping quote, payment attempt, or rollback boundary.',
-		target: 'Checkout quote and place-order are separate. Place-order uses an idempotency key and Mongo transaction spanning immutable order snapshot, payment attempt, inventory, ledger, cart, and audit/event records.',
-		verify: 'Inject failure after each write, repeat identical requests, race stock, replay callbacks, and assert either one complete committed result or a full rollback—never a half-created order.',
+			'The service checks cart ownership and prices the lines, then saves the order and removes the cart in one transaction. It has no idempotency key, stock reservation, tax, shipping or payment step.',
+		target: 'Quoting and placing are separate steps. Placing uses an idempotency key and one transaction across the order snapshot, payment attempt, inventory, ledger, cart and audit records.',
+		verify: 'Inject a failure after each write, repeat identical requests, race for stock and replay callbacks. Expect one complete result or a full rollback, never a half-created order.',
 		layers: [
 			{ label: 'Request', detail: 'Owned cart + key' },
 			{ label: 'Controller', detail: 'OrdersController' },
-			{ label: 'Orchestrator', detail: 'OrdersService' },
+			{ label: 'Application', detail: 'OrdersService' },
 			{ label: 'Domain', detail: 'Pricing invariants' },
 			{ label: 'Ports', detail: 'Repos + providers' },
 			{ label: 'Transaction', detail: 'Atomic records' },
@@ -162,7 +170,7 @@ const requestPaths: RequestPath[] = [
 			'apps/api/src/orders/orders.service.ts',
 			'packages/core-domain/src/pricing',
 			'packages/core-domain/src/ports/payment-gateway.port.ts',
-			'project-context/angular-context/codex-api-app-build-instructional-prompt.md',
+			'docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx',
 		],
 	},
 	{
@@ -175,9 +183,9 @@ const requestPaths: RequestPath[] = [
 		path: '/orders/:id/status',
 		summary: 'Authorize, validate, audit, and safely transition a privileged commerce state.',
 		current:
-			'JWT and role guards restrict the route to admin/staff, and the repository appends a timeline event. There is no admin audience, granular permission, transition policy, CSRF, entity version, or audit-log write.',
-		target: 'Admin routes are separately namespaced and audience-bound. A permission-aware use case validates legal transitions, concurrency, actor context, side effects, and an immutable audit event.',
-		verify: 'Test every illegal transition, stale version, customer token, downgraded role, missing CSRF, concurrent update, and provider-side-effect failure. Confirm the audit record explains who changed what and why.',
+			'The route requires an admin session, CSRF and the order.update permission, and the repository appends a timeline event. It has no legal-transition rule, entity version or audit record.',
+		target: 'A use case checks the permission, legal transition and concurrency, and writes an immutable audit record.',
+		verify: 'Test every illegal transition, a stale version, a customer session, a downgraded role, missing CSRF and a concurrent update. Confirm the audit record shows who changed what and why.',
 		layers: [
 			{ label: 'Admin session', detail: 'Audience + CSRF' },
 			{ label: 'Authorization', detail: 'Role + permission' },
@@ -190,49 +198,49 @@ const requestPaths: RequestPath[] = [
 			'apps/api/src/orders/orders.controller.ts',
 			'apps/api/src/auth/roles.guard.ts',
 			'packages/adapters-db-mongo/src/repositories/order.repository.ts',
-			'project-context/angular-context/codex-api-app-build-instructional-prompt.md',
+			'docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx',
 		],
 	},
 	{
 		id: 'search',
 		title: 'Run storefront search',
 		area: 'catalogue',
-		status: 'planned',
+		status: 'scaffolded',
 		risk: 'high',
 		method: 'GET',
-		path: '/search/typeahead',
-		summary: 'Serve typo-tolerant multilingual discovery without making a derived index authoritative.',
+		path: '/catalog/search',
+		summary: 'Serve typo-tolerant search while MongoDB stays the source of truth.',
 		current:
-			'SearchPort exists but is not bound. ProductRepository currently implements an escaped Mongo regular-expression fallback, and its SearchPort comment still names a superseded hosted service.',
-		target: 'Self-hosted Meilisearch implements SearchPort. Mongo changes enqueue an outbox, the index contains public derived data, facet configuration controls exposure, and a complete reindex rebuilds from Mongo.',
-		verify: 'Destroy and rebuild the index, test unpublished removal, Bengali/transliteration aliases, configured facets, no-result capture, stale outbox recovery, and graceful degraded behavior.',
+			'SearchPort is bound to self-hosted Meilisearch. The index holds ids and words, and prices come from MongoDB. If the index is down the route answers 503 and never falls back to MongoDB.',
+		target: 'Product changes reach the index through an outbox, and facet configuration decides what is exposed. A full reindex rebuilds from MongoDB.',
+		verify: 'Destroy and rebuild the index. Test removal of unpublished products, configured facets, no-result handling and behaviour when the index is down.',
 		layers: [
 			{ label: 'Request', detail: 'Normalized query' },
-			{ label: 'Controller', detail: 'Search HTTP seam' },
-			{ label: 'Application', detail: 'Discovery policy' },
+			{ label: 'Controller', detail: 'Search route' },
+			{ label: 'Application', detail: 'CatalogPublicService' },
 			{ label: 'Port', detail: 'SearchPort' },
-			{ label: 'Adapter', detail: 'Meilisearch planned' },
-			{ label: 'Source', detail: 'Mongo + outbox' },
+			{ label: 'Adapter', detail: 'MeilisearchSearch' },
+			{ label: 'Source', detail: 'MongoDB' },
 		],
 		sources: [
 			'packages/core-domain/src/ports/search.port.ts',
-			'packages/adapters-db-mongo/src/repositories/product.repository.ts',
-			'project-context/angular-context/owner-decisions-log.md',
+			'apps/api/src/search/meilisearch-search.ts',
+			'docs/engineering-live-context/owner-decisions-log.mdx',
 		],
 	},
 	{
 		id: 'readiness',
-		title: 'Prove runtime readiness',
+		title: 'Check runtime readiness',
 		area: 'platform',
-		status: 'planned',
+		status: 'implemented',
 		risk: 'high',
 		method: 'GET',
 		path: '/health/ready',
-		summary: 'Distinguish a live process from a backend that can safely serve dependency-backed requests.',
+		summary: 'Tell a running process apart from one that can serve requests.',
 		current:
-			'A single /health endpoint reports process status. Mongo connection failure is intentionally non-fatal, so the API may report ok while every persistence-backed route fails.',
-		target: '/health/live proves the process is alive. /health/ready separately checks Mongo, Meilisearch, required configuration, and other critical dependencies without leaking secrets.',
-		verify: 'Stop each dependency independently, corrupt safe test configuration, and confirm liveness remains truthful while readiness fails with sanitized component evidence and deployment health checks block promotion.',
+			'/health/live checks nothing external. /health/ready checks MongoDB and answers 503 when it is down. /health is an alias of /health/live. Readiness does not cover Redis or Meilisearch.',
+		target: '/health/ready also checks Meilisearch, required configuration and other critical dependencies, without exposing secrets.',
+		verify: 'Stop each dependency in turn. Confirm that liveness still answers, readiness fails with a sanitized list, and a deployment health check blocks promotion.',
 		layers: [
 			{ label: 'Probe', detail: 'Live or ready' },
 			{ label: 'Controller', detail: 'Health boundary' },
@@ -244,35 +252,35 @@ const requestPaths: RequestPath[] = [
 		sources: [
 			'apps/api/src/health/health.controller.ts',
 			'apps/api/src/infra/persistence.module.ts',
-			'project-context/angular-context/execution-roadmap.md',
+			'docs/engineering-live-context/execution-roadmap.mdx',
 		],
 	},
 	{
 		id: 'api-reference',
 		title: 'Publish the API contract',
 		area: 'platform',
-		status: 'deferred',
+		status: 'scaffolded',
 		risk: 'observe',
 		method: 'GET',
 		path: '/api/reference',
-		summary: 'Generate one machine-readable contract and present it through one protected modern reference.',
+		summary: 'Generate one machine-readable contract and present it through one reference.',
 		current:
-			'NestJS generates /openapi.json and mounts a transitional framework UI at /docs. Local zod body schemas and limited decorators mean the document is not yet a complete endpoint contract.',
-		target: 'OpenAPI is generated and checked in CI, published at /api/openapi.json, and rendered once through protected Scalar at /api/reference for approved development/staging requests.',
-		verify: 'Assert operation coverage, auth/CSRF/role metadata, schemas, errors, idempotency and side effects. Confirm no production secret or unrestricted production execution target appears in the reference.',
+			'NestJS generates /openapi.json. The portal generates the same document for Scalar at /api/reference. It lists every route but omits full schemas and per-operation security.',
+		target: 'CI generates and checks the document. It is published at /api/openapi.json and rendered by Scalar at /api/reference, for approved development and staging requests.',
+		verify: 'Check operation coverage, security metadata, schemas, errors, idempotency and side effects. Confirm that no production secret or production target appears in the reference.',
 		layers: [
 			{ label: 'Contracts', detail: 'Zod DTO families' },
 			{ label: 'Controllers', detail: 'Operation metadata' },
 			{ label: 'Generator', detail: 'OpenAPI document' },
-			{ label: 'CI', detail: 'Contract smoke test' },
-			{ label: 'Portal', detail: 'Scalar deferred' },
-			{ label: 'Security', detail: 'Protected targets' },
+			{ label: 'Check', detail: 'Tag check' },
+			{ label: 'Portal', detail: 'Scalar reference' },
+			{ label: 'Access', detail: 'Local server only' },
 		],
 		sources: [
 			'apps/api/src/main.ts',
 			'apps/api/src',
-			'project-context/angular-context/owner-decisions-log.md',
-			'project-context/angular-context/private-developer-portal-documentation-plan.md',
+			'docs/engineering-live-context/owner-decisions-log.mdx',
+			'docs/api/openapi-and-scalar.md',
 		],
 	},
 ];
@@ -301,9 +309,9 @@ const riskLabels: Record<Risk | 'all', string> = {
 };
 
 const lensLabels: Record<Lens, string> = {
-	current: 'Current execution',
-	target: 'Locked target',
-	verify: 'How to prove it',
+	current: 'Current code',
+	target: 'Target design',
+	verify: 'How to check it',
 };
 
 export function BackendRequestAtlas(): React.ReactNode {
@@ -361,7 +369,7 @@ export function BackendRequestAtlas(): React.ReactNode {
 					</div>
 				</div>
 				<div>
-					<span className={styles.filterLabel}>Current risk</span>
+					<span className={styles.filterLabel}>Risk</span>
 					<div
 						className={styles.filterGroup}
 						aria-label="Filter request paths by current risk"
@@ -436,7 +444,7 @@ export function BackendRequestAtlas(): React.ReactNode {
 					<div
 						className={styles.lensTabs}
 						role="tablist"
-						aria-label="Request-path evidence lens"
+						aria-label="Request path view"
 					>
 						{lenses.map((candidate, index) => (
 							<button
@@ -469,7 +477,7 @@ export function BackendRequestAtlas(): React.ReactNode {
 					</div>
 
 					<details className={styles.evidence}>
-						<summary>Repository evidence and authority</summary>
+						<summary>Sources</summary>
 						<ul>
 							{selectedPath.sources.map((source) => (
 								<li key={source}>

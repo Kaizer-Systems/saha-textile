@@ -10,24 +10,24 @@
 
 ## 2. Stack (pinned — never silently upgrade a major)
 
-- Monorepo: **pnpm** workspaces + **Turborepo** (pnpm only — no npm/yarn).
-- Storefront: **Angular 21 + AnalogJS** (SSR/SSG, file-based routing under `apps/storefront/src/app/pages`). PWA (offline catalogue + offline cart) via **`vite-plugin-pwa` / Workbox**.
-- Admin: **Angular 21** (Fastkart-style UI).
-- API: **NestJS 11 on Fastify 5** (`@nestjs/platform-fastify`).
+- Monorepo: **pnpm 12.15.0** workspaces + **Turborepo** (pnpm only — no npm/yarn).
+- Storefront: **Angular 22 + AnalogJS** (SSR/SSG, file-based routing under `apps/storefront/src/app/pages`). PWA (offline catalogue + offline cart) via **`vite-plugin-pwa` / Workbox**.
+- Admin: **Angular 22** (Fastkart-style UI).
+- API: **NestJS 12 on Fastify 5** (`@nestjs/platform-fastify`).
 - UI/styling: **Bootstrap 5 + ng-bootstrap + SCSS**. **Fastkart** (Angular) is a UI/behaviour **reference only — never fork it.** Forms: Angular reactive/signal forms. Charts: ApexCharts.
 - Client state: **NgRx hybrid** — `@ngrx/signals` (SignalStore) for feature/UI state + classic `@ngrx/store`/`effects`/`entity` where heavy client mutation warrants it (e.g. cart). Server state/data: **TanStack Angular Query**.
-- DB: **self-hosted Docker MongoDB 8.3** (single-node replica set for multi-document transactions) — **not Atlas**. Same Docker profile locally and in prod for parity. Media: **DigitalOcean Spaces** (S3-compatible, SGP).
+- DB: **self-hosted Docker MongoDB 9.0.4** (single-node replica set for multi-document transactions) — **not Atlas**. Same Docker profile locally and in prod for parity. Media: **DigitalOcean Spaces** (S3-compatible, SGP).
 - Search: **self-hosted Meilisearch behind `SearchPort`** (Mongo is source of truth; Meili is a derived, rebuildable index). Do **not** use Mongo regex/`$text` for storefront typeahead.
-- i18n: **Transloco** (runtime en↔bn). Validation: **zod** at every boundary.
+- i18n: **Transloco** — runtime **en↔fr** for the whole development phase (Fastkart shipped both; French stays). **Bengali is added only once development is complete**, deliberately: building against two live locales keeps the multi-language seams exercised, so adding a third is a data change rather than an architecture change. Add keys to BOTH `en.json` and `fr.json`; never add `bn.json` or propose replacing `fr`. Enforced by `pnpm check:i18n-parity`. Validation: **zod** at every boundary.
 - Payments: **`PaymentGatewayPort`** — INR online gateway slot + PayPal for foreign; **no COD** at launch. Ops preference for the INR adapter is CCAvenue now / Razorpay later; **swap = adapter + DI only** (core/UI never vendor-specific). FX: **ExchangeRate-API** (daily cron, rates persisted) + PayPal gross-up for non-INR. Shipping: **Shiprocket** (domestic + international) behind `ShippingPort`. Notifications: **MSG91** (SMS/WhatsApp/Email) behind `NotificationPort` with split transactional/marketing kill-switches.
 - Tooling: **angular-eslint** + ESLint flat config, Prettier (tabs/4), **Vitest** (unit) + Playwright (e2e).
-- Node: pin via `.nvmrc` (root engines require Node ≥24).
+- Node: pin via `.nvmrc` (**24.22.1**; root engines require Node ≥24).
 - Use **Context7** (MCP) for version-correct docs of any library — always pin the version in the query.
 
 ## 3. Architecture — non-negotiable: hexagonal / ports & adapters
 
-- **`packages/core-domain` depends on NOTHING external.** It holds entities, value objects, use-cases, and **PORT interfaces**: repositories (`CatalogRepository`, `OrderRepository`, `CartRepository`, `UserRepository`, `CurrencyRepository`, `PromotionRepository`) plus `StoragePort`, `PaymentGatewayPort`, `ShippingPort`, `FxRatePort`, `SearchPort`, `AuthPort`, `NotificationPort` (MSG91), **`YouTubePort`** (channel-feed discovery), and **`VideoTranscodePort`** (HLS encode; ffmpeg worker via BullMQ at the edge — see owner-decisions-log 2026-07-18 video pipeline).
-- **Adapters** implement ports at the edges (`adapters-db-mongo`, `adapters-storage-spaces`, `adapters-payments`, `adapters-shipping`, `adapters-fx`, `adapters-search`, `adapters-auth`, plus YouTube / video-transcode adapters as built). Wire them to ports via **NestJS DI** at composition time in the API. The Angular apps never touch adapters — they consume the API over HTTP.
+- **`packages/core-domain` depends on NOTHING external.** It holds entities, value objects, use-cases, and **PORT interfaces**: repositories (`CatalogRepository`, `OrderRepository`, `CartRepository`, `CustomerRepository`, `AdminUserRepository`, `CurrencyRepository`, `PromotionRepository`) plus `StoragePort`, `PaymentGatewayPort`, `ShippingPort`, `FxRatePort`, `SearchPort`, `AuthPort`, `NotificationPort` (MSG91), **`YouTubePort`** (channel-feed discovery), and **`VideoTranscodePort`** (HLS encode; ffmpeg worker via BullMQ at the edge — see owner-decisions-log 2026-07-18 video pipeline).
+- **Adapters** implement ports at the edges (`adapters-db-mongo`, `adapters-notifications-msg91`, `adapters-storage-spaces`, `adapters-payments`, `adapters-shipping`, `adapters-fx`, `adapters-search`, `adapters-auth`, plus YouTube / video-transcode adapters as built). Wire them to ports via **NestJS DI** at composition time in the API. The Angular apps never touch adapters — they consume the API over HTTP.
 - **Dependency rule:** all imports point inward. Core never imports an adapter.
 - **Swappability test:** replacing MongoDB with PostgreSQL must touch only a new db adapter + one DI binding — never core, use-cases, or UI. If a task forces edits across layers to swap an edge concern, the layering is wrong: **stop and flag it.**
 - Adapters map persistence shapes ↔ domain entities (DTOs). **Never leak Mongoose docs / SQL rows into core.**
@@ -40,11 +40,11 @@
 apps/        storefront (Angular + AnalogJS PWA) · admin (Angular) ·
              api (NestJS + Fastify) · developer-portal (Docusaurus)
 packages/    core-domain · contracts · config · ui ·
-             adapters-db-mongo · adapters-storage-spaces · adapters-payments ·
+             adapters-db-mongo · adapters-notifications-msg91 · adapters-storage-spaces · adapters-payments ·
              adapters-shipping · adapters-fx · adapters-search · adapters-auth
 vendor/      Fastkart (Angular storefront + admin reference — UI/behaviour only, never forked)
-docs/        Markdown source rendered by the developer portal (apps/developer-portal → ../../docs)
-project-context/   angular-context/ (live KB + roadmap) · nextjs-context/ (superseded — ignore)
+docs/        developer-portal content, including engineering-live-context/ (canonical live KB)
+project-context/   nextjs-context/ (superseded — ignore)
 .cursor/  .vscode/  .github/workflows/
 ```
 
@@ -56,6 +56,32 @@ project-context/   angular-context/ (live KB + roadmap) · nextjs-context/ (supe
 - **Conventional Commits** (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `ci:`).
 - Small, focused modules. Co-locate tests. Cover use-cases and adapters.
 - **No secrets in code, logs, or the browser bundle.** Secrets live in server-side runtime env only; the Angular apps get non-secret config at runtime (not build-time inlining).
+- **No `mock` in shipping names (owner lock 2026-08-16).** No class, service, function, variable, file, route or CSS class that ships may contain `mock`, `fake`, `dummy` or `stub`. Those words belong only inside `*.test.ts` / `*.spec.ts` and test helpers, where something is genuinely being mocked. Everything written here goes to production; a name that is only defensible because the code is temporary is an argument for **deleting the code**, not labelling it. Name the thing for what it IS — an SSR interceptor returning an empty 200 is `emptyResponse`, not `mockResponse` — and when the honest name would need "mock", delete instead of renaming. Vendor demo JSON under `public/assets/data/` is data, not a name, and is out of scope.
+- **Brand naming law (owner lock 2026-07-24): never bare `saha`.** Every identifier — containers, volumes, DB names, env values, service names, paths, mock-data strings — and all prose uses the full brand: `saha-textile` / `saha_textile` / "Saha Textile". Enforced by `scripts/check-naming.sh` in `pnpm lint`. Exceptions: geography data (Sahara/Saharsa/the town "Saha"), the 6-char TRAI DLT sender `SAHATX`, and compact `st_*` cookie names. See owner-decisions-log §2026-07-24. <!-- naming-law:allow -->
+
+## 5a. UI work — reuse first, and brief before building (owner lock 2026-08-11)
+
+**Never invent a UI element or CSS class when the repo already has one.** Assemble screens from
+what exists: the app's own `shared/ui` and feature templates first, then pruned/deleted pages
+(recoverable from git), then `vendor/` Fastkart — which still holds elements no live page uses.
+Three reuse modes are all allowed, chosen by fit: use as-is · copy under a new name prefix and
+modify the copy (when one shared component would serve neither caller well) · promote to a
+shared component (when several callers need it identically).
+
+**Before writing anything custom — proactively, every time, whether the custom work was
+requested or just follows from some other task — stop and hand the owner a brief:**
+
+- crisp bullets of what changes;
+- a wireframe (SVG / image / rendered mockup) of the layout;
+- the conditional logic the screen applies;
+- the inventory of existing elements and CSS classes being reused;
+- an explicit statement of what is genuinely custom — and "nothing is custom" said plainly when
+  that is the case, because it is exactly the claim being approved;
+- anything already in the codebase that this makes redundant.
+
+Then **wait for approval.** If custom work proves unavoidable mid-build, stop again and show it
+in the browser pane before it lands. A silently added class, element or component is the failure
+this rule exists to prevent. Full text: `owner-decisions-log.mdx` § `DEC-UI-REUSE`.
 
 ## 6. Security baseline (OWASP Top 10:2025)
 
@@ -79,31 +105,31 @@ project-context/   angular-context/ (live KB + roadmap) · nextjs-context/ (supe
 
 - See `.cursor/rules/mcp-tools.mdc`. Three phases — **LOCAL / TEST-E2E / PROD-E2E** — switched by uncommenting one block in `.env.mcp`. Respect the **~40 active-tool budget** and the on-demand activation protocol. **Production MongoDB is read-only.**
 
-## 9. Knowledge base — READ BEFORE BUILDING (in `project-context/angular-context/`)
+## 9. Knowledge base — READ BEFORE BUILDING (in `docs/engineering-live-context/`)
 
-The live KB is `project-context/angular-context/`. `project-context/nextjs-context/` is the superseded pre-migration KB — **ignore it.**
+The live KB is `docs/engineering-live-context/`. `project-context/nextjs-context/` is the superseded pre-migration KB — **ignore it.**
 
-- **`owner-decisions-log.md`** — authoritative running record of locked owner decisions. Check here first; it overrides older docs on conflict.
-- **`project-progress.md`** — **cross-tool living checkpoint** (Cursor / Claude Code / Codex / parallel agents). Read before work; append a dated status bullet after every small task. Maintained until end of project — see that file’s header for format rules.
-- **`api-db-development-roadmap-with-pending-decision-gates.md`** — API+DB chunk plan (SAFE NOW / SEAM NOW / BLOCKED), env/secrets sync, often-missed deploy concerns, detailed deploy-script requirements, and the Claude/Codex **context pack** file list.
-- **`api-db-local-environment-bootstrap.md`** — local Mongo/tooling handoff before API+DB chunks.
-- **`environment-variables.md`** — env catalogue (names/purpose only; never real secrets).
-- **`saha-textile-technical-knowledgebase.md`** — master: architecture, data model, taxonomy, the variable-product / "No Stitching → Design 1-3 + Color" pattern, currency/PayPal math, payments, shipping, auth, infra.
-- **`execution-roadmap.md`** — the ordered build plan. **Follow it.**
-- **`codex-catalog-db-architecture-assessment-and-plan.md`** — the target catalog/category/product/search/commerce/reporting DB model (placements, first-class variants, semantic option roles, bundles, badges, insight sets, SEO routes).
-- **`codex-auth-architecture-db-and-request-plan.md`** — cookie-session auth, OAuth, OTP, and auth collections.
-- **`codex-api-app-build-instructional-prompt.md`** — how to build/refactor `apps/api` within hexagonal boundaries.
-- **`fastkart-execution-plan.md`** + **`fastkart-assessment-and-plan.md`** — admin-first, build-custom plan using Fastkart as UI reference.
-- **`private-developer-portal-documentation-plan.md`** — the Docusaurus portal (`apps/developer-portal` → `docs/`) to build alongside the code.
-- **`mcp-automation-setup.md`** + `.cursor/rules/mcp-tools.mdc` — MCP environment setup and switching.
+- **`owner-decisions-log.mdx`** — authoritative running record of locked owner decisions. Check here first; it overrides older docs on conflict.
+- **`project-progress.mdx`** — **cross-tool living checkpoint** (Cursor / Claude Code / Codex / parallel agents). Read before work; append a dated status bullet after every small task. Maintained until end of project — see that file’s header for format rules.
+- **`api-db-development-roadmap-with-pending-decision-gates.mdx`** — API+DB chunk plan (SAFE NOW / SEAM NOW / BLOCKED), env/secrets sync, often-missed deploy concerns, detailed deploy-script requirements, and the Claude/Codex **context pack** file list.
+- **`api-db-local-environment-bootstrap.mdx`** — local Mongo/tooling handoff before API+DB chunks.
+- **`environment-variables.mdx`** — env catalogue (names/purpose only; never real secrets).
+- **`saha-textile-technical-knowledgebase.mdx`** — master: architecture, data model, taxonomy, the variable-product / "No Stitching → Design 1-3 + Color" pattern, currency/PayPal math, payments, shipping, auth, infra.
+- **`execution-roadmap.mdx`** — the ordered build plan. **Follow it.**
+- **`codex-catalog-db-architecture-assessment-and-plan.mdx`** — the target catalog/category/product/search/commerce/reporting DB model (placements, first-class variants, semantic option roles, bundles, badges, insight sets, SEO routes).
+- **`codex-auth-architecture-db-and-request-plan.mdx`** — cookie-session auth, OAuth, OTP, and auth collections.
+- **`pending-decisions.mdx`** — the sole open owner-question inbox; implementation gates reference stable `DEC-*` ids.
+- **`environment-variables.mdx`** + **`api-db-local-environment-bootstrap.mdx`** — configuration catalogue and local handoff.
+- **`.cursor/rules/mcp-tools.mdc`** — MCP environment/tool-budget setup and switching.
 
 ## 10. Operating rules for you (the agent)
 
-- Before each phase/task: **read the relevant KB section, state your plan, and confirm any destructive/irreversible action.** Also read **`project-progress.md`** for continuity across tools.
-- After each small completed task: **append** a dated `[DONE|PARTIAL|BLOCKED|…]` bullet to the matching section of `project-progress.md` (never store secrets there).
+- Before each phase/task: **read the relevant KB section, state your plan, and confirm any destructive/irreversible action.** Also read **`project-progress.mdx`** for continuity across tools.
+- After each small completed task: **append** a dated `[DONE|PARTIAL|BLOCKED|…]` bullet to the matching section of `project-progress.mdx` (never store secrets there).
 - Keep every change inside its layer. If a task seems to require crossing layer boundaries, surface it instead of doing it quietly.
 - Prefer editing over rewriting; keep diffs small and reviewable; one PR per coherent unit.
 - When a requirement is ambiguous — especially data model, pricing, auth, or security — **ask, don't assume.**
 - Build tests and Docusaurus docs **as you go**, not after.
+- **Developer-portal release gate:** do not deploy the portal until whole-host private access, origin protection, and unauthorized asset/origin tests are implemented and verified. `noindex` is not access control.
 - Never invent credentials, endpoints, or data. Never weaken a security control to make something pass.
 - Ignore `project-context/nextjs-context/` (superseded).

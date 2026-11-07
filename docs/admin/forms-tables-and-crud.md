@@ -1,9 +1,10 @@
 ---
 title: Admin Forms, Tables, and CRUD
-description: Conventions for safe operator forms, data tables, validation, actions, and future API mutations.
+wide: true
+description: Conventions for operator forms, data tables, validation and actions.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/admin/src/app/shared/ui/table
     - apps/admin/src/app/shared/ui/form-fields
@@ -14,11 +15,11 @@ source_of_truth:
 
 # Admin forms, tables, and CRUD
 
-The admin already contains reusable primitives and large domain-shaped forms. Use those seams, but do not assume every current type or interaction is the final standard. Several components still carry permissive migration-era types and mock operations that should be tightened as real contracts arrive.
+This page describes the shared tables and forms in the admin application and how to use them. Prefer these components to building new ones.
 
 ## Shared table responsibilities
 
-The shared table currently coordinates:
+The shared table coordinates:
 
 - debounced search;
 - page size and page number;
@@ -55,7 +56,8 @@ Large forms such as product editing combine:
 - category, tag, store, attribute, and tax data;
 - rich-text editing;
 - date ranges;
-- image/media selection;
+- image selection, where the media modal uploads directly to Spaces and shows the preview once the worker finishes;
+- a YouTube video field that validates the link through the API before the form can submit;
 - product-type and variation logic; and
 - tab/accordion presentation.
 
@@ -96,10 +98,37 @@ Bulk delete, approval, publish, and status actions require more than a selected-
 - cache invalidation; and
 - an audit trail where required.
 
-## Known improvement boundaries
+## Coding rules
 
-- Replace permissive `any` and unchecked casts as touched code moves onto shared contracts.
-- Fix assignments embedded in conditions rather than copying them into new features.
-- Avoid mutating table configuration objects as an authorization strategy.
+- Replace permissive `any` and unchecked casts when you move code onto shared contracts.
+- Do not copy assignments embedded in conditions into new features.
+- Do not use table configuration as an authorization mechanism.
 - Keep destructive actions recoverable or explicitly confirmed.
-- Do not add backend-looking success messages to no-op methods.
+- Do not show a success message for a method with no backend.
+
+## Product form rules
+
+The product form writes through `POST /admin/catalog/products/:idOrSlug`.
+
+- Product status is `live` or `disabled` here. Discontinuing is a separate action that writes a `410`, or a `301` when a live replacement is named.
+- A product that has ever been live keeps its SKUs.
+- Changing the address writes a redirect from the old one.
+- A made-to-order product must be live and needs a lead time.
+- A badge cannot be both pinned and hidden.
+- A selling price cannot exceed the MRP.
+- Related, upsell and cross-sell lists hold up to 12 products.
+- A live FAQ entry needs both English and French text.
+
+## Banner rules
+
+Each banner has one record per position and slot, keyed as `{ownerType}:{ownerId}:{position}:{slot}`. The home hero has four layouts, chosen in one setting: `hero_full`, `hero_main_side`, `hero_main_stack` and `hero_center_sides`. Each layout sets its own slots. Every image must be a processed banner upload, and an active banner needs alt text in every active locale.
+
+A slot takes a desktop image, with optional tablet and phone images. Phone applies below 768 px, tablet from 768 to 1199 px, and desktop from 1200 px. Images are not cropped. When the art contains text, the live-text fields are ignored and the alt text must repeat the words. A wide slot with text in its art needs a phone image.
+
+## Customer screens
+
+Customer list, create and edit (`/customer`, `/customer/create`, `/customer/edit/:id`) and the customer ledger read `/admin/customers/**`. A soft delete hides a customer from the default list. Operators holding `customer.restore` get a Live and Deleted filter in the header. The Deleted view offers only Restore, behind the confirmation modal. If another customer holds the email or phone, the server's message appears in the global error toast.
+
+## Phone dial selects
+
+Phone dial selects use HTML labels from `shared/data/country-code.ts` and the local sprite `/assets/images/flags/flags.png`, with `flags@2x.png`. Use the shared `.country` and `.iti-flag` markup.

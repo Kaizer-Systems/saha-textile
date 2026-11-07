@@ -1,3 +1,11 @@
+<!--
+	Newsletter popup in the WordPress layout (owner log § Media → Newsletter popup), built only
+	from existing classes: the theme modal (`modal-box`, `modal-image`, `modal-content`,
+	`modal-form-box`), Bootstrap utilities (`flex-lg-row-reverse`, `d-none d-lg-block`,
+	`rounded-start-pill`, `rounded-end-pill`, `btn-dark`) and the login page's checkbox.
+	The portrait image sits on the right and only from 992 px: on phones the popup stays small,
+	so it never reads as an intrusive interstitial.
+-->
 <ng-template
 	#newsletterModal
 	let-modal
@@ -6,51 +14,88 @@
 		<app-button
 			[class]="'btn btn-close'"
 			[spinner]="false"
-			[id]="'profile_modal_close_btn'"
-			(click)="modal.dismiss('Cross click')"
+			[id]="'newsletter_modal_close_btn'"
+			(click)="modal.dismiss('close')"
 		>
 			<i class="ri-close-line"></i>
 		</app-button>
 	</div>
-	<div class="modal-box">
-		<div class="modal-image">
+	<div class="modal-box flex-lg-row-reverse">
+		@if (image(); as art) {
+		<div class="modal-image d-none d-lg-block">
 			<img
-				src="assets/images/newsletter/3.jpg"
+				[src]="art.src"
+				[attr.srcset]="art.srcset"
+				sizes="400px"
+				[attr.width]="art.width"
+				[attr.height]="art.height"
 				class="img-fluid"
-				alt="newsletter"
+				[alt]="art.alt"
+				loading="lazy"
+				decoding="async"
 			/>
 		</div>
+		}
 		<div class="modal-content content-padding">
 			<div>
+				@if (brand.data()?.logo; as logo) {
 				<img
-					src="assets/images/logo/1.png"
+					[src]="logo.url"
+					[attr.srcset]="logo.srcset"
+					sizes="300px"
 					class="modal-logo"
-					alt="logo"
+					[alt]="brand.data()?.shopName"
 				/>
-				<h2>
-					{{ '15%' | transloco }}
-					<span>{{ 'off' | transloco }}</span>
-				</h2>
-				<h5>{{ 'want_to_make_your_purchase' | transloco }}?</h5>
-				<p>{{ 'plus_early_access_to_new_arrivals_exclusive_sales_lots_more' | transloco }}?</p>
-				<form class="modal-form">
+				}
+				<h2 id="newsletter-modal-title">{{ 'newsletter_popup_title' | transloco }}</h2>
+				<p>{{ 'newsletter_popup_body' | transloco }}</p>
+				<form
+					class="modal-form"
+					(submit)="$event.preventDefault(); submit(emailVal.value)"
+				>
 					<div class="input-group modal-form-box">
 						<input
 							type="email"
-							class="form-control"
-							placeholder="Your email here"
+							class="form-control rounded-start-pill"
+							[placeholder]="'newsletter_email_placeholder' | transloco"
+							[attr.aria-label]="'newsletter_email_placeholder' | transloco"
+							autocomplete="email"
+							required
 							#emailVal
 						/>
 						<app-button
-							[class]="'input-group-text'"
+							[class]="'input-group-text btn btn-dark bg-dark border-0 rounded-end-pill'"
 							[id]="'submit_newsletter_btn'"
-							[spinner]="true"
-							(click)="submit(emailVal.value)"
+							[spinner]="false"
+							[type]="'submit'"
 						>
 							{{ 'submit' | transloco }}
 						</app-button>
 					</div>
 				</form>
+				@if (notice()) {
+				<p
+					class="mt-2 mb-0"
+					role="status"
+				>
+					{{ notice() | transloco }}
+				</p>
+				}
+				<div class="form-check remember-box m-0 mt-3 ps-0">
+					<input
+						class="checkbox_animated check-box"
+						type="checkbox"
+						id="newsletter_dont_show"
+						#dontShow
+						(change)="neverAgain.set(dontShow.checked)"
+					/>
+					<label
+						class="form-check-label"
+						for="newsletter_dont_show"
+					>
+						{{ 'newsletter_dont_show_again' | transloco }}
+					</label>
+				</div>
 			</div>
 		</div>
 	</div>

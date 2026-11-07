@@ -10,7 +10,7 @@
 	>
 		<app-image-upload
 			[multipleImage]="false"
-			[image]="(store$ | async)?.store_logo"
+			[image]="store?.store_logo"
 			[helpText]="'*Upload image size 500x500px recommended'"
 			(selectedFiles)="selectStoreLogo($event)"
 		/>
@@ -172,7 +172,7 @@
 		@if(isBrowser) {
 		<select2
 			class="custom-select intl-tel-input"
-			[templates]="template"
+			[templates]="{ option: template, templateSelection: template }"
 			[data]="codes"
 			formControlName="country_code"
 			noResultMessage="{{ 'no_data_found' | transloco }}"

@@ -1,32 +1,45 @@
 ---
 title: Transactions and Generated Catalogue
-description: Atomic-write design, replica-set verification, migration and catalogue-generation requirements.
-status: planned
+wide: true
+description: How atomic writes work, and how the database catalogue is generated.
+status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
     - packages/adapters-db-mongo/src
-    - project-context/angular-context/owner-decisions-log.md
-    - project-context/angular-context/codex-api-app-build-instructional-prompt.md
-    - project-context/angular-context/private-developer-portal-documentation-plan.md
+    - packages/adapters-db-mongo/scripts/generate-catalogue.ts
+    - packages/adapters-db-mongo/catalogue
+    - packages/adapters-db-mongo/src/transaction-manager.ts
+    - packages/adapters-db-mongo/test/transaction.test.ts
+    - packages/adapters-db-mongo/test/order-cart-transaction.test.ts
+    - packages/core-domain/src/ports/transaction-manager.port.ts
+    - apps/api/src/infra/persistence.module.ts
+    - apps/api/src/orders/orders.service.ts
+    - docker/mongo/docker-compose.yml
+    - scripts/mongo-up.sh
+    - docs/engineering-live-context/owner-decisions-log.mdx
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
+    - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
 ---
 
 # Transactions and generated catalogue
 
-Current repositories perform individual writes. The locked backend requires a MongoDB 8.3 single-node replica set and transactions for workflows where several durable facts must agree.
+This page explains how the platform performs atomic writes and how the database catalogue is generated.
 
 ## Why a replica set is required
 
-A standalone Mongo process does not provide the multi-document transaction behavior this architecture requires. Local and production use the same single-node replica-set behavior so transaction code is exercised before deployment.
+A standalone MongoDB process does not provide multi-document transactions. Local and deployed environments use the same single-node replica set, `rs0`, so transaction code runs the same way everywhere.
 
-A single-node replica set provides transactions, not high availability. Backups, restore drills, resource monitoring, and a later redundancy plan remain necessary.
+A single-node replica set provides transactions, not high availability. Backups and restore drills are still needed.
 
-## Unit of work target
+## How transactions work
+
+`TransactionManagerPort` describes an atomic unit of work without exposing a Mongoose `ClientSession`. `MongoTransactionManager` implements it. Nested calls join the outer session through `AsyncLocalStorage`.
 
 ```mermaid
 sequenceDiagram
     participant UseCase
-    participant UoW as UnitOfWorkPort
+    participant UoW as TransactionManagerPort
     participant Session as Mongo session
     participant Repos as Session-aware repositories
 
@@ -42,69 +55,80 @@ sequenceDiagram
     end
 ```
 
-The core port should describe an atomic unit without leaking a Mongoose `ClientSession`. The Mongo adapter translates the abstract transaction context into its session.
-
 ## Transactional workflows
 
-At minimum:
+These workflows use transactions:
 
-- session creation/refresh rotation where identity/session/audit facts agree;
-- guest-to-user cart merge;
-- place order with order, payment attempt, inventory/reservation/ledger, cart, audit/outbox;
-- verified payment callback with payment/order/inventory/audit;
-- purchase-invoice posting with header/lines/ledger/FIFO layers/stock/audit;
-- return/refund with order/payment/refund/inventory facts;
-- sensitive admin changes with associated audit/outbox when atomicity is required.
+| Workflow                    | Records that commit together                       |
+| --------------------------- | -------------------------------------------------- |
+| Signup finalisation         | Customer, password credential, provider identity   |
+| Contact-change confirmation | Proof consumption, identifier change, audit record |
+| Order creation              | Order save, cart removal                           |
+| Customer soft delete        | Status change, provider release, audit record      |
+| Customer restore            | Status change, audit record                        |
+| Admin invite                | Invite, audit record                               |
+| Product save                | Product, variants, redirect for a changed address  |
+| Product discontinuation     | Product, redirect                                  |
 
-Do not wrap external network calls inside a long database transaction. Use durable intent/state, provider idempotency, and outbox/reconciliation patterns around the transactional local changes.
+### Planned workflows
+
+These need transactions when they are built:
+
+- Guest-to-user cart merge.
+- Order placement with payment attempt, stock and audit records.
+- A verified payment callback.
+- Purchase-invoice posting.
+- Returns and refunds.
+
+Do not wrap external network calls inside a database transaction. Use durable state, provider idempotency and reconciliation around the local changes.
 
 ## Transaction rules
 
 - Keep the callback bounded and deterministic.
-- Do not run parallel operations inside one transaction with `Promise.all`.
-- Pass transaction context explicitly to participating repositories.
-- Generate or reserve idempotency/correlation evidence before unsafe retries.
-- Treat unknown commit result as a reconciliation problem, not automatic failure/success.
+- Do not run parallel operations inside a transaction with `Promise.all`.
+- Join through the ambient session when a port exposes no transaction context. Pass the opaque context only through ports that declare it. Never leak a Mongoose session into core.
+- Reserve idempotency and correlation data before unsafe retries.
+- Treat an unknown commit result as a reconciliation problem.
 - Test rollback after every participating write.
-- Do not delete accounting/order history to preserve numbering gaplessness; cancel/void with audit state.
+- Do not delete accounting or order history to keep numbering gapless. Cancel or void it with an audit state.
 
-## Order-number gate
+## Document numbering
 
-Numbering is still an owner decision. Before implementing order, tax-invoice, purchase-invoice, or neighboring sequence behavior, stop and obtain:
+Order, tax-invoice and purchase-invoice numbering policy is an open business decision. Before you build it, the decision log must define:
 
-- financial-year reset or perpetual mode;
-- company code, separators, and padding;
-- gapless/consecutive policy and cancellation handling;
-- separate sequence decisions for each document type.
+- Financial-year reset or perpetual mode.
+- Company code, separators and padding.
+- Gapless policy and cancellation handling.
+- Separate sequences for each document type.
 
-Business periods use India financial-year boundaries in IST, while stored timestamps remain UTC. Generated invoices are frozen in IST.
+Business periods use India financial-year boundaries in IST. Stored timestamps are UTC. `OrdersService` generates an interim order number from the date and a random suffix.
 
 ## Migration discipline
 
-Every persistent shape/index change should state:
+Every persistent shape or index change should state:
 
-1. forward schema/index change;
-2. compatibility window for old code/data;
-3. backfill or lazy-upgrade behavior;
-4. deploy ordering;
-5. verification query/metric;
-6. rollback/roll-forward plan;
-7. retention and backup impact;
-8. generated catalogue change.
+1. The forward schema or index change.
+2. The compatibility window for old code and data.
+3. Backfill or lazy-upgrade behaviour.
+4. Deployment order.
+5. A verification query or metric.
+6. The rollback or roll-forward plan.
+7. Retention and backup impact.
+8. The generated catalogue change.
 
-Never assume a Mongoose schema edit automatically migrates historical documents.
+A Mongoose schema edit does not migrate existing documents.
 
-## Generated catalogue trigger
+## Generated catalogue
 
-The catalogue remains deferred until:
+The portal publishes a source-only database reference, the Schema Observatory, at `/database/catalogue/`. The generator imports every exported Mongoose model without opening a connection, and lists fields, defaults, enums, select rules and indexes. Paths with a `Mixed` shape are marked temporary. Credential, PIN, token, code, state, nonce and private-contact fields are named but excluded from synthetic examples.
 
-1. persistence models reflect the reconciled backend phase rather than temporary simplified shapes;
-2. nested schemas/validators and indexes are explicit enough to generate useful output;
-3. DTO-to-persistence mappings are named and stable;
-4. the generator can run deterministically without production access;
-5. generated files are clearly marked and pre-build freshness is enforced.
+Regenerate it with:
 
-## Generation pipeline
+```bash
+pnpm --filter @saha-textile/adapters-db-mongo generate:catalogue
+```
+
+### Planned generation pipeline
 
 ```mermaid
 flowchart LR
@@ -120,49 +144,45 @@ flowchart LR
     Validate --> Portal
 ```
 
-## One generated collection page
+### Collection page content
 
-Each page must include:
+A complete generated collection page includes:
 
-- physical collection/model name and owning bounded context;
-- domain purpose and lifecycle status;
-- full field table with BSON/TypeScript meaning;
-- required/optional/null/default/enum/validation details;
-- nested object/array shape;
-- references versus embedded decisions;
-- unique, compound, partial, TTL and other indexes;
-- sanitized example document;
-- read/write paths and actor ownership;
-- create/update/response DTO mapping;
-- retention, deletion, archive and privacy behavior;
-- sensitive/internal/excluded fields;
-- transaction participation;
-- migration history and verification date;
-- source links back to models/contracts/migrations.
+- Physical name, owning context and purpose.
+- A field table with BSON and TypeScript meaning.
+- Required, optional, default, enum and validation details.
+- Nested shapes, and references versus embedded data.
+- Unique, compound, partial and TTL indexes.
+- A sanitized example.
+- Read and write paths, and actor ownership.
+- Request and response mapping.
+- Retention, deletion, archive and privacy behaviour.
+- Sensitive fields and transaction participation.
+- Migration history and source links.
 
-## Do not duplicate sources manually
+### Generation safety
 
-Once generation exists, do not independently maintain a Mongoose schema, database validator, field-table Markdown, and index table by hand. Generate derived representations and keep human-authored pages focused on business meaning, tradeoffs, lifecycle and operations.
+- Run against source metadata, never production records.
+- Keep examples synthetic or rigorously sanitized.
+- Never emit hash values, tokens, credentials, addresses, provider payloads or customer data.
+- Keep output deterministic, so review diffs stay meaningful.
 
-## Generation safety
+Do not maintain a schema, validator, field table and index table by hand. Keep hand-written pages focused on business meaning, lifecycle and operations.
 
-- Run against source code/metadata, never by dumping production records.
-- Examples are synthetic or rigorously sanitized.
-- Never emit hashes, tokens, credentials, addresses, provider payloads, or customer data.
-- Deterministic output keeps review diffs meaningful.
-- CI fails when checked-in generated pages are stale.
-- Generated pages show their generator version/source commit.
+## Backup and restore requirements
 
-## Backup and restore proof
+Database readiness requires:
 
-Database readiness eventually requires:
+- Scheduled backups with success records.
+- An encrypted copy and a retention rule.
+- Periodic restores into an isolated environment.
+- Application-level integrity checks after a restore.
+- Measured recovery time and data-loss targets.
+- Secret rotation and access audit.
 
-- scheduled backup success evidence;
-- encrypted/offsite copy policy as adopted;
-- documented retention;
-- periodic restore into an isolated environment;
-- application-level integrity checks after restore;
-- measured recovery time/data-loss objectives;
-- secret rotation and access audit.
+A backup that has never been restored is not a recovery plan.
 
-A backup file that has never been restored is not a proven recovery plan.
+## Limitations
+
+- Cart merge and stock moves do not use transactions.
+- Generated pages do not show DTO mappings, migration history or retention rules.

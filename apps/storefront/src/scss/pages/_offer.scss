@@ -48,7 +48,8 @@
 				position: absolute;
 				left: 0;
 				height: 23px;
-				background-color: #1aa488;
+				// `var(--theme-color)`, not the shipped green: see the logout note in _user-dashboard.
+				background-color: var(--theme-color);
 				width: 2px;
 				body.rtl & {
 					left: unset;

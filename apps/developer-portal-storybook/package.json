@@ -1,0 +1,51 @@
+{
+  "name": "@saha-textile/developer-portal-storybook",
+  "version": "0.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "check:coverage": "node scripts/check-component-coverage.mjs",
+    "prepare-styles": "node scripts/compose-application-styles.mjs",
+    "dev": "node scripts/check-component-coverage.mjs && node scripts/compose-application-styles.mjs && ng run developer-portal-storybook:storybook",
+    "storybook": "node scripts/check-component-coverage.mjs && node scripts/compose-application-styles.mjs && ng run developer-portal-storybook:storybook",
+    "build": "node scripts/check-component-coverage.mjs && node scripts/compose-application-styles.mjs && ng run developer-portal-storybook:build-storybook",
+    "typecheck": "node scripts/check-component-coverage.mjs && tsc --noEmit -p tsconfig.typecheck.json",
+    "lint": "node scripts/check-component-coverage.mjs && tsc --noEmit -p tsconfig.typecheck.json"
+  },
+  "dependencies": {
+    "@angular/animations": "22.2.3",
+    "@angular/common": "22.2.3",
+    "@angular/compiler": "22.2.3",
+    "@angular/core": "22.2.3",
+    "@angular/forms": "22.2.3",
+    "@angular/platform-browser": "22.2.3",
+    "@angular/router": "22.2.3",
+    "@fontsource-variable/inter": "5.3.0",
+    "@fontsource-variable/jetbrains-mono": "5.3.0",
+    "@jsverse/transloco": "8.4.0",
+    "@ng-bootstrap/ng-bootstrap": "21.0.0",
+    "@ngrx/signals": "22.0.1",
+    "@ngrx/store": "22.0.1",
+    "@tanstack/angular-query-experimental": "5.104.5",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1",
+    "zone.js": "0.16.3"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "22.2.4",
+    "@angular/cli": "22.2.4",
+    "@angular/compiler-cli": "22.2.3",
+    "@saha-textile/contracts": "workspace:*",
+    "@saha-textile/core-domain": "workspace:*",
+    "@saha-textile/http-transport": "workspace:*",
+    "@storybook/addon-docs": "10.6.3",
+    "@storybook/angular": "10.6.3",
+    "@types/feather-icons": "4.29.4",
+    "sass": "1.106.1",
+    "storybook": "10.6.3",
+    "typescript": "6.0.3",
+    "webpack": "5.112.2"
+  }
+}

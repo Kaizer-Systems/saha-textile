@@ -1,19 +1,30 @@
 <app-breadcrumb [breadcrumb]="breadcrumb()" />
 <section class="cart-section section-b-space">
 	<div class="container-fluid-lg">
-		@if ((cartItem$ | async)?.length) {
-		<div class="row g-xl-5 g-sm-4 g-3">
+		@if ((cartItem$ | async)?.length) { @if (!online()) {
+		<div
+			class="alert alert-warning d-flex align-items-center gap-2"
+			role="status"
+		>
+			<i class="ri-wifi-off-line"></i>
+			{{ 'cart_offline_notice' | transloco }}
+		</div>
+		}
+		<div
+			class="row g-xl-5 g-sm-4 g-3"
+			[attr.inert]="online() ? null : ''"
+		>
 			<div class="col-xxl-9 col-xl-8">
 				<div class="cart-table">
 					<div class="table-responsive">
 						<table class="table">
 							<tbody>
-								@for (item of cartItem$ | async; track item) {
+								@for (item of cartItem$ | async; track item.id) {
 								<tr class="product-box-contain">
 									<td class="product-detail">
 										<div class="product border-0">
 											<a
-												[routerLink]="['/en/product/', item.product.slug]"
+												[routerLink]="['/product/', item.product.slug]"
 												class="product-image"
 											>
 												<img
@@ -29,17 +40,16 @@
 											<div class="product-detail">
 												<ul>
 													<li class="name">
-														<a [routerLink]="['/en/product/', item.product.slug]">
+														<a [routerLink]="['/product/', item.product.slug]">
 															{{ item.product.name }}
 														</a>
 													</li>
-													@if (item.line_config) {
-													<li><app-cart-line-config [config]="item.line_config" /></li>
-													} @if (item.product && item.product.unit) {
-													<li class="text-content">
-														<span class="text-title">{{ 'unit' | transloco }}:</span>
-														{{item.product.unit}}
+													@if (item.problem) {
+													<li class="text-danger">
+														{{ 'cart_line_' + item.problem | transloco: { count: item.available } }}
 													</li>
+													} @if (item.line_config) {
+													<li><app-cart-line-config [config]="item.line_config" /></li>
 													}
 													<li>
 														<h5 class="text-content d-inline-block">

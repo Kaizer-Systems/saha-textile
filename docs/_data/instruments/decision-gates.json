@@ -1,0 +1,73 @@
+{
+	"schemaVersion": 1,
+	"lastVerified": "2026-11-07",
+	"sourceOfTruth": [
+		"docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx",
+		"docs/engineering-live-context/owner-decisions-log.mdx",
+		"docs/engineering-live-context/pending-decisions.mdx",
+		"docs/engineering-live-context/project-progress.mdx"
+	],
+	"decisionRegister": {
+		"openCount": 14,
+		"newlyLocked": ["DEC-SKU", "DEC-PRODUCT-RELATIONS", "DEC-BUNDLE-NESTING", "DEC-DELETE-RETENTION"]
+	},
+	"gates": [
+		{
+			"id": "G-NUM-ORDER",
+			"label": "Order & tax-invoice numbering",
+			"question": "FY-reset vs perpetual mode; format; gapless policy; separate sequences per document?",
+			"source": "decision log 2026-07-05 · worksheet §01 · umbrella D2",
+			"blocksChunks": ["G"],
+			"blocksCollections": ["sequences", "orders", "taxInvoices"],
+			"blocksFeatures": [
+				"Customer-facing order numbers",
+				"Tax-invoice PDFs",
+				"Production place-order that emits numbers"
+			],
+			"seamsOk": "Order shapes, ownership, idempotency and internal-id placement may proceed."
+		},
+		{
+			"id": "G-NUM-PI",
+			"label": "Purchase-invoice numbering",
+			"question": "Separate PI sequence and format (same rules as order numbering)?",
+			"source": "API prompt §16 · worksheet §01",
+			"blocksChunks": ["H"],
+			"blocksCollections": ["sequences", "purchaseInvoices"],
+			"blocksFeatures": ["Purchase-invoice posting that assigns PI numbers"],
+			"seamsOk": "Purchase-invoice drafts (no posted number) may proceed."
+		},
+		{
+			"id": "G-CORE-CONTRACTS",
+			"label": "Core ↔ contracts dependency",
+			"question": "May core-domain reference contract shapes, or must it own its own types?",
+			"source": "decision log §2026-07-25 (Option C)",
+			"blocksChunks": [],
+			"blocksCollections": [],
+			"blocksFeatures": [],
+			"seamsOk": "Resolved: core may use contract types only.",
+			"resolvedNote": "Option C: `import type`-only coupling, mechanically enforced by restricted-import lint plus emitted-JavaScript runtime-purity tests."
+		},
+		{
+			"id": "G-I18N-ROUTES",
+			"label": "Locale URL policy",
+			"question": "Always-prefixed locales vs default-unprefixed?",
+			"source": "decision log §Locale URLs (2026-10-31)",
+			"blocksChunks": [],
+			"blocksCollections": [],
+			"blocksFeatures": [],
+			"seamsOk": "Resolved: every route carries a locale prefix.",
+			"resolvedNote": "Every route locale-prefixed (default included, private routes noindex); slugs shared across locales at launch; no automatic language redirect; reciprocal hreflang with x-default → /."
+		},
+		{
+			"id": "G-IMG-PX",
+			"label": "Image ladder px & ingest caps",
+			"question": "Exact derivative sizes (px) and upload size limits?",
+			"source": "decision log §Media (2026-11-02)",
+			"blocksChunks": [],
+			"blocksCollections": [],
+			"blocksFeatures": [],
+			"seamsOk": "Resolved: sizes and caps are set.",
+			"resolvedNote": "3:4 product/category photos; card 200/400/700/960, gallery 600/900/1200/1600, zoom 2000w, thumb 150/300, swatches square; 25 MB / 8000 px / 50 MP max, 1600 px short-edge minimum (owner log § Media, 2026-11-02)."
+		}
+	]
+}

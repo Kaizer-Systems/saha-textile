@@ -1,0 +1,161 @@
+<section class="log-in-section section-b-space">
+	<div class="container w-100">
+		<div class="row">
+			<div class="col-xl-5 col-lg-6 me-auto">
+				<app-alert />
+				<div class="log-in-box">
+					<div class="log-in-title">
+						<h3>{{ 'accept_your_invitation' | transloco }}</h3>
+						<h4>{{ 'set_how_you_will_sign_in' | transloco }}</h4>
+					</div>
+					@if (!token()) {
+					<!--
+						No token in the link means nothing authorizes this account. Say so rather
+						than presenting a form that can only fail.
+					-->
+					<div
+						class="alert alert-danger"
+						role="alert"
+					>
+						{{ 'invalid_or_expired_invitation_link' | transloco }}
+					</div>
+					} @else { @if (error()) {
+					<div
+						class="alert alert-danger"
+						role="alert"
+					>
+						{{ error() }}
+					</div>
+					}
+					<div class="input-box">
+						<form
+							class="row g-4"
+							[formGroup]="form"
+							(ngSubmit)="submit()"
+						>
+							<div class="col-12">
+								<div class="form-floating theme-form-floating log-in-form">
+									<input
+										type="text"
+										class="form-control"
+										id="displayName"
+										formControlName="displayName"
+										autocomplete="name"
+										placeholder="{{ 'your_name_optional' | transloco }}"
+									/>
+									<label for="displayName">{{ 'your_name_optional' | transloco }}</label>
+								</div>
+							</div>
+							<div class="col-12">
+								<div class="form-floating theme-form-floating log-in-form">
+									<input
+										type="password"
+										class="form-control"
+										id="newPassword"
+										formControlName="newPassword"
+										autocomplete="new-password"
+										placeholder="{{ 'new_password' | transloco }}"
+									/>
+									<label for="newPassword">{{ 'new_password' | transloco }}</label>
+									@if (form.controls['newPassword'].touched &&
+									form.controls['newPassword'].errors?.['required']) {
+									<div class="invalid-feedback d-block">
+										{{ 'new_password_is_required' | transloco }}
+									</div>
+									} @if (form.controls['newPassword'].touched &&
+									form.controls['newPassword'].errors?.['minlength']) {
+									<div class="invalid-feedback d-block">
+										{{ 'password_must_be_at_least_12_characters' | transloco }}
+									</div>
+									}
+								</div>
+							</div>
+							<div class="col-12">
+								<div class="form-floating theme-form-floating log-in-form">
+									<input
+										[type]="show ? 'text' : 'password'"
+										class="form-control"
+										id="confirmPassword"
+										formControlName="confirmPassword"
+										autocomplete="new-password"
+										placeholder="{{ 'confirm_password' | transloco }}"
+									/>
+									<label for="confirmPassword">{{ 'confirm_password' | transloco }}</label>
+									@if (!form.controls['confirmPassword'].errors?.['required']) {
+									<div>
+										<div
+											class="show-hide"
+											(click)="showPassword()"
+										>
+											<span
+												class="show"
+												[ngClass]="show ? 'Hide' : 'show'"
+											></span>
+										</div>
+									</div>
+									} @if (form.controls['confirmPassword'].touched &&
+									form.controls['confirmPassword'].errors?.['required']) {
+									<div class="invalid-feedback d-block">
+										{{ 'confirm_password_is_required' | transloco }}
+									</div>
+									} @else if (passwordMismatch) {
+									<div class="invalid-feedback d-block">
+										{{ 'confirm_password_does_not_matched' | transloco }}
+									</div>
+									}
+								</div>
+							</div>
+							<!--
+								Optional PIN, same keypads as Account Security. Skipping it is a
+								complete answer: the PIN can be set later from that screen.
+							-->
+							<div class="col-12">
+								<h5 class="sub-title">{{ 'set_a_pin_optional' | transloco }}</h5>
+								<app-pin-pad
+									[length]="pinLength"
+									[(value)]="pin"
+								/>
+							</div>
+							@if (settingPin()) {
+							<div class="col-12">
+								<h5 class="sub-title">{{ 'confirm_pin' | transloco }}</h5>
+								<app-pin-pad
+									[length]="pinLength"
+									[(value)]="confirmPin"
+								/>
+								@if (pinMismatch()) {
+								<div class="invalid-feedback d-block">{{ 'pins_do_not_match' | transloco }}</div>
+								}
+							</div>
+							<div class="col-12">
+								<div class="form-check form-switch d-flex align-items-center gap-2 ps-0">
+									<label class="switch">
+										<input
+											type="checkbox"
+											id="prefer_pin"
+											[checked]="preferPin()"
+											(change)="preferPin.set(!preferPin())"
+										/>
+										<span class="switch-state"></span>
+									</label>
+									<label for="prefer_pin">{{ 'prefer_pin_at_login' | transloco }}</label>
+								</div>
+							</div>
+							}
+							<div class="col-12">
+								<app-button
+									[class]="'btn btn-theme w-100 justify-content-center'"
+									[id]="'accept_invite_btn'"
+									[disabled]="pending()"
+								>
+									{{ 'create_my_account' | transloco }}
+								</app-button>
+							</div>
+						</form>
+					</div>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+</section>

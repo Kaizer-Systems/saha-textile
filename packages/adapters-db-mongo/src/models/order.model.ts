@@ -1,3 +1,4 @@
+import { PaymentGateway } from '@saha-textile/contracts';
 import { type Model, Schema, model, models } from 'mongoose';
 
 export interface OrderDoc {
@@ -32,15 +33,16 @@ const OrderSchema = new Schema<OrderDoc>(
 		promotionsApplied: { type: [Schema.Types.Mixed], default: [] },
 		totalINR: { type: Number, required: true },
 		totalPaid: { type: Number, required: true },
-		gateway: { type: String, enum: ['ccavenue', 'paypal'] },
+		gateway: { type: String, enum: PaymentGateway.options },
 		status: { type: String, default: 'pending' },
 		statusTimeline: { type: [Schema.Types.Mixed], default: [] },
 	},
-	{ timestamps: true },
+	{ collection: 'orders', timestamps: true },
 );
 
 OrderSchema.index({ orderNumber: 1 }, { unique: true });
 OrderSchema.index({ userId: 1, createdAt: -1 });
 OrderSchema.index({ status: 1 });
+OrderSchema.index({ status: 1, createdAt: -1 });
 
 export const OrderModel: Model<OrderDoc> = (models.Order as Model<OrderDoc>) ?? model<OrderDoc>('Order', OrderSchema);

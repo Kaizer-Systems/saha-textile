@@ -2,18 +2,25 @@ import { IAttachment } from './attachment.interface';
 import { IAttribute, IAttributeValue } from './attribute.interface';
 import { ICategory } from './category.interface';
 import { IPaginateModel } from './core.interface';
-import { IAddonGroup, IBundle, IMeasurementField, ISemanticAttribute } from './product-detail.interface';
+import { IAddonGroup, IBundle, IMeasurementField, ISemanticAttribute, ISizeGuide } from './product-detail.interface';
 import { IReview } from './review.interface';
 import { IStores } from './store.interface';
 import { ITag } from './tag.interface';
 import { ITax } from './tax.interface';
+
+/** A real sale, as the popup shows it. Product and time only. */
+export interface IRecentPurchase {
+	product: IProduct;
+	purchasedAt: string;
+}
 
 export interface IProductModel extends IPaginateModel {
 	data: IProduct[];
 }
 
 export interface IProduct {
-	id: number;
+	/** The catalogue's opaque id. Demo widgets still carry numbers. */
+	id: number | string;
 	name: string;
 	slug: string;
 	short_description: string;
@@ -23,7 +30,6 @@ export interface IProduct {
 	product_thumbnail?: IAttachment;
 	product_galleries_id?: [];
 	product_galleries?: IAttachment[];
-	unit: string;
 	weight: number;
 	price: number;
 	sale_price: number;
@@ -37,8 +43,9 @@ export interface IProduct {
 	visible_time: string;
 	quantity: number;
 	store_id?: number;
-	size_chart_image_id: number;
-	size_chart_image: IAttachment;
+	size_guide?: ISizeGuide;
+	saree_length_m?: number | null;
+	blouse_piece_m?: number | null;
 	estimated_delivery_text: string;
 	return_policy_text: string;
 	safe_checkout: boolean;
@@ -87,6 +94,10 @@ export interface IProduct {
 	pivot?: IPivotProduct;
 	created_by_id: number;
 	is_approved: boolean;
+	/** The two badge slots the API chose: one promotion, one stock fact. */
+	card_badges?: { primary: string | null; secondary: string | null; left?: number | null };
+	unknown_variant?: boolean;
+	breadcrumb_trail?: Array<{ name: string; path: string }>;
 	total_in_approved_products: number;
 	published_at: string;
 	reviews: IReview[];
@@ -113,7 +124,7 @@ export interface IPivotProduct {
 }
 
 export interface IVariation {
-	id: number;
+	id: number | string;
 	name: string;
 	price: number;
 	sale_price: number;
@@ -122,6 +133,7 @@ export interface IVariation {
 	discount: number;
 	quantity: number;
 	variation_image: IAttachment;
+	variation_galleries?: IAttachment[];
 	variation_image_id: number;
 	variation_options: IVariationOption[];
 	attribute_values: IAttributeValue[];
@@ -146,4 +158,12 @@ export interface IVariant {
 export interface ISelectedVariant {
 	id: number;
 	attribute_id: number;
+}
+
+/** A product's saved relation rails, each capped at 12 cards by the API. */
+export interface IProductRelations {
+	related: IProduct[];
+	upsell: IProduct[];
+	crossSell: IProduct[];
+	boughtTogether: IProduct[];
 }

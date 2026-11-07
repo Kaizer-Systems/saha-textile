@@ -6,7 +6,7 @@ import { ActivatedRoute } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { Select2Data, Select2Module } from 'ng-select2-component';
+import { Select2Data, Select2 } from 'ng-select2-component';
 import { Observable } from 'rxjs';
 
 import { SettingStore } from '@core/state/setting.store';
@@ -20,7 +20,7 @@ import { DeleteModal } from '@shared/ui/modal/delete-modal/delete-modal';
 	selector: 'app-form-shipping',
 	templateUrl: './form-shipping.html',
 	styleUrls: ['./form-shipping.scss'],
-	imports: [ReactiveFormsModule, FormFields, Select2Module, Button, DeleteModal, TranslocoModule, AsyncPipe],
+	imports: [ReactiveFormsModule, FormFields, Select2, Button, DeleteModal, TranslocoModule, AsyncPipe],
 })
 export class FormShipping {
 	private modalService = inject(NgbModal);

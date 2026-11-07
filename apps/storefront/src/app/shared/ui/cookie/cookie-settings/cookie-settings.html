@@ -1,0 +1,136 @@
+<ng-template
+	#cookieSettings
+	let-modal
+>
+	<div class="modal-header">
+		<div>
+			<h3 id="cookie-settings-title">{{ 'cookie_settings' | transloco }}</h3>
+			<p>
+				{{ 'cookie_settings_intro' | transloco }}
+				<a
+					[routerLink]="['/privacy-policy']"
+					(click)="modal.dismiss()"
+				>
+					{{ 'privacy_policy' | transloco }}
+				</a>
+			</p>
+		</div>
+		<button
+			type="button"
+			class="btn btn-close"
+			[attr.aria-label]="'close' | transloco"
+			(click)="modal.dismiss()"
+		>
+			<i class="ri-close-line"></i>
+		</button>
+	</div>
+	<div class="modal-body">
+		<section class="cookie-group">
+			<div class="cookie-group-head">
+				<div>
+					<h4>{{ 'cookie_necessary' | transloco }}</h4>
+					<p>{{ 'cookie_necessary_text' | transloco }}</p>
+				</div>
+				<span class="cookie-state">{{ 'cookie_always_on' | transloco }}</span>
+			</div>
+			<ng-container
+				[ngTemplateOutlet]="details"
+				[ngTemplateOutletContext]="{ key: 'necessary', items: necessary }"
+			/>
+		</section>
+		<section class="cookie-group">
+			<div class="cookie-group-head">
+				<div>
+					<h4>{{ 'cookie_functional' | transloco }}</h4>
+					<p>{{ 'cookie_functional_text' | transloco }}</p>
+				</div>
+				<label class="cookie-switch form-check form-switch m-0">
+					<input
+						class="form-check-input"
+						id="cookie_functional_switch"
+						type="checkbox"
+						role="switch"
+						[attr.aria-label]="'cookie_functional' | transloco"
+						[checked]="functional()"
+						(change)="functional.set($any($event.target).checked)"
+					/>
+				</label>
+			</div>
+			@if (!functional()) {
+			<p class="cookie-effect">
+				<i class="ri-information-line"></i>
+				{{ 'cookie_functional_off' | transloco }}
+			</p>
+			}
+			<ng-container
+				[ngTemplateOutlet]="details"
+				[ngTemplateOutletContext]="{ key: 'functional', items: functionalItems }"
+			/>
+		</section>
+		<section class="cookie-group cookie-group-quiet">
+			<ul class="cookie-empty">
+				@for (category of empty; track category) {
+				<li>
+					<div>
+						<strong>{{ 'cookie_' + category | transloco }}</strong>
+						<span>{{ 'cookie_' + category + '_text' | transloco }}</span>
+					</div>
+					<em>{{ 'cookie_not_in_use' | transloco }}</em>
+				</li>
+				}
+			</ul>
+			<p class="cookie-note">{{ 'cookie_not_in_use_note' | transloco }}</p>
+		</section>
+	</div>
+	<div class="modal-footer cookie-actions">
+		<button
+			type="button"
+			class="btn cookie-save"
+			id="cookie_save_btn"
+			(click)="saveChoices()"
+		>
+			{{ 'cookie_save' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn cookie-solid"
+			(click)="necessaryOnly()"
+		>
+			{{ 'cookie_necessary_only' | transloco }}
+		</button>
+		<button
+			type="button"
+			class="btn cookie-solid"
+			(click)="acceptAll()"
+		>
+			{{ 'cookie_accept_all' | transloco }}
+		</button>
+	</div>
+</ng-template>
+
+<ng-template
+	#details
+	let-key="key"
+	let-items="items"
+>
+	<button
+		type="button"
+		class="cookie-more"
+		[attr.aria-expanded]="openList() === key"
+		(click)="toggleList(key)"
+	>
+		{{ (openList() === key ? 'cookie_hide_items' : 'cookie_see_items') | transloco: { count: items.length } }}
+		<i [class]="openList() === key ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'"></i>
+	</button>
+	@if (openList() === key) {
+	<ul class="cookie-list">
+		@for (item of items; track item.name) {
+		<li>
+			<strong>{{ item.name }}</strong>
+			<span>{{ item.purpose | transloco }}</span>
+			<small>{{ item.keptFor | transloco }}</small>
+		</li>
+		}
+	</ul>
+	}
+</ng-template>

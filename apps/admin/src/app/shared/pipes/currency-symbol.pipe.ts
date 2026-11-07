@@ -11,7 +11,7 @@ export class CurrencySymbolPipe implements PipeTransform {
 	private currencyPipe = inject(CurrencyPipe);
 	private settingStore = inject(SettingStore);
 
-	public symbol: string = '$';
+	public symbol: string = '₹';
 
 	transform(value: number, position: 'before_price' | 'after_price' | string = 'before_price'): string {
 		// Read the (persisted/hydrated) settings signal synchronously — a pure pipe's transform must not

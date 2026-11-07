@@ -26,3 +26,4 @@ export * from './seo-redirect.repository';
 export * from './seo-route.repository';
 export * from './addon-template.repository';
 export * from './stock-alert.repository';
+export * from './dashboard.repository';

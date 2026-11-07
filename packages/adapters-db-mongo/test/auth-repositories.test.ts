@@ -667,6 +667,15 @@ describe.skipIf(!hasMongoEnv())('auth repositories (integration, rs0)', () => {
 				pinHash: null,
 				preferredLoginMethod: 'password',
 			});
+			await repo.setPinHash(id, 'pin-hash');
+		});
+
+		it('reads an unset preference as the password, even with a PIN', async () => {
+			await AdminUserModel.updateOne({ _id: id }, { $unset: { preferredLoginMethod: 1 } });
+			expect(await repo.findAuthStateById(id)).toMatchObject({
+				pinHash: 'pin-hash',
+				preferredLoginMethod: 'password',
+			});
 		});
 
 		it('locks a PIN, counts failures, and clears the lock', async () => {

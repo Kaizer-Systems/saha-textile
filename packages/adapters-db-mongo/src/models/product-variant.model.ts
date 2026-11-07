@@ -66,6 +66,8 @@ ProductVariantSchema.index({ sku: 1 }, { unique: true });
 ProductVariantSchema.index({ productId: 1, status: 1 });
 /** Search/reindex sweeps by recency. */
 ProductVariantSchema.index({ status: 1, updatedAt: -1 });
+/** The admin home page's stock report: lowest stock first, read in index order. */
+ProductVariantSchema.index({ status: 1, 'stock.tracked': 1, 'stock.quantity': 1, _id: 1 });
 
 export const ProductVariantModel: Model<ProductVariantDoc> =
 	(models.ProductVariant as Model<ProductVariantDoc>) ??

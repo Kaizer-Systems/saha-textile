@@ -204,9 +204,7 @@ test.describe('Product builder', () => {
 		const row = page.locator('tr', { hasText: sku });
 		await expect(row).toBeVisible();
 		await row.locator('.ri-rocket-line').click();
-		await expect
-			.poll(async () => (await stored())?.['status'])
-			.toBe('live');
+		await expect.poll(async () => (await stored())?.['status']).toBe('live');
 		const french = await request.get('https://localhost:4200/fr/product/builder-test-saree');
 		expect(await french.text()).toContain('Saree de test');
 	});
@@ -219,9 +217,7 @@ test.describe('Categories and attributes', () => {
 		await page.locator('input[formcontrolname="name"]').fill('E2E Category');
 		await page.locator('#slug').fill(slug);
 		await page.locator('#category_btn button, button#category_btn').first().click();
-		await expect
-			.poll(() => withDatabase((db) => db.collection('categories').countDocuments({ slug })))
-			.toBe(1);
+		await expect.poll(() => withDatabase((db) => db.collection('categories').countDocuments({ slug }))).toBe(1);
 		const row = await withDatabase((db) => db.collection('categories').findOne({ slug }));
 		await open(page, `/category/edit/${String(row?._id)}`);
 		await expect(page.locator('#slug')).toHaveValue(slug);
@@ -229,7 +225,9 @@ test.describe('Categories and attributes', () => {
 		await page.locator('#category_btn button, button#category_btn').first().click();
 		await expect
 			.poll(() =>
-				withDatabase((db) => db.collection('seoRedirects').countDocuments({ sourcePath: `/collections/${slug}` })),
+				withDatabase((db) =>
+					db.collection('seoRedirects').countDocuments({ sourcePath: `/collections/${slug}` }),
+				),
 			)
 			.toBe(1);
 	});
@@ -265,9 +263,7 @@ test.describe('What admin makes reaches the shop', () => {
 		await expect(page.locator('input[formcontrolname="name"]')).toHaveValue('');
 		await page.locator('input[formcontrolname="name"]').fill('Catégorie du menu');
 		await page.locator('#category_btn button, button#category_btn').first().click();
-		await expect
-			.poll(() => withDatabase((db) => db.collection('categories').countDocuments({ slug })))
-			.toBe(1);
+		await expect.poll(() => withDatabase((db) => db.collection('categories').countDocuments({ slug }))).toBe(1);
 		try {
 			await expect.poll(async () => (await request.get(`${shop}/fr`)).text()).toContain('Catégorie du menu');
 			expect(await (await request.get(`${shop}/en`)).text()).toContain('Menu Category');
@@ -286,9 +282,7 @@ test.describe('What admin makes reaches the shop', () => {
 		await page.locator('input[formcontrolname="name"]').fill('English Only Category');
 		await page.locator('#slug').fill(slug);
 		await page.locator('#category_btn button, button#category_btn').first().click();
-		await expect
-			.poll(() => withDatabase((db) => db.collection('categories').countDocuments({ slug })))
-			.toBe(1);
+		await expect.poll(() => withDatabase((db) => db.collection('categories').countDocuments({ slug }))).toBe(1);
 		try {
 			expect(await (await request.get(`${shop}/en`)).text()).not.toContain('English Only Category');
 		} finally {
@@ -433,9 +427,7 @@ test.describe('What admin makes reaches the shop', () => {
 		await page.locator('#media_btn button, button#media_btn').first().click();
 		await expect(page.locator('.modal')).toHaveCount(0);
 		await page.locator('#category_btn button, button#category_btn').first().click();
-		await expect
-			.poll(() => withDatabase((db) => db.collection('categories').countDocuments({ slug })))
-			.toBe(1);
+		await expect.poll(() => withDatabase((db) => db.collection('categories').countDocuments({ slug }))).toBe(1);
 		try {
 			const row = await withDatabase((db) => db.collection('categories').findOne({ slug }));
 			expect(row?.['media']?.bannerImage).toEqual(expect.any(String));
@@ -461,7 +453,9 @@ test.describe('What admin makes reaches the shop', () => {
 	});
 
 	test('a role change that would retire saved variants asks first', async ({ page }) => {
-		const product = await withDatabase((db) => db.collection('products').findOne({ slug: 'designer-saree-with-blouse' }));
+		const product = await withDatabase((db) =>
+			db.collection('products').findOne({ slug: 'designer-saree-with-blouse' }),
+		);
 		await open(page, `/product/edit/${String(product?._id)}`);
 		await page.locator('.nav-link', { hasText: 'Inventory' }).first().click();
 		const asked: string[] = [];
@@ -470,7 +464,10 @@ test.describe('What admin makes reaches the shop', () => {
 			void dialog.dismiss();
 		});
 		await page.locator('#role_0 .select2-selection').click();
-		await page.locator('.select2-results__option', { hasText: /filter/i }).first().click();
+		await page
+			.locator('.select2-results__option', { hasText: /filter/i })
+			.first()
+			.click();
 		await expect.poll(() => asked.length).toBe(1);
 		expect(asked[0]).toContain('retires its saved variants');
 		await expect(page.locator('#role_0 .select2-selection')).toContainText(/variation/i);
@@ -491,7 +488,9 @@ test.describe('What admin makes reaches the shop', () => {
 				: group,
 		);
 		await withDatabase(async (db) => {
-			await db.collection('mediaAssets').updateOne({ _id: assetId as never }, { $set: { width: 1000, height: 1000 } });
+			await db
+				.collection('mediaAssets')
+				.updateOne({ _id: assetId as never }, { $set: { width: 1000, height: 1000 } });
 			await db.collection('products').updateOne({ slug }, { $set: { status: 'disabled', optionGroups: groups } });
 		});
 		try {
@@ -505,7 +504,10 @@ test.describe('What admin makes reaches the shop', () => {
 			await withDatabase(async (db) => {
 				await db
 					.collection('mediaAssets')
-					.updateOne({ _id: assetId as never }, { $set: { width: asset?.['width'], height: asset?.['height'] } });
+					.updateOne(
+						{ _id: assetId as never },
+						{ $set: { width: asset?.['width'], height: asset?.['height'] } },
+					);
 				await db.collection('products').replaceOne({ slug }, original as never);
 			});
 		}
@@ -581,7 +583,9 @@ test.describe('Product facts', () => {
 test.describe('Size guide', () => {
 	test('written once on the template, shown on the product, in inches or centimetres', async ({ page, baseURL }) => {
 		const slug = await withDatabase(async (db) => {
-			const row = await db.collection('products').findOne({ addonTemplateCode: 'blouse-measurements', status: 'live' });
+			const row = await db
+				.collection('products')
+				.findOne({ addonTemplateCode: 'blouse-measurements', status: 'live' });
 			return String(row?.['slug']);
 		});
 		await open(page, '/measurement/edit/blouse-measurements');
@@ -621,3 +625,50 @@ test.describe('Brand Kit', () => {
 	});
 });
 
+test.describe('Admin sign-in', () => {
+	test.use({ storageState: { cookies: [], origins: [] } });
+
+	/** The lock-out of 2026-11-07: cookies naming a session that no longer exists. */
+	test('a correct password works with dead session cookies in the browser', async ({ page, context }) => {
+		await context.addCookies(
+			['__Host-st_admin_access', '__Host-st_admin_refresh'].map((name) => ({
+				name,
+				value: 'a-session-that-no-longer-exists',
+				url: 'https://localhost:4000',
+				secure: true,
+				httpOnly: true,
+				sameSite: 'Lax' as const,
+			})),
+		);
+		await open(page, '/auth/login');
+		await page.locator('input[formcontrolname="identifier"]').fill(process.env['E2E_ADMIN_EMAIL'] as string);
+		await page.locator('input[formcontrolname="password"]').fill(process.env['E2E_ADMIN_PASSWORD'] as string);
+		await page.locator('app-button button').first().click();
+		await expect(page).toHaveURL(/\/dashboard/);
+	});
+
+	test('the password form never talks about a PIN', async ({ page }) => {
+		await open(page, '/auth/login');
+		await page.locator('input[formcontrolname="identifier"]').fill(process.env['E2E_ADMIN_EMAIL'] as string);
+		await page.locator('input[formcontrolname="password"]').fill('not-the-password');
+		await page.locator('app-button button').first().click();
+		await expect(page.getByRole('alert')).toContainText('Invalid credentials');
+		await expect(page.getByRole('alert')).not.toContainText('PIN');
+	});
+});
+
+test.describe('Admin home page', () => {
+	test('the tiles read the API and each keeps its own period', async ({ page }) => {
+		await open(page, '/dashboard');
+		const revenue = page.locator('.card-tiles').filter({ hasText: 'Total Revenue' });
+		const orders = page.locator('.card-tiles').filter({ hasText: 'Total Orders' });
+		await expect(page.locator('.card-tiles').filter({ hasText: 'Total Customers' })).toBeVisible();
+
+		const answered = page.waitForResponse(/admin\/dashboard\/revenue\?period=last_month/);
+		await revenue.getByRole('button', { name: 'Last 12 months' }).click();
+		await revenue.getByRole('button', { name: 'Last month' }).click();
+		expect((await answered).status()).toBe(200);
+		await expect(revenue.getByRole('button', { name: 'Last month' })).toBeVisible();
+		await expect(orders.getByRole('button', { name: 'Last 12 months' })).toBeVisible();
+	});
+});

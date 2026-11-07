@@ -31,10 +31,10 @@ The admin application combines server-state queries, application stores, a clien
 
 ## Data sources
 
-| Source | Features                                                                                                                                                                                                                                          |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API    | Auth, roles, operators, customers, notification settings, media library, banners, reviews, YouTube, product form, redirects, add-on templates, FAQ, questions                                                                                     |
-| JSON   | Attributes, blog, cart, categories, countries, coupons, currencies, customer ledger, dashboard, navigation badges, notification inbox, order status, orders, pages, points, refunds, settings, shipping, states, stores, tags, tax, theme options |
+| Source | Features                                                                                                                                                                                                                                                       |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API    | Auth, roles, operators, customers, notification settings, media library, banners, reviews, YouTube, product form, redirects, add-on templates, FAQ, questions, home page widgets                                                                               |
+| JSON   | Attributes, blog, cart, categories, countries, coupons, currencies, customer ledger, home page demo widgets, navigation badges, notification inbox, order status, orders, pages, points, refunds, settings, shipping, states, stores, tags, tax, theme options |
 
 ## Read path
 

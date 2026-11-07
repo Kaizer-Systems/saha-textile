@@ -72,6 +72,20 @@ describe('read services', () => {
 		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { a: 1 } });
 	});
 
+	it('sends only the chosen period and category to the dashboard API', () => {
+		const dashboard = TestBed.inject(DashboardService);
+		dashboard.getRevenue({ period: 'last_month' });
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { period: 'last_month' } });
+		dashboard.getOrders({ period: 'custom', from: '2026-01-01', to: '2026-02-01' });
+		expect(http.get.mock.lastCall?.[1]).toEqual({
+			params: { period: 'custom', from: '2026-01-01', to: '2026-02-01' },
+		});
+		dashboard.getStock('cat');
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { categoryId: 'cat' } });
+		dashboard.getStock();
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: {} });
+	});
+
 	it('reads blog categories from their own list', () => {
 		TestBed.inject(CategoryService).getCategories({ type: 'post' });
 		expect(lastUrl(http.get)).toContain('/category.json');
@@ -79,6 +93,26 @@ describe('read services', () => {
 	});
 
 	it.each<[string, () => unknown, string]>([
+		[
+			'revenue',
+			() => TestBed.inject(DashboardService).getRevenue({ period: 'last_month' }),
+			'/admin/dashboard/revenue',
+		],
+		['months', () => TestBed.inject(DashboardService).getMonthlyRevenue(), '/admin/dashboard/revenue/monthly'],
+		[
+			'orders',
+			() => TestBed.inject(DashboardService).getOrders({ period: 'last_month' }),
+			'/admin/dashboard/orders',
+		],
+		['recent orders', () => TestBed.inject(DashboardService).getRecentOrders(), '/admin/dashboard/orders/recent'],
+		['customers', () => TestBed.inject(DashboardService).getCustomers(), '/admin/dashboard/customers'],
+		['reviews', () => TestBed.inject(DashboardService).getReviews(), '/admin/dashboard/reviews'],
+		[
+			'top products',
+			() => TestBed.inject(DashboardService).getTopProducts({ period: 'today' }),
+			'/admin/dashboard/top-products',
+		],
+		['stock', () => TestBed.inject(DashboardService).getStock(), '/admin/dashboard/stock'],
 		['cart', () => TestBed.inject(CartService).getCartItems(), '/cart.json'],
 		['countries', () => TestBed.inject(CountryService).getCountries(), '/country.json'],
 		['counts', () => TestBed.inject(DashboardService).getStatisticsCount(), '/count.json'],

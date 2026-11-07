@@ -1091,5 +1091,16 @@
 	"role_change_confirm": "Changing this role retires its saved variants. Continue?",
 	"gap_swatch_colour": "Add a colour for",
 	"gap_swatch_image": "Add an image for",
-	"gap_image_sizes": "The primary image is still being prepared"
+	"gap_image_sizes": "The primary image is still being prepared",
+	"last_12_months": "Last 12 months",
+	"last_30_days": "Last 30 days",
+	"last_month": "Last month",
+	"last_quarter": "Last quarter",
+	"current_quarter": "Current quarter",
+	"custom": "Custom",
+	"monthly_revenue": "Monthly Revenue",
+	"total_customers": "Total Customers",
+	"in_stock": "In Stock",
+	"low_stock": "Low Stock",
+	"no_dashboard_access": "You do not have access to any home page widgets yet. Ask an administrator to grant them."
 }

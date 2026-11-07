@@ -226,7 +226,7 @@ export class MongoProductQuestionRepository implements ProductQuestionRepository
 	}
 }
 
-const toReview = (doc: ReviewDoc): Review =>
+export const toReview = (doc: ReviewDoc): Review =>
 	({
 		id: doc._id,
 		productId: doc.productId,

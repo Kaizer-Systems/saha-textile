@@ -8,6 +8,8 @@ import { AdminUsersController } from './admin-users.controller';
 import { AdminUsersService } from './admin-users.service';
 import { AuditLogsController } from './audit-logs.controller';
 import { AuditLogsService } from './audit-logs.service';
+import { AdminDashboardController } from './admin-dashboard.controller';
+import { AdminDashboardService } from './admin-dashboard.service';
 import { CustomerLifecycleService } from './customer-lifecycle.service';
 import { PermissionsController } from './permissions.controller';
 import { RolesController } from './roles.controller';
@@ -28,6 +30,7 @@ import { RolesService } from './roles.service';
 		AdminNotificationsController,
 		PermissionsController,
 		AuditLogsController,
+		AdminDashboardController,
 	],
 	providers: [
 		RolesService,
@@ -36,6 +39,7 @@ import { RolesService } from './roles.service';
 		CustomerLifecycleService,
 		AdminNotificationsService,
 		AuditLogsService,
+		AdminDashboardService,
 	],
 	exports: [RolesService, AdminUsersService, AdminCustomersService, AdminNotificationsService, AuditLogsService],
 })

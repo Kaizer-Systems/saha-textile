@@ -190,7 +190,10 @@ export function toAdminUser(doc: AdminUserDoc, pinConfigured = false): AdminUser
 		role: doc.role,
 		status: (doc.status as AdminUser['status']) ?? 'active',
 		pinConfigured,
-		preferredLoginMethod: (doc.preferredLoginMethod as AdminUser['preferredLoginMethod']) ?? 'password',
+		// A preference for a PIN means nothing without a PIN, so nothing reads it that way.
+		preferredLoginMethod: pinConfigured
+			? ((doc.preferredLoginMethod as AdminUser['preferredLoginMethod']) ?? 'password')
+			: 'password',
 		adminProfile: doc.adminProfile as AdminUser['adminProfile'],
 		lastLoginAt: doc.lastLoginAt ? new Date(doc.lastLoginAt).toISOString() : null,
 		createdAt: iso(doc.createdAt),

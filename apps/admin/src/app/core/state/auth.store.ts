@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
@@ -53,14 +54,27 @@ const INITIAL: AuthStateModel = { status: 'unknown', user: null, permissions: []
  * password login still works, or they are simply stuck. The API cannot express it yet: the
  * controller throws a specific message, but the global error filter replaces every 401 with
  * the generic `unauthorized` envelope, so nothing distinguishing survives the boundary.
- * Rather than guess from a status code, the hint below is shown alongside every credential
- * failure, and the missing stable sub-code is tracked for the admin pass.
+ * Rather than guess from a status code, the login screen shows the hint with every failure
+ * of the PIN method, and the missing stable sub-code is tracked for the admin pass. It is
+ * never shown on the password form: there it can only mislead.
  */
 const ERROR_KEYS = {
 	credentials: 'invalid_credentials',
 	generic: 'something_went_wrong_please_try_again',
 	resetToken: 'invalid_or_expired_reset_link',
 } as const;
+
+/**
+ * Only a `401` means the credential was refused.
+ *
+ * Every failure used to read as wrong credentials, including a `403` that never looked at
+ * the password, an unreachable API and a server error. That is what sent an operator with
+ * the correct password hunting for a PIN they never set (2026-11-07). The API still answers
+ * every credential refusal alike, so this tells nothing about which accounts exist.
+ */
+function loginFailureKey(error: unknown): string {
+	return error instanceof HttpErrorResponse && error.status === 401 ? ERROR_KEYS.credentials : ERROR_KEYS.generic;
+}
 
 export const AuthStore = signalStore(
 	{ providedIn: 'root' },
@@ -137,8 +151,8 @@ export const AuthStore = signalStore(
 					// state come from the server, and this is the shape the rest of the app
 					// consumes anyway.
 					return await loadSession();
-				} catch {
-					applyAnonymous(ERROR_KEYS.credentials);
+				} catch (error) {
+					applyAnonymous(loginFailureKey(error));
 					return false;
 				}
 			},
@@ -149,8 +163,8 @@ export const AuthStore = signalStore(
 					await firstValueFrom(gateway.loginWithPin(input));
 					await firstValueFrom(gateway.ensureCsrfToken());
 					return await loadSession();
-				} catch {
-					applyAnonymous(ERROR_KEYS.credentials);
+				} catch (error) {
+					applyAnonymous(loginFailureKey(error));
 					return false;
 				}
 			},

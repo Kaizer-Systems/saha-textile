@@ -947,6 +947,15 @@ Closed: `DEC-DOMAIN-TOPOLOGY`.
 - **The CCAvenue adapter is bound in the API and unused.** `INR_PAYMENT_GATEWAY` builds the real adapter once all CCAvenue values are set, and a "not configured" adapter until then. No route calls it, so checkout stays closed.
 - **`confirmOrder` and `cancelOrder` wait for HDFC's answer** on whether this account auto-confirms.
 
+## Owner decision round (2026-11-07) — admin home page (`DEC-ADMIN-HOME-WIDGETS`)
+
+- **Revenue means the full amount paid:** `totalINR` of paid, processing, shipped and delivered orders, with shipping and after discounts. The owner may change this later.
+- **The Total Revenue and Total Orders tiles default to the last 12 months.** Each tile has its own period link with Last 30 days, Last month, Last quarter, Current quarter and Custom. Custom covers at most 24 months. Days and months follow India time, and quarters are calendar quarters. The Monthly Revenue chart stays on 12 months.
+- **Option B is the approved period control:** a small link under the number that opens a menu, built from existing dropdown and date-range parts with no new CSS class (`admin-home-period-picker-brief-2026-11-07.html`).
+- **The Total Stores tile, Top Stores panel, Latest Blogs panel and the chart's commission line stay as demo data for now.** They are marked for later. Needs Attention, Total Products and Latest Questions were proposed in their place and were not chosen, so they are not built.
+- **Each real widget has its own permission,** in one Dashboard group on the role screen: `dashboard.revenue`, `dashboard.orders`, `dashboard.customers`, `dashboard.top_products`, `dashboard.stock`, `dashboard.reviews`. The API refuses the data and the widget hides. The two demo panels keep `store.index` and `blog.index`, and the demo tile follows `store.index`.
+- **The shapes in `packages/contracts/src/dashboard.ts` are temporary** and will change when the order, stock and report screens are settled.
+
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

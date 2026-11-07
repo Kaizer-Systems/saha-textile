@@ -159,6 +159,14 @@ Every route below requires an admin session and the named permission. Effective 
 | `DELETE` | `/admin/users/:userId/roles/:roleId` | `admin_user_role.revoke` | Revoke a role; refused for the last administrator (audited)              |
 | `PATCH`  | `/admin/users/:userId/status`        | `admin_user.update`      | Enable or disable an account; disabling revokes every session (audited)  |
 | `GET`    | `/admin/audit-logs`                  | `audit.index`            | Read the admin audit trail (newest first, filterable, bounded page size) |
+| `GET`    | `/admin/dashboard/revenue`           | `dashboard.revenue`      | Revenue for one period (Total Revenue tile)                              |
+| `GET`    | `/admin/dashboard/revenue/monthly`   | `dashboard.revenue`      | Revenue by month for the last 12 months                                  |
+| `GET`    | `/admin/dashboard/orders`            | `dashboard.orders`       | Paid order count for one period (Total Orders tile)                      |
+| `GET`    | `/admin/dashboard/orders/recent`     | `dashboard.orders`       | The 5 newest orders in any status                                        |
+| `GET`    | `/admin/dashboard/customers`         | `dashboard.customers`    | Customer count, leaving out deleted accounts                             |
+| `GET`    | `/admin/dashboard/top-products`      | `dashboard.top_products` | The 4 best sellers for one period                                        |
+| `GET`    | `/admin/dashboard/stock`             | `dashboard.stock`        | The 8 live variants with the lowest stock, optionally by category        |
+| `GET`    | `/admin/dashboard/reviews`           | `dashboard.reviews`      | The 4 newest reviews in any moderation state                             |
 | `GET`    | `/admin/permissions`                 | `permission.index`       | The full permission registry                                             |
 | `GET`    | `/admin/roles`                       | `role.index`             | List every role definition                                               |
 | `GET`    | `/admin/roles/:id`                   | `role.index`             | Get one role definition                                                  |
@@ -238,8 +246,8 @@ Admin catalogue reads answer `no-store`.
 | `GET`    | `/admin/content-blocks`               | `theme_option.index` | Banners by owner and position                                                |
 | `PUT`    | `/admin/content-blocks`               | `theme_option.edit`  | Create or replace the banner at its position and slot                        |
 | `DELETE` | `/admin/content-blocks/:key`          | `theme_option.edit`  | Remove a banner                                                              |
-| `GET`    | `/admin/settings/brand`               | `setting.index`      | The Brand Kit settings                                      |
-| `PUT`    | `/admin/settings/brand`               | `setting.edit`       | Set the shop name, logo and seal                            |
+| `GET`    | `/admin/settings/brand`               | `setting.index`      | The Brand Kit settings                                                       |
+| `PUT`    | `/admin/settings/brand`               | `setting.edit`       | Set the shop name, logo and seal                                             |
 | `GET`    | `/admin/settings/home-hero`           | `theme_option.index` | The selected home hero layout                                                |
 | `PUT`    | `/admin/settings/home-hero`           | `theme_option.edit`  | Select the home hero layout                                                  |
 | `POST`   | `/admin/youtube/validate`             | `product.edit`       | Normalise a pasted YouTube link and confirm the video                        |
@@ -295,7 +303,7 @@ The server enforces public visibility, not the caller. Public repository calls d
 | ------ | ---------------------------------------------- | ------------------ | ----------------------------------------------------------- |
 | `GET`  | `/media/upload-rules`                          | Public             | Size, type and count limits for uploads                     |
 | `GET`  | `/storefront/banners`                          | Public             | A page's live banners, resolved for the locale              |
-| `GET`  | `/storefront/brand`                            | Public            | The shop's name, logo, seal and icons |
+| `GET`  | `/storefront/brand`                            | Public             | The shop's name, logo, seal and icons                       |
 | `GET`  | `/storefront/youtube/rail`                     | Public             | Cached latest channel videos for a placement                |
 | `POST` | `/storefront/reviews/photos/presign`           | Storefront session | Start a review photo upload (verified buyers only)          |
 | `POST` | `/storefront/reviews/photos/:assetId/finalize` | Storefront session | The photo upload finished; queue processing                 |

@@ -46,7 +46,7 @@
 								class="form-check-label form-label m-0"
 								for="{{ permission.permission_id }}"
 							>
-								{{ permission.name | titlecase }}
+								{{ permission.name.replace('_', ' ') | titlecase }}
 							</label>
 						</div>
 					</li>

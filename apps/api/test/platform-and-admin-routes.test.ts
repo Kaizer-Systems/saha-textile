@@ -1,5 +1,6 @@
 import { ForbiddenException, HttpException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AdminCustomersController } from '../src/admin/admin-customers.controller';
@@ -452,8 +453,13 @@ describe('small platform rules', () => {
 			resolveLiveSessionFromRequest: vi.fn(async () => ({ id: 's1' })),
 			verifyCsrfForSession: vi.fn(() => true),
 		};
-		const guard = new CsrfGuard(config, sessions as never);
-		const contextFor = (req: unknown) => ({ switchToHttp: () => ({ getRequest: () => req }) }) as never;
+		const guard = new CsrfGuard(new Reflector(), config, sessions as never);
+		const contextFor = (req: unknown) =>
+			({
+				switchToHttp: () => ({ getRequest: () => req }),
+				getHandler: () => contextFor,
+				getClass: () => Object,
+			}) as never;
 		const names = cookieNames(config);
 		await expect(
 			guard.canActivate(

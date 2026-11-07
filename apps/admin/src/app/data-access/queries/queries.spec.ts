@@ -49,7 +49,18 @@ import { injectCategoriesQuery } from './category.queries';
 import { injectCountriesQuery } from './country.queries';
 import { injectCouponQuery, injectCouponsQuery } from './coupon.queries';
 import { injectCurrenciesQuery } from './currency.queries';
-import { injectRevenueChartQuery, injectStatisticsQuery } from './dashboard.queries';
+import {
+	injectDashboardCustomersQuery,
+	injectDashboardMonthlyRevenueQuery,
+	injectDashboardOrdersQuery,
+	injectDashboardRecentOrdersQuery,
+	injectDashboardReviewsQuery,
+	injectDashboardRevenueQuery,
+	injectDashboardStockQuery,
+	injectDashboardTopProductsQuery,
+	injectRevenueChartQuery,
+	injectStatisticsQuery,
+} from './dashboard.queries';
 import { injectFaqsQuery } from './faq.queries';
 import { injectNotificationsQuery } from './notification.queries';
 import { injectOrderStatusQuery } from './order-status.queries';
@@ -109,7 +120,21 @@ beforeEach(() => {
 			{ provide: CountryService, useValue: service('getCountries') },
 			{ provide: CouponService, useValue: service('getCoupons') },
 			{ provide: CurrencyService, useValue: service('getCurrencies') },
-			{ provide: DashboardService, useValue: service('getStatisticsCount', 'getRevenueChart') },
+			{
+				provide: DashboardService,
+				useValue: service(
+					'getStatisticsCount',
+					'getRevenueChart',
+					'getRevenue',
+					'getMonthlyRevenue',
+					'getOrders',
+					'getRecentOrders',
+					'getCustomers',
+					'getTopProducts',
+					'getStock',
+					'getReviews',
+				),
+			},
 			{ provide: FaqService, useValue: service('getFaqs') },
 			{ provide: NotificationService, useValue: service('getNotifications') },
 			{ provide: OrderStatusService, useValue: service('getOrderStatus') },
@@ -131,6 +156,9 @@ beforeEach(() => {
 const options = (build: () => unknown): Options => (TestBed.runInInjectionContext(build) as unknown as () => Options)();
 const params = () => ({ status: 1 });
 
+const period = () => ({ period: 'last_month' }) as const;
+const on = () => true;
+
 describe('list queries', () => {
 	it.each<[string, () => unknown, unknown[]]>([
 		['customers', () => injectAdminCustomersQuery(params as never), ['admin-customers', 'live', { status: 1 }]],
@@ -147,6 +175,26 @@ describe('list queries', () => {
 		['currencies', () => injectCurrenciesQuery(params), ['currencies', { status: 1 }]],
 		['statistics', () => injectStatisticsQuery(), ['dashboard-statistics']],
 		['revenue', () => injectRevenueChartQuery(), ['dashboard-revenue-chart']],
+		[
+			'dashboard revenue',
+			() => injectDashboardRevenueQuery(period, on),
+			['dashboard-revenue', { period: 'last_month' }],
+		],
+		['dashboard months', () => injectDashboardMonthlyRevenueQuery(on), ['dashboard-monthly-revenue']],
+		[
+			'dashboard orders',
+			() => injectDashboardOrdersQuery(period, on),
+			['dashboard-orders', { period: 'last_month' }],
+		],
+		['dashboard recent orders', () => injectDashboardRecentOrdersQuery(on), ['dashboard-recent-orders']],
+		['dashboard customers', () => injectDashboardCustomersQuery(on), ['dashboard-customers']],
+		[
+			'dashboard top products',
+			() => injectDashboardTopProductsQuery(period, on),
+			['dashboard-top-products', { period: 'last_month' }],
+		],
+		['dashboard stock', () => injectDashboardStockQuery(() => 'c1', on), ['dashboard-stock', 'c1']],
+		['dashboard reviews', () => injectDashboardReviewsQuery(on), ['dashboard-reviews']],
 		['FAQs', () => injectFaqsQuery(params), ['faqs', { status: 1 }]],
 		['notifications', () => injectNotificationsQuery(params), ['notifications', { status: 1 }]],
 		['default notifications', () => injectNotificationsQuery(), ['notifications', {}]],

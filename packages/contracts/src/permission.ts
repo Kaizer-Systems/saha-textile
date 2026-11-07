@@ -77,6 +77,12 @@ export const PermissionCode = z.enum([
 	'customer.index',
 	'customer.restore',
 	'customer.update',
+	'dashboard.customers',
+	'dashboard.orders',
+	'dashboard.revenue',
+	'dashboard.reviews',
+	'dashboard.stock',
+	'dashboard.top_products',
 	'faq.create',
 	'faq.destroy',
 	'faq.edit',
@@ -155,6 +161,18 @@ export const PERMISSION_CODES: readonly PermissionCode[] = PermissionCode.option
  * real answer. A template is not.
  */
 export const SERVER_ONLY_PERMISSION_CODES: Readonly<Partial<Record<PermissionCode, string>>> = {
+	'dashboard.customers':
+		'Total Customers tile on the admin home page (dashboard.html, GET /admin/dashboard/customers). The tile is a count only, so it is separate from customer.index, which opens personal records.',
+	'dashboard.orders':
+		'Total Orders tile and Recent Orders table on the admin home page (dashboard.html, GET /admin/dashboard/orders and /orders/recent). Separate from order.index so home page access can be set apart from the Orders page.',
+	'dashboard.revenue':
+		'Total Revenue tile and Monthly Revenue chart on the admin home page (dashboard.html, GET /admin/dashboard/revenue and /revenue/monthly). Its own code so money can be hidden from staff who still see order counts.',
+	'dashboard.reviews':
+		'Latest Reviews panel on the admin home page (dashboard.html, GET /admin/dashboard/reviews). Read-only: moderating stays on review.edit.',
+	'dashboard.stock':
+		'Product Stock Report on the admin home page (dashboard.html, GET /admin/dashboard/stock). Row Edit still needs product.edit.',
+	'dashboard.top_products':
+		'Top Selling Products panel on the admin home page (dashboard.html, GET /admin/dashboard/top-products). It shows sales figures per product, so it is separate from dashboard.stock.',
 	'admin_user_role.assign':
 		'Granting authority (auth pass 5c.4) on the operator edit screen (form-user.html). Deliberately not part of admin_user.update: editing a colleague and enlarging their authority are different risks.',
 	'admin_user_role.revoke':
@@ -264,6 +282,7 @@ export const PermissionResource = z.enum([
 	'coupon',
 	'currency',
 	'customer',
+	'dashboard',
 	'faq',
 	'order',
 	'page',
@@ -293,19 +312,27 @@ export type PermissionResource = z.infer<typeof PermissionResource>;
  * `update` is what the API's own routes use. `credit` and `debit` cover the points controls,
  * `action` covers the payout approve/reject chrome, and `restore` undoes a soft delete — kept
  * apart from `destroy` and `update` so bringing a departed customer back is its own grant
- * (`DEC-CUSTOMER-SOFT-DELETE-OPS`).
+ * (`DEC-CUSTOMER-SOFT-DELETE-OPS`). `customers`, `orders`, `revenue`, `reviews`, `stock` and
+ * `top_products` belong to the `dashboard` resource alone: each names one widget on the admin
+ * home page, so a super admin can grant that widget by itself (`DEC-ADMIN-HOME-WIDGETS`).
  */
 export const PermissionAction = z.enum([
 	'action',
 	'assign',
 	'create',
 	'credit',
+	'customers',
 	'debit',
 	'destroy',
 	'edit',
 	'index',
+	'orders',
 	'restore',
+	'revenue',
+	'reviews',
 	'revoke',
+	'stock',
+	'top_products',
 	'update',
 ]);
 export type PermissionAction = z.infer<typeof PermissionAction>;

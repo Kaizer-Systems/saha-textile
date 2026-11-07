@@ -1,0 +1,105 @@
+<div
+	class="position-relative"
+	ngbDropdown
+	autoClose="outside"
+	#dropdown="ngbDropdown"
+>
+	<a
+		class="txt-primary d-inline-block small mt-2"
+		role="button"
+		tabindex="0"
+		ngbDropdownAnchor
+		(click)="dropdown.toggle()"
+		(keydown.enter)="dropdown.toggle()"
+		(keydown.space)="dropdown.toggle()"
+	>
+		{{ label() || (selected() | transloco) }}
+	</a>
+	<div
+		ngbDropdownMenu
+		[style.min-width.px]="240"
+	>
+		@for (preset of presets; track preset) {
+		<button
+			type="button"
+			ngbDropdownItem
+			[class.active]="preset === selected()"
+			(click)="choose(preset, dropdown)"
+		>
+			{{ preset | transloco }}
+		</button>
+		} @if (selected() === 'custom') {
+		<div class="px-3 pt-2 pb-2">
+			<div class="dp-hidden position-absolute custom-dp-dropdown">
+				<div class="input-group">
+					<input
+						name="periodDatepicker"
+						class="form-control"
+						ngbDatepicker
+						#datepicker="ngbDatepicker"
+						[autoClose]="'outside'"
+						(dateSelect)="onDateSelection($event, dropdown)"
+						[displayMonths]="1"
+						[dayTemplate]="day"
+						[markDisabled]="isDateDisabled"
+						[startDate]="fromDate() ?? today"
+						outsideDays="hidden"
+						tabindex="-1"
+						readonly
+					/>
+					<ng-template
+						#day
+						let-date
+						let-focused="focused"
+					>
+						<span
+							class="custom-day"
+							[class.focused]="focused"
+							[class.range]="isRange(date)"
+							[class.faded]="isHovered(date) || isInside(date)"
+							(mouseenter)="hoveredDate.set(date)"
+							(mouseleave)="hoveredDate.set(null)"
+						>
+							{{ date.day }}
+						</span>
+					</ng-template>
+				</div>
+			</div>
+			<div class="input-group custom-dt-picker mb-2">
+				<input
+					class="form-control"
+					placeholder="yyyy-mm-dd"
+					[attr.aria-label]="'start_date' | transloco"
+					[value]="formatter.format(fromDate())"
+					readonly
+				/>
+				<button
+					class="btn btn-outline-secondary"
+					type="button"
+					[attr.aria-label]="'start_date' | transloco"
+					(click)="datepicker.toggle()"
+				>
+					<i class="ri-calendar-line"></i>
+				</button>
+			</div>
+			<div class="input-group custom-dt-picker">
+				<input
+					class="form-control"
+					placeholder="yyyy-mm-dd"
+					[attr.aria-label]="'end_date' | transloco"
+					[value]="formatter.format(toDate())"
+					readonly
+				/>
+				<button
+					class="btn btn-outline-secondary"
+					type="button"
+					[attr.aria-label]="'end_date' | transloco"
+					(click)="datepicker.toggle()"
+				>
+					<i class="ri-calendar-line"></i>
+				</button>
+			</div>
+		</div>
+		}
+	</div>
+</div>

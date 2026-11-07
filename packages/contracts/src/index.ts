@@ -41,3 +41,4 @@ export * from './audit';
 export * from './notification';
 export * from './stock-alert';
 export * from './product-insight-set';
+export * from './dashboard';

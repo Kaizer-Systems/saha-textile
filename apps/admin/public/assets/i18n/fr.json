@@ -1091,5 +1091,16 @@
 	"role_change_confirm": "Changer ce rôle retire ses variantes enregistrées. Continuer ?",
 	"gap_swatch_colour": "Ajoutez une couleur pour",
 	"gap_swatch_image": "Ajoutez une image pour",
-	"gap_image_sizes": "L'image principale est encore en préparation"
+	"gap_image_sizes": "L'image principale est encore en préparation",
+	"last_12_months": "12 derniers mois",
+	"last_30_days": "30 derniers jours",
+	"last_month": "Mois dernier",
+	"last_quarter": "Trimestre dernier",
+	"current_quarter": "Trimestre en cours",
+	"custom": "Personnalisé",
+	"monthly_revenue": "Revenu mensuel",
+	"total_customers": "Total des clients",
+	"in_stock": "En stock",
+	"low_stock": "Stock faible",
+	"no_dashboard_access": "Vous n'avez encore accès à aucun widget de la page d'accueil. Demandez à un administrateur de vous les attribuer."
 }

@@ -90,6 +90,7 @@ Hiding an action improves usability but does not secure it. The API authenticate
 
 ## Limitations
 
-- Dashboard, orders, categories, attributes, tags, coupons, pages, blog, settings and other families read JSON data.
+- Orders, categories, attributes, tags, coupons, pages, blog, settings and other families read JSON data.
+- On the home page, the Total Stores tile, Top Stores panel, Latest Blogs panel and the chart's commission line read JSON data. The other widgets read the API.
 - Many list actions and form submissions in those families have no backend.
 - The create-order flow uses a client cart and does not place an order.

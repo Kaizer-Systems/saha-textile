@@ -44,5 +44,7 @@ OrderSchema.index({ orderNumber: 1 }, { unique: true });
 OrderSchema.index({ userId: 1, createdAt: -1 });
 OrderSchema.index({ status: 1 });
 OrderSchema.index({ status: 1, createdAt: -1 });
+/** The admin home page's newest orders, in any status. */
+OrderSchema.index({ createdAt: -1 });
 
 export const OrderModel: Model<OrderDoc> = (models.Order as Model<OrderDoc>) ?? model<OrderDoc>('Order', OrderSchema);

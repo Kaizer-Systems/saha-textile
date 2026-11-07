@@ -18,6 +18,7 @@ export const CURRENCY_REPOSITORY = Symbol('CurrencyRepository');
 export const PROMOTION_REPOSITORY = Symbol('PromotionRepository');
 export const CART_REPOSITORY = Symbol('CartRepository');
 export const ORDER_REPOSITORY = Symbol('OrderRepository');
+export const DASHBOARD_REPOSITORY = Symbol('DashboardRepository');
 export const CUSTOMER_REPOSITORY = Symbol('CustomerRepository');
 export const ADMIN_USER_REPOSITORY = Symbol('AdminUserRepository');
 export const AUTH_PORT = Symbol('AuthPort');

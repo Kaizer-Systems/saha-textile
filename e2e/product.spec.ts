@@ -102,9 +102,12 @@ test.describe('the purchase popup', () => {
 		await page.clock.install();
 		await page.route(/recent-purchases/, (route) => route.fulfill({ json: sold(11) }));
 		await page.goto('/en/contact-us');
-		await page.clock.fastForward(25_000);
 		const popup = page.locator('.recently-purchase');
-		await expect(popup).toHaveClass(/show/);
+		// The popup's timer only shows a sale once the sale has loaded, so keep the clock moving.
+		await expect(async () => {
+			await page.clock.fastForward(20_000);
+			await expect(popup).toHaveClass(/show/, { timeout: 1000 });
+		}).toPass();
 		expect(await popup.locator('.product-name').textContent()).toBe('Katan Banarasi Saree');
 		expect(await popup.locator('.timeAgo').textContent()).toContain('minutes ago');
 	});

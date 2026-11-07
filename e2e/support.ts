@@ -57,5 +57,11 @@ export async function openFilter(page: Page, title: string): Promise<void> {
 /** On a phone the filters live in a drawer behind the Filter button. */
 export async function showFilters(page: Page): Promise<void> {
 	const open = page.locator('.filter-button a').first();
-	if (await open.isVisible()) await open.click();
+	if (!(await open.isVisible())) return;
+	const drawer = page.locator('.left-box.show');
+	// A tap before the page is interactive is lost, so tap until the drawer really opens.
+	await expect(async () => {
+		if (!(await drawer.count())) await open.click();
+		await expect(drawer).toHaveCount(1, { timeout: 1000 });
+	}).toPass();
 }

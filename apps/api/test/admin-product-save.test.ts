@@ -116,6 +116,37 @@ describe('admin product save', () => {
 		expect(current().shippingDefaults.weightGrams).toBe(450);
 	});
 
+	it('saves the language-bound content with the form, and rows for new option values', async () => {
+		const { catalog, variants, current } = harness();
+		const axis = {
+			attributeCode: 'color',
+			label: { en: 'Colour', fr: 'Couleur' },
+			semanticRole: 'variation_axis',
+			displayStyle: 'rectangle',
+			requiredSelection: false,
+			defaultTermCode: null,
+			terms: [{ code: 'red', label: { en: 'Red', fr: 'Rouge' }, isBase: false, addonTemplateIds: [], requiresMeasurements: false, sortOrder: 0 }],
+		};
+		await catalog.updateMerchandising('prd_kurti', {
+			...form(),
+			content: {
+				title: { en: 'Kurti', fr: 'Kurti' },
+				shortDescription: { fr: 'Court' },
+				description: {},
+				metaTitle: {},
+				metaDescription: {},
+				categoryIds: ['c'],
+				optionGroups: [axis],
+				imageMode: 'simple',
+				gallery: [],
+				compound: [],
+				altOverrides: {},
+			},
+		} as never);
+		expect(current().shortDescription).toEqual({ fr: 'Court' });
+		expect([...variants.values()].some((row) => row.optionSelectionHash === 'color:red')).toBe(true);
+	});
+
 	it('rejects a selling price above the MRP before it reaches the service', () => {
 		const pipe = new ZodValidationPipe(ProductMerchandisingWrite);
 		const body = { ...form(), variants: [{ ...row('var_s', 'KPS-1'), mrpINR: 2000, sellingINR: 2400 }] };
@@ -145,9 +176,9 @@ describe('admin product save', () => {
 
 	it('lets a never-published draft change its SKU and stamps the first publish', async () => {
 		const { catalog, current } = harness(product({ status: 'draft', lifecycle: { liveAt: null } }));
-		await catalog.updateMerchandising('prd_kurti', form({ sku: 'KPS-RENAMED' }));
+		await catalog.updateMerchandising('prd_kurti', form({ sku: 'KPS-RENAMED', status: 'disabled' }));
 		expect(current().sku).toBe('KPS-RENAMED');
-		expect(current().lifecycle.liveAt).not.toBeNull();
+		await expect(catalog.updateMerchandising('prd_kurti', form({ sku: 'KPS-RENAMED' }))).rejects.toThrow('Use Go Live');
 	});
 
 	it('disables without discontinuing, and refuses a variant that is not the product’s', async () => {

@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
+import { AttributeDefinition } from './attribute';
 import { Slug } from './common';
-import { ProductShippingDefaults, ProductStatus } from './product';
+import { BundleGroup, BundlePricePolicy, BundleType } from './product-bundle';
+import { ProductShippingDefaults, ProductStatus, ProductType } from './product';
+import { ProductOptionGroupSet } from './product-options';
 
 /** Every badge a card can show. Pinning wins inside its own slot; hiding skips it. */
 export const CatalogBadgeCode = z.enum([
@@ -18,6 +21,24 @@ export type CatalogBadgeCode = z.infer<typeof CatalogBadgeCode>;
 const WholeRupee = z.number().int().nonnegative();
 const Measure = z.number().nonnegative().nullable();
 const OptionalText = z.string().trim().min(1).max(64).nullable();
+
+const TextByLocale = z.record(z.string(), z.string().max(20_000));
+
+/** Everything on the product form that is not merchandising: the language-bound text and images. */
+export const ProductContentWrite = z.object({
+	title: TextByLocale,
+	shortDescription: TextByLocale,
+	description: TextByLocale,
+	metaTitle: TextByLocale,
+	metaDescription: TextByLocale,
+	categoryIds: z.array(z.string().min(1)).max(50),
+	optionGroups: ProductOptionGroupSet,
+	imageMode: z.enum(['simple', 'compound']),
+	gallery: z.array(z.string().min(1)).max(40),
+	compound: z.array(z.object({ selectionHash: z.string().min(1), gallery: z.array(z.string().min(1)).max(40) })),
+	altOverrides: z.record(z.string(), TextByLocale),
+});
+export type ProductContentWrite = z.infer<typeof ProductContentWrite>;
 
 /** A replacement is a live product or a live collection, never a redirected path. */
 export const ReplacementPath = z
@@ -72,6 +93,8 @@ export const ProductMerchandisingWrite = z
 		shipping: ProductShippingDefaults,
 		hsnCode: OptionalText,
 		variants: z.array(AdminVariantWrite).min(1),
+		/** Language-bound text, categories, options and images. Absent leaves them as they are. */
+		content: ProductContentWrite.optional(),
 		relatedProductIds: z.array(z.string().min(1)).max(12).optional(),
 		upsellProductIds: z.array(z.string().min(1)).max(12).optional(),
 		crossSellProductIds: z.array(z.string().min(1)).max(12).optional(),
@@ -169,6 +192,10 @@ export const AdminProductDetail = z.object({
 	replacementPath: z.string().nullable(),
 	shipping: ProductShippingDefaults,
 	hsnCode: z.string().nullable(),
+	/** The form's language-bound text, options and images, as stored. */
+	content: ProductContentWrite,
+	/** Picture of each attached image, for the form's tiles. */
+	images: z.array(z.object({ assetId: z.string(), url: z.string() })),
 	relatedProductIds: z.array(z.string()),
 	upsellProductIds: z.array(z.string()),
 	crossSellProductIds: z.array(z.string()),
@@ -221,3 +248,59 @@ export const StockAlertWrite = z.object({
 	variantSku: z.string().min(1),
 });
 export type StockAlertWrite = z.infer<typeof StockAlertWrite>;
+
+/** A new product starts disabled, with one base variant, and is finished on the form. */
+export const ProductCreate = z.object({
+	type: ProductType,
+	sku: z.string().trim().min(1).max(64),
+	title: z.object({ en: z.string().trim().min(1).max(300) }).catchall(z.string().max(300)),
+	basePriceINR: WholeRupee.default(0),
+});
+export type ProductCreate = z.infer<typeof ProductCreate>;
+
+/** What stops a product going live. `locale` is null when the gap is not language-bound. */
+export const GoLiveGap = z.object({ field: z.string(), locale: z.string().nullable() });
+export type GoLiveGap = z.infer<typeof GoLiveGap>;
+
+/** Same answer from the form and the list: live, or the gaps and nothing changed. */
+export const GoLiveResult = z.object({ live: z.boolean(), gaps: z.array(GoLiveGap) });
+export type GoLiveResult = z.infer<typeof GoLiveResult>;
+
+export const AdminCategoryWrite = z.object({
+	name: TextByLocale,
+	description: TextByLocale,
+	seoTitle: TextByLocale,
+	seoDescription: TextByLocale,
+	slug: Slug,
+	parentId: z.string().min(1).nullable(),
+	/** Further parents this category also appears under. */
+	alsoUnder: z.array(z.string().min(1)).max(20),
+	displayOrder: z.number().int().default(0),
+});
+export type AdminCategoryWrite = z.infer<typeof AdminCategoryWrite>;
+
+export const AdminCategoryRow = z.object({
+	id: z.string(),
+	name: z.record(z.string(), z.string()),
+	description: z.record(z.string(), z.string()),
+	seoTitle: z.record(z.string(), z.string()),
+	seoDescription: z.record(z.string(), z.string()),
+	slug: z.string(),
+	parentId: z.string().nullable(),
+	alsoUnder: z.array(z.string()),
+	path: z.string().nullable(),
+	productCount: z.number().int().nonnegative(),
+});
+export type AdminCategoryRow = z.infer<typeof AdminCategoryRow>;
+
+export const AdminAttributeWrite = AttributeDefinition.omit({ createdAt: true, updatedAt: true, id: true });
+export type AdminAttributeWrite = z.infer<typeof AdminAttributeWrite>;
+
+/** The bundle tab. Its id and product come from the address. */
+export const ProductBundleWrite = z.object({
+	bundleType: BundleType,
+	pricePolicy: BundlePricePolicy,
+	fixedPriceINR: WholeRupee.nullable().default(null),
+	groups: z.array(BundleGroup).min(1),
+});
+export type ProductBundleWrite = z.infer<typeof ProductBundleWrite>;

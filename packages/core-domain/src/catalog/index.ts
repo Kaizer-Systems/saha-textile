@@ -9,3 +9,5 @@ export * from './search-index';
 export * from './weekly-badges';
 export * from './weekly-insight';
 export * from './stock-alerts';
+export * from './go-live';
+export * from './variant-matrix';

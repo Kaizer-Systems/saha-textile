@@ -17,6 +17,7 @@ import {
 } from '@saha-textile/contracts';
 import {
 	normaliseSourcePath,
+	productGallery,
 	repointedRows,
 	mrpPriceINR,
 	resolveImage,
@@ -41,6 +42,7 @@ import {
 import { randomUUID } from 'node:crypto';
 
 import { productReadModel, skuView } from './catalog-read-model';
+import { applyProductContent, syncVariantRows } from './product-content';
 import {
 	ADDON_TEMPLATE_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
@@ -140,7 +142,7 @@ export class CatalogService {
 		return row;
 	}
 
-	private async upsertRedirect(input: Omit<SeoRedirect, 'id'>): Promise<SeoRedirect> {
+	async upsertRedirect(input: Omit<SeoRedirect, 'id'>): Promise<SeoRedirect> {
 		const existing = await this.redirects.findBySource(input.sourcePath);
 		const saved = await this.redirects.save({ ...input, id: existing?.id ?? `redir_${randomUUID()}` });
 		const others = (await this.redirects.list()).filter((row) => row.sourcePath !== saved.sourcePath);
@@ -257,6 +259,20 @@ export class CatalogService {
 			replacementPath: product.replacementTarget?.path ?? null,
 			shipping: product.shippingDefaults,
 			hsnCode: product.hsnCode,
+			content: {
+				title: product.title,
+				shortDescription: product.shortDescription,
+				description: product.description ?? {},
+				metaTitle: product.seo?.title ?? {},
+				metaDescription: product.seo?.description ?? {},
+				categoryIds: product.categoryIds,
+				optionGroups: product.optionGroups,
+				imageMode: product.imageMode,
+				gallery: product.media.gallery,
+				compound: product.media.compound,
+				altOverrides: product.media.altOverrides,
+			},
+			images: await this.imageTiles(product),
 			relatedProductIds: relationIds.related,
 			upsellProductIds: relationIds.upsell,
 			crossSellProductIds: relationIds.cross_sell,
@@ -311,6 +327,9 @@ export class CatalogService {
 		const product = await this.getProduct(idOrSlug, 'admin');
 		if (product.status === 'discontinued') {
 			throw new BadRequestException('A discontinued product cannot be edited here');
+		}
+		if (body.status === 'live' && product.status !== 'live') {
+			throw new BadRequestException('Use Go Live, which checks that the product is ready');
 		}
 		const published = isPublished(product);
 		if (published && body.sku !== product.sku) {
@@ -370,6 +389,7 @@ export class CatalogService {
 			hsnCode: body.hsnCode,
 			basePriceINR: selling.length ? Math.min(...selling) : product.basePriceINR,
 			onSale: live.some((row) => row.salePriceINR !== null && row.salePriceINR < row.priceINR),
+			...(body.content ? applyProductContent(product, body.content) : {}),
 		};
 		const stocked = (list: readonly ProductVariant[]) => list.reduce((sum, row) => sum + row.stock.quantity, 0);
 		const received = nextRows.reduce(
@@ -385,6 +405,7 @@ export class CatalogService {
 		await this.inTransaction(async () => {
 			await this.products.save(next);
 			for (const row of nextRows) await this.variants.save(row);
+			if (body.content) for (const row of syncVariantRows(next, priced)) await this.variants.save(row);
 			if (renamed) {
 				// One locale-free row: the resolver gives /en/ and /fr/ their own target.
 				await this.upsertRedirect({
@@ -410,7 +431,7 @@ export class CatalogService {
 	}
 
 	/** The index is derived and rebuildable, so a failed update never fails the save. */
-	private async syncSearch(product: Product): Promise<void> {
+	async syncSearch(product: Product): Promise<void> {
 		try {
 			if (product.status === 'live') {
 				const variants = await this.variants.listForProduct(product.id, 'public');
@@ -421,7 +442,7 @@ export class CatalogService {
 		}
 	}
 
-	private async inTransaction(write: () => Promise<void>) {
+	async inTransaction(write: () => Promise<void>) {
 		if (this.transactions) await this.transactions.withTransaction(write);
 		else await write();
 	}
@@ -439,6 +460,15 @@ export class CatalogService {
 			ids[relationType] = rows.filter((row) => row.source === 'manual').map((row) => row.targetId);
 		}
 		return ids;
+	}
+
+	private async imageTiles(product: Product) {
+		const ids = [...new Set([...product.media.gallery, ...productGallery(product)])];
+		const assets = await this.assetsFor(ids);
+		return ids.flatMap((assetId) => {
+			const url = this.thumbnail(assets.get(assetId));
+			return url ? [{ assetId, url }] : [];
+		});
 	}
 
 	private async assetsFor(ids: string[]): Promise<Map<string, MediaAsset>> {
@@ -546,12 +576,7 @@ export class CatalogService {
 		await this.record(actorUserId, 'catalog.addon-template.remove', code, { code });
 	}
 
-	private async record(
-		actorUserId: string | null,
-		action: string,
-		entityId: string,
-		metadata: Record<string, unknown>,
-	) {
+	async record(actorUserId: string | null, action: string, entityId: string, metadata: Record<string, unknown>) {
 		if (!this.audit) return;
 		const entry: AuditLog = {
 			id: `audit_${randomUUID()}`,

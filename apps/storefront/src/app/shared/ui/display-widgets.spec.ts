@@ -130,8 +130,8 @@ describe('About', () => {
 });
 
 describe('Links', () => {
-	it('leaves the Cookie settings link off by default', () => {
-		expect((create(Links) as Links).cookieSettings()).toBe(false);
+	it('leaves the Customer Service links off by default', () => {
+		expect((create(Links) as Links).customerService()).toBe(false);
 	});
 });
 

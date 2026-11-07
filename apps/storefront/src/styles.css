@@ -12,3 +12,10 @@
 @import 'swiper/swiper-bundle.css';
 @import './scss/app.gen.css';
 @import './scss/theme-color.css';
+
+/* Inside the installed app. In CSS, not code, so the link never flashes before the page loads. */
+@media (display-mode: standalone) {
+	.hide-when-installed {
+		display: none !important;
+	}
+}

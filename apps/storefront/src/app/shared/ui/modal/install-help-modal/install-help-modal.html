@@ -1,0 +1,28 @@
+<div class="modal-header">
+	<h3
+		class="fw-semibold"
+		id="install_help_title"
+	>
+		{{ 'install_app' | transloco }}
+	</h3>
+	<app-button
+		[class]="'btn btn-close'"
+		[spinner]="false"
+		[id]="'install_help_close_btn'"
+		(click)="modal.dismiss('Cross click')"
+	>
+		<i class="ri-close-line"></i>
+	</app-button>
+</div>
+<div>
+	<div class="modal-body policy-body">
+		<ol class="list-group list-group-flush list-group-numbered">
+			@for (step of steps; track step) {
+			<li
+				class="list-group-item text-content border-0 px-0 py-1"
+				[innerHTML]="step | transloco"
+			></li>
+			}
+		</ol>
+	</div>
+</div>

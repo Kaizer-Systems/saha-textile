@@ -8,11 +8,12 @@
 			<div class="col-xxl-3 d-xxl-block d-none">
 				<div class="top-left-header">
 					<a
-						class="text-white"
-						href="https://www.apple.com/in/store"
-						target="_blank"
+						class="hide-when-installed text-white"
+						href="javascript:void(0)"
+						id="get_the_app_top_link"
+						(click)="install.open()"
 					>
-						<i class="ri-apple-line"></i>
+						<i class="ri-download-2-line"></i>
 						<span class="text-white">{{ 'get_the_app' | transloco }}</span>
 					</a>
 				</div>

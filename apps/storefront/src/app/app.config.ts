@@ -46,6 +46,7 @@ import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-
 import { LoaderInterceptor } from './core/interceptors/loader.interceptor';
 import { provideAppUpdate } from './core/pwa/app-update';
 import { QUERY_CLIENT, isPublicRequest } from './core/query/query-client';
+import { provideInstallApp } from './shared/ui/modal/install-help-modal/install-app';
 
 export const appConfig: ApplicationConfig = {
 	providers: [
@@ -129,6 +130,7 @@ export const appConfig: ApplicationConfig = {
 		provideClientHydration(withHttpTransferCacheOptions({ filter: isPublicRequest }), withEventReplay()),
 		provideZoneChangeDetection({ eventCoalescing: true }),
 		provideAppUpdate(),
+		provideInstallApp(),
 		provideToastr({
 			positionClass: 'toast-top-center',
 			preventDuplicates: true,

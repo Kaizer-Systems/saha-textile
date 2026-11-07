@@ -744,5 +744,15 @@
 	"checkout_closed": "Online ordering opens soon",
 	"checkout_closed_detail": "Your cart is saved. You cannot place an order on this site yet.",
 	"back_to_cart": "Back to cart",
-	"bundle_not_on_sale": "This set cannot be bought yet."
+	"bundle_not_on_sale": "This set cannot be bought yet.",
+	"install_app": "Install the app",
+	"install_ios_step_1": "Tap the <b>Share</b> button <i class=\"ri-share-box-line\"></i> in Safari.",
+	"install_ios_step_2": "Scroll down and tap <b>Add to Home Screen</b>.",
+	"install_ios_step_3": "Tap <b>Add</b>. The shop now opens from your home screen.",
+	"install_mac_step_1": "In the menu bar, choose <b>File</b>.",
+	"install_mac_step_2": "Choose <b>Add to Dock</b>.",
+	"install_mac_step_3": "Click <b>Add</b>. The shop now opens from your Dock.",
+	"install_other_step_1": "Open your browser's menu.",
+	"install_other_step_2": "Choose <b>Install app</b> or <b>Add to Home Screen</b>.",
+	"install_other_step_3": "If you don't see either, open this shop in Chrome, Edge or Safari."
 }

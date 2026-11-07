@@ -1,8 +1,9 @@
-import { Component, input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
+import { InstallApp } from '@shared/ui/modal/install-help-modal/install-app';
 
 import { Currency } from '../currency/currency';
 import { Language } from '../language/language';
@@ -16,4 +17,5 @@ import { Notice } from '../notice/notice';
 })
 export class Topbar {
 	readonly data = input<ISiteConfig | null>();
+	readonly install = inject(InstallApp);
 }

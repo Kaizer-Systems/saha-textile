@@ -1,3 +1,5 @@
+import type { Page } from '@playwright/test';
+
 import { expect, test } from './support';
 
 /**
@@ -48,5 +50,92 @@ test.describe('installable app', () => {
 		expect(await page.evaluate(() => navigator.serviceWorker.controller?.state)).toBe('activated');
 		expect(throughWorker).toEqual([]);
 		expect(await page.evaluate(() => caches.keys())).toEqual([]);
+	});
+});
+
+test.describe('Get the App', () => {
+	const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Mobile/15E148 Safari/604.1';
+	const popup = (page: Page) => page.locator('ngb-modal-window', { has: page.locator('#install_help_close_btn') });
+
+	/** Opens the footer's Customer Service list on a phone, where it is folded away. */
+	async function footerLink(page: Page) {
+		const link = page.locator('#get_the_app_footer_link');
+		await link.scrollIntoViewIfNeeded();
+		if (!(await link.isVisible())) await page.getByRole('heading', { name: 'Customer Service' }).click();
+		await expect(link).toBeVisible();
+		return link;
+	}
+
+	test('the footer link shows the general steps when the browser has no offer', async ({ page }) => {
+		await page.goto('/en/');
+		await (await footerLink(page)).click();
+		await expect(popup(page).getByRole('heading', { name: 'Install the app' })).toBeVisible();
+		await expect(popup(page).locator('li')).toHaveCount(3);
+		await expect(popup(page).locator('li').first()).toHaveText("Open your browser's menu.");
+		await popup(page).locator('#install_help_close_btn').click();
+		await expect(popup(page)).toBeHidden();
+	});
+
+	test('a browser that offers to install gets its own prompt, not the popup', async ({ page }) => {
+		await page.goto('/en/');
+		const link = await footerLink(page);
+		await page.evaluate(() => {
+			const offer = Object.assign(new Event('beforeinstallprompt'), {
+				prompt: async () => document.documentElement.setAttribute('data-prompted', 'yes'),
+			});
+			window.dispatchEvent(offer);
+		});
+		await link.click();
+		await expect(page.locator('html')).toHaveAttribute('data-prompted', 'yes');
+		await expect(popup(page)).toBeHidden();
+	});
+
+	test('both links are marked to hide inside the installed app', async ({ page }) => {
+		await page.goto('/en/');
+		await expect(page.locator('#get_the_app_top_link')).toHaveClass(/hide-when-installed/);
+		await expect(page.locator('li:has(> #get_the_app_footer_link)')).toHaveClass(/hide-when-installed/);
+
+		// Chrome cannot emulate an installed app, so this checks the rule that does the hiding.
+		const rule = await page.evaluate(() => {
+			const find = (rules: CSSRuleList): string | undefined => {
+				for (const rule of Array.from(rules)) {
+					if (rule instanceof CSSMediaRule && rule.cssText.includes('hide-when-installed'))
+						return rule.conditionText;
+					if (rule instanceof CSSImportRule && rule.styleSheet) {
+						const found = find(rule.styleSheet.cssRules);
+						if (found) return found;
+					}
+				}
+				return undefined;
+			};
+			const local = Array.from(document.styleSheets).filter((sheet) => sheet.href?.startsWith(location.origin));
+			return local.map((sheet) => find(sheet.cssRules)).find(Boolean);
+		});
+		expect(rule).toBe('(display-mode: standalone)');
+	});
+
+	test.describe('wide screens', () => {
+		test.skip(({ isMobile }) => isMobile, 'the top bar link shows at 1400 px and wider');
+		test.use({ viewport: { width: 1600, height: 900 } });
+
+		test('the top bar link installs, and no longer goes to apple.com', async ({ page }) => {
+			await page.goto('/fr/');
+			const link = page.locator('#get_the_app_top_link');
+			await expect(link).toHaveText(/Obtenir l.application/);
+			await expect(link.locator('i')).toHaveClass('ri-download-2-line');
+			await link.click();
+			await expect(popup(page).getByRole('heading', { name: /Installer l.application/ })).toBeVisible();
+		});
+	});
+
+	test.describe('iPhone', () => {
+		test.use({ userAgent: IPHONE });
+
+		test('shows the Add to Home Screen steps', async ({ page }) => {
+			await page.goto('/en/');
+			await (await footerLink(page)).click();
+			await expect(popup(page).locator('li').nth(1)).toHaveText('Scroll down and tap Add to Home Screen.');
+			await expect(popup(page).locator('li i.ri-share-box-line')).toBeVisible();
+		});
 	});
 });

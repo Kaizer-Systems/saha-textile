@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-import { CatalogRupee, I18nString, Id, IsoDateTime, PriceINR, SeoMeta, Slug } from './common';
+import { CatalogRupee, I18nString, Id, IsoDateTime, LocalizedText, PriceINR, SeoMeta, Slug } from './common';
 import { ProductOptionGroupSet } from './product-options';
 
-export const ProductType = z.enum(['simple', 'variable']);
+export const ProductType = z.enum(['simple', 'variable', 'bundle']);
 export type ProductType = z.infer<typeof ProductType>;
 
 /**
@@ -123,15 +123,24 @@ export const Product = z.object({
 	title: I18nString,
 	slug: Slug,
 	description: I18nString.optional(),
+	/** The card and search summary, in each language. */
+	shortDescription: LocalizedText.default({}),
 	categoryIds: z.array(Id).default([]),
 	tags: z.array(z.string()).default([]),
 	/** Canonical base price in INR. */
 	basePriceINR: PriceINR,
+	/** Simple is one gallery; compound is one per variant combination. Switching parks the other. */
+	imageMode: z.enum(['simple', 'compound']).default('simple'),
 	media: z
 		.object({
+			/** Asset ids in order. Position 1 is the primary image. */
 			gallery: z.array(z.string()).default([]),
+			/** One ordered gallery per variant combination, kept while in simple mode. */
+			compound: z.array(z.object({ selectionHash: z.string().min(1), gallery: z.array(z.string()) })).default([]),
+			/** Alt text set here, per asset, in each language. Empty inherits the media library. */
+			altOverrides: z.record(z.string(), LocalizedText).default({}),
 		})
-		.default({ gallery: [] }),
+		.default({ gallery: [], compound: [], altOverrides: {} }),
 	attributes: z.array(Attribute).default([]),
 	/**
 	 * Per-product option groups: variation axes, named add-ons, filter-only facts, and bundle

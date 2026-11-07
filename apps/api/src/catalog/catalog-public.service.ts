@@ -16,6 +16,7 @@ import {
 	retiredCollectionRow,
 	parseAttributeFilter,
 	parsePriceRanges,
+	productGallery,
 	resolveImage,
 	liveRelations,
 	type AddonTemplateRepository,
@@ -89,8 +90,8 @@ export class CatalogPublicService {
 		const read = productReadModel(product, rows, variant);
 		const groups = product.optionGroups.length ? product.optionGroups : groupsFromAttributes(product);
 		const swatchIds = groups.flatMap((group) => group.terms.flatMap((term) => term.swatchAssetId ?? []));
-		const assets = await this.assetsFor([...product.media.gallery, ...swatchIds]);
-		const gallery = product.media.gallery.flatMap((id) => {
+		const assets = await this.assetsFor([...productGallery(product), ...swatchIds]);
+		const gallery = productGallery(product).flatMap((id) => {
 			const image = this.image(assets.get(id), ['gallery', 'zoom']);
 			return image ? [{ id, image }] : [];
 		});
@@ -337,8 +338,8 @@ export class CatalogPublicService {
 
 	async gallery(slug: string): Promise<CatalogGallery> {
 		const product = await this.requireLive(slug);
-		const assets = await this.assetsFor(product.media.gallery);
-		const frames = product.media.gallery.flatMap((id) => {
+		const assets = await this.assetsFor(productGallery(product));
+		const frames = productGallery(product).flatMap((id) => {
 			const image = this.image(assets.get(id), ['gallery', 'zoom']);
 			return image ? [image] : [];
 		});
@@ -453,13 +454,13 @@ export class CatalogPublicService {
 
 	private async cards(products: Product[], known?: ReadonlyMap<string, ProductVariant[]>): Promise<CatalogCard[]> {
 		const variants = known ?? (await this.variantsByProduct(products));
-		const assets = await this.assetsFor(products.flatMap((product) => product.media.gallery.slice(0, 1)));
+		const assets = await this.assetsFor(products.flatMap((product) => productGallery(product).slice(0, 1)));
 		return products.map((product) => this.card(product, variants.get(product.id) ?? [], assets));
 	}
 
 	private card(product: Product, rows: ProductVariant[], assets: Map<string, MediaAsset>): CatalogCard {
 		const read = productReadModel(product, rows);
-		const primary = product.media.gallery[0];
+		const primary = productGallery(product)[0];
 		return CatalogCard.parse({
 			id: product.id,
 			slug: product.slug,

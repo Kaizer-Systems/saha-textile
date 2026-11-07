@@ -350,6 +350,12 @@ describe('admin list and detail', () => {
 		});
 	});
 
+	it('gives the form a picture for each image it can show', async () => {
+		const row = product({ media: { gallery: ['m1', 'gone'], compound: [], altOverrides: {} } });
+		const detail = await build({ row, rows: [variant()], assets: [asset] }).service.adminDetail('red-saree');
+		expect(detail.images).toEqual([{ assetId: 'm1', url: 'https://cdn.test/k' }]);
+	});
+
 	it('falls back to the base price, and to no thumbnail', async () => {
 		const list = await build({ rows: [] }).service.adminList({ page: 1, pageSize: 20 } as never);
 		expect(list.items[0]).toMatchObject({ sellingFromINR: 1000, thumbnailUrl: null });
@@ -560,7 +566,7 @@ describe('saving the product form', () => {
 	});
 
 	it('marks the first time a product goes live', async () => {
-		const row = product({ status: 'draft', lifecycle: { liveAt: null } });
+		const row = product({ status: 'live', lifecycle: { liveAt: null } });
 		const { service, products } = build({ row });
 		await service.updateMerchandising('red-saree', form());
 		expect((products.save.mock.calls[0] as unknown as [Row])[0].lifecycle.liveAt).toEqual(expect.any(String));
@@ -725,7 +731,7 @@ describe('catalogue controllers', () => {
 			discontinue: vi.fn(async () => 'gone'),
 			updateMerchandising: vi.fn(async () => 'saved'),
 		};
-		const controller = new AdminProductsController(catalog as never);
+		const controller = new AdminProductsController(catalog as never, {} as never);
 		expect(await controller.list({ page: 1 } as never)).toBe('list');
 		expect(await controller.replacementTargets()).toBe('targets');
 		expect(await controller.detail('p')).toBe('detail');

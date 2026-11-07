@@ -251,6 +251,7 @@ function optionGroupsFor(product: DemoProduct, variable: boolean, frames: readon
 					code: slugify(term.slug || label),
 					label: text(label, label),
 					isBase: isBaseLabel(label),
+				hidden: false,
 					...(hex ? { hex } : {}),
 					...(style === 'image_swatch' ? { swatchAssetId: frames[index % frames.length]! } : {}),
 					addonTemplateIds: [],
@@ -429,6 +430,7 @@ export function mapDemoCatalogue(input: {
 		return {
 			id: `cat_${category.id}`,
 			name: text(category.name, category.slug || `Category ${category.id}`),
+			description: {},
 			slug: claim(
 				categorySlugs,
 				slugify(category.slug || slugs.at(-1) || `category-${category.id}`),
@@ -498,6 +500,7 @@ export function mapDemoCatalogue(input: {
 				...(style === 'image_swatch' ? { swatchAssetId: frames[index % frames.length]! } : {}),
 				aliases: [],
 				isBase: isBaseLabel(label),
+				hidden: false,
 			};
 		});
 		if (!existing) {
@@ -556,6 +559,7 @@ export function mapDemoCatalogue(input: {
 						code: slugify(term.slug || label),
 						label: text(label, label),
 						isBase: isBaseLabel(label),
+				hidden: false,
 						...(hex ? { hex } : {}),
 						...(style === 'image_swatch' ? { swatch: frames[termIndex % frames.length]! } : {}),
 					};
@@ -570,10 +574,12 @@ export function mapDemoCatalogue(input: {
 			title: text(product.name, slug),
 			slug,
 			description: product.description ? text(product.description, '') : undefined,
+			shortDescription: {},
+			imageMode: 'simple',
 			categoryIds,
 			tags: (product.tags ?? []).map((tag) => tag.slug || tag.name || '').filter(Boolean),
 			basePriceINR: onSale ? sale : price,
-			media: { gallery: [...frames] },
+			media: { gallery: [...frames], compound: [], altOverrides: {} },
 			attributes,
 			optionGroups: optionGroupsFor(product, variable, frames),
 			variations: [],
@@ -735,6 +741,7 @@ export function mapDemoCatalogue(input: {
 					slug: term.code,
 					aliases: [],
 					isBase: term.isBase,
+					hidden: false,
 				})),
 			});
 		}

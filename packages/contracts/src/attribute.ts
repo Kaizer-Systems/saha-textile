@@ -67,6 +67,8 @@ export const AttributeDefinitionTerm = z.object({
 	aliases: z.array(z.string()).default([]),
 	/** Base/material-only term (e.g. `no_stitching`, `no_blouse`) — maps to `isBaseVariant`. */
 	isBase: z.boolean().default(false),
+	/** Kept for products already using it, but no longer offered for new ones. */
+	hidden: z.boolean().default(false),
 });
 export type AttributeDefinitionTerm = z.infer<typeof AttributeDefinitionTerm>;
 

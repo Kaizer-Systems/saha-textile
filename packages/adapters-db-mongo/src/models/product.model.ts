@@ -3,15 +3,17 @@ import { type Model, Schema, model, models } from 'mongoose';
 
 export interface ProductDoc {
 	_id: string;
-	type: 'simple' | 'variable';
+	type: 'simple' | 'variable' | 'bundle';
 	sku: string;
 	title: Record<string, string>;
 	slug: string;
 	description?: Record<string, string>;
+	shortDescription?: Record<string, string>;
+	imageMode?: 'simple' | 'compound';
 	categoryIds: string[];
 	tags: string[];
 	basePriceINR: number;
-	media: { gallery: string[] };
+	media: { gallery: string[]; compound?: unknown[]; altOverrides?: Record<string, unknown> };
 	attributes: unknown[];
 	optionGroups?: unknown[];
 	variations: unknown[];
@@ -62,6 +64,8 @@ const ProductSchema = new Schema<ProductDoc>(
 		title: { type: Schema.Types.Mixed, required: true },
 		slug: { type: String, required: true },
 		description: { type: Schema.Types.Mixed },
+		shortDescription: { type: Schema.Types.Mixed, default: {} },
+		imageMode: { type: String, enum: ['simple', 'compound'], default: 'simple' },
 		categoryIds: { type: [String], default: [] },
 		tags: { type: [String], default: [] },
 		basePriceINR: { type: Number, required: true },

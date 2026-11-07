@@ -3,7 +3,7 @@ title: Database Overview
 description: How MongoDB is used, what the adapter holds, and where to find database documentation.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - packages/adapters-db-mongo/src
     - packages/contracts/src

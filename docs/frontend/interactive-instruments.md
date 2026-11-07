@@ -3,7 +3,7 @@ title: Interactive Instruments
 description: Interactive reference components in the portal, and how their data is maintained.
 status: scaffolded
 audience: [frontend]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
     - docs/engineering-live-context/codex-auth-architecture-db-and-request-plan.mdx

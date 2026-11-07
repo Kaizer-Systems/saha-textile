@@ -4,7 +4,7 @@
 
 ## 1. What this is
 
-- A full custom rebuild of **sahatextile.com** (Kolkata saree/textile retailer, ~23 live products / ~40 SKUs) off WooCommerce.
+- A full custom rebuild of **sahatextile.com** (Kolkata saree/textile retailer) off WooCommerce. The old site held only test products; the real catalogue will be large, so never size anything on today's count.
 - **Three product apps + a docs portal in one monorepo:** storefront (public Angular PWA), admin panel (Angular), API (NestJS), and a private developer portal (Docusaurus).
 - **Scope discipline:** boutique e-commerce. Do **not** build Amazon/Flipkart-scale complexity (no marketplace, multi-vendor, warehouse mgmt, recommendation ML). Favour clean, maintainable, secure.
 
@@ -94,9 +94,9 @@ this rule exists to prevent. Full text: `owner-decisions-log.mdx` § `DEC-UI-REU
 ## 7. Git & PR workflow (rulesets are ACTIVE — see project-context for details)
 
 - **Repo visibility:** the GitHub repo is **public** (required to keep branch rulesets on the org Free plan; also gives unlimited Actions minutes). Deployment images are published as **private GHCR packages** (package visibility is independent of repo visibility). Because the source is public, secret hygiene is non-negotiable: never commit secrets, never ship them to the browser bundle.
-- **Protected branches:** `main`, `dev`, `qa`, `staging`. **Never push directly — always via PR.**
-- **`main` + `staging`:** linear history + signed commits ⇒ **merge via SQUASH only** (UI). Merge-commits and rebase-merge are blocked there.
-- **`dev` + `qa`:** PR + 1 approval; any merge method.
+- **Protected branches:** `main`, `dev`, `staging`. **Never push directly — always via PR.** Code moves `dev → staging → main` (owner decision 2026-11-08; `qa` retires).
+- **`dev → staging → main`:** normal merge commits, never squash (squash between permanent branches causes conflicts). `main` + `staging` keep signed commits. Until the rulesets are changed, they still enforce linear history. See `production-deployment-plan.mdx`.
+- **Feature branches into `dev`:** PR + 1 approval; any merge method.
 - Branch naming: `feat/<scope>`, `fix/<scope>`, `chore/<scope>`.
 - **Open PRs; never merge to a protected branch without explicit human approval.** The human is the sole reviewer/admin.
 - Local commit signing (SSH/GPG) must be configured.

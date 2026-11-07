@@ -45,7 +45,6 @@ search_keywords: 'pending decisions owner questions implementation gates unresol
 | `DEC-SCOPE-GAPS`            | Missing business flows and launch scope                                                              | Whole product                                 |
 | `DEC-PAYPAL-FX`             | Treatment of PayPal FX-conversion markup                                                             | Foreign-currency pricing and margin           |
 | `DEC-INR-GATEWAY-TIMING`    | Timing of CCAvenue-to-Razorpay succession                                                            | Payment adapter delivery and operations       |
-| `DEC-SECRETS-DELIVERY`      | How running containers receive secrets                                                               | Deploy scripts, API boot                      |
 | `DEC-PORTAL-PRIVATE-ACCESS` | Developer-portal identity policy and origin-protection mechanism                                     | Portal deployment, Cloudflare, service access |
 
 ---
@@ -656,54 +655,6 @@ Notes:
 
 ---
 
-## 22. `DEC-SECRETS-DELIVERY` — How running containers receive secrets
-
-### Decision needed
-
-Choose how staging and production containers get their secrets. Secrets stay out of images and
-the browser in every option.
-
-### Why this matters
-
-It sets the deploy scripts, whether the API needs a file-based secret loader, and whether another
-service can stop the shop starting.
-
-### Recommended route
-
-GitHub encrypted secrets written at deploy to root-only files, mounted read-only into each
-container.
-
-### Options
-
-#### Option A — GitHub and mounted files (recommended)
-
-- Pros: $0; nothing new that can stop startup; values stay out of `docker inspect`.
-- Cons: needs a small API boot loader; GitHub cannot show a value again, so the owner keeps a master copy.
-
-#### Option B — GitHub and an env file
-
-- Pros: $0 and no code change.
-- Cons: values sit in plain text in Docker's container config and show in `docker inspect`.
-
-#### Option C — A secrets service (Doppler, Infisical or Bitwarden)
-
-- Pros: one central place and easier rotation; each free tier covers local, staging and production.
-- Cons: fetched at startup, an outage can stop the shop returning after a reboot, and a login token
-  must live on the droplet. Having the deploy job fetch and write the mounted files avoids both.
-- Cons: free tiers offer little or no audit history.
-
-### Status note (2026-11-06)
-
-The owner compared these and will decide later. This gate blocks the deploy scripts only.
-
-### Owner answer
-
-Choice:
-
-Notes:
-
----
-
 ## 24. `DEC-PORTAL-PRIVATE-ACCESS` — Developer-portal private-access design
 
 ### Decision needed
@@ -744,6 +695,10 @@ tokens for CI or machine readers.
 
 - Pros: works with a conventional origin topology.
 - Cons: more origin hardening and bypass testing; mistakes can expose static assets.
+
+### Status note (2026-11-08)
+
+The owner chose to keep the portal local for now. This stays open until hosting is wanted.
 
 ### Status note (2026-08-13)
 

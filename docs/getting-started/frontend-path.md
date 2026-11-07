@@ -3,7 +3,7 @@ title: Frontend Path
 description: Reading path for storefront and admin developers.
 status: scaffolded
 audience: [frontend]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/storefront/src/app
     - apps/admin/src/app

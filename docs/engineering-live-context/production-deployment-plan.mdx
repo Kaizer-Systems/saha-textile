@@ -1,0 +1,247 @@
+---
+title: 'Production Deployment Plan'
+description: 'The agreed path from a merged change to the live shop: branches, images, secrets, droplet, Cloudflare, backups, monitoring and the DNS switch.'
+audience: [engineering, operator, agent]
+document_role: canonical
+last_verified: 2026-11-08
+search_keywords: 'deployment plan github actions ghcr digest droplet cloudflare tunnel origin certificate backups rollback staging production'
+---
+
+# Production Deployment Plan — Saha Textile
+
+**Status:** Agreed with the owner on 2026-11-08. Nothing here is built yet. Decisions are also in `owner-decisions-log.mdx`, which wins on conflict.
+
+**Current status authority:** `project-progress.mdx`
+
+**Work list:** Chunk J in `api-db-development-roadmap-with-pending-decision-gates.mdx`, and the build order at the end of this page.
+
+## 1. Branches and the release path
+
+Code moves `feature → dev → staging → main`, with a normal merge commit at every step.
+
+- Squash is for short-lived branches. A squash records no link back to its source, so squashing between permanent branches makes Git compare against old history. Tested in a scratch repository: with squash, the second release conflicted. With normal merges, six releases in a row were clean, with no back-merge.
+- `git log --first-parent main` shows one line per release.
+- The `qa` branch retires. `main` and `staging` lose the linear-history rule and keep signed commits, PR-only, no force-push and no deletion. GitHub signs web merge commits.
+- Five July commits on `dev` are unsigned. The first merges into `staging` and `main` may need the owner's admin bypass, once.
+
+A release:
+
+1. A PR merges into `dev` after the four CI jobs pass.
+2. A PR merges `dev` into `staging`. CI passes, then a publish workflow builds the three images once, starts them, scans them and pushes them to GHCR.
+3. The images deploy to the staging droplet by digest. The owner creates the droplet first if it does not exist.
+4. Staging checks run. On a pass, the workflow records the Git tree hash against the three digests.
+5. A PR merges `staging` into `main`.
+6. The push to `main` starts the production workflow. It finds the digests through the tree hash, and stops if that code was never tested. The commit ID differs on `main`, but the tree hash is identical.
+7. It waits for the owner's approval in the `production` GitHub Environment.
+8. It takes a backup, deploys the same digests, runs the checks, and rolls back automatically on failure.
+
+**Emergency switch:** a logged workflow option can skip staging for a broken shop. CI and the owner's approval still apply.
+
+**Prevent self-review stays off** on the Environment, because the owner is the only reviewer.
+
+## 2. Images and GHCR
+
+- `docker/images/Dockerfile` builds `api` (also the worker), `storefront` and `admin`.
+- Tags carry the commit and the tree hash. Deploys always use the digest.
+- Publishing from a workflow links each package to the repository and keeps it private.
+- A cleanup job keeps the last 20 builds plus anything released.
+- Third-party Actions are pinned to full commit SHAs.
+- GHCR storage and bandwidth are free today. GitHub promises at least a month's notice of any change.
+
+## 3. How the droplet gets images
+
+The droplet has no Git clone and no GitHub key. The deploy job copies the Compose and Nginx files from the tested commit, and passes its own read-only `GITHUB_TOKEN` to `docker login ghcr.io`, then logs out.
+
+GitHub's docs name only a classic token outside Actions, so this is proved on the first staging deploy. The fallback is for the job to pull the images and stream them over the tunnel. The last three releases stay on disk, so a reboot or rollback needs no login.
+
+## 4. Secrets
+
+`DEC-SECRETS-DELIVERY` is closed: **GitHub Environment secrets written to mounted read-only files.**
+
+- One GitHub secret per value, per environment. The job renders the files and refuses to start if a name is missing.
+- Files live in a root-only folder and mount read-only into the containers that need them.
+- API and worker set `DOTENV_CONFIG_PATH=/run/secrets/api.env`. No code change is needed: every entry point imports `dotenv/config`. Tested on 2026-11-07 in the real API image as its non-root user with dotenv 18.0.9.
+- MongoDB uses `MONGO_INITDB_ROOT_PASSWORD_FILE`. Redis reads its password from its file at start. Meilisearch uses a mounted config file.
+- A secrets service can replace GitHub later. The deploy job would fetch the values and write the same files, so nothing changes on the droplet.
+- The master copy lives in the owner's **Bitwarden** vault. The backup private key has a second copy in NordPass, because backups are unreadable without it. Both need two-factor sign-in.
+- Rotation: new value, GitHub, redeploy, check, revoke the old one. `CSRF_SECRET` rotates only after a leak: it signs everyone out and strands guest carts.
+
+**The repository is public, so any signed-in GitHub user can read Actions logs.** Deploy output prints pass or fail only. It never prints the droplet's IP, container logs or a credential. First-admin creation runs by hand over SSH.
+
+## 5. The droplet
+
+One script creates staging and production, with `doctl` and a first-boot file. It runs from the owner's Mac for now. It can move to a GitHub pipeline once a proper secrets store exists, so it stops depending on one device.
+
+| Item         | Production                                                      | Staging                                 |
+| ------------ | --------------------------------------------------------------- | --------------------------------------- |
+| Size         | Basic, 4 vCPU, 8 GiB, 160 GiB SSD                               | Basic, 2 vCPU, 4 GiB, 80 GiB SSD        |
+| Region       | Bangalore                                                       | Bangalore                               |
+| Price        | $48 a month                                                     | About $0.036 an hour, capped at $24     |
+| OS           | Ubuntu 26.04 LTS                                                | Same                                    |
+| Data storage | Docker volumes on the droplet's own disk, no extra block volume | Same                                    |
+| Lifetime     | Permanent                                                       | Until the owner runs the destroy script |
+
+- **Users:** root login and password SSH are off. One admin user with sudo. One `deploy` user whose key can run only the deploy script.
+- **Files:** `/opt/saha-textile` is owned by root. The secrets folder is root-only, and each file is readable only by the user inside its container. The MongoDB keyfile is mode 400 and owned by MongoDB's user.
+- **Firewall:** the DigitalOcean Cloud Firewall allows inbound 443 from Cloudflare's ranges only. Docker's published ports bypass UFW, so UFW is a second layer, not the gate.
+- **SSH:** `cloudflared` runs as a service and dials out. People sign in through Cloudflare Access. The deploy job uses an Access service token (`--service-token-id`, `--service-token-secret`) with a Service Auth policy.
+- **fail2ban:** not installed. There is no open SSH port, and behind Cloudflare it would ban Cloudflare's own IPs.
+- **Break-glass:** the Recovery Console, which works with no network. It needs the admin user's password, kept in Bitwarden. The browser Droplet Console needs the SSH port open, so it is not the fallback.
+- **Other settings:** 4 GiB swap, UTC clock, Docker `local` log driver, Docker live-restore, DigitalOcean metrics agent, memory settings for Redis and MongoDB.
+- **Patches and reboots:** security patches install automatically. The owner decides when to reboot. An email goes out when a reboot is pending. If it waits 7 days, the server reboots itself at 4 am IST.
+
+The catalogue is expected to be large. Measured locally, 1,000 products with 1,918 variants take about 13 MB in MongoDB and 38 MB in Meilisearch, and photos live in Spaces. Scaled straight up, 100,000 products need about 1.3 GB and 4 GB, so disk is not the limit. Memory is, and resizing a droplet takes minutes.
+
+## 6. Services
+
+Start order: MongoDB, Redis, Meilisearch, API, worker, storefront, admin, Nginx. A deploy restarts the app containers only.
+
+| Service     | Production difference from the local stack                                                              | Memory cap |
+| ----------- | ------------------------------------------------------------------------------------------------------- | ---------- |
+| MongoDB     | Password login plus keyfile. Separate users for the app and administration. No published port.          | 3 GiB      |
+| Redis       | As local. No published port.                                                                            | 512 MiB    |
+| Meilisearch | `MEILI_ENV=production`. The API uses the admin key, never the master key. No published port.            | 1 GiB      |
+| API         | `DEPLOY_ENV=production`. `/health/ready` must also cover Redis and search.                              | 768 MiB    |
+| Worker      | Same image, 2 CPUs maximum.                                                                             | 1.5 GiB    |
+| Storefront  | Calls the API inside the droplet, through a private Nginx listener. Trusts Cloudflare's Origin CA root. | 768 MiB    |
+| Admin       | Static files with a mounted `config.json`.                                                              | 64 MiB     |
+| Nginx       | Pinned image. Serves the storefront's `config.json` itself.                                             | 128 MiB    |
+
+MongoDB's docs prefer X.509 for production, but a keyfile only protects traffic between replica set members, and this set has one member.
+
+## 7. First run and every deploy
+
+**Once per environment, by hand over SSH:** start the replica set, create the database users, create the Meilisearch admin key, run the first-run setup command, then run `node dist/create-first-admin.js --email <address>` and save the credential in Bitwarden.
+
+**Every deploy, automatic:** check secrets, back up (production), pull by digest, restart apps, wait for health, run `node dist/rebuild-search-index.js`, check that `/config.json` parses on storefront and admin, run a smoke test through Cloudflare, record the release.
+
+`pnpm … release:prepare` cannot run in the image: it has no pnpm or tsx (checked in the local image). That image predates the search script, so `dist/rebuild-search-index.js` itself is still to be run for real.
+
+Any database change must keep working with the previous release, or a rollback breaks.
+
+## 8. Nginx
+
+The production config is new. `docker/stack/nginx/edge.conf` is not a base to copy unchanged:
+
+- It overwrites `CF-Connecting-IP`. Production must take the real IP only from connections Cloudflare made.
+- The admin server's own `add_header` cancels the shared security headers, because of how Nginx inherits them.
+- It has no CSP. Production needs one covering Google sign-in, Meta, CCAvenue, PayPal and the CDN.
+
+It also adds rate limits for sign-in, OTP and checkout, refuses unknown hostnames, and requires the Cloudflare client certificate on the public listener.
+
+### Deploy gap
+
+Each app gets its own "back in a moment" page, in its own look, so it feels familiar.
+
+- Each app produces a self-contained static page at build time: inline styles, no scripts, English and French. Nginx holds the copy, because the app is the thing that is down.
+- It answers 503 with `Retry-After`, refreshes itself and keeps the address. API calls get a short JSON 503.
+- The logo comes from the CDN, with the shop name as a fallback.
+- The gap is measured on staging. Running old and new side by side is added only if the gap is long.
+- It needs a `DEC-UI-REUSE` brief first, reusing each app's error page.
+- Staging must prove a payment return and webhook during a restart. The CCAvenue work must confirm how the gateway retries.
+
+## 9. Cloudflare
+
+The zone already exists, and WordPress sits behind it. Read the current zone settings before changing anything. Staging's Full (strict) may need a per-host rule while WordPress stays.
+
+- **Certificates:** Universal SSL at the edge. A 15-year Origin Certificate per environment on Nginx. Cloudflare sends no expiry warning, so the date goes on a calendar.
+- **Mode:** Full (strict), Always HTTPS, TLS 1.2 minimum, DNSSEC, and HSTS once all hosts are proven.
+- **Origin lockdown:** firewall to Cloudflare's ranges, plus **Authenticated Origin Pulls with our own zone certificate**. The global certificate is shared by all Cloudflare customers, so it proves less. AOP is proven on staging first. It does not apply to tunnel traffic.
+- **WAF (Free plan):** the Free Managed Ruleset and 5 custom rules. One rule lets gateway webhooks through.
+- **Rate limit (Free plan):** 1 rule, 10-second window, counted per IP, matched on path. It covers sign-in and OTP paths. Finer limits live in Nginx and the API.
+- **Off:** Bot Fight Mode, which no rule can skip and which can challenge API traffic. Rocket Loader and email obfuscation, which rewrite HTML.
+- **Staging privacy:** a Cloudflare Access login wall on `staging.` and `admin-staging.`, allowing only the owner. `api-staging.` stays reachable so webhooks work, with `noindex` and no real customer data.
+- **Production admin:** no Access wall at launch. The real sign-in is on `api.`, so a wall on `admin.` would add little.
+
+## 10. Rollback
+
+The deploy script keeps the previous digests. If health or the smoke test fails, it restores them and the run shows red. A manual Rollback workflow does the same later. Rollback restores code, not data.
+
+## 11. Backups
+
+- Nightly `mongodump`, encrypted with an `age` public key, plus the Redis file, to a private Spaces bucket in `sgp1`. Search rebuilds from MongoDB and media is already in Spaces.
+- **Retention:** 30 daily and 12 monthly, by lifecycle rule, with versioning on.
+- Spaces keys are Read or Read/Write/Delete per bucket, and Object Lock is not documented. The server cannot decrypt backups, but its key can delete them. Versioning stops accidents more than a careful attacker. The owner accepted this.
+- Nightly means a total disk loss can lose up to 24 hours of orders.
+- A restore drill on a throwaway droplet runs before launch and every quarter.
+- The staging destroy script saves staging's data, and the create script restores it, so each rebuild is also a restore test. Production data never goes to staging.
+
+## 12. Monitoring
+
+**DigitalOcean only.** No outside monitoring vendor.
+
+- **Metrics and alerts:** the free metrics agent. Alert policies for CPU, memory, disk and load go to the team email.
+- **Uptime:** one free DigitalOcean Uptime check on the storefront. Each further check is $1 a month, and is added only if the owner asks.
+- **Logs:** Docker's `local` driver, about 100 MB per container, read over SSH.
+- **Backups:** the host status file carries the last backup time. The worker emails the owner if it is too old, and the screen shows it. If the worker is down this alert is silent, but the uptime check should catch that case.
+
+### Super admin Server screens
+
+Two admin screens, super admin only. Both are feasible; both need a `DEC-UI-REUSE` brief. They come after the shop is deployed.
+
+**Metrics.** The API fetches DigitalOcean metrics and shows them as graphs with ApexCharts.
+
+- One droplet shows one set of metrics. Several droplets get a named switcher, and a compare view that overlays metrics from several servers.
+- A `HostMetricsPort` in core, with a DigitalOcean adapter. Droplets are found by tag, so a new droplet appears by itself.
+- A read-only token with `monitoring:read` and `droplet:read`. Responses are cached: the API limit is 5,000 requests an hour and 250 a minute.
+- Metrics are for the whole droplet, not each container. Load, memory and disk need the agent. Check how far back data goes when building this; the docs do not say.
+- The screen shows data. Alerts stay with DigitalOcean, because a screen cannot warn anyone while the server is down.
+
+**Patches and reboot.** DigitalOcean reports only its own hardware events, by email. Ubuntu knows about patches.
+
+- A host timer writes a status file: pending patches, reboot flag with packages, last backup, disk. It mounts read-only into the API.
+- The Reboot button needs super admin rights and a PIN check, and it is audited. It writes one request file into a narrow mounted folder. A host watcher performs the reboot.
+- The API never gets root, the Docker socket or a DigitalOcean token that can change anything. A hijacked admin could only reboot the server, limited to once an hour.
+- Until the screen exists, the owner reboots by SSH. Manual fallbacks stay: SSH, the control panel, the Recovery Console.
+
+## 13. Developer portal
+
+**Stays local for now.** It is not hosted. `DEC-PORTAL-PRIVATE-ACCESS` remains open, and its release gate is unchanged.
+
+## 14. The DNS switch
+
+The domain is already on Cloudflare, so there is no nameserver move. Going live changes the `sahatextile.com` and `www` records from Hostinger to the droplet. Flipping back is the same edit.
+
+- **Before:** full WordPress export, the Chunk J URL review, smoke test on the real hosts, a restored backup.
+- **After:** check redirects, send the sitemap to Search Console, watch closely for a day.
+- **WordPress hosting:** decide at launch. Check whether the domain is registered at Hostinger before cancelling anything.
+- **Mail:** MX points to Google and stays. SPF names only Hostinger and no DMARC record exists. This is a separate small fix.
+
+## 15. Cost
+
+| Item                       | Monthly   |
+| -------------------------- | --------- |
+| Production droplet         | $48       |
+| Spaces                     | $5        |
+| Staging droplet            | $0 to $24 |
+| GitHub, GHCR, Actions      | $0        |
+| Cloudflare, Tunnel, Access | $0        |
+| DigitalOcean monitoring    | $0        |
+
+About **$53 a month**, plus staging hours. Usage charges for MSG91, payments and shipping are separate.
+
+## 16. Build order
+
+Every step touching GitHub settings, DigitalOcean or Cloudflare needs the owner's yes at that time.
+
+1. **Repository groundwork, no cloud account touched.** Production Compose and Nginx files. Safe first-run setup command. Remove `seed-local-auth-accounts` from the image. Fix `release:prepare`. Extend `/health/ready`. Add Meilisearch to the startup checks. Make the apps fail loudly on missing config. Publish workflow. Deploy, rollback, backup and restore scripts. Prove what can be proved on the local stack.
+2. **GitHub.** Ruleset change, retire `qa`, Environments, secrets, Actions pins, two-factor required for the organisation.
+3. **Staging.** Droplet script, Cloudflare records, tunnel, Access, Origin Certificate, AOP. First deploy.
+4. **Staging proofs.** Listed below.
+5. **Backup and restore drill.**
+6. **Maintenance pages.** Brief first.
+7. **Production droplet and first run,** on its hosts, before the DNS switch.
+8. **Server screens.** Brief first.
+9. **DNS switch,** after checkout decisions and the URL review.
+
+### Staging must prove
+
+- `Strict deployment (staging): hardening checks passed.`, and a connection to authenticated MongoDB, password Redis and the staging bucket.
+- A deliberate bad deploy exits 1 with the problem listed, is marked failed, and does not restart-loop.
+- No secret value in any log, and no droplet IP in Actions logs.
+- GHCR login with the job token.
+- Sign-in, reload and two open tabs with host-only cookies.
+- AOP, the firewall, and direct requests to the droplet's IP being refused.
+- `/config.json` correct on both apps; storefront SSR through the private listener.
+- Rollback, a measured deploy gap, the maintenance pages, and a payment return during a restart.
+- Checkout, webhook and notification paths, once those chunks are built.

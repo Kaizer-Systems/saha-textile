@@ -3,7 +3,7 @@ title: Deployment Overview
 description: How the platform is packaged and configured for deployment.
 status: planned
 audience: [operator, backend]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/api/.env.example
     - docker/mongo/docker-compose.yml
@@ -11,6 +11,7 @@ source_of_truth:
     - docker/stack/compose.yaml
     - docs/engineering-live-context/environment-variables.mdx
     - docs/engineering-live-context/execution-roadmap.mdx
+    - docs/engineering-live-context/production-deployment-plan.mdx
     - .github/workflows
 ---
 
@@ -61,18 +62,22 @@ pnpm stack:down
 
 ## Planned hosting design
 
-| Concern  | Design                                                                      |
-| -------- | --------------------------------------------------------------------------- |
-| Traffic  | Visitor → Cloudflare → Nginx on the droplet → containers                    |
-| Images   | Private GHCR packages, tagged by commit                                     |
-| Staging  | An on-demand droplet, created by script and removed by a destroy script     |
-| Access   | SSH through Cloudflare Tunnel, with port 22 closed to the internet          |
-| Cookies  | Host-only on the API host. `COOKIE_DOMAIN` stays empty in every environment |
-| Backups  | Nightly and encrypted, to a private Spaces bucket in `sgp1`                 |
-| Media    | Spaces in `sgp1`, one bucket per environment, served through the CDN        |
-| Rollback | Redeploy the previous image when a health check fails                       |
+The full design is in [Production Deployment Plan](/engineering-live-context/production-deployment-plan).
 
-The delivery method for secrets is an open decision, tracked in [Pending decisions](/engineering-live-context/pending-decisions).
+| Concern  | Design                                                                                                |
+| -------- | ----------------------------------------------------------------------------------------------------- |
+| Branches | `dev → staging → main`, with normal merge commits                                                     |
+| Images   | Private GHCR packages, built once on merge to `staging`, deployed by digest                           |
+| Release  | Merging to `main` starts the deploy, which waits for approval, backs up, then runs the tested digests |
+| Traffic  | Visitor → Cloudflare → Nginx on the droplet → containers                                              |
+| Origin   | Firewall limited to Cloudflare's ranges, plus Authenticated Origin Pulls with a zone certificate      |
+| Staging  | An on-demand droplet behind a Cloudflare Access login, created by script, removed by a destroy script |
+| Access   | SSH through Cloudflare Tunnel, with port 22 closed. The Recovery Console is the break-glass route     |
+| Cookies  | Host-only on the API host. `COOKIE_DOMAIN` stays empty in every environment                           |
+| Secrets  | GitHub Environment secrets, written to mounted read-only files at deploy                              |
+| Backups  | Nightly and encrypted, to a private Spaces bucket in `sgp1`. 30 daily and 12 monthly                  |
+| Media    | Spaces in `sgp1`, one bucket per environment, served through the CDN                                  |
+| Rollback | Redeploy the previous digests when a health check fails                                               |
 
 ## Developer portal
 
@@ -95,3 +100,5 @@ The repository is public. Private deployment does not make committed source priv
 - No deployment workflow, image publishing, production Compose file, droplet setup, backup or rollback script exists.
 - MongoDB password login on a replica set needs a keyfile, which the Compose files do not define.
 - The Meilisearch key and production mode are not covered by the startup checks.
+- No first-run setup command exists for a new database. Seed scripts do not run in the image.
+- The API image has no pnpm or tsx, so package scripts cannot run inside it. Use the compiled `dist` entry points.

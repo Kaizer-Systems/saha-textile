@@ -4,7 +4,7 @@ wide: true
 description: Every API route with its access rule.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/api/src/main.ts
     - apps/api/src/openapi.ts

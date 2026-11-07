@@ -3,7 +3,7 @@ title: PayPal
 description: The non-INR gateway role.
 status: deferred
 audience: [backend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 search_keywords: PayPal non-INR international gross-up
 source_of_truth:
     - packages/core-domain/src/ports/payment-gateway.port.ts

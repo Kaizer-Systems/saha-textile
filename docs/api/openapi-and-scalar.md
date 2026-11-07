@@ -4,7 +4,7 @@ wide: true
 description: How the OpenAPI document is produced, how to use Test Request, and its limitations.
 status: scaffolded
 audience: [beginner, backend, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/api/src/openapi.ts
     - apps/api/src/generate-openapi.ts

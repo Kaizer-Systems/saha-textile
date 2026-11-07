@@ -3,7 +3,7 @@ title: API Overview
 description: What the API does, its modules, and where to find API documentation.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/api/src
     - packages/contracts/src

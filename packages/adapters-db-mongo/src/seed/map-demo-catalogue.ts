@@ -10,6 +10,8 @@ import type {
 	ProductVariant,
 } from '@saha-textile/contracts';
 
+import { DEMO_FRENCH } from './demo-french';
+
 /**
  * The three product photos already on the dev Spaces bucket. Every seeded product
  * uses these, in a rotated order. Hero and blog art are not part of this seed.
@@ -150,9 +152,11 @@ const rupee = (value: unknown): number => {
 	return Math.round(number);
 };
 
-const text = (value: string | undefined, fallback: string): { en: string } => ({
-	en: (value && value.trim()) || fallback,
-});
+const text = (value: string | undefined, fallback: string): { en: string; fr?: string } => {
+	const en = (value && value.trim()) || fallback;
+	const fr = DEMO_FRENCH[en];
+	return fr ? { en, fr } : { en };
+};
 
 const slugify = (value: string): string =>
 	value

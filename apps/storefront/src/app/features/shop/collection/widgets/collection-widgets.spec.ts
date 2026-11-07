@@ -110,8 +110,10 @@ describe('CollectionSidebar', () => {
 	it('reads the facets, none until loaded', () => {
 		const { widget } = render();
 		expect(widget.facetKeys()).toEqual([]);
-		data.set({ facets: { fabric: [], color: [] } });
+		expect(widget.facetLabels()).toEqual({});
+		data.set({ facets: { fabric: [], color: [] }, facetLabels: { fabric: 'Tissu' } });
 		expect(widget.facetKeys()).toEqual(['fabric', 'color']);
+		expect(widget.facetLabels()).toEqual({ fabric: 'Tissu' });
 	});
 
 	it('mirrors the first load and closes the panel', () => {

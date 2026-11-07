@@ -7,6 +7,7 @@ import { CatalogService } from './catalog.service';
 import { Public } from '../auth/session.guard';
 import { API_TAGS } from '../openapi-tags';
 import { CatalogEtagInterceptor } from './catalog-etag.interceptor';
+import { CatalogLocaleInterceptor } from './catalog-locale';
 
 /**
  * PUBLIC catalog surface. It never accepts a `status` filter: only `live` products
@@ -18,7 +19,7 @@ import { CatalogEtagInterceptor } from './catalog-etag.interceptor';
 @Controller('catalog/products')
 /** Public catalog: browsing never requires an account (visibility is enforced by CatalogAudience). */
 @Public()
-@UseInterceptors(CatalogEtagInterceptor)
+@UseInterceptors(CatalogLocaleInterceptor, CatalogEtagInterceptor)
 export class ProductsController {
 	constructor(
 		private readonly catalog: CatalogService,

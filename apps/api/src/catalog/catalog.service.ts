@@ -412,8 +412,10 @@ export class CatalogService {
 	/** The index is derived and rebuildable, so a failed update never fails the save. */
 	private async syncSearch(product: Product): Promise<void> {
 		try {
-			if (product.status === 'live') await this.search?.indexProduct(product);
-			else await this.search?.removeProduct(product.id);
+			if (product.status === 'live') {
+				const variants = await this.variants.listForProduct(product.id, 'public');
+				await this.search?.indexProduct({ product, variants });
+			} else await this.search?.removeProduct(product.id);
 		} catch (error) {
 			this.logger.warn(`Search index not updated for ${product.id}: ${String(error)}`);
 		}

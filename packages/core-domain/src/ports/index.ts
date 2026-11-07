@@ -22,6 +22,7 @@ export * from './site-settings.repository';
 export * from './payment-gateway.port';
 export * from './shipping.port';
 export * from './fx-rate.port';
+export * from './listing.port';
 export * from './search.port';
 export * from './auth.port';
 export * from './transaction-manager.port';

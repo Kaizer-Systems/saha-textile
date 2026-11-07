@@ -41,6 +41,7 @@ import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './core/i18n/locale';
 import { provideLocaleRouting } from './core/i18n/locale-routing';
 import { TranslocoHttpLoader } from './core/i18n/transloco-loader';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
+import { CatalogLocaleInterceptor } from './core/interceptors/catalog-locale.interceptor';
 import { GlobalErrorHandlerInterceptor } from './core/interceptors/global-error-handler.interceptor';
 import { LoaderInterceptor } from './core/interceptors/loader.interceptor';
 import { QUERY_CLIENT, isPublicRequest } from './core/query/query-client';
@@ -74,6 +75,11 @@ export const appConfig: ApplicationConfig = {
 		{
 			provide: HTTP_INTERCEPTORS,
 			useClass: AuthInterceptor,
+			multi: true,
+		},
+		{
+			provide: HTTP_INTERCEPTORS,
+			useClass: CatalogLocaleInterceptor,
 			multi: true,
 		},
 		{

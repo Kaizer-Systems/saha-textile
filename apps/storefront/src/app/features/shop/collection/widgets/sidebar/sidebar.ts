@@ -60,6 +60,7 @@ export class CollectionSidebar {
 	private readonly catalogQuery = injectCatalogQuery(() => this.filter());
 	readonly facets = computed(() => this.catalogQuery.data()?.facets ?? {});
 	readonly facetKeys = computed(() => Object.keys(this.facets()));
+	readonly facetLabels = computed(() => this.catalogQuery.data()?.facetLabels ?? {});
 
 	constructor() {
 		// Drive the sidebar skeleton off the catalog query's first load.

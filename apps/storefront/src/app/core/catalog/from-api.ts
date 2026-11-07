@@ -253,6 +253,7 @@ export function placementToCatalog(page: ApiPlacement): ICatalogResponse {
 			name: crumb.name,
 			path: crumb.path.replace(/^\/collections\//, ''),
 		})),
+		facetLabels: Object.fromEntries(page.facets.map((facet) => [facet.code, facet.label])),
 		facets: Object.fromEntries(
 			page.facets.map((facet) => [
 				facet.code,

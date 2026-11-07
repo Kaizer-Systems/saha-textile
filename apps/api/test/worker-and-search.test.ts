@@ -1,4 +1,4 @@
-import type { Product } from '@saha-textile/contracts';
+import { Product } from '@saha-textile/contracts';
 import { SearchUnavailableError, type StoragePort, type YouTubePort } from '@saha-textile/core-domain';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -285,7 +285,7 @@ describe('MeilisearchSearch', () => {
 		load: (ids: readonly string[]) => Promise<Product[]> = async () => [],
 		host: string | undefined = 'http://meili.test/',
 		key: string | undefined = 'k',
-	) => new MeilisearchSearch(host, key, load, 'products');
+	) => new MeilisearchSearch(host, key, load, 'products', ['en', 'fr']);
 
 	beforeEach(() => {
 		fetcher.mockReset();
@@ -297,14 +297,21 @@ describe('MeilisearchSearch', () => {
 	});
 
 	it('sets up the index and sends the document', async () => {
-		fetcher.mockResolvedValue(reply(202, {}));
-		fetcher.mockImplementation(async () => reply(202, {}));
-		await search().indexProduct(product('p1'));
+		fetcher.mockImplementation(async (url: string) =>
+			reply(200, url.includes('/tasks/') ? { status: 'succeeded' } : { taskUid: 7 }),
+		);
+		const index = search();
+		const full = (id: string) =>
+			Product.parse({ id, type: 'simple', sku: id, title: { en: id }, slug: id, basePriceINR: 100 });
+		await index.indexProduct({ product: full('p1'), variants: [] });
+		await index.indexProduct({ product: full('p2'), variants: [] });
 		expect(fetcher.mock.calls.map((call) => call[0])).toEqual([
 			'http://meili.test/indexes/products/settings',
+			'http://meili.test/tasks/7',
+			'http://meili.test/indexes/products/documents',
 			'http://meili.test/indexes/products/documents',
 		]);
-		expect(fetcher.mock.calls[1]?.[1]).toMatchObject({ method: 'POST', headers: { authorization: 'Bearer k' } });
+		expect(fetcher.mock.calls[2]?.[1]).toMatchObject({ method: 'POST', headers: { authorization: 'Bearer k' } });
 	});
 
 	it('removes a document, encoded, and takes an empty reply', async () => {

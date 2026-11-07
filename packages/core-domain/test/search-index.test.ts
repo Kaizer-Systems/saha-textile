@@ -8,23 +8,22 @@ const product = (id: string, status: Product['status']): Product =>
 	({ id, status, slug: id, sku: id, title: { en: id }, type: 'simple', basePriceINR: 1 }) as Product;
 
 describe('rebuildSearchIndex', () => {
-	it('indexes live products and removes the rest, and a second run writes the same ids', async () => {
-		const indexed: string[] = [];
-		const removed: string[] = [];
+	it('replaces the index with live products only, and says how many', async () => {
+		const written: string[][] = [];
 		const search: SearchPort = {
-			indexProduct: async (row) => {
-				indexed.push(row.id);
+			indexProduct: async () => undefined,
+			replaceIndex: async (entries) => {
+				written.push(entries.map((entry) => entry.product.id));
 			},
-			removeProduct: async (id) => {
-				removed.push(id);
-			},
+			removeProduct: async () => undefined,
 			search: async () => ({ items: [], total: 0, page: 1, pageSize: 20 }),
 		};
-		const rows = [product('live', 'live'), product('draft', 'draft')];
+		const rows = [product('live', 'live'), product('draft', 'draft')].map((row) => ({
+			product: row,
+			variants: [],
+		}));
 		expect(await rebuildSearchIndex(rows, search)).toBe(1);
-		expect(indexed).toEqual(['live']);
-		expect(removed).toEqual(['draft']);
 		await rebuildSearchIndex(rows, search);
-		expect(indexed).toEqual(['live', 'live']);
+		expect(written).toEqual([['live'], ['live']]);
 	});
 });

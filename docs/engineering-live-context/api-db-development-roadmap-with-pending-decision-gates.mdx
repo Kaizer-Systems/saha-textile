@@ -400,6 +400,14 @@ show as a placeholder tile; the review page shows them via signed URLs).
 
 #### Open items carried into this chunk (2026-11-07)
 
+- **Every deploy runs `pnpm --filter @saha-textile/api release:prepare` after the API image
+  starts.** It applies the Meilisearch settings and rebuilds the index from Mongo, and it is safe
+  to repeat. Until it has run, listings answer from Mongo automatically, so nothing breaks, but
+  typeahead search answers 503. Set `MEILISEARCH_HOST`, `MEILISEARCH_API_KEY` and, on a shared
+  server, `MEILISEARCH_INDEX` first.
+- **The first deployed database is built from seeds, plus hand entry.** No deployed database
+  exists yet, so the local data edits of 2026-11-06 need no migration. Real products are entered
+  by hand in admin. Do not run the demo catalogue seed on staging or production.
 - **Deep review of all URL work before the DNS switch.** The redirect rows, the 410 rules and the
   old-address logic were designed as if WordPress were a working shop. It is not: nobody maintains
   or uses it, and its products (`pure-silk-handloom-ikkat-saree-s1` to `s8`) are the owner's test

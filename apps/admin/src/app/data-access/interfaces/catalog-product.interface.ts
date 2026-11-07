@@ -75,7 +75,7 @@ export interface CatalogProductDetail {
 	shipping: CatalogShipping;
 	hsnCode: string | null;
 	content: ProductContentWrite;
-	images: Array<{ assetId: string; url: string }>;
+	images: Array<{ assetId: string; url: string; width: number; height: number }>;
 	relatedProductIds: string[];
 	upsellProductIds: string[];
 	crossSellProductIds: string[];

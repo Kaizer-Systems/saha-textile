@@ -1,5 +1,7 @@
 import type { GoLiveGap, Product, ProductVariant } from '@saha-textile/contracts';
 
+import { PUBLISH_REQUIRED_ROLES } from '../media/seeded-roles';
+
 /** The asset's own alt text per language, or null when the asset is not in the library. */
 export type AssetAlt = (assetId: string) => Readonly<Record<string, string>> | null;
 
@@ -9,6 +11,8 @@ export interface GoLiveInput {
 	/** The shop's active languages. */
 	locales: readonly string[];
 	assetAlt: AssetAlt;
+	/** The sizes the primary image has been made in. Null when it is not in the library. */
+	primaryRoles?: readonly string[] | null;
 }
 
 /** The images a product shows: its gallery, or every combination's in order in compound mode. */
@@ -27,7 +31,7 @@ function text(field: string, values: Readonly<Record<string, string>> | undefine
  * Everything that stops a product going live. One rule for the form and the list: every
  * language-bound field in every active language, plus a category, a price and a primary image.
  */
-export function goLiveGaps({ product, variants, locales, assetAlt }: GoLiveInput): GoLiveGap[] {
+export function goLiveGaps({ product, variants, locales, assetAlt, primaryRoles }: GoLiveInput): GoLiveGap[] {
 	const gaps: GoLiveGap[] = [
 		...text('title', product.title, locales),
 		...text('short_description', product.shortDescription, locales),
@@ -39,6 +43,12 @@ export function goLiveGaps({ product, variants, locales, assetAlt }: GoLiveInput
 		gaps.push(...text(`option:${group.attributeCode}`, group.label, locales));
 		for (const term of group.terms) {
 			gaps.push(...text(`value:${group.attributeCode}:${term.code}`, term.label, locales));
+			if (group.displayStyle === 'color_swatch' && !term.hex) {
+				gaps.push({ field: `swatch_colour:${group.attributeCode}:${term.code}`, locale: null });
+			}
+			if (group.displayStyle === 'image_swatch' && !term.swatchAssetId) {
+				gaps.push({ field: `swatch_image:${group.attributeCode}:${term.code}`, locale: null });
+			}
 		}
 	}
 	const leadTime = product.estimatedDeliveryText;
@@ -57,6 +67,9 @@ export function goLiveGaps({ product, variants, locales, assetAlt }: GoLiveInput
 			locales.map((locale) => [locale, override[locale] || inherited[locale] || '']),
 		);
 		gaps.push(...text('image_alt', resolved, locales));
+		if (primaryRoles && !PUBLISH_REQUIRED_ROLES.every((role) => primaryRoles.includes(role))) {
+			gaps.push({ field: 'image_sizes', locale: null });
+		}
 	}
 	return gaps;
 }

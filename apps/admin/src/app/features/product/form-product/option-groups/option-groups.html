@@ -1,7 +1,7 @@
 <h4 class="fw-semibold mb-3">{{ 'options' | transloco }}</h4>
 <div class="shipping-accordion variant-accordion">
 	<div ngbAccordion>
-		@for (group of groups(); track group.attributeCode; let index = $index) {
+		@for (group of groups(); track group.attributeCode + revision(); let index = $index) {
 		<div
 			ngbAccordionItem
 			[collapsed]="false"
@@ -29,7 +29,7 @@
 								[id]="'role_' + index"
 								[data]="roleOptions"
 								[value]="group.semanticRole"
-								(update)="update(index, { semanticRole: $any($event.value) })"
+								(update)="setRole(index, group, $any($event.value))"
 							/>
 							<p class="help-text">{{ 'role_help_' + group.semanticRole | transloco }}</p>
 						</app-form-fields>

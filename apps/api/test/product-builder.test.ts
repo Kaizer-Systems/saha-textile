@@ -137,7 +137,7 @@ describe('ProductBuilderService', () => {
 			save: vi.fn(async (row: unknown) => row),
 			listForProduct: vi.fn(async () => [{ priceINR: 100 }]),
 		};
-		const media = { findById: vi.fn(async () => ({ text: { alt: both } })) };
+		const media = { findById: vi.fn(async () => ({ derivatives: [{ role: 'thumb' }, { role: 'card' }, { role: 'gallery' }], text: { alt: both } })) };
 		const bundles = {
 			findByProductId: vi.fn(async (): Promise<unknown> => null),
 			isBundleProduct: vi.fn(async () => false),
@@ -301,6 +301,7 @@ describe('TaxonomyService', () => {
 			inTransaction: vi.fn(async (write: () => Promise<void>) => write()),
 			record: vi.fn(async () => undefined),
 			upsertRedirect: vi.fn(async () => undefined),
+			syncSearch: vi.fn(async () => undefined),
 		};
 		const categories = {
 			tree: vi.fn(async () => rows),
@@ -332,7 +333,10 @@ describe('TaxonomyService', () => {
 			save: vi.fn(async (row: unknown) => row),
 			deleteByCode: vi.fn(async () => undefined),
 		};
-		const products = { list: vi.fn(async (): Promise<unknown> => ({ items: [], total: 0 })) };
+		const products = {
+			list: vi.fn(async (): Promise<unknown> => ({ items: [], total: 0 })),
+			save: vi.fn(async (row: unknown) => row),
+		};
 		const service = new TaxonomyService(
 			catalog as never,
 			categories as never,
@@ -527,6 +531,56 @@ describe('TaxonomyService', () => {
 		products.list.mockResolvedValueOnce({ items: [], total: 400 });
 		await expect(service.saveAttribute(emptied, null)).rejects.toThrow('hide them instead: red');
 		expect(products.list).toHaveBeenCalledTimes(2);
+	});
+
+	it('writes a new name to every product using the value, then to search', async () => {
+		const { service, products, catalog } = repositories();
+		const used = {
+			id: 'p1',
+			optionGroups: [
+				{
+					attributeCode: 'color',
+					label: { en: 'Old' },
+					terms: [
+						{ code: 'red', label: { en: 'Old red' } },
+						{ code: 'gone', label: { en: 'Kept' } },
+					],
+				},
+				{ attributeCode: 'size', label: { en: 'Size' }, terms: [] },
+			],
+		};
+		const other = { id: 'p2', optionGroups: [{ attributeCode: 'size', terms: [] }] };
+		products.list.mockResolvedValue({ items: [used, other], total: 2 });
+		const body = attribute({
+			code: 'color',
+			label: { en: 'Colour', fr: 'Couleur' },
+			terms: [
+				{ code: 'red', slug: 'red', label: { en: 'Red', fr: 'Rouge' }, aliases: [] },
+				{ code: 'gone', slug: 'gone', label: { en: 'Kept' }, aliases: [] },
+			],
+		});
+		await service.saveAttribute(body, null);
+		expect(products.save).toHaveBeenCalledTimes(1);
+		const saved = products.save.mock.lastCall?.[0] as typeof used;
+		expect(saved.optionGroups[0]).toMatchObject({
+			label: { en: 'Colour', fr: 'Couleur' },
+			terms: [{ label: { en: 'Red', fr: 'Rouge' } }, { label: { en: 'Kept' } }],
+		});
+		expect(saved.optionGroups[1]).toEqual(used.optionGroups[1]);
+		expect(catalog.syncSearch).toHaveBeenCalledWith(saved);
+	});
+
+	it('keeps the name of a value that left the attribute while saving', async () => {
+		const { service, products } = repositories();
+		const late = {
+			id: 'p1',
+			optionGroups: [{ attributeCode: 'color', label: {}, terms: [{ code: 'late', label: { en: 'Late' } }] }],
+		};
+		products.list.mockResolvedValueOnce({ items: [], total: 0 });
+		products.list.mockResolvedValueOnce({ items: [late], total: 1 });
+		await service.saveAttribute(attribute({ code: 'color' }), null);
+		const saved = products.save.mock.lastCall?.[0] as typeof late;
+		expect(saved.optionGroups[0]?.terms[0]?.label).toEqual({ en: 'Late' });
 	});
 
 	it('deletes only an unused attribute', async () => {

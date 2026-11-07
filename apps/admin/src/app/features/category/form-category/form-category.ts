@@ -1,4 +1,4 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, inject, input, signal, output } from '@angular/core';
 import { FormGroup, FormBuilder, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -63,6 +63,8 @@ export class FormCategory {
 
 	readonly locales = ADMIN_LOCALES;
 	readonly fields: LocalizedFields;
+	/** The tree beside this form follows its language. */
+	readonly localeChange = output<string>();
 	readonly missing = signal<Record<string, number>>({});
 
 	private destroy$ = new Subject<void>();
@@ -127,6 +129,7 @@ export class FormCategory {
 
 	switchLanguage(locale: string) {
 		this.fields.switchTo(locale);
+		this.localeChange.emit(locale);
 		this.refreshMissing();
 	}
 

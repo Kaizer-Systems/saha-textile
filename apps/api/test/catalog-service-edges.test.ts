@@ -353,7 +353,7 @@ describe('admin list and detail', () => {
 	it('gives the form a picture for each image it can show', async () => {
 		const row = product({ media: { gallery: ['m1', 'gone'], compound: [], altOverrides: {} } });
 		const detail = await build({ row, rows: [variant()], assets: [asset] }).service.adminDetail('red-saree');
-		expect(detail.images).toEqual([{ assetId: 'm1', url: 'https://cdn.test/k' }]);
+		expect(detail.images).toMatchObject([{ assetId: 'm1', url: 'https://cdn.test/k' }]);
 	});
 
 	it('falls back to the base price, and to no thumbnail', async () => {

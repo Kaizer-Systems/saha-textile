@@ -29,6 +29,9 @@ function moved(list: readonly string[], from: number, to: number): string[] {
  * variant combination, and switching keeps the other mode's images parked. Buttons rather than
  * drag and drop, because they work on a phone.
  */
+const PORTRAIT = 3 / 4;
+const SHAPE_TOLERANCE = 0.05;
+
 @Component({
 	selector: 'app-product-images',
 	templateUrl: './product-images.html',
@@ -38,6 +41,8 @@ function moved(list: readonly string[], from: number, to: number): string[] {
 export class ProductImages {
 	readonly value = model.required<ImagesValue>();
 	readonly tiles = model.required<ReadonlyMap<string, string>>();
+	/** Original width and height of each image, for the 3:4 check. */
+	readonly sizes = model<ReadonlyMap<string, readonly [number, number]>>(new Map());
 	readonly combinations = input.required<readonly ImageCombination[]>();
 	readonly locale = input.required<string>();
 
@@ -73,10 +78,27 @@ export class ProductImages {
 	}
 
 	/** Adds what the media library returned. An image already here is not added twice. */
+	/** Positions, from 1, of images more than 5% away from the locked 3:4 shape. */
+	offShape(hash: string | null): number[] {
+		return this.gallery(hash).flatMap((id, index) => {
+			const size = this.sizes().get(id);
+			return size && Math.abs(size[0] / size[1] / PORTRAIT - 1) > SHAPE_TOLERANCE ? [index + 1] : [];
+		});
+	}
+
 	add(picked: IAttachment | IAttachment[]): void {
 		const rows = Array.isArray(picked) ? picked : [picked];
 		const current = this.gallery(this.target);
 		const fresh = rows.filter((row) => !current.includes(String(row.id)));
+		this.sizes.update(
+			(sizes) =>
+				new Map([
+					...sizes,
+					...rows.flatMap((row) =>
+						row.width && row.height ? [[String(row.id), [row.width, row.height]] as const] : [],
+					),
+				]),
+		);
 		this.tiles.update(
 			(tiles) => new Map([...tiles, ...rows.map((row) => [String(row.id), row.original_url] as [string, string])]),
 		);

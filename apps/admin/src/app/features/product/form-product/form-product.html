@@ -404,6 +404,7 @@
 									[(groups)]="optionGroups"
 									[(templateCode)]="addonTemplateCode"
 									[templates]="addonTemplates()"
+									[savedAxes]="savedAxes()"
 									[definitions]="definitions()"
 									[locale]="fields.locale()"
 								/>
@@ -953,6 +954,7 @@
 								<app-product-images
 									[(value)]="images"
 									[(tiles)]="tiles"
+									[(sizes)]="imageSizes"
 									[combinations]="combinations()"
 									[locale]="fields.locale()"
 								/>
@@ -1398,8 +1400,15 @@
 								<div class="alert alert-danger">
 									<strong>{{ 'go_live_blocked' | transloco }}</strong>
 									<ul class="mb-0 mt-2">
-										@for (gap of gapLabels(); track gap) {
-										<li>{{ gap }}</li>
+										@for (gap of goLiveGaps(); track $index; let index = $index) {
+										<li>
+											<a
+												class="alert-link cursor-pointer"
+												(click)="openGap(gap)"
+											>
+												{{ gapLabels()[index] }}
+											</a>
+										</li>
 										}
 									</ul>
 								</div>

@@ -8,6 +8,7 @@ import {
 	CategoryPlacement,
 	type AdminAttributeWrite,
 	type AdminCategoryWrite,
+	type Product,
 } from '@saha-textile/contracts';
 import type {
 	AttributeDefinitionRepository,
@@ -231,8 +232,32 @@ export class TaxonomyService {
 		const saved = await this.attributes.save(
 			AttributeDefinition.parse({ ...body, id: existing?.id ?? `attr_${body.code}` }),
 		);
+		await this.copyToProducts(saved);
 		await this.catalog.record(actorUserId, 'catalog.attribute.save', saved.id, { code: saved.code });
 		return saved;
+	}
+
+	/**
+	 * A product holds its own copy of each value's name, so a new name or translation is written
+	 * to every product using it, then to search. A shop this size does it in the request; a very
+	 * large catalogue would move this one loop onto the job queue.
+	 */
+	private async copyToProducts(definition: AttributeDefinition): Promise<void> {
+		const terms = new Map(definition.terms.map((term) => [term.code, term]));
+		for (const product of await this.productsUsing(definition.code)) {
+			const optionGroups = product.optionGroups.map((group) =>
+				group.attributeCode === definition.code
+					? {
+							...group,
+							label: definition.label,
+							terms: group.terms.map((term) => ({ ...term, label: terms.get(term.code)?.label ?? term.label })),
+						}
+					: group,
+			);
+			const next = { ...product, optionGroups };
+			await this.products.save(next);
+			await this.catalog.syncSearch(next);
+		}
 	}
 
 	async deleteAttribute(code: string, actorUserId: string | null) {
@@ -246,15 +271,18 @@ export class TaxonomyService {
 
 	/** Term codes any product uses for an attribute. */
 	private async usedTerms(code: string): Promise<Set<string>> {
-		const used = new Set<string>();
+		const groups = (await this.productsUsing(code)).flatMap((product) => product.optionGroups);
+		return new Set(
+			groups.filter((group) => group.attributeCode === code).flatMap((group) => group.terms.map((term) => term.code)),
+		);
+	}
+
+	private async productsUsing(code: string): Promise<Product[]> {
+		const found: Product[] = [];
 		for (let page = 1; ; page += 1) {
 			const { items, total } = await this.products.list({ audience: 'admin', page, pageSize: 200 });
-			for (const product of items) {
-				for (const group of product.optionGroups) {
-					if (group.attributeCode === code) for (const term of group.terms) used.add(term.code);
-				}
-			}
-			if (!items.length || page * 200 >= total) return used;
+			found.push(...items.filter((row) => row.optionGroups.some((group) => group.attributeCode === code)));
+			if (!items.length || page * 200 >= total) return found;
 		}
 	}
 }

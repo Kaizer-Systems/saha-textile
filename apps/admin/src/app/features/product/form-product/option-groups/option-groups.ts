@@ -1,7 +1,7 @@
-import { Component, computed, input, model } from '@angular/core';
+import { Component, computed, inject, input, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbAccordionModule } from '@ng-bootstrap/ng-bootstrap';
 import type { AttributeDefinition, ProductOptionGroup, ProductOptionTerm } from '@saha-textile/contracts';
 import { Select2, type Select2UpdateEvent } from 'ng-select2-component';
@@ -42,6 +42,11 @@ export class OptionGroups {
 	readonly definitions = input.required<readonly AttributeDefinition[]>();
 	readonly locale = input.required<string>();
 	readonly templates = input<readonly AddonTemplateRow[]>([]);
+	/** Attributes whose variant rows are already saved. */
+	readonly savedAxes = input<readonly string[]>([]);
+	/** Redraws the groups, so a select shows the old role after a refused change. */
+	readonly revision = signal(0);
+	private transloco = inject(TranslocoService);
 	/** One measurement template per product, asked for by any option that measures. */
 	readonly templateCode = model<string | null>(null);
 
@@ -121,6 +126,18 @@ export class OptionGroups {
 			return known ? [termFrom(known, position)] : [];
 		});
 		this.update(index, { terms });
+	}
+
+	/** Leaving the axis role retires saved variant rows, so that needs a yes first. */
+	setRole(index: number, group: ProductOptionGroup, semanticRole: ProductOptionGroup['semanticRole']) {
+		const losesRows = group.semanticRole === 'variation_axis' && semanticRole !== 'variation_axis';
+		if (losesRows && this.savedAxes().includes(group.attributeCode)) {
+			if (!window.confirm(this.transloco.translate('role_change_confirm'))) {
+				this.revision.update((value) => value + 1);
+				return;
+			}
+		}
+		this.update(index, { semanticRole });
 	}
 
 	setMeasures(index: number, group: ProductOptionGroup, code: string, requiresMeasurements: boolean) {

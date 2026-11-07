@@ -181,8 +181,46 @@ const definition = (over: Record<string, unknown> = {}) => ({
 });
 
 describe('OptionGroups', () => {
+	const providers = [{ provide: TranslocoService, useValue: translate }];
 	const render = (groups: unknown[] = [], definitions: unknown[] = [definition()], locale = 'fr') =>
-		mount(OptionGroups, [], { groups, definitions, locale });
+		mount(OptionGroups, providers, { groups, definitions, locale });
+
+	describe('changing a role', () => {
+		const axis = () => group({ semanticRole: 'variation_axis' });
+		const ask = (answer: boolean) => vi.spyOn(window, 'confirm').mockReturnValue(answer);
+
+		afterEach(() => vi.restoreAllMocks());
+
+		it('asks before retiring saved variant rows, and keeps the role on a no', () => {
+			const confirm = ask(false);
+			const page = mount(OptionGroups, providers, {
+				groups: [axis()],
+				definitions: [],
+				locale: 'en',
+				savedAxes: ['color'],
+			});
+			page.setRole(0, page.groups()[0] as never, 'filter_only');
+			expect(confirm).toHaveBeenCalledWith('role_change_confirm');
+			expect(page.groups()[0]?.semanticRole).toBe('variation_axis');
+			expect(page.revision()).toBe(1);
+			confirm.mockReturnValue(true);
+			page.setRole(0, page.groups()[0] as never, 'filter_only');
+			expect(page.groups()[0]?.semanticRole).toBe('filter_only');
+		});
+
+		it('changes freely when nothing would be lost', () => {
+			const confirm = ask(false);
+			const unsaved = render([axis()]);
+			unsaved.setRole(0, unsaved.groups()[0] as never, 'filter_only');
+			expect(unsaved.groups()[0]?.semanticRole).toBe('filter_only');
+			const toAxis = render([group({ semanticRole: 'filter_only' })]);
+			toAxis.setRole(0, toAxis.groups()[0] as never, 'variation_axis');
+			expect(toAxis.groups()[0]?.semanticRole).toBe('variation_axis');
+			const same = render([axis()]);
+			same.setRole(0, same.groups()[0] as never, 'variation_axis');
+			expect(confirm).not.toHaveBeenCalled();
+		});
+	});
 
 	it('offers attributes not yet used, by name or code', () => {
 		const page = render([group()], [definition(), definition({ code: 'size', label: { en: 'Size' } })]);
@@ -241,7 +279,7 @@ describe('OptionGroups', () => {
 	});
 
 	it('names templates in this language, and marks an option as measuring', () => {
-		const page = mount(OptionGroups, [], {
+		const page = mount(OptionGroups, [{ provide: TranslocoService, useValue: translate }], {
 			groups: [group({ terms: [{ code: 'a', label: both }, { code: 'b', label: both }] })],
 			definitions: [],
 			locale: 'fr',
@@ -320,6 +358,25 @@ describe('ProductImages', () => {
 		page.open('new');
 		page.add({ id: 'z', original_url: 'w' } as never);
 		expect(page.gallery('new')).toEqual(['z']);
+	});
+
+	it('flags images more than 5% away from 3:4, and takes sizes from the library', () => {
+		const page = render();
+		expect(page.offShape(null)).toEqual([]);
+		page.sizes.set(
+			new Map<string, readonly [number, number]>([
+				['a', [750, 1000]],
+				['b', [760, 1000]],
+				['c', [1000, 1000]],
+			]),
+		);
+		expect(page.offShape(null)).toEqual([3]);
+		page.open(null);
+		page.add([
+			{ id: 'd', original_url: 'v', width: 600, height: 600 },
+			{ id: 'e', original_url: 'w' },
+		] as never);
+		expect(page.offShape(null)).toEqual([3, 4]);
 	});
 
 	it('edits alt text for the primary in this language', () => {
@@ -567,6 +624,29 @@ describe('FormProduct builder', () => {
 		expect(fresh.service.goLive).not.toHaveBeenCalled();
 	});
 
+	it('opens the tab and language a gap belongs to', () => {
+		const { page } = render({ id: 'p1' });
+		const select = vi.fn();
+		(page as unknown as { nav: () => unknown }).nav = () => ({ select });
+		page.openGap({ field: 'meta_title', locale: 'fr' });
+		expect(page.fields.locale()).toBe('fr');
+		expect(select).toHaveBeenLastCalledWith('seo');
+		page.openGap({ field: 'value:color:red', locale: null });
+		expect(page.fields.locale()).toBe('fr');
+		expect(select).toHaveBeenLastCalledWith('inventory');
+	});
+
+	it('knows the saved axes and image sizes of a product', () => {
+		const product = detail({ images: [{ assetId: 'a', url: 'u', width: 3, height: 4 }] });
+		(product.content as { optionGroups: unknown[] }).optionGroups = [
+			group({ semanticRole: 'variation_axis' }),
+			group({ attributeCode: 'fall', semanticRole: 'named_add_on' }),
+		];
+		const { page } = render({ id: 'p1', product });
+		expect(page.savedAxes()).toEqual(['color']);
+		expect(page.imageSizes().get('a')).toEqual([3, 4]);
+	});
+
 	it('leaves out bundles from the bundle picker, and lists simple products', () => {
 		const { page } = render();
 		expect(page.bundleProducts()).toEqual([]);
@@ -624,6 +704,14 @@ describe('FormCategory', () => {
 		row.image = { id: 'a1', url: 'https://cdn.test/a1' };
 		expect(page.form.value.category_image_id).toBe('');
 		expect(page.category.category_image).toBeUndefined();
+	});
+
+	it('tells the tree when the language changes', () => {
+		const { page } = render();
+		const seen: string[] = [];
+		page.localeChange.subscribe((locale) => seen.push(locale));
+		page.switchLanguage('fr');
+		expect(seen).toEqual(['fr']);
 	});
 
 	it('takes its type, and stores images', () => {
@@ -712,6 +800,20 @@ describe('TreeNode', () => {
 		);
 		return { node, router, service, toasts };
 	};
+
+	it('names a category in the language on screen, or falls back', () => {
+		const label = (node: unknown, locale: string) => {
+			const fixture = TestBed.createComponent(TreeNode);
+			fixture.componentRef.setInput('node', node);
+			fixture.componentRef.setInput('locale', locale);
+			return fixture.componentInstance.label();
+		};
+		render();
+		const row = { name: { en: 'Sarees', fr: 'Saris' } };
+		expect(label({ name: 'Sarees', row }, 'fr')).toBe('Saris');
+		expect(label({ name: 'Sarees', row: { name: { en: 'Sarees' } } }, 'fr')).toBe('Sarees');
+		expect(label({ name: 'Blog' }, 'fr')).toBe('Blog');
+	});
 
 	it('reads the selected id, and deletes through the API', () => {
 		const { node, router, service } = render();

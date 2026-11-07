@@ -37,6 +37,35 @@ describe('goLiveGaps', () => {
 		expect(run(complete())).toEqual([]);
 	});
 
+	it('wants a colour or an image on each swatch', () => {
+		const groups = (displayStyle: string, term: Record<string, unknown>) => [
+			{ attributeCode: 'c', label: both, displayStyle, terms: [{ code: 'x', label: both, ...term }] },
+		];
+		expect(run(complete({ optionGroups: groups('color_swatch', {}) }))).toEqual([
+			{ field: 'swatch_colour:c:x', locale: null },
+		]);
+		expect(run(complete({ optionGroups: groups('color_swatch', { hex: '#112233' }) }))).toEqual([]);
+		expect(run(complete({ optionGroups: groups('image_swatch', {}) }))).toEqual([
+			{ field: 'swatch_image:c:x', locale: null },
+		]);
+		expect(run(complete({ optionGroups: groups('image_swatch', { swatchAssetId: 'm' }) }))).toEqual([]);
+	});
+
+	it('wants the primary image in every size a shop page needs', () => {
+		const check = (primaryRoles: readonly string[] | null | undefined) =>
+			goLiveGaps({
+				product: complete(),
+				variants: [{ priceINR: 100 } as ProductVariant],
+				locales: ['en', 'fr'],
+				assetAlt: () => both,
+				primaryRoles,
+			});
+		expect(check(['thumb', 'card'])).toEqual([{ field: 'image_sizes', locale: null }]);
+		expect(check(['thumb', 'card', 'gallery', 'zoom'])).toEqual([]);
+		expect(check(null)).toEqual([]);
+		expect(check(undefined)).toEqual([]);
+	});
+
 	it('wants a template when an option measures', () => {
 		const measured = [{ attributeCode: 'c', label: both, terms: [{ code: 'x', label: both, requiresMeasurements: true }] }];
 		expect(run(complete({ optionGroups: measured }))).toEqual([{ field: 'addon_template', locale: null }]);

@@ -7,7 +7,7 @@ import {
 	type ImageRenderSpec,
 	type RenderedImage,
 } from '@saha-textile/core-domain';
-import sharp from 'sharp';
+import sharp, { type Sharp } from 'sharp';
 import { rgbaToThumbHash } from 'thumbhash';
 
 const WHITE = { r: 255, g: 255, b: 255, alpha: 1 };
@@ -51,7 +51,7 @@ export class SharpImageCodec implements ImageCodecPort {
 
 	async render(bytes: Uint8Array, spec: ImageRenderSpec): Promise<RenderedImage> {
 		if (spec.fit === 'blur') return this.renderBlurFill(bytes, spec);
-		let pipeline = this.base(bytes);
+		let pipeline = this.base(bytes, spec.keepAlpha);
 		pipeline =
 			spec.fit === 'inside'
 				? pipeline.resize({ width: spec.width, withoutEnlargement: true })
@@ -64,10 +64,7 @@ export class SharpImageCodec implements ImageCodecPort {
 						withoutEnlargement: false,
 					});
 		pipeline = pipeline.sharpen({ sigma: 0.5 });
-		pipeline =
-			spec.format === 'image/jpeg'
-				? pipeline.jpeg({ quality: spec.quality, mozjpeg: true, progressive: true })
-				: pipeline.webp({ quality: spec.quality, effort: 5, smartSubsample: true });
+		pipeline = this.encode(pipeline, spec);
 
 		const { data, info } = await pipeline.toBuffer({ resolveWithObject: true });
 		const out = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
@@ -125,10 +122,14 @@ export class SharpImageCodec implements ImageCodecPort {
 		};
 	}
 
-	private base(bytes: Uint8Array) {
-		return sharp(bytes, { limitInputPixels: this.options.maxInputPixels, failOn: 'error' })
-			.rotate()
-			.flatten({ background: WHITE })
-			.toColourspace('srgb');
+	private encode(pipeline: Sharp, spec: ImageRenderSpec): Sharp {
+		if (spec.format === 'image/png') return pipeline.png({ compressionLevel: 9, palette: false });
+		if (spec.format === 'image/jpeg') return pipeline.jpeg({ quality: spec.quality, mozjpeg: true, progressive: true });
+		return pipeline.webp({ quality: spec.quality, effort: 5, smartSubsample: true });
+	}
+
+	private base(bytes: Uint8Array, keepAlpha = false) {
+		const image = sharp(bytes, { limitInputPixels: this.options.maxInputPixels, failOn: 'error' }).rotate();
+		return (keepAlpha ? image : image.flatten({ background: WHITE })).toColourspace('srgb');
 	}
 }

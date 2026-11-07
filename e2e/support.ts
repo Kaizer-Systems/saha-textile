@@ -8,6 +8,21 @@ export const ADMIN = 'https://localhost:4300';
 /** The signed-in test administrator, written by `admin.setup.ts`. */
 export const ADMIN_STATE = 'node_modules/.cache/playwright/admin-state.json';
 
+/** A visitor who has already answered, so the cookie box stays out of flows it has no part in. */
+const ACCEPTED_COOKIES = {
+	name: 'st_consent',
+	value: encodeURIComponent(
+		JSON.stringify({
+			id: '3f0e8f6e-7f1b-4c55-9a55-1d9f6e1a0001',
+			version: '2026-11-07',
+			savedAt: '2026-11-07T00:00:00.000Z',
+			categories: { functional: true, analytics: false, targeting: false, marketing: false, promotional: false },
+		}),
+	),
+	domain: 'localhost',
+	path: '/',
+};
+
 /** Everything the shop shouldn't do on a healthy page, collected per test. */
 interface Problems {
 	errors: string[];
@@ -17,14 +32,7 @@ interface Problems {
 export const test = base.extend<{ problems: Problems }>({
 	page: async ({ page }, use) => {
 		await page.addLocatorHandler(page.locator('#newsletter_modal_close_btn'), (close) => close.click());
-		// The consent bar is a fixed overlay with no bearing on these flows.
-		await page.addInitScript(() => {
-			addEventListener('DOMContentLoaded', () => {
-				const style = document.createElement('style');
-				style.textContent = '.cookie-bar-box { display: none !important; }';
-				document.head.append(style);
-			});
-		});
+		await page.context().addCookies([ACCEPTED_COOKIES]);
 		await use(page);
 	},
 	problems: async ({ page }, use) => {

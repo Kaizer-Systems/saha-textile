@@ -7,7 +7,7 @@ import { runtimeConfig } from '@core/config/runtime-config';
 import { IAttachment, IAttachmentModel } from '@data-access/interfaces/attachment.interface';
 
 /** The image purposes an operator uploads (`MediaPurpose` minus customer review photos). */
-export type MediaPurpose = 'product' | 'category' | 'banner' | 'blog' | 'avatar' | 'icon';
+export type MediaPurpose = 'product' | 'category' | 'banner' | 'blog' | 'avatar' | 'icon' | 'brand';
 
 export interface MediaUploadStatus {
 	assetId: string;

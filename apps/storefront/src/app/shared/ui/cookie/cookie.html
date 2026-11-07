@@ -1,28 +1,52 @@
+@if (consent.boxOpen()) {
 <div
 	class="cookie-bar-box"
-	[class.d-none]="!cookies"
+	role="region"
+	[attr.aria-label]="'cookies' | transloco"
 >
 	<div class="cookie-box">
 		<div class="cookie-image">
 			<img
 				src="assets/images/cookie-bar.png"
 				class="blur-up lazyloaded"
-				alt="cookies"
+				alt=""
 			/>
-			<h2>{{ 'cookies' | transloco }}!</h2>
+			<h2>{{ 'cookies' | transloco }}</h2>
 		</div>
 		<div class="cookie-contain">
-			<h5 class="text-content">{{ 'we_use_cookies_to_make_your_experience_better' | transloco }}</h5>
+			<h5 class="text-content">
+				{{ 'cookie_box_text' | transloco }}
+				<a [routerLink]="['/privacy-policy']">{{ 'cookie_read_policy' | transloco }}</a>
+			</h5>
 		</div>
 	</div>
 
 	<div class="button-group">
-		<button class="btn privacy-button">{{ 'privacy_policy' | transloco }}</button>
 		<button
 			class="btn ok-button"
-			(click)="acceptCookies(false)"
+			id="cookie_necessary_btn"
+			type="button"
+			(click)="necessaryOnly()"
 		>
-			{{ 'ok' | transloco }}
+			{{ 'cookie_necessary_only' | transloco }}
+		</button>
+		<button
+			class="btn ok-button"
+			id="cookie_accept_btn"
+			type="button"
+			(click)="acceptAll()"
+		>
+			{{ 'cookie_accept_all' | transloco }}
+		</button>
+		<button
+			class="btn cookie-choose-button"
+			id="cookie_choose_btn"
+			type="button"
+			(click)="consent.openSettings()"
+		>
+			{{ 'cookie_choose' | transloco }}
 		</button>
 	</div>
 </div>
+}
+<app-cookie-settings />

@@ -106,3 +106,18 @@ describe('Categories', () => {
 		expect(router.navigate.mock.lastCall?.[1].queryParams).toEqual({ category: null });
 	});
 });
+
+describe('Categories browse style', () => {
+	it('shows what comes next for the page, and nothing before the catalogue answers', () => {
+		const fixture = (() => {
+			render();
+			return TestBed.createComponent(Categories);
+		})();
+		expect(fixture.componentInstance.browse()).toEqual([]);
+		data.set({ data: [{ id: 'a', slug: 'sarees' }, { id: 'b', slug: 'silk', parent_id: 'a' }] });
+		fixture.componentRef.setInput('path', 'sarees');
+		expect(fixture.componentInstance.browse().map((row) => row.id)).toEqual(['b']);
+		data.set(undefined);
+	});
+});
+

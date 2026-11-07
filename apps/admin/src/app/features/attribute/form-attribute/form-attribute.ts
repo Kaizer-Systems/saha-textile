@@ -1,4 +1,5 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, DOCUMENT, inject, input, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -9,7 +10,14 @@ import { Select2 } from 'ng-select2-component';
 import { Subject, of } from 'rxjs';
 import { map, switchMap, takeUntil } from 'rxjs/operators';
 
-import { ADMIN_LOCALES, LocalizedFields, SOURCE_LOCALE } from '@core/i18n/localized-fields';
+import {
+	ADMIN_LOCALES,
+	focusField,
+	gapsByLocale,
+	type LanguageGap,
+	LocalizedFields,
+	SOURCE_LOCALE,
+} from '@core/i18n/localized-fields';
 import { AttributeService } from '@data-access/services/attribute.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { Button } from '@shared/ui/button/button';
@@ -44,6 +52,7 @@ const blankTerm = (): AttributeDefinitionTerm => ({
 	imports: [ReactiveFormsModule, FormFields, Button, TranslocoModule, Select2, LanguageSwitch],
 })
 export class FormAttribute {
+	private page = inject<Document>(DOCUMENT);
 	private route = inject(ActivatedRoute);
 	private router = inject(Router);
 	private formBuilder = inject(FormBuilder);
@@ -62,18 +71,24 @@ export class FormAttribute {
 	readonly code = signal<string | null>(null);
 
 	readonly styleOptions = STYLES.map((value) => ({ value, label: value }));
-	readonly roleOptions = ROLES.map((value) => ({ value, label: value }));
+	private readonly translations = toSignal(this.transloco.selectTranslation());
+	readonly roleOptions = computed(() => {
+		this.translations();
+		return ROLES.map((value) => ({ value, label: this.transloco.translate(`role_name_${value}`) }));
+	});
 	readonly facetStyleOptions = FACET_STYLES.map((value) => ({ value, label: value }));
 
-	readonly nameMissing = signal<Record<string, number>>({});
+	readonly nameGaps = signal<Record<string, LanguageGap[]>>({});
 	/** Name plus every value, per language, for the Language switch. */
-	readonly missing = computed(() =>
-		Object.fromEntries(
-			this.locales.map((locale) => [
-				locale,
-				(this.nameMissing()[locale] ?? 0) + this.terms().filter((term) => !term.label[locale]?.trim()).length,
-			]),
-		),
+	readonly gaps = computed(() =>
+		gapsByLocale((locale) => [
+			...(this.nameGaps()[locale] ?? []),
+			...this.terms().flatMap((term, index) =>
+				term.label[locale]?.trim()
+					? []
+					: [{ key: `value_${index}`, label: 'value', name: this.guide(term) || String(index + 1) }],
+			),
+		]),
 	);
 
 	private destroy$ = new Subject<void>();
@@ -131,8 +146,13 @@ export class FormAttribute {
 		this.refreshMissing();
 	}
 
+	openLanguageGap({ key, locale }: { key: string; locale: string }) {
+		this.switchLanguage(locale);
+		focusField(this.page, key);
+	}
+
 	refreshMissing() {
-		this.nameMissing.set(Object.fromEntries(this.locales.map((locale) => [locale, this.fields.missing(locale)])));
+		this.nameGaps.set(gapsByLocale((locale) => this.fields.gaps(locale)));
 	}
 
 	guide(term: AttributeDefinitionTerm): string {

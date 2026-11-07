@@ -206,17 +206,17 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 		};
 
 		it('saves every field and every language', async () => {
-			await repo.save({ code: code('plain'), label: { en: 'Plain' }, priceINR: 1, fields: [] });
-			await repo.save({ code: code('full'), label: { en: 'Full', fr: 'Complet' }, priceINR: 2, fields: [field] });
+			await repo.save({ code: code('plain'), label: { en: 'Plain' }, priceINR: 1, fields: [], sizeGuide: [] });
+			await repo.save({ code: code('full'), label: { en: 'Full', fr: 'Complet' }, priceINR: 2, fields: [field], sizeGuide: [] });
 			const list = await repo.list();
-			expect(row(list, 'plain')).toEqual({ code: code('plain'), label: { en: 'Plain' }, priceINR: 1, fields: [] });
+			expect(row(list, 'plain')).toEqual({ code: code('plain'), label: { en: 'Plain' }, priceINR: 1, fields: [], sizeGuide: [] });
 			expect(row(list, 'full')?.label).toEqual({ en: 'Full', fr: 'Complet' });
 			expect(row(list, 'full')?.fields).toEqual([field]);
 		});
 
 		it('leaves an open range open, and replaces the fields on a later save', async () => {
 			const open = { ...field, min: null, max: null, step: null };
-			await repo.save({ code: code('full'), label: { en: 'Renamed' }, priceINR: 7, fields: [open] });
+			await repo.save({ code: code('full'), label: { en: 'Renamed' }, priceINR: 7, fields: [open], sizeGuide: [] });
 			const found = await repo.findByCode(code('full'));
 			expect(found).toMatchObject({ label: { en: 'Renamed' }, priceINR: 7 });
 			expect(found?.fields).toEqual([open]);
@@ -459,6 +459,7 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 		});
 
 		it('lists public slugs and deletes', async () => {
+			expect(await repo.categorySummaries()).toEqual(expect.any(Array));
 			expect(await repo.listPublicSlugs()).toContain(`${P}filtered`.toLowerCase());
 			await repo.deleteById(`${P}filtered`);
 			expect(await repo.findById(`${P}filtered`)).toBeNull();

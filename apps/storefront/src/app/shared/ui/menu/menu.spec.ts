@@ -108,6 +108,8 @@ describe('Menu', () => {
 	});
 
 	it('opens one item and closes the others', () => {
+		width(1400);
+		categories.set(tree);
 		const menu = render();
 		const [first, second] = menu.menu();
 		first!.active = true;

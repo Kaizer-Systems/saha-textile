@@ -1,10 +1,11 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
+import { ConsentStore } from '@core/consent/consent.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { IContact, ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
@@ -19,6 +20,11 @@ import { translatedBreadcrumb } from '@shared/util/breadcrumb-i18n';
 })
 export class ContactUs {
 	private formBuilder = inject(FormBuilder);
+	private consent = inject(ConsentStore);
+
+	/** The map comes from Google, so it waits for consent or a click that lasts this visit. */
+	readonly mapRequested = signal(false);
+	readonly mapShown = computed(() => this.mapRequested() || this.consent.allows('functional'));
 
 	siteConfig$: Observable<ISiteConfig> = toObservable(inject(SiteConfigStore).siteConfig) as Observable<ISiteConfig>;
 

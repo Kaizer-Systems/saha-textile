@@ -49,6 +49,8 @@ const page = (overrides: Partial<ApiProductPage> = {}): ApiProductPage => ({
 	badges: { primary: null, secondary: null },
 	madeToOrder: false,
 	estimatedDeliveryText: null,
+	sareeLengthM: null,
+	blousePieceM: null,
 	selected: null,
 	unknownVariant: false,
 	gallery: [],
@@ -401,7 +403,7 @@ describe('pageToProduct measurements and bundles', () => {
 		{ code: 'chest', label: 'Chest', unit: 'in' as const, min: 1, max: 2, step: 0.5 },
 		{ code: 'hip', label: 'Hip', unit: 'cm' as const, min: null, max: null, step: null },
 	];
-	const measurements = { templateCode: 't', priceINR: 100, fields };
+	const measurements = { templateCode: 't', priceINR: 100, fields, sizeGuide: [] };
 	const bundle = (overrides: Record<string, unknown> = {}) =>
 		({
 			bundleType: 'fixed_kit',
@@ -449,6 +451,19 @@ describe('pageToProduct measurements and bundles', () => {
 		expect(
 			pageToProduct(page({ measurements: { ...measurements, fields: [] } })).measurement_fields,
 		).toBeUndefined();
+	});
+
+	it('carries the size guide only when the template has one', () => {
+		expect(pageToProduct(page({ measurements })).size_guide).toBeUndefined();
+		const rows = [{ size: 'M', values: { chest: 36 } }];
+		const guide = pageToProduct(page({ measurements: { ...measurements, sizeGuide: rows } })).size_guide;
+		expect(guide?.rows).toEqual(rows);
+		expect(guide?.fields[0]).toEqual({ code: 'chest', label: 'Chest', unit: 'in' });
+	});
+
+	it('carries the saree length and blouse piece', () => {
+		const product = pageToProduct(page({ sareeLengthM: 5.5, blousePieceM: 0.8 }));
+		expect([product.saree_length_m, product.blouse_piece_m]).toEqual([5.5, 0.8]);
 	});
 
 	it('moves measurements onto a bundle', () => {

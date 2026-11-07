@@ -565,7 +565,15 @@ describe('Redirects', () => {
 
 describe('Add-on templates', () => {
 	const chest = { code: 'chest', label: { en: 'Chest', fr: 'Poitrine' }, unit: 'in', min: 24, max: 50, step: 0.5 };
-	const rows = [{ code: 'fall', label: { en: 'Fall', fr: 'Pli' }, priceINR: 100, fields: [chest] }];
+	const rows = [
+		{
+			code: 'fall',
+			label: { en: 'Fall', fr: 'Pli' },
+			priceINR: 100,
+			fields: [chest],
+			sizeGuide: [{ size: 'M', values: { chest: 36 } }],
+		},
+	];
 	const setup = (url = '/addon-template', answer: unknown = of(rows)) => {
 		const api = { list: vi.fn(() => answer), remove: vi.fn(() => of(undefined)), save: vi.fn(() => of({})) };
 		return { ...render(AddonTemplate, [{ provide: AddonTemplateService, useValue: api }], url), api };
@@ -587,7 +595,7 @@ describe('Add-on templates', () => {
 		const { page } = setup('/addon-template/edit/fall?x=1');
 		expect(page.form.getRawValue()).toMatchObject({ code: 'fall', label: 'Fall', priceINR: 100 });
 		expect(page.measures()).toEqual([chest]);
-		expect(page.missing()).toEqual({ en: 0, fr: 0 });
+		expect(page.gaps()).toEqual({ en: [], fr: [] });
 		expect(setup('/addon-template/edit/none').page.form.getRawValue().code).toBe('');
 		expect(setup('/addon-template/create').page.formOnly()).toBe(true);
 	});
@@ -600,7 +608,7 @@ describe('Add-on templates', () => {
 
 	it('edits fields in the language on screen, and counts what is missing', () => {
 		const { page } = setup('/addon-template/create');
-		expect(page.missing()).toEqual({ en: 0, fr: 0 });
+		expect(page.gaps()).toEqual({ en: [], fr: [] });
 		expect(page.onSourceLanguage).toBe(true);
 		page.addField();
 		page.addField();
@@ -616,7 +624,7 @@ describe('Add-on templates', () => {
 		expect(page.onSourceLanguage).toBe(false);
 		page.setLabel(0, page.measures()[0] as never, 'Taille');
 		expect(page.measures()[0]?.label).toEqual({ en: 'Waist', fr: 'Taille' });
-		expect(page.missing()['fr']).toBe(2);
+		expect(page.gaps()['fr']?.length).toBe(2);
 		page.removeField(1);
 		expect(page.measures()).toHaveLength(1);
 	});
@@ -668,5 +676,48 @@ describe('Add-on templates', () => {
 		const { page, api } = setup('/addon-template/edit/fall');
 		page.save();
 		expect((api.save.mock.lastCall as unknown[])[0]).toMatchObject({ fields: [{ code: 'chest' }] });
+	});
+
+	it('edits the size guide, and saves only named sizes and fields that still exist', () => {
+		const { page, api } = setup('/addon-template/edit/fall');
+		const [field] = page.measures();
+		expect(page.fieldCode(field as never)).toBe('chest');
+		expect(page.fieldCode({ code: '', label: { en: 'Upper Arm' } } as never)).toBe('upper-arm');
+		page.addGuideRow();
+		page.addGuideRow();
+		page.setGuideSize(1, ' L ');
+		page.setGuideValue(1, 'chest', '40');
+		page.setGuideValue(1, 'gone', '1');
+		page.setGuideValue(0, 'chest', '');
+		page.setGuideValue(0, 'chest', '38');
+		page.removeGuideRow(2);
+		page.save();
+		expect((api.save.mock.lastCall as unknown[])[0]).toMatchObject({
+			sizeGuide: [
+				{ size: 'M', values: { chest: 38 } },
+				{ size: 'L', values: { chest: 40 } },
+			],
+		});
+	});
+
+	it('jumps to a field from the language to-do list', () => {
+		vi.useFakeTimers();
+		const { page } = setup('/addon-template/edit/fall');
+		const input = document.createElement('input');
+		input.id = 'field_0';
+		document.body.appendChild(input);
+		page.setLabel(0, page.measures()[0] as never, 'Chest');
+		page.openLanguageGap({ key: 'field_0', locale: 'fr' });
+		vi.runAllTimers();
+		expect(page.text.locale()).toBe('fr');
+		expect(document.activeElement).toBe(input);
+		input.remove();
+		vi.useRealTimers();
+	});
+
+	it('lists a field with no English name by its place', () => {
+		const { page } = setup('/measurement/create');
+		page.addField();
+		expect(page.gaps()['en']).toContainEqual({ key: 'field_0', label: 'measurement_field', name: '1' });
 	});
 });

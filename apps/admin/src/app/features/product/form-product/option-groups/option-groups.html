@@ -28,7 +28,7 @@
 							<select2
 								class="custom-select"
 								[id]="'role_' + index"
-								[data]="roleOptions"
+								[data]="roleOptions()"
 								[value]="group.semanticRole"
 								(update)="setRole(index, group, $any($event.value))"
 							/>

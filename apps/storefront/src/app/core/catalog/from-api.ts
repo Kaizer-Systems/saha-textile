@@ -92,6 +92,8 @@ export interface ApiProductPage {
 	badges: { primary: string | null; secondary: string | null };
 	madeToOrder: boolean;
 	estimatedDeliveryText: string | null;
+	sareeLengthM: number | null;
+	blousePieceM: number | null;
 	selected: { sku: string; sellingINR: number; mrpINR: number | null; quantity: number; buyable: boolean } | null;
 	unknownVariant: boolean;
 	gallery: ApiImage[];
@@ -118,6 +120,7 @@ export interface ApiProductPage {
 			max: number | null;
 			step: number | null;
 		}>;
+		sizeGuide: Array<{ size: string; values: Record<string, number> }>;
 	} | null;
 	bundle: {
 		bundleType: 'fixed_kit' | 'choose_one_per_group' | 'optional_addons';
@@ -437,6 +440,14 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 		quantity: page.selected?.quantity ?? 0,
 		stock_status: page.selected?.buyable === false ? 'out_of_stock' : 'in_stock',
 		estimated_delivery_text: page.estimatedDeliveryText ?? '',
+		saree_length_m: page.sareeLengthM,
+		blouse_piece_m: page.blousePieceM,
+		size_guide: page.measurements?.sizeGuide.length
+			? {
+					fields: page.measurements.fields.map(({ code, label, unit }) => ({ code, label, unit })),
+					rows: page.measurements.sizeGuide,
+				}
+			: undefined,
 		product_thumbnail: galleries[0],
 		product_meta_image: galleries[0],
 		product_galleries: galleries,

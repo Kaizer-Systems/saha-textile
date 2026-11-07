@@ -45,3 +45,26 @@ describe('SharpImageCodec formats', () => {
 		expect((await sharp(blur.bytes).metadata()).format).toBe('webp');
 	});
 });
+
+describe('SharpImageCodec logos', () => {
+	const clear = () =>
+		sharp({ create: { width: 40, height: 40, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png();
+	const spec = { width: 32, height: null, fit: 'inside', quality: 90 } as const;
+
+	it('keeps a clear background in a PNG icon', async () => {
+		const out = await codec.render(await bytesOf(clear()), { ...spec, format: 'image/png', keepAlpha: true });
+		expect(await sharp(out.bytes).metadata()).toMatchObject({ format: 'png', hasAlpha: true });
+	});
+
+	it('keeps a clear background in a WebP logo', async () => {
+		const out = await codec.render(await bytesOf(clear()), { ...spec, format: 'image/webp', keepAlpha: true });
+		expect((await sharp(out.bytes).metadata()).hasAlpha).toBe(true);
+	});
+
+	it('still flattens anything else onto white', async () => {
+		const out = await codec.render(await bytesOf(clear()), { ...spec, format: 'image/png' });
+		const { data } = await sharp(out.bytes).raw().toBuffer({ resolveWithObject: true });
+		expect(data[0]).toBe(255);
+	});
+});
+

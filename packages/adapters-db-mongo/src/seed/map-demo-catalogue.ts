@@ -606,6 +606,8 @@ export function mapDemoCatalogue(input: {
 			estimatedDeliveryText: product.estimated_delivery_text?.trim()
 				? text(product.estimated_delivery_text, product.estimated_delivery_text)
 				: null,
+			sareeLengthM: null,
+			blousePieceM: null,
 			lowStockThreshold: null,
 			lifetimeUnitsReceived: 0,
 			featured: Boolean(product.is_featured),
@@ -720,6 +722,7 @@ export function mapDemoCatalogue(input: {
 								decimals: 1,
 							},
 						})),
+						sizeGuide: [],
 						status: 'active' as const,
 					},
 				]

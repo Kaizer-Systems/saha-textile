@@ -1,0 +1,12 @@
+// Real names carry the weave and the border, so a card shows two lines. The reserved height keeps
+// cards aligned, and nothing shifts as a page loads.
+:host .product-box .product-detail a h6.name {
+	display: -webkit-box;
+	overflow: hidden;
+	min-height: 2.8em;
+	line-height: 1.4;
+	white-space: normal;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+}

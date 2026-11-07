@@ -467,6 +467,12 @@ describe('FormFaq', () => {
 		return { ...render(FormFaq, [{ provide: FaqService, useValue: service }], {}, params), service };
 	};
 
+	it('jumps to a field from the language to-do list', () => {
+		const { page } = setup();
+		page.openLanguageGap({ key: 'title', locale: 'fr' });
+		expect(page.fields.locale()).toBe('fr');
+	});
+
 	it('fills from a saved question', () => {
 		const { page } = setup({ id: 1 }, [
 			{
@@ -512,7 +518,7 @@ describe('FormFaq', () => {
 		expect(page.onSourceLanguage).toBe(false);
 		page.form.patchValue({ title: 'Question' });
 		page.refreshMissing();
-		expect(page.missing()['fr']).toBe(1);
+		expect(page.gaps()['fr']?.length).toBe(1);
 		page.submit();
 		expect((service.save.mock.lastCall as unknown[])[0]).toMatchObject({
 			title: 'Q',
@@ -671,10 +677,6 @@ describe('Setting', () => {
 	});
 
 	it.each([
-		['selectLightLogo', 'general', 'light_logo_image_id'],
-		['selectDarkLogo', 'general', 'dark_logo_image_id'],
-		['selectTinyLogo', 'general', 'tiny_logo_image_id'],
-		['selectFavicon', 'general', 'favicon_image_id'],
 		['selectMaintenance', 'maintenance', 'maintenance_image_id'],
 	] as const)('%s stores one image', (method, group, field) => {
 		const { page } = setup();

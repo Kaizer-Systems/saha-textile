@@ -11,6 +11,11 @@ import { Login } from './login/login';
 import { Otp } from './otp/otp';
 import { UpdatePassword } from './update-password/update-password';
 
+const brandData = () => undefined;
+vi.mock('@core/brand/brand.gateway', () => ({
+	injectBrandQuery: () => ({ data: brandData }),
+}));
+
 const setup = <T>(type: new () => T, token: string | null = 'tok') => {
 	const store = {
 		error: signal(null),

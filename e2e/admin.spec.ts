@@ -551,3 +551,73 @@ test.describe('What admin makes reaches the shop', () => {
 		await withDatabase((db) => db.collection('faqEntries').deleteMany({ 'question.en': title }));
 	});
 });
+
+test.describe('Language to-do list', () => {
+	test('the count lists what is left, and a line jumps to the field', async ({ page }) => {
+		await open(page, '/product/create');
+		await page.locator('#name').fill('To-do Test');
+		const french = page.locator('app-language-switch .btn-group').nth(1);
+		await french.locator('[ngbDropdownToggle]').click();
+		await french.locator('[ngbDropdownItem]', { hasText: 'Meta Title' }).click();
+		await expect(page.locator('#meta_title')).toBeFocused();
+		await expect(page.locator('#name')).toHaveValue('');
+	});
+});
+
+test.describe('Product facts', () => {
+	test('saree length shows only for sarees, and the Unit field is gone', async ({ page }) => {
+		await open(page, '/product/create');
+		await page.locator('.nav-link', { hasText: 'Inventory' }).first().click();
+		await expect(page.locator('#unit')).toHaveCount(0);
+		await expect(page.locator('#saree_length_m')).toHaveCount(0);
+	});
+
+	test('roles read as plain words', async ({ page }) => {
+		await open(page, '/attribute/create');
+		await expect(page.locator('body')).not.toContainText('variation_axis');
+	});
+});
+
+test.describe('Size guide', () => {
+	test('written once on the template, shown on the product, in inches or centimetres', async ({ page, baseURL }) => {
+		const slug = await withDatabase(async (db) => {
+			const row = await db.collection('products').findOne({ addonTemplateCode: 'blouse-measurements', status: 'live' });
+			return String(row?.['slug']);
+		});
+		await open(page, '/measurement/edit/blouse-measurements');
+		await page.locator('#add_guide_row_btn').click();
+		await page.locator('#guide_size_0').fill('M');
+		await page.locator('#guide_size_0').blur();
+		const cell = page.locator('app-form-fields table tbody input[type=number]').first();
+		await cell.fill('36');
+		await cell.blur();
+		await page.getByRole('button', { name: /save/i }).first().click();
+		await expect(page).toHaveURL(/\/measurement$/);
+		await page.goto(`https://localhost:4200/en/product/${slug}`);
+		await page.locator('.size-delivery-info a', { hasText: 'Size Chart' }).click();
+		const table = page.locator('.modal-body table');
+		await expect(table).toContainText('36');
+		await page.locator('.modal-body .btn-group button', { hasText: 'Centimetres' }).click();
+		await expect(table).toContainText('91.4');
+		expect(baseURL).toBeDefined();
+	});
+});
+
+test.describe('Brand Kit', () => {
+	test('a saved shop name reaches the public brand at once', async ({ page, request }) => {
+		await open(page, '/setting/brand');
+		await page.locator('#shop_name').fill('Saha Textile Test');
+		await page.locator('#save_brand_btn').click();
+		await expect(page.locator('body')).toContainText('Brand Kit saved');
+		const brand = await (await request.get('https://localhost:4000/storefront/brand')).json();
+		expect(brand.shopName).toBe('Saha Textile Test');
+	});
+
+	test('the sidebar logo clears the collapse button', async ({ page }) => {
+		await open(page, '/dashboard');
+		const toggle = await page.locator('.logo-wrapper .toggle-sidebar').boundingBox();
+		const wrapper = await page.locator('.logo-wrapper').boundingBox();
+		expect(toggle?.x ?? 0).toBeGreaterThan((wrapper?.x ?? 0) + 200);
+	});
+});
+

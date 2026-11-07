@@ -1,14 +1,13 @@
 <div class="footer-logo-contain">
-	@if (data()?.footer?.footer_about) {
-	<p>{{ data()?.footer?.footer_about }}</p>
-	}
+	<p>{{ 'footer_about_text' | transloco }}</p>
 	<ul class="address">
 		@if (data()?.footer?.about_address) {
 		<li>
 			<i class="ri-home-line"></i>
 			<a
-				href="https://www.google.com/maps"
+				[href]="'https://www.google.com/maps/search/?api=1&query=' + encodedAddress()"
 				target="_blank"
+				rel="noopener"
 			>
 				{{ data()?.footer?.about_address }}
 			</a>

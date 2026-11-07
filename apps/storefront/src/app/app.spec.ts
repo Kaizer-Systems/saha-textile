@@ -73,7 +73,6 @@ describe('App', () => {
 		const { siteConfig, meta } = render();
 		siteConfig.set({
 			general: { mode: 'dark', language_direction: 'rtl' },
-			logo: { favicon_icon: { original_url: 'https://cdn.test/icon.png' } },
 			seo: {
 				og_title: 'OG title',
 				og_description: 'OG description',
@@ -87,7 +86,6 @@ describe('App', () => {
 		expect(html().classList.contains('dark')).toBe(true);
 		expect(html().getAttribute('dir')).toBe('rtl');
 		expect(document.body.classList.contains('rtl')).toBe(true);
-		expect((document.querySelector('#appIcon') as HTMLLinkElement).href).toBe('https://cdn.test/icon.png');
 		expect(meta.updateTag.mock.calls.map(([tag]) => tag)).toEqual([
 			{ property: 'og:title', content: 'OG title' },
 			{ property: 'og:description', content: 'OG description' },

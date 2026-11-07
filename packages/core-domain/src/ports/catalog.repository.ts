@@ -27,6 +27,12 @@ export interface ProductFilter extends PageQuery {
  * Every read takes the audience so status visibility is enforced in ONE place
  * (the repository query) rather than trusted to each caller.
  */
+export interface CategorySummary {
+	categoryId: string;
+	productCount: number;
+	coverAssetId: string | null;
+}
+
 export interface ProductRepository {
 	findById(id: string, audience?: CatalogAudience): Promise<Product | null>;
 	findBySlug(slug: string, audience?: CatalogAudience): Promise<Product | null>;
@@ -35,6 +41,8 @@ export interface ProductRepository {
 	deleteById(id: string): Promise<void>;
 	/** Live product slugs for the storefront redirect allow-list. */
 	listPublicSlugs(): Promise<string[]>;
+	/** Live products per category, with the first product's lead photo. */
+	categorySummaries(): Promise<CategorySummary[]>;
 	/** Replaces the weekly badges: every other product loses them. */
 	setInsightBadges(input: { bestseller: readonly string[]; trending: readonly string[] }): Promise<void>;
 }

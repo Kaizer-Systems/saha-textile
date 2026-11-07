@@ -6,8 +6,9 @@
 	<app-language-switch
 		[locales]="locales"
 		[active]="fields.locale()"
-		[missing]="missing()"
+		[gaps]="gaps()"
 		(changed)="switchLanguage($event)"
+		(gapChosen)="openLanguageGap($event)"
 	/>
 	<app-form-fields
 		[label]="'attribute_name' | transloco"
@@ -37,7 +38,7 @@
 		<select2
 			class="custom-select d-block"
 			id="default_role"
-			[data]="roleOptions"
+			[data]="roleOptions()"
 			formControlName="default_role"
 		/>
 	</app-form-fields>

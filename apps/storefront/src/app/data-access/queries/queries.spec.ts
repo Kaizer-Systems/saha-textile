@@ -173,7 +173,7 @@ describe('keyed queries', () => {
 	it('a static page waits for its slug', async () => {
 		const query = options(() => injectStaticPageQuery(() => 'about'));
 		await query.queryFn();
-		expect(query.queryKey).toEqual(['static-page', 'about']);
+		expect(query.queryKey).toEqual(['static-page', 'about', 'en']);
 		expect(options(() => injectStaticPageQuery(() => undefined)).enabled).toBe(false);
 	});
 

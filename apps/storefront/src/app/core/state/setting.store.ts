@@ -5,6 +5,7 @@ import { patchState, signalStore, withHooks, withMethods, withState } from '@ngr
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, switchMap, tap } from 'rxjs';
 
+import { ConsentStore } from '@core/consent/consent.store';
 import { ICurrency } from '@data-access/interfaces/currency.interface';
 import { IValues } from '@data-access/interfaces/setting.interface';
 import { SettingService } from '@data-access/services/setting.service';
@@ -29,7 +30,7 @@ const CURRENCY_KEY = 'selectedCurrency';
 export const SettingStore = signalStore(
 	{ providedIn: 'root' },
 	withState<SettingStateModel>({ setting: null, selectedCurrency: null }),
-	withMethods((store, settingService = inject(SettingService), platformId = inject(PLATFORM_ID)) => ({
+	withMethods((store, settingService = inject(SettingService), platformId = inject(PLATFORM_ID), consent = inject(ConsentStore)) => ({
 		loadSettings: rxMethod<void>(
 			pipe(
 				switchMap(() =>
@@ -48,7 +49,7 @@ export const SettingStore = signalStore(
 		),
 		setCurrency(currency: ICurrency): void {
 			patchState(store, { selectedCurrency: currency });
-			if (isPlatformBrowser(platformId)) {
+			if (isPlatformBrowser(platformId) && consent.allows('functional')) {
 				localStorage.setItem(CURRENCY_KEY, JSON.stringify(currency));
 			}
 		},

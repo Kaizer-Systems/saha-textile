@@ -1,6 +1,7 @@
 import 'dotenv/config';
 
 import {
+	MongoAttributeDefinitionRepository,
 	MongoCategoryRepository,
 	MongoProductRepository,
 	MongoProductVariantRepository,
@@ -8,7 +9,7 @@ import {
 	disconnectMongo,
 } from '@saha-textile/adapters-db-mongo';
 import type { Product } from '@saha-textile/contracts';
-import { rebuildSearchIndex } from '@saha-textile/core-domain';
+import { rebuildSearchIndex, valueSearchWords } from '@saha-textile/core-domain';
 
 import { loadConfig } from './config/app-config';
 import { MeilisearchSearch } from './search/meilisearch-search';
@@ -37,10 +38,12 @@ async function main(): Promise<void> {
 		const names = new Map(
 			(await new MongoCategoryRepository().tree()).map((row) => [row.id, Object.values(row.name)]),
 		);
+		const definitions = await new MongoAttributeDefinitionRepository().listAll();
 		const entries = products.map((product) => ({
 			product,
 			variants: rows.filter((row) => row.productId === product.id),
 			categoryNames: product.categoryIds.flatMap((id) => names.get(id) ?? []),
+			searchWords: valueSearchWords(product, definitions),
 		}));
 		const config = loadConfig();
 		const { host, apiKey, index } = config.search;

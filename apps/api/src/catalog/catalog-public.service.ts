@@ -55,6 +55,19 @@ import {
 
 const RAIL = 12;
 /** A category image is any library image, so take the size that suits it best. */
+/** A parent counts its children's products and borrows a child's photo. Rows run parents first. */
+function rollUp(rows: CatalogMenuCategory[]): CatalogMenuCategory[] {
+	const byId = new Map(rows.map((row) => [row.id, { ...row }]));
+	for (const { id } of [...rows].reverse()) {
+		const row = byId.get(id) as CatalogMenuCategory;
+		const parent = byId.get(row.parentId ?? '');
+		if (!parent) continue;
+		parent.productCount += row.productCount;
+		parent.coverUrl ??= row.coverUrl;
+	}
+	return rows.map((row) => byId.get(row.id) as CatalogMenuCategory);
+}
+
 const CATEGORY_IMAGE_ROLES = ['category_icon', 'card', 'gallery', 'thumb'] as const;
 /** Matches no category, so an unknown slug empties the list instead of widening it. */
 const NO_CATEGORY = 'no-such-category';
@@ -96,11 +109,17 @@ export class CatalogPublicService {
 	 */
 	async menu(): Promise<CatalogMenuCategory[]> {
 		if (!this.categories || !this.placements) return [];
-		const [categories, placements] = await Promise.all([this.categories.tree(), this.placements.listCanonicalLive()]);
+		const [categories, placements, summaries] = await Promise.all([
+			this.categories.tree(),
+			this.placements.listCanonicalLive(),
+			this.products.categorySummaries(),
+		]);
 		const byId = new Map(categories.map((category) => [category.id, category]));
-		const images = await this.categoryImages(
-			categories.flatMap((category) => [category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat()),
-		);
+		const summary = new Map(summaries.map((row) => [row.categoryId, row]));
+		const images = await this.categoryImages([
+			...categories.flatMap((category) => [category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat()),
+			...summaries.flatMap((row) => row.coverAssetId ?? []),
+		]);
 		const shown = new Set<string>();
 		const rows: CatalogMenuCategory[] = [];
 		const ordered = [...placements].sort((a, b) => a.depth - b.depth || a.displayOrder - b.displayOrder);
@@ -110,6 +129,8 @@ export class CatalogPublicService {
 			if (!category || !this.locales.every((locale) => category.name[locale]?.trim())) continue;
 			if (parentId && !shown.has(parentId)) continue;
 			shown.add(category.id);
+			const own = images.get(category.media?.bannerImage ?? '') ?? null;
+			const count = summary.get(category.id);
 			rows.push({
 				id: category.id,
 				name: localized(category.name),
@@ -118,11 +139,13 @@ export class CatalogPublicService {
 				parentId,
 				level: placement.depth + 1,
 				path: placement.pathSlugs.join('/'),
-				imageUrl: images.get(category.media?.bannerImage ?? '') ?? null,
+				imageUrl: own,
 				iconUrl: images.get(category.media?.iconImage ?? '') ?? null,
+				productCount: count?.productCount ?? 0,
+				coverUrl: own ?? images.get(count?.coverAssetId ?? '') ?? null,
 			});
 		}
-		return rows;
+		return rollUp(rows);
 	}
 
 	/** One address per asset, for images that only need showing. */
@@ -172,6 +195,8 @@ export class CatalogPublicService {
 			badges: read.badges,
 			madeToOrder: read.madeToOrder,
 			estimatedDeliveryText: product.estimatedDeliveryText ? localized(product.estimatedDeliveryText) : null,
+			sareeLengthM: product.sareeLengthM ?? null,
+			blousePieceM: product.blousePieceM ?? null,
 			selected: selected
 				? {
 						sku: selected.sku,
@@ -252,6 +277,7 @@ export class CatalogPublicService {
 				templateCode: template.code,
 				priceINR: product.addonPriceINR ?? template.priceINR,
 				fields: template.fields.map((field) => ({ ...field, label: localized(field.label) })),
+				sizeGuide: template.sizeGuide,
 			};
 		}
 		const own = product.addons.filter((addon) => addon.type === 'number');
@@ -267,6 +293,7 @@ export class CatalogPublicService {
 				max: null,
 				step: null,
 			})),
+			sizeGuide: [],
 		};
 	}
 

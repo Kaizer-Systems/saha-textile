@@ -1,11 +1,12 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, effect, inject, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
 import { CartFacade } from '@core/state/cart/cart.facade';
+import { OnlineStatus } from '@core/state/online-status';
 import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
@@ -37,6 +38,10 @@ export class Cart {
 	private wishlistFacade = inject(WishlistFacade);
 	private cartFacade = inject(CartFacade);
 
+	/** Offline the saved cart stays readable; prices and stock need the server, so changes pause. */
+	readonly online = inject(OnlineStatus).online;
+	private wasOffline = false;
+
 	cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
 	cartTotal$: Observable<number> = this.cartFacade.cartTotal$;
 
@@ -46,6 +51,14 @@ export class Cart {
 	}
 
 	public breadcrumb = translatedBreadcrumb('cart');
+
+	constructor() {
+		effect(() => {
+			const online = this.online();
+			if (online && this.wasOffline) untracked(() => this.cartFacade.getCartItems());
+			this.wasOffline = !online;
+		});
+	}
 
 	updateQuantity(item: ICart, qty: number) {
 		const params: ICartAddOrUpdate = {

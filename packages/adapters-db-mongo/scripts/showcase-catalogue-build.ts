@@ -414,6 +414,8 @@ function finishProduct(doc: Product, note: ShowcaseNote, now: Date): Product {
 	const { title, description, shortDescription, photos, scenario, stock, lifecycle } = note;
 	const altOverrides = Object.fromEntries(photos.map((id) => [id, title]));
 	const measures = scenario === 'blouse_design' || scenario === 'suit_stitching';
+	const suitGuide = note.leaf.family === 'suits' && scenario !== 'bundle';
+	const saree = note.leaf.path.startsWith('sarees/');
 	const liveAt = doc.lifecycle.liveAt;
 	return {
 		...doc,
@@ -454,12 +456,25 @@ function finishProduct(doc: Product, note: ShowcaseNote, now: Date): Product {
 		featured: note.featured,
 		insightBadges: note.insight ? [note.insight] : [],
 		ratingsSummary: note.rating,
-		addonTemplateCode: measures ? (scenario === 'suit_stitching' ? SUIT_TEMPLATE_CODE : BLOUSE_TEMPLATE_CODE) : null,
+		sareeLengthM: saree ? (note.rating.count % 2 ? 5.5 : 6.3) : null,
+		blousePieceM: saree && note.rating.count % 5 ? 0.8 : null,
+		addonTemplateCode: suitGuide ? SUIT_TEMPLATE_CODE : measures ? BLOUSE_TEMPLATE_CODE : null,
 		shippingDefaults: { weightGrams: note.family.weightGrams, lengthCm: 35, widthCm: 28, heightCm: 4 },
 		hsnCode: note.family.hsn,
 		tags: [note.leaf.family],
 	};
 }
+
+const SUIT_SIZE_GUIDE: AddonTemplate['sizeGuide'] = [
+	['S', 34, 28, 37],
+	['M', 36, 30, 39],
+	['L', 38, 32, 41],
+	['XL', 40, 34, 43],
+	['XXL', 43, 37, 46],
+].map(([size, bust, waist, hip]) => ({
+	size: size as string,
+	values: { bust: bust as number, waist: waist as number, hip: hip as number, 'kurta-length': 44, 'bottom-length': 39 },
+}));
 
 const BLOUSE_TEMPLATE_CODE = 'blouse-measurements';
 const SUIT_TEMPLATE_CODE = 'suit-measurements';
@@ -547,6 +562,7 @@ export function finishShowcase(mapped: DemoCatalogue, showcase: Showcase, now: D
 		code: SUIT_TEMPLATE_CODE,
 		label: { en: 'Suit measurements', fr: 'Mesures de l’ensemble' },
 		fields: SUIT_FIELDS,
+		sizeGuide: SUIT_SIZE_GUIDE,
 	};
 	const byPath = new Map(mapped.placements.map((row) => [row.pathSlugs.join('/'), row]));
 	const extra: CategoryPlacement[] = SECOND_PLACEMENTS.map(({ path, alsoUnder }) => {

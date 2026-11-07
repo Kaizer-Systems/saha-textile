@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+	BrandSettings,
 	type ContentBlock,
 	ContentBlockInput,
 	ContentBlockListQuery,
@@ -15,6 +16,7 @@ import {
 import { Audience, RequirePermissions } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
+import { BrandService } from './brand.service';
 import { ContentBlocksService } from './content-blocks.service';
 import { YouTubeService } from './youtube.service';
 
@@ -26,7 +28,22 @@ export class AdminContentController {
 	constructor(
 		private readonly blocks: ContentBlocksService,
 		private readonly youtube: YouTubeService,
+		private readonly brand: BrandService,
 	) {}
+
+	@Get('settings/brand')
+	@RequirePermissions('setting.index')
+	@ApiOperation({ operationId: 'getBrandKit', summary: 'The Brand Kit settings' })
+	brandKit(): Promise<BrandSettings> {
+		return this.brand.settingsValue();
+	}
+
+	@Put('settings/brand')
+	@RequirePermissions('setting.edit')
+	@ApiOperation({ operationId: 'saveBrandKit', summary: 'Set the shop name, logo and seal' })
+	saveBrandKit(@Body(new ZodValidationPipe(BrandSettings)) body: BrandSettings): Promise<BrandSettings> {
+		return this.brand.save(body);
+	}
 
 	@Get('content-blocks')
 	@RequirePermissions('theme_option.index')

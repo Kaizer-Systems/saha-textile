@@ -247,13 +247,30 @@
 <section class="map-section">
 	<div class="container-fluid p-0">
 		<div class="map-box">
+			@if (mapShown()) {
 			<iframe
-				src="https://www.google.com/maps/embed?pb=!1m23!1m12!1m3!1d2994.3803116994895!2d55.29773782339708!3d25.222534631321!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!4m8!3e6!4m5!1s0x3e5f43496ad9c645%3A0xbde66e5084295162!2sDubai%20-%20United%20Arab%20Emirates!3m2!1d25.2048493!2d55.2707828!4m0!5e1!3m2!1sen!2sin!4v1652217109535!5m2!1sen!2sin"
+				[title]="'contact_map_title' | transloco"
+				src="https://www.google.com/maps?q=No.%2029%2C%20KB%20Basu%20Rd%2C%20Barasat%2C%20Kolkata%20700124&output=embed"
 				style="border: 0"
 				allowfullscreen=""
 				loading="lazy"
 				referrerpolicy="no-referrer-when-downgrade"
 			></iframe>
+			} @else {
+			<div class="contact-map-off d-flex flex-column align-items-center justify-content-center p-4 text-center">
+				<i class="ri-map-pin-line"></i>
+				<h4 class="mb-2 mt-2">{{ 'contact_map_off_title' | transloco }}</h4>
+				<p class="text-content mb-3">{{ 'contact_map_off_text' | transloco }}</p>
+				<button
+					type="button"
+					class="btn btn-md fw-bold theme-bg-color text-light"
+					id="show_map_btn"
+					(click)="mapRequested.set(true)"
+				>
+					{{ 'contact_map_show' | transloco }}
+				</button>
+			</div>
+			}
 		</div>
 	</div>
 </section>

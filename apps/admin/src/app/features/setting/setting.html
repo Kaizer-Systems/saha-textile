@@ -27,58 +27,6 @@
 									<app-form-fields
 										[labelClass]="'form-label-title col-sm-3 mb-0'"
 										[gridClass]="'col-sm-9'"
-										[label]="'light_logo'"
-										[for]="'light_logo_image_id'"
-									>
-										<app-image-upload
-											[multipleImage]="false"
-											[helpText]="'*Upload image size 180x50px recommended'"
-											[image]="(setting$ | async)?.general?.light_logo_image"
-											(selectedFiles)="selectLightLogo($event)"
-										/>
-									</app-form-fields>
-									<app-form-fields
-										[labelClass]="'form-label-title col-sm-3 mb-0'"
-										[gridClass]="'col-sm-9'"
-										[label]="'dark_logo'"
-										[for]="'dark_logo_image_id'"
-									>
-										<app-image-upload
-											[multipleImage]="false"
-											[helpText]="'*Upload image size 180x50px recommended'"
-											[image]="(setting$ | async)?.general?.dark_logo_image"
-											(selectedFiles)="selectDarkLogo($event)"
-										/>
-									</app-form-fields>
-									<app-form-fields
-										[labelClass]="'form-label-title col-sm-3 mb-0'"
-										[gridClass]="'col-sm-9'"
-										[label]="'tiny_logo'"
-										[for]="'tiny_logo_image_id'"
-									>
-										<app-image-upload
-											[multipleImage]="false"
-											[helpText]="'*Upload image size 50x30px recommended'"
-											[image]="(setting$ | async)?.general?.tiny_logo_image"
-											(selectedFiles)="selectTinyLogo($event)"
-										/>
-									</app-form-fields>
-									<app-form-fields
-										[labelClass]="'form-label-title col-sm-3 mb-0'"
-										[gridClass]="'col-sm-9'"
-										[label]="'favicon'"
-										[for]="'favicon_image_id'"
-									>
-										<app-image-upload
-											[multipleImage]="false"
-											[helpText]="'*Upload image size 16x16px recommended'"
-											[image]="(setting$ | async)?.general?.favicon_image"
-											(selectedFiles)="selectFavicon($event)"
-										/>
-									</app-form-fields>
-									<app-form-fields
-										[labelClass]="'form-label-title col-sm-3 mb-0'"
-										[gridClass]="'col-sm-9'"
 										[label]="'site_title'"
 										[for]="'site_title'"
 										[required]="true"

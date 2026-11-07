@@ -87,8 +87,8 @@ describe('LocalizedFields', () => {
 		fields.load({ name: { en: 'Silk' } });
 		expect(form.value).toMatchObject({ name: 'Silk', other: '' });
 		form.patchValue({ other: 5 });
-		expect(fields.missing('en')).toBe(1);
-		expect(fields.missing('fr')).toBe(2);
+		expect(fields.gaps('en').length).toBe(1);
+		expect(fields.gaps('fr').length).toBe(2);
 		fields.switchTo('fr');
 		expect(fields.source('unknown')).toBe('');
 	});
@@ -98,10 +98,10 @@ describe('LocalizedFields with an optional field', () => {
 	it('asks for other languages only once English is written', () => {
 		const form = new FormGroup({ note: new FormControl('') });
 		const fields = new LocalizedFields(form, ['note'], ['note']);
-		expect(fields.missing('fr')).toBe(0);
+		expect(fields.gaps('fr').length).toBe(0);
 		form.patchValue({ note: 'Soon' });
-		expect(fields.missing('en')).toBe(0);
-		expect(fields.missing('fr')).toBe(1);
+		expect(fields.gaps('en').length).toBe(0);
+		expect(fields.gaps('fr').length).toBe(1);
 	});
 });
 
@@ -184,6 +184,10 @@ describe('OptionGroups', () => {
 	const providers = [{ provide: TranslocoService, useValue: translate }];
 	const render = (groups: unknown[] = [], definitions: unknown[] = [definition()], locale = 'fr') =>
 		mount(OptionGroups, providers, { groups, definitions, locale });
+
+	it('names roles in plain words', () => {
+		expect(render().roleOptions()[0]).toEqual({ value: 'variation_axis', label: 'role_name_variation_axis' });
+	});
 
 	describe('changing a role', () => {
 		const axis = () => group({ semanticRole: 'variation_axis' });
@@ -689,10 +693,16 @@ describe('FormCategory', () => {
 		return { page, service, router, toasts, client };
 	};
 
+	it('switches to the language of a to-do line', () => {
+		const { page } = render();
+		page.openLanguageGap({ key: 'name', locale: 'fr' });
+		expect(page.fields.locale()).toBe('fr');
+	});
+
 	it('fills from the API, and copes with a missing row', () => {
 		const { page } = render('cat_1');
 		expect(page.form.value).toMatchObject({ name: 'Sarees', slug: 'sarees', parent_id: 'cat_0' });
-		expect(page.missing()['fr']).toBe(3);
+		expect(page.gaps()['fr']?.length).toBe(3);
 		expect(page.form.value).toMatchObject({ category_image_id: 'a1', category_icon_id: '' });
 		expect(page.category.category_image?.original_url).toBe('https://cdn.test/a1');
 		expect(page.category.category_icon).toBeUndefined();
@@ -905,7 +915,7 @@ describe('FormAttribute', () => {
 		expect(page.code()).toBe('color');
 		expect(page.form.value).toMatchObject({ name: 'Red', style: 'color_swatch', default_role: 'variation_axis' });
 		expect(page.isColour).toBe(true);
-		expect(page.missing()['fr']).toBe(1);
+		expect(page.gaps()['fr']?.length).toBe(1);
 		expect(render('nope').page.code()).toBeNull();
 	});
 
@@ -927,6 +937,24 @@ describe('FormAttribute', () => {
 			{ type: 'edit' },
 		);
 		expect(page.form.value).toMatchObject({ use_as_filter: false, facet_style: 'swatch' });
+	});
+
+	it('lists each missing value, and jumps to it', () => {
+		vi.useFakeTimers();
+		const { page } = render();
+		const input = document.createElement('input');
+		input.id = 'value_0';
+		document.body.appendChild(input);
+		page.openLanguageGap({ key: 'value_0', locale: 'fr' });
+		vi.runAllTimers();
+		expect(page.fields.locale()).toBe('fr');
+		expect(document.activeElement).toBe(input);
+		input.remove();
+		vi.useRealTimers();
+		page.add();
+		const last = page.gaps()['en']?.at(-1);
+		expect(last).toMatchObject({ label: 'value', name: String(page.terms().length) });
+		expect(page.roleOptions()[0]?.label).toBe('role_name_filter_only');
 	});
 
 	it('edits values, naming a new one from English only', () => {
@@ -951,8 +979,8 @@ describe('FormAttribute', () => {
 		expect(page.terms()[0]?.slug).toBe('blue-one');
 		page.remove(1);
 		expect(page.terms()).toHaveLength(1);
-		page.nameMissing.set({});
-		expect(page.missing()['en']).toBe(0);
+		page.nameGaps.set({});
+		expect(page.gaps()['en']?.length).toBe(0);
 	});
 
 	it('refuses no English name', () => {

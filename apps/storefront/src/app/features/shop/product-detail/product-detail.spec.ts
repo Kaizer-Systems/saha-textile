@@ -9,6 +9,7 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { BehaviorSubject } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { ConsentStore } from '@core/consent/consent.store';
 import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { SiteConfigStore } from '@core/state/site-config.store';
@@ -33,7 +34,7 @@ vi.mock('@data-access/queries/product.queries', () => ({
 }));
 
 const render = (
-	options: { platform?: string; variant?: string | null; response?: unknown; noQuery?: boolean } = {},
+	options: { platform?: string; variant?: string | null; response?: unknown; noQuery?: boolean; functional?: boolean } = {},
 ) => {
 	const params = new BehaviorSubject<Record<string, string>>({ slug: 'red-saree' });
 	const map = (value: string | null) => ({ get: () => value });
@@ -63,6 +64,7 @@ const render = (
 			{ provide: QueryClient, useValue: client },
 			{ provide: PLATFORM_ID, useValue: options.platform ?? 'browser' },
 			{ provide: ACTIVE_LOCALE, useValue: 'en' },
+			{ provide: ConsentStore, useValue: { allows: () => options.functional ?? true } },
 			{ provide: SiteConfigStore, useValue: { siteConfig: signal(null) } },
 			{ provide: TranslocoService, useValue: { translate: () => 'Product' } },
 			...(options.response ? [{ provide: RESPONSE, useValue: options.response }] : []),
@@ -202,6 +204,13 @@ describe('ProductDetail recent views', () => {
 		expect(localStorage.getItem('st_recent')).toContain('red-saree');
 		localStorage.clear();
 		render({ platform: 'server' });
+		TestBed.tick();
+		expect(localStorage.getItem('st_recent')).toBeNull();
+	});
+
+	it('remembers nothing without consent', () => {
+		render({ functional: false });
+		product.set(base);
 		TestBed.tick();
 		expect(localStorage.getItem('st_recent')).toBeNull();
 	});

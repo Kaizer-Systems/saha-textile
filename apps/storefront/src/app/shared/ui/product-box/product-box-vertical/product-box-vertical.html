@@ -30,9 +30,6 @@
 			>
 				<h6 class="name">{{ product()?.name }}</h6>
 			</a>
-			@if (product()?.unit) {
-			<span>{{ product()?.unit }}</span>
-			}
 			<div class="vertical-price">
 				@if (offer(product()!).kind === 'range') {
 				<h5 class="price theme-color">

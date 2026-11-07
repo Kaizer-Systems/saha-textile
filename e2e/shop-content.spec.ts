@@ -72,3 +72,58 @@ test.describe.serial('Compound photos', () => {
 		}
 	});
 });
+
+test.describe('Browsing by category', () => {
+	test('a category shows its children with counts and real links, in the first HTML', async ({ page, request }) => {
+		const html = await (await request.get('/en/collections/sarees')).text();
+		expect(html).toContain('category-box-list');
+		await page.goto('/en/collections/sarees');
+		const tiles = page.locator('.category-box-list');
+		await expect(tiles).toHaveCount(7);
+		await expect(tiles.first().locator('h6')).toContainText(/\d+/);
+		await expect(tiles.first().locator('img')).toHaveAttribute('src', /^https?:/);
+		await expect(page.locator('app-collection-category-filter .category-list-box')).toHaveCount(7);
+		await tiles.first().locator('a').first().click();
+		await expect(page).toHaveURL(/\/en\/collections\/sarees\/pure-silk/);
+	});
+
+	test('a last-level category offers the categories beside it, and no filter', async ({ page }) => {
+		await page.goto('/en/collections/sarees/jamdani/traditional-jamdani');
+		await expect(page.locator('.category-box-list').first()).toBeVisible();
+		await expect(page.locator('app-collection-category-filter')).toHaveCount(0);
+	});
+
+	test('the footer lists the top categories', async ({ page }) => {
+		await page.goto('/en/');
+		await expect(page.locator('footer app-footer-categories a').first()).toHaveAttribute('href', /collections\/sarees/);
+	});
+});
+
+test.describe('Card names', () => {
+	test('a long name shows two lines, and cards stay level', async ({ page }) => {
+		await page.goto('/en/collections/sarees');
+		const name = page.locator('app-product-box h6.name').first();
+		await expect(name).toBeVisible();
+		const style = await name.evaluate((node) => {
+			const css = getComputedStyle(node);
+			return { clamp: css.webkitLineClamp, height: node.getBoundingClientRect().height };
+		});
+		expect(style.clamp).toBe('2');
+		expect(style.height).toBeGreaterThan(40);
+	});
+});
+
+test.describe('Theme leftovers', () => {
+	test('the shop shows its own details and no placeholder art', async ({ page }) => {
+		await page.goto('/en/');
+		await expect(page.locator('footer')).toContainText('Barasat');
+		await expect(page.locator('footer')).not.toContainText('groceries');
+		await expect(page.locator('body')).not.toContainText('$20 discount');
+		await expect(page.locator('img[src*="themes/denver"], img[src*="themes/berlin"]')).toHaveCount(0);
+	});
+
+	test('the header menu has no demo sections', async ({ page }) => {
+		await page.goto('/en/');
+		await expect(page.locator('header')).not.toContainText('Mega Menu');
+	});
+});

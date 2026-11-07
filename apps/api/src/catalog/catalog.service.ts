@@ -24,7 +24,9 @@ import {
 	resolveImage,
 	sellingPriceINR,
 	type AddonTemplateRepository,
+	type AttributeDefinitionRepository,
 	type SearchPort,
+	valueSearchWords,
 	type StockAlertRepository,
 	type AuditLogRepository,
 	type CatalogAudience,
@@ -53,6 +55,7 @@ import {
 	PRODUCT_REPOSITORY,
 	PRODUCT_RELATION_REPOSITORY,
 	PRODUCT_VARIANT_REPOSITORY,
+	ATTRIBUTE_DEFINITION_REPOSITORY,
 	SEARCH_PORT,
 	SEO_REDIRECT_REPOSITORY,
 	STOCK_ALERT_REPOSITORY,
@@ -86,6 +89,9 @@ export class CatalogService {
 		@Optional() @Inject(STORAGE_PORT) private readonly storage: StoragePort | null = null,
 		@Optional() @Inject(SEARCH_PORT) private readonly search: SearchPort | null = null,
 		@Optional() @Inject(STOCK_ALERT_REPOSITORY) private readonly stockAlerts: StockAlertRepository | null = null,
+		@Optional()
+		@Inject(ATTRIBUTE_DEFINITION_REPOSITORY)
+		private readonly attributes: AttributeDefinitionRepository | null = null,
 	) {}
 
 	listProducts(filter: ProductFilter): Promise<Paginated<Product>> {
@@ -267,6 +273,8 @@ export class CatalogService {
 				metaTitle: product.seo?.title ?? {},
 				metaDescription: product.seo?.description ?? {},
 				estimatedDeliveryText: product.estimatedDeliveryText ?? {},
+				sareeLengthM: product.sareeLengthM ?? null,
+				blousePieceM: product.blousePieceM ?? null,
 				categoryIds: product.categoryIds,
 				optionGroups: product.optionGroups,
 				addonTemplateCode: product.addonTemplateCode ?? null,
@@ -440,7 +448,8 @@ export class CatalogService {
 				const variants = await this.variants.listForProduct(product.id, 'public');
 				const categories = await Promise.all(product.categoryIds.map((id) => this.categories.findById(id)));
 				const categoryNames = categories.flatMap((row) => Object.values(row?.name ?? {}));
-				await this.search?.indexProduct({ product, variants, categoryNames });
+				const searchWords = valueSearchWords(product, (await this.attributes?.listAll()) ?? []);
+				await this.search?.indexProduct({ product, variants, categoryNames, searchWords });
 			} else await this.search?.removeProduct(product.id);
 		} catch (error) {
 			this.logger.warn(`Search index not updated for ${product.id}: ${String(error)}`);

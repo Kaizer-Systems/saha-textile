@@ -5,6 +5,7 @@ import { NavigationEnd, Router } from '@angular/router';
 
 import { filter, map } from 'rxjs';
 
+import { ConsentStore } from '@core/consent/consent.store';
 import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
 import { LOCALE_COOKIE, Locale, withLocale } from '@core/i18n/locale';
 import { ILanguage } from '@data-access/interfaces/setting.interface';
@@ -29,6 +30,7 @@ const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 	imports: [ClickOutsideDirective, Button],
 })
 export class Language {
+	private readonly consent = inject(ConsentStore);
 	private router = inject(Router);
 	private doc = inject(DOCUMENT);
 	/**
@@ -72,6 +74,7 @@ export class Language {
 	/** Runs before the link's own navigation; it only has to leave the cookie behind. */
 	selectLanguage(language: ILanguage) {
 		this.active = false;
+		if (!this.consent.allows('functional')) return;
 		const secure = this.doc.location?.protocol === 'https:' ? '; Secure' : '';
 		this.doc.cookie = `${LOCALE_COOKIE}=${language.code}; Path=/; Max-Age=${LOCALE_COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
 	}

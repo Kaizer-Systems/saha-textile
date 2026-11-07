@@ -42,6 +42,8 @@ export type ConsentEvent = z.infer<typeof ConsentEvent>;
 export const ConsentUpdateRequest = z.object({
 	categories: ConsentCategories,
 	policyVersion: z.string().min(1),
+	/** A guest's random id from their browser, so their history has an owner. Stored hashed. */
+	consentId: z.uuid().optional(),
 });
 export type ConsentUpdateRequest = z.infer<typeof ConsentUpdateRequest>;
 

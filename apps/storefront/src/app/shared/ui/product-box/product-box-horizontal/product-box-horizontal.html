@@ -80,9 +80,6 @@
 			<h6 class="name">{{ product()?.name }}</h6>
 		</a>
 		<p>{{ product()?.short_description }}</p>
-		@if (product()?.unit) {
-		<h6 class="unit mt-1">{{ product()?.unit }}</h6>
-		}
 		<h5 class="sold text-content">
 			@if (offer(product()!).kind === 'range') {
 			<span class="theme-color price">

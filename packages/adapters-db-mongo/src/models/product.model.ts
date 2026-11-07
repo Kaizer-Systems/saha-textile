@@ -43,6 +43,8 @@ export interface ProductDoc {
 	backInStockAt?: Date | null;
 	replacementTarget?: { kind: 'product' | 'collection'; path: string } | null;
 	addonTemplateCode?: string | null;
+	sareeLengthM?: number | null;
+	blousePieceM?: number | null;
 	addonPriceINR?: number | null;
 	onSale?: boolean;
 	shippingDefaults?: {
@@ -92,6 +94,8 @@ const ProductSchema = new Schema<ProductDoc>(
 		backInStockAt: { type: Date, default: null },
 		replacementTarget: { type: Schema.Types.Mixed, default: null },
 		addonTemplateCode: { type: String, default: null },
+		sareeLengthM: { type: Number, default: null },
+		blousePieceM: { type: Number, default: null },
 		addonPriceINR: { type: Number, default: null },
 		onSale: { type: Boolean, default: false },
 		shippingDefaults: { type: Schema.Types.Mixed, default: null },

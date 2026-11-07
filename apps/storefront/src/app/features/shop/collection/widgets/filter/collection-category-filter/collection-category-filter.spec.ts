@@ -33,24 +33,23 @@ const box = (value: string, checked: boolean) => ({ target: { value, checked } }
 afterEach(() => data.set(undefined));
 
 describe('CollectionCategoryFilter', () => {
-	it('lists product categories only', () => {
-		const { widget } = render(CollectionCategoryFilter, {});
-		expect(widget.categories).toEqual([]);
+	it('lists only the children of this page', () => {
+		const { widget } = render(CollectionCategoryFilter, { path: 'sarees' });
+		expect(widget.categories()).toEqual([]);
 		data.set({
 			data: [
-				{ id: 1, type: 'product' },
-				{ id: 2, type: 'post' },
+				{ id: 'a', slug: 'sarees', canonical_path: 'sarees' },
+				{ id: 'b', slug: 'silk', parent_id: 'a' },
+				{ id: 'c', slug: 'suits' },
 			],
 		});
-		TestBed.tick();
-		expect(widget.categories).toEqual([{ id: 1, type: 'product' }]);
+		expect(widget.categories().map((row) => row.id)).toEqual(['b']);
 	});
 
-	it('survives a response with no list', () => {
+	it('lists the top categories without a path', () => {
+		data.set({ data: [{ id: 'a' }, { id: 'b', parent_id: 'a' }] });
 		const { widget } = render(CollectionCategoryFilter, {});
-		data.set({});
-		TestBed.tick();
-		expect(widget.categories).toBeUndefined();
+		expect(widget.categories().map((row) => row.id)).toEqual(['a']);
 	});
 
 	it('reads the selection from the filter', () => {

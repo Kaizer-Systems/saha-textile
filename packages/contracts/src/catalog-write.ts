@@ -32,6 +32,8 @@ export const ProductContentWrite = z.object({
 	metaTitle: TextByLocale,
 	metaDescription: TextByLocale,
 	estimatedDeliveryText: TextByLocale.default({}),
+	sareeLengthM: z.number().positive().max(20).nullable().default(null),
+	blousePieceM: z.number().positive().max(5).nullable().default(null),
 	categoryIds: z.array(z.string().min(1)).max(50),
 	optionGroups: ProductOptionGroupSet,
 	/** The measurement template an option can ask for. */

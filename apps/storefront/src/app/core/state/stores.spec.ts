@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { SettingService } from '@data-access/services/setting.service';
 
+import { ConsentStore } from '@core/consent/consent.store';
 import { LoaderStore } from './loader.store';
 import { SettingStore } from './setting.store';
 
@@ -48,12 +49,17 @@ describe('LoaderStore', () => {
 });
 
 describe('SettingStore', () => {
-	const setup = (values: unknown = { general: { default_currency: { code: 'INR' } } }, platform = 'browser') => {
+	const setup = (
+		values: unknown = { general: { default_currency: { code: 'INR' } } },
+		platform = 'browser',
+		functional = true,
+	) => {
 		TestBed.resetTestingModule();
 		TestBed.configureTestingModule({
 			providers: [
 				{ provide: SettingService, useValue: { getSettingOption: () => of({ values }) } },
 				{ provide: PLATFORM_ID, useValue: platform },
+				{ provide: ConsentStore, useValue: { allows: () => functional } },
 			],
 		});
 		return TestBed.inject(SettingStore);
@@ -75,6 +81,11 @@ describe('SettingStore', () => {
 		TestBed.tick();
 		expect(store.selectedCurrency()).toEqual({ code: 'USD' });
 		expect(setup().selectedCurrency()).toEqual({ code: 'USD' });
+	});
+
+	it('forgets a chosen currency without consent', () => {
+		setup(undefined, 'browser', false).setCurrency({ code: 'USD' } as never);
+		expect(localStorage.getItem('selectedCurrency')).toBeNull();
 	});
 
 	it('has no currency when the settings name none', () => {

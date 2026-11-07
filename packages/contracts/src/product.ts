@@ -181,6 +181,9 @@ export const Product = z.object({
 		})
 		.nullable()
 		.default(null),
+	/** Saree length and blouse piece, in metres. One number serves every language. */
+	sareeLengthM: z.number().positive().max(20).nullable().default(null),
+	blousePieceM: z.number().positive().max(5).nullable().default(null),
 	/** Reusable measurement template. Null when the product has no tailoring fields. */
 	addonTemplateCode: z.string().min(1).nullable().default(null),
 	/** Whole-rupee override of the template price. Null inherits the template. */

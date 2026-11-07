@@ -14,10 +14,43 @@
 		</app-button>
 	</div>
 	<div class="modal-body">
-		<img
-			src="{{ image.original_url }}"
-			class="img-fluid"
-			alt="chart"
-		/>
+		<div class="btn-group mb-3">
+			@for (choice of ['in', 'cm']; track choice) {
+			<button
+				type="button"
+				class="btn btn-sm"
+				[class.btn-animation]="unit() === choice"
+				[class.btn-outline-secondary]="unit() !== choice"
+				[attr.aria-pressed]="unit() === choice"
+				(click)="unit.set($any(choice))"
+			>
+				{{ 'size_unit_' + choice | transloco }}
+			</button>
+			}
+		</div>
+		@if (guide(); as table) {
+		<div class="table-responsive">
+			<table class="table table-bordered mb-0">
+				<thead>
+					<tr>
+						<th scope="col">{{ 'size' | transloco }}</th>
+						@for (field of table.fields; track field.code) {
+						<th scope="col">{{ field.label }}</th>
+						}
+					</tr>
+				</thead>
+				<tbody>
+					@for (row of table.rows; track row.size) {
+					<tr>
+						<th scope="row">{{ row.size }}</th>
+						@for (field of table.fields; track field.code) {
+						<td>{{ cell(row.values[field.code], field.unit) }}</td>
+						}
+					</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		}
 	</div>
 </ng-template>

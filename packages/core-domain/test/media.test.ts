@@ -149,7 +149,36 @@ describe('planDerivatives — the locked ladder', () => {
 	});
 });
 
+describe('planDerivatives — the Brand Kit', () => {
+	it('keeps a logo see-through, with PNG icons', () => {
+		const plan = planDerivatives({
+			asset: asset({ purpose: 'brand' }),
+			source: { width: 1200, height: 1200 },
+			roles: SEEDED_MEDIA_ROLES,
+			servesAsPrimary: false,
+		});
+		expect(widthsOf(plan, 'brand_icon')).toEqual([32, 48, 180, 192, 512]);
+		expect(plan.derivatives.find((row) => row.role === 'brand_icon')?.spec).toMatchObject({
+			format: 'image/png',
+			keepAlpha: true,
+		});
+	});
+});
+
 describe('storage keys and slugs', () => {
+	it('names a PNG icon as one', () => {
+		expect(
+			derivativeStorageKey({
+				assetId: 'med_1',
+				slug: 'seal',
+				role: 'brand_icon',
+				width: 32,
+				sha256: '9c1d2e4fabcdef',
+				format: 'image/png',
+			}),
+		).toBe('media/med_1/seal-brand-icon-32w-9c1d2e4f.png');
+	});
+
 	it('builds immutable derivative keys', () => {
 		expect(
 			derivativeStorageKey({

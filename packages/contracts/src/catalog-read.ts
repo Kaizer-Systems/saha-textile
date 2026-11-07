@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { OptionDisplayStyle, SemanticRole } from './attribute';
+import { OptionDisplayStyle, SemanticRole, SizeGuideRow } from './attribute';
 import { Id, IsoDateTime, Slug } from './common';
 import { ResolvedImage } from './media';
 
@@ -211,6 +211,7 @@ export const CatalogPageMeasurements = z.object({
 			step: z.number().positive().nullable(),
 		}),
 	),
+	sizeGuide: z.array(SizeGuideRow),
 });
 
 export const CatalogPageBundle = z.object({
@@ -251,6 +252,10 @@ export const CatalogMenuCategory = z.object({
 	path: z.string().min(1),
 	imageUrl: z.string().nullable(),
 	iconUrl: z.string().nullable(),
+	/** Live products here and in its children. */
+	productCount: z.number().int().nonnegative(),
+	/** The category's own image, else the photo of its first product. */
+	coverUrl: z.string().nullable(),
 });
 export type CatalogMenuCategory = z.infer<typeof CatalogMenuCategory>;
 
@@ -268,6 +273,8 @@ export const CatalogProductPage = z.object({
 	badges: z.object({ primary: z.string().nullable(), secondary: z.string().nullable() }),
 	madeToOrder: z.boolean(),
 	estimatedDeliveryText: z.string().nullable(),
+	sareeLengthM: z.number().nullable(),
+	blousePieceM: z.number().nullable(),
 	selected: z
 		.object({
 			sku: z.string(),

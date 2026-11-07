@@ -9,7 +9,13 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ConsentStore } from '@core/consent/consent.store';
+
 import { NewsletterModal } from './newsletter-modal';
+
+vi.mock('@data-access/queries/brand.queries', () => ({
+	injectBrandQuery: () => ({ data: () => undefined }),
+}));
 
 vi.mock('@core/config/runtime-config', () => ({
 	runtimeConfig: { apiUrl: 'https://api.test' },
@@ -43,6 +49,8 @@ const render = (
 		platform?: string;
 		url?: string;
 		cookie?: string;
+		functional?: boolean;
+		decided?: boolean;
 		fineHover?: boolean;
 		noWindow?: boolean;
 		banners?: unknown;
@@ -68,6 +76,10 @@ const render = (
 			{ provide: Router, useValue: { url: options.url ?? '/collections/sarees?page=2' } },
 			{ provide: HttpClient, useValue: { get } },
 			{ provide: TranslocoService, useValue: { getActiveLang: () => 'en' } },
+			{
+				provide: ConsentStore,
+				useValue: { allows: () => options.functional ?? true, decided: () => options.decided ?? true },
+			},
 		],
 	});
 	TestBed.overrideComponent(NewsletterModal, {
@@ -243,7 +255,7 @@ describe('NewsletterModal image', () => {
 			const parts = render({ banners });
 			scrolledHalf(parts);
 			await flush();
-			expect(parts.modal.image().src).toBe('assets/images/newsletter/3.jpg');
+			expect(parts.modal.image()).toBeNull();
 			expect(parts.open).toHaveBeenCalledOnce();
 		}
 	});
@@ -282,5 +294,22 @@ describe('NewsletterModal answers', () => {
 		expect(modal.notice()).toBeNull();
 		modal.submit('a@b.co');
 		expect(modal.notice()).toBe('newsletter_signup_coming_soon');
+	});
+});
+
+describe('NewsletterModal and cookies', () => {
+	it('stays away until the cookie choice is made', async () => {
+		const parts = render({ decided: false });
+		scrolledHalf(parts);
+		await flush();
+		expect(parts.open).not.toHaveBeenCalled();
+	});
+
+	it('remembers the answer for this visit only without consent', async () => {
+		const parts = render({ functional: false });
+		scrolledHalf(parts);
+		await flush();
+		expect(parts.open).toHaveBeenCalledOnce();
+		expect(parts.doc.cookie).toBe('');
 	});
 });

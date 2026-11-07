@@ -7,9 +7,11 @@ import { describe, expect, it } from 'vitest';
 
 import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
 
+import { ConsentStore } from '@core/consent/consent.store';
+
 import { Language } from './language';
 
-const render = (locale = 'fr', protocol: string | null = 'https:') => {
+const render = (locale = 'fr', protocol: string | null = 'https:', functional = true) => {
 	const events = new Subject<unknown>();
 	const doc = { cookie: '', location: protocol ? { protocol } : null };
 	TestBed.resetTestingModule();
@@ -17,6 +19,7 @@ const render = (locale = 'fr', protocol: string | null = 'https:') => {
 		providers: [
 			{ provide: Router, useValue: { events, url: '/collections?page=2' } },
 			{ provide: ACTIVE_LOCALE, useValue: locale },
+			{ provide: ConsentStore, useValue: { allows: () => functional } },
 		],
 	});
 	TestBed.overrideComponent(Language, {
@@ -38,6 +41,12 @@ describe('Header language', () => {
 		events.next(new NavigationStart(1, '/ignored'));
 		events.next(new NavigationEnd(2, '/cart', '/cart'));
 		expect(widget.hrefFor(french)).toBe('/fr/cart');
+	});
+
+	it('leaves no cookie without consent', () => {
+		const { widget, doc } = render('fr', 'https:', false);
+		widget.selectLanguage(widget.languages[1]!);
+		expect(doc.cookie).toBe('');
 	});
 
 	it('leaves the choice in a cookie, secure over https only', () => {

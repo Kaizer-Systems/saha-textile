@@ -2,7 +2,7 @@ import { IAttachment } from './attachment.interface';
 import { IAttribute, IAttributeValue } from './attribute.interface';
 import { ICategory } from './category.interface';
 import { IPaginateModel } from './core.interface';
-import { IAddonGroup, IBundle, IMeasurementField, ISemanticAttribute } from './product-detail.interface';
+import { IAddonGroup, IBundle, IMeasurementField, ISemanticAttribute, ISizeGuide } from './product-detail.interface';
 import { IReview } from './review.interface';
 import { IStores } from './store.interface';
 import { ITag } from './tag.interface';
@@ -30,7 +30,6 @@ export interface IProduct {
 	product_thumbnail?: IAttachment;
 	product_galleries_id?: [];
 	product_galleries?: IAttachment[];
-	unit: string;
 	weight: number;
 	price: number;
 	sale_price: number;
@@ -44,8 +43,9 @@ export interface IProduct {
 	visible_time: string;
 	quantity: number;
 	store_id?: number;
-	size_chart_image_id: number;
-	size_chart_image: IAttachment;
+	size_guide?: ISizeGuide;
+	saree_length_m?: number | null;
+	blouse_piece_m?: number | null;
 	estimated_delivery_text: string;
 	return_policy_text: string;
 	safe_checkout: boolean;

@@ -2,6 +2,7 @@ import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { TranslocoService } from '@jsverse/transloco';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SiteConfigStore } from '@core/state/site-config.store';
@@ -18,12 +19,15 @@ const render = <T>(type: new () => T, platform = 'browser', result: Promise<unkn
 		providers: [
 			{ provide: NgbModal, useValue: { open, dismissAll } },
 			{ provide: PLATFORM_ID, useValue: platform },
+			{ provide: TranslocoService, useValue: { getActiveLang: () => 'en' } },
 			{ provide: SiteConfigStore, useValue: { siteConfig: signal(null) } },
 		],
 	});
 	TestBed.overrideComponent(type, { set: { imports: [], template: '' } });
 	return { modal: TestBed.createComponent(type).componentInstance, open, dismissAll };
 };
+
+const guide = { fields: [{ code: 'bust', label: 'Bust', unit: 'in' as const }], rows: [{ size: 'M', values: { bust: 36 } }] };
 
 const cases = [
 	{ name: 'DealsModal', type: DealsModal, call: (modal: DealsModal) => modal.openModal() },
@@ -35,7 +39,7 @@ const cases = [
 	{
 		name: 'SizeChartModal',
 		type: SizeChartModal,
-		call: (modal: SizeChartModal) => modal.openModal({ id: 1 } as never),
+		call: (modal: SizeChartModal) => modal.openModal(guide),
 	},
 ] as const;
 
@@ -74,8 +78,20 @@ describe('modal details', () => {
 		await policy.modal.openModal('return');
 		expect(policy.modal.policy).toBe('return');
 		const chart = render(SizeChartModal);
-		await chart.modal.openModal({ id: 1 } as never);
-		expect(chart.modal.image).toEqual({ id: 1 });
+		await chart.modal.openModal(guide);
+		expect(chart.modal.guide()).toBe(guide);
+		expect(chart.modal.unit()).toBe('in');
+	});
+
+	it('shows a measure in the chosen unit, the way the language writes numbers', async () => {
+		const { modal } = render(SizeChartModal);
+		await modal.openModal(guide);
+		expect(modal.cell(36, 'in')).toBe('36');
+		expect(modal.cell(undefined, 'in')).toBe('-');
+		expect(modal.cell(25.4, 'cm')).toBe('10');
+		modal.unit.set('cm');
+		expect(modal.cell(36, 'in')).toBe('91.4');
+		expect(modal.cell(90, 'cm')).toBe('90');
 	});
 
 	it('closes the deals list', () => {

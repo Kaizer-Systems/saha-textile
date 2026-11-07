@@ -53,10 +53,11 @@ describe.runIf(hasMongoEnv())('add-on template persistence (rs0)', () => {
 
 	it('keeps every field through a save of the whole template', async () => {
 		const before = await repo.findByCode(code);
-		await repo.save({ code, label: { en: 'Blouse measurements' }, priceINR: 900, fields: before?.fields ?? [] });
+		await repo.save({ code, label: { en: 'Blouse measurements' }, priceINR: 900, sizeGuide: [{ size: 'M', values: { chest: 36 } }], fields: before?.fields ?? [] });
 
 		const saved = await repo.findByCode(code);
 		expect(saved?.priceINR).toBe(900);
+		expect(saved?.sizeGuide).toEqual([{ size: 'M', values: { chest: 36 } }]);
 		expect(saved?.fields.map((row) => [row.code, row.min, row.max])).toEqual([
 			['shoulder', 10, 24],
 			['chest', 24, 50],

@@ -16,6 +16,7 @@ export class CollectionCategories {
 	readonly theme = input<string>();
 	readonly title = input<string>();
 	readonly sliderOption = input<OwlOptions>();
+	readonly path = input<string>();
 
 	constructor() {}
 }

@@ -33,6 +33,7 @@ const toRow = (doc: AddonTemplateDoc): AddonTemplateRow => ({
 				]
 			: [],
 	),
+	sizeGuide: doc.sizeGuide ?? [],
 });
 
 export class MongoAddonTemplateRepository implements AddonTemplateRepository {
@@ -58,7 +59,7 @@ export class MongoAddonTemplateRepository implements AddonTemplateRepository {
 		}));
 		await AddonTemplateModel.updateOne(
 			{ _id: existing?._id ?? randomUUID() },
-			{ $set: { code: row.code, label: row.label, priceINR: row.priceINR, fields } },
+			{ $set: { code: row.code, label: row.label, priceINR: row.priceINR, fields, sizeGuide: row.sizeGuide } },
 			{ upsert: true },
 		).exec();
 		return row;

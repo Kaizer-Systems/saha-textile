@@ -49,7 +49,7 @@ export type MediaKind = z.infer<typeof MediaKind>;
  * What an image is FOR. It decides which roles the worker generates and which ingest rules
  * apply (a product photo has a 1600 px floor; a review photo has none).
  */
-export const MediaPurpose = z.enum(['product', 'category', 'banner', 'blog', 'review', 'avatar', 'icon']);
+export const MediaPurpose = z.enum(['product', 'category', 'banner', 'blog', 'review', 'brand', 'avatar', 'icon']);
 export type MediaPurpose = z.infer<typeof MediaPurpose>;
 
 /**
@@ -65,7 +65,7 @@ export const ImageUploadFormat = z.enum(['image/jpeg', 'image/png']);
 export type ImageUploadFormat = z.infer<typeof ImageUploadFormat>;
 
 /** Formats a derivative may be written in. */
-export const DerivativeFormat = z.enum(['image/webp', 'image/jpeg']);
+export const DerivativeFormat = z.enum(['image/webp', 'image/jpeg', 'image/png']);
 export type DerivativeFormat = z.infer<typeof DerivativeFormat>;
 
 /** Master video upload format (H.264/AAC MP4, 1080p or better). Dormant: video is off at launch. */

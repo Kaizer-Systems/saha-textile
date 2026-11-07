@@ -260,9 +260,15 @@ describe('shop menu', () => {
 		pathSlugs: [categoryId],
 		...over,
 	});
-	const service = (categories: unknown[], placements: unknown[], locales = ['en', 'fr'], assets: unknown[] = []) =>
+	const service = (
+		categories: unknown[],
+		placements: unknown[],
+		locales = ['en', 'fr'],
+		assets: unknown[] = [],
+		summaries: unknown[] = [],
+	) =>
 		new CatalogPublicService(
-			{} as never,
+			{ categorySummaries: async () => summaries } as never,
 			{} as never,
 			{ listCanonicalLive: async () => placements } as never,
 			{ findManyByIds: async () => assets } as never,
@@ -304,13 +310,42 @@ describe('shop menu', () => {
 		expect(rows).toEqual([]);
 	});
 
+	it('counts products up the tree and borrows a child photo when a category has no image', async () => {
+		const image = {
+			id: 'med',
+			visibility: 'public',
+			width: 400,
+			height: 500,
+			text: {},
+			derivatives: [{ role: 'card', width: 400, height: 500, format: 'image/webp', storageKey: 'k' }],
+		};
+		const rows = await service(
+			[category('a'), category('b')],
+			[placement('a'), placement('b', { parentCategoryId: 'a', depth: 1 })],
+			['en', 'fr'],
+			[image],
+			[{ categoryId: 'b', productCount: 3, coverAssetId: 'med' }],
+		).menu();
+		expect(rows.map((row) => [row.id, row.productCount, row.coverUrl])).toEqual([
+			['a', 3, 'https://cdn.test/k'],
+			['b', 3, 'https://cdn.test/k'],
+		]);
+	});
+
+	it('has no photo for a category whose products have none', async () => {
+		const rows = await service([category('a')], [placement('a')], ['en', 'fr'], [], [
+			{ categoryId: 'a', productCount: 2, coverAssetId: null },
+		]).menu();
+		expect(rows[0]).toMatchObject({ productCount: 2, coverUrl: null });
+	});
+
 	it('skips a placement with no category', async () => {
 		expect(await service([], [placement('gone')]).menu()).toEqual([]);
 	});
 
 	it('needs only the shop default language without settings', async () => {
 		const plain = new CatalogPublicService(
-			{} as never,
+			{ categorySummaries: async () => [] } as never,
 			{} as never,
 			{ listCanonicalLive: async () => [placement('a')] } as never,
 			null,
@@ -358,7 +393,7 @@ describe('measurements', () => {
 	const field = { code: 'chest', label: 'Chest', unit: 'in', min: 1, max: 2, step: 1 };
 
 	it('uses the template, with the product price first', async () => {
-		const template = { code: 'blouse', priceINR: 500, fields: [field] };
+		const template = { code: 'blouse', priceINR: 500, fields: [field], sizeGuide: [] };
 		const own = product({ addonTemplateCode: 'blouse', addonPriceINR: 300 });
 		expect((await build({ rows: [own], template }).service.page('red-saree')).measurements).toMatchObject({
 			templateCode: 'blouse',
@@ -379,7 +414,7 @@ describe('measurements', () => {
 				{ code: 'note', label: { en: 'Note' }, type: 'text', required: false },
 			],
 		});
-		const page = await build({ rows: [row], template: { code: 'x', priceINR: 1, fields: [] } }).service.page(
+		const page = await build({ rows: [row], template: { code: 'x', priceINR: 1, fields: [], sizeGuide: [] } }).service.page(
 			'red-saree',
 		);
 		expect(page.measurements).toMatchObject({ templateCode: null, priceINR: 0 });
@@ -489,6 +524,7 @@ describe('add-on prices', () => {
 		code: 'blouse',
 		priceINR: 600,
 		fields: [{ code: 'bust', label: { en: 'Bust', fr: 'Poitrine' }, unit: 'in', min: null, max: null, step: null }],
+		sizeGuide: [],
 	};
 
 	it('charges the template amount unless the product overrides it', async () => {

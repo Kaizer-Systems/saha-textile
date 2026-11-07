@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Post, Req, UnauthorizedException } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -17,6 +17,7 @@ import { cookieNames } from '../common/cookies';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { CONSENT_REPOSITORY } from '../infra/tokens';
+import { CatalogRateLimit } from '../catalog/catalog-rate-limit';
 import { API_TAGS } from '../openapi-tags';
 
 const DEFAULT_CATEGORIES = {
@@ -44,11 +45,14 @@ export class PrivacyController {
 	constructor(
 		@Inject(CONSENT_REPOSITORY) private readonly consent: ConsentRepository,
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
+		private readonly limits: CatalogRateLimit,
 	) {}
 
-	private guestIdHash(request: FastifyRequest): string | null {
+	/** A guest is the random id their browser sent, else their cart cookie. Only a hash is stored. */
+	private guestIdHash(request: FastifyRequest, consentId?: string): string | null {
 		const cookies = (request as FastifyRequest & { cookies?: Record<string, string> }).cookies;
-		return cookies?.[cookieNames(this.config).guest] ?? null;
+		const raw = consentId ?? cookies?.[cookieNames(this.config).guest];
+		return raw ? createHash('sha256').update(raw).digest('hex') : null;
 	}
 
 	@Get('consent')
@@ -78,10 +82,11 @@ export class PrivacyController {
 		@Req() request: FastifyRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	): Promise<ConsentStateResponse> {
+		await this.limits.enforce('consent_write', { ip: request.ip });
 		const event: ConsentEvent = {
 			id: `consent_${randomUUID()}`,
 			userId: principal?.userId ?? null,
-			guestId: principal ? null : this.guestIdHash(request),
+			guestId: principal ? null : this.guestIdHash(request, body.consentId),
 			categories: body.categories,
 			policyVersion: body.policyVersion,
 			source: 'storefront',

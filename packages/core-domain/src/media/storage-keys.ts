@@ -10,16 +10,18 @@
 export const originalStorageKey = (assetId: string, contentType: string): string =>
 	`media/${assetId}/original.${contentType === 'image/png' ? 'png' : 'jpg'}`;
 
+const DERIVATIVE_EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' } as const;
+
 export const derivativeStorageKey = (input: {
 	assetId: string;
 	slug: string;
 	role: string;
 	width: number;
 	sha256: string;
-	format: 'image/webp' | 'image/jpeg';
+	format: 'image/webp' | 'image/jpeg' | 'image/png';
 }): string =>
 	`media/${input.assetId}/${input.slug}-${input.role.replace(/_/g, '-')}-${input.width}w-${input.sha256.slice(0, 8)}.${
-		input.format === 'image/jpeg' ? 'jpg' : 'webp'
+		DERIVATIVE_EXTENSIONS[input.format]
 	}`;
 
 const COMBINING_MARKS = /[̀-ͯ]/g;

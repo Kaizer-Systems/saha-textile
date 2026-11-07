@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { TranslocoService } from '@jsverse/transloco';
@@ -5,26 +6,41 @@ import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { CartFacade } from '@core/state/cart/cart.facade';
+import { OnlineStatus } from '@core/state/online-status';
 import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
 
 import { Cart } from './cart';
 
 const render = () => {
-	const cart = { cartItems$: of([]), cartTotal$: of(0), updateCart: vi.fn(), deleteCart: vi.fn() };
+	const cart = { cartItems$: of([]), cartTotal$: of(0), getCartItems: vi.fn(), updateCart: vi.fn(), deleteCart: vi.fn() };
 	const wishlist = { addToWishlist: vi.fn() };
+	const online = signal(true);
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: CartFacade, useValue: cart },
+			{ provide: OnlineStatus, useValue: { online } },
 			{ provide: WishlistFacade, useValue: wishlist },
 			{ provide: TranslocoService, useValue: { selectTranslate: () => of('Cart') } },
 		],
 	});
 	TestBed.overrideComponent(Cart, { set: { imports: [], template: '' } });
-	return { page: TestBed.createComponent(Cart).componentInstance, cart, wishlist };
+	return { page: TestBed.createComponent(Cart).componentInstance, cart, wishlist, online };
 };
 
 describe('Cart page', () => {
+	it('re-reads prices and stock when the connection returns', () => {
+		const { cart, online } = render();
+		TestBed.tick();
+		expect(cart.getCartItems).not.toHaveBeenCalled();
+		online.set(false);
+		TestBed.tick();
+		expect(cart.getCartItems).not.toHaveBeenCalled();
+		online.set(true);
+		TestBed.tick();
+		expect(cart.getCartItems).toHaveBeenCalledOnce();
+	});
+
 	it('prefers the composed price, then the variation, then the product', () => {
 		const { page } = render();
 		expect(page.unitPrice({ unit_price: 9, product: {} } as never)).toBe(9);

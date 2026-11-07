@@ -32,6 +32,8 @@ export interface ICategory {
 	commission_rate?: number;
 	subcategories?: ICategory[];
 	products_count: number;
+	/** The category's own image, else its first product's photo. */
+	cover_image?: IAttachment;
 	status: boolean;
 	created_by_id?: number;
 	created_at?: string;

@@ -145,7 +145,15 @@ const sidebars: SidebarsConfig = {
 		{
 			type: 'category',
 			label: 'Operate the Platform',
-			items: ['deployment/overview', 'operations/overview', 'troubleshooting/overview'],
+			items: [
+				'deployment/overview',
+				'deployment/release-pipeline',
+				'deployment/production-topology',
+				'deployment/deploy-and-recovery',
+				'deployment/compose-and-kubernetes',
+				'operations/overview',
+				'troubleshooting/overview',
+			],
 		},
 		{
 			type: 'category',

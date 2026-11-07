@@ -19,6 +19,13 @@ source_of_truth:
 
 This page describes how Saha Textile is packaged and configured for deployment. Hosted environments and the deployment pipeline are planned. The images and the local stack are available.
 
+| Page                                                         | Covers                                                                |
+| ------------------------------------------------------------ | --------------------------------------------------------------------- |
+| [Release pipeline](/deployment/release-pipeline)             | Branches, CI, image publishing and promotion by digest                |
+| [Hosting topology](/deployment/production-topology)          | The droplet, services, Cloudflare, Nginx and server hardening         |
+| [Deploy and recovery](/deployment/deploy-and-recovery)       | Side-by-side deploys, rollback, secrets, backups, restore, monitoring |
+| [Compose and Kubernetes](/deployment/compose-and-kubernetes) | How the Compose deployment compares with Kubernetes, and when to move |
+
 ## Applications and images
 
 `docker/images/Dockerfile` builds four images from one file:

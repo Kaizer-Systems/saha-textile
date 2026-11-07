@@ -6,7 +6,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { ConsentStore } from '@core/consent/consent.store';
 import { AuthStore } from '@core/state/auth.store';
 
-import { CookieSettings } from './cookie-settings/cookie-settings';
+import { CookieSettings, longestLabel } from './cookie-settings/cookie-settings';
 
 /** First visit: the box. Refusing takes one click, the same as accepting. */
 @Component({
@@ -18,6 +18,7 @@ import { CookieSettings } from './cookie-settings/cookie-settings';
 export class Cookie {
 	readonly consent = inject(ConsentStore);
 	readonly settings = viewChild.required(CookieSettings);
+	readonly longest = longestLabel;
 
 	constructor() {
 		const auth = inject(AuthStore);

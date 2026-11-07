@@ -158,29 +158,79 @@
 /**=====================
      Cookie box additions
 ==========================**/
+// The theme sizes `.btn` and this box from the screen width with no upper limit, while the box
+// keeps a fixed width, so wide screens ran out of room for the labels. Everything below is in
+// rem, so it follows the shopper's browser text size, and stops growing past laptop sizes.
 .cookie-bar-box {
+	--cookie-side: 10px;
+	--cookie-floor: 10px;
 	z-index: 1040;
+	width: min(calc(100vw - 2 * var(--cookie-side)), 23.125rem);
+	max-width: none;
+	max-height: calc(100dvh - var(--cookie-floor) - 10px);
+	overflow-y: auto;
+	border-radius: clamp(8px, 1.2vw, 20px);
 
-	.cookie-contain a {
-		color: var(--theme-color);
-		text-decoration: underline;
-	}
+	.cookie-box {
+		padding: clamp(0.8125rem, 1.6vw, 1.625rem);
 
-	.button-group {
-		button.ok-button + button.ok-button {
-			border-left: 1px solid $white;
+		.cookie-image {
+			img {
+				width: clamp(0.9375rem, 1.4vw, 1.5625rem);
+			}
+
+			h2 {
+				font-size: clamp(1.25rem, 1.8vw, 1.75rem);
+			}
 		}
 
-		button.cookie-choose-button {
-			width: 100%;
-			border-top: 1px solid #e6e6e6;
-			background: $white;
+		.cookie-contain {
+			margin-top: clamp(0.625rem, 1vw, 1rem);
+
+			h5 {
+				font-size: clamp(0.875rem, 1vw, 1rem);
+			}
+
+			a {
+				color: var(--theme-color);
+				text-decoration: underline;
+			}
+		}
+	}
+
+	// Equal columns, as many as the longest label fits on one line, otherwise one button per row.
+	// `--cookie-label-chars` is that label's length, so a new language needs no change here.
+	.button-group {
+		display: grid;
+		grid-template-columns: repeat(
+			auto-fit,
+			minmax(min(100%, calc(var(--cookie-label-chars, 14) * 0.62em + 1.5rem)), 1fr)
+		);
+		gap: 1px;
+		font-size: clamp(0.875rem, 1vw, 1rem);
+
+		button {
+			display: flex;
+			width: auto;
+			min-height: 3rem;
+			padding: 0.5rem 0.75rem;
+			font-size: inherit;
+			line-height: 1.25;
+			white-space: normal;
+			overflow: visible;
+
+			&.cookie-choose-button {
+				grid-column: 1 / -1;
+				border-top: 1px solid #e6e6e6;
+				background: $white;
+			}
 		}
 	}
 
 	// The bottom menu shows below md; the box sits above it.
 	@media (max-width: 767.98px) {
-		bottom: calc(81px + env(safe-area-inset-bottom));
+		--cookie-floor: calc(81px + env(safe-area-inset-bottom));
+		bottom: var(--cookie-floor);
 	}
 }
 
@@ -224,14 +274,14 @@
 
 		h3 {
 			margin: 0 0 4px;
-			font-size: clamp(20px, 2.4vw, 24px);
+			font-size: clamp(1.25rem, 2.4vw, 1.5rem);
 			font-weight: 700;
 		}
 
 		p {
 			margin: 0;
 			padding: 0;
-			font-size: 15px;
+			font-size: 0.9375rem;
 			line-height: 1.5;
 			color: #4a5568;
 		}
@@ -282,20 +332,26 @@
 
 		h4 {
 			margin: 0 0 2px;
-			font-size: 17px;
+			font-size: 1.0625rem;
 			font-weight: 600;
 		}
 	}
 
 	.cookie-group-head {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: flex-start;
 		justify-content: space-between;
-		gap: 16px;
+		gap: 8px 16px;
+
+		> div {
+			flex: 1 1 12rem;
+			min-width: 0;
+		}
 
 		p {
 			margin: 0;
-			font-size: 15px;
+			font-size: 0.9375rem;
 			line-height: 1.45;
 			color: #4a5568;
 		}
@@ -304,7 +360,7 @@
 	.cookie-state {
 		flex: none;
 		padding-top: 2px;
-		font-size: 14px;
+		font-size: 0.875rem;
 		font-weight: 600;
 		color: var(--theme-color);
 	}
@@ -332,7 +388,7 @@
 		display: flex;
 		gap: 6px;
 		margin: 8px 0 0;
-		font-size: 14px;
+		font-size: 0.875rem;
 		line-height: 1.4;
 		color: #8a5a00;
 
@@ -350,7 +406,7 @@
 		padding: 6px 0;
 		border: 0;
 		background: none;
-		font-size: 14px;
+		font-size: 0.875rem;
 		font-weight: 600;
 		color: var(--theme-color);
 	}
@@ -368,7 +424,7 @@
 			width: 100%;
 			padding: 10px 0;
 			border-top: 1px solid #eef0f2;
-			font-size: 14px;
+			font-size: 0.875rem;
 			line-height: 1.4;
 		}
 
@@ -382,7 +438,7 @@
 		}
 
 		small {
-			font-size: 14px;
+			font-size: 0.875rem;
 			color: #6b7280;
 		}
 	}
@@ -401,16 +457,22 @@
 
 		li {
 			display: flex;
+			flex-wrap: wrap;
 			align-items: baseline;
 			justify-content: space-between;
-			gap: 12px;
+			gap: 4px 12px;
 			width: 100%;
-			font-size: 14px;
+			font-size: 0.875rem;
+
+			> div {
+				flex: 1 1 12rem;
+				min-width: 0;
+			}
 		}
 
 		strong {
 			margin-right: 8px;
-			font-size: 15px;
+			font-size: 0.9375rem;
 			font-weight: 600;
 		}
 
@@ -428,29 +490,34 @@
 
 	.cookie-note {
 		margin: 12px 0 0;
-		font-size: 13.5px;
+		font-size: 0.84375rem;
 		line-height: 1.5;
 		color: #6b7280;
 	}
 
+	// Equal buttons, each wide enough for the longest label on one line. All three share a row when
+	// they fit; otherwise Save takes its own row above the two that mirror the cookie box.
 	.modal-content .cookie-actions {
-		display: grid;
+		--cookie-button: calc(var(--cookie-label-chars, 14) * 0.62em + 1.5rem);
+		display: flex;
 		flex: none;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
+		flex-wrap: wrap;
 		gap: 10px;
 		margin: 0;
 		padding: var(--cookie-gap) var(--cookie-edge) calc(var(--cookie-gap) + env(safe-area-inset-bottom));
 		border-top: 1px solid #eceff1;
 		background: $white;
 		box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.04);
+		font-size: 0.9375rem;
 
 		.btn {
-			width: 100%;
-			min-height: 48px;
+			flex: 1 1 var(--cookie-button);
+			max-width: 100%;
+			min-height: 3rem;
 			margin: 0;
-			padding: 10px 12px;
+			padding: 0.5rem 0.75rem;
 			border-radius: 10px;
-			font-size: 15px;
+			font-size: inherit;
 			font-weight: 700;
 			line-height: 1.2;
 			white-space: normal;
@@ -463,6 +530,7 @@
 		}
 
 		.cookie-save {
+			flex-basis: max(var(--cookie-button), calc((3 * var(--cookie-button) + 20px - 100%) * 999));
 			border: 1.5px solid var(--theme-color);
 			background: $white;
 			color: var(--theme-color);
@@ -477,14 +545,6 @@
 		.modal-content {
 			max-height: 92dvh;
 			border-radius: 18px 18px 0 0;
-		}
-
-		.modal-content .cookie-actions {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-
-			.cookie-save {
-				grid-column: 1 / -1;
-			}
 		}
 
 		.cookie-list li {
@@ -515,29 +575,29 @@
 		}
 	}
 
-	@media (max-height: 480px) {
+	// In rem, so large browser text counts as a short screen. With so little height the buttons
+	// stop being fixed: the whole popup scrolls, so the text keeps room to be read.
+	@media (max-height: 30rem) {
 		align-items: stretch;
 		padding: 0;
 
 		.modal-content {
 			max-height: 100dvh;
+			overflow-y: auto;
 			border-radius: 0;
+		}
+
+		.modal-content .modal-body {
+			flex: none;
+			overflow: visible;
 		}
 
 		.modal-content .modal-header {
 			padding-block: 12px;
 		}
 
-		.modal-content .cookie-actions {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-
-			.cookie-save {
-				grid-column: auto;
-			}
-
-			.btn {
-				min-height: 42px;
-			}
+		.modal-content .cookie-actions .btn {
+			min-height: 2.625rem;
 		}
 	}
 }

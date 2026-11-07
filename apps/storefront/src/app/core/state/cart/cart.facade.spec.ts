@@ -22,15 +22,13 @@ describe('CartFacade', () => {
 		facade.getCartItems();
 		facade.addToCart(payload);
 		facade.updateCart(payload);
-		facade.replaceCart(payload);
 		facade.editLine(payload);
-		facade.deleteCart(1);
+		facade.deleteCart('l1');
 		facade.toggleSidebarCart(true);
 		expect(store.dispatch.mock.calls.map(([action]) => action.type)).toEqual([
 			CartActions.getCartItems.type,
 			CartActions.addToCart.type,
 			CartActions.updateCart.type,
-			CartActions.replaceCart.type,
 			CartActions.editLine.type,
 			CartActions.deleteCart.type,
 			CartActions.toggleSidebarCart.type,

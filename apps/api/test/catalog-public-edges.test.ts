@@ -240,6 +240,22 @@ describe('product page', () => {
 	});
 });
 
+describe('cart read', () => {
+	it('gives the page of a live product', async () => {
+		const read = await build().service.cartRead('prd_1');
+		expect(read).toMatchObject({ slug: 'red-saree', title: 'Red saree', page: { id: 'prd_1' } });
+	});
+
+	it('names a retired product without a page, and knows when one is gone', async () => {
+		const { service, products } = build();
+		products.findById.mockImplementationOnce(async () => null);
+		expect(await service.cartRead('prd_1')).toEqual({ slug: 'red-saree', title: 'Red saree', page: null });
+		products.findById.mockImplementation(async () => null);
+		expect(await service.cartRead('prd_1')).toBeNull();
+		expect(products.findById).toHaveBeenCalledWith('prd_1', 'admin');
+	});
+});
+
 describe('measurements', () => {
 	const field = { code: 'chest', label: 'Chest', unit: 'in', min: 1, max: 2, step: 1 };
 

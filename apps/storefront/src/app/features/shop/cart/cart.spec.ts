@@ -43,15 +43,15 @@ describe('Cart page', () => {
 			variation_id: 3,
 			quantity: 2,
 		});
-		page.updateQuantity({ id: 2, product: { id: 8 } } as never, 1);
+		page.updateQuantity({ id: 'l2', product: { id: 8 } } as never, 1);
 		expect(cart.updateCart.mock.lastCall?.[0]).toMatchObject({ variation_id: null });
 	});
 
 	it('deletes a line and saves one for later', () => {
 		const { page, cart, wishlist } = render();
-		page.delete(4);
+		page.delete('l4');
 		page.addToWishlist(7);
-		expect(cart.deleteCart).toHaveBeenCalledWith(4);
+		expect(cart.deleteCart).toHaveBeenCalledWith('l4');
 		expect(wishlist.addToWishlist).toHaveBeenCalledWith({ product_id: 7 });
 	});
 });

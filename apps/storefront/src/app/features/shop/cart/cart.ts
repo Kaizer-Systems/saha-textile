@@ -59,7 +59,7 @@ export class Cart {
 		this.cartFacade.updateCart(params);
 	}
 
-	delete(id: number) {
+	delete(id: string) {
 		this.cartFacade.deleteCart(id);
 	}
 

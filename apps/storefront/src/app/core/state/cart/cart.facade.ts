@@ -41,16 +41,12 @@ export class CartFacade {
 		this.store.dispatch(CartActions.updateCart({ payload: detached(payload) }));
 	}
 
-	replaceCart(payload: ICartAddOrUpdate): void {
-		this.store.dispatch(CartActions.replaceCart({ payload: detached(payload) }));
-	}
-
 	/** Full in-place replace of a composed line's configuration (used by the edit modal). */
 	editLine(payload: ICartAddOrUpdate): void {
 		this.store.dispatch(CartActions.editLine({ payload: detached(payload) }));
 	}
 
-	deleteCart(id: number): void {
+	deleteCart(id: string): void {
 		this.store.dispatch(CartActions.deleteCart({ id }));
 	}
 

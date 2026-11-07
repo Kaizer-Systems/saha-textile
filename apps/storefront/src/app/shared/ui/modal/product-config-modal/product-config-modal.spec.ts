@@ -2,9 +2,11 @@ import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { CartFacade } from '@core/state/cart/cart.facade';
+import { ProductService } from '@data-access/services/product.service';
 
 import { ProductConfigModal } from './product-config-modal';
 
@@ -17,6 +19,7 @@ const render = (platform = 'browser') => {
 		providers: [
 			{ provide: NgbModal, useValue: { open, dismissAll } },
 			{ provide: CartFacade, useValue: cart },
+			{ provide: ProductService, useValue: { getProductPage: () => of({ id: 7, name: 'Whole', attributes: [] }) } },
 			{ provide: PLATFORM_ID, useValue: platform },
 		],
 	});
@@ -48,9 +51,10 @@ describe('ProductConfigModal', () => {
 
 	it('opens seeded from a cart line', () => {
 		const { modal } = render();
-		modal.openModal({ id: 'line', quantity: 3 } as never);
+		modal.openModal({ id: 'line', quantity: 3, product: { slug: 'silk' } } as never);
 		expect(modal.isEdit()).toBe(true);
 		expect(modal.productQty()).toBe(3);
+		expect(modal.configProduct()).toMatchObject({ name: 'Whole', attributes: [] });
 	});
 
 	it('gives the configurator a copy it may change', () => {
@@ -102,7 +106,7 @@ describe('ProductConfigModal', () => {
 
 	it('replaces the edited line in place', () => {
 		const { modal, cart } = render();
-		modal.openModal({ id: 'line', quantity: 2 } as never);
+		modal.openModal({ id: 'line', quantity: 2, product: { slug: 'silk' } } as never);
 		modal.onSummary(summary);
 		const build = { buildParams: vi.fn(() => ({ id: 'line' })) };
 		modal.confirm(build as never);

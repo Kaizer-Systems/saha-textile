@@ -56,10 +56,12 @@ describe('CatalogLocaleInterceptor', () => {
 		return next.handle.mock.calls[0]?.[0] as HttpRequest<unknown>;
 	};
 
-	it('names the language on catalogue reads only', () => {
+	it('names the language on catalogue reads and cart calls', () => {
 		environment.apiUrl = 'https://api.test';
 		expect(run(new HttpRequest('GET', 'https://api.test/catalog/home')).params.get('locale')).toBe('fr');
-		expect(run(new HttpRequest('GET', 'https://api.test/cart/1')).params.has('locale')).toBe(false);
+		expect(run(new HttpRequest('GET', 'https://api.test/cart/current')).params.get('locale')).toBe('fr');
+		expect(run(new HttpRequest('POST', 'https://api.test/cart/current/lines', {})).params.get('locale')).toBe('fr');
+		expect(run(new HttpRequest('GET', 'https://api.test/account')).params.has('locale')).toBe(false);
 		expect(run(new HttpRequest('POST', 'https://api.test/catalog/x', {})).params.has('locale')).toBe(false);
 	});
 });

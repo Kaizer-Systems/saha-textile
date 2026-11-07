@@ -12,8 +12,6 @@ import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
 import { CompareService } from '@data-access/services/compare.service';
 import { WishlistService } from '@data-access/services/wishlist.service';
 
-import { AddressBlock } from './checkout/address-block/address-block';
-import { PaymentBlock } from './checkout/payment-block/payment-block';
 import { Compare } from './compare/compare';
 import { ProductAction } from './product-detail/widgets/product-action/product-action';
 import { TrendingProducts } from './product-detail/widgets/trending-products/trending-products';
@@ -25,64 +23,6 @@ vi.mock('@data-access/queries/product.queries', () => ({ injectRelatedProductsDa
 const translate = { provide: TranslocoService, useValue: { selectTranslate: () => of('Title') } };
 
 afterEach(() => related.set(undefined));
-
-describe('AddressBlock', () => {
-	const render = (addresses?: unknown) => {
-		TestBed.resetTestingModule();
-		TestBed.overrideComponent(AddressBlock, { set: { imports: [], template: '' } });
-		const fixture = TestBed.createComponent(AddressBlock);
-		if (addresses !== undefined) fixture.componentRef.setInput('addresses', addresses);
-		const seen: number[] = [];
-		fixture.componentInstance.selectAddress.subscribe((id) => seen.push(id));
-		fixture.detectChanges();
-		return { block: fixture.componentInstance, seen };
-	};
-
-	it('picks the first address on start', () => {
-		expect(render([{ id: 4 }, { id: 5 }]).seen).toEqual([4]);
-	});
-
-	it('picks nothing from an empty or missing list', () => {
-		expect(render([]).seen).toEqual([]);
-		expect(render(null).seen).toEqual([]);
-	});
-
-	it('reports the chosen address', () => {
-		const { block, seen } = render();
-		block.set({ target: { value: '9' } } as never);
-		expect(seen).toEqual([9]);
-	});
-});
-
-describe('PaymentBlock', () => {
-	const render = (setting?: unknown) => {
-		TestBed.resetTestingModule();
-		TestBed.overrideComponent(PaymentBlock, { set: { imports: [], template: '' } });
-		const fixture = TestBed.createComponent(PaymentBlock);
-		if (setting) fixture.componentRef.setInput('setting', setting);
-		const seen: string[] = [];
-		fixture.componentInstance.selectPaymentMethod.subscribe((name) => seen.push(name));
-		fixture.detectChanges();
-		return { block: fixture.componentInstance, seen };
-	};
-
-	it('picks the first enabled method on start', () => {
-		expect(render({ payment_methods: [{ name: 'paypal', status: true }] }).seen).toEqual(['paypal']);
-	});
-
-	it('picks nothing when the first is off, or there are none', () => {
-		expect(render({ payment_methods: [{ name: 'paypal', status: false }] }).seen).toEqual([]);
-		expect(render({ payment_methods: [] }).seen).toEqual([]);
-		expect(render({}).seen).toEqual([]);
-		expect(render().seen).toEqual([]);
-	});
-
-	it('reports the chosen method', () => {
-		const { block, seen } = render();
-		block.set('card');
-		expect(seen).toEqual(['card']);
-	});
-});
 
 describe('Compare page', () => {
 	it('loads the list and removes from it', () => {

@@ -679,5 +679,13 @@
 	"badge_trending": "Trending",
 	"badge_new": "New",
 	"badge_low_stock_left": "Only {{count}} left",
-	"badge_back_in_stock": "Back in stock"
+	"badge_back_in_stock": "Back in stock",
+	"cart_stock_limit": "We do not have that many in stock.",
+	"cart_update_failed": "Your cart could not be updated. Please try again.",
+	"cart_line_unavailable": "This item is no longer available.",
+	"cart_line_out_of_stock": "This item is out of stock.",
+	"cart_line_limited": "Only {{count}} left. Please lower the quantity.",
+	"checkout_closed": "Online ordering opens soon",
+	"checkout_closed_detail": "Your cart is saved. You cannot place an order on this site yet.",
+	"back_to_cart": "Back to cart"
 }

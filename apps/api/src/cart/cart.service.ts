@@ -1,19 +1,12 @@
-import { createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { type Cart, type CartLine, Cart as CartSchema } from '@saha-textile/contracts';
+import type { Cart, CartLine } from '@saha-textile/contracts';
 import type { CartRepository, TransactionContext } from '@saha-textile/core-domain';
 
 import type { AuthenticatedPrincipal } from '../auth/session.guard';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { CART_REPOSITORY } from '../infra/tokens';
-
-export interface AddLineInput {
-	productId: string;
-	variationId?: string | null;
-	quantity: number;
-	addons?: { code: string; value: string | number }[];
-}
 
 export interface CartActor {
 	principal?: AuthenticatedPrincipal;
@@ -52,9 +45,8 @@ export class CartService {
 	 * userId. Guest carts require the unguessable `st_guest` bearer whose hash is stored
 	 * on the cart. Cross-owner failures are indistinguishable from missing resources.
 	 */
-	assertCartAccess(cart: Cart, actor: CartActor, mode: 'read' | 'write'): void {
+	assertCartAccess(cart: Cart, actor: CartActor): void {
 		if (
-			mode === 'read' &&
 			actor.principal?.audience === 'admin' &&
 			actor.allowReadPermissions?.some((code) => actor.principal!.permissions.includes(code))
 		) {
@@ -75,69 +67,11 @@ export class CartService {
 		throw new NotFoundException('Cart not found');
 	}
 
-	async createCart(input: {
-		principal?: AuthenticatedPrincipal;
-		currency?: string;
-	}): Promise<{ cart: Cart; guestTokenRaw: string | null }> {
-		if (input.principal) {
-			const existing = await this.carts.findByUserId(input.principal.userId);
-			if (existing) return { cart: existing, guestTokenRaw: null };
-
-			const cart = CartSchema.parse({
-				id: `cart_${randomUUID()}`,
-				userId: input.principal.userId,
-				guestToken: null,
-				currency: input.currency ?? 'INR',
-				lines: [],
-			});
-			return { cart: await this.carts.save(cart), guestTokenRaw: null };
-		}
-
-		const guest = this.mintGuestToken();
-		const cart = CartSchema.parse({
-			id: `cart_${randomUUID()}`,
-			userId: null,
-			guestToken: guest.hash,
-			currency: input.currency ?? 'INR',
-			lines: [],
-		});
-		return { cart: await this.carts.save(cart), guestTokenRaw: guest.raw };
-	}
-
 	async getCart(id: string, actor: CartActor): Promise<Cart> {
 		const cart = await this.carts.findById(id);
 		if (!cart) throw new NotFoundException('Cart not found');
-		this.assertCartAccess(cart, actor, 'read');
+		this.assertCartAccess(cart, actor);
 		return cart;
-	}
-
-	async addLine(cartId: string, input: AddLineInput, actor: CartActor): Promise<Cart> {
-		const cart = await this.getAuthorizedCart(cartId, actor, 'write');
-		const line: CartLine = {
-			id: `line_${randomUUID()}`,
-			productId: input.productId,
-			variationId: input.variationId ?? null,
-			quantity: input.quantity,
-			addons: input.addons ?? [],
-		};
-		cart.lines.push(line);
-		return this.carts.save(cart);
-	}
-
-	async updateLineQuantity(cartId: string, lineId: string, quantity: number, actor: CartActor): Promise<Cart> {
-		const cart = await this.getAuthorizedCart(cartId, actor, 'write');
-		const line = cart.lines.find((l) => l.id === lineId);
-		if (!line) throw new NotFoundException('Cart not found');
-		line.quantity = quantity;
-		return this.carts.save(cart);
-	}
-
-	async removeLine(cartId: string, lineId: string, actor: CartActor): Promise<Cart> {
-		const cart = await this.getAuthorizedCart(cartId, actor, 'write');
-		const before = cart.lines.length;
-		cart.lines = cart.lines.filter((l) => l.id !== lineId);
-		if (cart.lines.length === before) throw new NotFoundException('Cart not found');
-		return this.carts.save(cart);
 	}
 
 	/**
@@ -168,7 +102,8 @@ export class CartService {
 	 *
 	 * Requires the raw `st_guest` cookie — a guessed cart id alone is not enough.
 	 * Stolen cookies that already belong to another user are ignored (no leak, no merge).
-	 * Duplicate lines (same product/variation/addons) have quantities summed.
+	 * Duplicate lines (same product/variation/addons) have quantities summed. A merged line
+	 * that no longer fits the stock stays in the cart and reads as `limited`.
 	 */
 	async mergeGuestCartForUser(userId: string, guestTokenRaw: string | null | undefined): Promise<Cart | null> {
 		if (!guestTokenRaw) return this.carts.findByUserId(userId);
@@ -191,16 +126,10 @@ export class CartService {
 		await this.carts.deleteById(guest.id);
 		return owned;
 	}
-
-	private async getAuthorizedCart(cartId: string, actor: CartActor, mode: 'read' | 'write'): Promise<Cart> {
-		const cart = await this.carts.findById(cartId);
-		if (!cart) throw new NotFoundException('Cart not found');
-		this.assertCartAccess(cart, actor, mode);
-		return cart;
-	}
 }
 
-function lineKey(line: CartLine): string {
+/** Two lines with this key are the same choice, so they hold one quantity. */
+export function lineKey(line: CartLine): string {
 	const addons = [...(line.addons ?? [])]
 		.map((addon) => `${addon.code}=${String(addon.value)}`)
 		.sort()

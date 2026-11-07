@@ -24,7 +24,7 @@ vi.mock('@data-access/queries/tag.queries', () => ({
 	},
 }));
 vi.mock('@data-access/queries/category.queries', () => ({
-	injectCategoriesQuery: (params: () => unknown) => {
+	injectBlogCategoriesQuery: (params: () => unknown) => {
 		params();
 		return { data: categories };
 	},

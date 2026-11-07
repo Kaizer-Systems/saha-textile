@@ -1,19 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
+import type { AddonTemplateWrite } from '@saha-textile/contracts';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../../public/environments/environment';
 
-export interface AddonTemplateRow {
-	code: string;
-	label: string;
-	priceINR: number;
-	unit?: 'in' | 'cm';
-	min?: number;
-	max?: number;
-	step?: number;
-}
+export type AddonTemplateRow = AddonTemplateWrite;
 
 @Injectable({ providedIn: 'root' })
 export class AddonTemplateService {

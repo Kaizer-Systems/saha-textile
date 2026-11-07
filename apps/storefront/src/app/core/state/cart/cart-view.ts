@@ -3,7 +3,6 @@ import {
 	CartLineProblem,
 	ICart,
 	ICartAddOrUpdate,
-	ICartConfigOption,
 	ICartLineConfig,
 } from '@data-access/interfaces/cart.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
@@ -13,7 +12,6 @@ interface ApiCartOption {
 	termCode: string;
 	group: string;
 	value: string;
-	role: 'named_add_on' | 'bundle_component_option';
 	priceDeltaINR: number;
 }
 
@@ -34,7 +32,6 @@ export interface ApiCartLine {
 	lineTotalINR: number;
 	options: ApiCartOption[];
 	measurements: { code: string; label: string; value: number; unit: string }[];
-	components: { title: string; sku: string; priceINR: number }[];
 	problem: CartLineProblem | null;
 }
 
@@ -51,32 +48,19 @@ export interface CartLineChoice {
 	addons: { code: string; value: string | number }[];
 }
 
-const byRole = (line: ApiCartLine, role: ApiCartOption['role']): ICartConfigOption[] =>
-	line.options
-		.filter((option) => option.role === role)
-		.map((option) => ({ group: option.group, value: option.value, price_delta: option.priceDeltaINR }));
-
-const selections = (line: ApiCartLine, role: ApiCartOption['role']): Record<string, string> =>
-	Object.fromEntries(
-		line.options.filter((option) => option.role === role).map((option) => [option.code, option.termCode]),
-	);
-
 /** Null for a plain line, which has nothing to show and nothing to edit. */
 function lineConfig(line: ApiCartLine): ICartLineConfig | undefined {
-	const { variantLabel, options, measurements, components } = line;
-	if (!variantLabel && !options.length && !measurements.length && !components.length) return undefined;
+	const { variantLabel, options, measurements } = line;
+	if (!variantLabel && !options.length && !measurements.length) return undefined;
 	return {
 		variation_label: variantLabel ?? undefined,
-		addon_options: byRole(line, 'named_add_on'),
-		bundle_options: byRole(line, 'bundle_component_option'),
-		bundle_components: components.map((row) => ({ name: row.title, sku: row.sku, price: row.priceINR })),
+		addon_options: options.map(({ group, value, priceDeltaINR }) => ({ group, value, price_delta: priceDeltaINR })),
 		measurements: measurements.map(({ label, value, unit }) => ({ label, value, unit })),
 		base_price: line.basePriceINR,
 		delta_total: line.unitPriceINR - line.basePriceINR,
 		raw: {
 			variation_id: line.variationId,
-			addon_selections: selections(line, 'named_add_on'),
-			bundle_selections: selections(line, 'bundle_component_option'),
+			addon_selections: Object.fromEntries(options.map((option) => [option.code, option.termCode])),
 			measurements: Object.fromEntries(measurements.map((row) => [row.code, row.value])),
 		},
 	};

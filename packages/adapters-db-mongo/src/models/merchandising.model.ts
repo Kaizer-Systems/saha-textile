@@ -136,7 +136,7 @@ export const SeoRedirectModel: Model<SeoRedirectDoc> =
 export interface AddonTemplateDoc {
 	_id: string;
 	code: string;
-	label: string;
+	label: Record<string, string> | string;
 	priceINR: number;
 	fields?: unknown[];
 }
@@ -145,7 +145,7 @@ const AddonTemplateSchema = new Schema<AddonTemplateDoc>(
 	{
 		_id: { type: String, required: true },
 		code: { type: String, required: true },
-		label: { type: String, required: true },
+		label: { type: Schema.Types.Mixed, required: true },
 		priceINR: { type: Number, required: true },
 		fields: { type: [Schema.Types.Mixed], default: [] },
 	},

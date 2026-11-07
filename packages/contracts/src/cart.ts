@@ -98,14 +98,12 @@ export const CartViewLine = z.object({
 			termCode: z.string(),
 			group: z.string(),
 			value: z.string(),
-			role: z.enum(['named_add_on', 'bundle_component_option']),
 			priceDeltaINR: z.number(),
 		}),
 	),
 	measurements: z.array(
 		z.object({ code: z.string(), label: z.string(), value: z.number(), unit: z.enum(['in', 'cm']) }),
 	),
-	components: z.array(z.object({ title: z.string(), sku: z.string(), priceINR: money })),
 	addons: z.array(CartAddonValue),
 	problem: CartLineProblem.nullable(),
 });

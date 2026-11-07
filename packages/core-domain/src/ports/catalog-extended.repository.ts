@@ -34,6 +34,8 @@ export interface CategoryPlacementRepository {
 	listChildren(parentCategoryId: string | null, audience?: CatalogAudience): Promise<CategoryPlacement[]>;
 	/** Canonical live paths, for the storefront allow-list and the sitemap. */
 	listLivePaths(): Promise<string[]>;
+	/** Canonical live placements, for the storefront menu. */
+	listCanonicalLive(): Promise<CategoryPlacement[]>;
 	/** Paths of placements taken off sale, for the retired-collection redirects. */
 	listRetiredPaths(): Promise<string[]>;
 	listSubtree(rootPlacementId: string, audience?: CatalogAudience): Promise<CategoryPlacement[]>;
@@ -260,25 +262,14 @@ export interface SeoRedirectRepository {
 	remove(sourcePath: string, context?: TransactionContext): Promise<void>;
 }
 
-/** Reusable add-on options. A product may override the price; an empty override uses this amount. */
+/** A reusable add-on: its price and what it measures. A product may override the price. */
 export interface AddonTemplateRow {
 	code: string;
-	label: string;
-	priceINR: number;
-	unit?: 'in' | 'cm';
-	min?: number;
-	max?: number;
-	step?: number;
-}
-
-/** A measurement template with every field, as the product page and cart need it. */
-export interface AddonTemplateDetail {
-	code: string;
-	label: string;
+	label: Readonly<Record<string, string>>;
 	priceINR: number;
 	fields: Array<{
 		code: string;
-		label: string;
+		label: Readonly<Record<string, string>>;
 		unit: 'in' | 'cm';
 		min: number | null;
 		max: number | null;
@@ -288,7 +279,7 @@ export interface AddonTemplateDetail {
 
 export interface AddonTemplateRepository {
 	list(): Promise<AddonTemplateRow[]>;
-	findByCode(code: string): Promise<AddonTemplateDetail | null>;
+	findByCode(code: string): Promise<AddonTemplateRow | null>;
 	save(row: AddonTemplateRow): Promise<AddonTemplateRow>;
 	remove(code: string): Promise<void>;
 }

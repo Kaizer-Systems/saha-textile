@@ -23,7 +23,7 @@ export class Menu {
 	private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1, paginate: 10 }));
 	blog$: Observable<IBlogModel | undefined> = toObservable(computed(() => this.blogsQuery.data()));
 	// Real taxonomy for the header nav. Reference data (staleTime Infinity), shared cache with the rest of the app.
-	private readonly categoriesQuery = injectCategoriesQuery(() => ({ status: 1 }));
+	private readonly categoriesQuery = injectCategoriesQuery();
 
 	// The static demo menu with the real Sarees / Dress Materials trees spliced in once the taxonomy
 	// resolves. A signal, so the server renders those links rather than only the demo menu.

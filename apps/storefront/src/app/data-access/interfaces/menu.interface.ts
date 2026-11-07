@@ -1,5 +1,5 @@
 export interface IMenu {
-	id?: number;
+	id?: number | string;
 	path?: string;
 	params?: IMenu;
 	title?: string;
@@ -27,7 +27,7 @@ export interface IMenu {
 }
 
 export interface IMobileMenu {
-	id?: number;
+	id?: number | string;
 	active?: boolean;
 	title?: string;
 	icon?: string;

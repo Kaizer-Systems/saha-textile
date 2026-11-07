@@ -1060,5 +1060,11 @@
 	"attribute_default_role": "Rôle par défaut",
 	"use_as_filter": "Utiliser comme filtre",
 	"search_words": "Mots de recherche",
-	"hide": "Masquer"
+	"hide": "Masquer",
+	"measurement_field": "Mesure",
+	"add_measurement_field": "Ajouter une mesure",
+	"addon_template": "Modèle de supplément",
+	"needs_measurements": "Mesures requises",
+	"gap_addon_template": "Choisissez un modèle pour les options qui demandent des mesures",
+	"gap_lead_time": "Texte de délai"
 }

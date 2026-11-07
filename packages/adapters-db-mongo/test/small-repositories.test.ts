@@ -196,31 +196,30 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 		const row = (list: Awaited<ReturnType<typeof repo.list>>, name: string) =>
 			list.find((entry) => entry.code === code(name));
 
-		it('builds one field from a measure, and none without', async () => {
-			await repo.save({ code: code('plain'), label: 'Plain', priceINR: 1 });
-			await repo.save({ code: code('unit'), label: 'Unit', priceINR: 2, unit: 'cm' });
-			await repo.save({ code: code('min'), label: 'Min', priceINR: 3, min: 1 });
-			await repo.save({ code: code('max'), label: 'Max', priceINR: 4, max: 9 });
-			await repo.save({ code: code('step'), label: 'Step', priceINR: 5, step: 0.5 });
+		const field = {
+			code: 'chest',
+			label: { en: 'Chest', fr: 'Poitrine' },
+			unit: 'in' as const,
+			min: 24,
+			max: 50,
+			step: 0.5,
+		};
+
+		it('saves every field and every language', async () => {
+			await repo.save({ code: code('plain'), label: { en: 'Plain' }, priceINR: 1, fields: [] });
+			await repo.save({ code: code('full'), label: { en: 'Full', fr: 'Complet' }, priceINR: 2, fields: [field] });
 			const list = await repo.list();
-			expect(row(list, 'plain')).toEqual({ code: code('plain'), label: 'Plain', priceINR: 1 });
-			expect(row(list, 'unit')?.unit).toBe('cm');
-			expect(row(list, 'min')?.min).toBe(1);
-			expect(row(list, 'max')?.max).toBe(9);
-			expect(row(list, 'step')?.step).toBe(0.5);
+			expect(row(list, 'plain')).toEqual({ code: code('plain'), label: { en: 'Plain' }, priceINR: 1, fields: [] });
+			expect(row(list, 'full')?.label).toEqual({ en: 'Full', fr: 'Complet' });
+			expect(row(list, 'full')?.fields).toEqual([field]);
 		});
 
-		it('keeps existing fields on a later save', async () => {
-			await repo.save({ code: code('min'), label: 'Renamed', priceINR: 7, min: 2 });
-			const found = await repo.findByCode(code('min'));
-			expect(found).toMatchObject({ label: 'Renamed', priceINR: 7 });
-			expect(found?.fields[0]).toMatchObject({
-				min: 1,
-				max: null,
-				step: null,
-				unit: 'in',
-				label: 'Renamed'.slice(0, 0) + 'Min',
-			});
+		it('leaves an open range open, and replaces the fields on a later save', async () => {
+			const open = { ...field, min: null, max: null, step: null };
+			await repo.save({ code: code('full'), label: { en: 'Renamed' }, priceINR: 7, fields: [open] });
+			const found = await repo.findByCode(code('full'));
+			expect(found).toMatchObject({ label: { en: 'Renamed' }, priceINR: 7 });
+			expect(found?.fields).toEqual([open]);
 		});
 
 		it('reads every stored field shape', async () => {
@@ -238,18 +237,13 @@ describe.skipIf(!hasMongoEnv())('small repositories (integration, rs0)', () => {
 			});
 			await insertRaw(AddonTemplateModel, { _id: `${P}bare`, code: code('bare'), label: 'Bare', priceINR: 1 });
 			const found = await repo.findByCode(code('raw'));
+			expect(found?.label).toEqual({ en: 'Raw' });
 			expect(found?.fields).toEqual([
-				{ code: 'text', label: 'Text label', unit: 'cm', min: 1, max: 2, step: 1 },
-				{ code: 'french', label: 'french', unit: 'in', min: null, max: null, step: null },
-				{ code: 'none', label: 'none', unit: 'in', min: null, max: null, step: null },
+				{ code: 'text', label: { en: 'Text label' }, unit: 'cm', min: 1, max: 2, step: 1 },
+				{ code: 'french', label: { fr: 'Seulement' }, unit: 'in', min: null, max: null, step: null },
+				{ code: 'none', label: { en: 'none' }, unit: 'in', min: null, max: null, step: null },
 			]);
 			expect((await repo.findByCode(code('bare')))?.fields).toEqual([]);
-			expect(row(await repo.list(), 'bare')).toEqual({ code: code('bare'), label: 'Bare', priceINR: 1 });
-		});
-
-		it('reads an English label object', async () => {
-			await repo.save({ code: code('en'), label: 'English', priceINR: 1, unit: 'in' });
-			expect((await repo.findByCode(code('en')))?.fields[0]?.label).toBe('English');
 		});
 
 		it('removes, and misses a stranger', async () => {

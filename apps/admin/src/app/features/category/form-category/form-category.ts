@@ -3,7 +3,7 @@ import { FormGroup, FormBuilder, FormControl, Validators, ReactiveFormsModule } 
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import type { AdminCategoryWrite } from '@saha-textile/contracts';
+import type { AdminCategoryRow, AdminCategoryWrite } from '@saha-textile/contracts';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Select2 } from 'ng-select2-component';
 import { Subject, of } from 'rxjs';
@@ -22,6 +22,11 @@ import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
 
 const LANGUAGE_FIELDS = ['name', 'description', 'seo_title', 'seo_description'];
+
+const attachment = (image: AdminCategoryRow['image']) =>
+	image ? ({ id: image.id, original_url: image.url } as unknown as IAttachment) : undefined;
+
+const picked = (id: unknown): string | null => (id ? String(id) : null);
 
 @Component({
 	selector: 'app-form-category',
@@ -97,7 +102,18 @@ export class FormCategory {
 			.subscribe((row) => {
 				if (!row) return;
 				this.id = row.id;
-				this.form.patchValue({ slug: row.slug, parent_id: row.parentId, also_under: row.alsoUnder });
+				this.form.patchValue({
+					slug: row.slug,
+					parent_id: row.parentId,
+					also_under: row.alsoUnder,
+					category_image_id: row.image?.id ?? '',
+					category_icon_id: row.icon?.id ?? '',
+				});
+				this.category = {
+					...this.category,
+					category_image: attachment(row.image),
+					category_icon: attachment(row.icon),
+				};
 				this.fields.load({
 					name: row.name,
 					description: row.description,
@@ -171,7 +187,8 @@ export class FormCategory {
 			slug: String(raw['slug']),
 			parentId: typeof parent === 'string' && parent ? parent : null,
 			alsoUnder: Array.isArray(also) ? also.map(String) : [],
-			displayOrder: 0,
+			imageId: picked(raw['category_image_id']),
+			iconId: picked(raw['category_icon_id']),
 		};
 		this.categoryService.saveCategory(this.id ?? null, body).subscribe({
 			next: () => {

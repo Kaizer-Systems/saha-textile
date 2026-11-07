@@ -6,6 +6,7 @@ import {
 	CatalogPlacementPage,
 	type CatalogPlacementQuery,
 	CatalogProductPage,
+	type CatalogMenuCategory,
 	type CatalogSwatch,
 	type MediaAsset,
 	type Product,
@@ -34,6 +35,7 @@ import {
 	type StoragePort,
 } from '@saha-textile/core-domain';
 
+import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { catalogLocale, localized } from './catalog-locale';
 import { pricedRow, productReadModel, skuView } from './catalog-read-model';
 import { MongoListing } from './mongo-listing';
@@ -52,12 +54,15 @@ import {
 } from '../infra/tokens';
 
 const RAIL = 12;
+/** A category image is any library image, so take the size that suits it best. */
+const CATEGORY_IMAGE_ROLES = ['category_icon', 'card', 'gallery', 'thumb'] as const;
 /** Matches no category, so an unknown slug empties the list instead of widening it. */
 const NO_CATEGORY = 'no-such-category';
 
 @Injectable()
 export class CatalogPublicService {
 	private readonly listings: ListingPort;
+	private readonly locales: readonly string[];
 
 	constructor(
 		@Inject(PRODUCT_REPOSITORY) private readonly products: ProductRepository,
@@ -79,8 +84,56 @@ export class CatalogPublicService {
 		@Optional() @Inject(CATEGORY_REPOSITORY) private readonly categories: CategoryRepository | null = null,
 		@Optional() @Inject(SEO_ROUTE_REPOSITORY) private readonly seoRoutes: SeoRouteRepository | null = null,
 		@Optional() @Inject(LISTING_PORT) listing: ListingPort | null = null,
+		@Optional() @Inject(APP_CONFIG) config: AppConfig | null = null,
 	) {
 		this.listings = listing ?? new MongoListing(products, variants);
+		this.locales = config?.locales ?? ['en'];
+	}
+
+	/**
+	 * The shop menu: live canonical categories that have a name in every language, so no page
+	 * mixes two. A child waits for its parent, because the menu has nowhere else to put it.
+	 */
+	async menu(): Promise<CatalogMenuCategory[]> {
+		if (!this.categories || !this.placements) return [];
+		const [categories, placements] = await Promise.all([this.categories.tree(), this.placements.listCanonicalLive()]);
+		const byId = new Map(categories.map((category) => [category.id, category]));
+		const images = await this.categoryImages(
+			categories.flatMap((category) => [category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat()),
+		);
+		const shown = new Set<string>();
+		const rows: CatalogMenuCategory[] = [];
+		const ordered = [...placements].sort((a, b) => a.depth - b.depth || a.displayOrder - b.displayOrder);
+		for (const placement of ordered) {
+			const category = byId.get(placement.categoryId);
+			const { parentCategoryId: parentId } = placement;
+			if (!category || !this.locales.every((locale) => category.name[locale]?.trim())) continue;
+			if (parentId && !shown.has(parentId)) continue;
+			shown.add(category.id);
+			rows.push({
+				id: category.id,
+				name: localized(category.name),
+				slug: category.slug,
+				description: localized(category.description),
+				parentId,
+				level: placement.depth + 1,
+				path: placement.pathSlugs.join('/'),
+				imageUrl: images.get(category.media?.bannerImage ?? '') ?? null,
+				iconUrl: images.get(category.media?.iconImage ?? '') ?? null,
+			});
+		}
+		return rows;
+	}
+
+	/** One address per asset, for images that only need showing. */
+	async categoryImages(ids: readonly string[]): Promise<Map<string, string>> {
+		const assets = await this.assetsFor([...ids]);
+		const urls = [...assets].flatMap(([id, asset]) => {
+			const image = this.image(asset, CATEGORY_IMAGE_ROLES);
+			const url = CATEGORY_IMAGE_ROLES.flatMap((role) => image?.roles[role]?.[0]?.url ?? [])[0];
+			return url ? [[id, url] as const] : [];
+		});
+		return new Map(urls);
 	}
 
 	/** The product page: one product read, one variant read, every option group the page renders. */
@@ -99,12 +152,22 @@ export class CatalogPublicService {
 			groups.filter((group) => group.semanticRole === 'variation_axis').map((group) => group.attributeCode),
 		);
 		const selected = read.selected ? skuView(read.selected, read.madeToOrder) : null;
+		const measurements = await this.measurementsFor(product);
+		const title = localized(product.title);
+		const description = product.description ? localized(product.description) : '';
+		const framesOf = (row: ProductVariant): number[] =>
+			(product.media.compound.find((entry) => entry.selectionHash === row.optionSelectionHash)?.gallery ?? [])
+				.map((id) => gallery.findIndex((frame) => frame.id === id))
+				.filter((index) => index >= 0);
 		return CatalogProductPage.parse({
 			id: product.id,
 			slug: product.slug,
 			path: `/product/${product.slug}`,
-			title: localized(product.title),
-			description: product.description ? localized(product.description) : '',
+			title,
+			description,
+			shortDescription: localized(product.shortDescription) || description,
+			metaTitle: localized(product.seo?.title ?? {}) || title,
+			metaDescription: localized(product.seo?.description ?? {}) || description,
 			price: read.price,
 			badges: read.badges,
 			madeToOrder: read.madeToOrder,
@@ -133,7 +196,8 @@ export class CatalogPublicService {
 					isBase: term.isBase,
 					hex: term.hex ?? null,
 					image: term.swatchAssetId ? this.image(assets.get(term.swatchAssetId), ['swatch_image']) : null,
-					priceDeltaINR: term.priceDeltaINR ?? null,
+					// An option that measures costs the template's amount unless this product overrides it.
+					priceDeltaINR: term.priceDeltaINR ?? (term.requiresMeasurements ? (measurements?.priceINR ?? null) : null),
 					requiresMeasurements: term.requiresMeasurements,
 				})),
 			})),
@@ -141,7 +205,9 @@ export class CatalogPublicService {
 				? rows.map((row) => {
 						const priced = pricedRow(row, read.madeToOrder);
 						const photo = row.media?.primaryAssetId ?? null;
-						const galleryIndex = photo ? gallery.findIndex((frame) => frame.id === photo) : -1;
+						const own = product.imageMode === 'compound' ? framesOf(row) : [];
+						const found = photo ? gallery.findIndex((frame) => frame.id === photo) : -1;
+						const galleryIndex = own[0] ?? found;
 						return {
 							id: row.id,
 							sku: row.sku,
@@ -155,10 +221,11 @@ export class CatalogPublicService {
 							quantity: priced.quantity,
 							buyable: priced.buyable,
 							galleryIndex: galleryIndex >= 0 ? galleryIndex : null,
+							galleryIndexes: own,
 						};
 					})
 				: [],
-			measurements: await this.measurementsFor(product),
+			measurements,
 			bundle: await this.bundleFor(product),
 			breadcrumb: await this.breadcrumbFor(product),
 		});
@@ -184,7 +251,7 @@ export class CatalogPublicService {
 			return {
 				templateCode: template.code,
 				priceINR: product.addonPriceINR ?? template.priceINR,
-				fields: template.fields,
+				fields: template.fields.map((field) => ({ ...field, label: localized(field.label) })),
 			};
 		}
 		const own = product.addons.filter((addon) => addon.type === 'number');
@@ -259,9 +326,12 @@ export class CatalogPublicService {
 		if (!categoryId || !this.placements) return [];
 		const placement = await this.placements.findCanonical(categoryId);
 		if (!placement || placement.status !== 'live') return [];
-		const names = placement.pathLabel.split(' / ');
+		const labels = placement.pathLabel.split(' / ');
+		const named = await Promise.all(
+			placement.pathCategoryIds.map(async (id) => (await this.categories?.findById(id))?.name),
+		);
 		return placement.pathSlugs.map((slug, index) => ({
-			name: names[index] ?? slug,
+			name: localized(named[index] ?? {}) || (labels[index] ?? slug),
 			path: `/collections/${placement.pathSlugs.slice(0, index + 1).join('/')}`,
 		}));
 	}

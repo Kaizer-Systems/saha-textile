@@ -16,6 +16,12 @@
 		[formGroup]="form"
 		(ngSubmit)="save()"
 	>
+		<app-language-switch
+			[locales]="locales"
+			[active]="text.locale()"
+			[missing]="missing()"
+			(changed)="switchLanguage($event)"
+		/>
 		<app-form-fields
 			[label]="'name'"
 			[for]="'label'"
@@ -25,7 +31,11 @@
 				class="form-control"
 				id="label"
 				formControlName="label"
+				(change)="refreshMissing()"
 			/>
+			@if (!onSourceLanguage) {
+			<p class="help-text mb-0">{{ 'english_guide' | transloco: { text: text.source('label') } }}</p>
+			}
 		</app-form-fields>
 		<app-form-fields
 			[label]="'code'"
@@ -50,53 +60,85 @@
 				formControlName="priceINR"
 			/>
 		</app-form-fields>
+		@for (row of measures(); track $index; let index = $index) {
 		<app-form-fields
-			[label]="'unit'"
-			[for]="'unit'"
+			[label]="'measurement_field'"
+			[for]="'field_' + index"
 		>
-			<select
-				class="form-control"
-				id="unit"
-				formControlName="unit"
-			>
-				<option value="in">in</option>
-				<option value="cm">cm</option>
-			</select>
+			<div class="row g-2 align-items-center">
+				<div class="col">
+					<input
+						class="form-control"
+						[class.is-invalid]="!row.label[text.locale()]"
+						[id]="'field_' + index"
+						[value]="row.label[text.locale()] ?? ''"
+						(change)="setLabel(index, row, $any($event.target).value)"
+					/>
+					@if (!onSourceLanguage) {
+					<p class="help-text mb-0">{{ 'english_guide' | transloco: { text: guide(row) } }}</p>
+					}
+				</div>
+				<div class="col-2">
+					<select
+						class="form-control"
+						[value]="row.unit"
+						(change)="setUnit(index, $any($event.target).value)"
+					>
+						<option value="in">in</option>
+						<option value="cm">cm</option>
+					</select>
+				</div>
+				<div class="col-2">
+					<input
+						class="form-control"
+						type="number"
+						[placeholder]="'min' | transloco"
+						[value]="row.min ?? ''"
+						(change)="setLimit(index, 'min', $any($event.target).value)"
+					/>
+				</div>
+				<div class="col-2">
+					<input
+						class="form-control"
+						type="number"
+						[placeholder]="'max' | transloco"
+						[value]="row.max ?? ''"
+						(change)="setLimit(index, 'max', $any($event.target).value)"
+					/>
+				</div>
+				<div class="col-2">
+					<input
+						class="form-control"
+						type="number"
+						step="0.1"
+						[placeholder]="'step' | transloco"
+						[value]="row.step ?? ''"
+						(change)="setLimit(index, 'step', $any($event.target).value)"
+					/>
+				</div>
+				<div class="col-auto">
+					<a
+						class="invalid-feedback d-block cursor-pointer"
+						(click)="removeField(index)"
+					>
+						{{ 'remove' | transloco }}
+					</a>
+				</div>
+			</div>
 		</app-form-fields>
-		<app-form-fields
-			[label]="'min'"
-			[for]="'min'"
-		>
-			<input
-				class="form-control"
-				id="min"
-				type="number"
-				formControlName="min"
-			/>
-		</app-form-fields>
-		<app-form-fields
-			[label]="'max'"
-			[for]="'max'"
-		>
-			<input
-				class="form-control"
-				id="max"
-				type="number"
-				formControlName="max"
-			/>
-		</app-form-fields>
-		<app-form-fields
-			[label]="'step'"
-			[for]="'step'"
-		>
-			<input
-				class="form-control"
-				id="step"
-				type="number"
-				step="0.1"
-				formControlName="step"
-			/>
-		</app-form-fields>
+		}
+		<div class="row mb-4">
+			<div class="offset-sm-2 col-2">
+				<button
+					type="button"
+					id="add_field_btn"
+					class="btn btn-theme"
+					(click)="addField()"
+				>
+					{{ 'add_measurement_field' | transloco }}
+				</button>
+			</div>
+		</div>
 		<app-button
 			[id]="'save-addon'"
 			[type]="'submit'"

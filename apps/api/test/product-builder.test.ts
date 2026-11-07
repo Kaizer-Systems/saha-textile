@@ -33,8 +33,10 @@ const content = (over: Record<string, unknown> = {}) =>
 		description: { fr: 'Texte' },
 		metaTitle: both,
 		metaDescription: both,
+		estimatedDeliveryText: {},
 		categoryIds: ['c'],
 		optionGroups: [],
+		addonTemplateCode: null,
 		imageMode: 'compound',
 		gallery: ['a'],
 		compound: [{ selectionHash: 'h', gallery: ['a'] }],
@@ -43,6 +45,16 @@ const content = (over: Record<string, unknown> = {}) =>
 	}) as never;
 
 describe('applyProductContent', () => {
+	it('keeps lead-time text only once it has English', () => {
+		const text = { en: ' Soon ', fr: 'Bientôt' };
+		expect(applyProductContent(product(), content({ estimatedDeliveryText: text })).estimatedDeliveryText).toEqual({
+			en: 'Soon',
+			fr: 'Bientôt',
+		});
+		const french = content({ estimatedDeliveryText: { fr: 'Bientôt' } });
+		expect(applyProductContent(product(), french).estimatedDeliveryText).toBeNull();
+	});
+
 	it('takes every language-bound field and the images', () => {
 		const next = applyProductContent(product(), content());
 		expect(next.title).toEqual({ en: 'Name', fr: 'Nom' });
@@ -327,6 +339,7 @@ describe('TaxonomyService', () => {
 			placements as never,
 			attributes as never,
 			products as never,
+			{ categoryImages: async () => new Map([['a1', 'https://cdn.test/a1']]) } as never,
 		);
 		return { service, catalog, categories, placements, attributes, products };
 	};
@@ -344,6 +357,30 @@ describe('TaxonomyService', () => {
 		const [first, second] = await service.listCategories();
 		expect(first).toMatchObject({ path: 'sarees', productCount: 3, alsoUnder: ['cat_9'], seoTitle: both });
 		expect(second).toMatchObject({ path: null, alsoUnder: [], seoTitle: {} });
+	});
+
+	it('shows a saved image, and hides one the library no longer has', async () => {
+		const { service } = repositories();
+		rows = [category({ media: { bannerImage: 'a1', iconImage: 'gone' } })];
+		const [row] = await service.listCategories();
+		expect(row?.image).toEqual({ id: 'a1', url: 'https://cdn.test/a1' });
+		expect(row?.icon).toBeNull();
+	});
+
+	it('keeps images and order unless a save changes them', async () => {
+		const { service, categories } = repositories();
+		rows = [category({ displayOrder: 7, media: { bannerImage: 'a1', iconImage: 'a2' } })];
+		await service.saveCategory('cat_1', body({ displayOrder: undefined }), null);
+		expect(categories.save.mock.lastCall?.[0]).toMatchObject({
+			displayOrder: 7,
+			media: { bannerImage: 'a1', iconImage: 'a2' },
+		});
+		await service.saveCategory(null, body({ slug: 'fresh', displayOrder: undefined }), null);
+		expect(categories.save.mock.lastCall?.[0]).toMatchObject({ displayOrder: 0 });
+		await service.saveCategory('cat_1', body({ imageId: null, iconId: 'a3', displayOrder: 2 }), null);
+		const saved = categories.save.mock.lastCall?.[0] as { media: object; displayOrder: number };
+		expect(saved.displayOrder).toBe(2);
+		expect(saved.media).toEqual({ iconImage: 'a3' });
 	});
 
 	it('adds a top-level and a child category with their placements', async () => {

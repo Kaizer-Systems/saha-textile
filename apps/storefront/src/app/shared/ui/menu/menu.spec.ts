@@ -14,10 +14,7 @@ vi.mock('@data-access/queries/blog.queries', () => ({
 	},
 }));
 vi.mock('@data-access/queries/category.queries', () => ({
-	injectCategoriesQuery: (params: () => unknown) => {
-		params();
-		return { data: categories };
-	},
+	injectCategoriesQuery: () => ({ data: categories }),
 }));
 
 const tree = {

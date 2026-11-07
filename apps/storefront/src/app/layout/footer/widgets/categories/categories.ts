@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import { Observable } from 'rxjs';
 
+import { isConfiguredCategory } from '@core/catalog/configured-category';
 import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
@@ -17,7 +18,7 @@ import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 export class FooterCategories {
 	readonly data = input<ISiteConfig | null>();
 
-	private readonly categoriesQuery = injectCategoriesQuery(() => ({ status: 1 }));
+	private readonly categoriesQuery = injectCategoriesQuery();
 	category$: Observable<ICategoryModel> = toObservable(
 		computed(() => this.categoriesQuery.data() ?? { data: [], total: 0 }),
 	);
@@ -29,7 +30,7 @@ export class FooterCategories {
 		if (Array.isArray(ids)) {
 			this.category$.subscribe((categories) => {
 				if (Array.isArray(categories.data)) {
-					this.categories = categories.data.filter((category) => ids?.includes(category.id));
+					this.categories = categories.data.filter((category) => isConfiguredCategory(category, ids));
 				}
 			});
 		}

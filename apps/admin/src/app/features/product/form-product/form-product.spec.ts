@@ -9,6 +9,7 @@ import { NgbDate, NgbDateParserFormatter } from '@ng-bootstrap/ng-bootstrap';
 import { BehaviorSubject, firstValueFrom, of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { AddonTemplateService } from '@data-access/services/addon-template.service';
 import { AttributeService } from '@data-access/services/attribute.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { ProductService } from '@data-access/services/product.service';
@@ -56,6 +57,7 @@ const content = (overrides: Record<string, unknown> = {}) => ({
 	metaDescription: {},
 	categoryIds: ['c1'],
 	optionGroups: [],
+	addonTemplateCode: null,
 	imageMode: 'simple',
 	gallery: ['m1'],
 	compound: [],
@@ -118,6 +120,7 @@ const render = (
 			{ provide: PLATFORM_ID, useValue: options.platform ?? 'browser' },
 			{ provide: ActivatedRoute, useValue: { params: new BehaviorSubject(options.params ?? {}) } },
 			{ provide: AttributeService, useValue: { getDefinitions: () => of([]) } },
+				{ provide: AddonTemplateService, useValue: { list: () => of([]) } },
 			{ provide: NotificationService, useValue: toasts },
 			{
 				provide: TranslocoService,
@@ -191,9 +194,11 @@ describe('FormProduct reading', () => {
 		expect(page.variationControl.at(0).value).toMatchObject({ id: 'v1', availability: 'available' });
 		expect(page.statusOptions.map((row) => 'value' in row && row.value)).toEqual([
 			'live',
+			'draft',
 			'disabled',
 			'discontinued',
 		]);
+		expect(page.statusOptions[0]).toMatchObject({ value: 'live', disabled: false });
 	});
 
 	it('reads a simple product, a published SKU and an unavailable row', () => {
@@ -206,7 +211,8 @@ describe('FormProduct reading', () => {
 
 	it('shows draft as a locked status', () => {
 		const { page } = editing({ status: 'draft' });
-		expect(page.statusOptions[0]).toMatchObject({ value: 'draft', disabled: true });
+		expect(page.statusOptions[0]).toMatchObject({ value: 'live', disabled: true });
+		expect(page.statusOptions[1]).toMatchObject({ value: 'draft', disabled: true });
 	});
 
 	it('skips the read for a new product, and offers replacements other than itself', () => {
@@ -479,6 +485,8 @@ describe('FormProduct.submit', () => {
 				metaDescription: { en: '' },
 				categoryIds: ['c1'],
 				optionGroups: [],
+				addonTemplateCode: null,
+				estimatedDeliveryText: { en: ' 3 days ' },
 				imageMode: 'simple',
 				gallery: ['m1'],
 				compound: [],

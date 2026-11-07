@@ -78,14 +78,13 @@ export class ProductConfigurator implements OnInit {
 	/** Purchasable only when EVERY present section is satisfied. */
 	readonly purchasable = computed(() => {
 		const p = this.product();
+		// A bundle shows what it holds, but cannot be bought until it can be priced (brief B12).
+		if (this.hasBundle()) return false;
 		const baseStockOk = this.hasVariation()
 			? this.selectedVariation()?.stock_status === 'in_stock'
-			: this.hasBundle()
-				? true // bundle validity already covers component availability
-				: p.stock_status === 'in_stock';
+			: p.stock_status === 'in_stock';
 		const addonOk = !this.hasAddon() || (this.addonState()?.valid ?? false);
-		const bundleOk = !this.hasBundle() || (this.bundleState()?.valid ?? false);
-		return baseStockOk && addonOk && bundleOk;
+		return baseStockOk && addonOk;
 	});
 
 	/** True only when genuinely out of stock — not merely awaiting add-on/bundle configuration. */

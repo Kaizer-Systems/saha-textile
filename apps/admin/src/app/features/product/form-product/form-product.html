@@ -402,6 +402,8 @@
 								@if (form.controls['type'].value !== 'bundle') {
 								<app-option-groups
 									[(groups)]="optionGroups"
+									[(templateCode)]="addonTemplateCode"
+									[templates]="addonTemplates()"
 									[definitions]="definitions()"
 									[locale]="fields.locale()"
 								/>
@@ -1191,6 +1193,11 @@
 										placeholder="{{'enter_estimated_delivery_text' | transloco }}"
 										formControlName="estimated_delivery_text"
 									/>
+									@if (fields.source('estimated_delivery_text')) {
+									<p class="help-text mb-0">
+										{{ 'english_guide' | transloco: { text: fields.source('estimated_delivery_text') } }}
+									</p>
+									}
 									@if (form.controls['estimated_delivery_text'].errors?.['leadTimeRequired']) {
 									<div class="invalid-feedback">{{ 'lead_time_is_required' | transloco }}</div>
 									}

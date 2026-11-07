@@ -8,6 +8,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { CarouselModule, OwlOptions } from 'ngx-owl-carousel-o';
 import { Observable } from 'rxjs';
 
+import { isConfiguredCategory } from '@core/catalog/configured-category';
 import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 
@@ -23,7 +24,7 @@ export class Categories {
 	private route = inject(ActivatedRoute);
 	private router = inject(Router);
 
-	private readonly categoriesQuery = injectCategoriesQuery(() => ({ status: 1 }));
+	private readonly categoriesQuery = injectCategoriesQuery();
 	category$: Observable<ICategoryModel> = toObservable(
 		computed(() => this.categoriesQuery.data() ?? { data: [], total: 0 }),
 	);
@@ -43,7 +44,7 @@ export class Categories {
 	readonly selectedCategoryId = input<number>();
 	readonly bgImage = input<string>();
 
-	readonly selectedCategory = output<number>();
+	readonly selectedCategory = output<number | string>();
 
 	public categories: ICategory[];
 	public selectedCategorySlug: string[] = [];
@@ -65,12 +66,12 @@ export class Categories {
 		const categoryIds = this.categoryIds();
 		if (categoryIds && categoryIds.length) {
 			this.category$.subscribe(
-				(res) => (this.categories = res.data.filter((category) => this.categoryIds()?.includes(category.id))),
+				(res) => (this.categories = res.data.filter((category) => isConfiguredCategory(category, this.categoryIds() ?? []))),
 			);
 		}
 	}
 
-	selectCategory(id: number) {
+	selectCategory(id: number | string) {
 		this.selectedCategory.emit(id);
 	}
 

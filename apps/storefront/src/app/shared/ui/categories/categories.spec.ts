@@ -9,10 +9,7 @@ import { Categories } from './categories';
 
 const data = signal<unknown>(undefined);
 vi.mock('@data-access/queries/category.queries', () => ({
-	injectCategoriesQuery: (params: () => unknown) => {
-		params();
-		return { data };
-	},
+	injectCategoriesQuery: () => ({ data }),
 }));
 
 const rows = [
@@ -90,7 +87,7 @@ describe('Categories', () => {
 
 	it('emits the chosen id', () => {
 		const { list } = render();
-		const seen: number[] = [];
+		const seen: (number | string)[] = [];
 		list.selectedCategory.subscribe((id) => seen.push(id));
 		list.selectCategory(4);
 		expect(seen).toEqual([4]);

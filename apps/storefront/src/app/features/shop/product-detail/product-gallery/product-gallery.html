@@ -33,7 +33,7 @@
 							</div>
 						</div>
 					</ng-template>
-					} @if (!product()?.product_galleries?.length) {
+					} @if (!frames().length) {
 					<ng-template
 						carouselSlide
 						[id]="'1'"
@@ -58,11 +58,11 @@
 				</owl-carousel-o>
 			</div>
 		</div>
-		@if (product()?.product_galleries?.length) {
+		@if (frames().length) {
 		<div class="col-12">
 			<div class="bottom-slider-image left-slider no-arrow slick-top">
 				<owl-carousel-o [options]="productThumbSlider">
-					@for (image of product()?.product_galleries; track image) {
+					@for (image of frames(); track image) {
 					<ng-template
 						carouselSlide
 						[id]="image.id.toString()"

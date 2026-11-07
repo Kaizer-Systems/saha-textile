@@ -246,3 +246,124 @@ test.describe('Categories and attributes', () => {
 		expect(saved).toMatchObject({ label: { fr: 'Attribut' }, terms: [{ label: { en: 'Red', fr: 'Rouge' } }] });
 	});
 });
+
+test.describe('What admin makes reaches the shop', () => {
+	const shop = 'https://localhost:4200';
+
+	test('a category named in both languages joins the shop menu, in each language', async ({ page, request }) => {
+		const slug = `e2e-menu-${Date.now()}`;
+		await open(page, '/category');
+		await page.locator('input[formcontrolname="name"]').fill('Menu Category');
+		await page.locator('#slug').fill(slug);
+		await page.locator('app-language-switch button', { hasText: 'Français' }).click();
+		await expect(page.locator('input[formcontrolname="name"]')).toHaveValue('');
+		await page.locator('input[formcontrolname="name"]').fill('Catégorie du menu');
+		await page.locator('#category_btn button, button#category_btn').first().click();
+		await expect
+			.poll(() => withDatabase((db) => db.collection('categories').countDocuments({ slug })))
+			.toBe(1);
+		try {
+			await expect.poll(async () => (await request.get(`${shop}/fr`)).text()).toContain('Catégorie du menu');
+			expect(await (await request.get(`${shop}/en`)).text()).toContain('Menu Category');
+			expect(await (await request.get(`${shop}/fr`)).text()).toContain(`/collections/${slug}`);
+		} finally {
+			await withDatabase(async (db) => {
+				await db.collection('categories').deleteMany({ slug });
+				await db.collection('categoryPlacements').deleteMany({ pathKey: slug });
+			});
+		}
+	});
+
+	test('a category missing a language stays out of the shop', async ({ page, request }) => {
+		const slug = `e2e-half-${Date.now()}`;
+		await open(page, '/category');
+		await page.locator('input[formcontrolname="name"]').fill('English Only Category');
+		await page.locator('#slug').fill(slug);
+		await page.locator('#category_btn button, button#category_btn').first().click();
+		await expect
+			.poll(() => withDatabase((db) => db.collection('categories').countDocuments({ slug })))
+			.toBe(1);
+		try {
+			expect(await (await request.get(`${shop}/en`)).text()).not.toContain('English Only Category');
+		} finally {
+			await withDatabase(async (db) => {
+				await db.collection('categories').deleteMany({ slug });
+				await db.collection('categoryPlacements').deleteMany({ pathKey: slug });
+			});
+		}
+	});
+
+	test('a measurement template works from admin through to the shop price', async ({ page, request }) => {
+		const code = `e2e-fit-${Date.now()}`;
+		const slug = 'dhakai-jamdani-saree-with-blouse';
+		const original = await withDatabase((db) => db.collection('products').findOne({ slug }));
+		await open(page, '/measurement/create');
+		await page.locator('#label').fill('Fitted Blouse');
+		await page.locator('#code').fill(code);
+		await page.locator('#priceINR').fill('777');
+		await page.locator('#add_field_btn').click();
+		await page.locator('#field_0').fill('Bust');
+		await page.locator('#field_0').blur();
+		await page.locator('#add_field_btn').click();
+		await page.locator('#field_1').fill('Upper Arm');
+		await page.locator('#field_1').blur();
+		await page.locator('app-language-switch button', { hasText: 'Français' }).click();
+		await expect(page.locator('#label')).toHaveValue('');
+		await page.locator('#label').fill('Blouse ajustée');
+		await page.locator('#field_0').fill('Poitrine');
+		await page.locator('#field_0').blur();
+		await page.locator('#field_1').fill('Haut du bras');
+		await page.locator('#field_1').blur();
+		await page.locator('#save-addon button, button#save-addon').first().click();
+		await expect(page).toHaveURL(/\/measurement$/);
+		const template = await withDatabase((db) => db.collection('addonTemplates').findOne({ code }));
+		expect(template).toMatchObject({
+			label: { en: 'Fitted Blouse', fr: 'Blouse ajustée' },
+			fields: [{ code: 'bust', label: { fr: 'Poitrine' } }, { code: 'upper-arm' }],
+		});
+		try {
+			await open(page, `/product/edit/${String(original?._id)}`);
+			await page.locator('.nav-link', { hasText: 'Inventory' }).first().click();
+			await page.locator('#template_0 .select2-selection').click();
+			await page.locator('.select2-results__option', { hasText: 'Fitted Blouse' }).click();
+			await expect(page.locator('#measures_0_standard')).toBeChecked();
+			const standard = page.locator('.input-group', { has: page.locator('#measures_0_standard') });
+			await standard.locator('input[type="number"]').fill('');
+			await standard.locator('input[type="number"]').blur();
+			await page.getByRole('button', { name: /update product/i }).click();
+			await expect(page).toHaveURL(/\/product$/);
+			const saved = await withDatabase((db) => db.collection('products').findOne({ slug }));
+			expect(saved).toMatchObject({ addonTemplateCode: code, status: 'live' });
+			const french = await request.get(`https://localhost:4000/catalog/products/${slug}/view?locale=fr`);
+			expect(french.status(), await french.text()).toBe(200);
+			const body = (await french.json()) as {
+				measurements: { fields: { label: string }[] };
+				optionGroups: { code: string; terms: { code: string; priceDeltaINR: number | null }[] }[];
+			};
+			expect(body.measurements.fields.map((row) => row.label)).toEqual(['Poitrine', 'Haut du bras']);
+			const stitch = body.optionGroups.find((group) => group.code === 'blouse-stitch');
+			expect(stitch?.terms.find((term) => term.code === 'standard')?.priceDeltaINR).toBe(777);
+		} finally {
+			await withDatabase(async (db) => {
+				await db.collection('addonTemplates').deleteMany({ code });
+				await db.collection('products').replaceOne({ slug }, original as never);
+			});
+		}
+	});
+
+	test('the FAQ form holds both languages behind one switch', async ({ page }) => {
+		const title = `E2E question ${Date.now()}`;
+		await open(page, '/faq/create');
+		await page.locator('input[formcontrolname="title"]').fill(title);
+		await page.locator('textarea[formcontrolname="description"]').fill('An answer.');
+		await page.locator('app-language-switch button', { hasText: 'Français' }).click();
+		await expect(page.locator('input[formcontrolname="title"]')).toHaveValue('');
+		await page.locator('input[formcontrolname="title"]').fill('Une question');
+		await page.locator('textarea[formcontrolname="description"]').fill('Une réponse.');
+		await page.locator('#faq_btn button, button#faq_btn').first().click();
+		await expect(page).toHaveURL(/\/faq$/);
+		const saved = await withDatabase((db) => db.collection('faqEntries').findOne({ 'question.en': title }));
+		expect(saved).toMatchObject({ question: { fr: 'Une question' }, answer: { fr: 'Une réponse.' } });
+		await withDatabase((db) => db.collection('faqEntries').deleteMany({ 'question.en': title }));
+	});
+});

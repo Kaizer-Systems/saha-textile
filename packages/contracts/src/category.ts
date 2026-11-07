@@ -25,6 +25,7 @@ export const Category = z.object({
 	media: z
 		.object({
 			bannerImage: z.string().optional(),
+			iconImage: z.string().optional(),
 		})
 		.optional(),
 });

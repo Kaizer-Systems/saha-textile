@@ -704,7 +704,7 @@ describe('add-on templates', () => {
 	it('lists, saves and removes with an audit row', async () => {
 		const { service, audit, addons } = build();
 		expect(await service.listAddonTemplates()).toEqual(['template']);
-		await service.saveAddonTemplate({ code: 'fall', label: 'Fall', priceINR: 1 }, 'a1');
+		await service.saveAddonTemplate({ code: 'fall', label: { en: 'Fall' }, priceINR: 1, fields: [] }, 'a1');
 		await service.removeAddonTemplate('fall');
 		expect(addons.remove).toHaveBeenCalledWith('fall');
 		expect(actions(audit)).toEqual(['catalog.addon-template.save', 'catalog.addon-template.remove']);
@@ -713,7 +713,7 @@ describe('add-on templates', () => {
 	it('answers nothing, or refuses, with no store', async () => {
 		const { service } = build({ bare: true });
 		expect(await service.listAddonTemplates()).toEqual([]);
-		await expect(service.saveAddonTemplate({ code: 'x', label: 'X', priceINR: 1 })).rejects.toBeInstanceOf(
+		await expect(service.saveAddonTemplate({ code: 'x', label: { en: 'X' }, priceINR: 1, fields: [] })).rejects.toBeInstanceOf(
 			NotFoundException,
 		);
 		await expect(service.removeAddonTemplate('x')).rejects.toBeInstanceOf(NotFoundException);
@@ -776,7 +776,9 @@ describe('catalogue controllers', () => {
 
 	it('serves categories', async () => {
 		const catalog = { getCategoryTree: vi.fn(async () => 'tree'), getCategory: vi.fn(async () => 'one') };
-		const controller = new CategoriesController(catalog as never);
+		const publicCatalog = { menu: vi.fn(async () => []) };
+		const controller = new CategoriesController(catalog as never, publicCatalog as never);
+		expect(await controller.menu()).toEqual([]);
 		expect(await controller.tree()).toBe('tree');
 		expect(await controller.get('silk')).toBe('one');
 	});

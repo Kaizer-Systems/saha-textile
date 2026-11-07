@@ -37,6 +37,18 @@ describe('goLiveGaps', () => {
 		expect(run(complete())).toEqual([]);
 	});
 
+	it('wants a template when an option measures', () => {
+		const measured = [{ attributeCode: 'c', label: both, terms: [{ code: 'x', label: both, requiresMeasurements: true }] }];
+		expect(run(complete({ optionGroups: measured }))).toEqual([{ field: 'addon_template', locale: null }]);
+		expect(run(complete({ optionGroups: measured, addonTemplateCode: 't' }))).toEqual([]);
+	});
+
+	it('wants lead-time text in every language once it is written', () => {
+		expect(run(complete({ estimatedDeliveryText: null }))).toEqual([]);
+		expect(run(complete({ estimatedDeliveryText: { en: ' ' } }))).toEqual([]);
+		expect(run(complete({ estimatedDeliveryText: { en: 'Soon' } }))).toEqual([{ field: 'lead_time', locale: 'fr' }]);
+	});
+
 	it('names every language gap, and treats blanks as missing', () => {
 		const gaps = run(
 			complete({

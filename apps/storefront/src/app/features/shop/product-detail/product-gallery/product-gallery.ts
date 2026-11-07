@@ -4,7 +4,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { CarouselComponent, CarouselModule } from 'ngx-owl-carousel-o';
 
-import { IProduct } from '@data-access/interfaces/product.interface';
+import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import * as data from '@shared/data/owl-carousel';
 
 import { GalleryFullscreen } from './gallery-fullscreen';
@@ -27,10 +27,17 @@ export class ProductGallery {
 	private readonly modals = inject(NgbModal);
 
 	readonly product = input<IProduct>();
+	/** A variant with its own photos shows those, in its own order. */
+	readonly variation = input<IVariation | null>(null);
 
 	readonly carousel = viewChild<CarouselComponent>('owlCar');
 
-	readonly images = computed<GalleryImage[]>(() => (this.product()?.product_galleries ?? []).map(toGalleryImage));
+	readonly frames = computed(() => {
+		const own = this.variation()?.variation_galleries;
+		return own?.length ? own : (this.product()?.product_galleries ?? []);
+	});
+
+	readonly images = computed<GalleryImage[]>(() => this.frames().map(toGalleryImage));
 
 	public activeSlide: string = '0';
 

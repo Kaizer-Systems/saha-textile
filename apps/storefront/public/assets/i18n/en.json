@@ -687,5 +687,6 @@
 	"cart_line_limited": "Only {{count}} left. Please lower the quantity.",
 	"checkout_closed": "Online ordering opens soon",
 	"checkout_closed_detail": "Your cart is saved. You cannot place an order on this site yet.",
-	"back_to_cart": "Back to cart"
+	"back_to_cart": "Back to cart",
+	"bundle_not_on_sale": "This set cannot be bought yet."
 }

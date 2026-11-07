@@ -5,6 +5,7 @@ import {
 	AdminReplacementTarget,
 	CatalogBadgeCode,
 	ProductRelation,
+	type AddonTemplateWrite,
 	type AdminProductListQuery,
 	type AuditLog,
 	type Category,
@@ -265,8 +266,10 @@ export class CatalogService {
 				description: product.description ?? {},
 				metaTitle: product.seo?.title ?? {},
 				metaDescription: product.seo?.description ?? {},
+				estimatedDeliveryText: product.estimatedDeliveryText ?? {},
 				categoryIds: product.categoryIds,
 				optionGroups: product.optionGroups,
+				addonTemplateCode: product.addonTemplateCode ?? null,
 				imageMode: product.imageMode,
 				gallery: product.media.gallery,
 				compound: product.media.compound,
@@ -552,18 +555,7 @@ export class CatalogService {
 		return this.addons?.list() ?? Promise.resolve([]);
 	}
 
-	async saveAddonTemplate(
-		input: {
-			code: string;
-			label: string;
-			priceINR: number;
-			unit?: 'in' | 'cm';
-			min?: number;
-			max?: number;
-			step?: number;
-		},
-		actorUserId: string | null = null,
-	) {
+	async saveAddonTemplate(input: AddonTemplateWrite, actorUserId: string | null = null) {
 		if (!this.addons) throw new NotFoundException('Add-on templates are unavailable');
 		const saved = await this.addons.save(input);
 		await this.record(actorUserId, 'catalog.addon-template.save', saved.code, { priceINR: saved.priceINR });

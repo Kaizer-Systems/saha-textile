@@ -31,8 +31,11 @@ export const ProductContentWrite = z.object({
 	description: TextByLocale,
 	metaTitle: TextByLocale,
 	metaDescription: TextByLocale,
+	estimatedDeliveryText: TextByLocale.default({}),
 	categoryIds: z.array(z.string().min(1)).max(50),
 	optionGroups: ProductOptionGroupSet,
+	/** The measurement template an option can ask for. */
+	addonTemplateCode: z.string().min(1).nullable().default(null),
 	imageMode: z.enum(['simple', 'compound']),
 	gallery: z.array(z.string().min(1)).max(40),
 	compound: z.array(z.object({ selectionHash: z.string().min(1), gallery: z.array(z.string().min(1)).max(40) })),
@@ -275,9 +278,14 @@ export const AdminCategoryWrite = z.object({
 	parentId: z.string().min(1).nullable(),
 	/** Further parents this category also appears under. */
 	alsoUnder: z.array(z.string().min(1)).max(20),
-	displayOrder: z.number().int().default(0),
+	/** Left out, a saved category keeps its place. */
+	displayOrder: z.number().int().optional(),
+	imageId: z.string().min(1).nullable().optional(),
+	iconId: z.string().min(1).nullable().optional(),
 });
 export type AdminCategoryWrite = z.infer<typeof AdminCategoryWrite>;
+
+const CategoryImageRow = z.object({ id: z.string(), url: z.string() });
 
 export const AdminCategoryRow = z.object({
 	id: z.string(),
@@ -290,6 +298,8 @@ export const AdminCategoryRow = z.object({
 	alsoUnder: z.array(z.string()),
 	path: z.string().nullable(),
 	productCount: z.number().int().nonnegative(),
+	image: CategoryImageRow.nullable(),
+	icon: CategoryImageRow.nullable(),
 });
 export type AdminCategoryRow = z.infer<typeof AdminCategoryRow>;
 

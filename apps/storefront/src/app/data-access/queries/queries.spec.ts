@@ -28,7 +28,7 @@ import { WalletService } from '@data-access/services/wallet.service';
 import { injectAttributesQuery } from './attribute.queries';
 import { bannerSrc, bannerSrcset, injectBannersQuery } from './banner.queries';
 import { injectBlogBySlugQuery, injectBlogsQuery, injectRecentBlogsQuery } from './blog.queries';
-import { injectCategoriesQuery } from './category.queries';
+import { injectBlogCategoriesQuery, injectCategoriesQuery } from './category.queries';
 import { injectCountriesQuery } from './country.queries';
 import { injectCouponsQuery } from './coupon.queries';
 import { injectCurrenciesQuery } from './currency.queries';
@@ -83,7 +83,7 @@ beforeEach(() => {
 		providers: [
 			{ provide: AttributeService, useValue: service('getAttributes') },
 			{ provide: BlogService, useValue: service('getBlogs') },
-			{ provide: CategoryService, useValue: service('getCategories') },
+			{ provide: CategoryService, useValue: service('getCategories', 'getBlogCategories') },
 			{ provide: CountryService, useValue: service('getCountries') },
 			{ provide: CouponService, useValue: service('getCoupons') },
 			{ provide: CurrencyService, useValue: service('getCurrencies') },
@@ -116,7 +116,8 @@ describe('list queries', () => {
 	it.each<[string, () => unknown, unknown[]]>([
 		['attributes', () => injectAttributesQuery(params), ['attributes', { status: 1 }]],
 		['blogs', () => injectBlogsQuery(params), ['blogs', { status: 1 }]],
-		['categories', () => injectCategoriesQuery(params), ['categories', { status: 1 }]],
+		['blog categories', () => injectBlogCategoriesQuery(params), ['blog-categories', { status: 1 }]],
+		['categories', () => injectCategoriesQuery(), ['categories', 'en']],
 		['countries', () => injectCountriesQuery(), ['countries']],
 		['coupons', () => injectCouponsQuery(params), ['coupons', { status: 1 }]],
 		['currencies', () => injectCurrenciesQuery(params), ['currencies', { status: 1 }]],

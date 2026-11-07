@@ -23,6 +23,9 @@ const page: ApiProductPage = {
 	path: '/product/kurti-palazzo-set',
 	title: 'Kurti Palazzo Set',
 	description: '',
+	shortDescription: 'Short',
+	metaTitle: 'Meta title',
+	metaDescription: 'Meta text',
 	price: { kind: 'single', sellingINR: 2000, mrpINR: 2400, percentOff: 16 },
 	badges: { primary: 'sale', secondary: null },
 	madeToOrder: false,
@@ -72,6 +75,7 @@ const page: ApiProductPage = {
 			quantity: 3,
 			buyable: true,
 			galleryIndex: null,
+			galleryIndexes: [],
 		},
 		{
 			id: 'var_2',
@@ -82,6 +86,7 @@ const page: ApiProductPage = {
 			quantity: 4,
 			buyable: true,
 			galleryIndex: null,
+			galleryIndexes: [],
 		},
 	],
 	measurements: {

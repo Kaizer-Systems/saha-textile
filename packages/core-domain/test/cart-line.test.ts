@@ -107,13 +107,12 @@ describe('priceCartLine', () => {
 					defaultTermCode: 'design',
 				}),
 				group('fall', 'named_add_on', [term('none'), term('yes', { priceDeltaINR: 90 })]),
-				group('kit', 'bundle_component_option', [term('a', { priceDeltaINR: 10 })]),
 			],
 		});
 		const fallback = line(priceCartLine(product, { variationId: null, addons: [] }));
-		expect(fallback.unitPriceINR).toBe(1060);
+		expect(fallback.unitPriceINR).toBe(1050);
 		expect(fallback.basePriceINR).toBe(800);
-		expect(fallback.options.map((option) => option.termCode)).toEqual(['design', 'none', 'a']);
+		expect(fallback.options.map((option) => option.termCode)).toEqual(['design', 'none']);
 		const chosen = priceCartLine(product, {
 			variationId: null,
 			addons: [
@@ -121,8 +120,8 @@ describe('priceCartLine', () => {
 				{ code: 'fall', value: 'yes' },
 			],
 		});
-		expect(line(chosen).unitPriceINR).toBe(900);
-		expect(line(chosen).options[2]).toMatchObject({ role: 'bundle_component_option', group: 'kit', value: 'A' });
+		expect(line(chosen).unitPriceINR).toBe(890);
+		expect(line(chosen).options[1]).toMatchObject({ group: 'fall', value: 'YES' });
 	});
 
 	it('refuses a choice the product does not offer', () => {
@@ -182,28 +181,10 @@ describe('priceCartLine', () => {
 		});
 	});
 
-	it('prices a bundle from its kit price, sold out when a required piece is', () => {
-		const piece = (over: Record<string, unknown> = {}) => ({
-			title: 'Piece',
-			sku: 'P1',
-			sellingINR: 400,
-			required: true,
-			inStock: true,
-			...over,
+	it('refuses a bundle until it can be priced', () => {
+		expect(priceCartLine(page({ bundle: { priceINR: 700, groups: [] } }), { variationId: null, addons: [] })).toEqual({
+			ok: false,
+			reason: 'bundle_not_on_sale',
 		});
-		const bundle = (components: unknown[]) => ({ priceINR: 700, groups: [{ components }] });
-		const kit = line(
-			priceCartLine(page({ bundle: bundle([piece(), piece({ required: false, inStock: false })]) }), {
-				variationId: null,
-				addons: [],
-			}),
-		);
-		expect(kit).toMatchObject({ sku: 'BASE', unitPriceINR: 700, available: null, buyable: true });
-		expect(kit.components[0]).toEqual({ title: 'Piece', sku: 'P1', priceINR: 400 });
-		const short = priceCartLine(page({ bundle: bundle([piece({ inStock: false })]), selected: null }), {
-			variationId: null,
-			addons: [],
-		});
-		expect(line(short)).toMatchObject({ sku: 'silk', buyable: false });
 	});
 });

@@ -7,10 +7,7 @@ import { FooterCategories } from './categories';
 
 const data = signal<unknown>(undefined);
 vi.mock('@data-access/queries/category.queries', () => ({
-	injectCategoriesQuery: (params: () => unknown) => {
-		params();
-		return { data };
-	},
+	injectCategoriesQuery: () => ({ data }),
 }));
 
 const render = () => {

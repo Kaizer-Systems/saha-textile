@@ -6,6 +6,7 @@ import { NgbAccordionModule } from '@ng-bootstrap/ng-bootstrap';
 import type { AttributeDefinition, ProductOptionGroup, ProductOptionTerm } from '@saha-textile/contracts';
 import { Select2, type Select2UpdateEvent } from 'ng-select2-component';
 
+import type { AddonTemplateRow } from '@data-access/services/addon-template.service';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 
 const ROLES = ['variation_axis', 'named_add_on', 'filter_only', 'bundle_component_option'] as const;
@@ -40,6 +41,13 @@ export class OptionGroups {
 	readonly groups = model.required<ProductOptionGroup[]>();
 	readonly definitions = input.required<readonly AttributeDefinition[]>();
 	readonly locale = input.required<string>();
+	readonly templates = input<readonly AddonTemplateRow[]>([]);
+	/** One measurement template per product, asked for by any option that measures. */
+	readonly templateCode = model<string | null>(null);
+
+	readonly templateOptions = computed(() =>
+		this.templates().map((row) => ({ value: row.code, label: labelIn(row.label, this.locale()) || row.code })),
+	);
 
 	readonly roleOptions = ROLES.map((value) => ({ value, label: value }));
 	readonly styleOptions = STYLES.map((value) => ({ value, label: value }));
@@ -112,6 +120,11 @@ export class OptionGroups {
 			const known = definition?.terms.find((term) => term.code === code);
 			return known ? [termFrom(known, position)] : [];
 		});
+		this.update(index, { terms });
+	}
+
+	setMeasures(index: number, group: ProductOptionGroup, code: string, requiresMeasurements: boolean) {
+		const terms = group.terms.map((term) => (term.code === code ? { ...term, requiresMeasurements } : term));
 		this.update(index, { terms });
 	}
 

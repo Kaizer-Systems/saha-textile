@@ -101,7 +101,7 @@ describe('VariationAxis', () => {
 describe('Categorie', () => {
 	it('passes the chosen category up', () => {
 		const widget = bare(Categorie).componentInstance;
-		const seen: number[] = [];
+		const seen: (number | string)[] = [];
 		widget.selectedCategory.subscribe((id) => seen.push(id));
 		widget.selectCategory(4);
 		expect(seen).toEqual([4]);

@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AddonTemplateOptionWrite } from '@saha-textile/contracts';
+import { AddonTemplateWrite } from '@saha-textile/contracts';
 
 import { Principal } from '../auth/ownership';
 import { Audience, RequirePermissions, type AuthenticatedPrincipal } from '../auth/session.guard';
@@ -25,7 +25,7 @@ export class AdminAddonTemplatesController {
 	@RequirePermissions('product.edit')
 	@ApiOperation({ operationId: 'saveAddonTemplate', summary: 'Save an add-on template option' })
 	save(
-		@Body(new ZodValidationPipe(AddonTemplateOptionWrite)) body: AddonTemplateOptionWrite,
+		@Body(new ZodValidationPipe(AddonTemplateWrite)) body: AddonTemplateWrite,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	) {
 		return this.catalog.saveAddonTemplate(body, principal?.userId ?? null);

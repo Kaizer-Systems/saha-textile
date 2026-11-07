@@ -139,6 +139,12 @@ jobs:
           echo "JWT_ACCESS_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
           echo "JWT_REFRESH_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
           echo "CSRF_SECRET=$(openssl rand -hex 32)" >> apps/api/.env
+          # Reading a product builds image addresses, so storage must be set. Nothing here uploads,
+          # so the key pair is a placeholder; the bucket name and CDN address are public.
+          echo "SPACES_KEY=ci-only-no-access" >> apps/api/.env
+          echo "SPACES_SECRET=ci-only-no-access" >> apps/api/.env
+          echo "SPACES_BUCKET=saha-textile-media" >> apps/api/.env
+          echo "SPACES_CDN_URL=https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com" >> apps/api/.env
 
       - name: Browser tests
         run: pnpm e2e:stack

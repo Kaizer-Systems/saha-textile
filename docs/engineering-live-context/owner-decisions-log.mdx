@@ -918,6 +918,12 @@ Closed: `DEC-DOMAIN-TOPOLOGY`.
 - **Coverage means the test coverage of application code:** 100% of statements, lines, functions and branches across the apps and packages. Repo helper scripts are out of scope.
 - **The logo comes from the owner.** All Fastkart text goes now; the Fastkart logo stays until the owner's file arrives.
 - **Commits:** each finished slice may be committed after the whole suite passes, without asking. Nothing is pushed.
+- **Every admin form that holds language-bound content has one Language switch at the top.** Switching changes every language-bound field on every tab; shared fields stay. It reads the active languages from configuration, so adding a language adds one button. The English text shows under each field as a guide. Save always works; a record with gaps stays disabled.
+- **A product cannot go live until every language field in every active language is complete.** Go Live exists on the product form and in the product list quick actions. Both call the same API and the same check, and both show the same alert toast. This replaces the older "warn for every missing locale" rule.
+- **A value is one thing with a name per language.** Picking it once picks it in every language. The picker in a language lists only values named in that language; a picked value with no name there is flagged and blocks Go Live.
+- **Briefs B8 to B14 are approved at revision 3** (`product-builder-briefs-2026-11-07.html`). The only custom items are the `app-language-switch` component and the image tile overlay `image-order-actions`.
+- **Card badges changed.** One promotion flag stays top left on the photo. The stock fact is a small chip at the photo's bottom left, with white text: Only 1 left in red `#C92A2A`, Only N left in amber `#B45309`, Back in stock in green `#0B7A5B`. French: "Plus que N", "De retour en stock". Low stock wins over Back in stock. This replaces the top-right fact slot in B4.
+- **Back in stock** starts when a product's total stock goes from 0 to above 0 on a save, lasts 14 days, and ends at once if stock reaches 0. "In Stock" stays as plain text on every buyable card.
 
 ## Open decisions
 

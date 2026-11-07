@@ -50,12 +50,18 @@ describe('cardOffer', () => {
 	});
 
 	it('shows the two badge slots the API chose and invents none of its own', () => {
-		const chosen = cardOffer(product({ card_badges: { primary: 'bestseller', secondary: 'low_stock' } }));
+		const chosen = cardOffer(product({ card_badges: { primary: 'bestseller', secondary: 'low_stock', left: 3 } }));
 		expect(chosen.primary).toBe('badge_bestseller');
-		expect(chosen.secondary).toBe('badge_low_stock');
+		expect(chosen.chip).toEqual({ key: 'badge_low_stock_left', count: 3, tone: 'low' });
+		const last = cardOffer(product({ card_badges: { primary: null, secondary: 'low_stock', left: 1 } }));
+		expect(last.chip?.tone).toBe('critical');
+		const unknown = cardOffer(product({ card_badges: { primary: null, secondary: 'low_stock' } }));
+		expect(unknown.chip).toEqual({ key: 'badge_low_stock_left', count: 0, tone: 'low' });
+		const back = cardOffer(product({ card_badges: { primary: null, secondary: 'back_in_stock' } }));
+		expect(back.chip).toEqual({ key: 'badge_back_in_stock', count: 0, tone: 'back' });
 		const featuredOnly = cardOffer(product({ is_featured: true, card_badges: { primary: null, secondary: null } }));
 		expect(featuredOnly.primary).toBeNull();
-		expect(cardOffer(product()).secondary).toBeNull();
+		expect(cardOffer(product()).chip).toBeNull();
 		expect(cardOffer(product({ is_featured: true })).primary).toBe('badge_featured');
 	});
 });

@@ -678,6 +678,6 @@
 	"badge_bestseller": "Meilleure vente",
 	"badge_trending": "Tendance",
 	"badge_new": "Nouveauté",
-	"badge_low_stock": "Stock limité",
+	"badge_low_stock_left": "Plus que {{count}}",
 	"badge_back_in_stock": "De retour en stock"
 }

@@ -301,7 +301,7 @@ describe('Product list', () => {
 
 	it('maps the catalogue rows', () => {
 		const { page } = render(Product);
-		expect(page.tableConfig.total).toBe(0);
+		expect(page.tableConfig().total).toBe(0);
 		data.set({
 			items: [
 				{
@@ -328,10 +328,10 @@ describe('Product list', () => {
 			total: 2,
 		});
 		TestBed.tick();
-		expect(page.tableConfig.data[0]).toMatchObject({ product_thumbnail: { original_url: 'u' }, status: 1 });
-		expect(page.tableConfig.data[0]?.stock).toContain('in stock');
-		expect(page.tableConfig.data[1]).toMatchObject({ product_thumbnail: null, status: 0 });
-		expect(page.tableConfig.data[1]?.stock).toContain('out of stock');
+		expect(page.tableConfig().data![0]).toMatchObject({ product_thumbnail: { original_url: 'u' }, status: 1 });
+		expect(page.tableConfig().data![0]?.stock).toContain('in stock');
+		expect(page.tableConfig().data![1]).toMatchObject({ product_thumbnail: null, status: 0 });
+		expect(page.tableConfig().data![1]?.stock).toContain('out of stock');
 	});
 
 	it('opens a row, and passes the table state to the query', () => {
@@ -354,10 +354,10 @@ describe('FAQ list', () => {
 
 	it('fills the table', () => {
 		const { page } = setup();
-		expect(page.tableConfig.total).toBe(0);
+		expect(page.tableConfig().total).toBe(0);
 		data.set({ data: [{ id: 1 }], total: 1 });
 		TestBed.tick();
-		expect(page.tableConfig.total).toBe(1);
+		expect(page.tableConfig().total).toBe(1);
 		page.onTableChange({ page: 1 });
 	});
 
@@ -484,7 +484,7 @@ describe('Redirects', () => {
 
 	it('loads the list and knows its mode', () => {
 		const { page } = setup();
-		expect(page.tableConfig.total).toBe(2);
+		expect(page.tableConfig().total).toBe(2);
 		expect(page.formOnly()).toBe(false);
 		expect(setup('/redirect/create').page.formOnly()).toBe(true);
 	});
@@ -494,7 +494,7 @@ describe('Redirects', () => {
 			setup(
 				'/redirect',
 				throwError(() => new Error('down')),
-			).page.tableConfig.total,
+			).page.tableConfig().total,
 		).toBe(0);
 	});
 
@@ -512,11 +512,11 @@ describe('Redirects', () => {
 	it('filters by text and reason', () => {
 		const { page } = setup();
 		page.onTableChange({ search: 'NEW' });
-		expect(page.tableConfig.total).toBe(1);
+		expect(page.tableConfig().total).toBe(1);
 		page.onTableChange();
-		expect(page.tableConfig.total).toBe(2);
+		expect(page.tableConfig().total).toBe(2);
 		page.setReason('slug_change');
-		expect(page.tableConfig.total).toBe(1);
+		expect(page.tableConfig().total).toBe(1);
 	});
 
 	it('edits and deletes a row', () => {
@@ -544,7 +544,7 @@ describe('Redirects', () => {
 			expect((api.save.mock.lastCall as unknown[])[0]).toMatchObject({ statusCode: expected });
 		}
 		expect((api.save.mock.lastCall as unknown[])[0]).toMatchObject({ targetPath: undefined });
-		expect(page.form.getRawValue().sourcePath).toBe('');
+		expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/redirect']);
 	});
 
 	it('says when a save is refused', () => {
@@ -564,12 +564,12 @@ describe('Add-on templates', () => {
 	};
 
 	it('loads the list, or nothing on failure', () => {
-		expect(setup().page.tableConfig.data).toEqual([{ ...rows[0], id: 'fall' }]);
+		expect(setup().page.tableConfig().data).toEqual([{ ...rows[0], id: 'fall' }]);
 		expect(
 			setup(
 				'/addon-template',
 				throwError(() => new Error('down')),
-			).page.tableConfig.total,
+			).page.tableConfig().total,
 		).toBe(0);
 	});
 
@@ -582,9 +582,9 @@ describe('Add-on templates', () => {
 	it('filters by text', () => {
 		const { page } = setup();
 		page.onTableChange({ search: 'zzz' });
-		expect(page.tableConfig.total).toBe(0);
+		expect(page.tableConfig().total).toBe(0);
 		page.onTableChange();
-		expect(page.tableConfig.total).toBe(1);
+		expect(page.tableConfig().total).toBe(1);
 	});
 
 	it('edits under whichever section it was opened from, and deletes', () => {

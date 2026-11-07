@@ -9,8 +9,24 @@ export interface CardOffer {
 	max: number;
 	/** Translation key for the promotion slot, from the API. */
 	primary: string | null;
-	/** Translation key for the stock-fact slot, from the API. */
-	secondary: string | null;
+	/** The stock fact on the photo, from the API. */
+	chip: StockChip | null;
+}
+
+/** One small chip on the card photo. `tone` picks its colour. */
+export interface StockChip {
+	key: string;
+	count: number;
+	tone: 'critical' | 'low' | 'back';
+}
+
+/** Low stock names the pieces left, so the last piece reads red. */
+function stockChip(product: IProduct): StockChip | null {
+	const fact = product.card_badges?.secondary;
+	if (fact === 'back_in_stock') return { key: 'badge_back_in_stock', count: 0, tone: 'back' };
+	if (fact !== 'low_stock') return null;
+	const count = product.card_badges?.left ?? 0;
+	return { key: 'badge_low_stock_left', count, tone: count === 1 ? 'critical' : 'low' };
 }
 
 function sellingOf(variation: IVariation): number {
@@ -58,7 +74,7 @@ export function cardOffer(product: IProduct): CardOffer {
 		min: Math.min(...amounts),
 		max: Math.max(...amounts),
 		primary: product.card_badges ? badgeKey(product.card_badges.primary) : demoPromotion(product),
-		secondary: badgeKey(product.card_badges?.secondary),
+		chip: stockChip(product),
 	};
 }
 

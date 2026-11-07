@@ -1,26 +1,14 @@
-import { execFileSync } from 'node:child_process';
-
+import { withDatabase } from './database';
 import { expect, test } from './support';
 
 const PRODUCT = '/en/product/designer-potli-bag';
 const VARIANT = 'var_904_base';
 
-/** The local stack only: reads and tidies the rows these tests create. */
-function mongo(script: string): string {
-	return execFileSync('docker', [
-		'exec',
-		'saha-textile-mongo',
-		'mongosh',
-		'--quiet',
-		'--eval',
-		`const c = db.getSiblingDB('saha_textile_local').getCollection('stockAlerts'); ${script}`,
-	])
-		.toString()
-		.trim();
-}
-
-const alerts = () => Number(mongo(`print(c.countDocuments({ variantId: '${VARIANT}' }))`));
-const tidy = () => mongo(`c.deleteMany({ variantId: '${VARIANT}' })`);
+const alerts = () => withDatabase((db) => db.collection('stockAlerts').countDocuments({ variantId: VARIANT }));
+const tidy = () =>
+	withDatabase(async (db) => {
+		await db.collection('stockAlerts').deleteMany({ variantId: VARIANT });
+	});
 
 async function signIn(page: import('@playwright/test').Page, email: string) {
 	await page.waitForLoadState('networkidle');
@@ -60,6 +48,6 @@ test.describe.serial('Notify Me', () => {
 
 		await notify.click();
 		await expect(page.locator('.toast-success').first()).toBeVisible();
-		expect(alerts()).toBe(1);
+		expect(await alerts()).toBe(1);
 	});
 });

@@ -136,14 +136,19 @@ import {
 		{
 			provide: SEARCH_PORT,
 			useFactory: (products: MongoProductRepository, config: AppConfig) =>
-				new MeilisearchSearch(config.search.host, config.search.apiKey, async (ids) => {
-					const found = [];
-					for (const id of ids) {
-						const product = await products.findById(id, 'public');
-						if (product) found.push(product);
-					}
-					return found;
-				}),
+				new MeilisearchSearch(
+					config.search.host,
+					config.search.apiKey,
+					async (ids) => {
+						const found = [];
+						for (const id of ids) {
+							const product = await products.findById(id, 'public');
+							if (product) found.push(product);
+						}
+						return found;
+					},
+					config.search.index,
+				),
 			inject: [PRODUCT_REPOSITORY, APP_CONFIG],
 		},
 		{ provide: ADDON_TEMPLATE_REPOSITORY, useClass: MongoAddonTemplateRepository },

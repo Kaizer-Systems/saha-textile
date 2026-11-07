@@ -53,7 +53,7 @@ export class Redirect {
 		reason: ['manual', Validators.required],
 	});
 
-	readonly tableConfig: ITableConfig = {
+	readonly tableConfig = signal<ITableConfig>({
 		columns: [
 			{ title: 'path', dataField: 'sourcePath', sortable: true },
 			{ title: 'status', dataField: 'statusCode' },
@@ -68,7 +68,7 @@ export class Redirect {
 		],
 		data: [],
 		total: 0,
-	};
+	});
 
 	constructor() {
 		this.reload();
@@ -144,15 +144,13 @@ export class Redirect {
 			.subscribe({
 				next: () => {
 					this.error.set(null);
-					this.form.reset({ sourcePath: '', statusCode: '301', targetPath: '', reason: 'manual' });
-					this.reload();
+					void this.router.navigate(['/redirect']);
 				},
 				error: () => this.error.set('redirect_rejected'),
 			});
 	}
 
 	private show(rows: RedirectRow[]) {
-		this.tableConfig.data = rows;
-		this.tableConfig.total = rows.length;
+		this.tableConfig.update((config) => ({ ...config, data: rows, total: rows.length }));
 	}
 }

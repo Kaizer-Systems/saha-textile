@@ -154,6 +154,8 @@
 	"width_cm": "Largeur (cm)",
 	"height_cm": "Hauteur (cm)",
 	"redirects": "Redirections",
+	"measurements": "Mesures",
+	"add-on_templates": "Modèles d'options",
 	"path": "Chemin",
 	"target": "Cible",
 	"redirect_rejected": "Cette redirection a été refusée. Le chemin est déjà utilisé, ou il ferait une boucle.",

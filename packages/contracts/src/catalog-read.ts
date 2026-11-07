@@ -30,6 +30,8 @@ export const CatalogCard = z
 		path: z.string().min(1),
 		price: CatalogCardPrice,
 		badges: z.array(z.string()).max(2),
+		/** Pieces left, sent only while the low-stock fact is showing. */
+		lowStockLeft: z.number().int().nonnegative().nullable().default(null),
 		sku: z.string().nullable(),
 		image: ResolvedImage.nullable(),
 		inStock: z.boolean(),

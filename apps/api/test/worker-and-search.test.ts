@@ -285,7 +285,7 @@ describe('MeilisearchSearch', () => {
 		load: (ids: readonly string[]) => Promise<Product[]> = async () => [],
 		host: string | undefined = 'http://meili.test/',
 		key: string | undefined = 'k',
-	) => new MeilisearchSearch(host, key, load);
+	) => new MeilisearchSearch(host, key, load, 'products');
 
 	beforeEach(() => {
 		fetcher.mockReset();

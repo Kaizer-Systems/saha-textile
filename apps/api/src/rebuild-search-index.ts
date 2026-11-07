@@ -23,8 +23,8 @@ async function main(): Promise<void> {
 			products.push(...items);
 			if (!items.length || products.length >= total) break;
 		}
-		const { host, apiKey } = loadConfig().search;
-		const search = new MeilisearchSearch(host, apiKey, async () => []);
+		const { host, apiKey, index } = loadConfig().search;
+		const search = new MeilisearchSearch(host, apiKey, async () => [], index);
 		const indexed = await rebuildSearchIndex(products, search);
 		process.stdout.write(`Indexed ${indexed} live products of ${products.length}.\n`);
 	} finally {

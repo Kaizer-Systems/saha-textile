@@ -562,6 +562,13 @@ describe('cards', () => {
 		expect(cards[0]?.badges).toContain('featured');
 	});
 
+	it('names the pieces left only while the low-stock fact shows', async () => {
+		const low = product({ lowStockThreshold: 3 });
+		const stock = { tracked: true, quantity: 2, lowStockThreshold: null, allowBackorder: false };
+		const cards = await build({ rows: [low], variants: [variant({ stock })] }).service.cardsForIds(['prd_1']);
+		expect(cards[0]).toMatchObject({ lowStockLeft: 2, badges: ['low_stock'] });
+	});
+
 	it('falls back to the product SKU and shows made to order in stock', async () => {
 		const cards = await build({ rows: [product({ madeToOrder: true })], variants: [] }).service.cardsForIds([
 			'prd_1',

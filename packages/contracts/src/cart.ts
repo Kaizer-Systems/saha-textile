@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
 import { Id, IsoDateTime } from './common';
+import { ResolvedImage } from './media';
+
+/** A shop line, not a wholesale order. */
+const LineQuantity = z.number().int().positive().max(99);
 
 /** Captured value for a tailoring add-on on a cart line. */
 export const CartAddonValue = z.object({
@@ -48,21 +52,71 @@ export type Cart = z.infer<typeof Cart>;
  * add-on shape in particular was re-declared inline, character for character, beside the
  * `CartAddonValue` above.
  */
-export const CreateCartRequest = z.object({
-	currency: z.string().length(3).optional(),
-});
-export type CreateCartRequest = z.infer<typeof CreateCartRequest>;
-
 /** Mirrors `CartLine` minus the server-assigned `id`. */
 export const AddCartLineRequest = z.object({
 	productId: z.string().min(1),
 	variationId: z.string().min(1).nullable().optional(),
-	quantity: z.number().int().positive(),
-	addons: z.array(CartAddonValue).optional(),
+	quantity: LineQuantity,
+	addons: z.array(CartAddonValue).max(40).optional(),
 });
 export type AddCartLineRequest = z.infer<typeof AddCartLineRequest>;
 
+/** Sets the quantity. An edit also sends the new choices. */
 export const UpdateCartLineRequest = z.object({
-	quantity: z.number().int().positive(),
+	quantity: LineQuantity,
+	variationId: z.string().min(1).nullable().optional(),
+	addons: z.array(CartAddonValue).max(40).optional(),
 });
 export type UpdateCartLineRequest = z.infer<typeof UpdateCartLineRequest>;
+
+/** Why a line cannot be bought as it stands. */
+export const CartLineProblem = z.enum(['unavailable', 'out_of_stock', 'limited']);
+export type CartLineProblem = z.infer<typeof CartLineProblem>;
+
+const money = z.number().nonnegative();
+
+/** One line as the shopper sees it, priced by the server from the live product. */
+export const CartViewLine = z.object({
+	id: Id,
+	productId: Id,
+	slug: z.string(),
+	title: z.string(),
+	image: ResolvedImage.nullable(),
+	sku: z.string(),
+	variationId: Id.nullable(),
+	variantLabel: z.string().nullable(),
+	quantity: z.number().int().positive(),
+	/** Units that can be bought now. Null means no limit. */
+	available: z.number().int().nonnegative().nullable(),
+	basePriceINR: money,
+	unitPriceINR: money,
+	mrpINR: money.nullable(),
+	lineTotalINR: money,
+	options: z.array(
+		z.object({
+			code: z.string(),
+			termCode: z.string(),
+			group: z.string(),
+			value: z.string(),
+			role: z.enum(['named_add_on', 'bundle_component_option']),
+			priceDeltaINR: z.number(),
+		}),
+	),
+	measurements: z.array(
+		z.object({ code: z.string(), label: z.string(), value: z.number(), unit: z.enum(['in', 'cm']) }),
+	),
+	components: z.array(z.object({ title: z.string(), sku: z.string(), priceINR: money })),
+	addons: z.array(CartAddonValue),
+	problem: CartLineProblem.nullable(),
+});
+export type CartViewLine = z.infer<typeof CartViewLine>;
+
+/** The shopper's cart. `id` is null until something is added. */
+export const CartView = z.object({
+	id: Id.nullable(),
+	currency: z.string().length(3),
+	lines: z.array(CartViewLine),
+	subtotalINR: money,
+	count: z.number().int().nonnegative(),
+});
+export type CartView = z.infer<typeof CartView>;

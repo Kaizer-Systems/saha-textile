@@ -16,7 +16,7 @@ interface ApiSource {
 	height: number;
 }
 
-interface ApiImage {
+export interface ApiImage {
 	assetId: string;
 	width: number;
 	height: number;

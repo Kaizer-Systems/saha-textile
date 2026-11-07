@@ -45,5 +45,6 @@ import { TaxonomyService } from './taxonomy.service';
 		ContentService,
 		RecentPurchasesService,
 	],
+	exports: [CatalogPublicService, CatalogRateLimit],
 })
 export class CatalogModule {}

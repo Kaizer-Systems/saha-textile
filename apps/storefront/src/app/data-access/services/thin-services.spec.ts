@@ -4,6 +4,8 @@ import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { BACKGROUND_REQUEST } from '@core/interceptors/background-request';
+
 import { AccountAddressService } from './account-address.service';
 import { AccountService } from './account.service';
 import { AttributeService } from './attribute.service';
@@ -64,7 +66,6 @@ const reads: [string, () => unknown, string, unknown][] = [
 ];
 
 const plainReads: [string, () => unknown, string][] = [
-	['cart', () => TestBed.inject(CartService).getCartItems(), '/cart.json'],
 	['compare', () => TestBed.inject(CompareService).getCompareItems(), '/compare.json'],
 	['countries', () => TestBed.inject(CountryService).getCountries(), '/country.json'],
 	['payment account', () => TestBed.inject(PaymentDetailsService).getPaymentAccount(), '/payment-account.json'],
@@ -85,6 +86,24 @@ describe('read services', () => {
 	it.each(plainReads)('%s reads its file', (_name, call, path) => {
 		call();
 		expect(String(http.get.mock.lastCall?.[0])).toContain(path);
+	});
+});
+
+describe('CartService', () => {
+	it('reads and changes the shopper cart, sending cookies and no toast', () => {
+		const service = TestBed.inject(CartService);
+		for (const method of ['get', 'post', 'patch', 'delete'] as const) http[method].mockReturnValue(of({}));
+		service.current();
+		service.add({ productId: 'p', quantity: 1, variationId: null, addons: [] });
+		service.update('a b', { quantity: 2 });
+		service.remove('a b');
+		expect(http.get.mock.lastCall?.[0]).toMatch(/\/cart\/current$/);
+		expect(http.post.mock.lastCall?.[0]).toMatch(/\/cart\/current\/lines$/);
+		expect(http.patch.mock.lastCall?.[0]).toMatch(/\/lines\/a%20b$/);
+		expect(http.delete.mock.lastCall?.[0]).toMatch(/\/lines\/a%20b$/);
+		const options = http.delete.mock.lastCall?.[1];
+		expect(options.withCredentials).toBe(true);
+		expect(options.context.get(BACKGROUND_REQUEST)).toBe(true);
 	});
 });
 

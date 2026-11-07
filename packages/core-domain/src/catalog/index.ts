@@ -11,3 +11,4 @@ export * from './weekly-insight';
 export * from './stock-alerts';
 export * from './go-live';
 export * from './variant-matrix';
+export * from './cart-line';

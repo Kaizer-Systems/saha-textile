@@ -155,7 +155,7 @@ export class ProductConfigurator implements OnInit {
 	}
 
 	/** Compose the cart payload for the current selections. `existingId` updates a line in place (edit). */
-	buildParams(quantity: number, existingId: number | null): ICartAddOrUpdate {
+	buildParams(quantity: number, existingId: string | null): ICartAddOrUpdate {
 		const variation = this.selectedVariation();
 		return {
 			id: existingId,

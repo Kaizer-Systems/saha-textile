@@ -228,11 +228,11 @@ describe('the cart line', () => {
 	it('names the variant', () => {
 		const { component } = render(withVariants());
 		component.selectVariation(variation());
-		const params = component.buildParams(1, 7);
-		expect(params).toMatchObject({ id: 7, variation_id: 'v1' });
+		const params = component.buildParams(1, 'l7');
+		expect(params).toMatchObject({ id: 'l7', variation_id: 'v1' });
 		expect(params.line_config).toMatchObject({ variation_label: 'Red', raw: { variation_id: 'v1' } });
 		component.selectVariation(variation({ name: '' }));
-		expect(component.buildParams(1, 7).line_config?.variation_label).toBeUndefined();
+		expect(component.buildParams(1, 'l7').line_config?.variation_label).toBeUndefined();
 	});
 
 	it('resolves add-on choices through the default and the first term', () => {

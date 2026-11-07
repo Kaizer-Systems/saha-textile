@@ -1,108 +1,130 @@
-import { Body, Controller, Delete, Get, Inject, Param, Patch, Post, Req, Res } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	Inject,
+	Param,
+	Patch,
+	Post,
+	Req,
+	Res,
+	UseInterceptors,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AddCartLineRequest, CreateCartRequest, UpdateCartLineRequest } from '@saha-textile/contracts';
+import { AddCartLineRequest, UpdateCartLineRequest } from '@saha-textile/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { Principal } from '../auth/ownership';
 import { type AuthenticatedPrincipal, Public } from '../auth/session.guard';
+import { CatalogLocaleInterceptor } from '../catalog/catalog-locale';
+import { CatalogRateLimit } from '../catalog/catalog-rate-limit';
 import { cookieNames, sessionCookieOptions } from '../common/cookies';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
-import { CartService, toPublicCart } from './cart.service';
 import { API_TAGS } from '../openapi-tags';
+import { CartLinesService, type CartOwner } from './cart-lines.service';
+import { CartService, toPublicCart } from './cart.service';
 
 const GUEST_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 @ApiTags(API_TAGS.cart)
 @Controller('cart')
 /**
- * Guest add-to-cart is an owner lock, so create/read/mutate stay reachable without an
- * account. Ownership is still enforced: authenticated carts bind to Principal; guest
- * carts require the httpOnly `st_guest` proof whose hash is stored server-side.
+ * Guest add-to-cart is an owner lock, so these routes stay reachable without an account. The
+ * cart is found from the session or the httpOnly `st_guest` cookie, never from an id the browser
+ * sends, so one shopper cannot name another's cart.
  */
 @Public()
+@UseInterceptors(CatalogLocaleInterceptor)
 export class CartController {
 	constructor(
 		private readonly cart: CartService,
+		private readonly lines: CartLinesService,
+		private readonly limits: CatalogRateLimit,
 		@Inject(APP_CONFIG) private readonly config: AppConfig,
 	) {}
 
-	private actor(
-		request: FastifyRequest,
-		principal: AuthenticatedPrincipal | undefined,
-	): { principal?: AuthenticatedPrincipal; guestToken: string | null; allowReadPermissions: readonly string[] } {
-		const names = cookieNames(this.config);
+	private guestToken(request: FastifyRequest): string | null {
 		const cookies = (request as FastifyRequest & { cookies?: Record<string, string> }).cookies ?? {};
-		return {
-			principal,
-			guestToken: cookies[names.guest] ?? null,
-			allowReadPermissions: ['cart.index'],
-		};
+		return cookies[cookieNames(this.config).guest] ?? null;
 	}
 
-	@Post()
-	@ApiOperation({ operationId: 'createCart', summary: 'Create a new (guest or user) cart' })
-	async create(
-		@Body(new ZodValidationPipe(CreateCartRequest)) body: CreateCartRequest,
+	private owner(request: FastifyRequest, principal: AuthenticatedPrincipal | undefined): CartOwner {
+		return { principal, guestToken: this.guestToken(request) };
+	}
+
+	/** Every change restarts the guest cookie's 30 days, matching the cart's own expiry. */
+	private keepGuest(reply: FastifyReply, token: string | null): void {
+		if (!token) return;
+		const name = cookieNames(this.config).guest;
+		void reply.setCookie(name, token, sessionCookieOptions(this.config, GUEST_TTL_SECONDS));
+	}
+
+	@Get('current')
+	@ApiOperation({ operationId: 'getCurrentCart', summary: "The shopper's cart, priced from the live catalogue" })
+	current(@Req() request: FastifyRequest, @Principal() principal: AuthenticatedPrincipal | undefined) {
+		return this.lines.current(this.owner(request, principal));
+	}
+
+	@Post('current/lines')
+	@ApiOperation({ operationId: 'addCartLine', summary: 'Add a line, starting a cart when there is none' })
+	async addLine(
+		@Body(new ZodValidationPipe(AddCartLineRequest)) body: AddCartLineRequest,
+		@Req() request: FastifyRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 		@Res({ passthrough: true }) reply: FastifyReply,
 	) {
-		const { cart, guestTokenRaw } = await this.cart.createCart({
-			principal,
-			currency: body.currency,
-		});
-		if (guestTokenRaw) {
-			const names = cookieNames(this.config);
-			void reply.setCookie(names.guest, guestTokenRaw, sessionCookieOptions(this.config, GUEST_TTL_SECONDS));
-		}
-		return toPublicCart(cart);
+		await this.limits.enforce('cart_write', { ip: request.ip });
+		const owner = this.owner(request, principal);
+		const { view, guestTokenRaw } = await this.lines.add(body, owner);
+		this.keepGuest(reply, guestTokenRaw ?? owner.guestToken ?? null);
+		return view;
+	}
+
+	@Patch('current/lines/:lineId')
+	@ApiOperation({ operationId: 'updateCartLine', summary: 'Change a line quantity or its choices' })
+	async updateLine(
+		@Param('lineId') lineId: string,
+		@Body(new ZodValidationPipe(UpdateCartLineRequest)) body: UpdateCartLineRequest,
+		@Req() request: FastifyRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Res({ passthrough: true }) reply: FastifyReply,
+	) {
+		await this.limits.enforce('cart_write', { ip: request.ip });
+		const owner = this.owner(request, principal);
+		const view = await this.lines.update(lineId, body, owner);
+		this.keepGuest(reply, owner.guestToken ?? null);
+		return view;
+	}
+
+	@Delete('current/lines/:lineId')
+	@ApiOperation({ operationId: 'removeCartLine', summary: 'Remove a line' })
+	async removeLine(
+		@Param('lineId') lineId: string,
+		@Req() request: FastifyRequest,
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Res({ passthrough: true }) reply: FastifyReply,
+	) {
+		await this.limits.enforce('cart_write', { ip: request.ip });
+		const owner = this.owner(request, principal);
+		const view = await this.lines.remove(lineId, owner);
+		this.keepGuest(reply, owner.guestToken ?? null);
+		return view;
 	}
 
 	@Get(':id')
-	@ApiOperation({ operationId: 'getCart', summary: 'Get a cart by id' })
+	@ApiOperation({ operationId: 'getCart', summary: 'Read a cart by id, for its owner or support staff' })
 	async get(
 		@Param('id') id: string,
 		@Req() request: FastifyRequest,
 		@Principal() principal: AuthenticatedPrincipal | undefined,
 	) {
-		const cart = await this.cart.getCart(id, this.actor(request, principal));
-		return toPublicCart(cart);
-	}
-
-	@Post(':id/lines')
-	@ApiOperation({ operationId: 'addCartLine', summary: 'Add a line to a cart' })
-	async addLine(
-		@Param('id') id: string,
-		@Body(new ZodValidationPipe(AddCartLineRequest)) body: AddCartLineRequest,
-		@Req() request: FastifyRequest,
-		@Principal() principal: AuthenticatedPrincipal | undefined,
-	) {
-		const cart = await this.cart.addLine(id, body, this.actor(request, principal));
-		return toPublicCart(cart);
-	}
-
-	@Patch(':id/lines/:lineId')
-	@ApiOperation({ operationId: 'updateCartLine', summary: 'Update the quantity of a cart line' })
-	async updateLine(
-		@Param('id') id: string,
-		@Param('lineId') lineId: string,
-		@Body(new ZodValidationPipe(UpdateCartLineRequest)) body: UpdateCartLineRequest,
-		@Req() request: FastifyRequest,
-		@Principal() principal: AuthenticatedPrincipal | undefined,
-	) {
-		const cart = await this.cart.updateLineQuantity(id, lineId, body.quantity, this.actor(request, principal));
-		return toPublicCart(cart);
-	}
-
-	@Delete(':id/lines/:lineId')
-	@ApiOperation({ operationId: 'removeCartLine', summary: 'Remove a line from a cart' })
-	async removeLine(
-		@Param('id') id: string,
-		@Param('lineId') lineId: string,
-		@Req() request: FastifyRequest,
-		@Principal() principal: AuthenticatedPrincipal | undefined,
-	) {
-		const cart = await this.cart.removeLine(id, lineId, this.actor(request, principal));
+		const cart = await this.cart.getCart(id, {
+			principal,
+			guestToken: this.guestToken(request),
+			allowReadPermissions: ['cart.index'],
+		});
 		return toPublicCart(cart);
 	}
 }

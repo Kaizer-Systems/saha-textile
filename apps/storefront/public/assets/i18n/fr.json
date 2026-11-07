@@ -679,5 +679,13 @@
 	"badge_trending": "Tendance",
 	"badge_new": "Nouveauté",
 	"badge_low_stock_left": "Plus que {{count}}",
-	"badge_back_in_stock": "De retour en stock"
+	"badge_back_in_stock": "De retour en stock",
+	"cart_stock_limit": "Nous n'avons pas autant d'articles en stock.",
+	"cart_update_failed": "Votre panier n'a pas pu être mis à jour. Veuillez réessayer.",
+	"cart_line_unavailable": "Cet article n'est plus disponible.",
+	"cart_line_out_of_stock": "Cet article est en rupture de stock.",
+	"cart_line_limited": "Plus que {{count}} en stock. Veuillez réduire la quantité.",
+	"checkout_closed": "Les commandes en ligne ouvrent bientôt",
+	"checkout_closed_detail": "Votre panier est enregistré. Vous ne pouvez pas encore passer commande sur ce site.",
+	"back_to_cart": "Retour au panier"
 }

@@ -33,7 +33,11 @@
 															{{ item.product.name }}
 														</a>
 													</li>
-													@if (item.line_config) {
+													@if (item.problem) {
+													<li class="text-danger">
+														{{ 'cart_line_' + item.problem | transloco: { count: item.available } }}
+													</li>
+													} @if (item.line_config) {
 													<li><app-cart-line-config [config]="item.line_config" /></li>
 													} @if (item.product && item.product.unit) {
 													<li class="text-content">

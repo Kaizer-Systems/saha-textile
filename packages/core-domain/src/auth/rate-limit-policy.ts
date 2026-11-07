@@ -67,7 +67,8 @@ export type AuthRateLimitAction =
 	| 'password_reset'
 	| 'product_question'
 	| 'stock_alert'
-	| 'catalog_search';
+	| 'catalog_search'
+	| 'cart_write';
 
 const MINUTES = 60;
 const HOURS = 60 * MINUTES;
@@ -139,6 +140,11 @@ export const AUTH_RATE_LIMIT_POLICY: Readonly<Record<AuthRateLimitAction, RateLi
 	},
 	/** Typeahead sends a request per pause, so this only stops scraping. */
 	catalog_search: {
+		counting: 'attempts',
+		ip: { max: 120, windowSeconds: 1 * MINUTES },
+	},
+	/** Guest carts need no account, so this keeps one address from filling the collection. */
+	cart_write: {
 		counting: 'attempts',
 		ip: { max: 120, windowSeconds: 1 * MINUTES },
 	},

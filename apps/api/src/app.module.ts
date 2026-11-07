@@ -3,7 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
-import { CartModule } from './cart/cart.module';
+import { CartLinesModule } from './cart/cart-lines.module';
 import { CookieAudienceGuard } from './common/cookie-audience.guard';
 import { CsrfGuard } from './common/csrf.guard';
 import { RefreshReuseGuard } from './auth/refresh-reuse.guard';
@@ -40,7 +40,7 @@ export class AppModule {
 				CatalogModule,
 				CurrencyModule,
 				PromotionsModule,
-				CartModule,
+				CartLinesModule,
 				OrdersModule,
 				AuthModule,
 				AdminModule,

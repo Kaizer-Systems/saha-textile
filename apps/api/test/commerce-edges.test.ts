@@ -9,7 +9,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { assertOwnership, Principal } from '../src/auth/ownership';
 import { tooManyRequests } from '../src/auth/rate-limit-response';
-import { CartController } from '../src/cart/cart.controller';
 import { CartService, toPublicCart } from '../src/cart/cart.service';
 import { CurrencyController } from '../src/currency/currency.controller';
 import { CurrencyService } from '../src/currency/currency.service';
@@ -286,25 +285,6 @@ describe('CartService', () => {
 		expect(cartHarness(undefined as never).service.hashGuestToken('a')).toEqual(expect.any(String));
 	});
 
-	it('reuses a user cart, and creates one when none exists', async () => {
-		h.carts.findByUserId.mockResolvedValue(owned());
-		expect(await h.service.createCart({ principal: shopper })).toMatchObject({
-			guestTokenRaw: null,
-			cart: { id: 'c1' },
-		});
-		h.carts.findByUserId.mockResolvedValue(null);
-		const fresh = await h.service.createCart({ principal: shopper, currency: 'USD' });
-		expect(fresh.cart).toMatchObject({ userId: 'cus_1', currency: 'USD' });
-		expect((await h.service.createCart({ principal: shopper })).cart.currency).toBe('INR');
-	});
-
-	it('creates a guest cart with a token', async () => {
-		const fresh = await h.service.createCart({});
-		expect(fresh.guestTokenRaw).toEqual(expect.any(String));
-		expect(fresh.cart.currency).toBe('INR');
-		expect((await h.service.createCart({ currency: 'EUR' })).cart.currency).toBe('EUR');
-	});
-
 	it('hides a cart from anyone else, and allows support to read it', async () => {
 		await expect(h.service.getCart('c1', {})).rejects.toBeInstanceOf(NotFoundException);
 		h.carts.findById.mockResolvedValue(owned({ userId: 'other' }));
@@ -327,29 +307,6 @@ describe('CartService', () => {
 		await expect(h.service.getCart('c1', {})).rejects.toBeInstanceOf(NotFoundException);
 		h.carts.findById.mockResolvedValue(owned({ userId: null, guestToken: null }));
 		await expect(h.service.getCart('c1', { guestToken: raw })).rejects.toBeInstanceOf(NotFoundException);
-	});
-
-	it('adds, updates and removes lines', async () => {
-		await expect(h.service.addLine('c1', { productId: 'p', quantity: 1 }, {})).rejects.toBeInstanceOf(
-			NotFoundException,
-		);
-		h.carts.findById.mockImplementation(async () => owned());
-		const added = await h.service.addLine('c1', { productId: 'p', quantity: 1 }, { principal: shopper });
-		expect(added.lines.at(-1)).toMatchObject({ variationId: null, addons: [] });
-		const filled = await h.service.addLine(
-			'c1',
-			{ productId: 'p', variationId: 'v', quantity: 1, addons: [{ code: 'a', value: 1 }] },
-			{ principal: shopper },
-		);
-		expect(filled.lines.at(-1)).toMatchObject({ variationId: 'v', addons: [{ code: 'a', value: 1 }] });
-		expect((await h.service.updateLineQuantity('c1', 'l1', 5, { principal: shopper })).lines[0]?.quantity).toBe(5);
-		await expect(h.service.updateLineQuantity('c1', 'gone', 5, { principal: shopper })).rejects.toBeInstanceOf(
-			NotFoundException,
-		);
-		expect((await h.service.removeLine('c1', 'l1', { principal: shopper })).lines).toEqual([]);
-		await expect(h.service.removeLine('c1', 'gone', { principal: shopper })).rejects.toBeInstanceOf(
-			NotFoundException,
-		);
 	});
 
 	it('checks ownership for an order', async () => {
@@ -415,48 +372,6 @@ describe('CartService', () => {
 			expect(merged?.lines.map((row) => row.quantity)).toEqual([4, 2, 2]);
 			expect(h.carts.deleteById).toHaveBeenCalledWith('g');
 		});
-	});
-});
-
-describe('CartController', () => {
-	const cart = { id: 'c1', guestToken: 'secret' };
-	const service = () => ({
-		createCart: vi.fn(async () => ({ cart, guestTokenRaw: null as string | null })),
-		getCart: vi.fn(async () => cart),
-		addLine: vi.fn(async () => cart),
-		updateLineQuantity: vi.fn(async () => cart),
-		removeLine: vi.fn(async () => cart),
-	});
-
-	it('sets the guest cookie only for a new guest cart', async () => {
-		const carts = service();
-		const controller = new CartController(carts as never, config);
-		const reply = { setCookie: vi.fn() };
-		await controller.create({} as never, shopper, reply as never);
-		expect(reply.setCookie).not.toHaveBeenCalled();
-		carts.createCart.mockResolvedValue({ cart, guestTokenRaw: 'raw' });
-		const created = await controller.create({} as never, undefined, reply as never);
-		expect(reply.setCookie).toHaveBeenCalledTimes(1);
-		expect(created.guestToken).toBeNull();
-	});
-
-	it('passes the actor to every line route', async () => {
-		const carts = service();
-		const controller = new CartController(carts as never, config);
-		const request = { cookies: { st_guest: 'g' } } as never;
-		await controller.get('c1', request, undefined);
-		expect(carts.getCart).toHaveBeenCalledWith('c1', {
-			principal: undefined,
-			guestToken: 'g',
-			allowReadPermissions: ['cart.index'],
-		});
-		await controller.get('c1', {} as never, shopper);
-		expect(carts.getCart).toHaveBeenLastCalledWith('c1', expect.objectContaining({ guestToken: null }));
-		await controller.addLine('c1', {} as never, request, shopper);
-		await controller.updateLine('c1', 'l1', { quantity: 2 } as never, request, shopper);
-		expect(carts.updateLineQuantity).toHaveBeenCalledWith('c1', 'l1', 2, expect.anything());
-		await controller.removeLine('c1', 'l1', request, shopper);
-		expect(carts.removeLine).toHaveBeenCalledTimes(1);
 	});
 });
 

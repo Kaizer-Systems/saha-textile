@@ -24,5 +24,10 @@ const CartSchema = new Schema<CartDoc>(
 
 CartSchema.index({ userId: 1 });
 CartSchema.index({ guestToken: 1 });
+/** Guest carts last 30 days from their last change. Account carts never expire. */
+CartSchema.index(
+	{ updatedAt: 1 },
+	{ expireAfterSeconds: 60 * 60 * 24 * 30, partialFilterExpression: { guestToken: { $type: 'string' } } },
+);
 
 export const CartModel: Model<CartDoc> = (models.Cart as Model<CartDoc>) ?? model<CartDoc>('Cart', CartSchema);

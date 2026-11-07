@@ -164,6 +164,17 @@ export class CatalogPublicService {
 		});
 	}
 
+	/** What a cart needs of a product: the page when it can be sold, and its name either way. */
+	async cartRead(id: string): Promise<{ slug: string; title: string; page: CatalogProductPage | null } | null> {
+		const live = await this.products.findById(id, 'public');
+		if (live) {
+			const page = await this.page(live.slug);
+			return { slug: page.slug, title: page.title, page };
+		}
+		const retired = await this.products.findById(id, 'admin');
+		return retired ? { slug: retired.slug, title: localized(retired.title), page: null } : null;
+	}
+
 	private async measurementsFor(product: Product) {
 		const template =
 			product.addonTemplateCode && this.addonTemplates

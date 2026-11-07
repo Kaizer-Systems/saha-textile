@@ -1,18 +1,18 @@
-import { AsyncPipe, NgClass, NgStyle } from '@angular/common';
-import { Component, inject, input } from '@angular/core';
+import { AsyncPipe, NgClass, NgStyle, isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, effect, inject, input, untracked } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
+import { AuthStore } from '@core/state/auth.store';
 import { CartFacade } from '@core/state/cart/cart.facade';
 import { SettingStore } from '@core/state/setting.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { IValues } from '@data-access/interfaces/setting.interface';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
-import { CartService } from '@data-access/services/cart.service';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { Button } from '@shared/ui/button/button';
 import { CartLineConfig } from '@shared/ui/cart-line-config/cart-line-config';
@@ -38,7 +38,8 @@ import { ProductConfigModal } from '@shared/ui/modal/product-config-modal/produc
 export class Cart {
 	private cartFacade = inject(CartFacade);
 	private settingStore = inject(SettingStore);
-	cartService = inject(CartService);
+	private authStore = inject(AuthStore);
+	private platformId = inject(PLATFORM_ID);
 
 	cartItem$: Observable<ICart[]> = this.cartFacade.cartItems$;
 	cartTotal$: Observable<number> = this.cartFacade.cartTotal$;
@@ -62,7 +63,12 @@ export class Cart {
 	public loader: boolean = false;
 
 	constructor() {
-		this.cartFacade.getCartItems();
+		// Signing in merges the guest cart on the server and signing out leaves it, so the cart is
+		// read again whenever the session changes. The server has no cookies for this read.
+		effect(() => {
+			this.authStore.isAuthenticated();
+			if (isPlatformBrowser(this.platformId)) untracked(() => this.cartFacade.getCartItems());
+		});
 		// The store starts empty, so keep the default until config arrives. Dropping it would remove
 		// `fixed-cart` during hydration and flash the closed cart into view.
 		this.siteConfig$.subscribe((option) => (this.cartStyle = option?.general?.cart_style ?? this.cartStyle));
@@ -102,7 +108,7 @@ export class Cart {
 		this.cartFacade.updateCart(params);
 	}
 
-	delete(id: number) {
+	delete(id: string) {
 		this.cartFacade.deleteCart(id);
 	}
 }

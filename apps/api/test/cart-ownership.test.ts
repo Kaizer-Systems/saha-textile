@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Cart } from '@saha-textile/contracts';
 
-import { CartService, toPublicCart } from '../src/cart/cart.service';
+import { CartService } from '../src/cart/cart.service';
 import { loadConfig } from '../src/config/app-config';
 
 const config = loadConfig({
@@ -142,23 +142,7 @@ describe('CartService ownership / BOLA', () => {
 		await expect(service.getCart('cart_1', { guestToken: null })).rejects.toThrow(NotFoundException);
 	});
 
-	it('never lets caller-supplied userId claim another account on create', async () => {
-		repo.findByUserId.mockResolvedValueOnce(null);
-		const { cart: created } = await service.createCart({
-			principal: { userId: 'user_a', sessionId: 's', audience: 'storefront', role: null, permissions: [] },
-		});
-		expect(created.userId).toBe('user_a');
-		expect(created.guestToken).toBeNull();
-	});
-
-	it('stores only the guest-token hash and strips it from public carts', async () => {
-		const { cart: created, guestTokenRaw } = await service.createCart({});
-		expect(guestTokenRaw).toBeTruthy();
-		expect(created.guestToken).toBe(service.hashGuestToken(guestTokenRaw!));
-		expect(toPublicCart(created).guestToken).toBeNull();
-	});
-
-	it('allows cart.index support-read but not write; role alone is not enough', async () => {
+	it('allows cart.index support-read; role alone is not enough', async () => {
 		repo.findById.mockResolvedValue(cart({ userId: 'cus_b' }));
 		const staffNoPerm = {
 			principal: {
@@ -177,9 +161,6 @@ describe('CartService ownership / BOLA', () => {
 			principal: { ...staffNoPerm.principal, permissions: ['cart.index'] },
 		};
 		await expect(service.getCart('cart_1', staffWithPerm)).resolves.toMatchObject({ id: 'cart_1' });
-		await expect(service.addLine('cart_1', { productId: 'p1', quantity: 1 }, staffWithPerm)).rejects.toThrow(
-			NotFoundException,
-		);
 	});
 
 	it('blocks foreign-cart order adoption without guest proof', async () => {

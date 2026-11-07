@@ -38,6 +38,9 @@ const env = {
 	MEILISEARCH_INDEX: SEARCH_INDEX,
 	OTP_LOCAL_FIXED_CODE: process.env.OTP_LOCAL_FIXED_CODE || '123456',
 	NOTIFICATION_PROVIDER: 'console',
+	// Every browser in the run shares one address, so the per-address limit would refuse real
+	// test traffic. Each limited action keeps its own budget, and those are what the tests hit.
+	RATE_LIMIT_MAX: '100000',
 };
 
 const children = [];

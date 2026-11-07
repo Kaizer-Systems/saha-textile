@@ -1,0 +1,38 @@
+---
+title: Scalar API Reference
+slug: /tools/scalar
+description: Entry page for the generated Scalar API reference.
+status: scaffolded
+audience: [beginner, frontend, backend, operator]
+last_verified: '2026-11-07'
+wide: true
+hide_table_of_contents: true
+source_of_truth:
+    - apps/developer-portal-scalar
+    - apps/developer-portal/src/components/ChildToolGateway
+    - apps/api/src
+    - packages/adapters-db-mongo/src/repositories/auth.repository.ts
+    - packages/adapters-db-mongo/test/auth-persistence.test.ts
+    - scripts/serve-developer-portal-persistent.mjs
+    - docs/api/openapi-and-scalar.md
+    - docs/engineering-live-context/project-progress.mdx
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
+---
+
+import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
+
+<ChildToolGateway
+	toolName="Scalar API reference"
+	target="/api/reference/"
+	eyebrow="Request Wormhole · OpenAPI reference"
+	title="Read the HTTP API and send test requests."
+	description="Browse every API operation and send requests to the local API, under normal security controls."
+	launchLabel="Open Scalar"
+	symbol="request-wormhole"
+/>
+
+This page opens Scalar, the HTTP API reference. It renders the generated OpenAPI document and includes **Test Request**.
+
+Test requests receive no privileged token. They target only the server named in the document, `https://localhost:4000`, and normal CORS, authentication, CSRF, authorization, ownership and rate limits apply. To change state from a session, copy the token from `GET /auth/csrf` into the `x-csrf-token` header.
+
+The document lists every route but does not include full schemas or per-operation security. See [OpenAPI and Scalar](/api/openapi-and-scalar) for usage and limitations.

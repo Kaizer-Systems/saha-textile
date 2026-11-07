@@ -6,6 +6,7 @@ import { RouterModule } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
+import { injectBrandQuery } from '@core/brand/brand.gateway';
 import { SettingStore } from '@core/state/setting.store';
 import { ILanguage, IValues } from '@data-access/interfaces/setting.interface';
 import { NavService } from '@data-access/services/nav.service';
@@ -37,6 +38,7 @@ export class Header {
 	private document = inject<Document>(DOCUMENT);
 	navServices = inject(NavService);
 
+	readonly brand = injectBrandQuery();
 	setting$: Observable<IValues | null> = toObservable(inject(SettingStore).setting);
 
 	public active: boolean = false;

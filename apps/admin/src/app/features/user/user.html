@@ -4,27 +4,11 @@
 >
 	<div
 		class="d-flex flex-wrap gap-2"
-		*hasPermission="'user.create'"
+		*hasPermission="'admin_user.create'"
 		button
 	>
 		<a
-			href="javascript:void(0)"
-			class="align-items-center btn btn-outline me-2"
-			(click)="CSVModal().openModal()"
-		>
-			<i class="ri-upload-2-line"></i>
-			{{ 'Import' | transloco }}
-		</a>
-		<a
-			href="javascript:void(0)"
-			class="align-items-center btn btn-outline me-2"
-			(click)="export()"
-		>
-			<i class="ri-download-2-line"></i>
-			{{ 'Export' | transloco }}
-		</a>
-		<a
-			[routerLink]="['/user/create']"
+			[routerLink]="['/admin-user/create']"
 			class="align-items-center btn btn-theme"
 		>
 			<i class="ri-add-line"></i>
@@ -32,15 +16,10 @@
 		</a>
 	</div>
 	<app-table
-		[tableConfig]="tableConfig"
-		[hasCheckbox]="true"
+		[tableConfig]="tableConfig()"
+		[hasCheckbox]="false"
 		(tableChanged)="onTableChange($event)"
 		(rowClicked)="edit($event)"
 		(action)="onActionClicked($event)"
 	/>
 </app-page-wrapper>
-
-<app-import-csv-modal
-	[module]="'user'"
-	#csvModal
-/>

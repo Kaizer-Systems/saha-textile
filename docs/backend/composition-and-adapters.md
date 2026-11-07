@@ -1,22 +1,24 @@
 ---
 title: Composition Root and Adapters
-description: NestJS module wiring, dependency-injection tokens, adapter ownership, Mongo mappings, and provider seams.
+wide: true
+description: NestJS module wiring, dependency-injection tokens, adapters and deployment hardening.
 status: scaffolded
 audience: [beginner, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/api/src/app.module.ts
+    - apps/api/src/config/app-config.ts
     - apps/api/src/infra
     - packages/adapters-db-mongo/src
     - packages/core-domain/src/ports
-    - project-context/angular-context/codex-api-app-build-instructional-prompt.md
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
 ---
 
 # Composition root and adapters
 
-Composition is the only place where abstract capabilities become concrete implementations. The current API performs this work in `AppModule` and the global `PersistenceModule`.
+Composition is the only place where abstract capabilities become concrete implementations. The API does this in `AppModule` and the global `PersistenceModule`. The worker does the same in `apps/api/src/worker/media-worker.ts`.
 
-## Current module graph
+## Module graph
 
 ```mermaid
 flowchart TD
@@ -29,41 +31,62 @@ flowchart TD
     App --> Cart["CartModule"]
     App --> Orders["OrdersModule"]
     App --> Auth["AuthModule"]
+    App --> Admin["AdminModule"]
+    App --> Storefront["StorefrontModule"]
+    App --> Security["SecurityModule"]
+    App --> Privacy["PrivacyModule"]
 
-    Persistence --> MongoRepos["Seven Mongo repositories"]
+    Persistence --> MongoRepos["Original commerce repositories"]
+	Persistence --> AuthRepos["Auth, pending-proof + consent repositories"]
+    Persistence --> Notifications["NotificationPort factory (MSG91 | console)"]
+    Persistence --> Transaction["MongoTransactionManager"]
     Persistence --> AuthAdapter["Argon2JwtAuth"]
     Persistence --> MongoConnection["Mongo connection lifecycle"]
 ```
 
-The name `PersistenceModule` is currently broader than persistence because it also binds `AuthPort`. The target folder plan separates composition into persistence, search, and external-adapter modules so dependency ownership remains obvious.
+`AppModule.forRoot(config)` takes validated configuration and passes it to every module, so a test can compose the application with values that are not in the environment. `apps/api/src/bootstrap.ts` builds the application without opening a port. `main.ts` adds only the listener.
 
-## Current DI bindings
+`PersistenceModule` binds repositories and external adapters. `MediaModule` and `CatalogModule` consume them.
 
-| Token                  | Concrete class                                     |
-| ---------------------- | -------------------------------------------------- |
-| `PRODUCT_REPOSITORY`   | `MongoProductRepository`                           |
-| `CATEGORY_REPOSITORY`  | `MongoCategoryRepository`                          |
-| `CURRENCY_REPOSITORY`  | `MongoCurrencyRepository`                          |
-| `PROMOTION_REPOSITORY` | `MongoPromotionRepository`                         |
-| `CART_REPOSITORY`      | `MongoCartRepository`                              |
-| `ORDER_REPOSITORY`     | `MongoOrderRepository`                             |
-| `USER_REPOSITORY`      | `MongoUserRepository`                              |
-| `AUTH_PORT`            | `Argon2JwtAuth` factory using validated app config |
+## Dependency-injection bindings
 
-Unbound ports do not become operational merely because their interfaces exist.
+Tokens are declared in `apps/api/src/infra/tokens.ts`.
+
+| Token family                        | Implementation                                                                                                                                                                            |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Catalogue and commerce repositories | Mongo repositories for products, variants, categories, placements, attributes, redirects, routes, stock alerts, FAQ, questions, relations, bundles, currencies, promotions, carts, orders |
+| Account repositories                | `MongoCustomerRepository`, `MongoAdminUserRepository`                                                                                                                                     |
+| Auth repositories                   | Sessions, credentials, OTP, OAuth state, provider identities, pending signup and contact change, reset, verification, invite and rate-limit repositories                                  |
+| Authorization repositories          | `MongoRoleRepository`, `MongoAdminUserRoleAssignmentRepository`                                                                                                                           |
+| Governance repositories             | `MongoAuditLogRepository`, `MongoConsentRepository`, notification settings, templates and outbox                                                                                          |
+| Media repositories                  | Media assets, media roles, content blocks, site settings, reviews                                                                                                                         |
+| `TRANSACTION_MANAGER`               | `MongoTransactionManager`                                                                                                                                                                 |
+| `AUTH_PORT`                         | `Argon2JwtAuth`                                                                                                                                                                           |
+| `SEARCH_PORT`                       | `MeilisearchSearch`                                                                                                                                                                       |
+| `NOTIFICATION_PORT`                 | `Msg91NotificationAdapter` when `NOTIFICATION_PROVIDER=msg91` and `MSG91_AUTH_KEY` is set, otherwise `ConsoleNotificationAdapter`                                                         |
+| `STORAGE_PORT`                      | `SpacesStorageAdapter` when Spaces credentials are set, otherwise `UnconfiguredStorageAdapter`                                                                                            |
+| `MEDIA_JOB_QUEUE`                   | `BullMqMediaJobQueue` on Redis                                                                                                                                                            |
+| `CDN_PURGE`                         | `CloudflareCdnPurge` when zone and token are set, otherwise `LogOnlyCdnPurgeAdapter`                                                                                                      |
+| `YOUTUBE_PORT`                      | `YouTubeDataApi` when `YOUTUBE_API_KEY` is set, otherwise `UnavailableYouTubeAdapter`                                                                                                     |
+
+`OAuthService` builds `GoogleIdTokenVerifier` and `FacebookTokenVerifier` from `@saha-textile/adapters-auth`. The worker adds `SharpImageCodec` from `@saha-textile/adapters-image-sharp`.
+
+An unconfigured adapter fails at the point of use with a clear message. It never pretends the operation succeeded.
 
 ## Mongo adapter responsibilities
 
-The adapter currently owns:
+The adapter owns:
 
-- connection configuration and Mongoose lifecycle;
-- seven models and indexes;
-- conversion from Mongoose documents to public contract-shaped values;
-- repository queries/upserts/deletes;
-- idempotent seed data for categories, products, currencies, and promotion;
-- a gated live integration test.
+- Connection configuration and the Mongoose lifecycle.
+- Models with declared physical collection names, and their indexes.
+- Conversion from Mongoose documents to contract-shaped values.
+- A transaction manager that exposes only an opaque context and uses `AsyncLocalStorage`, so nested transactions join the outer one.
+- Translation of unique-index races into `DuplicateIdentifierError`.
+- Single-statement customer address writes.
+- One write path for provider identities, `AuthIdentityRepository`.
+- Migrations, seed tools and index reconciliation.
 
-It should continue to own provider-specific details such as `_id`, Mongoose query syntax, sessions, BSON dates, indexes, and schema options.
+It keeps provider details such as `_id`, Mongoose query syntax, sessions, BSON dates and schema options out of core.
 
 ## Model-to-domain mapping
 
@@ -79,76 +102,79 @@ flowchart LR
     WriteMapper --> Model
 ```
 
-Current read mappers handle ids and dates explicitly, but nested `Mixed` values are cast. Future implementation should validate/marshal nested fields deliberately and keep secret fields, such as `passwordHash`, inside the adapter boundary.
+Read mappers handle ids and dates explicitly. Nested `Mixed` values are cast without runtime validation. Secret fields such as password and PIN hashes stay inside the adapter.
 
 ## Provider adapter pattern
 
-For payment, shipping, notifications, FX, storage, search, and media processing:
+For payment, shipping, notifications, exchange rates, storage, search and media processing:
 
-1. keep provider configuration at server runtime;
-2. expose a core capability port;
-3. translate domain input into provider request;
-4. verify provider response/signature/status;
-5. map provider failures into stable application error categories;
-6. redact provider payloads from user responses/logs;
-7. persist correlation and version evidence required for reconciliation;
-8. bind the selected adapter in composition.
+1. Keep provider configuration on the server.
+2. Expose a core capability port.
+3. Translate domain input into the provider request.
+4. Verify the provider's response, signature or status.
+5. Map provider failures to stable application error categories.
+6. Redact provider payloads from responses and logs.
+7. Store the correlation data that reconciliation needs.
+8. Bind the adapter in composition.
 
-## Stub versus fake versus sandbox
+## Development, sandbox, and live adapters
 
-| Kind            | Use                                                    | Must not be mistaken for                    |
-| --------------- | ------------------------------------------------------ | ------------------------------------------- |
-| Fake            | Deterministic test implementation                      | Provider compatibility evidence             |
-| Stub adapter    | Explicit not-configured or canned development behavior | Successful production integration           |
-| Sandbox adapter | Real provider sandbox protocol                         | Live credential/capture readiness           |
-| Live adapter    | Approved production integration                        | Permission to expose unsafe console actions |
+| Kind                 | Use                                     | Not to be mistaken for                |
+| -------------------- | --------------------------------------- | ------------------------------------- |
+| Test implementation  | Deterministic checks of a port contract | Provider compatibility                |
+| Unconfigured adapter | Explicitly unavailable local behaviour  | A working integration                 |
+| Sandbox adapter      | The provider's real sandbox protocol    | Live credentials or capture           |
+| Live adapter         | The production integration              | Permission for unsafe console actions |
 
-Seam-first provider work is locked: ports and stub/sandbox adapters can advance before live credentials. The live adapter requires official current provider documentation, credentials, webhook verification, reconciliation, failure testing, and owner-controlled rollout.
+A live adapter requires current provider documentation, credentials, webhook verification, reconciliation, failure testing and an approved rollout.
 
 ## Configuration boundary
 
-`app-config.ts` validates API runtime values with zod, which is the right direction. Current gaps include:
+`apps/api/src/config/app-config.ts` validates runtime values with zod when the process starts. A half-set credential group, such as Spaces or Cloudflare, stops startup with a message naming the missing variables.
 
-- development JWT secrets are supplied as defaults without a production rejection gate;
-- proxy/client-IP settings are absent;
-- cookie/session/CSRF configuration is absent;
-- notification/Meilisearch/self-hosted Mongo settings are not reconciled;
-- current Mongo config prefers a full URI or assembles an SRV hosted-cluster URI;
-- `.env.example` still describes a hosted test cluster and an obsolete email provider.
+Cookie names default to `st_access`, `st_refresh`, `st_csrf`, `st_guest` and `st_signup`. Admin sessions use `st_admin_access`, `st_admin_refresh` and `st_admin_csrf`. All variables are listed in the [environment catalogue](/engineering-live-context/environment-variables).
 
-Production must fail closed when required secrets or security settings are absent. Never “helpfully” create predictable production secrets.
+### Deployment hardening
+
+`apps/api/src/config/deployment-hardening.ts` runs when the API or worker starts. A strict deployment is `DEPLOY_ENV=staging` or `production`, or `NODE_ENV=production` with `DEPLOY_ENV` unset. In a strict deployment the process lists every unsafe setting and exits with code 1 if any of these apply:
+
+- A JWT or CSRF secret is missing, a placeholder, shorter than 64 characters, repetitive, or shared with another secret.
+- `COOKIE_SECURE` is off, or CORS is unset, uses a wildcard, uses HTTP or names a local origin.
+- `TRUST_PROXY` or `CLIENT_IP_HEADER` is unset.
+- The notification provider is not `msg91`, its key is missing, or `OTP_LOCAL_FIXED_CODE` is set.
+- Facebook credentials are half set.
+- MongoDB has no credentials, Redis has no password, or Spaces and its HTTPS CDN URL are not configured.
+
+The local stack sets `DEPLOY_ENV=local` to opt out.
 
 ## Connection lifecycle and readiness
 
-Current startup catches Mongo connection failure and keeps the application alive. This is useful for liveness but dangerous if `/health` is interpreted as readiness.
-
-Target separation:
-
-- process can boot and serve `/health/live`;
-- `/health/ready` fails while required dependencies are unavailable;
-- deployment does not send traffic until readiness passes;
-- background jobs do not begin until their own dependencies are ready;
-- shutdown stops intake, completes bounded work, and closes adapters cleanly.
+A failed MongoDB connection at startup is logged and does not stop the process. `/health/live` keeps answering and `/health/ready` returns `503` until the connection is available.
 
 ## Adding an adapter safely
 
 1. Read the owning port and use case.
-2. Verify the current official provider protocol/version.
-3. Add provider config with zod and no browser exposure.
+2. Check the provider's current official protocol and version.
+3. Add configuration with zod, and keep it out of the browser.
 4. Implement mapping and error translation inside the adapter package.
-5. Add unit tests with mocked transport.
-6. Add sandbox/integration tests behind explicit environment gates.
-7. Add composition binding.
-8. Add readiness/metrics only for dependencies required to serve traffic.
-9. Update docs and OpenAPI side effects.
-10. Prove no SDK type leaked inward.
+5. Add unit tests with a controlled transport.
+6. Add sandbox or integration tests behind explicit environment gates.
+7. Add the composition binding.
+8. Add readiness checks only for dependencies that traffic requires.
+9. Update the docs and OpenAPI side effects.
+10. Confirm that no SDK type reached core.
 
 ## Adapter review questions
 
-- Can the provider be replaced without changing controllers/domain/Angular?
-- Are timeouts, retries, backoff, and circuit behavior explicit?
-- Is retry safe for the operation, or protected by idempotency?
-- Are credentials, raw payloads, and PII redacted?
-- Is the provider's id/correlation persisted where reconciliation needs it?
-- Does failure preserve an auditable state instead of guessing success?
-- Can the derived system be rebuilt from authoritative records?
+- Can the provider be replaced without changing controllers, domain code or Angular?
+- Are timeouts, retries and backoff explicit?
+- Is a retry safe, or protected by idempotency?
+- Are credentials, raw payloads and personal data redacted?
+- Is the provider's id stored where reconciliation needs it?
+- Does failure leave an auditable state instead of guessing success?
+- Can a derived system be rebuilt from authoritative records?
+
+## Limitations
+
+- `PersistenceModule` also binds non-persistence adapters, such as `AuthPort` and storage.
+- Nested `Mixed` fields are not validated at runtime when read.

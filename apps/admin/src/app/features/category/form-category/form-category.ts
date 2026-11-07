@@ -1,20 +1,32 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, DOCUMENT, inject, input, output, signal } from '@angular/core';
 import { FormGroup, FormBuilder, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import type { AdminCategoryRow, AdminCategoryWrite } from '@saha-textile/contracts';
+import { QueryClient } from '@tanstack/angular-query-experimental';
+import { Select2 } from 'ng-select2-component';
 import { Subject, of } from 'rxjs';
 import { switchMap, map, takeUntil } from 'rxjs/operators';
 
+import { ADMIN_LOCALES, focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICategory } from '@data-access/interfaces/category.interface';
 import { CategoryService } from '@data-access/services/category.service';
+import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
-import { NumberDirective } from '@shared/directives/numbers-only.directive';
 import { AdvancedDropdown } from '@shared/ui/advanced-dropdown/advanced-dropdown';
 import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
+import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
+
+const LANGUAGE_FIELDS = ['name', 'description', 'seo_title', 'seo_description'];
+
+const attachment = (image: AdminCategoryRow['image']) =>
+	image ? ({ id: image.id, original_url: image.url } as unknown as IAttachment) : undefined;
+
+const picked = (id: unknown): string | null => (id ? String(id) : null);
 
 @Component({
 	selector: 'app-form-category',
@@ -24,18 +36,23 @@ import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 		PageWrapper,
 		ReactiveFormsModule,
 		FormFields,
-		NumberDirective,
 		AdvancedDropdown,
+		LanguageSwitch,
+		Select2,
 		ImageUpload,
 		Button,
 		TranslocoModule,
 	],
 })
 export class FormCategory {
+	private page = inject<Document>(DOCUMENT);
 	private route = inject(ActivatedRoute);
 	private router = inject(Router);
 	private formBuilder = inject(FormBuilder);
 	private categoryService = inject(CategoryService);
+	private queryClient = inject(QueryClient);
+	private notifier = inject(NotificationService);
+	private transloco = inject(TranslocoService);
 
 	readonly type = input<string>(undefined);
 	readonly categories = input<ICategory[]>(undefined);
@@ -43,21 +60,31 @@ export class FormCategory {
 
 	public form: FormGroup;
 	public category: ICategory;
-	public id: number;
+	public id: string;
+
+	readonly locales = ADMIN_LOCALES;
+	readonly fields: LocalizedFields;
+	/** The tree beside this form follows its language. */
+	readonly localeChange = output<string>();
+	readonly gaps = signal<Record<string, LanguageGap[]>>({});
 
 	private destroy$ = new Subject<void>();
 
 	constructor() {
 		this.form = this.formBuilder.group({
-			name: new FormControl('', [Validators.required]),
-			description: new FormControl(),
+			name: new FormControl(''),
+			description: new FormControl(''),
+			seo_title: new FormControl(''),
+			seo_description: new FormControl(''),
+			slug: new FormControl('', [Validators.required, Validators.pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)]),
 			parent_id: new FormControl(),
+			also_under: new FormControl<string[]>([]),
 			type: new FormControl(this.categoryType(), []),
-			commission_rate: new FormControl(),
 			category_image_id: new FormControl(),
 			category_icon_id: new FormControl(),
 			status: new FormControl(true),
 		});
+		this.fields = new LocalizedFields(this.form, LANGUAGE_FIELDS);
 	}
 
 	ngOnChanges() {
@@ -70,27 +97,62 @@ export class FormCategory {
 				switchMap((params) => {
 					if (!params['id']) return of();
 					return this.categoryService
-						.getCategories()
-						.pipe(map((res) => res.data.find((category) => category.id == params['id']) ?? null));
+						.getCategoryRows()
+						.pipe(map((rows) => rows.find((row) => row.id == params['id']) ?? null));
 				}),
 				takeUntil(this.destroy$),
 			)
-			.subscribe((category) => {
-				this.category = category!;
+			.subscribe((row) => {
+				if (!row) return;
+				this.id = row.id;
 				this.form.patchValue({
-					name: this.category?.name,
-					description: this.category?.description,
-					parent_id: this.category?.parent_id,
-					type: this.category?.type,
-					commission_rate: this.category?.commission_rate,
-					category_image_id: this.category?.category_image_id,
-					category_icon_id: this.category?.category_icon_id,
-					status: this.category?.status,
+					slug: row.slug,
+					parent_id: row.parentId,
+					also_under: row.alsoUnder,
+					category_image_id: row.image?.id ?? '',
+					category_icon_id: row.icon?.id ?? '',
 				});
+				this.category = {
+					...this.category,
+					category_image: attachment(row.image),
+					category_icon: attachment(row.icon),
+				};
+				this.fields.load({
+					name: row.name,
+					description: row.description,
+					seo_title: row.seoTitle,
+					seo_description: row.seoDescription,
+				});
+				this.refreshMissing();
 			});
+		this.refreshMissing();
 	}
 
-	selectItem(data: number[]) {
+	switchLanguage(locale: string) {
+		this.fields.switchTo(locale);
+		this.localeChange.emit(locale);
+		this.refreshMissing();
+	}
+
+	openLanguageGap({ key, locale }: { key: string; locale: string }) {
+		this.switchLanguage(locale);
+		focusField(this.page, key);
+	}
+
+	private refreshMissing() {
+		this.gaps.set(gapsByLocale((locale) => this.fields.gaps(locale)));
+	}
+
+	/** A top-level category and its children, for the second-parent dropdown. */
+	placementOptions() {
+		const flat = (rows: readonly ICategory[]): ICategory[] =>
+			rows.flatMap((row) => [row, ...flat(row.subcategories ?? [])]);
+		return flat(this.categories() ?? [])
+			.filter((row) => row.id !== this.id)
+			.map((row) => ({ value: row.id, label: row.name }));
+	}
+
+	selectItem(data: string[]) {
 		if (Array.isArray(data) && data.length) {
 			this.form.controls['parent_id'].setValue(data[0]);
 		} else {
@@ -112,22 +174,39 @@ export class FormCategory {
 
 	submit() {
 		this.form.markAllAsTouched();
-
-		if (this.form.valid) {
-			// Create/update have no backend yet — mirror the post-save UX locally.
-			if (this.type() == 'create') {
-				this.form.reset();
-				this.form.controls['category_image_id'].setValue('');
-				this.form.controls['category_icon_id'].setValue('');
-				this.form.controls['status'].setValue(true);
-			} else {
-				if (this.form.value.type === 'product') {
-					void this.router.navigateByUrl('/category');
-				} else {
-					void this.router.navigateByUrl('/blog/category');
-				}
-			}
+		const name = this.fields.text('name');
+		if (!name['en']?.trim()) {
+			this.switchLanguage('en');
+			this.form.get('name')?.setErrors({ required: true });
+			return;
 		}
+		if (!this.form.valid) return;
+		if (this.categoryType() === 'post') {
+			void this.router.navigateByUrl('/blog/category');
+			return;
+		}
+		const raw = this.form.getRawValue() as Record<string, unknown>;
+		const parent = raw['parent_id'];
+		const also = raw['also_under'];
+		const body: AdminCategoryWrite = {
+			name,
+			description: this.fields.text('description'),
+			seoTitle: this.fields.text('seo_title'),
+			seoDescription: this.fields.text('seo_description'),
+			slug: String(raw['slug']),
+			parentId: typeof parent === 'string' && parent ? parent : null,
+			alsoUnder: Array.isArray(also) ? also.map(String) : [],
+			imageId: picked(raw['category_image_id']),
+			iconId: picked(raw['category_icon_id']),
+		};
+		this.categoryService.saveCategory(this.id ?? null, body).subscribe({
+			next: () => {
+				void this.queryClient.invalidateQueries({ queryKey: ['categories'] });
+				this.notifier.showSuccess(this.transloco.translate('saved'));
+				void this.router.navigateByUrl('/category');
+			},
+			error: () => this.notifier.showError(this.transloco.translate('category_rejected')),
+		});
 	}
 
 	ngOnDestroy() {

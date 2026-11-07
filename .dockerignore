@@ -1,0 +1,26 @@
+# Build context for docker/images/Dockerfile. Nothing secret or machine-local enters an image:
+# env files, certificates and MCP config are runtime inputs, never build inputs.
+**/node_modules
+**/dist
+**/build
+**/.angular
+**/.nitro
+**/.turbo
+**/.docusaurus
+**/coverage
+**/*.tsbuildinfo
+.git
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+certs
+docker/stack/env/*.env
+.claude
+.cursor
+.vscode
+vendor
+project-context
+apps/developer-portal*
+docs

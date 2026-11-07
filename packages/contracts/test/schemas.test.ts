@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { Category, Currency, I18nString, Product, Promotion, Slug, User } from '../src/index';
+import { Category, Currency, Customer, I18nString, Product, ProductStatus, Promotion, Slug } from '../src/index';
 
 describe('common', () => {
 	it('I18nString requires en and allows other locales', () => {
@@ -94,6 +94,11 @@ describe('Product — variable "No Stitching → Design + Color" pattern', () =>
 		// defaults applied
 		expect(parsed.status).toBe('draft');
 		expect(parsed.variations[0]?.salePriceINR).toBeNull();
+		expect(parsed.madeToOrder).toBe(false);
+		expect(parsed.lowStockThreshold).toBeNull();
+		expect(parsed.lifetimeUnitsReceived).toBe(0);
+		expect(parsed.pinnedBadges).toEqual([]);
+		expect(parsed.hiddenBadges).toEqual([]);
 	});
 
 	it('rejects a negative base price', () => {
@@ -104,6 +109,43 @@ describe('Product — variable "No Stitching → Design + Color" pattern', () =>
 		const bad = structuredClone(salwaar);
 		bad.attributes[1]!.terms[0]!.hex = 'black';
 		expect(Product.safeParse(bad).success).toBe(false);
+	});
+
+	describe('lifecycle status (owner lock)', () => {
+		it('accepts exactly draft/live/disabled/discontinued', () => {
+			expect(ProductStatus.options).toEqual(['draft', 'live', 'disabled', 'discontinued']);
+		});
+
+		it('rejects the superseded WooCommerce-era statuses', () => {
+			for (const status of ['published', 'archived', 'hidden']) {
+				expect(ProductStatus.safeParse(status).success).toBe(false);
+				expect(Product.safeParse({ ...salwaar, status }).success).toBe(false);
+			}
+		});
+
+		it('defaults every lifecycle timestamp to null', () => {
+			expect(Product.parse(salwaar).lifecycle).toEqual({
+				liveAt: null,
+				disabledAt: null,
+				discontinuedAt: null,
+				richDataPurgedAt: null,
+				statusReason: null,
+			});
+		});
+
+		it('carries the discontinuation stamps a retention job needs', () => {
+			const parsed = Product.parse({
+				...salwaar,
+				status: 'discontinued',
+				lifecycle: { discontinuedAt: '2026-07-01T00:00:00.000Z', statusReason: 'supplier ended the line' },
+			});
+			expect(parsed.lifecycle.discontinuedAt).toBe('2026-07-01T00:00:00.000Z');
+			expect(parsed.lifecycle.richDataPurgedAt).toBeNull();
+		});
+
+		it('rejects an over-long status reason', () => {
+			expect(Product.safeParse({ ...salwaar, lifecycle: { statusReason: 'x'.repeat(501) } }).success).toBe(false);
+		});
 	});
 });
 
@@ -136,17 +178,22 @@ describe('Promotion', () => {
 	});
 });
 
-describe('User', () => {
-	it('validates email identities', () => {
-		const user = User.parse({
-			id: 'user_1',
+describe('Customer', () => {
+	it('validates email identities and has no role', () => {
+		const customer = Customer.parse({
+			id: 'cus_1',
 			email: 'a@example.com',
 			identities: [{ provider: 'password', email: 'a@example.com' }],
 		});
-		expect(user.role).toBe('customer');
+		expect(customer.status).toBe('active');
+		expect(customer.contacts).toEqual([]);
+		expect(customer.savedSizes).toEqual([]);
+		expect(customer.measurementProfiles).toEqual([]);
+		expect('role' in customer).toBe(false);
 	});
 
-	it('rejects malformed email', () => {
-		expect(User.safeParse({ id: 'u', email: 'not-an-email' }).success).toBe(false);
+	it('rejects malformed email and non-cus_ ids', () => {
+		expect(Customer.safeParse({ id: 'cus_1', email: 'not-an-email' }).success).toBe(false);
+		expect(Customer.safeParse({ id: 'user_1', email: 'a@example.com' }).success).toBe(false);
 	});
 });

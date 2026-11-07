@@ -1,14 +1,11 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, effect, inject, input } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { TranslocoModule } from '@jsverse/transloco';
 import { CarouselModule, OwlOptions } from 'ngx-owl-carousel-o';
-import { Observable } from 'rxjs';
 
-import { IBlog, IBlogModel } from '@data-access/interfaces/blog.interface';
 import { injectBlogsQuery } from '@data-access/queries/blog.queries';
-import { BlogService } from '@data-access/services/blog.service';
 
 import * as data from '../../../../shared/data/owl-carousel';
 import { SkeletonBlog } from '../../../blog/skeleton-blog/skeleton-blog';
@@ -17,13 +14,10 @@ import { SkeletonBlog } from '../../../blog/skeleton-blog/skeleton-blog';
 	selector: 'app-blog',
 	templateUrl: './blog.html',
 	styleUrls: ['./blog.scss'],
-	imports: [CarouselModule, SkeletonBlog, RouterLink, DatePipe],
+	imports: [CarouselModule, SkeletonBlog, RouterLink, DatePipe, TranslocoModule],
 })
 export class Blog {
-	blogService = inject(BlogService);
-
 	private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1 }));
-	blog$: Observable<IBlogModel | undefined> = toObservable(computed(() => this.blogsQuery.data()));
 
 	readonly blogIds = input<number[]>([]);
 	// TODO: Skipped for migration because:
@@ -31,21 +25,13 @@ export class Blog {
 	//  and migrating would break narrowing currently.
 	readonly sliderOption = input<OwlOptions>();
 
-	public blogs: IBlog[] = [];
 	public skeletonItems = Array.from({ length: 5 }, (_, index) => index);
 	public bannerSlider = data.customOptionsItem3;
 
-	constructor() {
-		// Mirror the query's fetch state onto the shared skeleton flag (was toggled
-		// by the theme page's now-removed GetBlogsAction dispatch).
-		effect(() => (this.blogService.skeletonLoader = this.blogsQuery.isFetching()));
-	}
-
-	ngOnChanges() {
-		if (Array.isArray(this.blogIds())) {
-			this.blog$.subscribe((blogs) => {
-				this.blogs = (blogs?.data ?? []).filter((blog) => this.blogIds()?.includes(blog?.id!));
-			});
-		}
-	}
+	// Skeleton only until the first data. A background refetch keeps the cards on screen, and
+	// signals here let the server render the real cards rather than the placeholders.
+	readonly loading = computed(() => this.blogsQuery.isPending());
+	readonly blogs = computed(() =>
+		(this.blogsQuery.data()?.data ?? []).filter((blog) => this.blogIds()?.includes(blog?.id!)),
+	);
 }

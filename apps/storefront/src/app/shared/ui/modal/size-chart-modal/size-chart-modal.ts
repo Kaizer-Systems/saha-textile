@@ -1,13 +1,18 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, TemplateRef, PLATFORM_ID, inject, viewChild } from '@angular/core';
+import { Component, TemplateRef, PLATFORM_ID, inject, signal, viewChild } from '@angular/core';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
-import { IAttachment } from '@data-access/interfaces/attachment.interface';
+import { ISizeGuide } from '@data-access/interfaces/product-detail.interface';
 
 import { Button } from '../../button/button';
 
+type Unit = 'in' | 'cm';
+
+const CM_PER_INCH = 2.54;
+
+/** The measurement template's size table. Inches first, because the shop's tailors work in them. */
 @Component({
 	selector: 'app-size-chart-modal',
 	templateUrl: './size-chart-modal.html',
@@ -17,16 +22,19 @@ import { Button } from '../../button/button';
 export class SizeChartModal {
 	private modalService = inject(NgbModal);
 	private platformId = inject<Object>(PLATFORM_ID);
+	private transloco = inject(TranslocoService);
 
 	readonly SizeChartModal = viewChild<TemplateRef<string>>('sizeChartModal');
 
 	public closeResult: string;
 	public modalOpen: boolean = false;
-	public image: IAttachment;
+	readonly guide = signal<ISizeGuide | null>(null);
+	readonly unit = signal<Unit>('in');
 
-	async openModal(image: IAttachment) {
+	async openModal(guide: ISizeGuide) {
 		if (isPlatformBrowser(this.platformId)) {
-			this.image = image;
+			this.guide.set(guide);
+			this.unit.set('in');
 			this.modalOpen = true;
 			this.modalService
 				.open(this.SizeChartModal(), {
@@ -43,6 +51,13 @@ export class SizeChartModal {
 					},
 				);
 		}
+	}
+
+	/** One measure in the chosen unit, written the way the shopper's language writes numbers. */
+	cell(value: number | undefined, stored: Unit): string {
+		if (value === undefined) return '-';
+		const shown = stored === this.unit() ? value : stored === 'in' ? value * CM_PER_INCH : value / CM_PER_INCH;
+		return new Intl.NumberFormat(this.transloco.getActiveLang(), { maximumFractionDigits: 1 }).format(shown);
 	}
 
 	private getDismissReason(reason: ModalDismissReasons): string {

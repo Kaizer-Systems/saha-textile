@@ -1,15 +1,18 @@
 <div class="theme-logo">
 	<a [routerLink]="['/']">
-		@if (footer() && footer()?.footer_logo) {
+		@if (brand()?.logo; as logo) {
 		<img
-			[src]="footer()?.footer_logo"
-			class="img-fluid"
-			alt="logo"
+			[src]="logo.url"
+			[attr.srcset]="logo.srcset"
+			sizes="252px"
+			[attr.width]="logo.width"
+			[attr.height]="logo.height"
+			[alt]="brand()?.shopName"
+			class="footer-logo-plate"
+			loading="lazy"
 		/>
-		} @else { @if (data() && data()?.general) {
-		<h2 class="f-w-600">{{ data()?.general!.site_title.split(' ')[0] }}</h2>
 		} @else {
-		<h2 class="f-w-600">{{ 'Logo Here' }}</h2>
-		} }
+		<h2 class="f-w-600">{{ brand()?.shopName }}</h2>
+		}
 	</a>
 </div>

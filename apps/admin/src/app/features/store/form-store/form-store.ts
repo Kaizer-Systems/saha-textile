@@ -5,13 +5,14 @@ import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } 
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { Select2Data, Select2Module, Select2UpdateEvent } from 'ng-select2-component';
+import { Select2Data, Select2, Select2UpdateEvent } from 'ng-select2-component';
 import { Observable, Subject, of } from 'rxjs';
 import { map, switchMap, takeUntil } from 'rxjs/operators';
 
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { injectCountriesQuery } from '@data-access/queries/country.queries';
 import { injectStatesQuery } from '@data-access/queries/state.queries';
+import { IStores } from '@data-access/interfaces/store.interface';
 import { StoreService } from '@data-access/services/store.service';
 import * as data from '@shared/data/country-code';
 import { Button } from '@shared/ui/button/button';
@@ -23,9 +24,10 @@ import { CustomValidators } from '@shared/validators/password-match';
 	selector: 'app-form-store',
 	templateUrl: './form-store.html',
 	styleUrls: ['./form-store.scss'],
-	imports: [ReactiveFormsModule, FormFields, ImageUpload, Select2Module, Button, TranslocoModule, AsyncPipe],
+	imports: [ReactiveFormsModule, FormFields, ImageUpload, Select2, Button, TranslocoModule, AsyncPipe],
 })
 export class FormStore {
+	public store: IStores | null = null;
 	private route = inject(ActivatedRoute);
 	private router = inject(Router);
 	private formBuilder = inject(FormBuilder);
@@ -104,6 +106,7 @@ export class FormStore {
 			)
 			.subscribe((store) => {
 				this.id = store?.id!;
+				this.store = store;
 				this.form.patchValue({
 					store_name: store?.store_name,
 					description: store?.description,

@@ -1,0 +1,944 @@
+---
+title: 'Owner Decisions'
+description: 'Authoritative record of currently locked Saha Textile owner decisions.'
+audience: [engineering, product, operator, agent]
+document_role: canonical
+last_verified: '2026-11-06'
+search_keywords: 'owner decisions authoritative locked intent architecture product operations'
+---
+
+# Owner Decisions — Saha Textile
+
+**Status:** Authoritative record of currently locked owner decisions.
+
+**Last reconciled:** 2026-11-02
+
+This file contains current decisions only. Superseded intermediate positions remain available in Git history, not inline where they can be mistaken for current direction.
+
+Unanswered questions live only in `pending-decisions.mdx`. When an answer is confirmed, record the final rule here, reconcile dependent sources, and remove it from the pending file.
+
+## Authority and interpretation
+
+1. This file governs locked intent.
+2. `AGENTS.md` governs repository-wide operating and architectural rules.
+3. Tested code/runtime governs claims about what exists now.
+4. Zod contracts/OpenAPI govern API shapes.
+5. Adapter models, validators, indexes, and migrations govern persistence shapes.
+6. `project-progress.mdx` governs current delivery status.
+7. `docs/engineering-live-context/` is canonical live context; all other portal documentation is a derived maintained view and never overrides canonical sources or tested runtime evidence.
+
+## Project scope and brand
+
+- Saha Textile is a single-store boutique e-commerce platform, not a marketplace.
+- No multi-vendor, seller commissions, warehouse-management system, or recommendation ML.
+- Fastkart is a UI and behavior reference only. Its code is never forked.
+- Full brand naming is mandatory: `saha-textile`, `saha_textile`, or “Saha Textile”; never bare `saha`. {/* naming-law:allow */}
+- Allowed compact exceptions:
+    - `st_*` and `__Host-st_*` cookie names;
+    - TRAI/DLT sender `SAHATX`;
+    - genuine geography data containing “Saha”. {/* naming-law:allow */}
+- `scripts/check-naming.sh` mechanically enforces the naming law.
+
+## Architecture and dependency direction
+
+- Architecture is hexagonal/ports-and-adapters.
+- Angular apps consume only the API over HTTP.
+- Provider SDKs, Mongoose documents, persistence rows, and vendor payloads stay at adapter edges.
+- Replacing MongoDB with PostgreSQL or replacing a payment/shipping/provider integration must not require changes to core use cases or Angular UI.
+- `packages/contracts` is the single source of truth for shared Zod/API shapes.
+- `packages/core-domain` may import contract shapes through `import type` only.
+- Core must have no runtime dependency on contracts/Zod and no import—type or value—of NestJS, Fastify, Mongoose, provider SDKs, or adapter packages.
+- ESLint boundary rules must enforce this direction.
+- Resolved implementation gate `G-CORE-CONTRACTS`: the type-only contracts direction above is final.
+- Canonical product price is always INR.
+
+## Applications and frontend foundations
+
+- Storefront: Angular 22 + AnalogJS SSR/SSG, file-based routing, PWA.
+- Admin: Angular 22 private application; no SEO requirement.
+- API: NestJS 12 on Fastify 5.
+- Developer portal: Docusaurus, derived from repository evidence.
+- Styling: Bootstrap 5, ng-bootstrap, SCSS.
+- Client state:
+    - TanStack Angular Query owns server fetch/cache/mutation state.
+    - SignalStore/local signals own compact feature/UI state.
+    - Classic NgRx Store/Effects/Entity owns heavily mutated workflows such as cart.
+- Forms use typed Angular reactive/signal forms.
+- Transloco owns runtime UI translations.
+- Responsive standard (locked 2026-11-02, all chunks): every decision and test covers every screen size — phones 360–430, phablets, tablets in both orientations, Windows/Ubuntu laptops and desktops, Mac retina and non-retina, 4K/5K — and treats the app-like small-screen layout as a first-class case wherever it differs from desktop. No flicker, no layout shift, no slow or flashing first paint, no visible SSR→hydration swap. Decisions follow current and emerging ecommerce, web, and PWA standards, not historical habit alone.
+
+### UI reuse and the pre-build brief (`DEC-UI-REUSE` — locked 2026-08-11)
+
+Reusing what already exists is a hard rule, not a preference. Every screen — new or existing —
+is assembled from elements and CSS classes the repository already has. Sources, in order:
+the app's own `shared/ui` and feature templates; pruned or deleted pages still recoverable
+from git; and `vendor/` (Fastkart), which carries elements no live page currently uses.
+
+Three ways to reuse, all permitted, chosen by fit:
+
+1. use the existing element unchanged;
+2. copy it under a different name prefix and modify the copy, when two callers need genuinely
+   different behaviour and one shared component would serve neither well;
+3. promote it to a shared component when several callers need it identically.
+
+**Before writing anything custom — always, proactively, and whether the custom work was asked
+for or merely follows from an unrelated task — stop and give the owner a brief containing:**
+
+- what changes, in crisp bullets;
+- a wireframe (SVG, image or rendered mockup) of the proposed layout;
+- the conditional logic the screen will apply;
+- an explicit inventory of the existing elements and CSS classes being reused;
+- an explicit statement of what, if anything, is genuinely custom — and if the answer is
+  "nothing", say that plainly, because it is the claim the owner is approving;
+- anything already built that the change makes redundant.
+
+Then wait for approval. If custom work turns out to be unavoidable once building has started,
+stop again and show it in the browser pane for verification before it lands. A silent new CSS
+class, element or component is the failure mode this rule exists to prevent.
+
+## Catalog, products, categories, and search
+
+- Categories use a multi-placement DAG through category placements; do not force a strict single-parent tree.
+- Imported WooCommerce category junk is cleaned rather than preserved as target truth.
+- Product model supports:
+    - simple products;
+    - SKU/variation products;
+    - tailoring/customization;
+    - related/cross-sell/upsell relationships;
+    - true bundle/composite products.
+- Product option semantic roles are independent of display style.
+- Semantic roles:
+    - `filter_only`;
+    - `variation_axis`;
+    - `named_add_on`;
+    - `bundle_component_option`.
+- An option is a variation axis only when it changes SKU, stock, price row, image, base identity, or purchasability.
+- Color, size, fabric, design, waist, liter, and other axes are product-specific toggles; none is globally variation-driving.
+- Canonical display styles:
+    - `rectangle`;
+    - `circle`;
+    - `image_swatch`;
+    - `color_swatch`;
+    - `radio`;
+    - `dropdown`;
+    - `image_tile` (“Image V2”);
+    - `radio_bar`.
+- `image_tile` and `radio_bar` were added for storefront/admin renderer parity and are part of the canonical set; the earlier “canonical six” wording predates them (confirmed 2026-07-31, reconciled against `packages/contracts/src/attribute.ts`).
+- Visual display style never determines business behavior.
+- A standalone blouse may use design as a variation axis.
+- A saree’s included blouse piece remains part of the base saree; `Blouse Design` is a named add-on group with `No Design` default and optional pricing/media/measurement requirements.
+- Multiple named add-on groups are supported.
+- Bundle/composite products cannot contain another bundle; nesting is disallowed (`DEC-BUNDLE-NESTING`).
+- Product primary statuses are `draft`, `live`, `disabled`, and `discontinued`; only `live` products are storefront-queryable across listing, search, and sitemap.
+- `disabled` hides a product from all storefront surfaces while retaining its full data and media (reversible).
+- `discontinued` hides a product and starts a 30-day retention window; after it, rich data and Spaces media are purged, leaving a minimal tombstone (name, SKU, audit references).
+- Historical order lines keep their immutable purchase-time snapshot; purged product media falls back to a single global placeholder image in order views.
+- In order views, links to disabled, discontinued, or purged products are non-navigable: muted styling, no pointer cursor, and a reused theme tooltip reading “no longer available”.
+- Search uses self-hosted Meilisearch behind `SearchPort`.
+- MongoDB is source of truth; Meilisearch is a rebuildable denormalized index.
+- Launch search surface includes typo tolerance, aliases, transliteration support, suggestions, no-result analytics, and admin dictionary tuning.
+- Category/listing facets come from Meilisearch through `SearchPort`.
+- Category/placement facet configuration controls public filters, order, style, counts, and mobile/desktop visibility.
+- Arbitrary faceted URLs are `noindex,follow` and canonicalize to the base listing unless explicitly modeled as SEO landing pages.
+
+## SKU generation (`DEC-SKU` — locked)
+
+- Product and variant SKUs are globally unique.
+- A SKU is an admin-defined prefix plus a per-prefix auto-incrementing counter; variant SKUs are auto-suffixed from the product SKU.
+- A category may define an optional default SKU prefix that prefills the product SKU and is overridable per product.
+- On manual override, a multi-category prefix conflict, or any prefix validation failure, the product form blocks and requires resolution: if the entered prefix already exists, the admin confirms either a different prefix (its counter starts fresh) or continuation of the existing prefix's counter.
+- The same conflict/verify workflow covers products placed in multiple categories and categories with multiple DAG placements that carry differing prefixes; it mirrors the HSN mismatch workflow.
+- A SKU is immutable once its product/variant is published or referenced by any order; changes are audited.
+
+## Product relationships (`DEC-PRODUCT-RELATIONS` — locked)
+
+- Related and upsell links are curated manually in product setup.
+- Cross-sell and bought-together links derive from persisted weekly analytics insight sets, with optional manual additions in product setup.
+- The storefront reads persisted insight sets only and never runs live analytics joins.
+
+## Pricing, inventory, and commerce records
+
+- Selling/catalog prices are stored and displayed tax-inclusive.
+- Tax-exclusive bases are reverse-calculated only where invoices/reporting require them.
+- Inventory valuation uses FIFO cost layers.
+- FIFO/COGS details are never customer-facing.
+- Manual inventory adjustments require a fixed reason code:
+    - `damage`;
+    - `lost_missing`;
+    - `manual_recount_correction`;
+    - `supplier_shortage`;
+    - `return_restocked`;
+    - `return_not_restocked`;
+    - `internal_use_sample`;
+    - `photoshoot_display_use`;
+    - `system_migration_correction`;
+    - `other`.
+- Notes are optional for the first nine and mandatory for `other`.
+- Orders, payments, shipments, returns, and refunds are separate collections connected by durable identifiers.
+- Order lines are immutable purchase-time snapshots.
+- Multi-document commerce writes use MongoDB transactions.
+- Weekly analytics produce persisted insight sets and stable badge assignments; storefront cards/rails do not run live analytics joins.
+
+## Cart, pending intents, and offline behavior
+
+- Guest add-to-cart is available.
+- Guest checkout is not available at launch.
+- `Proceed to checkout` forces login/signup, merges the guest cart, then resumes checkout.
+- Guest carts are server-authoritative and stored in `carts`.
+- Guest identity uses an opaque random `st_guest` httpOnly cookie; only its hash is stored server-side.
+- Guest cart TTL is 30 days sliding from last activity.
+- Guest-to-user cart merge is transactional.
+- Invalid/unavailable merge lines are reported, not silently dropped.
+- Pending intent stores one latest account-bound action per guest/session.
+- Pending-intent TTL is at most 30 minutes unless a feature requires less.
+- Auth success order is:
+    1. merge guest cart;
+    2. revalidate pending action;
+    3. replay if allowed;
+    4. clear intent;
+    5. return to the relevant continuation.
+- Wishlist and Save for Later are separate account-bound concepts.
+- Notify Me is account-bound and product/variant-aware.
+- Product Q&A does not require login.
+- Reorder/Buy Again is already an authenticated flow and is not a pending intent.
+- Public track order is not available at launch.
+- When built later, track order requires order number plus matching email or phone, with rate limits and anti-enumeration.
+- IndexedDB/Cache Storage are browser-side cache/queue mechanisms, never backend infrastructure or source of truth.
+- Offline mode covers previously cached public catalog plus offline cart mutations.
+- Never cache auth tokens, refresh tokens, payment data, admin data, or account/order PII offline.
+- Storefront privacy UI exposes a clear-local/offline-data action.
+
+## Authentication, sessions, and admin security
+
+- Browser authentication uses API-set httpOnly/Secure/SameSite cookies.
+- Use double-submit CSRF, short access lifetime, opaque rotating refresh tokens, and refresh reuse detection.
+- Browser happy path is cookie-first; bearer support is limited to approved non-browser clients.
+- Password minimum is 12 characters for storefront and admin, with a common-password denylist.
+- Storefront auth supports email/password, Google, Facebook, and channel-direct email OTP.
+- X/Twitter login is excluded.
+- ~~Phone is collected at checkout/address stage, not registration.~~ **Superseded 2026-08-16 by
+  `DEC-SIGNUP-VERIFICATION`:** phone is now collected AND OTP-verified during registration, and
+  is a first-class login credential. The original lock predates the decision to make every
+  account carry two proven channels; it is struck rather than deleted so the reversal is visible.
+- Phone OTP remains a seam until enabled through the notification provider.
+- OAuth UI uses provider JS buttons/One Tap where appropriate; the backend verifies provider tokens and owns the Saha Textile session.
+- Minimum provider scopes only.
+- Admin has no mandatory MFA at launch; preserve the seam.
+- Admin supports email-or-username plus password.
+- Admin may configure a six-digit PIN:
+    - optional during onboarding;
+    - always available in Security Settings after password proof;
+    - usable for full login and idle quick-resume;
+    - preferred method is `password` or `pin`;
+    - weak, repeated, and sequential PINs are rejected;
+    - five failed PIN attempts lock PIN use for 15 minutes or until password login;
+    - PIN is password-grade hashed and audited.
+- Admin inactivity uses a 15-minute soft lock while preserving the mounted route/form state.
+- Soft-lock is a **presence proof** (PIN/password resume). Admin **server session idle** is a
+  separate hard kill and must outlive soft-lock so resume can rotate a still-live session
+  (locked 2026-08-14: soft-lock 15m, admin idle TTL 60m, absolute 12h). Access JWT remains
+  short-lived; soft-lock/visibility refresh keeps cookies usable without unlocking the UI.
+- Password, role, permission, account-status, token-version, and reuse-detection changes invalidate quick resume.
+- Protected admin deep links resume after successful login.
+- RBAC failures are never queued or replayed.
+- Object-level authorization is mandatory for owned resources.
+
+### Account separation (`DEC-ACCOUNT-SEPARATION` — locked 2026-08-12)
+
+This lock **amends** the previously ratified single-`users` model in the auth build prompt
+§8 target list and the security matrix §1 collection table. Storefront customers and
+back-office operators are distinct populations. Implementation follows
+`account-separation-task-handoff.mdx`.
+
+| Concept              | Physical collection | Contract entity | Id prefix |
+| -------------------- | ------------------- | --------------- | --------- |
+| Storefront shopper   | `customers`         | `Customer`      | `cus_`    |
+| Back-office operator | `adminUsers`        | `AdminUser`     | `adm_`    |
+
+Prose and comments keep saying “operator”; identifiers say `adminUser`. The bare noun
+“user” must not name either population.
+
+- **D1** — The same email **may** exist in both collections. Uniqueness is **per
+  collection**. Every identifier lookup, password reset, OTP challenge and registration is
+  population-scoped. Anti-enumeration treats “exists only in the other population” as
+  unknown.
+- **D2** — Operators keep a coarse role of `staff` | `admin`. Fine-grained permissions
+  remain authoritative. This lock is account separation, not an RBAC rewrite.
+- **D3** — `/admin/users/**` and the admin User screens administer **operators only**.
+  Customer CRM is a later `/admin/customers/**` surface with new `customer.*` permission
+  codes. Existing `user.*` codes keep meaning operators for this task; renaming them to
+  `admin_user.*` is a follow-up with the account-naming lint, not part of the split.
+- **D4** — `assertOwnership` is **id-equality only**. Support-read of a customer order or
+  cart requires admin audience **and** a permission (`order.index` for orders; a new
+  server-only `cart.index` for carts). It is not a coarse-role bypass.
+- **D5** — Id prefixes are `cus_` (customers) and `adm_` (operators). The irreversible
+  split rewrites moved operator ids and every foreign key that pointed at them. The audit
+  read model tolerates leftover `user_` rows as unknown-population.
+- **D6** — Local identity/auth collections are wiped and the first administrator is
+  re-bootstrapped. The disclosed `owner@saha-textile.test` password is not migrated. The
+  split script is still built and integration-tested against fixtures. Catalog and commerce
+  data stay.
+- **D7** — A customer document has **no** `role` field. `UserRole` becomes `AdminRole` =
+  `staff` | `admin`. Storefront sessions carry `audience` only; `roleAtLogin` remains on
+  admin sessions.
+- **D8** — An operator **may** hold a personal storefront account. It is **unlinked**:
+  separate credentials, no foreign key. Combined with D1, the same email may exist on both
+  sides as two people in the system.
+- **D9** — Shape the customer document for known account data now: typed named addresses
+  (existing `Address` contract plus a `label`; do not add billing-vs-shipping policy flags
+  that would close `DEC-ADDRESS`), plus reserved empty typed arrays `contacts`,
+  `savedSizes` and `measurementProfiles` (no routes write them in this task; measurement
+  keys stay open under `DEC-ADDON-MEASUREMENTS`). Do **not** embed wishlists, orders,
+  carts, sessions, tokens, consent history, or a link to `adminUsers`. Embedded password
+  hashes remain until the already-ratified credential-collection extraction; freezing them
+  onto `customers` would cancel that security destination.
+- **D10** — Rename `users` → `customers` (reversible aligner), then split operators into
+  `adminUsers`. Both new names take a temporary `NON_GRAPH_COLLECTIONS` exception until the
+  portal tool reconciles Schema Nebula. The graph file and portal-derived docs stay out of
+  scope for the split task.
+  **Status 2026-08-13:** Schema Nebula reconciled (`customers` + solid `adminUsers`, graph
+  **65 / 32 / 33**); the temporary `NON_GRAPH` exceptions for those two names are cleared.
+  Remaining NON_GRAPH: `authRateLimits` only at that date; `pendingSignups` /
+  `pendingContactChanges` later joined the runtime-only set. **Status 2026-08-19:**
+  `productQuestions` and `ratingAggregates` are Schema Nebula nodes. Runtime-only
+  remaining: `authRateLimits`, `pendingSignups`, `pendingContactChanges`.
+
+## OTP and notifications
+
+- `NotificationPort` is the customer-messaging boundary.
+- MSG91 is the primary customer notification provider for email, SMS, and WhatsApp.
+- Resend/SES/SMTP may exist only as optional email fallback adapters, never primary.
+- Team mailboxes use Google Workspace and are separate from programmatic messaging.
+- OTP is generated, stored, and verified by Saha Textile; do not use MSG91 OTP Widget or SendOTP.
+- OTP code:
+    - CSPRNG six digits;
+    - HMAC-SHA256 with server pepper at rest;
+    - 10-minute expiry;
+    - maximum five attempts;
+    - single active challenge per identifier and purpose;
+    - atomic consume and attempt updates;
+    - never logged.
+- OTP send responses are generic and anti-enumerating.
+- Notification kill-switches are split by channel and category:
+    - transactional/utility;
+    - marketing.
+- Disabled channel/category combinations short-circuit before calling providers.
+- Marketing sends require consent and approved templates where applicable.
+- Usage thresholds, spend warnings, auto-disable behavior, RBAC, and audit are required.
+- **2026-08-13 owner lock (Authkey placement):** MSG91 Authkey lives in API env (`MSG91_AUTH_KEY`) only.
+  Admin Settings may manage kill-switches, plan limits, and non-secret template/Flow/WhatsApp ids —
+  never paste or display the Authkey. Sender/from/WhatsApp number remain env for now.
+
+## Privacy and consent
+
+- Saha Textile uses a self-hosted granular consent experience, not a paid CMP.
+- Consent categories include:
+    - strictly necessary;
+    - functional;
+    - analytics;
+    - targeting;
+    - marketing;
+    - promotional.
+- Non-essential scripts are blocked until consent.
+- Consent version and timestamp are stored.
+- Marketing notification consent is separate from transactional necessity.
+- Data export and privacy-erasure workflows must exist.
+
+## Reviews, FAQ, and Q&A
+
+- FAQ is admin-authored editorial content.
+- FAQ may target global, category, product, or mixed category/product surfaces with dedupe and preview.
+- Product Q&A is separate from FAQ.
+- Customers and guests may submit product questions.
+- Guest submission includes name and email.
+- Logged-in identity is prefilled but editable for the question.
+- “Stay anonymous” hides public identity but not admin identity.
+- Admin answers publish the Q&A and trigger an answer email.
+- FAQ and Q&A use separate admin pages with shared reusable editor/table components.
+- Reviews require logged-in verified purchase.
+- Review content is star rating, text, and up to five optional photos (rules under Media § Review photos).
+- Reviews require admin moderation before public display.
+- Rating aggregates and SEO use approved verified reviews only.
+
+## i18n
+
+- English is the primary locale.
+- The active target locale pair is English and French.
+- Bengali is an illustrative likely next locale, not a currently locked launch pair.
+- The active locale set is **configuration, not a contract constant** (engineering refinement 2026-07-31). `packages/contracts` validates a locale-code shape (`LocaleCode`) and a configured set (`ActiveLocaleConfig`); it never hard-codes which locales are live, so adding, swapping, or retiring a locale is a configuration change rather than a contracts/API change. `en` must remain in the active set because `I18nString` requires it.
+- Machine 1: developer-owned UI chrome uses Transloco keys.
+- Machine 2: admin-authored catalog/CMS/media/measurement content uses DB-localized fields and is rendered raw after API locale resolution.
+- Never send Machine-2 values through Transloco.
+- TS-origin static labels use reactive Transloco translation, not one-time imperative translation.
+- Mega-menu and footer navigation are currently developer-owned Machine-1 content.
+- Measurement definitions are reusable data-driven Machine-2 entities, not a hard-coded universal field list.
+- Adding a locale requires a checklist covering UI JSON, DB content, media alt/SEO, notification templates, SEO defaults, hreflang, and any compiled payloads.
+
+### Locale URLs (`DEC-I18N-ROUTES` — locked 2026-10-31)
+
+Grounded in Google Search Central's multilingual guidance (separate URLs per language in
+subdirectories; no cookie- or parameter-selected language; no automatic language/IP redirects;
+reciprocal, self-referencing hreflang with `x-default`).
+
+- **Every storefront route carries its locale as the first path segment, including the default:**
+  `/en/…`, `/fr/…`, and later `/bn/…`. This covers public pages and private ones alike — cart,
+  checkout, account, sign-in, wishlist, compare and search — so a link always opens in the language
+  it was copied in and account emails can deep-link in the customer's language. Private routes stay
+  `noindex`.
+- **Slugs are the same in every locale at launch** (`/fr/product/{slug}`). The route model stores
+  routes per locale, so translated slugs remain a later data change, not a redesign.
+- **No automatic redirect by browser language or IP.** `/` sends the visitor to the locale they
+  last chose (remembered in the `st_locale` cookie), otherwise `/en/`. Every page shows the
+  language switcher, which moves to the same page in the other locale and updates the cookie. A
+  non-redirecting "view this page in French?" suggestion is permitted later, behind its own UI
+  brief.
+- **hreflang:** every indexable page lists every active locale including itself, as fully
+  qualified URLs, plus `x-default` → `/`.
+- **Currency and country are never in the URL.** Prices are canonical INR converted per visitor.
+- **Redirects:** legacy WooCommerce paths and today's unprefixed public paths are resolved by the
+  legacy resolver recorded in the 2026-11-04 owner round (exact row, then a same-path `/en/`
+  prefix only when that page exists, otherwise 410). They are not all sent to `/en/<same path>`.
+- Resolved implementation gate `G-I18N-ROUTES`: the locale URL rules above are final.
+
+## Media
+
+Locked across the 2026-08-21 → 2026-08-23 rounds and the 2026-11-01/02 measurement and consolidation rounds (`DEC-IMG-PX` and `DEC-MEDIA-CAPS` closed 2026-11-02, which resolves gate `G-IMG-PX`). Reasoning and measurements: `media-pipeline-decision-round.mdx`.
+
+### Storage, delivery, and environments
+
+- DigitalOcean Spaces region is SGP (`sgp1`); droplets go BLR1.
+- One bucket per environment, each with its own bucket-scoped key: `saha-textile-media-dev`, `saha-textile-media-staging`, `saha-textile-media`. Today's `saha-textile-media` (personal team) serves as the dev bucket until the production bucket is created; the swap is env-only. Dev means the apps run on the developer machine while media goes to the dev bucket — no local S3 emulator, because it cannot reproduce the CDN, per-object ACLs, or Cloudflare in front.
+- Cloudflare (free plan) fronts the Spaces CDN (DNS Option 3). DO CDN TTL 60 s (thin inner layer); Cloudflare cache rule holds up to one year (safe because keys are immutable). Only Cloudflare is ever purged. No DigitalOcean API token. One Cloudflare purge token is created by the owner at production cutover and is reused for staging testing.
+- Uploads use presigned direct-to-Spaces PUTs; the API never proxies normal browse bytes. The content type is part of the signature.
+- Nothing stores URLs. The API returns resolved, srcset-ready URLs; Angular never composes a media URL.
+- Key layout: `media/{assetId}/original.{ext}` (private) and `media/{assetId}/{slug}-{role}-{width}w-{hash8}.webp` (public-read, immutable, one-year cache). A derivative is unique by **(role, width)**, not role alone.
+- `StoragePort` gains `makePublic(key)` and `createSignedDownloadUrl(key, ttlSeconds)`. CDN purge sits behind its own port; dev uses a log-only adapter, staging/prod a Cloudflare adapter.
+
+### Image ingest
+
+- Admin uploads accept JPEG and PNG only. Limits: 25 MB, 8000 px long edge, 50 MP; product and category photos at least **1600 px on the short edge** (1600×2133 at 3:4; ideally export ≥2400×3200). Over-limit uploads are rejected at presign with actionable guidance.
+- Lightroom house export: sRGB, JPEG q90–100, full resolution, output sharpening off. The worker converts using the embedded profile, strips EXIF, and applies a light post-resize sharpen.
+- The original is retained privately as the regeneration master. **No full-resolution WebP copy is made** (superseded 2026-11-02: nothing displays it, the 2000 px zoom covers the largest view).
+- Never upscale: a role width larger than the source is skipped with a warning.
+- Every upload is decoded by the worker (sharp). Bytes that do not decode as an image delete the object and fail the upload — this is the trust boundary; `accept`, browser magic-byte checks and presign content-type checks are convenience layers.
+- No AVIF now; each derivative records its format so AVIF can be added later as a setting.
+
+### Roles and the size ladder
+
+Roles live in the `mediaRoles` collection: seeded roles are undeletable and unrenamable, dimensions editable, custom roles allowed. A ladder edit marks derivatives stale → explicit reprocess (count + estimate) → old derivatives deleted through the queued CDN purge. An SEO-slug edit is the same reprocess trigger.
+
+| Role                                                                      | Shape                                                                       | Widths (px)                                                                                                                |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `thumb` (cart, mini-cart, checkout, compare, order rows)                  | 3:4                                                                         | 150 / 300                                                                                                                  |
+| `card` (all product cards and rails; PDP thumbnail strip)                 | 3:4                                                                         | 200 / 400 / 700 / 960                                                                                                      |
+| `gallery` (PDP main slider)                                               | 3:4                                                                         | 600 / 900 / 1200 / 1600                                                                                                    |
+| `zoom` (hover lens, full-screen gallery)                                  | 3:4                                                                         | 2000 wide (2000×2667), with the never-upscale guard                                                                        |
+| `swatch_image`                                                            | centre-cropped square                                                       | 80 / 160 / 240                                                                                                             |
+| `swatch_image_v2` (image tile)                                            | centre-cropped square                                                       | 120 / 240                                                                                                                  |
+| `share` (main product image only)                                         | 1200×630, photo uncropped over a blurred fill of itself (owner, 2026-11-02) | 1200                                                                                                                       |
+| `feed_square` (main product image only; Merchant Center / Meta catalogue) | 1:1 on white                                                                | 1200                                                                                                                       |
+| `email_thumb` (main product image only)                                   | 3:4 **JPEG** (desktop Outlook has no WebP)                                  | 150 / 300                                                                                                                  |
+| `review_thumb`                                                            | 3:4 cover                                                                   | 150 / 300                                                                                                                  |
+| `review_full`                                                             | original shape                                                              | long edge capped at 1600                                                                                                   |
+| `banner`                                                                  | keeps the uploaded shape                                                    | 480 / 768 / 1080 / 1440 / 1920 / 2560 / 2880, skipping any wider than the source or more than 2× the slot's widest display |
+| `blog`                                                                    | 16:9, source ≥2400×1350                                                     | 480 / 800 / 1200 / 1600 / 2400                                                                                             |
+| `category_icon`                                                           | square; SVG preferred, else PNG                                             | 256 (PNG)                                                                                                                  |
+| `avatar` (operator avatar, when built)                                    | square                                                                      | 96 / 192                                                                                                                   |
+
+- Product and category photos are **3:4 portrait**, shot and cropped 3:4 so the whole image fills cards and the PDP slider with no background showing. An upload more than 5% off 3:4 warns; if the admin proceeds it is letterboxed on white. No focal-point picker, no gravity, no per-image crop; the per-role fit setting stays in ladder config as a dormant knob.
+- Category images come in three kinds: `category_icon`, a 3:4 category photo on the `card` ladder (used only if a photo tile row is added), and a category banner (`banner` role, wide plus a phone image).
+- Every asset stores its dominant colour and a ThumbHash for instant placeholders.
+
+### SEO and alt text
+
+- Asset-level baseline (SEO filename slug, alt/title/caption per locale) set at upload, plus an optional per-attachment alt override shown greyed with the inherited value. Localized alt is required for every active locale before publish; the publish gate checks the resolved value.
+- Publish requires `thumb` + `card` + `gallery` derivatives (blocked, not warned).
+
+### Rendering standard (every page, every screen size)
+
+- Every `<img>` carries width/height or a fixed aspect box, so nothing shifts while loading; the ThumbHash/colour placeholder fills the box.
+- The LCP image (first hero or PDP main image) is eager with `fetchpriority="high"`; everything else is `loading="lazy"` with `decoding="async"`.
+- Every image has an accurate `sizes` value.
+- Banners render as `<img>` / `<picture>`, never CSS backgrounds (the `image-link` component's existing `<img>` branch).
+- Verified at 360/390/430, tablet portrait and landscape, and desktop widths, with no flicker, layout shift, or hydration flash (Applications § Responsive standard).
+
+### Product imagery
+
+- Product imagery supports Simple and Compound modes; Compound rows follow the full variation-axis Cartesian matrix. Inactive image-mode data is parked rather than destroyed. (Attachment shape is built in the catalog chunk.)
+- Attachment ordering is contiguous and attachment-owned; `#1` is primary.
+- Named add-on terms may have ordered galleries without becoming inventory variants.
+- PDP: hover zoom on desktop (fine pointer only) at the cursor position, loading the zoom file on first hover; click or tap opens a full-screen gallery. The full-screen gallery reuses Bootstrap `modal-fullscreen` + Swiper 14's Zoom module (pinch and double-tap), with the phone back button closing it; PhotoSwipe is the fallback only if that proves worse on a real phone. `ngx-image-zoom` is removed (it sizes itself on the image `load` event, which has already fired after SSR, collapsing the slider to 1 px).
+
+### Review photos
+
+- Up to **5 photos per review**. The customer may pick JPEG, PNG, HEIC, or HEIF; HEIC/HEIF are converted to JPEG in the browser, so the API only ever accepts JPEG and PNG. Any other type is refused. No minimum size; warn below ~500 px.
+- Named exception to "retain original": the worker produces `review_thumb` and `review_full`, then discards the original immediately.
+- Derivatives are written **private** and made public on moderator approval; moderators view them through short-lived signed URLs. A rejected review deletes both derivatives.
+- File names and alt text carry no personal data: slug and alt are generated from the product name (`{product} customer photo`), auto-filled for every active locale. Identity lives on the review record (`reviews.userId`), never in an asset address.
+- Indexes: `reviews {userId: 1, createdAt: -1}` and `reviews {imageAssetIds: 1}`.
+- When a discontinued product is finally purged, its review photos are purged; review text and ratings are kept as historical records.
+
+### Lifecycle and garbage collection
+
+- Assets with no owner are soft-deleted and garbage-collected after a 30-day grace.
+- `countReferences` is driven by an owner registry (products, variants, add-on galleries, categories, content blocks, reviews, settings…), and a schema-walking CI test fails if any persisted media reference is not registered.
+- The GC hard-delete job runs with dry-run, an audit record, and a recency guard.
+
+### Banners and content blocks
+
+- Banners are `contentBlocks` records — one record per page position, named by **position and shape, never by a Fastkart theme**. The storefront keeps one theme and colour scheme; other themes' hero styles become admin-selectable layouts rendered in our colours.
+- Home hero layout is one setting: `hero_full` (one 10:3 banner), `hero_main_side` (main + one tall tile), `hero_main_stack` (main + two stacked tiles), `hero_center_sides` (centre + tall tiles left and right). Slots within a layout: `main`, `side`, `side_top`, `side_bottom`, `left`, `right`. Record key form: `home.hero.main`.
+- Other positions: `promo_cards`, `promo_wide`, `strip`, `bar`, `sidebar_tall`, `category_banner`, `product_sidebar`, `newsletter_popup`.
+- Banner boxes never crop: the box takes the shape of the image chosen for the current viewport width. Up to three images per slot — desktop (required), tablet 768–1199 (optional, falls back to desktop), phone below 768 (portrait or square). Landscape phones get the tablet/desktop image.
+- One "Image contains text" switch per slot. **Off (default):** a text-free photo with live heading/subheading/CTA per locale over it. **On:** the phone image is mandatory on wide slots, live-text fields hide, alt must repeat the image's words, and an optional per-locale image set overrides the default (empty falls back to it). No safe zones or hard boundaries. Designer brief: one design exported as artboards — desktop 2880×864, phone 1080×1350 or 1080×1080.
+- Each slot also has link, alt per locale, status, and start/end schedule. Banners are registered media owners.
+- Newsletter section background is a fabric texture or plain theme colour, not a photo.
+
+### Newsletter popup
+
+- Reuses the existing theme `NewsletterModal`, restyled to the WordPress layout from existing classes only: logo, heading, paragraph, pill email input with dark Submit, "Don't show this popup again" checkbox (the login page's `form-check remember-box` + `checkbox_animated`), and a 3:4 portrait image on the right (≈1200×1600, `newsletter_popup` slot) shown only at ≥992 px.
+- Opens only after engagement: ~50% scroll, ~30 s on site, or desktop exit intent. Never on cart, checkout, account, or auth pages; at most once per session; closed → quiet 7 days; "don't show again" → long-lived `st_*` cookie; subscribed → never again. The "15% off" copy is removed.
+- Submit depends on the newsletter-subscribe endpoint (notifications/consent chunk); until it exists the button reports that sign-up is coming soon.
+- The theme's separate exit-intent modal is deleted (redundant).
+
+### PWA image caching (applied when the PWA is set up)
+
+- Card and thumb derivatives are cached after first view (30 days, ~300 entries / ~60 MB); gallery and zoom are network-only; signed URLs are never cached. The CDN must send CORS headers so cached responses are not opaque.
+
+### Video and YouTube
+
+- Uploaded video is dropped at launch; the HLS/ffmpeg seams stay dormant behind an off-by-default flag.
+- YouTube playback uses Vidstack's YouTube provider, `youtube-nocookie`, click-to-load, `rel=0` (end-screen suggestions stay within the same channel).
+- PDP videos come from a per-product field that accepts a URL or bare ID, normalised to the ID. The field has a **Validate** button that must succeed before the form can submit; on success it becomes plain text showing the matched video title, and editing the field resets it.
+- The home rail uses Data API v3 through `YouTubePort` (`playlistItems.list` on the uploads playlist, 1 quota unit), fetching and caching 10 daily at 00:00 IST; the displayed count is an admin setting seeded at 8; surfaces are a `youtubeRailPlacements` list seeded with `home`.
+
+## Payments, FX, and shipping
+
+- Launch accepts online payments only.
+- No COD, manual UPI proof, or split/partial payments at launch.
+- Currency chooses a gateway role, not a vendor:
+    - INR → Indian online gateway role;
+    - non-INR → PayPal role.
+- Current operational preference for INR is CCAvenue with Razorpay as preferred successor.
+- Vendor selection is adapter plus DI/config only.
+- Real providers are wired only when approved credentials exist; ports and stubs come first.
+- PayPal foreign pricing uses versioned admin-editable percentage and fixed-fee gross-up.
+- FX rates are fetched daily, persisted, audited, and served from the last valid rate when providers fail.
+- Shipping is behind `ShippingPort`.
+- Shiprocket is the preferred domestic and international adapter once credentials are available.
+- Provider quotes always preserve returned value and currency.
+
+## Time, accounting, and reporting
+
+- Store all timestamps in UTC.
+- Compute accounting/legal boundaries in `Asia/Kolkata`.
+- Indian financial year is 1 April–31 March.
+- Admin quarters are Indian financial quarters:
+    - Apr–Jun;
+    - Jul–Sep;
+    - Oct–Dec;
+    - Jan–Mar.
+- Storefront timestamps display in customer-local timezone with a label.
+- Admin timestamps display in IST.
+- PDF invoice timestamps are frozen in IST at generation.
+- Date presets are computed dynamically.
+
+## Infrastructure, config, and deployment
+
+- Production MongoDB is self-hosted Docker MongoDB 9.0.4. The local compose pin matches (`mongo:9.0.4`, feature compatibility 9.0). The previous pins were Angular 21, NestJS 11, and MongoDB 8.3 until the 2026-10-26 upgrade.
+- MongoDB runs as a single-node replica set for transaction support.
+- MongoDB and Meilisearch are private-network-only.
+- Local development uses the same MongoDB replica-set behavior.
+- MongoDB has persistent storage, resource caps, health checks, restart policy, scheduled backups, and restore drills.
+- Cloudflare fronts the origin.
+- Nginx is the origin reverse proxy.
+- API must trust configured proxies and use the configured real-client-IP header safely.
+- Origin access is restricted to Cloudflare ranges where applicable.
+- Server secrets are API-runtime-only.
+- Local server env is gitignored `apps/api/.env`.
+- Deploy secrets flow from approved GitHub encrypted secrets into root-owned runtime env/Compose secrets.
+- Public Angular runtime configuration comes from `public/config.json` loaded at application initialization.
+- No deploy URL `fileReplacements` and no secret in browser config.
+- Canonical local ports:
+    - storefront `4200`;
+    - admin `4300`;
+    - API `4000`.
+- Repository is public; deployment images are private GHCR packages.
+- Three environments for every integration (locked 2026-11-02): **dev** (developer machine; cloud-only services such as Spaces use a dedicated dev resource), **staging** (hosted beside the live WordPress sahatextile.com until cutover), **prod** (replaces WordPress). Each has its own credentials and resources — MSG91, Google Cloud/OAuth/YouTube, Meta apps, payments, Shiprocket, Spaces. A prod credential is never shared with staging or dev.
+- HTTPS in every mode, so requests behave identically everywhere:
+    - mode 1 (dev hot reload) and mode 2 (local prod build) use the mkcert local CA (`pnpm setup:local-https`) — a locally trusted CA, not a self-signed certificate (self-signed would warn and block service workers);
+    - mode 3 (full local stack) runs the same Dockerfiles later published to private GHCR, behind Nginx terminating TLS with the mkcert certificate, with runtime secrets from gitignored env files, never baked into images;
+    - staging and prod use Cloudflare's edge certificate plus a Cloudflare Origin Certificate on Nginx (Full strict).
+- Hostnames are single-level subdomains (locked 2026-11-02), because Cloudflare's free Universal SSL covers only `*.sahatextile.com`. Staging: `staging.sahatextile.com` (storefront), `admin-staging.sahatextile.com`, `api-staging.sahatextile.com`, `cdn-staging.sahatextile.com`. Production (locked 2026-11-03): the storefront on the bare `sahatextile.com` (as the live WordPress site today; `www` permanently redirects to it), `admin.sahatextile.com`, `api.sahatextile.com`, `cdn.sahatextile.com`. Cookies are host-only (see the owner decision round of 2026-11-06).
+- Protected branches are changed only through reviewed PRs.
+
+## Audit and retention
+
+- Every admin mutation writes an audit record.
+- Explicit coverage includes catalog, price, stock, purchase invoice, order, payment/refund, shipping/tax/payment/currency/notification config, role/permission, login failure, session revocation, and security events.
+- Financial/security audit retention is eight financial years, superseding the earlier seven-year figure, following the CA's 2026-08-21 confirmation that the Companies Act books-of-account requirement is eight financial years. Confirmation that the entity is in fact a company is still outstanding (round-2 item `B9.1`); eight years is the safe floor either way.
+- Catalog/general-admin audit retention is five years.
+- Raw analytics events are retained for 90 days after aggregate rollup.
+- Never audit secrets, passwords, full tokens, card data, or gateway working keys.
+- Prefer bounded field diffs over unbounded before/after blobs.
+
+### Deletion and retention (`DEC-DELETE-RETENTION` — locked)
+
+- Durable business records (catalog, orders, invoices, payments, returns, credit notes, customer accounts, gift cards, ledgers) are soft-deleted — recoverable and filtered from active queries — never hard-deleted, subject to the financial/audit retention windows above.
+- Transient security and session records (sessions, OTP challenges, rate-limit counters, pending intents, guest-cart handles) use TTL expiry.
+- Hard deletion is reserved for explicit privacy/legal purge requests and for orphaned media after a grace period; the discontinued-product 30-day rich-data purge is a defined exception that still preserves a minimal tombstone plus order snapshots.
+
+## Developer portal
+
+- Docusaurus is the private developer portal.
+- Root `docs/` Markdown/MDX is the portal’s authored content source.
+- `docs/engineering-live-context/` is the canonical, human-readable MDX source of owner decisions, roadmaps, architecture references, environment-variable names, and current project progress. It is served at `/engineering-live-context` through the same Docusaurus docs instance.
+- All other `docs/` pages are derived, evidence-backed explanations and must cite canonical or runtime sources.
+- The Engineering Live Context file list, routes, and command-palette search entries are build-indexed; adding or removing a canonical file must not require a React registry or hard-coded count.
+- A small `LIVE` navbar control exposes the build-indexed canonical document set. “Live” means the latest successfully built portal snapshot, not unsaved editor content.
+- OpenAPI remains API machine truth.
+- Scalar is the single human-facing API reference at `/api/reference`; its current generated document is explicitly scaffolded until the operation contract is complete.
+- `/api/openapi.json` exposes the machine-readable document.
+- Do not maintain parallel long-term API-reference UI or `/api/console` surfaces.
+- Interactive API requests target approved development/staging only and never bypass auth, CSRF, RBAC, or rate limits.
+- Portal page lifecycle values are exactly:
+    - `implemented`;
+    - `scaffolded`;
+    - `planned`;
+    - `deferred`;
+    - `deprecated`.
+- Portal pages declare audience, verification date, and precise source paths.
+- Portal validation rejects stale/missing provenance and forbidden terminology.
+- Current code/runtime and locked target intent must remain visibly distinct.
+- **Release blocker:** the portal must not be deployed until access control protects the entire host, including HTML, JavaScript/CSS/assets, search payloads, Engineering Live Context, Storybook, Scalar, TypeDoc, and database-catalogue output.
+- Portal access is default-deny and identity-allowlisted. An unrestricted “Everyone” policy or unrestricted email-OTP access is forbidden.
+- `noindex`, robots directives, and hidden navigation are defense-in-depth only and never access control.
+- The origin must be protected from direct bypass, using an approved Cloudflare Tunnel or authenticated-origin/JWT design. Machine access uses scoped service tokens.
+- Release verification must prove unauthorized users cannot fetch either the portal shell or a known static asset and cannot reach the origin directly.
+- Local persistent serving binds to `127.0.0.1` by default.
+- **Local Identity Loom gate (`2026-08-20`, locked):** `portal:persistent` is hard loopback-only and opens through one username/password pair read from gitignored `apps/developer-portal/.env.local`. Authentication and opaque session state live only in the native portal server process; there is no `devPortalUsers` collection, Saha Textile API module, shared business-auth code, registration, recovery, role model, or remote hosting seam. The session cookie is browser-session-only and a server restart invalidates every session. All portal HTML, assets, search data, reload events, generated child tools, OpenAPI and catalogue output sit behind this local gate.
+- Identity Loom shares the portable portal tokens/fonts and uses native inputs plus Canvas 2D/Web Audio. Its idle state is a full-viewport fibre-optic warp field. Username insertion launches blue shuttles that leave persistent computational threads; password insertion creates green length-only encrypted cells; deletion recoils the newest matching threads; and paste, replacement, autofill or IME completion runs a rapid punch-card ingestion burst. Password decoration is driven by field identity, input operation and length only, never credential characters.
+- Rejection misaligns the loom, sends an amber fault wave across the field, clears only the password and announces the generic `Identity not recognized` message. Success is an unskippable five-second sequence—identity lock, warp tension, Jacquard compile, architecture fold, then route breach—followed by an aperture reveal of the originally requested route. Sound is on by default after the first real interaction, uses separately mixed interface, mechanical, fault and ceremony buses, and keeps an always-visible persistent mute choice; reduced-motion receives a short non-cinematic handoff.
+- Portal lock is available as an icon-only, labelled circuit-breaker control immediately to the right of the dark-mode switcher in desktop and mobile headers. The command palette retains `Replay Identity Loom` and `Lock developer portal` as the searchable secondary controls. Locking preserves the current safe route as the next post-authentication destination.
+- The local Identity Loom decision does **not** resolve `DEC-PORTAL-PRIVATE-ACCESS` and must never be presented as production access control. A future hosted portal requires a separately approved front door, origin protection, credentials, deployment, and—if account persistence becomes necessary—a separate database rather than a collection in the commerce database.
+- Portal navigation to every generated child surface always enters through a unique Docusaurus bridge route; generated mounts are never used as top-navbar destinations.
+- Bridge, overview, and generated-child entry surfaces are deployment-agnostic product experiences. They must not expose local orchestration commands, build prerequisites, filesystem mechanics, or “works only when locally running” copy; those instructions belong only in explicitly operational or local-development documentation.
+- The locked child-transition metaphors are:
+    - Storybook — **Component Forge**: orbiting interface primitives assemble into one building block;
+    - TypeDoc — **Type Lattice**: source glyphs resolve through a lattice into a typed contract prism;
+    - Scalar — **Request Wormhole**: an OpenAPI operation packet crosses a contract event horizon and emerges as a governed test request;
+    - MongoDB catalogue — **Schema Observatory**: a telescope resolves the implemented model constellations from source evidence.
+- Every child-tool handoff uses a six-second cinematic. The duration is shared; the visual choreography is not.
+- Each bridge and transition owns an independent symbolic language:
+    - Component Forge uses zero-gravity fabrication, magnetic primitive capture, shared-theme token infusion, and component-explorer assembly;
+    - Type Lattice uses exported glyph activation, constraint resolution, crystalline contract formation, and a faceted reference-plane unfold;
+    - Request Wormhole uses horizontal operation-packet construction, visible security-gate clearance, contract-membrane traversal, response emergence, and flight-console deployment;
+    - Schema Observatory uses a mechanical dome and telescope, optical model acquisition, current-model evidence resolution, and catalogue projection.
+- Shared child-gateway code is limited to destination prefetch, full-document navigation, reduced-motion handling, skip/recovery behavior, and accessibility. A generic rotating-line, iris, tunnel, centre-card, or depth-vanish animation must not be reused across the four tool identities.
+- Canonical bridge routes are `/tools/storybook`, `/tools/typedoc`, `/tools/scalar`, and `/tools/database-catalogue`. Their generated child mounts remain `/storybook/`, `/typedoc/`, `/api/reference/`, and `/database/catalogue/`.
+- The repository is public, so committed documentation is public in source even when the deployment is private; secret or confidential credentials must never enter portal content or its browser-delivered indexes.
+- Wave 2 delivery order is Schema Nebula → ⌘K Verbs → First Flight.
+- Schema Nebula’s canonical route is `/database/schema-nebula`.
+- Schema Nebula uses one star per distinct target MongoDB collection: **64 explicit nodes**, not the superseded 48-family approximation.
+    - Thirty-one stars represent graph collections backed by current adapter models and tests. The source-only catalogue additionally reports `authRateLimits`, `productQuestions`, and `ratingAggregates`; these three current physical collections are intentionally outside the ratified graph and therefore do not create stars.
+    - The remaining 33 stars represent target-only collections and stay visually ghosted until implementation evidence exists.
+    - Related collections may be clustered visually, but must never be collapsed into one family node or described as one physical collection.
+    - The broad `auditLogs` collection owns admin and security audit history; do not add a separate `securityAuditLogs` node.
+    - Collection status comes from tested adapter/model evidence. A contract or architecture section alone does not make a collection implemented.
+      **Status 2026-08-19:** Schema Nebula is **67 / 37 / 30**. `productQuestions` and `ratingAggregates` are solid graph nodes (they were documentation debt, not a lock to stay outside). Remaining outside the graph: runtime-only `authRateLimits`, `pendingSignups`, and `pendingContactChanges`. `GRAPH_RECONCILIATION_OWED` is empty.
+- First Flight’s canonical route is `/getting-started/first-flight`.
+- First Flight is an enterprise guided onboarding journey with three acts: Launch Bay persona selection, a route-spanning spotlight HUD, and Mission Debrief.
+- Its persona order is exactly beginner → frontend → backend → operator.
+- Persona stops are governed data, not React literals. Every destination route and stable heading/`data-first-flight-anchor` target must resolve at build time; a missing target fails the portal build.
+- First Flight progress is optional, resettable, and device-local only. It uses no telemetry and cannot write to an application API or the repository.
+- First Flight active navigation state is URL-carried through the governed `firstFlight` persona and zero-based `step` parameters. This is linkable navigation state, not completion history; the route-spanning engine must not write browser storage before the separately reviewed resume/debrief pass.
+- First Flight device-local persistence is explicit opt-in per persona. Its versioned payload may contain only persona id, furthest governed stop id, completion state, and an optional completion timestamp; it must never store page content, browsing/search history, source paths, user identity, free text, or analytics.
+- Resume returns to the furthest governed stop recorded for that persona. Reaching or saving a later stop does not prove that earlier checkpoints were studied. Users can forget one persona through its opt-in control or reset every saved flight from Launch Bay.
+- Mission Debrief appears at the final checkpoint and is derived from compiled persona, stop, and lifecycle data. It remains available for the current session without storage; completion persists only for a persona that explicitly opted in.
+- First Flight delivery remains incremental: contract/compiler → Launch Bay → route-spanning engine → resume/debrief → hardening. A governed dataset alone does not make the instrument live.
+
+## Storefront signup, social identity, and OTP (`DEC-SIGNUP-VERIFICATION` — locked 2026-08-16)
+
+Supersedes "phone is collected at checkout, not registration" (2026-06-29, struck above).
+
+**Nothing is created before it is proven.**
+
+- A customer row is created only after email AND phone are OTP-verified. There is no
+  unverified account state, which removes the pre-hijack takeover class outright: an attacker
+  cannot squat an address they do not control and wait for the real owner to arrive.
+- Verified state lives in a server-held **pending-signup document**, keyed to the session,
+  holding the exact verified values, the consent selections, the guest-cart token and any
+  social provider id. Final submit uses the STORED values and never the posted ones — a client
+  that could assert "this email is verified" is a forgery waiting to happen.
+- Sliding TTL: 15 minutes, extended on each verification or send, absolute cap 30 minutes.
+  Abandoned records expire and are deleted. A pending record does **not** reserve an email or
+  phone; uniqueness belongs to real customers only, so nobody can hold addresses hostage.
+- Fields stay editable after verification. Editing clears that field's verified flag and
+  re-arms its verify control. Locking a typo'd address in buys no security, because the
+  verification is bound server-side to the value.
+
+**Disclosure: prove control, then we'll talk.**
+
+- Requesting an OTP never varies its response and never reveals existence. Delivery is
+  enqueued to `messageOutbox` in every branch, so a non-existent account spends no credits
+  AND the response time is identical — skipping the send synchronously would leak in the
+  timing dimension what the message no longer leaks in words.
+- Once OTP succeeds — or Google asserts `email_verified` — the person has proven control, and
+  disclosure to them is safe and helpful. They are offered sign-in or start-over; sign-in is
+  granted directly, because the OTP already served as the proof.
+- Facebook's email is never proof on its own. The Facebook path always requires our own email
+  OTP, whether Meta supplied an address or not; prefill when given, blank when not.
+- _2026-10-26 implementation note (owner-approved build):_ the Google half of the bullet above
+  now runs at the provider callback — a Google-proven address that already has an account is
+  answered at once (`oauth_email_registered`, or `account_not_accessible`) and no signup is
+  begun; it previously surfaced only at final submit, after a phone code.
+- _2026-10-26 owner decision — sign in on proof, split by proof:_ "sign-in is granted directly"
+  applies where a CODE served as the proof. After a signup code proves an email or phone that
+  belongs to an active account, the person may sign in to it at once
+  (`POST /auth/storefront/signup/sign-in-existing`): no second code, the pending record is
+  consumed, nothing from the abandoned signup is attached, and disabled or locked accounts are
+  offered nothing. Google's `email_verified` alone never signs anyone in — it is stale-prone for
+  addresses outside Google's own and Workspace domains — so a Google-proven address with an
+  account is offered a one-time code to that address (`outcome: 'account_exists'`), and the code
+  signs them in. Providers are still never linked on an address; connecting stays behind
+  step-up.
+- Password login failure is one message, always — regardless of whether the account exists,
+  has no password, or has three providers linked.
+- Auto-sign-in is refused for `disabled`/`locked` accounts with a contact-support message.
+
+**Social identity.**
+
+- Identities are keyed on provider + stable subject: Google `sub`, Facebook app-scoped id.
+  **The Facebook id is scoped to the app** — the DEV app and a future production app issue
+  different ids for the same person, so development ASIDs do not survive to production.
+- Accounts are never auto-linked on a matching email. Linking is deliberate, from the profile,
+  and requires step-up: the password when one is set (free and stronger), otherwise an OTP
+  with the customer choosing email or phone.
+- Connecting an identity already linked to another customer is a clean refusal, not a
+  duplicate-key error.
+- Disconnect enforces that at least one usable credential remains.
+
+**Phone as a login credential.**
+
+- Phone OTP is a full login, equivalent to any other. **Accepted risk, owner-decided:** Indian
+  carriers reassign numbers after roughly 90 days, so whoever inherits a recycled number
+  inherits the account. Recorded rather than mitigated, deliberately.
+- Changing an email or a phone still requires recent credential proof and verification of the
+  new value before the old one is released (matrix row 84) — a separate control from what a
+  phone OTP may authenticate.
+
+**OTP abuse limits** — numbers live in `rate-limit-policy.ts`, windows configurable.
+
+- The sharp control is the DESTINATION address (the existing `identifier` scope), not the IP:
+  5 email + 5 SMS per pending signup; 5 combined per account for sign-in, forgot-password,
+  change-password and connect-social.
+- IP ceilings stay deliberately loose as a flood stop only, keyed through
+  `rateLimitClientScope` so IPv6 is counted per `/64` while IPv4 is treated as coarse —
+  Indian consumer internet is carrier-grade NAT, and a tight per-IP limit locks out a town.
+- Resends use progressive backoff rather than a hard cliff, so an honest mistake never costs a
+  full window.
+- Connect-social lets the customer choose the channel before generation, so a non-essential
+  action cannot silently spend SMS credits.
+
+**MSG91 delivery.** Unchanged and already locked: Saha Textile generates, stores and verifies
+every OTP; MSG91 is delivery only, never the OTP Widget or SendOTP.
+
+## Storefront account & auth UI (owner lock 2026-08-18)
+
+**Remember me is real, not decoration.** Ticked → dated cookie plus the 30-day idle TTL;
+unticked → a session cookie plus a ONE-DAY idle TTL. Both halves move together: shortening only
+the cookie leaves a captured refresh token honoured for the full month. Rotation carries the
+choice, so a refresh never silently promotes a browser session to a remembered one. Operators get
+no such control — the hour-long admin idle bounds them either way.
+
+**Provider buttons are the providers' own.** Google's `renderButton()` (never a hand-drawn
+imitation), and a Facebook button built to Meta's published guidance because Meta ships no
+drawable widget. Both capped to Google's 400px ceiling so the pair is the same length.
+
+**Pending social signup survives reload and ends on deliberate leave.** Registration reads the
+server-held pending record on every browser arrival. Provider name/email are prefilled; a
+provider-verified email is locked; social-origin signup shows no password fields or competing
+provider buttons. Browser reload retains the record. In-app navigation away discards it without
+blocking the navigation; TTL expiry remains the fallback.
+
+**Abandoned Google signup returns this site's grant, not the Google session.** When a Google-origin
+signup is abandoned, Google Identity Services `revoke()` is called for this client so a future
+button does not imply that an unfinished Saha Textile account exists. This does not sign the
+person out of Google. The owner accepts that a later attempt may require account selection and
+consent again. A completed signup retains the grant.
+
+**A storefront customer has no permissions.** Permissions are operator vocabulary that arrived
+with the vendor port. A customer's access follows from owning the account. The storefront store's
+`permissions` state is deleted rather than left empty, so nobody starts gating on it.
+
+**`account.json` is retired.** Account screens read the signed-in customer from
+`/auth/storefront/me`. Wallet, loyalty points, order count, payout details and avatar are shown as
+zero/absent rather than carried over — they are separate features that do not exist, and a balance
+is the closing position of a ledger, not a number on the account row.
+
+**Self-service routes never name another account.** Everything under `storefront/account/*`
+takes its owner from the session; there is no `:customerId` in any path. Operator equivalents stay
+under `admin/customers/:customerId/*` and are authorised per permission. Two surfaces, and neither
+can be mistaken for the other.
+
+**Address pickers resolve country FIRST**, then state within that country, then the dial code from
+the country record. A dial code does not identify a country (`+1` is the USA, Canada, American
+Samoa and most of the Caribbean) and neither does a state code (`TN` is Tamil Nadu and Tennessee).
+
+**Profile self-service is display name only.** Email and phone are login credentials; changing one
+requires the security matrix's row-84 flow rather than a patch field, so a stolen session cannot
+move an account's recovery channel in one request.
+
+## Tax, invoicing, and statutory compliance (`DEC-TAX-COMPLIANCE-R1` — locked 2026-08-21)
+
+Source: written replies from the CA/accountant to the round-1 compliance questionnaire, received
+2026-08-21. These are external professional confirmations rather than owner preferences; they
+constrain design and are not to be re-litigated inside a build session. The questions they did
+**not** answer are in `tax-compliance-questionnaire-round-2.mdx` and stay open in
+`pending-decisions.mdx`.
+
+### Place of supply and tax determination
+
+- Place of supply is a stored, snapshotted field on the order and on the tax invoice. It is never recomputed at read time.
+- Every order persists billing address State and PIN, shipping address State and PIN, and the customer GSTIN where one is supplied.
+- Place of supply for an unregistered (B2C) customer derives from the recipient address recorded on the invoice under Section 10(1)(ca). It may **not** be taken from the shipping PIN alone. Which stored address fills the recipient role when billing and shipping differ is still open (round-2 item `B1.1`).
+- Place of supply for a registered (B2B) customer, where goods are moved, is where the movement terminates for delivery.
+- Tax determination is binary: place of supply West Bengal → CGST + SGST; every other State **and** Union Territory → IGST.
+- CGST + UTGST never arises for Saha Textile and is not modelled anywhere. A supply from West Bengal to a Union Territory is inter-State and attracts IGST.
+
+### Invoice content and tax treatments
+
+- Selling prices remain stored and displayed tax-inclusive; tax-exclusive bases are reverse-calculated for invoices and reporting only. Externally confirmed, consistent with the existing pricing lock.
+- Every tax invoice separately shows taxable value, the rate and amount of each applicable component (CGST and SGST, or IGST), and the total invoice value.
+- The invoice tax-treatment enum has exactly three members: intra-state (CGST + SGST), inter-state (IGST), and zero-rated export under LUT.
+- Export invoices show no CGST, SGST or IGST, and carry the endorsement "SUPPLY MEANT FOR EXPORT UNDER BOND OR LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGRATED TAX."
+- Exports go out under LUT without payment of IGST, with refund of accumulated ITC claimed afterwards. IEC and AD-code/bank registration precede regular export of goods.
+
+### Delivery charges
+
+- A delivery charge for delivering the goods sold forms part of the value of supply under Section 15(2). Transport, packing and insurance form a composite supply with the goods as the principal supply.
+- How one delivery charge apportions across a cart holding more than one GST rate is still open (`DEC-SHIPPING`, round-2 item `C2.2`).
+
+### Document numbering machinery
+
+- Rule 46 constraints are binding: consecutive serial number, unique within the Indian financial year, at most 16 characters, alphanumeric with hyphen and slash permitted, one or multiple series permitted.
+- Numbers are allocated transactionally, reset on 1 April, and a cancelled number is never reused and remains part of its sequence.
+- Prefix and format strings are configuration, never constants in code. The exact per-document formats are unapproved (`DEC-NUMBERING`, round-2 item `B6.1`).
+
+### Credit notes
+
+- A credit note references exactly one original tax invoice. Multiple invoices are never combined into a single credit note.
+- The statutory outer limit for a GST credit note is 30 November following the end of the financial year of the supply, or the date of furnishing the relevant annual return, whichever is earlier. A return accepted after that limit cannot reduce output tax.
+
+### Purchase records
+
+- Every supplier invoice captures supplier legal name, GSTIN, invoice number, invoice date, supplier address, HSN/SAC, product or service description, quantity, taxable value, CGST, SGST, IGST, cess where any, place of supply, RCM flag, e-invoice IRN where applicable, e-invoice QR data where applicable, payment date, goods-receipt date, and purchase-return details.
+
+### HSN and rate resolution
+
+- Invoice HSN requirements and GSTR-1 HSN reporting requirements are two separate settings and are configured separately.
+- HSN digit length is turnover-banded: 4-digit while preceding-year turnover is up to ₹5 crore, 6-digit above it.
+- Rate resolution is implemented as a function of the order line, not as a constant looked up from a tax class, because the apparel rate may depend on per-piece value. The codes, the rates, and the threshold rule are unissued (`DEC-TAX-HSN`, round-2 items `B2.4`, `B2.5`, `B2.6`).
+
+## Owner decision round (2026-11-03)
+
+Answered in chat on 2026-11-03 and removed from `pending-decisions.mdx`.
+
+- **`DEC-TRANSLATION-QUALITY` — best-effort French, then human review.** Developers write
+  reasonable French as they build; a named reviewer checks each screen before it is
+  release-ready; visible placeholder keys never ship. Proper-noun parts of product and other
+  admin-entered names stay as entered — they are content, not interface copy, and are not
+  translated by engineering passes.
+- **`DEC-ACCOUNT-EMPTY-TILES` — leave the zeros.** The storefront dashboard keeps its Balance,
+  Points and Orders tiles showing honest zeros until each feature lands.
+- **`DEC-SOFT-DELETED-IDENTITY-REUSE` — unlink on soft delete.** Soft-deleting a customer
+  releases their linked Google/Facebook identities the same way email and phone are released,
+  so the person can sign up again with the same provider account. The audit log keeps the
+  history. Built 2026-11-03: the links are removed (not parked) and the delete's audit row names
+  each released provider account; a restored customer reconnects Google/Facebook from their
+  account page (owner choice the same day).
+- **`DEC-DENVER-HOME-GRADIENT` — flat theme colour.** The home-search background uses
+  `var(--theme-color)` instead of the vendor's green ramp. Done 2026-11-03.
+- **`DEC-CUSTOMER-SOFT-DELETE-OPS` — recycle bin plus restore (the recommended route).** A
+  "Deleted" filter in the CRM customer list (not the default view); restore needs a dedicated
+  permission; restore is refused when the email or phone now belongs to another live customer;
+  soft delete revokes activation tokens and OTP challenges and ends the customer's sessions;
+  reports exclude deleted customers unless explicitly included. Built 2026-11-03 from an
+  approved UI brief, with three follow-up owner choices: restore returns the status the customer
+  had (rows deleted earlier come back `disabled`); only `customer.restore` holders see the
+  Deleted view (the API lists deleted customers on its own route); and Restore asks for
+  confirmation first.
+
+Still open after this round: `DEC-PORTAL-PRIVATE-ACCESS` (owner: decide at deploy time). Later the
+same day the owner chose the production hostnames (see Infrastructure: bare `sahatextile.com`); only
+the cookie-domain rule of `DEC-DOMAIN-TOPOLOGY` remains open.
+
+## Owner decision round (2026-11-04) — catalog, variants, and the move off WordPress
+
+Closed: `DEC-VARIANT-OVERRIDES`, `DEC-PRICE-DISPLAY`, `DEC-BACKORDER`, `DEC-ADDON-MEASUREMENTS`, `DEC-BADGES-RAILS`, `DEC-ID-SLUG`.
+
+Briefs B1–B7 are approved as drawn in revision 2 of `chunk-f-ui-briefs-2026-11-04.html`. Nothing custom was approved. The briefs say the product form uses the existing tabs and fields, add-on templates copy the Attribute screens, redirects get list and form pages like Tag, the card uses the existing price markup and label classes, the product page changes behaviour only, the measurement switch reuses the variant pills, and the gone page copies the 404 page.
+
+The approval covers the briefs as drawn, not code that differs from them. As of 2026-11-05 the Redirects and Add-on screens still edit inline on the list page; they must be built as separate list and form pages as briefed.
+
+Later owner decision (2026-11-05): the Redirects status field also allows 302, for session pages and old form pages. The brief showed only 301 and 410.
+
+- A variant may set SKU, MRP, selling price, stock, images, shipping dimensions, barcode, availability, and HSN. An empty field inherits the product. Title, description, and SEO stay on the product. Colour and apparel size stay variation axes.
+- Cards link to `/{locale}/product/{slug}`. The same selling price and the same MRP show one price, a struck MRP, and a percent rounded down. Different prices show a range. The card counts variants that can be bought now, including made to order, and falls back to every live variant only when none can be bought.
+- The product page opens on the base variant when it can be bought, otherwise the first buyable SKU. Nothing in stock opens the base SKU with Add to cart off and Notify Me on. `?variant={sku}` is in the first HTML. An unknown SKU redirects once to the clean path. A swatch change uses history replace. `ProductGroup` does not change when a swatch changes. A pin does not invent a Sale or Low stock badge.
+- Made to order is a product-level switch on a live product. The lead time uses `estimated_delivery_text` and shows on the product page only. Oversell stays off.
+- Measurements store one unit per field. The shopper may switch inches and centimetres. The value snaps to the field step. Body fields default to inches and a half-inch step. Add-on prices are whole tax-inclusive rupees, with a per-product override. Percent mode is off for Saha Textile.
+- Badges: one promotion (Sale, Featured, Bestseller, Trending, New) and one fact (Low stock, else Back in stock for 14 days). Low stock uses shop default 2, a product may override, and a product that has only ever held one unit stays unbadged unless its own threshold is set. Sale requires a lower price than MRP.
+- Identity is an opaque id. The SKU is the human code and is frozen once live or on an order. Orders have no slug. A rename writes a 301 for every locale in the same save and collapses chains. A path is never reused by a different entity.
+- A live product that is only out of stock stays a normal page. Disabled is a 404 and reversible. Discontinued is a 410 unless one real replacement is named, in which case it is a 301. A retired collection goes to its nearest live parent, or 410.
+- Old WordPress addresses resolve in one hop: junk patterns, then `seoRedirects`, then a same-path `/en/` prefix only when that page exists, otherwise 410 on the original URL. The homepage is not the fallback. A real 301 lasts as long as its target. There is no calendar expiry.
+
+## Owner decision round (2026-11-06) — recent-purchase popup and demo cart
+
+- The "someone recently purchased" popup shows real sales only, and no claim is ever invented. It starts by itself once paid orders exist and stays hidden when there are none.
+- A real sale is an order in `paid`, `processing`, `shipped` or `delivered`, placed in the last 24 hours, for a product that is live and buyable. The time shown is the real moment of payment. Only the product and the time reach the browser.
+- The demo cart (`cart.json`) stays until Chunk G builds the real cart. Replaced 2026-11-07: the real cart is built now, checkout later.
+
+## Owner decision round (2026-11-06) — production path
+
+Closed: `DEC-DOMAIN-TOPOLOGY`.
+
+- **Cookies are host-only.** `COOKIE_DOMAIN` stays empty in every environment, so every cookie stays on the API host with the `__Host-` prefix and none reaches WordPress, staging or another subdomain. The storefront and admin take the CSRF token from the API's reply, not from a cookie. Double-submit CSRF itself is unchanged.
+- **Staging runs on demand.** A script creates the staging droplet, and it stays up until the owner runs the destroy script by hand. Nothing destroys it automatically. The destroy script removes everything billed for that droplet; the worst case for forgetting is about $24 a month.
+- **Backups go to Spaces only.** Nightly and encrypted, to a private bucket in `sgp1`. The server holds only the key to encrypt, so it cannot read old backups. The owner accepted the risk that a DigitalOcean account problem affects the shop and its backups together.
+- **Deploys reach the droplet by SSH through Cloudflare Tunnel.** Port 22 stays closed to the internet. DigitalOcean's web console is the fallback.
+
+## Owner decision round (2026-11-07) — known gaps after Chunk F
+
+- **Products are entered by hand in admin.** There is no importer. Add Product therefore has to work, and categories and attributes get real save routes, because neither waits on any open decision. Every other demo admin screen stays as it is until its own chunk, and forms that do not save stay silent.
+- **The WordPress site is not a live shop.** Nobody maintains or uses it. It was repaired and tested with a few demo products, including `pure-silk-handloom-ikkat-saree-s1` to `s8`. Everyone is waiting for this project. Those 8 products are not real catalogue and are not entered. See the Chunk J open item on URL work.
+- **Real cart now, checkout later.** The storefront moves to the real cart API with server-side prices. Checkout stays closed until its tax, shipping, numbering and stock decisions are made. This replaces the 2026-11-06 line about the demo cart.
+- **Listing and filter counts come from Meilisearch first, with MongoDB as the automatic fallback**, behind one port, with a shared test proving both give the same result. The product list and its counts always come from the same engine, so they agree; cart and checkout still check real stock. The reasons are scale and white-labelling: logic is built best in class, not only for today's catalogue size.
+- **All Playwright runs use the `saha_textile_e2e` database**, with a test admin created there. That database exists on developer machines and in CI only, never on staging or production, and each run rebuilds it from seed.
+- **Coverage means the test coverage of application code:** 100% of statements, lines, functions and branches across the apps and packages. Repo helper scripts are out of scope.
+- **The logo comes from the owner.** All Fastkart text goes now; the Fastkart logo stays until the owner's file arrives.
+- **Commits:** each finished slice may be committed after the whole suite passes, without asking. Nothing is pushed.
+- **Every admin form that holds language-bound content has one Language switch at the top.** Switching changes every language-bound field on every tab; shared fields stay. It reads the active languages from configuration, so adding a language adds one button. The English text shows under each field as a guide. Save always works; a record with gaps stays disabled.
+- **A product cannot go live until every language field in every active language is complete.** Go Live exists on the product form and in the product list quick actions. Both call the same API and the same check, and both show the same alert toast. This replaces the older "warn for every missing locale" rule.
+- **A value is one thing with a name per language.** Picking it once picks it in every language. The picker in a language lists only values named in that language; a picked value with no name there is flagged and blocks Go Live.
+- **Briefs B8 to B14 are approved at revision 3** (`product-builder-briefs-2026-11-07.html`). The only custom items are the `app-language-switch` component and the image tile overlay `image-order-actions`.
+- **Card badges changed.** One promotion flag stays top left on the photo. The stock fact is a small chip at the photo's bottom left, with white text: Only 1 left in red `#C92A2A`, Only N left in amber `#B45309`, Back in stock in green `#0B7A5B`. French: "Plus que N", "De retour en stock". Low stock wins over Back in stock. This replaces the top-right fact slot in B4.
+- **Back in stock** starts when a product's total stock goes from 0 to above 0 on a save, lasts 14 days, and ends at once if stock reaches 0. "In Stock" stays as plain text on every buyable card.
+
+## Owner decision round (2026-11-07) — builder polish, Brand Kit, and cookie consent
+
+- **D1:** the Language switch count opens a to-do list; a line switches language, opens the tab and focuses the field.
+- **D2:** search words are one list per value for any language and reach the search index. A shop-wide synonym screen is a later chunk.
+- **D3:** the Unit field is replaced by Saree length and Blouse piece, in metres, for products under Sarees.
+- **D4:** a size guide lives on the measurement template and replaces the per-product size chart image. Inches first, with a switch to centimetres.
+- **D5:** offline, the cart shows read-only with a notice and re-reads on reconnect. The offline queue stays in Milestone 8.
+- **D6:** card names show two lines at a fixed height.
+- **D7:** category tiles and the Categories filter show children only, with photos and product counts. A last-level page shows the categories beside it and no filter.
+- **D8:** theme leftovers removed, including placeholder banners and the demo menu sections. Contact details come from the live site.
+- **D9:** the old `POST /orders` stays for Chunk G.
+- **Logos:** a Brand Kit in admin, through the media pipeline, so a new owner uploads their own after deployment. The TIFF is the master, and both versions are cut from it so the reds match. Wide places show the full logo with seal, name and tagline; small spaces show the seal. On dark or coloured areas the logo sits on white and keeps its own colours.
+- **Cookies:** the box has three equal buttons, and refusing takes one click. Cookie settings shows all six locked categories; empty ones say Not in use with no switch, and Accept all turns on only what is in use. `st_consent` holds the answer in the browser and `POST /privacy/consent` keeps the history. The Contact map waits for consent or a click. The Privacy Policy cookie section is a draft until the owner's lawyer or CA reviews it.
+
+## Open decisions
+
+All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

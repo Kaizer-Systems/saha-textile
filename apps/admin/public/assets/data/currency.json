@@ -21,7 +21,7 @@
 			"code": "INR",
 			"symbol": "₹",
 			"no_of_decimal": 2,
-			"exchange_rate": "82.00",
+			"exchange_rate": "1.00",
 			"symbol_position": "before_price",
 			"thousands_separator": "comma",
 			"decimal_separator": "comma",

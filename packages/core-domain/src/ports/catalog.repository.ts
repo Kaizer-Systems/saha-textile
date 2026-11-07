@@ -1,21 +1,50 @@
 import type { Category, Product, ProductStatus } from '@saha-textile/contracts';
 
+import type { CatalogAudience } from '../catalog/product-visibility';
 import type { PageQuery, Paginated } from './pagination';
 
 export interface ProductFilter extends PageQuery {
+	/**
+	 * Defaults to `public` in every implementation — an omitted audience must hide
+	 * non-live products, never reveal them.
+	 */
+	audience?: CatalogAudience;
 	categoryId?: string;
 	tag?: string;
+	/** Narrowing only: a public caller can never widen beyond the storefront-visible set. */
 	status?: ProductStatus;
 	search?: string;
+	featured?: boolean;
+	onSale?: boolean;
+	insight?: 'bestseller' | 'trending';
+	/** Placement path such as `sarees/pure-cotton`. Matches a category id resolved by the caller. */
+	categoryIds?: string[];
 }
 
-/** Persistence port for products. Implemented by infra adapters (e.g. Mongo). */
+/**
+ * Persistence port for products. Implemented by infra adapters (e.g. Mongo).
+ *
+ * Every read takes the audience so status visibility is enforced in ONE place
+ * (the repository query) rather than trusted to each caller.
+ */
+export interface CategorySummary {
+	categoryId: string;
+	productCount: number;
+	coverAssetId: string | null;
+}
+
 export interface ProductRepository {
-	findById(id: string): Promise<Product | null>;
-	findBySlug(slug: string): Promise<Product | null>;
+	findById(id: string, audience?: CatalogAudience): Promise<Product | null>;
+	findBySlug(slug: string, audience?: CatalogAudience): Promise<Product | null>;
 	list(filter: ProductFilter): Promise<Paginated<Product>>;
 	save(product: Product): Promise<Product>;
 	deleteById(id: string): Promise<void>;
+	/** Live product slugs for the storefront redirect allow-list. */
+	listPublicSlugs(): Promise<string[]>;
+	/** Live products per category, with the first product's lead photo. */
+	categorySummaries(): Promise<CategorySummary[]>;
+	/** Replaces the weekly badges: every other product loses them. */
+	setInsightBadges(input: { bestseller: readonly string[]; trending: readonly string[] }): Promise<void>;
 }
 
 /** Persistence port for the category taxonomy. */

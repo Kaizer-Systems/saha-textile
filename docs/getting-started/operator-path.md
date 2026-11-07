@@ -1,42 +1,43 @@
 ---
 title: Operator Path
-description: Onboarding route for deployment and runtime operations.
+description: Reading path for deployment and runtime operations.
 status: planned
 audience: [operator]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
-    - project-context/angular-context/execution-roadmap.md
-    - project-context/angular-context/mcp-automation-setup.md
+    - docs/engineering-live-context/execution-roadmap.mdx
+    - .cursor/rules/mcp-tools.mdc
     - .github/workflows
 ---
 
 # Operator path
 
-Use this path for local runtime readiness, deployment, rollback, monitoring, backup, restoration, incident response or third-party operational checks.
+Use this path for runtime readiness, deployment, rollback, monitoring, backup, recovery or third-party service checks.
 
-## Current honesty boundary
+## Scope
 
-The operations section is intentionally incomplete because production deployment, backup/restore verification and final monitoring are later roadmap phases. Treat this path as an approved runbook structure, not proof that production procedures have been exercised.
+The local stack runs the production images on a developer machine. Hosted environments, automated deployment and backup procedures are planned. The pages below state which procedures are available and which are planned.
 
 ## Read in this order
 
 1. [Deployment overview](/deployment/overview)
 2. [Operations overview](/operations/overview)
 3. [Troubleshooting overview](/troubleshooting/overview)
-4. [Failure recovery and debugging](/business-flows/failure-recovery-and-debugging) for business-journey symptoms
-5. [Backend readiness and observability](/backend/readiness-testing-and-observability) for liveness, readiness and proof
-6. [Mongo transactions and generated catalogue](/database/transactions-and-generation) for persistence/recovery boundaries
-7. [Local development](/getting-started/local-development) for local environment assumptions
+4. [Failure recovery and debugging](/business-flows/failure-recovery-and-debugging) for business symptoms
+5. [Readiness, observability and verification](/backend/readiness-testing-and-observability) for health endpoints
+6. [Transactions and generated catalogue](/database/transactions-and-generation) for persistence and recovery
+7. [Local development](/getting-started/local-development) for local environment setup
 
-## Evidence required before an operation is called implemented
+## Requirements for an operational procedure
+
+A procedure is ready for use when:
 
 - A command or automation entry point exists.
-- Required environment and permissions are documented without exposing secrets.
-- Expected success output is recorded.
-- Failure and rollback paths are documented.
-- The procedure has been exercised in the appropriate environment.
-- The verification date and evidence source appear in the portal.
+- Required environment values and permissions are documented without exposing secrets.
+- Expected output is recorded.
+- Failure and rollback steps are documented.
+- The procedure has been run in the matching environment.
 
-## Never infer
+## Reading health correctly
 
-Do not infer production readiness from a successful build, a running API process or an unverified configuration file. Database connectivity, migrations, backups, external providers, secrets, network policy and recovery behaviour need independent evidence.
+A successful build, a running API process or a parsed configuration file does not show that a deployment is healthy. Database connectivity, migrations, backups, external providers, secrets, network policy and recovery behaviour each need their own check.

@@ -17,6 +17,20 @@
 						<h3>{{ 'welcome_to_our_store' | transloco }}</h3>
 						<h4>{{ 'create_new_account' | transloco }}</h4>
 					</div>
+					<!--
+						A social signup arrives here without password fields, so the screen has to say
+						WHY the form looks different and what is left. Google's address is already
+						proven; Meta's is not, and still needs its own code — the copy follows the
+						server's answer, not the provider's name. Bootstrap's own alert — no new CSS.
+					-->
+					@if (!needsPassword()) {
+					<div
+						class="alert alert-info"
+						role="status"
+					>
+						{{ continueKey() | transloco: { provider: (providerKey() | transloco) } }}
+					</div>
+					}
 					<div class="input-box">
 						<form
 							class="row g-4"
@@ -57,6 +71,97 @@
 									<div class="invalid-feedback">{{ 'invalid_email' | transloco }}</div>
 									}
 								</div>
+								<!--
+									Verification control. Reuses Bootstrap's own button and badge classes —
+									no new CSS — and renders the SERVER's answer rather than any local
+									belief about what has been proven.
+								-->
+								@if (emailState()?.verified && !editing.email()) {
+								<div class="d-flex align-items-center mt-2 gap-2">
+									<span class="badge text-bg-success">{{ 'verified' | transloco }}</span>
+									@if (!emailState()?.locked) {
+									<button
+										type="button"
+										class="btn btn-link btn-sm p-0"
+										(click)="changeField('email')"
+									>
+										{{ 'change' | transloco }}
+									</button>
+									}
+								</div>
+								} @else if (codeSentFor('email')) {
+								<!--
+									A code is out: say where it went, take the code, and offer a new one only once the
+									backoff allows. The same markup and helper as the one-time-code login; no new CSS.
+								-->
+								<p
+									class="text-content mt-2 mb-2"
+									role="status"
+									aria-live="polite"
+								>
+									{{ 'enter_code_sent_to' | transloco: { value: emailState()?.value } }}
+								</p>
+								<div class="d-flex align-items-center gap-2">
+									<input
+										type="text"
+										inputmode="numeric"
+										autocomplete="one-time-code"
+										maxlength="6"
+										class="form-control form-control-sm w-auto"
+										#emailCode
+										placeholder="{{ 'otp' | transloco }}"
+									/>
+									<button
+										type="button"
+										class="btn btn-outline-primary btn-sm"
+										(click)="submitCode('email', emailCode.value)"
+									>
+										{{ 'submit' | transloco }}
+									</button>
+								</div>
+								<div class="d-flex align-items-center mt-2 gap-2">
+									<button
+										type="button"
+										class="btn btn-link btn-sm p-0"
+										[disabled]="busyField() === 'email' || resend.email.waiting || emailState()?.sendsRemaining === 0"
+										[ngbTooltip]="emailState()?.sendsRemaining === 0 ? ('otp_send_limit_reached' | transloco) : ''"
+										(click)="verify('email')"
+									>
+										{{ (busyField() === 'email' ? 'sending' : 'resend_otp') | transloco }}
+									</button>
+									@if (resend.email.secondsRemaining(); as seconds) {
+									<span
+										class="text-content"
+										role="timer"
+										aria-live="off"
+									>
+										{{ 'resend_available_in' | transloco: { seconds } }}
+									</span>
+									}
+								</div>
+								} @else {
+								<!-- Nothing sent for this value yet, so there is nothing to type: Verify alone. -->
+								<div class="d-flex align-items-center mt-2 gap-2">
+									<button
+										type="button"
+										class="btn btn-outline-secondary btn-sm"
+										[disabled]="busyField() === 'email' || resend.email.waiting || emailState()?.sendsRemaining === 0"
+										[ngbTooltip]="emailState()?.sendsRemaining === 0 ? ('otp_send_limit_reached' | transloco) : ''"
+										(click)="verify('email')"
+									>
+										{{ (busyField() === 'email' ? 'sending' : 'verify') | transloco }}
+									</button>
+									@if (resend.email.secondsRemaining(); as seconds) {
+									<span
+										class="text-content"
+										role="timer"
+										aria-live="off"
+									>
+										{{ 'resend_available_in' | transloco: { seconds } }}
+									</span>
+									}
+								</div>
+								}
 							</div>
 							@if(isBrowser) {
 							<div class="phone-field col-12">
@@ -93,8 +198,99 @@
 										</ng-template>
 									</select2>
 								</div>
+								@if (phoneState()?.verified && !editing.phone()) {
+								<div class="d-flex align-items-center mt-2 gap-2">
+									<span class="badge text-bg-success">{{ 'verified' | transloco }}</span>
+									<button
+										type="button"
+										class="btn btn-link btn-sm p-0"
+										(click)="changeField('phone')"
+									>
+										{{ 'change' | transloco }}
+									</button>
+								</div>
+								} @else if (codeSentFor('phone')) {
+								<!--
+									A code is out: say where it went, take the code, and offer a new one only once the
+									backoff allows. The same markup and helper as the one-time-code login; no new CSS.
+								-->
+								<p
+									class="text-content mt-2 mb-2"
+									role="status"
+									aria-live="polite"
+								>
+									{{ 'enter_code_sent_to' | transloco: { value: phoneState()?.value } }}
+								</p>
+								<div class="d-flex align-items-center gap-2">
+									<input
+										type="text"
+										inputmode="numeric"
+										autocomplete="one-time-code"
+										maxlength="6"
+										class="form-control form-control-sm w-auto"
+										#phoneCode
+										placeholder="{{ 'otp' | transloco }}"
+									/>
+									<button
+										type="button"
+										class="btn btn-outline-primary btn-sm"
+										(click)="submitCode('phone', phoneCode.value)"
+									>
+										{{ 'submit' | transloco }}
+									</button>
+								</div>
+								<div class="d-flex align-items-center mt-2 gap-2">
+									<button
+										type="button"
+										class="btn btn-link btn-sm p-0"
+										[disabled]="busyField() === 'phone' || resend.phone.waiting || phoneState()?.sendsRemaining === 0"
+										[ngbTooltip]="phoneState()?.sendsRemaining === 0 ? ('otp_send_limit_reached' | transloco) : ''"
+										(click)="verify('phone')"
+									>
+										{{ (busyField() === 'phone' ? 'sending' : 'resend_otp') | transloco }}
+									</button>
+									@if (resend.phone.secondsRemaining(); as seconds) {
+									<span
+										class="text-content"
+										role="timer"
+										aria-live="off"
+									>
+										{{ 'resend_available_in' | transloco: { seconds } }}
+									</span>
+									}
+								</div>
+								} @else {
+								<!-- Nothing sent for this value yet, so there is nothing to type: Verify alone. -->
+								<div class="d-flex align-items-center mt-2 gap-2">
+									<button
+										type="button"
+										class="btn btn-outline-secondary btn-sm"
+										[disabled]="busyField() === 'phone' || resend.phone.waiting || phoneState()?.sendsRemaining === 0"
+										[ngbTooltip]="phoneState()?.sendsRemaining === 0 ? ('otp_send_limit_reached' | transloco) : ''"
+										(click)="verify('phone')"
+									>
+										{{ (busyField() === 'phone' ? 'sending' : 'verify') | transloco }}
+									</button>
+									@if (resend.phone.secondsRemaining(); as seconds) {
+									<span
+										class="text-content"
+										role="timer"
+										aria-live="off"
+									>
+										{{ 'resend_available_in' | transloco: { seconds } }}
+									</span>
+									}
+								</div>
+								}
 							</div>
 							}
+							<!--
+								Password only where the origin needs one. `finaliseSignup` does not
+								require a password for a social signup, and the controls are DISABLED
+								alongside this rather than merely hidden — a hidden required control
+								is a form that can never be valid and never says why.
+							-->
+							@if (needsPassword()) {
 							<div class="col-12">
 								<div class="form-floating log-in-form">
 									<input
@@ -137,6 +333,7 @@
 									} }
 								</div>
 							</div>
+							}
 							<div class="col-12">
 								<div class="forgot-box">
 									<div class="form-check remember-box m-0 ps-0">
@@ -160,9 +357,74 @@
 								</div>
 							</div>
 							<div class="col-12">
+								<!--
+									Marketing consent is explicit and OFF by default (GDPR lock). It rides
+									the pending record and transfers at account creation, so it survives a
+									multi-step signup and is never implied by a social sign-up.
+								-->
+								<div class="form-check ps-0">
+									<input
+										class="checkbox_animated check-box"
+										type="checkbox"
+										id="marketing-opt-in"
+										[formControl]="marketingOptIn"
+									/>
+									<label
+										class="form-check-label"
+										for="marketing-opt-in"
+									>
+										{{ 'marketing_opt_in' | transloco }}
+									</label>
+								</div>
+							</div>
+							@if (refusal()) {
+							<div class="col-12">
+								<!--
+									`flex-column`: the theme lays an alert out as a row, which squeezed the
+									message into a sliver beside the actions below. Bootstrap utilities only.
+								-->
+								<div
+									class="alert alert-danger flex-column align-items-start"
+									role="alert"
+								>
+									{{ refusal()! | transloco }} @if (existingAccount()) { @if (existingAccountField())
+									{
+									<!--
+										The code just proved this address is theirs, so sign-in is offered
+										directly — no second code. The theme's own small primary button, no new CSS.
+									-->
+									<div class="d-flex align-items-center mt-2 gap-2">
+										<button
+											type="button"
+											class="btn btn-animation btn-sm"
+											[disabled]="pending()"
+											(click)="signInToExisting()"
+										>
+											{{ 'sign_in_to_that_account' | transloco }}
+										</button>
+										<button
+											type="button"
+											class="btn btn-link btn-sm p-0"
+											(click)="useDifferentDetails()"
+										>
+											{{ 'use_different_details' | transloco }}
+										</button>
+									</div>
+									} @else {
+									<a [routerLink]="['/auth/login']">{{ 'log_in' | transloco }}</a>
+									} }
+								</div>
+							</div>
+							}
+							<div class="col-12">
+								<!--
+									Disabled until the SERVER says both identifiers are proven. The form
+									being valid is not enough and never was: validity is what the person
+									typed, `canSubmit` is what the API verified.
+								-->
 								<app-button
 									[id]="'sign_up_btn'"
-									[disabled]="tnc.invalid || form.invalid"
+									[disabled]="tnc.invalid || form.invalid || !canSubmit()"
 								>
 									{{ 'sign_up' | transloco }}
 								</app-button>
@@ -170,9 +432,22 @@
 						</form>
 					</div>
 
+					<!--
+						Providers are offered on an EMPTY registration page and nowhere else.
+						`POST /signup/start` REPLACES the record for this browser, so a provider
+						button pressed halfway through a signup discards whatever has already been
+						proven — including a phone number somebody waited for a code on.
+					-->
+					@if (showSocial()) {
 					<div class="other-log-in">
 						<h6>{{ 'or' | transloco }}</h6>
 					</div>
+					<!-- Already on the signup form, so a provider signup is adopted here rather than navigated to. -->
+					<app-social-sign-in
+						(signupStarted)="resume()"
+						(existingAccount)="continueWithCode($event)"
+					/>
+					}
 
 					<div class="sign-up-box">
 						<h4>{{ 'already_have_an_account' | transloco }}?</h4>

@@ -1,14 +1,11 @@
-import { Component, inject, input, Input, output, SimpleChanges } from '@angular/core';
+import { Component, input, Input, output, SimpleChanges } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { CarouselComponent } from 'ngx-owl-carousel-o';
-import { Observable } from 'rxjs';
 
-import { CartFacade } from '@core/state/cart/cart.facade';
 import { IAttribute, IAttributeValue } from '@data-access/interfaces/attribute.interface';
-import { ICart } from '@data-access/interfaces/cart.interface';
 import { IProduct, ISelectedVariant, IVariation } from '@data-access/interfaces/product.interface';
 
 import { Button } from '../button/button';
@@ -28,9 +25,6 @@ export class VariantAttributes {
 
 	readonly selectVariation = output<IVariation | null>();
 
-	cartItem$: Observable<ICart[]> = inject(CartFacade).cartItems$;
-
-	public cartItem: ICart | null;
 	public productQty: number = 1;
 	public attributeValues: number[] = [];
 	public variantIds: number[] = [];
@@ -48,15 +42,12 @@ export class VariantAttributes {
 				this.attributes = changes['attributes']?.currentValue;
 			}
 
-			this.cartItem$.subscribe((items) => {
-				this.cartItem = items.find((item) => item.product.id == this.product.id)!;
-			});
-
 			this.checkVariantAvailability(this.product);
 		}, 0);
 	}
 
-	checkVariantAvailability(product: IProduct) {
+	checkVariantAvailability(product: IProduct | undefined) {
+		if (!product) return;
 		this.selectedOptions = [];
 		this.attributeValues = [];
 		this.selectedVariation = null;
@@ -68,21 +59,18 @@ export class VariantAttributes {
 			});
 		});
 
-		// Set cart Vatriant Default
-		if (this.cartItem?.variation) {
-			this.cartItem?.variation.attribute_values.filter((attribute_val) => {
-				this.setVariant(this.product.variations, attribute_val);
-			});
+		// The SKU the server chose (the default, or `?variant=`) opens selected, so the
+		// first browser render matches the server's even when the cart holds another.
+		const opening = product?.variations?.find((variation) => variation.sku === product.sku);
+		if (opening) {
+			opening.attribute_values?.forEach((attribute_val) => this.setVariant(product.variations, attribute_val));
 		}
 
-		if (!this.cartItem) {
+		if (!opening) {
 			// Set First Vatriant Default
-			for (const attribute of product?.attributes) {
+			for (const attribute of product?.attributes ?? []) {
 				if (this.attributeValues.length && attribute?.attribute_values.length) {
-					let values: number[] = [];
 					for (const value of attribute.attribute_values) {
-						if (values.indexOf(value.id) === -1) values.push(value.id);
-
 						if (this.attributeValues.includes(value.id)) {
 							this.setVariant(product.variations, value);
 							break; // Break out of the inner loop after setting the first variant
@@ -93,18 +81,17 @@ export class VariantAttributes {
 		}
 
 		// Set Variation Image
-		product.variations?.forEach((variation) => {
-			let attrValues = variation?.attribute_values?.map((attribute_value) => attribute_value?.id);
-			product?.attributes.filter((attribute) => {
-				if (attribute.style == 'image') {
-					attribute.attribute_values.filter((attribute_value) => {
-						if (this.attributeValues.includes(attribute_value.id)) {
-							if (attrValues.includes(attribute_value.id)) {
-								attribute_value.variation_image = variation.variation_image;
-							}
-						}
-					});
-				}
+		product?.variations?.forEach((variation) => {
+			const attrValues = (variation?.attribute_values ?? []).map((attribute_value) => attribute_value?.id);
+			(product?.attributes ?? []).forEach((attribute) => {
+				if (attribute.style !== 'image') return;
+				attribute.attribute_values.forEach((attribute_value) => {
+					// A term with its own square swatch keeps it; otherwise it shows the variant's photo.
+					if (attribute_value.variation_image) return;
+					if (this.attributeValues.includes(attribute_value.id) && attrValues.includes(attribute_value.id)) {
+						attribute_value.variation_image = variation.variation_image;
+					}
+				});
 			});
 		});
 	}
@@ -130,10 +117,8 @@ export class VariantAttributes {
 				attrValues.every((value) => this.variantIds.includes(value));
 			if (doValuesMatch) {
 				this.selectedVariation = variation;
-				this.product['quantity'] = this.selectedVariation
-					? this.selectedVariation?.quantity
-					: this.product?.quantity;
-				this.product['sku'] = this.selectedVariation ? this.selectedVariation?.sku : this.product?.sku;
+				this.product['quantity'] = variation.quantity;
+				this.product['sku'] = variation.sku;
 				const owlCar = this.owlCar();
 				if (owlCar && this.selectedVariation.variation_image) {
 					owlCar.to(this.selectedVariation.variation_image.id.toString());

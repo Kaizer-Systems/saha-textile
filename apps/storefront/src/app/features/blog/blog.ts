@@ -3,7 +3,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
 import { SiteConfigStore } from '@core/state/site-config.store';
@@ -40,6 +40,8 @@ import { SkeletonBlog } from './skeleton-blog/skeleton-blog';
 })
 export class Blog {
 	private route = inject(ActivatedRoute);
+	private transloco = inject(TranslocoService);
+	private readonly blogsLabel = this.transloco.translate('blogs');
 	blogService = inject(BlogService);
 
 	public filter = signal<Params>({
@@ -55,11 +57,12 @@ export class Blog {
 	siteConfig$: Observable<ISiteConfig> = toObservable(inject(SiteConfigStore).siteConfig) as Observable<ISiteConfig>;
 
 	public breadcrumb: IBreadcrumb = {
-		title: 'Blogs',
+		title: this.blogsLabel,
 		items: [],
 	};
 
-	public totalItems: number = 0;
+	/** Derived from the query signal; see `CollectionPaginate.totalItems` for why. */
+	public readonly totalItems = computed(() => this.blogsQuery.data()?.total ?? 0);
 	public skeletonItems = Array.from({ length: 9 }, (_, index) => index);
 
 	public style: string;
@@ -77,11 +80,11 @@ export class Blog {
 
 			this.breadcrumb.items = [];
 			this.breadcrumb.title = category
-				? `Blogs: ${category.replaceAll('-', ' ')}`
+				? `${this.blogsLabel}: ${category.replaceAll('-', ' ')}`
 				: tag
-					? `Blogs: ${tag.replaceAll('-', ' ')}`
-					: 'Blogs';
-			this.breadcrumb.items.push({ label: 'Blogs', active: true });
+					? `${this.blogsLabel}: ${tag.replaceAll('-', ' ')}`
+					: this.blogsLabel;
+			this.breadcrumb.items.push({ label: this.blogsLabel, active: true });
 
 			// For Demo Purpose only
 			if (params['style']) {
@@ -100,7 +103,6 @@ export class Blog {
 				});
 			}
 		});
-		this.blog$.subscribe((blog) => (this.totalItems = blog?.total ?? 0));
 	}
 
 	setPaginate(data: number) {

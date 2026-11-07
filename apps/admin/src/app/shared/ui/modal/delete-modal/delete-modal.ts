@@ -1,4 +1,4 @@
-import { Component, TemplateRef, inject, output, viewChild } from '@angular/core';
+import { Component, TemplateRef, inject, input, output, viewChild } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
@@ -23,6 +23,9 @@ export class DeleteModal {
 	readonly DeleteModal = viewChild<TemplateRef<string>>('deleteModal');
 
 	readonly deleteItem = output<ITableClickedAction>();
+
+	/** Translation key of the warning; a caller whose delete is not final passes its own. */
+	readonly message = input('deleted_message');
 
 	async openModal(action: string, data: any) {
 		this.modalOpen = true;
@@ -56,7 +59,9 @@ export class DeleteModal {
 		}
 	}
 
-	delete(_modal: NgbModalRef) {
+	delete(modal: NgbModalRef) {
+		modal.close('delete');
+		this.modalOpen = false;
 		this.deleteItem.emit(this.userAction);
 	}
 

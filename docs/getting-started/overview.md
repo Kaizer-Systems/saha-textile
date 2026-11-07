@@ -3,30 +3,43 @@ title: Overview
 description: Start here when maintaining the Saha Textile platform.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
-    - project-context/angular-context/private-developer-portal-documentation-plan.md
-    - project-context/angular-context/owner-decisions-log.md
+    - docs/engineering-live-context/owner-decisions-log.mdx
+    - docs/engineering-live-context/execution-roadmap.mdx
 ---
 
 # Developer portal overview
 
-This portal is the private operating manual for the Saha Textile platform. It should explain enough business context, architecture, runtime behavior, and operational procedure for another developer to maintain the system without reverse-engineering the repository first.
+The developer portal is the private engineering manual for the Saha Textile platform. It describes the business context, architecture, runtime behaviour and operating procedures that engineers need to maintain the system.
 
-## What belongs here now
+## Documentation scope
 
-- Stable decisions from `project-context/angular-context`.
-- Monorepo maps, phase boundaries, and dependency rules.
-- Business flows at the level already locked by the knowledge base.
-- Placeholders for generated API, database, and UI documentation.
+The portal contains:
 
-## What waits for implementation
+- Architecture, repository layout and dependency rules.
+- Business journeys for shoppers and operators.
+- Guides for the storefront, admin application, API and database.
+- Provider reference material for payments.
+- Generated references for components, TypeScript types, HTTP operations and database models.
 
-- Scalar API Reference waits for the real OpenAPI document to be integrated into the portal at the locked route.
-- Generated database collection pages wait for the catalogue generator; models and indexes already exist in the Mongo adapter.
-- Storybook links wait until storefront/admin components and stories exist.
-- Pagefind waits until the portal has enough built pages to index usefully.
+Engineering Live Context is a separate section. It holds the project roadmap, the decision log and progress records.
 
-## Source-of-truth rule
+## Generated references
 
-Use [Source of Truth and Freshness](/governance/source-of-truth-and-freshness) to resolve conflicts. The portal presents evidence; it does not override tested implementation or locked owner decisions.
+| Reference                                       | Content                                         | Route                  |
+| ----------------------------------------------- | ----------------------------------------------- | ---------------------- |
+| [Storybook](/tools/storybook)                   | Storefront, admin and shared Angular components | `/storybook/`          |
+| [TypeDoc](/tools/typedoc)                       | Exported contracts and core-domain symbols      | `/typedoc/`            |
+| [Scalar](/tools/scalar)                         | HTTP operations generated from OpenAPI          | `/api/reference/`      |
+| [Database catalogue](/tools/database-catalogue) | Mongoose models, fields and indexes             | `/database/catalogue/` |
+
+The command palette (⌘K) searches every page. Its index is generated from page front matter at build time.
+
+## Access
+
+The complete portal runs on a local server that accepts loopback connections only and requires a local username and password. See [Developer portal commands](/getting-started/local-development#developer-portal-commands). These credentials belong to the portal server and are unrelated to storefront or admin accounts.
+
+## Resolving conflicts
+
+Tested code describes current behaviour. The decision log describes intended behaviour. If the portal disagrees with either, follow [Source of truth and freshness](/governance/source-of-truth-and-freshness).

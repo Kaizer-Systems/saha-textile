@@ -3,7 +3,7 @@
 	[title]="'Q&A'"
 >
 	<app-table
-		[tableConfig]="tableConfig"
+		[tableConfig]="tableConfig()"
 		[hasCheckbox]="true"
 		(tableChanged)="onTableChange($event)"
 		(action)="onActionClicked($event)"

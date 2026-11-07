@@ -5,42 +5,52 @@
 				<app-alert />
 				<form
 					[formGroup]="form"
-					(ngSubmit)="submit();"
+					(ngSubmit)="submit()"
 				>
 					<div class="log-in-box">
 						<div class="log-in-title">
-							<h3 class="text-content">
-								{{ 'please_enter_the_one_time_password_to_verify_your_account' | transloco }}
-							</h3>
-							<h5 class="text-content">
-								{{ 'a_code_has_been_sent_to' | transloco }}
-								<span>{{ email }}</span>
-							</h5>
+							<h3 class="text-content">{{ 'paste_the_code_from_your_recovery_email' | transloco }}</h3>
 						</div>
-						<div
-							id="otp"
-							class="row d-flex row-cols-6 g-2 mb-5"
-						>
-							<div class="outer-otp">
-								<div class="inner-otp">
-									<input
-										type="text"
-										formControlName="otp"
-										maxlength="5"
-										oninput="
-											this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
-										"
-										onKeyPress="if(this.value.length==5) return false;"
-									/>
+						<div class="input-box">
+							<div class="form-floating theme-form-floating log-in-form mb-4">
+								<!--
+									A free-form token, not a fixed-length numeric code. The
+									canonical admin recovery credential is a long random single-use
+									token; a six-digit box here would invite someone to wire this
+									screen to an OTP challenge, which the owner lock forbids as a
+									login method.
+								-->
+								<input
+									type="text"
+									class="form-control"
+									id="token"
+									formControlName="token"
+									autocomplete="off"
+									spellcheck="false"
+									placeholder="{{ 'recovery_code' | transloco }}"
+								/>
+								<label for="token">{{ 'recovery_code' | transloco }}</label>
+								@if (form.controls['token'].touched && form.controls['token'].invalid) {
+								<div class="invalid-feedback d-block">
+									{{ 'invalid_or_expired_reset_link' | transloco }}
 								</div>
+								}
 							</div>
 						</div>
 						<app-button
 							[class]="'btn btn-theme w-100 justify-content-center'"
 							[id]="'otp_btn'"
 						>
-							{{ 'validate' | transloco }}
+							{{ 'continue' | transloco }}
 						</app-button>
+						<div class="mt-3">
+							<a
+								class="btn btn-link p-0"
+								[routerLink]="['/auth/login']"
+							>
+								{{ 'back_to_log_in' | transloco }}
+							</a>
+						</div>
 					</div>
 				</form>
 			</div>

@@ -1,55 +1,61 @@
 ---
 title: API Overview
-description: Current API application boundary, capability status, navigation, and future generated reference.
+description: What the API does, its modules, and where to find API documentation.
 status: scaffolded
 audience: [beginner, backend, frontend]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/api/src
     - packages/contracts/src
-    - project-context/angular-context/owner-decisions-log.md
+    - packages/adapters-db-mongo/src/repositories/auth.repository.ts
+    - packages/adapters-db-mongo/test/auth-persistence.test.ts
+    - docs/engineering-live-context/owner-decisions-log.mdx
 ---
 
 # API overview
 
-The API application has real NestJS modules, controllers, OpenAPI generation and adapter bindings. It is a scaffolded and partial implementation, not a finished production surface.
+The Saha Textile API is a NestJS application on Fastify. It serves the storefront and the admin application, owns authentication and validation, and is the only component that talks to the database and external providers.
 
-Start with the [Backend Platform Atlas](../backend/overview) when you need to understand how HTTP, application services, domain rules, ports, adapters, and persistence connect.
+Start with the [Backend platform atlas](../backend/overview) to see how HTTP, application services, domain rules, ports, adapters and persistence connect.
 
-## Current portal surfaces
+## API modules
 
-| Surface              | Purpose                                                | Status          | Evidence or trigger                                                                  |
-| -------------------- | ------------------------------------------------------ | --------------- | ------------------------------------------------------------------------------------ |
-| OpenAPI JSON         | Machine-readable API contract                          | **Implemented** | Generated in `apps/api/src/main.ts` at `/openapi.json`                               |
-| Transitional API UI  | Temporary framework-provided reference                 | **Deprecated**  | Existing `/docs` route; do not deepen it                                             |
-| Scalar API Reference | One readable reference and approved interactive client | **Deferred**    | Integrate at `/api/reference` after the portal consumes the real specification       |
-| Portal OpenAPI route | Stable machine-readable portal path                    | **Deferred**    | Publish or proxy safely at `/api/openapi.json`                                       |
-| Auth/session guide   | Human-authored security and lifecycle guide            | **Scaffolded**  | Auth controller, service, guards and infrastructure exist; full verification remains |
+| Module                   | Responsibility                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------ |
+| `health`                 | Liveness and readiness probes                                                        |
+| `auth`, `security`       | Storefront and admin sessions, signup, sign-in, recovery, CSRF tokens                |
+| `storefront`             | Customer self-service: profile, addresses, contact changes                           |
+| `admin`                  | Roles, operators, customers, notification settings, audit trail                      |
+| `catalog`                | Public catalogue reads, admin product forms, redirects, FAQ, questions, stock alerts |
+| `search`                 | Meilisearch adapter behind `SearchPort`                                              |
+| `media`                  | Media library, uploads, banners, YouTube, reviews                                    |
+| `cart`, `orders`         | Cart lifecycle and order creation                                                    |
+| `currency`, `promotions` | Currency conversion and coupon validation                                            |
+| `privacy`                | Consent records, export and erasure requests                                         |
+| `worker`                 | The background worker process, built from the same image                             |
 
-## Current module snapshot
+## Platform behaviour
 
-The application currently exposes health, authentication, catalogue, cart, orders, currency and promotion modules. Every module still needs to be evaluated against its roadmap definition of done before the overall API can be called implemented.
+Every request passes through the same controls: correlation ids, redacted logs, one safe error shape, client-IP rate limiting, strict CORS, cookie sessions and double-submit CSRF. See [Request lifecycle](../backend/request-lifecycle).
 
-## Interactive-request boundary
+## API documentation
 
-The future Scalar client may target approved development or staging servers only. It must preserve normal authentication, CSRF, authorization, rate limits and CORS. It must never embed credentials or turn the private documentation deployment into an unrestricted production console.
+| Surface                                                                      | Purpose                                                     |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| [Route inventory](./route-inventory)                                         | Every route with its access rule                            |
+| [OpenAPI and Scalar](./openapi-and-scalar)                                   | The machine-readable contract and the interactive reference |
+| [Security and identity](../backend/security-and-identity)                    | Sessions, CSRF, audiences, PIN and permissions              |
+| [Contracts and validation](../backend/contracts-and-validation)              | Request, domain, persistence and response shapes            |
+| [Readiness and verification](../backend/readiness-testing-and-observability) | Health probes and tests                                     |
 
-Every endpoint page or generated operation should identify authentication, authorization, validation failures, business-rule failures, rate limits, side effects, and related collections.
+## Reading the API reference correctly
 
-## API documentation map
+- An operation summary does not describe the full request and response schema.
+- A session guard does not prove ownership. Ownership is checked separately.
+- A route does not mean an Angular application uses it.
+- `/health/live` shows that the process is running. `/health/ready` shows that its dependencies are usable.
 
-- [Current route inventory](./route-inventory) — every controller path and its verified boundary.
-- [Request lifecycle](../backend/request-lifecycle) — how data and trust cross the stack.
-- [Contracts and validation](../backend/contracts-and-validation) — request/domain/persistence/response shapes.
-- [Security and identity](../backend/security-and-identity) — bearer scaffold versus locked cookie-session target.
-- [OpenAPI and Scalar](./openapi-and-scalar) — machine contract, completeness gate, publication and interaction policy.
-- [Readiness and verification](../backend/readiness-testing-and-observability) — tests, probes and operational proof.
+## Limitations
 
-## What not to infer
-
-- An `@ApiOperation` summary does not prove a complete request/response schema.
-- A JWT guard does not prove ownership authorization.
-- A controller route does not prove the Angular apps use it.
-- An adapter binding does not prove the dependency is ready.
-- A successful `/health` response does not prove MongoDB readiness.
-- An OpenAPI path does not make the transitional API UI the long-term portal.
+- The API has no payment, shipping or exchange-rate adapter.
+- The OpenAPI document does not include full schemas or per-operation security. See [OpenAPI and Scalar](./openapi-and-scalar#limitations).

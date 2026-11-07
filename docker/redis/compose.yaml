@@ -1,0 +1,35 @@
+# =============================================================================
+#  Local Redis 8.8.4 for modes 1 and 2 (dev hot reload, local prod build)
+# =============================================================================
+#  The BullMQ broker for media jobs — the same settings as the mode-3 stack and the
+#  droplet: never evict (`noeviction`), persist every second (AOF `everysec`).
+#  Loopback only and without a password, like local Mongo; deployed Redis lives on
+#  the private network with REDIS_PASSWORD injected at deploy time.
+#
+#    pnpm redis:up     start + wait healthy
+#    pnpm redis:down   stop (data volume kept)
+#
+#  Host port: 6379 (override with a gitignored docker/redis/.env REDIS_HOST_PORT=…
+#  and the same REDIS_PORT in apps/api/.env).
+# =============================================================================
+name: saha-textile-redis
+
+services:
+  redis:
+    image: redis:8.8.4-alpine
+    container_name: saha-textile-redis
+    command: ['redis-server', '--appendonly', 'yes', '--appendfsync', 'everysec', '--maxmemory-policy', 'noeviction']
+    ports:
+      - '127.0.0.1:${REDIS_HOST_PORT:-6379}:6379'
+    volumes:
+      - saha_textile_redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  saha_textile_redis_data:
+    name: saha_textile_redis_data

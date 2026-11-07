@@ -5,7 +5,7 @@ export interface IAttachmentModel extends IPaginateModel {
 }
 
 export interface IAttachment {
-	id: number;
+	id: number | string;
 	collection_name: string;
 	name: string;
 	file_name: string;
@@ -14,6 +14,8 @@ export interface IAttachment {
 	conversions_disk: string;
 	size: string;
 	original_url: string;
+	width?: number;
+	height?: number;
 	created_by_id: number;
 	created_at?: string;
 	updated_at?: string;

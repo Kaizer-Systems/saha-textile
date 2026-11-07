@@ -1,0 +1,51 @@
+<app-page-wrapper
+	[gridClass]="'col-xxl-8 col-xl-10 m-auto'"
+	[title]="'home_banners'"
+>
+	<h5 class="mb-3">{{ 'hero_layout' | transloco }}</h5>
+	<ul class="radio-type-sec mb-4">
+		@for (option of layouts; track option) {
+		<li>
+			<div class="selection-box">
+				<input
+					type="radio"
+					name="hero_layout"
+					[id]="'hero_layout_' + option"
+					[value]="option"
+					[checked]="layout() === option"
+					(change)="chooseLayout(option)"
+				/>
+				<label [for]="'hero_layout_' + option">
+					<div>
+						<img
+							[src]="'assets/images/theme-option/hero/' + option + '.svg'"
+							class="img-fluid"
+							[alt]="'hero_layout_' + option | transloco"
+						/>
+					</div>
+					<span>{{ 'hero_layout_' + option | transloco }}</span>
+				</label>
+			</div>
+		</li>
+		}
+	</ul>
+
+	@if (loaded()) { @for (slot of slots(); track slot + layout()) {
+	<h5 class="mt-4 mb-3">{{ 'hero_slot_' + slot | transloco }}</h5>
+	<app-banner-slot-form
+		[slot]="slot"
+		[existing]="block(slot)"
+		(saved)="reload()"
+	/>
+	}
+
+	<h5 class="mt-5 mb-3">{{ 'newsletter_popup_image' | transloco }}</h5>
+	<app-banner-slot-form
+		[ownerType]="'global'"
+		[position]="'newsletter_popup'"
+		[slot]="'main'"
+		[existing]="popupBlock()"
+		(saved)="reload()"
+	/>
+	}
+</app-page-wrapper>

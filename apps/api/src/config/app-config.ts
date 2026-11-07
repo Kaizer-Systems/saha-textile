@@ -1,54 +1,397 @@
 import { z } from 'zod';
 
+import { DEPLOY_ENVS, DeploymentConfigError, deploymentHardeningProblems } from './deployment-hardening';
+
+/**
+ * Parses 'true'/'false' env strings into a real boolean.
+ *
+ * `z.coerce.boolean()` cannot be used: it applies JavaScript truthiness, under which the
+ * string `'false'` is `true` — so an operator disabling a flag would silently enable it.
+ */
+const boolStringWithDefault = (fallback: 'true' | 'false') =>
+	z
+		.string()
+		.default(fallback)
+		.transform((v) => v === 'true' || v === '1');
+
+/** Opt-IN flag: absent means off. */
+const boolString = boolStringWithDefault('false');
+
+/** Opt-OUT flag: absent means on, so a forgotten variable fails closed rather than open. */
+const secureBoolString = boolStringWithDefault('true');
+
+/** An absolute URL. `URL.canParse` rather than a regex: the platform already owns this grammar. */
+const AbsoluteUrl = z
+	.string()
+	.min(1)
+	.refine((value) => URL.canParse(value), { message: 'must be an absolute URL' });
+
+/**
+ * DigitalOcean Spaces — the S3-compatible store behind `StoragePort` (owner lock, Media).
+ *
+ * Every credential field is optional so a developer or CI job with no Spaces access still
+ * boots; media routes then fail loudly at the point of use instead of taking the whole API
+ * down. What is NOT tolerated is a HALF-configured store: a bucket with no secret, or a
+ * secret with no bucket, is a typo, and letting it through would surface hours later as an
+ * opaque 403 from the object store that reads like a credentials problem. The refinement
+ * below turns that into a boot-time error that names the missing variables.
+ *
+ * `endpoint` is derived from `region` when unset. It carries the region but NOT the bucket
+ * — the SDK prepends the bucket for virtual-hosted addressing — whereas `SPACES_CDN_URL`
+ * DOES include the bucket, because the CDN is a different host. They are separate settings
+ * because they are genuinely different URLs, not two spellings of one.
+ */
+const SpacesConfigSchema = z
+	.object({
+		key: z.string().min(1).optional(),
+		secret: z.string().min(1).optional(),
+		bucket: z.string().min(1).optional(),
+		region: z.string().min(1).default('sgp1'),
+		endpoint: AbsoluteUrl.optional(),
+		cdnUrl: AbsoluteUrl.optional(),
+	})
+	.superRefine((spaces, ctx) => {
+		const required = [
+			['SPACES_KEY', spaces.key],
+			['SPACES_SECRET', spaces.secret],
+			['SPACES_BUCKET', spaces.bucket],
+		] as const;
+		const missing = required.filter(([, value]) => !value).map(([name]) => name);
+		if (missing.length > 0 && missing.length < required.length) {
+			ctx.addIssue({
+				code: 'custom',
+				message:
+					`Media storage is partially configured — missing ${missing.join(', ')}. ` +
+					'Set all of SPACES_KEY, SPACES_SECRET and SPACES_BUCKET, or none of them.',
+			});
+		}
+	})
+	.transform((spaces) => ({
+		...spaces,
+		endpoint: spaces.endpoint ?? `https://${spaces.region}.digitaloceanspaces.com`,
+		/** True only when the store is fully configured; the DI factory switches on this. */
+		configured: Boolean(spaces.key && spaces.secret && spaces.bucket),
+	}));
+
 /** Runtime configuration, validated once at boot from process.env. */
 const ConfigSchema = z.object({
 	nodeEnv: z.enum(['development', 'test', 'production']).default('development'),
+	/**
+	 * Where this process runs — `local`, `staging` or `production` (`DEPLOY_ENV`). Optional, and
+	 * its absence is NOT leniency: with `NODE_ENV=production` an unset value is treated as a
+	 * deployment, so the hardening rules in `deployment-hardening.ts` apply unless the operator
+	 * says `DEPLOY_ENV=local` (the mode-3 Docker stack does).
+	 */
+	deployEnv: z.enum(DEPLOY_ENVS).optional(),
 	port: z.coerce.number().int().positive().default(4000),
 	corsAllowedOrigins: z
 		.string()
-		.default('http://localhost:3000,http://localhost:3001')
+		.default('http://localhost:4200,http://localhost:4300,http://127.0.0.1:3457,http://localhost:3457')
 		.transform((s) =>
 			s
 				.split(',')
 				.map((o) => o.trim())
 				.filter(Boolean),
 		),
+	// Behind Cloudflare → Nginx in deploys: trust the proxy chain and read the
+	// real client IP from CLIENT_IP_HEADER (cf-connecting-ip) for rate-limit/audit.
+	trustProxy: boolString,
+	clientIpHeader: z.string().optional(),
+	/** Pino level for request/application logs. `silent` is used by tests. */
+	logLevel: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 	rateLimitMax: z.coerce.number().int().positive().default(100),
 	rateLimitWindow: z.string().default('1 minute'),
+	// Transitional bearer JWT until Chunk D moves auth to httpOnly cookie sessions.
 	jwt: z.object({
 		accessSecret: z.string().min(1),
 		refreshSecret: z.string().min(1),
 		accessTtl: z.string().default('15m'),
 		refreshTtl: z.string().default('30d'),
 	}),
-	otp: z.object({
-		ttlSeconds: z.coerce.number().int().positive().default(300),
-		emailFrom: z.string().default('no-reply@sahatextile.com'),
-		brevoApiKey: z.string().optional(),
+	// Cookie-session + double-submit CSRF placeholders; fully wired in Chunk D.
+	cookies: z.object({
+		domain: z.string().optional(),
+		accessName: z.string().default('st_access'),
+		refreshName: z.string().default('st_refresh'),
+		csrfName: z.string().default('st_csrf'),
+		guestName: z.string().default('st_guest'),
+		/**
+		 * Ties an in-progress signup to one browser before any account exists.
+		 *
+		 * Needed because the pending-signup record is the SERVER's memory of what has been
+		 * proven, and it has to be findable without a session — there is no customer to
+		 * authenticate yet. httpOnly like the rest: a script that could read it could resume
+		 * somebody else's half-finished signup.
+		 */
+		signupName: z.string().default('st_signup'),
+		csrfHeader: z.string().default('x-csrf-token'),
+		csrfSecret: z.string().optional(),
+		/**
+		 * Whether session cookies carry `Secure` (and so may use the `__Host-` prefix).
+		 *
+		 * **Defaults to `true`, and that default is the point.** This used to be derived from
+		 * `nodeEnv === 'production'`, which meant local development silently ran a second,
+		 * weaker cookie model — no `Secure`, no `__Host-` — that no developer and no test
+		 * ever exercised. Now local development serves TLS (`pnpm setup:local-https`) and
+		 * gets the production attributes, so the two agree by default and opting out is an
+		 * explicit, visible `COOKIE_SECURE=false`.
+		 *
+		 * It is deliberately NOT inferred from whether this process terminates TLS: in
+		 * production Nginx does that, and the API speaks plain HTTP behind it while the
+		 * browser is still on HTTPS. Only the browser-facing scheme matters here.
+		 */
+		secure: secureBoolString,
 	}),
+	/**
+	 * Optional TLS for the API's own listener — local development only.
+	 *
+	 * Absent in deploys, where Nginx terminates TLS. Both must be set or neither; a
+	 * half-configured pair is a configuration error rather than a silent downgrade.
+	 */
+	tls: z.object({
+		certFile: z.string().optional(),
+		keyFile: z.string().optional(),
+	}),
+	// MSG91 is the primary provider behind NotificationPort (SMS/WhatsApp/Email).
+	// `console` logs instead of sending (local/test). Email fallback adapters are
+	// optional and never primary.
+	notifications: z.object({
+		provider: z.enum(['console', 'msg91']).default('console'),
+		msg91AuthKey: z.string().optional(),
+		msg91SenderId: z.string().optional(),
+		msg91EmailFrom: z.string().default('no-reply@sahatextile.com'),
+		msg91EmailDomain: z.string().optional(),
+		msg91WhatsappNumber: z.string().optional(),
+		emailFallbackProvider: z.enum(['disabled', 'resend', 'ses', 'smtp']).default('disabled'),
+		resendApiKey: z.string().optional(),
+	}),
+	/**
+	 * Storefront social providers (`DEC-SIGNUP-VERIFICATION`).
+	 *
+	 * Every field optional, and that is deliberate: a provider is either fully configured or
+	 * unavailable. A half-configured one must never half-work — the verifiers throw
+	 * `OAuthProviderUnavailableError` rather than skipping a check they lack the material for.
+	 *
+	 * The client id and app id are PUBLIC and also reach the browser through `config.json`.
+	 * The secrets are API-only and must never appear in a bundle, a log or a response.
+	 * Admin has no social login and never will, so there is no admin equivalent here.
+	 */
+	oauth: z.object({
+		googleClientId: z.string().optional(),
+		googleClientSecret: z.string().optional(),
+		facebookAppId: z.string().optional(),
+		facebookAppSecret: z.string().optional(),
+	}),
+	otp: z.object({
+		ttlSeconds: z.coerce.number().int().positive().default(600),
+		maxAttempts: z.coerce.number().int().positive().default(5),
+		/**
+		 * A fixed six-digit code issued in place of a random one — local development ONLY.
+		 *
+		 * Exists because no notification provider is wired yet, so every flow that asks for a
+		 * code (signup, one-time-code login, step-up, contact change) would otherwise be
+		 * undrivable by a person at a browser. Only the GENERATION changes: the code is still
+		 * stored as an HMAC, still single-use, still attempt-capped and still expires, so every
+		 * rule around it runs exactly as it will in production.
+		 *
+		 * Refused at boot in production and whenever a real provider would deliver it — see
+		 * `RuntimeConfigSchema` below.
+		 */
+		localFixedCode: z
+			.string()
+			.regex(/^\d{6}$/, 'OTP_LOCAL_FIXED_CODE must be exactly six digits')
+			.optional(),
+	}),
+	/** Meilisearch. Unset leaves the index unreachable and search answers 503. */
+	search: z.object({
+		host: AbsoluteUrl.optional(),
+		apiKey: z.string().min(1).optional(),
+		/** Separate names keep test runs out of the working index on a shared server. */
+		index: z
+			.string()
+			.regex(/^[a-z0-9_-]+$/)
+			.default('products'),
+	}),
+	spaces: SpacesConfigSchema,
+	/**
+	 * Redis, used solely as the BullMQ broker for media derivative and transcode jobs.
+	 *
+	 * Not a cache and not a session store — sessions live in Mongo and are cookie-bound, so
+	 * nothing here is on the request path. Defaults point at a local instance because the
+	 * queue is infrastructure the API expects to find beside it, not an optional provider.
+	 */
+	redis: z.object({
+		host: z.string().min(1).default('127.0.0.1'),
+		port: z.coerce.number().int().positive().default(6379),
+		password: z.string().optional(),
+		db: z.coerce.number().int().nonnegative().default(0),
+	}),
+	/**
+	 * Media pipeline (owner log § Media). The worker runs the same image as the API with a
+	 * different command; these settings are read by both.
+	 *
+	 * - `workerConcurrency` stays at 2 on the shared droplet so an upload burst never starves
+	 *   the storefront's SSR.
+	 * - `gcLive` must be switched on explicitly: until it is, the daily GC runs as a dry run
+	 *   that only writes its audit record of what it WOULD delete.
+	 * - Cloudflare purge credentials are both-or-neither (a half pair is a typo); absent, purges
+	 *   are logged instead — the dev setting, since dev has no Cloudflare in front.
+	 * - Without a YouTube key the rail refresh is skipped and Validate answers "unavailable".
+	 */
+	/**
+	 * Locales this deployment serves (owner lock: en + fr during development; Bengali joins
+	 * once development is complete, as a data change). Gates banner and media alt-text
+	 * completeness and the storefront's locale-resolved responses.
+	 */
+	locales: z
+		.string()
+		.default('en,fr')
+		.transform((value) =>
+			value
+				.split(',')
+				.map((locale) => locale.trim())
+				.filter(Boolean),
+		)
+		.pipe(z.array(z.string().regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/)).min(1))
+		.refine((locales) => locales.includes('en'), { message: 'ACTIVE_LOCALES must include en' }),
+	media: z
+		.object({
+			workerConcurrency: z.coerce.number().int().min(1).max(8).default(2),
+			gcLive: boolString,
+			cloudflareZoneId: z.string().min(1).optional(),
+			cloudflarePurgeToken: z.string().min(1).optional(),
+			youtubeApiKey: z.string().min(1).optional(),
+		})
+		.superRefine((media, ctx) => {
+			if (!media.cloudflareZoneId !== !media.cloudflarePurgeToken) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'Set both CLOUDFLARE_ZONE_ID and CLOUDFLARE_PURGE_TOKEN, or neither.',
+					path: ['cloudflarePurgeToken'],
+				});
+			}
+		}),
+});
+
+/**
+ * Cross-field rules, applied after the shape is parsed.
+ *
+ * A predictable code is a skeleton key to every account it guards, so the escape hatch above
+ * fails CLOSED: a production process, or one that would hand the code to a real SMS or email
+ * provider, refuses to start rather than quietly accepting a value anyone could guess.
+ */
+const RuntimeConfigSchema = ConfigSchema.superRefine((config, ctx) => {
+	if (!config.otp.localFixedCode) return;
+	if (config.nodeEnv === 'production') {
+		ctx.addIssue({ code: 'custom', message: 'OTP_LOCAL_FIXED_CODE is refused when NODE_ENV=production.' });
+	}
+	if (config.notifications.provider !== 'console') {
+		ctx.addIssue({
+			code: 'custom',
+			message: 'OTP_LOCAL_FIXED_CODE is refused unless NOTIFICATION_PROVIDER=console.',
+		});
+	}
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
 
+/**
+ * Parses and validates the configuration, then applies the deployment hardening rules.
+ *
+ * Throws on the first failure of shape (zod) and otherwise reports every hardening problem at
+ * once (`DeploymentConfigError`). Both happen before anything connects or listens, so a strict
+ * deployment that is misconfigured never serves a request.
+ */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-	return ConfigSchema.parse({
+	const config = parseConfig(env);
+	const problems = deploymentHardeningProblems(config, env);
+	if (problems.length > 0) throw new DeploymentConfigError(problems);
+	return config;
+}
+
+function parseConfig(env: NodeJS.ProcessEnv): AppConfig {
+	return RuntimeConfigSchema.parse({
 		nodeEnv: env.NODE_ENV,
+		deployEnv: env.DEPLOY_ENV || undefined,
 		port: env.PORT,
 		corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS,
+		trustProxy: env.TRUST_PROXY,
+		clientIpHeader: env.CLIENT_IP_HEADER || undefined,
+		logLevel: env.LOG_LEVEL || undefined,
 		rateLimitMax: env.RATE_LIMIT_MAX,
 		rateLimitWindow: env.RATE_LIMIT_WINDOW,
 		jwt: {
-			accessSecret: env.JWT_ACCESS_SECRET ?? 'dev-access-secret-change-me',
-			refreshSecret: env.JWT_REFRESH_SECRET ?? 'dev-refresh-secret-change-me',
+			// Development fallbacks only. A strict deployment refuses to start without real values
+			// (`deployment-hardening.ts` reads the raw env, so these never satisfy it).
+			accessSecret: env.JWT_ACCESS_SECRET || 'dev-access-secret-change-me',
+			refreshSecret: env.JWT_REFRESH_SECRET || 'dev-refresh-secret-change-me',
 			accessTtl: env.JWT_ACCESS_TTL,
 			refreshTtl: env.JWT_REFRESH_TTL,
 		},
+		cookies: {
+			domain: env.COOKIE_DOMAIN || undefined,
+			accessName: env.ACCESS_COOKIE_NAME,
+			refreshName: env.REFRESH_COOKIE_NAME,
+			csrfName: env.CSRF_COOKIE_NAME,
+			guestName: env.GUEST_COOKIE_NAME,
+			signupName: env.SIGNUP_COOKIE_NAME,
+			csrfHeader: env.CSRF_HEADER_NAME,
+			csrfSecret: env.CSRF_SECRET || undefined,
+			secure: env.COOKIE_SECURE,
+		},
+		tls: {
+			certFile: env.TLS_CERT_FILE || undefined,
+			keyFile: env.TLS_KEY_FILE || undefined,
+		},
+		notifications: {
+			provider: env.NOTIFICATION_PROVIDER || undefined,
+			msg91AuthKey: env.MSG91_AUTH_KEY || undefined,
+			msg91SenderId: env.MSG91_SENDER_ID || undefined,
+			msg91EmailFrom: env.MSG91_EMAIL_FROM,
+			msg91EmailDomain: env.MSG91_EMAIL_DOMAIN || undefined,
+			msg91WhatsappNumber: env.MSG91_WHATSAPP_NUMBER || undefined,
+			emailFallbackProvider: env.EMAIL_FALLBACK_PROVIDER || undefined,
+			resendApiKey: env.RESEND_API_KEY || undefined,
+		},
+		oauth: {
+			googleClientId: env.GOOGLE_OAUTH_CLIENT_ID || undefined,
+			googleClientSecret: env.GOOGLE_OAUTH_CLIENT_SECRET || undefined,
+			facebookAppId: env.FACEBOOK_OAUTH_APP_ID || undefined,
+			facebookAppSecret: env.FACEBOOK_OAUTH_APP_SECRET || undefined,
+		},
 		otp: {
-			ttlSeconds: env.OTP_TTL_SECONDS,
-			emailFrom: env.OTP_EMAIL_FROM,
-			brevoApiKey: env.BREVO_API_KEY,
+			ttlSeconds: env.OTP_TTL_SECONDS || undefined,
+			maxAttempts: env.OTP_MAX_ATTEMPTS || undefined,
+			localFixedCode: env.OTP_LOCAL_FIXED_CODE || undefined,
+		},
+		search: {
+			host: env.MEILISEARCH_HOST || undefined,
+			apiKey: env.MEILISEARCH_API_KEY || undefined,
+			index: env.MEILISEARCH_INDEX || undefined,
+		},
+		spaces: {
+			key: env.SPACES_KEY || undefined,
+			secret: env.SPACES_SECRET || undefined,
+			bucket: env.SPACES_BUCKET || undefined,
+			region: env.SPACES_REGION || undefined,
+			endpoint: env.SPACES_ENDPOINT || undefined,
+			cdnUrl: env.SPACES_CDN_URL || undefined,
+		},
+		redis: {
+			host: env.REDIS_HOST || undefined,
+			port: env.REDIS_PORT || undefined,
+			password: env.REDIS_PASSWORD || undefined,
+			db: env.REDIS_DB || undefined,
+		},
+		locales: env.ACTIVE_LOCALES || undefined,
+		media: {
+			workerConcurrency: env.MEDIA_WORKER_CONCURRENCY || undefined,
+			gcLive: env.MEDIA_GC_LIVE || undefined,
+			cloudflareZoneId: env.CLOUDFLARE_ZONE_ID || undefined,
+			cloudflarePurgeToken: env.CLOUDFLARE_PURGE_TOKEN || undefined,
+			youtubeApiKey: env.YOUTUBE_API_KEY || undefined,
 		},
 	});
 }

@@ -26,11 +26,12 @@ export class CollectionPaginate {
 	private readonly productsQuery = injectCatalogQuery(() => this.filter());
 	product$: Observable<ICatalogResponse | undefined> = toObservable(computed(() => this.productsQuery.data()));
 
-	public totalItems: number = 0;
-
-	constructor() {
-		this.product$.subscribe((product) => (this.totalItems = product?.total ?? 0));
-	}
+	/**
+	 * Derived from the query signal. It used to be a plain field written inside a
+	 * `toObservable` subscription, which nothing marks dirty after hydration — the same
+	 * defect that once left the product page blank.
+	 */
+	public readonly totalItems = computed(() => this.productsQuery.data()?.total ?? 0);
 
 	setPaginate(page: number) {
 		void this.router

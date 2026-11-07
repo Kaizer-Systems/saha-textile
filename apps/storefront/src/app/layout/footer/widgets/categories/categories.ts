@@ -1,13 +1,9 @@
-import { Component, computed, input, SimpleChanges } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { Component, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { Observable } from 'rxjs';
-
-import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
-import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 
+/** The shop's top categories. They come from the catalogue, so a new one appears here by itself. */
 @Component({
 	selector: 'app-footer-categories',
 	templateUrl: './categories.html',
@@ -15,23 +11,7 @@ import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 	imports: [RouterLink],
 })
 export class FooterCategories {
-	readonly data = input<ISiteConfig | null>();
+	private readonly categoriesQuery = injectCategoriesQuery();
 
-	private readonly categoriesQuery = injectCategoriesQuery(() => ({ status: 1 }));
-	category$: Observable<ICategoryModel> = toObservable(
-		computed(() => this.categoriesQuery.data() ?? { data: [], total: 0 }),
-	);
-
-	public categories: ICategory[];
-
-	ngOnChanges(changes: SimpleChanges) {
-		const ids = changes['data']?.currentValue?.footer?.footer_categories;
-		if (Array.isArray(ids)) {
-			this.category$.subscribe((categories) => {
-				if (Array.isArray(categories.data)) {
-					this.categories = categories.data.filter((category) => ids?.includes(category.id));
-				}
-			});
-		}
-	}
+	readonly categories = computed(() => (this.categoriesQuery.data()?.data ?? []).filter((row) => !row.parent_id));
 }

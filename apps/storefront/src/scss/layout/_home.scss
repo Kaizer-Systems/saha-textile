@@ -463,21 +463,9 @@
 }
 
 .home-search {
-	background-image: linear-gradient(
-		to right top,
-		#0da487,
-		#06a188,
-		#019e88,
-		#009a89,
-		#009789,
-		#009489,
-		#009089,
-		#008d89,
-		#008a89,
-		#008688,
-		#008387,
-		#007f86
-	);
+	// Owner decision DEC-DENVER-HOME-GRADIENT (2026-11-03): a flat theme fill. The vendor's
+	// twelve-stop ramp was hard-coded to the default green and leaked under every other theme.
+	background-color: var(--theme-color);
 	padding-top: 0;
 
 	.home-search-content {

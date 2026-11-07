@@ -13,6 +13,7 @@
  *   - named_add_on    -> `addon_groups[]` (+ conditional `measurement_fields`)
  *   - bundle          -> `bundle` (composite/kit)
  */
+import type { IVariation } from './product.interface';
 
 /**
  * Single display-style vocabulary (key: `style`) for ALL option renderers —
@@ -22,14 +23,7 @@
  * Behaviour is a separate dimension (`semantic_role`), never encoded here.
  */
 export type DisplayStyle =
-	| 'color'
-	| 'image'
-	| 'rectangle'
-	| 'circle'
-	| 'radio'
-	| 'dropdown'
-	| 'image_tile'
-	| 'radio_bar';
+	'color' | 'image' | 'rectangle' | 'circle' | 'radio' | 'dropdown' | 'image_tile' | 'radio_bar';
 
 export type SemanticRole = 'variation_axis' | 'filter_only' | 'named_add_on' | 'bundle_component_option';
 
@@ -74,6 +68,7 @@ export interface IMeasurementField {
 	code: string;
 	label: string;
 	unit: string; // 'in' | 'cm'
+	step?: number;
 	min?: number;
 	max?: number;
 }
@@ -143,6 +138,7 @@ export interface IConfiguratorSummary {
 	hasVariation: boolean;
 	hasAddon: boolean;
 	hasBundle: boolean;
+	variation: IVariation | null; // the variant the shopper has picked, if any
 }
 
 /** A true bundle / composite / kit (KB `productBundles`). */
@@ -155,4 +151,10 @@ export interface IBundle {
 	option_groups: IBundleOptionGroup[];
 	measurement_fields?: IMeasurementField[];
 	note?: string;
+}
+
+/** A measurement template's size table. Numbers are in each field's own unit. */
+export interface ISizeGuide {
+	fields: { code: string; label: string; unit: 'in' | 'cm' }[];
+	rows: { size: string; values: Readonly<Record<string, number>> }[];
 }

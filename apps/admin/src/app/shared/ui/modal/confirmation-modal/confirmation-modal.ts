@@ -1,7 +1,7 @@
 import { Component, TemplateRef, inject, output, viewChild } from '@angular/core';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { ModalDismissReasons, NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 
 import { ITableClickedAction } from '@data-access/interfaces/table.interface';
 
@@ -57,7 +57,9 @@ export class ConfirmationModal {
 		}
 	}
 
-	confirm() {
+	confirm(modal: NgbModalRef) {
+		modal.close('confirm');
+		this.modalOpen = false;
 		this.confirmed.emit(this.userAction);
 	}
 

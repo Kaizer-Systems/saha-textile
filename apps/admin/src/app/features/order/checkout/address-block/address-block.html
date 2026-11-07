@@ -46,6 +46,16 @@
 						</li>
 						}
 					</ul>
+					@if (deletable()) {
+					<button
+						type="button"
+						class="btn btn-outline-primary btn-sm mt-2"
+						(click)="remove($event, address.id)"
+					>
+						<i class="ri-delete-bin-line"></i>
+						{{ 'delete' | transloco }}
+					</button>
+					}
 				</div>
 			</div>
 		</label>

@@ -1,0 +1,63 @@
+<ng-template
+	#idleLockModal
+	let-modal
+>
+	<div class="modal-header">
+		<h3
+			class="fw-semibold"
+			id="idle-lock-title"
+		>
+			{{ 'session_locked' | transloco }}
+		</h3>
+	</div>
+	<div class="modal-body">
+		<p class="text-content mb-3">{{ 'session_locked_message' | transloco }}</p>
+
+		@if (error()) {
+		<div class="invalid-feedback d-block mb-3">{{ error() | transloco }}</div>
+		} @if (usePin()) {
+		<app-pin-pad
+			[length]="pinLength"
+			[(value)]="pin"
+			(completed)="submitPin()"
+		/>
+		<div class="button-box mt-3">
+			<app-button
+				[id]="'idle_lock_pin_btn'"
+				[disabled]="busy() || pin().length !== pinLength"
+				(click)="submitPin()"
+			>
+				{{ 'continue' | transloco }}
+			</app-button>
+		</div>
+		} @else {
+		<form
+			class="theme-form theme-form-2"
+			[formGroup]="passwordForm"
+			(ngSubmit)="submitPassword()"
+		>
+			<app-form-fields
+				[label]="'password' | transloco"
+				[for]="'idle_password'"
+				[required]="true"
+			>
+				<input
+					class="form-control"
+					id="idle_password"
+					type="password"
+					formControlName="password"
+					placeholder="{{ 'enter_password' | transloco }}"
+				/>
+			</app-form-fields>
+			<div class="button-box">
+				<app-button
+					[id]="'idle_lock_password_btn'"
+					[disabled]="busy()"
+				>
+					{{ 'continue' | transloco }}
+				</app-button>
+			</div>
+		</form>
+		}
+	</div>
+</ng-template>

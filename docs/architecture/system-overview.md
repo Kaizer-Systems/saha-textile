@@ -1,36 +1,60 @@
 ---
 title: System Overview
+wide: true
 description: High-level architecture and dependency direction.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
     - AGENTS.md
-    - project-context/angular-context/saha-textile-technical-knowledgebase.md
+    - apps/api/.env.example
+    - apps/storefront/src/app/core/config/runtime-config.ts
+    - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
+    - docs/engineering-live-context/owner-decisions-log.mdx
 ---
+
+import { ArchitectureReactor } from '@site/src/components/ArchitectureReactor';
 
 # System overview
 
-Saha Textile is a boutique e-commerce platform split into deployable storefront, admin, API, and private developer-portal apps inside one pnpm/Turborepo monorepo.
+Saha Textile is an e-commerce platform for a Kolkata saree and textile retailer. It consists of a storefront, an admin application, an API with a background worker, and a private developer portal, all in one pnpm and Turborepo monorepo.
 
-The application follows a hexagonal architecture. Domain rules live in `packages/core-domain`; infrastructure lives in adapters; deployable apps compose ports to adapters at the edge.
+The platform follows a hexagonal architecture. Domain rules live in `packages/core-domain`. Infrastructure lives in adapters. Each deployable application connects ports to adapters at startup.
 
 ```mermaid
 flowchart LR
-    Storefront["Storefront app"] --> API["API app"]
-    Admin["Admin app"] --> API
-    API --> Core["core-domain ports and use cases"]
-    MongoAdapter["Mongo adapter"] --> Core
-    PaymentAdapter["Payment adapters"] --> Core
-    ShippingAdapter["Shipping adapter"] --> Core
-    SearchAdapter["Search adapter"] --> Core
-    StorageAdapter["Storage adapter"] --> Core
+    Storefront --> API
+    Admin --> API
+    API --> Core[Core domain]
+    Worker --> Core
+    Core --> Ports
+    Adapters -. implement .-> Ports
+    Adapters --> Mongo[(MongoDB)]
+    Adapters --> External[External services]
 ```
+
+The interactive diagram below shows the same architecture. Hover, tap or use the arrow keys to inspect a boundary.
+
+<ArchitectureReactor />
 
 ## Dependency rule
 
-Imports point inward. Core domain code does not import NestJS, Angular, MongoDB, payment SDKs, storage SDKs, or other adapters.
+Imports point inward. Core domain code does not import NestJS, Angular, MongoDB, payment SDKs, storage SDKs or other adapters. Core may reference shapes from `packages/contracts` through `import type`, which is erased at compile time. Value imports are forbidden.
 
 ## Swap test
 
-Replacing an edge concern should require a new adapter and DI binding, not edits across core use cases or UI packages.
+Replacing an edge concern requires a new adapter and a dependency-injection binding. It must not require edits to core use cases or UI packages.
+
+## Runtime configuration and secrets boundary
+
+Configuration is injected at runtime and is not compiled into builds.
+
+- The **API and worker** read secrets from their environment.
+- The **Angular applications** read a public `config.json` at startup. It holds non-secret values such as API and site URLs, locales and public client IDs.
+- The **local developer portal** reads one username and password from its gitignored `.env.local`. Only the portal server reads them, and child builds receive an environment without them.
+
+## Related pages
+
+- [Monorepo map](./monorepo-map)
+- [Backend platform atlas](/backend/overview)
+- [Deployment overview](/deployment/overview)

@@ -5,11 +5,10 @@ import { IFacetValue } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 
 /**
- * One facet section (e.g. Fabric) driven by the Nitro route's disjunctive facet
- * block. Renders each value + its live count and toggles it in the grouped
- * `attribute` query param — `fabric:Silk,Cotton|color:Red` — which `toCatalogParams`
- * expands back into per-facet route params. Server-side filtering: a tick just
- * changes the URL and re-queries; it never filters the on-hand cards.
+ * One facet section (e.g. Fabric) driven by the listing's disjunctive counts. Renders each
+ * value with its live count and toggles it in the grouped `attribute` query param,
+ * `fabric:silk,cotton|color:red`, which the API reads as is. A tick only changes the URL
+ * and re-queries; it never filters the cards on hand.
  */
 @Component({
 	selector: 'app-collection-attributes-filter',

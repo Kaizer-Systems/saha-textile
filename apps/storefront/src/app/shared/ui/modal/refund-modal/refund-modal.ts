@@ -2,9 +2,9 @@ import { isPlatformBrowser } from '@angular/common';
 import { Component, TemplateRef, PLATFORM_ID, inject, viewChild } from '@angular/core';
 import { FormControl, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { Select2Data, Select2Module } from 'ng-select2-component';
+import { Select2Data, Select2 } from 'ng-select2-component';
 
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
@@ -16,11 +16,12 @@ import { Button } from '../../button/button';
 	templateUrl: './refund-modal.html',
 	styleUrls: ['./refund-modal.scss'],
 	providers: [CurrencySymbolPipe],
-	imports: [Button, ReactiveFormsModule, FormsModule, Select2Module, TranslocoModule, CurrencySymbolPipe],
+	imports: [Button, ReactiveFormsModule, FormsModule, Select2, TranslocoModule, CurrencySymbolPipe],
 })
 export class RefundModal {
 	private modalService = inject(NgbModal);
 	private platformId = inject<Object>(PLATFORM_ID);
+	private transloco = inject(TranslocoService);
 
 	readonly RefundModal = viewChild<TemplateRef<string>>('refundModal');
 
@@ -32,11 +33,12 @@ export class RefundModal {
 
 	public option: Select2Data = [
 		{
-			label: 'Wallet',
+			// select2 renders labels as plain text, so they are resolved here.
+			label: this.transloco.translate('wallet'),
 			value: 'wallet',
 		},
 		{
-			label: 'Paypal',
+			label: this.transloco.translate('paypal'),
 			value: 'paypal',
 		},
 	];

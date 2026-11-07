@@ -38,9 +38,9 @@
 <section class="section-b-space">
 	<div class="container-fluid-lg">
 		<div [class]="gridClass">
-			@if (productService.skeletonLoader) { @for (item of skeletonItems; track item) {
+			@if (loading()) { @for (item of skeletonItems; track item) {
 			<app-skeleton-product-box />
-			} } @else { @for (product of products; track product) {
+			} } @else { @for (product of products(); track product) {
 			<div class="col">
 				<div class="search-product product-wrapper">
 					<div>
@@ -54,11 +54,11 @@
 			</div>
 			} }
 		</div>
-		@if (products && !products.length && !productService.skeletonLoader) {
+		@if (!products().length && !loading()) {
 		<app-no-data
 			[class]="'no-data-added collection-no-data'"
 			[image]="'assets/svg/no-product.svg'"
-			[text]="'no_products_found' | transloco"
+			[text]="(unavailable() ? 'search_unavailable' : 'no_products_found') | transloco"
 			[description]="'no_search_results_description' | transloco"
 		/>
 		}

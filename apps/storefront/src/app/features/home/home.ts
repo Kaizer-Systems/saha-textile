@@ -1,10 +1,16 @@
-import { isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, inject } from '@angular/core';
+import { afterNextRender, Component, computed, inject, signal } from '@angular/core';
 
+import { injectQuery } from '@tanstack/angular-query-experimental';
+import { TranslocoModule } from '@jsverse/transloco';
 import { CarouselModule } from 'ngx-owl-carousel-o';
+import { firstValueFrom } from 'rxjs';
 
-import { INewsLetter } from '@data-access/interfaces/theme.interface';
+import { IProduct } from '@data-access/interfaces/product.interface';
+import { ProductService } from '@data-access/services/product.service';
+import { readRecentViews } from '@core/catalog/recent-views';
+import { bannerSrc, injectBannersQuery, StorefrontBanners } from '@data-access/queries/banner.queries';
 import { Blog } from '@features/themes/widgets/blog/blog';
+import { HomeBanner } from '@features/themes/widgets/home-banner/home-banner';
 import { Newsletter } from '@features/themes/widgets/newsletter/newsletter';
 import { Product } from '@features/themes/widgets/product/product';
 import { blogSliderNav, heroBannerSlider, productSlider6ItemMarginNav } from '@shared/data/owl-carousel';
@@ -23,14 +29,39 @@ import { Title } from '@shared/ui/title/title';
  * hero and the newsletter as we go (import the widget here, drop its <app-…> tag into
  * home.html, feed it data).
  */
+/** Admin hero layouts → the theme hero branch that already renders that arrangement. */
+const HERO_LAYOUT_THEME: Record<StorefrontBanners['heroLayout'], string | null> = {
+	hero_full: null,
+	hero_main_side: 'berlin',
+	hero_main_stack: 'paris',
+	hero_center_sides: 'tokyo',
+};
+
 @Component({
 	selector: 'app-home',
 	templateUrl: './home.html',
 	styleUrls: ['./home.scss'],
-	imports: [CarouselModule, ImageLink, Title, Product, Blog, Newsletter],
+	imports: [CarouselModule, ImageLink, Title, Product, Blog, Newsletter, HomeBanner, TranslocoModule],
 })
 export class Home {
-	public isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+	constructor() {
+		afterNextRender(() => {
+			const slugs = readRecentViews(localStorage).map((row) => row.slug);
+			if (slugs.length === 0) return;
+			this.productsApi.cardsFor(slugs).subscribe((cards) => this.recentRail.set(cards));
+		});
+	}
+	private readonly productsApi = inject(ProductService);
+	private readonly homeQuery = injectQuery(() => ({
+		queryKey: ['catalog', 'home'],
+		queryFn: () => firstValueFrom(this.productsApi.home()),
+	}));
+	readonly railsLoading = computed(() => this.homeQuery.isPending());
+	readonly newArrivals = computed(() => this.homeQuery.data()?.newArrivals ?? []);
+	readonly bestsellers = computed(() => this.homeQuery.data()?.bestsellers ?? []);
+	readonly featuredRail = computed(() => this.homeQuery.data()?.featured ?? []);
+	readonly saleRail = computed(() => this.homeQuery.data()?.sale ?? []);
+	readonly recentRail = signal<IProduct[]>([]);
 
 	// Owl-carousel options for the hero (auto-advance + arrows + dots).
 	public heroSlider = heroBannerSlider;
@@ -56,18 +87,6 @@ export class Home {
 		product_ids: [934, 936, 922, 917, 923, 921, 926, 903],
 	};
 
-	// Two side-by-side promo banners (Denver's two_column_banners section).
-	public twoColumnBanners = {
-		banner_1: {
-			image_url: 'assets/images/data/themes/berlin/2.jpg',
-			redirect_link: { link: 'fashion', link_type: 'collection' },
-		},
-		banner_2: {
-			image_url: 'assets/images/data/themes/berlin/3.jpg',
-			redirect_link: { link: 'fashion', link_type: 'collection' },
-		},
-	};
-
 	// Featured blog rail ported from Osaka's home. The blog widget fetches blogs
 	// itself and filters to these ids.
 	public featuredBlogs = {
@@ -76,29 +95,38 @@ export class Home {
 		blog_ids: [24, 23, 22, 21, 20, 19],
 	};
 
-	// Hero slides — Denver full-width banner images (assets/images/data/themes/denver).
-	// Same shape as the theme JSON's banner slice: image_url + redirect_link. Add,
-	// remove or repoint these freely; the carousel adapts to the count.
-	public heroBanners = [
-		{
-			image_url: 'assets/images/data/themes/denver/1.jpg',
-			redirect_link: { link: 'fashion', link_type: 'collection' },
-		},
-		{
-			image_url: 'assets/images/data/themes/denver/2.jpg',
-			redirect_link: { link: 'fashion', link_type: 'collection' },
-		},
-		{
-			image_url: 'assets/images/data/themes/denver/3.jpg',
-			redirect_link: { link: 'fashion', link_type: 'collection' },
-		},
-	];
+	private readonly bannersQuery = injectBannersQuery(() => 'home');
 
-	// "Join our newsletter" section — same copy/image as Denver's news_letter block.
-	public newsletter: INewsLetter = {
-		title: 'Join Our Newsletter And Get...',
-		sub_title: '$20 discount for your first order',
-		image_url: 'assets/images/data/newsletter.jpg',
-		status: true,
-	};
+	/**
+	 * The admin's hero (owner log § Media → Banners). `hero_full` keeps this page's carousel;
+	 * the other layouts reuse the theme's own hero markup, rendered in our colours, through
+	 * `app-theme-home-banner`. With no live hero banners the page starts at its first product row.
+	 */
+	readonly heroTheme = computed(() => {
+		const data = this.bannersQuery.data();
+		if (!data || !data.banners.some((banner) => banner.position === 'hero')) return null;
+		return HERO_LAYOUT_THEME[data.heroLayout];
+	});
+
+	readonly heroThemeData = computed(() => {
+		const hero = (this.bannersQuery.data()?.banners ?? []).filter((banner) => banner.position === 'hero');
+		const slot = (...names: string[]) => {
+			const banner = hero.find((candidate) => names.includes(candidate.slot));
+			return banner ? { image_url: bannerSrc(banner.images.desktop), resolved: banner } : null;
+		};
+		return {
+			main_banner: slot('main'),
+			sub_banner_1: slot('side', 'side_top', 'left'),
+			sub_banner_2: slot('side_bottom', 'right'),
+		};
+	});
+
+	/** `hero_full` slides from the API, or null when none is live. */
+	readonly heroSlides = computed(() => {
+		const data = this.bannersQuery.data();
+		const main = (data?.banners ?? []).filter((banner) => banner.position === 'hero' && banner.slot === 'main');
+		if (data?.heroLayout !== 'hero_full' || main.length === 0) return null;
+		return main.map((banner) => ({ image_url: bannerSrc(banner.images.desktop), resolved: banner }));
+	});
+
 }

@@ -1,0 +1,142 @@
+{
+	"schemaVersion": 1,
+	"lastVerified": "2026-11-07",
+	"datasets": {
+		"missionControl": {
+			"file": "docs/_data/instruments/mission-control.json",
+			"instrument": "mission-control",
+			"page": "docs/mission-control.md"
+		},
+		"decisionGates": {
+			"file": "docs/_data/instruments/decision-gates.json",
+			"instrument": "decision-gates",
+			"page": "docs/decisions/gate-console.md"
+		},
+		"requestFlight": {
+			"file": "docs/_data/instruments/request-flight.json",
+			"instrument": "request-flight",
+			"page": "docs/backend/request-lifecycle.md"
+		},
+		"schemaNebula": {
+			"file": "docs/_data/instruments/schema-nebula.json",
+			"instrument": "schema-nebula",
+			"page": "docs/database/schema-nebula.md"
+		},
+		"commandVerbs": {
+			"file": "docs/_data/instruments/command-verbs.json",
+			"instrument": "command-verbs",
+			"page": "docs/frontend/portal-experience-layer.md"
+		},
+		"firstFlight": {
+			"file": "docs/_data/instruments/first-flight.json",
+			"instrument": "first-flight",
+			"page": "docs/getting-started/first-flight.mdx"
+		}
+	},
+	"instruments": [
+		{
+			"id": 1,
+			"key": "mission-control",
+			"catalogHeading": "Mission Control",
+			"wave": 1,
+			"waveLabel": "Mission Control",
+			"status": "built",
+			"route": "/mission-control",
+			"page": "docs/mission-control.md",
+			"component": "apps/developer-portal/src/components/MissionControl",
+			"dataset": "docs/_data/instruments/mission-control.json"
+		},
+		{
+			"id": 2,
+			"key": "request-flight",
+			"catalogHeading": "Request Flight Simulator",
+			"wave": 1,
+			"waveLabel": "Flight Simulator",
+			"status": "built",
+			"route": "/backend/request-lifecycle",
+			"page": "docs/backend/request-lifecycle.md",
+			"component": "apps/developer-portal/src/components/FlightSimulator",
+			"dataset": "docs/_data/instruments/request-flight.json"
+		},
+		{
+			"id": 3,
+			"key": "decision-gates",
+			"catalogHeading": "Decision Gate Console",
+			"wave": 1,
+			"waveLabel": "Gate Console",
+			"status": "built",
+			"route": "/decisions/gate-console",
+			"page": "docs/decisions/gate-console.md",
+			"component": "apps/developer-portal/src/components/GateConsole",
+			"dataset": "docs/_data/instruments/decision-gates.json"
+		},
+		{
+			"id": 4,
+			"key": "schema-nebula",
+			"catalogHeading": "Schema Nebula",
+			"wave": 2,
+			"waveLabel": "Schema Nebula",
+			"status": "built",
+			"route": "/database/schema-nebula",
+			"page": "docs/database/schema-nebula.md",
+			"component": "apps/developer-portal/src/components/SchemaNebula",
+			"dataset": "docs/_data/instruments/schema-nebula.json"
+		},
+		{
+			"id": 5,
+			"key": "first-flight",
+			"catalogHeading": "First Flight",
+			"wave": 2,
+			"waveLabel": "First Flight",
+			"status": "built",
+			"route": "/getting-started/first-flight",
+			"page": "docs/getting-started/first-flight.mdx",
+			"component": "apps/developer-portal/src/components/FirstFlight",
+			"dataset": "docs/_data/instruments/first-flight.json"
+		},
+		{
+			"id": 6,
+			"key": "journey-cinematics",
+			"catalogHeading": "Journey Cinematics",
+			"wave": 3,
+			"waveLabel": "Journey Cinematics",
+			"status": "locked"
+		},
+		{
+			"id": 7,
+			"key": "alt-lens",
+			"catalogHeading": "Alt-Lens Evidence HUD",
+			"wave": 3,
+			"waveLabel": "Alt-Lens HUD",
+			"status": "locked"
+		},
+		{
+			"id": 8,
+			"key": "command-verbs",
+			"catalogHeading": "⌘K Verbs",
+			"wave": 2,
+			"waveLabel": "⌘K Verbs",
+			"status": "built",
+			"route": "/frontend/portal-experience-layer",
+			"page": "docs/frontend/portal-experience-layer.md",
+			"component": "apps/developer-portal/src/components/PortalExperience",
+			"dataset": "docs/_data/instruments/command-verbs.json"
+		},
+		{
+			"id": 9,
+			"key": "systems-board",
+			"catalogHeading": "Systems Board",
+			"wave": 4,
+			"waveLabel": "Systems Board",
+			"status": "locked"
+		},
+		{
+			"id": 10,
+			"key": "transaction-theater",
+			"catalogHeading": "Transaction Theater",
+			"wave": 4,
+			"waveLabel": "Transaction Theater",
+			"status": "locked"
+		}
+	]
+}

@@ -1,15 +1,29 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 
+import { goLiveToast } from '@core/catalog/go-live-report';
 import { Params } from '@data-access/interfaces/core.interface';
-import { IProduct } from '@data-access/interfaces/product.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
-import { injectProductsQuery } from '@data-access/queries/product.queries';
+import { injectCatalogProductsQuery } from '@data-access/queries/product.queries';
+import { NotificationService } from '@data-access/services/notification.service';
+import { ProductService } from '@data-access/services/product.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { Table } from '@shared/ui/table/table';
+
+interface ProductTableRow {
+	id: string;
+	slug: string;
+	name: string;
+	sku: string;
+	sale_price: number;
+	product_thumbnail: { original_url: string } | null;
+	stock: string;
+	store_name: string;
+	status: number;
+}
 
 @Component({
 	selector: 'app-product',
@@ -19,11 +33,18 @@ import { Table } from '@shared/ui/table/table';
 })
 export class Product {
 	private router = inject(Router);
+	private products = inject(ProductService);
+	private notifier = inject(NotificationService);
+	private transloco = inject(TranslocoService);
 
 	private readonly params = signal<Params>({});
-	readonly productsQuery = injectProductsQuery(() => this.params());
+	readonly productsQuery = injectCatalogProductsQuery(() => ({
+		search: typeof this.params()['search'] === 'string' ? this.params()['search'] : undefined,
+		page: Number(this.params()['page']) || 1,
+		pageSize: Number(this.params()['paginate']) || 15,
+	}));
 
-	public tableConfig: ITableConfig = {
+	readonly tableConfig = signal<ITableConfig<ProductTableRow>>({
 		columns: [
 			{ title: 'No.', dataField: 'no', type: 'no' },
 			{
@@ -55,28 +76,38 @@ export class Product {
 				permission: 'product.edit',
 			},
 			{
+				label: 'Go Live',
+				actionToPerform: 'go_live',
+				icon: 'ri-rocket-line',
+				permission: 'product.edit',
+			},
+			{
 				label: 'Delete',
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
 				permission: 'product.destroy',
 			},
 		],
-		data: [] as IProduct[],
+		data: [],
 		total: 0,
-	};
+	});
 
 	constructor() {
 		effect(() => {
-			const product = this.productsQuery.data();
-			const products = product?.data?.filter((element: IProduct) => {
-				element.stock = element.stock_status
-					? `<div class="status-${element.stock_status}"><span>${element.stock_status.replace(/_/g, ' ')}</span></div>`
-					: '-';
-				element.store_name = element?.store ? element?.store?.store_name : '-';
-				return element;
-			});
-			this.tableConfig.data = product ? products : [];
-			this.tableConfig.total = product ? product.total : 0;
+			const page = this.productsQuery.data();
+			const stockStatus = (stock: number) => (stock > 0 ? 'in_stock' : 'out_of_stock');
+			const data = (page?.items ?? []).map((row): ProductTableRow => ({
+				id: row.id,
+				slug: row.slug,
+				name: row.title,
+				sku: row.sku,
+				sale_price: row.sellingFromINR,
+				product_thumbnail: row.thumbnailUrl ? { original_url: row.thumbnailUrl } : null,
+				stock: `<div class="status-${stockStatus(row.stock)}"><span>${stockStatus(row.stock).replace(/_/g, ' ')}</span></div>`,
+				store_name: '-',
+				status: row.status === 'live' ? 1 : 0,
+			}));
+			this.tableConfig.update((config) => ({ ...config, data, total: page?.total ?? 0 }));
 		});
 	}
 
@@ -86,6 +117,7 @@ export class Product {
 
 	onActionClicked(action: ITableClickedAction) {
 		if (action.actionToPerform == 'edit') this.edit(action.data);
+		else if (action.actionToPerform == 'go_live') this.goLive(action.data);
 		else if (action.actionToPerform == 'is_approved') this.approve(action.data);
 		else if (action.actionToPerform == 'status') this.status(action.data);
 		else if (action.actionToPerform == 'delete') this.delete(action.data);
@@ -93,19 +125,27 @@ export class Product {
 		else if (action.actionToPerform == 'duplicate') this.duplicate(action.data);
 	}
 
-	edit(data: IProduct) {
+	edit(data: ProductTableRow) {
 		void this.router.navigateByUrl(`/product/edit/${data.id}`);
 	}
 
-	approve(_data: IProduct) {
+	/** The same call and the same toast as the product form. */
+	goLive(data: ProductTableRow) {
+		this.products.goLive(data.id).subscribe((result) => {
+			goLiveToast(result, this.notifier, (key) => this.transloco.translate(key));
+			if (result.live) void this.productsQuery.refetch();
+		});
+	}
+
+	approve(_data: ProductTableRow) {
 		// Mock: approve toggle has no backend yet.
 	}
 
-	status(_data: IProduct) {
+	status(_data: ProductTableRow) {
 		// Mock: status toggle has no backend yet.
 	}
 
-	delete(_data: IProduct) {
+	delete(_data: ProductTableRow) {
 		// Mock: delete has no backend yet.
 	}
 

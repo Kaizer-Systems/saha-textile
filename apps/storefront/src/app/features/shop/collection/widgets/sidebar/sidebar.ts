@@ -12,7 +12,9 @@ import {
 	NgbCollapse,
 } from '@ng-bootstrap/ng-bootstrap';
 
+import { childCategories } from '@core/catalog/category-scope';
 import { Params } from '@data-access/interfaces/core.interface';
+import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { injectCatalogQuery } from '@data-access/queries/product.queries';
 import { AttributeService } from '@data-access/services/attribute.service';
 import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
@@ -48,6 +50,12 @@ import { SkeletonCollectionSidebar } from '../skeleton-collection-sidebar/skelet
 	],
 })
 export class CollectionSidebar {
+	private readonly categoriesQuery = injectCategoriesQuery();
+	/** A last-level category has nothing to narrow, so the Categories filter steps aside. */
+	readonly hasChildCategories = computed(
+		() => childCategories(this.categoriesQuery.data()?.data ?? [], this.filter()?.['path']).length > 0,
+	);
+
 	attributeService = inject(AttributeService);
 
 	// TODO: Skipped for migration because:
@@ -60,6 +68,7 @@ export class CollectionSidebar {
 	private readonly catalogQuery = injectCatalogQuery(() => this.filter());
 	readonly facets = computed(() => this.catalogQuery.data()?.facets ?? {});
 	readonly facetKeys = computed(() => Object.keys(this.facets()));
+	readonly facetLabels = computed(() => this.catalogQuery.data()?.facetLabels ?? {});
 
 	constructor() {
 		// Drive the sidebar skeleton off the catalog query's first load.

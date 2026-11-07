@@ -1,0 +1,15 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"rootDir": ".",
+		// Tests (not src) use Node builtins — the purity test shells out to `tsc` and reads
+		// the emitted files. Declared only here, so `src` stays free of Node globals.
+		"types": ["node"]
+	},
+	// The build config excludes `**/*.test.ts` so `build` emits src only, and `exclude`
+	// wins over `include`. Without this override no test file would ever be typechecked,
+	// which is exactly the defect found in core-domain and adapters-db-mongo on 2026-08-01.
+	"exclude": ["node_modules", "dist"],
+	"include": ["src/**/*.ts", "test/**/*.ts"]
+}

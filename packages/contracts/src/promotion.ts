@@ -40,3 +40,9 @@ export const Promotion = z.object({
 	conditions: PromotionConditions.default({ minCartINR: 0, firstOrderOnly: false }),
 });
 export type Promotion = z.infer<typeof Promotion>;
+
+/** Request shape for coupon validation. Previously declared inside the promotions controller. */
+export const ValidateCouponRequest = z.object({
+	couponCode: z.string().min(1),
+});
+export type ValidateCouponRequest = z.infer<typeof ValidateCouponRequest>;

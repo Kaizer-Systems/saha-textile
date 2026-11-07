@@ -1,6 +1,6 @@
-<app-breadcrumb [breadcrumb]="breadcrumb" />
+<app-breadcrumb [breadcrumb]="breadcrumb()" />
 
-@if (product) {
+@if (product(); as product) {
 <section
 	class="product-section"
 	[class.section-b-space]="!product.related_products?.length"
@@ -13,7 +13,10 @@
 					     server-rendered as a crawlable fallback. -->
 					<div class="col-xl-6">
 						@if (isBrowser) {
-						<app-product-gallery [product]="product" />
+						<app-product-gallery
+							[product]="product"
+							[variation]="selectedVariation()"
+						/>
 						} @else {
 						<div class="product-left-box">
 							<img
@@ -31,9 +34,13 @@
 								[product]="product"
 								[option]="siteConfig$ | async"
 								[owlCar]="owlCar()"
+								(variationChange)="selectedVariation.set($event)"
 							/>
 							<app-product-action [product]="product" />
-							<app-product-information [product]="product" />
+							<app-product-information
+								[product]="product"
+								[variation]="selectedVariation()"
+							/>
 							<app-product-delivery-information [product]="product" />
 							<app-payment-option
 								[product]="product"
@@ -65,14 +72,37 @@
 	</div>
 </section>
 
-<!-- You May Also Like — related-products rail as a nav-arrow owl carousel -->
+<!-- You May Also Like — saved related cards, loaded once the rail scrolls into view -->
+@if (alsoLike().length) {
 <section class="product-list-section section-b-space">
-	<app-you-may-also-like />
+	@defer (on viewport) {
+	<app-you-may-also-like [products]="alsoLike()" />
+	} @placeholder {
+	<div class="container-fluid-lg"></div>
+	}
 </section>
+}
 
 <!-- Conditional: blogs the admin linked to this / parent product -->
 <app-product-blogs [product]="product" />
 
 <!-- Sticky Cart Box -->
 <app-sticky-checkout [product]="product" />
+} @else if (loading()) {
+<!-- min-vh-100 holds the footer below the fold, so it does not jump when the product lands. -->
+<section
+	class="product-section min-vh-100"
+	aria-busy="true"
+>
+	<div class="container-fluid-lg">
+		<div class="row g-4">
+			<div class="col-xxl-9 col-xl-8 col-lg-7">
+				<app-skeleton-page />
+			</div>
+			<div class="col-xxl-3 col-xl-4 col-lg-5 d-none d-lg-block">
+				<app-skeleton-page />
+			</div>
+		</div>
+	</div>
+</section>
 }

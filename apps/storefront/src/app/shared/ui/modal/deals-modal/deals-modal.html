@@ -30,7 +30,7 @@
 					<li class="list-1">
 						<div class="deal-offer-contain">
 							<a
-								[routerLink]="['/en/product/', product?.slug]"
+								[routerLink]="['/product/', product?.slug]"
 								class="deal-image"
 								(click)="closeModal()"
 							>
@@ -42,15 +42,13 @@
 								/>
 							</a>
 							<a
-								[routerLink]="['/en/product/', product?.slug]"
+								[routerLink]="['/product/', product?.slug]"
 								class="deal-contain"
 							>
 								<h5 class="fw-semibold">{{ product?.name }}</h5>
 								<h6>
 									{{ product.sale_price | currencySymbol }} @if (product.discount) {
 									<del>{{ product.price | currencySymbol }}</del>
-									} @if (product.unit) {
-									<span>{{ product.unit }}</span>
 									}
 								</h6>
 							</a>

@@ -1,12 +1,9 @@
-import { Component, inject, input } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { Component, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { Observable } from 'rxjs';
+import { injectBrandQuery } from '@data-access/queries/brand.queries';
 
-import { SiteConfigStore } from '@core/state/site-config.store';
-import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
-
+/** The full logo on wide screens and the seal on small ones, chosen by the browser, so nothing flickers. */
 @Component({
 	selector: 'app-logo',
 	templateUrl: './logo.html',
@@ -14,12 +11,7 @@ import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 	imports: [RouterLink],
 })
 export class Logo {
-	readonly textClass = input<string>('text-white f-w-600');
-	readonly data = input<ISiteConfig | null>();
-	// TODO: Skipped for migration because:
-	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
-	//  and migrating would break narrowing currently.
-	readonly logo = input<string | null>();
+	private readonly brandQuery = injectBrandQuery();
 
-	siteConfig$: Observable<ISiteConfig> = toObservable(inject(SiteConfigStore).siteConfig) as Observable<ISiteConfig>;
+	readonly brand = computed(() => this.brandQuery.data());
 }

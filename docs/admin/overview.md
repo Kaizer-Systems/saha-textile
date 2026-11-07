@@ -1,27 +1,28 @@
 ---
 title: Admin Orientation
-description: Start here before changing the Angular administration application.
+wide: true
+description: What the admin application is, how it is organized, and what to check before changing it.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
     - apps/admin/src/app
-    - project-context/angular-context/owner-decisions-log.md
+    - apps/api/src/admin
+    - apps/api/src/first-admin.ts
+    - docs/engineering-live-context/owner-decisions-log.mdx
 ---
 
 # Admin orientation
 
-The admin application is the private operator workspace for catalogue, orders, customers, promotions, content, configuration, and reporting. It is an Angular 21 single-page application with a broad lazy-loaded feature tree.
+The admin application is the private workspace for operators. It covers catalogue, orders, customers, promotions, content, configuration and reporting. It is an Angular 22 single-page application with lazy-loaded feature routes.
 
-The routed UI surface is substantial, but most domain reads still come from static JSON and most writes remain explicit mock seams. Treat the admin as a mature UI scaffold awaiting contract-backed operations—not as an operational commerce back office.
+## Recommended reading sequence
 
-## Read this section in order
-
-1. [Application atlas](./application-atlas) — filter features by current implementation status.
-2. [Routing and shell](./routing-and-shell) — follow a URL through guards, layouts, and lazy feature routes.
-3. [State and data](./state-and-data) — understand query, store, interceptor, and fixture ownership.
-4. [Forms, tables, and CRUD](./forms-tables-and-crud) — use the established admin interaction patterns safely.
-5. [Contributor recipes](./contributor-recipes) — add a feature without bypassing architecture or honesty boundaries.
+1. [Application atlas](./application-atlas): filter features by status.
+2. [Routing and shell](./routing-and-shell): follow a URL through guards, layouts and feature routes.
+3. [State and data](./state-and-data): understand queries, stores, interceptors and data sources.
+4. [Forms, tables, and CRUD](./forms-tables-and-crud): use the established interaction patterns.
+5. [Contributor recipes](./contributor-recipes): add a feature step by step.
 
 ## Mental model
 
@@ -33,54 +34,62 @@ flowchart LR
     Shell --> Feature["Lazy feature route"]
     Feature --> Query["TanStack query"]
     Query --> Service["Typed service"]
-    Service --> Fixture["Current JSON fixture"]
-    Feature --> Mutation["Current write seam"]
-    Mutation --> Future["Future contract-backed API operation"]
+    Service --> Source{"Data source"}
+    Source --> API["Saha Textile API"]
+    Source --> JSON["Static JSON files in public/assets/data"]
 ```
 
-## Current implementation snapshot
+## Capabilities
 
-| Concern             | Current evidence                                                             | Status      | Important boundary                                                                        |
-| ------------------- | ---------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------- |
-| Route graph         | Authentication, two shells, fallback, and roughly 30 lazy feature families   | Implemented | A routed screen is not proof of a connected backend workflow.                             |
-| Admin shell         | Header, sidebar, footer, loader, and page wrapper exist                      | Implemented | Menu badges/account initialization still depend on transitional readers.                  |
-| Authentication      | Guard and SignalStore session seam exist                                     | Scaffolded  | A persisted demo token makes the shell accessible; real admin auth is not connected.      |
-| Server-state reads  | TanStack Query functions cover most feature lists/details                    | Scaffolded  | Services primarily request JSON fixtures.                                                 |
-| Cart/order creation | Classic NgRx cart and checkout composition exist                             | Scaffolded  | Order placement and authoritative totals are not connected.                               |
-| Forms               | Reactive forms exist for major catalogue/content/settings features           | Scaffolded  | Submission paths frequently stop at mock methods or navigation.                           |
-| Tables              | Shared search, pagination, selection, date, action, and permission UI exists | Scaffolded  | Backend filtering/bulk mutations are not generally operational.                           |
-| Authorization       | Permission-shaped UI directives and account permissions exist                | Scaffolded  | UI visibility is not a security boundary; API authorization must enforce every operation. |
+| Capability       | How it works                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| Route graph      | Authentication, two shells, a fallback and about 30 lazy feature families             |
+| Admin shell      | Header, sidebar, footer, loader and page wrapper                                      |
+| Authentication   | Cookie sessions, password and PIN sign-in, recovery, invites and the idle lock        |
+| Account Security | PIN, password and session management at `/account`                                    |
+| Authority        | Roles, operators and role assignments against the permission registry                 |
+| Customers        | List, create, edit, soft delete, recycle bin, restore and customer ledger             |
+| Catalogue        | Product form, old-address redirects, add-on templates, FAQ, and questions and answers |
+| Media            | Media library, home banners, review moderation and the YouTube field                  |
+| Notifications    | Channel switches, usage and templates                                                 |
+| Tables and forms | Shared search, pagination, selection, actions and permission-aware UI                 |
+
+Other feature routes render from JSON data. See [Data sources](./state-and-data#data-sources).
 
 ## Feature families
 
-The content shell lazy-loads dashboard, account, role, user, attribute, tag, blog, page, tax, store, category, shipping, media, coupon, product, currency, customer ledger, points, settings, order status, orders, theme options, reviews, FAQs, notifications, refunds, and questions/answers.
+The content shell lazy-loads: dashboard, account, role, admin user, customer, customer ledger, attribute, measurement, add-on template, tag, redirect, blog, page, tax, store, category, shipping, media, coupon, product, currency, points, settings, order status, orders, theme options, home banners, reviews, FAQ, notifications, refunds, and questions and answers.
 
-Several families also expose create/edit routes. Orders add details, create-order, and checkout routes; blog adds category and tag subflows.
+Most families have create and edit routes. Orders add details, create-order and checkout routes. Blog adds category and tag routes.
 
 ## Directory ownership
 
-| Directory                   | Owns                                                     | Should not own                 |
-| --------------------------- | -------------------------------------------------------- | ------------------------------ |
-| `routes/` and `*.routes.ts` | URL composition and lazy boundaries                      | Domain rules                   |
-| `layout/`                   | Admin chrome and page shells                             | Feature CRUD logic             |
-| `features/`                 | Operator workflows and feature presentation              | Hard-coded transport details   |
-| `data-access/queries/`      | Remote cache keys and read lifecycles                    | Form-local state               |
-| `data-access/services/`     | Typed transport methods                                  | Authorization policy           |
-| `core/state/`               | Session, account, menu, settings, loader, and cart state | Duplicate remote collections   |
-| `shared/ui/`                | Tables, fields, upload controls, modals, pagination      | Feature-specific orchestration |
-| `shared/directives/`        | Reusable presentation behavior                           | Backend access control         |
+| Directory                     | Owns                                                | Should not own               |
+| ----------------------------- | --------------------------------------------------- | ---------------------------- |
+| `routes/`, `*.routes.ts`      | URL composition and lazy boundaries                 | Domain rules                 |
+| `layout/`                     | Admin chrome and page shells                        | Feature CRUD logic           |
+| `features/`                   | Operator workflows and presentation                 | Hard-coded transport         |
+| `core/admin-*`, `core/media/` | Typed gateways to the API                           | Presentation                 |
+| `data-access/queries/`        | Remote cache keys and read lifecycles               | Form-local state             |
+| `data-access/services/`       | Typed transport methods                             | Authorization policy         |
+| `core/state/`                 | Session, menu, settings, loader and cart state      | Copies of remote collections |
+| `shared/ui/`                  | Tables, fields, upload controls, modals, pagination | Feature orchestration        |
+| `shared/directives/`          | Reusable presentation behaviour                     | Access control               |
 
 :::danger UI permissions are not authorization
-
-Hiding an action in a table or menu improves usability, but it does not secure the operation. The API must authenticate the actor and authorize the specific resource/action on every request.
-
+Hiding an action improves usability but does not secure it. The API authenticates the actor and authorizes the resource and action on every request.
 :::
 
 ## Before making an admin change
 
-- Identify the feature route and its owning shell.
+- Identify the feature route and its shell.
 - Trace every displayed record to its query and service.
-- Confirm whether the action is a real mutation or a mock seam.
-- Reuse shared table/form/upload primitives when they fit.
-- Do not preserve weak typing or placeholder behavior merely because it already exists.
-- Design API-backed writes around shared contracts, error recovery, and operator auditability.
+- Confirm whether the action is a real write or has no backend.
+- Reuse shared table, form and upload components.
+- Design writes around shared contracts, error recovery and auditability.
+
+## Limitations
+
+- Dashboard, orders, categories, attributes, tags, coupons, pages, blog, settings and other families read JSON data.
+- Many list actions and form submissions in those families have no backend.
+- The create-order flow uses a client cart and does not place an order.

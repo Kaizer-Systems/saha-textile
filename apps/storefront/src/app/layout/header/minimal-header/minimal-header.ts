@@ -28,7 +28,6 @@ export class MinimalHeader {
 	//  This input is used in a control flow expression (e.g. `@if` or `*ngIf`)
 	//  and migrating would break narrowing currently.
 	readonly data = input<ISiteConfig | null>();
-	readonly logo = input<string | null>();
 	readonly sticky = input<boolean | number>(); // Default false
 
 	public stick: boolean = false;

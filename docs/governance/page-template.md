@@ -3,7 +3,7 @@ title: Documentation Page Template
 description: Copyable template for new hand-written portal pages.
 status: implemented
 audience: [frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
     - docs/governance/contribution-standard.md
     - scripts/validate-developer-portal.mjs
@@ -11,7 +11,7 @@ source_of_truth:
 
 # Documentation page template
 
-Use this template for a new human-authored page. Remove irrelevant optional sections, but keep the required metadata and honesty boundaries.
+Use this template for a new hand-written page. Remove sections that do not apply, and keep the required metadata.
 
 ```md
 ---
@@ -22,12 +22,12 @@ audience: [frontend]
 last_verified: 'YYYY-MM-DD'
 source_of_truth:
     - path/to/primary-source.ts
-    - project-context/angular-context/relevant-decision.md
+    - docs/engineering-live-context/relevant-decision.md
 ---
 
 # Clear task-oriented title
 
-State the outcome, the current implementation boundary and the intended reader.
+State what the subject is and who the page is for.
 
 ## Before you begin
 
@@ -40,13 +40,12 @@ State the outcome, the current implementation boundary and the intended reader.
 
 Explain the flow from entry point to result. Add a Mermaid diagram when three or more components participate.
 
-## Implementation map
+## Reference
 
-| Concern             | Repository source   | Status      |
-| ------------------- | ------------------- | ----------- |
-| Entry point         | `path/to/file.ts`   | Implemented |
-| Contract            | `path/to/schema.ts` | Scaffolded  |
-| Generated reference | `/target/route`     | Deferred    |
+| Concern     | Repository source   |
+| ----------- | ------------------- |
+| Entry point | `path/to/file.ts`   |
+| Contract    | `path/to/schema.ts` |
 
 ## Procedure
 
@@ -54,18 +53,19 @@ Explain the flow from entry point to result. Add a Mermaid diagram when three or
 2. Show expected output.
 3. Explain how to recover from failure.
 
-## Verification
+## Limitations
 
-Record the command, runtime probe, test or source comparison used to verify the page.
+State each limitation once, as a plain fact.
 
-## Known gaps
+## Related pages
 
-List missing behaviour and the trigger that permits it to be implemented.
+Link to the pages a reader needs next.
 ```
 
 ## Template rules
 
-- Do not mark the page **Implemented** merely because the documentation exists.
+- Mark a page **Implemented** only when the described behaviour exists and is tested.
 - Do not describe a placeholder endpoint, collection or workflow as available.
-- Do not paste generated field or operation references that should come from automation.
+- Do not paste field or operation tables that a generated reference already provides.
 - Sanitise every example and keep credentials out of both prose and screenshots.
+- Keep `source_of_truth` as precise as the page allows. A declared directory means every change below it triggers a review.

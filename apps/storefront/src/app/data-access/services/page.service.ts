@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import { Observable } from 'rxjs';
+import { catchError, Observable, map } from 'rxjs';
 
 import { IFaqModel } from '@data-access/interfaces/page.interface';
 import { IStaticPage } from '@data-access/interfaces/static-page.interface';
@@ -17,12 +17,31 @@ export class PageService {
 	public skeletonLoader: boolean = false;
 
 	getFaqs(): Observable<IFaqModel> {
-		return this.http.get<IFaqModel>(`${environment.URL}/faq.json`);
+		return this.http
+			.get<Array<{ id: string; question: { en: string }; answer: { en: string } }>>(
+				`${environment.apiUrl}/catalog/faq`,
+			)
+			.pipe(
+				map((rows) => ({
+					data: rows.map((row, index) => ({
+						id: index + 1,
+						title: row.question.en,
+						description: row.answer.en,
+						created_by_id: '',
+						status: 'live',
+					})),
+					total: rows.length,
+				})),
+			);
 	}
 
 	// Static content pages (privacy policy, terms, etc.) — one JSON per slug
 	// under assets/data/pages/.
-	getPage(slug: string): Observable<IStaticPage> {
-		return this.http.get<IStaticPage>(`${environment.URL}/pages/${slug}.json`);
+	getPage(slug: string, locale = 'en'): Observable<IStaticPage> {
+		const english = this.http.get<IStaticPage>(`${environment.URL}/pages/${slug}.json`);
+		if (locale === 'en') return english;
+		return this.http
+			.get<IStaticPage>(`${environment.URL}/pages/${slug}.${locale}.json`)
+			.pipe(catchError(() => english));
 	}
 }

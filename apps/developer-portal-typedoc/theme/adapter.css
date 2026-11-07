@@ -1,0 +1,425 @@
+/* ============================================================================
+ * NEXT-GEN-UI · TypeDoc Type Lattice adapter
+ * What: responsive exported-symbol reference layout and child navigation skin.
+ * Why: TypeDoc owns source navigation but should remain visually continuous with
+ * the portal without importing Docusaurus layout selectors or duplicating tokens.
+ * How: compose the generated TypeDoc DOM with shared --portal-* variables.
+ * Tuning knobs: 220/flexible/250 desktop columns, 1120px/768px collapse points,
+ * 15px root scale, panel spacing and the toolbar gateway treatment.
+ * ========================================================================= */
+
+html,
+body {
+	min-height: 100%;
+	background: var(--portal-canvas);
+	color: var(--portal-ink);
+	font-family: var(--portal-font-sans);
+}
+
+html {
+	font-size: 15px;
+}
+
+body {
+	--color-background: var(--portal-canvas);
+	--color-background-secondary: var(--portal-surface);
+	--color-background-code: var(--portal-surface-raised);
+	--color-accent: var(--portal-accent);
+	--color-active-menu-item: var(--portal-accent-soft);
+	--color-text: var(--portal-ink);
+	--color-text-aside: var(--portal-muted);
+	--color-link: var(--portal-accent);
+	--color-ts-keyword: var(--portal-warning);
+	--color-ts-interface: var(--portal-success);
+	position: relative;
+	background:
+		radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--portal-accent) 11%, transparent), transparent 32%),
+		radial-gradient(circle at 16% 70%, color-mix(in srgb, var(--portal-success) 7%, transparent), transparent 28%),
+		var(--portal-canvas);
+	font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+	font-optical-sizing: auto;
+	line-height: 1.55;
+}
+
+body::before,
+body::after {
+	position: fixed;
+	z-index: 5;
+	inset: 0;
+	pointer-events: none;
+	content: '';
+}
+
+body::before {
+	background-image:
+		radial-gradient(circle at 12% 22%, var(--portal-accent) 0 1px, transparent 1.7px),
+		radial-gradient(circle at 72% 16%, var(--portal-success) 0 1px, transparent 1.7px),
+		radial-gradient(circle at 88% 68%, var(--portal-accent) 0 1px, transparent 1.7px);
+	background-size:
+		180px 160px,
+		250px 210px,
+		310px 260px;
+	opacity: 0.2;
+	animation: typedocStarDrift 24s linear infinite;
+}
+
+body::after {
+	background: repeating-linear-gradient(0deg, transparent 0 5px, rgb(255 255 255 / 1.1%) 6px);
+	mix-blend-mode: screen;
+}
+
+.container-main {
+	position: relative;
+	z-index: 6;
+	grid-template-areas: 'sidebar content toc';
+	grid-template-columns: minmax(190px, 220px) minmax(0, 1fr) minmax(210px, 250px);
+	gap: 24px;
+	width: min(1540px, calc(100% - 48px));
+	max-width: none;
+	margin: 28px auto 48px;
+	padding: 0;
+	align-items: start;
+}
+
+.tsd-page-toolbar .container,
+footer .container {
+	width: min(1540px, calc(100% - 48px));
+	max-width: none;
+	margin-inline: auto;
+	padding-inline: 0;
+}
+
+.col-content {
+	min-width: 0;
+	padding: 0;
+}
+
+.site-menu,
+.page-menu {
+	align-self: start;
+	height: fit-content;
+	max-height: calc(100vh - 104px);
+	overflow: auto;
+	padding: 14px;
+	border: var(--portal-border-width) solid var(--portal-border);
+	border-radius: var(--portal-radius-lg);
+	background: color-mix(in srgb, var(--portal-surface) 86%, transparent);
+	box-shadow:
+		0 18px 46px rgb(0 0 0 / 18%),
+		inset 0 1px 0 rgb(255 255 255 / 3%);
+	backdrop-filter: blur(16px);
+}
+
+.page-menu {
+	padding: 14px;
+}
+
+.tsd-page-toolbar {
+	z-index: 30;
+	border-bottom: var(--portal-border-width) solid color-mix(in srgb, var(--portal-accent) 28%, var(--portal-border));
+	background: color-mix(in srgb, var(--portal-canvas) 88%, transparent);
+	box-shadow: 0 16px 44px rgb(0 0 0 / 18%);
+	backdrop-filter: blur(18px) saturate(130%);
+}
+
+.tsd-page-toolbar .title {
+	color: var(--portal-ink);
+	font-size: 0.92rem;
+	font-weight: 760;
+	letter-spacing: -0.035em;
+}
+
+.tsd-page-toolbar .title::before {
+	display: inline-grid;
+	width: 24px;
+	height: 24px;
+	margin-right: 9px;
+	place-items: center;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 54%, var(--portal-border));
+	border-radius: var(--portal-radius);
+	box-shadow: 0 0 18px color-mix(in srgb, var(--portal-accent) 22%, transparent);
+	color: var(--portal-accent);
+	content: 'TS';
+	font: 700 0.62rem var(--portal-font-mono);
+	vertical-align: middle;
+}
+
+#tsd-toolbar-links {
+	display: flex;
+	align-items: center;
+	margin-left: auto;
+}
+
+.portal-typedoc-gateway {
+	display: inline-flex;
+	align-items: center;
+	min-height: 30px;
+	padding: 5px 10px;
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 42%, var(--portal-border));
+	border-radius: var(--portal-radius);
+	background: color-mix(in srgb, var(--portal-accent) 9%, transparent);
+	color: var(--portal-accent);
+	font: 700 0.68rem var(--portal-font-mono);
+	text-decoration: none;
+	white-space: nowrap;
+	transition:
+		border-color 160ms ease,
+		background 160ms ease,
+		box-shadow 160ms ease;
+}
+
+.portal-typedoc-gateway:hover {
+	border-color: var(--portal-accent);
+	background: var(--portal-accent-soft);
+	box-shadow: 0 0 22px color-mix(in srgb, var(--portal-accent) 18%, transparent);
+}
+
+.portal-typedoc-gateway__short {
+	display: none;
+}
+
+.tsd-panel,
+.col-content {
+	border-color: var(--portal-border);
+	background: transparent;
+}
+
+.tsd-page-title {
+	margin: 2px 0 14px;
+}
+
+.tsd-page-title h1 {
+	margin: 0;
+	font-size: clamp(1.55rem, 2.1vw, 1.9rem);
+	letter-spacing: -0.045em;
+	line-height: 1.15;
+}
+
+.tsd-panel {
+	margin: 0 0 24px;
+	padding: clamp(22px, 2.6vw, 34px);
+	border: var(--portal-border-width) solid var(--portal-border);
+	border-radius: var(--portal-radius-lg);
+	background: color-mix(in srgb, var(--portal-surface) 78%, transparent);
+	box-shadow:
+		0 20px 54px rgb(0 0 0 / 14%),
+		inset 0 1px 0 rgb(255 255 255 / 3%);
+	backdrop-filter: blur(14px);
+}
+
+.portal-typedoc-intro {
+	display: grid;
+	gap: 8px;
+	margin-bottom: 22px;
+	padding: clamp(18px, 2.3vw, 28px);
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 34%, var(--portal-border));
+	border-radius: var(--portal-radius-lg);
+	background:
+		linear-gradient(118deg, color-mix(in srgb, var(--portal-accent) 9%, transparent), transparent 64%),
+		color-mix(in srgb, var(--portal-surface) 82%, transparent);
+	box-shadow:
+		0 22px 58px rgb(0 0 0 / 16%),
+		inset 0 1px 0 rgb(255 255 255 / 4%);
+}
+
+.portal-typedoc-intro__eyebrow {
+	color: var(--portal-success);
+	font: 700 0.68rem var(--portal-font-mono);
+	letter-spacing: 0.13em;
+	text-transform: uppercase;
+}
+
+.portal-typedoc-intro strong {
+	font-size: clamp(1.05rem, 1.7vw, 1.32rem);
+	letter-spacing: -0.035em;
+}
+
+.portal-typedoc-intro p {
+	max-width: 72ch;
+	margin: 0;
+	color: var(--portal-muted);
+}
+
+.tsd-typography :where(p, li) {
+	font-size: 0.94rem;
+	line-height: 1.62;
+}
+
+.tsd-typography p {
+	margin-block: 0 0.9rem;
+}
+
+.tsd-typography ul,
+.tsd-typography ol {
+	margin-block: 0.35rem 1rem;
+	padding-left: 1.3rem;
+}
+
+.tsd-typography :where(h1, h2, h3, h4) {
+	margin-top: 1.35em;
+	margin-bottom: 0.55em;
+	letter-spacing: -0.035em;
+	line-height: 1.18;
+}
+
+.tsd-typography > :first-child {
+	margin-top: 0;
+}
+
+.tsd-navigation a {
+	padding-block: 5px;
+	border-radius: var(--portal-radius);
+	transition:
+		background 160ms ease,
+		color 160ms ease,
+		box-shadow 160ms ease,
+		transform 160ms ease;
+}
+
+.tsd-navigation a:hover,
+.tsd-navigation a.current {
+	background: var(--portal-accent-soft);
+	box-shadow: inset 2px 0 0 var(--portal-accent);
+	color: var(--portal-accent);
+	transform: translateX(2px);
+}
+
+.tsd-accordion-summary {
+	min-height: 32px;
+	border-radius: var(--portal-radius);
+	color: var(--portal-muted);
+}
+
+.tsd-accordion-summary:hover {
+	background: var(--portal-accent-soft);
+}
+
+.tsd-signature,
+pre,
+code {
+	border-radius: var(--portal-radius);
+	font-family: var(--portal-font-mono);
+}
+
+.tsd-signature,
+pre {
+	border: var(--portal-border-width) solid var(--portal-border);
+	background:
+		linear-gradient(90deg, color-mix(in srgb, var(--portal-accent) 6%, transparent), transparent 58%),
+		var(--portal-surface);
+}
+
+a {
+	color: var(--portal-accent);
+}
+
+#tsd-search {
+	border: 1px solid color-mix(in srgb, var(--portal-accent) 36%, var(--portal-border));
+	border-radius: var(--portal-radius-lg);
+	background: color-mix(in srgb, var(--portal-surface) 94%, transparent);
+	box-shadow: 0 28px 80px rgb(0 0 0 / 38%);
+	color: var(--portal-ink);
+	backdrop-filter: blur(22px);
+}
+
+#tsd-search-input,
+#tsd-theme {
+	border-color: var(--portal-border);
+	border-radius: var(--portal-radius);
+	background: var(--portal-canvas);
+	color: var(--portal-ink);
+	font-family: var(--portal-font-mono);
+}
+
+footer {
+	position: relative;
+	z-index: 6;
+	padding-block: 13px;
+	border-top-color: var(--portal-border);
+	background: color-mix(in srgb, var(--portal-canvas) 88%, transparent);
+	font-size: 0.84rem;
+}
+
+* {
+	scrollbar-color: var(--portal-scrollbar) transparent;
+}
+
+:where(a, button, input, select, summary):focus-visible {
+	box-shadow: var(--portal-focus);
+	outline: none;
+}
+
+@keyframes typedocStarDrift {
+	to {
+		background-position:
+			180px 160px,
+			-250px 210px,
+			310px -260px;
+	}
+}
+
+@media (max-width: 768px) {
+	html {
+		font-size: 14.5px;
+	}
+
+	.container-main {
+		display: block;
+		width: calc(100% - 24px);
+		margin: 18px auto 32px;
+	}
+
+	.tsd-page-toolbar .container,
+	footer .container {
+		width: calc(100% - 24px);
+	}
+
+	.site-menu,
+	.page-menu {
+		max-height: none;
+	}
+
+	.tsd-page-toolbar .title::before {
+		display: none;
+	}
+
+	.portal-typedoc-gateway__long {
+		display: none;
+	}
+
+	.portal-typedoc-gateway__short {
+		display: inline;
+	}
+
+	.tsd-panel {
+		padding: 20px;
+	}
+}
+
+@media (forced-colors: active) {
+	.portal-typedoc-gateway,
+	.portal-typedoc-intro {
+		border: 1px solid ButtonText;
+	}
+}
+
+@media (min-width: 769px) and (max-width: 1120px) {
+	.container-main {
+		grid-template-areas: 'sidebar content';
+		grid-template-columns: minmax(180px, 210px) minmax(0, 1fr);
+	}
+
+	.page-menu {
+		display: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body::before {
+		animation: none;
+	}
+
+	.tsd-navigation a {
+		transition: none;
+	}
+}

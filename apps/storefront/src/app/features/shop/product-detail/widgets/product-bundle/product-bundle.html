@@ -10,7 +10,7 @@
 				<li>
 					<div class="product-box product-box-bg wow fadeInUp">
 						<div class="product-image">
-							<a [routerLink]="['/en/product/', crossSellproduct.slug]">
+							<a [routerLink]="['/product/', crossSellproduct.slug]">
 								<img
 									[src]="crossSellproduct.product_thumbnail ?
                                         crossSellproduct.product_thumbnail.original_url :
@@ -21,7 +21,7 @@
 							</a>
 						</div>
 						<div class="product-detail">
-							<a [routerLink]="['/en/product/', crossSellproduct.slug]">
+							<a [routerLink]="['/product/', crossSellproduct.slug]">
 								<h6 class="name">{{ crossSellproduct.name }}</h6>
 							</a>
 							<h5 class="sold text-content">

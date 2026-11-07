@@ -8,38 +8,48 @@
 <!-- Denver's single ratio_30 hero, reworked into an infinite auto-carousel with
      arrows + dots. ratio_30 stays on an ANCESTOR of the carousel so its .bg-size:before
      rule keeps the exact Denver height (30% of width) on every slide. -->
+@if (heroTheme(); as theme) {
+<section class="home-section pt-2">
+	<app-theme-home-banner
+		[theme]="theme"
+		[data]="heroThemeData()"
+	/>
+</section>
+} @else if (heroSlides(); as slides) {
 <section class="home-section-2 home-section-bg pt-md-0 overflow-hidden pt-2">
 	<div class="home-slider-carousel container-fluid ratio_30 p-0">
 		<div class="row">
 			<div class="col-12">
-				@if (isBrowser) {
 				<owl-carousel-o [options]="heroSlider">
-					@for (banner of heroBanners; track banner.image_url) {
+					@for (banner of slides; track banner.image_url; let first = $first) {
 					<ng-template carouselSlide>
 						<app-image-link
 							[image]="banner"
 							[bgImage]="true"
+							[priority]="first"
 							[class]="'home-contain rounded-0 p-0'"
 						/>
 					</ng-template>
 					}
 				</owl-carousel-o>
-				}
 			</div>
 		</div>
 	</div>
 </section>
+}
 
-<!-- ===== Top Selling Items (Denver products_list_1) — carousel w/ side arrows ===== -->
+<!-- ===== New Arrivals — first product row. One image is high priority. ===== -->
 <section class="product-section product-section-3">
 	<div class="container-fluid-lg">
 		<div>
 			<app-title
-				[title]="topSellingItems.title"
+				[title]="'new_arrivals' | transloco"
 				[style]="'simple'"
 			/>
 			<app-theme-product
-				[productIds]="topSellingItems.product_ids"
+				[supplied]="newArrivals()"
+				[loading]="railsLoading()"
+				[fold]="'first'"
 				[style]="'horizontal'"
 				[slider]="true"
 				[sliderOption]="productSlider"
@@ -49,37 +59,17 @@
 		</div>
 	</div>
 </section>
-
-<!-- ===== Two side-by-side promo banners (Denver two_column_banners) ===== -->
-<section>
-	<div class="container-fluid-lg">
-		<div class="row g-4">
-			<div class="col-xxl-8 col-xl-12 col-md-7">
-				<app-image-link
-					[image]="twoColumnBanners.banner_1"
-					[bgImage]="false"
-				/>
-			</div>
-			<div class="col-xxl-4 col-xl-12 col-md-5">
-				<app-image-link
-					[image]="twoColumnBanners.banner_2"
-					[bgImage]="false"
-				/>
-			</div>
-		</div>
-	</div>
-</section>
-
-<!-- ===== Trendy Fashion Finds (Denver products_list_2) — carousel w/ side arrows ===== -->
+@if (recentRail().length) {
 <section class="product-section product-section-3">
 	<div class="container-fluid-lg">
 		<div>
 			<app-title
-				[title]="trendyFashionFinds.title"
+				[title]="'recently_viewed' | transloco"
 				[style]="'simple'"
 			/>
 			<app-theme-product
-				[productIds]="trendyFashionFinds.product_ids"
+				[supplied]="recentRail()"
+				[fold]="'below'"
 				[style]="'horizontal'"
 				[slider]="true"
 				[sliderOption]="productSlider"
@@ -89,17 +79,59 @@
 		</div>
 	</div>
 </section>
+}
 
-<!-- ===== Chic Style Selection (Denver products_list_3) — carousel w/ side arrows ===== -->
 <section class="product-section product-section-3">
 	<div class="container-fluid-lg">
 		<div>
 			<app-title
-				[title]="chicStyleSelection.title"
+				[title]="'bestsellers' | transloco"
 				[style]="'simple'"
 			/>
 			<app-theme-product
-				[productIds]="chicStyleSelection.product_ids"
+				[supplied]="bestsellers()"
+				[loading]="railsLoading()"
+				[fold]="'below'"
+				[style]="'horizontal'"
+				[slider]="true"
+				[sliderOption]="productSlider"
+				[productStyle]="'product-solid'"
+				[boxClass]="'product-box-bg'"
+			/>
+		</div>
+	</div>
+</section>
+<section class="product-section product-section-3">
+	<div class="container-fluid-lg">
+		<div>
+			<app-title
+				[title]="'featured_products' | transloco"
+				[style]="'simple'"
+			/>
+			<app-theme-product
+				[supplied]="featuredRail()"
+				[loading]="railsLoading()"
+				[fold]="'below'"
+				[style]="'horizontal'"
+				[slider]="true"
+				[sliderOption]="productSlider"
+				[productStyle]="'product-solid'"
+				[boxClass]="'product-box-bg'"
+			/>
+		</div>
+	</div>
+</section>
+<section class="product-section product-section-3">
+	<div class="container-fluid-lg">
+		<div>
+			<app-title
+				[title]="'on_sale' | transloco"
+				[style]="'simple'"
+			/>
+			<app-theme-product
+				[supplied]="saleRail()"
+				[loading]="railsLoading()"
+				[fold]="'below'"
 				[style]="'horizontal'"
 				[slider]="true"
 				[sliderOption]="productSlider"
@@ -124,9 +156,14 @@
 	</div>
 </section>
 
-<!-- ===== Join Our Newsletter (same as Denver) ===== -->
-@if (newsletter.status) {
+<!-- ===== Join Our Newsletter ===== -->
 <section class="newsletter-section section-b-space">
-	<app-newsletter [data]="newsletter" />
+	<app-newsletter
+		[data]="{
+			title: 'newsletter_section_title' | transloco,
+			sub_title: 'newsletter_section_subtitle' | transloco,
+			image_url: 'assets/images/data/newsletter.jpg',
+			status: true,
+		}"
+	/>
 </section>
-}

@@ -65,7 +65,7 @@
 				"created_by_id": "1",
 				"created_at": "2023-08-24T12:31:12.000000Z",
 				"updated_at": "2023-08-24T12:31:12.000000Z",
-				"original_url": "assets/images/data/product.png"
+				"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-card-400w-42dcbf6b.webp"
 			},
 			"product_galleries": [
 				{
@@ -80,7 +80,7 @@
 					"created_by_id": "1",
 					"created_at": "2023-08-24T12:31:12.000000Z",
 					"updated_at": "2023-08-24T12:31:12.000000Z",
-					"original_url": "assets/images/data/product.png"
+					"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-card-400w-42dcbf6b.webp"
 				},
 				{
 					"id": 67,
@@ -94,7 +94,7 @@
 					"created_by_id": "1",
 					"created_at": "2023-08-24T12:31:12.000000Z",
 					"updated_at": "2023-08-24T12:31:12.000000Z",
-					"original_url": "assets/images/data/product.png"
+					"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-card-400w-a4f1fd70.webp"
 				},
 				{
 					"id": 68,
@@ -108,7 +108,7 @@
 					"created_by_id": "1",
 					"created_at": "2023-08-24T12:31:12.000000Z",
 					"updated_at": "2023-08-24T12:31:12.000000Z",
-					"original_url": "assets/images/data/product.png"
+					"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-card-400w-367be993.webp"
 				}
 			],
 			"product_meta_image": {
@@ -161,22 +161,10 @@
 							"system_reserve": "1",
 							"created_at": "2023-08-24T08:16:03.000000Z",
 							"updated_at": "2023-08-24T08:16:03.000000Z",
-							"pivot": {
-								"model_id": "21",
-								"role_id": "2",
-								"model_type": "App\\Models\\User"
-							}
+							"pivot": { "model_id": "21", "role_id": "2", "model_type": "App\\Models\\User" }
 						},
-						"point": {
-							"id": 5,
-							"consumer_id": 21,
-							"balance": 153.43
-						},
-						"wallet": {
-							"id": 3,
-							"consumer_id": 21,
-							"balance": 0
-						},
+						"point": { "id": 5, "consumer_id": 21, "balance": 153.43 },
+						"wallet": { "id": 3, "consumer_id": 21, "balance": 0 },
 						"address": [
 							{
 								"id": 6,
@@ -190,10 +178,7 @@
 								"phone": 4088023009,
 								"country_id": 840,
 								"state_id": 3757,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3757,
 									"name": "California",
@@ -214,10 +199,7 @@
 								"phone": 4088023009,
 								"country_id": 840,
 								"state_id": 3757,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3757,
 									"name": "California",
@@ -279,22 +261,10 @@
 							"system_reserve": "1",
 							"created_at": "2023-08-24T08:16:03.000000Z",
 							"updated_at": "2023-08-24T08:16:03.000000Z",
-							"pivot": {
-								"model_id": "20",
-								"role_id": "2",
-								"model_type": "App\\Models\\User"
-							}
+							"pivot": { "model_id": "20", "role_id": "2", "model_type": "App\\Models\\User" }
 						},
-						"point": {
-							"id": 4,
-							"consumer_id": 20,
-							"balance": 111.58
-						},
-						"wallet": {
-							"id": 2,
-							"consumer_id": 20,
-							"balance": 0
-						},
+						"point": { "id": 4, "consumer_id": 20, "balance": 111.58 },
+						"wallet": { "id": 2, "consumer_id": 20, "balance": 0 },
 						"address": [
 							{
 								"id": 8,
@@ -308,10 +278,7 @@
 								"phone": 4197792517,
 								"country_id": 840,
 								"state_id": 3790,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3790,
 									"name": "Ohio",
@@ -413,11 +380,7 @@
 						"system_reserve": "1",
 						"created_at": "2023-08-24T08:16:03.000000Z",
 						"updated_at": "2023-08-24T08:16:03.000000Z",
-						"pivot": {
-							"model_id": "5",
-							"role_id": "3",
-							"model_type": "App\\Models\\User"
-						}
+						"pivot": { "model_id": "5", "role_id": "3", "model_type": "App\\Models\\User" }
 					},
 					"point": null,
 					"wallet": null,
@@ -480,10 +443,7 @@
 					"deleted_at": null,
 					"blogs_count": 0,
 					"products_count": 21,
-					"pivot": {
-						"product_id": "12",
-						"category_id": "1"
-					},
+					"pivot": { "product_id": "12", "category_id": "1" },
 					"category_image": {
 						"id": 395,
 						"collection_name": "attachment",
@@ -528,10 +488,7 @@
 					"deleted_at": null,
 					"blogs_count": 0,
 					"products_count": 21,
-					"pivot": {
-						"product_id": "12",
-						"tag_id": "1"
-					}
+					"pivot": { "product_id": "12", "tag_id": "1" }
 				}
 			],
 			"attributes": [
@@ -545,10 +502,7 @@
 					"created_at": "2023-08-24T11:43:50.000000Z",
 					"updated_at": "2023-08-24T13:03:54.000000Z",
 					"deleted_at": null,
-					"pivot": {
-						"product_id": "12",
-						"attribute_id": "1"
-					},
+					"pivot": { "product_id": "12", "attribute_id": "1" },
 					"attribute_values": [
 						{
 							"id": 1,
@@ -615,7 +569,7 @@
 						"created_by_id": "1",
 						"created_at": "2023-08-24T12:31:12.000000Z",
 						"updated_at": "2023-08-24T12:31:12.000000Z",
-						"original_url": "assets/images/data/product.png"
+						"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-card-400w-42dcbf6b.webp"
 					},
 					"attribute_values": [
 						{
@@ -628,10 +582,7 @@
 							"created_at": "2023-08-24T11:43:50.000000Z",
 							"updated_at": "2023-08-24T11:43:50.000000Z",
 							"deleted_at": null,
-							"pivot": {
-								"variation_id": "4",
-								"attribute_value_id": "1"
-							}
+							"pivot": { "variation_id": "4", "attribute_value_id": "1" }
 						}
 					]
 				},
@@ -663,7 +614,7 @@
 						"created_by_id": "1",
 						"created_at": "2023-08-24T12:31:12.000000Z",
 						"updated_at": "2023-08-24T12:31:12.000000Z",
-						"original_url": "assets/images/data/product.png"
+						"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-card-400w-42dcbf6b.webp"
 					},
 					"attribute_values": [
 						{
@@ -676,10 +627,7 @@
 							"created_at": "2023-08-24T11:43:50.000000Z",
 							"updated_at": "2023-08-24T11:43:50.000000Z",
 							"deleted_at": null,
-							"pivot": {
-								"variation_id": "5",
-								"attribute_value_id": "3"
-							}
+							"pivot": { "variation_id": "5", "attribute_value_id": "3" }
 						}
 					]
 				}
@@ -750,7 +698,7 @@
 				"created_by_id": "1",
 				"created_at": "2023-08-24T12:51:03.000000Z",
 				"updated_at": "2023-08-24T12:51:03.000000Z",
-				"original_url": "assets/images/data/product.png"
+				"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-card-400w-a4f1fd70.webp"
 			},
 			"product_galleries": [
 				{
@@ -765,7 +713,7 @@
 					"created_by_id": "1",
 					"created_at": "2023-08-24T12:51:03.000000Z",
 					"updated_at": "2023-08-24T12:51:03.000000Z",
-					"original_url": "assets/images/data/product.png"
+					"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-card-400w-a4f1fd70.webp"
 				},
 				{
 					"id": 81,
@@ -779,7 +727,7 @@
 					"created_by_id": "1",
 					"created_at": "2023-08-24T12:51:03.000000Z",
 					"updated_at": "2023-08-24T12:51:03.000000Z",
-					"original_url": "assets/images/data/product.png"
+					"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-card-400w-367be993.webp"
 				},
 				{
 					"id": 82,
@@ -793,7 +741,7 @@
 					"created_by_id": "1",
 					"created_at": "2023-08-24T12:51:03.000000Z",
 					"updated_at": "2023-08-24T12:51:03.000000Z",
-					"original_url": "assets/images/data/product.png"
+					"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-card-400w-42dcbf6b.webp"
 				},
 				{
 					"id": 83,
@@ -807,7 +755,7 @@
 					"created_by_id": "1",
 					"created_at": "2023-08-24T12:51:03.000000Z",
 					"updated_at": "2023-08-24T12:51:03.000000Z",
-					"original_url": "assets/images/data/product.png"
+					"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-card-400w-a4f1fd70.webp"
 				}
 			],
 			"product_meta_image": {
@@ -860,22 +808,10 @@
 							"system_reserve": "1",
 							"created_at": "2023-08-24T08:16:03.000000Z",
 							"updated_at": "2023-08-24T08:16:03.000000Z",
-							"pivot": {
-								"model_id": "21",
-								"role_id": "2",
-								"model_type": "App\\Models\\User"
-							}
+							"pivot": { "model_id": "21", "role_id": "2", "model_type": "App\\Models\\User" }
 						},
-						"point": {
-							"id": 5,
-							"consumer_id": 21,
-							"balance": 153.43
-						},
-						"wallet": {
-							"id": 3,
-							"consumer_id": 21,
-							"balance": 0
-						},
+						"point": { "id": 5, "consumer_id": 21, "balance": 153.43 },
+						"wallet": { "id": 3, "consumer_id": 21, "balance": 0 },
 						"address": [
 							{
 								"id": 6,
@@ -889,10 +825,7 @@
 								"phone": 4088023009,
 								"country_id": 840,
 								"state_id": 3757,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3757,
 									"name": "California",
@@ -913,10 +846,7 @@
 								"phone": 4088023009,
 								"country_id": 840,
 								"state_id": 3757,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3757,
 									"name": "California",
@@ -978,22 +908,10 @@
 							"system_reserve": "1",
 							"created_at": "2023-08-24T08:16:03.000000Z",
 							"updated_at": "2023-08-24T08:16:03.000000Z",
-							"pivot": {
-								"model_id": "19",
-								"role_id": "2",
-								"model_type": "App\\Models\\User"
-							}
+							"pivot": { "model_id": "19", "role_id": "2", "model_type": "App\\Models\\User" }
 						},
-						"point": {
-							"id": 3,
-							"consumer_id": 19,
-							"balance": 300
-						},
-						"wallet": {
-							"id": 1,
-							"consumer_id": 19,
-							"balance": 84.4
-						},
+						"point": { "id": 3, "consumer_id": 19, "balance": 300 },
+						"wallet": { "id": 1, "consumer_id": 19, "balance": 84.4 },
 						"address": [
 							{
 								"id": 1,
@@ -1007,10 +925,7 @@
 								"phone": 5551855359,
 								"country_id": 840,
 								"state_id": 3759,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3759,
 									"name": "Colorado",
@@ -1031,10 +946,7 @@
 								"phone": 5551855359,
 								"country_id": 840,
 								"state_id": 3757,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3757,
 									"name": "California",
@@ -1055,10 +967,7 @@
 								"phone": 551865359,
 								"country_id": 840,
 								"state_id": 3757,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3757,
 									"name": "California",
@@ -1079,10 +988,7 @@
 								"phone": 5551865359,
 								"country_id": 840,
 								"state_id": 3757,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3757,
 									"name": "California",
@@ -1198,11 +1104,7 @@
 						"system_reserve": "1",
 						"created_at": "2023-08-24T08:16:03.000000Z",
 						"updated_at": "2023-08-24T08:16:03.000000Z",
-						"pivot": {
-							"model_id": "5",
-							"role_id": "3",
-							"model_type": "App\\Models\\User"
-						}
+						"pivot": { "model_id": "5", "role_id": "3", "model_type": "App\\Models\\User" }
 					},
 					"point": null,
 					"wallet": null,
@@ -1265,10 +1167,7 @@
 					"deleted_at": null,
 					"blogs_count": 0,
 					"products_count": 21,
-					"pivot": {
-						"product_id": "16",
-						"category_id": "1"
-					},
+					"pivot": { "product_id": "16", "category_id": "1" },
 					"category_image": {
 						"id": 395,
 						"collection_name": "attachment",
@@ -1313,10 +1212,7 @@
 					"deleted_at": null,
 					"blogs_count": 0,
 					"products_count": 21,
-					"pivot": {
-						"product_id": "16",
-						"tag_id": "1"
-					}
+					"pivot": { "product_id": "16", "tag_id": "1" }
 				}
 			],
 			"attributes": [],
@@ -1387,7 +1283,7 @@
 				"created_by_id": "1",
 				"created_at": "2023-08-24T13:00:14.000000Z",
 				"updated_at": "2023-08-24T13:00:14.000000Z",
-				"original_url": "assets/images/data/product.png"
+				"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-card-400w-42dcbf6b.webp"
 			},
 			"product_galleries": [
 				{
@@ -1402,7 +1298,7 @@
 					"created_by_id": "1",
 					"created_at": "2023-08-24T13:00:14.000000Z",
 					"updated_at": "2023-08-24T13:00:14.000000Z",
-					"original_url": "assets/images/data/product.png"
+					"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-card-400w-42dcbf6b.webp"
 				},
 				{
 					"id": 98,
@@ -1416,7 +1312,7 @@
 					"created_by_id": "1",
 					"created_at": "2023-08-24T13:00:14.000000Z",
 					"updated_at": "2023-08-24T13:00:14.000000Z",
-					"original_url": "assets/images/data/product.png"
+					"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_a0eea098-348c-40f0-baff-77a975af6ee5/local-catalog-photo-2-card-400w-a4f1fd70.webp"
 				},
 				{
 					"id": 99,
@@ -1430,7 +1326,7 @@
 					"created_by_id": "1",
 					"created_at": "2023-08-24T13:00:14.000000Z",
 					"updated_at": "2023-08-24T13:00:14.000000Z",
-					"original_url": "assets/images/data/product.png"
+					"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_87ba75fc-51f5-48b5-945f-575ca18b3288/local-catalog-photo-3-card-400w-367be993.webp"
 				},
 				{
 					"id": 100,
@@ -1444,7 +1340,7 @@
 					"created_by_id": "1",
 					"created_at": "2023-08-24T13:00:14.000000Z",
 					"updated_at": "2023-08-24T13:00:14.000000Z",
-					"original_url": "assets/images/data/product.png"
+					"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-card-400w-42dcbf6b.webp"
 				}
 			],
 			"product_meta_image": {
@@ -1497,22 +1393,10 @@
 							"system_reserve": "1",
 							"created_at": "2023-08-24T08:16:03.000000Z",
 							"updated_at": "2023-08-24T08:16:03.000000Z",
-							"pivot": {
-								"model_id": "19",
-								"role_id": "2",
-								"model_type": "App\\Models\\User"
-							}
+							"pivot": { "model_id": "19", "role_id": "2", "model_type": "App\\Models\\User" }
 						},
-						"point": {
-							"id": 3,
-							"consumer_id": 19,
-							"balance": 300
-						},
-						"wallet": {
-							"id": 1,
-							"consumer_id": 19,
-							"balance": 84.4
-						},
+						"point": { "id": 3, "consumer_id": 19, "balance": 300 },
+						"wallet": { "id": 1, "consumer_id": 19, "balance": 84.4 },
 						"address": [
 							{
 								"id": 1,
@@ -1526,10 +1410,7 @@
 								"phone": 5551855359,
 								"country_id": 840,
 								"state_id": 3759,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3759,
 									"name": "Colorado",
@@ -1550,10 +1431,7 @@
 								"phone": 5551855359,
 								"country_id": 840,
 								"state_id": 3757,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3757,
 									"name": "California",
@@ -1574,10 +1452,7 @@
 								"phone": 551865359,
 								"country_id": 840,
 								"state_id": 3757,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3757,
 									"name": "California",
@@ -1598,10 +1473,7 @@
 								"phone": 5551865359,
 								"country_id": 840,
 								"state_id": 3757,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3757,
 									"name": "California",
@@ -1677,22 +1549,10 @@
 							"system_reserve": "1",
 							"created_at": "2023-08-24T08:16:03.000000Z",
 							"updated_at": "2023-08-24T08:16:03.000000Z",
-							"pivot": {
-								"model_id": "21",
-								"role_id": "2",
-								"model_type": "App\\Models\\User"
-							}
+							"pivot": { "model_id": "21", "role_id": "2", "model_type": "App\\Models\\User" }
 						},
-						"point": {
-							"id": 5,
-							"consumer_id": 21,
-							"balance": 153.43
-						},
-						"wallet": {
-							"id": 3,
-							"consumer_id": 21,
-							"balance": 0
-						},
+						"point": { "id": 5, "consumer_id": 21, "balance": 153.43 },
+						"wallet": { "id": 3, "consumer_id": 21, "balance": 0 },
 						"address": [
 							{
 								"id": 6,
@@ -1706,10 +1566,7 @@
 								"phone": 4088023009,
 								"country_id": 840,
 								"state_id": 3757,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3757,
 									"name": "California",
@@ -1730,10 +1587,7 @@
 								"phone": 4088023009,
 								"country_id": 840,
 								"state_id": 3757,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3757,
 									"name": "California",
@@ -1795,22 +1649,10 @@
 							"system_reserve": "1",
 							"created_at": "2023-08-24T08:16:03.000000Z",
 							"updated_at": "2023-08-24T08:16:03.000000Z",
-							"pivot": {
-								"model_id": "20",
-								"role_id": "2",
-								"model_type": "App\\Models\\User"
-							}
+							"pivot": { "model_id": "20", "role_id": "2", "model_type": "App\\Models\\User" }
 						},
-						"point": {
-							"id": 4,
-							"consumer_id": 20,
-							"balance": 111.58
-						},
-						"wallet": {
-							"id": 2,
-							"consumer_id": 20,
-							"balance": 0
-						},
+						"point": { "id": 4, "consumer_id": 20, "balance": 111.58 },
+						"wallet": { "id": 2, "consumer_id": 20, "balance": 0 },
 						"address": [
 							{
 								"id": 8,
@@ -1824,10 +1666,7 @@
 								"phone": 4197792517,
 								"country_id": 840,
 								"state_id": 3790,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3790,
 									"name": "Ohio",
@@ -1889,22 +1728,10 @@
 							"system_reserve": "1",
 							"created_at": "2023-08-24T08:16:03.000000Z",
 							"updated_at": "2023-08-24T08:16:03.000000Z",
-							"pivot": {
-								"model_id": "22",
-								"role_id": "2",
-								"model_type": "App\\Models\\User"
-							}
+							"pivot": { "model_id": "22", "role_id": "2", "model_type": "App\\Models\\User" }
 						},
-						"point": {
-							"id": 6,
-							"consumer_id": 22,
-							"balance": 100
-						},
-						"wallet": {
-							"id": 4,
-							"consumer_id": 22,
-							"balance": 0
-						},
+						"point": { "id": 6, "consumer_id": 22, "balance": 100 },
+						"wallet": { "id": 4, "consumer_id": 22, "balance": 0 },
 						"address": [
 							{
 								"id": 9,
@@ -1918,10 +1745,7 @@
 								"phone": 4197792517,
 								"country_id": 840,
 								"state_id": 3790,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3790,
 									"name": "Ohio",
@@ -1983,22 +1807,10 @@
 							"system_reserve": "1",
 							"created_at": "2023-08-24T08:16:03.000000Z",
 							"updated_at": "2023-08-24T08:16:03.000000Z",
-							"pivot": {
-								"model_id": "18",
-								"role_id": "2",
-								"model_type": "App\\Models\\User"
-							}
+							"pivot": { "model_id": "18", "role_id": "2", "model_type": "App\\Models\\User" }
 						},
-						"point": {
-							"id": 8,
-							"consumer_id": 18,
-							"balance": 0
-						},
-						"wallet": {
-							"id": 6,
-							"consumer_id": 18,
-							"balance": 0
-						},
+						"point": { "id": 8, "consumer_id": 18, "balance": 0 },
+						"wallet": { "id": 6, "consumer_id": 18, "balance": 0 },
 						"address": [
 							{
 								"id": 10,
@@ -2012,10 +1824,7 @@
 								"phone": 452361892,
 								"country_id": 840,
 								"state_id": 3781,
-								"country": {
-									"id": 840,
-									"name": "United States"
-								},
+								"country": { "id": 840, "name": "United States" },
 								"state": {
 									"id": 3781,
 									"name": "Nebraska",
@@ -2117,11 +1926,7 @@
 						"system_reserve": "1",
 						"created_at": "2023-08-24T08:16:03.000000Z",
 						"updated_at": "2023-08-24T08:16:03.000000Z",
-						"pivot": {
-							"model_id": "5",
-							"role_id": "3",
-							"model_type": "App\\Models\\User"
-						}
+						"pivot": { "model_id": "5", "role_id": "3", "model_type": "App\\Models\\User" }
 					},
 					"point": null,
 					"wallet": null,
@@ -2184,10 +1989,7 @@
 					"deleted_at": null,
 					"blogs_count": 0,
 					"products_count": 21,
-					"pivot": {
-						"product_id": "18",
-						"category_id": "1"
-					},
+					"pivot": { "product_id": "18", "category_id": "1" },
 					"category_image": {
 						"id": 395,
 						"collection_name": "attachment",
@@ -2232,10 +2034,7 @@
 					"deleted_at": null,
 					"blogs_count": 0,
 					"products_count": 21,
-					"pivot": {
-						"product_id": "18",
-						"tag_id": "1"
-					}
+					"pivot": { "product_id": "18", "tag_id": "1" }
 				}
 			],
 			"attributes": [
@@ -2249,10 +2048,7 @@
 					"created_at": "2023-08-24T11:43:50.000000Z",
 					"updated_at": "2023-08-24T13:03:54.000000Z",
 					"deleted_at": null,
-					"pivot": {
-						"product_id": "18",
-						"attribute_id": "1"
-					},
+					"pivot": { "product_id": "18", "attribute_id": "1" },
 					"attribute_values": [
 						{
 							"id": 1,
@@ -2319,7 +2115,7 @@
 						"created_by_id": "1",
 						"created_at": "2023-08-24T13:00:14.000000Z",
 						"updated_at": "2023-08-24T13:00:14.000000Z",
-						"original_url": "assets/images/data/product.png"
+						"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-card-400w-42dcbf6b.webp"
 					},
 					"attribute_values": [
 						{
@@ -2332,10 +2128,7 @@
 							"created_at": "2023-08-24T11:43:50.000000Z",
 							"updated_at": "2023-08-24T11:43:50.000000Z",
 							"deleted_at": null,
-							"pivot": {
-								"variation_id": "1",
-								"attribute_value_id": "1"
-							}
+							"pivot": { "variation_id": "1", "attribute_value_id": "1" }
 						}
 					]
 				},
@@ -2367,7 +2160,7 @@
 						"created_by_id": "1",
 						"created_at": "2023-08-24T13:00:14.000000Z",
 						"updated_at": "2023-08-24T13:00:14.000000Z",
-						"original_url": "assets/images/data/product.png"
+						"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-card-400w-42dcbf6b.webp"
 					},
 					"attribute_values": [
 						{
@@ -2380,10 +2173,7 @@
 							"created_at": "2023-08-24T11:43:50.000000Z",
 							"updated_at": "2023-08-24T11:43:50.000000Z",
 							"deleted_at": null,
-							"pivot": {
-								"variation_id": "2",
-								"attribute_value_id": "2"
-							}
+							"pivot": { "variation_id": "2", "attribute_value_id": "2" }
 						}
 					]
 				},
@@ -2415,7 +2205,7 @@
 						"created_by_id": "1",
 						"created_at": "2023-08-24T13:00:14.000000Z",
 						"updated_at": "2023-08-24T13:00:14.000000Z",
-						"original_url": "assets/images/data/product.png"
+						"original_url": "https://saha-textile-media.sgp1.cdn.digitaloceanspaces.com/media/med_8f9be002-e0fe-40d0-b110-13c047985d27/local-catalog-photo-1-card-400w-42dcbf6b.webp"
 					},
 					"attribute_values": [
 						{
@@ -2428,10 +2218,7 @@
 							"created_at": "2023-08-24T11:43:50.000000Z",
 							"updated_at": "2023-08-24T11:43:50.000000Z",
 							"deleted_at": null,
-							"pivot": {
-								"variation_id": "3",
-								"attribute_value_id": "3"
-							}
+							"pivot": { "variation_id": "3", "attribute_value_id": "3" }
 						}
 					]
 				}

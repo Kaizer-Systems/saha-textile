@@ -1,0 +1,51 @@
+<app-page-wrapper [title]="'brand_kit'">
+	<form
+		class="theme-form theme-form-2 mega-form"
+		[formGroup]="form"
+		(ngSubmit)="save()"
+	>
+		<app-form-fields
+			[label]="'shop_name'"
+			[for]="'shop_name'"
+		>
+			<input
+				class="form-control"
+				id="shop_name"
+				formControlName="shopName"
+			/>
+			<p class="help-text mb-0">{{ 'shop_name_help' | transloco }}</p>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'full_logo'"
+			[for]="'full_logo'"
+		>
+			<app-image-upload
+				[id]="'full_logo'"
+				[multipleImage]="false"
+				[purpose]="'brand'"
+				[image]="logo()"
+				[helpText]="'full_logo_help' | transloco"
+				(selectedFiles)="select('logoAssetId', $event)"
+			/>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'seal'"
+			[for]="'seal'"
+		>
+			<app-image-upload
+				[id]="'seal'"
+				[multipleImage]="false"
+				[purpose]="'brand'"
+				[image]="seal()"
+				[helpText]="'seal_help' | transloco"
+				(selectedFiles)="select('sealAssetId', $event)"
+			/>
+		</app-form-fields>
+		<app-button
+			[id]="'save_brand_btn'"
+			[class]="'btn btn-theme ms-auto mt-4'"
+		>
+			{{ 'save' | transloco }}
+		</app-button>
+	</form>
+</app-page-wrapper>

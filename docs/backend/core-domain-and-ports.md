@@ -1,20 +1,22 @@
 ---
 title: Core Domain, Pricing, and Ports
-description: Dependency direction, pure business logic, port contracts, swappability, and current gaps.
+wide: true
+description: Dependency direction, business logic, ports and swappability.
 status: scaffolded
 audience: [beginner, backend]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
     - packages/core-domain/src
     - packages/core-domain/test
     - packages/contracts/src
     - AGENTS.md
-    - project-context/angular-context/codex-api-app-build-instructional-prompt.md
+    - docs/engineering-live-context/api-db-development-roadmap-with-pending-decision-gates.mdx
+    - docs/engineering-live-context/owner-decisions-log.mdx
 ---
 
 # Core domain, pricing, and ports
 
-The core domain describes business meaning without knowing NestJS, Fastify, Mongoose, MongoDB, Meilisearch, Spaces, or any payment/shipping provider.
+`packages/core-domain` holds business rules and port interfaces. It knows nothing of NestJS, Fastify, Mongoose, MongoDB, Meilisearch, Spaces or any payment or shipping provider.
 
 ## Dependency direction
 
@@ -31,39 +33,78 @@ flowchart BT
     Frontends -. must not import .-> Adapters
 ```
 
-Imports point inward. Runtime calls can flow outward only through a port supplied by composition.
+Imports point inward. Runtime calls flow outward only through a port that composition supplies.
 
-## Current pure pricing functions
+## Domain modules
 
-| Function            | Responsibility                                  | Guardrails                                  |
-| ------------------- | ----------------------------------------------- | ------------------------------------------- |
-| `roundMoney`        | Round to an explicit number of decimals         | rejects non-finite input                    |
-| `convertFromINR`    | Multiply canonical INR by a stored rate         | rejects negative INR/non-positive rate      |
-| `discountAmountINR` | Compute percentage/fixed discount               | caps percentage at 100 and fixed at price   |
-| `applyDiscountINR`  | Subtract resolved discount                      | never below zero under current helper rules |
-| `paypalGrossUp`     | Preserve desired net after percentage/fixed fee | percentage must be in `[0,1)`               |
+| Folder     | Contains                                                                                                                                              |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth/`    | Password, PIN and signup policy, rate-limit policy, effective permissions, client-address scope                                                       |
+| `catalog/` | Card price, badges, listing filters and facets, product visibility, relations, legacy address resolution, measurements, stock alerts, weekly insights |
+| `media/`   | Ingest policy, derivative plan, asset processing, image resolution, garbage collection, review photos, YouTube feed, storage keys, size roles         |
+| `pricing/` | Money, discounts and PayPal gross-up                                                                                                                  |
+| `ports/`   | Repository and provider interfaces                                                                                                                    |
 
-These functions are tested. They are not a complete checkout pricing engine: tax-inclusive reverse calculation, promotion priority/stacking, shipping, FX staleness, commission-rule versions, precision/rounding policy, and snapshot composition remain separate work.
+## Pricing functions
 
-## Current port inventory
+| Function            | Responsibility                           | Guardrails                                    |
+| ------------------- | ---------------------------------------- | --------------------------------------------- |
+| `roundMoney`        | Round to a set number of decimals        | Rejects non-finite input                      |
+| `convertFromINR`    | Multiply INR by a stored rate            | Rejects negative INR and non-positive rates   |
+| `discountAmountINR` | Compute a percentage or fixed discount   | Caps percentage at 100 and fixed at the price |
+| `applyDiscountINR`  | Subtract the resolved discount           | Never below zero                              |
+| `paypalGrossUp`     | Preserve a net amount after fees         | Percentage must be in `[0,1)`                 |
+| `cardPrice`         | Single price or range for a product card | Catalogue amounts are tax-inclusive rupees    |
 
-| Port                  | Capability                            | Current adapter/binding        |
-| --------------------- | ------------------------------------- | ------------------------------ |
-| `ProductRepository`   | Product read/list/save/delete         | Mongo bound                    |
-| `CategoryRepository`  | Category read/tree/save/delete        | Mongo bound                    |
-| `CartRepository`      | Cart lookup/save/delete               | Mongo bound                    |
-| `OrderRepository`     | Order lookup/list/save/status         | Mongo bound                    |
-| `UserRepository`      | Public user and credential operations | Mongo bound                    |
-| `CurrencyRepository`  | Currency lookup/list/upsert           | Mongo bound                    |
-| `PromotionRepository` | Promotion lookup/list/save            | Mongo bound                    |
-| `AuthPort`            | Password hashing and JWT operations   | Argon2/JWT bound in API        |
-| `PaymentGatewayPort`  | Create/verify a gateway payment       | No provider adapter            |
-| `ShippingPort`        | Obtain shipping quotes                | No provider adapter            |
-| `FxRatePort`          | Fetch INR-derived exchange rates      | No provider adapter            |
-| `StoragePort`         | Object storage and signed upload      | No provider adapter            |
-| `SearchPort`          | Index/remove/search products          | No Meilisearch adapter/binding |
+These functions do not form a checkout engine. Tax, promotion stacking, shipping and exchange-rate staleness are outside them.
 
-Locked architecture also calls for transaction/unit-of-work, notification, email, audit, analytics/reporting, session/auth repository, YouTube, and video-transcode capabilities as their phases are implemented. Their absence must remain visible.
+## Port inventory
+
+### Repositories
+
+| Port                                                                                              | Capability                                      |
+| ------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `ProductRepository`, `CategoryRepository`                                                         | Products and categories                         |
+| `ProductVariantRepository`, `ProductBundleRepository`, `ProductRelationRepository`                | Variants, bundles and relations                 |
+| `CategoryPlacementRepository`, `CategoryFacetConfigRepository`, `AttributeDefinitionRepository`   | Taxonomy, facets and attributes                 |
+| `SeoRedirectRepository`, `SeoRouteRepository`, `AddonTemplateRepository`                          | Old addresses, head data and add-on templates   |
+| `StockAlertRepository`, `ProductInsightSetRepository`                                             | Stock alerts and weekly insights                |
+| `FaqRepository`, `ProductQuestionRepository`, `ReviewRepository`                                  | FAQ, questions and reviews                      |
+| `InventoryRepository`, `InventoryCostLayerRepository`                                             | Stock ledger and FIFO cost layers               |
+| `CartRepository`, `OrderRepository`, `CurrencyRepository`, `PromotionRepository`                  | Commerce records                                |
+| `CustomerRepository`, `AdminUserRepository`                                                       | Public account records                          |
+| `CustomerAuthRepository`, `AdminUserAuthRepository`                                               | Credentials and account security state          |
+| `AuthSessionRepository`, `OtpChallengeRepository`, `OAuthStateRepository`                         | Sessions and challenges                         |
+| `PasswordResetTokenRepository`, `EmailVerificationTokenRepository`, `AdminInviteRepository`       | Single-use tokens                               |
+| `AuthRateLimitRepository`, `AuthIdentityRepository`                                               | Rate-limit counters and provider identity links |
+| `PendingSignupRepository`, `PendingContactChangeRepository`                                       | Short-lived proof state                         |
+| `RoleRepository`, `AdminUserRoleAssignmentRepository`                                             | Roles and assignments                           |
+| `AuditLogRepository`, `ConsentRepository`                                                         | Audit trail and consent history                 |
+| `NotificationSettingsRepository`, `NotificationTemplateRepository`, `MessageOutboxRepository`     | Notification settings, templates and outbox     |
+| `MediaAssetRepository`, `MediaRoleRepository`, `ContentBlockRepository`, `SiteSettingsRepository` | Media, banners and settings                     |
+
+Every repository has a Mongo implementation in `packages/adapters-db-mongo`. Inventory, cost-layer and facet repositories have no HTTP workflow.
+
+### Capability ports
+
+| Port                     | Capability                          | Adapter                                                  |
+| ------------------------ | ----------------------------------- | -------------------------------------------------------- |
+| `AuthPort`               | Password hashing and JWT operations | `Argon2JwtAuth`                                          |
+| `OAuthVerifierPort`      | Provider token verification         | Google and Facebook verifiers                            |
+| `TransactionManagerPort` | Opaque atomic unit of work          | `MongoTransactionManager`                                |
+| `SearchPort`             | Index, remove and search products   | `MeilisearchSearch`                                      |
+| `NotificationPort`       | Deliver or suppress a message       | `Msg91NotificationAdapter`, `ConsoleNotificationAdapter` |
+| `StoragePort`            | Object storage and signed URLs      | `SpacesStorageAdapter`                                   |
+| `ImageCodecPort`         | Decode and encode images            | `SharpImageCodec`                                        |
+| `MediaJobQueuePort`      | Queue background media work         | `BullMqMediaJobQueue`                                    |
+| `CdnPurgePort`           | Purge CDN URLs                      | `CloudflareCdnPurge`, `LogOnlyCdnPurgeAdapter`           |
+| `YouTubePort`            | Read channel uploads, check a video | `YouTubeDataApi`                                         |
+| `PaymentGatewayPort`     | Create and verify a payment         | None                                                     |
+| `ShippingPort`           | Obtain shipping quotes              | None                                                     |
+| `FxRatePort`             | Fetch INR exchange rates            | None                                                     |
+| `VideoTranscodePort`     | Queue HLS transcoding               | None                                                     |
+
+`DuplicateIdentifierError` carries an email or phone unique-index race across the persistence boundary without exposing a Mongo error.
 
 ## What belongs in a port
 
@@ -75,52 +116,90 @@ interface ShippingPort {
 }
 ```
 
-It should not expose provider-specific tokens, SDK clients, response classes, error payloads, or configuration names. An adapter translates those details.
+It must not expose provider tokens, SDK clients, response classes, error payloads or configuration names. An adapter translates those.
 
 ## Port design checklist
 
-- Is the interface written in domain language?
-- Are inputs/outputs stable across plausible providers?
+- Is the interface in domain language?
+- Are inputs and outputs stable across plausible providers?
 - Does it avoid framework and SDK types?
-- Does it express idempotency/correlation where the use case needs it?
-- Are retryability and error categories translatable?
-- Can tests supply an in-memory/fake implementation?
-- Does it avoid becoming a generic “god repository”?
-- Does transaction context cross only where atomic orchestration requires it?
+- Does it express idempotency and correlation where the use case needs them?
+- Can errors be translated into retryable categories?
+- Can tests supply a deterministic in-memory implementation?
+- Does it avoid becoming a general-purpose repository?
+- Does transaction context cross only where atomic work requires it?
 
 ## Repository versus provider port
 
-- A **repository port** loads and persists domain facts controlled by this platform.
-- A **provider port** invokes an external capability such as payment, shipping, messaging, search, or storage.
+- A **repository port** loads and stores facts controlled by this platform.
+- A **provider port** calls an external capability such as payment, shipping, messaging, search or storage.
 
-Do not hide an external provider call inside a Mongo repository. Do not make provider response payloads part of a domain entity.
+Do not hide a provider call inside a Mongo repository. Do not make provider payloads part of a domain entity.
 
 ## Swappability test
 
 To replace MongoDB with PostgreSQL:
 
-1. create a PostgreSQL adapter implementing the same repository/unit-of-work ports;
-2. map SQL rows to domain values;
-3. change composition bindings;
-4. run the same port contract tests.
+1. Create a PostgreSQL adapter implementing the same ports.
+2. Map SQL rows to domain values.
+3. Change the composition bindings.
+4. Run the same port contract tests.
 
-If controllers, Angular clients, checkout rules, or core pricing must be rewritten, the previous boundary leaked.
+If controllers, Angular clients, checkout rules or core pricing must change, the boundary has leaked.
 
-## Current dependency concern
+## Contracts boundary
 
-The repository constitution says `packages/core-domain` depends on nothing external, while the current core port files import types from `packages/contracts`. This is an unresolved architectural dependency-direction issue.
+`packages/contracts` is the single source of shared shapes. Core may use those shapes with `import type` only. The compiled core must contain no contracts or zod import. Value imports from contracts, and all framework, adapter, database and provider imports, are forbidden.
 
-Before expanding Phase B, reconcile one explicit policy:
+ESLint enforces this rule. A runtime-purity test also compiles the package and rejects emitted imports outside Node built-ins and the package's own modules.
 
-- core owns domain entities/value objects and contracts map to/from them; or
-- the constitution explicitly permits the contracts package as a dependency-free shared kernel.
+## Media pipeline
 
-Do not let the ambiguity spread through additional ports. Pass 4 records it; it does not silently choose a new architecture.
+`packages/core-domain/src/media` owns image rules. `MediaService` in the API and the worker call them.
 
-## Current stale search statement
+1. **Presign.** The API checks the declared type, size and dimensions, creates a `mediaAssets` record and returns a presigned PUT for a private original.
+2. **Upload.** The browser sends the file directly to Spaces.
+3. **Finalize.** The API queues a `process` job.
+4. **Process.** The worker claims the asset, decodes the file, checks the decoded image again, computes a placeholder, renders each size and writes it under a content-hashed key with a one-year immutable cache header.
+5. **Status.** The uploader polls until the state is `ready` or `failed`.
 
-The `SearchPort` comment names a superseded hosted search approach. The locked architecture is self-hosted Meilisearch behind `SearchPort`, with MongoDB as source of truth and a rebuildable derived index. Treat the interface as a useful seam and the comment/current regex implementation as reconciliation debt.
+Public images are served by the CDN. A private image, such as a review photo awaiting moderation, is reachable only through a short-lived signed URL and is never cached.
+
+Decoding is the real check: a renamed file fails here, and its object is deleted. Each render honours EXIF orientation, drops metadata, converts to sRGB, flattens transparency onto white and sharpens lightly after resizing. Review photos drop their original after processing.
+
+### Ingest rules
+
+| Rule                    | Value                                                    |
+| ----------------------- | -------------------------------------------------------- |
+| Accepted types          | JPEG, PNG                                                |
+| Maximum file size       | 25 MB                                                    |
+| Maximum image size      | 8000 px long edge, 50 megapixels                         |
+| Minimum short edge      | 1600 px for product and category images                  |
+| Target shape            | 3:4 product and category, 16:9 blog, 1:1 avatar and icon |
+| Review photos           | Five per review. A long edge below 500 px warns          |
+| Upload URL lifetime     | 15 minutes                                               |
+| Signed preview lifetime | 10 minutes                                               |
+
+An image more than 5% off its target shape receives a warning and is letterboxed on white. `GET /media/upload-rules` publishes these limits to clients.
+
+### Size roles
+
+`SEEDED_MEDIA_ROLES` defines the sizes: `thumb`, `card`, `gallery`, `zoom`, image swatches, `share`, `feed_square`, `email_thumb`, `review_thumb`, `review_full`, `banner`, `blog`, `category_icon` and `avatar`. Operators can edit widths and quality from the admin application. Purposes, shape, fit and format are fixed in code.
+
+Each role fits the image one of four ways: `inside` keeps the source shape, `cover` crops to fill the box, `pad` letterboxes on white, and `blur` sets the image over a blurred enlargement of itself.
+
+The worker never upscales: a width the source cannot fill is skipped and reported. Banners skip widths beyond twice their slot's widest display. `share`, `feed_square` and `email_thumb` apply only to an image that serves as a product's main image.
+
+Editing a role's widths or quality increases its version. The 15-minute `reprocess-stale` job then regenerates old files in batches.
+
+### Deletion
+
+A library delete is refused while anything uses the image. Otherwise the asset is soft-deleted. The daily garbage collection soft-deletes unreferenced assets older than 48 hours, restores any that gained an owner, and removes files 30 days after soft deletion. It runs as a dry run until `MEDIA_GC_LIVE` is true, and each run writes an audit record.
+
+## Search boundary
+
+`SearchPort` is bound to `MeilisearchSearch` in `apps/api/src/search/meilisearch-search.ts`. The index holds ids and words, and prices are read back from MongoDB. If the index is down, `GET /catalog/search` answers 503 and never falls back to a MongoDB text query. A failed index update does not fail a product save. Rebuild the index with `pnpm --filter @saha-textile/api search:rebuild`.
 
 ## Domain test strategy
 
-Pure domain tests should require no Nest application, network, MongoDB, clock wall time, or provider credentials. Inject clocks/identifiers/policies when determinism matters. Test invariants, boundary values, rounding, lifecycle transitions, idempotency decisions, and failure categories directly.
+Pure domain tests need no Nest application, network, MongoDB, wall clock or provider credentials. Inject clocks, identifiers and policies when determinism matters. Test rules, boundary values, rounding, lifecycle transitions, idempotency decisions and failure categories directly.

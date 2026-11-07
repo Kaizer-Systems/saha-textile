@@ -1,0 +1,55 @@
+[
+	{
+		"sourcePath": "/product-category/saree",
+		"statusCode": 301,
+		"targetPath": "/en/collections/sarees",
+		"approved": true
+	},
+	{
+		"sourcePath": "/product-category/saree/pure-silk",
+		"statusCode": 301,
+		"targetPath": "/en/collections/sarees/pure-silk",
+		"approved": true
+	},
+	{
+		"sourcePath": "/product-category/saree/pure-silk/ikkatsilk",
+		"statusCode": 301,
+		"targetPath": "/en/collections/sarees/pure-silk/ikkat",
+		"approved": true
+	},
+	{
+		"sourcePath": "/product-tag/silk-sarees",
+		"statusCode": 301,
+		"targetPath": "/en/collections/sarees/pure-silk",
+		"approved": true
+	},
+	{
+		"sourcePath": "/refund-request-form",
+		"statusCode": 302,
+		"targetPath": "/en/contact-us",
+		"approved": true
+	},
+	{
+		"sourcePath": "/return-request-form",
+		"statusCode": 302,
+		"targetPath": "/en/contact-us",
+		"approved": true
+	},
+	{
+		"sourcePath": "/exchange-request-form",
+		"statusCode": 302,
+		"targetPath": "/en/contact-us",
+		"approved": true
+	},
+	{
+		"sourcePath": "/product-cancel-request-form",
+		"statusCode": 302,
+		"targetPath": "/en/contact-us",
+		"approved": true
+	},
+	{
+		"sourcePath": "/videos",
+		"statusCode": 410,
+		"approved": true
+	}
+]

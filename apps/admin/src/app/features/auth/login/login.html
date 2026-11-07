@@ -5,33 +5,61 @@
 				<app-alert />
 				<div class="log-in-box">
 					<div class="log-in-title">
-						<h3>{{ 'welcome_to_fastkart' | transloco }}</h3>
+						@if (brand.data()?.logo; as logo) {
+						<img
+							class="img-fluid mb-3"
+							[src]="logo.url"
+							[attr.srcset]="logo.srcset"
+							sizes="300px"
+							width="300"
+							[alt]="brand.data()?.shopName"
+						/>
+						}
+						<h3>{{ 'welcome_to_saha_textile' | transloco }}</h3>
 						<h4>{{ 'log_in_your_account' | transloco }}</h4>
 					</div>
+					@if (error()) {
+					<!--
+						One message for every credential failure. The API answers wrong password,
+						wrong PIN, unknown identifier and customer-role account identically so the
+						endpoint cannot be used to discover which accounts exist or which method
+						is configured; naming the case here would give that back.
+					-->
+					<div
+						class="alert alert-danger"
+						role="alert"
+					>
+						{{ error()! | transloco }}
+						<div class="small mt-1">
+							{{ 'if_your_pin_is_locked_sign_in_with_your_password' | transloco }}
+						</div>
+					</div>
+					}
 					<div class="input-box">
 						<form
 							class="row g-4"
 							[formGroup]="form"
-							(ngSubmit)="submit();"
+							(ngSubmit)="submit()"
 						>
 							<div class="col-12">
 								<div class="form-floating theme-form-floating log-in-form">
 									<input
-										type="email"
+										type="text"
 										class="form-control"
-										id="email"
-										formControlName="email"
-										placeholder="{{ 'email_address' | transloco }}"
+										id="identifier"
+										formControlName="identifier"
+										autocomplete="username"
+										placeholder="{{ 'email_or_username' | transloco }}"
 									/>
-									<label for="email">{{ 'email_address' | transloco }}</label>
-									@if (form.controls['email'].touched && form.controls['email'].errors?.['required'])
-									{
-									<div class="invalid-feedback">{{ 'email_is_required' | transloco }}</div>
-									} @if (form.controls['email'].touched && form.controls['email'].errors?.['email']) {
-									<div class="invalid-feedback">{{ 'invalid_email' | transloco }}</div>
+									<label for="identifier">{{ 'email_or_username' | transloco }}</label>
+									@if (form.controls['identifier'].touched &&
+									form.controls['identifier'].errors?.['required']) {
+									<div class="invalid-feedback d-block">{{ 'email_is_required' | transloco }}</div>
 									}
 								</div>
 							</div>
+
+							@if (method() === 'password') {
 							<div class="col-12">
 								<div class="form-floating theme-form-floating log-in-form">
 									<input
@@ -39,17 +67,67 @@
 										class="form-control"
 										id="password"
 										formControlName="password"
-										placeholder="{{ 'password' | transloco }} "
+										autocomplete="current-password"
+										placeholder="{{ 'password' | transloco }}"
 									/>
 									<label for="password">{{ 'password' | transloco }}</label>
-									@if (form.controls['password'].touched &&
-									form.controls['password'].errors?.['required']) {
-									<div class="invalid-feedback">{{ 'password_is_required' | transloco }}</div>
+									@if (form.controls['password'].touched && !form.controls['password'].value) {
+									<div class="invalid-feedback d-block">{{ 'password_is_required' | transloco }}</div>
 									}
 								</div>
 							</div>
+							} @else {
+							<div class="col-12">
+								<!--
+									Six digits, entered on the keypad and nowhere else. The PIN is a
+									password-grade credential, never a second factor, and must never be
+									presented as one.
+
+									There is deliberately no text field: with nothing focusable, no device
+									keyboard — native or third-party, browser or installed PWA — can be
+									summoned on any platform, which `inputmode="numeric"` merely requests
+									and third-party keyboards routinely ignore.
+								-->
+								<app-pin-pad
+									[length]="pinLength"
+									[(value)]="pin"
+									(completed)="submit()"
+								/>
+							</div>
+							}
+
 							<div class="col-12">
 								<div class="forgot-box">
+									<!--
+										Styled with the theme's own `.forgot-password`, the same class the
+										link beside it uses, so the pair reads as one row rather than a
+										blue underlined anchor next to a themed one. It carries a button
+										role and key handlers because it acts on this page rather than
+										navigating.
+									-->
+									@if (method() === 'password') {
+									<a
+										class="forgot-password"
+										role="button"
+										tabindex="0"
+										(click)="useMethod('pin')"
+										(keydown.enter)="useMethod('pin')"
+										(keydown.space)="useMethod('pin')"
+									>
+										{{ 'use_your_pin_instead' | transloco }}
+									</a>
+									} @else {
+									<a
+										class="forgot-password"
+										role="button"
+										tabindex="0"
+										(click)="useMethod('password')"
+										(keydown.enter)="useMethod('password')"
+										(keydown.space)="useMethod('password')"
+									>
+										{{ 'use_your_password_instead' | transloco }}
+									</a>
+									}
 									<a
 										class="forgot-password"
 										[routerLink]="['/auth/forgot-password']"

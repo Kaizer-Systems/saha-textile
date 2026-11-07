@@ -1,11 +1,22 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
+import {
+	ApiCard,
+	ApiHome,
+	ApiPlacement,
+	ApiProductPage,
+	cardToProduct,
+	galleryAttachment,
+	pageToProduct,
+	placementToCatalog,
+} from '@core/catalog/from-api';
+import { backgroundRequest } from '@core/interceptors/background-request';
 import { ICatalogResponse } from '@data-access/interfaces/catalog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
-import { IProductModel } from '@data-access/interfaces/product.interface';
+import { IProduct, IProductRelations, IRecentPurchase } from '@data-access/interfaces/product.interface';
 
 import { environment } from '../../../../public/environments/environment';
 
@@ -17,18 +28,88 @@ export class ProductService {
 
 	public skeletonLoader: boolean = false;
 
-	/** Raw full list (mock JSON) — still used by the PDP/related/deal readers that filter by id/slug. */
-	getProducts(payload?: Params): Observable<IProductModel> {
-		return this.http.get<IProductModel>(`${environment.URL}/product.json`, { params: payload });
+	/** One page of a listing, with its filter counts. `params` come from `toCatalogParams`. */
+	getCatalog(payload?: Params): Observable<ICatalogResponse> {
+		const { limit, ...params } = payload ?? {};
+		return this.http
+			.get<ApiPlacement>(`${environment.apiUrl}/catalog/placements`, {
+				context: backgroundRequest(),
+				params: { ...params, pageSize: limit ?? 24 },
+			})
+			.pipe(map(placementToCatalog));
 	}
 
-	/**
-	 * Category-listing catalog (Pass A) — hits the Nitro route that filters/sorts/
-	 * paginates server-side and returns a lean 25-card slice + disjunctive facets.
-	 * `params` carries category, page, limit, sortBy, rating, price_min/max and any
-	 * attribute facet (fabric/color/occasion/work) as comma-joined values.
-	 */
-	getCatalog(payload?: Params): Observable<ICatalogResponse> {
-		return this.http.get<ICatalogResponse>(`${environment.baseURL}api/products`, { params: payload });
+	home(): Observable<{ newArrivals: IProduct[]; bestsellers: IProduct[]; featured: IProduct[]; sale: IProduct[] }> {
+		return this.http.get<ApiHome>(`${environment.apiUrl}/catalog/home`, { context: backgroundRequest() }).pipe(
+			map((home) => ({
+				newArrivals: home.newArrivals.map(cardToProduct),
+				bestsellers: home.bestsellers.map(cardToProduct),
+				featured: home.featured.map(cardToProduct),
+				sale: home.sale.map(cardToProduct),
+			})),
+		);
+	}
+
+	/** Real sales from the last day. Empty until there are paid orders, which keeps the popup hidden. */
+	recentPurchases(): Observable<IRecentPurchase[]> {
+		return this.http
+			.get<{
+				items: Array<{ card: ApiCard; purchasedAt: string }>;
+			}>(`${environment.apiUrl}/catalog/recent-purchases`, { context: backgroundRequest() })
+			.pipe(
+				map(({ items }) =>
+					items.map(({ card, purchasedAt }) => ({ product: cardToProduct(card), purchasedAt })),
+				),
+			);
+	}
+
+	search(term: string): Observable<IProduct[]> {
+		return this.http
+			.get<{ items: ApiCard[] }>(`${environment.apiUrl}/catalog/search`, {
+				context: backgroundRequest(),
+				params: { q: term },
+			})
+			.pipe(map((page) => page.items.map(cardToProduct)));
+	}
+
+	cardsFor(slugs: string[]): Observable<IProduct[]> {
+		return this.http
+			.get<ApiCard[]>(`${environment.apiUrl}/catalog/cards`, {
+				context: backgroundRequest(),
+				params: { slug: slugs },
+			})
+			.pipe(map((cards) => cards.map(cardToProduct)));
+	}
+
+	/** Saved related, upsell, cross-sell and bought-together cards for one product. */
+	getRelations(slug: string): Observable<IProductRelations> {
+		return this.http
+			.get<Record<keyof IProductRelations, ApiCard[]>>(
+				`${environment.apiUrl}/catalog/products/${encodeURIComponent(slug)}/relations`,
+			)
+			.pipe(
+				map((rows) => ({
+					related: rows.related.map(cardToProduct),
+					upsell: rows.upsell.map(cardToProduct),
+					crossSell: rows.crossSell.map(cardToProduct),
+					boughtTogether: rows.boughtTogether.map(cardToProduct),
+				})),
+			);
+	}
+
+	getProductPage(slug: string, variant?: string | null): Observable<IProduct> {
+		return this.http
+			.get<ApiProductPage>(`${environment.apiUrl}/catalog/products/${encodeURIComponent(slug)}/view`, {
+				params: variant ? { variant } : {},
+			})
+			.pipe(map(pageToProduct));
+	}
+
+	getGallery(slug: string): Observable<IProduct['product_galleries']> {
+		return this.http
+			.get<{ frames: ApiProductPage['gallery'] }>(
+				`${environment.apiUrl}/catalog/products/${encodeURIComponent(slug)}/gallery`,
+			)
+			.pipe(map((body) => body.frames.map(galleryAttachment)));
 	}
 }

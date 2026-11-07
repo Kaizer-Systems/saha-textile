@@ -18,17 +18,26 @@
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
-    "seed": "tsx scripts/seed.ts"
+    "generate:catalogue": "node --import tsx scripts/generate-catalogue.ts",
+    "seed": "tsx scripts/seed.ts",
+    "seed:showcase-catalogue": "node --env-file=../../apps/api/.env --import tsx scripts/seed-showcase-catalogue.ts",
+    "seed:demo-catalogue": "node --env-file=../../apps/api/.env --import tsx scripts/seed-demo-catalogue.ts",
+    "align:collections": "tsx scripts/align-collection-names.ts",
+    "split:admin-users": "tsx scripts/split-admin-users.ts",
+    "rename:admin-user-permissions": "tsx scripts/rename-admin-user-permissions.ts",
+    "extract:credentials": "tsx scripts/extract-credentials.ts",
+    "seed:system-roles": "tsx scripts/seed-system-roles.ts",
+    "reconcile:indexes": "tsx scripts/reconcile-indexes.ts"
   },
   "dependencies": {
     "@saha-textile/contracts": "workspace:*",
     "@saha-textile/core-domain": "workspace:*",
-    "mongoose": "9.7.2",
-    "zod": "4.4.3"
+    "mongoose": "9.11.4",
+    "zod": "4.6.7"
   },
   "devDependencies": {
-    "tsx": "4.22.4",
+    "tsx": "4.23.15",
     "typescript": "6.0.3",
-    "vitest": "4.1.9"
+    "vitest": "5.0.5"
   }
 }

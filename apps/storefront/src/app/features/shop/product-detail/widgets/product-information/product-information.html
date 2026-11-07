@@ -4,16 +4,21 @@
 	</div>
 	<div class="product-info">
 		<ul class="product-info-list product-info-list-2">
-			@if (product()?.sku) {
-			<li>{{ 'sku' | transloco }}: {{ product()?.sku }}</li>
-			} @if (product()?.unit) {
-			<li>{{ 'unit' | transloco }}: {{ product()?.unit }}</li>
+			@if (variation()?.sku ?? product()?.sku; as sku) {
+			<li>{{ 'sku' | transloco }}: {{ sku }}</li>
+			} @if (product()?.saree_length_m; as length) {
+			<li>{{ 'saree_length' | transloco }}: {{ metres(length) }}</li>
+			} @if (product()?.blouse_piece_m; as piece) {
+			<li>{{ 'blouse_piece' | transloco }}: {{ metres(piece) }}</li>
 			} @if (product()?.sku) {
 			<li>{{ 'weight' | transloco }}: {{ product()?.weight }} {{ 'gms' | transloco }}</li>
-			} @if (product()?.stock_status) {
-			<li>{{ 'stock_status' | transloco }}: {{ product()?.stock_status! | titleCase }}</li>
-			} @if (product()?.quantity! > 0) {
-			<li>{{ 'quantity' | transloco }}: {{ product()?.quantity }} {{ 'items_left' | transloco }}</li>
+			} @if (variation()?.stock_status ?? product()?.stock_status; as stockStatus) {
+			<li>{{ 'stock_status' | transloco }}: {{ stockStatus | titleCase }}</li>
+			} @if ((variation()?.quantity ?? product()?.quantity ?? 0) > 0) {
+			<li>
+				{{ 'quantity' | transloco }}: {{ variation()?.quantity ?? product()?.quantity }} {{ 'items_left' |
+				transloco }}
+			</li>
 			}
 		</ul>
 	</div>

@@ -6,7 +6,7 @@ export interface ITableConfig<T extends IBaseRow = IBaseRow> {
 	permission?: string | string[];
 }
 export interface IBaseRow {
-	id: number;
+	id: number | string;
 }
 
 export interface ITableColumn {
@@ -27,6 +27,13 @@ export interface ITableAction {
 	actionToPerform: string;
 	icon: string;
 	permission?: string | string[];
+	/**
+	 * Shown ONLY on rows whose `status` is `deleted` (a recycle-bin action such as Restore).
+	 * Every other action keeps its old behaviour of being hidden on deleted rows.
+	 */
+	deletedRows?: boolean;
+	/** Asks through the table's existing confirmation modal before the action is emitted. */
+	confirm?: boolean;
 }
 
 export interface ITableClickedAction {

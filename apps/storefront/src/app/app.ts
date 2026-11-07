@@ -1,15 +1,18 @@
 import { Component, DOCUMENT, inject, NgZone } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { Meta, Title } from '@angular/platform-browser';
-import { Router, RouterModule } from '@angular/router';
+import { NavigationStart, Router, RouterModule } from '@angular/router';
 
 import { NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
-import { Observable } from 'rxjs';
+import { Observable, filter } from 'rxjs';
 
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { SettingStore } from '@core/state/setting.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { Layout } from '@layout/layout';
+
+const SITE_TITLE = 'Saha Textile';
 
 @Component({
 	selector: 'app-root',
@@ -30,18 +33,19 @@ export class App {
 	private titleService = inject(Title);
 	private ngZone = inject(NgZone);
 	private meta = inject(Meta);
+	private seo = inject(LocaleSeo);
 
 	private settingStore = inject(SettingStore);
 	private siteConfigStore = inject(SiteConfigStore);
 
 	siteConfig$: Observable<ISiteConfig> = toObservable(this.siteConfigStore.siteConfig) as Observable<ISiteConfig>;
 
-	public favIcon: HTMLLinkElement | null;
 	public isTabInFocus = true;
 	public timeoutId: ReturnType<typeof setTimeout>;
 	private currentMessageIndex = 0;
 	private messages = ['⚡ Come Back !!', '🎉 Offers for you...'];
 	private currentMessage: string;
+	private pageTitle = SITE_TITLE;
 	private delay = 1000; // Delay between messages in milliseconds
 
 	constructor() {
@@ -73,35 +77,35 @@ export class App {
 				document.body.classList.remove('rtl');
 			}
 
-			// Set Favicon
-			this.favIcon = document.querySelector('#appIcon');
-			this.favIcon!.href = theme?.logo?.favicon_icon?.original_url;
-
 			theme?.seo?.og_title && this.meta.updateTag({ property: 'og:title', content: theme?.seo?.og_title });
 			theme?.seo?.og_description &&
 				this.meta.updateTag({ property: 'og:description', content: theme?.seo?.og_description });
 			theme?.seo?.og_image?.original_url &&
-				this.meta.updateTag({ property: 'og:image', content: theme?.seo?.og_image?.original_url });
+				this.meta.updateTag({
+					property: 'og:image',
+					content: this.seo.absoluteAsset(theme.seo.og_image.original_url),
+				});
 			theme?.seo?.meta_title && this.meta.updateTag({ property: 'title', content: theme?.seo?.meta_title });
 			theme?.seo?.meta_description &&
 				this.meta.updateTag({ property: 'description', content: theme?.seo?.meta_description });
 			theme?.seo?.meta_tags && this.meta.updateTag({ property: 'keywords', content: theme?.seo?.meta_tags });
+		});
 
-			document.addEventListener('visibilitychange', () => {
-				this.ngZone.run(() => {
-					this.isTabInFocus = !document.hidden;
-					if (this.isTabInFocus) {
-						clearTimeout(this.timeoutId);
-						// Set site title
-						return this.titleService.setTitle(
-							theme?.general?.site_title && theme?.general?.site_tagline
-								? `${theme?.general?.site_title} | ${theme?.general?.site_tagline}`
-								: 'FastKart Marketplace: Where Vendors Shine Together',
-						);
-					} else {
-						this.updateMessage();
-					}
-				});
+		// A page without its own title must not keep the previous page's.
+		this.router.events
+			.pipe(filter((event) => event instanceof NavigationStart))
+			.subscribe(() => this.titleService.setTitle(SITE_TITLE));
+
+		document.addEventListener('visibilitychange', () => {
+			this.ngZone.run(() => {
+				this.isTabInFocus = !document.hidden;
+				if (this.isTabInFocus) {
+					clearTimeout(this.timeoutId);
+					this.titleService.setTitle(this.pageTitle);
+				} else {
+					this.pageTitle = this.titleService.getTitle();
+					this.updateMessage();
+				}
 			});
 		});
 	}

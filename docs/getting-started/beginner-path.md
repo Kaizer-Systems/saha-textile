@@ -1,33 +1,33 @@
 ---
 title: Beginner Path
-description: A hand-held first-day route through the project.
+description: First-day orientation for the repository, architecture, and contribution workflow.
 status: implemented
 audience: [beginner]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
     - AGENTS.md
-    - project-context/angular-context/saha-textile-technical-knowledgebase.md
-    - project-context/angular-context/execution-roadmap.md
+    - docs/engineering-live-context/saha-textile-technical-knowledgebase.mdx
+    - docs/engineering-live-context/execution-roadmap.mdx
 ---
 
 # Beginner path
 
-Use this path if the repository is unfamiliar, the architecture vocabulary is new, or you are unsure which application owns a behaviour.
+Use this path if the repository is new to you, or if you are unsure which application owns a behaviour.
 
-## What you are looking at
+## Repository orientation
 
-Saha Textile is one repository containing four application surfaces:
+Saha Textile is one repository containing four applications:
 
-| Surface          | Who uses it          | What it owns                                                               |
-| ---------------- | -------------------- | -------------------------------------------------------------------------- |
-| Storefront       | Shoppers             | Catalogue browsing, product detail, cart, account and checkout experiences |
-| Admin            | Staff                | Catalogue, order, customer, content and operational workflows              |
-| API              | Storefront and admin | Authentication, validation, application orchestration and HTTP contracts   |
-| Developer portal | Maintainers          | Architecture, workflows, references, runbooks and decision history         |
+| Application      | Used by              | Responsibility                                                     |
+| ---------------- | -------------------- | ------------------------------------------------------------------ |
+| Storefront       | Shoppers             | Catalogue browsing, product detail, cart, account and checkout     |
+| Admin            | Staff                | Catalogue, order, customer, content and operational workflows      |
+| API              | Storefront and admin | Authentication, validation, business operations and HTTP contracts |
+| Developer portal | Engineers            | Architecture, workflows, references and procedures                 |
 
-Shared packages hold domain rules, contracts, configuration and edge adapters. The most important architectural rule is simple: dependencies point inward toward the domain. User interfaces call the API; they do not call database or payment adapters directly.
+Shared packages hold domain rules, contracts, configuration and adapters. Dependencies point inward toward the domain. User interfaces call the API; they never call database or payment adapters directly.
 
-## Your first reading session
+## Initial reading sequence
 
 Read these pages in order:
 
@@ -39,18 +39,16 @@ Read these pages in order:
 6. [Status model](/governance/status-model)
 7. [Local development](/getting-started/local-development)
 
-Do not begin by reading every directory. First identify the application, route, state/query boundary and backend contract involved in your task.
+You do not need to read every directory. Start by identifying the application, route, state boundary and API contract that your task involves.
 
 ## A safe first change
 
-For your first contribution:
-
-1. Choose a small documentation or presentation-only change.
-2. Locate its source-of-truth files from the page provenance strip.
+1. Choose a small documentation or presentation change.
+2. Find its source files in the list at the top of the relevant page.
 3. Keep the change inside one architectural layer.
-4. Run the relevant formatter, type check and focused tests.
-5. Update the associated portal page in the same change when behaviour changed.
+4. Run the formatter, type check and focused tests.
+5. Update the matching portal page in the same change if behaviour changed.
 
-## Stop and ask when
+## When to ask first
 
-Stop before making assumptions about pricing, authentication, authorization, payment, inventory, persistence shape, customer data, production infrastructure or a page marked **Planned**, **Deferred** or **Deprecated**.
+Ask before making assumptions about pricing, authentication, authorization, payment, inventory, persistence shape, customer data, production infrastructure, or anything on a page marked **Planned**, **Deferred** or **Deprecated**.

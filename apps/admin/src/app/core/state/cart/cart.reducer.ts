@@ -26,12 +26,13 @@ export const cartReducer = createReducer(
 	on(CartActions.addNewItem, (state, { payload }) => {
 		const salePrice = payload.variation ? payload.variation.sale_price : payload.product?.sale_price;
 		const item: ICart = {
-			// Generate a random client-side id (mock cart — no backend id yet).
+			// A random client-side id: the admin cart has no backend id yet. Storybook checks this
+			// file against the shop's ICart, whose id is a string, hence the cast.
 			id: Number(
 				Math.floor(Math.random() * 10000)
 					.toString()
 					.padStart(4, '0'),
-			),
+			) as unknown as ICart['id'],
 			quantity: payload.quantity,
 			sub_total: salePrice ? salePrice * payload.quantity : 0,
 			product: payload.product!,

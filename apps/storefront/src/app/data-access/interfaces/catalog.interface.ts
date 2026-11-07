@@ -2,7 +2,9 @@ import { IProduct } from './product.interface';
 
 /** One filter facet's value + its (disjunctive) count for the current query. */
 export interface IFacetValue {
+	/** The term code the filter sends. */
 	value: string;
+	label: string;
 	count: number;
 }
 
@@ -23,5 +25,7 @@ export interface ICatalogResponse {
 	/** L1→node trail (names + canonical paths) for the breadcrumb. */
 	breadcrumb?: { name: string; path: string }[];
 	facets: Record<string, IFacetValue[]>;
+	/** Each facet's title, in the page's language. */
+	facetLabels?: Record<string, string>;
 	price_range: { min: number; max: number };
 }

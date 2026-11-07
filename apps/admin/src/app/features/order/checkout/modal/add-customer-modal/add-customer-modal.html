@@ -60,7 +60,7 @@
 			>
 				<select2
 					class="custom-select intl-tel-input"
-					[templates]="template"
+					[templates]="{ option: template, templateSelection: template }"
 					[data]="codes"
 					formControlName="country_code"
 				>
@@ -84,50 +84,65 @@
 					name="phone"
 				/>
 				@if (form.controls['phone'].touched && form.controls['phone'].errors?.['required']) {
-				<div
-					class="invalid-feedback"
-					autocomplete="false"
-				>
-					{{ 'phone_number_is_required' | transloco }}
-				</div>
+				<div class="invalid-feedback d-block">{{ 'phone_number_is_required' | transloco }}</div>
 				} @if (form.controls['phone'].touched && form.controls['phone'].errors?.['pattern']) {
-				<div class="invalid-feedback">{{ 'phone_number_is_invalid' | transloco }}</div>
+				<div class="invalid-feedback d-block">{{ 'phone_number_is_invalid' | transloco }}</div>
 				}
 			</app-form-fields>
 			<app-form-fields
-				[label]="'password'"
-				[for]="'password'"
+				[label]="'activation'"
+				[for]="'activation_channels'"
 				[required]="true"
 			>
-				<input
-					class="form-control"
-					id="password"
-					type="password"
-					placeholder="Enter password"
-					formControlName="password"
-				/>
-				@if (form?.controls['password']?.touched && form.controls['password']?.errors?.['required']) {
-				<div class="invalid-feedback">{{ 'password_is_required' | transloco }}</div>
+				<div class="form-check form-switch">
+					<input
+						class="checkbox_animated form-check-input"
+						type="checkbox"
+						id="modal_channel_email"
+						formControlName="channelEmail"
+					/>
+					<label
+						class="form-check-label form-label m-0"
+						for="modal_channel_email"
+					>
+						{{ 'email' | transloco }}
+					</label>
+				</div>
+				<div class="form-check form-switch">
+					<input
+						class="checkbox_animated form-check-input"
+						type="checkbox"
+						id="modal_channel_sms"
+						formControlName="channelSms"
+					/>
+					<label
+						class="form-check-label form-label m-0"
+						for="modal_channel_sms"
+					>
+						{{ 'sms' | transloco }}
+					</label>
+				</div>
+				<div class="form-check form-switch">
+					<input
+						class="checkbox_animated form-check-input"
+						type="checkbox"
+						id="modal_channel_whatsapp"
+						formControlName="channelWhatsapp"
+					/>
+					<label
+						class="form-check-label form-label m-0"
+						for="modal_channel_whatsapp"
+					>
+						{{ 'whatsapp' | transloco }}
+					</label>
+				</div>
+				@if (form.touched && form.errors?.['channelsRequired']) {
+				<div class="invalid-feedback d-block">{{ 'at_least_one_channel_required' | transloco }}</div>
+				} @if (form.touched && form.errors?.['emailRequiredForChannel']) {
+				<div class="invalid-feedback d-block">{{ 'email_required_for_activation_channel' | transloco }}</div>
+				} @if (form.touched && form.errors?.['phoneRequiredForChannel']) {
+				<div class="invalid-feedback d-block">{{ 'phone_required_for_activation_channel' | transloco }}</div>
 				}
-			</app-form-fields>
-			<app-form-fields
-				[label]="'confirm_password'"
-				[for]="'password_confirmation'"
-				[required]="true"
-			>
-				<input
-					class="form-control"
-					id="password_confirmation"
-					type="password"
-					placeholder="{{ 'enter_password_confirmation' | transloco }}"
-					formControlName="password_confirmation"
-				/>
-				@if (form?.controls['password_confirmation']?.touched &&
-				form.controls['password_confirmation']?.errors?.['required']) {
-				<div class="invalid-feedback">{{ 'confirm_password_is_required' | transloco }}</div>
-				} @else { @if (passwordMatchError) {
-				<div class="invalid-feedback">{{ 'confirm_password_does_not_matched' | transloco }}</div>
-				} }
 			</app-form-fields>
 			<div class="button-box">
 				<app-button

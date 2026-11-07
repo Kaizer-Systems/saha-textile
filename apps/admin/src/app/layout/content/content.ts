@@ -2,7 +2,6 @@ import { isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 
-import { AccountStore } from '@core/state/account.store';
 import { MenuStore } from '@core/state/menu.store';
 import { NavService } from '@data-access/services/nav.service';
 import { Footer } from '@layout/footer/footer';
@@ -19,7 +18,6 @@ import { SidebarMenuSkeleton } from '@shared/ui/skeleton/sidebar-menu-skeleton/s
 export class Content {
 	navServices = inject(NavService);
 	private menuStore = inject(MenuStore);
-	private accountStore = inject(AccountStore);
 	private platformId = inject<Object>(PLATFORM_ID);
 
 	public isBrowser: boolean;
@@ -27,10 +25,6 @@ export class Content {
 	constructor() {
 		this.isBrowser = isPlatformBrowser(this.platformId);
 		this.menuStore.loadBadges();
-		this.accountStore.loadUserDetails().subscribe({
-			complete: () => {
-				this.navServices.sidebarLoading = false;
-			},
-		});
+		this.navServices.sidebarLoading = false;
 	}
 }

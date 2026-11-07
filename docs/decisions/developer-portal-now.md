@@ -3,10 +3,11 @@ title: Start Developer Portal Early
 description: ADR for starting the portal before all generated artifacts exist.
 status: implemented
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-07-18'
+last_verified: '2026-11-07'
 source_of_truth:
-    - project-context/angular-context/execution-roadmap.md
-    - project-context/angular-context/private-developer-portal-documentation-plan.md
+    - docs/engineering-live-context/execution-roadmap.mdx
+    - docs/engineering-live-context/owner-decisions-log.mdx
+    - apps/developer-portal
 ---
 
 # Start developer portal early
@@ -17,17 +18,21 @@ Accepted.
 
 ## Context
 
-The roadmap says the Docusaurus developer portal should grow incrementally during every phase. Some portal sections depend on real implementation artifacts, including OpenAPI output, Mongo schemas, Storybook builds, TypeDoc, Scalar API Reference, and Pagefind indexes.
+The developer portal should grow with the product. Some sections depend on implementation artifacts: OpenAPI output, Mongo schemas, Storybook builds and TypeDoc.
 
 ## Decision
 
-Start the portal now with stable structure, navigation, source-of-truth rules, high-level architecture pages, business-flow templates, and placeholders for generated sections.
-
-Defer generated documentation integrations until their source artifacts exist.
+Start the portal with stable structure, navigation, source-of-truth rules, architecture pages and business-flow pages. Add a generated reference only when its source exists, and label it **Scaffolded** until it meets its completion criteria.
 
 ## Consequences
 
-- Documentation habits start early.
-- Future PRs have a known place to update operator-facing and developer-facing behavior.
-- Generated API, database, and component docs are not hand-written prematurely.
-- The portal can build before the full app surface is complete.
+- Documentation is written alongside the code.
+- Each change has a known place for operator and developer documentation.
+- Storybook and TypeDoc are generated from source. Scalar and the database catalogue are generated and carry the **Scaffolded** status.
+- The portal builds before the full application surface is complete.
+- The complete portal runs behind a local sign-in. That sign-in is loopback-only and separate from the API, MongoDB and customer accounts.
+- `DEC-PORTAL-PRIVATE-ACCESS` covers hosted access. The local sign-in does not settle that decision.
+
+## Related
+
+- [Decision Gate Console](/decisions/gate-console)

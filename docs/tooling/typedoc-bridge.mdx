@@ -1,0 +1,34 @@
+---
+title: TypeScript Reference
+slug: /tools/typedoc
+description: Entry page for the generated TypeDoc reference.
+status: implemented
+audience: [beginner, frontend, backend]
+last_verified: '2026-11-07'
+wide: true
+hide_table_of_contents: true
+source_of_truth:
+    - apps/developer-portal-typedoc
+    - apps/developer-portal/src/components/ChildToolGateway
+    - packages/contracts/src/index.ts
+    - packages/core-domain/src/index.ts
+    - scripts/serve-developer-portal-persistent.mjs
+---
+
+import { ChildToolGateway } from '@site/src/components/ChildToolGateway';
+
+<ChildToolGateway
+	toolName="TypeScript reference"
+	target="/typedoc/"
+	eyebrow="Type Lattice · Exported contracts"
+	title="Browse the exported TypeScript API."
+	description="Read the contracts, ports and domain functions exported by the shared packages."
+	launchLabel="Open TypeDoc"
+	symbol="type-lattice"
+/>
+
+This page opens TypeDoc, the TypeScript reference. It covers exported contracts, signatures, schemas, interfaces, ports and pricing functions.
+
+Its two entry points are `packages/contracts/src/index.ts` and `packages/core-domain/src/index.ts`. Persistence models and repository implementations are not included, because adapters sit outside this boundary. The build treats warnings as errors and validates links.
+
+For HTTP operations, use [Scalar](/tools/scalar). For architecture and workflows, use the portal guides.

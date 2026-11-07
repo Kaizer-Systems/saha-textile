@@ -1,14 +1,30 @@
 <a
 	[routerLink]="['/']"
 	class="web-logo nav-logo"
+	[attr.aria-label]="brand()?.shopName"
 >
-	@if (logo()) {
-	<img
-		[src]="logo()"
-		class="img-fluid"
-		alt="logo"
-	/>
+	@if (brand()?.logo; as logo) {
+	<picture>
+		@if (brand()?.seal; as seal) {
+		<source
+			media="(max-width: 767.98px)"
+			[attr.srcset]="seal.srcset"
+			sizes="50px"
+			[attr.width]="seal.width"
+			[attr.height]="seal.height"
+		/>
+		}
+		<img
+			[src]="logo.url"
+			[attr.srcset]="logo.srcset"
+			sizes="300px"
+			[attr.width]="logo.width"
+			[attr.height]="logo.height"
+			[alt]="brand()?.shopName"
+			fetchpriority="high"
+		/>
+	</picture>
 	} @else {
-	<h2 [class]="textClass()">{{ data()?.general?.site_title ? data()?.general?.site_title : 'Logo' }}</h2>
+	<h2 class="f-w-600">{{ brand()?.shopName }}</h2>
 	}
 </a>

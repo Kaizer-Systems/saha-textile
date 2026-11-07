@@ -1,39 +1,57 @@
-import { Component, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
+import { injectMutation, injectQueryClient } from '@tanstack/angular-query-experimental';
+import { lastValueFrom } from 'rxjs';
 
+import { AdminUsersGateway } from '@core/admin-users/admin-users.gateway';
 import { Params } from '@data-access/interfaces/core.interface';
-import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
-import { IUser } from '@data-access/interfaces/user.interface';
-import { injectUsersQuery } from '@data-access/queries/user.queries';
+import { IBaseRow, ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
+import { injectAdminUsersQuery } from '@data-access/queries/admin-users.queries';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
-import { ImportCsvModal } from '@shared/ui/modal/import-csv-modal/import-csv-modal';
 import { Table } from '@shared/ui/table/table';
 
+interface AdminUserRow extends IBaseRow {
+	id: string;
+	name: string;
+	email: string;
+	role_name: string;
+	created_at: string | null;
+	status: string;
+}
+
+/**
+ * Back-office operator user-management list (live API).
+ *
+ * Administers operators only: staff and admin roles via invite provisioning. Customers belong
+ * on the future `/admin/customers/**` surface (`DEC-ACCOUNT-SEPARATION` D3).
+ */
 @Component({
 	selector: 'app-user',
 	templateUrl: './user.html',
 	styleUrls: ['./user.scss'],
-	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, ImportCsvModal, TranslocoModule],
+	imports: [PageWrapper, HasPermissionDirective, RouterModule, Table, TranslocoModule],
 })
-export class User {
-	router = inject(Router);
+export class AdminUsers {
+	private readonly router = inject(Router);
+	private readonly gateway = inject(AdminUsersGateway);
+	private readonly queryClient = injectQueryClient();
 
 	private readonly params = signal<Params>({});
-	readonly usersQuery = injectUsersQuery(() => this.params());
+	readonly usersQuery = injectAdminUsersQuery(() => this.params());
 
-	readonly CSVModal = viewChild<ImportCsvModal>('csvModal');
+	private readonly statusMutation = injectMutation(() => ({
+		mutationFn: (vars: { userId: string; status: 'active' | 'disabled' }) =>
+			lastValueFrom(this.gateway.setStatus(vars.userId, { status: vars.status })),
+		onSuccess: () => {
+			void this.queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+		},
+	}));
 
-	public tableConfig: ITableConfig = {
+	private readonly baseConfig: ITableConfig<AdminUserRow> = {
 		columns: [
-			{
-				title: 'avatar',
-				dataField: 'profile_image',
-				class: 'tbl-image rounded-circle',
-				type: 'image',
-			},
 			{ title: 'name', dataField: 'name', sortable: true, sort_direction: 'desc' },
 			{ title: 'email', dataField: 'email' },
 			{ title: 'role', dataField: 'role_name' },
@@ -47,27 +65,29 @@ export class User {
 			{ title: 'status', dataField: 'status', type: 'switch' },
 		],
 		rowActions: [
-			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'user.edit' },
-			{
-				label: 'Delete',
-				actionToPerform: 'delete',
-				icon: 'ri-delete-bin-line',
-				permission: 'user.destroy',
-			},
+			{ label: 'Edit', actionToPerform: 'edit', icon: 'ri-pencil-line', permission: 'admin_user.update' },
 		],
-		data: [] as IUser[],
+		data: [],
 		total: 0,
 	};
 
+	readonly tableConfig = signal<ITableConfig<AdminUserRow>>(this.baseConfig);
+
 	constructor() {
 		effect(() => {
-			const user = this.usersQuery.data();
-			const users = user?.data?.filter((element) => {
-				element.role_name = element?.role?.name!;
-				return element;
-			});
-			this.tableConfig.data = user ? users : [];
-			this.tableConfig.total = user ? user.total : 0;
+			const response = this.usersQuery.data();
+			const data = (response?.items ?? []).map((user): AdminUserRow => ({
+				id: user.id,
+				name: user.displayName || user.username || user.email || user.id,
+				email: user.email ?? '',
+				role_name: user.role,
+				created_at: user.createdAt || null,
+				status: user.status === 'active' ? '1' : '0',
+			}));
+			// A signal, not a field write: in this zoneless app a plain field set from an effect does
+			// not schedule a render, so a change made here left the old rows on screen after the
+			// refetch. Same fix as the reviews and customer pages.
+			this.tableConfig.set({ ...this.baseConfig, data, total: response?.meta.total ?? 0 });
 		});
 	}
 
@@ -76,29 +96,22 @@ export class User {
 	}
 
 	onActionClicked(action: ITableClickedAction) {
-		if (action.actionToPerform == 'edit') this.edit(action.data);
-		else if (action.actionToPerform == 'status') this.status(action.data);
-		else if (action.actionToPerform == 'delete') this.delete(action.data);
-		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data);
+		if (action.actionToPerform === 'edit') this.edit(action.data);
+		else if (action.actionToPerform === 'status') this.status(action.data);
 	}
 
-	edit(data: IUser) {
-		void this.router.navigateByUrl(`/user/edit/${data.id}`);
+	edit(data: AdminUserRow) {
+		void this.router.navigateByUrl(`/admin-user/edit/${data.id}`);
 	}
 
-	status(_data: IUser) {
-		// Mock: status toggle has no backend yet.
-	}
-
-	delete(_data: IUser) {
-		// Mock: delete has no backend yet.
-	}
-
-	deleteAll(_ids: number[]) {
-		// Mock: bulk delete has no backend yet.
-	}
-
-	export() {
-		// Mock: export has no backend yet.
+	/**
+	 * By the time this runs, the shared table has already written the switch's REQUESTED value
+	 * (`1` on, `0` off) onto the row (`rowData[actionType] = value`). Reading it as the current
+	 * state and flipping it again sent `active` for every click, so an operator could never be
+	 * disabled from this list.
+	 */
+	status(data: AdminUserRow) {
+		const newStatus: 'active' | 'disabled' = Number(data.status) === 1 ? 'active' : 'disabled';
+		this.statusMutation.mutate({ userId: String(data.id), status: newStatus });
 	}
 }

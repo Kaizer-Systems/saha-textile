@@ -1,9 +1,11 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Component, SimpleChanges, PLATFORM_ID, inject, output, input } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { TranslocoModule } from '@jsverse/transloco';
-import { Select2Data, Select2UpdateEvent, Select2Module } from 'ng-select2-component';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { map } from 'rxjs';
+import { Select2Data, Select2UpdateEvent, Select2 } from 'ng-select2-component';
 
 import { Params } from '@data-access/interfaces/core.interface';
 import { AttributeService } from '@data-access/services/attribute.service';
@@ -12,13 +14,14 @@ import { AttributeService } from '@data-access/services/attribute.service';
 	selector: 'app-collection-sort',
 	templateUrl: './collection-sort.html',
 	styleUrls: ['./collection-sort.scss'],
-	imports: [Select2Module, TranslocoModule],
+	imports: [Select2, TranslocoModule],
 })
 export class CollectionSort {
 	private route = inject(ActivatedRoute);
 	private attributeService = inject(AttributeService);
 	private router = inject(Router);
 	private platformId = inject<Object>(PLATFORM_ID);
+	private transloco = inject(TranslocoService);
 
 	readonly filter = input<Params>();
 	readonly gridCol = input<string>();
@@ -31,33 +34,50 @@ export class CollectionSort {
 	public sorting: Select2Data = [
 		{
 			value: 'asc',
-			label: 'Ascending Order',
+			label: 'sort_ascending',
 		},
 		{
 			value: 'desc',
-			label: 'Descending Order',
+			label: 'sort_descending',
 		},
 		{
 			value: 'low-high',
-			label: 'Low - High Price',
+			label: 'sort_price_low_high',
 		},
 		{
 			value: 'high-low',
-			label: 'High - Low Price',
+			label: 'sort_price_high_low',
 		},
 		{
 			value: 'a-z',
-			label: 'A - Z Order',
+			label: 'sort_name_a_z',
 		},
 		{
 			value: 'z-a',
-			label: 'Z - A Order',
+			label: 'sort_name_z_a',
 		},
 		{
 			value: 'discount-high-low',
-			label: '% Off - Hight To Low',
+			label: 'sort_discount_high_low',
 		},
 	];
+
+	/**
+	 * The sort labels above are translation keys; select2 renders `label` as plain text, so
+	 * they are resolved here. Re-emits once the active language's dictionary has loaded.
+	 */
+	public readonly sortOptions = toSignal(
+		this.transloco
+			.selectTranslation()
+			.pipe(
+				map(() =>
+					this.sorting.map((option) =>
+						'label' in option ? { ...option, label: this.transloco.translate(option.label) } : option,
+					),
+				),
+			),
+		{ initialValue: [] as Select2Data },
+	);
 
 	public selectedGrid: string = 'collection_4_grid';
 	public class: string =

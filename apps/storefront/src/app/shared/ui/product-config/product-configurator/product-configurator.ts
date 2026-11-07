@@ -1,9 +1,10 @@
-import { Component, OnInit, computed, effect, input, output, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, OnInit, PLATFORM_ID, computed, effect, inject, input, output, signal } from '@angular/core';
 
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 
 import { ICartAddOrUpdate, ICartLineConfig } from '@data-access/interfaces/cart.interface';
-import { ConfiguratorState, IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
+import { ConfiguratorState, IAddonGroup, IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 
 import { AddonGroup } from '../parts/addon-group/addon-group';
@@ -32,8 +33,11 @@ export class ProductConfigurator implements OnInit {
 	/** Saved line snapshot to re-seed selections when editing an existing cart line. */
 	readonly initialConfig = input<ICartLineConfig>();
 
-	readonly summaryChange = output<IConfiguratorSummary>();
+	private platformId = inject(PLATFORM_ID);
+	private allowVariantUrl = false;
+	private variantArm: ReturnType<typeof setTimeout> | null = null;
 
+	readonly summaryChange = output<IConfiguratorSummary>();
 	readonly selectedVariation = signal<IVariation | null>(null);
 	readonly addonState = signal<ConfiguratorState | null>(null);
 	readonly bundleState = signal<ConfiguratorState | null>(null);
@@ -61,7 +65,12 @@ export class ProductConfigurator implements OnInit {
 
 	readonly displayPrice = computed(() => this.effectiveBase());
 	readonly comparePrice = computed(() => this.selectedVariation()?.price ?? this.product().price);
-	readonly discount = computed(() => this.selectedVariation()?.discount ?? this.product().discount);
+	readonly discount = computed(() => {
+		const selling = this.displayPrice();
+		const mrp = this.comparePrice();
+		if (!mrp || mrp <= selling) return 0;
+		return Math.floor(((mrp - selling) / mrp) * 100);
+	});
 	readonly unitPrice = computed(
 		() => this.effectiveBase() + (this.addonState()?.delta ?? 0) + (this.bundleState()?.delta ?? 0),
 	);
@@ -69,14 +78,13 @@ export class ProductConfigurator implements OnInit {
 	/** Purchasable only when EVERY present section is satisfied. */
 	readonly purchasable = computed(() => {
 		const p = this.product();
+		// A bundle shows what it holds, but cannot be bought until it can be priced (brief B12).
+		if (this.hasBundle()) return false;
 		const baseStockOk = this.hasVariation()
 			? this.selectedVariation()?.stock_status === 'in_stock'
-			: this.hasBundle()
-				? true // bundle validity already covers component availability
-				: p.stock_status === 'in_stock';
+			: p.stock_status === 'in_stock';
 		const addonOk = !this.hasAddon() || (this.addonState()?.valid ?? false);
-		const bundleOk = !this.hasBundle() || (this.bundleState()?.valid ?? false);
-		return baseStockOk && addonOk && bundleOk;
+		return baseStockOk && addonOk;
 	});
 
 	/** True only when genuinely out of stock — not merely awaiting add-on/bundle configuration. */
@@ -92,7 +100,7 @@ export class ProductConfigurator implements OnInit {
 	readonly summary = computed<IConfiguratorSummary>(() => ({
 		displayPrice: this.displayPrice(),
 		comparePrice: this.comparePrice(),
-		discount: this.discount() ?? 0,
+		discount: this.discount(),
 		unitPrice: this.unitPrice(),
 		purchasable: this.purchasable(),
 		soldOut: this.soldOut(),
@@ -100,6 +108,7 @@ export class ProductConfigurator implements OnInit {
 		hasVariation: this.hasVariation(),
 		hasAddon: this.hasAddon(),
 		hasBundle: this.hasBundle(),
+		variation: this.selectedVariation(),
 	}));
 
 	constructor() {
@@ -124,6 +133,16 @@ export class ProductConfigurator implements OnInit {
 			return;
 		}
 		this.selectedVariation.set(variation);
+		if (this.variantArm) clearTimeout(this.variantArm);
+		this.variantArm = setTimeout(() => {
+			this.variantArm = null;
+			this.allowVariantUrl = true;
+		}, 0);
+		if (this.allowVariantUrl && variation?.sku && isPlatformBrowser(this.platformId)) {
+			const url = new URL(window.location.href);
+			url.searchParams.set('variant', variation.sku);
+			history.replaceState(history.state, '', `${url.pathname}${url.search}`);
+		}
 	}
 
 	onAddonChange(state: ConfiguratorState) {
@@ -135,7 +154,7 @@ export class ProductConfigurator implements OnInit {
 	}
 
 	/** Compose the cart payload for the current selections. `existingId` updates a line in place (edit). */
-	buildParams(quantity: number, existingId: number | null): ICartAddOrUpdate {
+	buildParams(quantity: number, existingId: string | null): ICartAddOrUpdate {
 		const variation = this.selectedVariation();
 		return {
 			id: existingId,
@@ -169,7 +188,7 @@ export class ProductConfigurator implements OnInit {
 		};
 
 		if (this.hasAddon()) {
-			cfg.addon_options = (p.addon_groups ?? []).map((g) => {
+			cfg.addon_options = (p.addon_groups as IAddonGroup[]).map((g) => {
 				const term = g.terms.find(
 					(t) => t.code === (addonSel[g.code] ?? g.default_term_code ?? g.terms[0]?.code),
 				);

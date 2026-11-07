@@ -1,0 +1,179 @@
+<form
+	class="theme-form theme-form-2 mega-form"
+	[formGroup]="form"
+	(ngSubmit)="save()"
+>
+	@for (band of bands; track band) {
+	<app-form-fields
+		[labelClass]="'form-label-title col-sm-3 mb-0'"
+		[gridClass]="'col-sm-9'"
+		[label]="'banner_image_' + band"
+		[required]="band === 'desktop' || (band === 'phone' && phoneRequired)"
+	>
+		<app-image-upload
+			[id]="slot() + '_' + band"
+			[image]="previews()[band]"
+			[purpose]="'banner'"
+			[helpText]="('banner_image_' + band + '_help') | transloco"
+			(selectedFiles)="pick(band, $event)"
+		/>
+	</app-form-fields>
+	}
+
+	<app-form-fields
+		[labelClass]="'form-label-title col-sm-3 mb-0'"
+		[gridClass]="'col-sm-9'"
+		[label]="'banner_contains_text'"
+		[for]="slot() + '_contains_text'"
+	>
+		<div class="form-check form-switch ps-0">
+			<label class="switch">
+				<input
+					type="checkbox"
+					[id]="slot() + '_contains_text'"
+					formControlName="containsText"
+				/>
+				<span class="switch-state"></span>
+			</label>
+		</div>
+		<p class="help-text">{{ 'banner_contains_text_help' | transloco }}</p>
+	</app-form-fields>
+
+	@if (!form.controls.containsText.value) { @for (field of ['heading', 'subheading', 'ctaLabel']; track field) {
+	<div [formGroupName]="field">
+		@for (locale of locales; track locale) {
+		<app-form-fields
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+			[label]="('banner_' + field | transloco) + ' (' + locale + ')'"
+			[for]="slot() + '_' + field + '_' + locale"
+		>
+			<input
+				class="form-control"
+				type="text"
+				[id]="slot() + '_' + field + '_' + locale"
+				[formControlName]="locale"
+			/>
+		</app-form-fields>
+		}
+	</div>
+	} }
+
+	<div formGroupName="alt">
+		@for (locale of locales; track locale) {
+		<app-form-fields
+			[labelClass]="'form-label-title col-sm-3 mb-0'"
+			[gridClass]="'col-sm-9'"
+			[label]="('banner_alt' | transloco) + ' (' + locale + ')'"
+			[for]="slot() + '_alt_' + locale"
+			[required]="form.controls.status.value === 'active'"
+		>
+			<input
+				class="form-control"
+				type="text"
+				[id]="slot() + '_alt_' + locale"
+				[formControlName]="locale"
+			/>
+		</app-form-fields>
+		} @if (form.controls.containsText.value) {
+		<p class="help-text">{{ 'banner_alt_repeat_text_help' | transloco }}</p>
+		}
+	</div>
+
+	<app-form-fields
+		[labelClass]="'form-label-title col-sm-3 mb-0'"
+		[gridClass]="'col-sm-9'"
+		[label]="'banner_link'"
+		[for]="slot() + '_link'"
+	>
+		<input
+			class="form-control"
+			type="text"
+			placeholder="/collections/sarees"
+			[id]="slot() + '_link'"
+			formControlName="linkHref"
+		/>
+	</app-form-fields>
+	<app-form-fields
+		[labelClass]="'form-label-title col-sm-3 mb-0'"
+		[gridClass]="'col-sm-9'"
+		[label]="'banner_link_external'"
+		[for]="slot() + '_external'"
+	>
+		<div class="form-check form-switch ps-0">
+			<label class="switch">
+				<input
+					type="checkbox"
+					[id]="slot() + '_external'"
+					formControlName="linkExternal"
+				/>
+				<span class="switch-state"></span>
+			</label>
+		</div>
+	</app-form-fields>
+
+	<app-form-fields
+		[labelClass]="'form-label-title col-sm-3 mb-0'"
+		[gridClass]="'col-sm-9'"
+		[label]="'banner_starts_at'"
+		[for]="slot() + '_starts'"
+	>
+		<input
+			class="form-control"
+			type="datetime-local"
+			[id]="slot() + '_starts'"
+			formControlName="startsAt"
+		/>
+	</app-form-fields>
+	<app-form-fields
+		[labelClass]="'form-label-title col-sm-3 mb-0'"
+		[gridClass]="'col-sm-9'"
+		[label]="'banner_ends_at'"
+		[for]="slot() + '_ends'"
+	>
+		<input
+			class="form-control"
+			type="datetime-local"
+			[id]="slot() + '_ends'"
+			formControlName="endsAt"
+		/>
+	</app-form-fields>
+
+	<app-form-fields
+		[labelClass]="'form-label-title col-sm-3 mb-0'"
+		[gridClass]="'col-sm-9'"
+		[label]="'status'"
+		[for]="slot() + '_status'"
+	>
+		<select
+			class="form-select"
+			[id]="slot() + '_status'"
+			formControlName="status"
+		>
+			<option value="draft">{{ 'banner_status_draft' | transloco }}</option>
+			<option value="active">{{ 'banner_status_active' | transloco }}</option>
+			<option value="archived">{{ 'banner_status_archived' | transloco }}</option>
+		</select>
+	</app-form-fields>
+
+	<div class="d-flex justify-content-end gap-2">
+		@if (existing()) {
+		<app-button
+			[class]="'btn btn-outline'"
+			[id]="slot() + '_remove'"
+			[type]="'button'"
+			[spinner]="false"
+			(click)="remove()"
+		>
+			{{ 'delete' | transloco }}
+		</app-button>
+		}
+		<app-button
+			[class]="'btn btn-theme'"
+			[id]="slot() + '_save'"
+			[disabled]="saving()"
+		>
+			{{ 'save' | transloco }}
+		</app-button>
+	</div>
+</form>

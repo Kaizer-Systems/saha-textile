@@ -1,10 +1,8 @@
 <ul>
-	@for (category of categories; track category) {
+	@for (category of categories(); track category.id) {
 	<li>
 		<a
-			href="javascript:void(0)"
-			[routerLink]="['/collections']"
-			[queryParams]="{ category: category?.slug }"
+			[routerLink]="'/collections/' + category.canonical_path"
 			class="text-content"
 		>
 			{{ category.name }}

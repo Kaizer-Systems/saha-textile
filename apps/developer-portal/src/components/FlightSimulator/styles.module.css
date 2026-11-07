@@ -1,0 +1,397 @@
+/* ============================================================================
+   NEXT-GEN-UI · Request Flight Simulator styles
+   ----------------------------------------------------------------------------
+   Same design language as the reactor / Mission Control: glass panel on the
+   ambient field, --portal-* tokens only, accent photon + pulses. Ghost stages
+   render dashed/dimmed so "what's missing" is visible. Motion disabled under
+   prefers-reduced-motion at the bottom.
+   Tuning knobs: photon size/glow (.photon), node width, auto-play interval is in
+   index.tsx (2200ms).
+   ========================================================================= */
+
+.sim {
+	margin: 40px 0 56px;
+	padding: 26px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: var(--portal-radius-xl, 12px);
+	background: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--portal-surface) 58%, transparent),
+		color-mix(in srgb, var(--portal-surface) 28%, transparent)
+	);
+	overflow: hidden;
+}
+
+.head {
+	max-width: 680px;
+}
+
+.eyebrow {
+	margin: 0 0 8px;
+	color: var(--portal-accent);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.head h2 {
+	margin: 0;
+	color: var(--portal-ink);
+	font-size: clamp(1.35rem, 2.6vw, 1.7rem);
+	font-weight: 600;
+	letter-spacing: -0.02em;
+}
+
+.route {
+	padding: 2px 8px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: var(--portal-radius, 6px);
+	background: var(--portal-canvas);
+	font-size: 0.82em;
+}
+
+.method {
+	color: var(--portal-accent);
+	font-weight: 700;
+}
+
+.lede {
+	margin: 12px 0 0;
+	max-width: 640px;
+	color: var(--portal-muted);
+	font-size: 14px;
+	line-height: 1.6;
+}
+
+/* Controls */
+.controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin: 22px 0 18px;
+}
+
+.modeToggle {
+	display: inline-flex;
+	padding: 4px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: 999px;
+	background: var(--portal-canvas);
+}
+
+.mode,
+.modeActive {
+	padding: 6px 14px;
+	border: 0;
+	border-radius: 999px;
+	background: transparent;
+	color: var(--portal-muted);
+	cursor: pointer;
+	font: 550 12px/1 var(--ifm-font-family-base);
+	transition:
+		background 160ms ease,
+		color 160ms ease;
+}
+
+.modeActive {
+	background: color-mix(in srgb, var(--portal-accent) 18%, transparent);
+	color: var(--portal-ink);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--portal-accent) 40%, transparent);
+}
+
+.transport {
+	display: inline-flex;
+	gap: 6px;
+}
+
+.ctrl {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 34px;
+	height: 34px;
+	padding: 0 9px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: var(--portal-radius, 6px);
+	background: var(--portal-canvas);
+	color: var(--portal-ink);
+	cursor: pointer;
+	font-size: 12px;
+	transition:
+		border-color 160ms ease,
+		background 160ms ease;
+}
+
+.ctrl:hover {
+	border-color: var(--portal-accent);
+}
+
+/* Rail — no fixed min-width, so it always fits its container (never scrolls).
+   The track + photon are SVG overlays sized to the rail; their coordinates come
+   from the real dot centers (see index.tsx), so this works whether the nodes lay
+   out horizontally (wide) or vertically (narrow). */
+.rail {
+	position: relative;
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 16px 4px;
+}
+
+.trackSvg {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.track {
+	stroke: color-mix(in srgb, var(--portal-accent) 30%, var(--portal-border));
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.photon {
+	position: absolute;
+	z-index: 3;
+	width: 12px;
+	height: 12px;
+	/* margin centers the 12px dot exactly on its (left, top) point. Position is
+	   written by the rAF loop in index.tsx — no CSS transition here on purpose. */
+	margin: -6px 0 0 -6px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--portal-accent) 92%, white);
+	box-shadow:
+		0 0 10px 2px var(--portal-accent),
+		0 0 22px 4px color-mix(in srgb, var(--portal-accent) 60%, transparent);
+	pointer-events: none;
+}
+
+.node {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex: 1 1 0;
+	min-width: 0;
+	flex-direction: column;
+	align-items: center;
+	gap: 3px;
+	padding: 0 2px;
+	border: 0;
+	background: transparent;
+	color: var(--portal-muted);
+	cursor: pointer;
+	text-align: center;
+}
+
+.nodeDot {
+	width: 20px;
+	height: 20px;
+	border: 1.5px solid var(--portal-border);
+	border-radius: 999px;
+	background: var(--portal-canvas);
+	transition:
+		border-color 200ms ease,
+		box-shadow 200ms ease,
+		background 200ms ease;
+}
+
+.node:hover .nodeDot {
+	border-color: var(--portal-accent);
+}
+
+.nodeActive .nodeDot {
+	border-color: var(--portal-accent);
+	background: color-mix(in srgb, var(--portal-accent) 24%, var(--portal-canvas));
+	box-shadow: 0 0 12px color-mix(in srgb, var(--portal-accent) 55%, transparent);
+}
+
+.nodeLabel {
+	margin-top: 3px;
+	max-width: 100%;
+	overflow: hidden;
+	color: var(--portal-ink);
+	font-size: 12px;
+	font-weight: 600;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.nodeActive .nodeLabel {
+	color: var(--portal-accent);
+}
+
+.nodeSub {
+	max-width: 100%;
+	overflow: hidden;
+	color: var(--portal-subtle);
+	font-size: 10px;
+	line-height: 1.3;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Ghost stages — visible but clearly "not built yet". */
+.nodeGhost .nodeDot {
+	border-style: dashed;
+	border-color: color-mix(in srgb, var(--portal-warning) 55%, var(--portal-border));
+	background: transparent;
+}
+
+.nodeGhost .nodeLabel {
+	color: var(--portal-muted);
+}
+
+.ghostTag {
+	margin-top: 2px;
+	padding: 1px 5px;
+	border: var(--portal-border-width, 1px) solid color-mix(in srgb, var(--portal-warning) 45%, var(--portal-border));
+	border-radius: 999px;
+	color: var(--portal-warning);
+	font-size: 8.5px;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+}
+
+/* Dimmed = not in the current-mode flow (ghosts while "current"). */
+.nodeDimmed {
+	opacity: 0.5;
+}
+
+/* Detail */
+.detail {
+	margin-top: 20px;
+	padding: 18px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: var(--portal-radius-lg, 8px);
+	background: color-mix(in srgb, var(--portal-canvas) 66%, transparent);
+	backdrop-filter: blur(8px);
+}
+
+.detailHead {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.detailKicker {
+	color: var(--portal-ink);
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.detailGhostBadge {
+	padding: 3px 8px;
+	border: var(--portal-border-width, 1px) solid color-mix(in srgb, var(--portal-warning) 45%, var(--portal-border));
+	border-radius: 999px;
+	color: var(--portal-warning);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+}
+
+.detailFile {
+	display: inline-block;
+	margin: 8px 0 14px;
+	padding: 3px 8px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: var(--portal-radius, 6px);
+	background: var(--portal-canvas);
+	color: var(--portal-muted);
+	font-size: 11px;
+}
+
+.lenses {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+}
+
+.lens {
+	padding: 12px;
+	border: var(--portal-border-width, 1px) solid var(--portal-border);
+	border-radius: var(--portal-radius, 6px);
+	background: var(--portal-canvas);
+	opacity: 0.72;
+	transition: opacity 200ms ease;
+}
+
+.lensEmphasis {
+	opacity: 1;
+	border-color: color-mix(in srgb, var(--portal-accent) 40%, var(--portal-border));
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--portal-accent) 16%, transparent);
+}
+
+.lensLabel {
+	display: block;
+	margin-bottom: 6px;
+	color: var(--portal-subtle);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.lens p {
+	margin: 0;
+	color: var(--portal-muted);
+	font-size: 13px;
+	line-height: 1.55;
+}
+
+.lensEmphasis .lensLabel {
+	color: var(--portal-accent);
+}
+
+/* Narrow: the rail becomes a VERTICAL timeline — no horizontal scroll ever. The
+   track/photon overlays follow the new dot centers automatically (measured). */
+@media (max-width: 680px) {
+	.rail {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 14px;
+		padding: 8px 2px;
+	}
+	.node {
+		flex-direction: row;
+		align-items: center;
+		gap: 10px;
+		text-align: left;
+	}
+	.nodeDot {
+		flex: none;
+	}
+	.nodeLabel,
+	.nodeSub {
+		max-width: none;
+		white-space: normal;
+	}
+}
+
+@media (max-width: 640px) {
+	.sim {
+		padding: 18px 14px;
+	}
+	.lenses {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.photon {
+		transition: none;
+	}
+	.nodeDot,
+	.lens {
+		transition: none;
+	}
+}

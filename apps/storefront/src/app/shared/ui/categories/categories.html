@@ -1,3 +1,34 @@
+<!-- Category Style Browse -->
+@if (style() === 'browse' && browse().length) {
+<div class="category-section-3 section-b-space">
+	<div class="row g-3 row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xxl-6">
+		@for (category of browse(); track category.id) {
+		<div class="col">
+			<div class="category-box-list">
+				<a
+					[routerLink]="'/collections/' + category.canonical_path"
+					class="category-name"
+				>
+					<h4>{{ category.name }}</h4>
+					<h6>{{ category.products_count }} {{ 'items' | transloco }}</h6>
+				</a>
+				<div class="category-box-view">
+					<a [routerLink]="'/collections/' + category.canonical_path">
+						<img
+							[src]="category.cover_image?.original_url ?? 'assets/images/product.png'"
+							class="img-fluid"
+							loading="lazy"
+							[alt]="category.name"
+						/>
+					</a>
+				</div>
+			</div>
+		</div>
+		}
+	</div>
+</div>
+}
+
 <!-- Category Style Vertical -->
 @if (categories && categories.length && style() === 'vertical') {
 <div class="category-menu section-b-space">

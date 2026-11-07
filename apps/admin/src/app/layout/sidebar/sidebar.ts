@@ -6,11 +6,10 @@ import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
-import { AccountStore } from '@core/state/account.store';
+import { AuthStore } from '@core/state/auth.store';
+import { injectBrandQuery } from '@core/brand/brand.gateway';
 import { MenuStore } from '@core/state/menu.store';
-import { SettingStore } from '@core/state/setting.store';
 import { IMenu } from '@data-access/interfaces/menu.interface';
-import { IValues } from '@data-access/interfaces/setting.interface';
 import { NavService } from '@data-access/services/nav.service';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 
@@ -25,16 +24,15 @@ export class Sidebar {
 	private platformId = inject<Object>(PLATFORM_ID);
 	private router = inject(Router);
 	private menuStore = inject(MenuStore);
-	private accountStore = inject(AccountStore);
+	private authStore = inject(AuthStore);
 
-	readonly class = input<string>(undefined);
+	readonly class = input<string>('');
 
-	setting$: Observable<IValues | null> = toObservable(inject(SettingStore).setting);
+	readonly brand = injectBrandQuery();
 	readonly menu = this.menuStore.menu;
 
 	public item: IMenu;
 	public menuItems: IMenu[] = [];
-	public permissions: string[] = [];
 	public sidebarTitleKey: string = 'sidebar';
 
 	constructor() {
@@ -42,22 +40,24 @@ export class Sidebar {
 		void this.router.events.subscribe((event) => {
 			if (event instanceof NavigationEnd) {
 				this.menuItems?.forEach((menu: IMenu) => {
-					menu.active = false;
+					this.clearActive(menu);
 					this.activeMenuRecursive(menu, event.url.split('?')[0].toString().split('/')[1].toString());
 				});
 			}
 		});
 	}
 
+	/** Clears a row and every child, so a page left behind stays unhighlighted. */
+	private clearActive(menu: IMenu) {
+		menu.active = false;
+		menu.children?.forEach((child: IMenu) => this.clearActive(child));
+	}
+
+	/** Parent row: show if the operator holds ANY of the listed codes. */
 	hasMainLevelMenuPermission(acl_permission?: string[]) {
-		let status = true;
-		if (acl_permission?.length) {
-			this.permissions = this.accountStore.permissions()?.map((value) => value?.name);
-			if (!acl_permission?.some((action) => this.permissions?.includes(action))) {
-				status = false;
-			}
-		}
-		return status;
+		if (!acl_permission?.length) return true;
+		const permissions = this.authStore.permissions();
+		return acl_permission.some((action) => permissions.includes(action));
 	}
 
 	sidebarToggle() {
@@ -98,11 +98,8 @@ export class Sidebar {
 	}
 
 	closeSidebar() {
-		if (isPlatformBrowser(this.platformId)) {
-			// For SSR
-			if (window.innerWidth < 992) {
-				this.navServices.collapseSidebar = false;
-			}
+		if (isPlatformBrowser(this.platformId) && window.innerWidth < 992) {
+			this.navServices.collapseSidebar = true;
 		}
 	}
 }

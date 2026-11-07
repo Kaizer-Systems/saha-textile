@@ -15,15 +15,15 @@ import { DropdownList } from './dropdown-list/dropdown-list';
 	imports: [ClickOutsideDirective, ReactiveFormsModule, DropdownList, TranslocoModule],
 })
 export class AdvancedDropdown {
-	readonly dropdownContainer = viewChild<ElementRef>('dropdownContainer');
+	readonly dropdownContainer = viewChild.required<ElementRef>('dropdownContainer');
 	readonly toggleButton = viewChild<ElementRef>('toggleButton');
 	readonly items = viewChild<ElementRef>('items');
 
 	readonly selectSingle = input<boolean>(false);
 	readonly displayKey = input<string>('name');
-	readonly subArrayKey = input<string>(undefined);
-	readonly options = input<any[]>(undefined);
-	readonly selectedOption = input<any[]>(undefined);
+	readonly subArrayKey = input<string>('');
+	readonly options = input<any[]>([]);
+	readonly selectedOption = input<any[]>([]);
 	readonly position = input<string>('bottom');
 
 	readonly selectedItem = output<any>();

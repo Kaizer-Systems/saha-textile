@@ -26,6 +26,5 @@ import { MobileMenu } from './widgets/mobile-menu/mobile-menu';
 export class Header {
 	siteConfig$: Observable<ISiteConfig> = toObservable(inject(SiteConfigStore).siteConfig) as Observable<ISiteConfig>;
 
-	readonly logo = input<string>();
 	public readonly sticky = true;
 }

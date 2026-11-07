@@ -11,8 +11,7 @@ PREVIOUS="$SAHA_TEXTILE_ROOT/previous"
 target="$(readlink "$PREVIOUS")"
 leaving="$(readlink "$CURRENT")"
 say 'Starting the previous release'
-compose_for "$target" up --detach --wait --wait-timeout "${HEALTH_TIMEOUT:-180}" --force-recreate \
-	api worker storefront admin edge
+swap_apps "$target" || die 'The previous release did not start: the current one is still serving.'
 ln -sfn "$target" "$CURRENT"
 ln -sfn "$leaving" "$PREVIOUS"
 say 'Rollback finished'

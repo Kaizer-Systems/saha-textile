@@ -996,7 +996,7 @@ Closed: `DEC-SECRETS-DELIVERY`. The full design is in `production-deployment-pla
 - **The catalogue will be large.** The 23 products and 40 SKUs figure described the old WordPress test site. Size against measured data.
 - **Origin lockdown adds Authenticated Origin Pulls with our own zone certificate,** on top of the firewall limit to Cloudflare's ranges.
 - **Staging sits behind a Cloudflare Access login wall** on `staging.` and `admin-staging.`. `api-staging.` stays reachable for webhooks.
-- **Deploy gap:** each app gets its own "back in a moment" page in its own look, served by Nginx as a static copy. The gap is measured on staging before anything more complex is built.
+- **Deploys swap old and new side by side, with no gap** (revised the same day, after measuring a plain restart at about 1.3 seconds for the API). The "back in a moment" page, in each app's own look, stays for rare reboots and crashes. The CCAvenue return address stays on the API host, and its return path shows the storefront's page worded for a payment being confirmed. Kubernetes and several servers wait until sales justify roughly $150 to $250 a month.
 - **Backups keep 30 daily and 12 monthly,** with versioning on. The owner accepted that the server's key can delete backups, because Spaces has no write-only key.
 - **Monitoring is DigitalOcean only.** A super admin screen shows metrics fetched by the API. It grows with the number of droplets: a named switcher, and a view comparing metrics across servers.
 - **The developer portal stays local for now.** `DEC-PORTAL-PRIVATE-ACCESS` stays open.

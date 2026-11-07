@@ -58,6 +58,8 @@ pnpm stack:down
 
 `pnpm production:proof` builds the images and runs the whole stack on one machine with throwaway secrets. It uses a local registry for GHCR, SeaweedFS for Spaces and a local CA for Cloudflare's certificates. `pnpm production:proof clean` removes it.
 
+A deploy swaps each app side by side: the new container starts next to the old one, takes traffic once healthy, and the old one then stops gently, so visitors see no gap. Nginx reloads its config in place.
+
 `.github/workflows/publish-images.yml` runs on a merge into `staging`: CI, then the proof, then it pushes four images to GHCR, tagged by commit and by Git tree hash.
 
 ## Runtime configuration and secrets model

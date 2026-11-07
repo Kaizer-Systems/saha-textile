@@ -131,16 +131,35 @@ Any database change must keep working with the previous release, or a rollback b
 
 It also adds rate limits for sign-in, OTP and checkout, refuses unknown hostnames, and requires the Cloudflare client certificate on the public listener.
 
-### Deploy gap
+### Deploys without a gap
 
-Each app gets its own "back in a moment" page, in its own look, so it feels familiar.
+A deploy never stops the shop (owner decision 2026-11-08). `bin/lib.sh` swaps each app side by side:
+
+1. The new API container starts next to the old one.
+2. The deploy waits for its health check. A new container that never gets healthy is removed, and the old one keeps serving.
+3. Nginx finds both through Docker's DNS, which it re-reads every second, and retries a refused connection on the other.
+4. The old container stops gently: it finishes the requests it holds, then exits.
+5. The storefront and admin follow the same steps. The worker simply restarts, because no visitor talks to it and its jobs wait in Redis.
+6. Nginx reloads its config in place. It restarts only when a hostname or port changes.
+
+Measured on the local stack before this change, a plain restart made the API unavailable for about 1.3 seconds and the storefront for under a second. The swap costs about 260 MB extra, one more API and one more storefront, for about 30 seconds. At rest the shop uses about 1 GB of the 8 GB droplet. `pnpm production:proof` counts every failed request during a deploy, a failed deploy and a rollback, and requires zero.
+
+Every change must work while the old and new versions run together for that half-minute. The same rule already applies to rollback.
+
+### Back in a moment
+
+A reboot or a crash can still stop the shop briefly. For those moments, each app gets its own "back in a moment" page, in its own look.
 
 - Each app produces a self-contained static page at build time: inline styles, no scripts, English and French. Nginx holds the copy, because the app is the thing that is down.
 - It answers 503 with `Retry-After`, refreshes itself and keeps the address. API calls get a short JSON 503.
+- The CCAvenue return path on the API host shows the storefront's page, worded for a payment being confirmed. The return address stays on the API host.
 - The logo comes from the CDN, with the shop name as a fallback.
-- The gap is measured on staging. Running old and new side by side is added only if the gap is long.
 - It needs a `DEC-UI-REUSE` brief first, reusing each app's error page.
-- CCAvenue sends no webhook, and nothing received says it repeats a payment return. A return posted during the gap is lost, and the checkout's status-enquiry sweep settles that attempt instead. The return path needs the human page, not the API's JSON 503. See [CCAvenue § During a restart](/payments/ccavenue#during-a-restart).
+- CCAvenue sends no webhook, and nothing received says it repeats a payment return. A return posted while the API is down is lost, and the checkout's status-enquiry sweep settles that attempt instead. See [CCAvenue § During a restart](/payments/ccavenue#during-a-restart).
+
+### Kubernetes and more servers
+
+Not now. Several servers behind a load balancer would also survive a dead server, which a single droplet cannot. At current DigitalOcean prices that is at least two droplets, a $12 load balancer and $40 for a highly available Kubernetes control plane, plus a three-member MongoDB: roughly $150 to $250 a month against $53, and much more to run. The images by digest, health checks, apps that hold no data and outside configuration already fit Kubernetes, so moving later rebuilds the deploy layer only.
 
 ## 9. Cloudflare
 

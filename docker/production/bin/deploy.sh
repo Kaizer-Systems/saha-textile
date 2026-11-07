@@ -133,10 +133,7 @@ SCRIPT
 start_apps() {
 	say 'Starting the apps'
 	compose_for "$RELEASE" run --rm --no-deps -T api node dist/first-run-setup.js >/dev/null
-	# Always recreated: Compose does not notice a changed secret file when the image is the same,
-	# so a rotated secret would otherwise never reach the running apps.
-	compose_for "$RELEASE" up --detach --wait --wait-timeout "$HEALTH_TIMEOUT" --remove-orphans --force-recreate \
-		api worker storefront admin edge
+	swap_apps "$RELEASE"
 	say 'Rebuilding the search index'
 	compose_for "$RELEASE" exec -T api node dist/rebuild-search-index.js >/dev/null
 	check_running
@@ -145,8 +142,7 @@ start_apps() {
 restore_previous() {
 	if [[ -L "$CURRENT" ]]; then
 		say 'Putting the previous release back'
-		compose_for "$(readlink "$CURRENT")" up --detach --wait --wait-timeout "$HEALTH_TIMEOUT" --force-recreate \
-			api worker storefront admin edge >/dev/null 2>&1 || die 'The previous release did not come back: use SSH.'
+		swap_apps "$(readlink "$CURRENT")" || die 'The previous release did not come back: use SSH.'
 		say 'Previous release restored'
 	else
 		say 'No previous release to restore: stopping the apps'

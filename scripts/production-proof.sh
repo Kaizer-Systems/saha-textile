@@ -5,7 +5,7 @@
 #   pnpm production:proof clean    remove what a run left behind
 #
 # Proves: images by digest from a registry, password-protected data services, first run, origin
-# refusals, a bad deploy rolling back, manual rollback, backup, and a restore. It stands in a local
+# refusals, deploys and rollbacks with no failed request, a bad deploy left out, backup, and restore. It stands in a local
 # registry for GHCR, SeaweedFS for Spaces, and a self-made CA for Cloudflare's certificates. It uses its
 # own project and volumes, so it never touches the mode-3 stack or the developer database.
 set -euo pipefail
@@ -160,6 +160,41 @@ VARS
 	echo "$release"
 }
 
+# Visits the shop and the API without pause, from changing client addresses so the API's own rate
+# limit stays out of the count, until load_stop. Every answer that is not 200 is a visible gap.
+load_start() {
+	rm -f "$PROOF/load.stop" "$PROOF/load.result"
+	python3 - "$PROOF" "$EDGE_PORT" "$SITE_HOST" "$API_HOST" <<'PYTHON' &
+import os, random, subprocess, sys
+proof, port, site, api = sys.argv[1:]
+cert = ["--cert", f"{proof}/client/client.pem", "--key", f"{proof}/client/client.key"]
+targets = [(site, "/en/"), (api, "/health/live")]
+total = failed = 0
+while not os.path.exists(f"{proof}/load.stop"):
+    host, path = targets[total % 2]
+    ip = f"198.51.100.{random.randint(1, 254)}"
+    code = subprocess.run(
+        ["curl", "-sk", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "10",
+         "--resolve", f"{host}:{port}:127.0.0.1", *cert, "-H", f"CF-Connecting-IP: {ip}",
+         f"https://{host}:{port}{path}"], capture_output=True, text=True).stdout
+    total += 1
+    failed += code != "200"
+open(f"{proof}/load.result", "w").write(f"{total} {failed}\n")
+PYTHON
+	LOAD_PID=$!
+}
+
+load_stop() {
+	touch "$PROOF/load.stop"
+	wait "$LOAD_PID"
+	read -r LOAD_TOTAL LOAD_FAILED <"$PROOF/load.result"
+}
+
+no_visible_gap() {
+	[[ "$LOAD_TOTAL" -gt 50 ]] || fail "$1: only $LOAD_TOTAL requests were made"
+	expect "$1 ($LOAD_TOTAL requests)" "$LOAD_FAILED failed" '0 failed'
+}
+
 in_release() { docker compose --project-name "$COMPOSE_PROJECT" --project-directory "$1" --env-file "$1/release.env" --file "$1/compose.yaml" "${@:2}"; }
 
 status_code() {
@@ -222,16 +257,25 @@ in_release "$FIRST" exec -T api node dist/create-first-admin.js --email owner@ex
 echo 'A bad deploy rolls back'
 BAD="$(write_release bad)"
 sed -i.bak 's/^CSRF_SECRET=.*/CSRF_SECRET=change-me/' "$BAD/secrets/api.env"
+load_start
 if HEALTH_TIMEOUT=60 "$BAD/bin/deploy.sh" "$BAD" >"$PROOF/bad-deploy.log" 2>&1; then fail 'a bad config went live'; fi
+load_stop
+no_visible_gap 'visitors saw nothing during the failed deploy'
 pass 'a bad config exits with failure'
 expect 'the working release stays current' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$FIRST"
 expect 'the shop answers after the rollback' "$(with_pull_cert "$SITE_HOST" /en/)" 200
 
 echo 'A good second deploy, then manual rollback'
 SECOND="$(write_release second)"
+load_start
 "$SECOND/bin/deploy.sh" "$SECOND" >/dev/null
+load_stop
+no_visible_gap 'no request failed during the deploy'
 expect 'the second release is current' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$SECOND"
+load_start
 "$SECOND/bin/rollback.sh" >/dev/null
+load_stop
+no_visible_gap 'no request failed during the rollback'
 expect 'rollback returned to the first release' "$(readlink "$SAHA_TEXTILE_ROOT/current")" "$FIRST"
 expect 'the shop answers after the manual rollback' "$(with_pull_cert "$SITE_HOST" /en/)" 200
 

@@ -33,3 +33,74 @@ ops() {
 	shift
 	compose_for "$release" --profile ops run --rm --no-deps -T ops "$@"
 }
+
+# ---- Side-by-side swaps -----------------------------------------------------------------------
+# A deploy starts the new container next to the old one, waits until it is healthy, then stops the
+# old one gently. Nginx finds both through Docker's DNS and retries a refused connection on the
+# other, so no visitor sees a gap. A new container that never gets healthy is removed, and the old
+# one keeps serving.
+
+# Waits for a container's health check, or for it to be running when the image has none.
+wait_ready() {
+	local container="$1" deadline=$((SECONDS + ${HEALTH_TIMEOUT:-180})) state
+	while ((SECONDS < deadline)); do
+		state="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container" 2>/dev/null || echo gone)"
+		case "$state" in
+		healthy) return 0 ;;
+		# Only an image without a health check reports plain `running`; one with a check says `starting`.
+		running) sleep 2 && return 0 ;;
+		unhealthy | exited | dead | gone) return 1 ;;
+		esac
+		sleep 1
+	done
+	return 1
+}
+
+swap_in() {
+	local release="$1" service="$2" old new
+	old="$(compose_for "$release" ps --quiet "$service")"
+	if [[ -z "$old" ]]; then
+		compose_for "$release" up --detach --no-deps --wait --wait-timeout "${HEALTH_TIMEOUT:-180}" "$service" >/dev/null
+		return
+	fi
+	compose_for "$release" up --detach --no-deps --no-recreate --scale "$service=2" "$service" >/dev/null 2>&1
+	new="$(compose_for "$release" ps --quiet "$service" | grep -v -x -F "$old" | head -n 1)"
+	if [[ -z "$new" ]] || ! wait_ready "$new"; then
+		[[ -n "$new" ]] && docker rm --force "$new" >/dev/null 2>&1
+		return 1
+	fi
+	# Nginx re-reads Docker's DNS every second; give it time to send traffic to the new one.
+	sleep 3
+	docker stop --time 30 "$old" >/dev/null
+	docker rm "$old" >/dev/null
+}
+
+# The edge reads its config from a fixed folder, so a new release reloads it instead of restarting.
+# Only a change of hostnames or ports, which live in the container's environment, recreates it.
+sync_edge() {
+	local release="$1" edge="$SAHA_TEXTILE_ROOT/edge" fingerprint
+	mkdir -p "$edge/templates" "$edge/snippets" "$edge/public"
+	cp "$release/nginx/edge.conf.template" "$edge/templates/default.conf.template"
+	cp "$release/nginx/proxy.conf" "$release/nginx/tls.conf" "$edge/snippets/"
+	cp "$release/public/storefront.config.json" "$edge/public/storefront.config.json"
+	fingerprint="$(grep -E '^(EDGE_|STOREFRONT_HOST|ADMIN_HOST|API_HOST|CDN_HOST|SPACES_HOST|CCAVENUE_HOST|PRIVATE_)' "$release/release.env" | sort | cksum)"
+	if [[ -n "$(compose_for "$release" ps --quiet edge)" && "$(cat "$edge/env.fingerprint" 2>/dev/null)" == "$fingerprint" ]]; then
+		compose_for "$release" exec -T edge sh -c \
+			'/docker-entrypoint.d/20-envsubst-on-templates.sh >/dev/null && nginx -t -q && nginx -s reload 2>/dev/null'
+	else
+		compose_for "$release" up --detach --no-deps --force-recreate edge >/dev/null
+		printf '%s\n' "$fingerprint" >"$edge/env.fingerprint"
+	fi
+}
+
+# Every app container is replaced on every deploy, even with the same image, because Compose does
+# not notice a changed secret file and a rotated secret must reach the running apps.
+swap_apps() {
+	local release="$1" service
+	for service in api storefront admin; do
+		swap_in "$release" "$service" || return 1
+	done
+	# No visitor talks to the worker, and its jobs wait in Redis while it restarts.
+	compose_for "$release" up --detach --no-deps --force-recreate worker >/dev/null
+	sync_edge "$release"
+}

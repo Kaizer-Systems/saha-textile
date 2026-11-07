@@ -162,10 +162,11 @@ services:
     ports:
       - '${EDGE_BIND:-0.0.0.0}:${EDGE_PORT}:${EDGE_PORT}'
     volumes:
-      - ./nginx/edge.conf.template:/etc/nginx/templates/default.conf.template:ro
-      - ./nginx/proxy.conf:/etc/nginx/snippets/proxy.conf:ro
-      - ./nginx/tls.conf:/etc/nginx/snippets/tls.conf:ro
-      - ./public/storefront.config.json:/etc/nginx/public/storefront.config.json:ro
+      # Folders, not single files: a deploy replaces the files and reloads Nginx without a restart,
+      # and a single-file mount would keep showing the old file.
+      - ${SAHA_TEXTILE_ROOT}/edge/templates:/etc/nginx/templates:ro
+      - ${SAHA_TEXTILE_ROOT}/edge/snippets:/etc/nginx/snippets:ro
+      - ${SAHA_TEXTILE_ROOT}/edge/public:/etc/nginx/public:ro
       - ${SAHA_TEXTILE_ROOT}/certs/origin.pem:/etc/nginx/certs/origin.pem:ro
       - ${SAHA_TEXTILE_ROOT}/certs/origin.key:/etc/nginx/certs/origin.key:ro
       - ${SAHA_TEXTILE_ROOT}/certs/cloudflare-client-ca.pem:/etc/nginx/certs/cloudflare-client-ca.pem:ro

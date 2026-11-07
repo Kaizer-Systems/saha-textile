@@ -310,12 +310,12 @@ A decrypted callback is not URL-encoded, so text a customer types on the billing
 
 ### During a restart
 
-The production stack answers 503 while the API restarts ([Deploy gap](/engineering-live-context/production-deployment-plan#deploy-gap)). This is how CCAvenue meets that gap, as far as the material received shows.
+The API can be briefly unavailable during a reboot or a crash ([Back in a moment](/engineering-live-context/production-deployment-plan#back-in-a-moment)). This is how CCAvenue meets that gap, as far as the material received shows.
 
 - **No webhook is used.** The payment return (call 2) is the customer's browser posting CCAvenue's form once. Nothing received says CCAvenue sends it again. Dynamic Event Notification is a separate server-to-server post that HDFC turns on when given a URL. The material says nothing about its retries, timing or signing, so it is not planned, and CCAvenue needs no Cloudflare webhook rule.
 - **A return during the gap is lost.** The browser gets the 503 and `encResp` never reaches the API. Re-posting the same form later is a replay, which `decidePaymentResult` answers `duplicate` or `apply` as for any return. The payment itself happened at CCAvenue and is unaffected.
 - **Call 3 settles it.** HDFC makes the status enquiry mandatory because the return may not arrive. Checkout needs a sweep that runs call 3 for every attempt still `pending` once CCAvenue's 15-minute payment-page session has passed, and applies `decidePaymentResult` with no callback. A lost return then delays the order instead of losing it.
-- **What the customer sees.** The return address is on the API host, where the gap answers a short JSON 503 meant for scripts. The return path needs the human "back in a moment" page, or the return address must sit on the storefront host. HDFC registers the return address, so this is settled before test credentials are requested.
+- **What the customer sees.** A deploy swaps old and new side by side, so it has no gap ([Deploys without a gap](/engineering-live-context/production-deployment-plan#deploys-without-a-gap)). Only a reboot or a crash can still stop the API. The return address stays on the API host, and during such a moment its return path shows the storefront's "back in a moment" page, worded for a payment being confirmed.
 
 Staging proves it: post a return during a restart, then watch the sweep settle the attempt.
 

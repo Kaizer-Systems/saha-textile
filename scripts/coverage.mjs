@@ -34,6 +34,7 @@ const WORKSPACES = {
 	'adapters-queue-bullmq': { dir: 'packages/adapters-queue-bullmq' },
 	'adapters-image-sharp': { dir: 'packages/adapters-image-sharp' },
 	'adapters-youtube': { dir: 'packages/adapters-youtube' },
+	'adapters-payments': { dir: 'packages/adapters-payments' },
 	'adapters-cdn-cloudflare': { dir: 'packages/adapters-cdn-cloudflare' },
 };
 

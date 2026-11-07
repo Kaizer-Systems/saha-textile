@@ -39,6 +39,7 @@ The repository is a pnpm and Turborepo workspace. This table lists each top-leve
 | `packages/adapters-queue-bullmq`        | BullMQ `MediaJobQueuePort` on Redis, plus the worker's schedulers                                               |
 | `packages/adapters-cdn-cloudflare`      | Cloudflare `CdnPurgePort` (purge by URL)                                                                        |
 | `packages/adapters-youtube`             | YouTube Data API `YouTubePort` (channel uploads, video check)                                                   |
+| `packages/adapters-payments`            | CCAvenue `PaymentGatewayPort` (hosted hand-off, callback, status enquiry, refunds)                              |
 | `packages/config`                       | Shared TypeScript, lint, and style configuration                                                                |
 | `docker/mongo`                          | Local Docker MongoDB 9.0.4 single-node replica-set (`rs0`) profile                                              |
 | `docker/redis`                          | Local Redis for the media queue (`pnpm redis:up`)                                                               |

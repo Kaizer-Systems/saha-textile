@@ -20,7 +20,7 @@ The archive holds one PDF, **CCAvenue Integration Document, Version 3.1** (47 pa
 
 Every merchant ID, access code, and working key that appears in the kit or the PDF has been replaced with a placeholder on this page. The real values were not copied into this repository.
 
-No CCAvenue adapter exists, and `PaymentGatewayPort` defines only `createPayment` and `verifyCallback`.
+The adapter that implements this flow is described on [CCAvenue](/payments/ccavenue#2-endpoints-we-use).
 
 ## 1. Introduction
 

@@ -87,22 +87,22 @@ Every repository has a Mongo implementation in `packages/adapters-db-mongo`. Inv
 
 ### Capability ports
 
-| Port                     | Capability                          | Adapter                                                  |
-| ------------------------ | ----------------------------------- | -------------------------------------------------------- |
-| `AuthPort`               | Password hashing and JWT operations | `Argon2JwtAuth`                                          |
-| `OAuthVerifierPort`      | Provider token verification         | Google and Facebook verifiers                            |
-| `TransactionManagerPort` | Opaque atomic unit of work          | `MongoTransactionManager`                                |
-| `SearchPort`             | Index, remove and search products   | `MeilisearchSearch`                                      |
-| `NotificationPort`       | Deliver or suppress a message       | `Msg91NotificationAdapter`, `ConsoleNotificationAdapter` |
-| `StoragePort`            | Object storage and signed URLs      | `SpacesStorageAdapter`                                   |
-| `ImageCodecPort`         | Decode and encode images            | `SharpImageCodec`                                        |
-| `MediaJobQueuePort`      | Queue background media work         | `BullMqMediaJobQueue`                                    |
-| `CdnPurgePort`           | Purge CDN URLs                      | `CloudflareCdnPurge`, `LogOnlyCdnPurgeAdapter`           |
-| `YouTubePort`            | Read channel uploads, check a video | `YouTubeDataApi`                                         |
-| `PaymentGatewayPort`     | Create and verify a payment         | None                                                     |
-| `ShippingPort`           | Obtain shipping quotes              | None                                                     |
-| `FxRatePort`             | Fetch INR exchange rates            | None                                                     |
-| `VideoTranscodePort`     | Queue HLS transcoding               | None                                                     |
+| Port                     | Capability                                  | Adapter                                                  |
+| ------------------------ | ------------------------------------------- | -------------------------------------------------------- |
+| `AuthPort`               | Password hashing and JWT operations         | `Argon2JwtAuth`                                          |
+| `OAuthVerifierPort`      | Provider token verification                 | Google and Facebook verifiers                            |
+| `TransactionManagerPort` | Opaque atomic unit of work                  | `MongoTransactionManager`                                |
+| `SearchPort`             | Index, remove and search products           | `MeilisearchSearch`                                      |
+| `NotificationPort`       | Deliver or suppress a message               | `Msg91NotificationAdapter`, `ConsoleNotificationAdapter` |
+| `StoragePort`            | Object storage and signed URLs              | `SpacesStorageAdapter`                                   |
+| `ImageCodecPort`         | Decode and encode images                    | `SharpImageCodec`                                        |
+| `MediaJobQueuePort`      | Queue background media work                 | `BullMqMediaJobQueue`                                    |
+| `CdnPurgePort`           | Purge CDN URLs                              | `CloudflareCdnPurge`, `LogOnlyCdnPurgeAdapter`           |
+| `YouTubePort`            | Read channel uploads, check a video         | `YouTubeDataApi`                                         |
+| `PaymentGatewayPort`     | Start, verify, enquire and refund a payment | `adapters-payments` (CCAvenue), bound and unused         |
+| `ShippingPort`           | Obtain shipping quotes                      | None                                                     |
+| `FxRatePort`             | Fetch INR exchange rates                    | None                                                     |
+| `VideoTranscodePort`     | Queue HLS transcoding                       | None                                                     |
 
 `DuplicateIdentifierError` carries an email or phone unique-index race across the persistence boundary without exposing a Mongo error.
 

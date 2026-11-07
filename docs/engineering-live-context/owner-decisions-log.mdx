@@ -939,6 +939,14 @@ Closed: `DEC-DOMAIN-TOPOLOGY`.
 - **Logos:** a Brand Kit in admin, through the media pipeline, so a new owner uploads their own after deployment. The TIFF is the master, and both versions are cut from it so the reds match. Wide places show the full logo with seal, name and tagline; small spaces show the seal. On dark or coloured areas the logo sits on white and keeps its own colours.
 - **Cookies:** the box has three equal buttons, and refusing takes one click. Cookie settings shows all six locked categories; empty ones say Not in use with no switch, and Accept all turns on only what is in use. `st_consent` holds the answer in the browser and `POST /privacy/consent` keeps the history. The Contact map waits for consent or a click. The Privacy Policy cookie section is a draft until the owner's lawyer or CA reviews it.
 
+## Owner decision round (2026-11-07) — payment port
+
+- **`PaymentGatewayPort` has five calls:** `createPayment`, `verifyCallback`, `fetchPaymentStatus`, `refundPayment`, `fetchRefunds`. All are vendor-neutral, so Razorpay and PayPal fit the same port.
+- **One rule in core judges every gateway's answers:** `decidePaymentResult(storedAttempt, status, callback?)`, a pure function answering apply, duplicate, pending or review. Amount, currency, attempt and replay checks are written once.
+- **Amounts at the port are whole paise (minor units), and `orderId` becomes `attemptId`,** because one order can have several attempts.
+- **The CCAvenue adapter is bound in the API and unused.** `INR_PAYMENT_GATEWAY` builds the real adapter once all CCAvenue values are set, and a "not configured" adapter until then. No route calls it, so checkout stays closed.
+- **`confirmOrder` and `cancelOrder` wait for HDFC's answer** on whether this account auto-confirms.
+
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

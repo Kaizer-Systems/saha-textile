@@ -7,6 +7,7 @@ import { loadConfig } from '../src/config/app-config';
 import { ConfigModule } from '../src/config/config.module';
 import { MeilisearchSearch } from '../src/search/meilisearch-search';
 import { PersistenceModule } from '../src/infra/persistence.module';
+import { UnavailablePaymentGateway } from '../src/infra/unavailable-payment-gateway.adapter';
 import { UnconfiguredStorageAdapter } from '../src/infra/unconfigured-storage.adapter';
 import {
 	SEARCH_PORT,
@@ -15,6 +16,7 @@ import {
 	MEDIA_JOB_QUEUE,
 	CDN_PURGE,
 	YOUTUBE_PORT,
+	INR_PAYMENT_GATEWAY,
 } from '../src/infra/tokens';
 
 const { app, registered, hooks, connect, disconnect } = vi.hoisted(() => {
@@ -107,6 +109,7 @@ describe('persistence providers', () => {
 		const youtube = factoryFor(YOUTUBE_PORT);
 		expect(youtube({ media: {} })).toBeDefined();
 		expect(youtube({ media: { youtubeApiKey: 'y' } })).toBeDefined();
+		expect(factoryFor(INR_PAYMENT_GATEWAY)(config)).toBeInstanceOf(UnavailablePaymentGateway);
 	});
 
 	it('connects on boot, survives a failure, and skips for a docs build', async () => {

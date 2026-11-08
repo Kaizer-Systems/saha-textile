@@ -76,7 +76,9 @@
 			(click)="toggleWishlist()"
 		>
 			<i
-				[class]="saved() ? 'ri-heart-fill text-danger' : 'ri-heart-line'"
+				[class.ri-heart-line]="!saved()"
+				[class.ri-heart-fill]="saved()"
+				[class.text-danger]="saved()"
 				aria-hidden="true"
 			></i>
 		</button>

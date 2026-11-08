@@ -471,8 +471,12 @@ describe('FormTag', () => {
 	it('fills a blog tag in every language', () => {
 		const blog = { id: 'btag_1', slug: 'silk', name: { en: 'Silk', bn: 'রেশম' }, description: {}, status: 'live' };
 		const { page } = render(FormTag, tagProviders().providers, { type: 'edit', tagType: 'post' }, { id: 'btag_1' });
-		q.tag.set({ name: 'Silk', slug: 'silk', status: true, blog });
+		q.tag.set({ name: 'Silk', slug: 'silk', status: '0', blog });
 		TestBed.tick();
+		expect(page.form.value.status).toBe(false);
+		q.tag.set({ name: 'Silk', slug: 'silk', status: '1', blog });
+		TestBed.tick();
+		expect(page.form.value.status).toBe(true);
 		page.switchLanguage('bn');
 		expect(page.form.value).toMatchObject({ name: 'রেশম', slug: 'silk' });
 		page.openLanguageGap({ key: 'name', locale: 'en' });

@@ -90,14 +90,14 @@ export class Tag {
 	}
 
 	/** A blog tag's switch: live needs a name in every language. Theme tags have no backend yet. */
-	status(data: ITag & { status: boolean | number }) {
+	status(data: Omit<ITag, 'status'> & { status: boolean | number | string }) {
 		const tag = data.blog;
 		if (this.tagType() !== 'post' || !tag) return;
 		const body = {
 			name: tag.name,
 			description: tag.description,
 			slug: tag.slug,
-			status: data.status ? ('live' as const) : ('draft' as const),
+			status: Number(data.status) === 1 ? ('live' as const) : ('draft' as const),
 		};
 		this.blogs.saveTerm('tags', tag.id, body).subscribe({
 			next: () => this.refresh(),

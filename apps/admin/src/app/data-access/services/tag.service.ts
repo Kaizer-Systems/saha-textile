@@ -18,7 +18,7 @@ export function toBlogTag(row: BlogTag): ITag {
 		slug: row.slug,
 		description: row.description['en'] ?? '',
 		type: 'post',
-		status: row.status === 'live',
+		status: row.status === 'live' ? '1' : '0',
 		created_by_id: 0,
 		created_at: row.createdAt,
 		blog: row,

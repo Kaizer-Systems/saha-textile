@@ -11,8 +11,8 @@ export interface IBlog {
 	id: string;
 	title: string;
 	slug: string;
-	/** 1 when live, 0 when a draft: the table's switch. */
-	status: number;
+	/** '1' when live, '0' when a draft: the shared table draws its switch from these strings. */
+	status: '1' | '0';
 	blog_thumbnail: { original_url: string } | null;
 	published_at: string | null;
 	created_at?: string;

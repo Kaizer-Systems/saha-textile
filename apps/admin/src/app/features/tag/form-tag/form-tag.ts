@@ -78,7 +78,12 @@ export class FormTag {
 			const tag = this.tagQuery.data();
 			if (!tag) return;
 			this.tag = tag;
-			this.form.patchValue({ name: tag.name, description: tag.description, slug: tag.slug, status: tag.status });
+			this.form.patchValue({
+				name: tag.name,
+				description: tag.description,
+				slug: tag.slug,
+				status: tag.status === true || tag.status === '1',
+			});
 			if (tag.blog) {
 				this.fields.load({ name: tag.blog.name, description: tag.blog.description });
 				this.refreshMissing();

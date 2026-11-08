@@ -28,7 +28,7 @@ export function toBlog(row: AdminBlogPostRow): IBlog {
 		id: row.post.id,
 		title: row.post.title['en'] ?? row.post.slug,
 		slug: row.post.slug,
-		status: row.post.status === 'live' ? 1 : 0,
+		status: row.post.status === 'live' ? '1' : '0',
 		blog_thumbnail: row.cover?.url ? { original_url: row.cover.url } : null,
 		published_at: row.post.publishedAt,
 		created_at: row.post.createdAt,

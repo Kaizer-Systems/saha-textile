@@ -13,7 +13,8 @@ export interface ITag {
 	slug: string;
 	description?: string;
 	type: string;
-	status: boolean;
+	/** A boolean on the theme's demo tags; '1' or '0' on blog tags, as the shared table's switch reads it. */
+	status: boolean | '1' | '0';
 	created_by_id: number;
 	created_at?: string;
 	updated_at?: string;

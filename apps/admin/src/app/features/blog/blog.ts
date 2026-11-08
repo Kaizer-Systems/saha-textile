@@ -92,8 +92,8 @@ export class Blog {
 	}
 
 	/** The switch: on is Go Live (refused with the gaps when a language is missing), off takes the post down. */
-	status(data: IBlog & { status: number }) {
-		if (data.status) this.report(this.blogs.setStatus(data.id, 'live'));
+	status(data: Omit<IBlog, 'status'> & { status: number | string }) {
+		if (Number(data.status) === 1) this.report(this.blogs.setStatus(data.id, 'live'));
 		else
 			this.blogs.setStatus(data.id, 'draft').subscribe({
 				next: () => {

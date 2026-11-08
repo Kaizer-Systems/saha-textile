@@ -96,10 +96,10 @@ describe('read services', () => {
 		});
 		const tags = await firstValueFrom(TestBed.inject(TagService).getTags({ type: 'post' }));
 		expect(lastUrl(http.get)).toContain('/admin/blog/tags');
-		expect(tags).toMatchObject({ total: 1, data: [{ id: 'b1', name: 'Guides', type: 'post', status: true }] });
+		expect(tags).toMatchObject({ total: 1, data: [{ id: 'b1', name: 'Guides', type: 'post', status: '1' }] });
 		http.get.mockReturnValue(of([{ ...term, name: {}, description: {}, status: 'draft' }]));
 		const bare = await firstValueFrom(TestBed.inject(TagService).getTags({ type: 'post' }));
-		expect(bare.data[0]).toMatchObject({ name: 'guides', description: '', status: false });
+		expect(bare.data[0]).toMatchObject({ name: 'guides', description: '', status: '0' });
 	});
 
 	it('reads and writes blog posts through the admin blog API', async () => {
@@ -125,8 +125,8 @@ describe('read services', () => {
 		expect(lastUrl(http.get)).toContain('/admin/blog/posts');
 		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { page: '2', pageSize: '100', search: 'silk' } });
 		expect(page.data.map((blog) => [blog.title, blog.status, blog.blog_thumbnail])).toEqual([
-			['real-banarasi', 1, { original_url: 'https://cdn/x' }],
-			['Real', 0, null],
+			['real-banarasi', '1', { original_url: 'https://cdn/x' }],
+			['Real', '0', null],
 		]);
 		await firstValueFrom(blogs.getBlogs());
 		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { page: '1', pageSize: '20' } });

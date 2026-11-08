@@ -102,8 +102,9 @@
 						overflow: hidden;
 						text-overflow: ellipsis;
 
+						// The chevron floats, so it lines up by matching the row's line height.
 						&::before {
-							vertical-align: -3px;
+							line-height: 20px;
 						}
 					}
 					display: flex;

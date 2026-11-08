@@ -42,7 +42,8 @@
 </section>
 }
 
-<!-- ===== Two side-by-side promo banners ===== -->
+<!-- ===== Two side-by-side promo banners. `home-contain` is the theme's banner box, which lays the
+     heading and button over the picture. ===== -->
 @if (promoBanners(); as promos) {
 <section>
 	<div class="container-fluid-lg">
@@ -53,6 +54,7 @@
 					[image]="banner"
 					[bgImage]="false"
 					[sizes]="'(min-width: 1400px) 66vw, (min-width: 1200px) 100vw, (min-width: 768px) 58vw, 100vw'"
+					[class]="'home-contain'"
 				/>
 			</div>
 			} @if (promos.second; as banner) {
@@ -61,6 +63,7 @@
 					[image]="banner"
 					[bgImage]="false"
 					[sizes]="'(min-width: 1400px) 33vw, (min-width: 1200px) 100vw, (min-width: 768px) 42vw, 100vw'"
+					[class]="'home-contain'"
 				/>
 			</div>
 			}

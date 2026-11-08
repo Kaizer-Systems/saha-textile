@@ -270,7 +270,9 @@ Admin catalogue reads answer `no-store`.
 
 | Method | Route                                      | Access             | Purpose                                                      |
 | ------ | ------------------------------------------ | ------------------ | ------------------------------------------------------------ |
-| `GET`  | `/catalog/search`                          | Public             | Typeahead and search                                         |
+| `GET`  | `/catalog/search`                          | Public             | Typeahead and search results, one page at a time             |
+| `POST` | `/catalog/search/clicks`                   | Public             | Count a product opened from search results                   |
+| `GET`  | `/catalog/search/trending`                 | Public             | Products most opened from search lately, or bestsellers      |
 | `GET`  | `/catalog/categories`                      | Public             | Get the full category taxonomy tree                          |
 | `GET`  | `/catalog/categories/:slug`                | Public             | Get a single category by slug                                |
 | `GET`  | `/catalog/faq`                             | Public             | Live FAQ entries for one page                                |
@@ -291,7 +293,7 @@ Admin catalogue reads answer `no-store`.
 | `GET`  | `/catalog/sitemap`                         | Public             | Indexable addresses for the sitemap                          |
 | `GET`  | `/catalog/live-paths`                      | Public             | Live product slugs and category paths                        |
 
-Listing, product and home reads are cacheable for 60 seconds with `stale-while-revalidate=300`, and carry an ETag. `GET /catalog/cards`, `GET /catalog/search` and the legacy redirect list are `no-store`.
+Listing, product and home reads are cacheable for 60 seconds with `stale-while-revalidate=300`, and carry an ETag. `GET /catalog/cards`, `GET /catalog/search` and the legacy redirect list are `no-store`. `GET /catalog/search/trending` is cacheable for five minutes.
 
 ### Public visibility rule
 

@@ -69,6 +69,7 @@ These functions do not form a checkout engine. Tax, promotion stacking, shipping
 | `CategoryPlacementRepository`, `CategoryFacetConfigRepository`, `AttributeDefinitionRepository`   | Taxonomy, facets and attributes                 |
 | `SeoRedirectRepository`, `SeoRouteRepository`, `AddonTemplateRepository`                          | Old addresses, head data and add-on templates   |
 | `StockAlertRepository`, `ProductInsightSetRepository`                                             | Stock alerts and weekly insights                |
+| `SearchAnalyticsRepository`                                                                       | Search totals and search-result clicks          |
 | `FaqRepository`, `ProductQuestionRepository`, `ReviewRepository`                                  | FAQ, questions and reviews                      |
 | `InventoryRepository`, `InventoryCostLayerRepository`                                             | Stock ledger and FIFO cost layers               |
 | `CartRepository`, `OrderRepository`, `CurrencyRepository`, `PromotionRepository`                  | Commerce records                                |
@@ -199,6 +200,8 @@ A library delete is refused while anything uses the image. Otherwise the asset i
 ## Search boundary
 
 `SearchPort` is bound to `MeilisearchSearch` in `apps/api/src/search/meilisearch-search.ts`. The index holds ids and words, and prices are read back from MongoDB. If the index is down, `GET /catalog/search` answers 503 and never falls back to a MongoDB text query. A failed index update does not fail a product save. Rebuild the index with `pnpm --filter @saha-textile/api search:rebuild`.
+
+Search counts go through `SearchAnalyticsRepository`, bound to `MongoSearchAnalyticsRepository`. It stores totals only: searches per normalised words and language in `searchQueryAggregates`, and search-result clicks per product per day in `analyticsDailyAggregates`. The ranking for Trending (`rankTrending`) and the word normaliser (`normalizeSearchQuery`) live in core-domain. See [Storefront search](../storefront/search.md).
 
 ## Domain test strategy
 

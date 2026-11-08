@@ -86,6 +86,7 @@ const sidebars: SidebarsConfig = {
 						'storefront/application-atlas',
 						'storefront/routing-and-rendering',
 						'storefront/state-and-data',
+						'storefront/search',
 						'storefront/contributor-recipes',
 					],
 				},

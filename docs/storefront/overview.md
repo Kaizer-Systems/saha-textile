@@ -46,7 +46,7 @@ The page layer stays thin. A route identifies the customer journey and composes 
 | Rendering      | Dynamic server rendering through Nitro. Nothing is prerendered                                                                         |
 | Locale URLs    | Every page is served under `/en/` or `/bn/`. The router base carries the locale                                                        |
 | Catalogue      | Home, category pages, cards, product pages and redirects read `/catalog/*`                                                             |
-| Search         | The search box calls `/catalog/search` and reports when search is unavailable                                                          |
+| Search         | The menu-bar search and the Search page share one suggestion box; see [Search](./search.md)                                            |
 | First paint    | The header menu renders on the server; product pages show a skeleton while loading                                                     |
 | Purchase popup | `/catalog/recent-purchases` shows real sales from the last day, and stays hidden without any                                           |
 | Product media  | Cards and the gallery use `ResolvedImage` with `srcset`, and banners use `<picture>`                                                   |

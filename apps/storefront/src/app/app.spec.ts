@@ -28,6 +28,7 @@ const render = (url = '/') => {
 	const siteConfig = signal<unknown>(null);
 	const events = new Subject<unknown>();
 	const meta = { updateTag: vi.fn() };
+	const seo = { setDefaultImage: vi.fn(), resetDocument: vi.fn() };
 	const title = { setTitle: vi.fn(), getTitle: vi.fn(() => 'Sarees | Saha Textile') };
 	const stores = { loadSettings: vi.fn(), loadSiteConfig: vi.fn() };
 	TestBed.resetTestingModule();
@@ -36,7 +37,7 @@ const render = (url = '/') => {
 			{ provide: Router, useValue: { url, events } },
 			{ provide: Title, useValue: title },
 			{ provide: Meta, useValue: meta },
-			{ provide: LocaleSeo, useValue: { absoluteAsset: (path: string) => `https://shop.test${path}` } },
+			{ provide: LocaleSeo, useValue: seo },
 			{ provide: SettingStore, useValue: { loadSettings: stores.loadSettings } },
 			{ provide: SiteConfigStore, useValue: { siteConfig, loadSiteConfig: stores.loadSiteConfig } },
 			{ provide: TranslocoService, useValue: { translate: (key: string) => WORDS[key] ?? key } },
@@ -48,7 +49,7 @@ const render = (url = '/') => {
 	});
 	TestBed.overrideComponent(App, { set: { imports: [], template: '' } });
 	const fixture = TestBed.createComponent(App);
-	return { fixture, app: fixture.componentInstance, siteConfig, events, meta, title, stores };
+	return { fixture, app: fixture.componentInstance, siteConfig, events, meta, seo, title, stores };
 };
 const html = () => document.documentElement;
 const hide = (hidden: boolean) => {
@@ -87,7 +88,7 @@ describe('App', () => {
 	});
 
 	it('applies dark mode, right-to-left, the icon and only the share picture from the theme', () => {
-		const { siteConfig, meta } = render();
+		const { siteConfig, meta, seo } = render();
 		siteConfig.set({
 			general: { mode: 'dark', language_direction: 'rtl' },
 			seo: {
@@ -105,13 +106,12 @@ describe('App', () => {
 		expect(document.body.classList.contains('rtl')).toBe(true);
 		// The theme file's text is one language for every page, so titles and descriptions come
 		// from each page instead (LocaleSeo).
-		expect(meta.updateTag.mock.calls.map(([tag]) => tag)).toEqual([
-			{ property: 'og:image', content: 'https://shop.test/og.jpg' },
-		]);
+		expect(seo.setDefaultImage).toHaveBeenCalledWith('/og.jpg');
+		expect(meta.updateTag).not.toHaveBeenCalled();
 	});
 
 	it('goes back to light and left-to-right, with an empty theme touching nothing else', () => {
-		const { siteConfig, meta } = render();
+		const { siteConfig, meta, seo } = render();
 		html().classList.add('dark');
 		html().setAttribute('dir', 'rtl');
 		document.body.classList.add('rtl');
@@ -120,15 +120,16 @@ describe('App', () => {
 		expect(html().classList.contains('dark')).toBe(false);
 		expect(html().hasAttribute('dir')).toBe(false);
 		expect(meta.updateTag).not.toHaveBeenCalled();
+		expect(seo.setDefaultImage).not.toHaveBeenCalled();
 		expect((document.querySelector('#appIcon') as HTMLLinkElement).getAttribute('href')).toBeNull();
 	});
 
-	it('resets the title at each navigation start only', () => {
-		const { events, title } = render();
+	it('resets the page head at each navigation start only', () => {
+		const { events, seo } = render();
 		events.next(new NavigationEnd(1, '/', '/'));
-		expect(title.setTitle).not.toHaveBeenCalled();
+		expect(seo.resetDocument).not.toHaveBeenCalled();
 		events.next(new NavigationStart(2, '/a'));
-		expect(title.setTitle).toHaveBeenCalledWith('Saha Textile');
+		expect(seo.resetDocument).toHaveBeenCalledWith('Saha Textile');
 	});
 
 	it('rotates the come-back messages while hidden, then restores the title', () => {

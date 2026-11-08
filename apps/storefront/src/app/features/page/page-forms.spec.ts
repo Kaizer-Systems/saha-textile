@@ -68,11 +68,20 @@ describe('ContactUs', () => {
 	});
 	const render = () => {
 		const siteConfig = signal<unknown>(null);
-		const seo = { applyJsonLd: vi.fn(), removeJsonLd: vi.fn() };
+		const seo = {
+			applyJsonLd: vi.fn(),
+			removeJsonLd: vi.fn(),
+			applyDocument: vi.fn(),
+			applyBreadcrumbList: vi.fn(),
+		};
 		TestBed.resetTestingModule();
 		TestBed.configureTestingModule({
 			providers: [
-				translate,
+				{
+					provide: TranslocoService,
+					useValue: { selectTranslate: () => of('Contact Us'), translate: (key: string) => `t:${key}` },
+				},
+				{ provide: Router, useValue: { url: '/contact-us' } },
 				{ provide: SiteConfigStore, useValue: { siteConfig } },
 				{ provide: LocaleSeo, useValue: seo },
 			],
@@ -82,6 +91,21 @@ describe('ContactUs', () => {
 		TestBed.tick();
 		return { form, siteConfig, seo };
 	};
+
+	it('names and describes itself, with its Home › Contact Us trail', () => {
+		const { form, seo } = render();
+		expect(form.breadcrumb()?.title).toBe('Contact Us');
+		expect(seo.applyDocument).toHaveBeenCalledWith({
+			title: 'Contact Us | Saha Textile',
+			description: 't:contact_us_meta_description',
+			robots: undefined,
+		});
+		expect(seo.applyBreadcrumbList).toHaveBeenCalledWith('page-crumbs', 't:home', [
+			{ name: 'Contact Us', path: '/contact-us' },
+		]);
+		TestBed.resetTestingModule();
+		expect(seo.removeJsonLd).toHaveBeenCalledWith('page-crumbs');
+	});
 
 	it('shows the active stores, writes their structured data and takes it away on leaving', () => {
 		const { form, seo } = render();
@@ -169,12 +193,40 @@ describe('ContactUs', () => {
 });
 
 describe('StaticPage', () => {
+	const seo = { applyDocument: vi.fn(), applyBreadcrumbList: vi.fn(), removeJsonLd: vi.fn() };
 	const render = (url: string) => {
+		vi.clearAllMocks();
 		TestBed.resetTestingModule();
-		TestBed.configureTestingModule({ providers: [{ provide: Router, useValue: { url } }] });
+		TestBed.configureTestingModule({
+			providers: [
+				{ provide: Router, useValue: { url } },
+				{ provide: LocaleSeo, useValue: seo },
+				{
+					provide: TranslocoService,
+					useValue: { translate: (key: string) => (key === 'home' ? 'Home' : key) },
+				},
+			],
+		});
 		TestBed.overrideComponent(StaticPage, { set: { imports: [], template: '' } });
 		return TestBed.createComponent(StaticPage).componentInstance;
 	};
+
+	it('names itself, describes itself and gives its trail once the page arrives, and takes the trail away', () => {
+		render('/terms-conditions');
+		TestBed.tick();
+		expect(seo.applyDocument).not.toHaveBeenCalled();
+		page.set({ title: 'Terms', content: '<p>These terms apply.</p>' });
+		TestBed.tick();
+		expect(seo.applyDocument).toHaveBeenCalledWith({
+			title: 'Terms | Saha Textile',
+			description: '<p>These terms apply.</p>',
+		});
+		expect(seo.applyBreadcrumbList).toHaveBeenCalledWith('page-crumbs', 'Home', [
+			{ name: 'Terms', path: '/terms-conditions' },
+		]);
+		TestBed.resetTestingModule();
+		expect(seo.removeJsonLd).toHaveBeenCalledWith('page-crumbs');
+	});
 
 	it('takes the slug from the address', () => {
 		expect(render('/privacy-policy/?x=1#top').slug).toBe('privacy-policy');

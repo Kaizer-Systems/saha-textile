@@ -1,6 +1,6 @@
 import { Component, DOCUMENT, inject, NgZone } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { Meta, Title } from '@angular/platform-browser';
+import { Title } from '@angular/platform-browser';
 import { NavigationStart, Router, RouterModule } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
@@ -35,7 +35,6 @@ export class App {
 	private router = inject(Router);
 	private titleService = inject(Title);
 	private ngZone = inject(NgZone);
-	private meta = inject(Meta);
 	private seo = inject(LocaleSeo);
 	private transloco = inject(TranslocoService);
 	private shopEvents = inject(ShopEvents);
@@ -83,17 +82,13 @@ export class App {
 
 			// Titles and descriptions come from each page in its own language (LocaleSeo). The theme
 			// file only supplies the default share picture.
-			theme?.seo?.og_image?.original_url &&
-				this.meta.updateTag({
-					property: 'og:image',
-					content: this.seo.absoluteAsset(theme.seo.og_image.original_url),
-				});
+			if (theme?.seo?.og_image?.original_url) this.seo.setDefaultImage(theme.seo.og_image.original_url);
 		});
 
-		// A page without its own title must not keep the previous page's.
+		// A page without its own title, description or share picture must not keep the previous page's.
 		this.router.events
 			.pipe(filter((event) => event instanceof NavigationStart))
-			.subscribe(() => this.titleService.setTitle(SITE_TITLE));
+			.subscribe(() => this.seo.resetDocument(SITE_TITLE));
 
 		document.addEventListener('visibilitychange', () => {
 			this.ngZone.run(() => {

@@ -56,7 +56,7 @@ export class ContactUs {
 
 	siteConfig$: Observable<ISiteConfig> = toObservable(inject(SiteConfigStore).siteConfig) as Observable<ISiteConfig>;
 
-	public breadcrumb = translatedBreadcrumb('contact_us');
+	public breadcrumb = translatedBreadcrumb('contact_us', { description: 'contact_us_meta_description' });
 
 	public form: FormGroup;
 	public contactData: IContact;

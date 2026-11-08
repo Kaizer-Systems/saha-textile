@@ -67,7 +67,17 @@ export function withLocale(locale: Locale, appUrl: string): string {
  * They are still locale-prefixed (the law covers every route), so a Bengali customer stays in
  * Bengali through checkout — they are just not pages a search engine should hold.
  */
-const PRIVATE_PREFIXES = ['/account', '/auth', '/cart', '/checkout', '/wishlist', '/compare', '/search'];
+// `/maintenance` is shown while the shop is down; it is never a page to be found.
+const PRIVATE_PREFIXES = [
+	'/account',
+	'/auth',
+	'/cart',
+	'/checkout',
+	'/wishlist',
+	'/compare',
+	'/search',
+	'/maintenance',
+];
 
 export function isPrivatePath(appPath: string): boolean {
 	const path = appPath.split(/[?#]/)[0];

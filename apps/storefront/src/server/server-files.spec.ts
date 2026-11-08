@@ -194,6 +194,57 @@ describe('SEO files', () => {
 		expect(body).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"');
 	});
 
+	const sitemapWith = (faq: () => Promise<Response>) =>
+		vi.fn(async (url: string) =>
+			url.endsWith('/catalog/faq')
+				? faq()
+				: new Response(JSON.stringify({ paths: ['/en/', '/en/contact-us', '/bn/blog/bn-only'] })),
+		);
+	const sitemapBody = () => (h3.send.mock.calls.at(-1) as unknown as [unknown, string])[1];
+
+	it("adds the shop's own pages in every language, once each, leaving out an empty FAQ", async () => {
+		vi.stubGlobal(
+			'fetch',
+			sitemapWith(async () => new Response('[]')),
+		);
+		await run(event('/sitemap.xml', {}, { host: 'shop.test' }));
+		const body = sitemapBody();
+		for (const page of ['/blogs', '/collections', '/contact-us', '/privacy-policy', '/terms-conditions']) {
+			expect(body).toContain(`<loc>https://shop.test/en${page}</loc>`);
+			expect(body).toContain(`<loc>https://shop.test/bn${page}</loc>`);
+		}
+		expect(body.split('<loc>https://shop.test/en/contact-us</loc>')).toHaveLength(2);
+		expect(body).not.toContain('/faq');
+		expect(body).not.toContain('/about-us');
+		// A page in Bengali only names itself, with no English default to point at.
+		expect(body).toContain(
+			'<loc>https://shop.test/bn/blog/bn-only</loc><xhtml:link rel="alternate" hreflang="bn" href="https://shop.test/bn/blog/bn-only"/></url>',
+		);
+	});
+
+	it('lists the FAQ once it has questions, and not when it cannot be read', async () => {
+		vi.stubGlobal(
+			'fetch',
+			sitemapWith(async () => new Response('[{"id":"q1"}]')),
+		);
+		await run(event('/sitemap.xml', {}, { host: 'shop.test' }));
+		expect(sitemapBody()).toContain('<loc>https://shop.test/bn/faq</loc>');
+		vi.stubGlobal(
+			'fetch',
+			sitemapWith(async () => new Response('', { status: 500 })),
+		);
+		await run(event('/sitemap.xml', {}, { host: 'shop.test' }));
+		expect(sitemapBody()).not.toContain('/faq');
+		vi.stubGlobal(
+			'fetch',
+			sitemapWith(async () => {
+				throw new Error('down');
+			}),
+		);
+		await run(event('/sitemap.xml', {}, { host: 'shop.test' }));
+		expect(sitemapBody()).not.toContain('/faq');
+	});
+
 	it('answers 503 when the list cannot be read', async () => {
 		vi.stubGlobal(
 			'fetch',

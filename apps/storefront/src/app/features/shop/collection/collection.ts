@@ -139,6 +139,13 @@ export class Collection {
 			title: `${cat?.name ?? this.collectionsLabel} | Saha Textile`,
 			robots: listingRobots(this.filter()),
 		});
+		// Until a category has its own description, a generated one in the page language. A stored
+		// description replaces it when it arrives.
+		this.seo.applyFallbackDescription(
+			cat
+				? this.transloco.translate('category_meta_description', { name: cat.name })
+				: this.transloco.translate('collections_meta_description'),
+		);
 		this.seo.applyJsonLd('collection-jsonld', {
 			'@context': 'https://schema.org',
 			'@type': 'ItemList',
@@ -149,18 +156,14 @@ export class Collection {
 				url: this.seo.absoluteUrl(`/product/${product.slug}`),
 			})),
 		});
-		this.seo.applyJsonLd('collection-crumbs', {
-			'@context': 'https://schema.org',
-			'@type': 'BreadcrumbList',
-			itemListElement: (trail.length ? trail : [{ name: this.collectionsLabel, path: '' }]).map(
-				(crumb, index) => ({
-					'@type': 'ListItem',
-					position: index + 1,
-					name: crumb.name,
-					item: this.seo.absoluteUrl(`/collections${crumb.path ? `/${crumb.path}` : ''}`),
-				}),
-			),
-		});
+		this.seo.applyBreadcrumbList(
+			'collection-crumbs',
+			this.transloco.translate('home'),
+			(trail.length ? trail : [{ name: this.collectionsLabel, path: '' }]).map((crumb) => ({
+				name: crumb.name,
+				path: `/collections${crumb.path ? `/${crumb.path}` : ''}`,
+			})),
+		);
 		this.breadcrumb.set(
 			trail.length
 				? {

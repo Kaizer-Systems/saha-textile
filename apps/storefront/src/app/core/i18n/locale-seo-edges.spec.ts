@@ -29,7 +29,7 @@ const tag = (meta: Meta, selector: string) => meta.getTag(selector)?.content ?? 
 afterEach(() => {
 	document.head
 		.querySelectorAll(
-			"link[rel='canonical'], link[rel='alternate'], meta[name='robots'], meta[name='description'], meta[property^='og:'], #page-data",
+			"link[rel='canonical'], link[rel='alternate'], meta[name='robots'], meta[name='description'], meta[name='twitter:card'], meta[property^='og:'], #page-data, #crumbs",
 		)
 		.forEach((node) => node.remove());
 });
@@ -127,6 +127,25 @@ describe('LocaleSeo stored head data', () => {
 		expect(tag(meta, "name='robots'")).toBe('index,follow');
 	});
 
+	it('replaces a generated description with a stored one, and writes the large share card', () => {
+		const answer = new Subject<unknown>();
+		const { seo, events, meta } = setup(answer);
+		navigate(events);
+		expect(tag(meta, "name='twitter:card'")).toBe('summary_large_image');
+		seo.applyFallbackDescription('Generated');
+		answer.next({ route: { title: 'T', description: 'Stored', robots: 'index,follow' } });
+		expect(tag(meta, "name='description'")).toBe('Stored');
+	});
+
+	it('keeps a generated description when the stored one is empty', () => {
+		const answer = new Subject<unknown>();
+		const { seo, events, meta } = setup(answer);
+		navigate(events);
+		seo.applyFallbackDescription('Generated');
+		answer.next({ route: { title: 'T', description: '', robots: 'index,follow' } });
+		expect(tag(meta, "name='description'")).toBe('Generated');
+	});
+
 	it('keeps the defaults when the read fails', () => {
 		const { events, meta } = setup(throwError(() => new Error('down')));
 		navigate(events);
@@ -138,5 +157,53 @@ describe('LocaleSeo stored head data', () => {
 		const { events, http } = setup(of({ route: null }), { firstChild: { firstChild: leaf, data: {} }, data: {} });
 		navigate(events);
 		expect(http.get).not.toHaveBeenCalled();
+	});
+});
+
+describe('LocaleSeo page head lifecycle', () => {
+	it('clears the last page on a new navigation, keeping only the default share picture', () => {
+		const { seo, meta, doc } = setup();
+		seo.resetDocument('Shop');
+		expect(tag(meta, "property='og:image'")).toBeNull();
+		seo.setDefaultImage('/og.jpg');
+		seo.applyDocument({ title: 'Red saree', description: 'Hand woven', image: '/red.jpg' });
+		seo.resetDocument('Shop');
+		expect(doc.title).toBe('Shop');
+		expect(tag(meta, "name='description'")).toBeNull();
+		expect(tag(meta, "property='og:title'")).toBeNull();
+		expect(tag(meta, "property='og:description'")).toBeNull();
+		expect(tag(meta, "property='og:image'")).toMatch(/\/og\.jpg$/);
+	});
+
+	it("sets the default share picture without replacing a page's own", () => {
+		const { seo, meta } = setup();
+		seo.setDefaultImage('/a.jpg');
+		expect(tag(meta, "property='og:image'")).toMatch(/\/a\.jpg$/);
+		seo.setDefaultImage('/b.jpg');
+		expect(tag(meta, "property='og:image'")).toMatch(/\/b\.jpg$/);
+		seo.applyDocument({ image: '/own.jpg' });
+		seo.setDefaultImage('/c.jpg');
+		expect(tag(meta, "property='og:image'")).toMatch(/\/own\.jpg$/);
+	});
+
+	it('writes a generated description only where there is none, and lets a real one replace it', () => {
+		const { seo, meta } = setup();
+		seo.applyFallbackDescription('First');
+		seo.applyFallbackDescription('Second');
+		expect(tag(meta, "name='description'")).toBe('Second');
+		seo.applyDocument({ description: 'Real' });
+		seo.applyFallbackDescription('Third');
+		expect(tag(meta, "name='description'")).toBe('Real');
+	});
+
+	it('writes the trail with Home first, each step a full address', () => {
+		const { seo, doc } = setup();
+		seo.applyBreadcrumbList('crumbs', 'Home', [{ name: 'Contact Us', path: '/contact-us' }]);
+		const data = JSON.parse(doc.getElementById('crumbs')?.textContent ?? '{}');
+		expect(data['@type']).toBe('BreadcrumbList');
+		expect(data.itemListElement).toEqual([
+			{ '@type': 'ListItem', position: 1, name: 'Home', item: expect.stringMatching(/\/en\/$/) },
+			{ '@type': 'ListItem', position: 2, name: 'Contact Us', item: expect.stringMatching(/\/en\/contact-us$/) },
+		]);
 	});
 });

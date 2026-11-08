@@ -1,7 +1,7 @@
 <app-breadcrumb [breadcrumb]="breadcrumb()" />
 <section class="faq-box-contain section-b-space">
 	<div class="container">
-		@if (pageService.skeletonLoader) {
+		@if (loading()) {
 		<app-skeleton-page />
 		} @else {
 		<div class="row">

@@ -18,7 +18,7 @@
 	<div class="filter-category">
 		<app-collection-filter [filter]="filter()" />
 	</div>
-	@if (attributeService.skeletonLoader) {
+	@if (loading()) {
 	<app-skeleton-collection-sidebar />
 	} @else {
 	<div
@@ -55,8 +55,7 @@
 				</div>
 			</div>
 		</div>
-		}
-		@if (!filter()!['store_slug']) { @for (key of facetKeys(); track key) {
+		} @if (!filter()!['store_slug']) { @for (key of facetKeys(); track key) {
 		<div
 			class="accordion-item"
 			ngbAccordionItem

@@ -4,6 +4,33 @@ import { environment } from '../../../public/environments/environment';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../../app/core/i18n/locale';
 
 /**
+ * Pages the storefront itself owns, listed in every language beside the API's products,
+ * categories and posts. About Us and Offer still hold the theme's demo content and stay out
+ * (they are `noindex`); FAQ is added only once it has questions.
+ */
+const STATIC_PAGES = [
+	'/blogs',
+	'/collections',
+	'/contact-us',
+	'/privacy-policy',
+	'/refund-returns',
+	'/shipping-policy',
+	'/terms-conditions',
+];
+
+/** Whether the shop FAQ has any questions; an empty FAQ page is `noindex`. */
+const faqHasRows = async () => {
+	try {
+		const response = await fetch(`${environment.apiUrl}/catalog/faq`, { signal: AbortSignal.timeout(5000) });
+		if (!response.ok) return false;
+		const rows = await response.json();
+		return Array.isArray(rows) && rows.length > 0;
+	} catch {
+		return false;
+	}
+};
+
+/**
  * `/sitemap.xml` and `/robots.txt`. Middleware rather than a server route, because Analog puts
  * every route under `/api`. Keep this file free of TypeScript-only syntax and answer with `true`,
  * for the same reasons as the locale middleware.
@@ -23,14 +50,23 @@ export default defineEventHandler(async (event) => {
 	};
 
 	if (path === '/sitemap.xml') {
-		const response = await fetch(`${environment.apiUrl}/catalog/sitemap`, { signal: AbortSignal.timeout(5000) });
+		const [response, withFaq] = await Promise.all([
+			fetch(`${environment.apiUrl}/catalog/sitemap`, { signal: AbortSignal.timeout(5000) }),
+			faqHasRows(),
+		]);
 		if (!response.ok) {
 			event.node.res.statusCode = 503;
 			setResponseHeaders(event, { 'Cache-Control': 'no-store', 'Retry-After': '60' });
 			await send(event, 'The sitemap is unavailable.', 'text/plain; charset=utf-8');
 			return true;
 		}
-		const { paths } = await response.json();
+		const own = withFaq ? [...STATIC_PAGES, '/faq'] : STATIC_PAGES;
+		const paths = [
+			...new Set([
+				...(await response.json()).paths,
+				...SUPPORTED_LOCALES.flatMap((locale) => own.map((page) => `/${locale}${page}`)),
+			]),
+		].sort();
 		const origin = originOf();
 		// Each address names its other-language versions, the same pairs as the page heads.
 		const listed = new Set(paths);

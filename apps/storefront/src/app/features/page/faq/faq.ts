@@ -7,7 +7,6 @@ import { Observable } from 'rxjs';
 
 import { IFaqModel } from '@data-access/interfaces/page.interface';
 import { injectFaqsQuery } from '@data-access/queries/page.queries';
-import { PageService } from '@data-access/services/page.service';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { FaqAccordion } from '@shared/ui/faq-accordion/faq-accordion';
@@ -22,24 +21,24 @@ import { SkeletonPage } from '../skeleton-page/skeleton-page';
 	imports: [Breadcrumb, SkeletonPage, FaqAccordion, AsyncPipe, TranslocoModule],
 })
 export class Faq {
-	pageService = inject(PageService);
 	private seo = inject(LocaleSeo);
 
-	public breadcrumb = translatedBreadcrumb('faq');
+	public breadcrumb = translatedBreadcrumb('faq', { description: 'faq_meta_description' });
 
 	private readonly faqsQuery = injectFaqsQuery();
 	faq$: Observable<IFaqModel> = toObservable(computed(() => this.faqsQuery.data() ?? { data: [], total: 0 }));
+	/** The skeleton follows the query's own signal, so the view redraws when the answer comes. */
+	readonly loading = computed(() => this.faqsQuery.isPending());
 	/** The accordion's rows. */
 	readonly items = computed(() =>
 		(this.faqsQuery.data()?.data ?? []).map((row) => ({ question: row.title, answer: row.description })),
 	);
 
 	constructor() {
-		// Drive the template skeleton off the query (was PageService.skeletonLoader,
-		// toggled by the old GetFaqsAction).
 		effect(() => {
-			this.pageService.skeletonLoader = this.faqsQuery.isPending();
 			const rows = this.faqsQuery.data()?.data ?? [];
+			// No questions yet: an empty page is kept out of search until there are some.
+			if (this.faqsQuery.isSuccess() && rows.length === 0) this.seo.applyDocument({ robots: 'noindex,follow' });
 			if (rows.length === 0) return;
 			this.seo.applyJsonLd('faq-jsonld', {
 				'@context': 'https://schema.org',

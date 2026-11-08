@@ -29,6 +29,8 @@ const render = (url = '/collections/sarees/silk/?page=2', query: Record<string, 
 	const seo = {
 		applyDocument: vi.fn(),
 		applyJsonLd: vi.fn(),
+		applyBreadcrumbList: vi.fn(),
+		applyFallbackDescription: vi.fn(),
 		removeJsonLd: vi.fn(),
 		setCanonicalPath: vi.fn(),
 		absoluteUrl: (path: string) => `https://shop.test${path}`,
@@ -42,7 +44,19 @@ const render = (url = '/collections/sarees/silk/?page=2', query: Record<string, 
 			{ provide: Meta, useValue: {} },
 			{ provide: LocaleSeo, useValue: seo },
 			{ provide: AttributeService, useValue: {} },
-			{ provide: TranslocoService, useValue: { translate: () => 'Collections' } },
+			{
+				provide: TranslocoService,
+				useValue: {
+					translate: (key: string, params?: { name: string }) =>
+						key === 'home'
+							? 'Home'
+							: key === 'category_meta_description'
+								? `Shop ${params?.name}`
+								: key === 'collections_meta_description'
+									? 'All sarees'
+									: 'Collections',
+				},
+			},
 		],
 	});
 	TestBed.overrideComponent(Collection, { set: { imports: [], template: '' } });
@@ -52,6 +66,11 @@ const render = (url = '/collections/sarees/silk/?page=2', query: Record<string, 
 };
 const jsonLd = (seo: ReturnType<typeof render>['seo'], id: string) =>
 	seo.applyJsonLd.mock.calls.filter(([name]) => name === id).at(-1)?.[1];
+const crumbs = (seo: ReturnType<typeof render>['seo']) =>
+	seo.applyBreadcrumbList.mock.calls
+		.filter(([name]) => name === 'collection-crumbs')
+		.at(-1)
+		?.slice(1);
 
 afterEach(() => {
 	data.set(undefined);
@@ -124,9 +143,8 @@ describe('Collection SEO', () => {
 		expect(title.setTitle).toHaveBeenCalledWith('Collections | Saha Textile');
 		expect(seo.setCanonicalPath).not.toHaveBeenCalled();
 		expect(page.breadcrumb().items).toEqual([{ label: 'Collections', active: true }]);
-		expect(jsonLd(seo, 'collection-crumbs')).toMatchObject({
-			itemListElement: [{ name: 'Collections', item: 'https://shop.test/collections' }],
-		});
+		expect(crumbs(seo)).toEqual(['Home', [{ name: 'Collections', path: '/collections' }]]);
+		expect(seo.applyFallbackDescription).toHaveBeenLastCalledWith('All sarees');
 		expect(jsonLd(seo, 'collection-jsonld')).toMatchObject({ itemListElement: [] });
 	});
 
@@ -153,9 +171,14 @@ describe('Collection SEO', () => {
 		expect(jsonLd(seo, 'collection-jsonld')).toMatchObject({
 			itemListElement: [{ position: 1, url: 'https://shop.test/product/red-saree' }],
 		});
-		expect(jsonLd(seo, 'collection-crumbs')).toMatchObject({
-			itemListElement: [{ item: 'https://shop.test/collections/sarees' }, { position: 2 }],
-		});
+		expect(crumbs(seo)).toEqual([
+			'Home',
+			[
+				{ name: 'Sarees', path: '/collections/sarees' },
+				{ name: 'Silk', path: '/collections/sarees/silk' },
+			],
+		]);
+		expect(seo.applyFallbackDescription).toHaveBeenLastCalledWith('Shop Silk');
 		expect(await firstValueFrom(page.product$)).toBeDefined();
 	});
 

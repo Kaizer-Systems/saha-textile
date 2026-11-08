@@ -27,6 +27,13 @@ const plainText = (html: string): string =>
 
 const GONE_KEY = 'gone';
 
+/** One step of a page's breadcrumb trail for search engines; the home page comes first on its own. */
+export interface SeoCrumb {
+	name: string;
+	/** Locale-free app path, e.g. `/contact-us`. */
+	path: string;
+}
+
 /**
  * The `routeMeta` of a page that stands for "nothing here": the catch-all and `/404`, which the
  * product page also lands on for an unknown slug.
@@ -64,6 +71,10 @@ export class LocaleSeo {
 	/** Present only while rendering on the server. */
 	private response = inject(RESPONSE, { optional: true });
 	private http = inject(HttpClient);
+	/** The theme's share picture, put back on every page that has none of its own. */
+	private defaultImage: string | null = null;
+	/** True while the description is a generated stand-in that stored head data may replace. */
+	private fallbackDescription = false;
 
 	constructor() {
 		this.router.events
@@ -117,6 +128,51 @@ export class LocaleSeo {
 		if (input.imageAlt) this.meta.updateTag({ property: 'og:image:alt', content: input.imageAlt });
 	}
 
+	/**
+	 * Clears what the previous page said about itself, at the start of every navigation, so a page
+	 * that sets less than the last one never shows the last one's description or share picture.
+	 */
+	resetDocument(title: string): void {
+		this.doc.title = title;
+		this.fallbackDescription = false;
+		this.meta.removeTag("name='description'");
+		this.meta.removeTag("property='og:title'");
+		this.meta.removeTag("property='og:description'");
+		if (this.defaultImage) this.meta.updateTag({ property: 'og:image', content: this.defaultImage });
+	}
+
+	/** The share picture for pages without their own. A page's own picture is left alone. */
+	setDefaultImage(url: string): void {
+		const image = this.absoluteAsset(url);
+		const current = this.meta.getTag("property='og:image'")?.content;
+		if (!current || current === this.defaultImage) this.meta.updateTag({ property: 'og:image', content: image });
+		this.defaultImage = image;
+	}
+
+	/**
+	 * A generated description for a page whose stored one is empty. It never replaces a real one,
+	 * and a stored description that arrives later replaces it.
+	 */
+	applyFallbackDescription(description: string): void {
+		if (this.meta.getTag("name='description'")?.content && !this.fallbackDescription) return;
+		this.applyDocument({ description });
+		this.fallbackDescription = true;
+	}
+
+	/** schema.org `BreadcrumbList` for the page: Home, then `crumbs`, each a full address. */
+	applyBreadcrumbList(id: string, homeName: string, crumbs: readonly SeoCrumb[]): void {
+		this.applyJsonLd(id, {
+			'@context': 'https://schema.org',
+			'@type': 'BreadcrumbList',
+			itemListElement: [{ name: homeName, path: '/' }, ...crumbs].map((crumb, index) => ({
+				'@type': 'ListItem',
+				position: index + 1,
+				name: crumb.name,
+				item: this.absoluteUrl(crumb.path),
+			})),
+		});
+	}
+
 	applyDocument(input: { title?: string; description?: string; robots?: string; image?: string }): void {
 		if (input.title) {
 			this.doc.title = input.title;
@@ -124,6 +180,7 @@ export class LocaleSeo {
 		}
 		const description = input.description && plainText(input.description);
 		if (description) {
+			this.fallbackDescription = false;
 			this.meta.updateTag({ name: 'description', content: description });
 			this.meta.updateTag({ property: 'og:description', content: description });
 		}
@@ -179,6 +236,8 @@ export class LocaleSeo {
 		const hidden = notFound || gone || isPrivatePath(path);
 		this.setOpenGraphLocales(!hidden);
 		this.meta.updateTag({ property: 'og:type', content: 'website' });
+		// X reads the Open Graph tags but needs this one to show the large picture card.
+		this.meta.updateTag({ name: 'twitter:card', content: 'summary_large_image' });
 		this.removeArticleTags([
 			'article:published_time',
 			'article:modified_time',
@@ -211,7 +270,8 @@ export class LocaleSeo {
 			.subscribe({
 				next: ({ route }) => {
 					if (!route) return;
-					if (!this.meta.getTag("name='description'")?.content) {
+					const current = this.meta.getTag("name='description'")?.content;
+					if (route.description && (!current || this.fallbackDescription)) {
 						this.applyDocument({ description: route.description });
 					}
 					if (!this.meta.getTag("name='robots'")) this.applyDocument({ robots: route.robots });

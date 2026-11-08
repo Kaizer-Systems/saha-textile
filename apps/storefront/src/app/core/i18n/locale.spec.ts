@@ -90,6 +90,7 @@ describe('locale URL law (DEC-I18N-ROUTES)', () => {
 			expect(isPrivatePath('/account/dashboard')).toBe(true);
 			expect(isPrivatePath('/auth/login')).toBe(true);
 			expect(isPrivatePath('/cart')).toBe(true);
+			expect(isPrivatePath('/maintenance')).toBe(true);
 			expect(isPrivatePath('/checkout?step=2')).toBe(true);
 			expect(isPrivatePath('/cartier-silk')).toBe(false);
 			expect(isPrivatePath('/collections/sarees')).toBe(false);

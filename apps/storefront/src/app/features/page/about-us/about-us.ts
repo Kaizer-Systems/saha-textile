@@ -31,7 +31,11 @@ export class AboutUs {
 	private readonly blogsQuery = injectBlogsQuery(() => ({ paginate: 10 }));
 	blog$: Observable<IBlogModel | undefined> = toObservable(computed(() => this.blogsQuery.data()));
 
-	public breadcrumb = translatedBreadcrumb('about_us');
+	public breadcrumb = translatedBreadcrumb('about_us', {
+		description: 'about_us_meta_description',
+		// The page still holds the theme's demo text; it is kept out of search until it is rewritten.
+		robots: 'noindex,follow',
+	});
 
 	public productSlider = data.productSliderMargin;
 

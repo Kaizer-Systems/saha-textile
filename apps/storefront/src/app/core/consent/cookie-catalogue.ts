@@ -30,11 +30,12 @@ export const FUNCTIONAL_ITEMS: readonly CookieItem[] = [
 	{ name: 'st_recent', purpose: 'cookie_item_recent', keptFor: 'cookie_kept_cleared' },
 	{ name: 'st_search', purpose: 'cookie_item_search', keptFor: 'cookie_kept_cleared' },
 	{ name: 'st_newsletter', purpose: 'cookie_item_newsletter', keptFor: 'cookie_kept_newsletter' },
+	{ name: 'st_events', purpose: 'cookie_item_events', keptFor: 'cookie_kept_events' },
 ];
 
 /** Categories with nothing behind them show Not in use, and Accept all leaves them off. */
 export const EMPTY_CATEGORIES: readonly OptionalCategory[] = ['analytics', 'targeting', 'marketing', 'promotional'];
 
 /** What a refusal removes. Anything optional stored in the browser belongs here. */
-export const OPTIONAL_COOKIES: readonly string[] = ['st_locale', 'st_newsletter'];
+export const OPTIONAL_COOKIES: readonly string[] = ['st_locale', 'st_newsletter', 'st_events'];
 export const OPTIONAL_STORAGE: readonly string[] = ['st_recent', 'st_search', 'selectedCurrency'];

@@ -2,8 +2,10 @@ import { PLATFORM_ID, SimpleChange, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
+import { TranslocoService } from '@jsverse/transloco';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { ShopEvents } from '@core/events/shop-events';
 import { AccountStore } from '@core/state/account.store';
 import { AuthStore } from '@core/state/auth.store';
 
@@ -21,6 +23,12 @@ vi.mock('swiper', () => ({
 		}
 		constructor(...args: unknown[]) {
 			swiper.created.push(args);
+		}
+		update() {
+			return undefined;
+		}
+		destroy() {
+			return undefined;
 		}
 	},
 }));
@@ -74,7 +82,13 @@ describe('NavbarMenuButton', () => {
 describe('Notice', () => {
 	const render = (platform: string, template = '<div #swiperContainer></div>') => {
 		TestBed.resetTestingModule();
-		TestBed.configureTestingModule({ providers: [{ provide: PLATFORM_ID, useValue: platform }] });
+		TestBed.configureTestingModule({
+			providers: [
+				{ provide: PLATFORM_ID, useValue: platform },
+				{ provide: ShopEvents, useValue: { left: () => null } },
+				{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+			],
+		});
 		TestBed.overrideComponent(Notice, { set: { imports: [], template } });
 		const fixture = TestBed.createComponent(Notice);
 		fixture.detectChanges();

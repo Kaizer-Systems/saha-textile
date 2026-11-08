@@ -7,18 +7,20 @@ import { LoadingBarModule } from '@ngx-loading-bar/core';
 import { Observable } from 'rxjs';
 
 import { applyBrandHead } from '@core/brand/brand-head';
+import { ShopEvents } from '@core/events/shop-events';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { AccountStore } from '@core/state/account.store';
 import { AuthStore } from '@core/state/auth.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
-import { injectBrandQuery } from '@data-access/queries/brand.queries';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
+import { injectBrandQuery } from '@data-access/queries/brand.queries';
 import { SiteConfigService } from '@data-access/services/site-config.service';
 import { Footer } from '@layout/footer/footer';
 import { Header } from '@layout/header/header';
 import { BackToTop } from '@shared/ui/back-to-top/back-to-top';
 import { Cookie } from '@shared/ui/cookie/cookie';
 import { Loader } from '@shared/ui/loader/loader';
+import { EventModal } from '@shared/ui/modal/event-modal/event-modal';
 import { NewsletterModal } from '@shared/ui/modal/newsletter-modal/newsletter-modal';
 import { RecentPurchasePopup } from '@shared/ui/recent-purchase-popup/recent-purchase-popup';
 import { StickyCart } from '@shared/ui/sticky-cart/sticky-cart';
@@ -38,6 +40,7 @@ import { StickyCompare } from '@shared/ui/sticky-compare/sticky-compare';
 		StickyCart,
 		StickyCompare,
 		BackToTop,
+		EventModal,
 		NewsletterModal,
 		Cookie,
 		AsyncPipe,
@@ -63,8 +66,11 @@ export class Layout {
 	private readonly brand = injectBrandQuery();
 	private readonly page = inject<Document>(DOCUMENT);
 	private readonly seo = inject(LocaleSeo);
+	private readonly shopEvents = inject(ShopEvents);
 
 	constructor() {
+		// Published launch and sale events: the top bar, the phone strip and the event popup.
+		this.shopEvents.load();
 		effect(() => {
 			const brand = this.brand.data();
 			if (brand) applyBrandHead(this.page, brand, this.seo.absoluteUrl('/'));

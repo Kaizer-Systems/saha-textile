@@ -64,12 +64,6 @@
 			"top_bar_content": [
 				{
 					"content": "<strong class=\"me-1\">Welcome to Saha Textile!</strong>"
-				},
-				{
-					"content": "Something you love is now on sale <strong>Buy Now!</strong>"
-				},
-				{
-					"content": "Your must-have item is calling – <strong>Buy Now!</strong>"
 				}
 			],
 			"page_top_bar_dark": false,

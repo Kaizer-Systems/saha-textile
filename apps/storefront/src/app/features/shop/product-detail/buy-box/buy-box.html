@@ -23,7 +23,13 @@
 
 <p class="tax-note text-content">{{ 'inclusive_of_all_taxes' | transloco }}</p>
 
-@if (product().short_description) {
+<!-- A running sale event: the theme's own "Hurry up! Sale ends in" timer, from the server's clock. -->
+@if (product().sale_expired_at) {
+<app-sale-timer
+	[startDate]="null"
+	[endDate]="product().sale_expired_at"
+/>
+} @if (product().short_description) {
 <div class="product-contain">
 	<p [innerHTML]="product().short_description"></p>
 </div>

@@ -1,0 +1,136 @@
+<!--
+	Event popup (owner brief, approved 2026-11-09), built from the newsletter popup's own markup:
+	the theme modal (`modal-box`, `modal-image`, `modal-content`), the brand logo, the dark pill
+	button and the login page's tick. The email field is replaced by the product page timer's four
+	boxes (`deal-timer product-deal-timer`). The one new piece is the phone band: the newsletter
+	hides its picture on phones, but here the picture is the point, so phones see its top part
+	in a 16:9 band (Bootstrap `ratio` and `object-fit-cover`).
+-->
+<ng-template
+	#eventModal
+	let-modal
+>
+	@if (shown(); as event) {
+	<div class="modal-header p-0">
+		<app-button
+			[class]="'btn btn-close'"
+			[spinner]="false"
+			[id]="'event_modal_close_btn'"
+			(click)="modal.dismiss('close')"
+		>
+			<i class="ri-close-line"></i>
+		</app-button>
+	</div>
+	<div class="modal-box flex-lg-row-reverse">
+		@if (image(); as art) {
+		<div class="modal-image d-none d-lg-block">
+			<img
+				[src]="art.src"
+				[attr.srcset]="art.srcset"
+				sizes="400px"
+				[attr.width]="art.width"
+				[attr.height]="art.height"
+				class="img-fluid"
+				[alt]="art.alt"
+				decoding="async"
+			/>
+		</div>
+		<div class="ratio ratio-16x9 d-lg-none">
+			<img
+				[src]="art.src"
+				[attr.srcset]="art.srcset"
+				sizes="100vw"
+				class="object-fit-cover"
+				[style.object-position]="'top'"
+				[alt]="art.alt"
+				decoding="async"
+			/>
+		</div>
+		}
+		<div class="modal-content content-padding">
+			<div>
+				@if (brand.data()?.logo; as logo) {
+				<img
+					[src]="logo.url"
+					[attr.srcset]="logo.srcset"
+					sizes="300px"
+					class="modal-logo"
+					[alt]="brand.data()?.shopName"
+				/>
+				}
+				<h2 id="event-modal-title">{{ event.title }}</h2>
+				<p>{{ event.message }}</p>
+				<p class="mb-2">
+					<strong>{{ momentText(event) }}</strong>
+				</p>
+				@if (left(event); as time) {
+				<div class="time deal-timer product-deal-timer mx-md-0 mx-auto">
+					<div class="product-title">
+						<h4>{{ label(event) | transloco }}</h4>
+					</div>
+					<ul>
+						<li>
+							<div class="counter d-block">
+								<div class="days d-block">
+									<h5>{{ time.days }}</h5>
+								</div>
+								<h6>{{ 'days' | transloco }}</h6>
+							</div>
+						</li>
+						<li>
+							<div class="counter d-block">
+								<div class="hours d-block">
+									<h5>{{ time.hours }}</h5>
+								</div>
+								<h6>{{ 'hours' | transloco }}</h6>
+							</div>
+						</li>
+						<li>
+							<div class="counter d-block">
+								<div class="minutes d-block">
+									<h5>{{ time.minutes }}</h5>
+								</div>
+								<h6>{{ 'min' | transloco }}</h6>
+							</div>
+						</li>
+						<li>
+							<div class="counter d-block">
+								<div class="seconds d-block">
+									<h5>{{ time.seconds }}</h5>
+								</div>
+								<h6>{{ 'sec' | transloco }}</h6>
+							</div>
+						</li>
+					</ul>
+				</div>
+				} @else {
+				<h4 class="mb-3">{{ 'event_now_live' | transloco }}</h4>
+				}
+				<a
+					class="btn btn-dark bg-dark rounded-pill mt-3 border-0"
+					id="event_modal_link"
+					[routerLink]="event.linkHref ?? '/'"
+					(click)="modal.close('link')"
+				>
+					{{ buttonKey(event) | transloco }}
+				</a>
+				<div class="form-check remember-box m-0 mt-3 ps-0">
+					<input
+						class="checkbox_animated check-box"
+						type="checkbox"
+						id="event_dont_show"
+						#dontShow
+						(change)="neverAgain.set(dontShow.checked)"
+					/>
+					<label
+						class="form-check-label"
+						for="event_dont_show"
+					>
+						{{ 'newsletter_dont_show_again' | transloco }}
+					</label>
+				</div>
+			</div>
+		</div>
+	</div>
+	}
+</ng-template>

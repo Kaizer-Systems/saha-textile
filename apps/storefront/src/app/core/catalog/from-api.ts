@@ -93,6 +93,8 @@ export interface ApiProductPage {
 	price: ApiCard['price'];
 	badges: { primary: string | null; secondary: string | null };
 	madeToOrder: boolean;
+	/** When a running sale on this product ends; null with no sale. */
+	saleEndsAt?: string | null;
 	estimatedDeliveryText: string | null;
 	sareeLengthM: number | null;
 	blousePieceM: number | null;
@@ -447,6 +449,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 		quantity: page.selected?.quantity ?? 0,
 		stock_status: page.selected?.buyable === false ? 'out_of_stock' : 'in_stock',
 		estimated_delivery_text: page.estimatedDeliveryText ?? '',
+		sale_expired_at: page.saleEndsAt ?? '',
 		saree_length_m: page.sareeLengthM,
 		blouse_piece_m: page.blousePieceM,
 		size_guide: page.measurements?.sizeGuide.length

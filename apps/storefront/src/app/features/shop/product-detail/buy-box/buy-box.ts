@@ -22,6 +22,7 @@ import { Button } from '@shared/ui/button/button';
 import { ProductConfigurator } from '@shared/ui/product-config/product-configurator/product-configurator';
 
 import { environment } from '../../../../../../public/environments/environment';
+import { SaleTimer } from '../widgets/sale-timer/sale-timer';
 
 /**
  * PDP right column. Renders the title/price/rating header and the checkout
@@ -34,7 +35,7 @@ import { environment } from '../../../../../../public/environments/environment';
 	templateUrl: './buy-box.html',
 	styleUrls: ['./buy-box.scss'],
 	providers: [CurrencySymbolPipe],
-	imports: [NgbRating, NgbTooltip, Button, ProductConfigurator, CurrencySymbolPipe, TranslocoModule],
+	imports: [NgbRating, NgbTooltip, Button, ProductConfigurator, SaleTimer, CurrencySymbolPipe, TranslocoModule],
 })
 export class BuyBox {
 	private readonly wishlist = inject(WishlistStore);

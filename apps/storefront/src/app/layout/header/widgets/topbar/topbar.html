@@ -20,7 +20,10 @@
 			</div>
 			<div class="col-xxl-6 col-lg-9 d-lg-block d-none pt-1">
 				<div class="header-offer">
-					<app-notice [content]="data()?.header?.top_bar_content" />
+					<app-notice
+						[content]="data()?.header?.top_bar_content"
+						[events]="events.stripItems()"
+					/>
 				</div>
 			</div>
 			<div class="col-lg-3">

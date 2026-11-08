@@ -3,15 +3,26 @@ import { TestBed } from '@angular/core/testing';
 import { Meta, Title } from '@angular/platform-browser';
 import { NavigationEnd, NavigationStart, Router } from '@angular/router';
 
+import { TranslocoService } from '@jsverse/transloco';
 import { NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
 import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ShopEvents } from '@core/events/shop-events';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { SettingStore } from '@core/state/setting.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
 
 import { App } from './app';
+
+const WORDS: Record<string, string> = {
+	tab_come_back: '⚡ Come Back !!',
+	tab_offers_for_you: '🎉 Offers for you...',
+	event_sale_ends_in: 'ends in',
+	event_unit_day: 'd',
+	event_unit_hour: 'h',
+};
+const stripItems = signal<unknown[]>([]);
 
 const render = (url = '/') => {
 	const siteConfig = signal<unknown>(null);
@@ -28,6 +39,11 @@ const render = (url = '/') => {
 			{ provide: LocaleSeo, useValue: { absoluteAsset: (path: string) => `https://shop.test${path}` } },
 			{ provide: SettingStore, useValue: { loadSettings: stores.loadSettings } },
 			{ provide: SiteConfigStore, useValue: { siteConfig, loadSiteConfig: stores.loadSiteConfig } },
+			{ provide: TranslocoService, useValue: { translate: (key: string) => WORDS[key] ?? key } },
+			{
+				provide: ShopEvents,
+				useValue: { stripItems, left: () => ({ days: 1, hours: 9, minutes: 0, seconds: 0 }) },
+			},
 		],
 	});
 	TestBed.overrideComponent(App, { set: { imports: [], template: '' } });
@@ -52,6 +68,7 @@ afterEach(() => {
 	html().removeAttribute('dir');
 	document.body.classList.remove('rtl');
 	Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+	stripItems.set([]);
 	vi.useRealTimers();
 });
 
@@ -134,5 +151,14 @@ describe('App', () => {
 		const afterDestroy = title.setTitle.mock.calls.length;
 		vi.advanceTimersByTime(3000);
 		expect(title.setTitle.mock.calls.length).toBe(afterDestroy);
+	});
+
+	it('swaps the second line for a published event while one has a top bar line', () => {
+		vi.useFakeTimers();
+		stripItems.set([{ id: 'e', type: 'sale', phase: 'running', title: 'Puja Sale', countdownTo: 'x' }]);
+		const { title } = render();
+		hide(true);
+		vi.advanceTimersByTime(1000);
+		expect(title.setTitle).toHaveBeenLastCalledWith('🎉 Puja Sale ends in 1d 9h');
 	});
 });

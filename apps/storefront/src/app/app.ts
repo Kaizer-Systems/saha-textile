@@ -3,9 +3,12 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { Meta, Title } from '@angular/platform-browser';
 import { NavigationStart, Router, RouterModule } from '@angular/router';
 
+import { TranslocoService } from '@jsverse/transloco';
 import { NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
 import { Observable, filter } from 'rxjs';
 
+import { countdownKey } from '@core/events/event-popup-rules';
+import { ShopEvents } from '@core/events/shop-events';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { SettingStore } from '@core/state/setting.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
@@ -34,6 +37,8 @@ export class App {
 	private ngZone = inject(NgZone);
 	private meta = inject(Meta);
 	private seo = inject(LocaleSeo);
+	private transloco = inject(TranslocoService);
+	private shopEvents = inject(ShopEvents);
 
 	private settingStore = inject(SettingStore);
 	private siteConfigStore = inject(SiteConfigStore);
@@ -43,7 +48,6 @@ export class App {
 	public isTabInFocus = true;
 	public timeoutId: ReturnType<typeof setTimeout>;
 	private currentMessageIndex = 0;
-	private messages = ['⚡ Come Back !!', '🎉 Offers for you...'];
 	private currentMessage: string;
 	private pageTitle = SITE_TITLE;
 	private delay = 1000; // Delay between messages in milliseconds
@@ -105,15 +109,31 @@ export class App {
 		});
 	}
 
+	/**
+	 * The two lines a hidden tab's title alternates, in the page's language. While an event is
+	 * published the second becomes its short line, for example "🎉 Puja Sale ends in 1d 9h".
+	 */
+	private messages(): string[] {
+		const t = (key: string) => this.transloco.translate(key);
+		const event = this.shopEvents.stripItems()[0];
+		const left = event ? this.shopEvents.left(event.countdownTo) : null;
+		const second = event
+			? `🎉 ${event.title} ${t(countdownKey(event))}${left ? ` ${left.days}${t('event_unit_day')} ${left.hours}${t('event_unit_hour')}` : ''}`
+			: t('tab_offers_for_you');
+		return [t('tab_come_back'), second];
+	}
+
 	updateMessage() {
 		// Clear the previous timeout
 		clearTimeout(this.timeoutId);
 
 		// Update the current message
-		this.currentMessage = this.messages[this.currentMessageIndex];
+		const messages = this.messages();
+		this.currentMessageIndex %= messages.length;
+		this.currentMessage = messages[this.currentMessageIndex] as string;
 		this.titleService.setTitle(this.currentMessage);
 		// Increment the message index or reset it to 0 if it reaches the end
-		this.currentMessageIndex = (this.currentMessageIndex + 1) % this.messages.length;
+		this.currentMessageIndex = (this.currentMessageIndex + 1) % messages.length;
 
 		// Set a new timeout to call the function again after the specified delay
 		this.timeoutId = setTimeout(() => {

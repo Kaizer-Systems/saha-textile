@@ -65,4 +65,19 @@
 			</div>
 		</div>
 	</div>
+	<!--
+		Phone strip (owner brief, approved 2026-11-09): the top bar's message column is hidden
+		below 992 px, so phones get the published events' lines here, one line under the header.
+		Existing classes only — `header-top` and `header-offer` are the top bar's own. Drawn only
+		while an event has a line, and in the server's first paint, so nothing shifts.
+	-->
+	@if (events.stripItems().length) {
+	<div class="header-top d-lg-none">
+		<div class="container-fluid-lg">
+			<div class="header-offer">
+				<app-notice [events]="events.stripItems()" />
+			</div>
+		</div>
+	</div>
+	}
 </header>

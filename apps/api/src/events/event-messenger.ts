@@ -1,6 +1,11 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
-import { type Customer, type ShopEvent, formatIst } from '@saha-textile/contracts';
-import type { ConsentRepository, CustomerRepository, NotificationPort } from '@saha-textile/core-domain';
+import type { Customer, ShopEvent } from '@saha-textile/contracts';
+import {
+	type ConsentRepository,
+	type CustomerRepository,
+	type NotificationPort,
+	formatIst,
+} from '@saha-textile/core-domain';
 
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { CONSENT_REPOSITORY, CUSTOMER_REPOSITORY, NOTIFICATION_PORT } from '../infra/tokens';
@@ -64,9 +69,10 @@ export class EventMessenger {
 		if (!this.notifications) return 0;
 		let sent = 0;
 		for await (const customer of this.recipients()) {
-			const locale = customer.preferredLocale && this.config.locales.includes(customer.preferredLocale)
-				? customer.preferredLocale
-				: 'en';
+			const locale =
+				customer.preferredLocale && this.config.locales.includes(customer.preferredLocale)
+					? customer.preferredLocale
+					: 'en';
 			try {
 				await this.notifications.send({
 					channel: 'email',
@@ -79,7 +85,9 @@ export class EventMessenger {
 				});
 				sent += 1;
 			} catch (error) {
-				this.logger.warn(`Event message not sent to one customer: ${error instanceof Error ? error.message : 'unknown'}`);
+				this.logger.warn(
+					`Event message not sent to one customer: ${error instanceof Error ? error.message : 'unknown'}`,
+				);
 			}
 		}
 		return sent;

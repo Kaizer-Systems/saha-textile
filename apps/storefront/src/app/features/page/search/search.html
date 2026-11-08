@@ -33,12 +33,12 @@
 						>
 							{{ 'search' | transloco }}
 						</app-button>
+						<app-search-suggest
+							[field]="field"
+							[control]="search"
+							(submitted)="searchProduct($event)"
+						/>
 					</div>
-					<app-search-suggest
-						[field]="field"
-						[control]="search"
-						(submitted)="searchProduct($event)"
-					/>
 				</div>
 				@if (term() && !loading() && products().length) {
 				<p class="text-content mt-3 mb-0 text-center">

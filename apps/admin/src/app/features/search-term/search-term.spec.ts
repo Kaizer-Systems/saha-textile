@@ -142,8 +142,11 @@ describe('Search word form', () => {
 		const service = { save: vi.fn(() => of({ id: 'sterm_1' })) };
 		const { page, fixture, router, toasts } = render(FormSearchTerm, service);
 		fixture.componentRef.setInput('id', 'sterm_1');
+		vi.useFakeTimers();
 		detail.set({ term, products: [{ id: 'prd_1', name: 'Laal Paar', image: null }] });
 		TestBed.tick();
+		vi.runAllTimers();
+		vi.useRealTimers();
 		expect(page.form.value).toMatchObject({
 			name: 'Puja',
 			spellings: 'pujo, pooja',

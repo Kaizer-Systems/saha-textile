@@ -117,7 +117,9 @@ export class FormSearchTerm {
 					data: { name: row.name, image: row.image ?? 'assets/images/product.png' },
 				})),
 			);
-			this.form.patchValue({ products: [...term.productIds], status: term.status === 'live' });
+			this.form.patchValue({ status: term.status === 'live' });
+			// The picker matches its value against its options, so it gets the products once they are in.
+			setTimeout(() => this.form.controls['products'].setValue([...term.productIds]));
 			this.refreshMissing();
 		});
 	}

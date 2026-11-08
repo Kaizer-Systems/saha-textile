@@ -208,6 +208,8 @@ export class SearchSuggest {
 				this.renderer.listen(field, 'keydown', (event: KeyboardEvent) => this.onKeydown(event)),
 				this.renderer.listen(this.page, 'pointerdown', (event: PointerEvent) => this.onOutside(event)),
 			];
+			// The header bar focuses its field as it opens, which can be before these listeners exist.
+			if (this.page.activeElement === field) queueMicrotask(() => this.show());
 			onCleanup(() => stops.forEach((stop) => stop()));
 		});
 

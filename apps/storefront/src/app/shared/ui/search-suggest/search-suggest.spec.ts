@@ -49,6 +49,7 @@ const categories = [
 			[control]="control"
 			(submitted)="submitted.push($event)"
 			(escaped)="escaped = escaped + 1"
+			(navigated)="navigated = navigated + 1"
 		/>
 	`,
 	imports: [SearchSuggest],

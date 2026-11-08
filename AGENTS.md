@@ -95,7 +95,7 @@ this rule exists to prevent. Full text: `owner-decisions-log.mdx` § `DEC-UI-REU
 
 - **Repo visibility:** the GitHub repo is **public** (required to keep branch rulesets on the org Free plan; also gives unlimited Actions minutes). Deployment images are published as **private GHCR packages** (package visibility is independent of repo visibility). Because the source is public, secret hygiene is non-negotiable: never commit secrets, never ship them to the browser bundle.
 - **Protected branches:** `main`, `dev`, `staging`. **Never push directly — always via PR.** Code moves `dev → staging → main` (owner decision 2026-11-08; `qa` retires).
-- **`dev → staging → main`:** normal merge commits, never squash (squash between permanent branches causes conflicts). `main` + `staging` keep signed commits. Until the rulesets are changed, they still enforce linear history. See `production-deployment-plan.mdx`.
+- **`dev → staging → main`:** normal merge commits, never squash (squash between permanent branches causes conflicts). `main` + `staging` keep signed commits. The rulesets match this (linear history off since 2026-11-08). See `production-deployment-plan.mdx`.
 - **Feature branches into `dev`:** PR + 1 approval; any merge method.
 - Branch naming: `feat/<scope>`, `fix/<scope>`, `chore/<scope>`.
 - **Open PRs; never merge to a protected branch without explicit human approval.** The human is the sole reviewer/admin.

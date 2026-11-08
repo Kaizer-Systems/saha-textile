@@ -773,6 +773,31 @@ describe('placement listings', () => {
 		expect(page.breadcrumb).toEqual([{ name: 'Sarees', path: '/collections/sarees' }]);
 	});
 
+	it('carries the category FAQ on the plain first page only', async () => {
+		const faqs = {
+			resolveForSurface: vi.fn(async () => [
+				{ scope: 'category', question: { en: 'Silk?', bn: 'সিল্ক?' }, answer: { en: 'Yes' } },
+				{ scope: 'product', question: { en: 'Own?' }, answer: { en: 'Yes' } },
+				{ scope: 'mixed', question: { en: 'Blank?' }, answer: { en: ' ' } },
+			]),
+		};
+		const withPath = { ...placement, pathCategoryIds: ['cat_root', 'cat_1'] };
+		const page = await build({ placement: withPath, faqs }).service.placement(query({ path: 'sarees' }));
+		expect(page.faq).toEqual([{ question: 'Silk?', answer: 'Yes' }]);
+		expect(faqs.resolveForSurface).toHaveBeenCalledWith({
+			categoryIds: ['cat_root', 'cat_1'],
+			includeGlobal: false,
+		});
+		const sorted = await build({ placement: withPath, faqs }).service.placement(
+			query({ path: 'sarees', sortBy: 'low-high' } as never),
+		);
+		expect(sorted.faq).toEqual([]);
+		const empty = { ...placement, pathCategoryIds: [] };
+		const noIds = await build({ placement: empty, faqs }).service.placement(query({ path: 'sarees' }));
+		expect(noIds.faq).toEqual([]);
+		expect((await build({ placement: withPath }).service.placement(query({ path: 'sarees' }))).faq).toEqual([]);
+	});
+
 	it('names a crumb by its slug when the label runs out', async () => {
 		const page = await build({
 			placement: { categoryId: 'cat_1', pathSlugs: ['sarees', 'silk'], pathLabel: 'Sarees' },

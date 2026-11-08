@@ -189,6 +189,8 @@ export const CatalogPlacementPage = z.object({
 	facets: z.array(CatalogFacet),
 	/** False when the URL carries a facet combination. */
 	indexable: z.boolean(),
+	/** This category's and its parents' FAQ, in the page language; only on the plain first page. */
+	faq: z.array(z.object({ question: z.string(), answer: z.string() })).default([]),
 });
 export type CatalogPlacementPage = z.infer<typeof CatalogPlacementPage>;
 

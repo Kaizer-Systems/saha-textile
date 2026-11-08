@@ -441,7 +441,21 @@ export class CatalogPublicService {
 			pageSize,
 			facets: result.facets,
 			indexable: isCleanListing(query),
+			faq:
+				placement && page === 1 && isCleanListing(query)
+					? await this.categoryFaq(placement.pathCategoryIds)
+					: [],
 		});
+	}
+
+	/** A category page's FAQ: questions written for it or its parents, never the shop-wide ones. */
+	private async categoryFaq(categoryIds: readonly string[]): Promise<Array<{ question: string; answer: string }>> {
+		if (!this.faqs || !categoryIds.length) return [];
+		const entries = await this.faqs.resolveForSurface({ categoryIds, includeGlobal: false });
+		return entries
+			.filter((entry) => entry.scope === 'category' || entry.scope === 'mixed')
+			.map((entry) => ({ question: localized(entry.question), answer: localized(entry.answer) }))
+			.filter((entry) => entry.question.trim() && entry.answer.trim());
 	}
 
 	private async variantsByProduct(products: readonly Product[]): Promise<Map<string, ProductVariant[]>> {

@@ -1240,5 +1240,6 @@
 	"faq_add_question": "Add question",
 	"faq_category_help": "Use the Language switch at the top to write each question in every language. Go Live needs them all.",
 	"gap_faq_question": "FAQ question",
-	"gap_faq_answer": "FAQ answer"
+	"gap_faq_answer": "FAQ answer",
+	"faq_category_scope_help": "A question for a category also shows on its sub-categories and on product pages in them that have their FAQ switched on."
 }

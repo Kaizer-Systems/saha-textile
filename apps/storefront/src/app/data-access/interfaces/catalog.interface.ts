@@ -28,4 +28,6 @@ export interface ICatalogResponse {
 	/** Each facet's title, in the page's language. */
 	facetLabels?: Record<string, string>;
 	price_range: { min: number; max: number };
+	/** The category's FAQ (its own and its parents'), on the plain first page only. */
+	faq?: Array<{ question: string; answer: string }>;
 }

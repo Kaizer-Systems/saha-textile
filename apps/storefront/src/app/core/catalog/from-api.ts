@@ -57,6 +57,8 @@ export interface ApiPlacement {
 	pageSize: number;
 	facets: Array<{ code: string; label: string; terms: Array<{ code: string; label: string; count: number }> }>;
 	indexable: boolean;
+	/** The category FAQ, on the plain first page only. */
+	faq?: Array<{ question: string; answer: string }>;
 }
 
 interface ApiOptionTerm {
@@ -272,6 +274,7 @@ export function placementToCatalog(page: ApiPlacement): ICatalogResponse {
 			]),
 		),
 		price_range: { min: prices.length ? Math.min(...prices) : 0, max: prices.length ? Math.max(...prices) : 0 },
+		faq: page.faq ?? [],
 	};
 }
 

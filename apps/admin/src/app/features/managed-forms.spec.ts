@@ -45,7 +45,10 @@ const q = {
 	provider: signal<unknown>(undefined),
 	channels: signal<unknown>(undefined),
 	templates: signal<unknown>(undefined),
+	categories: signal<unknown>(undefined),
+	products: signal<unknown>(undefined),
 };
+const productSearches: unknown[] = [];
 const call = (...getters: (undefined | (() => unknown))[]) => getters.forEach((getter) => getter?.());
 
 vi.mock('@tanstack/angular-query-experimental', async (original) => ({
@@ -79,6 +82,12 @@ vi.mock('@data-access/queries/admin-customers.queries', () => ({
 		call(id, params),
 		{ data: q.orders }
 	),
+}));
+vi.mock('@data-access/queries/category.queries', () => ({
+	injectCategoriesQuery: (params: () => unknown) => (call(params), { data: q.categories }),
+}));
+vi.mock('@data-access/queries/product.queries', () => ({
+	injectCatalogProductsQuery: (params: () => unknown) => (productSearches.push(params), { data: q.products }),
 }));
 vi.mock('@data-access/queries/admin-notifications.queries', () => ({
 	injectNotificationProviderQuery: () => ({ data: q.provider }),
@@ -555,23 +564,47 @@ describe('FormFaq', () => {
 				productIds: ['p', 'q'],
 			},
 		]);
-		expect(page.form.value).toMatchObject({ title: 'Q', scope: 'product', categoryIds: 'c', productIds: 'p, q' });
+		expect(page.form.value).toMatchObject({
+			title: 'Q',
+			scope: 'product',
+			categoryIds: ['c'],
+			productIds: ['p', 'q'],
+		});
+		expect(page.selectedCategories()).toEqual(['c']);
+		q.products.set({ items: [{ id: 'p', title: 'Red saree' }] });
+		expect(page.productOptions()).toEqual([
+			{ value: 'q', label: 'q' },
+			{ value: 'p', label: 'Red saree' },
+		]);
+		q.products.set(undefined);
 	});
 
 	it('fills the defaults for a sparse or missing row', () => {
 		expect(setup({ id: 1 }, [{ id: 1 }]).page.form.value).toMatchObject({
 			scope: 'global',
-			categoryIds: '',
-			productIds: '',
+			categoryIds: [],
+			productIds: [],
 		});
 		expect(setup({ id: 9 }, []).page.faq).toBeNull();
+	});
+
+	it('does not read without an id, and searches products as typed', () => {
+		const { page } = setup();
+		expect(page.categoryOptions()).toEqual([]);
+		q.categories.set({ data: [{ id: 'c1', name: 'Sarees' }] });
+		expect(page.categoryOptions()).toEqual([{ id: 'c1', name: 'Sarees' }]);
+		q.categories.set(undefined);
+		page.searchProducts({ search: 'silk' } as never);
+		expect((productSearches.at(-1) as () => unknown)()).toEqual({ search: 'silk', pageSize: 50 });
+		page.searchProducts({} as never);
+		expect((productSearches.at(-1) as () => unknown)()).toEqual({ search: undefined, pageSize: 50 });
 	});
 
 	it('does not read without an id', () => {
 		expect(setup().service.getFaqs).not.toHaveBeenCalled();
 	});
 
-	it('saves, splitting the id lists, and returns to the list', () => {
+	it('saves the chosen lists and returns to the list', () => {
 		const { page, service, router } = setup();
 		page.switchLanguage('bn');
 		page.submit();
@@ -579,7 +612,9 @@ describe('FormFaq', () => {
 		expect(page.fields.locale()).toBe('en');
 		expect(page.form.get('title')?.errors).toEqual({ required: true });
 		expect(page.form.get('description')?.errors).toEqual({ required: true });
-		page.form.patchValue({ title: 'Q', categoryIds: ' c1, ,c2 ', productIds: '' });
+		page.selectCategories(['c1', 'c2']);
+		page.selectCategories('not a list' as never);
+		page.form.patchValue({ title: 'Q', productIds: null });
 		page.submit();
 		expect(page.form.get('title')?.errors).toBeNull();
 		expect(service.save).not.toHaveBeenCalled();

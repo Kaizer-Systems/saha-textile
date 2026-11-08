@@ -29,6 +29,7 @@ const render = (url = '/collections/sarees/silk/?page=2', query: Record<string, 
 	const seo = {
 		applyDocument: vi.fn(),
 		applyJsonLd: vi.fn(),
+		removeJsonLd: vi.fn(),
 		setCanonicalPath: vi.fn(),
 		absoluteUrl: (path: string) => `https://shop.test${path}`,
 	};
@@ -55,6 +56,22 @@ const jsonLd = (seo: ReturnType<typeof render>['seo'], id: string) =>
 afterEach(() => {
 	data.set(undefined);
 	error.set(null);
+});
+
+describe('Collection FAQ', () => {
+	it('shows the category FAQ with matching structured data, and removes the data without one', () => {
+		const { page, seo } = render();
+		expect(page.faq()).toEqual([]);
+		expect(seo.removeJsonLd).toHaveBeenCalledWith('category-faq');
+		data.set({ data: [], total: 0, faq: [{ question: 'Silk?', answer: 'Yes' }] });
+		TestBed.tick();
+		expect(page.faq()).toEqual([{ question: 'Silk?', answer: 'Yes' }]);
+		expect(jsonLd(seo, 'category-faq')).toEqual({
+			'@context': 'https://schema.org',
+			'@type': 'FAQPage',
+			mainEntity: [{ '@type': 'Question', name: 'Silk?', acceptedAnswer: { '@type': 'Answer', text: 'Yes' } }],
+		});
+	});
 });
 
 describe('Collection filter', () => {

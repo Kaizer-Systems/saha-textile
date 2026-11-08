@@ -87,6 +87,7 @@ export class FormSearchTerm {
 		return [...this.tagged().filter((row) => 'value' in row && !seen.has(row.value as string)), ...found];
 	});
 	private searchTimer: ReturnType<typeof setTimeout> | undefined;
+	private loadedId: string | null = null;
 
 	constructor() {
 		this.form = this.formBuilder.group({
@@ -100,7 +101,9 @@ export class FormSearchTerm {
 
 		effect(() => {
 			const detail = this.termQuery.data();
-			if (!detail) return;
+			// Loaded once: a background refetch (window focus) must not wipe what is being typed.
+			if (!detail || detail.term.id === this.loadedId) return;
+			this.loadedId = detail.term.id;
 			const { term, products } = detail;
 			this.fields.load({
 				name: term.name,

@@ -155,6 +155,11 @@ describe('Search word form', () => {
 		});
 		expect(page.selectedCategories()).toEqual(['cat_1']);
 		expect(page.productOptions().map((row) => ('value' in row ? row.value : null))).toEqual(['prd_1', 'prd_2']);
+		page.form.patchValue({ name: 'Puja festival' });
+		detail.set({ term: { ...term }, products: [] });
+		TestBed.tick();
+		expect(page.form.value.name).toBe('Puja festival');
+		page.form.patchValue({ name: 'Puja' });
 		page.switchLanguage('bn');
 		expect(page.form.value.name).toBe('পুজো');
 		page.selectCategories(['cat_1', 'cat_2']);

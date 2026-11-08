@@ -82,7 +82,7 @@ export class Table {
 	readonly tableChanged = output<Params>();
 	readonly action = output<ITableClickedAction>();
 	readonly rowClicked = output<any>();
-	readonly selectedItems = output<number[]>();
+	readonly selectedItems = output<(number | string)[]>();
 
 	readonly DeleteModal = viewChild<DeleteModal>('deleteModal');
 	readonly ConfirmationModal = viewChild<ConfirmationModal>('confirmationModal');
@@ -97,7 +97,8 @@ export class Table {
 		paginate: 30, // Display per page,
 	};
 
-	public selected: number[] = [];
+	/** Row ids as the rows carry them: numbers on theme lists, text on lists the API fills (blog, products). */
+	public selected: (number | string)[] = [];
 	public permissions: string[] = [];
 
 	public hoveredDate: NgbDate | null = null;
@@ -221,19 +222,21 @@ export class Table {
 		});
 	}
 
+	/** A checkbox's value is always text, so the row it belongs to supplies the id in its own type. */
 	onItemChecked(event: Event) {
-		this.setSelectedItem(
-			(<HTMLInputElement>event.target)?.checked,
-			Number((<HTMLInputElement>event.target)?.value),
-		);
+		const target = <HTMLInputElement>event.target;
+		const value = target?.value;
+		const row = this.tableConfig?.data?.find((item) => String(item.id) === value);
+		this.setSelectedItem(target?.checked, row?.id ?? value);
 	}
 
-	setSelectedItem(checked: Boolean, value: Number) {
-		const index = this.selected.indexOf(Number(value));
+	setSelectedItem(checked: boolean, value: number | string | undefined) {
+		if (value === undefined) return;
+		const index = this.selected.indexOf(value);
 		if (checked) {
-			if (index == -1) this.selected.push(Number(value));
+			if (index == -1) this.selected.push(value);
 		} else {
-			this.selected = this.selected.filter((id) => id != Number(value));
+			this.selected = this.selected.filter((id) => id !== value);
 		}
 		this.selectedItems.emit(this.selected);
 	}

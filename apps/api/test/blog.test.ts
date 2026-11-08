@@ -42,11 +42,12 @@ function harness() {
 	const assets = new Map<string, MediaAsset>([['med_cover', asset()]]);
 	const redirects = new Map<string, SeoRedirect>();
 	const audit: { action: string; entityId: string | null }[] = [];
+	let filter: unknown = null;
 
 	const postRepo = {
 		findById: async (id: string) => posts.get(id) ?? null,
 		findBySlug: async (slug: string) => [...posts.values()].find((post) => post.slug === slug) ?? null,
-		list: async (filter: {
+		list: async (filter_: {
 			status?: string;
 			visibleAt?: string;
 			categoryId?: string;
@@ -55,19 +56,20 @@ function harness() {
 			page: number;
 			pageSize: number;
 		}) => {
+			filter = filter_;
 			const rows = [...posts.values()]
-				.filter((post) => !filter.status || post.status === filter.status)
-				.filter((post) => !filter.visibleAt || blogPostVisible(post, filter.visibleAt))
-				.filter((post) => !filter.categoryId || post.categoryIds.includes(filter.categoryId))
-				.filter((post) => !filter.tagId || post.tagIds.includes(filter.tagId))
-				.filter((post) => !filter.search || post.title['en']?.includes(filter.search))
+				.filter((post) => !filter_.status || post.status === filter_.status)
+				.filter((post) => !filter_.visibleAt || blogPostVisible(post, filter_.visibleAt))
+				.filter((post) => !filter_.categoryId || post.categoryIds.includes(filter_.categoryId))
+				.filter((post) => !filter_.tagId || post.tagIds.includes(filter_.tagId))
+				.filter((post) => !filter_.search || post.title['en']?.includes(filter_.search))
 				.sort(compareBlogPosts);
-			const start = (filter.page - 1) * filter.pageSize;
+			const start = (filter_.page - 1) * filter_.pageSize;
 			return {
-				items: rows.slice(start, start + filter.pageSize),
+				items: rows.slice(start, start + filter_.pageSize),
 				total: rows.length,
-				page: filter.page,
-				pageSize: filter.pageSize,
+				page: filter_.page,
+				pageSize: filter_.pageSize,
 			};
 		},
 		countVisibleByTerm: async (now: string) => {
@@ -140,7 +142,7 @@ function harness() {
 		storage as never,
 		config,
 	);
-	return { admin, shop, posts, categories, tags, assets, assetRepo, redirects, audit };
+	return { admin, shop, posts, categories, tags, assets, assetRepo, redirects, audit, lastFilter: () => filter };
 }
 
 const write = (overrides: Record<string, unknown> = {}) =>
@@ -292,9 +294,11 @@ describe('blog admin service', () => {
 		await expect(h.admin.removeTerm('tag', draft.id, null)).rejects.toThrow(NotFoundException);
 	});
 
-	it('lists posts for the admin with their cover preview', async () => {
+	it('lists posts for the admin with their cover preview, searching every language', async () => {
 		await h.admin.create(write(), null);
 		const page = await h.admin.list({ page: 1, pageSize: 20 });
+		await h.admin.list({ page: 1, pageSize: 20, search: 'বেনারসি' });
+		expect(h.lastFilter()).toMatchObject({ search: 'বেনারসি', searchLocales: ['en', 'bn'] });
 		expect(page.total).toBe(1);
 		expect(page.items[0]?.cover?.alt).toEqual({ en: 'A red Banarasi', bn: 'লাল বেনারসি' });
 	});

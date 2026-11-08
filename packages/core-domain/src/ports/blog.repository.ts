@@ -4,8 +4,13 @@ import type { Paginated } from './pagination';
 
 export interface BlogPostFilter {
 	status?: BlogStatus;
-	/** Matches the English title or the address. */
+	/**
+	 * Every word must appear, in any order and as part of a word, in the title, summary or article
+	 * of one of `searchLocales`, or in the address. Letter case is ignored.
+	 */
 	search?: string;
+	/** The languages `search` looks in. Defaults to English. */
+	searchLocales?: readonly string[];
 	/** Only posts on the shop at this moment: live, published on or before it. */
 	visibleAt?: string;
 	categoryId?: string;

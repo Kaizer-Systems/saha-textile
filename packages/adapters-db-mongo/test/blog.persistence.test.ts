@@ -91,6 +91,30 @@ describe.runIf(hasMongoEnv())('blog persistence (rs0)', () => {
 		expect(await posts.findBySlug(saved.slug)).toEqual(saved);
 	});
 
+	it('finds every word anywhere in the title, summary or article, in any language, in any order', async () => {
+		await posts.save(
+			post('search', {
+				title: { en: 'How to spot a real Banarasi saree', bn: 'আসল বেনারসি শাড়ি চেনার উপায়' },
+				excerpt: { en: 'Seven checks at the counter', bn: 'সাতটি পরীক্ষা' },
+				content: { en: '<p>Real zari, tested zari, or plastic.</p>', bn: '<p>আসল জরি, টেস্টেড জরি।</p>' },
+				status: 'draft',
+			}),
+		);
+		const find = async (search: string, searchLocales: string[] = ['en', 'bn']) =>
+			(await posts.list({ search, searchLocales, page: 1, pageSize: 50 })).items
+				.map((row) => row.id)
+				.filter((id) => id === `${prefix}search`);
+		expect(await find('BANAR')).toHaveLength(1);
+		expect(await find('banarasi real')).toHaveLength(1);
+		expect(await find('zari plastic')).toHaveLength(1);
+		expect(await find('counter')).toHaveLength(1);
+		expect(await find('বেনারসি')).toHaveLength(1);
+		expect(await find('জরি সাতটি')).toHaveLength(1);
+		expect(await find('banarasi kanjivaram')).toHaveLength(0);
+		expect(await find('বেনারসি', ['en'])).toHaveLength(0);
+		expect(await find('a.b(c')).toHaveLength(0);
+	});
+
 	it('refuses a second post at the same address', async () => {
 		await expect(
 			BlogPostModel.create({ _id: `${prefix}dup`, slug: post('full').slug, status: 'draft' }),

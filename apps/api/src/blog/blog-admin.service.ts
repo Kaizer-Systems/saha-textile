@@ -102,6 +102,7 @@ export class BlogAdminService {
 		const page = await this.posts.list({
 			status: query.status,
 			search: query.search,
+			searchLocales: this.config.locales,
 			page: query.page,
 			pageSize: query.pageSize,
 		});

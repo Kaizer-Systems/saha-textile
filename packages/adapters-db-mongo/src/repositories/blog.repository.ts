@@ -52,9 +52,19 @@ export class MongoBlogPostRepository implements BlogPostRepository {
 		}
 		if (filter.categoryId) query.categoryIds = filter.categoryId;
 		if (filter.tagId) query.tagIds = filter.tagId;
-		if (filter.search?.trim()) {
-			const pattern = new RegExp(escapeRegex(filter.search.trim()), 'i');
-			query.$or = [{ 'title.en': pattern }, { slug: pattern }];
+		const words = (filter.search ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
+		if (words.length) {
+			const locales = (filter.searchLocales?.length ? filter.searchLocales : ['en']).filter((locale) =>
+				/^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(locale),
+			);
+			const fields = [
+				'slug',
+				...locales.flatMap((locale) => [`title.${locale}`, `excerpt.${locale}`, `content.${locale}`]),
+			];
+			query.$and = words.map((word) => {
+				const pattern = new RegExp(escapeRegex(word), 'i');
+				return { $or: fields.map((field) => ({ [field]: pattern })) };
+			});
 		}
 		const [docs, total] = await Promise.all([
 			BlogPostModel.find(query)

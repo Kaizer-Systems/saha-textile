@@ -44,7 +44,7 @@ const render = (held: string[] = ['x.edit', 'x.delete'], tableConfig: unknown = 
 	table.rowClicked.subscribe((value) => clicked.push(value));
 	const actions: unknown[] = [];
 	table.action.subscribe((value) => actions.push(value));
-	const selected: number[][] = [];
+	const selected: (number | string)[][] = [];
 	table.selectedItems.subscribe((value) => selected.push([...value]));
 	fixture.detectChanges();
 	TestBed.tick();
@@ -234,6 +234,16 @@ describe('Table selection', () => {
 		expect(table.selected).toEqual([1]);
 		table.onItemChecked({ target: null } as never);
 		expect(table.selected).toEqual([1]);
+	});
+
+	it('keeps text ids as text, so rows the API fills can be selected', () => {
+		const { table } = render();
+		table.tableConfig = { ...table.tableConfig, data: [{ id: 'blg_1' }, { id: 'blg_2' }] } as never;
+		table.onItemChecked({ target: { checked: true, value: 'blg_2' } } as never);
+		table.checkUncheckAll({ target: { checked: true } } as never);
+		expect(table.selected).toEqual(['blg_2', 'blg_1']);
+		table.onItemChecked({ target: { checked: false, value: 'blg_2' } } as never);
+		expect(table.selected).toEqual(['blg_1']);
 	});
 
 	it('enables delete and duplicate for selected rows with the right', () => {

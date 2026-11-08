@@ -430,6 +430,16 @@ const productDeps = () => [
 ];
 
 describe('Product list', () => {
+	it('remembers the rows on screen for Save and next when opening one', () => {
+		const { page, router } = render(Product, productDeps());
+		data.set({ items: [{ id: 'p1', stock: 1 }, { id: 'p2', stock: 0 }], total: 2 });
+		TestBed.tick();
+		page.edit({ id: 'p1' } as never);
+		expect(router.navigateByUrl).toHaveBeenCalledWith('/product/edit/p1');
+		expect(JSON.parse(sessionStorage.getItem('st_admin_product_queue') ?? '[]')).toEqual(['p1', 'p2']);
+		sessionStorage.clear();
+	});
+
 	it('passes only a text search on to the catalogue', () => {
 		const { page } = render(Product, productDeps());
 		const params = lastParams;

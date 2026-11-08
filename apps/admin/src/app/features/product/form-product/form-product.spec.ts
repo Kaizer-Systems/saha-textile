@@ -529,6 +529,22 @@ describe('FormProduct saree lengths', () => {
 });
 
 describe('FormProduct.submit', () => {
+	it('saves and opens the next product from the list, or the list after the last', () => {
+		const { page, service, router } = editing();
+		sessionStorage.setItem('st_admin_product_queue', JSON.stringify(['p0', 'p1', 'p2']));
+		expect(page.nextProductId()).toBe('p2');
+		page.saveAndNext();
+		expect(service.saveCatalogProduct).toHaveBeenCalledOnce();
+		expect(router.navigateByUrl).toHaveBeenLastCalledWith('/product/edit/p2');
+		sessionStorage.setItem('st_admin_product_queue', JSON.stringify(['p0', 'p1']));
+		expect(page.nextProductId()).toBeNull();
+		page.saveAndNext();
+		expect(router.navigateByUrl).toHaveBeenLastCalledWith('/product');
+		page.submit();
+		expect(router.navigateByUrl).toHaveBeenLastCalledWith('/product');
+		sessionStorage.clear();
+	});
+
 	it('saves the cleaned values', () => {
 		const { page, service, router } = editing();
 		page.form.patchValue({

@@ -1,4 +1,5 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, effect, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
@@ -8,6 +9,7 @@ import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { injectCatalogProductsQuery } from '@data-access/queries/product.queries';
 import { NotificationService } from '@data-access/services/notification.service';
+import { rememberProductQueue } from '@core/catalog/product-queue';
 import { ProductService } from '@data-access/services/product.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
@@ -33,6 +35,7 @@ interface ProductTableRow {
 })
 export class Product {
 	private router = inject(Router);
+	private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 	private products = inject(ProductService);
 	private notifier = inject(NotificationService);
 	private transloco = inject(TranslocoService);
@@ -126,6 +129,9 @@ export class Product {
 	}
 
 	edit(data: ProductTableRow) {
+		// Save and next on the form walks the rows on screen, in this order.
+		const ids = (this.tableConfig().data ?? []).map((row) => String(row.id));
+		rememberProductQueue(this.isBrowser ? sessionStorage : null, ids);
 		void this.router.navigateByUrl(`/product/edit/${data.id}`);
 	}
 

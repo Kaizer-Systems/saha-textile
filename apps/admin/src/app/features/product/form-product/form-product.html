@@ -1493,8 +1493,20 @@
 				<div [ngbNavOutlet]="nav"></div>
 			</div>
 		</div>
-		<app-button [id]="'product_btn'">
-			{{ (type() === 'create' ? 'save_product' : 'update_product') | transloco }}
-		</app-button>
+		<div class="d-flex justify-content-end flex-wrap gap-2">
+			@if (type() !== 'create' && nextProductId()) {
+			<app-button
+				[id]="'product_next_btn'"
+				[class]="'btn btn-secondary'"
+				[type]="'button'"
+				(click)="saveAndNext()"
+			>
+				{{ 'save_and_next' | transloco }}
+			</app-button>
+			}
+			<app-button [id]="'product_btn'">
+				{{ (type() === 'create' ? 'save_product' : 'update_product') | transloco }}
+			</app-button>
+		</div>
 	</div>
 </form>

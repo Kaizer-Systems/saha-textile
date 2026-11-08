@@ -102,6 +102,7 @@ import { OptionGroups } from './option-groups/option-groups';
 import { ProductBundleForm } from './product-bundle/product-bundle';
 import { ImageCombination, ProductImages } from './product-images/product-images';
 import { FaqValue, ProductFaq } from './product-faq/product-faq';
+import { nextInProductQueue } from '@core/catalog/product-queue';
 import { variantCombinations } from './variant-combinations';
 import { environment } from '../../../../../public/environments/environment';
 
@@ -843,6 +844,26 @@ export class FormProduct {
 		return goLiveLabels(this.goLiveGaps(), (key) => this.transloco.translate(key));
 	}
 
+	/** The next product in the list this one was opened from, for Save and next. */
+	nextProductId(): string | null {
+		return nextInProductQueue(this.isBrowser ? sessionStorage : null, this.catalogProduct?.id);
+	}
+
+	/** Saves, then opens the next product from the list (or the list after the last one). */
+	saveAndNext() {
+		this.afterSave = this.nextProductId();
+		this.submit();
+	}
+
+	/** Where a successful save goes: the next product for Save and next, else the list. */
+	private afterSave: string | null = null;
+
+	private leaveAfterSave() {
+		const next = this.afterSave;
+		this.afterSave = null;
+		void this.router.navigateByUrl(next ? `/product/edit/${next}` : '/product');
+	}
+
 	submit() {
 		this.form.markAllAsTouched();
 		const raw = this.form.getRawValue() as Record<string, unknown>;
@@ -949,7 +970,7 @@ export class FormProduct {
 		finished.subscribe({
 			next: () => {
 				this.tabError = null;
-				void this.router.navigateByUrl('/product');
+				this.leaveAfterSave();
 			},
 		});
 	}

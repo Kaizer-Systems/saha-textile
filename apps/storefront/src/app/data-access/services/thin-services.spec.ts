@@ -10,6 +10,7 @@ import { AccountAddressService } from './account-address.service';
 import { AccountService } from './account.service';
 import { AttributeService } from './attribute.service';
 import { BlogService } from './blog.service';
+import { StoreLocationService } from './store-location.service';
 import { CartService } from './cart.service';
 import { CategoryService } from './category.service';
 import { CompareService } from './compare.service';
@@ -73,6 +74,14 @@ const plainReads: [string, () => unknown, string][] = [
 	['wishlist', () => TestBed.inject(WishlistService).getWishlistItems(), '/wishlist.json'],
 	['a static page', () => TestBed.inject(PageService).getPage('about'), '/pages/about.json'],
 ];
+
+describe('store location service', () => {
+	it('reads the active stores from the catalogue', async () => {
+		http.get.mockReturnValue(of([]));
+		await firstValueFrom(TestBed.inject(StoreLocationService).getStores());
+		expect(String(http.get.mock.lastCall?.[0])).toContain('/catalog/store-locations');
+	});
+});
 
 describe('blog service', () => {
 	const card = {

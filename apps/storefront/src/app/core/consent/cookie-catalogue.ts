@@ -29,7 +29,6 @@ export const FUNCTIONAL_ITEMS: readonly CookieItem[] = [
 	{ name: 'st_recent', purpose: 'cookie_item_recent', keptFor: 'cookie_kept_cleared' },
 	{ name: 'st_search', purpose: 'cookie_item_search', keptFor: 'cookie_kept_cleared' },
 	{ name: 'st_newsletter', purpose: 'cookie_item_newsletter', keptFor: 'cookie_kept_newsletter' },
-	{ name: 'Google Maps', purpose: 'cookie_item_map', keptFor: 'cookie_kept_by_google' },
 ];
 
 /** Categories with nothing behind them show Not in use, and Accept all leaves them off. */

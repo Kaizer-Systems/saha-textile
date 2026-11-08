@@ -4,9 +4,10 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
 import { BehaviorSubject, of, throwError } from 'rxjs';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ConsentStore } from '@core/consent/consent.store';
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { ProductService } from '@data-access/services/product.service';
 
@@ -31,9 +32,28 @@ vi.mock('@data-access/queries/product.queries', () => ({
 	},
 }));
 
+const stores = signal<unknown>(undefined);
+const brand = signal<unknown>(undefined);
+vi.mock('@data-access/queries/store-location.queries', () => ({ injectStoreLocationsQuery: () => ({ data: stores }) }));
+vi.mock('@data-access/queries/brand.queries', () => ({ injectBrandQuery: () => ({ data: brand }) }));
+const photo = {
+	assetId: 'p1',
+	width: 1600,
+	height: 1200,
+	dominantColor: null,
+	roles: {
+		store_photo: [
+			{ url: 'https://cdn.test/400.webp', width: 400, height: 300 },
+			{ url: 'https://cdn.test/800.webp', width: 800, height: 600 },
+		],
+	},
+};
+
 const translate = { provide: TranslocoService, useValue: { selectTranslate: () => of('Title') } };
 
 afterEach(() => {
+	stores.set(undefined);
+	brand.set(undefined);
 	page.set(undefined);
 	catalog.set(undefined);
 	fetching.set(false);
@@ -41,23 +61,92 @@ afterEach(() => {
 });
 
 describe('ContactUs', () => {
+	const motion = { reduce: false };
+	beforeEach(() => {
+		motion.reduce = false;
+		window.matchMedia = vi.fn(() => ({ matches: motion.reduce })) as never;
+	});
 	const render = () => {
 		const siteConfig = signal<unknown>(null);
+		const seo = { applyJsonLd: vi.fn(), removeJsonLd: vi.fn() };
 		TestBed.resetTestingModule();
 		TestBed.configureTestingModule({
-			providers: [translate, { provide: SiteConfigStore, useValue: { siteConfig } }],
+			providers: [
+				translate,
+				{ provide: SiteConfigStore, useValue: { siteConfig } },
+				{ provide: LocaleSeo, useValue: seo },
+			],
 		});
 		TestBed.overrideComponent(ContactUs, { set: { imports: [], template: '' } });
 		const form = TestBed.createComponent(ContactUs).componentInstance;
 		TestBed.tick();
-		return { form, siteConfig };
+		return { form, siteConfig, seo };
 	};
 
-	it('keeps the map back until there is consent or a click', () => {
+	it('shows the active stores, writes their structured data and takes it away on leaving', () => {
+		const { form, seo } = render();
+		expect(form.stores()).toEqual([]);
+		expect(seo.applyJsonLd).not.toHaveBeenCalled();
+		stores.set([
+			{
+				name: 'Barasat',
+				address: 'KB Basu Rd',
+				pinCode: '700124',
+				mapUrl: 'https://maps.google.com/?cid=1',
+				phone: '+913325521595',
+				geo: { lat: 22.7, lng: 88.4 },
+				hours: [
+					{ day: 'mon', open: true, opens: '10:00', closes: '21:00' },
+					{ day: 'tue', open: true, opens: '10:00', closes: '21:00' },
+					{ day: 'sun', open: false, opens: null, closes: null },
+				],
+				photos: [photo],
+			},
+			{
+				name: 'Agartala',
+				address: 'Colonel Chowmuhani',
+				pinCode: '799001',
+				mapUrl: 'u',
+				phone: null,
+				geo: null,
+				hours: [],
+				photos: [],
+			},
+		]);
+		TestBed.tick();
+		expect(form.stores()).toHaveLength(2);
+		const data = seo.applyJsonLd.mock.calls.at(-1)?.[1] as { '@graph': Record<string, unknown>[] };
+		expect(data['@graph'][0]).toMatchObject({
+			name: 'Barasat',
+			telephone: '+913325521595',
+			image: 'https://cdn.test/800.webp',
+			geo: { latitude: 22.7, longitude: 88.4 },
+			openingHoursSpecification: [{ dayOfWeek: ['Monday', 'Tuesday'], opens: '10:00', closes: '21:00' }],
+		});
+		expect(data['@graph'][1]).not.toHaveProperty('telephone');
+		expect(data['@graph'][1]).not.toHaveProperty('image');
+		form.ngOnDestroy();
+		expect(seo.removeJsonLd).toHaveBeenCalledWith('stores-jsonld');
+	});
+
+	it('picks photo sizes and the seal', () => {
 		const { form } = render();
-		expect(form.mapShown()).toBe(false);
-		form.mapRequested.set(true);
-		expect(form.mapShown()).toBe(true);
+		expect(form.src(photo as never)).toBe('https://cdn.test/800.webp');
+		expect(form.src({ roles: { store_photo: [{ url: 'small', width: 400, height: 300 }] } } as never)).toBe(
+			'small',
+		);
+		expect(form.src({ roles: {} } as never)).toBe('');
+		expect(form.srcset(photo as never)).toContain('800w');
+		expect(form.seal()).toBeNull();
+		brand.set({ seal: { url: 's.png' } });
+		TestBed.tick();
+		expect(form.seal()).toEqual({ url: 's.png' });
+		expect(form.interval).toBe(4000);
+	});
+
+	it('keeps the photos still for visitors who ask for less motion', () => {
+		motion.reduce = true;
+		expect(render().form.interval).toBe(0);
 	});
 
 	it('reads the contact details', () => {

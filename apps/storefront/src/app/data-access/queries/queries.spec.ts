@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AttributeService } from '@data-access/services/attribute.service';
 import { BlogService } from '@data-access/services/blog.service';
+import { StoreLocationService } from '@data-access/services/store-location.service';
 import { CategoryService } from '@data-access/services/category.service';
 import { CountryService } from '@data-access/services/country.service';
 import { CouponService } from '@data-access/services/coupon.service';
@@ -28,6 +29,7 @@ import { WalletService } from '@data-access/services/wallet.service';
 import { injectAttributesQuery } from './attribute.queries';
 import { bannerSrc, bannerSrcset, injectBannersQuery } from './banner.queries';
 import { injectBlogBySlugQuery, injectBlogTermsQuery, injectBlogsQuery, injectRecentBlogsQuery } from './blog.queries';
+import { injectStoreLocationsQuery } from './store-location.queries';
 import { injectCategoriesQuery } from './category.queries';
 import { injectCountriesQuery } from './country.queries';
 import { injectCouponsQuery } from './coupon.queries';
@@ -101,6 +103,7 @@ beforeEach(() => {
 			{ provide: RefundService, useValue: service('getRefunds') },
 			{ provide: ReviewService, useValue: service('getReview') },
 			{ provide: StateService, useValue: service('getStates') },
+			{ provide: StoreLocationService, useValue: service('getStores') },
 			{ provide: TagService, useValue: service('getTags') },
 			{ provide: WalletService, useValue: service('getUserTransaction') },
 			{ provide: HttpClient, useValue: http },
@@ -129,6 +132,7 @@ describe('list queries', () => {
 		['points', () => injectPointTransactionsQuery(params), ['point-transactions', { status: 1 }]],
 		['refunds', () => injectRefundsQuery(params), ['refunds', { status: 1 }]],
 		['states', () => injectStatesQuery(), ['states']],
+		['store locations', () => injectStoreLocationsQuery(), ['store-locations', 'en']],
 		['tags', () => injectTagsQuery(params), ['tags', { status: 1 }]],
 		['wallet', () => injectWalletTransactionsQuery(params), ['wallet-transactions', { status: 1 }]],
 	])('%s has its key and fetches', async (_name, build, key) => {

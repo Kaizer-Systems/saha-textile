@@ -42,6 +42,7 @@ const DECLARED_FAMILIES = [
 	'media',
 	'reviews',
 	'blog',
+	'events',
 	'stores',
 	'wishlist',
 ];

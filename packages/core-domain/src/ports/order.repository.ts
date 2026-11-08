@@ -15,6 +15,15 @@ export interface PurchasedOrder {
 	lines: Array<{ productId: string; quantity: number }>;
 }
 
+/** One SKU line of a paid order, for a sale's record of what it sold. */
+export interface PaidOrderLine {
+	orderId: string;
+	productId: string;
+	sku: string;
+	quantity: number;
+	unitPriceINR: number;
+}
+
 export interface OrderRepository {
 	findById(id: string): Promise<Order | null>;
 	findByOrderNumber(orderNumber: string): Promise<Order | null>;
@@ -23,6 +32,8 @@ export interface OrderRepository {
 	listRecentlyPurchased(since: string, limit: number): Promise<PurchasedProduct[]>;
 	/** Every paid order. Cancelled, refunded and unpaid orders are not sales. */
 	listPurchased(): Promise<PurchasedOrder[]>;
+	/** The lines of paid orders placed in [from, to), for the products given. */
+	listPaidLinesBetween(from: string, to: string, productIds: readonly string[]): Promise<PaidOrderLine[]>;
 	save(order: Order, context?: TransactionContext): Promise<Order>;
 	updateStatus(id: string, status: OrderStatus, note?: string): Promise<Order>;
 }

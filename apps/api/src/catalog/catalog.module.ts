@@ -55,6 +55,6 @@ import { TaxonomyService } from './taxonomy.service';
 		SearchTermsService,
 		SearchVocabularyService,
 	],
-	exports: [CatalogPublicService, CatalogRateLimit],
+	exports: [CatalogPublicService, CatalogRateLimit, CatalogService, ProductBuilderService],
 })
 export class CatalogModule {}

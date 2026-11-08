@@ -313,6 +313,8 @@ export const CatalogProductPage = z.object({
 	price: CatalogCardPrice,
 	badges: z.object({ primary: z.string().nullable(), secondary: z.string().nullable() }),
 	madeToOrder: z.boolean(),
+	/** When a running sale on this product ends, for the "Sale ends in" timer. Null with no sale. */
+	saleEndsAt: z.string().nullable().default(null),
 	estimatedDeliveryText: z.string().nullable(),
 	sareeLengthM: z.number().nullable(),
 	blousePieceM: z.number().nullable(),

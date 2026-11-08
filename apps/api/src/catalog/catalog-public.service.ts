@@ -52,8 +52,10 @@ import {
 	PRODUCT_VARIANT_REPOSITORY,
 	PRODUCT_RELATION_REPOSITORY,
 	SEO_ROUTE_REPOSITORY,
+	SALE_PRICE_BOOK,
 	STORAGE_PORT,
 } from '../infra/tokens';
+import type { SalePriceBook } from '../events/sale-price-book';
 
 const RAIL = 12;
 /** A category image is any library image, so take the size that suits it best. */
@@ -101,6 +103,7 @@ export class CatalogPublicService {
 		@Optional() @Inject(LISTING_PORT) listing: ListingPort | null = null,
 		@Optional() @Inject(APP_CONFIG) config: AppConfig | null = null,
 		@Optional() @Inject(FAQ_REPOSITORY) private readonly faqs: FaqRepository | null = null,
+		@Optional() @Inject(SALE_PRICE_BOOK) private readonly sales: SalePriceBook | null = null,
 	) {
 		this.listings = listing ?? new MongoListing(products, variants);
 		this.locales = config?.locales ?? ['en'];
@@ -199,6 +202,7 @@ export class CatalogPublicService {
 			price: read.price,
 			badges: read.badges,
 			madeToOrder: read.madeToOrder,
+			saleEndsAt: this.sales?.endsAtFor(product.id) ?? null,
 			estimatedDeliveryText: product.estimatedDeliveryText ? localized(product.estimatedDeliveryText) : null,
 			sareeLengthM: product.sareeLengthM ?? null,
 			blousePieceM: product.blousePieceM ?? null,

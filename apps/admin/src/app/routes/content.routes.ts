@@ -76,6 +76,10 @@ export const content: Routes = [
 		loadChildren: () => import('@features/media/media.routes'),
 	},
 	{
+		path: 'event',
+		loadChildren: () => import('@features/event/event.routes'),
+	},
+	{
 		path: 'coupon',
 		loadChildren: () => import('@features/coupon/coupon.routes'),
 	},

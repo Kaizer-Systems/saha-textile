@@ -23,6 +23,7 @@ export const API_TAGS = {
 	media: 'media',
 	reviews: 'reviews',
 	blog: 'blog',
+	events: 'events',
 	stores: 'stores',
 	wishlist: 'wishlist',
 } as const;
@@ -65,6 +66,11 @@ export const API_TAG_DESCRIPTIONS: ReadonlyArray<{ name: ApiTag; description: st
 		name: API_TAGS.blog,
 		description:
 			'Blog posts, categories and tags. The shop reads live posts in one language; the admin writes every language and goes live only when all are complete.',
+	},
+	{
+		name: API_TAGS.events,
+		description:
+			'Launch and sale events. The shop reads published events with the server clock for its countdowns; the admin prepares, reviews, publishes and cancels them. Sale prices are laid over shop reads while a sale runs.',
 	},
 	{
 		name: API_TAGS.stores,

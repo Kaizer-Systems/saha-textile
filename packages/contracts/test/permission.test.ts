@@ -33,7 +33,8 @@ describe('permission registry', () => {
 	// 2026-11-03 with `customer.restore` (`DEC-CUSTOMER-SOFT-DELETE-OPS` recycle bin).
 	// 94 → 98 on 2026-11-08 with `search_term.{create,destroy,edit,index}` (admin Search words).
 	it('exposes every code with a stable order', () => {
-		expect(PERMISSION_CODES).toHaveLength(98);
+		// 98 → 104 on 2026-11-09 with `event.{cancel,create,destroy,edit,index,publish}` (launch and sale events).
+		expect(PERMISSION_CODES).toHaveLength(104);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));
 	});
 

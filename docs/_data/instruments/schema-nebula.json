@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"lastVerified": "2026-11-08",
+	"lastVerified": "2026-11-09",
 	"route": "/database/schema-nebula",
 	"title": "Schema Nebula",
 	"summary": "A map of existing and planned MongoDB collections, with one star per collection.",
@@ -31,8 +31,8 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 75,
-		"existingModelCount": 51,
+		"nodeCount": 76,
+		"existingModelCount": 52,
 		"targetOnlyCount": 24,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map."
@@ -270,6 +270,19 @@
 			"source": "catalog §7.19",
 			"currentModel": "packages/adapters-db-mongo/src/models/promotion.model.ts",
 			"references": ["products", "categories", "tags"]
+		},
+		{
+			"id": "shopEvents",
+			"label": "shopEvents",
+			"cluster": "catalog-merchandising",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["F", "I"],
+			"blockingDecisions": ["DEC-PROMO-STACK"],
+			"purpose": "Launch and sale events: a launch puts draft categories and products live at its start; a sale lays % off, rupees off or fixed prices over shop reads between its start and end. Both languages of the shop line and message, the popup image, publish state, the launch report, and the compact record a sale keeps after it ends.",
+			"source": "decisions § launch and sale events (2026-11-09)",
+			"currentModel": "packages/adapters-db-mongo/src/models/shop-event.model.ts",
+			"references": ["products", "categories", "categoryPlacements", "mediaAssets", "orders"]
 		},
 		{
 			"id": "seoRoutes",

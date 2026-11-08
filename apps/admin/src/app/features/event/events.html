@@ -1,0 +1,31 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'events'"
+>
+	<div
+		*hasPermission="'event.create'"
+		button
+		class="d-flex gap-2"
+	>
+		<a
+			[routerLink]="['/event/create/launch']"
+			class="align-items-center btn btn-theme d-flex"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'new_launch' | transloco }}
+		</a>
+		<a
+			[routerLink]="['/event/create/sale']"
+			class="align-items-center btn btn-theme d-flex"
+		>
+			<i class="ri-add-line"></i>
+			{{ 'new_sale' | transloco }}
+		</a>
+	</div>
+	<app-table
+		[tableConfig]="tableConfig()"
+		(tableChanged)="onTableChange($event)"
+		(rowClicked)="edit($event)"
+		(action)="onActionClicked($event)"
+	/>
+</app-page-wrapper>

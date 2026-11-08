@@ -96,17 +96,7 @@ export class ProductBuilderService {
 		if (product.status === 'discontinued') {
 			throw new BadRequestException('A discontinued product cannot go live');
 		}
-		const rows = await this.variants.listForProduct(product.id, 'admin');
-		const primary = productGallery(product)[0];
-		const asset = primary ? await this.media?.findById(primary) : null;
-		const gaps = goLiveGaps({
-			product,
-			variants: rows,
-			locales: this.config.locales,
-			assetAlt: () => assetAlt(asset),
-			primaryRoles: asset ? asset.derivatives.map((row) => row.role) : null,
-			faq: product.faqEnabled ? await this.catalog.productFaq(product.id) : [],
-		});
+		const gaps = await this.gapsFor(product);
 		if (gaps.length) return GoLiveResult.parse({ live: false, gaps });
 		if (product.status !== 'live') {
 			const now = new Date().toISOString();
@@ -120,6 +110,22 @@ export class ProductBuilderService {
 			await this.catalog.record(actorUserId, 'catalog.product.go-live', product.id, { sku: product.sku });
 		}
 		return GoLiveResult.parse({ live: true, gaps: [] });
+	}
+
+	/** What stops a product going live, without changing it: the launch event's readiness check. */
+	async gapsFor(product: Product): Promise<GoLiveResult['gaps']> {
+		const rows = await this.variants.listForProduct(product.id, 'admin');
+		const primary = productGallery(product)[0];
+		const asset = primary ? await this.media?.findById(primary) : null;
+		const gaps = goLiveGaps({
+			product,
+			variants: rows,
+			locales: this.config.locales,
+			assetAlt: () => assetAlt(asset),
+			primaryRoles: asset ? asset.derivatives.map((row) => row.role) : null,
+			faq: product.faqEnabled ? await this.catalog.productFaq(product.id) : [],
+		});
+		return gaps;
 	}
 
 	async bundle(idOrSlug: string) {

@@ -102,6 +102,8 @@ export const COLLECTION_NAMES = {
 	BlogPost: 'blogPosts',
 	BlogCategory: 'blogCategories',
 	BlogTag: 'blogTags',
+	/** Launch and sale events (owner log § launch and sale events, 2026-11-09). */
+	ShopEvent: 'shopEvents',
 	/** The shop's physical stores, shown as cards on Contact Us. */
 	StoreLocation: 'storeLocations',
 	/** Typed site settings: home hero layout, YouTube rail settings and cache. */

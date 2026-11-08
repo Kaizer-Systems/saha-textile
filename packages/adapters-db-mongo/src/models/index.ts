@@ -56,3 +56,4 @@ export * from './store-location.model';
 export * from './search-analytics.model';
 export * from './wishlist-item.model';
 export * from './search-dictionary.model';
+export * from './shop-event.model';

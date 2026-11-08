@@ -47,3 +47,4 @@ export * from './store-location';
 export * from './mailbox';
 export * from './wishlist';
 export * from './search-term';
+export * from './shop-event';

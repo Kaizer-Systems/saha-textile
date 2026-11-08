@@ -8,6 +8,7 @@ import {
 	ProductModel,
 	ProductVariantModel,
 	ReviewModel,
+	ShopEventModel,
 	StoreLocationModel,
 } from '../models/index';
 
@@ -49,4 +50,5 @@ export const MEDIA_OWNER_REGISTRY: readonly MediaOwnerEntry[] = [
 	entry('blog share image', as(BlogPostModel), 'shareImageAssetId'),
 	entry('blog post picture', as(BlogPostModel), 'assetIds'),
 	entry('store photos', as(StoreLocationModel), 'photoAssetIds'),
+	entry('event popup image', as(ShopEventModel), 'popupAssetId'),
 ];

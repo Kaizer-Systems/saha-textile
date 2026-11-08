@@ -40,3 +40,4 @@ export * from './search-analytics.repository';
 export * from './mailbox.port';
 export * from './wishlist.repository';
 export * from './search-term.repository';
+export * from './shop-event.repository';

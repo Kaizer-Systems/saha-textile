@@ -2,6 +2,7 @@ import { type Order, type OrderStatus, PURCHASED_ORDER_STATUSES } from '@saha-te
 import type {
 	OrderRepository,
 	PageQuery,
+	PaidOrderLine,
 	Paginated,
 	PurchasedOrder,
 	PurchasedProduct,
@@ -46,6 +47,29 @@ export class MongoOrderRepository implements OrderRepository {
 			placedAt: order.createdAt ?? new Date(0).toISOString(),
 			lines: order.lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
 		}));
+	}
+
+	async listPaidLinesBetween(from: string, to: string, productIds: readonly string[]): Promise<PaidOrderLine[]> {
+		if (!productIds.length) return [];
+		const docs = await OrderModel.find({
+			status: { $in: PURCHASED_ORDER_STATUSES },
+			createdAt: { $gte: new Date(from), $lt: new Date(to) },
+			'lines.productId': { $in: [...productIds] },
+		})
+			.lean<OrderDoc[]>()
+			.exec();
+		const wanted = new Set(productIds);
+		return docs.map(toOrder).flatMap((order) =>
+			order.lines
+				.filter((line) => wanted.has(line.productId))
+				.map((line) => ({
+					orderId: order.id,
+					productId: line.productId,
+					sku: line.sku,
+					quantity: line.quantity,
+					unitPriceINR: line.unitPriceINR,
+				})),
+		);
 	}
 
 	async listRecentlyPurchased(since: string, limit: number): Promise<PurchasedProduct[]> {

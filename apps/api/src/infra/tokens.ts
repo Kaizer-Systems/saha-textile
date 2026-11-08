@@ -58,6 +58,9 @@ export const MEDIA_JOB_QUEUE = Symbol('MediaJobQueuePort');
 export const CDN_PURGE = Symbol('CdnPurgePort');
 export const YOUTUBE_PORT = Symbol('YouTubePort');
 export const BLOG_POST_REPOSITORY = Symbol('BlogPostRepository');
+export const SHOP_EVENT_REPOSITORY = Symbol('ShopEventRepository');
+/** Running sale prices in memory, laid over shop reads (owner log § launch and sale events). */
+export const SALE_PRICE_BOOK = Symbol('SalePriceBook');
 export const BLOG_CATEGORY_REPOSITORY = Symbol('BlogCategoryRepository');
 export const BLOG_TAG_REPOSITORY = Symbol('BlogTagRepository');
 export const STORE_LOCATION_REPOSITORY = Symbol('StoreLocationRepository');

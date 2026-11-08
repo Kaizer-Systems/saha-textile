@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { BlogModule } from './blog/blog.module';
+import { EventsModule } from './events/events.module';
 import { StoreLocationsModule } from './stores/store-locations.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { CartLinesModule } from './cart/cart-lines.module';
@@ -52,6 +53,7 @@ export class AppModule {
 				PrivacyModule,
 				MediaModule,
 				BlogModule,
+				EventsModule,
 				StoreLocationsModule,
 				WishlistModule,
 			],

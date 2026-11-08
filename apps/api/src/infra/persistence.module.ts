@@ -25,6 +25,7 @@ import {
 	MongoContentBlockRepository,
 	MongoBlogCategoryRepository,
 	MongoBlogPostRepository,
+	MongoShopEventRepository,
 	MongoBlogTagRepository,
 	MongoStoreLocationRepository,
 	MongoWishlistRepository,
@@ -91,6 +92,8 @@ import {
 	DASHBOARD_REPOSITORY,
 	PRODUCT_REPOSITORY,
 	PRODUCT_VARIANT_REPOSITORY,
+	SHOP_EVENT_REPOSITORY,
+	SALE_PRICE_BOOK,
 	SEO_REDIRECT_REPOSITORY,
 	SEO_ROUTE_REPOSITORY,
 	STOCK_ALERT_REPOSITORY,
@@ -144,12 +147,30 @@ import {
 	YOUTUBE_PORT,
 	INR_PAYMENT_GATEWAY,
 } from './tokens';
+import { SaleAwareVariantRepository } from '../events/sale-aware-variant.repository';
+import { SalePriceBook } from '../events/sale-price-book';
 
 @Global()
 @Module({
 	providers: [
 		{ provide: PRODUCT_REPOSITORY, useClass: MongoProductRepository },
-		{ provide: PRODUCT_VARIANT_REPOSITORY, useClass: MongoProductVariantRepository },
+		{ provide: SHOP_EVENT_REPOSITORY, useClass: MongoShopEventRepository },
+		{
+			provide: SALE_PRICE_BOOK,
+			useFactory: (
+				events: MongoShopEventRepository,
+				products: MongoProductRepository,
+				categories: MongoCategoryRepository,
+			) => new SalePriceBook(events, products, categories),
+			inject: [SHOP_EVENT_REPOSITORY, PRODUCT_REPOSITORY, CATEGORY_REPOSITORY],
+		},
+		{
+			// Shop reads see running sale prices; admin reads and writes never do.
+			provide: PRODUCT_VARIANT_REPOSITORY,
+			useFactory: (book: SalePriceBook) =>
+				new SaleAwareVariantRepository(new MongoProductVariantRepository(), book),
+			inject: [SALE_PRICE_BOOK],
+		},
 		{ provide: SEO_REDIRECT_REPOSITORY, useClass: MongoSeoRedirectRepository },
 		{ provide: SEO_ROUTE_REPOSITORY, useClass: MongoSeoRouteRepository },
 		{ provide: STOCK_ALERT_REPOSITORY, useClass: MongoStockAlertRepository },
@@ -314,6 +335,8 @@ import {
 	],
 	exports: [
 		PRODUCT_REPOSITORY,
+		SHOP_EVENT_REPOSITORY,
+		SALE_PRICE_BOOK,
 		PRODUCT_VARIANT_REPOSITORY,
 		SEO_REDIRECT_REPOSITORY,
 		SEO_ROUTE_REPOSITORY,

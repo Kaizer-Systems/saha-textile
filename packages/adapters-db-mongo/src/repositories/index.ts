@@ -32,3 +32,4 @@ export * from './store-location.repository';
 export * from './search-analytics.repository';
 export * from './wishlist.repository';
 export * from './search-term.repository';
+export * from './shop-event.repository';

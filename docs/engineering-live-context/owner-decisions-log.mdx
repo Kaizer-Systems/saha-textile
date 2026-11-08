@@ -1000,6 +1000,7 @@ Closed: `DEC-SECRETS-DELIVERY`. The full design is in `production-deployment-pla
 - **Two copies each of the API and storefront run behind Nginx,** so one crashing or hanging never stops the shop. Kubernetes, including free single-node k3s, was evaluated and deferred; the full reasoning and figures are in `kubernetes-evaluation.mdx`.
 - **The staging droplet is procured once full development is complete,** not before.
 - **GitHub settings changed with the owner watching:** the strict ruleset now requires signed commits only (linear history off), `qa` is deleted and out of the rulesets, and two-factor is required for the organisation. "Only allow secure two-factor methods" stays off until the owner confirms they do not use SMS codes.
+- **Both GitHub Environments require the owner's approval:** `staging` (deploys only from `staging`) and `production` (deploys only from `main`). Staging never deploys without approval.
 - **Backups keep 30 daily and 12 monthly,** with versioning on. The owner accepted that the server's key can delete backups, because Spaces has no write-only key.
 - **Monitoring is DigitalOcean only.** A super admin screen shows metrics fetched by the API. It grows with the number of droplets: a named switcher, and a view comparing metrics across servers.
 - **The developer portal stays local for now.** `DEC-PORTAL-PRIVATE-ACCESS` stays open.

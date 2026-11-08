@@ -28,7 +28,7 @@ A release:
 
 1. A PR merges into `dev` after the four CI jobs pass.
 2. A PR merges `dev` into `staging`. CI passes, then a publish workflow builds the three images once, starts them, scans them and pushes them to GHCR.
-3. The images deploy to the staging droplet by digest. The owner creates the droplet first if it does not exist.
+3. The staging deploy waits for the owner's approval in the `staging` GitHub Environment, then the images deploy to the staging droplet by digest. The owner creates the droplet first if it does not exist.
 4. Staging checks run. On a pass, the workflow records the Git tree hash against the three digests.
 5. A PR merges `staging` into `main`.
 6. The push to `main` starts the production workflow. It finds the digests through the tree hash, and stops if that code was never tested. The commit ID differs on `main`, but the tree hash is identical.
@@ -251,7 +251,7 @@ About **$53 a month**, plus staging hours. Usage charges for MSG91, payments and
 Every step touching GitHub settings, DigitalOcean or Cloudflare needs the owner's yes at that time.
 
 1. **Repository groundwork, no cloud account touched. Done 2026-11-08.** `pnpm production:proof` runs all of it on one machine. The deploy workflows that call these scripts come with step 3, because they cannot be proved before a droplet exists.
-2. **GitHub.** Done 2026-11-08, with the owner watching in the browser: linear history removed from `main` and `staging` (signed commits kept), `qa` removed from the rulesets and deleted, two-factor required for the organisation (secure-methods-only left off). Environments created the same day: `staging` (only the `staging` branch may deploy, no reviewer) and `production` (only `main` may deploy, required reviewer `kaizer03`, self-review allowed because the owner is the only reviewer, admin bypass kept for emergencies). Their secrets are added when the staging droplet exists. Actions are already pinned to SHAs.
+2. **GitHub.** Done 2026-11-08, with the owner watching in the browser: linear history removed from `main` and `staging` (signed commits kept), `qa` removed from the rulesets and deleted, two-factor required for the organisation (secure-methods-only left off). Environments created the same day: `staging` (only the `staging` branch may deploy, required reviewer `kaizer03`: the owner chose that staging also waits for approval) and `production` (only `main` may deploy, required reviewer `kaizer03`, self-review allowed because the owner is the only reviewer, admin bypass kept for emergencies). Their secrets are added when the staging droplet exists. Actions are already pinned to SHAs.
 3. **Staging.** Droplet script, Cloudflare records, tunnel, Access, Origin Certificate, AOP. First deploy. **Waits until full development is complete (owner, 2026-11-08):** the staging droplet is procured then, not before.
 4. **Staging proofs.** Listed below.
 5. **Backup and restore drill.**

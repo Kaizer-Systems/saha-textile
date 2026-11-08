@@ -54,7 +54,7 @@ gitGraph
 flowchart TB
     A["PR into dev<br/>CI passes"] --> B["Merge into staging<br/>build, prove, push"]
     B --> C[("GHCR<br/>by digest")]
-    C --> D["Staging droplet<br/>staging checks"]
+    C --> D["Staging droplet<br/>approval, checks"]
     D --> E["Merge into main<br/>approval, backup"]
     E --> F["Production<br/>same digests"]
 ```
@@ -62,7 +62,7 @@ flowchart TB
 1. **CI** runs on every pull request: lint and repository guards, typecheck, unit tests at 100% coverage, production builds, and browser tests against those builds.
 2. **Publishing** runs when code merges into `staging`. `publish-images.yml` calls CI, runs `pnpm production:proof` against freshly built images, then pushes four images to GHCR: `api` (also runs the worker), `storefront`, `admin` and `ops`.
 3. **Tags.** Each image is tagged `sha-<commit>` and `tree-<tree hash>`. A merge commit on `main` has a new commit ID but the same Git tree as the tested `staging` commit, so the tree tag finds the tested images.
-4. **Staging** pulls those images by digest and runs the staging checks.
+4. **Staging** waits for approval in the `staging` GitHub Environment, then pulls those images by digest and runs the staging checks.
 5. **Production** starts when code merges into `main`. The workflow looks up the digests by tree tag and refuses to continue if none exist. It waits for approval in the `production` GitHub Environment, takes a backup, then deploys the same digests.
 
 A logged emergency option can skip the staging step when the shop is broken. CI and approval still apply.
@@ -86,7 +86,7 @@ The droplet holds no Git clone and no GitHub key. The deploy job copies the rele
 
 - **Logs are readable by any signed-in GitHub user**, because the repository is public. Deploy output reports step names and pass or fail only. It never prints a host address, a credential or container logs.
 - **Third-party Actions are pinned to full commit SHAs**, because deploy jobs handle secrets.
-- **Secrets live in GitHub Environments**, one set for staging and one for production, with one secret per value so that one key can rotate alone.
+- **Secrets live in GitHub Environments**, one set for staging and one for production, with one secret per value so that one key can rotate alone. Both Environments require approval before a deploy starts: `staging` accepts only the `staging` branch and `production` only `main`.
 
 ## Related pages
 

@@ -240,7 +240,7 @@ describe('ShopDatePipe', () => {
 	it('shows the Kolkata date without the time, English digits in Bengali', () => {
 		expect(pipe('en').transform('2026-11-07T20:00:00.000Z')).toBe('8 Nov 2026');
 		const bengali = pipe('bn').transform('2026-11-07T20:00:00.000Z');
-		expect(bengali).toMatch(/^8 \S+ 2026$/);
+		expect(bengali).toBe('8 নভেম্বর, 2026');
 		expect(bengali).not.toBe('8 Nov 2026');
 		expect(pipe('en').transform(null)).toBe('');
 		expect(pipe('en').transform('not a date')).toBe('');

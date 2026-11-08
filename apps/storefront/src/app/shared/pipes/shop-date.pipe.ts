@@ -13,7 +13,8 @@ export class ShopDatePipe implements PipeTransform {
 	/** Indian English puts the day first: 8 Nov 2026. */
 	private readonly format = new Intl.DateTimeFormat(this.locale === 'en' ? 'en-IN' : intlLocale(this.locale), {
 		day: 'numeric',
-		month: 'short',
+		// Bengali's short month names are clipped (নভেঃ); the full name reads naturally.
+		month: this.locale === 'bn' ? 'long' : 'short',
 		year: 'numeric',
 		timeZone: 'Asia/Kolkata',
 	});

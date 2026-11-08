@@ -56,7 +56,7 @@ The registration route carries both guards. `guestOnlyGuard` keeps a signed-in c
 
 ## Locale URLs
 
-Every page is served under its language, `/en/…` or `/fr/…`, including private routes.
+Every page is served under its language, `/en/…` or `/bn/…`, including private routes.
 
 **The locale is the router's base, not a route segment.** `provideLocaleRouting()` (`core/i18n/locale-routing.ts`) sets Angular's `APP_BASE_HREF` to `/<locale>`, read once from the requested URL (`ACTIVE_LOCALE`). Page files, `routerLink`s, menu data and `navigateByUrl` calls therefore stay locale-free (`/cart`, `/product/<slug>`), and `Location` adds and strips the prefix. The document's `<base href="/">` is unchanged, so relative asset URLs still resolve from the site root. Never write `/en/` into a link. The base adds it.
 
@@ -67,7 +67,7 @@ Every page is served under its language, `/en/…` or `/fr/…`, including priva
 | Request                                                                | Answer                                                                                           |
 | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `/`                                                                    | `302` to the `st_locale` choice, else `/en/`; `Cache-Control: private, no-store`, `Vary: Cookie` |
-| `/en`, `/fr`                                                           | `301` to `/en/`, `/fr/` (one home address)                                                       |
+| `/en`, `/bn`                                                           | `301` to `/en/`, `/bn/` (one home address)                                                       |
 | Any unprefixed page, e.g. `/cart`                                      | `301` to `/en/cart`, query kept                                                                  |
 | `/de/…` (unsupported language)                                         | Treated as unprefixed: `301` to `/en/de/…`                                                       |
 | Assets, `/api/*`, `/_analog/*`, dev internals, files with an extension | Untouched                                                                                        |

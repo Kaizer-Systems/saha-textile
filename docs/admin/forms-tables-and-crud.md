@@ -4,7 +4,7 @@ wide: true
 description: Conventions for operator forms, data tables, validation and actions.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/admin/src/app/shared/ui/table
     - apps/admin/src/app/shared/ui/form-fields
@@ -117,7 +117,7 @@ The product form writes through `POST /admin/catalog/products/:idOrSlug`.
 - A badge cannot be both pinned and hidden.
 - A selling price cannot exceed the MRP.
 - Related, upsell and cross-sell lists hold up to 12 products.
-- A live FAQ entry needs both English and French text.
+- A live FAQ entry needs both English and Bengali text.
 
 ## Banner rules
 

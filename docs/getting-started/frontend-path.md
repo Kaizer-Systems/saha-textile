@@ -41,7 +41,7 @@ Use this path for work in the Angular storefront, the Angular admin application,
 - Classic NgRx holds heavily mutated client state: cart, wishlist and compare.
 - TanStack Angular Query holds server state, with feature queries under `data-access/queries`.
 - NgRx SignalStore holds small application state such as session and settings.
-- Both applications use Transloco for interface text, with English and French translations.
+- Both applications use Transloco for interface text, with English and Bengali translations.
 - Some services read the API and others read JSON files. Check the service method behind your page before changing data behaviour. The storefront and admin state pages list which is which.
 
 ## Read in this order

@@ -102,11 +102,11 @@ An API started with unsafe settings exits with code 1 and a list of the problems
 
 ## Back-in-a-moment pages
 
-A reboot or a crash can still stop an app for a moment. Nginx then answers with that app's own page as a 503 with `Retry-After: 15`, in English or French, and the page refreshes itself every 15 seconds.
+A reboot or a crash can still stop an app for a moment. Nginx then answers with that app's own page as a 503 with `Retry-After: 15`, in English or Bengali, and the page refreshes itself every 15 seconds.
 
 | Host                          | Shows                                                                                 |
 | ----------------------------- | ------------------------------------------------------------------------------------- |
-| Storefront                    | The coming-soon box with the logo; language from `/fr/` or `/en/`, else the browser's |
+| Storefront                    | The coming-soon box with the logo; language from `/bn/` or `/en/`, else the browser's |
 | Admin                         | The admin error section; language from the browser                                    |
 | API                           | `{"error":"temporarily_unavailable"}`                                                 |
 | API, at `PAYMENT_RETURN_PATH` | "We're confirming your payment", a link to the order list, and no refresh             |

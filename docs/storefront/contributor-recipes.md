@@ -19,7 +19,7 @@ These recipes give step-by-step checklists for common storefront changes. Start 
 
 **Use when:** a new stable customer URL is required.
 
-1. Choose the file-based URL shape under `src/app/pages` — without a locale segment. The router's base serves it at `/en/…` and `/fr/…`, so links to it are written locale-free too (`/cart`, never `/en/cart`).
+1. Choose the file-based URL shape under `src/app/pages` — without a locale segment. The router's base serves it at `/en/…` and `/bn/…`, so links to it are written locale-free too (`/cart`, never `/en/cart`).
 2. Build the real feature under `src/app/features`; keep the page entry thin.
 3. Add `routeMeta` only for required guards or route behaviour.
 4. Reuse the shared layout rather than rebuilding header/footer composition.

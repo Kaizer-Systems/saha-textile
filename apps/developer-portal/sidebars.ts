@@ -177,6 +177,7 @@ const sidebars: SidebarsConfig = {
 				'governance/contribution-standard',
 				'governance/page-template',
 				'maintenance/overview',
+				'maintenance/languages',
 			],
 		},
 		{

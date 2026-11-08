@@ -104,7 +104,7 @@ Use it when:
 
 ## Text and translations
 
-Transloco owns interface text such as actions and status messages, with paired English and French keys. Catalogue option, add-on, attribute, taxonomy and measurement labels are data: render them as the API supplies them, and do not create translation keys for them.
+Transloco owns interface text such as actions and status messages, with paired English and Bengali keys. Catalogue option, add-on, attribute, taxonomy and measurement labels are data: render them as the API supplies them, and do not create translation keys for them.
 
 Repeated templates track stable entity ids. Presentation-only lists with no unique identity use their position.
 

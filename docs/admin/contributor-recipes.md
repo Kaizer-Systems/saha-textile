@@ -3,7 +3,7 @@ title: Admin Contributor Recipes
 description: Step-by-step recipes for routes, lists, forms, API actions and permissions.
 status: scaffolded
 audience: [beginner, frontend, operator]
-last_verified: '2026-11-07'
+last_verified: '2026-11-08'
 source_of_truth:
     - apps/admin/src/app/routes
     - apps/admin/src/app/features

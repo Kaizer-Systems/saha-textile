@@ -43,7 +43,7 @@ Follow the [evolution rules](/backend/contracts-and-validation#evolution-rules).
 
 ## Translations
 
-Add every key to both `en.json` and `fr.json`. `pnpm check:i18n-parity` enforces this.
+Add every key to both `en.json` and `bn.json`. `pnpm check:i18n-parity` enforces this.
 
 ## Security
 

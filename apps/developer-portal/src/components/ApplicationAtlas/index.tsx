@@ -94,7 +94,7 @@ const atlases: Record<Application, AtlasItem[]> = {
 		{
 			name: 'Languages',
 			summary:
-				'Every page is served under /en/ or /fr/, and the switcher links to the same page in the other language.',
+				'Every page is served under /en/ or /bn/, and the switcher links to the same page in the other language.',
 			status: 'scaffolded',
 			runtime: 'Transloco HTTP loader and locale routing',
 			data: 'English and Bengali dictionaries. Catalogue labels come from the API.',

@@ -44,7 +44,7 @@ The page layer stays thin. A route identifies the customer journey and composes 
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Routing        | About 40 page files, including dynamic slug and catch-all routes                                                                       |
 | Rendering      | Dynamic server rendering through Nitro. Nothing is prerendered                                                                         |
-| Locale URLs    | Every page is served under `/en/` or `/fr/`. The router base carries the locale                                                        |
+| Locale URLs    | Every page is served under `/en/` or `/bn/`. The router base carries the locale                                                        |
 | Catalogue      | Home, category pages, cards, product pages and redirects read `/catalog/*`                                                             |
 | Search         | The search box calls `/catalog/search` and reports when search is unavailable                                                          |
 | First paint    | The header menu renders on the server; product pages show a skeleton while loading                                                     |

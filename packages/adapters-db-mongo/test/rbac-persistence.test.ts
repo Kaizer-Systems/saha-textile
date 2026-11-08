@@ -87,6 +87,17 @@ describe.skipIf(!hasMongoEnv())('RBAC persistence (integration, rs0)', () => {
 			expect(await roles.findByKey(role.key)).toMatchObject({ id: role.id });
 		});
 
+		it('drops a retired permission code when reading an older role', async () => {
+			const role = roleFixture();
+			await roles.create(role);
+			await RoleModel.updateOne(
+				{ _id: role.id },
+				{ $set: { permissions: ['product.index', 'store.index'] } },
+			).exec();
+
+			expect((await roles.findById(role.id))?.permissions).toEqual(['product.index']);
+		});
+
 		it('refuses a second role with the same key', async () => {
 			const first = roleFixture();
 			await roles.create(first);

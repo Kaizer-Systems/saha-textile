@@ -27,7 +27,6 @@ import { RefundService } from '@data-access/services/refund.service';
 import { ReviewService } from '@data-access/services/review.service';
 import { ShippingService } from '@data-access/services/shipping.service';
 import { StateService } from '@data-access/services/state.service';
-import { StoreService } from '@data-access/services/store.service';
 import { TagService } from '@data-access/services/tag.service';
 import { TaxService } from '@data-access/services/tax.service';
 
@@ -79,7 +78,6 @@ import {
 } from './role.queries';
 import { injectShippingsQuery } from './shipping.queries';
 import { injectStatesQuery } from './state.queries';
-import { injectStoresQuery } from './store.queries';
 import { injectTagQuery, injectTagsQuery } from './tag.queries';
 import { injectTaxesQuery } from './tax.queries';
 
@@ -146,7 +144,6 @@ beforeEach(() => {
 			{ provide: ReviewService, useValue: service('getReviews') },
 			{ provide: ShippingService, useValue: service('getShippings') },
 			{ provide: StateService, useValue: service('getStates') },
-			{ provide: StoreService, useValue: service('getStores') },
 			{ provide: TagService, useValue: service('getTags') },
 			{ provide: TaxService, useValue: service('getTaxes') },
 		],
@@ -208,7 +205,6 @@ describe('list queries', () => {
 		['reviews', () => injectReviewsQuery(params), ['reviews', { status: 1 }]],
 		['shipping', () => injectShippingsQuery(params), ['shippings', { status: 1 }]],
 		['states', () => injectStatesQuery(), ['states']],
-		['stores', () => injectStoresQuery(params), ['stores', { status: 1 }]],
 		['tags', () => injectTagsQuery(params), ['tags', { status: 1 }]],
 		['taxes', () => injectTaxesQuery(params), ['taxes', { status: 1 }]],
 	])('%s has its key and fetches', async (_name, build, key) => {

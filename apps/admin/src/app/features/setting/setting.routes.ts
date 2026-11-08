@@ -12,6 +12,20 @@ export default [
 		loadComponent: () => import('./brand-kit/brand-kit').then((m) => m.BrandKit),
 	},
 	{
+		path: 'stores',
+		loadComponent: () => import('./stores/stores').then((m) => m.StoresSettings),
+	},
+	{
+		path: 'stores/create',
+		loadComponent: () =>
+			import('./stores/form-store-location/form-store-location').then((m) => m.FormStoreLocation),
+	},
+	{
+		path: 'stores/edit/:id',
+		loadComponent: () =>
+			import('./stores/form-store-location/form-store-location').then((m) => m.FormStoreLocation),
+	},
+	{
 		path: 'notifications',
 		loadComponent: () =>
 			import('./notification-settings/notification-settings').then((m) => m.NotificationSettings),

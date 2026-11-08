@@ -28,7 +28,6 @@ import { Product } from './product/product';
 import { Redirect } from './redirect/redirect';
 import { Review } from './review/review';
 import { Role } from './role/role';
-import { Stores } from './store/stores';
 import { Tag } from './tag/tag';
 import { AdminUsers } from './user/user';
 
@@ -66,7 +65,6 @@ vi.mock('@data-access/queries/review.queries', () => ({
 	injectModerationReviewsQuery: (p: () => unknown) => query(p),
 }));
 vi.mock('@data-access/queries/role.queries', () => ({ injectRolesQuery: (p: () => unknown) => query(p) }));
-vi.mock('@data-access/queries/store.queries', () => ({ injectStoresQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/tag.queries', () => ({ injectTagsQuery: (p: () => unknown) => query(p) }));
 
 const render = <T>(type: Type<T>, providers: unknown[] = [], url = '/list', template = '') => {
@@ -422,25 +420,6 @@ describe('Blog list', () => {
 		blogs.deletePost.mockReturnValueOnce(throwError(() => new Error('no')) as never);
 		page.onActionClicked({ actionToPerform: 'delete', data: { id: 'blg_1' } } as never);
 		expect(toasts.showError).toHaveBeenCalledWith('blog_rejected');
-	});
-});
-
-describe('Stores list', () => {
-	it('names the vendor on each row and opens a row', () => {
-		const { page, router } = render(Stores);
-		expect(page.tableConfig.data).toEqual([]);
-		data.set({ data: [{ id: 1, vendor: { name: 'Asha' } }], total: 1 });
-		TestBed.tick();
-		expect(page.tableConfig.data).toMatchObject([{ vendor_name: 'Asha' }]);
-		data.set({});
-		TestBed.tick();
-		expect(page.tableConfig.data).toEqual([]);
-		page.onTableChange({ page: 1 });
-		page.onActionClicked({ actionToPerform: 'edit', data: { id: 1 } } as never);
-		expect(router.navigateByUrl).toHaveBeenCalledWith('/store/edit/1');
-		for (const actionToPerform of ['is_approved', 'delete', 'deleteAll', 'other']) {
-			page.onActionClicked({ actionToPerform, data: {} } as never);
-		}
 	});
 });
 

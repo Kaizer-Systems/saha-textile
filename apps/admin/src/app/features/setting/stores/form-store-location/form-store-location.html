@@ -1,0 +1,222 @@
+<app-page-wrapper [title]="storeId() ? 'edit_store' : 'add_store'">
+	<form
+		class="theme-form theme-form-2 mega-form"
+		[formGroup]="form"
+		(ngSubmit)="submit()"
+	>
+		<app-language-switch
+			[locales]="locales"
+			[active]="fields.locale()"
+			[gaps]="gaps()"
+			(changed)="switchLanguage($event)"
+			(gapChosen)="openLanguageGap($event)"
+		/>
+		<app-form-fields
+			[label]="'name'"
+			[for]="'name'"
+			[required]="true"
+		>
+			<input
+				class="form-control"
+				id="name"
+				type="text"
+				placeholder="{{ 'enter_store_name' | transloco }}"
+				formControlName="name"
+				(change)="refreshMissing()"
+			/>
+			@if (!onSourceLanguage) {
+			<p class="help-text mb-0">{{ 'english_guide' | transloco: { text: fields.source('name') } }}</p>
+			} @if (form.controls.name.touched && form.controls.name.errors?.['required']) {
+			<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'address'"
+			[for]="'address'"
+			[required]="true"
+		>
+			<textarea
+				class="form-control"
+				id="address"
+				rows="3"
+				placeholder="{{ 'enter_store_address' | transloco }}"
+				formControlName="address"
+				(change)="refreshMissing()"
+			></textarea>
+			@if (!onSourceLanguage) {
+			<p class="help-text mb-0">{{ 'english_guide' | transloco: { text: fields.source('address') } }}</p>
+			} @if (form.controls.address.touched && form.controls.address.errors?.['required']) {
+			<div class="invalid-feedback">{{ 'address_is_required' | transloco }}</div>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'landmark'"
+			[for]="'landmark'"
+		>
+			<input
+				class="form-control"
+				id="landmark"
+				type="text"
+				placeholder="{{ 'enter_landmark' | transloco }}"
+				formControlName="landmark"
+				(change)="refreshMissing()"
+			/>
+			@if (onSourceLanguage) {
+			<p class="help-text mb-0">{{ 'landmark_help' | transloco }}</p>
+			} @else {
+			<p class="help-text mb-0">{{ 'english_guide' | transloco: { text: fields.source('landmark') } }}</p>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'pincode'"
+			[for]="'pinCode'"
+			[required]="true"
+		>
+			<input
+				class="form-control"
+				id="pinCode"
+				type="text"
+				inputmode="numeric"
+				placeholder="{{ 'enter_pincode' | transloco }}"
+				formControlName="pinCode"
+			/>
+			@if (form.controls.pinCode.errors?.['invalid']) {
+			<div class="invalid-feedback">{{ 'pincode_invalid' | transloco }}</div>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'google_maps_link'"
+			[for]="'mapUrl'"
+			[required]="true"
+		>
+			<input
+				class="form-control"
+				id="mapUrl"
+				type="url"
+				placeholder="{{ 'google_maps_link_placeholder' | transloco }}"
+				formControlName="mapUrl"
+			/>
+			<p class="help-text mb-0">{{ 'google_maps_link_help' | transloco }}</p>
+			@if (form.controls.mapUrl.errors?.['invalid']) {
+			<div class="invalid-feedback">{{ 'google_maps_link_invalid' | transloco }}</div>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'phone'"
+			[for]="'phone'"
+		>
+			<input
+				class="form-control"
+				id="phone"
+				type="tel"
+				placeholder="+91 98366 63137"
+				formControlName="phone"
+			/>
+			<p class="help-text mb-0">{{ 'store_phone_help' | transloco }}</p>
+			@if (form.controls.phone.errors?.['invalid']) {
+			<div class="invalid-feedback">{{ 'phone_number_is_invalid' | transloco }}</div>
+			}
+		</app-form-fields>
+		<app-form-fields
+			[label]="'opening_hours'"
+			[for]="'hours'"
+			[required]="true"
+		>
+			<div
+				id="hours"
+				formArrayName="hours"
+			>
+				@for (day of hours.controls; track day.controls.day.value; let i = $index) {
+				<div
+					class="row g-2 align-items-center mb-2"
+					[formGroupName]="i"
+				>
+					<div class="col-sm-3 col-8">{{ 'day_' + day.controls.day.value | transloco }}</div>
+					<div class="col-sm-2 col-4">
+						<div class="form-check form-switch ps-0">
+							<label class="switch switch-sm">
+								<input
+									type="checkbox"
+									[id]="'open_' + day.controls.day.value"
+									formControlName="open"
+									[attr.aria-label]="('open' | transloco) + ' ' + ('day_' + day.controls.day.value | transloco)"
+								/>
+								<span class="switch-state"></span>
+							</label>
+						</div>
+					</div>
+					@if (day.controls.open.value) {
+					<div class="col-sm-3 col-6">
+						<select2
+							class="custom-select"
+							[data]="times"
+							formControlName="opens"
+							[attr.aria-label]="'opens' | transloco"
+						/>
+					</div>
+					<div class="col-sm-3 col-6">
+						<select2
+							class="custom-select"
+							[data]="times"
+							formControlName="closes"
+							[attr.aria-label]="'closes' | transloco"
+						/>
+					</div>
+					} @else {
+					<div class="col-sm-6 text-content col-12">{{ 'closed' | transloco }}</div>
+					}
+				</div>
+				}
+				<div class="d-flex align-items-center mt-2 flex-wrap gap-2">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						id="copy_monday_btn"
+						(click)="copyMonday()"
+					>
+						{{ 'copy_monday_to_every_day' | transloco }}
+					</button>
+					<p class="help-text mb-0">
+						{{ 'shown_as' | transloco }}
+						<strong>{{ hoursPreview() }}</strong>
+					</p>
+				</div>
+			</div>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'photos'"
+			[for]="'store_photos'"
+		>
+			<app-image-upload
+				[id]="'store_photos'"
+				[multipleImage]="true"
+				[purpose]="'store'"
+				[images]="photos()"
+				[helpText]="'store_photos_help' | transloco"
+				(selectedFiles)="selectPhotos($event)"
+			/>
+		</app-form-fields>
+		<app-form-fields
+			[label]="'active'"
+			[for]="'active'"
+		>
+			<div class="form-check form-switch ps-0">
+				<label class="switch">
+					<input
+						type="checkbox"
+						id="active"
+						formControlName="active"
+					/>
+					<span class="switch-state"></span>
+				</label>
+			</div>
+			<p class="help-text mb-0">{{ 'store_active_help' | transloco }}</p>
+		</app-form-fields>
+		<app-button
+			[id]="'save_store_btn'"
+			[class]="'btn btn-theme ms-auto mt-4'"
+		>
+			{{ 'save' | transloco }}
+		</app-button>
+	</form>
+</app-page-wrapper>

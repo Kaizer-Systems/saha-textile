@@ -38,7 +38,6 @@ export const MenuStore = signalStore(
 				next: (result) => {
 					const menu = store.menu();
 					updateBadgeValueRecursive(menu, '/product', result?.product?.total_in_approved_products);
-					updateBadgeValueRecursive(menu, '/store', result?.store?.total_in_approved_stores);
 					updateBadgeValueRecursive(menu, '/refund', result?.refund?.total_pending_refunds);
 					patchState(store, { badges: result, menu: [...menu] });
 				},

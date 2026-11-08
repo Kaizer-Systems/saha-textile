@@ -35,7 +35,6 @@ import { ReviewService } from './review.service';
 import { SettingService } from './setting.service';
 import { ShippingService } from './shipping.service';
 import { StateService } from './state.service';
-import { StoreService } from './store.service';
 import { TagService } from './tag.service';
 import { TaxService } from './tax.service';
 import { ThemeOptionService } from './theme-option.service';
@@ -62,7 +61,6 @@ describe('read services', () => {
 		['products', () => TestBed.inject(ProductService).getProducts({ a: 1 }), '/product.json'],
 		['refunds', () => TestBed.inject(RefundService).getRefunds({ a: 1 }), '/refund.json'],
 		['reviews', () => TestBed.inject(ReviewService).getReviews({ a: 1 }), '/review.json'],
-		['stores', () => TestBed.inject(StoreService).getStores({ a: 1 }), '/store.json'],
 		['tags', () => TestBed.inject(TagService).getTags({ a: 1 }), '/tag.json'],
 		['taxes', () => TestBed.inject(TaxService).getTaxes({ a: 1 }), '/tax.json'],
 	])('%s passes its parameters', (_name, call, path) => {

@@ -72,8 +72,11 @@ vi.mock('@data-access/queries/category.queries', () => ({
 		{ data: categories }
 	),
 }));
-vi.mock('@data-access/queries/store.queries', () => ({
-	injectStoresQuery: (p: () => unknown) => (p(), { data: stores, isFetching: fetching }),
+vi.mock('@core/stores/store-location.gateway', () => ({
+	injectStoreLocationsQuery: (enabled: () => boolean) => (
+		(asked.enabled['stores'] = enabled),
+		{ data: stores, isFetching: fetching }
+	),
 }));
 
 const render = ({ platform = 'browser', permissions = [] as string[], template = '<div #chart></div>' } = {}) => {
@@ -165,7 +168,7 @@ describe('Dashboard data', () => {
 		expect(page.reviews()).toEqual([]);
 		expect(page.orderTableConfig().data).toEqual([]);
 		expect(page.productStockTableConfig().data).toEqual([]);
-		expect(page.sellerTableConfig.data).toEqual([]);
+		expect(page.activeStores()).toBe(0);
 		expect(await firstValueFrom(page.category$)).toEqual([]);
 	});
 
@@ -239,20 +242,14 @@ describe('Dashboard data', () => {
 		expect(page.productStockTableConfig().rowActions).toEqual([]);
 	});
 
-	it('keeps the demo store and blog widgets working', () => {
+	it('counts the active stores and keeps the demo blog widget working', () => {
 		const { page } = render();
-		stores.set({ data: [{ id: 1 }], total: 1 });
+		stores.set([{ store: { active: true } }, { store: { active: false } }, { store: { active: true } }]);
 		blogs.set({ data: [{ id: 1 }] });
 		TestBed.tick();
-		expect(page.sellerTableConfig.total).toBe(1);
+		expect(page.activeStores()).toBe(2);
 		expect(page.blogs()).toHaveLength(1);
-	});
-
-	it('copes with answers that have no rows', () => {
-		const { page } = render();
-		stores.set({ total: 0 });
-		TestBed.tick();
-		expect(page.sellerTableConfig.data).toBeUndefined();
+		expect(asked.enabled['stores']?.()).toBe(false);
 	});
 
 	it('lists the categories, with a fallback image', async () => {
@@ -274,7 +271,6 @@ describe('Dashboard data', () => {
 		const { page } = render();
 		fetching.set(true);
 		TestBed.tick();
-		expect(page.topSellerLoader()).toBe(true);
 		expect(page.topProductLoader()).toBe(true);
 		expect(page.productStockLoader()).toBe(true);
 	});
@@ -361,20 +357,6 @@ describe('Dashboard actions', () => {
 		expect(asked.inputs['stock']?.()).toBe('3');
 		page.filterProduct(pick(''));
 		expect(asked.inputs['stock']?.()).toBeUndefined();
-	});
-
-	it('fills in the seller defaults only when needed', () => {
-		const { page } = render();
-		const bare: Record<string, unknown> = {};
-		page.onSellerTableChange(bare);
-		expect(bare).toMatchObject({ paginate: 6, top_vendor: 1, filter_by: 'this_year' });
-		const chosen: Record<string, unknown> = { filter_by: 'today' };
-		page.onSellerTableChange(chosen);
-		expect(chosen).toEqual({ filter_by: 'today' });
-		page.onSellerTableChange();
-		page.filterSeller(pick('today'));
-		page.filterSeller(pick(''));
-		expect(document.body.classList.contains('loader-none')).toBe(true);
 	});
 
 	it('opens an order or a product, and nothing else', () => {

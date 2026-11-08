@@ -40,5 +40,9 @@ describe('route tables', () => {
 		await expect(route.loadComponent?.()).resolves.toBeDefined();
 		const brand = settingRoutes.find((entry) => entry.path === 'brand') as Loadable;
 		await expect(brand.loadComponent?.()).resolves.toBeDefined();
+		for (const path of ['stores', 'stores/create', 'stores/edit/:id']) {
+			const stores = settingRoutes.find((entry) => entry.path === path) as Loadable;
+			await expect(stores.loadComponent?.()).resolves.toBeDefined();
+		}
 	}, 30_000);
 });

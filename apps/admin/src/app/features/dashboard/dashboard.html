@@ -39,12 +39,12 @@
 			</div>
 			<div
 				class="col-xl-3 col-sm-6"
-				*hasPermission="'store.index'"
+				*hasPermission="'setting.index'"
 			>
 				<div class="card-tiles h-100">
 					<div>
 						<h6>{{ 'total_stores' | transloco }}</h6>
-						<h3>{{ (statistics$ | async)?.total_stores }}</h3>
+						<h3>{{ activeStores() }}</h3>
 					</div>
 					<div class="icon-box">
 						<i class="ri-box-3-line"></i>
@@ -81,34 +81,6 @@
 				[title]="'monthly_revenue'"
 			>
 				<div #chart></div>
-			</app-page-wrapper>
-		</div>
-		<div
-			class="col-xl-4 col-md-6 p-0"
-			*hasPermission="'store.index'"
-		>
-			<app-page-wrapper
-				[gridClass]="'col-sm-12'"
-				[title]="'top_stores'"
-			>
-				<div button>
-					@if (isBrowser) {
-					<select2
-						class="custom-select min-w-cls"
-						[data]="filter?.length ? filter : []"
-						[placeholder]="'filter_by' | transloco"
-						(update)="filterSeller($event)"
-					/>
-					}
-				</div>
-				<app-table
-					[tableConfig]="sellerTableConfig"
-					(tableChanged)="onSellerTableChange($event)"
-					[pagination]="false"
-					[topbar]="false"
-					[loading]="topSellerLoader()"
-					[hasCheckbox]="false"
-				/>
 			</app-page-wrapper>
 		</div>
 	</div>

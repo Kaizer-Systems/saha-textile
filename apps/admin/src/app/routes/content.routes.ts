@@ -56,10 +56,6 @@ export const content: Routes = [
 		loadChildren: () => import('@features/tax/tax.routes'),
 	},
 	{
-		path: 'store',
-		loadChildren: () => import('@features/store/store.routes'),
-	},
-	{
 		path: 'category',
 		loadChildren: () => import('@features/category/category.routes'),
 	},

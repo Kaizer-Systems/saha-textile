@@ -24,6 +24,13 @@ export const BLOG_GO_LIVE_WORDS: GoLiveWords = {
 	blocked: 'blog_go_live_blocked',
 };
 
+/** The Stores screen's words: "The store shows on Contact Us". */
+export const STORE_GO_LIVE_WORDS: GoLiveWords = {
+	gapPrefix: 'store_gap_',
+	done: 'store_go_live_done',
+	blocked: 'store_go_live_blocked',
+};
+
 function gapKey(field: string, words: GoLiveWords): string {
 	return `${words.gapPrefix}${field.split(':')[0]}`;
 }

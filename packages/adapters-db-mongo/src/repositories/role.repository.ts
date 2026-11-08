@@ -1,4 +1,4 @@
-import type { PermissionCode, Role, AdminUserRoleAssignment } from '@saha-textile/contracts';
+import { PermissionCode, type AdminUserRoleAssignment, type Role } from '@saha-textile/contracts';
 import type { RoleRepository, AdminUserRoleAssignmentRepository } from '@saha-textile/core-domain';
 import { AssignmentAlreadyActiveError } from '@saha-textile/core-domain';
 
@@ -21,7 +21,9 @@ const toRole = (doc: RoleDoc): Role => ({
 	label: doc.label,
 	description: doc.description ?? null,
 	baseRole: doc.baseRole,
-	permissions: doc.permissions as PermissionCode[],
+	// A code retired from the registry (the marketplace `store.*` set, 2026-11-08) is dropped on read,
+	// so an older role stays editable instead of being refused on its next save.
+	permissions: doc.permissions.filter((code): code is PermissionCode => PermissionCode.safeParse(code).success),
 	isSystem: doc.isSystem,
 	createdAt: new Date(doc.createdAt).toISOString(),
 	updatedAt: new Date(doc.updatedAt).toISOString(),

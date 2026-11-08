@@ -2,7 +2,6 @@ import { Component, effect, inject, signal, viewChild } from '@angular/core';
 import { Params, Router } from '@angular/router';
 
 import { IQuestionAnswers } from '@data-access/interfaces/questions-answers.interface';
-import { IStores } from '@data-access/interfaces/store.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { injectQuestionAnswersQuery } from '@data-access/queries/questions-answers.queries';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
@@ -70,7 +69,7 @@ export class QuestionsAnswers {
 		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data);
 	}
 
-	delete(_data: IStores) {
+	delete(_data: unknown) {
 		// Mock: delete has no backend yet.
 	}
 

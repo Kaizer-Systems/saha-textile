@@ -18,7 +18,6 @@ import { FaqService } from '@data-access/services/faq.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PointService } from '@data-access/services/point.service';
 import { SettingService } from '@data-access/services/setting.service';
-import { StoreService } from '@data-access/services/store.service';
 
 import { CustomerLedger } from './customer-ledger/customer-ledger';
 import { FormFaq } from './faq/form-faq/form-faq';
@@ -27,7 +26,6 @@ import { FormRole } from './role/form-role/form-role';
 import { Permissions } from './role/permissions/permissions';
 import { NotificationSettings } from './setting/notification-settings/notification-settings';
 import { Setting } from './setting/setting';
-import { FormStore } from './store/form-store/form-store';
 import { FormTag } from './tag/form-tag/form-tag';
 import { FormAdminUser } from './user/form-user/form-user';
 
@@ -623,95 +621,6 @@ describe('FormFaq', () => {
 		expect(page.form.value).toMatchObject({ title: 'Question', description: 'R' });
 		expect(page.fields.source('title')).toBe('Q');
 		expect(page.onSourceLanguage).toBe(false);
-	});
-});
-
-describe('FormStore', () => {
-	const setup = (
-		inputs: Record<string, unknown> = {},
-		params: Record<string, unknown> = {},
-		rows: unknown[] = [],
-	) => {
-		const service = { getStores: vi.fn(() => of({ data: rows })) };
-		return { ...render(FormStore, [{ provide: StoreService, useValue: service }], inputs, params), service };
-	};
-	const complete = {
-		store_name: 's',
-		description: 'd',
-		country_id: 1,
-		state_id: 2,
-		city: 'c',
-		address: 'a',
-		pincode: 'p',
-		name: 'n',
-		email: 'a@b.co',
-		phone: '1',
-		password: 'pw',
-		password_confirmation: 'pw',
-	};
-
-	it('fills from a saved store', () => {
-		const { page } = setup({ type: 'edit' }, { id: 1 }, [{ id: 1, store_name: 'S', vendor: { name: 'V' } }]);
-		expect(page.form.value).toMatchObject({ store_name: 'S', name: 'V' });
-		expect(page.id).toBe(1);
-	});
-
-	it('copes with a store it cannot find, and an empty address', () => {
-		expect(setup({}, { id: 9 }).page.store).toBeNull();
-		expect(setup().service.getStores).not.toHaveBeenCalled();
-	});
-
-	it('lists countries and the states of the chosen one', async () => {
-		q.countries.set([{ id: 1, name: 'India' }]);
-		q.states.set([
-			{ id: 2, name: 'Bengal', country_id: 1 },
-			{ id: 3, name: 'Texas', country_id: 9 },
-		]);
-		const { page } = setup();
-		expect(await firstValueFrom(page.countries$)).toEqual([{ label: 'India', value: 1 }]);
-		expect(await firstValueFrom(page.states$)).toHaveLength(2);
-		page.countryChange({ value: 1 } as never);
-		TestBed.tick();
-		expect(await firstValueFrom(page.states$)).toHaveLength(1);
-		page.form.patchValue({ state_id: 2 });
-		page.countryChange(undefined as never);
-		expect(page.form.value.state_id).toBe('');
-	});
-
-	it('shows empty lists before they load', async () => {
-		const { page } = setup();
-		expect(await firstValueFrom(page.countries$)).toEqual([]);
-		expect(await firstValueFrom(page.states$)).toEqual([]);
-	});
-
-	it('takes a single logo only', () => {
-		const { page } = setup();
-		page.selectStoreLogo({ id: 5 } as never);
-		expect(page.form.value.store_logo_id).toBe(5);
-		page.selectStoreLogo(null as never);
-		expect(page.form.value.store_logo_id).toBe('');
-		page.selectStoreLogo([] as never);
-		expect(page.form.value.store_logo_id).toBe('');
-	});
-
-	it('flags a mismatch after the confirmation is touched', () => {
-		const { page } = setup();
-		page.form.patchValue({ password: 'a', password_confirmation: 'b' });
-		expect(page.passwordMatchError).toBeFalsy();
-		page.form.get('password_confirmation')?.markAsTouched();
-		expect(page.passwordMatchError).toBe(true);
-	});
-
-	it('goes to the list from a valid form, dropping the password when editing', () => {
-		const { page, router } = setup();
-		page.submit();
-		expect(router.navigateByUrl).not.toHaveBeenCalled();
-		page.form.patchValue(complete);
-		page.submit();
-		expect(router.navigateByUrl).toHaveBeenCalledWith('/store');
-		const editing = setup({ type: 'edit' }, { id: 1 }, [{ id: 1, vendor: {} }]);
-		editing.page.submit();
-		expect(editing.page.form.get('password')).toBeNull();
 	});
 });
 

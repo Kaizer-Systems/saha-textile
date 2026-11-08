@@ -32,14 +32,11 @@ import {
 	ApexYAxis,
 } from 'ng-apexcharts';
 import { Select2Data, Select2, Select2UpdateEvent } from 'ng-select2-component';
-import type { DashboardPeriodQuery, DashboardStockState, I18nString, PermissionCode } from '@saha-textile/contracts';
 import { Observable } from 'rxjs';
 
 import { intlLocale } from '@core/i18n/localized-fields';
 import { AuthStore } from '@core/state/auth.store';
-import { Params } from '@data-access/interfaces/core.interface';
-import { IStatisticsCount } from '@data-access/interfaces/dashboard.interface';
-import { IStoresModel } from '@data-access/interfaces/store.interface';
+import { injectStoreLocationsQuery } from '@core/stores/store-location.gateway';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { injectBlogsQuery } from '@data-access/queries/blog.queries';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
@@ -53,19 +50,20 @@ import {
 	injectDashboardStockQuery,
 	injectDashboardTopProductsQuery,
 	injectRevenueChartQuery,
-	injectStatisticsQuery,
 } from '@data-access/queries/dashboard.queries';
-import { injectStoresQuery } from '@data-access/queries/store.queries';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { CurrencySymbolPipe as CurrencySymbolPipe_1, CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { PeriodPicker } from '@shared/ui/period-picker/period-picker';
 import { Table } from '@shared/ui/table/table';
 
+import type { DashboardPeriodQuery, DashboardStockState, I18nString, PermissionCode } from '@saha-textile/contracts';
+
 /**
  * What each widget needs, in one place so the template, the queries and the empty-page message
- * cannot disagree. The `store.index` and `blog.index` widgets still show demo data, kept by
- * owner decision (`DEC-ADMIN-HOME-WIDGETS`), and read no API.
+ * cannot disagree. The Stores tile counts the shop's active stores (Settings › Stores, so super
+ * admin only). The `blog.index` widget still shows demo data, kept by owner decision
+ * (`DEC-ADMIN-HOME-WIDGETS`), and reads no API.
  */
 const WIDGET_PERMISSIONS: readonly PermissionCode[] = [
 	'dashboard.revenue',
@@ -74,7 +72,7 @@ const WIDGET_PERMISSIONS: readonly PermissionCode[] = [
 	'dashboard.top_products',
 	'dashboard.stock',
 	'dashboard.reviews',
-	'store.index',
+	'setting.index',
 	'blog.index',
 ];
 
@@ -168,9 +166,9 @@ export class Dashboard {
 	private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1, paginate: 2 }));
 	readonly blogs = computed(() => this.blogsQuery.data()?.data ?? []);
 
-	/** Demo data for the Total Stores tile, kept until that tile is replaced. */
-	private readonly statisticsQuery = injectStatisticsQuery();
-	statistics$: Observable<IStatisticsCount | undefined> = toObservable(this.statisticsQuery.data);
+	/** The Stores tile: how many stores show on Contact Us. */
+	private readonly storesQuery = injectStoreLocationsQuery(() => this.can('setting.index'));
+	readonly activeStores = computed(() => (this.storesQuery.data() ?? []).filter((row) => row.store.active).length);
 
 	/** Demo data for the commission line, kept until that line is replaced. */
 	private readonly commissionQuery = injectRevenueChartQuery();
@@ -194,10 +192,6 @@ export class Dashboard {
 		),
 	);
 
-	private readonly sellerParams = signal<Params>({ paginate: 6, top_vendor: 1, filter_by: 'this_year' });
-	readonly storesQuery = injectStoresQuery(() => this.sellerParams());
-	store$: Observable<IStoresModel | undefined> = toObservable(this.storesQuery.data);
-
 	readonly chart = viewChild<ElementRef>('chart');
 	public chartOptions!: Partial<ChartOptions>;
 	// The chart sits behind a permission, so its element may arrive after the data or never.
@@ -205,7 +199,6 @@ export class Dashboard {
 
 	readonly topProductLoader = computed(() => this.topProductsQuery.isFetching());
 	readonly productStockLoader = computed(() => this.stockQuery.isFetching());
-	readonly topSellerLoader = computed(() => this.storesQuery.isFetching());
 	public isBrowser: boolean;
 
 	public filter: Select2Data = [
@@ -226,16 +219,6 @@ export class Dashboard {
 			label: 'This Year',
 		},
 	];
-
-	public sellerTableConfig: ITableConfig = {
-		columns: [
-			{ title: 'store_name', dataField: 'store_name' },
-			{ title: 'orders', dataField: 'orders_count' },
-			{ title: 'earning', dataField: 'order_amount' },
-		],
-		data: [],
-		total: 0,
-	};
 
 	/**
 	 * Signals, not plain objects: the query answers outside the render cycle, so a mutated object
@@ -443,12 +426,6 @@ export class Dashboard {
 			}));
 			this.productStockTableConfig.update((config) => ({ ...config, data, total: items.length }));
 		});
-
-		// For Store
-		this.store$.subscribe((store) => {
-			this.sellerTableConfig.data = store ? store?.data?.slice(0, 6) : [];
-			this.sellerTableConfig.total = store ? store?.total : 0;
-		});
 	}
 
 	/** A product name in the language the admin is using, falling back to English. */
@@ -507,30 +484,6 @@ export class Dashboard {
 
 	productEdit(data: { id: string }) {
 		void this.router.navigateByUrl(`/product/edit/${data.id}`);
-	}
-
-	// For Seller
-
-	onSellerTableChange(data?: Params) {
-		if (data && !data['filter_by']) {
-			data['paginate'] = 6;
-			data['top_vendor'] = 1;
-			data['filter_by'] = 'this_year';
-		}
-		this.sellerParams.set({ ...data });
-	}
-
-	filterSeller(data: Select2UpdateEvent) {
-		this.renderer.addClass(this.document.body, 'loader-none');
-		let params: Params = {
-			paginate: 6,
-			top_vendor: 1,
-			filter_by: 'this_year',
-		};
-		if (data.value) {
-			params['filter_by'] = data.value;
-		}
-		this.onSellerTableChange(params);
 	}
 
 	ngOnDestroy() {

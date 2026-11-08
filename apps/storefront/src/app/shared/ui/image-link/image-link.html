@@ -1,7 +1,8 @@
 <!--
 	Admin banners (owner log § Media → Banners): a real <picture>, never a CSS background, so
 	the browser downloads one right-sized file and the hero can be the LCP image. The art is
-	chosen by viewport width — phone below 768 px, tablet to 1199 px, then desktop — and the
+	chosen by viewport width — phone below 768 px and held upright, tablet to 1199 px, then
+	desktop; a phone on its side gets the wide art, not a tall picture taller than its screen — and the
 	box takes the chosen image's shape, so baked-in text is never cropped. Live text uses the
 	theme's own `.home-detail` overlay.
 -->
@@ -10,7 +11,7 @@
 	<picture>
 		@if (banner.images.phone) {
 		<source
-			media="(max-width: 767px)"
+			media="(max-width: 767px) and (orientation: portrait)"
 			[attr.srcset]="srcset(banner.images.phone)"
 			sizes="100vw"
 			[attr.width]="banner.images.phone.width"

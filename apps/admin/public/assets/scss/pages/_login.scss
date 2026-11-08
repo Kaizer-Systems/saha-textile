@@ -79,11 +79,35 @@ input[type='number']::-webkit-outer-spin-button {
 		@include pseudowh;
 		top: 0;
 		left: 0;
-		background-image: url(/assets/images/bg.png);
-		background-position: center;
+		// The basket of sarees sits in the right half, away from the sign-in box, and the picture
+		// is anchored to that side so narrower screens crop the empty side first. Screens up to
+		// 1280 px wide load the smaller file. Right-to-left layouts put the box on the right, so
+		// they get the mirrored photograph. Dark mode lays a dark veil over it so a bright picture
+		// does not glare around the dark box.
+		--sign-in-picture: url(/assets/images/sign-in-saree-basket-1920.webp);
+		--sign-in-veil: linear-gradient(transparent, transparent);
+		background-image: var(--sign-in-veil), var(--sign-in-picture);
+		background-position: right center;
 		background-repeat: no-repeat;
 		background-size: cover;
 		z-index: -1;
+
+		@media (max-width: 1280px) {
+			--sign-in-picture: url(/assets/images/sign-in-saree-basket-1280.webp);
+		}
+
+		body.rtl & {
+			--sign-in-picture: url(/assets/images/sign-in-saree-basket-rtl-1920.webp);
+			background-position: left center;
+
+			@media (max-width: 1280px) {
+				--sign-in-picture: url(/assets/images/sign-in-saree-basket-rtl-1280.webp);
+			}
+		}
+
+		body.dark-only & {
+			--sign-in-veil: linear-gradient(rgba(18, 22, 27, 0.55), rgba(18, 22, 27, 0.55));
+		}
 	}
 
 	&.otp-section {

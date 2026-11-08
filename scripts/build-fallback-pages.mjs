@@ -60,14 +60,17 @@ ${body}
 }
 
 /**
- * The storefront's maintenance layout (`features/maintenance`), centred with Bootstrap's `mx-auto`:
- * its empty side column only makes room for a background photo, which these pages do not have.
+ * The storefront's maintenance layout (`features/maintenance`) with the same photograph, so a
+ * visitor sees one page whether the shop is paused or restarting. The empty left column keeps the
+ * text off the sarees in the picture. `h-auto min-vh-100` let the page grow and scroll on a phone
+ * held sideways instead of clipping its top.
  */
 function storefrontBody({ title, text, action = '' }) {
-	return `<section class="coming-soon-section pt-0">
+	return `<section class="coming-soon-section pt-0 w-100 h-auto min-vh-100">
 	<div class="container-fluid-lg w-100">
 		<div class="row">
-			<div class="col-xxl-5 col-xl-6 col-lg-7 mx-auto">
+			<div class="col-lg-5"></div>
+			<div class="col-xxl-5 col-xl-6 col-lg-7">
 				<div class="coming-box">
 					<div>
 						${LOGO}
@@ -106,12 +109,28 @@ const storefrontOut = join(OUT, 'storefront');
 const adminOut = join(OUT, 'admin');
 mkdirSync(storefrontOut, { recursive: true });
 mkdirSync(adminOut, { recursive: true });
-copyFileSync(
+/**
+ * The maintenance photograph, which the stylesheet asks for under `/assets/images/`. That path
+ * belongs to the storefront, which is down when these pages show, so the files travel with the
+ * pages and the copied stylesheet points at them.
+ */
+const MAINTENANCE_PICTURES = ['maintenance-folded-sarees-1280.webp', 'maintenance-folded-sarees-1920.webp'];
+const storefrontCss = readFileSync(
 	builtStylesheet(
 		join(ROOT, 'apps/storefront/dist/client/index.html'),
 		join(ROOT, 'apps/storefront/dist/analog/public'),
 	),
+	'utf8',
+);
+for (const picture of MAINTENANCE_PICTURES) {
+	if (!storefrontCss.includes(`/assets/images/${picture}`)) {
+		throw new Error(`The built storefront stylesheet no longer asks for ${picture}.`);
+	}
+	copyFileSync(join(ROOT, 'apps/storefront/public/assets/images', picture), join(storefrontOut, picture));
+}
+writeFileSync(
 	join(storefrontOut, 'storefront.css'),
+	storefrontCss.replaceAll('/assets/images/maintenance-folded-sarees-', '/__fallback/maintenance-folded-sarees-'),
 );
 copyFileSync(
 	builtStylesheet(join(ROOT, 'apps/admin/dist/index.html'), join(ROOT, 'apps/admin/dist')),

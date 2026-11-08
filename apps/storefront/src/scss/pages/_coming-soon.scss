@@ -4,10 +4,33 @@
 .coming-soon-section {
 	@include pseudowh($width: 100vw, $height: 100vh);
 	@include flex_common;
-	background-position: center center;
+	// The maintenance photograph: folded sarees on the left, under the page's empty left column,
+	// and bright plaster on the right where the text sits. A white veil, clear over the sarees and
+	// soft under the text, keeps the words readable. Below 992 px the columns stack and the text
+	// sits over the middle of the picture, so the veil becomes even. Screens up to 1199 px wide
+	// load the smaller file. The back-in-a-moment pages reuse this rule with their own copy of
+	// the files.
+	--maintenance-picture: url(/assets/images/maintenance-folded-sarees-1920.webp);
+	--maintenance-veil: linear-gradient(
+		90deg,
+		rgba(255, 255, 255, 0) 0%,
+		rgba(255, 255, 255, 0) 38%,
+		rgba(255, 255, 255, 0.7) 52%,
+		rgba(255, 255, 255, 0.85) 100%
+	);
+	background-image: var(--maintenance-veil), var(--maintenance-picture);
+	background-position: left center;
 	background-repeat: no-repeat;
 	background-size: cover;
 	position: relative;
+
+	@include mq-max(xl) {
+		--maintenance-picture: url(/assets/images/maintenance-folded-sarees-1280.webp);
+	}
+
+	@include mq-max(lg) {
+		--maintenance-veil: linear-gradient(rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.82));
+	}
 
 	.coming-box {
 		text-align: center;

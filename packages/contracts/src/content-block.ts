@@ -84,9 +84,10 @@ export type ContentBlockOwnerType = z.infer<typeof ContentBlockOwnerType>;
 
 /**
  * The images a slot shows, chosen by viewport WIDTH (not device type): phone below 768 px
- * (portrait or square art), tablet 768–1199 px (falls back to desktop), desktop from
- * 1200 px. Landscape phones fall into the tablet band. Boxes take the chosen image's shape,
- * so nothing is ever cropped.
+ * and held upright (portrait or square art), tablet 768–1199 px (falls back to desktop),
+ * desktop from 1200 px. Phones on their side fall into the tablet band, so a tall picture
+ * never runs past a short screen. Boxes take the chosen image's shape, so nothing is ever
+ * cropped.
  */
 export const BannerImageSet = z.object({
 	desktop: Id,

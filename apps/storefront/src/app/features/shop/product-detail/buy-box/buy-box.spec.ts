@@ -9,8 +9,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthStore } from '@core/state/auth.store';
 import { CartFacade } from '@core/state/cart/cart.facade';
-import { CompareFacade } from '@core/state/compare/compare.store';
-import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
+import { CompareStore } from '@core/state/compare/compare.store';
+import { WishlistStore } from '@core/state/wishlist/wishlist.store';
 import { NotificationService } from '@data-access/services/notification.service';
 
 import { BuyBox } from './buy-box';
@@ -28,8 +28,8 @@ const product = {
 const render = (signedIn = true, overrides: Record<string, unknown> = {}) => {
 	const items = new BehaviorSubject<unknown[]>([]);
 	const cart = { cartItems$: items, addToCart: vi.fn() };
-	const wishlist = { addToWishlist: vi.fn() };
-	const compare = { addToCompare: vi.fn() };
+	const wishlist = { saved: signal(new Set(['7'])), has: vi.fn(() => false), toggle: vi.fn(async () => {}) };
+	const compare = { chosen: signal(new Set(['red-saree'])), toggle: vi.fn() };
 	const toast = { showSuccess: vi.fn() };
 	const router = { navigate: vi.fn() };
 	const http = { post: vi.fn(() => of({})) };
@@ -37,8 +37,8 @@ const render = (signedIn = true, overrides: Record<string, unknown> = {}) => {
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: CartFacade, useValue: cart },
-			{ provide: WishlistFacade, useValue: wishlist },
-			{ provide: CompareFacade, useValue: compare },
+			{ provide: WishlistStore, useValue: wishlist },
+			{ provide: CompareStore, useValue: compare },
 			{ provide: NotificationService, useValue: toast },
 			{ provide: Router, useValue: router },
 			{ provide: HttpClient, useValue: http },
@@ -136,12 +136,14 @@ describe('BuyBox buying', () => {
 		expect(router.navigate).toHaveBeenCalledWith(['/checkout']);
 	});
 
-	it('adds to the wishlist and compare', () => {
+	it('toggles the wishlist and compare, and shows their state', () => {
 		const { box, wishlist, compare } = render();
-		box.addToWishlist();
-		box.addToCompare();
-		expect(wishlist.addToWishlist).toHaveBeenCalledWith({ product_id: 7 });
-		expect(compare.addToCompare).toHaveBeenCalledWith({ product_id: 7 });
+		expect(box.saved()).toBe(true);
+		expect(box.compared()).toBe(false);
+		box.toggleWishlist();
+		box.toggleCompare();
+		expect(wishlist.toggle).toHaveBeenCalledWith(expect.objectContaining({ id: 7 }));
+		expect(compare.toggle).toHaveBeenCalledWith(expect.objectContaining({ id: 7 }));
 	});
 });
 

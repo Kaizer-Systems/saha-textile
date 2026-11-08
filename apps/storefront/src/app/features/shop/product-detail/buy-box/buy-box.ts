@@ -1,26 +1,27 @@
-import { Component, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Component, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { NgbRating } from '@ng-bootstrap/ng-bootstrap';
+import { NgbRating, NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { CarouselComponent } from 'ngx-owl-carousel-o';
 
 import { rememberNotifyIntent } from '@core/catalog/notify-intent';
 import { AuthStore } from '@core/state/auth.store';
 import { CartFacade } from '@core/state/cart/cart.facade';
-import { CompareFacade } from '@core/state/compare/compare.store';
-import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
+import { CompareStore } from '@core/state/compare/compare.store';
+import { WishlistStore } from '@core/state/wishlist/wishlist.store';
 import { ICart } from '@data-access/interfaces/cart.interface';
 import { IConfiguratorSummary } from '@data-access/interfaces/product-detail.interface';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
-import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { NotificationService } from '@data-access/services/notification.service';
+import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { Button } from '@shared/ui/button/button';
-import { environment } from '../../../../../../public/environments/environment';
 import { ProductConfigurator } from '@shared/ui/product-config/product-configurator/product-configurator';
+
+import { environment } from '../../../../../../public/environments/environment';
 
 /**
  * PDP right column. Renders the title/price/rating header and the checkout
@@ -33,11 +34,11 @@ import { ProductConfigurator } from '@shared/ui/product-config/product-configura
 	templateUrl: './buy-box.html',
 	styleUrls: ['./buy-box.scss'],
 	providers: [CurrencySymbolPipe],
-	imports: [NgbRating, Button, ProductConfigurator, CurrencySymbolPipe, TranslocoModule],
+	imports: [NgbRating, NgbTooltip, Button, ProductConfigurator, CurrencySymbolPipe, TranslocoModule],
 })
 export class BuyBox {
-	private wishlistFacade = inject(WishlistFacade);
-	private compareFacade = inject(CompareFacade);
+	private readonly wishlist = inject(WishlistStore);
+	private readonly compare = inject(CompareStore);
 	private cartFacade = inject(CartFacade);
 	private notification = inject(NotificationService);
 	private transloco = inject(TranslocoService);
@@ -105,11 +106,15 @@ export class BuyBox {
 			.subscribe(() => this.notification.showSuccess(this.transloco.translate('stock_alert_saved')));
 	}
 
-	addToWishlist() {
-		this.wishlistFacade.addToWishlist({ product_id: this.product().id });
+	/** Filled red heart while saved; the store reads the guest cookie or the account. */
+	readonly saved = computed(() => this.wishlist.saved().has(String(this.product().id)));
+	readonly compared = computed(() => this.compare.chosen().has(this.product().slug));
+
+	toggleWishlist() {
+		void this.wishlist.toggle(this.product());
 	}
 
-	addToCompare() {
-		this.compareFacade.addToCompare({ product_id: this.product().id });
+	toggleCompare() {
+		this.compare.toggle(this.product());
 	}
 }

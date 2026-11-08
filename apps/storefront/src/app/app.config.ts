@@ -28,8 +28,6 @@ import { CartEffects } from '@core/state/cart/cart.effects';
 import { CART_FEATURE_KEY } from '@core/state/cart/cart.models';
 import { cartPersistenceMetaReducer } from '@core/state/cart/cart.persistence';
 import { cartReducer } from '@core/state/cart/cart.reducer';
-import { COMPARE_FEATURE_KEY, CompareEffects, compareReducer } from '@core/state/compare/compare.store';
-import { WISHLIST_FEATURE_KEY, WishlistEffects, wishlistReducer } from '@core/state/wishlist/wishlist.store';
 import { ErrorService } from '@data-access/services/error.service';
 import { NotificationService } from '@data-access/services/notification.service';
 
@@ -119,9 +117,7 @@ export const appConfig: ApplicationConfig = {
 		// optimistic updates, so it moves here rather than to TanStack/SignalStore.
 		provideStore(),
 		provideState(CART_FEATURE_KEY, cartReducer, { metaReducers: [cartPersistenceMetaReducer] }),
-		provideState(WISHLIST_FEATURE_KEY, wishlistReducer),
-		provideState(COMPARE_FEATURE_KEY, compareReducer),
-		provideEffects(CartEffects, WishlistEffects, CompareEffects),
+		provideEffects(CartEffects),
 		// TanStack Query — server-state (lists/details/dropdowns) migrated off NGXS
 		// feature states, one feature at a time (queries in data-access/queries/).
 		provideTanStackQuery(QUERY_CLIENT),

@@ -2,14 +2,14 @@ import { Component, computed, inject, viewChild, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
-import { NgbRatingConfig, NgbRating } from '@ng-bootstrap/ng-bootstrap';
+import { NgbRatingConfig, NgbRating, NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 
 import { cardOffer } from '@core/catalog/card-offer';
 import { roleSrcset } from '@core/media/resolved-image';
 import { CartFacade } from '@core/state/cart/cart.facade';
-import { CompareFacade } from '@core/state/compare/compare.store';
-import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
+import { CompareStore } from '@core/state/compare/compare.store';
+import { WishlistStore } from '@core/state/wishlist/wishlist.store';
 import { ICartAddOrUpdate, ICart } from '@data-access/interfaces/cart.interface';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
@@ -31,6 +31,7 @@ const CARD_SIZES = '(max-width: 575px) 48vw, (max-width: 991px) 33vw, 240px';
 		RouterLink,
 		Button,
 		NgbRating,
+		NgbTooltip,
 		ProductDetailModal,
 		ProductConfigModal,
 		TranslocoModule,
@@ -39,8 +40,8 @@ const CARD_SIZES = '(max-width: 575px) 48vw, (max-width: 991px) 33vw, 240px';
 	],
 })
 export class ProductBoxHorizontal {
-	private wishlistFacade = inject(WishlistFacade);
-	private compareFacade = inject(CompareFacade);
+	private readonly wishlist = inject(WishlistStore);
+	private readonly compare = inject(CompareStore);
 	private cartFacade = inject(CartFacade);
 
 	// TODO: Skipped for migration because:
@@ -108,15 +109,15 @@ export class ProductBoxHorizontal {
 		this.cartFacade.addToCart(params);
 	}
 
-	addToWishlist(id: number | string) {
-		this.wishlistFacade.addToWishlist({ product_id: id });
+	/** Filled red heart while saved; the compare icon in the theme colour while chosen. */
+	readonly saved = computed(() => this.wishlist.saved().has(String(this.product()?.id)));
+	readonly compared = computed(() => this.compare.chosen().has(this.product()?.slug ?? ''));
+
+	toggleWishlist() {
+		void this.wishlist.toggle(this.product());
 	}
 
-	removeWishlist(id: number | string) {
-		this.wishlistFacade.deleteWishlist(id);
-	}
-
-	addToCompar(id: number | string) {
-		this.compareFacade.addToCompare({ product_id: id });
+	toggleCompare() {
+		this.compare.toggle(this.product());
 	}
 }

@@ -5,6 +5,7 @@ import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { BlogModule } from './blog/blog.module';
 import { StoreLocationsModule } from './stores/store-locations.module';
+import { WishlistModule } from './wishlist/wishlist.module';
 import { CartLinesModule } from './cart/cart-lines.module';
 import { CookieAudienceGuard } from './common/cookie-audience.guard';
 import { CsrfGuard } from './common/csrf.guard';
@@ -52,6 +53,7 @@ export class AppModule {
 				MediaModule,
 				BlogModule,
 				StoreLocationsModule,
+				WishlistModule,
 			],
 			providers: [
 				// Ordered deliberately, and the order is itself a security property.

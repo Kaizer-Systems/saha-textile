@@ -31,8 +31,8 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 74,
-		"existingModelCount": 49,
+		"nodeCount": 75,
+		"existingModelCount": 50,
 		"targetOnlyCount": 25,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map."
@@ -1048,6 +1048,19 @@
 			"source": "decisions § stores (2026-11-08)",
 			"currentModel": "packages/adapters-db-mongo/src/models/store-location.model.ts",
 			"references": ["mediaAssets"]
+		},
+		{
+			"id": "wishlistItems",
+			"label": "wishlistItems",
+			"cluster": "commerce-fulfilment",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["F"],
+			"blockingDecisions": [],
+			"purpose": "A signed-in customer's saved products, one row per customer and product, newest first. Guests keep their list in the st_wishlist session cookie, which merges into the account on sign-in.",
+			"source": "decisions § product page (2026-11-08)",
+			"currentModel": "packages/adapters-db-mongo/src/models/wishlist-item.model.ts",
+			"references": ["customers", "products"]
 		}
 	]
 }

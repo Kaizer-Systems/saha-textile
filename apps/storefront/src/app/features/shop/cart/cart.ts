@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
 
 import { CartFacade } from '@core/state/cart/cart.facade';
 import { OnlineStatus } from '@core/state/online-status';
-import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
+import { WishlistStore } from '@core/state/wishlist/wishlist.store';
 import { ICart, ICartAddOrUpdate } from '@data-access/interfaces/cart.interface';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
@@ -35,7 +35,7 @@ import { translatedBreadcrumb } from '@shared/util/breadcrumb-i18n';
 	],
 })
 export class Cart {
-	private wishlistFacade = inject(WishlistFacade);
+	private readonly wishlist = inject(WishlistStore);
 	private cartFacade = inject(CartFacade);
 
 	/** Offline the saved cart stays readable; prices and stock need the server, so changes pause. */
@@ -76,7 +76,8 @@ export class Cart {
 		this.cartFacade.deleteCart(id);
 	}
 
+	/** Saves the line's product to the wishlist; it stays in the cart. Already saved, nothing changes. */
 	addToWishlist(id: number | string) {
-		this.wishlistFacade.addToWishlist({ product_id: id });
+		if (!this.wishlist.has(id)) void this.wishlist.toggle({ id });
 	}
 }

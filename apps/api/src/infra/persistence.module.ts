@@ -27,6 +27,7 @@ import {
 	MongoBlogPostRepository,
 	MongoBlogTagRepository,
 	MongoStoreLocationRepository,
+	MongoWishlistRepository,
 	MongoMediaAssetRepository,
 	MongoMediaRoleRepository,
 	MongoReviewRepository,
@@ -132,6 +133,7 @@ import {
 	BLOG_CATEGORY_REPOSITORY,
 	BLOG_TAG_REPOSITORY,
 	STORE_LOCATION_REPOSITORY,
+	WISHLIST_REPOSITORY,
 	SITE_SETTINGS_REPOSITORY,
 	SEARCH_ANALYTICS_REPOSITORY,
 	REVIEW_REPOSITORY,
@@ -262,6 +264,7 @@ import {
 		{ provide: BLOG_CATEGORY_REPOSITORY, useClass: MongoBlogCategoryRepository },
 		{ provide: BLOG_TAG_REPOSITORY, useClass: MongoBlogTagRepository },
 		{ provide: STORE_LOCATION_REPOSITORY, useClass: MongoStoreLocationRepository },
+		{ provide: WISHLIST_REPOSITORY, useClass: MongoWishlistRepository },
 		{ provide: SITE_SETTINGS_REPOSITORY, useClass: MongoSiteSettingsRepository },
 		// Search totals and result clicks, with no shopper detail (search suggestions, 2026-11-08).
 		{ provide: SEARCH_ANALYTICS_REPOSITORY, useClass: MongoSearchAnalyticsRepository },

@@ -38,3 +38,4 @@ export * from './blog.repository';
 export * from './store-location.repository';
 export * from './search-analytics.repository';
 export * from './mailbox.port';
+export * from './wishlist.repository';

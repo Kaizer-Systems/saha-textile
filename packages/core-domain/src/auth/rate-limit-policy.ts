@@ -70,6 +70,7 @@ export type AuthRateLimitAction =
 	| 'catalog_search'
 	| 'search_click'
 	| 'cart_write'
+	| 'wishlist_write'
 	| 'consent_write';
 
 const MINUTES = 60;
@@ -152,6 +153,11 @@ export const AUTH_RATE_LIMIT_POLICY: Readonly<Record<AuthRateLimitAction, RateLi
 	},
 	/** Guest carts need no account, so this keeps one address from filling the collection. */
 	cart_write: {
+		counting: 'attempts',
+		ip: { max: 120, windowSeconds: 1 * MINUTES },
+	},
+	/** A heart press per product; this only stops one address hammering the account list. */
+	wishlist_write: {
 		counting: 'attempts',
 		ip: { max: 120, windowSeconds: 1 * MINUTES },
 	},

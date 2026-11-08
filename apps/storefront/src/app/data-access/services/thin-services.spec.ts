@@ -10,10 +10,8 @@ import { AccountAddressService } from './account-address.service';
 import { AccountService } from './account.service';
 import { AttributeService } from './attribute.service';
 import { BlogService } from './blog.service';
-import { StoreLocationService } from './store-location.service';
 import { CartService } from './cart.service';
 import { CategoryService } from './category.service';
-import { CompareService } from './compare.service';
 import { ContactChangeService } from './contact-change.service';
 import { CountryService } from './country.service';
 import { CouponService } from './coupon.service';
@@ -31,6 +29,7 @@ import { ReviewService } from './review.service';
 import { SettingService } from './setting.service';
 import { SiteConfigService } from './site-config.service';
 import { StateService } from './state.service';
+import { StoreLocationService } from './store-location.service';
 import { StoreService } from './store.service';
 import { TagService } from './tag.service';
 import { WalletService } from './wallet.service';
@@ -64,13 +63,11 @@ const reads: [string, () => unknown, string, unknown][] = [
 ];
 
 const plainReads: [string, () => unknown, string][] = [
-	['compare', () => TestBed.inject(CompareService).getCompareItems(), '/compare.json'],
 	['countries', () => TestBed.inject(CountryService).getCountries(), '/country.json'],
 	['payment account', () => TestBed.inject(PaymentDetailsService).getPaymentAccount(), '/payment-account.json'],
 	['settings', () => TestBed.inject(SettingService).getSettingOption(), '/setting.json'],
 	['site config', () => TestBed.inject(SiteConfigService).getSiteConfig(), '/site-config.json'],
 	['states', () => TestBed.inject(StateService).getStates(), '/state.json'],
-	['wishlist', () => TestBed.inject(WishlistService).getWishlistItems(), '/wishlist.json'],
 	['a static page', () => TestBed.inject(PageService).getPage('about'), '/pages/about.json'],
 ];
 
@@ -375,6 +372,39 @@ describe('ReviewService', () => {
 		reviews.update('r 1', edit).subscribe();
 		expect(http.patch).toHaveBeenLastCalledWith(expect.stringMatching(/\/storefront\/reviews\/r%201$/), edit, {
 			withCredentials: true,
+		});
+	});
+});
+
+describe('WishlistService', () => {
+	it('reads and changes the account list with the session, and guest cards by id', async () => {
+		const wishlist = TestBed.inject(WishlistService);
+		http.get.mockReturnValueOnce(of({ productIds: ['p1'], items: [] }));
+		expect(await firstValueFrom(wishlist.account())).toEqual({ productIds: ['p1'], items: [] });
+		expect(http.get).toHaveBeenLastCalledWith(expect.stringMatching(/\/storefront\/wishlist$/), {
+			withCredentials: true,
+		});
+		wishlist.add('p1').subscribe();
+		expect(http.post).toHaveBeenLastCalledWith(
+			expect.stringMatching(/\/storefront\/wishlist$/),
+			{ productId: 'p1' },
+			{ withCredentials: true },
+		);
+		wishlist.merge(['p1', 'p2']).subscribe();
+		expect(http.post).toHaveBeenLastCalledWith(
+			expect.stringMatching(/\/storefront\/wishlist\/merge$/),
+			{ productIds: ['p1', 'p2'] },
+			{ withCredentials: true },
+		);
+		wishlist.remove('p 1').subscribe();
+		expect(http.delete).toHaveBeenLastCalledWith(expect.stringMatching(/\/storefront\/wishlist\/p%201$/), {
+			withCredentials: true,
+		});
+		expect(await firstValueFrom(wishlist.cards([]))).toEqual([]);
+		http.get.mockReturnValueOnce(of([]));
+		expect(await firstValueFrom(wishlist.cards(['p1']))).toEqual([]);
+		expect(http.get).toHaveBeenLastCalledWith(expect.stringMatching(/\/catalog\/cards$/), {
+			params: { id: ['p1'] },
 		});
 	});
 });

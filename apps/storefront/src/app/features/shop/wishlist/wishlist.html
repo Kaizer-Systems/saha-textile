@@ -1,7 +1,7 @@
 <app-breadcrumb [breadcrumb]="breadcrumb()" />
 <section class="wishlist-section section-b-space">
 	<div class="container-fluid-lg">
-		@if (wishlistService.skeletonLoader) {
+		@if (!ready()) {
 		<div class="row g-sm-3 g-2">
 			@for (item of skeletonItems; track item) {
 			<div class="col-xxl-2 col-lg-3 col-md-4 product-box-contain col-6">
@@ -11,7 +11,7 @@
 		</div>
 		} @else {
 		<div class="row g-sm-3 g-2">
-			@for (product of (wishlistItems$ | async)?.data; track product) {
+			@for (product of wishlist.items(); track product.id) {
 			<div class="col-xxl-2 col-lg-3 col-md-4 product-box-contain col-6">
 				<app-product-box
 					[product]="product"
@@ -22,7 +22,7 @@
 			</div>
 			}
 		</div>
-		} @if (!(wishlistItems$ | async)?.data?.length && !wishlistService.skeletonLoader) {
+		} @if (ready() && !wishlist.items().length) {
 		<app-no-data
 			[class]="'no-data-added'"
 			[image]="'assets/svg/empty-items.svg'"

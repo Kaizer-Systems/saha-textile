@@ -44,6 +44,7 @@ export class StorefrontCatalogController {
 	@Header('Cache-Control', 'no-store')
 	@ApiOperation({ operationId: 'catalogCards', summary: 'Live cards for a personal slug list' })
 	cards(@Query(new ZodValidationPipe(CatalogCardsQuery)) query: CatalogCardsQuery) {
+		if (query.id) return this.catalog.cardsForIds([query.id].flat());
 		return this.catalog.cardsForSlugs([query.slug ?? []].flat());
 	}
 

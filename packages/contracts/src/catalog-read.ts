@@ -130,6 +130,8 @@ export type CatalogSeoRouteQuery = z.infer<typeof CatalogSeoRouteQuery>;
 
 export const CatalogCardsQuery = z.object({
 	slug: z.union([Slug, z.array(Slug).max(50)]).optional(),
+	/** Product ids, for lists kept by id (a guest's wishlist, the compare list). Order is kept. */
+	id: z.union([Id, z.array(Id).max(50)]).optional(),
 });
 export type CatalogCardsQuery = z.infer<typeof CatalogCardsQuery>;
 

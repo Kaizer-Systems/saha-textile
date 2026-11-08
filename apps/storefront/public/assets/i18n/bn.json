@@ -786,5 +786,19 @@
 	"a_customer": "একজন গ্রাহক",
 	"verified_buyer": "যাচাই করা ক্রেতা",
 	"no_reviews_yet": "এখনও কোনো রিভিউ নেই",
-	"stars_share": "{{stars}} তারা: {{percent}}%"
+	"stars_share": "{{stars}} তারা: {{percent}}%",
+	"add_to_wishlist": "পছন্দের তালিকায় রাখুন",
+	"remove_from_wishlist": "পছন্দের তালিকা থেকে সরান",
+	"add_to_compare": "তুলনায় যোগ করুন",
+	"remove_from_compare": "তুলনা থেকে সরান",
+	"wishlist_added": "আপনার পছন্দের তালিকায় যোগ হয়েছে",
+	"wishlist_removed": "আপনার পছন্দের তালিকা থেকে সরানো হয়েছে",
+	"wishlist_full": "আপনার পছন্দের তালিকা ভরে গেছে। এটি রাখতে আগে কিছু সরান।",
+	"wishlist_not_saved": "আপনার পছন্দের তালিকা বদলানো যায়নি। আবার চেষ্টা করুন।",
+	"compare_added": "তুলনায় যোগ হয়েছে",
+	"compare_removed": "তুলনা থেকে সরানো হয়েছে",
+	"compare_full": "একসঙ্গে {{count}}টি পর্যন্ত পণ্য তুলনা করা যায়। এটি যোগ করতে একটি সরান।",
+	"view_product": "পণ্যটি দেখুন",
+	"cookie_item_lists": "আপনার পছন্দের তালিকা (সাইন ইন করার আগে) আর তুলনার তালিকা রাখে",
+	"cookie_kept_browser": "ব্রাউজার বন্ধ করা পর্যন্ত"
 }

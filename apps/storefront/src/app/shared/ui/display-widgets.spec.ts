@@ -2,11 +2,10 @@ import { signal, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { TranslocoService } from '@jsverse/transloco';
-import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SiteConfigStore } from '@core/state/site-config.store';
-import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
+import { WishlistStore } from '@core/state/wishlist/wishlist.store';
 import { BlogCategory } from '@features/blog/sidebar/blog-category/blog-category';
 import { BlogTag } from '@features/blog/sidebar/blog-tag/blog-tag';
 import { RecentPost } from '@features/blog/sidebar/recent-post/recent-post';
@@ -56,7 +55,7 @@ const create = <T>(type: Type<T>): T => {
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: SiteConfigStore, useValue: { siteConfig: signal(null) } },
-			{ provide: WishlistFacade, useValue: { wishlistItems$: of({ data: [], total: 0 }) } },
+			{ provide: WishlistStore, useValue: { count: signal(0) } },
 			{ provide: TranslocoService, useValue: { getActiveLang: () => 'en' } },
 		],
 	});

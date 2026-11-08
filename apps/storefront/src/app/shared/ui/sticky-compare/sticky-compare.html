@@ -1,9 +1,9 @@
-@if (!!(compareTotal$ | async)) {
+@if (compare.count()) {
 <div class="compare-fix">
 	<a [routerLink]="['/compare']">
 		<h5>
 			{{ 'compare' | transloco }}
-			<span>({{ (compareTotal$ | async) }})</span>
+			<span>({{ compare.count() }})</span>
 		</h5>
 	</a>
 </div>

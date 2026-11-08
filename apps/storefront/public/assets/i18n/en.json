@@ -786,5 +786,19 @@
 	"a_customer": "A customer",
 	"verified_buyer": "Verified buyer",
 	"no_reviews_yet": "No reviews yet",
-	"stars_share": "{{stars}} stars: {{percent}}%"
+	"stars_share": "{{stars}} stars: {{percent}}%",
+	"add_to_wishlist": "Add to wishlist",
+	"remove_from_wishlist": "Remove from wishlist",
+	"add_to_compare": "Add to compare",
+	"remove_from_compare": "Remove from compare",
+	"wishlist_added": "Added to your wishlist",
+	"wishlist_removed": "Removed from your wishlist",
+	"wishlist_full": "Your wishlist is full. Remove something to save this.",
+	"wishlist_not_saved": "Your wishlist could not be updated. Please try again.",
+	"compare_added": "Added to compare",
+	"compare_removed": "Removed from compare",
+	"compare_full": "You can compare up to {{count}} products. Remove one to add this.",
+	"view_product": "View product",
+	"cookie_item_lists": "Hold your wishlist (before you sign in) and your compare list",
+	"cookie_kept_browser": "Until you close the browser"
 }

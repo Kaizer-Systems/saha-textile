@@ -46,6 +46,7 @@ const DECLARED_TAGS = [
 	'reviews',
 	'blog',
 	'stores',
+	'wishlist',
 ];
 
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];

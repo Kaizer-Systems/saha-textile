@@ -24,6 +24,7 @@ export const API_TAGS = {
 	reviews: 'reviews',
 	blog: 'blog',
 	stores: 'stores',
+	wishlist: 'wishlist',
 } as const;
 
 export type ApiTag = (typeof API_TAGS)[keyof typeof API_TAGS];
@@ -69,5 +70,10 @@ export const API_TAG_DESCRIPTIONS: ReadonlyArray<{ name: ApiTag; description: st
 		name: API_TAGS.stores,
 		description:
 			"The shop's physical stores. Contact Us reads active stores in one language; the super admin writes every language under Settings › Stores.",
+	},
+	{
+		name: API_TAGS.wishlist,
+		description:
+			"A signed-in customer's saved products. The customer comes from the session; a guest's list stays in a session cookie and merges in on sign-in.",
 	},
 ];

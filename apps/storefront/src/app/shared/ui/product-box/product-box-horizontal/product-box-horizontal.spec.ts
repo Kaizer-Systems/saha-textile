@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { NgbRatingConfig } from '@ng-bootstrap/ng-bootstrap';
@@ -5,22 +6,22 @@ import { BehaviorSubject } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { CartFacade } from '@core/state/cart/cart.facade';
-import { CompareFacade } from '@core/state/compare/compare.store';
-import { WishlistFacade } from '@core/state/wishlist/wishlist.store';
+import { CompareStore } from '@core/state/compare/compare.store';
+import { WishlistStore } from '@core/state/wishlist/wishlist.store';
 
 import { ProductBoxHorizontal } from './product-box-horizontal';
 
 const render = (product?: unknown) => {
 	const items = new BehaviorSubject<unknown[]>([]);
 	const cart = { cartItems$: items, addToCart: vi.fn() };
-	const wishlist = { addToWishlist: vi.fn(), deleteWishlist: vi.fn() };
-	const compare = { addToCompare: vi.fn() };
+	const wishlist = { saved: signal(new Set(['1'])), toggle: vi.fn(async () => {}) };
+	const compare = { chosen: signal(new Set(['red'])), toggle: vi.fn() };
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: CartFacade, useValue: cart },
-			{ provide: WishlistFacade, useValue: wishlist },
-			{ provide: CompareFacade, useValue: compare },
+			{ provide: WishlistStore, useValue: wishlist },
+			{ provide: CompareStore, useValue: compare },
 		],
 	});
 	TestBed.overrideComponent(ProductBoxHorizontal, { set: { imports: [], template: '' } });
@@ -85,13 +86,16 @@ describe('ProductBoxHorizontal', () => {
 		expect(cart.addToCart.mock.lastCall?.[0]).toMatchObject({ id: 'line', variation_id: 3, quantity: 2 });
 	});
 
-	it('forwards the wishlist and compare actions', () => {
-		const { box, wishlist, compare } = render();
-		box.addToWishlist(1);
-		box.removeWishlist(1);
-		box.addToCompar(2);
-		expect(wishlist.addToWishlist).toHaveBeenCalledWith({ product_id: 1 });
-		expect(wishlist.deleteWishlist).toHaveBeenCalledWith(1);
-		expect(compare.addToCompare).toHaveBeenCalledWith({ product_id: 2 });
+	it('toggles the wishlist and compare for its product, and shows their state', () => {
+		const { box, wishlist, compare } = render({ id: 1, slug: 'red' });
+		expect(box.saved()).toBe(true);
+		expect(box.compared()).toBe(true);
+		box.toggleWishlist();
+		box.toggleCompare();
+		expect(wishlist.toggle).toHaveBeenCalledWith({ id: 1, slug: 'red' });
+		expect(compare.toggle).toHaveBeenCalledWith({ id: 1, slug: 'red' });
+		const empty = render();
+		expect(empty.box.saved()).toBe(false);
+		expect(empty.box.compared()).toBe(false);
 	});
 });

@@ -64,23 +64,37 @@
 			</app-button>
 		</div>
 	</div>
+	<!-- Theme wishlist/compare buttons; each toggles, says what it does and shows the theme tooltip. -->
 	<div class="wishlist-btn-group">
-		<app-button
-			[class]="'wishlist-button btn'"
-			[id]="'wishlist_btn'"
-			[spinner]="false"
-			(click)="addToWishlist()"
+		<button
+			type="button"
+			class="wishlist-button btn"
+			id="wishlist_btn"
+			[attr.aria-pressed]="saved()"
+			[attr.aria-label]="(saved() ? 'remove_from_wishlist' : 'add_to_wishlist') | transloco"
+			[ngbTooltip]="(saved() ? 'remove_from_wishlist' : 'add_to_wishlist') | transloco"
+			(click)="toggleWishlist()"
 		>
-			<i class="ri-heart-line"></i>
-		</app-button>
-		<app-button
-			[class]="'wishlist-button btn'"
-			[id]="'compare_btn'"
-			[spinner]="false"
-			(click)="addToCompare()"
+			<i
+				[class]="saved() ? 'ri-heart-fill text-danger' : 'ri-heart-line'"
+				aria-hidden="true"
+			></i>
+		</button>
+		<button
+			type="button"
+			class="wishlist-button btn"
+			id="compare_btn"
+			[attr.aria-pressed]="compared()"
+			[attr.aria-label]="(compared() ? 'remove_from_compare' : 'add_to_compare') | transloco"
+			[ngbTooltip]="(compared() ? 'remove_from_compare' : 'add_to_compare') | transloco"
+			(click)="toggleCompare()"
 		>
-			<i class="ri-refresh-line"></i>
-		</app-button>
+			<i
+				class="ri-refresh-line"
+				[class.theme-color]="compared()"
+				aria-hidden="true"
+			></i>
+		</button>
 	</div>
 </div>
 

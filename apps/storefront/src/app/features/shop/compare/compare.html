@@ -2,7 +2,7 @@
 <section class="compare-section section-b-space">
 	<div class="container-fluid-lg">
 		<div class="row g-0 compare-row">
-			@if (compareService.skeletonLoader) { @for (item of skeletonItems; track item) {
+			@if (!ready()) { @for (item of skeletonItems; track item) {
 			<div class="col skeleton-compare">
 				<div class="compare-part">
 					<div class="img-section">
@@ -60,35 +60,54 @@
 					</div>
 				</div>
 			</div>
-			} } @else { @for (product of (compareItems$ | async); track product) {
+			} } @else { @for (product of compare.items(); track product.slug) {
 			<div class="col">
 				<div class="compare-part">
 					<div class="img-section">
 						<div>
 							<img
 								[src]="product.product_thumbnail ? product.product_thumbnail.original_url : 'assets/images/product.png'"
-								class="img-fluid blur-up lazyloaded"
+								class="img-fluid"
 								[alt]="product.name"
+								loading="lazy"
 							/>
 						</div>
-						<a href="javascript:void(0)">
+						<a [routerLink]="['/product', product.slug]">
 							<h5 class="text-title">{{ product.name }}</h5>
 						</a>
-					</div>
-					<div class="detail-part">
-						<div class="title-detail">
-							<h5>{{ 'discount' | transloco }}</h5>
-						</div>
-						<div class="inner-detail">
-							<p>{{ product.discount ? product.discount : '-' }}</p>
-						</div>
 					</div>
 					<div class="detail-part">
 						<div class="title-detail">
 							<h5>{{ 'price' | transloco }}</h5>
 						</div>
 						<div class="inner-detail">
-							<p>{{product.sale_price | currencySymbol}}</p>
+							<p>{{ product.sale_price | currencySymbol }}</p>
+						</div>
+					</div>
+					@for (fact of product.semantic_attributes ?? []; track fact.code) {
+					<div class="detail-part">
+						<div class="title-detail">
+							<h5>{{ fact.label }}</h5>
+						</div>
+						<div class="inner-detail">
+							<p>{{ fact.value }}</p>
+						</div>
+					</div>
+					}
+					<div class="detail-part">
+						<div class="title-detail">
+							<h5>{{ 'saree_length' | transloco }}</h5>
+						</div>
+						<div class="inner-detail">
+							<p>{{ product.saree_length_m ? product.saree_length_m + ' m' : '-' }}</p>
+						</div>
+					</div>
+					<div class="detail-part">
+						<div class="title-detail">
+							<h5>{{ 'blouse_piece' | transloco }}</h5>
+						</div>
+						<div class="inner-detail">
+							<p>{{ product.blouse_piece_m ? product.blouse_piece_m + ' m' : '-' }}</p>
 						</div>
 					</div>
 					<div class="detail-part">
@@ -96,7 +115,7 @@
 							<h5>{{ 'availability' | transloco }}</h5>
 						</div>
 						<div class="inner-detail">
-							<p>{{ product.stock_status | titleCase }}</p>
+							<p>{{ (product.stock_status === 'in_stock' ? 'in_stock' : 'out_of_stock') | transloco }}</p>
 						</div>
 					</div>
 					<div class="detail-part">
@@ -104,40 +123,47 @@
 							<h5>{{ 'rating' | transloco }}</h5>
 						</div>
 						<div class="inner-detail">
+							@if (product.reviews_count) {
 							<div class="compare-rating">
-								<ngb-rating [rate]="product.rating_count" />
+								<ngb-rating
+									[rate]="product.rating_count"
+									[readonly]="true"
+								/>
 								<span class="text-content rating-text">
-									({{ product.reviews_count }} {{ 'review' | transloco }})
+									{{ 'reviews_count' | transloco: { count: product.reviews_count } }}
 								</span>
 							</div>
-						</div>
-					</div>
-					<div class="detail-part">
-						<div class="title-detail">
-							<h5>{{ 'weight' | transloco }}</h5>
-						</div>
-						<div class="inner-detail">
-							<p>{{ product.weight ? product.weight : "-" }}</p>
+							} @else {
+							<p>{{ 'no_reviews_yet' | transloco }}</p>
+							}
 						</div>
 					</div>
 					<div class="btn-part">
-						<button class="btn btn-animation btn-sm">{{ 'move_to_cart' | transloco }}</button>
+						<a
+							class="btn btn-animation btn-sm"
+							[routerLink]="['/product', product.slug]"
+						>
+							{{ 'view_product' | transloco }}
+						</a>
 					</div>
 					<div class="remove-part">
-						<a
-							href="javascript:void(0)"
-							class="text-content remove_column"
-							(click)="removeCompare(product.id)"
+						<button
+							type="button"
+							class="btn btn-link text-content remove_column p-0"
+							(click)="compare.remove(product.slug)"
 						>
-							<i class="ri-delete-bin-line"></i>
+							<i
+								class="ri-delete-bin-line"
+								aria-hidden="true"
+							></i>
 							{{ 'remove' | transloco }}
-						</a>
+						</button>
 					</div>
 				</div>
 			</div>
 			} }
 		</div>
-		@if (!(compareItems$ | async)?.length && !compareService.skeletonLoader) {
+		@if (ready() && !compare.items().length) {
 		<app-no-data
 			[class]="'no-data-added'"
 			[image]="'assets/svg/no-category.svg'"

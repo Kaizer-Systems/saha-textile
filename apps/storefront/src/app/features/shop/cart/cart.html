@@ -46,7 +46,8 @@
 													</li>
 													@if (item.problem) {
 													<li class="text-danger">
-														{{ 'cart_line_' + item.problem | transloco: { count: item.available } }}
+														{{ 'cart_line_' + item.problem | transloco: { count:
+														item.available } }}
 													</li>
 													} @if (item.line_config) {
 													<li><app-cart-line-config [config]="item.line_config" /></li>
@@ -193,7 +194,7 @@
 											href="javascript:void(0)"
 											(click)="addToWishlist(item.product.id)"
 										>
-											{{ 'save_for_later' | transloco }}
+											{{ 'add_to_wishlist' | transloco }}
 										</a>
 										<a
 											class="remove close_button"

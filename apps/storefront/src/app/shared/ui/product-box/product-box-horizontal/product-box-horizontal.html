@@ -40,36 +40,58 @@
 				[class]="'btn wishlist-button close_button'"
 				[spinner]="false"
 				[id]="'close_btn'"
-				(click)="removeWishlist(product()!.id)"
+				(click)="toggleWishlist()"
 			>
 				<i class="ri-close-line"></i>
 			</app-button>
 		</div>
 		} @if (!close()) {
+		<!-- Theme hover icons. Buttons, not links: they act, they do not go anywhere. -->
 		<ul class="product-option">
 			<li>
 				<a
 					href="javascript:void(0)"
+					role="button"
+					[attr.aria-label]="'quick_view' | transloco"
+					[ngbTooltip]="'quick_view' | transloco"
 					(click)="productDetailModal.openModal()"
 				>
-					<i class="ri-eye-line"></i>
+					<i
+						class="ri-eye-line"
+						aria-hidden="true"
+					></i>
 				</a>
 			</li>
 			<li>
 				<a
 					href="javascript:void(0)"
-					(click)="addToCompar(product()!.id)"
+					role="button"
+					[attr.aria-pressed]="compared()"
+					[attr.aria-label]="(compared() ? 'remove_from_compare' : 'add_to_compare') | transloco"
+					[ngbTooltip]="(compared() ? 'remove_from_compare' : 'add_to_compare') | transloco"
+					(click)="toggleCompare()"
 				>
-					<i class="ri-refresh-line"></i>
+					<i
+						class="ri-refresh-line"
+						[class.theme-color]="compared()"
+						aria-hidden="true"
+					></i>
 				</a>
 			</li>
 			<li>
 				<a
 					href="javascript:void(0)"
+					role="button"
 					class="notifi-wishlist"
-					(click)="addToWishlist(product()!.id)"
+					[attr.aria-pressed]="saved()"
+					[attr.aria-label]="(saved() ? 'remove_from_wishlist' : 'add_to_wishlist') | transloco"
+					[ngbTooltip]="(saved() ? 'remove_from_wishlist' : 'add_to_wishlist') | transloco"
+					(click)="toggleWishlist()"
 				>
-					<i class="ri-heart-line"></i>
+					<i
+						[class]="saved() ? 'ri-heart-fill text-danger' : 'ri-heart-line'"
+						aria-hidden="true"
+					></i>
 				</a>
 			</li>
 		</ul>

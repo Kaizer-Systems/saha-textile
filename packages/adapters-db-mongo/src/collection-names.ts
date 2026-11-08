@@ -114,6 +114,9 @@ export const COLLECTION_NAMES = {
 	SearchQueryAggregate: 'searchQueryAggregates',
 	/** Daily figures per grain and key — catalog plan §7.38. */
 	AnalyticsDailyAggregate: 'analyticsDailyAggregates',
+	// --- Customer lists ------------------------------------------------------
+	/** A signed-in customer's saved products (owner decision 2026-11-08). */
+	WishlistItem: 'wishlistItems',
 } as const satisfies Record<string, string>;
 
 export type ModelName = keyof typeof COLLECTION_NAMES;

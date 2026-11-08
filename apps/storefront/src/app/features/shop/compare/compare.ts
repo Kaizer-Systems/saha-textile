@@ -1,41 +1,40 @@
-import { AsyncPipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import { TranslocoModule } from '@jsverse/transloco';
 import { NgbRating } from '@ng-bootstrap/ng-bootstrap';
-import { Observable } from 'rxjs';
 
-import { CompareFacade } from '@core/state/compare/compare.store';
-import { IProduct } from '@data-access/interfaces/product.interface';
-import { CompareService } from '@data-access/services/compare.service';
+import { CompareStore } from '@core/state/compare/compare.store';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
-import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { NoData } from '@shared/ui/no-data/no-data';
 import { translatedBreadcrumb } from '@shared/util/breadcrumb-i18n';
 
+/**
+ * The compare page: the theme's compare columns for the products in this session's list, each
+ * read from the live catalogue (price, the product's own facts, lengths, stock, rating).
+ * Personal, so it is not indexed (see the route).
+ */
 @Component({
-	selector: 'app-compeer',
+	selector: 'app-compare',
 	templateUrl: './compare.html',
 	styleUrls: ['./compare.scss'],
 	providers: [CurrencySymbolPipe],
-	imports: [Breadcrumb, NgbRating, NoData, AsyncPipe, TitleCasePipe, CurrencySymbolPipe, TranslocoModule],
+	imports: [Breadcrumb, NgbRating, NoData, RouterLink, CurrencySymbolPipe, TranslocoModule],
 })
 export class Compare {
-	private compareFacade = inject(CompareFacade);
-	compareService = inject(CompareService);
+	readonly compare = inject(CompareStore);
 
 	public breadcrumb = translatedBreadcrumb('compare');
 
 	public skeletonItems = Array.from({ length: 3 }, (_, index) => index);
 
-	compareItems$: Observable<IProduct[]> = this.compareFacade.compareItems$;
+	/** False until the browser has the list: the server shows the skeleton, never a false "empty". */
+	readonly ready = signal(false);
 
 	constructor() {
-		this.compareFacade.getCompare();
-	}
-
-	removeCompare(id: number | string) {
-		this.compareFacade.deleteCompare(id);
+		if (!isPlatformBrowser(inject(PLATFORM_ID))) return;
+		void this.compare.loadPage().then(() => this.ready.set(true));
 	}
 }

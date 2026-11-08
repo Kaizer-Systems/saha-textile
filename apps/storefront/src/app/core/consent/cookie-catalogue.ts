@@ -18,6 +18,7 @@ export const NECESSARY_ITEMS: readonly CookieItem[] = [
 	{ name: 'st_access, st_refresh', purpose: 'cookie_item_session', keptFor: 'cookie_kept_session' },
 	{ name: 'st_csrf', purpose: 'cookie_item_csrf', keptFor: 'cookie_kept_visit' },
 	{ name: 'st_guest, ngrx_cart', purpose: 'cookie_item_cart', keptFor: 'cookie_kept_cart' },
+	{ name: 'st_wishlist, st_compare', purpose: 'cookie_item_lists', keptFor: 'cookie_kept_browser' },
 	{ name: 'st_consent', purpose: 'cookie_item_consent', keptFor: 'cookie_kept_year' },
 	{ name: 'sw.js', purpose: 'cookie_item_app', keptFor: 'cookie_kept_cleared' },
 	{ name: 'Google, Facebook', purpose: 'cookie_item_sign_in', keptFor: 'cookie_kept_by_them' },

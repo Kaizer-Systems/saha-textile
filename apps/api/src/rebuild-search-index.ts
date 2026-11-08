@@ -5,11 +5,13 @@ import {
 	MongoCategoryRepository,
 	MongoProductRepository,
 	MongoProductVariantRepository,
+	MongoSearchTermRepository,
+	MongoSiteSettingsRepository,
 	connectMongo,
 	disconnectMongo,
 } from '@saha-textile/adapters-db-mongo';
-import type { Product } from '@saha-textile/contracts';
-import { rebuildSearchIndex, valueSearchWords } from '@saha-textile/core-domain';
+import { StorefrontSearchSettings, type Product } from '@saha-textile/contracts';
+import { rebuildSearchIndex, searchVocabulary, valueSearchWords } from '@saha-textile/core-domain';
 
 import { loadConfig } from './config/app-config';
 import { MeilisearchSearch } from './search/meilisearch-search';
@@ -35,19 +37,30 @@ async function main(): Promise<void> {
 			products.map((product) => product.id),
 			'public',
 		);
-		const names = new Map(
-			(await new MongoCategoryRepository().tree()).map((row) => [row.id, Object.values(row.name)]),
-		);
+		const tree = await new MongoCategoryRepository().tree();
+		const names = new Map(tree.map((row) => [row.id, Object.values(row.name)]));
 		const definitions = await new MongoAttributeDefinitionRepository().listAll();
+		const settings = StorefrontSearchSettings.parse(
+			(await new MongoSiteSettingsRepository().get('storefront.search')) ?? {},
+		);
+		// The admin's search words and "show first" categories, as every product save writes them.
+		const vocabulary = searchVocabulary(
+			await new MongoSearchTermRepository().listLive(),
+			tree,
+			settings.showFirstCategoryIds,
+		);
 		const entries = products.map((product) => ({
 			product,
 			variants: rows.filter((row) => row.productId === product.id),
 			categoryNames: product.categoryIds.flatMap((id) => names.get(id) ?? []),
 			searchWords: valueSearchWords(product, definitions),
+			searchTerms: vocabulary.wordsFor(product),
+			showFirst: vocabulary.showsFirst(product),
 		}));
 		const config = loadConfig();
 		const { host, apiKey, index } = config.search;
 		const search = new MeilisearchSearch(host, apiKey, async () => [], index, config.locales);
+		await search.updateSynonyms(vocabulary.synonyms);
 		const indexed = await rebuildSearchIndex(entries, search);
 		process.stdout.write(`Indexed ${indexed} live products of ${products.length}.\n`);
 	} finally {

@@ -6,6 +6,7 @@ import { AdminAddonTemplatesController } from './admin-addon-templates.controlle
 import { AdminFaqController, AdminQuestionsController, FaqController, QuestionsController } from './content.controller';
 import { AdminProductsController } from './admin-products.controller';
 import { AdminRedirectsController } from './admin-redirects.controller';
+import { AdminSearchTermsController, AdminStorefrontSettingsController } from './admin-search-terms.controller';
 import { AdminTaxonomyController } from './admin-taxonomy.controller';
 import { CatalogPublicService } from './catalog-public.service';
 import { CatalogRateLimit } from './catalog-rate-limit';
@@ -17,6 +18,8 @@ import { ProductBuilderService } from './product-builder.service';
 import { ProductsController } from './products.controller';
 import { RecentPurchasesService } from './recent-purchases.service';
 import { SearchInsightsService } from './search-insights.service';
+import { SearchTermsService } from './search-terms.service';
+import { SearchVocabularyService } from './search-vocabulary.service';
 import { StockAlertsController } from './stock-alerts.controller';
 import { StorefrontCatalogController } from './storefront-catalog.controller';
 import { TaxonomyService } from './taxonomy.service';
@@ -27,6 +30,8 @@ import { TaxonomyService } from './taxonomy.service';
 		ProductsController,
 		CategoriesController,
 		AdminRedirectsController,
+		AdminSearchTermsController,
+		AdminStorefrontSettingsController,
 		AdminProductsController,
 		AdminTaxonomyController,
 		AdminAddonTemplatesController,
@@ -47,6 +52,8 @@ import { TaxonomyService } from './taxonomy.service';
 		ContentService,
 		RecentPurchasesService,
 		SearchInsightsService,
+		SearchTermsService,
+		SearchVocabularyService,
 	],
 	exports: [CatalogPublicService, CatalogRateLimit],
 })

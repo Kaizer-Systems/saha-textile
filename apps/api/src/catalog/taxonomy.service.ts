@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Optional, NotFoundException } from '@nestjs/common';
 import {
 	AdminCategoryRow,
 	AttributeDefinition,
@@ -17,6 +17,7 @@ import type {
 	ProductRepository,
 } from '@saha-textile/core-domain';
 
+import { SearchVocabularyService } from './search-vocabulary.service';
 import { CatalogPublicService } from './catalog-public.service';
 import { CatalogService } from './catalog.service';
 import {
@@ -44,12 +45,15 @@ export class TaxonomyService {
 		@Inject(ATTRIBUTE_DEFINITION_REPOSITORY) private readonly attributes: AttributeDefinitionRepository,
 		@Inject(PRODUCT_REPOSITORY) private readonly products: ProductRepository,
 		private readonly publicCatalog: CatalogPublicService,
+		@Optional() private readonly vocabulary: SearchVocabularyService | null = null,
 	) {}
 
 	async listCategories(): Promise<AdminCategoryRow[]> {
 		const categories = await this.categories.tree();
 		const images = await this.publicCatalog.categoryImages(
-			categories.flatMap((category) => [category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat()),
+			categories.flatMap((category) =>
+				[category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat(),
+			),
 		);
 		return Promise.all(categories.map((category) => this.categoryRow(category, images)));
 	}
@@ -86,6 +90,8 @@ export class TaxonomyService {
 	}
 
 	async saveCategory(id: string | null, body: AdminCategoryWrite, actorUserId: string | null) {
+		// A search word or "show first" category reaches the categories under it through the tree.
+		this.vocabulary?.invalidate();
 		if (!body.name['en']?.trim()) throw new BadRequestException('A category needs an English name');
 		const existing = id ? await this.categories.findById(id) : null;
 		if (id && !existing) throw new NotFoundException(`Category not found: ${id}`);
@@ -200,6 +206,7 @@ export class TaxonomyService {
 	}
 
 	async deleteCategory(id: string, actorUserId: string | null) {
+		this.vocabulary?.invalidate();
 		const row = await this.categories.findById(id);
 		if (!row) throw new NotFoundException(`Category not found: ${id}`);
 		if ((await this.categories.listChildren(id)).length) {
@@ -250,7 +257,10 @@ export class TaxonomyService {
 					? {
 							...group,
 							label: definition.label,
-							terms: group.terms.map((term) => ({ ...term, label: terms.get(term.code)?.label ?? term.label })),
+							terms: group.terms.map((term) => ({
+								...term,
+								label: terms.get(term.code)?.label ?? term.label,
+							})),
 						}
 					: group,
 			);
@@ -273,7 +283,9 @@ export class TaxonomyService {
 	private async usedTerms(code: string): Promise<Set<string>> {
 		const groups = (await this.productsUsing(code)).flatMap((product) => product.optionGroups);
 		return new Set(
-			groups.filter((group) => group.attributeCode === code).flatMap((group) => group.terms.map((term) => term.code)),
+			groups
+				.filter((group) => group.attributeCode === code)
+				.flatMap((group) => group.terms.map((term) => term.code)),
 		);
 	}
 

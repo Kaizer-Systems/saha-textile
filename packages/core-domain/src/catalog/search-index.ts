@@ -2,66 +2,11 @@ import type { AttributeDefinition, Product } from '@saha-textile/contracts';
 
 import type { SearchEntry, SearchPort } from '../ports/search.port';
 
-/** Spellings and words shoppers use for one thing. Each finds the others. */
-const SAME_THING: ReadonlyArray<readonly string[]> = [
-	['ikat', 'ikkat', 'ekat', 'ekkat'],
-	['saree', 'sari', 'sarees', 'saris'],
-	['kanchipuram', 'kanjivaram', 'kanjeevaram', 'kancheepuram', 'kanchi'],
-	['banarasi', 'benarasi', 'banaras', 'benaras', 'varanasi'],
-	['tussar', 'tussore', 'tasar', 'tasser'],
-	['chikankari', 'chikan', 'lucknowi'],
-	['jamdani', 'jamdhani', 'dhakai'],
-	['kalamkari', 'kalankari'],
-	['paithani', 'paithni'],
-	['salwar', 'shalwar', 'salwaar'],
-	['dupatta', 'chunni', 'odhni'],
-	['mulmul', 'muslin'],
-	['bridal', 'wedding', 'mariage'],
-	['silk', 'soie', 'resham'],
-	['cotton', 'coton', 'sooti'],
-	['blouse', 'choli'],
-	['unstitched', 'dress material'],
-];
-
-function synonyms(): Record<string, string[]> {
-	const found: Record<string, string[]> = {};
-	for (const group of SAME_THING) {
-		for (const word of group) found[word] = group.filter((other) => other !== word);
-	}
-	return found;
-}
-
 /**
- * Every word finds the others in its group. `ikkatsilk` points one way at "ikkat", because a phrase
- * alone misses titles such as "Pure Silk Ikkat Saree".
+ * Words that say nothing about a product. Spellings and words that mean the same thing are the
+ * admin's search words (`searchDictionary`), not a list in code.
  */
-export const SEARCH_SYNONYMS: Record<string, string[]> = {
-	...synonyms(),
-	ikkatsilk: ['ikkat silk', 'ikkat'],
-};
-
-/** Words that say nothing about a product, in the shop's languages. */
-export const SEARCH_STOP_WORDS: readonly string[] = [
-	'a',
-	'an',
-	'and',
-	'for',
-	'in',
-	'of',
-	'the',
-	'with',
-	'au',
-	'de',
-	'des',
-	'du',
-	'en',
-	'et',
-	'la',
-	'le',
-	'les',
-	'un',
-	'une',
-];
+export const SEARCH_STOP_WORDS: readonly string[] = ['a', 'an', 'and', 'for', 'in', 'of', 'the', 'with'];
 
 /** The search words staff wrote for each value a product carries. One list serves every language. */
 export function valueSearchWords(

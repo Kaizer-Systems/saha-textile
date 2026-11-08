@@ -103,11 +103,15 @@ const build = (options: Options = {}) => {
 		save: vi.fn(async (saved: unknown) => saved),
 	};
 	const categories = {
-		tree: vi.fn(async () => ['tree']),
+		tree: vi.fn(async () => TREE as unknown[]),
 		findBySlug: vi.fn(async (slug: string) => (slug === 'silk' ? { id: 'c1' } : null)),
 		findById: vi.fn(async (id: string) => (id === 'c1' ? { name: { en: 'Silk', bn: 'সিল্ক' } } : null)),
 	};
-	const variants = { listForProduct: vi.fn(async () => rows), save: vi.fn(async (saved: unknown) => saved) };
+	const variants = {
+		listForProduct: vi.fn(async () => rows),
+		listForProducts: vi.fn(async () => rows),
+		save: vi.fn(async (saved: unknown) => saved),
+	};
 	const redirects = {
 		list: vi.fn(async () => stored),
 		findBySource: vi.fn(
@@ -140,7 +144,7 @@ const build = (options: Options = {}) => {
 	};
 	const media = { findManyByIds: vi.fn(async () => options.assets ?? []) };
 	const storage = { getUrl: (key: string) => `https://cdn.test/${key}` };
-	const search = { indexProduct: vi.fn(async () => {}), removeProduct: vi.fn(async () => {}) };
+	const search = { indexProducts: vi.fn(async () => {}), removeProduct: vi.fn(async () => {}) };
 	const stockAlerts = { save: vi.fn(async () => {}) };
 	const service = options.bare
 		? new CatalogService(products as never, categories as never, variants as never, redirects as never)
@@ -162,6 +166,7 @@ const build = (options: Options = {}) => {
 	return {
 		service,
 		products,
+		categories,
 		variants,
 		redirects,
 		addons,
@@ -176,6 +181,8 @@ const build = (options: Options = {}) => {
 
 const actions = (audit: { append: ReturnType<typeof vi.fn> }) =>
 	audit.append.mock.calls.map((call: unknown[]) => (call[0] as { action: string }).action);
+
+const TREE = [{ id: 'c1', name: { en: 'Silk', bn: 'সিল্ক' }, ancestors: [] }];
 
 describe('reads', () => {
 	it('defaults the audience to public', async () => {
@@ -195,7 +202,7 @@ describe('reads', () => {
 
 	it('reads the category tree and one category', async () => {
 		const { service } = build();
-		expect(await service.getCategoryTree()).toEqual(['tree']);
+		expect(await service.getCategoryTree()).toEqual(TREE);
 		expect(await service.getCategory('silk')).toEqual({ id: 'c1' });
 		await expect(service.getCategory('none')).rejects.toBeInstanceOf(NotFoundException);
 	});
@@ -523,7 +530,7 @@ describe('saving the product form', () => {
 			onSale: true,
 			featured: true,
 		});
-		expect(search.indexProduct).toHaveBeenCalledTimes(1);
+		expect(search.indexProducts).toHaveBeenCalledTimes(1);
 		expect(actions(audit)).toEqual(['catalog.product.save']);
 	});
 
@@ -659,14 +666,14 @@ describe('saving the product form', () => {
 	it('gives search the names of its categories', async () => {
 		const { service, search } = build();
 		await service.syncSearch(product({ status: 'live', categoryIds: ['c1', 'gone'] }));
-		expect(search.indexProduct).toHaveBeenLastCalledWith(
-			expect.objectContaining({ categoryNames: ['Silk', 'সিল্ক'] }),
-		);
+		expect(search.indexProducts).toHaveBeenLastCalledWith([
+			expect.objectContaining({ categoryNames: ['Silk', 'সিল্ক'], searchTerms: [], showFirst: false }),
+		]);
 	});
 
 	it('saves even when the search index is down', async () => {
 		const { service, search } = build();
-		search.indexProduct.mockRejectedValue(new Error('search down'));
+		search.indexProducts.mockRejectedValue(new Error('search down'));
 		await expect(service.updateMerchandising('red-saree', form())).resolves.toMatchObject({ id: 'prd_1' });
 	});
 

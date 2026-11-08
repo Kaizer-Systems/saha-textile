@@ -14,3 +14,4 @@ export * from './variant-matrix';
 export * from './cart-line';
 export * from './search-analytics';
 export * from './review-author';
+export * from './search-terms';

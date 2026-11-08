@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { HomeHeroLayout } from './content-block';
 import { IsoDateTime } from './common';
+import { StorefrontSearchSettings } from './search-term';
 
 /**
  * Typed site settings (`siteSettings`). One document per key; each key has its own schema,
@@ -83,6 +84,7 @@ export const SITE_SETTING_SCHEMAS = {
 	'storefront.home': StorefrontHomeSettings,
 	youtube: YouTubeSettings,
 	'youtube.feed': YouTubeFeedCache,
+	'storefront.search': StorefrontSearchSettings,
 } as const;
 export type SiteSettingKey = keyof typeof SITE_SETTING_SCHEMAS;
 export type SiteSettingValue<K extends SiteSettingKey> = z.infer<(typeof SITE_SETTING_SCHEMAS)[K]>;

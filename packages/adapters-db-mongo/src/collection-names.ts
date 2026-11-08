@@ -110,6 +110,8 @@ export const COLLECTION_NAMES = {
 	SeoRoute: 'seoRoutes',
 	AddonTemplate: 'addonTemplates',
 	// --- Search and analytics ------------------------------------------------
+	/** The admin's search words — catalog plan §7.16. */
+	SearchTerm: 'searchDictionary',
 	/** Search totals per normalised words and language — catalog plan §7.18. */
 	SearchQueryAggregate: 'searchQueryAggregates',
 	/** Daily figures per grain and key — catalog plan §7.38. */

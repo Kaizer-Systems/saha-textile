@@ -23,10 +23,18 @@ export interface SearchEntry {
 	categoryNames?: readonly string[];
 	/** Staff's search words for the values it carries, in any language. */
 	searchWords?: readonly string[];
+	/** Names and spellings of the admin's search words that tag this product, every language. */
+	searchTerms?: readonly string[];
+	/** In a Storefront settings "show first" category: ranks ahead when the words fit equally. */
+	showFirst?: boolean;
 }
 
 export interface SearchPort {
 	indexProduct(entry: SearchEntry): Promise<void>;
+	/** Several products in one write, for a search word that tags many. */
+	indexProducts(entries: readonly SearchEntry[]): Promise<void>;
+	/** Words that find each other, from the admin's search words. Replaces the whole list. */
+	updateSynonyms(synonyms: Readonly<Record<string, readonly string[]>>): Promise<void>;
 	/** Replaces the whole index and waits until it can answer. */
 	replaceIndex(entries: readonly SearchEntry[]): Promise<void>;
 	removeProduct(productId: string): Promise<void>;

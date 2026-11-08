@@ -1,7 +1,6 @@
 import type { Product } from '@saha-textile/contracts';
 import {
 	SEARCH_STOP_WORDS,
-	SEARCH_SYNONYMS,
 	SearchUnavailableError,
 	type Paginated,
 	type SearchEntry,
@@ -31,6 +30,8 @@ export interface MeilisearchClient {
  */
 export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 	private settingsApplied = false;
+	/** The admin's search words as synonyms, kept so a rebuilt index starts with them. */
+	private synonyms: Readonly<Record<string, readonly string[]>> | null = null;
 
 	constructor(
 		private readonly host: string | undefined,
@@ -41,8 +42,24 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 	) {}
 
 	async indexProduct(entry: SearchEntry): Promise<void> {
+		await this.indexProducts([entry]);
+	}
+
+	async indexProducts(entries: readonly SearchEntry[]): Promise<void> {
+		if (!entries.length) return;
 		await this.ensureSettings();
-		await this.send(`/indexes/${this.index}/documents`, 'POST', [listingDocument(entry, this.locales)]);
+		for (let start = 0; start < entries.length; start += BATCH) {
+			const documents = entries.slice(start, start + BATCH).map((entry) => listingDocument(entry, this.locales));
+			await this.send(`/indexes/${this.index}/documents`, 'POST', documents);
+		}
+	}
+
+	/** Query-time only: no document is rewritten, so this is quick at any catalogue size. */
+	async updateSynonyms(synonyms: Readonly<Record<string, readonly string[]>>): Promise<void> {
+		this.synonyms = synonyms;
+		await this.ensureSettings();
+		const task = await this.send<{ taskUid: number }>(`/indexes/${this.index}/settings/synonyms`, 'PUT', synonyms);
+		await this.waitFor(task.taskUid);
 	}
 
 	/**
@@ -97,6 +114,8 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 				q: query.q,
 				offset: (page - 1) * pageSize,
 				limit: pageSize,
+				// Storefront settings' "show first" categories lead when the words fit equally.
+				sort: ['rankFirst:asc'],
 				...(query.categoryId ? { filter: `categoryIds = ${JSON.stringify(query.categoryId)}` } : {}),
 			},
 		);
@@ -122,8 +141,12 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 
 	private async applySettings(index: string): Promise<void> {
 		const task = await this.send<{ taskUid: number }>(`/indexes/${index}/settings`, 'PATCH', {
-			// Order is rank: a match in the name beats one in the facts, which beats the description.
-			searchableAttributes: ['words', 'facts', 'description'],
+			// Order is rank: the name, then the admin's search words, then the facts, then the description.
+			searchableAttributes: ['words', 'searchTerms', 'facts', 'description'],
+			// A word in the title beats the same word further down, before closeness is weighed.
+			// `sort` sits after typos so a search's "show first" order applies only among equal fits;
+			// a listing has no words, so its own sort is untouched.
+			rankingRules: ['words', 'typo', 'sort', 'attribute', 'proximity', 'exactness'],
 			displayedAttributes: ['id'],
 			filterableAttributes: ['categoryIds', 'terms', 'filterCodes', 'facetValues', 'minINR', 'maxINR', 'rating'],
 			sortableAttributes: [
@@ -131,9 +154,11 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 				'createdOrder',
 				'minINR',
 				'percentOff',
+				'rankFirst',
 				...this.locales.map((locale) => `titleOrder.${locale}`),
 			],
-			synonyms: SEARCH_SYNONYMS,
+			// Left out until known, so a first product save never wipes the admin's list.
+			...(this.synonyms ? { synonyms: this.synonyms } : {}),
 			stopWords: [...SEARCH_STOP_WORDS],
 			// Weave names are short, so a typo in a four-letter word still has to find it.
 			typoTolerance: { minWordSizeForTypos: { oneTypo: 4, twoTypos: 8 } },

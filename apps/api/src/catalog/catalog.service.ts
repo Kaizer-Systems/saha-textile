@@ -46,6 +46,7 @@ import { randomUUID } from 'node:crypto';
 
 import { productReadModel, skuView } from './catalog-read-model';
 import { applyProductContent, syncVariantRows } from './product-content';
+import { SearchVocabularyService } from './search-vocabulary.service';
 import {
 	ADDON_TEMPLATE_REPOSITORY,
 	AUDIT_LOG_REPOSITORY,
@@ -92,6 +93,7 @@ export class CatalogService {
 		@Optional()
 		@Inject(ATTRIBUTE_DEFINITION_REPOSITORY)
 		private readonly attributes: AttributeDefinitionRepository | null = null,
+		@Optional() private readonly vocabulary: SearchVocabularyService | null = null,
 	) {}
 
 	listProducts(filter: ProductFilter): Promise<Paginated<Product>> {
@@ -446,16 +448,45 @@ export class CatalogService {
 	/** The index is derived and rebuildable, so a failed update never fails the save. */
 	async syncSearch(product: Product): Promise<void> {
 		try {
-			if (product.status === 'live') {
-				const variants = await this.variants.listForProduct(product.id, 'public');
-				const categories = await Promise.all(product.categoryIds.map((id) => this.categories.findById(id)));
-				const categoryNames = categories.flatMap((row) => Object.values(row?.name ?? {}));
-				const searchWords = valueSearchWords(product, (await this.attributes?.listAll()) ?? []);
-				await this.search?.indexProduct({ product, variants, categoryNames, searchWords });
-			} else await this.search?.removeProduct(product.id);
+			if (product.status === 'live') await this.indexLive([product]);
+			else await this.search?.removeProduct(product.id);
 		} catch (error) {
 			this.logger.warn(`Search index not updated for ${product.id}: ${String(error)}`);
 		}
+	}
+
+	/**
+	 * Re-indexes many products in one pass, for a search word or a Storefront setting that
+	 * changes how they are found. Products not on the shop are left out of the index.
+	 */
+	async syncSearchMany(products: readonly Product[]): Promise<number> {
+		const live = products.filter((product) => product.status === 'live');
+		await this.indexLive(live);
+		return live.length;
+	}
+
+	private async indexLive(products: readonly Product[]): Promise<void> {
+		if (!this.search || !products.length) return;
+		const [variants, tree, definitions, vocabulary] = await Promise.all([
+			this.variants.listForProducts(
+				products.map((product) => product.id),
+				'public',
+			),
+			this.categories.tree(),
+			this.attributes?.listAll() ?? Promise.resolve([]),
+			this.vocabulary?.current() ?? Promise.resolve(null),
+		]);
+		const names = new Map(tree.map((row) => [row.id, Object.values(row.name)]));
+		await this.search.indexProducts(
+			products.map((product) => ({
+				product,
+				variants: variants.filter((row) => row.productId === product.id),
+				categoryNames: product.categoryIds.flatMap((id) => names.get(id) ?? []),
+				searchWords: valueSearchWords(product, definitions),
+				searchTerms: vocabulary?.wordsFor(product) ?? [],
+				showFirst: vocabulary?.showsFirst(product) ?? false,
+			})),
+		);
 	}
 
 	async inTransaction(write: () => Promise<void>) {

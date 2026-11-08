@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { SEARCH_SYNONYMS, searchDocument } from '../src/catalog/search-index';
+import { SEARCH_STOP_WORDS, searchDocument } from '../src/catalog/search-index';
 import { dedupeById, liveRelations } from '../src/catalog/relation-rules';
 
 describe('search document', () => {
@@ -16,13 +16,8 @@ describe('search document', () => {
 		expect('price' in doc || 'basePriceINR' in doc).toBe(false);
 	});
 
-	it('links the short ikat spellings both ways and ikkatsilk only toward the two words', () => {
-		expect(SEARCH_SYNONYMS.ikat).toContain('ikkat');
-		expect(SEARCH_SYNONYMS.ikkat).toContain('ikat');
-		expect(SEARCH_SYNONYMS.kanjivaram).toContain('kanchipuram');
-		expect(SEARCH_SYNONYMS.kanchipuram).not.toContain('kanchipuram');
-		expect(SEARCH_SYNONYMS.ikkatsilk).toEqual(['ikkat silk', 'ikkat']);
-		expect(SEARCH_SYNONYMS.ikat).not.toContain('ikkatsilk');
+	it('keeps only English filler words; spellings belong to the admin search words', () => {
+		expect(SEARCH_STOP_WORDS).toEqual(['a', 'an', 'and', 'for', 'in', 'of', 'the', 'with']);
 	});
 });
 

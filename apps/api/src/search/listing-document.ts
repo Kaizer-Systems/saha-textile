@@ -28,13 +28,15 @@ function factWords(product: Product, categoryNames: readonly string[], searchWor
 }
 
 export function listingDocument(
-	{ product, variants, categoryNames = [], searchWords = [] }: SearchEntry,
+	{ product, variants, categoryNames = [], searchWords = [], searchTerms = [], showFirst = false }: SearchEntry,
 	locales: readonly string[],
 ) {
 	const groups = product.optionGroups.filter((group) => FACET_ROLES.has(group.semanticRole));
 	return {
 		...searchDocument(product),
 		facts: factWords(product, categoryNames, searchWords),
+		searchTerms: searchTerms.join(' '),
+		rankFirst: showFirst ? 0 : 1,
 		description: Object.values(product.shortDescription).join(' '),
 		...listingPrice(product, variants),
 		idOrder: idOrder(product.id),

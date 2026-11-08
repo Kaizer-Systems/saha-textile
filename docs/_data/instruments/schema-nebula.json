@@ -32,8 +32,8 @@
 	},
 	"inventory": {
 		"nodeCount": 75,
-		"existingModelCount": 50,
-		"targetOnlyCount": 25,
+		"existingModelCount": 51,
+		"targetOnlyCount": 24,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map."
 	},
@@ -404,12 +404,13 @@
 			"id": "searchDictionary",
 			"label": "searchDictionary",
 			"cluster": "search-discovery",
-			"currentState": "planned",
-			"targetAction": "add",
+			"currentState": "existing",
+			"targetAction": "refactor",
 			"owningChunks": ["F"],
 			"blockingDecisions": [],
 			"purpose": "Curated transliteration, misspelling, synonym, and merchandising query intelligence.",
 			"source": "catalog §7.16",
+			"currentModel": "packages/adapters-db-mongo/src/models/search-dictionary.model.ts",
 			"references": []
 		},
 		{

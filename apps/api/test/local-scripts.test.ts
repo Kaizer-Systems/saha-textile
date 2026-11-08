@@ -81,8 +81,10 @@ vi.mock('@saha-textile/adapters-db-mongo', () => {
 		MongoProductVariantRepository: repository(() => h.variants),
 		MongoAttributeDefinitionRepository: repository(() => ({ listAll: async () => [] })),
 		MongoCategoryRepository: repository(() => ({
-			tree: async () => [{ id: 'cat_1', name: { en: 'Sarees', bn: 'শাড়ি' } }],
+			tree: async () => [{ id: 'cat_1', name: { en: 'Sarees', bn: 'শাড়ি' }, ancestors: [] }],
 		})),
+		MongoSearchTermRepository: repository(() => ({ listLive: async () => [] })),
+		MongoSiteSettingsRepository: repository(() => ({ get: async () => null })),
 		MongoMediaAssetRepository: repository(() => h.assets),
 		MongoMediaRoleRepository: blank,
 		MongoAdminInviteRepository: blank,
@@ -148,6 +150,7 @@ vi.mock('../src/search/meilisearch-search', () => ({
 		constructor(_host: string, _key: string, categories: () => Promise<unknown[]>) {
 			h.search.categories = vi.fn(categories);
 		}
+		updateSynonyms = async () => undefined;
 	},
 }));
 vi.mock('../src/openapi', () => ({ createOpenApiDocument: (...args: unknown[]) => h.openapi(...args) }));

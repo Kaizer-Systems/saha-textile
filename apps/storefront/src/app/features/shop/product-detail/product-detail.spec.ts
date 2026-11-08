@@ -58,6 +58,7 @@ const render = (
 		applyJsonLd: vi.fn(),
 		removeJsonLd: vi.fn(),
 		applyDocument: vi.fn(),
+		applyProduct: vi.fn(),
 		absoluteUrl: (path: string) => `https://shop.test${path}`,
 		absoluteAsset: (path: string) => `https://cdn.test${path}`,
 	};
@@ -288,6 +289,49 @@ describe('ProductDetail SEO', () => {
 				{ name: 'Red saree', offers: { price: 200, availability: 'https://schema.org/OutOfStock' } },
 			],
 		});
+	});
+
+	it('describes the product fully for search engines and link previews', () => {
+		const { seo } = render();
+		product.set({
+			...base,
+			description: '<p>Woven&nbsp;in   Varanasi.</p>',
+			product_thumbnail: { original_url: '/a.webp' },
+			product_galleries: [{ original_url: '/a.webp' }, { original_url: '/b.webp' }, {}],
+			semantic_attributes: [
+				{ code: 'fabric', value: 'Silk' },
+				{ code: 'color', value: 'Red' },
+			],
+			reviews_count: 3,
+			rating_count: 4.666,
+			variations: [
+				{ sku: 'V 1', name: 'Red', sale_price: 100, price: 200, stock_status: 'in_stock' },
+				{ sku: 'V2', name: 'Blue', sale_price: 0, price: 200, stock_status: 'in_stock' },
+			],
+			attributes: [{ slug: 'color', name: 'Colour' }],
+		});
+		TestBed.tick();
+		const group = jsonLd(seo, 'product-group') as Record<string, unknown>;
+		expect(group).toMatchObject({
+			description: 'Woven in Varanasi.',
+			brand: { '@type': 'Brand', name: 'Saha Textile' },
+			image: ['https://cdn.test/a.webp', 'https://cdn.test/b.webp'],
+			material: 'Silk',
+			color: 'Red',
+			aggregateRating: { ratingValue: 4.7, reviewCount: 3 },
+		});
+		expect((group['hasVariant'] as Array<Record<string, unknown>>)[0]).toMatchObject({
+			url: 'https://shop.test/product/red-saree?variant=V%201',
+			inProductGroupWithID: 'red-saree',
+			offers: { itemCondition: 'https://schema.org/NewCondition', seller: { name: 'Saha Textile' } },
+		});
+		expect(seo.applyProduct).toHaveBeenLastCalledWith({ priceINR: 1500, imageAlt: 'Red saree' });
+		product.set({ ...base, sale_price: 0, reviews_count: 0 });
+		TestBed.tick();
+		const plain = jsonLd(seo, 'product-group') as Record<string, unknown>;
+		expect(plain['aggregateRating']).toBeUndefined();
+		expect(plain['description']).toBeUndefined();
+		expect(seo.applyProduct).toHaveBeenLastCalledWith({ priceINR: 2000, imageAlt: 'Red saree' });
 	});
 
 	it('adds FAQ structured data for the visible FAQ, and removes it without one', () => {

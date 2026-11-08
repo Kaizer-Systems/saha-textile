@@ -201,6 +201,24 @@ describe('LocaleSeo', () => {
 		expect(content('article:tag')).toEqual([]);
 	});
 
+	it('marks a product with its price and image text, and every next page as a website again', () => {
+		runtimeConfig.siteUrl = SITE;
+		const { seo, navigate, doc } = harness('en');
+		const content = (property: string) =>
+			[...doc.head.querySelectorAll(`meta[property='${property}']`)].map((tag) => tag.getAttribute('content'));
+		navigate('/product/red-saree');
+		seo.applyProduct({ priceINR: 2500, imageAlt: 'Red saree' });
+		seo.applyProduct({ priceINR: 2400 });
+		expect(content('og:type')).toEqual(['product']);
+		expect(content('product:price:amount')).toEqual(['2400']);
+		expect(content('product:price:currency')).toEqual(['INR']);
+		expect(content('og:image:alt')).toEqual(['Red saree']);
+		navigate('/collections/sarees');
+		expect(content('og:type')).toEqual(['website']);
+		expect(content('product:price:amount')).toEqual([]);
+		expect(content('og:image:alt')).toEqual([]);
+	});
+
 	it('removes a page’s structured data when asked', () => {
 		const { seo, doc } = harness('en');
 		seo.applyJsonLd('blog-post', { '@type': 'BlogPosting' });

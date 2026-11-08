@@ -106,6 +106,17 @@ export class LocaleSeo {
 		}
 	}
 
+	/**
+	 * Marks the page as a product for link previews: `og:type product`, its price in rupees and the
+	 * image's alt text. Every navigation resets these, so only the product page carries them.
+	 */
+	applyProduct(input: { priceINR: number; imageAlt?: string }): void {
+		this.meta.updateTag({ property: 'og:type', content: 'product' });
+		this.meta.updateTag({ property: 'product:price:amount', content: String(input.priceINR) });
+		this.meta.updateTag({ property: 'product:price:currency', content: 'INR' });
+		if (input.imageAlt) this.meta.updateTag({ property: 'og:image:alt', content: input.imageAlt });
+	}
+
 	applyDocument(input: { title?: string; description?: string; robots?: string; image?: string }): void {
 		if (input.title) {
 			this.doc.title = input.title;
@@ -168,7 +179,15 @@ export class LocaleSeo {
 		const hidden = notFound || gone || isPrivatePath(path);
 		this.setOpenGraphLocales(!hidden);
 		this.meta.updateTag({ property: 'og:type', content: 'website' });
-		this.removeArticleTags(['article:published_time', 'article:modified_time', 'article:section', 'article:tag']);
+		this.removeArticleTags([
+			'article:published_time',
+			'article:modified_time',
+			'article:section',
+			'article:tag',
+			'product:price:amount',
+			'product:price:currency',
+			'og:image:alt',
+		]);
 		if (hidden) {
 			this.meta.removeTag("property='og:url'");
 			this.meta.updateTag({ name: 'robots', content: 'noindex,follow' });

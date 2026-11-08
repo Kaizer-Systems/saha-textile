@@ -57,6 +57,14 @@ const VARIES_BY: Record<string, string> = {
 	pattern: 'https://schema.org/pattern',
 };
 
+/** Description markup as plain text for structured data. */
+const textOf = (html: string | undefined): string =>
+	(html ?? '')
+		.replace(/<[^>]*>/g, ' ')
+		.replace(/&nbsp;/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
+
 const uniqueCards = (cards: IProduct[]): IProduct[] =>
 	cards.filter((card, index) => cards.findIndex((other) => other.id === card.id) === index);
 
@@ -235,6 +243,10 @@ export class ProductDetail {
 					description: product.meta_description,
 					image: product.product_meta_image?.original_url,
 				});
+			this.seo.applyProduct({
+				priceINR: product.sale_price || product.price,
+				imageAlt: product.name,
+			});
 		});
 	}
 
@@ -244,15 +256,47 @@ export class ProductDetail {
 	 */
 	private structuredProduct(product: IProduct) {
 		const url = this.seo.absoluteUrl(`/product/${product.slug}`);
-		const thumbnail = product.product_thumbnail?.original_url;
-		const image = thumbnail ? this.seo.absoluteAsset(thumbnail) : undefined;
-		const offer = (price: number, inStock: boolean) => ({
+		const images = [
+			...new Set(
+				[product.product_thumbnail, ...(product.product_galleries ?? [])]
+					.map((frame) => frame?.original_url)
+					.filter((source): source is string => !!source),
+			),
+		]
+			.slice(0, 10)
+			.map((source) => this.seo.absoluteAsset(source));
+		const image = images.length > 1 ? images : images[0];
+		const facts = new Map((product.semantic_attributes ?? []).map((fact) => [fact.code, fact.value]));
+		const description = textOf(product.description || product.short_description).slice(0, 5000) || undefined;
+		const brand = { '@type': 'Brand', name: 'Saha Textile' };
+		const seller = { '@type': 'Organization', name: 'Saha Textile' };
+		// Stars only from approved reviews, and only once there is one (owner log § product page).
+		const aggregateRating = product.reviews_count
+			? {
+					'@type': 'AggregateRating',
+					ratingValue: Number(product.rating_count.toFixed(1)),
+					reviewCount: product.reviews_count,
+					bestRating: 5,
+					worstRating: 1,
+				}
+			: undefined;
+		const offer = (price: number, inStock: boolean, offerUrl = url) => ({
 			'@type': 'Offer',
 			priceCurrency: 'INR',
 			price,
-			url,
+			url: offerUrl,
+			itemCondition: 'https://schema.org/NewCondition',
 			availability: `https://schema.org/${inStock ? 'InStock' : 'OutOfStock'}`,
+			seller,
 		});
+		const shared = {
+			description,
+			brand,
+			material: facts.get('fabric'),
+			color: facts.get('color'),
+			pattern: facts.get('pattern'),
+			aggregateRating,
+		};
 		const variants = product.variations ?? [];
 		if (variants.length > 1) {
 			return {
@@ -261,15 +305,25 @@ export class ProductDetail {
 				name: product.name,
 				url,
 				image,
+				...shared,
 				productGroupID: product.slug,
 				variesBy: product.attributes.map((attribute) => VARIES_BY[attribute.slug] ?? attribute.name),
-				hasVariant: variants.map((variation) => ({
-					'@type': 'Product',
-					sku: variation.sku,
-					name: variation.name || product.name,
-					image,
-					offers: offer(variation.sale_price || variation.price, variation.stock_status === 'in_stock'),
-				})),
+				hasVariant: variants.map((variation) => {
+					const variantUrl = `${url}?variant=${encodeURIComponent(variation.sku)}`;
+					return {
+						'@type': 'Product',
+						sku: variation.sku,
+						name: variation.name || product.name,
+						url: variantUrl,
+						image,
+						inProductGroupWithID: product.slug,
+						offers: offer(
+							variation.sale_price || variation.price,
+							variation.stock_status === 'in_stock',
+							variantUrl,
+						),
+					};
+				}),
 			};
 		}
 		const [only] = variants;
@@ -279,6 +333,7 @@ export class ProductDetail {
 			name: product.name,
 			url,
 			image,
+			...shared,
 			sku: only?.sku || product.sku,
 			offers: only
 				? offer(only.sale_price || only.price, only.stock_status === 'in_stock')

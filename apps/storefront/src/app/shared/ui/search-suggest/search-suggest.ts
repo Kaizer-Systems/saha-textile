@@ -252,9 +252,10 @@ export class SearchSuggest {
 	 * bottom of the window, less the phone's fixed bottom bar, then scrolls inside.
 	 */
 	private fitToScreen(): void {
-		const bottomBar = this.page.querySelector<HTMLElement>('.mobile-menu');
-		const barHeight = bottomBar && bottomBar.offsetParent !== null ? bottomBar.offsetHeight : 0;
-		const room = window.innerHeight - this.field().getBoundingClientRect().bottom - barHeight - 12;
+		// The bar is fixed to the bottom on phones and hidden on wider screens.
+		const bar = this.page.querySelector<HTMLElement>('.mobile-menu')?.getBoundingClientRect();
+		const floor = bar && bar.height > 0 ? Math.min(bar.top, window.innerHeight) : window.innerHeight;
+		const room = floor - this.field().getBoundingClientRect().bottom - 12;
 		this.renderer.setStyle(
 			this.host.nativeElement,
 			'--suggest-room',

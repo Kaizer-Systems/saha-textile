@@ -66,6 +66,7 @@
 		<select2
 			class="custom-select"
 			[templates]="template"
+			[templateSelection]="chosen"
 			[data]="productOptions()"
 			[placeholder]="'select_product' | transloco"
 			formControlName="products"
@@ -85,6 +86,13 @@
 						alt="img"
 					/>
 				</div>
+				{{ data.name }}
+			</ng-template>
+			<!-- A picked product shows as its name; the picture stays in the list. -->
+			<ng-template
+				#chosen
+				let-data="data"
+			>
 				{{ data.name }}
 			</ng-template>
 		</select2>

@@ -32,7 +32,8 @@
 		padding: 10px;
 		border: 1px solid #f0f3f8;
 		height: max-content;
-		max-height: min(500px, calc(100dvh - 160px));
+		/* `--suggest-room` is the space left below the field, measured as the box opens. */
+		max-height: min(500px, var(--suggest-room, 500px));
 	}
 
 	&::-webkit-scrollbar {

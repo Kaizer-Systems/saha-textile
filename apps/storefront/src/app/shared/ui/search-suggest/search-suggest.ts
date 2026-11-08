@@ -6,6 +6,7 @@ import {
 	ElementRef,
 	PLATFORM_ID,
 	Renderer2,
+	RendererStyleFlags2,
 	computed,
 	effect,
 	inject,
@@ -242,7 +243,24 @@ export class SearchSuggest {
 		if (!this.isBrowser) return;
 		this.term.set(this.field().value);
 		this.loadHistory();
+		this.fitToScreen();
 		this.open.set(true);
+	}
+
+	/**
+	 * Keeps the whole box on screen: it may grow only to the space between the field and the
+	 * bottom of the window, less the phone's fixed bottom bar, then scrolls inside.
+	 */
+	private fitToScreen(): void {
+		const bottomBar = this.page.querySelector<HTMLElement>('.mobile-menu');
+		const barHeight = bottomBar && bottomBar.offsetParent !== null ? bottomBar.offsetHeight : 0;
+		const room = window.innerHeight - this.field().getBoundingClientRect().bottom - barHeight - 12;
+		this.renderer.setStyle(
+			this.host.nativeElement,
+			'--suggest-room',
+			`${Math.max(160, Math.round(room))}px`,
+			RendererStyleFlags2.DashCase,
+		);
 	}
 
 	close(): void {

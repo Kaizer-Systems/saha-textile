@@ -222,6 +222,13 @@ export class SearchSuggest {
 			else this.renderer.removeAttribute(field, 'aria-activedescendant');
 		});
 
+		// The arrow keys can reach rows below the box's fold.
+		effect(() => {
+			const option = this.options()[this.active()];
+			if (!option || !this.isBrowser) return;
+			queueMicrotask(() => this.page.getElementById(option.id)?.scrollIntoView?.({ block: 'nearest' }));
+		});
+
 		// A shorter or longer list keeps the highlight on a real row.
 		effect(() => {
 			if (this.active() >= this.options().length) this.active.set(-1);

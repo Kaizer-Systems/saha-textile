@@ -255,15 +255,22 @@ export async function writeCatalogue(
 }
 
 function seoRouteDocs(mapped: DemoCatalogue): Array<{ _id: string }> {
+	const LOCALES = ['en', 'bn'] as const;
+	type Locale = (typeof LOCALES)[number];
 	const rows: Array<Record<string, unknown>> = [];
-	const add = (path: string, title: string, description: string, entityType: string, entityId: string) => {
-		for (const locale of ['en', 'bn'] as const) {
+	/** Each language row carries that language's title and description, never another's. */
+	const add = (
+		path: string,
+		text: (locale: Locale) => { title: string; description: string },
+		entityType: string,
+		entityId: string,
+	) => {
+		for (const locale of LOCALES) {
 			rows.push({
 				_id: `seo_${locale}${path.replace(/\//g, '_')}`,
 				path,
 				locale,
-				title,
-				description,
+				...text(locale),
 				canonicalPath: `/${locale}${path === '/' ? '' : path}`,
 				robots: 'index,follow',
 				indexable: true,
@@ -272,15 +279,37 @@ function seoRouteDocs(mapped: DemoCatalogue): Array<{ _id: string }> {
 			});
 		}
 	};
-	add('/', 'Saha Textile', '', 'page', 'home');
+	const localized = (value: Record<string, string> | undefined, locale: Locale): string =>
+		value?.[locale] || value?.['en'] || '';
+	add('/', () => ({ title: 'Saha Textile', description: '' }), 'page', 'home');
 	for (const product of mapped.products) {
 		if (product.status !== 'live') continue;
-		add(`/product/${product.slug}`, product.title.en, product.description?.en ?? '', 'product', product.id);
+		add(
+			`/product/${product.slug}`,
+			(locale) => ({
+				title: localized(product.title, locale),
+				description: localized(product.description, locale),
+			}),
+			'product',
+			product.id,
+		);
 	}
+	const categoryNames = new Map(mapped.categories.map((row) => [row.id, row.name as Record<string, string>]));
 	for (const placement of mapped.placements) {
 		if (placement.status !== 'live') continue;
 		const path = `/collections/${placement.pathSlugs.join('/')}`;
-		add(path, placement.pathLabel, '', 'category', placement.id);
+		add(
+			path,
+			(locale) => ({
+				title:
+					locale === 'en'
+						? placement.pathLabel
+						: placement.pathCategoryIds.map((id) => localized(categoryNames.get(id), locale)).join(' / '),
+				description: '',
+			}),
+			'category',
+			placement.id,
+		);
 	}
 	return rows as Array<{ _id: string }>;
 }

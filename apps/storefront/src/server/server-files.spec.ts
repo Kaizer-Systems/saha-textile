@@ -175,6 +175,25 @@ describe('SEO files', () => {
 		expect(body).toContain('<loc>https://shop.test/en/product/red</loc>');
 	});
 
+	it('names the other-language version of each address, with English as the default', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				async () =>
+					new Response(JSON.stringify({ paths: ['/bn/product/red', '/en/product/red', '/en/about'] })),
+			),
+		);
+		await run(event('/sitemap.xml', {}, { host: 'shop.test' }));
+		const body = (h3.send.mock.calls.at(-1) as unknown as [unknown, string])[1];
+		const pair =
+			'<xhtml:link rel="alternate" hreflang="en" href="https://shop.test/en/product/red"/>' +
+			'<xhtml:link rel="alternate" hreflang="bn" href="https://shop.test/bn/product/red"/>' +
+			'<xhtml:link rel="alternate" hreflang="x-default" href="https://shop.test/en/product/red"/>';
+		expect(body).toContain(`<loc>https://shop.test/bn/product/red</loc>${pair}</url>`);
+		expect(body).toContain(`<loc>https://shop.test/en/product/red</loc>${pair}</url>`);
+		expect(body).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"');
+	});
+
 	it('answers 503 when the list cannot be read', async () => {
 		vi.stubGlobal(
 			'fetch',

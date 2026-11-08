@@ -69,6 +69,7 @@ interface Options {
 	retired?: string[];
 	live?: string[];
 	canonical?: unknown;
+	faqs?: unknown;
 }
 
 const build = (options: Options = {}) => {
@@ -122,9 +123,68 @@ const build = (options: Options = {}) => {
 					bundles as never,
 					categories as never,
 					seo as never,
+					undefined,
+					undefined,
+					options.faqs as never,
 				);
 	return { service, products, variants, placements, media, seo };
 };
+
+describe('product page FAQ', () => {
+	const entry = (id: string, productIds: string[], en: string) => ({
+		id,
+		productIds,
+		question: { en: `${en}?`, bn: `${en} বাংলা?` },
+		answer: { en: 'Yes', bn: 'হ্যাঁ' },
+	});
+
+	it('shows the product’s own questions first, then its categories’ and parents’, never shop-wide', async () => {
+		const faqs = {
+			resolveForSurface: vi.fn(async () => [
+				entry('f_cat', [], 'Category'),
+				entry('f_own', ['prd_1'], 'Own'),
+				{ ...entry('f_blank', [], 'Blank'), answer: { en: ' ' } },
+			]),
+		};
+		const page = await build({
+			rows: [product({ faqEnabled: true, categoryIds: ['cat_silk'] })],
+			canonical: { pathCategoryIds: ['cat_saree', 'cat_silk'] },
+			faqs,
+		}).service.page('red-saree');
+		expect(page.faq).toEqual([
+			{ question: 'Own?', answer: 'Yes' },
+			{ question: 'Category?', answer: 'Yes' },
+		]);
+		expect(faqs.resolveForSurface).toHaveBeenCalledWith({
+			productId: 'prd_1',
+			categoryIds: ['cat_silk', 'cat_saree'],
+			includeGlobal: false,
+		});
+	});
+
+	it('is empty while switched off, and without placements reads the product’s own categories', async () => {
+		const faqs = { resolveForSurface: vi.fn(async () => [entry('f_own', ['prd_1'], 'Own')]) };
+		expect((await build({ faqs }).service.page('red-saree')).faq).toEqual([]);
+		expect(faqs.resolveForSurface).not.toHaveBeenCalled();
+		const bare = new CatalogPublicService(
+			{ findBySlug: async () => product({ faqEnabled: true, categoryIds: ['c1'] }) } as never,
+			{ listForProduct: async () => [variant()] } as never,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			faqs as never,
+		);
+		expect((await bare.page('red-saree')).faq).toHaveLength(1);
+		expect(faqs.resolveForSurface).toHaveBeenLastCalledWith(expect.objectContaining({ categoryIds: ['c1'] }));
+	});
+});
 
 describe('product page', () => {
 	it('refuses an unknown product, and finds one by id', async () => {

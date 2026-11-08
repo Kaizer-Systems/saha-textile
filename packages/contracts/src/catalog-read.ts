@@ -332,6 +332,8 @@ export const CatalogProductPage = z.object({
 	breadcrumb: z.array(z.object({ name: z.string(), path: z.string() })),
 	/** From approved reviews only; zero until one is approved. */
 	rating: z.object({ average: z.number().min(0).max(5), count: z.number().int().nonnegative() }),
+	/** The FAQ section, in the page language; empty when the product's FAQ is off. */
+	faq: z.array(z.object({ question: z.string(), answer: z.string() })).default([]),
 });
 export type CatalogProductPage = z.infer<typeof CatalogProductPage>;
 

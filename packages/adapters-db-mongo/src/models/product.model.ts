@@ -37,6 +37,7 @@ export interface ProductDoc {
 	lowStockThreshold?: number | null;
 	lifetimeUnitsReceived?: number;
 	featured?: boolean;
+	faqEnabled?: boolean;
 	insightBadges?: Array<'bestseller' | 'trending'>;
 	pinnedBadges?: string[];
 	hiddenBadges?: string[];
@@ -88,6 +89,7 @@ const ProductSchema = new Schema<ProductDoc>(
 		lowStockThreshold: { type: Number, default: null },
 		lifetimeUnitsReceived: { type: Number, default: 0 },
 		featured: { type: Boolean, default: false },
+		faqEnabled: { type: Boolean, default: false },
 		insightBadges: { type: [String], default: [] },
 		pinnedBadges: { type: [String], default: [] },
 		hiddenBadges: { type: [String], default: [] },

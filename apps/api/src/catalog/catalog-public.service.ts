@@ -23,6 +23,7 @@ import {
 	type AddonTemplateRepository,
 	type CategoryPlacementRepository,
 	type CategoryRepository,
+	type FaqRepository,
 	type ListingFilters,
 	type ListingPort,
 	type MediaAssetRepository,
@@ -43,6 +44,7 @@ import {
 	ADDON_TEMPLATE_REPOSITORY,
 	CATEGORY_PLACEMENT_REPOSITORY,
 	CATEGORY_REPOSITORY,
+	FAQ_REPOSITORY,
 	LISTING_PORT,
 	MEDIA_ASSET_REPOSITORY,
 	PRODUCT_BUNDLE_REPOSITORY,
@@ -98,6 +100,7 @@ export class CatalogPublicService {
 		@Optional() @Inject(SEO_ROUTE_REPOSITORY) private readonly seoRoutes: SeoRouteRepository | null = null,
 		@Optional() @Inject(LISTING_PORT) listing: ListingPort | null = null,
 		@Optional() @Inject(APP_CONFIG) config: AppConfig | null = null,
+		@Optional() @Inject(FAQ_REPOSITORY) private readonly faqs: FaqRepository | null = null,
 	) {
 		this.listings = listing ?? new MongoListing(products, variants);
 		this.locales = config?.locales ?? ['en'];
@@ -257,6 +260,7 @@ export class CatalogPublicService {
 			bundle: await this.bundleFor(product),
 			breadcrumb: await this.breadcrumbFor(product),
 			rating: { average: product.ratingsSummary.avg, count: product.ratingsSummary.count },
+			faq: await this.faqFor(product),
 		});
 	}
 
@@ -350,6 +354,27 @@ export class CatalogPublicService {
 			priceINR: bundle.pricePolicy === 'fixed_bundle_price' ? (bundle.fixedPriceINR ?? sum) : sum,
 			groups: usable,
 		};
+	}
+
+	/**
+	 * The product page FAQ, when switched on: the product's own questions, then its categories'
+	 * and their parents' (owner decision 2026-11-08). Shop-wide questions stay on the FAQ page.
+	 */
+	private async faqFor(product: Product): Promise<Array<{ question: string; answer: string }>> {
+		if (!product.faqEnabled || !this.faqs) return [];
+		const placements = this.placements;
+		const paths = placements
+			? await Promise.all(product.categoryIds.map((id) => placements.findCanonical(id)))
+			: [];
+		const categoryIds = [
+			...new Set([...product.categoryIds, ...paths.flatMap((row) => row?.pathCategoryIds ?? [])]),
+		];
+		const entries = await this.faqs.resolveForSurface({ productId: product.id, categoryIds, includeGlobal: false });
+		const own = entries.filter((entry) => entry.productIds.includes(product.id));
+		const shared = entries.filter((entry) => !entry.productIds.includes(product.id));
+		return [...own, ...shared]
+			.map((entry) => ({ question: localized(entry.question), answer: localized(entry.answer) }))
+			.filter((entry) => entry.question.trim() && entry.answer.trim());
 	}
 
 	private async breadcrumbFor(product: Product) {

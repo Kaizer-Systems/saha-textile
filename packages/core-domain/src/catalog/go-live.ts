@@ -13,6 +13,8 @@ export interface GoLiveInput {
 	assetAlt: AssetAlt;
 	/** The sizes the primary image has been made in. Null when it is not in the library. */
 	primaryRoles?: readonly string[] | null;
+	/** The product's own FAQ questions, checked only while its FAQ is switched on. */
+	faq?: readonly { question: Readonly<Record<string, string>>; answer: Readonly<Record<string, string>> }[];
 }
 
 /** The images a product shows: its gallery, or every combination's in order in compound mode. */
@@ -31,7 +33,7 @@ function text(field: string, values: Readonly<Record<string, string>> | undefine
  * Everything that stops a product going live. One rule for the form and the list: every
  * language-bound field in every active language, plus a category, a price and a primary image.
  */
-export function goLiveGaps({ product, variants, locales, assetAlt, primaryRoles }: GoLiveInput): GoLiveGap[] {
+export function goLiveGaps({ product, variants, locales, assetAlt, primaryRoles, faq = [] }: GoLiveInput): GoLiveGap[] {
 	const gaps: GoLiveGap[] = [
 		...text('title', product.title, locales),
 		...text('short_description', product.shortDescription, locales),
@@ -50,6 +52,12 @@ export function goLiveGaps({ product, variants, locales, assetAlt, primaryRoles 
 				gaps.push({ field: `swatch_image:${group.attributeCode}:${term.code}`, locale: null });
 			}
 		}
+	}
+	if (product.faqEnabled) {
+		faq.forEach((entry, index) => {
+			gaps.push(...text(`faq_question:${index + 1}`, entry.question, locales));
+			gaps.push(...text(`faq_answer:${index + 1}`, entry.answer, locales));
+		});
 	}
 	const leadTime = product.estimatedDeliveryText;
 	if (leadTime && filled(leadTime['en'])) gaps.push(...text('lead_time', leadTime, locales));

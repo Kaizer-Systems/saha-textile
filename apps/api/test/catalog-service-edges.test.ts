@@ -162,6 +162,9 @@ const build = (options: Options = {}) => {
 				storage as never,
 				search as never,
 				stockAlerts as never,
+				undefined,
+				undefined,
+				(options as { faqs?: unknown }).faqs as never,
 			);
 	return {
 		service,
@@ -363,6 +366,20 @@ describe('admin list and detail', () => {
 		const row = product({ media: { gallery: ['m1', 'gone'], compound: [], altOverrides: {} } });
 		const detail = await build({ row, rows: [variant()], assets: [asset] }).service.adminDetail('red-saree');
 		expect(detail.images).toMatchObject([{ assetId: 'm1', url: 'https://cdn.test/k' }]);
+	});
+
+	it('gives the form the FAQ switch and the product’s own questions', async () => {
+		const faqs = {
+			listForProduct: vi.fn(async () => [{ id: 'f1', question: { en: 'Q?' }, answer: { en: 'A' } }]),
+		};
+		const row = product({ faqEnabled: true });
+		const detail = await build({ row, rows: [variant()], faqs } as never).service.adminDetail('red-saree');
+		expect(detail.content).toMatchObject({
+			faqEnabled: true,
+			faq: [{ id: 'f1', question: { en: 'Q?' }, answer: { en: 'A' } }],
+		});
+		const none = await build({ row: product(), rows: [variant()] }).service.adminDetail('red-saree');
+		expect(none.content).toMatchObject({ faqEnabled: false, faq: [] });
 	});
 
 	it('falls back to the base price, and to no thumbnail', async () => {

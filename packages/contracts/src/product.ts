@@ -170,6 +170,8 @@ export const Product = z.object({
 	lowStockThreshold: z.number().int().nonnegative().nullable().default(null),
 	lifetimeUnitsReceived: z.number().int().nonnegative().default(0),
 	featured: z.boolean().default(false),
+	/** Shows the FAQ section on the product page: its own questions and its categories'. */
+	faqEnabled: z.boolean().default(false),
 	insightBadges: z.array(z.enum(['bestseller', 'trending'])).default([]),
 	pinnedBadges: z.array(z.string()).default([]),
 	hiddenBadges: z.array(z.string()).default([]),

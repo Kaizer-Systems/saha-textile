@@ -42,6 +42,19 @@ export const ProductContentWrite = z.object({
 	gallery: z.array(z.string().min(1)).max(40),
 	compound: z.array(z.object({ selectionHash: z.string().min(1), gallery: z.array(z.string().min(1)).max(40) })),
 	altOverrides: z.record(z.string(), TextByLocale),
+	/** The FAQ tab: the switch, and this product's own questions in display order. */
+	faqEnabled: z.boolean().default(false),
+	faq: z
+		.array(
+			z.object({
+				/** Present for a question already saved; a new one gets an id on save. */
+				id: z.string().min(1).optional(),
+				question: z.record(z.string(), z.string().max(500)),
+				answer: z.record(z.string(), z.string().max(4000)),
+			}),
+		)
+		.max(30)
+		.default([]),
 });
 export type ProductContentWrite = z.infer<typeof ProductContentWrite>;
 

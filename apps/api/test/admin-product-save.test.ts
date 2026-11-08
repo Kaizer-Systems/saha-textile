@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Product, ProductMerchandisingWrite, ProductVariant, type SeoRedirect } from '@saha-textile/contracts';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { z } from 'zod';
 
 import { CatalogService } from '../src/catalog/catalog.service';
@@ -36,7 +36,7 @@ function variant(id: string, sku: string): Variant {
 	});
 }
 
-function harness(start: ProductRow = product()) {
+function harness(start: ProductRow = product(), faqs: unknown = null) {
 	let saved = start;
 	const variants = new Map([
 		['var_s', variant('var_s', 'KPS-1')],
@@ -66,11 +66,24 @@ function harness(start: ProductRow = product()) {
 		findBySource: async () => null,
 		list: async () => redirects,
 	};
+	const none = undefined as never;
 	const catalog = new CatalogService(
 		products as never,
 		{ findById: async () => null } as never,
 		variantRepo as never,
 		redirectRepo as never,
+		none,
+		none,
+		none,
+		none,
+		none,
+		none,
+		none,
+		none,
+		none,
+		none,
+		none,
+		faqs as never,
 	);
 	return { catalog, variants, redirects, current: () => saved };
 }
@@ -161,6 +174,66 @@ describe('admin product save', () => {
 		} as never);
 		expect(current().shortDescription).toEqual({ bn: 'Court' });
 		expect([...variants.values()].some((row) => row.optionSelectionHash === 'color:red')).toBe(true);
+	});
+
+	it('saves the FAQ tab as product questions in order, dropping blanks and removed ones', async () => {
+		const stored = [
+			{ id: 'faq_old', productIds: ['prd_kurti'], question: { en: 'Old?' }, answer: { en: 'Yes' } },
+			{ id: 'faq_shared', productIds: ['prd_kurti', 'prd_other'], question: { en: 'S?' }, answer: { en: 'S' } },
+			{ id: 'faq_keep', productIds: ['prd_kurti'], question: { en: 'Keep?' }, answer: { en: 'Yes' } },
+		];
+		const faqs = {
+			listForProduct: vi.fn(async () => stored),
+			save: vi.fn(async (entry: unknown) => entry),
+			deleteById: vi.fn(async () => {}),
+		};
+		const { catalog, current } = harness(product(), faqs);
+		const base = {
+			title: { en: 'Kurti' },
+			shortDescription: {},
+			description: {},
+			metaTitle: {},
+			metaDescription: {},
+			categoryIds: ['c'],
+			optionGroups: [],
+			addonTemplateCode: null,
+			imageMode: 'simple',
+			gallery: [],
+			compound: [],
+			altOverrides: {},
+		};
+		await catalog.updateMerchandising('prd_kurti', {
+			...form(),
+			content: {
+				...base,
+				estimatedDeliveryText: {},
+				faqEnabled: true,
+				faq: [
+					{ id: 'faq_keep', question: { en: ' Keep? ', bn: 'রাখবেন?' }, answer: { en: 'Yes', bn: 'হ্যাঁ' } },
+					{ question: { en: '' }, answer: { bn: '  ' } },
+					{ id: 'faq_stranger', question: { en: 'New?' }, answer: { en: 'Yes' } },
+				],
+			},
+		} as never);
+		expect(current().faqEnabled).toBe(true);
+		expect(faqs.save).toHaveBeenCalledTimes(2);
+		expect(faqs.save).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				id: 'faq_keep',
+				question: { en: 'Keep?', bn: 'রাখবেন?' },
+				scope: 'product',
+				productIds: ['prd_kurti'],
+				displayOrder: 0,
+				status: 'live',
+			}),
+		);
+		const fresh = faqs.save.mock.calls[1]?.[0] as { id: string; displayOrder: number };
+		expect(fresh.id).toMatch(/^faq_/);
+		expect(fresh.id).not.toBe('faq_stranger');
+		expect(fresh.displayOrder).toBe(1);
+		expect(faqs.deleteById).toHaveBeenCalledTimes(1);
+		expect(faqs.deleteById).toHaveBeenCalledWith('faq_old');
 	});
 
 	it('rejects a selling price above the MRP before it reaches the service', () => {

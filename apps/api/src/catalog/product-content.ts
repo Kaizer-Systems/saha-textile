@@ -16,6 +16,7 @@ export function applyProductContent(product: Product, content: ProductContentWri
 		sareeLengthM: content.sareeLengthM,
 		blousePieceM: content.blousePieceM,
 		categoryIds: content.categoryIds,
+		faqEnabled: content.faqEnabled,
 		optionGroups: content.optionGroups,
 		addonTemplateCode: content.addonTemplateCode,
 		imageMode: content.imageMode,

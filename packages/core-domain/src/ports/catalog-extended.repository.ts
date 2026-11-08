@@ -153,7 +153,14 @@ export interface FaqRepository {
 	findById(faqId: string): Promise<FaqEntry | null>;
 	list(filter: FaqFilter): Promise<Paginated<FaqEntry>>;
 	/** Global + category + product entries for one page, deduped, in display order. */
-	resolveForSurface(input: { categoryIds?: readonly string[]; productId?: string }): Promise<FaqEntry[]>;
+	resolveForSurface(input: {
+		categoryIds?: readonly string[];
+		productId?: string;
+		/** False leaves out the shop-wide questions (the product and category pages). Default true. */
+		includeGlobal?: boolean;
+	}): Promise<FaqEntry[]>;
+	/** A product's own questions (product scope only), any status, in display order. */
+	listForProduct(productId: string): Promise<FaqEntry[]>;
 	save(entry: FaqEntry): Promise<FaqEntry>;
 	deleteById(faqId: string): Promise<void>;
 }

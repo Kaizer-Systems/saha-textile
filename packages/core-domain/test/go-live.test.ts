@@ -37,6 +37,26 @@ describe('goLiveGaps', () => {
 		expect(run(complete())).toEqual([]);
 	});
 
+	it('checks the FAQ questions in every language only while the FAQ is on', () => {
+		const faq = [
+			{ question: both, answer: both },
+			{ question: { en: 'Silk?' }, answer: { en: 'Yes', bn: ' ' } },
+		];
+		const gaps = (faqEnabled: boolean) =>
+			goLiveGaps({
+				product: complete({ faqEnabled }),
+				variants: [{ priceINR: 100 } as ProductVariant],
+				locales: ['en', 'bn'],
+				assetAlt: () => both,
+				faq,
+			});
+		expect(gaps(false)).toEqual([]);
+		expect(gaps(true)).toEqual([
+			{ field: 'faq_question:2', locale: 'bn' },
+			{ field: 'faq_answer:2', locale: 'bn' },
+		]);
+	});
+
 	it('wants a colour or an image on each swatch', () => {
 		const groups = (displayStyle: string, term: Record<string, unknown>) => [
 			{ attributeCode: 'c', label: both, displayStyle, terms: [{ code: 'x', label: both, ...term }] },

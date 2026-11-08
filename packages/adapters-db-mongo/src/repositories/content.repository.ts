@@ -78,17 +78,30 @@ export class MongoFaqRepository implements FaqRepository {
 	 * DEDUPED by id, because an entry with `mixed` scope can match through both its category
 	 * and its product target and would otherwise render twice on the same page.
 	 */
-	async resolveForSurface(input: { categoryIds?: readonly string[]; productId?: string }): Promise<FaqEntry[]> {
-		const or: Array<Record<string, unknown>> = [{ scope: 'global' }];
+	async resolveForSurface(input: {
+		categoryIds?: readonly string[];
+		productId?: string;
+		includeGlobal?: boolean;
+	}): Promise<FaqEntry[]> {
+		const or: Array<Record<string, unknown>> = input.includeGlobal === false ? [] : [{ scope: 'global' }];
 		if (input.categoryIds?.length) or.push({ categoryIds: { $in: [...input.categoryIds] } });
 		if (input.productId) or.push({ productIds: input.productId });
 
+		if (!or.length) return [];
 		const docs = await FaqEntryModel.find({ status: 'live', $or: or })
 			.sort({ displayOrder: 1 })
 			.lean<FaqEntryDoc[]>()
 			.exec();
 
 		return dedupeById(docs.map(toFaq));
+	}
+
+	async listForProduct(productId: string): Promise<FaqEntry[]> {
+		const docs = await FaqEntryModel.find({ scope: 'product', productIds: productId })
+			.sort({ displayOrder: 1, _id: 1 })
+			.lean<FaqEntryDoc[]>()
+			.exec();
+		return docs.map(toFaq);
 	}
 
 	async save(entry: FaqEntry): Promise<FaqEntry> {

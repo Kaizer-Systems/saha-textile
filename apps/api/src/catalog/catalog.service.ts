@@ -4,6 +4,7 @@ import {
 	AdminProductList,
 	AdminReplacementTarget,
 	CatalogBadgeCode,
+	FaqEntry,
 	ProductRelation,
 	type AddonTemplateWrite,
 	type AdminProductListQuery,
@@ -32,6 +33,7 @@ import {
 	type CatalogAudience,
 	type CategoryPlacementRepository,
 	type CategoryRepository,
+	type FaqRepository,
 	type MediaAssetRepository,
 	type Paginated,
 	type ProductFilter,
@@ -52,6 +54,7 @@ import {
 	AUDIT_LOG_REPOSITORY,
 	CATEGORY_PLACEMENT_REPOSITORY,
 	CATEGORY_REPOSITORY,
+	FAQ_REPOSITORY,
 	MEDIA_ASSET_REPOSITORY,
 	PRODUCT_REPOSITORY,
 	PRODUCT_RELATION_REPOSITORY,
@@ -95,7 +98,49 @@ export class CatalogService {
 		private readonly attributes: AttributeDefinitionRepository | null = null,
 		// Named outright: a `| null` type is recorded as Object, which Nest cannot resolve.
 		@Optional() @Inject(SearchVocabularyService) private readonly vocabulary: SearchVocabularyService | null = null,
+		@Optional() @Inject(FAQ_REPOSITORY) private readonly faqs: FaqRepository | null = null,
 	) {}
+
+	/** A product's own FAQ questions, any status, in display order (the form and Go Live). */
+	async productFaq(productId: string): Promise<FaqEntry[]> {
+		return this.faqs ? this.faqs.listForProduct(productId) : [];
+	}
+
+	/**
+	 * The FAQ tab's questions become product-scoped FAQ entries, so they also show in the FAQ
+	 * screen. Saved in the form's order; a question removed from the form is deleted, unless an
+	 * editor has since pointed it at other products too. Blank rows are skipped.
+	 */
+	private async syncProductFaq(productId: string, rows: NonNullable<ProductMerchandisingWrite['content']>['faq']) {
+		if (!this.faqs) return;
+		const existing = await this.faqs.listForProduct(productId);
+		const known = new Set(existing.map((entry) => entry.id));
+		const kept = new Set<string>();
+		const filled = rows.filter((row) =>
+			[...Object.values(row.question), ...Object.values(row.answer)].some((value) => value.trim()),
+		);
+		for (const [index, row] of filled.entries()) {
+			const id = row.id && known.has(row.id) ? row.id : `faq_${randomUUID()}`;
+			kept.add(id);
+			const clean = (text: Readonly<Record<string, string>>) =>
+				Object.fromEntries(Object.entries(text).map(([locale, value]) => [locale, value.trim()]));
+			await this.faqs.save(
+				FaqEntry.parse({
+					id,
+					question: { en: '', ...clean(row.question) },
+					answer: { en: '', ...clean(row.answer) },
+					scope: 'product',
+					categoryIds: [],
+					productIds: [productId],
+					displayOrder: index,
+					status: 'live',
+				}),
+			);
+		}
+		for (const entry of existing) {
+			if (!kept.has(entry.id) && entry.productIds.length === 1) await this.faqs.deleteById(entry.id);
+		}
+	}
 
 	listProducts(filter: ProductFilter): Promise<Paginated<Product>> {
 		return this.products.list({ ...filter, audience: filter.audience ?? 'public' });
@@ -287,6 +332,12 @@ export class CatalogService {
 				gallery: product.media.gallery,
 				compound: product.media.compound,
 				altOverrides: product.media.altOverrides,
+				faqEnabled: product.faqEnabled,
+				faq: (await this.productFaq(product.id)).map((entry) => ({
+					id: entry.id,
+					question: entry.question,
+					answer: entry.answer,
+				})),
 			},
 			images: await this.imageTiles(product),
 			relatedProductIds: relationIds.related,
@@ -434,6 +485,7 @@ export class CatalogService {
 				});
 			}
 		});
+		if (body.content) await this.syncProductFaq(product.id, body.content.faq);
 		await this.syncSearch(next);
 		await this.record(actorUserId, 'catalog.product.save', product.id, {
 			sku: next.sku,

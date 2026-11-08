@@ -127,6 +127,7 @@ describe('ProductBuilderService', () => {
 			}),
 			record: vi.fn(async () => undefined),
 			syncSearch: vi.fn(async () => undefined),
+			productFaq: vi.fn(async () => [{ question: { en: 'Silk?' }, answer: { en: 'Yes' } }]),
 		};
 		const products = {
 			findBySlug: vi.fn(async (slug: string) => rows.find((row) => row.slug === slug) ?? null),
@@ -186,6 +187,16 @@ describe('ProductBuilderService', () => {
 		const already = build([product({ status: 'live', lifecycle: { liveAt: '2026-01-01T00:00:00.000Z' } })]);
 		await expect(already.service.goLive('prd_1', null)).resolves.toMatchObject({ live: true });
 		expect(already.products.save).not.toHaveBeenCalled();
+	});
+
+	it('checks the product’s FAQ questions only while its FAQ is on', async () => {
+		const on = build([product({ faqEnabled: true })]);
+		const result = await on.service.goLive('prd_1', null);
+		expect(result.live).toBe(false);
+		expect(result.gaps).toContainEqual({ field: 'faq_question:1', locale: 'bn' });
+		const off = build([product()]);
+		await off.service.goLive('prd_1', null);
+		expect(off.catalog.productFaq).not.toHaveBeenCalled();
 	});
 
 	it('keeps an earlier first-live date', async () => {

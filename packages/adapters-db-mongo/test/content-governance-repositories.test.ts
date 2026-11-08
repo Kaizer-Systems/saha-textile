@@ -366,6 +366,28 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 			expect((await repo.resolveForSurface({ categoryIds: [] })).map((row) => row.id)).not.toContain(`${P}f1`);
 		});
 
+		it('leaves shop-wide questions out when asked, and lists a product’s own in order', async () => {
+			await repo.save(entry('g1', { scope: 'global', categoryIds: [], productIds: [] }));
+			await repo.save(
+				entry('p2', { scope: 'product', categoryIds: [], productIds: [`${P}own`], displayOrder: 2 }),
+			);
+			await repo.save(
+				entry('p1', {
+					scope: 'product',
+					categoryIds: [],
+					productIds: [`${P}own`],
+					displayOrder: 1,
+					status: 'draft',
+				}),
+			);
+			const withGlobal = (await repo.resolveForSurface({ productId: `${P}own` })).map((row) => row.id);
+			expect(withGlobal).toContain(`${P}g1`);
+			const without = await repo.resolveForSurface({ productId: `${P}own`, includeGlobal: false });
+			expect(without.map((row) => row.id)).toEqual([`${P}p2`]);
+			expect(await repo.resolveForSurface({ includeGlobal: false })).toEqual([]);
+			expect((await repo.listForProduct(`${P}own`)).map((row) => row.id)).toEqual([`${P}p1`, `${P}p2`]);
+		});
+
 		it('fills the gaps, keeps dates, and deletes', async () => {
 			await insertRaw(FaqEntryModel, { _id: `${P}sparse`, scope: 'global', status: 'draft' });
 			expect(await repo.findById(`${P}sparse`)).toMatchObject({

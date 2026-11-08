@@ -77,6 +77,7 @@ export function toProduct(doc: ProductDoc): Product {
 		lowStockThreshold: doc.lowStockThreshold ?? null,
 		lifetimeUnitsReceived: doc.lifetimeUnitsReceived ?? 0,
 		featured: doc.featured ?? false,
+		faqEnabled: doc.faqEnabled ?? false,
 		insightBadges: doc.insightBadges ?? [],
 		pinnedBadges: doc.pinnedBadges ?? [],
 		hiddenBadges: doc.hiddenBadges ?? [],

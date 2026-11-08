@@ -31,6 +31,7 @@ describe('permission registry', () => {
 	// `wallet.*`) that a single-vendor business cannot use, duplicates of live codes
 	// (`role.edit`, `theme.{edit,index}`), and the ambiguous `user.{edit,destroy}`. 91 → 92 on
 	// 2026-11-03 with `customer.restore` (`DEC-CUSTOMER-SOFT-DELETE-OPS` recycle bin).
+	// 94 → 98 on 2026-11-08 with `search_term.{create,destroy,edit,index}` (admin Search words).
 	it('exposes every code with a stable order', () => {
 		expect(PERMISSION_CODES).toHaveLength(98);
 		expect([...PERMISSION_CODES]).toEqual([...PERMISSION_CODES].sort((a, b) => a.localeCompare(b)));

@@ -1045,7 +1045,7 @@
 			"owningChunks": ["I"],
 			"blockingDecisions": [],
 			"purpose": "The shop's physical stores shown as cards on Contact Us: name, address and landmark per language, PIN code, Google Maps link, phone, opening hours per day, photos, display order and an active switch gated on every language and at least one open day.",
-			"source": "owner log § stores (2026-11-08)",
+			"source": "decisions § stores (2026-11-08)",
 			"currentModel": "packages/adapters-db-mongo/src/models/store-location.model.ts",
 			"references": ["mediaAssets"]
 		}

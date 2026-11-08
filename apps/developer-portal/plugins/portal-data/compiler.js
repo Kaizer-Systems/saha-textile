@@ -42,6 +42,7 @@ const SCHEMA_NEBULA_GROUPED_MODEL_FILES = new Map([
 	['siteSettings', 'content-block.model.ts'],
 	['searchQueryAggregates', 'search-analytics.model.ts'],
 	['analyticsDailyAggregates', 'search-analytics.model.ts'],
+	['storeLocations', 'store-location.model.ts'],
 	['faqEntries', 'content.model.ts'],
 	['reviews', 'content.model.ts'],
 	['productQuestions', 'content.model.ts'],

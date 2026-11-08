@@ -1,9 +1,13 @@
 import { signal } from '@angular/core';
 
-import blogFixture from '../../../../../storefront/public/assets/data/blog.json';
-import type { IBlog, IBlogModel } from '../../../../../storefront/src/app/data-access/interfaces/blog.interface';
+import type {
+	ApiBlogTerm,
+	IBlog,
+	IBlogModel,
+} from '../../../../../storefront/src/app/data-access/interfaces/blog.interface';
+import { blogPosts } from '../../../fixtures/storefront-blog';
 
-const blogs = structuredClone(blogFixture.data.slice(0, 3)) as unknown as IBlog[];
+const blogs = structuredClone(blogPosts);
 const blogPage: IBlogModel = {
 	data: blogs,
 	total: blogs.length,
@@ -32,5 +36,19 @@ export function injectBlogBySlugQuery() {
 	return {
 		...idleQuery,
 		data: signal<IBlog | undefined>(blogs[0]),
+	};
+}
+
+export function injectBlogTermsQuery(kind: 'categories' | 'tags') {
+	const terms: ApiBlogTerm[] =
+		kind === 'categories'
+			? [
+					{ slug: 'saree-guides', name: 'Saree guides', count: 2 },
+					{ slug: 'weddings-and-festivals', name: 'Weddings and festivals', count: 1 },
+				]
+			: [{ slug: 'banarasi', name: 'Banarasi', count: 1 }];
+	return {
+		...idleQuery,
+		data: signal<ApiBlogTerm[] | undefined>(terms),
 	};
 }

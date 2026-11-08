@@ -1,7 +1,5 @@
 import { AfterViewInit, ChangeDetectorRef, Component, OnInit, ViewChild, inject } from '@angular/core';
 
-import blogFixture from '../../../storefront/public/assets/data/blog.json';
-import type { IBlog } from '../../../storefront/src/app/data-access/interfaces/blog.interface';
 import { NotificationService } from '../../../storefront/src/app/data-access/services/notification.service';
 import { Layout } from '../../../storefront/src/app/layout/layout';
 import { Alert } from '../../../storefront/src/app/shared/ui/alert/alert';
@@ -16,9 +14,10 @@ import { BehaviorSubject } from 'rxjs';
 
 import { moduleMetadata, type Meta, type StoryObj } from '@storybook/angular';
 
+import { blogPosts } from '../fixtures/storefront-blog';
 import { simpleProduct } from '../fixtures/storefront-products';
 
-const blogs = structuredClone(blogFixture.data.slice(0, 3)) as unknown as IBlog[];
+const blogs = structuredClone(blogPosts);
 const alertSubject = new BehaviorSubject({ type: 'success', message: 'Your configuration has been saved.' });
 
 @Component({

@@ -560,7 +560,11 @@ describe('Review moderation', () => {
 		expect(page.tableConfig().total).toBe(0);
 		data.set({
 			items: [
-				{ ...row([{ thumbUrl: 't' }]), productName: 'Red', customerName: 'Asha' },
+				{
+					...row([{ thumbUrl: 't' }], { title: 'Lovely', body: 'Soft drape' }),
+					productName: 'Red',
+					customerName: 'Asha',
+				},
 				row([{ thumbUrl: null }]),
 				row([]),
 			],
@@ -568,7 +572,12 @@ describe('Review moderation', () => {
 		});
 		TestBed.tick();
 		const rows = page.tableConfig().data as Record<string, unknown>[];
-		expect(rows[0]).toMatchObject({ consumer_name: 'Asha', product_name: 'Red', photo_count: 1 });
+		expect(rows[0]).toMatchObject({
+			consumer_name: 'Asha',
+			product_name: 'Red',
+			review: 'Lovely — Soft drape',
+			photo_count: 1,
+		});
 		expect(rows[1]).toMatchObject({ product_review_image: null, consumer_name: 'u1', product_name: 'p1' });
 		expect(rows[2]).toMatchObject({ product_review_image: null });
 		page.onTableChange({ page: 1 });

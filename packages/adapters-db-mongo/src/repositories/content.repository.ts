@@ -16,6 +16,7 @@ import {
 	FaqEntryModel,
 	type FaqEntryDoc,
 	OrderModel,
+	ProductModel,
 	ProductQuestionModel,
 	type ProductQuestionDoc,
 	RatingAggregateModel,
@@ -305,6 +306,59 @@ export class MongoReviewRepository implements ReviewRepository {
 		return count > 0;
 	}
 
+	async findReviewableOrderId(input: { userId: string; productId: string }): Promise<string | null> {
+		const order = await OrderModel.findOne({
+			userId: input.userId,
+			'lines.productId': input.productId,
+			status: 'delivered',
+		})
+			.sort({ createdAt: -1 })
+			.select('_id')
+			.lean<{ _id: string }>()
+			.exec();
+		return order ? String(order._id) : null;
+	}
+
+	async findByUserAndProduct(input: { userId: string; productId: string }): Promise<Review | null> {
+		const doc = await ReviewModel.findOne({ userId: input.userId, productId: input.productId })
+			.sort({ createdAt: -1 })
+			.lean<ReviewDoc>()
+			.exec();
+		return doc ? toReview(doc) : null;
+	}
+
+	async updateByAuthor(
+		input: {
+			reviewId: string;
+			userId: string;
+			rating: number;
+			title: string | null;
+			body: string;
+			imageAssetIds: string[];
+		},
+		context?: TransactionContext,
+	): Promise<Review | null> {
+		const doc = await ReviewModel.findOneAndUpdate(
+			{ _id: input.reviewId, userId: input.userId },
+			{
+				$set: {
+					rating: input.rating,
+					title: input.title,
+					body: input.body,
+					imageAssetIds: input.imageAssetIds,
+					status: 'pending',
+					moderatedByUserId: null,
+					moderatedAt: null,
+					moderationNote: null,
+				},
+			},
+			{ returnDocument: 'after', session: sessionFrom(context) },
+		)
+			.lean<ReviewDoc>()
+			.exec();
+		return doc ? toReview(doc) : null;
+	}
+
 	async create(review: Review): Promise<Review> {
 		const { id, moderatedAt, createdAt, ...rest } = review;
 		await ReviewModel.create([
@@ -387,6 +441,12 @@ export class MongoReviewRepository implements ReviewRepository {
 			productId,
 			{ $set: { average, count, buckets } },
 			{ upsert: true, setDefaultsOnInsert: true, session },
+		).exec();
+		// Cards, listings and search read the product's own summary; it must say the same.
+		await ProductModel.updateOne(
+			{ _id: productId },
+			{ $set: { ratingsSummary: { avg: Number(average.toFixed(1)), count } } },
+			{ session },
 		).exec();
 
 		return { productId, average, count, buckets, updatedAt: new Date().toISOString() };

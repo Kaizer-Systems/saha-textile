@@ -5,11 +5,17 @@ import { HttpStatus } from '@nestjs/common';
 import type {
 	AdminReviewListQuery,
 	AdminReviewListResponse,
+	MediaAsset,
 	MediaPresignResponse,
+	MyProductReview,
+	ProductReviewsQuery,
+	ProductReviewsResponse,
 	Review,
 	ReviewModerationRequest,
+	ReviewPhoto,
 	ReviewPhotoPresignRequest,
 	ReviewSubmitRequest,
+	ReviewUpdateRequest,
 } from '@saha-textile/contracts';
 import {
 	MEDIA_INGEST_POLICY,
@@ -24,10 +30,12 @@ import {
 	checkReviewPhotos,
 	discardReviewPhotos,
 	publishReviewPhotos,
+	publicReviewerName,
 	reviewPhotoSlug,
 } from '@saha-textile/core-domain';
 
 import { mediaRefusal } from './media-refusal';
+import { localized } from '../catalog/catalog-locale';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import {
 	CUSTOMER_REPOSITORY,
@@ -90,7 +98,105 @@ export class ReviewsService {
 		);
 	}
 
+	/** Approved reviews for one live product, newest first, with the summary behind its stars. */
+	async publicList(query: ProductReviewsQuery): Promise<ProductReviewsResponse> {
+		const empty = { average: 0, count: 0, buckets: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
+		const product = await this.products.findBySlug(query.productSlug, 'public');
+		if (!product) return { summary: empty, items: [], total: 0, page: query.page, pageSize: query.pageSize };
+		const [page, aggregate] = await Promise.all([
+			this.reviews.listApprovedForProduct(product.id, { page: query.page, pageSize: query.pageSize }),
+			this.reviews.getAggregate(product.id),
+		]);
+		const items = await Promise.all(
+			page.items.map(async (review) => {
+				const customer = await this.customers.findById(review.userId);
+				return {
+					id: review.id,
+					rating: review.rating,
+					title: review.title,
+					body: review.body,
+					authorName: publicReviewerName(customer?.displayName),
+					createdAt: review.createdAt ?? null,
+					photos: await this.photosOf(review.imageAssetIds, true),
+				};
+			}),
+		);
+		const summary = aggregate
+			? {
+					average: aggregate.average,
+					count: aggregate.count,
+					buckets: { ...empty.buckets, ...aggregate.buckets },
+				}
+			: empty;
+		return { summary, items, total: page.total, page: page.page, pageSize: page.pageSize };
+	}
+
+	/** What this customer may do on one product page: review, wait for delivery, or edit. */
+	async mine(customerId: string, productId: string): Promise<MyProductReview> {
+		const own = await this.reviews.findByUserAndProduct({ userId: customerId, productId });
+		if (own) {
+			return {
+				state: 'reviewed',
+				review: {
+					id: own.id,
+					rating: own.rating,
+					title: own.title,
+					body: own.body,
+					status: own.status,
+					createdAt: own.createdAt ?? null,
+					photos: await this.photosOf(own.imageAssetIds, false),
+				},
+			};
+		}
+		const orderId = await this.reviews.findReviewableOrderId({ userId: customerId, productId });
+		return orderId ? { state: 'can_review', orderId } : { state: 'needs_delivery' };
+	}
+
+	/**
+	 * The author's edit goes back to moderation (owner decision 2026-11-08). Photos dropped from
+	 * the review are deleted; new ones must be the customer's own processed uploads. When the
+	 * review was approved, the public rating is recomputed in the same step.
+	 */
+	async update(customerId: string, reviewId: string, request: ReviewUpdateRequest): Promise<Review> {
+		const current = await this.reviews.findById(reviewId);
+		if (!current || current.userId !== customerId) throw new NotFoundException('No such review');
+		const kept = new Set(current.imageAssetIds);
+		const added = request.imageAssetIds.filter((id) => !kept.has(id));
+		if (added.length) {
+			const photos = await checkReviewPhotos({ assets: this.assets }, { customerId, assetIds: added });
+			if (photos.refusal) {
+				throw mediaRefusal(
+					HttpStatus.UNPROCESSABLE_ENTITY,
+					`photos_${photos.refusal}`,
+					'One of the photos cannot be attached.',
+				);
+			}
+		}
+		const next = [...new Set(request.imageAssetIds)];
+		const dropped = current.imageAssetIds.filter((id) => !next.includes(id));
+		if (dropped.length) {
+			await discardReviewPhotos({ assets: this.assets, storage: this.storage, queue: this.queue }, dropped);
+		}
+		const save = async () => {
+			const saved = await this.reviews.updateByAuthor({
+				reviewId,
+				userId: customerId,
+				rating: request.rating,
+				title: request.title,
+				body: request.body,
+				imageAssetIds: next,
+			});
+			if (!saved) throw new NotFoundException('No such review');
+			if (current.status === 'approved') await this.reviews.recomputeAggregate(current.productId);
+			return saved;
+		};
+		return this.transactions ? this.transactions.withTransaction(save) : save();
+	}
+
 	async submit(customerId: string, request: ReviewSubmitRequest): Promise<Review> {
+		if (await this.reviews.findByUserAndProduct({ userId: customerId, productId: request.productId })) {
+			throw mediaRefusal(HttpStatus.CONFLICT, 'already_reviewed', 'You have already reviewed this product.');
+		}
 		const order = await this.orders.findById(request.orderId);
 		const bought =
 			order &&
@@ -190,9 +296,27 @@ export class ReviewsService {
 		return this.transactions ? this.transactions.withTransaction(decide) : decide();
 	}
 
+	/**
+	 * Photos for the shop. `publicOnly` drops anything not yet approved, so a public read can
+	 * never hand out a signed link; the author's own view gets signed previews of pending photos.
+	 */
+	private async photosOf(assetIds: readonly string[], publicOnly: boolean): Promise<ReviewPhoto[]> {
+		if (!assetIds.length) return [];
+		const assets = await this.assets.findManyByIds(assetIds);
+		const shown = publicOnly ? assets.filter((asset) => asset.visibility === 'public') : assets;
+		const previews = await this.previewsOf(shown);
+		return previews.map((preview) => {
+			const asset = shown.find((row) => row.id === preview.assetId);
+			return { ...preview, alt: asset ? localized(asset.text.alt) : '' };
+		});
+	}
+
 	/** Thumb and full URLs per photo: public when approved, short-lived signed while private. */
 	private async previews(assetIds: readonly string[]) {
-		const assets = await this.assets.findManyByIds(assetIds);
+		return this.previewsOf(await this.assets.findManyByIds(assetIds));
+	}
+
+	private async previewsOf(assets: readonly MediaAsset[]) {
 		return Promise.all(
 			assets.map(async (asset) => {
 				const pick = (role: string) =>

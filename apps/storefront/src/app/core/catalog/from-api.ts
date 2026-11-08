@@ -144,6 +144,8 @@ export interface ApiProductPage {
 		}>;
 	} | null;
 	breadcrumb: Array<{ name: string; path: string }>;
+	/** From approved reviews only. */
+	rating?: { average: number; count: number };
 }
 
 /** Two card slots, in the order the API returns them: one promotion, then one stock fact. */
@@ -464,5 +466,7 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 		meta_description: page.metaDescription,
 		unknown_variant: page.unknownVariant,
 		breadcrumb_trail: page.breadcrumb,
+		rating_count: page.rating?.average ?? 0,
+		reviews_count: page.rating?.count ?? 0,
 	} as unknown as IProduct;
 }

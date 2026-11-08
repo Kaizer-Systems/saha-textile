@@ -256,6 +256,7 @@ export class CatalogPublicService {
 			measurements,
 			bundle: await this.bundleFor(product),
 			breadcrumb: await this.breadcrumbFor(product),
+			rating: { average: product.ratingsSummary.avg, count: product.ratingsSummary.count },
 		});
 	}
 

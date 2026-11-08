@@ -1,12 +1,29 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query, UnauthorizedException } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Get,
+	Header,
+	HttpCode,
+	Param,
+	Patch,
+	Post,
+	Query,
+	UnauthorizedException,
+	UseInterceptors,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
 	type MediaPresignResponse,
 	type MediaUploadRules,
 	type MediaUploadStatus,
+	type MyProductReview,
+	MyProductReviewQuery,
+	ProductReviewsQuery,
+	type ProductReviewsResponse,
 	type Review,
 	ReviewPhotoPresignRequest,
 	ReviewSubmitRequest,
+	ReviewUpdateRequest,
 	StorefrontBannersQuery,
 	type StorefrontBannersResponse,
 	type StorefrontBrand,
@@ -16,6 +33,7 @@ import {
 
 import { Principal } from '../auth/ownership';
 import { type AuthenticatedPrincipal, Audience, Public } from '../auth/session.guard';
+import { CatalogLocaleInterceptor } from '../catalog/catalog-locale';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { BrandService } from './brand.service';
@@ -112,6 +130,30 @@ export class StorefrontReviewsController {
 		return this.media.status({ type: 'customer', id: this.ownerId(principal) }, assetId);
 	}
 
+	@Get('mine')
+	@Header('Cache-Control', 'private, no-store')
+	@UseInterceptors(CatalogLocaleInterceptor)
+	@ApiOperation({
+		operationId: 'myProductReview',
+		summary: 'Whether you can review this product, are waiting for delivery, or your review',
+	})
+	mine(
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Query(new ZodValidationPipe(MyProductReviewQuery)) query: MyProductReviewQuery,
+	): Promise<MyProductReview> {
+		return this.reviews.mine(this.ownerId(principal), query.productId);
+	}
+
+	@Patch(':reviewId')
+	@ApiOperation({ operationId: 'updateReview', summary: 'Edit your review; it waits for approval again' })
+	update(
+		@Principal() principal: AuthenticatedPrincipal | undefined,
+		@Param('reviewId') reviewId: string,
+		@Body(new ZodValidationPipe(ReviewUpdateRequest)) body: ReviewUpdateRequest,
+	): Promise<Review> {
+		return this.reviews.update(this.ownerId(principal), reviewId, body);
+	}
+
 	@Post()
 	@ApiOperation({
 		operationId: 'submitReview',
@@ -122,5 +164,23 @@ export class StorefrontReviewsController {
 		@Body(new ZodValidationPipe(ReviewSubmitRequest)) body: ReviewSubmitRequest,
 	): Promise<Review> {
 		return this.reviews.submit(this.ownerId(principal), body);
+	}
+}
+
+/** Approved reviews, public. Pending and rejected reviews never appear here. */
+@ApiTags(API_TAGS.reviews)
+@Controller('catalog/reviews')
+@UseInterceptors(CatalogLocaleInterceptor)
+export class CatalogReviewsController {
+	constructor(private readonly reviews: ReviewsService) {}
+
+	@Get()
+	@Public()
+	@Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
+	@ApiOperation({ operationId: 'catalogReviews', summary: "A product's approved reviews and rating summary" })
+	list(
+		@Query(new ZodValidationPipe(ProductReviewsQuery)) query: ProductReviewsQuery,
+	): Promise<ProductReviewsResponse> {
+		return this.reviews.publicList(query);
 	}
 }

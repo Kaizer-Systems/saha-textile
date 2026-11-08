@@ -478,7 +478,9 @@ function finishProduct(doc: Product, note: ShowcaseNote, now: Date): Product {
 		backInStockAt: stock === 'back' ? new Date(now.getTime() - 3 * DAY).toISOString() : null,
 		featured: note.featured,
 		insightBadges: note.insight ? [note.insight] : [],
-		ratingsSummary: note.rating,
+		// Stars come only from approved reviews (owner decision 2026-11-08); the note's numbers
+		// still vary the saree and blouse lengths below.
+		ratingsSummary: { avg: 0, count: 0 },
 		sareeLengthM: saree ? (note.rating.count % 2 ? 5.5 : 6.3) : null,
 		blousePieceM: saree && note.rating.count % 5 ? 0.8 : null,
 		addonTemplateCode: suitGuide ? SUIT_TEMPLATE_CODE : measures ? BLOUSE_TEMPLATE_CODE : null,

@@ -1192,5 +1192,6 @@
 	"store_gap_landmark": "Landmark",
 	"store_gap_hours": "Opening hours (no open day)",
 	"store_gap_phone": "Phone number",
-	"google_maps_link_placeholder": "Paste the link from Google Maps"
+	"google_maps_link_placeholder": "Paste the link from Google Maps",
+	"review": "Review"
 }

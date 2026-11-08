@@ -7,7 +7,11 @@ import { BrandService } from './brand.service';
 import { ContentBlocksService } from './content-blocks.service';
 import { MediaService } from './media.service';
 import { ReviewsService } from './reviews.service';
-import { StorefrontMediaController, StorefrontReviewsController } from './storefront-media.controller';
+import {
+	CatalogReviewsController,
+	StorefrontMediaController,
+	StorefrontReviewsController,
+} from './storefront-media.controller';
 import { YouTubeService } from './youtube.service';
 
 /** Media pipeline HTTP surface (owner log § Media). The worker composes the same use cases. */
@@ -18,6 +22,7 @@ import { YouTubeService } from './youtube.service';
 		AdminReviewsController,
 		StorefrontMediaController,
 		StorefrontReviewsController,
+		CatalogReviewsController,
 	],
 	providers: [MediaService, ContentBlocksService, YouTubeService, ReviewsService, BrandService],
 })

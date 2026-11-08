@@ -1,5 +1,11 @@
 .tax-note {
-	margin-top: -8px;
+	margin-top: 0;
 	margin-bottom: 14px;
 	font-size: 13px;
+}
+
+/* The product name is the page's H1 for search engines; it keeps the theme's h2 size and weight. */
+h1.name {
+	font-size: calc(22px + (28 - 22) * ((100vw - 320px) / (1920 - 320)));
+	font-weight: 600;
 }

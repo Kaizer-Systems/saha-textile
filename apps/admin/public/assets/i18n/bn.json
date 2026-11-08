@@ -1192,5 +1192,6 @@
 	"store_gap_landmark": "কাছের চিহ্ন",
 	"store_gap_hours": "খোলার সময় (কোনো দিন খোলা নেই)",
 	"store_gap_phone": "ফোন নম্বর",
-	"google_maps_link_placeholder": "Google Maps থেকে লিংকটি পেস্ট করুন"
+	"google_maps_link_placeholder": "Google Maps থেকে লিংকটি পেস্ট করুন",
+	"review": "রিভিউ"
 }

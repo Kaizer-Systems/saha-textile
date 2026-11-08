@@ -774,5 +774,17 @@
 	"visit_our_stores": "Visit our stores",
 	"open_in_google_maps": "Open in Google Maps",
 	"store_landmark": "Landmark:",
-	"store_photo_alt": "{{name}}, photo {{number}}"
+	"store_photo_alt": "{{name}}, photo {{number}}",
+	"reviews_count": "Reviews: {{count}}",
+	"be_the_first_to_review": "Be the first to review this product.",
+	"edit_your_review": "Edit your review",
+	"sign_in_to_review": "Sign in to write a review.",
+	"review_after_delivery": "You can review this product once your order for it is delivered.",
+	"your_review": "Your review",
+	"review_awaiting_approval": "Awaiting approval",
+	"review_not_approved": "Not approved",
+	"a_customer": "A customer",
+	"verified_buyer": "Verified buyer",
+	"no_reviews_yet": "No reviews yet",
+	"stars_share": "{{stars}} stars: {{percent}}%"
 }

@@ -2,9 +2,11 @@ import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ReviewPhotoRefusal, ReviewPhotoUploadService } from '@core/media/review-photo-upload.service';
+import { ReviewService } from '@data-access/services/review.service';
 
 import { ReviewModal } from './review-modal';
 
@@ -13,17 +15,19 @@ const render = (platform = 'browser', result: Promise<unknown> = Promise.resolve
 	const dismissAll = vi.fn();
 	const upload = vi.fn();
 	const submit = vi.fn();
+	const update = vi.fn(() => of({ id: 'r1', status: 'pending' }));
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: NgbModal, useValue: { open, dismissAll } },
 			{ provide: ReviewPhotoUploadService, useValue: { upload, submit } },
+			{ provide: ReviewService, useValue: { update } },
 			{ provide: PLATFORM_ID, useValue: platform },
 		],
 	});
 	TestBed.overrideComponent(ReviewModal, { set: { imports: [], template: '' } });
 	const modal = TestBed.createComponent(ReviewModal).componentInstance;
-	return { modal, open, dismissAll, upload, submit };
+	return { modal, open, dismissAll, upload, submit, update };
 };
 
 const picker = (count: number) =>
@@ -47,11 +51,28 @@ describe('ReviewModal.openModal', () => {
 		expect(modal.form.value.rating).toBe('');
 	});
 
-	it('fills the form when editing, and defaults to no order', async () => {
+	it('fills the form and photos when editing, with no order', async () => {
 		const { modal } = render();
-		await modal.openModal(product, 'edit');
+		await modal.openEdit(product, {
+			id: 'r1',
+			rating: 4,
+			title: null,
+			body: 'Lovely',
+			status: 'approved',
+			createdAt: null,
+			photos: [{ assetId: 'm1', thumbUrl: 'https://cdn.test/t.webp', fullUrl: null, alt: '' }],
+		});
 		expect(modal.form.value).toEqual({ rating: 4, description: 'Lovely' });
+		expect(modal.photos()).toEqual([{ assetId: 'm1', previewUrl: 'https://cdn.test/t.webp', warning: null }]);
 		expect(modal.orderId).toBeNull();
+		expect(modal.type).toBe('edit');
+	});
+
+	it('starts a new review from an empty form', async () => {
+		const { modal } = render();
+		modal.form.patchValue({ rating: 5, description: 'Old' });
+		await modal.openModal(product, 'create', 'order-1');
+		expect(modal.form.value).toEqual({ rating: '', description: '' });
 	});
 
 	it.each([
@@ -155,6 +176,32 @@ describe('ReviewModal.submit', () => {
 			imageAssetIds: ['a'],
 		});
 		expect(dismissAll).toHaveBeenCalledOnce();
+	});
+
+	it('saves an edit through the edit route and tells the page', async () => {
+		const { modal, update, submit, dismissAll } = render();
+		const saved = vi.fn();
+		modal.saved.subscribe(saved);
+		await modal.openEdit(product, {
+			id: 'r1',
+			rating: 4,
+			title: null,
+			body: 'Lovely',
+			status: 'approved',
+			createdAt: null,
+			photos: [],
+		});
+		modal.form.patchValue({ rating: 2, description: 'Faded after a wash' });
+		await modal.submit();
+		expect(update).toHaveBeenCalledWith('r1', {
+			rating: 2,
+			title: null,
+			body: 'Faded after a wash',
+			imageAssetIds: [],
+		});
+		expect(submit).not.toHaveBeenCalled();
+		expect(dismissAll).toHaveBeenCalledOnce();
+		expect(saved).toHaveBeenCalledOnce();
 	});
 
 	it('sends a dash for an empty or missing body', async () => {

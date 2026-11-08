@@ -328,6 +328,8 @@ export const CatalogProductPage = z.object({
 	measurements: CatalogPageMeasurements.nullable(),
 	bundle: CatalogPageBundle.nullable(),
 	breadcrumb: z.array(z.object({ name: z.string(), path: z.string() })),
+	/** From approved reviews only; zero until one is approved. */
+	rating: z.object({ average: z.number().min(0).max(5), count: z.number().int().nonnegative() }),
 });
 export type CatalogProductPage = z.infer<typeof CatalogProductPage>;
 

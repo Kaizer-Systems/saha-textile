@@ -50,7 +50,7 @@ import {
 } from './product.queries';
 import { injectQuestionAnswersQuery } from './questions-answers.queries';
 import { injectRefundsQuery } from './refund.queries';
-import { injectReviewQuery } from './review.queries';
+import { injectMyReviewQuery, injectReviewQuery } from './review.queries';
 import { injectStatesQuery } from './state.queries';
 import { injectTagsQuery } from './tag.queries';
 import { injectWalletTransactionsQuery } from './wallet.queries';
@@ -101,7 +101,7 @@ beforeEach(() => {
 			},
 			{ provide: QuestionsAnswersService, useValue: service('getQuestionAnswers') },
 			{ provide: RefundService, useValue: service('getRefunds') },
-			{ provide: ReviewService, useValue: service('getReview') },
+			{ provide: ReviewService, useValue: service('getReviews', 'mine') },
 			{ provide: StateService, useValue: service('getStates') },
 			{ provide: StoreLocationService, useValue: service('getStores') },
 			{ provide: TagService, useValue: service('getTags') },
@@ -188,10 +188,36 @@ describe('keyed queries', () => {
 		expect(questions.enabled).toBe(true);
 		expect(questions.queryKey).toEqual(['qna', 'silk-saree']);
 		expect(options(() => injectQuestionAnswersQuery(() => undefined)).enabled).toBe(false);
-		const reviews = options(() => injectReviewQuery(() => 7));
+		const reviews = options(() => injectReviewQuery(() => 'silk-saree'));
 		await reviews.queryFn();
 		expect(reviews.enabled).toBe(true);
+		expect(reviews.queryKey).toEqual(['reviews', 'silk-saree']);
 		expect(options(() => injectReviewQuery(() => undefined)).enabled).toBe(false);
+		const mine = options(() =>
+			injectMyReviewQuery(
+				() => 'p1',
+				() => true,
+			),
+		);
+		await mine.queryFn();
+		expect(mine.enabled).toBe(true);
+		expect(mine.queryKey).toEqual(['my-review', 'p1']);
+		expect(
+			options(() =>
+				injectMyReviewQuery(
+					() => 'p1',
+					() => false,
+				),
+			).enabled,
+		).toBe(false);
+		expect(
+			options(() =>
+				injectMyReviewQuery(
+					() => undefined,
+					() => true,
+				),
+			).enabled,
+		).toBe(false);
 	});
 });
 

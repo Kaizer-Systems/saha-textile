@@ -210,7 +210,26 @@ export interface ReviewRepository {
 	list(filter: ReviewFilter): Promise<Paginated<Review>>;
 	/** Whether this user has a delivered order line for this product. */
 	hasVerifiedPurchase(input: { userId: string; productId: string }): Promise<boolean>;
+	/** The newest delivered order of this user that holds this product, or null. */
+	findReviewableOrderId(input: { userId: string; productId: string }): Promise<string | null>;
+	/** A customer's own review of one product, whatever its status (one per customer and product). */
+	findByUserAndProduct(input: { userId: string; productId: string }): Promise<Review | null>;
 	create(review: Review): Promise<Review>;
+	/**
+	 * The author's edit: new rating, text and photos, back to `pending` with the moderation
+	 * fields cleared. Matches on the author, so another customer's id changes nothing.
+	 */
+	updateByAuthor(
+		input: {
+			reviewId: string;
+			userId: string;
+			rating: number;
+			title: string | null;
+			body: string;
+			imageAssetIds: string[];
+		},
+		context?: TransactionContext,
+	): Promise<Review | null>;
 	moderate(
 		input: {
 			reviewId: string;
@@ -224,7 +243,10 @@ export interface ReviewRepository {
 		context?: TransactionContext,
 	): Promise<Review | null>;
 	getAggregate(productId: string): Promise<RatingAggregate | null>;
-	/** Recomputes from approved reviews only; returns the persisted aggregate. */
+	/**
+	 * Recomputes from approved reviews only; returns the persisted aggregate. The product's
+	 * own star summary (shown on cards and in search) is written in the same step.
+	 */
 	recomputeAggregate(productId: string, context?: TransactionContext): Promise<RatingAggregate>;
 }
 

@@ -10,6 +10,7 @@ import {
 	NotificationChannelSettingsModel,
 	NotificationTemplateModel,
 	OrderModel,
+	ProductModel,
 	ProductQuestionModel,
 	RatingAggregateModel,
 	ReviewModel,
@@ -55,6 +56,7 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 			NotificationChannelSettingsModel.deleteMany(byId),
 			NotificationTemplateModel.deleteMany(byId),
 			OrderModel.deleteMany(byId),
+			ProductModel.deleteMany(byId),
 			ProductQuestionModel.deleteMany(byId),
 			RatingAggregateModel.deleteMany(byId),
 			ReviewModel.deleteMany(byId),
@@ -544,10 +546,39 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 			expect(await repo.moderate({ reviewId: `${P}none`, ...input })).toBeNull();
 		});
 
-		it('recomputes the aggregate from approved reviews', async () => {
+		it('recomputes the aggregate from approved reviews, and the product summary with it', async () => {
+			await insertRaw(ProductModel, { _id: `${P}rprod`, ratingsSummary: { avg: 4.9, count: 3 } });
 			const aggregate = await repo.recomputeAggregate(`${P}rprod`);
 			expect(aggregate).toMatchObject({ average: 3, count: 2, buckets: { 2: 1, 4: 1 } });
 			expect(await repo.getAggregate(`${P}rprod`)).toMatchObject({ average: 3, count: 2 });
+			const product = await ProductModel.findById(`${P}rprod`).lean<{ ratingsSummary: unknown }>().exec();
+			expect(product?.ratingsSummary).toEqual({ avg: 3, count: 2 });
+		});
+
+		it('finds the reviewable order and the customer’s own review', async () => {
+			expect(await repo.findReviewableOrderId({ userId: `${P}ruser`, productId: `${P}rprod` })).toBe(
+				`${P}delivered`,
+			);
+			expect(await repo.findReviewableOrderId({ userId: `${P}suser`, productId: `${P}rprod` })).toBeNull();
+			expect(await repo.findByUserAndProduct({ userId: `${P}ruser`, productId: `${P}rprod` })).toMatchObject({
+				productId: `${P}rprod`,
+			});
+			expect(await repo.findByUserAndProduct({ userId: `${P}nobody`, productId: `${P}rprod` })).toBeNull();
+		});
+
+		it('lets only the author edit, back to pending', async () => {
+			const edit = { reviewId: `${P}r1`, rating: 5, title: null, body: 'Edited', imageAssetIds: [] };
+			expect(await repo.updateByAuthor({ ...edit, userId: `${P}stranger` })).toBeNull();
+			const saved = await new MongoTransactionManager().withTransaction((context) =>
+				repo.updateByAuthor({ ...edit, userId: `${P}ruser` }, context),
+			);
+			expect(saved).toMatchObject({
+				body: 'Edited',
+				rating: 5,
+				status: 'pending',
+				moderatedByUserId: null,
+				moderationNote: null,
+			});
 		});
 
 		it('recomputes inside a transaction, and with nothing approved', async () => {

@@ -28,6 +28,7 @@
     "rename:admin-user-permissions": "tsx scripts/rename-admin-user-permissions.ts",
     "extract:credentials": "tsx scripts/extract-credentials.ts",
     "seed:system-roles": "tsx scripts/seed-system-roles.ts",
+    "ratings:recompute": "node --env-file=../../apps/api/.env --import tsx scripts/recompute-ratings.ts",
     "reconcile:indexes": "tsx scripts/reconcile-indexes.ts"
   },
   "dependencies": {

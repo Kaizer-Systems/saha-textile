@@ -16,7 +16,6 @@ import { ProductSidebar } from '@features/shop/product-detail/sidebar/sidebar';
 import { PaymentOption } from '@features/shop/product-detail/widgets/payment-option/payment-option';
 import { ProductDeliveryInformation } from '@features/shop/product-detail/widgets/product-delivery-information/product-delivery-information';
 import { ProductInformation } from '@features/shop/product-detail/widgets/product-information/product-information';
-import { ProductReview } from '@features/shop/product-detail/widgets/product-review/product-review';
 import { StoreInformation } from '@features/shop/product-detail/widgets/store-information/store-information';
 import { YouMayAlsoLike } from '@features/shop/product-detail/you-may-also-like/you-may-also-like';
 import { Banner } from '@features/themes/widgets/banner/banner';
@@ -89,7 +88,6 @@ const widgets: [string, Type<unknown>][] = [
 	['ProductBox', ProductBox],
 	['ProductDeliveryInformation', ProductDeliveryInformation],
 	['ProductInformation', ProductInformation],
-	['ProductReview', ProductReview],
 	['ProductSidebar', ProductSidebar],
 	['RecentPost', RecentPost],
 	['Service', Service],

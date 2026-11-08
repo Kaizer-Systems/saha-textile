@@ -54,10 +54,7 @@
 			class="tab-pane"
 			[class.active]="active === 'review'"
 		>
-			<app-product-review
-				[product]="product()!"
-				[reviews]="(review$ | async)?.data || []"
-			/>
+			<app-product-review [product]="product()" />
 		</div>
 		<div
 			class="tab-pane"

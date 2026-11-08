@@ -7,7 +7,11 @@ import { AdminReviewsController } from '../src/media/admin-reviews.controller';
 import { ContentBlocksService } from '../src/media/content-blocks.service';
 import { MediaService } from '../src/media/media.service';
 import { ReviewsService } from '../src/media/reviews.service';
-import { StorefrontMediaController, StorefrontReviewsController } from '../src/media/storefront-media.controller';
+import {
+	CatalogReviewsController,
+	StorefrontMediaController,
+	StorefrontReviewsController,
+} from '../src/media/storefront-media.controller';
 import { YouTubeService } from '../src/media/youtube.service';
 
 const derivative = (role: string, width = 100) => ({
@@ -297,10 +301,22 @@ describe('ReviewsService', () => {
 			moderated?: unknown;
 			locales?: string[];
 			transactional?: boolean;
+			own?: unknown;
+			orderId?: string | null;
 		} = {},
 	) => {
 		const reviews = {
 			hasVerifiedPurchase: vi.fn(async () => overrides.verified ?? true),
+			findByUserAndProduct: vi.fn(async () => overrides.own ?? null),
+			findReviewableOrderId: vi.fn(async () => (overrides.orderId === undefined ? 'o1' : overrides.orderId)),
+			updateByAuthor: vi.fn(async (input: { reviewId: string }) => ({ id: input.reviewId, status: 'pending' })),
+			listApprovedForProduct: vi.fn(async () => ({
+				items: [{ id: 'r1', userId: 'c1', rating: 5, title: null, body: 'Lovely', imageAssetIds: ['m1'] }],
+				total: 1,
+				page: 1,
+				pageSize: 10,
+			})),
+			getAggregate: vi.fn(async () => ({ average: 5, count: 1, buckets: { 5: 1 } }) as unknown),
 			create: vi.fn(async (row: unknown) => row),
 			list: vi.fn(async () => ({ items: [review], total: 1, page: 1, pageSize: 20 })),
 			findById: vi.fn(async () => (overrides.review === undefined ? review : overrides.review)),
@@ -314,10 +330,11 @@ describe('ReviewsService', () => {
 		};
 		const products = {
 			findById: vi.fn(async () => (overrides.product === undefined ? product : overrides.product)),
+			findBySlug: vi.fn(async () => (overrides.product === undefined ? product : overrides.product)),
 		};
 		const orders = { findById: vi.fn(async () => (overrides.order === undefined ? order : overrides.order)) };
 		const customers = {
-			findById: vi.fn(async () => ({ displayName: 'Asha', email: 'a@example.test' }) as unknown),
+			findById: vi.fn(async () => ({ displayName: 'Asha Roy', email: 'a@example.test' }) as unknown),
 		};
 		const storage = {
 			getUrl: (key: string) => `https://cdn.test/${key}`,
@@ -435,7 +452,7 @@ describe('ReviewsService', () => {
 			{ id: 'm2', visibility: 'private', derivatives: [derivative('review_full')] },
 		]);
 		const page = await service.adminList({ page: 1, pageSize: 20 } as never);
-		expect(page.items[0]).toMatchObject({ productName: 'Red', customerName: 'Asha' });
+		expect(page.items[0]).toMatchObject({ productName: 'Red', customerName: 'Asha Roy' });
 		expect(page.items[0]?.photos).toEqual([
 			{
 				assetId: 'm1',
@@ -473,6 +490,69 @@ describe('ReviewsService', () => {
 		expect(reviews.moderate).toHaveBeenCalledWith(
 			expect.objectContaining({ status: 'rejected', note: undefined, imageAssetIds: [] }),
 		);
+	});
+
+	it('refuses a second review of the same product', async () => {
+		const refused = await statusOf(build({ own: review }).service.submit('c1', submit));
+		expect(refused.status).toBe(409);
+	});
+
+	it('lists approved reviews with a short author name and public photos only', async () => {
+		const { service, assets } = build();
+		assets.findManyByIds.mockResolvedValue([
+			{ id: 'm1', visibility: 'public', derivatives: [derivative('review_thumb')], text: { alt: { en: 'Red' } } },
+			{ id: 'm2', visibility: 'private', derivatives: [derivative('review_thumb')], text: { alt: {} } },
+		]);
+		const page = await service.publicList({ productSlug: 'red', page: 1, pageSize: 10 });
+		expect(page.summary).toEqual({ average: 5, count: 1, buckets: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1 } });
+		expect(page.items[0]).toMatchObject({ authorName: 'Asha R.', body: 'Lovely' });
+		expect(page.items[0]?.photos.map((photo) => photo.assetId)).toEqual(['m1']);
+		expect(page.items[0]?.photos[0]?.alt).toBe('Red');
+	});
+
+	it('answers an unknown product, or one without an aggregate, with an empty summary', async () => {
+		const gone = await build({ product: null }).service.publicList({ productSlug: 'x', page: 2, pageSize: 5 });
+		expect(gone).toMatchObject({ items: [], total: 0, page: 2, pageSize: 5, summary: { count: 0 } });
+		const fresh = build();
+		fresh.reviews.getAggregate.mockResolvedValue(null);
+		expect((await fresh.service.publicList({ productSlug: 'red', page: 1, pageSize: 10 })).summary.count).toBe(0);
+	});
+
+	it('tells the customer whether they can review, must wait, or already did', async () => {
+		expect(await build().service.mine('c1', 'p1')).toEqual({ state: 'can_review', orderId: 'o1' });
+		expect(await build({ orderId: null }).service.mine('c1', 'p1')).toEqual({ state: 'needs_delivery' });
+		const own = { ...review, rating: 4, title: null, body: 'Ok', status: 'pending', imageAssetIds: [] };
+		expect(await build({ own }).service.mine('c1', 'p1')).toMatchObject({
+			state: 'reviewed',
+			review: { id: 'r1', rating: 4, status: 'pending', photos: [] },
+		});
+	});
+
+	it('lets only the author edit, back to moderation, dropping removed photos', async () => {
+		const approved = { ...review, status: 'approved', imageAssetIds: ['m1', 'm2'] };
+		const { service, reviews, assets } = build({ review: approved });
+		const edit = { rating: 3, title: null, body: 'Changed', imageAssetIds: ['m1'] };
+		expect(await service.update('c1', 'r1', edit)).toMatchObject({ status: 'pending' });
+		expect(reviews.updateByAuthor).toHaveBeenCalledWith(
+			expect.objectContaining({ reviewId: 'r1', userId: 'c1', imageAssetIds: ['m1'] }),
+		);
+		expect(assets.findManyByIds).toHaveBeenCalledWith(['m2']);
+		expect(reviews.recomputeAggregate).toHaveBeenCalledWith('p1');
+		await expect(build().service.update('someone', 'r1', edit)).rejects.toBeInstanceOf(NotFoundException);
+		await expect(build({ review: null }).service.update('c1', 'r1', edit)).rejects.toBeInstanceOf(
+			NotFoundException,
+		);
+	});
+
+	it('refuses a new photo it cannot attach, and an edit that vanished', async () => {
+		const edit = { rating: 3, title: null, body: 'B', imageAssetIds: ['m1', 'new'] };
+		expect((await statusOf(build().service.update('c1', 'r1', edit))).status).toBe(422);
+		const vanished = build({ transactional: false });
+		vanished.reviews.updateByAuthor.mockResolvedValue(null as never);
+		await expect(vanished.service.update('c1', 'r1', { ...edit, imageAssetIds: ['m1'] })).rejects.toBeInstanceOf(
+			NotFoundException,
+		);
+		expect(vanished.reviews.recomputeAggregate).not.toHaveBeenCalled();
 	});
 
 	it('refuses an unknown review, or one that vanished mid-way', async () => {
@@ -774,8 +854,18 @@ describe('media controllers', () => {
 
 	it('uses the session as the review owner, and refuses a guest', async () => {
 		const media = { finalize: vi.fn(async () => 'final'), status: vi.fn(async () => 'status') };
-		const reviews = { presignPhoto: vi.fn(async () => 'signed'), submit: vi.fn(async () => 'saved') };
+		const reviews = {
+			presignPhoto: vi.fn(async () => 'signed'),
+			submit: vi.fn(async () => 'saved'),
+			mine: vi.fn(async () => 'mine'),
+			update: vi.fn(async () => 'edited'),
+		};
 		const controller = new StorefrontReviewsController(media as never, reviews as never);
+		expect(await controller.mine({ userId: 'c1' } as never, { productId: 'p1' })).toBe('mine');
+		expect(reviews.mine).toHaveBeenCalledWith('c1', 'p1');
+		expect(await controller.update({ userId: 'c1' } as never, 'r1', {} as never)).toBe('edited');
+		expect(reviews.update).toHaveBeenCalledWith('c1', 'r1', {});
+		expect(() => controller.mine(undefined, { productId: 'p1' })).toThrow(UnauthorizedException);
 		const shopper = { userId: 'c1' } as never;
 		expect(await controller.presign(shopper, {} as never)).toBe('signed');
 		expect(await controller.finalize(shopper, 'm')).toBe('final');
@@ -783,5 +873,13 @@ describe('media controllers', () => {
 		expect(await controller.status(shopper, 'm')).toBe('status');
 		expect(await controller.submit(shopper, {} as never)).toBe('saved');
 		expect(() => controller.submit(undefined, {} as never)).toThrow(UnauthorizedException);
+	});
+});
+
+describe('CatalogReviewsController', () => {
+	it('hands the public read to the service', async () => {
+		const reviews = { publicList: vi.fn(async () => 'page') };
+		const controller = new CatalogReviewsController(reviews as never);
+		expect(await controller.list({ productSlug: 'red', page: 1, pageSize: 10 })).toBe('page');
 	});
 });

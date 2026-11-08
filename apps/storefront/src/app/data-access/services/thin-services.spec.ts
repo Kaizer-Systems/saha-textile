@@ -58,7 +58,6 @@ const reads: [string, () => unknown, string, unknown][] = [
 	['orders', () => TestBed.inject(OrderService).getOrders({ a: 1 }), '/order.json', { a: 1 }],
 	['points', () => TestBed.inject(PointService).getUserTransaction({ a: 1 }), '/point.json', { a: 1 }],
 	['refunds', () => TestBed.inject(RefundService).getRefunds({ a: 1 }), '/refund.json', { a: 1 }],
-	['reviews', () => TestBed.inject(ReviewService).getReview({ a: 1 }), '/review.json', { a: 1 }],
 	['stores', () => TestBed.inject(StoreService).getStores({ a: 1 }), '/store.json', { a: 1 }],
 	['tags', () => TestBed.inject(TagService).getTags({ a: 1 }), '/tag.json', { a: 1 }],
 	['wallet', () => TestBed.inject(WalletService).getUserTransaction({ a: 1 }), '/wallet.json', { a: 1 }],
@@ -357,5 +356,25 @@ describe('small services', () => {
 	it('leaves a failed observable to the caller', async () => {
 		http.get.mockReturnValue(throwError(() => new Error('down')));
 		await expect(firstValueFrom(TestBed.inject(AccountService).GetUserDetails())).rejects.toThrow('down');
+	});
+});
+
+describe('ReviewService', () => {
+	it('reads the public reviews and the customer’s own, and edits with the session', () => {
+		const reviews = TestBed.inject(ReviewService);
+		reviews.getReviews('silk-saree').subscribe();
+		expect(http.get).toHaveBeenLastCalledWith(expect.stringMatching(/\/catalog\/reviews$/), {
+			params: { productSlug: 'silk-saree', page: 1, pageSize: 10 },
+		});
+		reviews.mine('p1').subscribe();
+		expect(http.get).toHaveBeenLastCalledWith(expect.stringMatching(/\/storefront\/reviews\/mine$/), {
+			params: { productId: 'p1' },
+			withCredentials: true,
+		});
+		const edit = { rating: 4, title: null, body: 'Fine', imageAssetIds: [] };
+		reviews.update('r 1', edit).subscribe();
+		expect(http.patch).toHaveBeenLastCalledWith(expect.stringMatching(/\/storefront\/reviews\/r%201$/), edit, {
+			withCredentials: true,
+		});
 	});
 });

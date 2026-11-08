@@ -14,6 +14,7 @@ import { rememberRecentView } from '@core/catalog/recent-views';
 import { ConsentStore } from '@core/consent/consent.store';
 import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
 import { withLocale } from '@core/i18n/locale';
+import { roleSrcset } from '@core/media/resolved-image';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
@@ -154,6 +155,9 @@ export class ProductDetail {
 	});
 
 	siteConfig$: Observable<ISiteConfig> = toObservable(inject(SiteConfigStore).siteConfig) as Observable<ISiteConfig>;
+
+	/** The lead photo's gallery widths for the server-rendered image (the browser swaps in the gallery). */
+	readonly leadSrcset = computed(() => roleSrcset(this.product()?.product_thumbnail?.image, 'gallery'));
 
 	private readonly galleryRef = viewChild(ProductGallery);
 	readonly owlCar = computed(() => this.galleryRef()?.carousel());

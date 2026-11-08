@@ -12,6 +12,7 @@ import {
 	provideClientHydration,
 	withEventReplay,
 	withHttpTransferCacheOptions,
+	withIncrementalHydration,
 } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { withInMemoryScrolling } from '@angular/router';
@@ -123,7 +124,13 @@ export const appConfig: ApplicationConfig = {
 		provideTanStackQuery(QUERY_CLIENT),
 		// The browser adopts the server's DOM instead of re-rendering it. Only public GETs
 		// are replayed from the server; clicks made before hydration are replayed too.
-		provideClientHydration(withHttpTransferCacheOptions({ filter: isPublicRequest }), withEventReplay()),
+		provideClientHydration(
+			withHttpTransferCacheOptions({ filter: isPublicRequest }),
+			withEventReplay(),
+			// `@defer (hydrate …)` blocks render on the server and wake up later, so a below-the-fold
+			// rail's links are in the page source without loading its code up front.
+			withIncrementalHydration(),
+		),
 		provideZoneChangeDetection({ eventCoalescing: true }),
 		provideAppUpdate(),
 		provideInstallApp(),

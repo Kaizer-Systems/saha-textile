@@ -10,8 +10,8 @@
 			<li>{{ 'saree_length' | transloco }}: {{ metres(length) }}</li>
 			} @if (product()?.blouse_piece_m; as piece) {
 			<li>{{ 'blouse_piece' | transloco }}: {{ metres(piece) }}</li>
-			} @if (product()?.sku) {
-			<li>{{ 'weight' | transloco }}: {{ product()?.weight }} {{ 'gms' | transloco }}</li>
+			} @if (product()?.weight; as weight) {
+			<li>{{ 'weight' | transloco }}: {{ weight }} {{ 'gms' | transloco }}</li>
 			} @if (variation()?.stock_status ?? product()?.stock_status; as stockStatus) {
 			<li>{{ 'stock_status' | transloco }}: {{ stockStatus | titleCase }}</li>
 			} @if ((variation()?.quantity ?? product()?.quantity ?? 0) > 0) {

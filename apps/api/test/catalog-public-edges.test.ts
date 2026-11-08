@@ -736,6 +736,24 @@ describe('breadcrumbs', () => {
 		]);
 	});
 
+	it('walks to the deepest live category the product sits in', async () => {
+		const deep = product({ categoryIds: ['cat_top', 'cat_deep', 'cat_draft', 'cat_none'] });
+		const { service, placements } = build({ rows: [deep] });
+		placements.findCanonical.mockImplementation(async (id: string) => {
+			if (id === 'cat_top') return placement({ pathSlugs: ['sarees'], pathCategoryIds: ['cat_top'] });
+			if (id === 'cat_deep')
+				return placement({ pathSlugs: ['sarees', 'silk', 'banarasi'], pathCategoryIds: ['a', 'b', 'c'] });
+			if (id === 'cat_draft') return placement({ pathSlugs: ['x', 'y', 'z', 'w'], status: 'draft' });
+			return null;
+		});
+		const page = await service.page('red-saree');
+		expect(page.breadcrumb.map((step) => step.path)).toEqual([
+			'/collections/sarees',
+			'/collections/sarees/silk',
+			'/collections/sarees/silk/banarasi',
+		]);
+	});
+
 	it('shows none for a retired or missing placement', async () => {
 		expect(
 			(await build({ rows: [row], canonical: placement({ status: 'draft' }) }).service.page('red-saree'))

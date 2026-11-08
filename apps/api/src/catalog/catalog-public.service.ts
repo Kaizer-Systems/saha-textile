@@ -377,11 +377,18 @@ export class CatalogPublicService {
 			.filter((entry) => entry.question.trim() && entry.answer.trim());
 	}
 
+	/** The trail to the product's most specific live category (the deepest one it sits in). */
 	private async breadcrumbFor(product: Product) {
-		const categoryId = product.categoryIds[0];
-		if (!categoryId || !this.placements) return [];
-		const placement = await this.placements.findCanonical(categoryId);
-		if (!placement || placement.status !== 'live') return [];
+		const placements = this.placements;
+		if (!product.categoryIds.length || !placements) return [];
+		const found = await Promise.all(product.categoryIds.map((id) => placements.findCanonical(id)));
+		const placement = found
+			.filter((row) => row !== null && row.status === 'live')
+			.reduce<(typeof found)[number]>(
+				(deepest, row) => (!deepest || (row?.pathSlugs.length ?? 0) > deepest.pathSlugs.length ? row : deepest),
+				null,
+			);
+		if (!placement) return [];
 		const labels = placement.pathLabel.split(' / ');
 		const named = await Promise.all(
 			placement.pathCategoryIds.map(async (id) => (await this.categories?.findById(id))?.name),

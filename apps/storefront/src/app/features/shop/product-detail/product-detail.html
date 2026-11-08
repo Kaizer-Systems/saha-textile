@@ -21,7 +21,12 @@
 						<div class="product-left-box">
 							<img
 								class="img-fluid"
+								fetchpriority="high"
 								[src]="product.product_thumbnail?.original_url || 'assets/images/product.png'"
+								[attr.srcset]="leadSrcset()"
+								sizes="(max-width: 1199px) 100vw, 40vw"
+								[attr.width]="product.product_thumbnail?.image?.width"
+								[attr.height]="product.product_thumbnail?.image?.height"
 								[alt]="product.name"
 							/>
 						</div>
@@ -88,7 +93,8 @@
 <!-- You May Also Like — saved related cards, loaded once the rail scrolls into view -->
 @if (alsoLike().length) {
 <section class="product-list-section section-b-space">
-	@defer (on viewport) {
+	<!-- Rendered on the server (its links are in the page source), hydrated when scrolled to. -->
+	@defer (on viewport; hydrate on viewport) {
 	<app-you-may-also-like [products]="alsoLike()" />
 	} @placeholder {
 	<div class="container-fluid-lg"></div>

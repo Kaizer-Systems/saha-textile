@@ -146,6 +146,8 @@ export interface ApiProductPage {
 	breadcrumb: Array<{ name: string; path: string }>;
 	/** From approved reviews only. */
 	rating?: { average: number; count: number };
+	/** The FAQ section, empty while the product's FAQ is off. */
+	faq?: Array<{ question: string; answer: string }>;
 }
 
 /** Two card slots, in the order the API returns them: one promotion, then one stock fact. */
@@ -468,5 +470,6 @@ export function pageToProduct(page: ApiProductPage): IProduct {
 		breadcrumb_trail: page.breadcrumb,
 		rating_count: page.rating?.average ?? 0,
 		reviews_count: page.rating?.count ?? 0,
+		faq: page.faq ?? [],
 	} as unknown as IProduct;
 }

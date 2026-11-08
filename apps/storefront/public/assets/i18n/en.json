@@ -803,5 +803,7 @@
 	"cookie_kept_browser": "Until you close the browser",
 	"asked_by": "Asked by {{name}}",
 	"answered_on": "Answered {{date}}",
-	"question_sent": "Thanks for your question. We will email you when it is answered."
+	"question_sent": "Thanks for your question. We will email you when it is answered.",
+	"frequently_asked_questions": "Frequently asked questions",
+	"faq_intro": "Answers to the questions we are asked most. If yours is not here, write to us from the Contact page."
 }

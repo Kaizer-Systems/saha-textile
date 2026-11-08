@@ -23,6 +23,7 @@ import { HomeBanner } from '@features/themes/widgets/home-banner/home-banner';
 import { Newsletter } from '@features/themes/widgets/newsletter/newsletter';
 import { Service } from '@features/themes/widgets/service/service';
 import { Footer } from '@layout/footer/footer';
+import { FaqAccordion } from '@shared/ui/faq-accordion/faq-accordion';
 import { About } from '@layout/footer/widgets/about/about';
 import { Contact } from '@layout/footer/widgets/contact/contact';
 import { Copyright } from '@layout/footer/widgets/copyright/copyright';
@@ -74,6 +75,7 @@ const widgets: [string, Type<unknown>][] = [
 	['CollectionCategories', CollectionCategories],
 	['Contact', Contact],
 	['Copyright', Copyright],
+	['FaqAccordion', FaqAccordion],
 	['Footer', Footer],
 	['FooterLogo', FooterLogo],
 	['Header', Header],

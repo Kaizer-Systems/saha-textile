@@ -84,6 +84,8 @@ export interface IProduct {
 	 */
 	semantic_role?: 'simple' | 'variation_axis' | 'named_add_on' | 'bundle';
 	semantic_attributes?: ISemanticAttribute[]; // filter_only display attributes
+	/** The product page FAQ (its own questions, then its categories'), in the page language. */
+	faq?: Array<{ question: string; answer: string }>;
 	addon_groups?: IAddonGroup[]; // named_add_on option groups
 	measurement_fields?: IMeasurementField[]; // tailoring inputs for add-on/bundle
 	bundle?: IBundle; // true composite/kit

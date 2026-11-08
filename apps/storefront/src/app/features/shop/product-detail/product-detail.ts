@@ -6,7 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { RESPONSE } from '@analogjs/router/tokens';
 
-import { TranslocoService } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { injectQueryClient } from '@tanstack/angular-query-experimental';
 import { Observable } from 'rxjs';
 
@@ -36,6 +36,7 @@ import { ProductSocialShare } from '@features/shop/product-detail/widgets/produc
 import { StickyCheckout } from '@features/shop/product-detail/widgets/sticky-checkout/sticky-checkout';
 import { SkeletonPage } from '@features/page/skeleton-page/skeleton-page';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
+import { FaqAccordion } from '@shared/ui/faq-accordion/faq-accordion';
 
 import { BuyBox } from './buy-box/buy-box';
 import { ProductBlogs } from './product-blogs/product-blogs';
@@ -79,7 +80,9 @@ const uniqueCards = (cards: IProduct[]): IProduct[] =>
 		ProductBlogs,
 		StickyCheckout,
 		SkeletonPage,
+		FaqAccordion,
 		AsyncPipe,
+		TranslocoModule,
 	],
 })
 export class ProductDetail {
@@ -194,6 +197,20 @@ export class ProductDetail {
 			const product = this.product();
 			if (!product) return;
 			this.seo.applyJsonLd('product-group', this.structuredProduct(product));
+			// FAQ structured data mirrors the visible section, and goes when the section does.
+			if (product.faq?.length) {
+				this.seo.applyJsonLd('product-faq', {
+					'@context': 'https://schema.org',
+					'@type': 'FAQPage',
+					mainEntity: product.faq.map((entry) => ({
+						'@type': 'Question',
+						name: entry.question,
+						acceptedAnswer: { '@type': 'Answer', text: entry.answer },
+					})),
+				});
+			} else {
+				this.seo.removeJsonLd('product-faq');
+			}
 			this.seo.applyJsonLd('product-crumbs', {
 				'@context': 'https://schema.org',
 				'@type': 'BreadcrumbList',
@@ -284,5 +301,7 @@ export class ProductDetail {
 
 	ngOnDestroy() {
 		if (this.isBrowser) document.body.classList.remove('stickyCart');
+		// The next page must not inherit this product's structured data.
+		for (const id of ['product-group', 'product-crumbs', 'product-faq']) this.seo.removeJsonLd(id);
 	}
 }

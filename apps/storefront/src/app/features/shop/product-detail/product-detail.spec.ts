@@ -34,7 +34,13 @@ vi.mock('@data-access/queries/product.queries', () => ({
 }));
 
 const render = (
-	options: { platform?: string; variant?: string | null; response?: unknown; noQuery?: boolean; functional?: boolean } = {},
+	options: {
+		platform?: string;
+		variant?: string | null;
+		response?: unknown;
+		noQuery?: boolean;
+		functional?: boolean;
+	} = {},
 ) => {
 	const params = new BehaviorSubject<Record<string, string>>({ slug: 'red-saree' });
 	const map = (value: string | null) => ({ get: () => value });
@@ -50,6 +56,7 @@ const render = (
 	const router = { navigate: vi.fn() };
 	const seo = {
 		applyJsonLd: vi.fn(),
+		removeJsonLd: vi.fn(),
 		applyDocument: vi.fn(),
 		absoluteUrl: (path: string) => `https://shop.test${path}`,
 		absoluteAsset: (path: string) => `https://cdn.test${path}`,
@@ -281,6 +288,20 @@ describe('ProductDetail SEO', () => {
 				{ name: 'Red saree', offers: { price: 200, availability: 'https://schema.org/OutOfStock' } },
 			],
 		});
+	});
+
+	it('adds FAQ structured data for the visible FAQ, and removes it without one', () => {
+		const { seo } = render();
+		product.set({ ...base, faq: [{ question: 'Silk?', answer: 'Yes' }] });
+		TestBed.tick();
+		expect(jsonLd(seo, 'product-faq')).toEqual({
+			'@context': 'https://schema.org',
+			'@type': 'FAQPage',
+			mainEntity: [{ '@type': 'Question', name: 'Silk?', acceptedAnswer: { '@type': 'Answer', text: 'Yes' } }],
+		});
+		product.set({ ...base, faq: [] });
+		TestBed.tick();
+		expect(seo.removeJsonLd).toHaveBeenCalledWith('product-faq');
 	});
 
 	it('lists the breadcrumb trail ending on the product', () => {

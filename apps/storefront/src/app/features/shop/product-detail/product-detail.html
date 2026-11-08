@@ -62,6 +62,19 @@
 					<div class="col-12">
 						<app-product-details-tabs [product]="product" />
 					</div>
+
+					<!-- FAQ when switched on for the product: theme title and the FAQ page's accordion,
+					     every answer in the page source. -->
+					@if (product.faq?.length) {
+					<div class="col-12">
+						<div class="faq-box-contain">
+							<div class="title">
+								<h2>{{ 'frequently_asked_questions' | transloco }}</h2>
+							</div>
+							<app-faq-accordion [items]="product.faq ?? []" />
+						</div>
+					</div>
+					}
 				</div>
 			</div>
 

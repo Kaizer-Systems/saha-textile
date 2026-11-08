@@ -7,56 +7,12 @@
 		<div class="row">
 			<div class="col-xl-5">
 				<div class="faq-contain">
-					<h2>{{ 'Frequently Asked Questions' }}</h2>
-					<p>
-						{{ 'We are answering most frequent questions. No worries if you not find exact one. You can find
-						out more by searching.' }}
-					</p>
+					<h2>{{ 'frequently_asked_questions' | transloco }}</h2>
+					<p>{{ 'faq_intro' | transloco }}</p>
 				</div>
 			</div>
 			<div class="col-xl-7">
-				<div class="faq-accordion">
-					<div
-						class="accordion"
-						ngbAccordion
-						[closeOthers]="true"
-						[destroyOnHide]="false"
-					>
-						@for (faq of (faq$ | async )?.data; track faq; let i = $index) {
-						<div
-							ngbAccordionItem
-							class="accordion-item"
-							[collapsed]="i !== 0"
-						>
-							<h2
-								class="accordion-header"
-								ngbAccordionHeader
-							>
-								<button
-									class="accordion-button"
-									type="button"
-									ngbAccordionButton
-								>
-									{{ faq.title }}
-									<i class="ri-arrow-down-s-line"></i>
-								</button>
-							</h2>
-							<div
-								ngbAccordionCollapse
-								class="accordion-collapse collapse"
-							>
-								<div ngbAccordionBody>
-									<ng-template>
-										<div class="accordion-body">
-											<p>{{ faq.description }}</p>
-										</div>
-									</ng-template>
-								</div>
-							</div>
-						</div>
-						}
-					</div>
-				</div>
+				<app-faq-accordion [items]="items()" />
 			</div>
 		</div>
 		}

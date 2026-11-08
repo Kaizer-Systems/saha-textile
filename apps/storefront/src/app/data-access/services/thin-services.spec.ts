@@ -288,6 +288,14 @@ describe('PageService', () => {
 		const page = await firstValueFrom(TestBed.inject(PageService).getFaqs());
 		expect(page.total).toBe(1);
 		expect(page.data[0]).toMatchObject({ id: 1, title: 'Q', description: 'A' });
+		http.get.mockReturnValue(of([{ id: 'f1', question: { en: 'Q', bn: 'প্রশ্ন' }, answer: { en: 'A' } }]));
+		const bengali = await firstValueFrom(TestBed.inject(PageService).getFaqs('bn'));
+		expect(bengali.data[0]).toMatchObject({ title: 'প্রশ্ন', description: 'A' });
+		http.get.mockReturnValue(of([{ id: 'f2', question: {}, answer: {} }]));
+		expect((await firstValueFrom(TestBed.inject(PageService).getFaqs('bn'))).data[0]).toMatchObject({
+			title: '',
+			description: '',
+		});
 	});
 });
 

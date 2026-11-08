@@ -14,9 +14,10 @@ import { PageService } from '@data-access/services/page.service';
  */
 export function injectFaqsQuery() {
 	const pageService = inject(PageService);
+	const locale = inject(ACTIVE_LOCALE);
 	return injectQuery(() => ({
-		queryKey: ['faqs'],
-		queryFn: () => firstValueFrom(pageService.getFaqs()),
+		queryKey: ['faqs', locale],
+		queryFn: () => firstValueFrom(pageService.getFaqs(locale)),
 	}));
 }
 

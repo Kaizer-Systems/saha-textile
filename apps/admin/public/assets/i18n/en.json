@@ -1233,5 +1233,12 @@
 	"answer_updated": "Answer updated.",
 	"question_status_pending": "Waiting for an answer",
 	"question_status_answered": "Answered",
-	"question_status_rejected": "Rejected"
+	"question_status_rejected": "Rejected",
+	"faq_show_on_page": "Show FAQ on the product page",
+	"faq_show_on_page_help": "Shows this product's questions below, then any questions written for its categories. Shop-wide questions stay on the FAQ page.",
+	"faq_question_number": "Question {{number}}",
+	"faq_add_question": "Add question",
+	"faq_category_help": "Use the Language switch at the top to write each question in every language. Go Live needs them all.",
+	"gap_faq_question": "FAQ question",
+	"gap_faq_answer": "FAQ answer"
 }

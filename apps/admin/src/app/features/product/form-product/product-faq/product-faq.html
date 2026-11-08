@@ -1,0 +1,99 @@
+<app-form-fields
+	[labelClass]="'form-label-title col-sm-3 mb-0'"
+	[gridClass]="'col-sm-9'"
+	[label]="'faq_show_on_page'"
+	[for]="'faq_enabled'"
+	[required]="false"
+>
+	<div class="form-check form-switch ps-0">
+		<label class="switch">
+			<input
+				type="checkbox"
+				id="faq_enabled"
+				[checked]="value().enabled"
+				(change)="setEnabled($any($event.target).checked)"
+			/>
+			<span class="switch-state"></span>
+		</label>
+		<p class="help-text">{{ 'faq_show_on_page_help' | transloco }}</p>
+	</div>
+</app-form-fields>
+
+@for (row of value().rows; track $index; let index = $index, first = $first, last = $last) {
+<div class="rounded-3 mb-3 border p-3">
+	<div class="d-flex align-items-center justify-content-between mb-2 gap-2">
+		<h5 class="fw-semibold mb-0">{{ 'faq_question_number' | transloco: { number: index + 1 } }}</h5>
+		<div class="d-flex gap-1">
+			<button
+				type="button"
+				class="btn btn-sm btn-outline-secondary"
+				[disabled]="first"
+				[attr.aria-label]="'move_up' | transloco"
+				(click)="move(index, -1)"
+			>
+				<i class="ri-arrow-up-line"></i>
+			</button>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline-secondary"
+				[disabled]="last"
+				[attr.aria-label]="'move_down' | transloco"
+				(click)="move(index, 1)"
+			>
+				<i class="ri-arrow-down-line"></i>
+			</button>
+			<button
+				type="button"
+				class="btn btn-sm btn-outline-danger"
+				[attr.aria-label]="'remove' | transloco"
+				(click)="remove(index)"
+			>
+				<i class="ri-delete-bin-line"></i>
+			</button>
+		</div>
+	</div>
+	<app-form-fields
+		[labelClass]="'form-label-title col-sm-3 mb-0'"
+		[gridClass]="'col-sm-9'"
+		[label]="'question'"
+		[for]="'faq_question_' + index"
+		[required]="true"
+	>
+		<input
+			class="form-control"
+			type="text"
+			maxlength="500"
+			[id]="'faq_question_' + index"
+			[value]="row.question[locale()] ?? ''"
+			(input)="write(index, 'question', $any($event.target).value)"
+		/>
+	</app-form-fields>
+	<app-form-fields
+		[labelClass]="'form-label-title col-sm-3 mb-0'"
+		[gridClass]="'col-sm-9'"
+		[label]="'answer'"
+		[for]="'faq_answer_' + index"
+		[required]="true"
+	>
+		<textarea
+			class="form-control"
+			rows="3"
+			maxlength="4000"
+			[id]="'faq_answer_' + index"
+			[value]="row.answer[locale()] ?? ''"
+			(input)="write(index, 'answer', $any($event.target).value)"
+		></textarea>
+	</app-form-fields>
+</div>
+}
+
+<button
+	type="button"
+	class="btn btn-theme"
+	[disabled]="value().rows.length >= maxQuestions"
+	(click)="add()"
+>
+	<i class="ri-add-line"></i>
+	{{ 'faq_add_question' | transloco }}
+</button>
+<p class="help-text mt-2">{{ 'faq_category_help' | transloco }}</p>

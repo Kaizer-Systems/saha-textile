@@ -30,7 +30,7 @@
 	<p class="help-text">{{ 'price_policy_help' | transloco }}</p>
 </app-form-fields>
 @for (group of value().groups; track group.code; let index = $index) {
-<div class="border rounded p-3 mb-3">
+<div class="mb-3 rounded border p-3">
 	<app-form-fields
 		[labelClass]="'form-label-title col-sm-3 mb-0'"
 		[gridClass]="'col-sm-9'"
@@ -89,7 +89,7 @@
 				(change)="setComponent(index, group, row, { quantity: +$any($event.target).value })"
 			/>
 		</div>
-		<div class="col-3 d-flex align-items-center gap-2">
+		<div class="d-flex align-items-center col-3 gap-2">
 			<div class="form-check form-switch ps-0">
 				<label class="switch">
 					<input
@@ -119,7 +119,7 @@
 		(update)="addComponent(index, group, $event.value)"
 	/>
 	<a
-		class="invalid-feedback d-block cursor-pointer mt-2"
+		class="invalid-feedback d-block mt-2 cursor-pointer"
 		(click)="removeGroup(index)"
 	>
 		{{ 'remove' | transloco }}

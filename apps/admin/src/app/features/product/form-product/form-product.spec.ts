@@ -453,6 +453,22 @@ describe('FormProduct language to-do list', () => {
 		expect(keys).not.toContainEqual(['value:color:red', 'Red']);
 	});
 
+	it('lists missing FAQ text for a language only while the FAQ is on', () => {
+		const { page } = render({ params: { id: 'p1' } });
+		const rows = [
+			{ question: { en: 'Silk?', bn: 'সিল্ক?' }, answer: { en: 'Yes', bn: 'হ্যাঁ' } },
+			{ question: { en: 'Fall?' }, answer: { en: 'No', bn: ' ' } },
+		];
+		page.faq.set({ enabled: false, rows });
+		TestBed.tick();
+		expect(page.gaps()['bn']?.map((gap) => gap.key)).not.toContain('faq_question:2');
+		page.faq.set({ enabled: true, rows });
+		TestBed.tick();
+		expect(page.gaps()['bn']).toContainEqual({ key: 'faq_question:2', label: 'gap_faq_question', name: '2' });
+		expect(page.gaps()['bn']).toContainEqual({ key: 'faq_answer:2', label: 'gap_faq_answer', name: '2' });
+		expect(page.gaps()['bn']?.map((gap) => gap.key)).not.toContain('faq_question:1');
+	});
+
 	it('adds an image gap only a Go Live attempt can report', () => {
 		const { page } = render({ params: { id: 'p1' } });
 		page.goLiveGaps.set([
@@ -567,6 +583,8 @@ describe('FormProduct.submit', () => {
 				gallery: ['m1'],
 				compound: [],
 				altOverrides: {},
+				faqEnabled: false,
+				faq: [],
 			},
 			relatedProductIds: ['a'],
 			upsellProductIds: [],

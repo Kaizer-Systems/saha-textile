@@ -98,9 +98,10 @@ export class OptionGroups {
 	add(event: Select2UpdateEvent): void {
 		const definition = this.definitions().find((row) => row.code === event.value);
 		if (!definition) return;
-		const role = definition.defaultRole === 'descriptive' || definition.defaultRole === 'search'
-			? 'filter_only'
-			: definition.defaultRole;
+		const role =
+			definition.defaultRole === 'descriptive' || definition.defaultRole === 'search'
+				? 'filter_only'
+				: definition.defaultRole;
 		const group = {
 			attributeCode: definition.code,
 			label: definition.label,

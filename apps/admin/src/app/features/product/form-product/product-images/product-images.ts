@@ -100,7 +100,8 @@ export class ProductImages {
 				]),
 		);
 		this.tiles.update(
-			(tiles) => new Map([...tiles, ...rows.map((row) => [String(row.id), row.original_url] as [string, string])]),
+			(tiles) =>
+				new Map([...tiles, ...rows.map((row) => [String(row.id), row.original_url] as [string, string])]),
 		);
 		this.write(this.target, [...current, ...fresh.map((row) => String(row.id))]);
 	}

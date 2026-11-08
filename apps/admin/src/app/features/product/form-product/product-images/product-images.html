@@ -87,7 +87,9 @@
 		}
 	</ul>
 	@if (offShape(hash).length) {
-	<p class="help-text text-danger">{{ 'image_not_portrait' | transloco: { positions: offShape(hash).join(', ') } }}</p>
+	<p class="help-text text-danger">
+		{{ 'image_not_portrait' | transloco: { positions: offShape(hash).join(', ') } }}
+	</p>
 	}
 </ng-template>
 

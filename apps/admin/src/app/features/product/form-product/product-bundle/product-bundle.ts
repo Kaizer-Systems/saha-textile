@@ -29,7 +29,9 @@ export class ProductBundleForm {
 
 	private setGroup(index: number, change: Partial<BundleGroup>): void {
 		this.set({
-			groups: this.value().groups.map((group, position) => (position === index ? { ...group, ...change } : group)),
+			groups: this.value().groups.map((group, position) =>
+				position === index ? { ...group, ...change } : group,
+			),
 		});
 	}
 

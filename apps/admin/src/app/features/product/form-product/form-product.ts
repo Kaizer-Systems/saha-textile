@@ -101,10 +101,18 @@ import { priceValidator } from '@shared/validators/price-validator';
 import { OptionGroups } from './option-groups/option-groups';
 import { ProductBundleForm } from './product-bundle/product-bundle';
 import { ImageCombination, ProductImages } from './product-images/product-images';
+import { FaqValue, ProductFaq } from './product-faq/product-faq';
 import { variantCombinations } from './variant-combinations';
 import { environment } from '../../../../../public/environments/environment';
 
-const LANGUAGE_FIELDS = ['name', 'short_description', 'description', 'meta_title', 'meta_description', 'estimated_delivery_text'];
+const LANGUAGE_FIELDS = [
+	'name',
+	'short_description',
+	'description',
+	'meta_title',
+	'meta_description',
+	'estimated_delivery_text',
+];
 
 const SAREE_ROOT_SLUG = 'sarees';
 
@@ -133,6 +141,8 @@ const GAP_TABS: Readonly<Record<string, string>> = {
 	image_alt: 'images',
 	image_sizes: 'images',
 	lead_time: 'shipping',
+	faq_question: 'faq',
+	faq_answer: 'faq',
 };
 
 const blankToNull = (value: unknown): number | null =>
@@ -173,6 +183,7 @@ function sellingWithinMrp(group: AbstractControl): ValidationErrors | null {
 		NgbAccordionCollapse,
 		NgbAccordionBody,
 		ImageUpload,
+		ProductFaq,
 		LanguageSwitch,
 		OptionGroups,
 		ProductBundleForm,
@@ -314,6 +325,8 @@ export class FormProduct {
 	readonly addonTemplates = signal<AddonTemplateRow[]>([]);
 	readonly addonTemplateCode = signal<string | null>(null);
 	readonly optionGroups = signal<ProductOptionGroup[]>([]);
+	/** The FAQ tab: the switch and this product's own questions, every language. */
+	readonly faq = signal<FaqValue>({ enabled: false, rows: [] });
 	readonly images = signal<Pick<ProductContentWrite, 'imageMode' | 'gallery' | 'compound' | 'altOverrides'>>({
 		imageMode: 'simple',
 		gallery: [],
@@ -407,6 +420,7 @@ export class FormProduct {
 		this.form.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe(() => this.refreshMissing());
 		effect(() => {
 			this.optionGroups();
+			this.faq();
 			this.goLiveGaps();
 			untracked(() => this.refreshMissing());
 		});
@@ -516,6 +530,7 @@ export class FormProduct {
 			{ emitEvent: false },
 		);
 		this.optionGroups.set(content.optionGroups);
+		this.faq.set({ enabled: content.faqEnabled ?? false, rows: content.faq ?? [] });
 		this.addonTemplateCode.set(content.addonTemplateCode);
 		this.images.set({
 			imageMode: content.imageMode,
@@ -591,7 +606,10 @@ export class FormProduct {
 			.getDefinitions()
 			.pipe(takeUntil(this.destroy$))
 			.subscribe((rows) => this.definitions.set(rows));
-		this.templates.list().pipe(takeUntil(this.destroy$)).subscribe((rows) => this.addonTemplates.set(rows));
+		this.templates
+			.list()
+			.pipe(takeUntil(this.destroy$))
+			.subscribe((rows) => this.addonTemplates.set(rows));
 		this.productService
 			.getReplacementTargets()
 			.pipe(takeUntil(this.destroy$))
@@ -758,11 +776,25 @@ export class FormProduct {
 				}));
 			return [...label, ...values];
 		});
+		// With the FAQ on, each question needs its question and answer in every language.
+		const faq = this.faq().enabled
+			? this.faq().rows.flatMap((row, index) => {
+					const name = String(index + 1);
+					return [
+						...(row.question[locale]?.trim()
+							? []
+							: [{ key: `faq_question:${name}`, label: 'gap_faq_question', name }]),
+						...(row.answer[locale]?.trim()
+							? []
+							: [{ key: `faq_answer:${name}`, label: 'gap_faq_answer', name }]),
+					];
+				})
+			: [];
 		// The image's own alt text lives in the library, so only a Go Live attempt can report it.
 		const images = this.goLiveGaps()
 			.filter((gap) => gap.field === 'image_alt' && gap.locale === locale)
 			.map(() => ({ key: 'image_alt', label: 'gap_image_alt' }));
-		return [...this.fields.gaps(locale), ...options, ...images];
+		return [...this.fields.gaps(locale), ...options, ...faq, ...images];
 	}
 
 	openLanguageGap({ key, locale }: { key: string; locale: string }) {
@@ -785,6 +817,8 @@ export class FormProduct {
 			optionGroups: this.optionGroups(),
 			addonTemplateCode: this.addonTemplateCode(),
 			...this.images(),
+			faqEnabled: this.faq().enabled,
+			faq: this.faq().rows,
 		};
 	}
 

@@ -50,7 +50,8 @@
 									/>
 									@if (fields.source('name'); as guide) {
 									<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
-									} @if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
+									} @if (form.controls['name'].touched && form.controls['name'].errors?.['required'])
+									{
 									<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
 									}
 								</app-form-fields>
@@ -276,9 +277,7 @@
 									[required]="true"
 								>
 									<div class="input-group">
-										<span class="input-group-text">
-											₹
-										</span>
+										<span class="input-group-text">₹</span>
 										<input
 											class="form-control"
 											id="price"
@@ -576,9 +575,7 @@
 																	[for]="'mrp'+i"
 																>
 																	<div class="input-group">
-																		<span class="input-group-text">
-																			₹
-																		</span>
+																		<span class="input-group-text">₹</span>
 																		<input
 																			class="form-control"
 																			[id]="'mrp'+i"
@@ -596,9 +593,7 @@
 																	[required]="true"
 																>
 																	<div class="input-group">
-																		<span class="input-group-text">
-																			₹
-																		</span>
+																		<span class="input-group-text">₹</span>
 																		<input
 																			class="form-control"
 																			[id]="'price'+i"
@@ -1077,6 +1072,27 @@
 						</ng-template>
 					</li>
 					<li
+						ngbNavItem="faq"
+						id="faq"
+						[class.is-invalid]="tabError === 'faq'"
+					>
+						<a ngbNavLink>
+							<i class="ri-question-answer-line"></i>
+							{{ 'faqs' | transloco }}
+						</a>
+						<ng-template ngbNavContent>
+							<div
+								class="tab"
+								tab="faq"
+							>
+								<app-product-faq
+									[(value)]="faq"
+									[locale]="fields.locale()"
+								/>
+							</div>
+						</ng-template>
+					</li>
+					<li
 						ngbNavItem="shipping"
 						id="shipping"
 						[class.is-invalid]="tabError === 'shipping'"
@@ -1202,10 +1218,10 @@
 									/>
 									@if (fields.source('estimated_delivery_text')) {
 									<p class="help-text mb-0">
-										{{ 'english_guide' | transloco: { text: fields.source('estimated_delivery_text') } }}
+										{{ 'english_guide' | transloco: { text: fields.source('estimated_delivery_text')
+										} }}
 									</p>
-									}
-									@if (form.controls['estimated_delivery_text'].errors?.['leadTimeRequired']) {
+									} @if (form.controls['estimated_delivery_text'].errors?.['leadTimeRequired']) {
 									<div class="invalid-feedback">{{ 'lead_time_is_required' | transloco }}</div>
 									}
 									<p class="help-text">
@@ -1404,7 +1420,7 @@
 								@if (goLiveGaps().length) {
 								<div class="alert alert-danger">
 									<strong>{{ 'go_live_blocked' | transloco }}</strong>
-									<ul class="mb-0 mt-2">
+									<ul class="mt-2 mb-0">
 										@for (gap of goLiveGaps(); track $index; let index = $index) {
 										<li>
 											<a
@@ -1417,7 +1433,8 @@
 										}
 									</ul>
 								</div>
-								} @if (catalogProduct && catalogProduct.status !== 'live' && catalogProduct.status !== 'discontinued') {
+								} @if (catalogProduct && catalogProduct.status !== 'live' && catalogProduct.status !==
+								'discontinued') {
 								<button
 									type="button"
 									id="go_live_btn"

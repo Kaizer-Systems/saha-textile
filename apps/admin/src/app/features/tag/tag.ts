@@ -36,7 +36,8 @@ export class Tag {
 		type: this.tagType() ?? undefined,
 	}));
 
-	public tableConfig: ITableConfig = {
+	/** A signal, so the table redraws when an answer arrives after it was first drawn. */
+	readonly tableConfig = signal<ITableConfig<ITag>>({
 		columns: [
 			{ title: 'No.', dataField: 'no', type: 'no' },
 			{ title: 'name', dataField: 'name', sortable: true, sort_direction: 'desc' },
@@ -58,17 +59,16 @@ export class Tag {
 				permission: 'tag.destroy',
 			},
 		],
-		data: [] as ITag[],
+		data: [],
 		total: 0,
-	};
+	});
 
 	constructor() {
 		// Keep the table fed from the TanStack query result (replaces the old
 		// NGXS `tag$` subscription).
 		effect(() => {
 			const tag = this.tagsQuery.data();
-			this.tableConfig.data = tag ? tag.data : [];
-			this.tableConfig.total = tag ? tag.total : 0;
+			this.tableConfig.update((config) => ({ ...config, data: tag ? tag.data : [], total: tag ? tag.total : 0 }));
 		});
 	}
 

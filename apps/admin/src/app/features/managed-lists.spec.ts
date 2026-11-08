@@ -269,10 +269,10 @@ describe('Tag list', () => {
 
 	it('fills the table and opens the right edit screen', () => {
 		const { fixture, page, router } = tagSetup();
-		expect(page.tableConfig.total).toBe(0);
+		expect(page.tableConfig().total).toBe(0);
 		data.set({ data: [{ id: 1 }], total: 1 });
 		TestBed.tick();
-		expect(page.tableConfig.total).toBe(1);
+		expect(page.tableConfig().total).toBe(1);
 		page.onTableChange({ page: 1 });
 		page.onActionClicked({ actionToPerform: 'edit', data: { id: 1 } } as never);
 		expect(router.navigateByUrl).toHaveBeenLastCalledWith('/tag/edit/1');

@@ -1,0 +1,62 @@
+<app-page-wrapper
+	[gridClass]="'col-sm-12'"
+	[title]="'storefront_settings'"
+>
+	<form
+		class="theme-form theme-form-2 mega-form"
+		(ngSubmit)="submit()"
+	>
+		<div class="vertical-tabs">
+			<div class="row">
+				<div class="col-xl-3 col-lg-4">
+					<ul
+						ngbNav
+						#nav="ngbNav"
+						[(activeId)]="active"
+						class="nav-pills"
+						orientation="vertical"
+					>
+						<li ngbNavItem="search">
+							<a ngbNavLink>
+								<i class="ri-search-line"></i>
+								{{ 'search' | transloco }}
+							</a>
+							<ng-template ngbNavContent>
+								<div class="row">
+									<div class="col-xl-9">
+										<app-form-fields
+											[labelClass]="'form-label-title col-sm-3 mb-0'"
+											[gridClass]="'col-sm-9'"
+											[label]="'show_first' | transloco"
+											[for]="'show_first'"
+											[required]="false"
+										>
+											<app-advanced-dropdown
+												[position]="'bottom'"
+												[selectedOption]="showFirst()"
+												[options]="categories()"
+												[subArrayKey]="'subcategories'"
+												[id]="'show_first'"
+												(selectedItem)="selectShowFirst($event)"
+											/>
+											<p class="help-text">{{ 'show_first_help' | transloco }}</p>
+										</app-form-fields>
+									</div>
+								</div>
+							</ng-template>
+						</li>
+					</ul>
+				</div>
+				<div class="col-xl-9 col-lg-8">
+					<div [ngbNavOutlet]="nav"></div>
+				</div>
+			</div>
+		</div>
+		<app-button
+			[id]="'storefront-setting'"
+			*hasPermission="'theme_option.edit'"
+		>
+			{{ 'save' | transloco }}
+		</app-button>
+	</form>
+</app-page-wrapper>

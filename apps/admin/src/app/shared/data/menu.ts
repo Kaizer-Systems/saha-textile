@@ -146,7 +146,7 @@ export const menu: IMenu[] = [
 			},
 			{
 				parent_id: 3,
-				title: 'search_words',
+				title: 'search_words_page',
 				path: '/search-term',
 				type: 'link',
 				level: 2,
@@ -364,6 +364,14 @@ export const menu: IMenu[] = [
 				parent_id: 18,
 				title: 'home banners',
 				path: '/home-banners',
+				type: 'link',
+				level: 2,
+				permission: ['theme_option.index'],
+			},
+			{
+				parent_id: 18,
+				title: 'storefront_settings',
+				path: '/storefront-setting',
 				type: 'link',
 				level: 2,
 				permission: ['theme_option.index'],

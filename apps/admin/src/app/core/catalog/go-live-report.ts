@@ -24,6 +24,13 @@ export const BLOG_GO_LIVE_WORDS: GoLiveWords = {
 	blocked: 'blog_go_live_blocked',
 };
 
+/** The Search words screen's words: "The search word is live", "Something to find". */
+export const SEARCH_TERM_GO_LIVE_WORDS: GoLiveWords = {
+	gapPrefix: 'search_word_gap_',
+	done: 'search_word_go_live_done',
+	blocked: 'search_word_go_live_blocked',
+};
+
 /** The Stores screen's words: "The store shows on Contact Us". */
 export const STORE_GO_LIVE_WORDS: GoLiveWords = {
 	gapPrefix: 'store_gap_',

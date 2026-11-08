@@ -44,6 +44,14 @@ export const content: Routes = [
 		loadChildren: () => import('@features/redirect/redirect.routes'),
 	},
 	{
+		path: 'search-term',
+		loadChildren: () => import('@features/search-term/search-term.routes'),
+	},
+	{
+		path: 'storefront-setting',
+		loadChildren: () => import('@features/storefront-setting/storefront-setting.routes'),
+	},
+	{
 		path: 'blog',
 		loadChildren: () => import('@features/blog/blog.routes'),
 	},

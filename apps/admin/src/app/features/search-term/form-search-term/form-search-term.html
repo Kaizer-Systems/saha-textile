@@ -1,0 +1,112 @@
+<form
+	class="theme-form theme-form-2 mega-form"
+	[formGroup]="form"
+	(ngSubmit)="submit()"
+>
+	<app-language-switch
+		[locales]="locales"
+		[active]="fields.locale()"
+		[gaps]="gaps()"
+		(changed)="switchLanguage($event)"
+		(gapChosen)="openLanguageGap($event)"
+	/>
+	<app-form-fields
+		[label]="'name' | transloco"
+		[for]="'name'"
+		[required]="true"
+	>
+		<input
+			class="form-control"
+			id="name"
+			type="text"
+			placeholder="{{ 'search_word_name_placeholder' | transloco }}"
+			formControlName="name"
+		/>
+		@if (fields.source('name'); as guide) {
+		<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
+		} @if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
+		<div class="invalid-feedback">{{ 'search_word_name_required' | transloco }}</div>
+		}
+	</app-form-fields>
+	<app-form-fields
+		[label]="'spellings' | transloco"
+		[for]="'spellings'"
+		[required]="false"
+	>
+		<input
+			class="form-control"
+			id="spellings"
+			type="text"
+			placeholder="{{ 'search_word_spellings_placeholder' | transloco }}"
+			formControlName="spellings"
+		/>
+		<p class="help-text">{{ 'search_word_spellings_help' | transloco }}</p>
+	</app-form-fields>
+	<app-form-fields
+		[label]="'categories' | transloco"
+		[for]="'categories'"
+		[required]="false"
+	>
+		<app-advanced-dropdown
+			[position]="'bottom'"
+			[selectedOption]="selectedCategories()"
+			[options]="categories()"
+			[subArrayKey]="'subcategories'"
+			[id]="'categories'"
+			(selectedItem)="selectCategories($event)"
+		/>
+		<p class="help-text">{{ 'search_word_categories_help' | transloco }}</p>
+	</app-form-fields>
+	<app-form-fields
+		[label]="'products' | transloco"
+		[for]="'products'"
+		[required]="false"
+	>
+		@if (isBrowser) {
+		<select2
+			class="custom-select"
+			[templates]="template"
+			[data]="productOptions()"
+			[placeholder]="'select_product' | transloco"
+			formControlName="products"
+			noResultMessage="{{ 'no_data_found' | transloco }}"
+			[customSearchEnabled]="true"
+			(search)="searchProducts($event)"
+			[multiple]="true"
+		>
+			<ng-template
+				#template
+				let-data="data"
+			>
+				<div class="image">
+					<img
+						[src]="data.image"
+						[class]="'img-fluid selection-image'"
+						alt="img"
+					/>
+				</div>
+				{{ data.name }}
+			</ng-template>
+		</select2>
+		}
+		<p class="help-text">{{ 'search_word_products_help' | transloco }}</p>
+	</app-form-fields>
+	<app-form-fields
+		[label]="'status' | transloco"
+		[for]="'status'"
+		[required]="false"
+	>
+		<div class="form-check form-switch ps-0">
+			<label class="switch">
+				<input
+					type="checkbox"
+					id="status"
+					formControlName="status"
+				/>
+				<span class="switch-state"></span>
+			</label>
+		</div>
+		<p class="help-text">{{ 'search_word_status_help' | transloco }}</p>
+	</app-form-fields>
+	<app-button [id]="'search_word_btn'">{{ 'save' | transloco }}</app-button>
+</form>

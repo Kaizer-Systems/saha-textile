@@ -92,7 +92,9 @@
 					// search engines and screen readers read all of it; only the screen shows "…".
 					&:last-child {
 						flex-shrink: 1;
-						min-width: 0;
+						// Room for the start of the name ("Maroon Te…") however deep the trail;
+						// past that the trail swipes sideways instead of squeezing the name away.
+						min-width: 9em;
 						// Block, not flex: an ellipsis only draws on a block of text.
 						display: block;
 						line-height: 20px;

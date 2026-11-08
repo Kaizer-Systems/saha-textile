@@ -37,13 +37,14 @@ export function injectHomeRailsQuery() {
  * disjunctive facets. Keyed on the filter params; keepPreviousData holds the old page
  * visible while the next one loads.
  */
-export function injectCatalogQuery(params: () => Params | undefined) {
+export function injectCatalogQuery(params: () => Params | undefined, enabled: () => boolean = () => true) {
 	const productService = inject(ProductService);
 	return injectQuery(() => ({
 		queryKey: ['catalog', toCatalogParams(params())],
 		queryFn: () => firstValueFrom(productService.getCatalog(toCatalogParams(params()))),
 		placeholderData: keepPreviousData,
 		staleTime: Infinity,
+		enabled: enabled(),
 	}));
 }
 

@@ -3,8 +3,8 @@ import { Injectable, inject } from '@angular/core';
 
 import { Observable } from 'rxjs';
 
-import { ApiCartView, CartLineChoice } from '@core/state/cart/cart-view';
 import { backgroundRequest } from '@core/interceptors/background-request';
+import { ApiCartView, CartLineChoice } from '@core/state/cart/cart-view';
 
 import { environment } from '../../../../public/environments/environment';
 

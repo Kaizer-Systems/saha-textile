@@ -1,0 +1,132 @@
+@if (visible()) {
+<div
+	class="search-suggestion open"
+	role="listbox"
+	[id]="listId"
+	[attr.aria-label]="'search_suggestions' | transloco"
+>
+	@if (failed()) {
+	<p class="suggest-message">{{ 'search_unavailable' | transloco }}</p>
+	} @else if (noMatch()) {
+	<p class="suggest-message">
+		{{ 'search_no_match' | transloco: { term: query() } }}
+		<small class="text-content">{{ 'search_no_match_tip' | transloco }}</small>
+	</p>
+	} @for (section of sections(); track $index) {
+	<div
+		role="group"
+		[attr.aria-labelledby]="section.title ? listId + '-h' + $index : null"
+	>
+		@if (section.title) {
+		<div class="suggest-title">
+			<span [id]="listId + '-h' + $index">
+				@if (section.icon) {
+				<i [class]="section.icon"></i>
+				} {{ section.title | transloco }}
+			</span>
+			@if (section.clearable) {
+			<button
+				type="button"
+				class="suggest-clear"
+				tabindex="-1"
+				(mousedown)="keepFocus($event)"
+				(click)="clearAll($event)"
+			>
+				{{ 'clear_all' | transloco }}
+			</button>
+			}
+		</div>
+		}
+		<ul class="cart-list">
+			@for (option of section.options; track option.id) {
+			<li
+				role="option"
+				class="product-box-contain"
+				[id]="option.id"
+				[class.active]="options()[active()]?.id === option.id"
+				[attr.aria-selected]="options()[active()]?.id === option.id"
+				(mousedown)="keepFocus($event)"
+				(click)="select(option)"
+			>
+				@switch (option.kind) { @case ('term') {
+				<div class="drop-cart suggest-text">
+					<i class="ri-time-line"></i>
+					<div class="drop-contain">
+						<h5>{{ option.term }}</h5>
+					</div>
+					<button
+						type="button"
+						class="suggest-remove"
+						tabindex="-1"
+						[attr.aria-label]="'remove_search' | transloco: { term: option.term }"
+						(mousedown)="keepFocus($event)"
+						(click)="forget(option.term, $event)"
+					>
+						<i class="ri-close-line"></i>
+					</button>
+				</div>
+				} @case ('category') {
+				<div class="drop-cart suggest-text">
+					<i class="ri-folder-line"></i>
+					<div class="drop-contain">
+						<h5>
+							@for (part of highlight(option.category.name, query()); track $index) { @if (part.hit) {
+							<b>{{ part.text }}</b>
+							} @else {{{ part.text }}} }
+						</h5>
+						@if (option.parent) {
+						<h6 class="text-content">{{ option.parent }}</h6>
+						}
+					</div>
+				</div>
+				} @case ('product') {
+				<div class="drop-cart">
+					<span class="drop-image">
+						<img
+							[src]="option.product.product_thumbnail?.original_url || 'assets/images/product.png'"
+							[attr.srcset]="srcset(option.product)"
+							sizes="48px"
+							width="40"
+							height="48"
+							loading="lazy"
+							class="img-fluid"
+							[alt]="option.product.name"
+						/>
+					</span>
+					<div class="drop-contain">
+						<h5>
+							@for (part of highlight(option.product.name, query()); track $index) { @if (part.hit) {
+							<b>{{ part.text }}</b>
+							} @else {{{ part.text }}} }
+						</h5>
+						@if (offer(option.product); as price) {
+						<h6 class="theme-color">
+							@if (price.kind === 'range') { {{ price.min | currencySymbol }} – {{ price.max |
+							currencySymbol }} } @else { {{ price.selling | currencySymbol }} @if (price.percentOff) {
+							<del class="text-content">{{ (price.mrp ?? 0) | currencySymbol }}</del>
+							} }
+						</h6>
+						}
+					</div>
+				</div>
+				} @case ('all') {
+				<div class="drop-cart suggest-text suggest-all">
+					<div class="drop-contain">
+						<h5>{{ 'search_see_all' | transloco: { count: option.total, term: option.term } }}</h5>
+					</div>
+					<i class="ri-arrow-right-line"></i>
+				</div>
+				} }
+			</li>
+			}
+		</ul>
+	</div>
+	}
+</div>
+}
+<span
+	class="visually-hidden"
+	aria-live="polite"
+>
+	@if (announcement(); as key) { {{ key | transloco: { count: options().length } }} }
+</span>

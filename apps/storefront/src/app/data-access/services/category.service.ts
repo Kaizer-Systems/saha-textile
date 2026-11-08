@@ -4,8 +4,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { backgroundRequest } from '@core/interceptors/background-request';
-import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
+import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
 
 import { environment } from '../../../../public/environments/environment';
 

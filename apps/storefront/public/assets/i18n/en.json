@@ -763,5 +763,18 @@
 	"english_letters_only": "Please use English letters.",
 	"blog_list_description": "Saree buying guides, care tips and festival dressing from Saha Textile, Kolkata: how to spot real Banarasi, choose a bridal saree and care for silk.",
 	"featured_blog": "Featured Blog",
-	"featured_blog_description": "Uncover Intriguing Highlights in Our Featured Blog"
+	"featured_blog_description": "Uncover Intriguing Highlights in Our Featured Blog",
+	"search_suggestions": "Search suggestions",
+	"recent_searches": "Recent searches",
+	"opened_from_search": "Opened from search",
+	"trending_now": "Trending now",
+	"popular_picks": "Popular",
+	"search_no_match": "No products match “{{term}}”",
+	"search_no_match_tip": "Check the spelling, or try a simpler word like silk or cotton.",
+	"search_no_match_short": "No results",
+	"search_suggestions_count": "Suggestions: {{count}}",
+	"search_see_all": "See all results ({{count}})",
+	"remove_search": "Remove {{term}}",
+	"search_results_count": "Results for “{{term}}”: {{count}}",
+	"cookie_item_search": "Your recent searches"
 }

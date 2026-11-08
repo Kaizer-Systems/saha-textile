@@ -20,6 +20,22 @@ import { IProduct, IProductRelations, IRecentPurchase } from '@data-access/inter
 
 import { environment } from '../../../../public/environments/environment';
 
+export interface SearchOptions {
+	page?: number;
+	pageSize?: number;
+	source?: 'typeahead' | 'page';
+}
+
+export interface SearchPage {
+	items: IProduct[];
+	total: number;
+}
+
+export interface SearchTrending {
+	kind: 'trending' | 'popular';
+	items: IProduct[];
+}
+
 @Injectable({
 	providedIn: 'root',
 })
@@ -63,13 +79,39 @@ export class ProductService {
 			);
 	}
 
-	search(term: string): Observable<IProduct[]> {
+	/**
+	 * One page of search results. `source: 'page'` marks a search the shopper committed, which the
+	 * API counts; the suggestion box sends `typeahead`, which it never counts.
+	 */
+	search(term: string, options: SearchOptions = {}): Observable<SearchPage> {
+		const { page = 1, pageSize = 24, source = 'typeahead' } = options;
 		return this.http
-			.get<{ items: ApiCard[] }>(`${environment.apiUrl}/catalog/search`, {
+			.get<{ items: ApiCard[]; total: number }>(`${environment.apiUrl}/catalog/search`, {
 				context: backgroundRequest(),
-				params: { q: term },
+				params: { q: term, page, pageSize, source },
 			})
-			.pipe(map((page) => page.items.map(cardToProduct)));
+			.pipe(map((body) => ({ items: body.items.map(cardToProduct), total: body.total })));
+	}
+
+	/** Counts a product opened from search. Fire and forget: a lost count never bothers the shopper. */
+	searchClick(term: string, productId: string | number): void {
+		this.http
+			.post(
+				`${environment.apiUrl}/catalog/search/clicks`,
+				{ q: term, productId: String(productId) },
+				{ context: backgroundRequest() },
+			)
+			.subscribe({ error: () => undefined });
+	}
+
+	/** Products most opened from search lately, or bestsellers as Popular until there is data. */
+	trending(limit = 6): Observable<SearchTrending> {
+		return this.http
+			.get<{ kind: SearchTrending['kind']; items: ApiCard[] }>(`${environment.apiUrl}/catalog/search/trending`, {
+				context: backgroundRequest(),
+				params: { limit },
+			})
+			.pipe(map((body) => ({ kind: body.kind, items: body.items.map(cardToProduct) })));
 	}
 
 	cardsFor(slugs: string[]): Observable<IProduct[]> {

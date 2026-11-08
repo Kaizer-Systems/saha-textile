@@ -46,28 +46,28 @@ const names = (el: HTMLElement) => [...el.querySelectorAll('.row')].map((row) =>
 
 describe('the search page', () => {
 	it('shows the results as soon as they arrive', async () => {
-		const answer = new Subject<IProduct[]>();
+		const answer = new Subject<{ items: IProduct[]; total: number }>();
 		const { el } = open(() => answer);
 		await vi.waitFor(() => expect(el.querySelector('.waiting')).not.toBeNull());
 
-		answer.next([silk]);
+		answer.next({ items: [silk], total: 1 });
 
 		await vi.waitFor(() => expect(names(el)).toEqual(['Silk Saree']));
 		expect(el.querySelector('.waiting')).toBeNull();
 	});
 
 	it('lists the catalogue when there is no term', async () => {
-		const { el } = open(() => of([silk]), {} as { search: string });
+		const { el } = open(() => of({ items: [silk], total: 1 }), {} as { search: string });
 
 		await vi.waitFor(() => expect(names(el)).toEqual(['Cotton Saree']));
 	});
 
 	it('ignores an older answer that lands after a newer search', async () => {
-		const first = new Subject<IProduct[]>();
-		const { el, queryParams } = open((term) => (term === 'silk' ? first : of([cotton])));
+		const first = new Subject<{ items: IProduct[]; total: number }>();
+		const { el, queryParams } = open((term) => (term === 'silk' ? first : of({ items: [cotton], total: 1 })));
 
 		queryParams.next({ search: 'cotton' });
-		first.next([silk]);
+		first.next({ items: [silk], total: 1 });
 
 		await vi.waitFor(() => expect(names(el)).toEqual(['Cotton Saree']));
 	});

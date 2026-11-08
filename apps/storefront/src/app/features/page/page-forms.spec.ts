@@ -6,6 +6,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { BehaviorSubject, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { ConsentStore } from '@core/consent/consent.store';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { ProductService } from '@data-access/services/product.service';
 
@@ -134,8 +135,12 @@ describe('Search page', () => {
 	const render = (query: Record<string, string> = {}, platform = 'browser') => {
 		const params = new BehaviorSubject<Record<string, string>>(query);
 		const router = { navigate: vi.fn() };
-		const service = { search: vi.fn(() => of<unknown[]>([{ id: 1 }])) };
+		const service = {
+			search: vi.fn(() => of<{ items: unknown[]; total: number }>({ items: [{ id: 1 }], total: 30 })),
+			searchClick: vi.fn(),
+		};
 		const route = { queryParams: params };
+		const consent = { allows: vi.fn(() => true) };
 		TestBed.resetTestingModule();
 		TestBed.configureTestingModule({
 			providers: [
@@ -143,31 +148,42 @@ describe('Search page', () => {
 				{ provide: ActivatedRoute, useValue: route },
 				{ provide: Router, useValue: router },
 				{ provide: ProductService, useValue: service },
+				{ provide: ConsentStore, useValue: consent },
 				{ provide: PLATFORM_ID, useValue: platform },
 			],
 		});
 		TestBed.overrideComponent(Search, { set: { imports: [], template: '' } });
 		const fixture = TestBed.createComponent(Search);
 		fixture.detectChanges();
-		return { view: fixture.componentInstance, params, router, service, route };
+		return { view: fixture.componentInstance, params, router, service, route, consent };
 	};
 
-	it('shows the catalogue with no term', () => {
-		const { view, service } = render();
+	afterEach(() => localStorage.clear());
+
+	it('shows the catalogue, a page at a time, with no term', () => {
+		const { view, service } = render({ page: '2' });
 		fetching.set(true);
 		expect(view.loading()).toBe(true);
 		expect(view.products()).toEqual([]);
-		catalog.set({ data: [{ id: 9 }] });
+		catalog.set({ data: [{ id: 9 }], total: 50 });
 		expect(view.products()).toEqual([{ id: 9 }]);
+		expect(view.total()).toBe(50);
+		expect(view.page()).toBe(2);
 		expect(service.search).not.toHaveBeenCalled();
 	});
 
-	it('searches in the browser for a term in the address', () => {
-		const { view, service } = render({ search: 'silk' });
-		expect(service.search).toHaveBeenCalledWith('silk');
+	it('searches the page in the address as a committed search', () => {
+		const { view, service } = render({ search: ' silk ', page: '3' });
+		expect(service.search).toHaveBeenCalledWith('silk', { page: 3, pageSize: 24, source: 'page' });
 		expect(view.products()).toEqual([{ id: 1 }]);
+		expect(view.total()).toBe(30);
 		expect(view.loading()).toBe(false);
 		expect(view.search.value).toBe('silk');
+	});
+
+	it('treats a broken page number as page 1', () => {
+		const { service } = render({ search: 'silk', page: 'two' });
+		expect(service.search).toHaveBeenCalledWith('silk', expect.objectContaining({ page: 1 }));
 	});
 
 	it('waits for the browser on the server', () => {
@@ -185,23 +201,46 @@ describe('Search page', () => {
 		expect(parts.view.products()).toEqual([]);
 	});
 
-	it('updates the address on submit', () => {
-		const { view, router, route } = render();
-		view.search.setValue('cotton');
+	it('puts new words in the address from page 1, and remembers them with consent', () => {
+		const { view, router, route, consent } = render();
+		view.search.setValue('  red   silk ');
 		view.searchProduct();
-		expect(router.navigate).toHaveBeenCalledWith([], { relativeTo: route, queryParams: { search: 'cotton' } });
-		expect(view.filter()['search']).toBe('cotton');
+		expect(router.navigate).toHaveBeenLastCalledWith([], {
+			relativeTo: route,
+			queryParams: { search: 'red silk', page: null },
+		});
+		expect(localStorage.getItem('st_search')).toContain('red silk');
+		view.searchProduct('jamdani');
+		expect(router.navigate.mock.lastCall?.[1].queryParams).toEqual({ search: 'jamdani', page: null });
+		consent.allows.mockReturnValue(false);
+		view.searchProduct('tant');
+		expect(localStorage.getItem('st_search')).not.toContain('tant');
+		view.searchProduct('   ');
+		expect(router.navigate.mock.lastCall?.[1].queryParams).toEqual({ search: null, page: null });
 	});
 
-	it('clears the search when the box is emptied, and ignores typing', () => {
-		vi.useFakeTimers();
-		const { view, router, route } = render({ search: 'silk' });
-		view.search.setValue('co');
-		vi.advanceTimersByTime(300);
-		expect(router.navigate).not.toHaveBeenCalled();
-		view.search.setValue('');
-		vi.advanceTimersByTime(300);
-		expect(router.navigate).toHaveBeenCalledWith([], { relativeTo: route, queryParams: { search: '' } });
-		expect(view.filter()['search']).toBe('');
+	it('moves between pages in the address', () => {
+		const { view, router } = render({ search: 'silk' });
+		view.setPage(2);
+		expect(router.navigate).toHaveBeenLastCalledWith(
+			[],
+			expect.objectContaining({ queryParams: { page: 2 }, queryParamsHandling: 'merge' }),
+		);
+		view.setPage(1);
+		expect(router.navigate.mock.lastCall?.[1].queryParams).toEqual({ page: null });
+	});
+
+	it('counts a product opened from the results, and only from its link', () => {
+		const { view, service } = render({ search: 'silk' });
+		const product = { id: 7, slug: 'red-silk' } as never;
+		const link = document.createElement('a');
+		link.setAttribute('href', '/en/product/red-silk');
+		const inner = document.createElement('img');
+		link.append(inner);
+		view.openedFromResults({ target: document.createElement('button') } as never, product);
+		expect(service.searchClick).not.toHaveBeenCalled();
+		view.openedFromResults({ target: inner } as never, product);
+		expect(service.searchClick).toHaveBeenCalledWith('silk', 7);
+		expect(localStorage.getItem('st_search')).toContain('red-silk');
 	});
 });

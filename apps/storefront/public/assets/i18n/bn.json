@@ -763,5 +763,18 @@
 	"english_letters_only": "অনুগ্রহ করে ইংরেজি অক্ষরে লিখুন।",
 	"blog_list_description": "সাহা টেক্সটাইল, কলকাতার শাড়ি কেনার গাইড, যত্নের পরামর্শ আর উৎসবের সাজ: আসল বেনারসি চেনা, বিয়ের শাড়ি বাছাই আর রেশমের যত্ন।",
 	"featured_blog": "বাছাই করা ব্লগ",
-	"featured_blog_description": "আমাদের বাছাই করা ব্লগের আকর্ষণীয় লেখাগুলি পড়ুন"
+	"featured_blog_description": "আমাদের বাছাই করা ব্লগের আকর্ষণীয় লেখাগুলি পড়ুন",
+	"search_suggestions": "খোঁজের পরামর্শ",
+	"recent_searches": "সাম্প্রতিক খোঁজ",
+	"opened_from_search": "খোঁজ থেকে দেখা",
+	"trending_now": "এখন জনপ্রিয়",
+	"popular_picks": "জনপ্রিয়",
+	"search_no_match": "“{{term}}” মেলে এমন কোনো পণ্য নেই",
+	"search_no_match_tip": "বানান দেখুন, বা সিল্ক বা সুতির মতো সহজ শব্দ লিখুন।",
+	"search_no_match_short": "কোনো ফল নেই",
+	"search_suggestions_count": "পরামর্শ: {{count}}টি",
+	"search_see_all": "সব ফল দেখুন ({{count}})",
+	"remove_search": "{{term}} মুছুন",
+	"search_results_count": "“{{term}}”-এর ফল: {{count}}টি",
+	"cookie_item_search": "আপনার সাম্প্রতিক খোঁজ"
 }

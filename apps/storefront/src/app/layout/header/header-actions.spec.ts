@@ -1,6 +1,6 @@
 import { PLATFORM_ID, SimpleChange, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -108,37 +108,32 @@ describe('Notice', () => {
 describe('Header search', () => {
 	const render = () => {
 		const router = { navigate: vi.fn() };
-		const route = {};
 		TestBed.resetTestingModule();
-		TestBed.configureTestingModule({
-			providers: [
-				{ provide: ActivatedRoute, useValue: route },
-				{ provide: Router, useValue: router },
-			],
-		});
+		TestBed.configureTestingModule({ providers: [{ provide: Router, useValue: router }] });
 		TestBed.overrideComponent(Search, { set: { imports: [], template: '' } });
-		return { widget: TestBed.createComponent(Search).componentInstance, router, route };
+		return { widget: TestBed.createComponent(Search).componentInstance, router };
 	};
 
-	it('goes to the results with the term, or without one', () => {
-		const { widget, router, route } = render();
-		widget.term.setValue('silk');
+	it('goes to the results with the typed or chosen words, or without any, and closes the bar', () => {
+		const { widget, router } = render();
+		widget.show = true;
+		widget.term.setValue(' silk ');
 		widget.redirectToSearch();
-		expect(router.navigate).toHaveBeenLastCalledWith(['/search'], {
-			relativeTo: route,
-			queryParams: { category: null, search: 'silk' },
-			queryParamsHandling: 'merge',
-			skipLocationChange: false,
-		});
+		expect(router.navigate).toHaveBeenLastCalledWith(['/search'], { queryParams: { search: 'silk' } });
+		expect(widget.show).toBe(false);
+		widget.redirectToSearch('red banarasi');
+		expect(router.navigate).toHaveBeenLastCalledWith(['/search'], { queryParams: { search: 'red banarasi' } });
 		widget.term.setValue('');
 		widget.redirectToSearch();
-		expect(router.navigate.mock.lastCall?.[1].queryParams).toEqual({ category: null, search: null });
+		expect(router.navigate.mock.lastCall?.[1].queryParams).toEqual({ search: null });
 	});
 
-	it('toggles the box', () => {
+	it('toggles the bar', () => {
 		const { widget } = render();
 		widget.toggleSearchBox();
 		expect(widget.show).toBe(true);
+		widget.toggleSearchBox();
+		expect(widget.show).toBe(false);
 	});
 });
 

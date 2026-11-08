@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 
-import { firstValueFrom, of } from 'rxjs';
+import { firstValueFrom, of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProductService } from './product.service';
@@ -15,14 +15,16 @@ vi.mock('@core/catalog/from-api', () => ({
 
 describe('ProductService', () => {
 	const get = vi.fn();
+	const post = vi.fn();
 	let service: ProductService;
 	const options = () => get.mock.lastCall?.[1];
 	const url = () => String(get.mock.lastCall?.[0]);
 
 	beforeEach(() => {
 		get.mockReset();
+		post.mockReset();
 		TestBed.resetTestingModule();
-		TestBed.configureTestingModule({ providers: [{ provide: HttpClient, useValue: { get } }] });
+		TestBed.configureTestingModule({ providers: [{ provide: HttpClient, useValue: { get, post } }] });
 		service = TestBed.inject(ProductService);
 	});
 
@@ -53,10 +55,28 @@ describe('ProductService', () => {
 		]);
 	});
 
-	it('searches', async () => {
-		get.mockReturnValue(of({ items: [{ id: 1 }] }));
-		await expect(firstValueFrom(service.search('silk'))).resolves.toEqual([{ mapped: 1 }]);
-		expect(options().params).toEqual({ q: 'silk' });
+	it('searches one page, as typeahead unless told otherwise', async () => {
+		get.mockReturnValue(of({ items: [{ id: 1 }], total: 40 }));
+		await expect(firstValueFrom(service.search('silk'))).resolves.toEqual({ items: [{ mapped: 1 }], total: 40 });
+		expect(options().params).toEqual({ q: 'silk', page: 1, pageSize: 24, source: 'typeahead' });
+		await firstValueFrom(service.search('silk', { page: 2, pageSize: 12, source: 'page' }));
+		expect(options().params).toEqual({ q: 'silk', page: 2, pageSize: 12, source: 'page' });
+	});
+
+	it('counts a search click and swallows a failure', () => {
+		post.mockReturnValue(of(null));
+		service.searchClick('silk', 7);
+		expect(post.mock.lastCall?.[0]).toMatch(/\/catalog\/search\/clicks$/);
+		expect(post.mock.lastCall?.[1]).toEqual({ q: 'silk', productId: '7' });
+		post.mockReturnValue(throwError(() => new Error('offline')));
+		expect(() => service.searchClick('silk', 7)).not.toThrow();
+	});
+
+	it('loads trending products with their kind', async () => {
+		get.mockReturnValue(of({ kind: 'popular', items: [{ id: 2 }] }));
+		await expect(firstValueFrom(service.trending())).resolves.toEqual({ kind: 'popular', items: [{ mapped: 2 }] });
+		expect(url()).toMatch(/\/catalog\/search\/trending$/);
+		expect(options().params).toEqual({ limit: 6 });
 	});
 
 	it('reads cards for slugs', async () => {

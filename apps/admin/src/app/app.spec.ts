@@ -4,7 +4,7 @@ import { Title } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
-import { of } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { IdleLockService } from '@core/auth/idle-lock.service';
@@ -29,7 +29,8 @@ const render = (url = '/dashboard') => {
 	const idle = { start: vi.fn(), stop: vi.fn() };
 	const router = { url, navigate: vi.fn() };
 	const title = { setTitle: vi.fn() };
-	const translate = { setActiveLang: vi.fn() };
+	const langChanges$ = new BehaviorSubject('en');
+	const translate = { setActiveLang: vi.fn(), langChanges$ };
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
@@ -62,6 +63,14 @@ afterEach(() => {
 describe('Admin App', () => {
 	it('starts in English', () => {
 		expect(render().translate.setActiveLang).toHaveBeenCalledWith('en');
+	});
+
+	it('states the page language as the switcher changes it', () => {
+		const { translate } = render();
+		translate.langChanges$.next('bn');
+		expect(document.documentElement.lang).toBe('bn');
+		translate.langChanges$.next('en');
+		expect(document.documentElement.lang).toBe('en');
 	});
 
 	it('watches for idleness only with a session', () => {

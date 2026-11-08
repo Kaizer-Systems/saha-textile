@@ -296,8 +296,9 @@ export const singleSlider: OwlOptions = {
 };
 
 // Full-width hero banner carousel (custom home). One slide at a time, infinite
-// auto-advance, with BOTH manual controls: side arrows (nav) and bottom dots.
-// autoplayHoverPause lets the user stop on hover to read/click a slide.
+// auto-advance, with bottom dots, and side arrows from 768 px up. Phones swipe, and an
+// arrow there would sit on the slide text. autoplayHoverPause lets the user stop on hover
+// to read/click a slide.
 export const heroBannerSlider: OwlOptions = {
 	loop: true,
 	items: 1,
@@ -309,7 +310,8 @@ export const heroBannerSlider: OwlOptions = {
 	smartSpeed: 700,
 	navText: ['<i class="ri-arrow-left-s-line"></i>', '<i class="ri-arrow-right-s-line"></i>'],
 	responsive: {
-		0: { items: 1 },
+		0: { items: 1, nav: false },
+		768: { items: 1, nav: true },
 	},
 };
 

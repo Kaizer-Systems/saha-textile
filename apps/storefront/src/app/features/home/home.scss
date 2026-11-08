@@ -48,6 +48,14 @@
 		right: 20px;
 	}
 
+	// The slide text starts clear of the arrows: 20 px edge, 44 px arrow, 20 px gap. Phones
+	// have no arrows (heroBannerSlider), so they keep the theme's spacing.
+	@media (min-width: 768px) {
+		.home-detail {
+			padding-inline: 84px;
+		}
+	}
+
 	// Bottom dots, centred and overlaid on the banner.
 	.owl-dots {
 		position: absolute;

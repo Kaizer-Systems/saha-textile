@@ -45,7 +45,7 @@ export class TaxonomyService {
 		@Inject(ATTRIBUTE_DEFINITION_REPOSITORY) private readonly attributes: AttributeDefinitionRepository,
 		@Inject(PRODUCT_REPOSITORY) private readonly products: ProductRepository,
 		private readonly publicCatalog: CatalogPublicService,
-		@Optional() private readonly vocabulary: SearchVocabularyService | null = null,
+		@Optional() @Inject(SearchVocabularyService) private readonly vocabulary: SearchVocabularyService | null = null,
 	) {}
 
 	async listCategories(): Promise<AdminCategoryRow[]> {

@@ -6,8 +6,10 @@ import {
 	AdminSearchTermsController,
 	AdminStorefrontSettingsController,
 } from '../src/catalog/admin-search-terms.controller';
+import { CatalogService } from '../src/catalog/catalog.service';
 import { SearchTermsService } from '../src/catalog/search-terms.service';
 import { SearchVocabularyService } from '../src/catalog/search-vocabulary.service';
+import { TaxonomyService } from '../src/catalog/taxonomy.service';
 
 const tree = [
 	{ id: 'cat_sarees', name: { en: 'Sarees' }, ancestors: [] },
@@ -216,5 +218,14 @@ describe('search word routes', () => {
 		const settings = new AdminStorefrontSettingsController(service as never);
 		expect(await settings.search()).toBe('settings');
 		expect(await settings.saveSearch({ showFirstCategoryIds: [] }, admin)).toBe('saved settings');
+	});
+});
+
+describe('search word wiring', () => {
+	it('names the vocabulary outright, so Nest injects it into the services that index', () => {
+		for (const type of [CatalogService, TaxonomyService]) {
+			const injected = (Reflect.getMetadata('self:paramtypes', type) ?? []) as Array<{ param: unknown }>;
+			expect(injected.map((row) => row.param)).toContain(SearchVocabularyService);
+		}
 	});
 });

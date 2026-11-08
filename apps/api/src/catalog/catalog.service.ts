@@ -93,7 +93,8 @@ export class CatalogService {
 		@Optional()
 		@Inject(ATTRIBUTE_DEFINITION_REPOSITORY)
 		private readonly attributes: AttributeDefinitionRepository | null = null,
-		@Optional() private readonly vocabulary: SearchVocabularyService | null = null,
+		// Named outright: a `| null` type is recorded as Object, which Nest cannot resolve.
+		@Optional() @Inject(SearchVocabularyService) private readonly vocabulary: SearchVocabularyService | null = null,
 	) {}
 
 	listProducts(filter: ProductFilter): Promise<Paginated<Product>> {

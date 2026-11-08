@@ -36,6 +36,7 @@ import {
 	MongoProductRelationRepository,
 	MongoProductBundleRepository,
 	MongoSiteSettingsRepository,
+	MongoSearchAnalyticsRepository,
 	connectMongo,
 	disconnectMongo,
 } from '@saha-textile/adapters-db-mongo';
@@ -132,6 +133,7 @@ import {
 	BLOG_TAG_REPOSITORY,
 	STORE_LOCATION_REPOSITORY,
 	SITE_SETTINGS_REPOSITORY,
+	SEARCH_ANALYTICS_REPOSITORY,
 	REVIEW_REPOSITORY,
 	MEDIA_JOB_QUEUE,
 	CDN_PURGE,
@@ -261,6 +263,8 @@ import {
 		{ provide: BLOG_TAG_REPOSITORY, useClass: MongoBlogTagRepository },
 		{ provide: STORE_LOCATION_REPOSITORY, useClass: MongoStoreLocationRepository },
 		{ provide: SITE_SETTINGS_REPOSITORY, useClass: MongoSiteSettingsRepository },
+		// Search totals and result clicks, with no shopper detail (search suggestions, 2026-11-08).
+		{ provide: SEARCH_ANALYTICS_REPOSITORY, useClass: MongoSearchAnalyticsRepository },
 		{ provide: REVIEW_REPOSITORY, useClass: MongoReviewRepository },
 		{
 			provide: READINESS_PROBES,
@@ -356,6 +360,7 @@ import {
 		BLOG_TAG_REPOSITORY,
 		STORE_LOCATION_REPOSITORY,
 		SITE_SETTINGS_REPOSITORY,
+		SEARCH_ANALYTICS_REPOSITORY,
 		REVIEW_REPOSITORY,
 		MEDIA_JOB_QUEUE,
 		CDN_PURGE,

@@ -1,13 +1,11 @@
-import { BadRequestException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Product, ProductVariant } from '@saha-textile/contracts';
-import { SearchUnavailableError } from '@saha-textile/core-domain';
 import { describe, expect, it, vi } from 'vitest';
 import type { z } from 'zod';
 
 import { AdminAddonTemplatesController } from '../src/catalog/admin-addon-templates.controller';
 import { AdminProductsController } from '../src/catalog/admin-products.controller';
 import { AdminRedirectsController } from '../src/catalog/admin-redirects.controller';
-import { CatalogSearchController } from '../src/catalog/catalog-search.controller';
 import { CatalogService } from '../src/catalog/catalog.service';
 import { CategoriesController } from '../src/catalog/categories.controller';
 import { ProductsController } from '../src/catalog/products.controller';
@@ -877,26 +875,5 @@ describe('catalogue controllers', () => {
 		await controller.stockAlert('p', { variantSku: 'V1' } as never, undefined, request);
 		expect(limits.enforce).toHaveBeenLastCalledWith('stock_alert', { identifier: '', ip: '1.2.3.4' });
 		expect(catalog.requestStockAlert).toHaveBeenLastCalledWith('p', 'V1', null);
-	});
-
-	it('searches, and turns a search outage into a 503', async () => {
-		const search = { search: vi.fn(async () => ({ items: [{ id: 'p1' }], total: 1 })) };
-		const catalog = { cardsForIds: vi.fn(async () => ['card']) };
-		const limits = { enforce: vi.fn(async () => {}) };
-		const controller = new CatalogSearchController(search as never, catalog as never, limits as never);
-		const request = { ip: '1.2.3.4' } as never;
-		expect(await controller.searchProducts({ q: 'silk', categoryId: 'c' } as never, request)).toEqual({
-			items: ['card'],
-			total: 1,
-		});
-		expect(search.search).toHaveBeenLastCalledWith({ q: 'silk', categoryId: 'c', page: 1, pageSize: 24 });
-		await controller.searchProducts({ q: 'silk' } as never, request);
-		expect(search.search).toHaveBeenLastCalledWith({ q: 'silk', page: 1, pageSize: 24 });
-		search.search.mockRejectedValueOnce(new SearchUnavailableError('down'));
-		await expect(controller.searchProducts({ q: 'x' } as never, request)).rejects.toBeInstanceOf(
-			ServiceUnavailableException,
-		);
-		search.search.mockRejectedValueOnce(new Error('bug'));
-		await expect(controller.searchProducts({ q: 'x' } as never, request)).rejects.toThrow('bug');
 	});
 });

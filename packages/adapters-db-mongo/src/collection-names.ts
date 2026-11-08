@@ -109,6 +109,11 @@ export const COLLECTION_NAMES = {
 	SeoRedirect: 'seoRedirects',
 	SeoRoute: 'seoRoutes',
 	AddonTemplate: 'addonTemplates',
+	// --- Search and analytics ------------------------------------------------
+	/** Search totals per normalised words and language — catalog plan §7.18. */
+	SearchQueryAggregate: 'searchQueryAggregates',
+	/** Daily figures per grain and key — catalog plan §7.38. */
+	AnalyticsDailyAggregate: 'analyticsDailyAggregates',
 } as const satisfies Record<string, string>;
 
 export type ModelName = keyof typeof COLLECTION_NAMES;

@@ -51,6 +51,7 @@ export const MEDIA_ASSET_REPOSITORY = Symbol('MediaAssetRepository');
 export const MEDIA_ROLE_REPOSITORY = Symbol('MediaRoleRepository');
 export const CONTENT_BLOCK_REPOSITORY = Symbol('ContentBlockRepository');
 export const SITE_SETTINGS_REPOSITORY = Symbol('SiteSettingsRepository');
+export const SEARCH_ANALYTICS_REPOSITORY = Symbol('SearchAnalyticsRepository');
 export const REVIEW_REPOSITORY = Symbol('ReviewRepository');
 export const MEDIA_JOB_QUEUE = Symbol('MediaJobQueuePort');
 export const CDN_PURGE = Symbol('CdnPurgePort');

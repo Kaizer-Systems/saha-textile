@@ -136,8 +136,45 @@ export type CatalogCardsQuery = z.infer<typeof CatalogCardsQuery>;
 export const CatalogSearchQuery = z.object({
 	q: z.string().max(200).default(''),
 	categoryId: Id.optional(),
+	page: z.coerce.number().int().positive().max(500).default(1),
+	pageSize: z.coerce.number().int().positive().max(48).default(24),
+	/**
+	 * `page` when the shopper committed the search (Enter, the button, a link), which counts it in
+	 * the search reports; `typeahead` for the suggestion box, which is never counted.
+	 */
+	source: z.enum(['typeahead', 'page']).default('typeahead'),
 });
 export type CatalogSearchQuery = z.infer<typeof CatalogSearchQuery>;
+
+export const CatalogSearchPage = z.object({
+	items: z.array(CatalogCard),
+	total: z.number().int().nonnegative(),
+	page: z.number().int().positive(),
+	pageSize: z.number().int().positive(),
+});
+export type CatalogSearchPage = z.infer<typeof CatalogSearchPage>;
+
+/** A product opened from search results, with the words that found it. No shopper detail. */
+export const CatalogSearchClick = z.object({
+	q: z.string().trim().min(1).max(200),
+	productId: Id.max(80),
+});
+export type CatalogSearchClick = z.infer<typeof CatalogSearchClick>;
+
+export const CatalogSearchTrendingQuery = z.object({
+	limit: z.coerce.number().int().positive().max(12).default(6),
+});
+export type CatalogSearchTrendingQuery = z.infer<typeof CatalogSearchTrendingQuery>;
+
+/**
+ * `trending` ranks products by recent search-result clicks; `popular` is the bestseller list,
+ * shown until enough products have clicks to rank.
+ */
+export const CatalogSearchTrending = z.object({
+	kind: z.enum(['trending', 'popular']),
+	items: z.array(CatalogCard),
+});
+export type CatalogSearchTrending = z.infer<typeof CatalogSearchTrending>;
 
 export const CatalogPlacementPage = z.object({
 	path: z.string(),

@@ -16,6 +16,7 @@ import { ContentService } from './content.service';
 import { ProductBuilderService } from './product-builder.service';
 import { ProductsController } from './products.controller';
 import { RecentPurchasesService } from './recent-purchases.service';
+import { SearchInsightsService } from './search-insights.service';
 import { StockAlertsController } from './stock-alerts.controller';
 import { StorefrontCatalogController } from './storefront-catalog.controller';
 import { TaxonomyService } from './taxonomy.service';
@@ -45,6 +46,7 @@ import { TaxonomyService } from './taxonomy.service';
 		CatalogRateLimit,
 		ContentService,
 		RecentPurchasesService,
+		SearchInsightsService,
 	],
 	exports: [CatalogPublicService, CatalogRateLimit],
 })

@@ -68,6 +68,7 @@ export type AuthRateLimitAction =
 	| 'product_question'
 	| 'stock_alert'
 	| 'catalog_search'
+	| 'search_click'
 	| 'cart_write'
 	| 'consent_write';
 
@@ -143,6 +144,11 @@ export const AUTH_RATE_LIMIT_POLICY: Readonly<Record<AuthRateLimitAction, RateLi
 	catalog_search: {
 		counting: 'attempts',
 		ip: { max: 120, windowSeconds: 1 * MINUTES },
+	},
+	/** Result clicks feed Trending, so one address cannot push a product up the list. */
+	search_click: {
+		counting: 'attempts',
+		ip: { max: 30, windowSeconds: 1 * MINUTES },
 	},
 	/** Guest carts need no account, so this keeps one address from filling the collection. */
 	cart_write: {

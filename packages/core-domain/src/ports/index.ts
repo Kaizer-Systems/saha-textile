@@ -36,3 +36,4 @@ export * from './auth-identity.repository';
 export * from './dashboard.repository';
 export * from './blog.repository';
 export * from './store-location.repository';
+export * from './search-analytics.repository';

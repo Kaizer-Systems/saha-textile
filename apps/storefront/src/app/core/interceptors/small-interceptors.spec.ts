@@ -71,5 +71,8 @@ describe('CatalogLocaleInterceptor', () => {
 		expect(run(finalise).params.get('locale')).toBe('bn');
 		expect(run(new HttpRequest('POST', 'https://api.test/orders', {})).params.get('locale')).toBe('bn');
 		expect(run(new HttpRequest('GET', 'https://api.test/orders')).params.has('locale')).toBe(false);
+		expect(run(new HttpRequest('POST', 'https://api.test/catalog/search/clicks', {})).params.get('locale')).toBe(
+			'bn',
+		);
 	});
 });

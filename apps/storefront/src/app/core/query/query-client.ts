@@ -28,6 +28,11 @@ const PUBLIC_QUERY_ROOTS = new Set([
 	'currencies',
 	'reviews',
 	'qna',
+	// Contact Us store cards: without them the browser's first render differs from the
+	// server's and hydration can leave a card on the page twice.
+	'store-locations',
+	// The Brand Kit logo and seal in the header, footer and store cards.
+	'brand',
 ]);
 
 export const isPublicQuery = (queryKey: readonly unknown[]): boolean =>

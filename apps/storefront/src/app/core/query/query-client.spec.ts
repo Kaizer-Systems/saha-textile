@@ -21,6 +21,8 @@ afterEach(() => vi.useRealTimers());
 describe('isPublicQuery', () => {
 	it('allows catalogue data and refuses everything else', () => {
 		expect(isPublicQuery(['catalog', 'home'])).toBe(true);
+		expect(isPublicQuery(['store-locations', 'en'])).toBe(true);
+		expect(isPublicQuery(['brand'])).toBe(true);
 		expect(isPublicQuery(['orders'])).toBe(false);
 		expect(isPublicQuery([1])).toBe(false);
 	});

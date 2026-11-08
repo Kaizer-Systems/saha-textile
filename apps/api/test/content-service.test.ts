@@ -18,7 +18,9 @@ const build = (
 ) => {
 	const products = {
 		findBySlug: vi.fn(async () => (overrides.found === undefined ? product : overrides.found)),
-		findById: vi.fn(async () => (overrides.found === undefined ? product : overrides.found)),
+		findById: vi.fn(async (_id: string): Promise<unknown> =>
+			overrides.found === undefined ? product : overrides.found,
+		),
 	};
 	const faqs = {
 		resolveForSurface: vi.fn(async () => [

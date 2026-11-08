@@ -92,7 +92,7 @@ const build = (options: Options = {}) => {
 	};
 	const placements = {
 		findByPath: vi.fn(async () => options.placement ?? null),
-		findCanonical: vi.fn(async () => options.canonical ?? null),
+		findCanonical: vi.fn(async (_id: string): Promise<unknown> => options.canonical ?? null),
 		listLivePaths: vi.fn(async () => options.live ?? []),
 		listRetiredPaths: vi.fn(async () => options.retired ?? []),
 	};

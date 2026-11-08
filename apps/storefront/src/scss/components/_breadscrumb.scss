@@ -93,6 +93,16 @@
 					&:last-child {
 						flex-shrink: 1;
 						min-width: 0;
+						// Block, not flex: an ellipsis only draws on a block of text.
+						display: block;
+						line-height: 20px;
+						white-space: nowrap;
+						overflow: hidden;
+						text-overflow: ellipsis;
+
+						&::before {
+							vertical-align: -3px;
+						}
 					}
 					display: flex;
 					line-height: 1;

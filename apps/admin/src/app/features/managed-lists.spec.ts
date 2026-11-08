@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { signal, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
@@ -13,12 +14,14 @@ import { AdminRolesGateway } from '@core/admin-roles/admin-roles.gateway';
 import { AdminUsersGateway } from '@core/admin-users/admin-users.gateway';
 import { ReviewsGateway } from '@core/media/reviews.gateway';
 import { AddonTemplateService } from '@data-access/services/addon-template.service';
+import { BlogService } from '@data-access/services/blog.service';
 import { FaqService } from '@data-access/services/faq.service';
-import { ProductService } from '@data-access/services/product.service';
 import { NotificationService } from '@data-access/services/notification.service';
+import { ProductService } from '@data-access/services/product.service';
 import { RedirectService } from '@data-access/services/redirect.service';
 
 import { AddonTemplate } from './addon-template/addon-template';
+import { Blog } from './blog/blog';
 import { Customer } from './customer/customer';
 import { Faq } from './faq/faq';
 import { Product } from './product/product';
@@ -56,6 +59,7 @@ vi.mock('@data-access/queries/admin-customers.queries', () => ({
 	injectAdminCustomersQuery: (p: () => unknown, v: () => unknown) => query(p, v),
 }));
 vi.mock('@data-access/queries/admin-users.queries', () => ({ injectAdminUsersQuery: (p: () => unknown) => query(p) }));
+vi.mock('@data-access/queries/blog.queries', () => ({ injectBlogsQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/faq.queries', () => ({ injectFaqsQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/product.queries', () => ({ injectCatalogProductsQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/review.queries', () => ({
@@ -250,8 +254,21 @@ describe('Role list', () => {
 });
 
 describe('Tag list', () => {
+	const tagSetup = (save = () => of({ id: 't' }) as never) => {
+		const blogs = { saveTerm: vi.fn(save), deleteTerm: vi.fn(() => of(undefined)) };
+		const toasts = { showError: vi.fn(), showSuccess: vi.fn() };
+		const providers = [
+			{ provide: BlogService, useValue: blogs },
+			{ provide: QueryClient, useValue: client },
+			{ provide: NotificationService, useValue: toasts },
+			{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+		];
+		return { blogs, toasts, ...render(Tag, providers) };
+	};
+	const blogTag = { id: 'btag_1', slug: 'silk', name: { en: 'Silk' }, description: {}, status: 'draft' };
+
 	it('fills the table and opens the right edit screen', () => {
-		const { fixture, page, router } = render(Tag);
+		const { fixture, page, router } = tagSetup();
 		expect(page.tableConfig.total).toBe(0);
 		data.set({ data: [{ id: 1 }], total: 1 });
 		TestBed.tick();
@@ -268,6 +285,94 @@ describe('Tag list', () => {
 		for (const actionToPerform of ['status', 'delete', 'deleteAll', 'other']) {
 			page.onActionClicked({ actionToPerform, data: {} } as never);
 		}
+	});
+
+	it('switches, deletes and bulk-deletes blog tags through the blog API', () => {
+		const { fixture, page, blogs } = tagSetup();
+		fixture.componentRef.setInput('tagType', 'post');
+		page.onActionClicked({ actionToPerform: 'status', data: { id: 'btag_1', status: 1, blog: blogTag } } as never);
+		expect(blogs.saveTerm).toHaveBeenCalledWith('tags', 'btag_1', {
+			name: { en: 'Silk' },
+			description: {},
+			slug: 'silk',
+			status: 'live',
+		});
+		page.onActionClicked({ actionToPerform: 'delete', data: { id: 'btag_1', blog: blogTag } } as never);
+		page.onActionClicked({ actionToPerform: 'deleteAll', data: ['btag_2'] } as never);
+		expect(blogs.deleteTerm).toHaveBeenCalledWith('tags', 'btag_1');
+		expect(blogs.deleteTerm).toHaveBeenCalledWith('tags', 'btag_2');
+		expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['tags'] });
+	});
+
+	it('names what a blog tag needs when its switch is refused', () => {
+		const refusal = new HttpErrorResponse({
+			status: 400,
+			error: { error: { issues: [{ path: ['name', 'bn'], code: 'go_live_blocked', message: 'x' }] } },
+		});
+		const { fixture, page, toasts } = tagSetup(() => throwError(() => refusal) as never);
+		fixture.componentRef.setInput('tagType', 'post');
+		page.onActionClicked({ actionToPerform: 'status', data: { id: 'btag_1', status: 1, blog: blogTag } } as never);
+		expect(toasts.showError).toHaveBeenCalledWith('blog_go_live_blocked বাংলা: blog_gap_name');
+		page.onActionClicked({ actionToPerform: 'status', data: { id: 'btag_1', status: 0 } } as never);
+		expect(toasts.showError).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('Blog list', () => {
+	const blogSetup = () => {
+		const blogs = {
+			goLive: vi.fn(() => of({ live: true, gaps: [] })),
+			setStatus: vi.fn((_id: string, status: string) =>
+				of(
+					status === 'live'
+						? { live: false, gaps: [{ field: 'title', locale: 'bn' }] }
+						: { live: false, gaps: [] },
+				),
+			),
+			deletePost: vi.fn(() => of(undefined)),
+		};
+		const toasts = { showError: vi.fn(), showSuccess: vi.fn() };
+		const providers = [
+			{ provide: BlogService, useValue: blogs },
+			{ provide: QueryClient, useValue: client },
+			{ provide: NotificationService, useValue: toasts },
+			{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+		];
+		return { blogs, toasts, ...render(Blog, providers) };
+	};
+
+	it('fills the table from the query and opens a post', () => {
+		const { page, router } = blogSetup();
+		expect(page.tableConfig).toMatchObject({ data: [], total: 0 });
+		data.set({ data: [{ id: 'blg_1' }], total: 1 });
+		TestBed.tick();
+		expect(page.tableConfig).toMatchObject({ data: [{ id: 'blg_1' }], total: 1 });
+		page.onTableChange({ page: 2 });
+		page.onActionClicked({ actionToPerform: 'edit', data: { id: 'blg_1' } } as never);
+		expect(router.navigateByUrl).toHaveBeenCalledWith('/blog/edit/blg_1');
+		page.onActionClicked({ actionToPerform: 'other', data: {} } as never);
+	});
+
+	it('goes live, takes down and deletes through the API with the blog words', () => {
+		const { page, blogs, toasts } = blogSetup();
+		page.onActionClicked({ actionToPerform: 'go_live', data: { id: 'blg_1' } } as never);
+		expect(toasts.showSuccess).toHaveBeenCalledWith('blog_go_live_done');
+		page.onActionClicked({ actionToPerform: 'status', data: { id: 'blg_1', status: 1 } } as never);
+		expect(toasts.showError).toHaveBeenCalledWith('blog_go_live_blocked বাংলা: blog_gap_title');
+		page.onActionClicked({ actionToPerform: 'status', data: { id: 'blg_1', status: 0 } } as never);
+		expect(blogs.setStatus).toHaveBeenLastCalledWith('blg_1', 'draft');
+		expect(toasts.showSuccess).toHaveBeenCalledWith('blog_taken_down');
+		page.onActionClicked({ actionToPerform: 'delete', data: { id: 'blg_1' } } as never);
+		page.onActionClicked({ actionToPerform: 'deleteAll', data: ['blg_2'] } as never);
+		expect(blogs.deletePost).toHaveBeenCalledWith('blg_2');
+		expect(toasts.showSuccess).toHaveBeenCalledWith('blog_deleted');
+	});
+
+	it('says when a delete is refused', () => {
+		const { page, blogs, toasts } = blogSetup();
+		blogs.deletePost.mockReturnValueOnce(throwError(() => new Error('no')) as never);
+		page.onActionClicked({ actionToPerform: 'delete', data: { id: 'blg_1' } } as never);
+		expect(toasts.showError).toHaveBeenCalledWith('blog_rejected');
 	});
 });
 

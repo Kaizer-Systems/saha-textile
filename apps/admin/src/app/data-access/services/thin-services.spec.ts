@@ -52,7 +52,6 @@ beforeEach(() => {
 describe('read services', () => {
 	it.each<[string, () => unknown, string]>([
 		['attachments', () => TestBed.inject(AttachmentService).getAttachments({ a: 1 }), '/media.json'],
-		['blogs', () => TestBed.inject(BlogService).getBlogs({ a: 1 }), '/blog.json'],
 		['coupons', () => TestBed.inject(CouponService).getCoupons({ a: 1 }), '/coupon.json'],
 		['currencies', () => TestBed.inject(CurrencyService).getCurrencies({ a: 1 }), '/currency.json'],
 		['ledger', () => TestBed.inject(CustomerLedgerService).getUserTransaction({ a: 1 }), '/wallet.json'],
@@ -86,10 +85,71 @@ describe('read services', () => {
 		expect(http.get.mock.lastCall?.[1]).toEqual({ params: {} });
 	});
 
-	it('reads blog categories from their own list', () => {
-		TestBed.inject(CategoryService).getCategories({ type: 'post' });
-		expect(lastUrl(http.get)).toContain('/category.json');
-		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { type: 'post' } });
+	it('reads blog categories and tags from the blog API', async () => {
+		const term = { id: 'b1', slug: 'guides', name: { en: 'Guides' }, description: {}, status: 'live' };
+		http.get.mockReturnValue(of([term]));
+		const categories = await firstValueFrom(TestBed.inject(CategoryService).getCategories({ type: 'post' }));
+		expect(lastUrl(http.get)).toContain('/admin/blog/categories');
+		expect(categories).toMatchObject({
+			total: 1,
+			data: [{ id: 'b1', name: 'Guides', type: 'post', status: true }],
+		});
+		const tags = await firstValueFrom(TestBed.inject(TagService).getTags({ type: 'post' }));
+		expect(lastUrl(http.get)).toContain('/admin/blog/tags');
+		expect(tags).toMatchObject({ total: 1, data: [{ id: 'b1', name: 'Guides', type: 'post', status: true }] });
+		http.get.mockReturnValue(of([{ ...term, name: {}, description: {}, status: 'draft' }]));
+		const bare = await firstValueFrom(TestBed.inject(TagService).getTags({ type: 'post' }));
+		expect(bare.data[0]).toMatchObject({ name: 'guides', description: '', status: false });
+	});
+
+	it('reads and writes blog posts through the admin blog API', async () => {
+		const blogs = TestBed.inject(BlogService);
+		const row = {
+			post: {
+				id: 'blg_1',
+				slug: 'real-banarasi',
+				title: {},
+				status: 'live',
+				publishedAt: '2026-11-08T00:00:00.000Z',
+			},
+			cover: { id: 'm', url: 'https://cdn/x' },
+			shareImage: null,
+		};
+		http.get.mockReturnValue(
+			of({
+				items: [row, { ...row, cover: null, post: { ...row.post, status: 'draft', title: { en: 'Real' } } }],
+				total: 2,
+			}),
+		);
+		const page = await firstValueFrom(blogs.getBlogs({ page: 2, paginate: 500, search: ' silk ' }));
+		expect(lastUrl(http.get)).toContain('/admin/blog/posts');
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { page: '2', pageSize: '100', search: 'silk' } });
+		expect(page.data.map((blog) => [blog.title, blog.status, blog.blog_thumbnail])).toEqual([
+			['real-banarasi', 1, { original_url: 'https://cdn/x' }],
+			['Real', 0, null],
+		]);
+		await firstValueFrom(blogs.getBlogs());
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { page: '1', pageSize: '20' } });
+		blogs.getPost('blg 1');
+		expect(lastUrl(http.get)).toContain('/admin/blog/posts/blg%201');
+		blogs.savePost(null, {} as never);
+		expect(lastUrl(http.post)).toMatch(/\/admin\/blog\/posts$/);
+		blogs.savePost('blg_1', {} as never);
+		expect(lastUrl(http.post)).toContain('/admin/blog/posts/blg_1');
+		blogs.goLive('blg_1');
+		expect(lastUrl(http.post)).toContain('/posts/blg_1/go-live');
+		blogs.setStatus('blg_1', 'draft');
+		expect(http.post.mock.lastCall?.[1]).toEqual({ status: 'draft' });
+		blogs.deletePost('blg_1');
+		expect(lastUrl(http.delete)).toContain('/admin/blog/posts/blg_1');
+		blogs.getTerms('tags');
+		expect(lastUrl(http.get)).toContain('/admin/blog/tags');
+		blogs.saveTerm('categories', null, {} as never);
+		expect(lastUrl(http.post)).toMatch(/\/admin\/blog\/categories$/);
+		blogs.saveTerm('tags', 't 1', {} as never);
+		expect(lastUrl(http.post)).toContain('/admin/blog/tags/t%201');
+		blogs.deleteTerm('categories', 'c1');
+		expect(lastUrl(http.delete)).toContain('/admin/blog/categories/c1');
 	});
 
 	it.each<[string, () => unknown, string]>([

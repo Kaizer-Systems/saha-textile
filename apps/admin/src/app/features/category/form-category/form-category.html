@@ -42,7 +42,7 @@
 				type="text"
 				formControlName="slug"
 			/>
-			<p class="help-text">{{ 'category_slug_help' | transloco }}</p>
+			<p class="help-text">{{ (isBlog() ? 'blog_term_slug_help' : 'category_slug_help') | transloco }}</p>
 			@if (form.controls['slug'].errors?.['pattern']) {
 			<div class="invalid-feedback d-block">{{ 'url_slug_invalid' | transloco }}</div>
 			}
@@ -62,6 +62,7 @@
 			<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
 			}
 		</app-form-fields>
+		@if (!isBlog()) {
 		<app-form-fields
 			[label]="'select_parent' | transloco "
 			[for]="'category'"
@@ -141,6 +142,7 @@
 			<p class="help-text">{{ 'english_guide' | transloco: { text: guide } }}</p>
 			}
 		</app-form-fields>
+		}
 		<app-form-fields
 			[label]="'status' | transloco "
 			[for]="'status'"
@@ -156,6 +158,9 @@
 					<span class="switch-state"></span>
 				</label>
 			</div>
+			@if (isBlog()) {
+			<p class="help-text">{{ 'blog_term_status_help' | transloco }}</p>
+			}
 		</app-form-fields>
 		<app-button [id]="'category_btn'">
 			{{ (type() === 'create' ? 'save_category' : 'update_category') | transloco }}

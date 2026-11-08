@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { PLATFORM_ID, signal, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup } from '@angular/forms';
@@ -13,6 +13,7 @@ import { goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
 import { LocalizedFields } from '@core/i18n/localized-fields';
 import { AddonTemplateService } from '@data-access/services/addon-template.service';
 import { AttributeService } from '@data-access/services/attribute.service';
+import { BlogService } from '@data-access/services/blog.service';
 import { CategoryService } from '@data-access/services/category.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { ProductService } from '@data-access/services/product.service';
@@ -724,8 +725,22 @@ describe('FormCategory', () => {
 		image: { id: 'a1', url: 'https://cdn.test/a1' },
 		icon: null,
 	};
-	const render = (id?: string, inputs: Record<string, unknown> = {}, save = () => of({ id: 'cat_1' }) as never) => {
+	const blogRow = {
+		id: 'bcat_1',
+		slug: 'saree-guides',
+		name: { en: 'Saree guides' },
+		description: { en: 'How to choose' },
+		status: 'draft',
+		displayOrder: 0,
+	};
+	const render = (
+		id?: string,
+		inputs: Record<string, unknown> = {},
+		save = () => of({ id: 'cat_1' }) as never,
+		saveBlog = () => of({ id: 'bcat_1' }) as never,
+	) => {
 		const service = { getCategoryRows: () => of([row]), saveCategory: vi.fn(save) };
+		const blogs = { getTerms: () => of([blogRow]), saveTerm: vi.fn(saveBlog) };
 		const router = { navigateByUrl: vi.fn() };
 		const toasts = { showSuccess: vi.fn(), showError: vi.fn() };
 		const client = { invalidateQueries: vi.fn() };
@@ -733,6 +748,7 @@ describe('FormCategory', () => {
 			FormCategory,
 			[
 				{ provide: CategoryService, useValue: service },
+				{ provide: BlogService, useValue: blogs },
 				{ provide: Router, useValue: router },
 				{ provide: ActivatedRoute, useValue: { params: new BehaviorSubject(id ? { id } : {}) } },
 				{ provide: QueryClient, useValue: client },
@@ -741,7 +757,7 @@ describe('FormCategory', () => {
 			],
 			{ type: id ? 'edit' : 'create', ...inputs },
 		);
-		return { page, service, router, toasts, client };
+		return { page, service, blogs, router, toasts, client };
 	};
 
 	it('switches to the language of a to-do line', () => {
@@ -840,16 +856,52 @@ describe('FormCategory', () => {
 		]);
 	});
 
-	it('says when a save is refused, and blog categories go nowhere', () => {
+	it('says when a save is refused', () => {
 		const refused = render(undefined, {}, () => throwError(() => new Error('no')) as never);
 		refused.page.form.patchValue({ name: 'New', slug: 'new' });
 		refused.page.submit();
 		expect(refused.toasts.showError).toHaveBeenCalledWith('category_rejected');
+	});
+
+	it('saves a blog category through the blog API, its address made from the English name', () => {
 		const blog = render(undefined, { categoryType: 'post' });
-		blog.page.form.patchValue({ name: 'New', slug: 'new' });
+		blog.page.form.patchValue({ name: 'Care and styling', slug: '' });
 		blog.page.submit();
 		expect(blog.service.saveCategory).not.toHaveBeenCalled();
+		expect(blog.blogs.saveTerm).toHaveBeenCalledWith('categories', null, {
+			name: { en: 'Care and styling' },
+			description: { en: '' },
+			slug: 'care-and-styling',
+			status: 'live',
+		});
 		expect(blog.router.navigateByUrl).toHaveBeenCalledWith('/blog/category');
+	});
+
+	it('fills a saved blog category and lists only its name and description as to-dos', () => {
+		const blog = render('bcat_1', { categoryType: 'post' });
+		expect(blog.page.form.value).toMatchObject({ name: 'Saree guides', slug: 'saree-guides', status: false });
+		expect(blog.page.gaps()['bn']?.map((gap) => gap.key)).toEqual(['name', 'description']);
+	});
+
+	it('opens the missing language when a blog category is refused for going live', () => {
+		const refusal = new HttpErrorResponse({
+			status: 400,
+			error: { error: { issues: [{ path: ['name', 'bn'], code: 'go_live_blocked', message: 'x' }] } },
+		});
+		const blog = render(undefined, { categoryType: 'post' }, undefined, () => throwError(() => refusal) as never);
+		blog.page.form.patchValue({ name: 'Care', slug: 'care' });
+		blog.page.submit();
+		expect(blog.toasts.showError).toHaveBeenCalledWith('blog_go_live_blocked বাংলা: blog_gap_name');
+		expect(blog.page.fields.locale()).toBe('bn');
+		const plain = render(
+			undefined,
+			{ categoryType: 'post' },
+			undefined,
+			() => throwError(() => new Error('x')) as never,
+		);
+		plain.page.form.patchValue({ name: 'Care', slug: 'care' });
+		plain.page.submit();
+		expect(plain.toasts.showError).toHaveBeenCalledWith('category_rejected');
 	});
 });
 
@@ -857,16 +909,18 @@ describe('TreeNode', () => {
 	const render = (remove = () => of(undefined) as never) => {
 		const router = { navigateByUrl: vi.fn() };
 		const service = { deleteCategory: vi.fn(remove) };
+		const blogs = { deleteTerm: vi.fn(() => of(undefined)) };
 		const toasts = { showError: vi.fn() };
 		const node = mount(TreeNode, [
 			{ provide: Router, useValue: router },
 			{ provide: ActivatedRoute, useValue: { params: of({ id: 'c4' }) } },
 			{ provide: CategoryService, useValue: service },
+			{ provide: BlogService, useValue: blogs },
 			{ provide: QueryClient, useValue: { invalidateQueries: vi.fn() } },
 			{ provide: NotificationService, useValue: toasts },
 			{ provide: TranslocoService, useValue: translate },
 		]);
-		return { node, router, service, toasts };
+		return { node, router, service, blogs, toasts };
 	};
 
 	it('names a category in the language on screen, or falls back', () => {
@@ -881,6 +935,7 @@ describe('TreeNode', () => {
 		expect(label({ name: 'Sarees', row }, 'bn')).toBe('শাড়ি');
 		expect(label({ name: 'Sarees', row: { name: { en: 'Sarees' } } }, 'bn')).toBe('Sarees');
 		expect(label({ name: 'Blog' }, 'bn')).toBe('Blog');
+		expect(label({ name: 'Guides', blog: { name: { en: 'Guides', bn: 'গাইড' } } }, 'bn')).toBe('গাইড');
 	});
 
 	it('reads the selected id, and deletes through the API', () => {
@@ -891,10 +946,11 @@ describe('TreeNode', () => {
 		expect(router.navigateByUrl).toHaveBeenLastCalledWith('/category');
 	});
 
-	it('leaves blog categories alone, and says when a delete is refused', () => {
+	it('deletes blog categories through the blog API, and says when a delete is refused', () => {
 		const blog = render();
 		blog.node.delete('delete', { id: 'b', type: 'post' } as never);
 		expect(blog.service.deleteCategory).not.toHaveBeenCalled();
+		expect(blog.blogs.deleteTerm).toHaveBeenCalledWith('categories', 'b');
 		expect(blog.router.navigateByUrl).toHaveBeenCalledWith('/blog/category');
 		const refused = render(() => throwError(() => new Error('no')) as never);
 		refused.node.delete('delete', { id: 'c', type: 'product' } as never);

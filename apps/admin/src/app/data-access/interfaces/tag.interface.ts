@@ -1,11 +1,14 @@
 import { IPaginateModel } from './core.interface';
 
+import type { BlogTag } from '@saha-textile/contracts';
+
 export interface ITagModel extends IPaginateModel {
 	data: ITag[];
 }
 
 export interface ITag {
-	id: number;
+	/** A number on the theme's demo tags, a string on blog tags. */
+	id: number | string;
 	name: string;
 	slug: string;
 	description?: string;
@@ -15,4 +18,6 @@ export interface ITag {
 	created_at?: string;
 	updated_at?: string;
 	deleted_at?: string;
+	/** A blog tag, every language as the API holds it. */
+	blog?: BlogTag;
 }

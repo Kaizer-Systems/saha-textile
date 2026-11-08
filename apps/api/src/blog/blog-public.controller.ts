@@ -1,20 +1,11 @@
 import { Controller, Get, Header, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PublicBlogQuery, Slug } from '@saha-textile/contracts';
-import { z } from 'zod';
+import { PublicBlogLocaleQuery, PublicBlogQuery, Slug } from '@saha-textile/contracts';
 
 import { Public } from '../auth/session.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { BlogPublicService } from './blog-public.service';
-
-const LocaleQuery = z.object({
-	locale: z
-		.string()
-		.regex(/^[a-z]{2}$/)
-		.default('en'),
-});
-type LocaleQuery = z.infer<typeof LocaleQuery>;
 
 const SHORT_CACHE = 'public, max-age=60, stale-while-revalidate=300';
 
@@ -37,7 +28,7 @@ export class BlogPublicController {
 	@ApiOperation({ operationId: 'getBlogPost', summary: 'One live post by its address' })
 	post(
 		@Param('slug', new ZodValidationPipe(Slug)) slug: string,
-		@Query(new ZodValidationPipe(LocaleQuery)) query: LocaleQuery,
+		@Query(new ZodValidationPipe(PublicBlogLocaleQuery)) query: PublicBlogLocaleQuery,
 	) {
 		return this.blog.post(slug, query.locale);
 	}
@@ -45,14 +36,14 @@ export class BlogPublicController {
 	@Get('categories')
 	@Header('Cache-Control', SHORT_CACHE)
 	@ApiOperation({ operationId: 'listBlogCategories', summary: 'Live blog categories that hold a live post' })
-	categories(@Query(new ZodValidationPipe(LocaleQuery)) query: LocaleQuery) {
+	categories(@Query(new ZodValidationPipe(PublicBlogLocaleQuery)) query: PublicBlogLocaleQuery) {
 		return this.blog.terms('category', query.locale);
 	}
 
 	@Get('tags')
 	@Header('Cache-Control', SHORT_CACHE)
 	@ApiOperation({ operationId: 'listBlogTags', summary: 'Live blog tags that hold a live post' })
-	tags(@Query(new ZodValidationPipe(LocaleQuery)) query: LocaleQuery) {
+	tags(@Query(new ZodValidationPipe(PublicBlogLocaleQuery)) query: PublicBlogLocaleQuery) {
 		return this.blog.terms('tag', query.locale);
 	}
 }

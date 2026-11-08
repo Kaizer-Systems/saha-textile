@@ -3,15 +3,22 @@ import { FormGroup, FormBuilder, FormControl, Validators, ReactiveFormsModule } 
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import type { AdminCategoryRow, AdminCategoryWrite } from '@saha-textile/contracts';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Select2 } from 'ng-select2-component';
 import { Subject, of } from 'rxjs';
 import { switchMap, map, takeUntil } from 'rxjs/operators';
 
-import { ADMIN_LOCALES, focusField, gapsByLocale, type LanguageGap, LocalizedFields } from '@core/i18n/localized-fields';
+import { BLOG_GO_LIVE_WORDS, gapsFromError, goLiveToast } from '@core/catalog/go-live-report';
+import {
+	ADMIN_LOCALES,
+	focusField,
+	gapsByLocale,
+	type LanguageGap,
+	LocalizedFields,
+} from '@core/i18n/localized-fields';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 import { ICategory } from '@data-access/interfaces/category.interface';
+import { BlogService } from '@data-access/services/blog.service';
 import { CategoryService } from '@data-access/services/category.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
@@ -20,6 +27,8 @@ import { Button } from '@shared/ui/button/button';
 import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 import { LanguageSwitch } from '@shared/ui/language-switch/language-switch';
+
+import type { AdminCategoryRow, AdminCategoryWrite, BlogCategory } from '@saha-textile/contracts';
 
 const LANGUAGE_FIELDS = ['name', 'description', 'seo_title', 'seo_description'];
 
@@ -50,6 +59,7 @@ export class FormCategory {
 	private router = inject(Router);
 	private formBuilder = inject(FormBuilder);
 	private categoryService = inject(CategoryService);
+	private blogs = inject(BlogService);
 	private queryClient = inject(QueryClient);
 	private notifier = inject(NotificationService);
 	private transloco = inject(TranslocoService);
@@ -91,7 +101,33 @@ export class FormCategory {
 		this.form.controls['type'].setValue(this.categoryType());
 	}
 
+	/** Blog categories are flat and have no pictures or search text: only the name, address, description and status. */
+	isBlog(): boolean {
+		return this.categoryType() === 'post';
+	}
+
 	ngOnInit() {
+		if (this.isBlog()) {
+			// A new blog category may leave its address empty: it is made from the English name.
+			this.form.controls['slug'].removeValidators(Validators.required);
+			this.form.controls['slug'].updateValueAndValidity();
+			this.route.params
+				.pipe(
+					switchMap((params) =>
+						params['id']
+							? this.blogs
+									.getTerms('categories')
+									.pipe(map((rows) => rows.find((row) => row.id === params['id']) ?? null))
+							: of(null),
+					),
+					takeUntil(this.destroy$),
+				)
+				.subscribe((row) => {
+					if (row) this.loadBlog(row);
+					this.refreshMissing();
+				});
+			return;
+		}
 		this.route.params
 			.pipe(
 				switchMap((params) => {
@@ -128,6 +164,12 @@ export class FormCategory {
 		this.refreshMissing();
 	}
 
+	private loadBlog(row: BlogCategory) {
+		this.id = row.id;
+		this.form.patchValue({ slug: row.slug, status: row.status === 'live' });
+		this.fields.load({ name: row.name, description: row.description });
+	}
+
 	switchLanguage(locale: string) {
 		this.fields.switchTo(locale);
 		this.localeChange.emit(locale);
@@ -140,7 +182,11 @@ export class FormCategory {
 	}
 
 	private refreshMissing() {
-		this.gaps.set(gapsByLocale((locale) => this.fields.gaps(locale)));
+		// A blog category has no search text, and its description is optional.
+		const english = this.fields.text('description')['en']?.trim();
+		const shown = (gap: LanguageGap) =>
+			!this.isBlog() || gap.key === 'name' || (gap.key === 'description' && !!english);
+		this.gaps.set(gapsByLocale((locale) => this.fields.gaps(locale).filter(shown)));
 	}
 
 	/** A top-level category and its children, for the second-parent dropdown. */
@@ -180,11 +226,11 @@ export class FormCategory {
 			this.form.get('name')?.setErrors({ required: true });
 			return;
 		}
-		if (!this.form.valid) return;
-		if (this.categoryType() === 'post') {
-			void this.router.navigateByUrl('/blog/category');
+		if (this.isBlog()) {
+			this.saveBlog(name);
 			return;
 		}
+		if (!this.form.valid) return;
 		const raw = this.form.getRawValue() as Record<string, unknown>;
 		const parent = raw['parent_id'];
 		const also = raw['also_under'];
@@ -206,6 +252,47 @@ export class FormCategory {
 				void this.router.navigateByUrl('/category');
 			},
 			error: () => this.notifier.showError(this.transloco.translate('category_rejected')),
+		});
+	}
+
+	private saveBlog(name: Record<string, string>) {
+		if (this.form.controls['slug'].invalid) return;
+		const raw = this.form.getRawValue() as Record<string, unknown>;
+		const typed = typeof raw['slug'] === 'string' ? raw['slug'].trim() : '';
+		const slug =
+			typed ||
+			(name['en'] ?? '')
+				.toLowerCase()
+				.normalize('NFKD')
+				.replace(/[^a-z0-9]+/g, '-')
+				.replace(/^-+|-+$/g, '');
+		const body = {
+			name,
+			description: this.fields.text('description'),
+			slug,
+			status: raw['status'] ? ('live' as const) : ('draft' as const),
+		};
+		this.blogs.saveTerm('categories', this.id ?? null, body).subscribe({
+			next: () => {
+				void this.queryClient.invalidateQueries({ queryKey: ['categories'] });
+				this.notifier.showSuccess(this.transloco.translate('saved'));
+				void this.router.navigateByUrl('/blog/category');
+			},
+			error: (error: unknown) => {
+				const gaps = gapsFromError(error);
+				if (!gaps.length) {
+					this.notifier.showError(this.transloco.translate('category_rejected'));
+					return;
+				}
+				goLiveToast(
+					{ live: false, gaps },
+					this.notifier,
+					(key) => this.transloco.translate(key),
+					BLOG_GO_LIVE_WORDS,
+				);
+				const locale = gaps.find((gap) => gap.locale)?.locale;
+				if (locale) this.switchLanguage(locale);
+			},
 		});
 	}
 

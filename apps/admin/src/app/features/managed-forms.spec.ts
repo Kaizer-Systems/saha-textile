@@ -1,8 +1,11 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { signal, type Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { BehaviorSubject, firstValueFrom, of } from 'rxjs';
+import { TranslocoService } from '@jsverse/transloco';
+import { QueryClient } from '@tanstack/angular-query-experimental';
+import { BehaviorSubject, firstValueFrom, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AdminNotificationsGateway } from '@core/admin-notifications/admin-notifications.gateway';
@@ -10,7 +13,9 @@ import { AdminRolesGateway } from '@core/admin-roles/admin-roles.gateway';
 import { AdminUsersGateway } from '@core/admin-users/admin-users.gateway';
 import { AdminAuthGateway } from '@core/auth/auth-gateway';
 import { SettingStore } from '@core/state/setting.store';
+import { BlogService } from '@data-access/services/blog.service';
 import { FaqService } from '@data-access/services/faq.service';
+import { NotificationService } from '@data-access/services/notification.service';
 import { PointService } from '@data-access/services/point.service';
 import { SettingService } from '@data-access/services/setting.service';
 import { StoreService } from '@data-access/services/store.service';
@@ -438,26 +443,89 @@ describe('FormAdminUser', () => {
 });
 
 describe('FormTag', () => {
+	const tagProviders = (save = () => of({ id: 'btag_1' }) as never) => {
+		const blogs = { saveTerm: vi.fn(save) };
+		const toasts = { showSuccess: vi.fn(), showError: vi.fn() };
+		return {
+			blogs,
+			toasts,
+			providers: [
+				{ provide: BlogService, useValue: blogs },
+				{ provide: QueryClient, useValue: { invalidateQueries: vi.fn() } },
+				{ provide: NotificationService, useValue: toasts },
+				{ provide: TranslocoService, useValue: { translate: (key: string) => key } },
+			],
+		};
+	};
+
+	afterEach(() => q.tag.set(undefined));
+
 	it('fills from a saved tag', () => {
-		const { page } = render(FormTag, [], { type: 'edit' }, { id: '3' });
+		const { page } = render(FormTag, tagProviders().providers, { type: 'edit' }, { id: '3' });
 		q.tag.set({ name: 'New', description: 'D', status: false });
 		TestBed.tick();
 		expect(page.form.value).toMatchObject({ name: 'New', status: false });
 		expect(page.tag).toMatchObject({ name: 'New' });
 	});
 
-	it('tracks the tag type and goes back to the right list', () => {
-		const { fixture, page, router } = render(FormTag);
+	it('fills a blog tag in every language', () => {
+		const blog = { id: 'btag_1', slug: 'silk', name: { en: 'Silk', bn: 'রেশম' }, description: {}, status: 'live' };
+		const { page } = render(FormTag, tagProviders().providers, { type: 'edit', tagType: 'post' }, { id: 'btag_1' });
+		q.tag.set({ name: 'Silk', slug: 'silk', status: true, blog });
+		TestBed.tick();
+		page.switchLanguage('bn');
+		expect(page.form.value).toMatchObject({ name: 'রেশম', slug: 'silk' });
+		page.openLanguageGap({ key: 'name', locale: 'en' });
+		expect(page.fields.locale()).toBe('en');
+	});
+
+	it('keeps theme tags on their list', () => {
+		const { page, router } = render(FormTag, tagProviders().providers);
 		page.submit();
 		expect(router.navigateByUrl).not.toHaveBeenCalled();
 		page.form.patchValue({ name: 'New' });
 		page.submit();
 		expect(router.navigateByUrl).toHaveBeenLastCalledWith('/tag');
+	});
+
+	it('saves a blog tag through the blog API and goes back to the blog tags', () => {
+		const setup = tagProviders();
+		const { fixture, page, router } = render(FormTag, setup.providers);
 		fixture.componentRef.setInput('tagType', 'post');
 		page.ngOnChanges();
 		expect(page.form.value.type).toBe('post');
+		page.form.patchValue({ name: 'Wedding Wear' });
 		page.submit();
+		expect(setup.blogs.saveTerm).toHaveBeenCalledWith('tags', null, {
+			name: { en: 'Wedding Wear' },
+			description: { en: '' },
+			slug: 'wedding-wear',
+			status: 'live',
+		});
 		expect(router.navigateByUrl).toHaveBeenLastCalledWith('/blog/tag');
+	});
+
+	it('shows the missing language when a blog tag cannot go live', () => {
+		const refusal = new HttpErrorResponse({
+			status: 400,
+			error: { error: { issues: [{ path: ['name', 'bn'], code: 'go_live_blocked', message: 'x' }] } },
+		});
+		const setup = tagProviders(() => throwError(() => refusal) as never);
+		const { page } = render(FormTag, setup.providers, { tagType: 'post' });
+		page.form.patchValue({ name: 'Silk' });
+		page.submit();
+		expect(setup.toasts.showError).toHaveBeenCalledWith('blog_go_live_blocked বাংলা: blog_gap_name');
+		expect(page.fields.locale()).toBe('bn');
+		page.form.patchValue({ name: '' });
+		page.switchLanguage('en');
+		page.form.patchValue({ name: '' });
+		page.submit();
+		expect(setup.blogs.saveTerm).toHaveBeenCalledTimes(1);
+		const failing = tagProviders(() => throwError(() => new Error('x')) as never);
+		const other = render(FormTag, failing.providers, { tagType: 'post' });
+		other.page.form.patchValue({ name: 'Silk' });
+		other.page.submit();
+		expect(failing.toasts.showError).toHaveBeenCalledWith('blog_rejected');
 	});
 });
 

@@ -1,12 +1,16 @@
 import { Component, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { QueryClient } from '@tanstack/angular-query-experimental';
 
+import { BLOG_GO_LIVE_WORDS, gapsFromError, goLiveToast } from '@core/catalog/go-live-report';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { ITag } from '@data-access/interfaces/tag.interface';
 import { injectTagsQuery } from '@data-access/queries/tag.queries';
+import { BlogService } from '@data-access/services/blog.service';
+import { NotificationService } from '@data-access/services/notification.service';
 import { PageWrapper } from '@layout/page-wrapper/page-wrapper';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
 import { Table } from '@shared/ui/table/table';
@@ -19,6 +23,10 @@ import { Table } from '@shared/ui/table/table';
 })
 export class Tag {
 	router = inject(Router);
+	private blogs = inject(BlogService);
+	private queryClient = inject(QueryClient);
+	private notifier = inject(NotificationService);
+	private transloco = inject(TranslocoService);
 
 	readonly tagType = input<string | null>('product');
 
@@ -81,15 +89,41 @@ export class Tag {
 		else void this.router.navigateByUrl(`/tag/edit/${data.id}`);
 	}
 
-	status(_data: ITag) {
-		// Mock: status toggle has no backend yet (was a no-op NGXS action).
+	/** A blog tag's switch: live needs a name in every language. Theme tags have no backend yet. */
+	status(data: ITag & { status: boolean | number }) {
+		const tag = data.blog;
+		if (this.tagType() !== 'post' || !tag) return;
+		const body = {
+			name: tag.name,
+			description: tag.description,
+			slug: tag.slug,
+			status: data.status ? ('live' as const) : ('draft' as const),
+		};
+		this.blogs.saveTerm('tags', tag.id, body).subscribe({
+			next: () => this.refresh(),
+			error: (error: unknown) => {
+				goLiveToast(
+					{ live: false, gaps: gapsFromError(error) },
+					this.notifier,
+					(key) => this.transloco.translate(key),
+					BLOG_GO_LIVE_WORDS,
+				);
+				this.refresh();
+			},
+		});
 	}
 
-	delete(_data: ITag) {
-		// Mock: delete has no backend yet (was a no-op NGXS action).
+	delete(data: ITag) {
+		if (this.tagType() !== 'post' || !data.blog) return;
+		this.blogs.deleteTerm('tags', data.blog.id).subscribe({ next: () => this.refresh() });
 	}
 
-	deleteAll(_ids: number[]) {
-		// Mock: bulk delete has no backend yet (was a no-op NGXS action).
+	deleteAll(ids: (number | string)[]) {
+		if (this.tagType() !== 'post') return;
+		for (const id of ids ?? []) this.blogs.deleteTerm('tags', String(id)).subscribe({ next: () => this.refresh() });
+	}
+
+	private refresh() {
+		void this.queryClient.invalidateQueries({ queryKey: ['tags'] });
 	}
 }

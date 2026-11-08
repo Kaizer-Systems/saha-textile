@@ -1,31 +1,20 @@
-import { IAttachment } from './attachment.interface';
-import { ICategory } from './category.interface';
 import { IPaginateModel } from './core.interface';
-import { ITag } from './tag.interface';
+
+import type { AdminBlogPostRow } from '@saha-textile/contracts';
 
 export interface IBlogModel extends IPaginateModel {
 	data: IBlog[];
 }
 
+/** A post as the blog table and pickers draw it, with the API row kept for the form. */
 export interface IBlog {
-	id: number;
+	id: string;
 	title: string;
 	slug: string;
-	description: string;
-	content: string;
-	status: boolean;
-	meta_title: string;
-	meta_description: string;
-	blog_thumbnail: IAttachment;
-	blog_thumbnail_id: number;
-	blog_meta_image_id: number;
-	blog_meta_image: IAttachment;
-	categories: ICategory[];
-	tags: ITag[];
-	is_featured: boolean;
-	is_sticky: boolean;
-	created_by_id: number;
+	/** 1 when live, 0 when a draft: the table's switch. */
+	status: number;
+	blog_thumbnail: { original_url: string } | null;
+	published_at: string | null;
 	created_at?: string;
-	updated_at?: string;
-	deleted_at?: string;
+	row: AdminBlogPostRow;
 }

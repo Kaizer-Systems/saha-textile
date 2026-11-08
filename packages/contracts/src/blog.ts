@@ -175,6 +175,15 @@ export const PublicBlogQuery = z.object({
 });
 export type PublicBlogQuery = z.infer<typeof PublicBlogQuery>;
 
+/** `?locale=` on a single post and on the category and tag lists. */
+export const PublicBlogLocaleQuery = z.object({
+	locale: z
+		.string()
+		.regex(/^[a-z]{2}$/)
+		.default('en'),
+});
+export type PublicBlogLocaleQuery = z.infer<typeof PublicBlogLocaleQuery>;
+
 export const PublicBlogTerm = z.object({
 	slug: z.string(),
 	name: z.string(),

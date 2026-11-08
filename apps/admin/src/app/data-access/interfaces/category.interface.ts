@@ -1,7 +1,7 @@
-import type { AdminCategoryRow } from '@saha-textile/contracts';
-
 import { IAttachment } from './attachment.interface';
 import { IPaginateModel } from './core.interface';
+
+import type { AdminCategoryRow, BlogCategory } from '@saha-textile/contracts';
 
 export interface ICategoryModel extends IPaginateModel {
 	data: ICategory[];
@@ -16,6 +16,8 @@ export interface ICategory {
 	parent_id?: string;
 	/** Every language, as the API holds it. */
 	row?: AdminCategoryRow;
+	/** A blog category, every language as the API holds it. */
+	blog?: BlogCategory;
 	category_image?: IAttachment;
 	category_image_id?: number;
 	category_icon?: IAttachment;

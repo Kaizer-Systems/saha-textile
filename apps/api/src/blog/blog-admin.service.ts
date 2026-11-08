@@ -63,6 +63,20 @@ const cleanHtml = (values: Readonly<Record<string, string>>): Record<string, str
 
 const postPath = (slug: string): string => `/blog/${slug}`;
 
+/**
+ * A save refused because a live post or term would lose a language. The gaps travel as field
+ * issues (`[field, locale]`), the one part of an error body the API filter passes to the client.
+ */
+const gapRefusal = (gaps: GoLiveResult['gaps']): BadRequestException =>
+	new BadRequestException({
+		message: 'go_live_blocked',
+		issues: gaps.map((gap) => ({
+			path: [gap.field, gap.locale ?? ''],
+			message: 'go_live_blocked',
+			code: 'go_live_blocked',
+		})),
+	});
+
 type TermKind = 'category' | 'tag';
 
 /**
@@ -139,7 +153,7 @@ export class BlogAdminService {
 		// A live post keeps every language complete: an edit that empties one is refused.
 		if (next.status === 'live') {
 			const gaps = await this.gaps(next);
-			if (gaps.length) throw new BadRequestException({ message: 'go_live_blocked', gaps });
+			if (gaps.length) throw gapRefusal(gaps);
 		}
 		const saved = await this.posts.save(next);
 		if (slug !== current.slug) await this.moveAddress(current, slug);
@@ -360,7 +374,7 @@ export class BlogAdminService {
 		const name = clean(body.name);
 		if (!name['en']) throw new BadRequestException('A name in English is required');
 		const gaps = body.status === 'live' ? blogTermGaps({ name }, this.config.locales) : [];
-		if (gaps.length) throw new BadRequestException({ message: 'go_live_blocked', gaps });
+		if (gaps.length) throw gapRefusal(gaps);
 		const repository = this.termRepository(kind);
 		const existing = id ? await repository.findById(id) : null;
 		if (id && !existing) throw new NotFoundException('No such term');

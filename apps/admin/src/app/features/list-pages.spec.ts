@@ -4,7 +4,6 @@ import { Router } from '@angular/router';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { Blog } from './blog/blog';
 import { Coupon } from './coupon/coupon';
 import { Currency } from './currency/currency';
 import { Order } from './order/order';
@@ -20,7 +19,6 @@ const query = (params?: () => unknown) => {
 	return { data };
 };
 vi.mock('@data-access/queries/attribute.queries', () => ({ injectAttributesQuery: (p: () => unknown) => query(p) }));
-vi.mock('@data-access/queries/blog.queries', () => ({ injectBlogsQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/coupon.queries', () => ({ injectCouponsQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/currency.queries', () => ({ injectCurrenciesQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/order.queries', () => ({ injectOrdersQuery: (p: () => unknown) => query(p) }));
@@ -53,7 +51,6 @@ const render = <T>(type: Type<T>, template = '') => {
 afterEach(() => data.set(undefined));
 
 describe.each<{ name: string; type: Type<unknown>; edit: string | null; rows: unknown[] }>([
-	{ name: 'Blog', type: Blog, edit: '/blog/edit/1', rows: [{ id: 1 }] },
 	{ name: 'Coupon', type: Coupon, edit: '/coupon/edit/1', rows: [{ id: 1 }] },
 	{ name: 'Currency', type: Currency, edit: '/currency/edit/1', rows: [{ id: 1 }] },
 	{ name: 'Page', type: Page, edit: '/page/edit/1', rows: [{ id: 1 }] },

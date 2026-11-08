@@ -5,6 +5,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
 import { ICategory } from '@data-access/interfaces/category.interface';
+import { BlogService } from '@data-access/services/blog.service';
 import { CategoryService } from '@data-access/services/category.service';
 import { NotificationService } from '@data-access/services/notification.service';
 import { HasPermissionDirective } from '@shared/directives/has-permission.directive';
@@ -20,6 +21,7 @@ export class TreeNode {
 	private router = inject(Router);
 	private route = inject(ActivatedRoute);
 	private categories = inject(CategoryService);
+	private blogs = inject(BlogService);
 	private queryClient = inject(QueryClient);
 	private notifier = inject(NotificationService);
 	private transloco = inject(TranslocoService);
@@ -48,18 +50,16 @@ export class TreeNode {
 	/** The name in the language on screen, or the English one until it has a translation. */
 	label(): string {
 		const node = this.node();
-		return node.row?.name[this.locale()] || node[this.displayKey()] || node.name;
+		return (node.row ?? node.blog)?.name[this.locale()] || node[this.displayKey()] || node.name;
 	}
 
 	delete(_actionType: string, data: ICategory) {
-		if (data.type == 'post') {
-			void this.router.navigateByUrl('/blog/category');
-			return;
-		}
-		this.categories.deleteCategory(data.id).subscribe({
+		const post = data.type == 'post';
+		const call = post ? this.blogs.deleteTerm('categories', data.id) : this.categories.deleteCategory(data.id);
+		call.subscribe({
 			next: () => {
 				void this.queryClient.invalidateQueries({ queryKey: ['categories'] });
-				void this.router.navigateByUrl('/category');
+				void this.router.navigateByUrl(post ? '/blog/category' : '/category');
 			},
 			error: () => this.notifier.showError(this.transloco.translate('category_rejected')),
 		});

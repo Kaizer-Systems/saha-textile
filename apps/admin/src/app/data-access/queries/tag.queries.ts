@@ -21,14 +21,14 @@ export function injectTagsQuery(params: () => Params) {
 	}));
 }
 
-/** Single tag by id (mock has no detail endpoint — find within the list). */
-export function injectTagQuery(id: () => number | undefined) {
+/** Single tag by id, found within its list: a blog tag (`type: 'post'`) or a theme tag. */
+export function injectTagQuery(id: () => number | string | undefined, type: () => string | null = () => null) {
 	const tagService = inject(TagService);
 	return injectQuery(() => ({
-		queryKey: ['tag', id()],
+		queryKey: ['tag', type(), id()],
 		enabled: id() != null,
 		queryFn: async () => {
-			const res = await firstValueFrom(tagService.getTags());
+			const res = await firstValueFrom(tagService.getTags(type() ? { type: type() as string } : undefined));
 			return res.data.find((tag) => tag.id == id()) ?? null;
 		},
 	}));

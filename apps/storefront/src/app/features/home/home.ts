@@ -1,12 +1,14 @@
 import { isPlatformBrowser } from '@angular/common';
 import { afterNextRender, Component, computed, inject, PLATFORM_ID, signal } from '@angular/core';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { combineLatest, take } from 'rxjs';
 import { CarouselModule } from 'ngx-owl-carousel-o';
 
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { ProductService } from '@data-access/services/product.service';
 import { readRecentViews } from '@core/catalog/recent-views';
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { bannerSrc, injectBannersQuery, StorefrontBanners } from '@data-access/queries/banner.queries';
 import { injectHomeRailsQuery } from '@data-access/queries/product.queries';
 import { Blog } from '@features/themes/widgets/blog/blog';
@@ -56,6 +58,16 @@ const HERO_LAYOUT_TILES: Record<StorefrontBanners['heroLayout'], [string | null,
 })
 export class Home {
 	constructor() {
+		// The home page's search title and description, in the page's language (sent by the server).
+		const seo = inject(LocaleSeo);
+		const transloco = inject(TranslocoService);
+		combineLatest([
+			transloco.selectTranslate('home_page_title'),
+			transloco.selectTranslate('home_page_description'),
+		])
+			.pipe(take(1))
+			.subscribe(([title, description]) => seo.applyDocument({ title, description }));
+
 		// The server renderer runs this hook too, and it has no storage: the rail fills in the browser.
 		const isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 		afterNextRender(() => {

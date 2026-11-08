@@ -54,7 +54,9 @@
 			letter-spacing: 2.2px;
 		}
 
-		h1 {
+		// The banner block's heading is an h2 (one main heading per page), drawn as this h1.
+		h1,
+		&.p-center-left > div > h2 {
 			font-size: calc(16px + (42 - 16) * ((100vw - 320px) / (1920 - 320)));
 			width: 80%;
 			line-height: 1.4;

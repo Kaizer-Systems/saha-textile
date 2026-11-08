@@ -4,7 +4,8 @@
 	chosen by viewport width — phone below 768 px and held upright, tablet to 1199 px, then
 	desktop; a phone on its side gets the wide art, not a tall picture taller than its screen — and the
 	box takes the chosen image's shape, so baked-in text is never cropped. Live text uses the
-	theme's own `.home-detail` overlay.
+	theme's own `.home-detail` overlay. Its heading is second-level: a page has one main heading,
+	and a carousel repeats its slides.
 -->
 @if (image()?.resolved; as banner) {
 <ng-template #bannerArt>
@@ -46,7 +47,7 @@
 			@if (banner.subheading) {
 			<h6 class="ls-expanded text-uppercase">{{ banner.subheading }}</h6>
 			}
-			<h1>{{ banner.heading }}</h1>
+			<h2>{{ banner.heading }}</h2>
 			@if (banner.ctaLabel) {
 			<span class="btn btn-animation mt-xxl-4 mt-2">{{ banner.ctaLabel }}</span>
 			}

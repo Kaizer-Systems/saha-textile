@@ -48,6 +48,12 @@
 		right: 20px;
 	}
 
+	// Slide headings read exactly as typed in admin. The theme capitalises every word of a
+	// heading, which turns "woven in Varanasi" into "Woven In Varanasi".
+	.home-detail h2 {
+		text-transform: none;
+	}
+
 	// The slide text starts clear of the arrows: 20 px edge, 44 px arrow, 20 px gap. Phones
 	// have no arrows (people swipe, and the dots stay), so they keep the theme's spacing.
 	@media (min-width: 768px) {

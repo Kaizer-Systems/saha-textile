@@ -4,6 +4,9 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { TranslocoService } from '@jsverse/transloco';
+
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { ProductService } from '@data-access/services/product.service';
 
 import { Home } from './home';
@@ -34,6 +37,9 @@ const banner = (position: string, slot: string, url: string) => ({
 	images: { desktop: { url } },
 });
 
+const seo = { applyDocument: vi.fn() };
+const transloco = { selectTranslate: (key: string) => of(`t:${key}`) };
+
 const render = (cards = vi.fn(() => of<unknown[]>([{ id: 1 }])), platform = 'browser') => {
 	const home = vi.fn(() => of({ newArrivals: [] }));
 	TestBed.resetTestingModule();
@@ -41,6 +47,8 @@ const render = (cards = vi.fn(() => of<unknown[]>([{ id: 1 }])), platform = 'bro
 		providers: [
 			{ provide: ProductService, useValue: { home, cardsFor: cards } },
 			{ provide: PLATFORM_ID, useValue: platform },
+			{ provide: LocaleSeo, useValue: seo },
+			{ provide: TranslocoService, useValue: transloco },
 		],
 	});
 	TestBed.overrideComponent(Home, { set: { imports: [], template: '' } });
@@ -54,6 +62,16 @@ afterEach(() => {
 	bannerData.set(undefined);
 	pending.set(true);
 	localStorage.clear();
+});
+
+describe('Home head', () => {
+	it('sends the search title and description in the page language', () => {
+		render();
+		expect(seo.applyDocument).toHaveBeenCalledWith({
+			title: 't:home_page_title',
+			description: 't:home_page_description',
+		});
+	});
 });
 
 describe('Home rails', () => {

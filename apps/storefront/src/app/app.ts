@@ -77,18 +77,13 @@ export class App {
 				document.body.classList.remove('rtl');
 			}
 
-			theme?.seo?.og_title && this.meta.updateTag({ property: 'og:title', content: theme?.seo?.og_title });
-			theme?.seo?.og_description &&
-				this.meta.updateTag({ property: 'og:description', content: theme?.seo?.og_description });
+			// Titles and descriptions come from each page in its own language (LocaleSeo). The theme
+			// file only supplies the default share picture.
 			theme?.seo?.og_image?.original_url &&
 				this.meta.updateTag({
 					property: 'og:image',
 					content: this.seo.absoluteAsset(theme.seo.og_image.original_url),
 				});
-			theme?.seo?.meta_title && this.meta.updateTag({ property: 'title', content: theme?.seo?.meta_title });
-			theme?.seo?.meta_description &&
-				this.meta.updateTag({ property: 'description', content: theme?.seo?.meta_description });
-			theme?.seo?.meta_tags && this.meta.updateTag({ property: 'keywords', content: theme?.seo?.meta_tags });
 		});
 
 		// A page without its own title must not keep the previous page's.

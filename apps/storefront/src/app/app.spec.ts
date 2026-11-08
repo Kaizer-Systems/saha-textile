@@ -69,7 +69,7 @@ describe('App', () => {
 		expect(shown('/maintenance')).toBe(false);
 	});
 
-	it('applies dark mode, right-to-left, the icon and the SEO tags', () => {
+	it('applies dark mode, right-to-left, the icon and only the share picture from the theme', () => {
 		const { siteConfig, meta } = render();
 		siteConfig.set({
 			general: { mode: 'dark', language_direction: 'rtl' },
@@ -86,13 +86,10 @@ describe('App', () => {
 		expect(html().classList.contains('dark')).toBe(true);
 		expect(html().getAttribute('dir')).toBe('rtl');
 		expect(document.body.classList.contains('rtl')).toBe(true);
+		// The theme file's text is one language for every page, so titles and descriptions come
+		// from each page instead (LocaleSeo).
 		expect(meta.updateTag.mock.calls.map(([tag]) => tag)).toEqual([
-			{ property: 'og:title', content: 'OG title' },
-			{ property: 'og:description', content: 'OG description' },
 			{ property: 'og:image', content: 'https://shop.test/og.jpg' },
-			{ property: 'title', content: 'Title' },
-			{ property: 'description', content: 'Description' },
-			{ property: 'keywords', content: 'sarees' },
 		]);
 	});
 

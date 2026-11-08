@@ -4,6 +4,10 @@
   newsletter as we go — see the "build your homepage" guide in chat.
 -->
 
+<!-- The page's one main heading, for search engines and screen readers. The slide headings
+     below are second-level, so the carousel's copies of them never add main headings. -->
+<h1 class="visually-hidden">{{ 'home_page_heading' | transloco }}</h1>
+
 <!-- ===== HERO: auto-scrolling carousel of Denver full-width banners ===== -->
 <!-- Denver's single ratio_30 hero, reworked into an infinite auto-carousel with
      arrows + dots. ratio_30 stays on an ANCESTOR of the carousel so its .bg-size:before

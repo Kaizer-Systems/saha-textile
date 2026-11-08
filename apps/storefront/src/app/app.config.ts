@@ -66,7 +66,7 @@ export const appConfig: ApplicationConfig = {
 		// Analog file-based routing (pages under src/app/pages). `/` is the custom
 		// home (pages/index.page.ts → features/home). Replaces the old
 		// provideRouter + app.routes.ts / feature *.routes.ts config.
-		// Every route is served under its locale (`/en/…`, `/fr/…`) as the router's base —
+		// Every route is served under its locale (`/en/…`, `/bn/…`) as the router's base —
 		// see provideLocaleRouting; the pages themselves stay locale-free.
 		provideFileRouter(
 			withInMemoryScrolling({

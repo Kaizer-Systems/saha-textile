@@ -13,7 +13,7 @@ import { FormFields } from '@shared/ui/form-fields/form-fields';
 import { ImageUpload } from '@shared/ui/image-upload/image-upload';
 
 /** Locales the storefront serves during development (en + fr; Bengali later, as data). */
-export const BANNER_LOCALES = ['en', 'fr'] as const;
+export const BANNER_LOCALES = ['en', 'bn'] as const;
 
 type Band = 'desktop' | 'tablet' | 'phone';
 const WIDE_SLOTS = new Set([

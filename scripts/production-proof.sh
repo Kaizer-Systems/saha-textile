@@ -266,7 +266,7 @@ page() { curl -sk --resolve "$1:$EDGE_PORT:127.0.0.1" --cert "$PROOF/client/clie
 shows() { local reply; reply="$(page "$2" "$3" "${@:5}")"; [[ "$(tail -n 1 <<<"$reply")" == 503 ]] && grep -qF "$4" <<<"$reply" && pass "$1" || fail "$1: $(tail -n 1 <<<"$reply")"; }
 in_release "$FIRST" stop storefront >/dev/null 2>&1
 shows 'the shop shows its English page when it cannot answer' "$SITE_HOST" /en/ "back soon"
-shows 'and its French page under /fr/' "$SITE_HOST" /fr/ "Nous revenons"
+shows 'and its Bengali page under /bn/' "$SITE_HOST" /bn/ "একটু পরেই ফিরছি"
 HEADERS="$(page "$SITE_HOST" /en/ -o /dev/null -D -)"
 grep -qi '^retry-after: 15' <<<"$HEADERS" && grep -qi '^strict-transport-security:' <<<"$HEADERS" &&
 	grep -qi '^content-security-policy:' <<<"$HEADERS" &&
@@ -278,7 +278,7 @@ in_release "$FIRST" up --detach --no-deps --wait --wait-timeout 120 admin >/dev/
 in_release "$FIRST" stop api >/dev/null 2>&1
 shows 'the API answers a short JSON 503' "$API_HOST" /health/live 'temporarily_unavailable'
 shows 'a payment return shows the payment page' "$API_HOST" /payments/ccavenue/return "confirming your payment" -X POST -d encResp=x
-shows 'in French for a French browser' "$API_HOST" /payments/ccavenue/return "Nous confirmons" -X POST -d encResp=x -H 'Accept-Language: fr-FR,fr;q=0.9'
+shows 'in Bengali for a Bengali browser' "$API_HOST" /payments/ccavenue/return "আপনার পেমেন্ট যাচাই করা হচ্ছে" -X POST -d encResp=x -H 'Accept-Language: bn-IN,bn;q=0.9'
 in_release "$FIRST" up --detach --no-deps --wait --wait-timeout 120 api >/dev/null 2>&1
 expect 'everything answers again' "$(with_pull_cert "$SITE_HOST" /en/)" 200
 

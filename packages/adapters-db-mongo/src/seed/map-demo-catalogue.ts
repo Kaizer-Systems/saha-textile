@@ -10,7 +10,7 @@ import type {
 	ProductVariant,
 } from '@saha-textile/contracts';
 
-import { DEMO_FRENCH } from './demo-french';
+import { DEMO_BENGALI } from './demo-bengali';
 
 /**
  * The three product photos already on the dev Spaces bucket. Every seeded product
@@ -152,10 +152,10 @@ const rupee = (value: unknown): number => {
 	return Math.round(number);
 };
 
-const text = (value: string | undefined, fallback: string): { en: string; fr?: string } => {
+const text = (value: string | undefined, fallback: string): { en: string; bn?: string } => {
 	const en = (value && value.trim()) || fallback;
-	const fr = DEMO_FRENCH[en];
-	return fr ? { en, fr } : { en };
+	const bn = DEMO_BENGALI[en];
+	return bn ? { en, bn } : { en };
 };
 
 const slugify = (value: string): string =>
@@ -251,7 +251,7 @@ function optionGroupsFor(product: DemoProduct, variable: boolean, frames: readon
 					code: slugify(term.slug || label),
 					label: text(label, label),
 					isBase: isBaseLabel(label),
-				hidden: false,
+					hidden: false,
 					...(hex ? { hex } : {}),
 					...(style === 'image_swatch' ? { swatchAssetId: frames[index % frames.length]! } : {}),
 					addonTemplateIds: [],
@@ -559,7 +559,7 @@ export function mapDemoCatalogue(input: {
 						code: slugify(term.slug || label),
 						label: text(label, label),
 						isBase: isBaseLabel(label),
-				hidden: false,
+						hidden: false,
 						...(hex ? { hex } : {}),
 						...(style === 'image_swatch' ? { swatch: frames[termIndex % frames.length]! } : {}),
 					};

@@ -564,11 +564,11 @@ describe('Redirects', () => {
 });
 
 describe('Add-on templates', () => {
-	const chest = { code: 'chest', label: { en: 'Chest', fr: 'Poitrine' }, unit: 'in', min: 24, max: 50, step: 0.5 };
+	const chest = { code: 'chest', label: { en: 'Chest', bn: 'বুক' }, unit: 'in', min: 24, max: 50, step: 0.5 };
 	const rows = [
 		{
 			code: 'fall',
-			label: { en: 'Fall', fr: 'Pli' },
+			label: { en: 'Fall', bn: 'ভাঁজ' },
 			priceINR: 100,
 			fields: [chest],
 			sizeGuide: [{ size: 'M', values: { chest: 36 } }],
@@ -595,7 +595,7 @@ describe('Add-on templates', () => {
 		const { page } = setup('/addon-template/edit/fall?x=1');
 		expect(page.form.getRawValue()).toMatchObject({ code: 'fall', label: 'Fall', priceINR: 100 });
 		expect(page.measures()).toEqual([chest]);
-		expect(page.gaps()).toEqual({ en: [], fr: [] });
+		expect(page.gaps()).toEqual({ en: [], bn: [] });
 		expect(setup('/addon-template/edit/none').page.form.getRawValue().code).toBe('');
 		expect(setup('/addon-template/create').page.formOnly()).toBe(true);
 	});
@@ -608,7 +608,7 @@ describe('Add-on templates', () => {
 
 	it('edits fields in the language on screen, and counts what is missing', () => {
 		const { page } = setup('/addon-template/create');
-		expect(page.gaps()).toEqual({ en: [], fr: [] });
+		expect(page.gaps()).toEqual({ en: [], bn: [] });
 		expect(page.onSourceLanguage).toBe(true);
 		page.addField();
 		page.addField();
@@ -620,11 +620,11 @@ describe('Add-on templates', () => {
 		expect(page.measures()[0]).toMatchObject({ label: { en: 'Waist' }, unit: 'cm', min: 22, max: null });
 		expect(page.guide(page.measures()[0] as never)).toBe('Waist');
 		expect(page.guide(page.measures()[1] as never)).toBe('');
-		page.switchLanguage('fr');
+		page.switchLanguage('bn');
 		expect(page.onSourceLanguage).toBe(false);
-		page.setLabel(0, page.measures()[0] as never, 'Taille');
-		expect(page.measures()[0]?.label).toEqual({ en: 'Waist', fr: 'Taille' });
-		expect(page.gaps()['fr']?.length).toBe(2);
+		page.setLabel(0, page.measures()[0] as never, 'কোমর');
+		expect(page.measures()[0]?.label).toEqual({ en: 'Waist', bn: 'কোমর' });
+		expect(page.gaps()['bn']?.length).toBe(2);
 		page.removeField(1);
 		expect(page.measures()).toHaveLength(1);
 	});
@@ -651,7 +651,7 @@ describe('Add-on templates', () => {
 
 	it('needs an English name and a code, then saves and returns to the list', () => {
 		const { page, api, router } = setup('/measurement/create');
-		page.switchLanguage('fr');
+		page.switchLanguage('bn');
 		page.save();
 		expect(page.onSourceLanguage).toBe(true);
 		expect(page.form.controls.label.errors).toEqual({ required: true });
@@ -707,9 +707,9 @@ describe('Add-on templates', () => {
 		input.id = 'field_0';
 		document.body.appendChild(input);
 		page.setLabel(0, page.measures()[0] as never, 'Chest');
-		page.openLanguageGap({ key: 'field_0', locale: 'fr' });
+		page.openLanguageGap({ key: 'field_0', locale: 'bn' });
 		vi.runAllTimers();
-		expect(page.text.locale()).toBe('fr');
+		expect(page.text.locale()).toBe('bn');
 		expect(document.activeElement).toBe(input);
 		input.remove();
 		vi.useRealTimers();

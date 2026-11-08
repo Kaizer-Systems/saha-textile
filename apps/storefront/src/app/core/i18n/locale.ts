@@ -1,8 +1,7 @@
 /**
  * Locale URL law (`DEC-I18N-ROUTES`, locked 2026-10-31).
  *
- * Every storefront page lives under its language: `/en/…`, `/fr/…` (and `/bn/…` once Bengali
- * ships). The locale is the router's BASE, not a route segment — the app's routes, links and
+ * Every storefront page lives under its language: `/en/…` and `/bn/…`. The locale is the router's BASE, not a route segment — the app's routes, links and
  * menu data stay locale-free (`/cart`, `/product/<slug>`), and Angular's `APP_BASE_HREF` puts
  * the prefix on every URL it writes. One switch of base, not a prefix threaded through every
  * `routerLink`.
@@ -11,8 +10,8 @@
  * this file too, so the redirect rules and the app's reading of the URL cannot drift apart.
  */
 
-/** en + fr through development; Bengali is a data change added once development completes. */
-export const SUPPORTED_LOCALES = ['en', 'fr'] as const;
+/** English and Bengali (Bengali replaced French on 2026-11-08, owner decision round). */
+export const SUPPORTED_LOCALES = ['en', 'bn'] as const;
 
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
@@ -20,9 +19,9 @@ export const DEFAULT_LOCALE: Locale = 'en';
 
 /**
  * The Open Graph name of each language (`og:locale`), so WhatsApp, Facebook and other link
- * previews know what language a shared page is in. English is the Indian English the shop writes.
+ * previews know what language a shared page is in. Both are the Indian variants the shop writes.
  */
-export const OPEN_GRAPH_LOCALES: Readonly<Record<Locale, string>> = { en: 'en_IN', fr: 'fr_FR' };
+export const OPEN_GRAPH_LOCALES: Readonly<Record<Locale, string>> = { en: 'en_IN', bn: 'bn_IN' };
 
 /**
  * The visitor's last explicit choice from the language switcher.
@@ -31,6 +30,16 @@ export const OPEN_GRAPH_LOCALES: Readonly<Record<Locale, string>> = { en: 'en_IN
  * switcher — a browser language or an IP never decides the language (the locked rule).
  */
 export const LOCALE_COOKIE = 'st_locale';
+
+/**
+ * The locale to hand to `Intl` for a page language. Bengali pages keep English digits (BN-3:
+ * prices, sizes, PIN codes and dates read the same in both languages, and a copied number
+ * pastes into any form), so Bengali formats with the Latin numbering system while month and
+ * weekday names stay Bengali.
+ */
+export function intlLocale(locale: string): string {
+	return locale === 'bn' ? 'bn-IN-u-nu-latn' : locale;
+}
 
 export function isLocale(value: unknown): value is Locale {
 	return typeof value === 'string' && (SUPPORTED_LOCALES as readonly string[]).includes(value);
@@ -46,7 +55,7 @@ export function localeOfPath(pathname: string): Locale | null {
  * The same page under another language.
  *
  * Takes a locale-free app URL (what `Router.url` reports), query and fragment included. The home
- * page keeps its trailing slash — `/fr/`, never `/fr` — so each page has exactly one address.
+ * page keeps its trailing slash — `/bn/`, never `/bn` — so each page has exactly one address.
  */
 export function withLocale(locale: Locale, appUrl: string): string {
 	return `/${locale}${appUrl.startsWith('/') ? appUrl : `/${appUrl}`}`;
@@ -55,8 +64,8 @@ export function withLocale(locale: Locale, appUrl: string): string {
 /**
  * Paths that are never indexed and carry no language alternates.
  *
- * They are still locale-prefixed (the law covers every route), so a French customer stays in
- * French through checkout — they are just not pages a search engine should hold.
+ * They are still locale-prefixed (the law covers every route), so a Bengali customer stays in
+ * Bengali through checkout — they are just not pages a search engine should hold.
  */
 const PRIVATE_PREFIXES = ['/account', '/auth', '/cart', '/checkout', '/wishlist', '/compare', '/search'];
 

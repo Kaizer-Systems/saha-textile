@@ -12,7 +12,7 @@ test.describe('search engine view', () => {
 		const body = await (await request.get('/sitemap.xml')).text();
 
 		expect(body).toContain(`<loc>${baseURL}/en/collections/sarees</loc>`);
-		expect(body).toContain(`<loc>${baseURL}/fr/product/kurti-palazzo-set</loc>`);
+		expect(body).toContain(`<loc>${baseURL}/bn/product/kurti-palazzo-set</loc>`);
 		expect(body).not.toMatch(/\/account|\/checkout|\/cart/);
 	});
 
@@ -31,14 +31,14 @@ test.describe('search engine view', () => {
 	});
 
 	test('a product has absolute structured data and a real breadcrumb', async ({ page, baseURL }) => {
-		await page.goto('/fr/product/katan-banarasi-saree');
+		await page.goto('/bn/product/katan-banarasi-saree');
 		await expect(page.locator('app-buy-box')).toBeVisible();
 
 		const [product, crumbs] = await jsonLd(page);
-		expect(product?.['url']).toBe(`${baseURL}/fr/product/katan-banarasi-saree`);
+		expect(product?.['url']).toBe(`${baseURL}/bn/product/katan-banarasi-saree`);
 		expect(String(product?.['image'])).toMatch(/^https:\/\//);
 		const items = crumbs?.['itemListElement'] as Array<{ item: string }>;
-		expect(items[0]?.item).toBe(`${baseURL}/fr/collections/sarees`);
+		expect(items[0]?.item).toBe(`${baseURL}/bn/collections/sarees`);
 		expect(await page.locator('meta[property="og:image"]').getAttribute('content')).toMatch(/^https:\/\//);
 	});
 

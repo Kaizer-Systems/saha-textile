@@ -104,7 +104,7 @@ beforeEach(() => {
 			{ provide: TagService, useValue: service('getTags') },
 			{ provide: WalletService, useValue: service('getUserTransaction') },
 			{ provide: HttpClient, useValue: http },
-			{ provide: TranslocoService, useValue: { getActiveLang: () => 'fr' } },
+			{ provide: TranslocoService, useValue: { getActiveLang: () => 'bn' } },
 		],
 	});
 });
@@ -248,9 +248,9 @@ describe('banner queries', () => {
 	it('asks for the active language, with the page as default owner', async () => {
 		http.get.mockReturnValue(of({ heroLayout: 'hero_main_side', banners: [] }));
 		const query = options(() => injectBannersQuery());
-		expect(query.queryKey).toEqual(['banners', 'home', 'fr']);
+		expect(query.queryKey).toEqual(['banners', 'home', 'bn']);
 		await expect(query.queryFn()).resolves.toMatchObject({ heroLayout: 'hero_main_side' });
-		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { ownerType: 'home', locale: 'fr' } });
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { ownerType: 'home', locale: 'bn' } });
 	});
 
 	it('answers no banners when the API is unreachable', async () => {

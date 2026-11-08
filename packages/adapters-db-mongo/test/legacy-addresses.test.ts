@@ -21,7 +21,7 @@ describe('legacy address file', () => {
 	it('accepts a live product and the home page only when it is live', () => {
 		const live = new Set(['/product/red-saree']);
 		expect(legacyTargetIsLive('/en/product/red-saree', live)).toBe(true);
-		expect(legacyTargetIsLive('/fr/product/gone', live)).toBe(false);
+		expect(legacyTargetIsLive('/bn/product/gone', live)).toBe(false);
 		expect(legacyTargetIsLive('/en', live)).toBe(false);
 		expect(legacyTargetIsLive('/en/about-us', live)).toBe(false);
 	});

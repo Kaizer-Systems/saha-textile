@@ -11,25 +11,26 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { connectMongo, disconnectMongo } from '../src/connection';
-import {
-	CategoryModel,
-	CategoryPlacementModel,
-	ProductBundleModel,
-	SeoRouteModel,
-} from '../src/models/index';
+import { CategoryModel, CategoryPlacementModel, ProductBundleModel, SeoRouteModel } from '../src/models/index';
 import { mapDemoCatalogue } from '../src/seed/map-demo-catalogue';
 import { assertLocalDatabase, writeCatalogue } from '../src/seed/seed-demo-catalogue';
 import { buildShowcaseProducts, categoryIdsFor, finishShowcase } from './showcase-catalogue-build';
 
 const dataFile = <T>(name: string): T[] =>
-	(JSON.parse(readFileSync(resolve(__dirname, '../../../apps/storefront/public/assets/data', name), 'utf8')) as { data: T[] }).data;
+	(
+		JSON.parse(readFileSync(resolve(__dirname, '../../../apps/storefront/public/assets/data', name), 'utf8')) as {
+			data: T[];
+		}
+	).data;
 
 async function main(): Promise<void> {
 	const dbName = assertLocalDatabase(process.env['MONGODB_DB_NAME']);
 	if (!dbName.includes('local')) throw new Error('The showcase catalogue is for a local database only.');
 	const now = new Date();
 	const productIds = dataFile<{ id: number }>('product.json').map((row) => row.id);
-	const known = new Map(dataFile<{ id: number; canonical_path: string }>('category.json').map((row) => [row.canonical_path, row.id]));
+	const known = new Map(
+		dataFile<{ id: number; canonical_path: string }>('category.json').map((row) => [row.canonical_path, row.id]),
+	);
 	const showcase = buildShowcaseProducts({ productIds, categoryIds: categoryIdsFor(known), now });
 	const mapped = finishShowcase(mapDemoCatalogue({ products: showcase.products }), showcase, now);
 
@@ -40,10 +41,10 @@ async function main(): Promise<void> {
 	await SeoRouteModel.deleteMany({ entityType: { $in: ['product', 'category'] } }).exec();
 	const result = await writeCatalogue(dbName, mapped);
 	for (const product of mapped.products) {
-		const french = product.title['fr'] as string;
+		const bengali = product.title['bn'] as string;
 		await SeoRouteModel.updateOne(
-			{ _id: `seo_fr_product_${product.slug}` },
-			{ $set: { title: french, description: product.shortDescription['fr'] } },
+			{ _id: `seo_bn_product_${product.slug}` },
+			{ $set: { title: bengali, description: product.shortDescription['bn'] } },
 		).exec();
 	}
 	console.log('[seed:showcase-catalogue] done:', result);

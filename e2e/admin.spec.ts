@@ -149,7 +149,7 @@ test.describe('Product builder', () => {
 		await open(page, `/product/edit/${String(product?._id)}`);
 		await tab(page, 'Status').click();
 		await page.locator('#go_live_btn').click();
-		await expect(page.locator('.alert-danger')).toContainText('Français: Name');
+		await expect(page.locator('.alert-danger')).toContainText('বাংলা: Name');
 		await expect(page.locator('.alert-danger')).toContainText('Choose at least one category');
 		await page.locator('.alert-danger a', { hasText: 'Meta title' }).first().click();
 		await expect(page.locator('#meta_title')).toBeVisible();
@@ -160,20 +160,20 @@ test.describe('Product builder', () => {
 		const product = await stored();
 		await open(page, `/product/edit/${String(product?._id)}`);
 		await expect(page.locator('#name')).toHaveValue('Builder Test Saree');
-		await language(page, 'Français').click();
+		await language(page, 'বাংলা').click();
 		await expect(page.locator('#name')).toHaveValue('');
 		await expect(page.locator('body')).toContainText('Builder Test Saree');
 		await page.locator('#name').fill('Saree de test');
 		await page.locator('#sort_description').fill('Une description courte.');
 		await language(page, 'English').click();
 		await expect(page.locator('#name')).toHaveValue('Builder Test Saree');
-		await language(page, 'Français').click();
+		await language(page, 'বাংলা').click();
 		await expect(page.locator('#name')).toHaveValue('Saree de test');
 		await page.getByRole('button', { name: /update product/i }).click();
 		await expect(page).toHaveURL(/\/product$/);
 		expect(await stored()).toMatchObject({
-			title: { en: 'Builder Test Saree', fr: 'Saree de test' },
-			shortDescription: { fr: 'Une description courte.' },
+			title: { en: 'Builder Test Saree', bn: 'Saree de test' },
+			shortDescription: { bn: 'Une description courte.' },
 		});
 	});
 
@@ -189,11 +189,11 @@ test.describe('Product builder', () => {
 				{ sku },
 				{
 					$set: {
-						description: { en: 'Long', fr: 'Long' },
-						seo: { title: { en: 'T', fr: 'T' }, description: { en: 'D', fr: 'D' } },
+						description: { en: 'Long', bn: 'Long' },
+						seo: { title: { en: 'T', bn: 'T' }, description: { en: 'D', bn: 'D' } },
 						categoryIds: ['cat_1'],
 						'media.gallery': [asset?._id],
-						'media.altOverrides': { [String(asset?._id)]: { en: 'Alt', fr: 'Alt' } },
+						'media.altOverrides': { [String(asset?._id)]: { en: 'Alt', bn: 'Alt' } },
 					},
 				},
 			);
@@ -205,8 +205,8 @@ test.describe('Product builder', () => {
 		await expect(row).toBeVisible();
 		await row.locator('.ri-rocket-line').click();
 		await expect.poll(async () => (await stored())?.['status']).toBe('live');
-		const french = await request.get('https://localhost:4200/fr/product/builder-test-saree');
-		expect(await french.text()).toContain('Saree de test');
+		const bengali = await request.get('https://localhost:4200/bn/product/builder-test-saree');
+		expect(await bengali.text()).toContain('Saree de test');
 	});
 });
 
@@ -238,16 +238,16 @@ test.describe('Categories and attributes', () => {
 		await page.locator('#name').fill(name);
 		await page.locator('#value_0').fill('Red');
 		await page.locator('#value_0').blur();
-		await page.locator('app-language-switch button', { hasText: 'Français' }).click();
+		await page.locator('app-language-switch button', { hasText: 'বাংলা' }).click();
 		// The value box redraws for the new language; typing before that would be wiped.
 		await expect(page.locator('#value_0')).toHaveValue('');
 		await page.locator('#name').fill('Attribut');
-		await page.locator('#value_0').fill('Rouge');
+		await page.locator('#value_0').fill('লাল');
 		await page.locator('#value_0').blur();
 		await page.locator('#attribute_btn button, button#attribute_btn').first().click();
 		await expect(page).toHaveURL(/\/attribute$/);
 		const saved = await withDatabase((db) => db.collection('attributeDefinitions').findOne({ 'label.en': name }));
-		expect(saved).toMatchObject({ label: { fr: 'Attribut' }, terms: [{ label: { en: 'Red', fr: 'Rouge' } }] });
+		expect(saved).toMatchObject({ label: { bn: 'Attribut' }, terms: [{ label: { en: 'Red', bn: 'লাল' } }] });
 	});
 });
 
@@ -259,15 +259,15 @@ test.describe('What admin makes reaches the shop', () => {
 		await open(page, '/category');
 		await page.locator('input[formcontrolname="name"]').fill('Menu Category');
 		await page.locator('#slug').fill(slug);
-		await page.locator('app-language-switch button', { hasText: 'Français' }).click();
+		await page.locator('app-language-switch button', { hasText: 'বাংলা' }).click();
 		await expect(page.locator('input[formcontrolname="name"]')).toHaveValue('');
-		await page.locator('input[formcontrolname="name"]').fill('Catégorie du menu');
+		await page.locator('input[formcontrolname="name"]').fill('মেনুর ক্যাটাগরি');
 		await page.locator('#category_btn button, button#category_btn').first().click();
 		await expect.poll(() => withDatabase((db) => db.collection('categories').countDocuments({ slug }))).toBe(1);
 		try {
-			await expect.poll(async () => (await request.get(`${shop}/fr`)).text()).toContain('Catégorie du menu');
+			await expect.poll(async () => (await request.get(`${shop}/bn`)).text()).toContain('মেনুর ক্যাটাগরি');
 			expect(await (await request.get(`${shop}/en`)).text()).toContain('Menu Category');
-			expect(await (await request.get(`${shop}/fr`)).text()).toContain(`/collections/${slug}`);
+			expect(await (await request.get(`${shop}/bn`)).text()).toContain(`/collections/${slug}`);
 		} finally {
 			await withDatabase(async (db) => {
 				await db.collection('categories').deleteMany({ slug });
@@ -307,12 +307,12 @@ test.describe('What admin makes reaches the shop', () => {
 		await page.locator('#add_field_btn').click();
 		await page.locator('#field_1').fill('Upper Arm');
 		await page.locator('#field_1').blur();
-		await page.locator('app-language-switch button', { hasText: 'Français' }).click();
+		await page.locator('app-language-switch button', { hasText: 'বাংলা' }).click();
 		await expect(page.locator('#label')).toHaveValue('');
 		await expect(page.locator('#field_0')).toHaveValue('');
 		await expect(page.locator('#field_1')).toHaveValue('');
-		await page.locator('#label').fill('Blouse ajustée');
-		await page.locator('#field_0').fill('Poitrine');
+		await page.locator('#label').fill('ফিটিং ব্লাউজ');
+		await page.locator('#field_0').fill('বুক');
 		await page.locator('#field_0').blur();
 		await page.locator('#field_1').fill('Haut du bras');
 		await page.locator('#field_1').blur();
@@ -320,8 +320,8 @@ test.describe('What admin makes reaches the shop', () => {
 		await expect(page).toHaveURL(/\/measurement$/);
 		const template = await withDatabase((db) => db.collection('addonTemplates').findOne({ code }));
 		expect(template).toMatchObject({
-			label: { en: 'Fitted Blouse', fr: 'Blouse ajustée' },
-			fields: [{ code: 'bust', label: { fr: 'Poitrine' } }, { code: 'upper-arm' }],
+			label: { en: 'Fitted Blouse', bn: 'ফিটিং ব্লাউজ' },
+			fields: [{ code: 'bust', label: { bn: 'বুক' } }, { code: 'upper-arm' }],
 		});
 		try {
 			await open(page, `/product/edit/${String(original?._id)}`);
@@ -336,13 +336,13 @@ test.describe('What admin makes reaches the shop', () => {
 			await expect(page).toHaveURL(/\/product$/);
 			const saved = await withDatabase((db) => db.collection('products').findOne({ slug }));
 			expect(saved).toMatchObject({ addonTemplateCode: code, status: 'live' });
-			const french = await request.get(`https://localhost:4000/catalog/products/${slug}/view?locale=fr`);
-			expect(french.status(), await french.text()).toBe(200);
-			const body = (await french.json()) as {
+			const bengali = await request.get(`https://localhost:4000/catalog/products/${slug}/view?locale=bn`);
+			expect(bengali.status(), await bengali.text()).toBe(200);
+			const body = (await bengali.json()) as {
 				measurements: { fields: { label: string }[] };
 				optionGroups: { code: string; terms: { code: string; priceDeltaINR: number | null }[] }[];
 			};
-			expect(body.measurements.fields.map((row) => row.label)).toEqual(['Poitrine', 'Haut du bras']);
+			expect(body.measurements.fields.map((row) => row.label)).toEqual(['বুক', 'Haut du bras']);
 			const stitch = body.optionGroups.find((group) => group.code === 'blouse-stitch');
 			expect(stitch?.terms.find((term) => term.code === 'standard')?.priceDeltaINR).toBe(777);
 		} finally {
@@ -356,7 +356,7 @@ test.describe('What admin makes reaches the shop', () => {
 	test('a renamed value reaches the product that uses it', async ({ page, request }) => {
 		const slug = 'printed-blouse-piece';
 		const code = `e2e-finish-${Date.now()}`;
-		const name = (en: string) => ({ en, fr: `${en} fr` });
+		const name = (en: string) => ({ en, bn: `${en} bn` });
 		const term = { code: 'matte', slug: 'matte', label: name('Matte'), aliases: [], isBase: false, hidden: false };
 		const original = await withDatabase((db) => db.collection('products').findOne({ slug }));
 		await withDatabase(async (db) => {
@@ -419,9 +419,9 @@ test.describe('What admin makes reaches the shop', () => {
 		await open(page, '/category');
 		await page.locator('input[formcontrolname="name"]').fill('Picture Category');
 		await page.locator('#slug').fill(slug);
-		await page.locator('app-language-switch button', { hasText: 'Français' }).click();
+		await page.locator('app-language-switch button', { hasText: 'বাংলা' }).click();
 		await expect(page.locator('input[formcontrolname="name"]')).toHaveValue('');
-		await page.locator('input[formcontrolname="name"]').fill('Catégorie illustrée');
+		await page.locator('input[formcontrolname="name"]').fill('ছবি সহ ক্যাটাগরি');
 		await page.locator('app-image-upload .choosefile-input').first().click();
 		await page.locator('.modal .library-box label').first().click();
 		await page.locator('#media_btn button, button#media_btn').first().click();
@@ -431,7 +431,7 @@ test.describe('What admin makes reaches the shop', () => {
 		try {
 			const row = await withDatabase((db) => db.collection('categories').findOne({ slug }));
 			expect(row?.['media']?.bannerImage).toEqual(expect.any(String));
-			const menu = await request.get('https://localhost:4000/catalog/categories/menu?locale=fr');
+			const menu = await request.get('https://localhost:4000/catalog/categories/menu?locale=bn');
 			const rows = (await menu.json()) as { slug: string; imageUrl: string | null }[];
 			expect(rows.find((category) => category.slug === slug)?.imageUrl).toMatch(/^https?:/);
 		} finally {
@@ -446,8 +446,8 @@ test.describe('What admin makes reaches the shop', () => {
 		await open(page, '/category');
 		const tree = page.locator('app-tree');
 		await expect(tree).toContainText('Sarees');
-		await page.locator('app-language-switch button', { hasText: 'Français' }).click();
-		await expect(tree).toContainText('Saris');
+		await page.locator('app-language-switch button', { hasText: 'বাংলা' }).click();
+		await expect(tree).toContainText('শাড়ি');
 		await page.locator('app-language-switch button', { hasText: 'English' }).click();
 		await expect(tree).toContainText('Sarees');
 	});
@@ -542,14 +542,14 @@ test.describe('What admin makes reaches the shop', () => {
 		await open(page, '/faq/create');
 		await page.locator('input[formcontrolname="title"]').fill(title);
 		await page.locator('textarea[formcontrolname="description"]').fill('An answer.');
-		await page.locator('app-language-switch button', { hasText: 'Français' }).click();
+		await page.locator('app-language-switch button', { hasText: 'বাংলা' }).click();
 		await expect(page.locator('input[formcontrolname="title"]')).toHaveValue('');
 		await page.locator('input[formcontrolname="title"]').fill('Une question');
-		await page.locator('textarea[formcontrolname="description"]').fill('Une réponse.');
+		await page.locator('textarea[formcontrolname="description"]').fill('একটি উত্তর।');
 		await page.locator('#faq_btn button, button#faq_btn').first().click();
 		await expect(page).toHaveURL(/\/faq$/);
 		const saved = await withDatabase((db) => db.collection('faqEntries').findOne({ 'question.en': title }));
-		expect(saved).toMatchObject({ question: { fr: 'Une question' }, answer: { fr: 'Une réponse.' } });
+		expect(saved).toMatchObject({ question: { bn: 'Une question' }, answer: { bn: 'একটি উত্তর।' } });
 		await withDatabase((db) => db.collection('faqEntries').deleteMany({ 'question.en': title }));
 	});
 });
@@ -558,9 +558,9 @@ test.describe('Language to-do list', () => {
 	test('the count lists what is left, and a line jumps to the field', async ({ page }) => {
 		await open(page, '/product/create');
 		await page.locator('#name').fill('To-do Test');
-		const french = page.locator('app-language-switch .btn-group').nth(1);
-		await french.locator('[ngbDropdownToggle]').click();
-		await french.locator('[ngbDropdownItem]', { hasText: 'Meta Title' }).click();
+		const bengali = page.locator('app-language-switch .btn-group').nth(1);
+		await bengali.locator('[ngbDropdownToggle]').click();
+		await bengali.locator('[ngbDropdownItem]', { hasText: 'Meta Title' }).click();
 		await expect(page.locator('#meta_title')).toBeFocused();
 		await expect(page.locator('#name')).toHaveValue('');
 	});

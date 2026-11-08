@@ -117,7 +117,9 @@ export class CatalogPublicService {
 		const byId = new Map(categories.map((category) => [category.id, category]));
 		const summary = new Map(summaries.map((row) => [row.categoryId, row]));
 		const images = await this.categoryImages([
-			...categories.flatMap((category) => [category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat()),
+			...categories.flatMap((category) =>
+				[category.media?.bannerImage ?? [], category.media?.iconImage ?? []].flat(),
+			),
 			...summaries.flatMap((row) => row.coverAssetId ?? []),
 		]);
 		const shown = new Set<string>();
@@ -222,7 +224,8 @@ export class CatalogPublicService {
 					hex: term.hex ?? null,
 					image: term.swatchAssetId ? this.image(assets.get(term.swatchAssetId), ['swatch_image']) : null,
 					// An option that measures costs the template's amount unless this product overrides it.
-					priceDeltaINR: term.priceDeltaINR ?? (term.requiresMeasurements ? (measurements?.priceINR ?? null) : null),
+					priceDeltaINR:
+						term.priceDeltaINR ?? (term.requiresMeasurements ? (measurements?.priceINR ?? null) : null),
 					requiresMeasurements: term.requiresMeasurements,
 				})),
 			})),
@@ -532,7 +535,7 @@ export class CatalogPublicService {
 	}
 
 	/** The head data for one public address. Null when the address has no row. */
-	async seoRoute(path: string, locale: 'en' | 'fr') {
+	async seoRoute(path: string, locale: 'en' | 'bn') {
 		const route = (await this.seoRoutes?.find(path, locale)) ?? null;
 		return route && { ...route, description: plainText(route.description) };
 	}
@@ -549,7 +552,7 @@ export class CatalogPublicService {
 		]);
 		return routes
 			.filter((route) => route.entityType === 'page' || live.has(route.path))
-			.map((route) => (/^\/(en|fr)$/.test(route.canonicalPath) ? `${route.canonicalPath}/` : route.canonicalPath))
+			.map((route) => (/^\/(en|bn)$/.test(route.canonicalPath) ? `${route.canonicalPath}/` : route.canonicalPath))
 			.sort();
 	}
 

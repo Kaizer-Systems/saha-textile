@@ -107,7 +107,7 @@ const build = (options: Options = {}) => {
 	const categories = {
 		tree: vi.fn(async () => ['tree']),
 		findBySlug: vi.fn(async (slug: string) => (slug === 'silk' ? { id: 'c1' } : null)),
-		findById: vi.fn(async (id: string) => (id === 'c1' ? { name: { en: 'Silk', fr: 'Soie' } } : null)),
+		findById: vi.fn(async (id: string) => (id === 'c1' ? { name: { en: 'Silk', bn: 'সিল্ক' } } : null)),
 	};
 	const variants = { listForProduct: vi.fn(async () => rows), save: vi.fn(async (saved: unknown) => saved) };
 	const redirects = {
@@ -550,7 +550,7 @@ describe('saving the product form', () => {
 	});
 
 	it('keeps a tax class and a delivery text in other languages', async () => {
-		const row = product({ estimatedDeliveryText: { en: 'Old', fr: 'Bientôt' } });
+		const row = product({ estimatedDeliveryText: { en: 'Old', bn: 'শিগগিরই' } });
 		const { service, variants, products } = build({
 			row,
 			rows: [variant({ taxProfile: { hsnCode: 'x', taxClassId: 'gst' } })],
@@ -559,7 +559,7 @@ describe('saving the product form', () => {
 		expect((variants.save.mock.calls[0] as unknown as [VariantRow])[0].taxProfile?.taxClassId).toBe('gst');
 		expect((products.save.mock.calls[0] as unknown as [Row])[0].estimatedDeliveryText).toEqual({
 			en: 'New',
-			fr: 'Bientôt',
+			bn: 'শিগগিরই',
 		});
 	});
 
@@ -662,7 +662,7 @@ describe('saving the product form', () => {
 		const { service, search } = build();
 		await service.syncSearch(product({ status: 'live', categoryIds: ['c1', 'gone'] }));
 		expect(search.indexProduct).toHaveBeenLastCalledWith(
-			expect.objectContaining({ categoryNames: ['Silk', 'Soie'] }),
+			expect.objectContaining({ categoryNames: ['Silk', 'সিল্ক'] }),
 		);
 	});
 

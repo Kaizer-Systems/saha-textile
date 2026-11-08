@@ -41,7 +41,7 @@ export const goneRouteMeta = { data: { [GONE_KEY]: true } };
  * `noindex` (`DEC-I18N-ROUTES`).
  *
  * Every public page names itself in each language, reciprocally, which is what lets a search
- * engine show the French page to a French searcher without the site ever redirecting on a guess.
+ * engine show the Bengali page to a Bengali searcher without the site ever redirecting on a guess.
  * Its `x-default`, the version for a searcher whose language the shop does not have, is the
  * English version of the same page, never the home page. Every page also carries `og:locale`, and
  * a public page its other languages as `og:locale:alternate`, for link previews. Private pages (account, cart, checkout, sign-in…) get `noindex` and no

@@ -11,7 +11,7 @@ import { ConsentStore } from '@core/consent/consent.store';
 
 import { Language } from './language';
 
-const render = (locale = 'fr', protocol: string | null = 'https:', functional = true) => {
+const render = (locale = 'bn', protocol: string | null = 'https:', functional = true) => {
 	const events = new Subject<unknown>();
 	const doc = { cookie: '', location: protocol ? { protocol } : null };
 	TestBed.resetTestingModule();
@@ -30,21 +30,21 @@ const render = (locale = 'fr', protocol: string | null = 'https:', functional = 
 
 describe('Header language', () => {
 	it('shows the language in the address, or English', () => {
-		expect(render('fr').widget.selectedLanguage.language).toBe('Français');
+		expect(render('bn').widget.selectedLanguage.language).toBe('বাংলা');
 		expect(render('xx').widget.selectedLanguage.language).toBe('English');
 	});
 
 	it('links to this page in each language, following navigation', () => {
 		const { widget, events } = render();
-		const french = widget.languages[1]!;
-		expect(widget.hrefFor(french)).toBe('/fr/collections?page=2');
+		const bengali = widget.languages[1]!;
+		expect(widget.hrefFor(bengali)).toBe('/bn/collections?page=2');
 		events.next(new NavigationStart(1, '/ignored'));
 		events.next(new NavigationEnd(2, '/cart', '/cart'));
-		expect(widget.hrefFor(french)).toBe('/fr/cart');
+		expect(widget.hrefFor(bengali)).toBe('/bn/cart');
 	});
 
 	it('leaves no cookie without consent', () => {
-		const { widget, doc } = render('fr', 'https:', false);
+		const { widget, doc } = render('bn', 'https:', false);
 		widget.selectLanguage(widget.languages[1]!);
 		expect(doc.cookie).toBe('');
 	});
@@ -54,7 +54,7 @@ describe('Header language', () => {
 		secure.widget.active = true;
 		secure.widget.selectLanguage(secure.widget.languages[1]!);
 		expect(secure.widget.active).toBe(false);
-		expect(secure.doc.cookie).toContain('=fr; Path=/; Max-Age=31536000; SameSite=Lax; Secure');
+		expect(secure.doc.cookie).toContain('=bn; Path=/; Max-Age=31536000; SameSite=Lax; Secure');
 		const plain = render('en', 'http:');
 		plain.widget.selectLanguage(plain.widget.languages[0]!);
 		expect(plain.doc.cookie).not.toContain('Secure');

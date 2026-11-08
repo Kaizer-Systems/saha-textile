@@ -286,7 +286,7 @@ const ConfigSchema = z.object({
 	 */
 	locales: z
 		.string()
-		.default('en,fr')
+		.default('en,bn')
 		.transform((value) =>
 			value
 				.split(',')

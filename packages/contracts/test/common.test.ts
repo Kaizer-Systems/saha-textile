@@ -16,7 +16,7 @@ import {
 
 describe('LocaleCode', () => {
 	it('accepts BCP-47 primary subtags with an optional region', () => {
-		for (const code of ['en', 'fr', 'bn', 'hi', 'en-IN', 'fr-CA']) {
+		for (const code of ['en', 'bn', 'hi', 'en-IN', 'bn-BD']) {
 			expect(LocaleCode.safeParse(code).success).toBe(true);
 		}
 	});
@@ -30,22 +30,22 @@ describe('LocaleCode', () => {
 
 describe('ActiveLocaleConfig', () => {
 	it('defaults to the locked primary locale', () => {
-		const config = ActiveLocaleConfig.parse({ active: ['en', 'fr'] });
+		const config = ActiveLocaleConfig.parse({ active: ['en', 'bn'] });
 		expect(config.default).toBe(PRIMARY_LOCALE);
-		expect(config.active).toEqual(['en', 'fr']);
+		expect(config.active).toEqual(['en', 'bn']);
 	});
 
 	it('accepts any configured active set — locales are config, not a contract enum', () => {
-		expect(ActiveLocaleConfig.safeParse({ default: 'fr', active: ['en', 'fr'] }).success).toBe(true);
-		expect(ActiveLocaleConfig.safeParse({ active: ['en', 'bn', 'fr-CA'] }).success).toBe(true);
+		expect(ActiveLocaleConfig.safeParse({ default: 'bn', active: ['en', 'bn'] }).success).toBe(true);
+		expect(ActiveLocaleConfig.safeParse({ active: ['en', 'bn', 'bn-BD'] }).success).toBe(true);
 	});
 
 	it('rejects a default that is not active', () => {
-		expect(ActiveLocaleConfig.safeParse({ default: 'de', active: ['en', 'fr'] }).success).toBe(false);
+		expect(ActiveLocaleConfig.safeParse({ default: 'de', active: ['en', 'bn'] }).success).toBe(false);
 	});
 
 	it('rejects dropping the primary locale (I18nString requires `en`)', () => {
-		expect(ActiveLocaleConfig.safeParse({ default: 'fr', active: ['fr'] }).success).toBe(false);
+		expect(ActiveLocaleConfig.safeParse({ default: 'bn', active: ['bn'] }).success).toBe(false);
 	});
 
 	it('rejects an empty active set', () => {

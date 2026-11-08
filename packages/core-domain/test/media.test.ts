@@ -429,7 +429,7 @@ describe('resolveImage', () => {
 			asset: asset({
 				width: 3000,
 				height: 4000,
-				text: { alt: { en: 'Red saree', fr: 'Sari rouge' }, title: {}, caption: {} },
+				text: { alt: { en: 'Red saree', bn: 'লাল শাড়ি' }, title: {}, caption: {} },
 				derivatives: [
 					{
 						role: 'card',
@@ -452,12 +452,12 @@ describe('resolveImage', () => {
 				],
 			}),
 			getUrl: (key) => `https://cdn.test/${key}`,
-			locale: 'fr',
+			locale: 'bn',
 			fallbackLocale: 'en',
 			altOverride: { en: 'Override' },
 		});
 		expect(resolved?.roles.card?.map((source) => source.width)).toEqual([200, 400]);
-		expect(resolved?.alt).toBe('Sari rouge');
+		expect(resolved?.alt).toBe('লাল শাড়ি');
 
 		const cardOnly = resolveImage({
 			asset: asset({

@@ -87,7 +87,7 @@ const render = ({ platform = 'browser', permissions = [] as string[], template =
 			{ provide: PLATFORM_ID, useValue: platform },
 			{
 				provide: TranslocoService,
-				useValue: { getActiveLang: () => 'fr', translate: (key: string) => `t:${key}` },
+				useValue: { getActiveLang: () => 'bn', translate: (key: string) => `t:${key}` },
 			},
 		],
 	});
@@ -213,7 +213,7 @@ describe('Dashboard data', () => {
 		const row = { productId: 'p', sku: 'S', quantity: 0, state: 'out_of_stock' };
 		stock.set({
 			items: [
-				{ ...row, title: { en: 'Silk', fr: 'Soie' }, thumbnailUrl: 'i.png' },
+				{ ...row, title: { en: 'Silk', bn: 'সিল্ক' }, thumbnailUrl: 'i.png' },
 				{ ...row, title: { en: 'Silk' }, thumbnailUrl: null },
 			],
 		});
@@ -221,7 +221,7 @@ describe('Dashboard data', () => {
 		expect(page.productStockTableConfig().total).toBe(2);
 		expect(page.productStockTableConfig().data[0]).toMatchObject({
 			id: 'p',
-			name: 'Soie (S)',
+			name: 'সিল্ক (S)',
 			product_thumbnail: { original_url: 'i.png' },
 			stock: '<div class="status-out_of_stock"><span>t:out_of_stock</span></div>',
 		});
@@ -299,7 +299,8 @@ describe('Dashboard chart', () => {
 		monthly.set(months);
 		TestBed.tick();
 		await settle();
-		expect(page.chartOptions.xaxis?.categories).toEqual(["oct. '26"]);
+		// Bengali month name, English digits (BN-3).
+		expect(page.chartOptions.xaxis?.categories).toEqual(["অক্টোঃ '26"]);
 	});
 
 	it('keeps the demo commission line, cut to the months shown', async () => {

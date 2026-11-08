@@ -4,7 +4,7 @@ import { type Model, Schema, model, models } from 'mongoose';
 export interface SeoRouteDoc {
 	_id: string;
 	path: string;
-	locale: 'en' | 'fr';
+	locale: 'en' | 'bn';
 	title: string;
 	description: string;
 	canonicalPath: string;
@@ -18,7 +18,7 @@ const SeoRouteSchema = new Schema<SeoRouteDoc>(
 	{
 		_id: { type: String, required: true },
 		path: { type: String, required: true },
-		locale: { type: String, enum: ['en', 'fr'], required: true },
+		locale: { type: String, enum: ['en', 'bn'], required: true },
 		title: { type: String, required: true },
 		description: { type: String, default: '' },
 		canonicalPath: { type: String, required: true },

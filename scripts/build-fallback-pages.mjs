@@ -14,7 +14,7 @@ import { join, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const OUT = resolve(process.argv[2] ?? join(ROOT, 'dist/fallback'));
-const LOCALES = ['en', 'fr'];
+const LOCALES = ['en', 'bn'];
 
 const translations = (app, locale) =>
 	JSON.parse(readFileSync(join(ROOT, `apps/${app}/public/assets/i18n/${locale}.json`), 'utf8'));
@@ -39,7 +39,7 @@ const LOGO = '<!--logo-->';
 const SITE_URL = '__SITE_URL__';
 
 const FONTS =
-	'<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap">';
+	'<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;600&display=swap">';
 
 function page({ locale, title, refresh, stylesheet, body }) {
 	return `<!doctype html>

@@ -30,9 +30,9 @@ export class Languages {
 			icon: 'us',
 		},
 		{
-			language: 'Français',
-			code: 'fr',
-			icon: 'fr',
+			language: 'বাংলা',
+			code: 'bn',
+			icon: 'in',
 		},
 	];
 

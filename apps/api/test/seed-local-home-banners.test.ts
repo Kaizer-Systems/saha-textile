@@ -165,7 +165,7 @@ describe('seed-local-home-banners', () => {
 			ownerType: 'home',
 			status: 'active',
 			images: { desktop: 'med_1' },
-			alt: { en: expect.any(String), fr: expect.any(String) },
+			alt: { en: expect.any(String), bn: expect.any(String) },
 			link: { href: '/collections', external: false },
 		});
 		expect(h.close).toHaveBeenCalledOnce();

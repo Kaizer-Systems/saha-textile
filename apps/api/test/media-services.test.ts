@@ -70,7 +70,7 @@ const mediaDeps = (found: unknown = asset()) => {
 		storage as never,
 		queue as never,
 		audit as never,
-		{ locales: ['en', 'fr'] } as never,
+		{ locales: ['en', 'bn'] } as never,
 	);
 	return { service, assets, roles, storage, queue, audit };
 };
@@ -116,7 +116,7 @@ describe('MediaService', () => {
 	it('states the upload rules and the active languages', () => {
 		const { service } = mediaDeps();
 		expect(service.uploadRules().acceptedTypes).toContain('image/jpeg');
-		expect(service.activeLocales).toEqual(['en', 'fr']);
+		expect(service.activeLocales).toEqual(['en', 'bn']);
 		expect(MediaService.ADMIN_PURPOSES).toContain('banner');
 	});
 
@@ -285,7 +285,7 @@ describe('MediaService', () => {
 });
 
 describe('ReviewsService', () => {
-	const product = { id: 'p1', title: { en: 'Red', fr: 'Rouge' } };
+	const product = { id: 'p1', title: { en: 'Red', bn: 'লাল' } };
 	const order = { id: 'o1', userId: 'c1', status: 'delivered', lines: [{ productId: 'p1' }] };
 	const review = { id: 'r1', productId: 'p1', userId: 'c1', imageAssetIds: ['m1'] };
 	const build = (
@@ -336,7 +336,7 @@ describe('ReviewsService', () => {
 			storage as never,
 			queue as never,
 			media as never,
-			{ locales: overrides.locales ?? ['en', 'fr'] } as never,
+			{ locales: overrides.locales ?? ['en', 'bn'] } as never,
 			overrides.transactional === false ? null : (transactions as never),
 		);
 		return { service, reviews, assets, products, customers, storage, media, transactions };
@@ -381,7 +381,7 @@ describe('ReviewsService', () => {
 	});
 
 	it('stores a pending review and names photos after the product in each language', async () => {
-		const { service, assets, reviews } = build({ locales: ['en', 'fr', 'de'] });
+		const { service, assets, reviews } = build({ locales: ['en', 'bn', 'de'] });
 		const photo = {
 			id: 'm1',
 			purpose: 'review',
@@ -395,7 +395,7 @@ describe('ReviewsService', () => {
 		expect(assets.update).toHaveBeenCalledWith(
 			expect.objectContaining({
 				text: expect.objectContaining({
-					alt: { en: 'Red — customer photo', fr: 'Rouge — photo client', de: 'Red — customer photo' },
+					alt: { en: 'Red — customer photo', bn: 'লাল — গ্রাহকের ছবি', de: 'Red — customer photo' },
 				}),
 			}),
 		);
@@ -415,7 +415,7 @@ describe('ReviewsService', () => {
 		await service.submit('c1', { ...(submit as object), imageAssetIds: ['m1'] } as never);
 		expect(assets.update).toHaveBeenCalledWith(
 			expect.objectContaining({
-				text: expect.objectContaining({ alt: { en: 'customer photo', fr: 'photo client' } }),
+				text: expect.objectContaining({ alt: { en: 'customer photo', bn: 'গ্রাহকের ছবি' } }),
 			}),
 		);
 	});
@@ -515,7 +515,7 @@ describe('ContentBlocksService', () => {
 			subheading: {},
 			ctaLabel: {},
 			link: null,
-			alt: { en: 'A', fr: 'B' },
+			alt: { en: 'A', bn: 'B' },
 			status: 'draft',
 			startsAt: null,
 			endsAt: null,
@@ -538,7 +538,7 @@ describe('ContentBlocksService', () => {
 			settings as never,
 			storage as never,
 			{
-				locales: ['en', 'fr'],
+				locales: ['en', 'bn'],
 			} as never,
 		);
 		return { service, blocks, assets, settings };
@@ -558,8 +558,8 @@ describe('ContentBlocksService', () => {
 	});
 
 	it('needs alt text in every language to go live', async () => {
-		const refused = await statusOf(build().service.upsert(input({ status: 'active', alt: { en: 'A', fr: ' ' } })));
-		expect(JSON.stringify(refused.body)).toContain('fr');
+		const refused = await statusOf(build().service.upsert(input({ status: 'active', alt: { en: 'A', bn: ' ' } })));
+		expect(JSON.stringify(refused.body)).toContain('bn');
 		await expect(build().service.upsert(input({ status: 'active' }))).resolves.toMatchObject({
 			key: expect.any(String),
 		});
@@ -595,18 +595,18 @@ describe('ContentBlocksService', () => {
 		containsText: false,
 		images: { desktop: 'm1', tablet: 'm1', phone: null },
 		localeImages: {},
-		heading: { en: 'H', fr: 'T' },
+		heading: { en: 'H', bn: 'T' },
 		subheading: { en: 'S' },
 		ctaLabel: {},
 		link: null,
-		alt: { en: 'A', fr: 'B' },
+		alt: { en: 'A', bn: 'B' },
 		...overrides,
 	});
 
 	it('resolves live banners for a language, with fallbacks', async () => {
 		const { service, blocks } = build();
 		blocks.listLive.mockResolvedValue([block()]);
-		const response = await service.storefront({ ownerType: 'home', locale: 'fr' } as never);
+		const response = await service.storefront({ ownerType: 'home', locale: 'bn' } as never);
 		expect(response.heroLayout).toBe('hero_full');
 		expect(response.banners[0]).toMatchObject({ heading: 'T', subheading: 'S', ctaLabel: null, alt: 'B' });
 		expect(response.banners[0]?.images.tablet).not.toBeNull();
@@ -621,18 +621,18 @@ describe('ContentBlocksService', () => {
 			block({ alt: { en: 'A' }, key: 'k2' }),
 			block({ alt: {}, key: 'k3' }),
 		]);
-		const response = await service.storefront({ ownerType: 'category', ownerId: 'c1', locale: 'fr' } as never);
+		const response = await service.storefront({ ownerType: 'category', ownerId: 'c1', locale: 'bn' } as never);
 		expect(response.banners.map((row) => row.alt)).toEqual(['A', '']);
 	});
 
 	it('uses the art for the language and drops live text when the art carries it', async () => {
 		const { service, blocks } = build([banner(), banner({ id: 'm2' })]);
 		blocks.listLive.mockResolvedValue([
-			block({ containsText: true, localeImages: { fr: { desktop: 'm2', tablet: null, phone: null } } }),
+			block({ containsText: true, localeImages: { bn: { desktop: 'm2', tablet: null, phone: null } } }),
 		]);
-		const fr = await service.storefront({ ownerType: 'home', locale: 'fr' } as never);
-		expect(fr.banners[0]).toMatchObject({ heading: null, subheading: null });
-		expect(fr.banners[0]?.images.desktop.assetId).toBe('m2');
+		const bn = await service.storefront({ ownerType: 'home', locale: 'bn' } as never);
+		expect(bn.banners[0]).toMatchObject({ heading: null, subheading: null });
+		expect(bn.banners[0]?.images.desktop.assetId).toBe('m2');
 		const en = await service.storefront({ ownerType: 'home', locale: 'en' } as never);
 		expect(en.banners[0]?.images.desktop.assetId).toBe('m1');
 	});

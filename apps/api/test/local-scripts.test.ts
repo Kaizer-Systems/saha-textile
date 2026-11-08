@@ -81,7 +81,7 @@ vi.mock('@saha-textile/adapters-db-mongo', () => {
 		MongoProductVariantRepository: repository(() => h.variants),
 		MongoAttributeDefinitionRepository: repository(() => ({ listAll: async () => [] })),
 		MongoCategoryRepository: repository(() => ({
-			tree: async () => [{ id: 'cat_1', name: { en: 'Sarees', fr: 'Saris' } }],
+			tree: async () => [{ id: 'cat_1', name: { en: 'Sarees', bn: 'শাড়ি' } }],
 		})),
 		MongoMediaAssetRepository: repository(() => h.assets),
 		MongoMediaRoleRepository: blank,
@@ -365,7 +365,7 @@ describe('rebuild-search-index', () => {
 		const result = await run('rebuild');
 		expect(h.products.list).toHaveBeenCalledTimes(2);
 		expect(result.out).toContain('Indexed 2 live products of 2.');
-		expect(h.search.rebuild.mock.calls[0]?.[0]).toMatchObject([{ categoryNames: ['Sarees', 'Saris'] }, {}]);
+		expect(h.search.rebuild.mock.calls[0]?.[0]).toMatchObject([{ categoryNames: ['Sarees', 'শাড়ি'] }, {}]);
 		await expect(h.search.categories?.()).resolves.toEqual([]);
 		expect(h.mongo.disconnect).toHaveBeenCalledOnce();
 	});

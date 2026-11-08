@@ -33,8 +33,16 @@ export function focusField(page: Document, key: string): void {
 }
 
 /** The admin edits every language; English is the guide shown under other languages. */
-export const ADMIN_LOCALES: readonly string[] = ['en', 'fr'];
+export const ADMIN_LOCALES: readonly string[] = ['en', 'bn'];
 export const SOURCE_LOCALE = 'en';
+
+/**
+ * The locale to hand to `Intl` for an admin language. Bengali keeps English digits (BN-3), so it
+ * formats with the Latin numbering system while month names stay Bengali.
+ */
+export function intlLocale(locale: string): string {
+	return locale === 'bn' ? 'bn-IN-u-nu-latn' : locale;
+}
 
 /**
  * Language-bound form fields behind one Language switch. Each field keeps one control; this holds

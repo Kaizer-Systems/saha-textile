@@ -9,10 +9,10 @@ describe('search document', () => {
 			id: 'prd_1',
 			slug: 'silk',
 			sku: 'SILK',
-			title: { en: 'Silk', fr: 'Soie' },
+			title: { en: 'Silk', bn: 'সিল্ক' },
 			categoryIds: ['cat_1'],
 		});
-		expect(doc).toEqual({ id: 'prd_1', words: 'Silk Soie silk SILK', categoryIds: ['cat_1'] });
+		expect(doc).toEqual({ id: 'prd_1', words: 'Silk সিল্ক silk SILK', categoryIds: ['cat_1'] });
 		expect('price' in doc || 'basePriceINR' in doc).toBe(false);
 	});
 

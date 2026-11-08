@@ -42,7 +42,7 @@ export function normaliseLegacyPath(path: string): string {
 
 /** A 301 or 302 may only point at a live collection or a page this shop already renders. */
 export function legacyTargetIsLive(targetPath: string, livePaths: ReadonlySet<string>): boolean {
-	const bare = targetPath.replace(/^\/(en|fr)/, '') || '/';
+	const bare = targetPath.replace(/^\/(en|bn)/, '') || '/';
 	if (STATIC_PAGES.has(bare)) return true;
 	if (bare.startsWith('/collections/')) return livePaths.has(bare.slice('/collections/'.length));
 	if (bare.startsWith('/product/')) return livePaths.has(bare);

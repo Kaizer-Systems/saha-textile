@@ -6,7 +6,7 @@ import { Id } from './common';
 export const SeoRoute = z.object({
 	id: Id,
 	path: z.string().min(1),
-	locale: z.enum(['en', 'fr']),
+	locale: z.enum(['en', 'bn']),
 	title: z.string().min(1),
 	description: z.string().default(''),
 	canonicalPath: z.string().min(1),

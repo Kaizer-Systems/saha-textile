@@ -5,7 +5,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 
 import type { LanguageGap } from '@core/i18n/localized-fields';
 
-const NAMES: Readonly<Record<string, string>> = { en: 'English', fr: 'Français', bn: 'বাংলা' };
+const NAMES: Readonly<Record<string, string>> = { en: 'English', bn: 'বাংলা' };
 
 /**
  * One switch at the top of a form changes every language-bound field on it. The shop's active

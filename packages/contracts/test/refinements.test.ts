@@ -208,19 +208,19 @@ describe('admin product writes', () => {
 
 describe('FaqWrite', () => {
 	const faq = (overrides: Record<string, unknown>) => ({
-		question: { en: 'Q', fr: 'Q fr' },
-		answer: { en: 'A', fr: 'R fr' },
+		question: { en: 'Q', bn: 'Q bn' },
+		answer: { en: 'A', bn: 'R bn' },
 		...overrides,
 	});
-	const bothLanguages = 'English and French are required before publish';
+	const bothLanguages = 'English and Bengali are required before publish';
 
-	it('lets a draft go without French', () => {
+	it('lets a draft go without Bengali', () => {
 		expect(FaqWrite.safeParse({ question: { en: 'Q' }, answer: { en: 'A' } }).success).toBe(true);
 	});
 
-	it('needs French in both fields before it goes live', () => {
+	it('needs Bengali in both fields before it goes live', () => {
 		expect(FaqWrite.safeParse(faq({ status: 'live' })).success).toBe(true);
-		expect(messages(FaqWrite.safeParse(faq({ status: 'live', question: { en: 'Q', fr: ' ' } })))).toContain(
+		expect(messages(FaqWrite.safeParse(faq({ status: 'live', question: { en: 'Q', bn: ' ' } })))).toContain(
 			bothLanguages,
 		);
 		expect(messages(FaqWrite.safeParse(faq({ status: 'live', answer: { en: 'A' } })))).toContain(bothLanguages);
@@ -267,7 +267,7 @@ describe('ContentBlockInput owners', () => {
 			slot: 'main',
 			containsText: true,
 			images: { desktop: 'd', phone: 'p' },
-			localeImages: { fr: { desktop: 'fd', phone: 'fp' } },
+			localeImages: { bn: { desktop: 'fd', phone: 'fp' } },
 		});
 		expect(parsed.success).toBe(true);
 	});

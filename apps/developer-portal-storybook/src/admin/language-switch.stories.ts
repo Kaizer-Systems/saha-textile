@@ -10,7 +10,7 @@ const meta = {
 		application: 'admin',
 	},
 	args: {
-		locales: ['en', 'fr'],
+		locales: ['en', 'bn'],
 		active: 'en',
 		gaps: {},
 	},
@@ -24,7 +24,7 @@ export const AllDone: Story = {};
 export const WorkLeft: Story = {
 	args: {
 		gaps: {
-			fr: [
+			bn: [
 				{ key: 'name', label: 'name' },
 				{ key: 'value:color:red', label: 'gap_value', name: 'Red' },
 			],

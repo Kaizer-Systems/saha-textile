@@ -12,7 +12,7 @@ describe('TranslocoHttpLoader', () => {
 		TestBed.configureTestingModule({
 			providers: [TranslocoHttpLoader, { provide: HttpClient, useValue: { get } }],
 		});
-		TestBed.inject(TranslocoHttpLoader).getTranslation('fr');
-		expect(String((get.mock.lastCall as unknown as string[])[0])).toMatch(/assets\/i18n\/fr\.json$/);
+		TestBed.inject(TranslocoHttpLoader).getTranslation('bn');
+		expect(String((get.mock.lastCall as unknown as string[])[0])).toMatch(/assets\/i18n\/bn\.json$/);
 	});
 });

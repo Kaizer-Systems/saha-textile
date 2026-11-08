@@ -446,7 +446,7 @@ describe('resolveImage alt fallback', () => {
 				text: { alt: text, title: {}, caption: {} },
 			}),
 			getUrl: (key) => key,
-			locale: 'fr',
+			locale: 'bn',
 			fallbackLocale: 'en',
 			...(altOverride ? { altOverride } : {}),
 		});

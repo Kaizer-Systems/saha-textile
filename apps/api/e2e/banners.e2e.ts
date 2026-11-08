@@ -87,19 +87,19 @@ async function main(): Promise<void> {
 			images: { desktop, tablet: null, phone },
 			containsText: false,
 			localeImages: {},
-			heading: { en: 'The festive edit', fr: "L'édition festive" },
-			subheading: { en: 'New arrivals', fr: 'Nouveautés' },
-			ctaLabel: { en: 'Shop now', fr: 'Acheter' },
+			heading: { en: 'The festive edit', bn: 'উৎসবের কালেকশন' },
+			subheading: { en: 'New arrivals', bn: 'নতুন এসেছে' },
+			ctaLabel: { en: 'Shop now', bn: 'Acheter' },
 			link: { href: '/collections', external: false },
-			alt: { en: 'Festive saree collection', fr: 'Collection de saris de fête' },
+			alt: { en: 'Festive saree collection', bn: 'উৎসবের শাড়ির কালেকশন' },
 			status: 'active',
 			startsAt: null,
 			endsAt: null,
 		});
-		const read = await content.storefront({ ownerType: 'home', locale: 'fr' });
+		const read = await content.storefront({ ownerType: 'home', locale: 'bn' });
 		const hero = read.banners.find((banner) => banner.key === 'home:-:hero:main');
 		console.log(
-			hero ? 'PASS  hero banner resolved for fr' : 'FAIL  hero banner missing',
+			hero ? 'PASS  hero banner resolved for bn' : 'FAIL  hero banner missing',
 			hero
 				? `(${hero.heading}; desktop ${hero.images.desktop.roles.banner?.map((s) => s.width).join('/')}; phone ${hero.images.phone?.roles.banner?.map((s) => s.width).join('/')})`
 				: '',

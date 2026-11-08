@@ -21,7 +21,7 @@ const boot = async (load: () => unknown) => {
 	TestBed.resetTestingModule();
 	TestBed.configureTestingModule({
 		providers: [
-			{ provide: ACTIVE_LOCALE, useValue: 'fr' },
+			{ provide: ACTIVE_LOCALE, useValue: 'bn' },
 			{ provide: TranslocoService, useValue: transloco },
 			{
 				provide: LocaleSeo,
@@ -40,10 +40,10 @@ const boot = async (load: () => unknown) => {
 describe('provideLocaleRouting', () => {
 	it('sets the base address, language and SEO service', async () => {
 		const { transloco, seo } = await boot(() => of({}));
-		expect(TestBed.inject(APP_BASE_HREF)).toBe('/fr');
-		expect(document.documentElement.lang).toBe('fr');
-		expect(transloco.setActiveLang).toHaveBeenCalledWith('fr');
-		expect(transloco.load).toHaveBeenCalledWith('fr');
+		expect(TestBed.inject(APP_BASE_HREF)).toBe('/bn');
+		expect(document.documentElement.lang).toBe('bn');
+		expect(transloco.setActiveLang).toHaveBeenCalledWith('bn');
+		expect(transloco.load).toHaveBeenCalledWith('bn');
 		expect(seo).toHaveBeenCalledOnce();
 	});
 
@@ -53,7 +53,7 @@ describe('provideLocaleRouting', () => {
 		manifest.setAttribute('href', '/manifest.webmanifest');
 		document.head.appendChild(manifest);
 		await boot(() => of({}));
-		expect(manifest.getAttribute('href')).toBe('/manifest.webmanifest?lang=fr');
+		expect(manifest.getAttribute('href')).toBe('/manifest.webmanifest?lang=bn');
 		manifest.remove();
 	});
 

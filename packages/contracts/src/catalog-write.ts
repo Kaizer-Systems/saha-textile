@@ -218,8 +218,8 @@ export type AdminReplacementTarget = z.infer<typeof AdminReplacementTarget>;
 export const FaqWrite = z
 	.object({
 		id: z.string().min(1).optional(),
-		question: z.object({ en: z.string().min(1), fr: z.string().optional() }),
-		answer: z.object({ en: z.string().min(1), fr: z.string().optional() }),
+		question: z.object({ en: z.string().min(1), bn: z.string().optional() }),
+		answer: z.object({ en: z.string().min(1), bn: z.string().optional() }),
 		scope: z.enum(['global', 'category', 'product', 'mixed']).default('global'),
 		categoryIds: z.array(z.string()).default([]),
 		productIds: z.array(z.string()).default([]),
@@ -227,10 +227,10 @@ export const FaqWrite = z
 		displayOrder: z.number().int().default(0),
 	})
 	.superRefine((row, ctx) => {
-		if (row.status === 'live' && (!row.question.fr?.trim() || !row.answer.fr?.trim())) {
+		if (row.status === 'live' && (!row.question.bn?.trim() || !row.answer.bn?.trim())) {
 			ctx.addIssue({
 				code: 'custom',
-				message: 'English and French are required before publish',
+				message: 'English and Bengali are required before publish',
 				path: ['question'],
 			});
 		}

@@ -66,7 +66,12 @@ function harness(start: ProductRow = product()) {
 		findBySource: async () => null,
 		list: async () => redirects,
 	};
-	const catalog = new CatalogService(products as never, { findById: async () => null } as never, variantRepo as never, redirectRepo as never);
+	const catalog = new CatalogService(
+		products as never,
+		{ findById: async () => null } as never,
+		variantRepo as never,
+		redirectRepo as never,
+	);
 	return { catalog, variants, redirects, current: () => saved };
 }
 
@@ -120,18 +125,27 @@ describe('admin product save', () => {
 		const { catalog, variants, current } = harness();
 		const axis = {
 			attributeCode: 'color',
-			label: { en: 'Colour', fr: 'Couleur' },
+			label: { en: 'Colour', bn: 'রং' },
 			semanticRole: 'variation_axis',
 			displayStyle: 'rectangle',
 			requiredSelection: false,
 			defaultTermCode: null,
-			terms: [{ code: 'red', label: { en: 'Red', fr: 'Rouge' }, isBase: false, addonTemplateIds: [], requiresMeasurements: false, sortOrder: 0 }],
+			terms: [
+				{
+					code: 'red',
+					label: { en: 'Red', bn: 'লাল' },
+					isBase: false,
+					addonTemplateIds: [],
+					requiresMeasurements: false,
+					sortOrder: 0,
+				},
+			],
 		};
 		await catalog.updateMerchandising('prd_kurti', {
 			...form(),
 			content: {
-				title: { en: 'Kurti', fr: 'Kurti' },
-				shortDescription: { fr: 'Court' },
+				title: { en: 'Kurti', bn: 'Kurti' },
+				shortDescription: { bn: 'Court' },
 				description: {},
 				metaTitle: {},
 				metaDescription: {},
@@ -145,7 +159,7 @@ describe('admin product save', () => {
 				altOverrides: {},
 			},
 		} as never);
-		expect(current().shortDescription).toEqual({ fr: 'Court' });
+		expect(current().shortDescription).toEqual({ bn: 'Court' });
 		expect([...variants.values()].some((row) => row.optionSelectionHash === 'color:red')).toBe(true);
 	});
 
@@ -180,7 +194,9 @@ describe('admin product save', () => {
 		const { catalog, current } = harness(product({ status: 'draft', lifecycle: { liveAt: null } }));
 		await catalog.updateMerchandising('prd_kurti', form({ sku: 'KPS-RENAMED', status: 'disabled' }));
 		expect(current().sku).toBe('KPS-RENAMED');
-		await expect(catalog.updateMerchandising('prd_kurti', form({ sku: 'KPS-RENAMED' }))).rejects.toThrow('Use Go Live');
+		await expect(catalog.updateMerchandising('prd_kurti', form({ sku: 'KPS-RENAMED' }))).rejects.toThrow(
+			'Use Go Live',
+		);
 	});
 
 	it('disables without discontinuing, and refuses a variant that is not the product’s', async () => {

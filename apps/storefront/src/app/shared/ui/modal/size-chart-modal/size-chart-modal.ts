@@ -4,6 +4,7 @@ import { Component, TemplateRef, PLATFORM_ID, inject, signal, viewChild } from '
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
+import { intlLocale } from '@core/i18n/locale';
 import { ISizeGuide } from '@data-access/interfaces/product-detail.interface';
 
 import { Button } from '../../button/button';
@@ -57,7 +58,9 @@ export class SizeChartModal {
 	cell(value: number | undefined, stored: Unit): string {
 		if (value === undefined) return '-';
 		const shown = stored === this.unit() ? value : stored === 'in' ? value * CM_PER_INCH : value / CM_PER_INCH;
-		return new Intl.NumberFormat(this.transloco.getActiveLang(), { maximumFractionDigits: 1 }).format(shown);
+		return new Intl.NumberFormat(intlLocale(this.transloco.getActiveLang()), { maximumFractionDigits: 1 }).format(
+			shown,
+		);
 	}
 
 	private getDismissReason(reason: ModalDismissReasons): string {

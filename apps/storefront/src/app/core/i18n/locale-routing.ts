@@ -20,7 +20,7 @@ import { LocaleSeo } from './locale-seo';
  *
  * The initializer renders the page IN its language on the server: it waits for the runtime
  * config (the loader needs the real site origin), then loads that locale's dictionary before
- * the first render, so French arrives as French HTML instead of being swapped in on hydration.
+ * the first render, so Bengali arrives as Bengali HTML instead of being swapped in on hydration.
  * Waiting is never allowed to fail the render; see the catch below.
  */
 export function provideLocaleRouting() {

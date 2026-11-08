@@ -48,7 +48,7 @@ vi.mock('@data-access/queries/attribute.queries', () => ({
 }));
 
 const translate = { translate: (key: string) => key, selectTranslation: () => of({}) };
-const both = { en: 'Red', fr: 'Rouge' };
+const both = { en: 'Red', bn: 'লাল' };
 
 const mount = <T>(type: Type<T>, providers: unknown[], inputs: Record<string, unknown> = {}) => {
 	TestBed.resetTestingModule();
@@ -72,14 +72,14 @@ describe('LocalizedFields', () => {
 	it('swaps the controls with the language and keeps what was typed', () => {
 		const { form, fields } = build();
 		form.patchValue({ name: 'Silk' });
-		fields.switchTo('fr');
+		fields.switchTo('bn');
 		expect(form.value.name).toBe('');
 		expect(fields.source('name')).toBe('Silk');
-		form.patchValue({ name: 'Soie' });
+		form.patchValue({ name: 'সিল্ক' });
 		fields.switchTo('en');
 		expect(form.value.name).toBe('Silk');
 		expect(fields.source('name')).toBe('');
-		expect(fields.text('name')).toEqual({ en: 'Silk', fr: 'Soie' });
+		expect(fields.text('name')).toEqual({ en: 'Silk', bn: 'সিল্ক' });
 	});
 
 	it('loads every language, treats non-text as empty, and counts what is missing', () => {
@@ -88,8 +88,8 @@ describe('LocalizedFields', () => {
 		expect(form.value).toMatchObject({ name: 'Silk', other: '' });
 		form.patchValue({ other: 5 });
 		expect(fields.gaps('en').length).toBe(1);
-		expect(fields.gaps('fr').length).toBe(2);
-		fields.switchTo('fr');
+		expect(fields.gaps('bn').length).toBe(2);
+		fields.switchTo('bn');
 		expect(fields.source('unknown')).toBe('');
 	});
 });
@@ -98,17 +98,17 @@ describe('LocalizedFields with an optional field', () => {
 	it('asks for other languages only once English is written', () => {
 		const form = new FormGroup({ note: new FormControl('') });
 		const fields = new LocalizedFields(form, ['note'], ['note']);
-		expect(fields.gaps('fr').length).toBe(0);
+		expect(fields.gaps('bn').length).toBe(0);
 		form.patchValue({ note: 'Soon' });
 		expect(fields.gaps('en').length).toBe(0);
-		expect(fields.gaps('fr').length).toBe(1);
+		expect(fields.gaps('bn').length).toBe(1);
 	});
 });
 
 describe('LanguageSwitch', () => {
 	it('names languages it knows, and falls back to the code', () => {
 		const page = mount(LanguageSwitch, [], { locales: ['en'], active: 'en' });
-		expect(page.name('fr')).toBe('Français');
+		expect(page.name('bn')).toBe('বাংলা');
 		expect(page.name('xx')).toBe('xx');
 	});
 });
@@ -121,13 +121,13 @@ describe('Go Live report', () => {
 		expect(
 			goLiveLabels(
 				[
-					{ field: 'title', locale: 'fr' },
+					{ field: 'title', locale: 'bn' },
 					{ field: 'value:color:red', locale: 'xx' },
 					{ field: 'category', locale: null },
 				],
 				key,
 			),
-		).toEqual(['Français: gap_title', 'xx: gap_value color red', 'gap_category']);
+		).toEqual(['বাংলা: gap_title', 'xx: gap_value color red', 'gap_category']);
 	});
 
 	it('toasts success, or the first gaps and how many more', () => {
@@ -152,14 +152,29 @@ const group = (over: Record<string, unknown> = {}) =>
 		displayStyle: 'rectangle',
 		requiredSelection: false,
 		defaultTermCode: null,
-		terms: [{ code: 'red', label: both, isBase: false, addonTemplateIds: [], requiresMeasurements: false, sortOrder: 0 }],
+		terms: [
+			{
+				code: 'red',
+				label: both,
+				isBase: false,
+				addonTemplateIds: [],
+				requiresMeasurements: false,
+				sortOrder: 0,
+			},
+		],
 		...over,
 	}) as never;
 
 describe('variantCombinations', () => {
 	it('crosses the axes only', () => {
 		expect(variantCombinations([group({ semanticRole: 'filter_only' })])).toEqual([]);
-		const size = group({ attributeCode: 'size', terms: [{ code: 's', label: both }, { code: 'm', label: both }] });
+		const size = group({
+			attributeCode: 'size',
+			terms: [
+				{ code: 's', label: both },
+				{ code: 'm', label: both },
+			],
+		});
 		const rows = variantCombinations([size, group()]);
 		expect(rows.map((row) => row.hash)).toEqual(['color:red|size:s', 'color:red|size:m']);
 	});
@@ -173,7 +188,16 @@ const definition = (over: Record<string, unknown> = {}) => ({
 	defaultDisplayStyle: 'color_swatch',
 	valueType: 'color',
 	terms: [
-		{ code: 'red', label: both, slug: 'red', hex: '#ff0000', swatchAssetId: 'a1', aliases: [], isBase: false, hidden: false },
+		{
+			code: 'red',
+			label: both,
+			slug: 'red',
+			hex: '#ff0000',
+			swatchAssetId: 'a1',
+			aliases: [],
+			isBase: false,
+			hidden: false,
+		},
 		{ code: 'blue', label: { en: 'Blue' }, slug: 'blue', aliases: [], isBase: false, hidden: false },
 		{ code: 'old', label: both, slug: 'old', aliases: [], isBase: false, hidden: true },
 	],
@@ -182,7 +206,7 @@ const definition = (over: Record<string, unknown> = {}) => ({
 
 describe('OptionGroups', () => {
 	const providers = [{ provide: TranslocoService, useValue: translate }];
-	const render = (groups: unknown[] = [], definitions: unknown[] = [definition()], locale = 'fr') =>
+	const render = (groups: unknown[] = [], definitions: unknown[] = [definition()], locale = 'bn') =>
 		mount(OptionGroups, providers, { groups, definitions, locale });
 
 	it('names roles in plain words', () => {
@@ -236,15 +260,15 @@ describe('OptionGroups', () => {
 
 	it('titles a group, offers only named visible values, and flags the unnamed', () => {
 		const page = render();
-		expect(page.title(group())).toBe('Rouge');
+		expect(page.title(group())).toBe('লাল');
 		expect(page.title(group({ label: {} }))).toBe('color');
-		expect(page.valueOptions(group())).toEqual([{ value: 'red', label: 'Rouge' }]);
+		expect(page.valueOptions(group())).toEqual([{ value: 'red', label: 'লাল' }]);
 		expect(page.valueOptions(group({ attributeCode: 'none' }))).toEqual([]);
 		expect(page.picked(group())).toEqual(['red']);
 		const unnamed = group({ terms: [{ code: 'blue', label: { en: 'Blue' } }] });
 		expect(page.unnamed(unnamed)).toHaveLength(1);
 		expect(page.baseOptions(unnamed)).toEqual([{ value: 'blue', label: 'blue' }]);
-		expect(page.baseOptions(group())).toEqual([{ value: 'red', label: 'Rouge' }]);
+		expect(page.baseOptions(group())).toEqual([{ value: 'red', label: 'লাল' }]);
 	});
 
 	it('adds a group from its definition, and ignores anything else', () => {
@@ -285,16 +309,23 @@ describe('OptionGroups', () => {
 
 	it('names templates in this language, and marks an option as measuring', () => {
 		const page = mount(OptionGroups, [{ provide: TranslocoService, useValue: translate }], {
-			groups: [group({ terms: [{ code: 'a', label: both }, { code: 'b', label: both }] })],
+			groups: [
+				group({
+					terms: [
+						{ code: 'a', label: both },
+						{ code: 'b', label: both },
+					],
+				}),
+			],
 			definitions: [],
-			locale: 'fr',
+			locale: 'bn',
 			templates: [
-				{ code: 't1', label: { en: 'Blouse', fr: 'Blouse fr' } },
+				{ code: 't1', label: { en: 'Blouse', bn: 'Blouse bn' } },
 				{ code: 't2', label: { en: 'Fall' } },
 			],
 		});
 		expect(page.templateOptions()).toEqual([
-			{ value: 't1', label: 'Blouse fr' },
+			{ value: 't1', label: 'Blouse bn' },
 			{ value: 't2', label: 't2' },
 		]);
 		page.setMeasures(0, page.groups()[0] as never, 'b', true);
@@ -302,7 +333,12 @@ describe('OptionGroups', () => {
 	});
 
 	it('sets and clears an override, rounding to whole rupees', () => {
-		const two = group({ terms: [{ code: 'a', label: both }, { code: 'b', label: both }] });
+		const two = group({
+			terms: [
+				{ code: 'a', label: both },
+				{ code: 'b', label: both },
+			],
+		});
 		const page = render([two]);
 		page.setOverride(0, page.groups()[0] as never, 'a', '99.6');
 		expect(page.groups()[0]?.terms[0]?.priceDeltaINR).toBe(100);
@@ -320,7 +356,7 @@ describe('ProductImages', () => {
 		...over,
 	});
 	const render = (over: Record<string, unknown> = {}) =>
-		mount(ProductImages, [], { value: value(over), tiles: new Map(), combinations: [], locale: 'fr' });
+		mount(ProductImages, [], { value: value(over), tiles: new Map(), combinations: [], locale: 'bn' });
 
 	it('knows the primary in each mode, and when there is none', () => {
 		expect(render().primary()).toBe('a');
@@ -387,8 +423,8 @@ describe('ProductImages', () => {
 	it('edits alt text for the primary in this language', () => {
 		const page = render();
 		expect(page.alt()).toBe('');
-		page.setAlt('Rouge');
-		expect(page.alt()).toBe('Rouge');
+		page.setAlt('লাল');
+		expect(page.alt()).toBe('লাল');
 		const none = render({ gallery: [] });
 		none.setAlt('x');
 		expect(none.alt()).toBe('');
@@ -401,7 +437,7 @@ describe('ProductBundleForm', () => {
 		mount(ProductBundleForm, [], {
 			value: { bundleType: 'fixed_kit', pricePolicy: 'sum_components', fixedPriceINR: null, groups: [] },
 			products: [{ value: 'p1', label: 'Saree' }, { options: [] }],
-			locale: 'fr',
+			locale: 'bn',
 		});
 
 	it('edits groups and components', () => {
@@ -409,7 +445,7 @@ describe('ProductBundleForm', () => {
 		page.addGroup();
 		page.addGroup();
 		const first = () => page.value().groups[0] as never;
-		page.setName(0, first(), 'Pièce');
+		page.setName(0, first(), 'পিস');
 		page.setLimit(0, 'maxSelections', '2.4');
 		page.addComponent(0, first(), 'p1');
 		page.addComponent(0, first(), 'p2');
@@ -417,9 +453,12 @@ describe('ProductBundleForm', () => {
 		page.addComponent(0, first(), null);
 		page.setComponent(0, first(), 1, { quantity: 3 });
 		expect(page.value().groups[0]).toMatchObject({
-			label: { fr: 'Pièce' },
+			label: { bn: 'পিস' },
 			maxSelections: 2,
-			components: [{ productId: 'p1', quantity: 1 }, { productId: 'p2', quantity: 3 }],
+			components: [
+				{ productId: 'p1', quantity: 1 },
+				{ productId: 'p2', quantity: 3 },
+			],
 		});
 		page.removeComponent(0, first(), 0);
 		expect(page.value().groups[0]?.components).toHaveLength(1);
@@ -496,7 +535,7 @@ describe('FormProduct builder', () => {
 			getReplacementTargets: vi.fn(() => of([])),
 			saveCatalogProduct: vi.fn(() => of({})),
 			createCatalogProduct: vi.fn(() => of({ id: 'p1', slug: 'silk' })),
-			goLive: vi.fn(() => of({ live: false, gaps: [{ field: 'title', locale: 'fr' }] })),
+			goLive: vi.fn(() => of({ live: false, gaps: [{ field: 'title', locale: 'bn' }] })),
 			getBundle: vi.fn(() => of(options.bundle ?? null)),
 			saveBundle: vi.fn(() => of({})),
 			discontinueCatalogProduct: vi.fn(() => of({})),
@@ -510,7 +549,10 @@ describe('FormProduct builder', () => {
 				{ provide: Router, useValue: router },
 				{ provide: HttpClient, useValue: {} },
 				{ provide: PLATFORM_ID, useValue: 'server' },
-				{ provide: ActivatedRoute, useValue: { params: new BehaviorSubject(options.id ? { id: options.id } : {}) } },
+				{
+					provide: ActivatedRoute,
+					useValue: { params: new BehaviorSubject(options.id ? { id: options.id } : {}) },
+				},
 				{ provide: AttributeService, useValue: { getDefinitions: () => of([definition()]) } },
 				{ provide: AddonTemplateService, useValue: { list: () => of([{ code: 't1' }]) } },
 				{ provide: NotificationService, useValue: toasts },
@@ -525,7 +567,7 @@ describe('FormProduct builder', () => {
 		const { page, service } = render();
 		expect(page.definitions()).toHaveLength(1);
 		expect(page.addonTemplates()).toEqual([{ code: 't1' }]);
-		page.switchLanguage('fr');
+		page.switchLanguage('bn');
 		page.submit();
 		expect(page.fields.locale()).toBe('en');
 		expect(page.tabError).toBe('general');
@@ -579,16 +621,25 @@ describe('FormProduct builder', () => {
 		const { page, service } = render({ id: 'p1' });
 		page.selectCategoryItem(['c1', 'c2']);
 		page.submit();
-		const body = (service.saveCatalogProduct.mock.calls[0] as unknown as [string, { content: { categoryIds: string[] } }])[1];
+		const body = (
+			service.saveCatalogProduct.mock.calls[0] as unknown as [string, { content: { categoryIds: string[] } }]
+		)[1];
 		expect(body.content.categoryIds).toEqual(['c1', 'c2']);
 		page.form.patchValue({ categories: null });
 		page.submit();
-		const next = (service.saveCatalogProduct.mock.calls[1] as unknown as [string, { content: { categoryIds: string[] } }])[1];
+		const next = (
+			service.saveCatalogProduct.mock.calls[1] as unknown as [string, { content: { categoryIds: string[] } }]
+		)[1];
 		expect(next.content.categoryIds).toEqual([]);
 	});
 
 	it('reads a bundle, and saves it after the product', () => {
-		const saved = { bundleType: 'choose_one_per_group', pricePolicy: 'sum_components', fixedPriceINR: null, groups: [{}] };
+		const saved = {
+			bundleType: 'choose_one_per_group',
+			pricePolicy: 'sum_components',
+			fixedPriceINR: null,
+			groups: [{}],
+		};
 		const { page, service } = render({ id: 'p1', product: detail({ type: 'bundle' }), bundle: saved });
 		expect(page.bundle()).toEqual(saved);
 		page.submit();
@@ -610,15 +661,15 @@ describe('FormProduct builder', () => {
 				],
 			}),
 		]);
-		page.switchLanguage('fr');
-		expect(page.combinations().map((row) => row.label)).toEqual(['Rouge', 'Blue', 'bare']);
+		page.switchLanguage('bn');
+		expect(page.combinations().map((row) => row.label)).toEqual(['লাল', 'Blue', 'bare']);
 		page.optionGroups.update((rows) => rows.map((row) => ({ ...row, attributeCode: 'color' })));
 	});
 
 	it('shows Go Live gaps in place, and leaves on success', () => {
 		const { page, service, toasts, router } = render({ id: 'p1' });
 		page.goLive();
-		expect(page.gapLabels()).toEqual(['Français: gap_title']);
+		expect(page.gapLabels()).toEqual(['বাংলা: gap_title']);
 		expect(toasts.showError).toHaveBeenCalledOnce();
 		expect(router.navigateByUrl).not.toHaveBeenCalled();
 		service.goLive.mockReturnValueOnce(of({ live: true, gaps: [] }) as never);
@@ -633,11 +684,11 @@ describe('FormProduct builder', () => {
 		const { page } = render({ id: 'p1' });
 		const select = vi.fn();
 		(page as unknown as { nav: () => unknown }).nav = () => ({ select });
-		page.openGap({ field: 'meta_title', locale: 'fr' });
-		expect(page.fields.locale()).toBe('fr');
+		page.openGap({ field: 'meta_title', locale: 'bn' });
+		expect(page.fields.locale()).toBe('bn');
 		expect(select).toHaveBeenLastCalledWith('seo');
 		page.openGap({ field: 'value:color:red', locale: null });
-		expect(page.fields.locale()).toBe('fr');
+		expect(page.fields.locale()).toBe('bn');
 		expect(select).toHaveBeenLastCalledWith('inventory');
 	});
 
@@ -661,7 +712,7 @@ describe('FormProduct builder', () => {
 describe('FormCategory', () => {
 	const row = {
 		id: 'cat_1',
-		name: { en: 'Sarees', fr: 'Saris' },
+		name: { en: 'Sarees', bn: 'শাড়ি' },
 		description: {},
 		seoTitle: {},
 		seoDescription: {},
@@ -695,14 +746,14 @@ describe('FormCategory', () => {
 
 	it('switches to the language of a to-do line', () => {
 		const { page } = render();
-		page.openLanguageGap({ key: 'name', locale: 'fr' });
-		expect(page.fields.locale()).toBe('fr');
+		page.openLanguageGap({ key: 'name', locale: 'bn' });
+		expect(page.fields.locale()).toBe('bn');
 	});
 
 	it('fills from the API, and copes with a missing row', () => {
 		const { page } = render('cat_1');
 		expect(page.form.value).toMatchObject({ name: 'Sarees', slug: 'sarees', parent_id: 'cat_0' });
-		expect(page.gaps()['fr']?.length).toBe(3);
+		expect(page.gaps()['bn']?.length).toBe(3);
 		expect(page.form.value).toMatchObject({ category_image_id: 'a1', category_icon_id: '' });
 		expect(page.category.category_image?.original_url).toBe('https://cdn.test/a1');
 		expect(page.category.category_icon).toBeUndefined();
@@ -721,8 +772,8 @@ describe('FormCategory', () => {
 		const { page } = render();
 		const seen: string[] = [];
 		page.localeChange.subscribe((locale) => seen.push(locale));
-		page.switchLanguage('fr');
-		expect(seen).toEqual(['fr']);
+		page.switchLanguage('bn');
+		expect(seen).toEqual(['bn']);
 	});
 
 	it('takes its type, and stores images', () => {
@@ -743,7 +794,10 @@ describe('FormCategory', () => {
 	});
 
 	it('offers other categories for the second placement', () => {
-		const tree = [{ id: 'a', name: 'A', subcategories: [{ id: 'b', name: 'B' }] }, { id: 'cat_1', name: 'Self' }];
+		const tree = [
+			{ id: 'a', name: 'A', subcategories: [{ id: 'b', name: 'B' }] },
+			{ id: 'cat_1', name: 'Self' },
+		];
 		const page = render('cat_1', { categories: tree }).page;
 		expect(page.placementOptions()).toEqual([
 			{ value: 'a', label: 'A' },
@@ -772,11 +826,17 @@ describe('FormCategory', () => {
 		expect(created.client.invalidateQueries).toHaveBeenCalledOnce();
 		expect(created.router.navigateByUrl).toHaveBeenCalledWith('/category');
 		const edited = render('cat_1');
-		edited.page.switchLanguage('fr');
+		edited.page.switchLanguage('bn');
 		edited.page.submit();
 		expect(edited.service.saveCategory.mock.calls[0]).toMatchObject([
 			'cat_1',
-			{ name: { en: 'Sarees', fr: 'Saris' }, parentId: 'cat_0', alsoUnder: ['cat_9'], imageId: 'a1', iconId: null },
+			{
+				name: { en: 'Sarees', bn: 'শাড়ি' },
+				parentId: 'cat_0',
+				alsoUnder: ['cat_9'],
+				imageId: 'a1',
+				iconId: null,
+			},
 		]);
 	});
 
@@ -798,17 +858,14 @@ describe('TreeNode', () => {
 		const router = { navigateByUrl: vi.fn() };
 		const service = { deleteCategory: vi.fn(remove) };
 		const toasts = { showError: vi.fn() };
-		const node = mount(
-			TreeNode,
-			[
-				{ provide: Router, useValue: router },
-				{ provide: ActivatedRoute, useValue: { params: of({ id: 'c4' }) } },
-				{ provide: CategoryService, useValue: service },
-				{ provide: QueryClient, useValue: { invalidateQueries: vi.fn() } },
-				{ provide: NotificationService, useValue: toasts },
-				{ provide: TranslocoService, useValue: translate },
-			],
-		);
+		const node = mount(TreeNode, [
+			{ provide: Router, useValue: router },
+			{ provide: ActivatedRoute, useValue: { params: of({ id: 'c4' }) } },
+			{ provide: CategoryService, useValue: service },
+			{ provide: QueryClient, useValue: { invalidateQueries: vi.fn() } },
+			{ provide: NotificationService, useValue: toasts },
+			{ provide: TranslocoService, useValue: translate },
+		]);
 		return { node, router, service, toasts };
 	};
 
@@ -820,10 +877,10 @@ describe('TreeNode', () => {
 			return fixture.componentInstance.label();
 		};
 		render();
-		const row = { name: { en: 'Sarees', fr: 'Saris' } };
-		expect(label({ name: 'Sarees', row }, 'fr')).toBe('Saris');
-		expect(label({ name: 'Sarees', row: { name: { en: 'Sarees' } } }, 'fr')).toBe('Sarees');
-		expect(label({ name: 'Blog' }, 'fr')).toBe('Blog');
+		const row = { name: { en: 'Sarees', bn: 'শাড়ি' } };
+		expect(label({ name: 'Sarees', row }, 'bn')).toBe('শাড়ি');
+		expect(label({ name: 'Sarees', row: { name: { en: 'Sarees' } } }, 'bn')).toBe('Sarees');
+		expect(label({ name: 'Blog' }, 'bn')).toBe('Blog');
 	});
 
 	it('reads the selected id, and deletes through the API', () => {
@@ -915,14 +972,16 @@ describe('FormAttribute', () => {
 		expect(page.code()).toBe('color');
 		expect(page.form.value).toMatchObject({ name: 'Red', style: 'color_swatch', default_role: 'variation_axis' });
 		expect(page.isColour).toBe(true);
-		expect(page.gaps()['fr']?.length).toBe(1);
+		expect(page.gaps()['bn']?.length).toBe(1);
 		expect(render('nope').page.code()).toBeNull();
 	});
 
 	it('reads filter settings, with defaults', () => {
 		const service = {
 			getDefinitions: () =>
-				of([definition({ filterConfig: { visible: false, sortOrder: 0, defaultFacetDisplayStyle: 'swatch' } })]),
+				of([
+					definition({ filterConfig: { visible: false, sortOrder: 0, defaultFacetDisplayStyle: 'swatch' } }),
+				]),
 		};
 		const page = mount(
 			FormAttribute,
@@ -945,9 +1004,9 @@ describe('FormAttribute', () => {
 		const input = document.createElement('input');
 		input.id = 'value_0';
 		document.body.appendChild(input);
-		page.openLanguageGap({ key: 'value_0', locale: 'fr' });
+		page.openLanguageGap({ key: 'value_0', locale: 'bn' });
 		vi.runAllTimers();
-		expect(page.fields.locale()).toBe('fr');
+		expect(page.fields.locale()).toBe('bn');
 		expect(document.activeElement).toBe(input);
 		input.remove();
 		vi.useRealTimers();
@@ -966,10 +1025,10 @@ describe('FormAttribute', () => {
 		page.setHex(0, '#112233');
 		page.setAliases(0, 'neel, , blue');
 		expect(page.terms()[0]).toMatchObject({ slug: 'blue-one', hex: '#112233', aliases: ['neel', 'blue'] });
-		page.switchLanguage('fr');
+		page.switchLanguage('bn');
 		expect(page.onSourceLanguage).toBe(false);
-		page.setName(0, page.terms()[0] as never, 'Bleu');
-		expect(page.terms()[0]).toMatchObject({ label: { fr: 'Bleu' }, slug: 'blue-one' });
+		page.setName(0, page.terms()[0] as never, 'নীল');
+		expect(page.terms()[0]).toMatchObject({ label: { bn: 'নীল' }, slug: 'blue-one' });
 		expect(page.guide(page.terms()[0] as never)).toBe('Royal Blue');
 		expect(page.guide({ label: {} } as never)).toBe('');
 		page.toggleHidden(0, page.terms()[0] as never);
@@ -985,7 +1044,7 @@ describe('FormAttribute', () => {
 
 	it('refuses no English name', () => {
 		const { page, service } = render();
-		page.switchLanguage('fr');
+		page.switchLanguage('bn');
 		page.submit();
 		expect(page.fields.locale()).toBe('en');
 		expect(service.saveAttribute).not.toHaveBeenCalled();
@@ -1035,7 +1094,7 @@ describe('Product list Go Live', () => {
 		expect(service.goLive).toHaveBeenCalledWith('p1');
 		expect(toasts.showSuccess).toHaveBeenCalledOnce();
 		expect(refetch).toHaveBeenCalledOnce();
-		service.goLive.mockReturnValueOnce(of({ live: false, gaps: [{ field: 'title', locale: 'fr' }] }) as never);
+		service.goLive.mockReturnValueOnce(of({ live: false, gaps: [{ field: 'title', locale: 'bn' }] }) as never);
 		page.goLive({ id: 'p1' } as never);
 		expect(toasts.showError).toHaveBeenCalledOnce();
 		expect(refetch).toHaveBeenCalledOnce();

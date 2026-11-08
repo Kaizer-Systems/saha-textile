@@ -87,7 +87,7 @@ VARS
 	"apiUrl": "https://$API_HOST$PORT_SUFFIX",
 	"siteUrl": "https://$STOREFRONT_HOST$PORT_SUFFIX",
 	"defaultLocale": "en",
-	"supportedLocales": ["en", "fr"],
+	"supportedLocales": ["en", "bn"],
 	"googleClientId": "$google",
 	"facebookAppId": "$facebook"
 }

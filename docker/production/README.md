@@ -70,12 +70,12 @@ When no copy of an app answers, Nginx shows that app's own static page as a 503 
 `/opt/saha-textile/edge/fallback/`, filling in the shop name, logo and site address from
 `GET /storefront/brand`.
 
-| Host                          | Shows                                                                      |
-| ----------------------------- | -------------------------------------------------------------------------- |
-| Storefront                    | English or French, from `/fr/` or `/en/`, otherwise the browser's language |
-| Admin                         | English or French, from the browser's language                             |
-| API                           | `{"error":"temporarily_unavailable"}`                                      |
-| API, at `PAYMENT_RETURN_PATH` | The storefront's payment page, with no refresh                             |
+| Host                          | Shows                                                                       |
+| ----------------------------- | --------------------------------------------------------------------------- |
+| Storefront                    | English or Bengali, from `/bn/` or `/en/`, otherwise the browser's language |
+| Admin                         | English or Bengali, from the browser's language                             |
+| API                           | `{"error":"temporarily_unavailable"}`                                       |
+| API, at `PAYMENT_RETURN_PATH` | The storefront's payment page, with no refresh                              |
 
 `PAYMENT_RETURN_PATH` defaults to `/payments/ccavenue/return`. When CCAvenue is configured, a
 deploy refuses a `CCAVENUE_RETURN_URL` with a different path.

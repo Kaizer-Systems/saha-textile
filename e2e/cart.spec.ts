@@ -10,7 +10,10 @@ const addToCart = async (page: import('@playwright/test').Page, slug = SAREE) =>
 	await page.goto(`/en/product/${slug}`);
 	await page.waitForLoadState('networkidle');
 	const saved = page.waitForResponse((response) => response.url().includes('/cart/current/lines'));
-	await page.locator('app-buy-box button', { hasText: /add to cart/i }).first().click();
+	await page
+		.locator('app-buy-box button', { hasText: /add to cart/i })
+		.first()
+		.click();
 	return saved;
 };
 
@@ -63,7 +66,10 @@ test.describe('Real cart', () => {
 			await page.locator(`#meas-${name}`).blur();
 		}
 		const saved = page.waitForResponse((response) => response.url().includes('/cart/current/lines'));
-		await page.locator('app-buy-box button', { hasText: /add to cart/i }).first().click();
+		await page
+			.locator('app-buy-box button', { hasText: /add to cart/i })
+			.first()
+			.click();
 		expect((await saved).status()).toBe(201);
 
 		await page.goto('/en/cart');
@@ -99,8 +105,8 @@ test.describe('Real cart', () => {
 		await page.goto('/en/checkout');
 		await expect(page.locator('app-no-data h4')).toHaveText('Online ordering opens soon');
 		await expect(page.locator('section a.proceed-btn')).toHaveText(/Back to cart/);
-		await page.goto('/fr/checkout');
-		await expect(page.locator('app-no-data h4')).toHaveText('Les commandes en ligne ouvrent bientôt');
+		await page.goto('/bn/checkout');
+		await expect(page.locator('app-no-data h4')).toHaveText('অনলাইনে অর্ডার শিগগিরই শুরু হবে');
 		await expect(page.locator('.left-sidebar-checkout')).toHaveCount(0);
 	});
 });
@@ -140,7 +146,9 @@ test.describe.serial('Cart across a sign-in', () => {
 	test('a sold out line says so, and leaves the total', async ({ page }) => {
 		const lower = (quantity: number) =>
 			withDatabase((db) =>
-				db.collection('productVariants').updateOne({ sku: 'SAR-KB-001-934-base' }, { $set: { 'stock.quantity': quantity } }),
+				db
+					.collection('productVariants')
+					.updateOne({ sku: 'SAR-KB-001-934-base' }, { $set: { 'stock.quantity': quantity } }),
 			);
 		await addToCart(page);
 		await lower(0);

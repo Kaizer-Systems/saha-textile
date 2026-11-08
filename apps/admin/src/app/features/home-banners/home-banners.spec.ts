@@ -96,11 +96,11 @@ const block = (overrides: Record<string, unknown> = {}) => ({
 	key: 'k1',
 	images: { desktop: 'd1', tablet: null, phone: 'p1' },
 	containsText: false,
-	localeImages: { fr: { desktop: 'f1' } },
-	heading: { en: 'Hi', fr: '' },
-	subheading: { en: '', fr: '' },
-	ctaLabel: { en: '', fr: '' },
-	alt: { en: 'Alt', fr: '' },
+	localeImages: { bn: { desktop: 'f1' } },
+	heading: { en: 'Hi', bn: '' },
+	subheading: { en: '', bn: '' },
+	ctaLabel: { en: '', bn: '' },
+	alt: { en: 'Alt', bn: '' },
 	link: { href: '/shop', external: true },
 	status: 'active',
 	startsAt: '2026-11-01T10:30:00.000Z',
@@ -200,7 +200,7 @@ describe('BannerSlotForm', () => {
 			subheading: {},
 			alt: { en: 'Alt' },
 			link: { href: '/sale', external: true },
-			localeImages: { fr: { desktop: 'f1' } },
+			localeImages: { bn: { desktop: 'f1' } },
 			endsAt: null,
 		});
 		expect((sent as { startsAt: string }).startsAt).toContain('2026-11-01');
@@ -211,7 +211,7 @@ describe('BannerSlotForm', () => {
 
 	it('drops text and link when the art holds the text', async () => {
 		const { page, gateway } = await render(null, 'side');
-		page.form.patchValue({ desktop: 'd', containsText: true, heading: { en: 'Hi', fr: '' } });
+		page.form.patchValue({ desktop: 'd', containsText: true, heading: { en: 'Hi', bn: '' } });
 		await page.save();
 		expect(gateway.save).toHaveBeenCalledWith(
 			expect.objectContaining({ heading: {}, subheading: {}, ctaLabel: {}, link: null, localeImages: {} }),

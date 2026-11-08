@@ -42,7 +42,7 @@ import {
 import { MediaService } from './media.service';
 
 const REVIEWABLE_ORDER_STATUSES = new Set(['delivered']);
-const REVIEW_PHOTO_ALT: Record<string, string> = { en: 'customer photo', fr: 'photo client' };
+const REVIEW_PHOTO_ALT: Record<string, string> = { en: 'customer photo', bn: 'গ্রাহকের ছবি' };
 
 /**
  * Reviews with photos (owner log § Media → Review photos; § Reviews).

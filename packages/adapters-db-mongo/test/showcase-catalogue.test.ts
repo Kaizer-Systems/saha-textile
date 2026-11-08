@@ -15,12 +15,17 @@ import { mapDemoCatalogue } from '../src/seed/map-demo-catalogue';
 
 const now = new Date('2026-11-07T00:00:00.000Z');
 /** Spelled the same in both languages, checked by hand. */
-const SAME_IN_FRENCH = ['Floral', 'Georgette', 'Magenta', 'Meenakari', 'Occasion', 'Organza', 'Sequins', 'Tussar'];
 const rows = <T>(name: string): T[] =>
-	(JSON.parse(readFileSync(resolve(__dirname, '../../../apps/storefront/public/assets/data', name), 'utf8')) as { data: T[] }).data;
+	(
+		JSON.parse(readFileSync(resolve(__dirname, '../../../apps/storefront/public/assets/data', name), 'utf8')) as {
+			data: T[];
+		}
+	).data;
 
 const productIds = rows<{ id: number }>('product.json').map((row) => row.id);
-const known = new Map(rows<{ id: number; canonical_path: string }>('category.json').map((row) => [row.canonical_path, row.id]));
+const known = new Map(
+	rows<{ id: number; canonical_path: string }>('category.json').map((row) => [row.canonical_path, row.id]),
+);
 const showcase = buildShowcaseProducts({ productIds, categoryIds: categoryIdsFor(known), now });
 const catalogue = finishShowcase(mapDemoCatalogue({ products: showcase.products }), showcase, now);
 const notes = [...showcase.notes.values()];
@@ -53,22 +58,40 @@ describe('showcase catalogue', () => {
 	it('gives every category real stock, and every language a name', () => {
 		const inLeaf = (path: string) => notes.filter((note) => note.leaf.path === path).length;
 		for (const leaf of LEAVES) expect(inLeaf(leaf.path)).toBeGreaterThanOrEqual(12);
-		for (const row of catalogue.categories) expect(row.name['fr']?.trim()).toBeTruthy();
+		for (const row of catalogue.categories) expect(row.name['bn']?.trim()).toBeTruthy();
 		for (const row of catalogue.products) {
-			expect(row.title['fr']?.trim()).toBeTruthy();
-			expect(row.shortDescription['fr']?.trim()).toBeTruthy();
+			expect(row.title['bn']?.trim()).toBeTruthy();
+			expect(row.shortDescription['bn']?.trim()).toBeTruthy();
 		}
 	});
 
 	it('covers every shopping scenario more than once', () => {
-		for (const scenario of ['simple', 'colour', 'size', 'colour_size', 'compound', 'blouse_design', 'suit_stitching', 'bundle']) {
-			expect(count((note) => note.scenario === scenario), scenario).toBeGreaterThan(3);
+		for (const scenario of [
+			'simple',
+			'colour',
+			'size',
+			'colour_size',
+			'compound',
+			'blouse_design',
+			'suit_stitching',
+			'bundle',
+		]) {
+			expect(
+				count((note) => note.scenario === scenario),
+				scenario,
+			).toBeGreaterThan(3);
 		}
 		for (const stock of ['in_stock', 'low', 'out', 'back', 'made_to_order']) {
-			expect(count((note) => note.stock === stock), stock).toBeGreaterThan(3);
+			expect(
+				count((note) => note.stock === stock),
+				stock,
+			).toBeGreaterThan(3);
 		}
 		for (const lifecycle of ['live', 'draft', 'disabled', 'discontinued']) {
-			expect(count((note) => note.lifecycle === lifecycle), lifecycle).toBeGreaterThan(3);
+			expect(
+				count((note) => note.lifecycle === lifecycle),
+				lifecycle,
+			).toBeGreaterThan(3);
 		}
 		expect(count((note) => note.saleOn)).toBeGreaterThan(100);
 		expect(count((note) => note.isNew)).toBeGreaterThan(30);
@@ -98,11 +121,15 @@ describe('showcase catalogue', () => {
 		expect(guide?.map((row) => row.size)).toEqual(['S', 'M', 'L', 'XL', 'XXL']);
 	});
 
-	it('leaves no shopper word without French', () => {
-		const words = catalogue.products.flatMap((row) => row.optionGroups.flatMap((group) => [group.label, ...group.terms.map((term) => term.label)]));
-		const untranslated = new Set(
-			words.filter((label) => label['fr'] === label.en && /[a-z]{5}/.test(label.en as string)).map((label) => label.en),
+	it('leaves no shopper word without Bengali', () => {
+		const words = catalogue.products.flatMap((row) =>
+			row.optionGroups.flatMap((group) => [group.label, ...group.terms.map((term) => term.label)]),
 		);
-		expect([...untranslated].sort()).toEqual(SAME_IN_FRENCH);
+		const untranslated = new Set(
+			words
+				.filter((label) => !/[\u0980-\u09FF]/.test(label['bn'] ?? '') && /[a-z]{5}/.test(label.en as string))
+				.map((label) => label.en),
+		);
+		expect([...untranslated]).toEqual([]);
 	});
 });

@@ -124,7 +124,7 @@ export type CatalogPlacementQuery = z.infer<typeof CatalogPlacementQuery>;
 
 export const CatalogSeoRouteQuery = z.object({
 	path: z.string().min(1).max(300),
-	locale: z.enum(['en', 'fr']),
+	locale: z.enum(['en', 'bn']),
 });
 export type CatalogSeoRouteQuery = z.infer<typeof CatalogSeoRouteQuery>;
 

@@ -113,13 +113,13 @@ test.describe('search', () => {
 	});
 });
 
-test('a French listing shows its filters and values in French', async ({ page }) => {
-	await page.goto('/fr/collections/sarees/pure-silk/ikkat');
+test('a Bengali listing shows its filters and values in Bengali', async ({ page }) => {
+	await page.goto('/bn/collections/sarees/pure-silk/ikkat');
 	await page.waitForLoadState('networkidle');
 	await showFilters(page);
-	await expect(page.locator('.accordion-button', { hasText: 'Tissu' }).first()).toBeVisible();
-	await openFilter(page, 'Tissu');
-	await expect(page.locator('body')).toContainText('Soie');
+	await expect(page.locator('.accordion-button', { hasText: 'কাপড়' }).first()).toBeVisible();
+	await openFilter(page, 'কাপড়');
+	await expect(page.locator('body')).toContainText('সিল্ক');
 });
 
 test('the listing comes from Meilisearch, and its counts match what a tick shows', async ({ page, request }) => {

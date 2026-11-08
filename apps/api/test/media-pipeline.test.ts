@@ -212,7 +212,7 @@ describe('ContentBlocksService', () => {
 		const saved = await service.upsert({
 			...input,
 			status: 'active',
-			alt: { en: 'Festive sarees', fr: 'Saris de fête' },
+			alt: { en: 'Festive sarees', bn: 'উৎসবের শাড়ি' },
 		});
 		expect(saved.key).toBe('home:-:hero:main');
 	});
@@ -223,8 +223,8 @@ describe('ContentBlocksService', () => {
 			id: 'cbk_1',
 			key: 'home:-:hero:main',
 			status: 'active',
-			alt: { en: 'Festive', fr: 'Fête' },
-			heading: { en: 'Festive edit', fr: 'Édition festive' },
+			alt: { en: 'Festive', bn: 'উৎসব' },
+			heading: { en: 'Festive edit', bn: 'Édition festive' },
 		};
 		const service = new ContentBlocksService(
 			blocksRepo([block]) as never,
@@ -233,9 +233,9 @@ describe('ContentBlocksService', () => {
 			storage,
 			config,
 		);
-		const { heroLayout, banners } = await service.storefront({ ownerType: 'home', locale: 'fr' });
+		const { heroLayout, banners } = await service.storefront({ ownerType: 'home', locale: 'bn' });
 		expect(heroLayout).toBe('hero_full');
-		expect(banners[0]).toMatchObject({ heading: 'Édition festive', alt: 'Fête' });
+		expect(banners[0]).toMatchObject({ heading: 'Édition festive', alt: 'উৎসব' });
 		expect(banners[0]?.images.desktop.roles.banner?.[0]?.url).toBe(
 			'https://cdn.test/media/med_1/festive-banner-480w-aaaaaaaa.webp',
 		);

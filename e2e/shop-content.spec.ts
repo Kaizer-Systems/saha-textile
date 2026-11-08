@@ -3,10 +3,10 @@ import { expect, test } from './support';
 
 test.describe('Real categories', () => {
 	test('the menu is in the first HTML, in the language of the page', async ({ request }) => {
-		const answer = await request.get('https://localhost:4000/catalog/categories/menu?locale=fr');
+		const answer = await request.get('https://localhost:4000/catalog/categories/menu?locale=bn');
 		const rows = (await answer.json()) as { name: string; path: string }[];
-		expect(rows.find((row) => row.path === 'sarees')?.name).toBe('Saris');
-		expect(await (await request.get('/fr')).text()).toContain('Saris');
+		expect(rows.find((row) => row.path === 'sarees')?.name).toBe('শাড়ি');
+		expect(await (await request.get('/bn')).text()).toContain('শাড়ি');
 		expect(await (await request.get('/en')).text()).toContain('Sarees');
 	});
 
@@ -95,7 +95,10 @@ test.describe('Browsing by category', () => {
 
 	test('the footer lists the top categories', async ({ page }) => {
 		await page.goto('/en/');
-		await expect(page.locator('footer app-footer-categories a').first()).toHaveAttribute('href', /collections\/sarees/);
+		await expect(page.locator('footer app-footer-categories a').first()).toHaveAttribute(
+			'href',
+			/collections\/sarees/,
+		);
 	});
 });
 

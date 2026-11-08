@@ -14,7 +14,7 @@ Custom rebuild of [sahatextile.com](https://sahatextile.com) (Kolkata saree/text
 - DB: **self-hosted Docker MongoDB 9.0.4** — single-node replica set `rs0` for transactions (not Atlas); Search: **Meilisearch** behind `SearchPort`
 - Media: **DigitalOcean Spaces (SGP / `sgp1`)**; Notifications: **MSG91** (SMS/WhatsApp/Email) behind `NotificationPort`
 - Payments: INR gateway role (CCAvenue now / Razorpay later, adapter-swappable) + PayPal for non-INR; Shipping: Shiprocket behind `ShippingPort`
-- Validation: **zod** (shared `packages/contracts`); i18n: **Transloco** (current app locales: English + French)
+- Validation: **zod** (shared `packages/contracts`); i18n: **Transloco** (current app locales: English + Bengali)
 - Node: pinned via [`.nvmrc`](./.nvmrc) (**24.22.1**)
 
 ## Layout

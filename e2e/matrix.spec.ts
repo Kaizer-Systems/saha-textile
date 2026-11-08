@@ -24,8 +24,8 @@ test.describe('every picker style', () => {
 			expect(problems.failed).toEqual([]);
 		});
 
-		test(`${style} also renders in French on ${slug}`, async ({ page, problems }) => {
-			await page.goto(`/fr/product/${slug}`);
+		test(`${style} also renders in Bengali on ${slug}`, async ({ page, problems }) => {
+			await page.goto(`/bn/product/${slug}`);
 			await expect(page.locator('app-buy-box')).toBeVisible();
 			expect(problems.errors).toEqual([]);
 		});
@@ -66,9 +66,9 @@ test.describe('around the product', () => {
 		await expect(second.getByText('Recently Viewed').first()).toBeAttached();
 	});
 
-	test('French home rails are translated', async ({ page }) => {
-		await page.goto('/fr/');
-		await expect(page.getByText('Nouveautés').first()).toBeAttached();
+	test('Bengali home rails are translated', async ({ page }) => {
+		await page.goto('/bn/');
+		await expect(page.getByText('নতুন এসেছে').first()).toBeAttached();
 		await expect(page.getByText('New Arrivals')).toHaveCount(0);
 	});
 });

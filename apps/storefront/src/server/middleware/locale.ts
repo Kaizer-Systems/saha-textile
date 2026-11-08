@@ -39,7 +39,7 @@ export default defineEventHandler(async (event) => {
 			'X-Robots-Tag': 'noindex',
 		});
 		event.node.res.statusCode = 410;
-		const gone = path.startsWith('/fr') ? '/fr/gone' : '/en/gone';
+		const gone = path.startsWith('/bn') ? '/bn/gone' : '/en/gone';
 		event.node.req.url = gone;
 		if ('originalUrl' in req) req.originalUrl = gone;
 		return;

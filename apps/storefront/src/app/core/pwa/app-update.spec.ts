@@ -40,7 +40,7 @@ function setUp(options: { controller?: boolean; enabled?: boolean; platform?: st
 			{ provide: PLATFORM_ID, useValue: options.platform ?? 'browser' },
 			{ provide: SERVICE_WORKER_ENABLED, useValue: options.enabled ?? true },
 			{ provide: Router, useValue: { events } },
-			{ provide: Location, useValue: { prepareExternalUrl: (url: string) => `/fr${url}` } },
+			{ provide: Location, useValue: { prepareExternalUrl: (url: string) => `/bn${url}` } },
 		],
 	});
 	return {
@@ -130,7 +130,7 @@ describe('AppUpdate', () => {
 
 		workerListeners['controllerchange']();
 		events.next(link('/cart'));
-		expect(page.location.assign).toHaveBeenCalledWith('/fr/cart');
+		expect(page.location.assign).toHaveBeenCalledWith('/bn/cart');
 	});
 
 	it('leaves the back button alone', async () => {
@@ -152,7 +152,7 @@ describe('AppUpdate', () => {
 
 		workerListeners['controllerchange']();
 		events.next(link('/cart'));
-		expect(page.location.assign).toHaveBeenCalledWith('/fr/cart');
+		expect(page.location.assign).toHaveBeenCalledWith('/bn/cart');
 	});
 
 	it('loads the page afresh when a long-open page asks for a file the new build removed', () => {
@@ -160,7 +160,7 @@ describe('AppUpdate', () => {
 		service.start();
 		const failed = new TypeError('Failed to fetch dynamically imported module: /assets/x.js');
 		events.next(new NavigationError(2, '/product/x', failed));
-		expect(page.location.assign).toHaveBeenCalledWith('/fr/product/x');
+		expect(page.location.assign).toHaveBeenCalledWith('/bn/product/x');
 	});
 
 	it('never loops on a page that has only just loaded, or on other errors', () => {

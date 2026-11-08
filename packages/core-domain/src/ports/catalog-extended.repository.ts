@@ -250,7 +250,7 @@ export interface ProductInsightSetRepository {
 
 /** One public address per language. Filtered, private and gone URLs are not rows. */
 export interface SeoRouteRepository {
-	find(path: string, locale: 'en' | 'fr'): Promise<SeoRoute | null>;
+	find(path: string, locale: 'en' | 'bn'): Promise<SeoRoute | null>;
 	listIndexable(): Promise<SeoRoute[]>;
 	save(route: SeoRoute): Promise<SeoRoute>;
 }

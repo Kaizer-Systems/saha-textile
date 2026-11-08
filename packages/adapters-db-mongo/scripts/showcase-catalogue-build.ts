@@ -1,6 +1,6 @@
 import type { AddonTemplate, CategoryPlacement, Product, ProductBundle } from '@saha-textile/contracts';
 
-import { DEMO_FRENCH } from '../src/seed/demo-french';
+import { DEMO_BENGALI } from '../src/seed/demo-bengali';
 import { CATALOG_PHOTO_ASSET_IDS, mapDemoCatalogue, type DemoCatalogue } from '../src/seed/map-demo-catalogue';
 import {
 	BLOUSE_SIZES,
@@ -67,14 +67,7 @@ export const PHOTO_SETS: ReadonlyArray<readonly string[]> = (() => {
 })();
 
 export type Scenario =
-	| 'simple'
-	| 'colour'
-	| 'size'
-	| 'colour_size'
-	| 'compound'
-	| 'blouse_design'
-	| 'suit_stitching'
-	| 'bundle';
+	'simple' | 'colour' | 'size' | 'colour_size' | 'compound' | 'blouse_design' | 'suit_stitching' | 'bundle';
 
 export type StockState = 'in_stock' | 'low' | 'out' | 'back' | 'made_to_order';
 
@@ -107,14 +100,27 @@ export interface ShowcaseInput {
 
 const money = (value: number): number => (value >= 2000 ? Math.round(value / 100) * 100 : Math.round(value / 50) * 50);
 
+/** The Bengali for a catalogue word. A word with no Bengali stops the build, so English never lands in a Bengali field. */
+function bengali(english: string): string {
+	// Sizes and numbers stay as they are in Bengali too (BN-3): 34, XL, 2XL.
+	if (/^[0-9A-Z\s.,/+–-]+$/.test(english)) return english;
+	const bn = DEMO_BENGALI[english];
+	if (!bn) throw new Error(`No Bengali for "${english}"; add it to demo-bengali.ts`);
+	return bn;
+}
+
 function nounFor(leaf: Leaf): Words {
 	if (leaf.noun) return leaf.noun;
-	const french = DEMO_FRENCH[leaf.name] ?? leaf.name;
-	return { en: `${leaf.name} Saree`, fr: `Sari ${french}` };
+	return { en: `${leaf.name} Saree`, bn: `${bengali(leaf.name)} শাড়ি` };
 }
 
 /** A title no other product has: shade, motif, then the noun of its category. */
-function titleFor(leaf: Leaf, position: number, used: Set<string>, garment: Words | null): { title: Words; shade: ColourWord; motif: Words } {
+function titleFor(
+	leaf: Leaf,
+	position: number,
+	used: Set<string>,
+	garment: Words | null,
+): { title: Words; shade: ColourWord; motif: Words } {
 	const family = FAMILIES[leaf.family] as Family;
 	const noun = nounFor(leaf);
 	for (let attempt = 0; ; attempt += 1) {
@@ -124,9 +130,10 @@ function titleFor(leaf: Leaf, position: number, used: Set<string>, garment: Word
 		const en = `${lead}${motif.en} ${noun.en}${garment ? ` ${garment.en}` : ''}`;
 		if (used.has(en)) continue;
 		used.add(en);
-		const after = leaf.path.endsWith('red-and-white') ? '' : ` ${shade.fr}`;
-		const fr = garment ? `${garment.fr} ${noun.fr} ${motif.fr}${after}` : `${noun.fr} ${motif.fr}${after}`;
-		return { title: { en, fr }, shade, motif };
+		// Bengali keeps the English order: colour first, the noun last.
+		const leadBn = leaf.path.endsWith('red-and-white') ? '' : `${shade.bn} `;
+		const bn = `${leadBn}${motif.bn} ${noun.bn}${garment ? ` ${garment.bn}` : ''}`;
+		return { title: { en, bn }, shade, motif };
 	}
 }
 
@@ -246,14 +253,14 @@ const BLOUSE_FIELDS = [
 ];
 
 const SUIT_FIELDS: AddonTemplate['fields'] = [
-	['bust', 'Bust', 'Poitrine', 26, 56],
-	['waist', 'Waist', 'Taille', 22, 52],
-	['hip', 'Hip', 'Hanches', 28, 58],
-	['kurta-length', 'Kurta Length', 'Longueur du kurta', 30, 56],
-	['bottom-length', 'Bottom Length', 'Longueur du bas', 30, 46],
-].map(([code, en, fr, min, max]) => ({
+	['bust', 'Bust', 'বুক', 26, 56],
+	['waist', 'Waist', 'কোমর', 22, 52],
+	['hip', 'Hip', 'নিতম্ব', 28, 58],
+	['kurta-length', 'Kurta Length', 'কুর্তার ঝুল', 30, 56],
+	['bottom-length', 'Bottom Length', 'নিচের অংশের ঝুল', 30, 46],
+].map(([code, en, bn, min, max]) => ({
 	code: code as string,
-	label: { en: en as string, fr: fr as string },
+	label: { en: en as string, bn: bn as string },
 	type: 'number' as const,
 	unit: 'in' as const,
 	required: false,
@@ -329,9 +336,14 @@ export function buildShowcaseProducts({ productIds, categoryIds, now }: Showcase
 			const occasion = family.occasion[position % family.occasion.length] as string;
 			const work = family.work[position % family.work.length] as string;
 			const pattern = family.pattern[position % family.pattern.length] as string;
-			const axisColours = scenario === 'colour' || scenario === 'compound' || scenario === 'colour_size' ? coloursNear(shade, random) : [];
+			const axisColours =
+				scenario === 'colour' || scenario === 'compound' || scenario === 'colour_size'
+					? coloursNear(shade, random)
+					: [];
 			const size = scenario === 'size' || scenario === 'colour_size' ? sizeAttribute(leaf, position) : null;
-			const sizes = size ? size.attribute_values.map((row) => row.value).slice(0, scenario === 'colour_size' ? 3 : 5) : [];
+			const sizes = size
+				? size.attribute_values.map((row) => row.value).slice(0, scenario === 'colour_size' ? 3 : 5)
+				: [];
 			const quantity = {
 				in_stock: 3 + Math.floor(random() * 22),
 				low: 1 + Math.floor(random() * 2),
@@ -343,9 +355,9 @@ export function buildShowcaseProducts({ productIds, categoryIds, now }: Showcase
 			const story = family.story;
 			const description = {
 				en: `${title.en}. ${story.en} ${motif.en} is what sets this piece apart. Dry clean for the first wash, and store it folded in muslin.`,
-				fr: `${title.fr}. ${story.fr} ${motif.fr} distingue cette pièce. Nettoyage à sec pour le premier lavage, puis rangement plié dans une mousseline.`,
+				bn: `${title.bn}। ${story.bn} ${motif.bn} এই পিসটিকে আলাদা করে তোলে। প্রথমবার ড্রাই ক্লিন করুন, আর মসলিনে ভাঁজ করে রাখুন।`,
 			};
-			const shortDescription = { en: `${motif.en}. ${story.en}`, fr: `${motif.fr}. ${story.fr}` };
+			const shortDescription = { en: `${motif.en}. ${story.en}`, bn: `${motif.bn}। ${story.bn}` };
 			const isNew = random() < 0.08;
 			const insightRoll = random();
 			const product: DemoProduct = {
@@ -361,7 +373,9 @@ export function buildShowcaseProducts({ productIds, categoryIds, now }: Showcase
 				sku,
 				status: lifecycle === 'draft' ? 0 : 1,
 				is_featured: random() < 0.12,
-				created_at: new Date(now.getTime() - (isNew ? 1 + Math.floor(random() * 25) : 40 + Math.floor(random() * 500)) * DAY).toISOString(),
+				created_at: new Date(
+					now.getTime() - (isNew ? 1 + Math.floor(random() * 25) : 40 + Math.floor(random() * 500)) * DAY,
+				).toISOString(),
 				categories: categoryChain(leaf, categoryIds),
 				filter_attributes: {
 					fabric,
@@ -375,7 +389,10 @@ export function buildShowcaseProducts({ productIds, categoryIds, now }: Showcase
 					: { estimated_delivery_text: 'Ships from Kolkata in 2 to 3 working days' }),
 			};
 			if (axisColours.length || size) {
-				product.attributes = [...(axisColours.length ? [colourAttribute(axisColours)] : []), ...(size ? [size] : [])];
+				product.attributes = [
+					...(axisColours.length ? [colourAttribute(axisColours)] : []),
+					...(size ? [size] : []),
+				];
 				product.variations = variationsFor(id, sku, axisColours, sizes, price, sale, random);
 			}
 			if (scenario === 'blouse_design') {
@@ -399,7 +416,10 @@ export function buildShowcaseProducts({ productIds, categoryIds, now }: Showcase
 				featured: Boolean(product.is_featured),
 				insight: insightRoll < 0.05 ? 'bestseller' : insightRoll < 0.09 ? 'trending' : null,
 				isNew,
-				rating: random() < 0.55 ? { avg: Math.round((3.5 + random() * 1.5) * 10) / 10, count: 3 + Math.floor(random() * 140) } : { avg: 0, count: 0 },
+				rating:
+					random() < 0.55
+						? { avg: Math.round((3.5 + random() * 1.5) * 10) / 10, count: 3 + Math.floor(random() * 140) }
+						: { avg: 0, count: 0 },
 			});
 			index += 1;
 		}
@@ -407,8 +427,8 @@ export function buildShowcaseProducts({ productIds, categoryIds, now }: Showcase
 	return { products, notes };
 }
 
-const withFrench = (label: Record<string, string>): Record<string, string> =>
-	label['fr'] ? label : { ...label, fr: label['en'] as string };
+const withBengali = (label: Record<string, string>): Record<string, string> =>
+	label['bn'] ? label : { ...label, bn: bengali(label['en'] as string) };
 
 function finishProduct(doc: Product, note: ShowcaseNote, now: Date): Product {
 	const { title, description, shortDescription, photos, scenario, stock, lifecycle } = note;
@@ -424,16 +444,16 @@ function finishProduct(doc: Product, note: ShowcaseNote, now: Date): Product {
 		description,
 		shortDescription,
 		seo: {
-			title: { en: `${title.en} | Saha Textile`, fr: `${title.fr} | Saha Textile` },
+			title: { en: `${title.en} | Saha Textile`, bn: `${title.bn} | Saha Textile` },
 			description: shortDescription,
 		},
 		media: { gallery: [...photos], compound: [], altOverrides },
 		optionGroups: doc.optionGroups.map((group) => ({
 			...group,
-			label: withFrench(group.label) as typeof group.label,
+			label: withBengali(group.label) as typeof group.label,
 			terms: group.terms.map((term, index) => ({
 				...term,
-				label: withFrench(term.label) as typeof term.label,
+				label: withBengali(term.label) as typeof term.label,
 				...(group.displayStyle === 'image_tile'
 					? { swatchAssetId: CATALOG_PHOTO_ASSET_IDS[index % CATALOG_PHOTO_ASSET_IDS.length] as string }
 					: {}),
@@ -449,8 +469,11 @@ function finishProduct(doc: Product, note: ShowcaseNote, now: Date): Product {
 		madeToOrder: stock === 'made_to_order',
 		estimatedDeliveryText:
 			stock === 'made_to_order'
-				? { en: 'Woven to order, ready in 3 to 4 weeks', fr: 'Tissé sur commande, prêt en 3 à 4 semaines' }
-				: { en: 'Ships from Kolkata in 2 to 3 working days', fr: 'Expédié de Calcutta sous 2 à 3 jours ouvrés' },
+				? { en: 'Woven to order, ready in 3 to 4 weeks', bn: 'অর্ডার পেলে বোনা হয়, তৈরি হতে 3–4 সপ্তাহ লাগে' }
+				: {
+						en: 'Ships from Kolkata in 2 to 3 working days',
+						bn: 'কলকাতা থেকে 2–3 কাজের দিনের মধ্যে পাঠানো হয়',
+					},
 		lifetimeUnitsReceived: 25,
 		backInStockAt: stock === 'back' ? new Date(now.getTime() - 3 * DAY).toISOString() : null,
 		featured: note.featured,
@@ -473,7 +496,13 @@ const SUIT_SIZE_GUIDE: AddonTemplate['sizeGuide'] = [
 	['XXL', 43, 37, 46],
 ].map(([size, bust, waist, hip]) => ({
 	size: size as string,
-	values: { bust: bust as number, waist: waist as number, hip: hip as number, 'kurta-length': 44, 'bottom-length': 39 },
+	values: {
+		bust: bust as number,
+		waist: waist as number,
+		hip: hip as number,
+		'kurta-length': 44,
+		'bottom-length': 39,
+	},
 }));
 
 const BLOUSE_TEMPLATE_CODE = 'blouse-measurements';
@@ -481,7 +510,10 @@ const SUIT_TEMPLATE_CODE = 'suit-measurements';
 
 function bundlesFor(docs: readonly Product[], notes: ReadonlyMap<number, ShowcaseNote>): ProductBundle[] {
 	const noteOf = (doc: Product) => notes.get(Number(doc.id.replace('prd_', ''))) as ShowcaseNote;
-	const plain = docs.filter((doc) => noteOf(doc).scenario === 'simple' && noteOf(doc).lifecycle === 'live' && noteOf(doc).stock === 'in_stock');
+	const plain = docs.filter(
+		(doc) =>
+			noteOf(doc).scenario === 'simple' && noteOf(doc).lifecycle === 'live' && noteOf(doc).stock === 'in_stock',
+	);
 	return docs
 		.filter((doc) => noteOf(doc).scenario === 'bundle')
 		.map((doc, index) => {
@@ -495,7 +527,7 @@ function bundlesFor(docs: readonly Product[], notes: ReadonlyMap<number, Showcas
 				groups: [
 					{
 						code: 'set',
-						label: { en: 'In this set', fr: 'Dans cet ensemble' },
+						label: { en: 'In this set', bn: 'এই সেটে যা আছে' },
 						minSelections: index % 2 === 0 ? 2 : 1,
 						maxSelections: index % 2 === 0 ? 2 : 1,
 						components: parts.map((part) => ({
@@ -520,7 +552,13 @@ export function finishShowcase(mapped: DemoCatalogue, showcase: Showcase, now: D
 	const variants = mapped.variants.map((row, index) => {
 		const note = noteOf(row.productId);
 		const status = note.lifecycle === 'live' ? ('live' as const) : ('disabled' as const);
-		const quantity = note.scenario === 'simple' || note.scenario === 'blouse_design' || note.scenario === 'suit_stitching' || note.scenario === 'bundle' ? null : row.stock.quantity;
+		const quantity =
+			note.scenario === 'simple' ||
+			note.scenario === 'blouse_design' ||
+			note.scenario === 'suit_stitching' ||
+			note.scenario === 'bundle'
+				? null
+				: row.stock.quantity;
 		const zero = note.stock === 'out' || note.stock === 'made_to_order';
 		return {
 			...row,
@@ -551,7 +589,10 @@ export function finishShowcase(mapped: DemoCatalogue, showcase: Showcase, now: D
 		doc.status === 'discontinued'
 			? {
 					...doc,
-					replacementTarget: { kind: 'product' as const, path: `/product/${(live[index % live.length] as Product).slug}` },
+					replacementTarget: {
+						kind: 'product' as const,
+						path: `/product/${(live[index % live.length] as Product).slug}`,
+					},
 				}
 			: doc,
 	);
@@ -560,7 +601,7 @@ export function finishShowcase(mapped: DemoCatalogue, showcase: Showcase, now: D
 		...blouse,
 		id: 'addon_suit_measurements',
 		code: SUIT_TEMPLATE_CODE,
-		label: { en: 'Suit measurements', fr: 'Mesures de l’ensemble' },
+		label: { en: 'Suit measurements', bn: 'স্যুটের মাপ' },
 		fields: SUIT_FIELDS,
 		sizeGuide: SUIT_SIZE_GUIDE,
 	};
@@ -588,25 +629,29 @@ export function finishShowcase(mapped: DemoCatalogue, showcase: Showcase, now: D
 		bundles: bundlesFor(finished, notes),
 		addonTemplates: [blouse, suit],
 		placements: [...mapped.placements, ...extra],
-		categories: mapped.categories.map((row) => ({
-			...row,
-			name: withFrench(row.name) as typeof row.name,
-			description: {
-				en: `${row.name.en} from Saha Textile, Kolkata.`,
-				fr: `${row.name['fr'] ?? row.name.en} de Saha Textile, Calcutta.`,
-			},
-			seo: {
-				title: { en: `${row.name.en} | Saha Textile`, fr: `${row.name['fr'] ?? row.name.en} | Saha Textile` },
+		categories: mapped.categories.map((row) => {
+			const name = withBengali(row.name) as typeof row.name;
+			const bn = name['bn'] as string;
+			return {
+				...row,
+				name,
 				description: {
-					en: `Shop ${row.name.en} from Saha Textile, Kolkata.`,
-					fr: `Découvrez ${row.name['fr'] ?? row.name.en} chez Saha Textile, Calcutta.`,
+					en: `${row.name.en} from Saha Textile, Kolkata.`,
+					bn: `কলকাতার সাহা টেক্সটাইলের ${bn}।`,
 				},
-			},
-		})),
+				seo: {
+					title: { en: `${row.name.en} | Saha Textile`, bn: `${bn} | Saha Textile` },
+					description: {
+						en: `Shop ${row.name.en} from Saha Textile, Kolkata.`,
+						bn: `কলকাতার সাহা টেক্সটাইল থেকে ${bn} কিনুন।`,
+					},
+				},
+			};
+		}),
 		attributeDefinitions: mapped.attributeDefinitions.map((row) => ({
 			...row,
-			label: withFrench(row.label) as typeof row.label,
-			terms: row.terms.map((term) => ({ ...term, label: withFrench(term.label) as typeof term.label })),
+			label: withBengali(row.label) as typeof row.label,
+			terms: row.terms.map((term) => ({ ...term, label: withBengali(term.label) as typeof term.label })),
 		})),
 	};
 }

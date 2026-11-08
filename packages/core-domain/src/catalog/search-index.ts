@@ -83,7 +83,7 @@ export function searchDocument(product: Pick<Product, 'id' | 'slug' | 'sku' | 't
 } {
 	return {
 		id: product.id,
-		words: [product.title.en, product.title['fr'], product.slug, product.sku].filter(Boolean).join(' '),
+		words: [product.title.en, product.title['bn'], product.slug, product.sku].filter(Boolean).join(' '),
 		categoryIds: [...(product.categoryIds ?? [])],
 	};
 }

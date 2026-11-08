@@ -33,15 +33,15 @@ map $from_inside $client_ip {
 	1 $remote_addr;
 }
 
-# Which "back in a moment" page to show: the address decides for the storefront (`/fr/` is
-# French), and the browser's language decides where the address cannot.
+# Which "back in a moment" page to show: the address decides for the storefront (`/bn/` is
+# Bengali), and the browser's language decides where the address cannot.
 map $http_accept_language $fallback_language {
 	default en;
-	~*^fr   fr;
+	~*^bn   bn;
 }
 map $uri $storefront_fallback_language {
 	default          $fallback_language;
-	~^/fr(/|$)       fr;
+	~^/bn(/|$)       bn;
 	~^/en(/|$)       en;
 }
 

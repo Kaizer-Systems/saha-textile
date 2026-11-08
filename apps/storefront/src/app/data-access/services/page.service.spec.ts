@@ -22,14 +22,14 @@ describe('PageService.getPage', () => {
 
 	it('reads a language copy', async () => {
 		const { service, http } = setup(() => of({ title: 'Conditions' }));
-		expect(await firstValueFrom(service.getPage('terms', 'fr'))).toEqual({ title: 'Conditions' });
-		expect(http.get.mock.calls.some(([url]) => /pages\/terms\.fr\.json$/.test(url))).toBe(true);
+		expect(await firstValueFrom(service.getPage('terms', 'bn'))).toEqual({ title: 'Conditions' });
+		expect(http.get.mock.calls.some(([url]) => /pages\/terms\.bn\.json$/.test(url))).toBe(true);
 	});
 
 	it('falls back to English when the language has no copy', async () => {
 		const { service } = setup((url) =>
-			url.endsWith('.fr.json') ? throwError(() => new Error('404')) : of({ title: 'Terms' }),
+			url.endsWith('.bn.json') ? throwError(() => new Error('404')) : of({ title: 'Terms' }),
 		);
-		expect(await firstValueFrom(service.getPage('terms', 'fr'))).toEqual({ title: 'Terms' });
+		expect(await firstValueFrom(service.getPage('terms', 'bn'))).toEqual({ title: 'Terms' });
 	});
 });

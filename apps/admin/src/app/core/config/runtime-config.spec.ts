@@ -83,8 +83,8 @@ describe('TranslocoHttpLoader', () => {
 		const get = vi.fn(() => of({}));
 		TestBed.resetTestingModule();
 		TestBed.configureTestingModule({ providers: [{ provide: HttpClient, useValue: { get } }] });
-		TestBed.inject(TranslocoHttpLoader).getTranslation('fr');
-		expect(get).toHaveBeenCalledWith('/assets/i18n/fr.json');
+		TestBed.inject(TranslocoHttpLoader).getTranslation('bn');
+		expect(get).toHaveBeenCalledWith('/assets/i18n/bn.json');
 	});
 });
 

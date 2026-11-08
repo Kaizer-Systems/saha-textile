@@ -247,7 +247,7 @@ describe('product page', () => {
 describe('shop menu', () => {
 	const category = (id: string, over: Record<string, unknown> = {}) => ({
 		id,
-		name: { en: id, fr: `${id} fr` },
+		name: { en: id, bn: `${id} bn` },
 		slug: id,
 		description: { en: 'About' },
 		...over,
@@ -263,7 +263,7 @@ describe('shop menu', () => {
 	const service = (
 		categories: unknown[],
 		placements: unknown[],
-		locales = ['en', 'fr'],
+		locales = ['en', 'bn'],
 		assets: unknown[] = [],
 		summaries: unknown[] = [],
 	) =>
@@ -284,7 +284,17 @@ describe('shop menu', () => {
 
 	it('is empty without its repositories', async () => {
 		expect(await build({ withAll: false }).service.menu()).toEqual([]);
-		const noPlacements = new CatalogPublicService({} as never, {} as never, null, null, null, null, null, null, {} as never);
+		const noPlacements = new CatalogPublicService(
+			{} as never,
+			{} as never,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			{} as never,
+		);
 		expect(await noPlacements.menu()).toEqual([]);
 	});
 
@@ -304,7 +314,7 @@ describe('shop menu', () => {
 
 	it('leaves out a category missing a language, and everything under it', async () => {
 		const rows = await service(
-			[category('a', { name: { en: 'A', fr: ' ' } }), category('b'), category('c', { name: { en: 'C' } })],
+			[category('a', { name: { en: 'A', bn: ' ' } }), category('b'), category('c', { name: { en: 'C' } })],
 			[placement('a'), placement('b', { parentCategoryId: 'a', depth: 1 }), placement('c')],
 		).menu();
 		expect(rows).toEqual([]);
@@ -322,7 +332,7 @@ describe('shop menu', () => {
 		const rows = await service(
 			[category('a'), category('b')],
 			[placement('a'), placement('b', { parentCategoryId: 'a', depth: 1 })],
-			['en', 'fr'],
+			['en', 'bn'],
 			[image],
 			[{ categoryId: 'b', productCount: 3, coverAssetId: 'med' }],
 		).menu();
@@ -333,9 +343,13 @@ describe('shop menu', () => {
 	});
 
 	it('has no photo for a category whose products have none', async () => {
-		const rows = await service([category('a')], [placement('a')], ['en', 'fr'], [], [
-			{ categoryId: 'a', productCount: 2, coverAssetId: null },
-		]).menu();
+		const rows = await service(
+			[category('a')],
+			[placement('a')],
+			['en', 'bn'],
+			[],
+			[{ categoryId: 'a', productCount: 2, coverAssetId: null }],
+		).menu();
 		expect(rows[0]).toMatchObject({ productCount: 2, coverUrl: null });
 	});
 
@@ -360,10 +374,12 @@ describe('shop menu', () => {
 
 	it('resolves images, whichever size the library holds', async () => {
 		const media = { bannerImage: 'm1', iconImage: 'm2' };
-		const rows = await service([category('a', { media })], [placement('a')], ['en', 'fr'], [
-			asset('m1', 'card'),
-			asset('m2', 'category_icon'),
-		]).menu();
+		const rows = await service(
+			[category('a', { media })],
+			[placement('a')],
+			['en', 'bn'],
+			[asset('m1', 'card'), asset('m2', 'category_icon')],
+		).menu();
 		expect(rows[0]).toMatchObject({ imageUrl: 'https://cdn.test/k/m1', iconUrl: 'https://cdn.test/k/m2' });
 	});
 
@@ -414,9 +430,10 @@ describe('measurements', () => {
 				{ code: 'note', label: { en: 'Note' }, type: 'text', required: false },
 			],
 		});
-		const page = await build({ rows: [row], template: { code: 'x', priceINR: 1, fields: [], sizeGuide: [] } }).service.page(
-			'red-saree',
-		);
+		const page = await build({
+			rows: [row],
+			template: { code: 'x', priceINR: 1, fields: [], sizeGuide: [] },
+		}).service.page('red-saree');
 		expect(page.measurements).toMatchObject({ templateCode: null, priceINR: 0 });
 		expect(page.measurements?.fields.map((entry) => entry.unit)).toEqual(['cm', 'in']);
 		const priced = product({ addonPriceINR: 50, addons: row.addons });
@@ -437,11 +454,11 @@ describe('page text and compound photos', () => {
 
 	it('uses each field in the language asked for', async () => {
 		const row = product({
-			shortDescription: { en: 'Short', fr: 'Court' },
-			seo: { title: { fr: 'Titre' }, description: { fr: 'Résumé' } },
+			shortDescription: { en: 'Short', bn: 'Court' },
+			seo: { title: { bn: 'Titre' }, description: { bn: 'সারাংশ' } },
 		});
-		const page = await withCatalogLocale('fr', () => build({ rows: [row] }).service.page('red-saree'));
-		expect(page).toMatchObject({ shortDescription: 'Court', metaTitle: 'Titre', metaDescription: 'Résumé' });
+		const page = await withCatalogLocale('bn', () => build({ rows: [row] }).service.page('red-saree'));
+		expect(page).toMatchObject({ shortDescription: 'Court', metaTitle: 'Titre', metaDescription: 'সারাংশ' });
 	});
 
 	it('gives each variant its own photos in compound mode', async () => {
@@ -523,7 +540,7 @@ describe('add-on prices', () => {
 	const template = {
 		code: 'blouse',
 		priceINR: 600,
-		fields: [{ code: 'bust', label: { en: 'Bust', fr: 'Poitrine' }, unit: 'in', min: null, max: null, step: null }],
+		fields: [{ code: 'bust', label: { en: 'Bust', bn: 'বুক' }, unit: 'in', min: null, max: null, step: null }],
 		sizeGuide: [],
 	};
 
@@ -539,8 +556,10 @@ describe('add-on prices', () => {
 	});
 
 	it('names each measurement in the language asked for', async () => {
-		const page = await withCatalogLocale('fr', () => build({ rows: [stitched], template }).service.page('red-saree'));
-		expect(page.measurements?.fields[0]?.label).toBe('Poitrine');
+		const page = await withCatalogLocale('bn', () =>
+			build({ rows: [stitched], template }).service.page('red-saree'),
+		);
+		expect(page.measurements?.fields[0]?.label).toBe('বুক');
 	});
 });
 
@@ -643,10 +662,10 @@ describe('breadcrumbs', () => {
 	const row = product({ categoryIds: ['cat_1'] });
 
 	it('names each step in the language asked for', async () => {
-		const category = { name: { en: 'Sarees', fr: 'Saris' } };
+		const category = { name: { en: 'Sarees', bn: 'শাড়ি' } };
 		const { service } = build({ rows: [row], canonical: placement(), category });
-		const page = await withCatalogLocale('fr', () => service.page('red-saree'));
-		expect(page.breadcrumb.map((step) => step.name)).toEqual(['Saris', 'Saris']);
+		const page = await withCatalogLocale('bn', () => service.page('red-saree'));
+		expect(page.breadcrumb.map((step) => step.name)).toEqual(['শাড়ি', 'শাড়ি']);
 	});
 
 	it('walks the canonical placement, naming a missing label by its slug', async () => {
@@ -935,15 +954,15 @@ describe('addresses', () => {
 		const routes = [
 			{ path: '/', entityType: 'page', canonicalPath: '/en' },
 			{ path: '/about', entityType: 'page', canonicalPath: '/en/about' },
-			{ path: '/product/red-saree', entityType: 'product', canonicalPath: '/fr/product/red-saree' },
+			{ path: '/product/red-saree', entityType: 'product', canonicalPath: '/bn/product/red-saree' },
 			{ path: '/collections/sarees', entityType: 'category', canonicalPath: '/en/collections/sarees' },
 			{ path: '/product/gone', entityType: 'product', canonicalPath: '/en/product/gone' },
 		];
 		expect(await build({ routes, live: ['sarees'] }).service.sitemapPaths()).toEqual([
+			'/bn/product/red-saree',
 			'/en/',
 			'/en/about',
 			'/en/collections/sarees',
-			'/fr/product/red-saree',
 		]);
 		expect(await build({ withAll: false }).service.sitemapPaths()).toEqual([]);
 	});

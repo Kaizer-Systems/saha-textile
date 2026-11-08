@@ -7,17 +7,17 @@ import { z } from 'zod';
 export const PRIMARY_LOCALE = 'en';
 
 /**
- * A locale code: BCP-47 primary subtag plus an optional region (`en`, `fr`, `bn`, `en-IN`).
+ * A locale code: BCP-47 primary subtag plus an optional region (`en`, `bn`, `en-IN`).
  *
  * Deliberately NOT an enum. Which locales a deployment actually serves is
- * CONFIGURATION, not a contract constant — the active set has already moved once
- * (en+bn → en+fr, with Bengali now only an illustrative next candidate). Keeping the
+ * CONFIGURATION, not a contract constant — the active set has already moved twice
+ * (en+bn → en+fr → en+bn, Bengali replacing French on 2026-11-08). Keeping the
  * set in `ActiveLocaleConfig` means adding, swapping, or retiring a locale is a config
  * change, never a contracts/API change.
  */
 export const LocaleCode = z
 	.string()
-	.regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/, 'must be a locale code such as `en`, `fr`, or `en-IN`');
+	.regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/, 'must be a locale code such as `en`, `bn`, or `en-IN`');
 export type LocaleCode = z.infer<typeof LocaleCode>;
 
 /**
@@ -41,7 +41,7 @@ export type ActiveLocaleConfig = z.infer<typeof ActiveLocaleConfig>;
 
 /**
  * Localized string. Requires `en` (the fallback locale) and allows any other
- * locale key (e.g. `fr`). Mirrors the i18n objects stored in the DB.
+ * locale key (e.g. `bn`). Mirrors the i18n objects stored in the DB.
  */
 export const I18nString = z.object({ en: z.string() }).catchall(z.string());
 export type I18nString = z.infer<typeof I18nString>;

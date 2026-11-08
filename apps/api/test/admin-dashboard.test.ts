@@ -9,7 +9,7 @@ import { PERMISSIONS_KEY, SessionGuard } from '../src/auth/session.guard';
 import { cookieNames } from '../src/common/cookies';
 import { loadConfig } from '../src/config/app-config';
 
-const title = { en: 'Silk Saree', fr: 'Sari en soie' };
+const title = { en: 'Silk Saree', bn: 'সিল্কের শাড়ি' };
 const product = { id: 'p1', title, media: { gallery: ['asset_1'] } };
 const asset = {
 	id: 'asset_1',

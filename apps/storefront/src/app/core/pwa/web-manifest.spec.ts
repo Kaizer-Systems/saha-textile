@@ -21,10 +21,10 @@ describe('webManifest', () => {
 
 	it('opens in the language it was installed from, as one app across languages', () => {
 		const english = webManifest(brand, 'en');
-		const french = webManifest(brand, 'fr');
-		expect(french).toMatchObject({ start_url: '/fr/', lang: 'fr', scope: '/' });
+		const bengali = webManifest(brand, 'bn');
+		expect(bengali).toMatchObject({ start_url: '/bn/', lang: 'bn', scope: '/' });
 		expect(english.start_url).toBe('/en/');
-		expect(french.id).toBe(english.id);
+		expect(bengali.id).toBe(english.id);
 	});
 
 	it('falls back to built-in icons before a Brand Kit exists', () => {
@@ -34,12 +34,12 @@ describe('webManifest', () => {
 			'/assets/images/app-icon-192.png',
 			'/assets/images/app-icon-512.png',
 		]);
-		expect(webManifest(null, 'fr').icons[1].src).toBe('/assets/images/app-icon-512.png');
+		expect(webManifest(null, 'bn').icons[1].src).toBe('/assets/images/app-icon-512.png');
 	});
 });
 
 describe('manifestPath', () => {
 	it('names the language', () => {
-		expect(manifestPath('fr')).toBe('/manifest.webmanifest?lang=fr');
+		expect(manifestPath('bn')).toBe('/manifest.webmanifest?lang=bn');
 	});
 });

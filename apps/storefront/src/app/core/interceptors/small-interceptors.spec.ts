@@ -49,7 +49,7 @@ describe('CatalogLocaleInterceptor', () => {
 	const run = (request: HttpRequest<unknown>) => {
 		TestBed.resetTestingModule();
 		TestBed.configureTestingModule({
-			providers: [CatalogLocaleInterceptor, { provide: ACTIVE_LOCALE, useValue: 'fr' }],
+			providers: [CatalogLocaleInterceptor, { provide: ACTIVE_LOCALE, useValue: 'bn' }],
 		});
 		const next = { handle: vi.fn((seen: HttpRequest<unknown>) => of(seen as never)) };
 		TestBed.inject(CatalogLocaleInterceptor).intercept(request, next as never);
@@ -58,9 +58,9 @@ describe('CatalogLocaleInterceptor', () => {
 
 	it('names the language on catalogue reads and cart calls', () => {
 		environment.apiUrl = 'https://api.test';
-		expect(run(new HttpRequest('GET', 'https://api.test/catalog/home')).params.get('locale')).toBe('fr');
-		expect(run(new HttpRequest('GET', 'https://api.test/cart/current')).params.get('locale')).toBe('fr');
-		expect(run(new HttpRequest('POST', 'https://api.test/cart/current/lines', {})).params.get('locale')).toBe('fr');
+		expect(run(new HttpRequest('GET', 'https://api.test/catalog/home')).params.get('locale')).toBe('bn');
+		expect(run(new HttpRequest('GET', 'https://api.test/cart/current')).params.get('locale')).toBe('bn');
+		expect(run(new HttpRequest('POST', 'https://api.test/cart/current/lines', {})).params.get('locale')).toBe('bn');
 		expect(run(new HttpRequest('GET', 'https://api.test/account')).params.has('locale')).toBe(false);
 		expect(run(new HttpRequest('POST', 'https://api.test/catalog/x', {})).params.has('locale')).toBe(false);
 	});

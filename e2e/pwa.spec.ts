@@ -21,16 +21,16 @@ test.describe('installable app', () => {
 	});
 
 	test('each language has its own manifest, as one app', async ({ page, request }) => {
-		await page.goto('/fr/');
-		await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest?lang=fr');
+		await page.goto('/bn/');
+		await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest?lang=bn');
 
-		const french = await (await request.get('/manifest.webmanifest?lang=fr')).json();
+		const bengali = await (await request.get('/manifest.webmanifest?lang=bn')).json();
 		const english = await (await request.get('/manifest.webmanifest?lang=en')).json();
-		expect(french).toMatchObject({ start_url: '/fr/', display: 'standalone', scope: '/' });
+		expect(bengali).toMatchObject({ start_url: '/bn/', display: 'standalone', scope: '/' });
 		expect(english.start_url).toBe('/en/');
-		expect(french.id).toBe(english.id);
-		expect(french.name).toBeTruthy();
-		for (const icon of french.icons) {
+		expect(bengali.id).toBe(english.id);
+		expect(bengali.name).toBeTruthy();
+		for (const icon of bengali.icons) {
 			const answer = await request.get(icon.src);
 			expect(answer.ok()).toBe(true);
 			expect(answer.headers()['content-type']).toBe('image/png');
@@ -119,7 +119,7 @@ test.describe('Get the App', () => {
 		test.use({ viewport: { width: 1600, height: 900 } });
 
 		test('the top bar link installs, and no longer goes to apple.com', async ({ page }) => {
-			await page.goto('/fr/');
+			await page.goto('/bn/');
 			const link = page.locator('#get_the_app_top_link');
 			await expect(link).toHaveText(/Obtenir l.application/);
 			await expect(link.locator('i')).toHaveClass('ri-download-2-line');

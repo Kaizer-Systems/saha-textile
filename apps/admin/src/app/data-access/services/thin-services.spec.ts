@@ -168,7 +168,7 @@ describe('FaqService', () => {
 	const service = () => TestBed.inject(FaqService);
 	const row = {
 		id: 'f1',
-		question: { en: 'Q', fr: 'Qf' },
+		question: { en: 'Q', bn: 'প্র' },
 		answer: { en: 'A' },
 		status: 'live',
 		scope: 'global',
@@ -179,14 +179,14 @@ describe('FaqService', () => {
 	it('maps each row for the table', async () => {
 		http.get.mockReturnValue(
 			of({
-				items: [row, { ...row, question: { en: 'Q' }, answer: { en: 'A', fr: 'Af' }, status: 'draft' }],
+				items: [row, { ...row, question: { en: 'Q' }, answer: { en: 'A', bn: 'উ' }, status: 'draft' }],
 				total: 2,
 			}),
 		);
 		const page = await firstValueFrom(service().getFaqs({ page: 1 }));
 		expect(page.total).toBe(2);
-		expect(page.data[0]).toMatchObject({ id: 1, faqId: 'f1', titleFr: 'Qf', descriptionFr: '', status: true });
-		expect(page.data[1]).toMatchObject({ titleFr: '', descriptionFr: 'Af', status: false });
+		expect(page.data[0]).toMatchObject({ id: 1, faqId: 'f1', titleBn: 'প্র', descriptionBn: '', status: true });
+		expect(page.data[1]).toMatchObject({ titleBn: '', descriptionBn: 'উ', status: false });
 	});
 
 	it('saves a full row', () => {
@@ -194,8 +194,8 @@ describe('FaqService', () => {
 			faqId: 'f1',
 			title: 'Q',
 			description: 'A',
-			titleFr: 'Qf',
-			descriptionFr: 'Af',
+			titleBn: 'প্র',
+			descriptionBn: 'উ',
 			status: true,
 			scope: 'product' as never,
 			categoryIds: ['c'],
@@ -203,8 +203,8 @@ describe('FaqService', () => {
 		});
 		expect(http.post.mock.lastCall?.[1]).toEqual({
 			id: 'f1',
-			question: { en: 'Q', fr: 'Qf' },
-			answer: { en: 'A', fr: 'Af' },
+			question: { en: 'Q', bn: 'প্র' },
+			answer: { en: 'A', bn: 'উ' },
 			scope: 'product',
 			categoryIds: ['c'],
 			productIds: ['p'],
@@ -215,7 +215,7 @@ describe('FaqService', () => {
 	it('fills the defaults for a minimal row', () => {
 		service().save({ title: 'Q', description: 'A', status: false });
 		expect(http.post.mock.lastCall?.[1]).toMatchObject({
-			question: { en: 'Q', fr: undefined },
+			question: { en: 'Q', bn: undefined },
 			scope: 'global',
 			categoryIds: [],
 			productIds: [],

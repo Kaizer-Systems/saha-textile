@@ -79,7 +79,7 @@ export const appConfig: ApplicationConfig = {
 		// it through TranslocoService.setActiveLang.
 		provideTransloco({
 			config: {
-				availableLangs: ['en', 'fr'],
+				availableLangs: ['en', 'bn'],
 				defaultLang: 'en',
 				fallbackLang: 'en',
 				reRenderOnLangChange: true,

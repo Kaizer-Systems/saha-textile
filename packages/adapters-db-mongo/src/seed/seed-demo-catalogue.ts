@@ -257,7 +257,7 @@ export async function writeCatalogue(
 function seoRouteDocs(mapped: DemoCatalogue): Array<{ _id: string }> {
 	const rows: Array<Record<string, unknown>> = [];
 	const add = (path: string, title: string, description: string, entityType: string, entityId: string) => {
-		for (const locale of ['en', 'fr'] as const) {
+		for (const locale of ['en', 'bn'] as const) {
 			rows.push({
 				_id: `seo_${locale}${path.replace(/\//g, '_')}`,
 				path,

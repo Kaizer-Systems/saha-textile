@@ -55,7 +55,7 @@ const measureButtons = (selector: string) => {
 plain.describe('Cookie box at every screen size', () => {
 	plain.skip(({ isMobile }) => isMobile, 'One pass covers every size; the phone project repeats nothing.');
 
-	for (const locale of ['en', 'fr']) {
+	for (const locale of ['en', 'bn']) {
 		plain(`no label is clipped or broken in ${locale}`, async ({ page }) => {
 			plain.setTimeout(120_000);
 			await page.addInitScript(() => sessionStorage.setItem('st_newsletter_shown', '1'));

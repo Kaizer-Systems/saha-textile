@@ -14,13 +14,13 @@ const followed = [
 	['/product-category/saree/page/2/', 301, '/en/collections/sarees'],
 	['/PRODUCT-CATEGORY/SAREE/', 301, '/en/collections/sarees'],
 	['/product-category/saree/?orderby=price', 301, '/en/collections/sarees'],
-	['/fr/product-category/saree/', 301, '/fr/collections/sarees'],
-	['/fr/refund-request-form/', 302, '/fr/contact-us'],
+	['/bn/product-category/saree/', 301, '/bn/collections/sarees'],
+	['/bn/refund-request-form/', 302, '/bn/contact-us'],
 	['/?s=silk', 301, '/en/search?search=silk'],
 	['/en/?s=silk', 301, '/en/search?search=silk'],
-	['/fr/?s=silk', 301, '/fr/search?search=silk'],
+	['/bn/?s=silk', 301, '/bn/search?search=silk'],
 	['/my-account/orders/', 302, '/en/account'],
-	['/fr/my-account/', 302, '/fr/account'],
+	['/bn/my-account/', 302, '/bn/account'],
 	['/product/kurti-palazzo-set', 301, '/en/product/kurti-palazzo-set'],
 	['/collections/sarees', 301, '/en/collections/sarees'],
 	['/en/collections/sarees/', 301, '/en/collections/sarees'],
@@ -30,7 +30,7 @@ const followed = [
 const answered = [
 	['/videos', 410],
 	['/en/?p=123', 410],
-	['/fr/?p=123', 410],
+	['/bn/?p=123', 410],
 	['/?p=123', 410],
 	['/wp-sitemap.xml', 410],
 	['/sitemap_index.xml', 410],
@@ -39,9 +39,9 @@ const answered = [
 	['/shop/', 410],
 	['/product-category/unknown/', 410],
 	['/en/product-tag/nope/', 410],
-	['/fr/product-tag/nope/', 410],
+	['/bn/product-tag/nope/', 410],
 	['/en/collections/nope', 404],
-	['/fr/collections/nope', 404],
+	['/bn/collections/nope', 404],
 	['/en/product/nope', 404],
 	['/en/product/kurti-palazzo-set?s=blue', 200],
 	['/sitemap.xml', 200],
@@ -67,7 +67,7 @@ test.describe('old addresses', () => {
 	}
 
 	test('a gone page speaks the language of its address and stays out of search', async ({ request }) => {
-		const response = await request.get('/fr/product-tag/nope/');
+		const response = await request.get('/bn/product-tag/nope/');
 
 		expect(response.headers()['x-robots-tag']).toBe('noindex');
 		expect(await response.text()).toContain("Cette page n'est plus disponible");

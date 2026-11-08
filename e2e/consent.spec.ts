@@ -39,11 +39,11 @@ test.describe('Cookie box', () => {
 		expect((await consentCookie(page))?.categories).toMatchObject({ functional: true, analytics: false });
 	});
 
-	test('the Privacy Policy link opens in the shopper\'s language', async ({ page }) => {
-		await page.goto('/fr/');
+	test("the Privacy Policy link opens in the shopper's language", async ({ page }) => {
+		await page.goto('/bn/');
 		await box(page).locator('.cookie-contain a').click();
-		await expect(page).toHaveURL(/\/fr\/privacy-policy/);
-		await expect(page.locator('.ckeditor-content')).toContainText('Strictement nécessaires');
+		await expect(page).toHaveURL(/\/bn\/privacy-policy/);
+		await expect(page.locator('.ckeditor-content')).toContainText('একান্ত দরকারি');
 	});
 
 	test('the settings popup explains, warns, and saves a choice', async ({ page }) => {
@@ -67,7 +67,8 @@ test.describe('Cookie box', () => {
 		await page.evaluate(() => localStorage.setItem('st_recent', '[]'));
 		const link = page.locator('#cookie_settings_link');
 		// On a phone the footer lists fold away under their headings.
-		if (!(await link.isVisible())) await page.locator('footer .footer-title', { hasText: 'Customer Service' }).click();
+		if (!(await link.isVisible()))
+			await page.locator('footer .footer-title', { hasText: 'Customer Service' }).click();
 		await link.click();
 		await page.locator('.cookie-settings .cookie-solid').first().click();
 		expect((await consentCookie(page))?.categories.functional).toBe(false);

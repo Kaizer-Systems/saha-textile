@@ -1,6 +1,6 @@
 import type { GoLiveGap, GoLiveResult } from '@saha-textile/contracts';
 
-const LANGUAGE_NAMES: Readonly<Record<string, string>> = { en: 'English', fr: 'Français' };
+const LANGUAGE_NAMES: Readonly<Record<string, string>> = { en: 'English', bn: 'বাংলা' };
 const SHOWN_IN_TOAST = 3;
 
 type Translate = (key: string) => string;

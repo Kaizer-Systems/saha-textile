@@ -21,7 +21,7 @@ export interface LegacyResolution {
 	location?: string;
 }
 
-const LOCALES = ['en', 'fr'] as const;
+const LOCALES = ['en', 'bn'] as const;
 
 function split(pathAndQuery: string): { pathname: string; query: string } {
 	const queryAt = pathAndQuery.indexOf('?');

@@ -106,8 +106,8 @@ export class FormFaq {
 					productIds: this.faq?.productIds?.join(', ') ?? '',
 				});
 				this.fields.load({
-					title: { en: this.faq?.title ?? '', fr: this.faq?.titleFr ?? '' },
-					description: { en: this.faq?.description ?? '', fr: this.faq?.descriptionFr ?? '' },
+					title: { en: this.faq?.title ?? '', bn: this.faq?.titleBn ?? '' },
+					description: { en: this.faq?.description ?? '', bn: this.faq?.descriptionBn ?? '' },
 				});
 				this.refreshMissing();
 			});
@@ -135,8 +135,8 @@ export class FormFaq {
 				...raw,
 				title: title['en'],
 				description: description['en'],
-				titleFr: title['fr'] ?? '',
-				descriptionFr: description['fr'] ?? '',
+				titleBn: title['bn'] ?? '',
+				descriptionBn: description['bn'] ?? '',
 				categoryIds: idList(raw.categoryIds),
 				productIds: idList(raw.productIds),
 				faqId: this.faq?.faqId,

@@ -347,12 +347,12 @@ describe('legacy addresses', () => {
 		).toEqual({ status: 301, location: '/en/product/silk' });
 	});
 
-	it('sends the session pages with a temporary redirect and serves a French page as itself', () => {
+	it('sends the session pages with a temporary redirect and serves a Bengali page as itself', () => {
 		expect(resolveLegacyAddress('/cart', [], live)).toEqual({ status: 302, location: '/en/cart' });
 		expect(resolveLegacyAddress('/checkout', [], live)).toEqual({ status: 302, location: '/en/checkout' });
-		expect(resolveLegacyAddress('/fr/product/silk', [], live)).toBeNull();
+		expect(resolveLegacyAddress('/bn/product/silk', [], live)).toBeNull();
 		expect(resolveLegacyAddress('/en/product-category/silk', [], live)).toEqual({ status: 410 });
-		expect(resolveLegacyAddress('/fr/cart', [], live)).toBeNull();
+		expect(resolveLegacyAddress('/bn/cart', [], live)).toBeNull();
 	});
 
 	it('collapses onto a gone row and rejects a row that points at itself', () => {

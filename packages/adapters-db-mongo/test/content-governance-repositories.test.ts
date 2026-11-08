@@ -649,7 +649,7 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 				_id: `${P}full`,
 				key: `${P}full`,
 				images: { desktop: 'd' },
-				localeImages: { fr: {} },
+				localeImages: { bn: {} },
 				heading: { en: 'H' },
 				subheading: { en: 'S' },
 				ctaLabel: { en: 'C' },

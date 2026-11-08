@@ -143,7 +143,7 @@ async function main(): Promise<void> {
 					position: standIn.position,
 					slot: standIn.slot,
 					images: { desktop },
-					alt: { en: 'Saha Textile collection', fr: 'Collection Saha Textile' },
+					alt: { en: 'Saha Textile collection', bn: 'সাহা টেক্সটাইলের কালেকশন' },
 					link: { href: '/collections', external: false },
 					status: 'active',
 				}),

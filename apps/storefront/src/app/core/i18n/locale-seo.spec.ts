@@ -13,12 +13,12 @@ import { ACTIVE_LOCALE } from './active-locale';
 import { LocaleSeo, goneRouteMeta, notFoundRouteMeta } from './locale-seo';
 
 /**
- * The language-aware head: what a search engine reads to pair the en and fr pages.
+ * The language-aware head: what a search engine reads to pair the en and bn pages.
  *
  * Driven by real `NavigationEnd` events through a stand-in router, against the test document's
  * `<head>` — the same DOM calls the server render makes.
  */
-function harness(locale: 'en' | 'fr', { onServer = false } = {}) {
+function harness(locale: 'en' | 'bn', { onServer = false } = {}) {
 	const events = new Subject<unknown>();
 	// The activated route's data, as the router would hold it once a navigation lands.
 	const leaf = { firstChild: null, data: {} as Record<string, unknown> };
@@ -57,29 +57,29 @@ afterEach(() => {
 describe('LocaleSeo', () => {
 	it('names a public page in every language, the English page as x-default, and itself as canonical', () => {
 		runtimeConfig.siteUrl = `${SITE}/`;
-		const { navigate, href } = harness('fr');
+		const { navigate, href } = harness('bn');
 
 		navigate('/collections/sarees?page=2');
 
-		expect(href("link[rel='canonical']")).toBe(`${SITE}/fr/collections/sarees`);
+		expect(href("link[rel='canonical']")).toBe(`${SITE}/bn/collections/sarees`);
 		expect(href("link[rel='alternate'][hreflang='en']")).toBe(`${SITE}/en/collections/sarees`);
-		expect(href("link[rel='alternate'][hreflang='fr']")).toBe(`${SITE}/fr/collections/sarees`);
+		expect(href("link[rel='alternate'][hreflang='bn']")).toBe(`${SITE}/bn/collections/sarees`);
 		expect(href("link[rel='alternate'][hreflang='x-default']")).toBe(`${SITE}/en/collections/sarees`);
 	});
 
 	it('tells link previews the page language and, on a public page, its other languages', () => {
 		runtimeConfig.siteUrl = SITE;
-		const { navigate } = harness('fr');
+		const { navigate } = harness('bn');
 		const meta = TestBed.inject(Meta);
 		const alternates = () => meta.getTags("property='og:locale:alternate'").map((tag) => tag.content);
 
 		navigate('/collections/sarees');
 		navigate('/collections/silk');
-		expect(meta.getTag("property='og:locale'")?.content).toBe('fr_FR');
+		expect(meta.getTag("property='og:locale'")?.content).toBe('bn_IN');
 		expect(alternates()).toEqual(['en_IN']);
 
 		navigate('/cart');
-		expect(meta.getTag("property='og:locale'")?.content).toBe('fr_FR');
+		expect(meta.getTag("property='og:locale'")?.content).toBe('bn_IN');
 		expect(alternates()).toEqual([]);
 	});
 
@@ -90,13 +90,13 @@ describe('LocaleSeo', () => {
 		navigate('/');
 
 		expect(href("link[rel='canonical']")).toBe(`${SITE}/en/`);
-		expect(href("link[rel='alternate'][hreflang='fr']")).toBe(`${SITE}/fr/`);
+		expect(href("link[rel='alternate'][hreflang='bn']")).toBe(`${SITE}/bn/`);
 	});
 
-	// Prefixed so the customer stays in French; not a page anyone should find in a search.
+	// Prefixed so the customer stays in Bengali; not a page anyone should find in a search.
 	it('marks a private page noindex and withdraws the previous page’s alternates', () => {
 		runtimeConfig.siteUrl = SITE;
-		const { navigate, doc, robots } = harness('fr');
+		const { navigate, doc, robots } = harness('bn');
 
 		navigate('/collections/sarees');
 		navigate('/checkout');
@@ -118,12 +118,12 @@ describe('LocaleSeo', () => {
 	// An extra-placement category page shows its products but points everything at its home path.
 	it('lets a page move the canonical, and the alternates follow it', () => {
 		runtimeConfig.siteUrl = SITE;
-		const { seo, navigate, href, doc } = harness('fr');
+		const { seo, navigate, href, doc } = harness('bn');
 
 		navigate('/collections/sarees/pure-cotton/cotton-chikankari');
 		seo.setCanonicalPath('/collections/dress-materials/cotton-chikankari');
 
-		expect(href("link[rel='canonical']")).toBe(`${SITE}/fr/collections/dress-materials/cotton-chikankari`);
+		expect(href("link[rel='canonical']")).toBe(`${SITE}/bn/collections/dress-materials/cotton-chikankari`);
 		expect(href("link[rel='alternate'][hreflang='en']")).toBe(
 			`${SITE}/en/collections/dress-materials/cotton-chikankari`,
 		);
@@ -134,7 +134,7 @@ describe('LocaleSeo', () => {
 	// A mistyped or retired URL must not be indexed as a page of its own (a "soft 404").
 	it('answers a not-found page with 404, noindex and no canonical or alternates', () => {
 		runtimeConfig.siteUrl = SITE;
-		const { navigate, doc, robots, response } = harness('fr', { onServer: true });
+		const { navigate, doc, robots, response } = harness('bn', { onServer: true });
 
 		navigate('/collections/sarees');
 		navigate('/no-such-page', notFoundRouteMeta.data);

@@ -50,7 +50,7 @@ const variant = (overrides: Record<string, unknown> = {}) => ({
 	...overrides,
 });
 const content = (overrides: Record<string, unknown> = {}) => ({
-	title: { en: 'Silk', fr: 'Soie' },
+	title: { en: 'Silk', bn: 'সিল্ক' },
 	shortDescription: { en: 'Short' },
 	description: { en: 'Long' },
 	metaTitle: {},
@@ -120,7 +120,7 @@ const render = (
 			{ provide: PLATFORM_ID, useValue: options.platform ?? 'browser' },
 			{ provide: ActivatedRoute, useValue: { params: new BehaviorSubject(options.params ?? {}) } },
 			{ provide: AttributeService, useValue: { getDefinitions: () => of([]) } },
-				{ provide: AddonTemplateService, useValue: { list: () => of([]) } },
+			{ provide: AddonTemplateService, useValue: { list: () => of([]) } },
 			{ provide: NotificationService, useValue: toasts },
 			{
 				provide: TranslocoService,
@@ -180,9 +180,6 @@ describe('FormProduct lists', () => {
 		taxes.set({ data: [{ id: 2, name: 'GST' }] });
 		expect(render().page.taxes()).toEqual([{ label: 'GST', value: 2 }]);
 	});
-
-
-
 });
 
 describe('FormProduct reading', () => {
@@ -413,9 +410,7 @@ describe('FormProduct pickers', () => {
 
 	it('stores single images, clears them, and ignores lists', () => {
 		const { page } = render();
-		const single = [
-			['selectMetaImage', 'product_meta_image_id'],
-		] as const;
+		const single = [['selectMetaImage', 'product_meta_image_id']] as const;
 		for (const [method, control] of single) {
 			page[method](image);
 			expect(page.form.get(control)?.value).toBe(4);
@@ -425,7 +420,6 @@ describe('FormProduct pickers', () => {
 			expect(page.form.get(control)?.value).toBeNull();
 		}
 	});
-
 
 	it('stores a variation image', () => {
 		const { page } = editing();
@@ -441,7 +435,7 @@ describe('FormProduct language to-do list', () => {
 		attributeCode: 'color',
 		label: { en: 'Colour' },
 		terms: [
-			{ code: 'red', label: { en: 'Red', fr: 'Rouge' } },
+			{ code: 'red', label: { en: 'Red', bn: 'লাল' } },
 			{ code: 'blue', label: { en: 'Blue' } },
 			{ code: 'pink', label: {} },
 		],
@@ -451,7 +445,7 @@ describe('FormProduct language to-do list', () => {
 		const { page } = render({ params: { id: 'p1' } });
 		page.optionGroups.set([group, { attributeCode: 'size', label: {}, terms: [] }] as never);
 		TestBed.tick();
-		const keys = page.gaps()['fr']?.map((gap) => [gap.key, gap.name]);
+		const keys = page.gaps()['bn']?.map((gap) => [gap.key, gap.name]);
 		expect(keys).toContainEqual(['option:color', 'Colour']);
 		expect(keys).toContainEqual(['option:size', 'size']);
 		expect(keys).toContainEqual(['value:color:blue', 'Blue']);
@@ -462,29 +456,29 @@ describe('FormProduct language to-do list', () => {
 	it('adds an image gap only a Go Live attempt can report', () => {
 		const { page } = render({ params: { id: 'p1' } });
 		page.goLiveGaps.set([
-			{ field: 'image_alt', locale: 'fr' },
+			{ field: 'image_alt', locale: 'bn' },
 			{ field: 'image_alt', locale: 'en' },
 			{ field: 'price', locale: null },
 		] as never);
 		TestBed.tick();
-		expect(page.gaps()['fr']).toContainEqual({ key: 'image_alt', label: 'gap_image_alt' });
-		expect(page.gaps()['fr']?.filter((gap) => gap.key === 'image_alt')).toHaveLength(1);
+		expect(page.gaps()['bn']).toContainEqual({ key: 'image_alt', label: 'gap_image_alt' });
+		expect(page.gaps()['bn']?.filter((gap) => gap.key === 'image_alt')).toHaveLength(1);
 	});
 
 	it('keeps the list current while typing', () => {
 		vi.useFakeTimers();
 		const { page } = render({ params: { id: 'p1' } });
-		page.switchLanguage('fr');
-		page.form.patchValue({ name: 'Soie' });
+		page.switchLanguage('bn');
+		page.form.patchValue({ name: 'সিল্ক' });
 		vi.advanceTimersByTime(300);
-		expect(page.gaps()['fr']?.map((gap) => gap.key)).not.toContain('name');
+		expect(page.gaps()['bn']?.map((gap) => gap.key)).not.toContain('name');
 		vi.useRealTimers();
 	});
 
 	it('opens the tab and the language of a line', () => {
 		const { page } = render({ params: { id: 'p1' } });
-		page.openLanguageGap({ key: 'estimated_delivery_text', locale: 'fr' });
-		expect(page.fields.locale()).toBe('fr');
+		page.openLanguageGap({ key: 'estimated_delivery_text', locale: 'bn' });
+		expect(page.fields.locale()).toBe('bn');
 	});
 });
 
@@ -519,7 +513,6 @@ describe('FormProduct saree lengths', () => {
 });
 
 describe('FormProduct.submit', () => {
-
 	it('saves the cleaned values', () => {
 		const { page, service, router } = editing();
 		page.form.patchValue({
@@ -559,7 +552,7 @@ describe('FormProduct.submit', () => {
 				},
 			],
 			content: {
-				title: { en: 'Silk', fr: 'Soie' },
+				title: { en: 'Silk', bn: 'সিল্ক' },
 				shortDescription: { en: 'Short' },
 				description: { en: 'Long' },
 				metaTitle: { en: '' },

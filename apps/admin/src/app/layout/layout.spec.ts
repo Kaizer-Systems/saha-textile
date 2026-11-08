@@ -105,10 +105,10 @@ describe('Languages', () => {
 
 	it('starts in English, or the saved language', () => {
 		expect(render().translate.setActiveLang).toHaveBeenCalledWith('en');
-		localStorage.setItem('language', JSON.stringify({ language: 'Français', code: 'fr', icon: 'fr' }));
+		localStorage.setItem('language', JSON.stringify({ language: 'বাংলা', code: 'bn', icon: 'bn' }));
 		const saved = render();
-		expect(saved.widget.selectedLanguage.code).toBe('fr');
-		expect(saved.translate.setActiveLang).toHaveBeenCalledWith('fr');
+		expect(saved.widget.selectedLanguage.code).toBe('bn');
+		expect(saved.translate.setActiveLang).toHaveBeenCalledWith('bn');
 	});
 
 	it('touches nothing on the server', () => {
@@ -122,7 +122,7 @@ describe('Languages', () => {
 		widget.hideDropdown();
 		expect(widget.active).toBe(false);
 		widget.selectLanguage(widget.languages[1]!);
-		expect(localStorage.getItem('language')).toContain('fr');
+		expect(localStorage.getItem('language')).toContain('bn');
 	});
 });
 

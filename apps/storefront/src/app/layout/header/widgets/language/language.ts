@@ -36,7 +36,7 @@ export class Language {
 	/**
 	 * The current app URL as a signal, so the option links are re-rendered by navigation itself.
 	 * A plain `router.url` read in the template relied on some later change-detection pass, and
-	 * after hydration the links stayed on the URL they were first rendered for (`/en/`, `/fr/`).
+	 * after hydration the links stayed on the URL they were first rendered for (`/en/`, `/bn/`).
 	 */
 	private url = toSignal(
 		this.router.events.pipe(
@@ -57,9 +57,9 @@ export class Language {
 			icon: 'us',
 		},
 		{
-			language: 'Français',
-			code: 'fr',
-			icon: 'fr',
+			language: 'বাংলা',
+			code: 'bn',
+			icon: 'in',
 		},
 	];
 

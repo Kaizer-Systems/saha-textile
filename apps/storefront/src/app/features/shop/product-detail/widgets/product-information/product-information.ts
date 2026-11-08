@@ -2,6 +2,7 @@ import { Component, inject, input } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 
+import { intlLocale } from '@core/i18n/locale';
 import { IProduct, IVariation } from '@data-access/interfaces/product.interface';
 import { TitleCasePipe } from '@shared/pipes/title-case.pipe';
 
@@ -20,8 +21,8 @@ export class ProductInformation {
 	readonly product = input<IProduct | null>();
 	readonly variation = input<IVariation | null>(null);
 
-	/** 5.5 m in English, 5,5 m in French. */
+	/** 5.5 m in every language: Bengali keeps English digits (BN-3). */
 	metres(value: number): string {
-		return `${new Intl.NumberFormat(this.transloco.getActiveLang()).format(value)} m`;
+		return `${new Intl.NumberFormat(intlLocale(this.transloco.getActiveLang())).format(value)} m`;
 	}
 }

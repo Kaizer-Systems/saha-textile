@@ -78,11 +78,11 @@ describe('locale middleware', () => {
 
 	it('renders the gone page for a 410, in the language of the address', async () => {
 		address.storefrontAddress.mockReturnValue({ status: 410 });
-		const french = event('/fr/old', { originalUrl: '/fr/old' });
-		expect(await run(french)).toBeUndefined();
-		expect(french.node.res.statusCode).toBe(410);
-		expect(french.node.req.url).toBe('/fr/gone');
-		expect(french.node.req).toHaveProperty('originalUrl', '/fr/gone');
+		const bengali = event('/bn/old', { originalUrl: '/bn/old' });
+		expect(await run(bengali)).toBeUndefined();
+		expect(bengali.node.res.statusCode).toBe(410);
+		expect(bengali.node.req.url).toBe('/bn/gone');
+		expect(bengali.node.req).toHaveProperty('originalUrl', '/bn/gone');
 		expect(h3.setResponseHeaders).toHaveBeenCalledWith(expect.anything(), {
 			'Cache-Control': 'public, max-age=3600',
 			'X-Robots-Tag': 'noindex',
@@ -105,7 +105,7 @@ describe('locale middleware', () => {
 	});
 
 	it('redirects, keeping a 302 private', async () => {
-		address.storefrontAddress.mockReturnValue({ status: 302, location: '/fr/' });
+		address.storefrontAddress.mockReturnValue({ status: 302, location: '/bn/' });
 		expect(await run(event('/'))).toBe(true);
 		expect(h3.setResponseHeaders).toHaveBeenCalledWith(expect.anything(), {
 			'Cache-Control': 'private, no-store',
@@ -205,17 +205,17 @@ describe('web manifest middleware', () => {
 	});
 
 	it('serves the Brand Kit in the language asked for', async () => {
-		h3.getQuery.mockReturnValue({ lang: 'fr' });
+		h3.getQuery.mockReturnValue({ lang: 'bn' });
 		vi.stubGlobal(
 			'fetch',
 			vi.fn(async () => ({ ok: true, json: async () => brand })),
 		);
-		expect(await run(event('/manifest.webmanifest?lang=fr'))).toBe(true);
+		expect(await run(event('/manifest.webmanifest?lang=bn'))).toBe(true);
 		expect(fetch).toHaveBeenCalledWith('https://api.test/storefront/brand', expect.anything());
-		expect(sent()).toMatchObject({ name: 'Sample Shop', start_url: '/fr/' });
+		expect(sent()).toMatchObject({ name: 'Sample Shop', start_url: '/bn/' });
 
 		process.env['SAHA_TEXTILE_PUBLIC_CONFIG'] = JSON.stringify({ apiUrl: 'https://api.shop.test' });
-		await run(event('/manifest.webmanifest?lang=fr'));
+		await run(event('/manifest.webmanifest?lang=bn'));
 		expect(fetch).toHaveBeenLastCalledWith('https://api.shop.test/storefront/brand', expect.anything());
 		expect(h3.setResponseHeaders).toHaveBeenCalledWith(expect.anything(), {
 			'Cache-Control': 'public, max-age=300',

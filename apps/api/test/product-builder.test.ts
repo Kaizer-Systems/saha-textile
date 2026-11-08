@@ -8,7 +8,7 @@ import { applyProductContent, syncVariantRows } from '../src/catalog/product-con
 import { ProductBuilderService } from '../src/catalog/product-builder.service';
 import { TaxonomyService } from '../src/catalog/taxonomy.service';
 
-const both = { en: 'Text', fr: 'Texte' };
+const both = { en: 'Text', bn: 'Texte' };
 const product = (over: Record<string, unknown> = {}) =>
 	Product.parse({
 		id: 'prd_1',
@@ -28,9 +28,9 @@ const product = (over: Record<string, unknown> = {}) =>
 
 const content = (over: Record<string, unknown> = {}) =>
 	({
-		title: { en: ' Name ', fr: 'Nom' },
+		title: { en: ' Name ', bn: 'Nom' },
 		shortDescription: both,
-		description: { fr: 'Texte' },
+		description: { bn: 'Texte' },
 		metaTitle: both,
 		metaDescription: both,
 		estimatedDeliveryText: {},
@@ -40,32 +40,32 @@ const content = (over: Record<string, unknown> = {}) =>
 		imageMode: 'compound',
 		gallery: ['a'],
 		compound: [{ selectionHash: 'h', gallery: ['a'] }],
-		altOverrides: { a: { fr: 'Alt' } },
+		altOverrides: { a: { bn: 'Alt' } },
 		...over,
 	}) as never;
 
 describe('applyProductContent', () => {
 	it('keeps lead-time text only once it has English', () => {
-		const text = { en: ' Soon ', fr: 'Bientôt' };
+		const text = { en: ' Soon ', bn: 'শিগগিরই' };
 		expect(applyProductContent(product(), content({ estimatedDeliveryText: text })).estimatedDeliveryText).toEqual({
 			en: 'Soon',
-			fr: 'Bientôt',
+			bn: 'শিগগিরই',
 		});
-		const french = content({ estimatedDeliveryText: { fr: 'Bientôt' } });
-		expect(applyProductContent(product(), french).estimatedDeliveryText).toBeNull();
+		const bengali = content({ estimatedDeliveryText: { bn: 'শিগগিরই' } });
+		expect(applyProductContent(product(), bengali).estimatedDeliveryText).toBeNull();
 	});
 
 	it('takes every language-bound field and the images', () => {
 		const next = applyProductContent(product(), content());
-		expect(next.title).toEqual({ en: 'Name', fr: 'Nom' });
-		expect(next.description).toEqual({ en: '', fr: 'Texte' });
+		expect(next.title).toEqual({ en: 'Name', bn: 'Nom' });
+		expect(next.description).toEqual({ en: '', bn: 'Texte' });
 		expect(next.seo).toEqual({ title: both, description: both });
 		expect(next.imageMode).toBe('compound');
-		expect(next.media?.altOverrides).toEqual({ a: { fr: 'Alt' } });
+		expect(next.media?.altOverrides).toEqual({ a: { bn: 'Alt' } });
 	});
 
 	it('refuses a product with no English name', () => {
-		expect(() => applyProductContent(product(), content({ title: { fr: 'Nom' } }))).toThrow('English name');
+		expect(() => applyProductContent(product(), content({ title: { bn: 'Nom' } }))).toThrow('English name');
 		expect(() => applyProductContent(product(), content({ title: { en: ' ' } }))).toThrow('English name');
 	});
 });
@@ -137,7 +137,12 @@ describe('ProductBuilderService', () => {
 			save: vi.fn(async (row: unknown) => row),
 			listForProduct: vi.fn(async () => [{ priceINR: 100 }]),
 		};
-		const media = { findById: vi.fn(async () => ({ derivatives: [{ role: 'thumb' }, { role: 'card' }, { role: 'gallery' }], text: { alt: both } })) };
+		const media = {
+			findById: vi.fn(async () => ({
+				derivatives: [{ role: 'thumb' }, { role: 'card' }, { role: 'gallery' }],
+				text: { alt: both },
+			})),
+		};
 		const bundles = {
 			findByProductId: vi.fn(async (): Promise<unknown> => null),
 			isBundleProduct: vi.fn(async () => false),
@@ -147,7 +152,7 @@ describe('ProductBuilderService', () => {
 			catalog as never,
 			products as never,
 			variants as never,
-			{ locales: ['en', 'fr'] } as never,
+			{ locales: ['en', 'bn'] } as never,
 			options.media === false ? null : (media as never),
 			options.bundles === false ? null : (bundles as never),
 		);
@@ -193,7 +198,7 @@ describe('ProductBuilderService', () => {
 		const { service, products } = build([product({ title: { en: 'Only English' } })]);
 		const result = await service.goLive('prd_1', null);
 		expect(result.live).toBe(false);
-		expect(result.gaps).toContainEqual({ field: 'title', locale: 'fr' });
+		expect(result.gaps).toContainEqual({ field: 'title', locale: 'bn' });
 		expect(products.save).not.toHaveBeenCalled();
 	});
 
@@ -206,7 +211,7 @@ describe('ProductBuilderService', () => {
 		const noLibrary = build([product()], { media: false });
 		expect((await noLibrary.service.goLive('prd_1', null)).gaps).toContainEqual({
 			field: 'image_alt',
-			locale: 'fr',
+			locale: 'bn',
 		});
 		const gone = build([product({ status: 'discontinued' })]);
 		await expect(gone.service.goLive('prd_1', null)).rejects.toThrow('discontinued');
@@ -283,7 +288,7 @@ describe('TaxonomyService', () => {
 	});
 	const body = (over: Record<string, unknown> = {}) =>
 		({
-			name: { en: 'Sarees', fr: 'Sarees' },
+			name: { en: 'Sarees', bn: 'Sarees' },
 			description: {},
 			seoTitle: {},
 			seoDescription: {},
@@ -553,9 +558,9 @@ describe('TaxonomyService', () => {
 		products.list.mockResolvedValue({ items: [used, other], total: 2 });
 		const body = attribute({
 			code: 'color',
-			label: { en: 'Colour', fr: 'Couleur' },
+			label: { en: 'Colour', bn: 'রং' },
 			terms: [
-				{ code: 'red', slug: 'red', label: { en: 'Red', fr: 'Rouge' }, aliases: [] },
+				{ code: 'red', slug: 'red', label: { en: 'Red', bn: 'লাল' }, aliases: [] },
 				{ code: 'gone', slug: 'gone', label: { en: 'Kept' }, aliases: [] },
 			],
 		});
@@ -563,8 +568,8 @@ describe('TaxonomyService', () => {
 		expect(products.save).toHaveBeenCalledTimes(1);
 		const saved = products.save.mock.lastCall?.[0] as typeof used;
 		expect(saved.optionGroups[0]).toMatchObject({
-			label: { en: 'Colour', fr: 'Couleur' },
-			terms: [{ label: { en: 'Red', fr: 'Rouge' } }, { label: { en: 'Kept' } }],
+			label: { en: 'Colour', bn: 'রং' },
+			terms: [{ label: { en: 'Red', bn: 'লাল' } }, { label: { en: 'Kept' } }],
 		});
 		expect(saved.optionGroups[1]).toEqual(used.optionGroups[1]);
 		expect(catalog.syncSearch).toHaveBeenCalledWith(saved);

@@ -83,7 +83,7 @@ export async function ensureHomeBanners(): Promise<void> {
 						subheading: {},
 						ctaLabel: {},
 						link: { href: '/collections', external: false },
-						alt: { en: 'Saha Textile collection', fr: 'Collection Saha Textile' },
+						alt: { en: 'Saha Textile collection', bn: 'Collection Saha Textile' },
 						status: 'active',
 						startsAt: null,
 						endsAt: null,

@@ -469,8 +469,8 @@ describe('FormFaq', () => {
 
 	it('jumps to a field from the language to-do list', () => {
 		const { page } = setup();
-		page.openLanguageGap({ key: 'title', locale: 'fr' });
-		expect(page.fields.locale()).toBe('fr');
+		page.openLanguageGap({ key: 'title', locale: 'bn' });
+		expect(page.fields.locale()).toBe('bn');
 	});
 
 	it('fills from a saved question', () => {
@@ -503,7 +503,7 @@ describe('FormFaq', () => {
 
 	it('saves, splitting the id lists, and returns to the list', () => {
 		const { page, service, router } = setup();
-		page.switchLanguage('fr');
+		page.switchLanguage('bn');
 		page.submit();
 		expect(service.save).not.toHaveBeenCalled();
 		expect(page.fields.locale()).toBe('en');
@@ -514,17 +514,17 @@ describe('FormFaq', () => {
 		expect(page.form.get('title')?.errors).toBeNull();
 		expect(service.save).not.toHaveBeenCalled();
 		page.form.patchValue({ description: 'A' });
-		page.switchLanguage('fr');
+		page.switchLanguage('bn');
 		expect(page.onSourceLanguage).toBe(false);
 		page.form.patchValue({ title: 'Question' });
 		page.refreshMissing();
-		expect(page.gaps()['fr']?.length).toBe(1);
+		expect(page.gaps()['bn']?.length).toBe(1);
 		page.submit();
 		expect((service.save.mock.lastCall as unknown[])[0]).toMatchObject({
 			title: 'Q',
 			description: 'A',
-			titleFr: 'Question',
-			descriptionFr: '',
+			titleBn: 'Question',
+			descriptionBn: '',
 			categoryIds: ['c1', 'c2'],
 			productIds: [],
 			faqId: undefined,
@@ -540,12 +540,14 @@ describe('FormFaq', () => {
 		expect(page.form.get('description')?.errors).toBeNull();
 		page.form.patchValue({ title: 'Q' });
 		page.submit();
-		expect((service.save.mock.lastCall as unknown[])[0]).toMatchObject({ titleFr: '', descriptionFr: '' });
+		expect((service.save.mock.lastCall as unknown[])[0]).toMatchObject({ titleBn: '', descriptionBn: '' });
 	});
 
-	it('keeps the French text of a saved question', () => {
-		const { page } = setup({ id: 1 }, [{ id: 1, title: 'Q', titleFr: 'Question', description: 'A', descriptionFr: 'R' }]);
-		page.switchLanguage('fr');
+	it('keeps the Bengali text of a saved question', () => {
+		const { page } = setup({ id: 1 }, [
+			{ id: 1, title: 'Q', titleBn: 'Question', description: 'A', descriptionBn: 'R' },
+		]);
+		page.switchLanguage('bn');
 		expect(page.form.value).toMatchObject({ title: 'Question', description: 'R' });
 		expect(page.fields.source('title')).toBe('Q');
 		expect(page.onSourceLanguage).toBe(false);
@@ -676,18 +678,19 @@ describe('Setting', () => {
 		expect(page.currencies()).toEqual([{ label: 'INR', value: 1 }]);
 	});
 
-	it.each([
-		['selectMaintenance', 'maintenance', 'maintenance_image_id'],
-	] as const)('%s stores one image', (method, group, field) => {
-		const { page } = setup();
-		const value = () => (page.form.value[group] as Record<string, unknown>)[field];
-		page[method]({ id: 5 } as never);
-		expect(value()).toBe(5);
-		page[method](null as never);
-		expect(value()).toBeNull();
-		page[method]([] as never);
-		expect(value()).toBeNull();
-	});
+	it.each([['selectMaintenance', 'maintenance', 'maintenance_image_id']] as const)(
+		'%s stores one image',
+		(method, group, field) => {
+			const { page } = setup();
+			const value = () => (page.form.value[group] as Record<string, unknown>)[field];
+			page[method]({ id: 5 } as never);
+			expect(value()).toBe(5);
+			page[method](null as never);
+			expect(value()).toBeNull();
+			page[method]([] as never);
+			expect(value()).toBeNull();
+		},
+	);
 
 	it('adds and removes intervals, keeping at least one', () => {
 		const { page } = setup();

@@ -99,7 +99,7 @@ test.describe('A slow API', () => {
 					apiUrl: `https://localhost:${SLOW_API}`,
 					siteUrl: `http://localhost:${STOREFRONT}`,
 					defaultLocale: 'en',
-					supportedLocales: ['en', 'fr'],
+					supportedLocales: ['en', 'bn'],
 				}),
 			},
 		});

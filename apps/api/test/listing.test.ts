@@ -32,7 +32,7 @@ describe('catalog locale', () => {
 	};
 
 	it('reads ?locale= and refuses anything that is not a language', async () => {
-		await expect(run('fr')).resolves.toBe('fr');
+		await expect(run('bn')).resolves.toBe('bn');
 		await expect(run('../etc')).resolves.toBe('en');
 		await expect(run(undefined)).resolves.toBe('en');
 		const noQuery = { switchToHttp: () => ({ getRequest: () => ({}) }) };
@@ -44,9 +44,9 @@ describe('catalog locale', () => {
 	});
 
 	it('falls back to English, then to nothing', () => {
-		expect(withCatalogLocale('fr', () => localized({ en: 'Red', fr: 'Rouge' }))).toBe('Rouge');
-		expect(withCatalogLocale('fr', () => localized({ en: 'Red' }))).toBe('Red');
-		expect(withCatalogLocale('fr', () => localized({ en: 'Red', fr: '' }))).toBe('Red');
+		expect(withCatalogLocale('bn', () => localized({ en: 'Red', bn: 'লাল' }))).toBe('লাল');
+		expect(withCatalogLocale('bn', () => localized({ en: 'Red' }))).toBe('Red');
+		expect(withCatalogLocale('bn', () => localized({ en: 'Red', bn: '' }))).toBe('Red');
 		expect(localized({})).toBe('');
 	});
 });
@@ -98,18 +98,18 @@ const product = (over: Record<string, unknown> = {}) =>
 		id: 'prd_12',
 		type: 'simple',
 		sku: 'S',
-		title: { en: 'Silk Saree', fr: 'Saree en Soie' },
+		title: { en: 'Silk Saree', bn: 'সিল্কের শাড়ি' },
 		slug: 'silk-saree',
 		categoryIds: ['cat_1'],
 		basePriceINR: 1000,
 		optionGroups: [
 			{
 				attributeCode: 'fabric',
-				label: { en: 'Fabric', fr: 'Tissu' },
+				label: { en: 'Fabric', bn: 'কাপড়' },
 				semanticRole: 'filter_only',
 				displayStyle: 'rectangle',
 				requiredSelection: false,
-				terms: [{ code: 'silk', label: { en: 'Silk', fr: 'Soie' } }],
+				terms: [{ code: 'silk', label: { en: 'Silk', bn: 'সিল্ক' } }],
 			},
 			{
 				attributeCode: 'color',
@@ -134,32 +134,32 @@ const product = (over: Record<string, unknown> = {}) =>
 
 describe('listingDocument', () => {
 	it('carries what filters and sorting need, in every language', () => {
-		const doc = listingDocument({ product: product(), variants: [] }, ['en', 'fr']);
+		const doc = listingDocument({ product: product(), variants: [] }, ['en', 'bn']);
 		expect(doc).toMatchObject({
 			id: 'prd_12',
 			idOrder: 'prd_000000000012',
 			createdOrder: '',
 			terms: ['fabric:silk', 'color:red'],
 			filterCodes: ['fabric'],
-			titleOrder: { en: 'silk saree', fr: 'saree en soie' },
+			titleOrder: { en: 'silk saree', bn: 'সিল্কের শাড়ি' },
 		});
-		expect(doc.facts).toContain('Soie');
+		expect(doc.facts).toContain('সিল্ক');
 		const named = listingDocument({ product: product(), variants: [], categoryNames: ['Budget Range'] }, ['en']);
 		expect(named.facts).toContain('Budget Range');
 		expect(JSON.parse(doc.facetValues[0] as string)).toMatchObject({
 			code: 'fabric',
 			term: 'silk',
-			group: { fr: 'Tissu' },
-			label: { fr: 'Soie' },
+			group: { bn: 'কাপড়' },
+			label: { bn: 'সিল্ক' },
 		});
 	});
 
 	it('sorts an untranslated title by its English', () => {
 		const doc = listingDocument(
 			{ product: product({ title: { en: 'Plain' }, createdAt: '2026-01-01T00:00:00.000Z' }), variants: [] },
-			['en', 'fr'],
+			['en', 'bn'],
 		);
-		expect(doc.titleOrder).toEqual({ en: 'plain', fr: 'plain' });
+		expect(doc.titleOrder).toEqual({ en: 'plain', bn: 'plain' });
 		expect(doc.createdOrder).toBe('2026-01-01T00:00:00.000Z');
 		expect(idOrder('abc')).toBe('abc');
 	});
@@ -167,7 +167,7 @@ describe('listingDocument', () => {
 
 const facet = (code: string, term: string, label: Record<string, string>, group: Record<string, string>) =>
 	JSON.stringify({ code, term, label, group });
-const silk = facet('fabric', 'silk', { en: 'Silk', fr: 'Soie' }, { en: 'Fabric', fr: 'Tissu' });
+const silk = facet('fabric', 'silk', { en: 'Silk', bn: 'সিল্ক' }, { en: 'Fabric', bn: 'কাপড়' });
 const cotton = facet('fabric', 'cotton', { en: 'Cotton' }, { en: 'Fabric' });
 const red = facet('color', 'red', { en: 'Red' }, { en: 'Color' });
 const addon = facet('hidden', 'x', { en: 'X' }, { en: 'Hidden' });
@@ -213,9 +213,9 @@ describe('MeilisearchListing', () => {
 			main,
 			{ facetDistribution: { facetValues: { [silk]: 1, [cotton]: 1, [blank]: 1 }, filterCodes: { fabric: 1 } } },
 		]);
-		const [fabric] = (await listing.page(query({ locale: 'fr' }))).facets;
-		expect(fabric?.label).toBe('Tissu');
-		expect(fabric?.terms.map((term) => term.label)).toEqual(['', 'Cotton', 'Soie']);
+		const [fabric] = (await listing.page(query({ locale: 'bn' }))).facets;
+		expect(fabric?.label).toBe('কাপড়');
+		expect(fabric?.terms.map((term) => term.label)).toEqual(['', 'Cotton', 'সিল্ক']);
 	});
 
 	it('builds every filter and gives a ticked facet its own count', async () => {
@@ -255,12 +255,12 @@ describe('MeilisearchListing', () => {
 		['asc', ['idOrder:asc']],
 		['desc', ['idOrder:desc']],
 		['high-low', ['minINR:desc', 'idOrder:asc']],
-		['a-z', ['titleOrder.fr:asc', 'idOrder:asc']],
-		['z-a', ['titleOrder.fr:desc', 'idOrder:desc']],
+		['a-z', ['titleOrder.bn:asc', 'idOrder:asc']],
+		['z-a', ['titleOrder.bn:desc', 'idOrder:desc']],
 		['discount-high-low', ['percentOff:desc', 'idOrder:asc']],
 	] as const)('sorts by %s', async (sort, expected) => {
 		const { listing, multiSearch } = build([{}, {}]);
-		const page = await listing.page(query({ sort, locale: 'fr' }));
+		const page = await listing.page(query({ sort, locale: 'bn' }));
 		expect(sent(multiSearch)[0]?.sort).toEqual(expected);
 		expect(page).toEqual({ productIds: [], total: 0, facets: [] });
 	});
@@ -288,7 +288,7 @@ describe('MeilisearchSearch as the listing client', () => {
 	const fetcher = vi.fn();
 	const reply = (status: number, body?: unknown) =>
 		({ ok: status < 400, status, json: async () => body }) as unknown as Response;
-	const search = () => new MeilisearchSearch('http://meili.test', 'k', async () => [], 'products', ['en', 'fr']);
+	const search = () => new MeilisearchSearch('http://meili.test', 'k', async () => [], 'products', ['en', 'bn']);
 	const entry = { product: product(), variants: [] as ProductVariant[] };
 
 	beforeEach(() => {

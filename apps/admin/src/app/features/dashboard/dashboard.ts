@@ -35,6 +35,7 @@ import { Select2Data, Select2, Select2UpdateEvent } from 'ng-select2-component';
 import type { DashboardPeriodQuery, DashboardStockState, I18nString, PermissionCode } from '@saha-textile/contracts';
 import { Observable } from 'rxjs';
 
+import { intlLocale } from '@core/i18n/localized-fields';
 import { AuthStore } from '@core/state/auth.store';
 import { Params } from '@data-access/interfaces/core.interface';
 import { IStatisticsCount } from '@data-access/interfaces/dashboard.interface';
@@ -457,7 +458,10 @@ export class Dashboard {
 
 	/** `2026-11` as "Nov '26", in the language the admin is using. */
 	private monthLabel(month: string): string {
-		const name = new Intl.DateTimeFormat(this.transloco.getActiveLang(), { month: 'short', timeZone: 'UTC' });
+		const name = new Intl.DateTimeFormat(intlLocale(this.transloco.getActiveLang()), {
+			month: 'short',
+			timeZone: 'UTC',
+		});
 		return `${name.format(new Date(`${month}-01T00:00:00Z`))} '${month.slice(2, 4)}`;
 	}
 

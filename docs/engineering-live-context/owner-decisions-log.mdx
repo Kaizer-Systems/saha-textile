@@ -363,7 +363,7 @@ Prose and comments keep saying “operator”; identifiers say `adminUser`. The 
 ## i18n
 
 - English is the primary locale.
-- The active target locale pair is English and French.
+- The active target locale pair is English and Bengali (Bengali replaced French on 2026-11-08; see that round).
 - Bengali is an illustrative likely next locale, not a currently locked launch pair.
 - The active locale set is **configuration, not a contract constant** (engineering refinement 2026-07-31). `packages/contracts` validates a locale-code shape (`LocaleCode`) and a configured set (`ActiveLocaleConfig`); it never hard-codes which locales are live, so adding, swapping, or retiring a locale is a configuration change rather than a contracts/API change. `en` must remain in the active set because `I18nString` requires it.
 - Machine 1: developer-owned UI chrome uses Transloco keys.
@@ -1010,6 +1010,25 @@ Closed: `DEC-SECRETS-DELIVERY`. The full design is in `production-deployment-pla
 - **Monitoring is DigitalOcean only.** A super admin screen shows metrics fetched by the API. It grows with the number of droplets: a named switcher, and a view comparing metrics across servers.
 - **The developer portal stays local for now.** `DEC-PORTAL-PRIVATE-ACCESS` stays open.
 - **What happens to WordPress hosting is decided at launch.** A full export before the switch stays required.
+
+## Owner decision round (2026-11-08) — Bengali replaces French
+
+The owner approved the Bengali plan (revision 3) as recommended. This replaces the earlier lock that kept French for the whole development phase and added Bengali only afterwards. The reason for that lock still holds, so the shop keeps two live languages: English and Bengali.
+
+- **BN-1 Language code:** `bn`, pages under `/bn/…`, `hreflang="bn"`, `og:locale` `bn_IN`, `lang="bn"`.
+- **BN-2 Old French addresses:** `/fr/…` stops existing and answers not found, with no redirect. A saved `st_locale=fr` cookie falls back to English.
+- **BN-3 Digits:** English digits everywhere (prices, sizes, PIN codes, phone and order numbers, dates). Month and weekday names stay Bengali. Number formatting uses `bn-IN-u-nu-latn`.
+- **BN-4 Spelling:** Paschimbanga Bangla Akademi spelling (শাড়ি, ইমেল, শর্তাবলি).
+- **BN-5 Brand:** the logo never changes. Running Bengali text says সাহা টেক্সটাইল in full; page titles keep `| Saha Textile`. The naming check also catches a bare সাহা.
+- **BN-6 Addresses:** product and category addresses stay in English letters; only the language prefix changes.
+- **BN-7 Switcher:** label বাংলা with the India flag, in the existing switcher.
+- **BN-8 Legal pages:** all five in Bengali, each opening with a line that the English version governs. A legal reviewer is not yet available, so a qualified reader must check them before launch.
+- **BN-9 Messages:** emails follow the customer's language from the start; text messages stay English at launch; WhatsApp moves to Bengali once its templates are approved.
+- **BN-10 Admin:** full Bengali through its language switch, English by default. Go Live requires English and Bengali.
+- **BN-11 Review:** Claude drafts with the glossary and checks; the owner reads every screen on a review page before anything is pushed.
+- **BN-12 Customer details:** every stored name (profile, recipient, billing, and names from Google or Facebook sign-in) and every delivery detail is in English letters. Reviews, questions and messages may be in any language.
+- **BN-13 Stored language:** on the customer (from the sign-up page, changeable in the account) and on every order.
+- **Where it runs:** on `feat/combined-after-pr6`, committed in steps, nothing pushed until the owner has read the Bengali.
 
 ## Open decisions
 

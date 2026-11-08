@@ -119,7 +119,11 @@ export class SearchSuggest {
 
 	readonly sections = computed<SuggestSection[]>(() => {
 		if (this.failed()) return [];
-		if (this.typing() && !this.noMatch()) return this.typingSections();
+		if (this.typing() && !this.noMatch()) {
+			const typed = this.typingSections();
+			if (typed.length) return typed;
+			// Until the first answer lands, the empty-field list stays up, so the box never blinks.
+		}
 		const remembered = this.remembered();
 		if (!this.typing() && (remembered.terms.length || this.historyProducts().length)) {
 			return [

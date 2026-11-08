@@ -284,6 +284,18 @@ describe('search suggestion box', () => {
 		expect(rows()).toEqual([]);
 	});
 
+	it('keeps the empty-field list up until the first answer lands', async () => {
+		const pending = new Subject<SearchPage>();
+		const { field, type, titles } = render({ search: () => pending });
+		field.dispatchEvent(new Event('focus'));
+		await vi.waitFor(() => expect(titles()).toEqual(['trending_now']));
+		type('zzz');
+		await new Promise((resolve) => setTimeout(resolve, 260));
+		expect(titles()).toEqual(['trending_now']);
+		pending.next({ items: [silk], total: 1 });
+		await vi.waitFor(() => expect(titles()).toEqual(['products']));
+	});
+
 	it('keeps the last list while a newer word is on its way', async () => {
 		const later = new Subject<SearchPage>();
 		const { type, rows } = render({

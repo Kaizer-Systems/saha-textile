@@ -48,12 +48,14 @@ const originalSite = runtimeConfig.siteUrl;
 afterEach(() => {
 	runtimeConfig.siteUrl = originalSite;
 	document.head
-		.querySelectorAll("link[rel='canonical'], link[rel='alternate'], meta[name='robots']")
+		.querySelectorAll(
+			"link[rel='canonical'], link[rel='alternate'], meta[name='robots'], meta[property^='og:locale']",
+		)
 		.forEach((node) => node.remove());
 });
 
 describe('LocaleSeo', () => {
-	it('names a public page in every language, with / as x-default, and itself as canonical', () => {
+	it('names a public page in every language, the English page as x-default, and itself as canonical', () => {
 		runtimeConfig.siteUrl = `${SITE}/`;
 		const { navigate, href } = harness('fr');
 
@@ -62,7 +64,23 @@ describe('LocaleSeo', () => {
 		expect(href("link[rel='canonical']")).toBe(`${SITE}/fr/collections/sarees`);
 		expect(href("link[rel='alternate'][hreflang='en']")).toBe(`${SITE}/en/collections/sarees`);
 		expect(href("link[rel='alternate'][hreflang='fr']")).toBe(`${SITE}/fr/collections/sarees`);
-		expect(href("link[rel='alternate'][hreflang='x-default']")).toBe(`${SITE}/`);
+		expect(href("link[rel='alternate'][hreflang='x-default']")).toBe(`${SITE}/en/collections/sarees`);
+	});
+
+	it('tells link previews the page language and, on a public page, its other languages', () => {
+		runtimeConfig.siteUrl = SITE;
+		const { navigate } = harness('fr');
+		const meta = TestBed.inject(Meta);
+		const alternates = () => meta.getTags("property='og:locale:alternate'").map((tag) => tag.content);
+
+		navigate('/collections/sarees');
+		navigate('/collections/silk');
+		expect(meta.getTag("property='og:locale'")?.content).toBe('fr_FR');
+		expect(alternates()).toEqual(['en_IN']);
+
+		navigate('/cart');
+		expect(meta.getTag("property='og:locale'")?.content).toBe('fr_FR');
+		expect(alternates()).toEqual([]);
 	});
 
 	it('gives the home page its slashed address in each language', () => {

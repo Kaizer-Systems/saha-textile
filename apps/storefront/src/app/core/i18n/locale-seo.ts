@@ -13,7 +13,7 @@ import { backgroundRequest } from '@core/interceptors/background-request';
 import { environment } from '../../../../public/environments/environment';
 
 import { ACTIVE_LOCALE } from './active-locale';
-import { SUPPORTED_LOCALES, isPrivatePath, withLocale } from './locale';
+import { DEFAULT_LOCALE, OPEN_GRAPH_LOCALES, SUPPORTED_LOCALES, isPrivatePath, withLocale } from './locale';
 
 const NOT_FOUND_KEY = 'notFound';
 
@@ -40,9 +40,11 @@ export const goneRouteMeta = { data: { [GONE_KEY]: true } };
  * The language-aware head of every page: canonical, `hreflang` alternates and the private-route
  * `noindex` (`DEC-I18N-ROUTES`).
  *
- * Every public page names itself in each language plus `x-default` → `/`, reciprocally, which is
- * what lets a search engine show the French page to a French searcher without the site ever
- * redirecting on a guess. Private pages (account, cart, checkout, sign-in…) get `noindex` and no
+ * Every public page names itself in each language, reciprocally, which is what lets a search
+ * engine show the French page to a French searcher without the site ever redirecting on a guess.
+ * Its `x-default`, the version for a searcher whose language the shop does not have, is the
+ * English version of the same page, never the home page. Every page also carries `og:locale`, and
+ * a public page its other languages as `og:locale:alternate`, for link previews. Private pages (account, cart, checkout, sign-in…) get `noindex` and no
  * alternates — they are locale-prefixed so a customer stays in their language, not to be found.
  *
  * A not-found page ({@link notFoundRouteMeta}) is treated the same way, and on the server it also
@@ -115,7 +117,19 @@ export class LocaleSeo {
 		for (const locale of SUPPORTED_LOCALES) {
 			this.setLink('alternate', locale, this.absolute(withLocale(locale, appPath)));
 		}
-		this.setLink('alternate', 'x-default', this.absolute('/'));
+		this.setLink('alternate', 'x-default', this.absolute(withLocale(DEFAULT_LOCALE, appPath)));
+	}
+
+	/** `og:locale` for this page's language; the other languages only on a page meant to be found. */
+	private setOpenGraphLocales(publicPage: boolean): void {
+		this.meta.updateTag({ property: 'og:locale', content: OPEN_GRAPH_LOCALES[this.locale] });
+		this.meta.getTags("property='og:locale:alternate'").forEach((tag) => this.meta.removeTagElement(tag));
+		if (!publicPage) return;
+		for (const locale of SUPPORTED_LOCALES) {
+			if (locale !== this.locale) {
+				this.meta.addTag({ property: 'og:locale:alternate', content: OPEN_GRAPH_LOCALES[locale] });
+			}
+		}
 	}
 
 	private applyDefaults(appUrl: string): void {
@@ -125,7 +139,9 @@ export class LocaleSeo {
 		// The address middleware may already have ruled this address gone; that answer stands.
 		if (notFound && this.response && this.response.statusCode !== 410) this.response.statusCode = 404;
 		if (gone && this.response) this.response.statusCode = 410;
-		if (notFound || gone || isPrivatePath(path)) {
+		const hidden = notFound || gone || isPrivatePath(path);
+		this.setOpenGraphLocales(!hidden);
+		if (hidden) {
 			this.meta.updateTag({ name: 'robots', content: 'noindex,follow' });
 			this.doc.head
 				.querySelectorAll("link[rel='canonical'], link[rel='alternate'][hreflang]")

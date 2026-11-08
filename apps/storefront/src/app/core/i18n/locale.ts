@@ -19,6 +19,12 @@ export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'en';
 
 /**
+ * The Open Graph name of each language (`og:locale`), so WhatsApp, Facebook and other link
+ * previews know what language a shared page is in. English is the Indian English the shop writes.
+ */
+export const OPEN_GRAPH_LOCALES: Readonly<Record<Locale, string>> = { en: 'en_IN', fr: 'fr_FR' };
+
+/**
  * The visitor's last explicit choice from the language switcher.
  *
  * Read only to answer `/`. Nothing redirects on it anywhere else, and nothing writes it except the

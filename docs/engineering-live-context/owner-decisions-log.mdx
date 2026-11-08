@@ -393,7 +393,12 @@ reciprocal, self-referencing hreflang with `x-default`).
   non-redirecting "view this page in French?" suggestion is permitted later, behind its own UI
   brief.
 - **hreflang:** every indexable page lists every active locale including itself, as fully
-  qualified URLs, plus `x-default` → `/`.
+  qualified URLs, plus `x-default` → the same page in English (`/en/…`). _Amended 2026-11-08 by
+  the owner: it was `x-default` → `/`, which sent every searcher outside the shop's languages to
+  the home page instead of the page they searched for._
+- **Link previews:** every page carries `og:locale` for its language (`en_IN`, `fr_FR`, later
+  `bn_IN`), and an indexable page lists its other languages as `og:locale:alternate` (owner,
+  2026-11-08).
 - **Currency and country are never in the URL.** Prices are canonical INR converted per visitor.
 - **Redirects:** legacy WooCommerce paths and today's unprefixed public paths are resolved by the
   legacy resolver recorded in the 2026-11-04 owner round (exact row, then a same-path `/en/`

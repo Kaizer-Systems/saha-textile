@@ -2,6 +2,7 @@ import type { Model } from 'mongoose';
 
 import {
 	AttributeDefinitionModel,
+	BlogPostModel,
 	CategoryModel,
 	ContentBlockModel,
 	ProductModel,
@@ -43,4 +44,7 @@ export const MEDIA_OWNER_REGISTRY: readonly MediaOwnerEntry[] = [
 	entry('category share image', as(CategoryModel), 'seo.ogImageAssetId'),
 	entry('review photos', as(ReviewModel), 'imageAssetIds'),
 	entry('banner or content block', as(ContentBlockModel), 'assetIds'),
+	entry('blog cover', as(BlogPostModel), 'coverAssetId'),
+	entry('blog share image', as(BlogPostModel), 'shareImageAssetId'),
+	entry('blog post picture', as(BlogPostModel), 'assetIds'),
 ];

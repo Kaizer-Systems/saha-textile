@@ -22,6 +22,7 @@ export const API_TAGS = {
 	privacy: 'privacy',
 	media: 'media',
 	reviews: 'reviews',
+	blog: 'blog',
 } as const;
 
 export type ApiTag = (typeof API_TAGS)[keyof typeof API_TAGS];
@@ -57,5 +58,10 @@ export const API_TAG_DESCRIPTIONS: ReadonlyArray<{ name: ApiTag; description: st
 	{
 		name: API_TAGS.reviews,
 		description: 'Verified-buyer reviews with photos, and their moderation. Photos stay private until approved.',
+	},
+	{
+		name: API_TAGS.blog,
+		description:
+			'Blog posts, categories and tags. The shop reads live posts in one language; the admin writes every language and goes live only when all are complete.',
 	},
 ];

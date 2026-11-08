@@ -55,3 +55,6 @@ export const REVIEW_REPOSITORY = Symbol('ReviewRepository');
 export const MEDIA_JOB_QUEUE = Symbol('MediaJobQueuePort');
 export const CDN_PURGE = Symbol('CdnPurgePort');
 export const YOUTUBE_PORT = Symbol('YouTubePort');
+export const BLOG_POST_REPOSITORY = Symbol('BlogPostRepository');
+export const BLOG_CATEGORY_REPOSITORY = Symbol('BlogCategoryRepository');
+export const BLOG_TAG_REPOSITORY = Symbol('BlogTagRepository');

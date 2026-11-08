@@ -73,6 +73,7 @@ describe('media owner registry', () => {
 			'categories',
 			'reviews',
 			'contentBlocks',
+			'blogPosts',
 		]) {
 			expect(collections.has(name)).toBe(true);
 		}

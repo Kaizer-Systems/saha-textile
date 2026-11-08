@@ -99,6 +99,9 @@ export const COLLECTION_NAMES = {
 	Review: 'reviews',
 	RatingAggregate: 'ratingAggregates',
 	ContentBlock: 'contentBlocks',
+	BlogPost: 'blogPosts',
+	BlogCategory: 'blogCategories',
+	BlogTag: 'blogTags',
 	/** Typed site settings: home hero layout, YouTube rail settings and cache. */
 	SiteSetting: 'siteSettings',
 	SeoRedirect: 'seoRedirects',

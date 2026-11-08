@@ -850,7 +850,8 @@ describe('catalogue controllers', () => {
 			livePaths: vi.fn(async () => 'paths'),
 		};
 		const recent = { list: vi.fn(async () => 'recent') };
-		const controller = new StorefrontCatalogController(catalog as never, recent as never);
+		const blog = { sitemapPaths: vi.fn(async () => ['/en/blog/real-banarasi']) };
+		const controller = new StorefrontCatalogController(catalog as never, recent as never, blog as never);
 		expect(await controller.home()).toBe('home');
 		expect(await controller.placement({ path: 'x' } as never)).toBe('placement');
 		await controller.cards({ slug: 'a' } as never);
@@ -861,7 +862,7 @@ describe('catalogue controllers', () => {
 		expect(catalog.cardsForSlugs).toHaveBeenLastCalledWith([]);
 		expect(await controller.recent()).toBe('recent');
 		expect(await controller.seoRoute({ path: '/x', locale: 'en' } as never)).toEqual({ route: 'route' });
-		expect(await controller.sitemap()).toEqual({ paths: ['/en/'] });
+		expect(await controller.sitemap()).toEqual({ paths: ['/en/', '/en/blog/real-banarasi'] });
 		expect(await controller.livePaths()).toBe('paths');
 	});
 

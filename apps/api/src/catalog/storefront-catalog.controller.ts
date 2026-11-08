@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CatalogCardsQuery, CatalogPlacementQuery, CatalogSeoRouteQuery } from '@saha-textile/contracts';
 
 import { Public } from '../auth/session.guard';
+import { BlogPublicService } from '../blog/blog-public.service';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { API_TAGS } from '../openapi-tags';
 import { CatalogEtagInterceptor } from './catalog-etag.interceptor';
@@ -22,6 +23,7 @@ export class StorefrontCatalogController {
 	constructor(
 		private readonly catalog: CatalogPublicService,
 		private readonly recentPurchases: RecentPurchasesService,
+		private readonly blog: BlogPublicService,
 	) {}
 
 	@Get('home')
@@ -66,7 +68,8 @@ export class StorefrontCatalogController {
 	@Header('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600')
 	@ApiOperation({ operationId: 'catalogSitemap', summary: 'Indexable addresses for the sitemap' })
 	async sitemap() {
-		return { paths: await this.catalog.sitemapPaths() };
+		const [catalog, posts] = await Promise.all([this.catalog.sitemapPaths(), this.blog.sitemapPaths()]);
+		return { paths: [...catalog, ...posts].sort() };
 	}
 
 	@Get('live-paths')

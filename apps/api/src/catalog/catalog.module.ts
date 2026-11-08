@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
+import { BlogModule } from '../blog/blog.module';
 import { AdminAddonTemplatesController } from './admin-addon-templates.controller';
 import { AdminFaqController, AdminQuestionsController, FaqController, QuestionsController } from './content.controller';
 import { AdminProductsController } from './admin-products.controller';
@@ -20,7 +21,7 @@ import { StorefrontCatalogController } from './storefront-catalog.controller';
 import { TaxonomyService } from './taxonomy.service';
 
 @Module({
-	imports: [AuthModule],
+	imports: [AuthModule, BlogModule],
 	controllers: [
 		ProductsController,
 		CategoriesController,

@@ -223,8 +223,12 @@ const role = (overrides: Partial<MediaRoleDefinition>): MediaRoleDefinition => (
 describe('checkIngest for blogs', () => {
 	const blog = { purpose: 'blog' as const, contentType: 'image/jpeg', byteSize: 1000 };
 	it('warns on a narrow blog image only', () => {
-		expect(checkIngest({ ...blog, width: 900, height: 506 }).warnings).toContain('below_recommended_size');
-		expect(checkIngest({ ...blog, width: 2400, height: 1350 }).warnings).not.toContain('below_recommended_size');
+		expect(checkIngest({ ...blog, width: 900, height: 450 }).warnings).toContain('below_recommended_size');
+		expect(checkIngest({ ...blog, width: 2400, height: 1200 }).warnings).not.toContain('below_recommended_size');
+	});
+	it('takes a 2:1 cover as on shape and a 16:9 one as off shape', () => {
+		expect(checkIngest({ ...blog, width: 1774, height: 887 }).warnings).not.toContain('aspect_off_target');
+		expect(checkIngest({ ...blog, width: 2400, height: 1350 }).warnings).toContain('aspect_off_target');
 	});
 });
 

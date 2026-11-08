@@ -16,13 +16,14 @@ export const MEDIA_INGEST_POLICY = {
 	targetAspect: {
 		product: { width: 3, height: 4 },
 		category: { width: 3, height: 4 },
-		blog: { width: 16, height: 9 },
+		/** Blog covers are 2:1 (blog brief, 2026-11-08): list card, post header, home rail and share card. */
+		blog: { width: 2, height: 1 },
 		avatar: { width: 1, height: 1 },
 		icon: { width: 1, height: 1 },
 	} as Readonly<Partial<Record<MediaPurpose, { width: number; height: number }>>>,
 	/** Below this long edge a review photo still uploads, with a warning. */
 	reviewWarnBelowLongEdge: 500,
-	/** Blog photos below this warn (16:9 at ≥2400×1350 is the recommendation). */
+	/** Blog photos below this warn (2:1 at ≥2400×1200 is the recommendation). */
 	blogRecommendedWidth: 2400,
 	maxReviewPhotos: 5,
 	acceptedTypes: ['image/jpeg', 'image/png'] as const,

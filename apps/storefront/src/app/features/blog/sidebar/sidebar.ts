@@ -15,12 +15,8 @@ import {
 } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 
-import { IBlog } from '@data-access/interfaces/blog.interface';
-import { ICategoryModel } from '@data-access/interfaces/category.interface';
-import { ITagModel } from '@data-access/interfaces/tag.interface';
-import { injectRecentBlogsQuery } from '@data-access/queries/blog.queries';
-import { injectBlogCategoriesQuery } from '@data-access/queries/category.queries';
-import { injectTagsQuery } from '@data-access/queries/tag.queries';
+import { ApiBlogTerm, IBlog } from '@data-access/interfaces/blog.interface';
+import { injectBlogTermsQuery, injectRecentBlogsQuery } from '@data-access/queries/blog.queries';
 import { BlogService } from '@data-access/services/blog.service';
 
 import { SkeletonBlog } from '../skeleton-blog/skeleton-blog';
@@ -52,16 +48,11 @@ import { RecentPost } from './recent-post/recent-post';
 export class BlogSidebar {
 	blogService = inject(BlogService);
 
-	private readonly recentBlogsQuery = injectRecentBlogsQuery(() => ({
-		status: 1,
-		type: 'post',
-		paginate: 5,
-	}));
+	/** The five newest posts (brief § 1, item 9). */
+	private readonly recentBlogsQuery = injectRecentBlogsQuery(() => ({ paginate: 5 }));
 	resentBlog$: Observable<IBlog[]> = toObservable(computed(() => this.recentBlogsQuery.data() ?? []));
-	private readonly tagsQuery = injectTagsQuery(() => ({ status: 1, type: 'post' }));
-	tag$: Observable<ITagModel> = toObservable(computed(() => this.tagsQuery.data() ?? { data: [], total: 0 }));
-	private readonly categoriesQuery = injectBlogCategoriesQuery(() => ({ status: 1 }));
-	category$: Observable<ICategoryModel> = toObservable(
-		computed(() => this.categoriesQuery.data() ?? { data: [], total: 0 }),
-	);
+	private readonly tagsQuery = injectBlogTermsQuery('tags');
+	tag$: Observable<ApiBlogTerm[]> = toObservable(computed(() => this.tagsQuery.data() ?? []));
+	private readonly categoriesQuery = injectBlogTermsQuery('categories');
+	category$: Observable<ApiBlogTerm[]> = toObservable(computed(() => this.categoriesQuery.data() ?? []));
 }

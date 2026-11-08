@@ -23,10 +23,10 @@ import { BlogCarousel } from '@shared/ui/blog-carousel/blog-carousel';
 export class ProductBlogs {
 	readonly product = input<IProduct | undefined>();
 
-	private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1, paginate: 15 }));
+	private readonly blogsQuery = injectBlogsQuery(() => ({ paginate: 15 }));
 
 	readonly blogs = computed<IBlog[]>(() => {
-		const ids = this.product()?.related_blog_ids ?? [];
+		const ids = (this.product()?.related_blog_ids ?? []).map(String);
 		if (!ids.length) return [];
 		const res = this.blogsQuery.data();
 		const list: IBlog[] = Array.isArray(res) ? res : (res?.data ?? []);

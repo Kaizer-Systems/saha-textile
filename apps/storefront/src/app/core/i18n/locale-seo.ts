@@ -82,6 +82,30 @@ export class LocaleSeo {
 		script.textContent = JSON.stringify(data);
 	}
 
+	/** Takes a page's structured data away when the page goes, so the next page does not inherit it. */
+	removeJsonLd(id: string): void {
+		this.doc.getElementById(id)?.remove();
+	}
+
+	/**
+	 * Marks the page as an article for link previews (`og:type`), with its dates. Every navigation
+	 * resets the type to `website` and drops the dates, so only the article page itself carries them.
+	 */
+	applyArticle(input: { publishedTime: string; modifiedTime: string; section?: string; tags?: string[] }): void {
+		this.meta.updateTag({ property: 'og:type', content: 'article' });
+		this.meta.updateTag({ property: 'article:published_time', content: input.publishedTime });
+		this.meta.updateTag({ property: 'article:modified_time', content: input.modifiedTime });
+		this.removeArticleTags(['article:section', 'article:tag']);
+		if (input.section) this.meta.addTag({ property: 'article:section', content: input.section });
+		for (const tag of input.tags ?? []) this.meta.addTag({ property: 'article:tag', content: tag });
+	}
+
+	private removeArticleTags(properties: readonly string[]): void {
+		for (const property of properties) {
+			this.meta.getTags(`property='${property}'`).forEach((tag) => this.meta.removeTagElement(tag));
+		}
+	}
+
 	applyDocument(input: { title?: string; description?: string; robots?: string; image?: string }): void {
 		if (input.title) {
 			this.doc.title = input.title;
@@ -113,7 +137,9 @@ export class LocaleSeo {
 	 * URLs, and a filtered or extra-placement URL is not one of them.
 	 */
 	setCanonicalPath(appPath: string): void {
-		this.setLink('canonical', null, this.absolute(withLocale(this.locale, appPath)));
+		const canonical = this.absolute(withLocale(this.locale, appPath));
+		this.setLink('canonical', null, canonical);
+		this.meta.updateTag({ property: 'og:url', content: canonical });
 		for (const locale of SUPPORTED_LOCALES) {
 			this.setLink('alternate', locale, this.absolute(withLocale(locale, appPath)));
 		}
@@ -141,7 +167,10 @@ export class LocaleSeo {
 		if (gone && this.response) this.response.statusCode = 410;
 		const hidden = notFound || gone || isPrivatePath(path);
 		this.setOpenGraphLocales(!hidden);
+		this.meta.updateTag({ property: 'og:type', content: 'website' });
+		this.removeArticleTags(['article:published_time', 'article:modified_time', 'article:section', 'article:tag']);
 		if (hidden) {
+			this.meta.removeTag("property='og:url'");
 			this.meta.updateTag({ name: 'robots', content: 'noindex,follow' });
 			this.doc.head
 				.querySelectorAll("link[rel='canonical'], link[rel='alternate'][hreflang]")

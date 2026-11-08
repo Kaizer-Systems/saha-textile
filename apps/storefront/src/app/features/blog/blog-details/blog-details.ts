@@ -1,66 +1,128 @@
-import { AsyncPipe, DatePipe, NgClass } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { Meta } from '@angular/platform-browser';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 
-import { SiteConfigStore } from '@core/state/site-config.store';
+import { LocaleSeo } from '@core/i18n/locale-seo';
 import { IBlog } from '@data-access/interfaces/blog.interface';
 import { IBreadcrumb } from '@data-access/interfaces/breadcrumb';
-import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { injectBlogBySlugQuery } from '@data-access/queries/blog.queries';
+import { injectBrandQuery } from '@data-access/queries/brand.queries';
+import { ShopDatePipe } from '@shared/pipes/shop-date.pipe';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 
 import { BlogSidebar } from '../sidebar/sidebar';
 
+const BRAND = 'Saha Textile';
+const JSON_LD_IDS = ['blog-post', 'blog-post-crumbs'];
+
+/**
+ * A blog post: cover, title, byline and date over the article, with the left sidebar (hidden on
+ * phones, owner log § blog). The page sends its own title, description, share card (`og:type`
+ * article) and BlogPosting and BreadcrumbList data, in the page language.
+ */
 @Component({
 	selector: 'app-blog-details',
 	templateUrl: './blog-details.html',
 	styleUrls: ['./blog-details.scss'],
-	imports: [Breadcrumb, NgClass, BlogSidebar, AsyncPipe, DatePipe],
+	imports: [Breadcrumb, BlogSidebar, ShopDatePipe, TranslocoModule],
 })
 export class BlogDetails {
-	private meta = inject(Meta);
 	private route = inject(ActivatedRoute);
+	private router = inject(Router);
+	private seo = inject(LocaleSeo);
+	private transloco = inject(TranslocoService);
+	private readonly brandQuery = injectBrandQuery();
 
 	private readonly slug = signal<string | undefined>(undefined);
 	private readonly blogQuery = injectBlogBySlugQuery(() => this.slug());
-	blog$: Observable<IBlog | undefined> = toObservable(computed(() => this.blogQuery.data()));
-	siteConfig$: Observable<ISiteConfig> = toObservable(inject(SiteConfigStore).siteConfig) as Observable<ISiteConfig>;
+	readonly blog = computed<IBlog | undefined>(() => this.blogQuery.data());
+	blog$: Observable<IBlog | undefined> = toObservable(this.blog);
 
-	public breadcrumb: IBreadcrumb = {
-		title: '',
-		items: [],
-	};
-
-	public sidebar: string;
+	readonly breadcrumb = computed<IBreadcrumb>(() => {
+		const blog = this.blog();
+		const blogs = this.transloco.translate('blogs');
+		return {
+			title: blog?.title ?? '',
+			items: [
+				{ label: blogs, url: '/blogs', active: false },
+				...(blog ? [{ label: blog.title, active: true }] : []),
+			],
+		};
+	});
 
 	constructor() {
-		// Blog looked up by slug via the query (was BlogResolver + selectedBlog).
 		this.route.params.subscribe((params) => this.slug.set(params['slug']));
 
-		this.blog$.subscribe((blog) => {
-			if (!blog) return;
-			this.breadcrumb.items = [];
-			this.breadcrumb.title = blog.title;
-			this.breadcrumb.items.push({ label: 'Blog', active: true }, { label: blog.title, active: false });
-			blog?.meta_title && this.meta.updateTag({ property: 'og:title', content: blog?.meta_title });
-			blog?.meta_description &&
-				this.meta.updateTag({ property: 'og:description', content: blog?.meta_description });
+		// Not found only when the API says so. A server render that timed out leaves the page to the browser.
+		effect(() => {
+			const error = this.blogQuery.error();
+			if (error instanceof HttpErrorResponse && error.status === 404) {
+				void this.router.navigate(['/404'], { skipLocationChange: true });
+			}
 		});
 
-		// For Demo Purpose only
-		this.route.queryParams.subscribe((params) => {
-			if (params['sidebar']) {
-				this.sidebar = params['sidebar'];
-			} else {
-				// Get Blog Layout
-				this.siteConfig$.subscribe((theme) => {
-					this.sidebar = theme?.blog.blog_sidebar_type;
-				});
-			}
+		effect(() => {
+			const blog = this.blog();
+			if (!blog) return;
+			this.applyHead(blog);
+		});
+
+		inject(DestroyRef).onDestroy(() => JSON_LD_IDS.forEach((id) => this.seo.removeJsonLd(id)));
+	}
+
+	private applyHead(blog: IBlog): void {
+		const path = `/blog/${blog.slug}`;
+		const image = blog.share_image ?? blog.blog_thumbnail;
+		this.seo.setCanonicalPath(path);
+		this.seo.applyDocument({
+			title: blog.seo_title || `${blog.title} | ${BRAND}`,
+			description: blog.seo_description,
+			image: image?.original_url,
+		});
+		this.seo.applyArticle({
+			publishedTime: blog.published_at,
+			modifiedTime: blog.updated_at,
+			section: blog.categories[0]?.name,
+			tags: blog.tags.map((tag) => tag.name),
+		});
+		const logo = this.brandQuery.data()?.icons?.['512'];
+		this.seo.applyJsonLd('blog-post', {
+			'@context': 'https://schema.org',
+			'@type': 'BlogPosting',
+			mainEntityOfPage: { '@type': 'WebPage', '@id': this.seo.absoluteUrl(path) },
+			headline: blog.title,
+			description: blog.seo_description,
+			...(image ? { image: [this.seo.absoluteAsset(image.original_url)] } : {}),
+			datePublished: blog.published_at,
+			dateModified: blog.updated_at,
+			inLanguage: this.transloco.getActiveLang(),
+			author: { '@type': 'Organization', name: blog.author, url: this.seo.absoluteUrl('/') },
+			publisher: {
+				'@type': 'Organization',
+				name: BRAND,
+				url: this.seo.absoluteUrl('/'),
+				...(logo ? { logo: { '@type': 'ImageObject', url: this.seo.absoluteAsset(logo) } } : {}),
+			},
+			...(blog.categories[0] ? { articleSection: blog.categories[0].name } : {}),
+			...(blog.tags.length ? { keywords: blog.tags.map((tag) => tag.name).join(', ') } : {}),
+		});
+		this.seo.applyJsonLd('blog-post-crumbs', {
+			'@context': 'https://schema.org',
+			'@type': 'BreadcrumbList',
+			itemListElement: [
+				{ name: this.transloco.translate('home'), path: '/' },
+				{ name: this.transloco.translate('blogs'), path: '/blogs' },
+				{ name: blog.title, path },
+			].map((crumb, index) => ({
+				'@type': 'ListItem',
+				position: index + 1,
+				name: crumb.name,
+				item: this.seo.absoluteUrl(crumb.path),
+			})),
 		});
 	}
 }

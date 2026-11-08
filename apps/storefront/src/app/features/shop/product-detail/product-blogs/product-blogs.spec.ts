@@ -31,11 +31,11 @@ describe('ProductBlogs', () => {
 	});
 
 	it('picks the linked posts from a list or a page of results', () => {
-		const product = { related_blog_ids: [1] };
-		data.set({ data: [{ id: 1 }, { id: 2 }] });
-		expect(render(product).blogs()).toEqual([{ id: 1 }]);
-		data.set([{ id: 1 }]);
-		expect(render(product).blogs()).toEqual([{ id: 1 }]);
+		const product = { related_blog_ids: ['blg_1'] };
+		data.set({ data: [{ id: 'blg_1' }, { id: 'blg_2' }] });
+		expect(render(product).blogs()).toEqual([{ id: 'blg_1' }]);
+		data.set([{ id: 'blg_1' }]);
+		expect(render(product).blogs()).toEqual([{ id: 'blg_1' }]);
 		data.set(undefined);
 		expect(render(product).blogs()).toEqual([]);
 		data.set({});

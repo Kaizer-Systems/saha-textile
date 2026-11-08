@@ -51,8 +51,6 @@ beforeEach(() => {
 
 const reads: [string, () => unknown, string, unknown][] = [
 	['attributes', () => TestBed.inject(AttributeService).getAttributes({ a: 1 }), '/attribute.json', { a: 1 }],
-	['blogs', () => TestBed.inject(BlogService).getBlogs({ a: 1 }), '/blog.json', { a: 1 }],
-	['blog categories', () => TestBed.inject(CategoryService).getBlogCategories({ a: 1 }), '/category.json', { a: 1 }],
 	['coupons', () => TestBed.inject(CouponService).getCoupons({ a: 1 }), '/coupon.json', { a: 1 }],
 	['currencies', () => TestBed.inject(CurrencyService).getCurrencies({ a: 1 }), '/currency.json', { a: 1 }],
 	['order status', () => TestBed.inject(OrderStatusService).getOrderStatus({ a: 1 }), '/order-status.json', { a: 1 }],
@@ -75,6 +73,82 @@ const plainReads: [string, () => unknown, string][] = [
 	['wishlist', () => TestBed.inject(WishlistService).getWishlistItems(), '/wishlist.json'],
 	['a static page', () => TestBed.inject(PageService).getPage('about'), '/pages/about.json'],
 ];
+
+describe('blog service', () => {
+	const card = {
+		id: 'blg_1',
+		slug: 'real-banarasi',
+		title: 'Real Banarasi',
+		excerpt: 'Seven checks',
+		author: 'Saha Textile',
+		publishedAt: '2026-11-08T00:00:00.000Z',
+		featured: false,
+		sticky: true,
+		readingMinutes: 6,
+		cover: {
+			assetId: 'm',
+			width: 1774,
+			height: 887,
+			alt: 'A red Banarasi',
+			roles: {
+				blog: [
+					{ url: 'https://cdn/480.webp', width: 480, height: 240 },
+					{ url: 'https://cdn/1600.webp', width: 1600, height: 800 },
+				],
+			},
+		},
+		categories: [{ slug: 'saree-guides', name: 'Saree guides' }],
+		tags: [],
+	};
+
+	it('reads a page of posts from the API as cards', async () => {
+		http.get.mockReturnValue(of({ items: [card], total: 1, page: 1, pageSize: 10 }));
+		const page = await firstValueFrom(
+			TestBed.inject(BlogService).getBlogs({ page: 2, paginate: 99, tag: 'silk', category: '' }),
+		);
+		expect(String(http.get.mock.lastCall?.[0])).toContain('/catalog/blog/posts');
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { page: '2', pageSize: '50', tag: 'silk' } });
+		expect(page.total).toBe(1);
+		expect(page.data[0]).toMatchObject({
+			id: 'blg_1',
+			description: 'Seven checks',
+			published_at: '2026-11-08T00:00:00.000Z',
+			is_sticky: 1,
+			blog_thumbnail: {
+				original_url: 'https://cdn/1600.webp',
+				srcset: 'https://cdn/480.webp 480w, https://cdn/1600.webp 1600w',
+				alt: 'A red Banarasi',
+			},
+			content: '',
+		});
+		await firstValueFrom(TestBed.inject(BlogService).getBlogs());
+		expect(http.get.mock.lastCall?.[1]).toEqual({ params: { page: '1', pageSize: '10' } });
+	});
+
+	it('reads one post with its article and search text, and the sidebar terms', async () => {
+		const post = {
+			...card,
+			sticky: false,
+			cover: null,
+			content: '<p>Checks</p>',
+			seoTitle: 'Real Banarasi | Saha Textile',
+			seoDescription: 'Seven checks',
+			shareImage: null,
+			updatedAt: '2026-11-09T00:00:00.000Z',
+		};
+		http.get.mockReturnValue(of(post));
+		const blog = await firstValueFrom(TestBed.inject(BlogService).getBlog('real banarasi'));
+		expect(String(http.get.mock.lastCall?.[0])).toContain('/catalog/blog/posts/real%20banarasi');
+		expect(blog).toMatchObject({
+			content: '<p>Checks</p>',
+			is_sticky: 0,
+			blog_thumbnail: null,
+			updated_at: post.updatedAt,
+		});
+		TestBed.inject(BlogService).getTerms('tags');
+		expect(String(http.get.mock.lastCall?.[0])).toContain('/catalog/blog/tags');
+	});
+});
 
 describe('read services', () => {
 	it.each(reads)('%s passes its parameters', (_name, call, path, params) => {

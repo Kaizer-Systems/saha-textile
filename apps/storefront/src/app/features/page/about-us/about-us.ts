@@ -28,7 +28,7 @@ export interface Clients {
 	imports: [Breadcrumb, CarouselModule, RouterLink, AsyncPipe, TranslocoModule],
 })
 export class AboutUs {
-	private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1, paginate: 10 }));
+	private readonly blogsQuery = injectBlogsQuery(() => ({ paginate: 10 }));
 	blog$: Observable<IBlogModel | undefined> = toObservable(computed(() => this.blogsQuery.data()));
 
 	public breadcrumb = translatedBreadcrumb('about_us');

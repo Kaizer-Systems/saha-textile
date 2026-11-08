@@ -110,12 +110,12 @@ export class Home {
 		product_ids: [934, 936, 922, 917, 923, 921, 926, 903],
 	};
 
-	// Featured blog rail ported from Osaka's home. The blog widget fetches blogs
-	// itself and filters to these ids.
+	// Featured blog rail ported from Osaka's home. The blog widget fetches the newest live posts,
+	// sticky ones first; no ids pins none.
 	public featuredBlogs = {
-		title: 'Featured Blog',
-		description: 'Uncover Intriguing Highlights in Our Featured Blog',
-		blog_ids: [24, 23, 22, 21, 20, 19],
+		title: 'featured_blog',
+		description: 'featured_blog_description',
+		blog_ids: [] as string[],
 	};
 
 	private readonly bannersQuery = injectBannersQuery(() => 'home');

@@ -1,11 +1,11 @@
 <div class="accordion-body pt-0">
 	<div class="product-tags-box">
 		<ul>
-			@for (tag of tags(); track tag) {
+			@for (tag of tags(); track tag.slug) {
 			<li>
 				<a
 					[routerLink]="['/blogs']"
-					[queryParams]="{tag: tag?.slug}"
+					[queryParams]="{ tag: tag.slug }"
 				>
 					{{ tag?.name }}
 				</a>

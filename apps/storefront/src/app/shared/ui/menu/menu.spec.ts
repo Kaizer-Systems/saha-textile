@@ -66,8 +66,19 @@ describe('Menu', () => {
 
 	it('leaves the demo product links alone until real products arrive', () => {
 		const menu = render();
-		expect(menu.menu()).toBe(data.menu);
+		expect(paths(menu.menu())).toEqual(paths(data.menu).map((path) => (path === 'blog/' ? 'blogs' : path)));
 		expect(menu.featuredProductPath()).toBe('/collections');
+	});
+
+	it('lists the blog without the grid layouts, and opens the newest post from Blog details', () => {
+		const menu = render();
+		const blog = menu.menu().find((item) => item.title === 'blog');
+		const titles = (items: IMenu[]): string[] =>
+			items.flatMap((item) => [item.title ?? '', ...titles(item.children ?? [])]);
+		expect(titles(blog?.children ?? [])).toEqual(['', 'blog_pages', 'blog_list', 'blog_details']);
+		blogs.set({ data: [{ slug: 'real-banarasi' }] });
+		expect(paths(menu.menu())).toContain('blog/real-banarasi');
+		expect(paths(data.menu)).toContain('blog/');
 	});
 
 	it('opens real products from the demo links, in turn, without touching the demo data', () => {

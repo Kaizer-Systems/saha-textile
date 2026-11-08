@@ -21,7 +21,7 @@
 							<a [routerLink]="['/blog/', blog?.slug]">
 								<img
 									[src]="blog?.blog_thumbnail?.original_url || 'assets/images/blog.png'"
-									[alt]="blog?.title"
+									[alt]="blog.blog_thumbnail?.alt || blog.title"
 								/>
 							</a>
 						</div>
@@ -32,7 +32,7 @@
 							<div class="blog-label">
 								<span class="time">
 									<i class="ri-time-line"></i>
-									<span>{{ blog?.created_at | date: 'dd MMM yyyy' }}</span>
+									<span>{{ blog.published_at | shopDate }}</span>
 								</span>
 							</div>
 							<a [routerLink]="['/blog/', blog?.slug]">

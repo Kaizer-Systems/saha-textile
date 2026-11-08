@@ -1,4 +1,4 @@
-import { DatePipe, NgClass, NgTemplateOutlet, isPlatformBrowser } from '@angular/common';
+import { NgClass, NgTemplateOutlet, isPlatformBrowser } from '@angular/common';
 import { Component, HostListener, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -13,15 +13,16 @@ import { injectBlogsQuery } from '@data-access/queries/blog.queries';
 import { injectCategoriesQuery } from '@data-access/queries/category.queries';
 import { injectHomeRailsQuery } from '@data-access/queries/product.queries';
 import * as data from '@shared/data/menu';
+import { ShopDatePipe } from '@shared/pipes/shop-date.pipe';
 
 @Component({
 	selector: 'app-menu',
 	templateUrl: './menu.html',
 	styleUrls: ['./menu.scss'],
-	imports: [NgTemplateOutlet, NgClass, RouterLink, DatePipe, TranslocoModule],
+	imports: [NgTemplateOutlet, NgClass, RouterLink, ShopDatePipe, TranslocoModule],
 })
 export class Menu {
-	private readonly blogsQuery = injectBlogsQuery(() => ({ status: 1, paginate: 10 }));
+	private readonly blogsQuery = injectBlogsQuery(() => ({ paginate: 2 }));
 	blog$: Observable<IBlogModel | undefined> = toObservable(computed(() => this.blogsQuery.data()));
 	// Real taxonomy for the header nav. Reference data (staleTime Infinity), shared cache with the rest of the app.
 	private readonly categoriesQuery = injectCategoriesQuery();
@@ -47,7 +48,8 @@ export class Menu {
 	readonly menu = computed<IMenu[]>(() => {
 		const categories = this.categoriesQuery.data()?.data ?? [];
 		const items = categories.length ? this.buildMenu(categories, this.isMobileView()) : data.menu;
-		return this.withRealProducts(items, this.productSlugs());
+		const newestPost = this.blogsQuery.data()?.data[0]?.slug;
+		return this.withNewestPost(this.withRealProducts(items, this.productSlugs()), newestPost);
 	});
 	public blogs: IBlog[];
 
@@ -74,6 +76,16 @@ export class Menu {
 				this.blogs = blog.data.slice(0, 2);
 			}
 		});
+	}
+
+	/** A copy of the menu whose "Blog details" link opens the newest live post, or the blog list. */
+	private withNewestPost(items: IMenu[], slug: string | undefined): IMenu[] {
+		const walk = (nodes: IMenu[]): IMenu[] =>
+			nodes.map((node) => {
+				const path = node.path === 'blog/' ? (slug ? `blog/${slug}` : 'blogs') : node.path;
+				return { ...node, path, ...(node.children ? { children: walk(node.children) } : {}) };
+			});
+		return walk(items);
 	}
 
 	/** A copy of the menu whose `product/…` links each open a real product, in turn. */

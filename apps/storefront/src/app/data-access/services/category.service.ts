@@ -5,7 +5,6 @@ import { Observable, map } from 'rxjs';
 
 import { backgroundRequest } from '@core/interceptors/background-request';
 import { ICategory, ICategoryModel } from '@data-access/interfaces/category.interface';
-import { Params } from '@data-access/interfaces/core.interface';
 import { IAttachment } from '@data-access/interfaces/attachment.interface';
 
 import { environment } from '../../../../public/environments/environment';
@@ -54,10 +53,5 @@ export class CategoryService {
 		return this.http
 			.get<ApiMenuCategory[]>(`${environment.apiUrl}/catalog/categories/menu`, { context: backgroundRequest() })
 			.pipe(map((rows) => ({ data: rows.map(toCategory), total: rows.length }) as ICategoryModel));
-	}
-
-	/** Blog categories have no API yet. */
-	getBlogCategories(payload?: Params): Observable<ICategoryModel> {
-		return this.http.get<ICategoryModel>(`${environment.URL}/category.json`, { params: payload });
 	}
 }

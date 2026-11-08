@@ -180,8 +180,8 @@
 <section>
 	<div class="container-fluid-lg">
 		<app-title
-			[title]="featuredBlogs.title"
-			[description]="featuredBlogs.description"
+			[title]="featuredBlogs.title | transloco"
+			[description]="featuredBlogs.description | transloco"
 		/>
 		<app-blog
 			[blogIds]="featuredBlogs.blog_ids"

@@ -111,9 +111,9 @@
 											class="blog-image"
 										>
 											<img
-												[src]="blog.blog_thumbnail ? blog?.blog_thumbnail?.original_url : 'assets/images/product.png'"
+												[src]="blog.blog_thumbnail?.original_url || 'assets/images/product.png'"
 												class="img-fluid"
-												[alt]="blog.title"
+												[alt]="blog.blog_thumbnail?.alt || blog.title"
 											/>
 										</a>
 									</div>
@@ -122,7 +122,7 @@
 										class="blog-detail"
 										tabindex="0"
 									>
-										<h6>{{ blog.created_at | date: 'dd MMM yyyy hh:mm:a' }}</h6>
+										<h6>{{ blog.published_at | shopDate }}</h6>
 										<h5>{{ blog.title }}</h5>
 									</a>
 								</div>

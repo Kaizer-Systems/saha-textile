@@ -315,7 +315,7 @@
 			<div class="col-12">
 				<div class="slider-dots">
 					<owl-carousel-o [options]="blogOptions">
-						@for (blog of (blog$ | async)?.data; track blog) {
+						@for (blog of (blog$ | async)?.data; track blog.id) {
 						<ng-template carouselSlide>
 							<div>
 								<div class="blog-box">
@@ -335,7 +335,7 @@
 										[routerLink]="['/blog/', blog?.slug]"
 										class="blog-detail d-block"
 									>
-										<h6>{{ blog?.created_by?.name }}</h6>
+										<h6>{{ blog.author }}</h6>
 										<h5>{{ blog?.title }}</h5>
 									</a>
 								</div>

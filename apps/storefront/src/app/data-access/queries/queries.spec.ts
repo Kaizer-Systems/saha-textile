@@ -27,8 +27,8 @@ import { WalletService } from '@data-access/services/wallet.service';
 
 import { injectAttributesQuery } from './attribute.queries';
 import { bannerSrc, bannerSrcset, injectBannersQuery } from './banner.queries';
-import { injectBlogBySlugQuery, injectBlogsQuery, injectRecentBlogsQuery } from './blog.queries';
-import { injectBlogCategoriesQuery, injectCategoriesQuery } from './category.queries';
+import { injectBlogBySlugQuery, injectBlogTermsQuery, injectBlogsQuery, injectRecentBlogsQuery } from './blog.queries';
+import { injectCategoriesQuery } from './category.queries';
 import { injectCountriesQuery } from './country.queries';
 import { injectCouponsQuery } from './coupon.queries';
 import { injectCurrenciesQuery } from './currency.queries';
@@ -82,8 +82,8 @@ beforeEach(() => {
 	TestBed.configureTestingModule({
 		providers: [
 			{ provide: AttributeService, useValue: service('getAttributes') },
-			{ provide: BlogService, useValue: service('getBlogs') },
-			{ provide: CategoryService, useValue: service('getCategories', 'getBlogCategories') },
+			{ provide: BlogService, useValue: service('getBlogs', 'getBlog', 'getTerms') },
+			{ provide: CategoryService, useValue: service('getCategories') },
 			{ provide: CountryService, useValue: service('getCountries') },
 			{ provide: CouponService, useValue: service('getCoupons') },
 			{ provide: CurrencyService, useValue: service('getCurrencies') },
@@ -115,8 +115,9 @@ const params = () => ({ status: 1 });
 describe('list queries', () => {
 	it.each<[string, () => unknown, unknown[]]>([
 		['attributes', () => injectAttributesQuery(params), ['attributes', { status: 1 }]],
-		['blogs', () => injectBlogsQuery(params), ['blogs', { status: 1 }]],
-		['blog categories', () => injectBlogCategoriesQuery(params), ['blog-categories', { status: 1 }]],
+		['blogs', () => injectBlogsQuery(params), ['blogs', 'en', { status: 1 }]],
+		['blog categories', () => injectBlogTermsQuery('categories'), ['blogs', 'en', 'categories']],
+		['blog tags', () => injectBlogTermsQuery('tags'), ['blogs', 'en', 'tags']],
 		['categories', () => injectCategoriesQuery(), ['categories', 'en']],
 		['countries', () => injectCountriesQuery(), ['countries']],
 		['coupons', () => injectCouponsQuery(params), ['coupons', { status: 1 }]],
@@ -145,11 +146,11 @@ describe('selecting queries', () => {
 		expect(query.select?.({ data: [1] } as never)).toEqual([1]);
 	});
 
-	it('a post is found by slug, and only asked for with one', async () => {
+	it('a post is read by slug in the page language, and only asked for with one', async () => {
 		const query = options(() => injectBlogBySlugQuery(() => 'care'));
 		await query.queryFn();
 		expect(query.enabled).toBe(true);
-		expect(query.select?.({ data: [{ slug: 'care' }, { slug: 'x' }] } as never)).toEqual({ slug: 'care' });
+		expect(query.queryKey).toEqual(['blogs', 'en', 'post', 'care']);
 		expect(options(() => injectBlogBySlugQuery(() => undefined)).enabled).toBe(false);
 	});
 

@@ -49,7 +49,7 @@ afterEach(() => {
 	runtimeConfig.siteUrl = originalSite;
 	document.head
 		.querySelectorAll(
-			"link[rel='canonical'], link[rel='alternate'], meta[name='robots'], meta[property^='og:locale']",
+			"link[rel='canonical'], link[rel='alternate'], meta[name='robots'], meta[property^='og:'], meta[property^='article:']",
 		)
 		.forEach((node) => node.remove());
 });
@@ -162,5 +162,51 @@ describe('LocaleSeo', () => {
 		navigate('/product/red-katan');
 
 		expect(response.statusCode).toBe(200);
+	});
+
+	it('names the page address for link previews, and drops it on a private page', () => {
+		runtimeConfig.siteUrl = SITE;
+		const { navigate, doc } = harness('en');
+		const ogUrl = () => doc.head.querySelector("meta[property='og:url']")?.getAttribute('content') ?? null;
+		navigate('/blog/real-banarasi');
+		expect(ogUrl()).toBe(`${SITE}/en/blog/real-banarasi`);
+		navigate('/account/dashboard');
+		expect(ogUrl()).toBeNull();
+	});
+
+	it('marks an article with its dates and tags, and every next page as a website again', () => {
+		runtimeConfig.siteUrl = SITE;
+		const { seo, navigate, doc } = harness('en');
+		const content = (property: string) =>
+			[...doc.head.querySelectorAll(`meta[property='${property}']`)].map((tag) => tag.getAttribute('content'));
+		navigate('/blog/real-banarasi');
+		seo.applyArticle({
+			publishedTime: '2026-11-08T00:00:00.000Z',
+			modifiedTime: '2026-11-09T00:00:00.000Z',
+			section: 'Saree guides',
+			tags: ['Banarasi', 'Wedding'],
+		});
+		seo.applyArticle({
+			publishedTime: '2026-11-08T00:00:00.000Z',
+			modifiedTime: '2026-11-09T00:00:00.000Z',
+			tags: ['Silk'],
+		});
+		expect(content('og:type')).toEqual(['article']);
+		expect(content('article:published_time')).toEqual(['2026-11-08T00:00:00.000Z']);
+		expect(content('article:section')).toEqual([]);
+		expect(content('article:tag')).toEqual(['Silk']);
+		navigate('/blogs');
+		expect(content('og:type')).toEqual(['website']);
+		expect(content('article:published_time')).toEqual([]);
+		expect(content('article:tag')).toEqual([]);
+	});
+
+	it('removes a page’s structured data when asked', () => {
+		const { seo, doc } = harness('en');
+		seo.applyJsonLd('blog-post', { '@type': 'BlogPosting' });
+		expect(doc.getElementById('blog-post')).not.toBeNull();
+		seo.removeJsonLd('blog-post');
+		seo.removeJsonLd('blog-post');
+		expect(doc.getElementById('blog-post')).toBeNull();
 	});
 });

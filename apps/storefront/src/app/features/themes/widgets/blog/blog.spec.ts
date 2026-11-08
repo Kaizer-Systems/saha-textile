@@ -9,14 +9,14 @@ import { BlogService } from '@data-access/services/blog.service';
 
 import { Blog } from './blog';
 
-const model = (...ids: number[]) => ({ data: ids.map((id) => ({ id }) as IBlog) }) as IBlogModel;
+const model = (...ids: string[]) => ({ data: ids.map((id) => ({ id }) as unknown as IBlog) }) as IBlogModel;
 
 /**
  * The server renders this widget, so its state has to live in signals: a plain field written
  * from a subscription left the placeholders in the server HTML. The real template (carousel,
  * router links) is replaced with a thin one that reads the same bindings.
  */
-function harness(blogIds: number[]) {
+function harness(blogIds: string[]) {
 	const responses: Subject<IBlogModel>[] = [];
 	const client = new QueryClient();
 	TestBed.resetTestingModule();
@@ -58,25 +58,32 @@ function harness(blogIds: number[]) {
 
 describe('the home blog rail', () => {
 	it('has no posts before the first answer', () => {
-		expect(harness([1]).blog.blogs()).toEqual([]);
+		expect(harness(['1']).blog.blogs()).toEqual([]);
 	});
 
 	it('shows placeholders until the first data, then only the chosen posts', async () => {
-		const { el, cards, answer, responses } = harness([2, 3]);
+		const { el, cards, answer, responses } = harness(['2', '3']);
 
 		await vi.waitFor(() => expect(responses).toHaveLength(1));
 		expect(el.querySelectorAll('.placeholder')).toHaveLength(1);
 
-		answer(model(1, 2, 3));
+		answer(model('1', '2', '3'));
 
 		await vi.waitFor(() => expect(cards()).toEqual(['2', '3']));
 		expect(el.querySelector('.placeholder')).toBeNull();
 	});
 
-	it('keeps the cards on screen during a background refetch', async () => {
-		const { client, el, cards, answer, responses } = harness([1]);
+	it('shows the newest posts when none are chosen', async () => {
+		const { cards, answer, responses } = harness([]);
 		await vi.waitFor(() => expect(responses).toHaveLength(1));
-		answer(model(1));
+		answer(model('9', '8'));
+		await vi.waitFor(() => expect(cards()).toEqual(['9', '8']));
+	});
+
+	it('keeps the cards on screen during a background refetch', async () => {
+		const { client, el, cards, answer, responses } = harness(['1']);
+		await vi.waitFor(() => expect(responses).toHaveLength(1));
+		answer(model('1'));
 		await vi.waitFor(() => expect(cards()).toEqual(['1']));
 
 		void client.invalidateQueries();

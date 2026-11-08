@@ -6,7 +6,7 @@
 				<app-skeleton-blog />
 			</ng-template>
 		</ng-container>
-		} } @else { @for (blog of blogs(); track blog) {
+		} } @else { @for (blog of blogs(); track blog.id) {
 		<ng-container carouselSlide>
 			<ng-template carouselSlide>
 				<div>
@@ -21,16 +21,18 @@
 						}
 						<div class="blog-box-image">
 							<a
-								[routerLink]="['/blog/', blog?.slug]"
+								[routerLink]="['/blog/', blog.slug]"
 								class="blog-image bg-size"
-								[style.background-image]="'url(' + (blog.blog_thumbnail ? blog?.blog_thumbnail?.original_url : 'assets/images/product.png') + ')'"
+								role="img"
+								[attr.aria-label]="blog.blog_thumbnail?.alt || blog.title"
+								[style.background-image]="'url(' + (blog.blog_thumbnail?.original_url || 'assets/images/product.png') + ')'"
 							></a>
 						</div>
 						<a
-							[routerLink]="['/blog/', blog?.slug]"
+							[routerLink]="['/blog/', blog.slug]"
 							class="blog-detail"
 						>
-							<h6>{{ blog.created_at | date: 'dd MMM yyyy hh:mm:a' }}</h6>
+							<h6>{{ blog.published_at | shopDate }}</h6>
 							<h5>{{ blog.title }}</h5>
 						</a>
 					</div>

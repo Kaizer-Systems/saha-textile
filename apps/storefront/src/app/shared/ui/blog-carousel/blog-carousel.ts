@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
@@ -6,6 +5,7 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { CarouselModule, OwlOptions } from 'ngx-owl-carousel-o';
 
 import { IBlog } from '@data-access/interfaces/blog.interface';
+import { ShopDatePipe } from '@shared/pipes/shop-date.pipe';
 import { SummaryPipe } from '@shared/pipes/summary.pipe';
 import { Title } from '@shared/ui/title/title';
 
@@ -28,7 +28,7 @@ import { Title } from '@shared/ui/title/title';
 	selector: 'app-blog-carousel',
 	templateUrl: './blog-carousel.html',
 	styleUrls: ['./blog-carousel.scss'],
-	imports: [Title, CarouselModule, RouterLink, DatePipe, SummaryPipe, TranslocoModule],
+	imports: [Title, CarouselModule, RouterLink, ShopDatePipe, SummaryPipe, TranslocoModule],
 })
 export class BlogCarousel {
 	readonly blogs = input<IBlog[]>([]);

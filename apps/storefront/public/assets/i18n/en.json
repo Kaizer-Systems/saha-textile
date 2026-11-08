@@ -216,9 +216,6 @@
 	"get_in_touch": "Get In Touch",
 	"get_the_app": "Get the App",
 	"gms": "Gms",
-	"grid_left_sidebar": "Grid Left Sidebar",
-	"grid_no_sidebar": "Grid No Sidebar",
-	"grid_right_sidebar": "Grid Right Sidebar",
 	"guaranteed_safe_checkout": "Guaranteed Safe Checkout",
 	"have_a_promo_code": "Have a Promo Code",
 	"have_doubts_regarding_this_product": "Have Doubts Regarding This Product",
@@ -763,5 +760,8 @@
 	"home_page_heading": "Saha Textile: handloom and silk sarees from Kolkata",
 	"home_page_title": "Handloom and Silk Sarees from Kolkata | Saha Textile",
 	"home_page_description": "Saha Textile, Kolkata: Bengal handloom, silk and Banarasi sarees, delivered across India and abroad.",
-	"english_letters_only": "Please use English letters."
+	"english_letters_only": "Please use English letters.",
+	"blog_list_description": "Saree buying guides, care tips and festival dressing from Saha Textile, Kolkata: how to spot real Banarasi, choose a bridal saree and care for silk.",
+	"featured_blog": "Featured Blog",
+	"featured_blog_description": "Uncover Intriguing Highlights in Our Featured Blog"
 }

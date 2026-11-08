@@ -16,18 +16,7 @@ vi.mock('@data-access/queries/blog.queries', () => ({
 		params();
 		return { data: recent };
 	},
-}));
-vi.mock('@data-access/queries/tag.queries', () => ({
-	injectTagsQuery: (params: () => unknown) => {
-		params();
-		return { data: tags };
-	},
-}));
-vi.mock('@data-access/queries/category.queries', () => ({
-	injectBlogCategoriesQuery: (params: () => unknown) => {
-		params();
-		return { data: categories };
-	},
+	injectBlogTermsQuery: (kind: string) => ({ data: kind === 'tags' ? tags : categories }),
 }));
 
 describe('BlogSidebar', () => {
@@ -43,17 +32,17 @@ describe('BlogSidebar', () => {
 	it('shows empty lists until loaded', async () => {
 		const sidebar = render();
 		expect(await firstValueFrom(sidebar.resentBlog$)).toEqual([]);
-		expect(await firstValueFrom(sidebar.tag$)).toEqual({ data: [], total: 0 });
-		expect(await firstValueFrom(sidebar.category$)).toEqual({ data: [], total: 0 });
+		expect(await firstValueFrom(sidebar.tag$)).toEqual([]);
+		expect(await firstValueFrom(sidebar.category$)).toEqual([]);
 	});
 
 	it('shows the loaded lists', async () => {
 		recent.set([{ id: 1 }]);
-		tags.set({ data: [{ id: 2 }], total: 1 });
-		categories.set({ data: [{ id: 3 }], total: 1 });
+		tags.set([{ slug: 'silk', name: 'Silk', count: 2 }]);
+		categories.set([{ slug: 'guides', name: 'Guides', count: 3 }]);
 		const sidebar = render();
 		expect(await firstValueFrom(sidebar.resentBlog$)).toEqual([{ id: 1 }]);
-		expect(await firstValueFrom(sidebar.tag$)).toMatchObject({ total: 1 });
-		expect(await firstValueFrom(sidebar.category$)).toMatchObject({ total: 1 });
+		expect(await firstValueFrom(sidebar.tag$)).toEqual([{ slug: 'silk', name: 'Silk', count: 2 }]);
+		expect(await firstValueFrom(sidebar.category$)).toEqual([{ slug: 'guides', name: 'Guides', count: 3 }]);
 	});
 });

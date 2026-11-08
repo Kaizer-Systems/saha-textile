@@ -940,7 +940,7 @@
 	"banner_image_phone": "Image téléphone",
 	"banner_image_desktop_help": "Obligatoire. Affichée à partir de 1200 px. Téléversez en 2880 px de large pour les bannières pleine largeur.",
 	"banner_image_tablet_help": "Facultative. Affichée de 768 à 1199 px et sur téléphone à l’horizontale ; sinon l’image ordinateur.",
-	"banner_image_phone_help": "Affichée sous 768 px. Portrait 1080×1350 ou carré 1080×1080. Obligatoire sur les bannières larges dont l’image contient du texte.",
+	"banner_image_phone_help": "Affichée sur téléphone à la verticale, sous 768 px. Portrait 1080×1350 ou carré 1080×1080. Obligatoire sur les bannières larges dont l’image contient du texte.",
 	"banner_contains_text": "L’image contient du texte",
 	"banner_contains_text_help": "Désactivé (recommandé) : téléversez une photo sans texte et saisissez le titre ci-dessous, pour qu’il soit traduit et lisible. Activé : le texte fait partie de l’image.",
 	"banner_heading": "Titre",

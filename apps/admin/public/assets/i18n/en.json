@@ -940,7 +940,7 @@
 	"banner_image_phone": "Phone image",
 	"banner_image_desktop_help": "Required. Shown from 1200 px wide. Upload at 2880 px wide for full-width banners.",
 	"banner_image_tablet_help": "Optional. Shown from 768 to 1199 px, and on phones turned sideways; falls back to the desktop image.",
-	"banner_image_phone_help": "Shown below 768 px. Portrait 1080×1350 or square 1080×1080. Required on wide banners whose image contains text.",
+	"banner_image_phone_help": "Shown on phones held upright, below 768 px. Portrait 1080×1350 or square 1080×1080. Required on wide banners whose image contains text.",
 	"banner_contains_text": "Image contains text",
 	"banner_contains_text_help": "Off (recommended): upload a photo without text and type the heading below, so it translates and stays readable. On: the words are part of the image.",
 	"banner_heading": "Heading",

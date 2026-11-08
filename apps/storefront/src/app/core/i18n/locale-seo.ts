@@ -136,6 +136,7 @@ export class LocaleSeo {
 		this.doc.title = title;
 		this.fallbackDescription = false;
 		this.meta.removeTag("name='description'");
+		this.meta.removeTag("name='robots'");
 		this.meta.removeTag("property='og:title'");
 		this.meta.removeTag("property='og:description'");
 		if (this.defaultImage) this.meta.updateTag({ property: 'og:image', content: this.defaultImage });
@@ -255,7 +256,8 @@ export class LocaleSeo {
 				.forEach((link) => link.remove());
 			return;
 		}
-		this.meta.removeTag("name='robots'");
+		// The last page's robots tag went at the start of this navigation (`resetDocument`); one the
+		// new page has set already stands.
 		this.setCanonicalPath(path);
 		this.applySeoRoute(path);
 	}

@@ -107,12 +107,25 @@ describe('LocaleSeo', () => {
 
 	it('clears a private page’s noindex on the way back to a public one', () => {
 		runtimeConfig.siteUrl = SITE;
-		const { navigate, robots } = harness('en');
+		const { seo, navigate, robots } = harness('en');
 
 		navigate('/account/dashboard');
+		// The app clears the last page's head at each navigation start.
+		seo.resetDocument('Saha Textile');
 		navigate('/product/red-katan');
 
 		expect(robots()).toBeNull();
+	});
+
+	it('keeps a robots tag the new page set before its navigation ended', () => {
+		runtimeConfig.siteUrl = SITE;
+		const { seo, navigate, robots } = harness('en');
+
+		seo.resetDocument('Saha Textile');
+		seo.applyDocument({ robots: 'noindex,follow' });
+		navigate('/about-us');
+
+		expect(robots()).toBe('noindex,follow');
 	});
 
 	// An extra-placement category page shows its products but points everything at its home path.

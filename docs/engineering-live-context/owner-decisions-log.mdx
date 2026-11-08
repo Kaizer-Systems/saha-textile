@@ -1048,6 +1048,18 @@ The owner approved the Bengali plan (revision 3) as recommended. This replaces t
 - **Before there is enough click data,** the empty box shows the shop's bestsellers under the heading "Popular", and switches to "Trending now" once at least 4 products have search clicks.
 - **Category suggestions:** up to 3, matched from the menu already in the browser, in the page language.
 
+## Owner decision round (2026-11-08) — stores, Contact Us and Gmail mailboxes
+
+- **Stores are managed under Settings › Stores, by the super admin only** (`setting.index` to read, `setting.edit` to change; no new codes). Fastkart's marketplace Store menu, screens and the four `store.*` permission codes are removed (registry now 94 codes). Older roles drop a retired code when read.
+- **Each store:** name, address and landmark in English and Bengali; PIN code; a Google Maps link; phone; opening hours stored per day and shown as short day ranges ("Mon–Sat 10:00–20:30, Sun closed"); up to 8 photos of a new `store` media purpose (4:3, card sizes 400/800/1200/1600 WebP); display order; active. A store goes active only with both languages complete, a phone and at least one open day. No coordinates are asked for.
+- **Order is set by dragging rows** in the Stores list (arrow buttons on phones). This drag handle and its drag shadow are the one approved custom piece.
+- **Contact Us:** a card per active store below the form, built as the approved wireframe from the theme's seller-card classes and Bootstrap; photos change by themselves with ng-bootstrap's carousel (bar indicators, no arrows). The single Google map and the two demo office boxes are removed. Store photos come only from the shop's own files; customer photos on Google Maps are never copied.
+- **The admin home Total Stores tile counts active stores**; the vendor Top Stores panel is removed.
+- **Email:** MSG91 email is for OTPs and the newsletter only. Contact-form messages and staff email go through Gmail (the sahatextile.com Google Workspace).
+- **Contact form:** built-in spam checks only (hidden trap, time on form, stored rate limits, link limit, repeat check). Messages are placed straight into the chosen Gmail mailbox with Gmail import, Reply-To the customer.
+- **Gmail mailboxes in the admin:** the super admin connects each sahatextile.com mailbox once by signing in to it on Google's page (Internal OAuth app, per-mailbox tokens, no domain-wide delegation), then gives admin users Read or Read-and-send per mailbox; they never sign in to Google. Aliases (Gmail send-as) can be used by anyone who may send from the mailbox. Email is read live from Gmail and never copied into our database. Both build steps at once; testing with real mailboxes is an open item for staging. Adds `mailbox.manage` and `mailbox.use` when built.
+- **Briefs:** Contact Us and Stores, Admin Stores Screen, Admin Gmail Mailboxes and Saha Textile Store Details, 8 November 2026 (artifacts).
+
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

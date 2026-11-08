@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { countdownParts, formatIst } from '../src/events/index';
+import { countdownParts, formatIst } from '../src/catalog/ist-time';
 
 describe('India time for shoppers', () => {
 	it('writes the same fixed IST text for every shopper', () => {

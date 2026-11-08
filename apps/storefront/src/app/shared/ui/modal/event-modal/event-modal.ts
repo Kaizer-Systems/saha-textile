@@ -4,7 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { formatIst } from '@saha-textile/core-domain';
+import { formatIst } from '@saha-textile/core-domain/ist-time';
 
 import { ConsentStore } from '@core/consent/consent.store';
 import {

@@ -2,9 +2,10 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { type ShopEvent, utcToIstInput } from '@saha-textile/contracts';
+import type { ShopEvent } from '@saha-textile/contracts';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 
+import { utcToIstInput } from '@core/i18n/ist-time';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
 import { injectShopEventsQuery } from '@data-access/queries/shop-event.queries';

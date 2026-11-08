@@ -1079,6 +1079,18 @@ The owner approved the Bengali plan (revision 3) as recommended. This replaces t
 - **The word list lives in the admin now**, on the planned `searchDictionary` collection, rather than in code first.
 - **Brief approved as drawn** (search words brief, 8 November 2026): the list, the form, the Storefront settings page, the search behaviour, and the starting data (Puja, Tant, Laal paar, the old spellings list, Sarees first), entered through the new screens.
 
+## Owner decision round (2026-11-09) — launch and sale events
+
+- **Brief approved as a whole** (Launch and Sale Events Brief, 8 November 2026, version 3, artifact), including the defaults the owner was not asked about one by one: the 3-day rest after ✕, the 60% warning, rounding down to whole rupees, one sale per product at a time, the popup order, and no coupons on sale items until `DEC-PROMO-STACK` is answered.
+- **Two event types under a new Events menu.** A **launch** puts draft categories and their draft products, plus single draft products, live at its start time and never ends. A **sale** gives categories and/or products a sale price between its start and end. Rules are **% off, ₹ off, or a fixed sale price** (per SKU when a product has several price rows). A category can hold products back or give one product its own rule.
+- **Publish arms an event; a draft never runs.** Save changes nothing on the shop. Publish sends the customer message once and shows the countdown. Unpublish returns a scheduled event to draft; Cancel ends a published event for good. A running sale may move its end, change rules and hold products back.
+- **Which rule wins:** a product's own rule, then an own rule set inside a category, then a hold-back, then the category rule. **A product in two sale categories with different rules gets the lower price.** Add-ons are not discounted.
+- **Sale prices are never written onto products.** They are laid over shop reads while the sale runs, so at the end prices go back by themselves. After a sale ends its working rules are cleared and the event keeps a compact record per SKU: normal and sale price, units sold, revenue and discount given.
+- **Times are India time only.** The admin enters IST, and the form treats what is typed as IST whatever the computer's zone. Shoppers see the moment as **fixed IST text**, the same everywhere ("Ends 27 Sep 2027, 11:59 PM IST"; in Bengali with English digits). The countdown is a live remaining time in days, hours, minutes and seconds (days, not months), ticking from the server's clock.
+- **Where shoppers see it:** a line in the top bar's sliding strip per published event; **a one-line strip under the header on phones**, where the top bar's message column is hidden; the product page's "Hurry up! Sale ends in" timer during a sale; and the hidden-tab title line.
+- **Event popup on desktop and phones**, built like the newsletter popup: the admin's event image, the message, the IST moment and the live countdown. A sale's popup stops at the sale's end; **a launch's popup stops 60 days after the launch starts** (not the publish date). It goes before the newsletter popup, which waits for a later visit. ✕ rests that event for 3 days; "Don't show this again" stops it for good. Both answers live per event in the **Functional `st_events` cookie**.
+- **Messages:** email to customers whose consent includes marketing, each in their own language. **SMS and WhatsApp stay an open item** for the MSG91 discussion (API roadmap, Chunk I).
+
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

@@ -2,7 +2,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, NgZone, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 
-import { countdownParts } from '@saha-textile/core-domain';
+import { countdownParts } from '@saha-textile/core-domain/ist-time';
 
 import { environment } from '../../../../public/environments/environment';
 

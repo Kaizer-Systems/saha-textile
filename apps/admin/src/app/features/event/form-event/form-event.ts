@@ -5,25 +5,24 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, NgbNavModule } from '@ng-bootstrap/ng-bootstrap';
-import {
-	type SaleCategoryLine,
-	type SaleException,
-	type SaleProductLine,
-	type SaleRule,
-	type ShopEvent,
-	type ShopEventCategoryProducts,
-	type ShopEventProblem,
-	type ShopEventReview,
-	type ShopEventType,
-	type ShopEventWrite,
-	istInputToUtc,
-	utcToIstInput,
+import type {
+	SaleCategoryLine,
+	SaleException,
+	SaleProductLine,
+	SaleRule,
+	ShopEvent,
+	ShopEventCategoryProducts,
+	ShopEventProblem,
+	ShopEventReview,
+	ShopEventType,
+	ShopEventWrite,
 } from '@saha-textile/contracts';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { Select2, Select2Data, Select2SearchEvent, Select2UpdateEvent } from 'ng-select2-component';
 import { Subject, debounceTime, of, switchMap, takeUntil } from 'rxjs';
 
 import { goLiveLabels } from '@core/catalog/go-live-report';
+import { istInputToUtc, utcToIstInput } from '@core/i18n/ist-time';
 import {
 	ADMIN_LOCALES,
 	focusField,

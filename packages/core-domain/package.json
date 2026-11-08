@@ -18,6 +18,11 @@
       "types": "./dist/catalog/listing.d.ts",
       "import": "./dist/esm/listing.js",
       "default": "./dist/catalog/listing.js"
+    },
+    "./ist-time": {
+      "types": "./dist/catalog/ist-time.d.ts",
+      "import": "./dist/esm/ist-time.js",
+      "default": "./dist/catalog/ist-time.js"
     }
   },
   "files": [

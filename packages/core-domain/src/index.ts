@@ -7,3 +7,4 @@ export * from './payments/index';
 export * from './dashboard/index';
 export * from './blog/index';
 export * from './stores/index';
+export * from './mailbox/index';

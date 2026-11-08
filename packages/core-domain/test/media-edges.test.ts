@@ -220,6 +220,15 @@ const role = (overrides: Partial<MediaRoleDefinition>): MediaRoleDefinition => (
 	...overrides,
 });
 
+describe('checkIngest for store photos', () => {
+	const store = { purpose: 'store' as const, contentType: 'image/jpeg', byteSize: 1000 };
+	it('warns on a narrow store photo and on one off 4:3', () => {
+		expect(checkIngest({ ...store, width: 1200, height: 900 }).warnings).toContain('below_recommended_size');
+		expect(checkIngest({ ...store, width: 1600, height: 1200 }).warnings).toEqual([]);
+		expect(checkIngest({ ...store, width: 1600, height: 900 }).warnings).toContain('aspect_off_target');
+	});
+});
+
 describe('checkIngest for blogs', () => {
 	const blog = { purpose: 'blog' as const, contentType: 'image/jpeg', byteSize: 1000 };
 	it('warns on a narrow blog image only', () => {
@@ -233,7 +242,7 @@ describe('checkIngest for blogs', () => {
 });
 
 describe('planDerivatives shapes', () => {
-	it.each(['category', 'blog'] as const)('letterboxes an off-shape %s image', (purpose) => {
+	it.each(['category', 'blog', 'store'] as const)('letterboxes an off-shape %s image', (purpose) => {
 		const plan = planDerivatives({
 			asset: asset({ purpose }),
 			source: { width: 3000, height: 3000 },

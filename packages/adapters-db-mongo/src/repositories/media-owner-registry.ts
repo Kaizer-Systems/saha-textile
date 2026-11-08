@@ -8,6 +8,7 @@ import {
 	ProductModel,
 	ProductVariantModel,
 	ReviewModel,
+	StoreLocationModel,
 } from '../models/index';
 
 /**
@@ -47,4 +48,5 @@ export const MEDIA_OWNER_REGISTRY: readonly MediaOwnerEntry[] = [
 	entry('blog cover', as(BlogPostModel), 'coverAssetId'),
 	entry('blog share image', as(BlogPostModel), 'shareImageAssetId'),
 	entry('blog post picture', as(BlogPostModel), 'assetIds'),
+	entry('store photos', as(StoreLocationModel), 'photoAssetIds'),
 ];

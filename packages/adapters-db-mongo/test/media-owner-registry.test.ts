@@ -74,6 +74,7 @@ describe('media owner registry', () => {
 			'reviews',
 			'contentBlocks',
 			'blogPosts',
+			'storeLocations',
 		]) {
 			expect(collections.has(name)).toBe(true);
 		}

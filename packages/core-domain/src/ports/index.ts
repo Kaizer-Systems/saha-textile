@@ -35,3 +35,4 @@ export * from './pending-contact-change.repository';
 export * from './auth-identity.repository';
 export * from './dashboard.repository';
 export * from './blog.repository';
+export * from './store-location.repository';

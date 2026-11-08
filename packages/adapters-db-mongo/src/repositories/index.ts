@@ -28,3 +28,4 @@ export * from './addon-template.repository';
 export * from './stock-alert.repository';
 export * from './dashboard.repository';
 export * from './blog.repository';
+export * from './store-location.repository';

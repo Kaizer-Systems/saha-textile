@@ -23,6 +23,7 @@ export const API_TAGS = {
 	media: 'media',
 	reviews: 'reviews',
 	blog: 'blog',
+	stores: 'stores',
 } as const;
 
 export type ApiTag = (typeof API_TAGS)[keyof typeof API_TAGS];
@@ -63,5 +64,10 @@ export const API_TAG_DESCRIPTIONS: ReadonlyArray<{ name: ApiTag; description: st
 		name: API_TAGS.blog,
 		description:
 			'Blog posts, categories and tags. The shop reads live posts in one language; the admin writes every language and goes live only when all are complete.',
+	},
+	{
+		name: API_TAGS.stores,
+		description:
+			"The shop's physical stores. Contact Us reads active stores in one language; the super admin writes every language under Settings › Stores.",
 	},
 ];

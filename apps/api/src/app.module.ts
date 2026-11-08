@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { BlogModule } from './blog/blog.module';
+import { StoreLocationsModule } from './stores/store-locations.module';
 import { CartLinesModule } from './cart/cart-lines.module';
 import { CookieAudienceGuard } from './common/cookie-audience.guard';
 import { CsrfGuard } from './common/csrf.guard';
@@ -50,6 +51,7 @@ export class AppModule {
 				PrivacyModule,
 				MediaModule,
 				BlogModule,
+				StoreLocationsModule,
 			],
 			providers: [
 				// Ordered deliberately, and the order is itself a security property.

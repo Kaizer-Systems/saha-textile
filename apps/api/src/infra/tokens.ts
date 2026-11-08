@@ -58,3 +58,4 @@ export const YOUTUBE_PORT = Symbol('YouTubePort');
 export const BLOG_POST_REPOSITORY = Symbol('BlogPostRepository');
 export const BLOG_CATEGORY_REPOSITORY = Symbol('BlogCategoryRepository');
 export const BLOG_TAG_REPOSITORY = Symbol('BlogTagRepository');
+export const STORE_LOCATION_REPOSITORY = Symbol('StoreLocationRepository');

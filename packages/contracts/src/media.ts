@@ -27,6 +27,7 @@ export const SeededMediaRole = z.enum([
 	'review_full',
 	'banner',
 	'blog',
+	'store_photo',
 	'category_icon',
 	'avatar',
 ]);
@@ -49,7 +50,17 @@ export type MediaKind = z.infer<typeof MediaKind>;
  * What an image is FOR. It decides which roles the worker generates and which ingest rules
  * apply (a product photo has a 1600 px floor; a review photo has none).
  */
-export const MediaPurpose = z.enum(['product', 'category', 'banner', 'blog', 'review', 'brand', 'avatar', 'icon']);
+export const MediaPurpose = z.enum([
+	'product',
+	'category',
+	'banner',
+	'blog',
+	'store',
+	'review',
+	'brand',
+	'avatar',
+	'icon',
+]);
 export type MediaPurpose = z.infer<typeof MediaPurpose>;
 
 /**

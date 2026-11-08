@@ -43,3 +43,4 @@ export * from './stock-alert';
 export * from './product-insight-set';
 export * from './dashboard';
 export * from './blog';
+export * from './store-location';

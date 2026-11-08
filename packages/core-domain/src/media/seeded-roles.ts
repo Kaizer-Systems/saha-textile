@@ -196,6 +196,18 @@ export const SEEDED_MEDIA_ROLES: readonly MediaRoleDefinition[] = [
 		respectSlotMaxWidth: false,
 	}),
 	role({
+		key: 'store_photo',
+		label: 'Store photo',
+		purposes: ['store'],
+		widths: [400, 800, 1200, 1600],
+		aspect: null,
+		fit: 'inside',
+		format: 'image/webp',
+		quality: 82,
+		primaryOnly: false,
+		respectSlotMaxWidth: false,
+	}),
+	role({
 		key: 'category_icon',
 		label: 'Category icon',
 		purposes: ['icon'],

@@ -18,6 +18,8 @@ export const MEDIA_INGEST_POLICY = {
 		category: { width: 3, height: 4 },
 		/** Blog covers are 2:1 (blog brief, 2026-11-08): list card, post header, home rail and share card. */
 		blog: { width: 2, height: 1 },
+		/** Store photos are 4:3 (stores brief, 2026-11-08): the photo box on each Contact Us card. */
+		store: { width: 4, height: 3 },
 		avatar: { width: 1, height: 1 },
 		icon: { width: 1, height: 1 },
 	} as Readonly<Partial<Record<MediaPurpose, { width: number; height: number }>>>,
@@ -25,6 +27,8 @@ export const MEDIA_INGEST_POLICY = {
 	reviewWarnBelowLongEdge: 500,
 	/** Blog photos below this warn (2:1 at ≥2400×1200 is the recommendation). */
 	blogRecommendedWidth: 2400,
+	/** Store photos below this warn (4:3 at ≥1600×1200 is the recommendation). */
+	storeRecommendedWidth: 1600,
 	maxReviewPhotos: 5,
 	acceptedTypes: ['image/jpeg', 'image/png'] as const,
 	/** Presigned upload lifetime. */
@@ -95,6 +99,9 @@ export const checkIngest = (input: {
 		warnings.push('below_recommended_size');
 	}
 	if (input.purpose === 'blog' && input.width < policy.blogRecommendedWidth) {
+		warnings.push('below_recommended_size');
+	}
+	if (input.purpose === 'store' && input.width < policy.storeRecommendedWidth) {
 		warnings.push('below_recommended_size');
 	}
 	return { refusal: null, warnings };

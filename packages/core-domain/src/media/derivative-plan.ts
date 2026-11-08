@@ -38,7 +38,10 @@ export const planDerivatives = (input: {
 	const target = MEDIA_INGEST_POLICY.targetAspect[asset.purpose];
 	const letterboxed =
 		!!target &&
-		(asset.purpose === 'product' || asset.purpose === 'category' || asset.purpose === 'blog') &&
+		(asset.purpose === 'product' ||
+			asset.purpose === 'category' ||
+			asset.purpose === 'blog' ||
+			asset.purpose === 'store') &&
 		aspectDeviation(source.width, source.height, target) > MEDIA_INGEST_POLICY.aspectWarnTolerance;
 
 	const derivatives: PlannedDerivative[] = [];

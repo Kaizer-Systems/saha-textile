@@ -50,6 +50,48 @@ export type I18nString = z.infer<typeof I18nString>;
 export const LocalizedText = z.record(z.string(), z.string());
 export type LocalizedText = z.infer<typeof LocalizedText>;
 
+/** Bengali digits (০–৯) as English digits, so a PIN code or phone typed on a Bengali keyboard works (BN-3). */
+export const toLatinDigits = (value: string): string =>
+	value.replace(/[\u09E6-\u09EF]/g, (digit) => String(digit.charCodeAt(0) - 0x09e6));
+
+/**
+ * Text as it is stored: one Unicode form, trimmed, repeated spaces collapsed, and invisible
+ * characters removed apart from the two joiners Bengali needs (U+200C, U+200D).
+ */
+export const cleanText = (value: string): string =>
+	value
+		.normalize('NFC')
+		.replace(/[\u200B\u2060\uFEFF\u00AD]/g, '')
+		.replace(/\s+/g, ' ')
+		.trim();
+
+/** The message code a form shows as "Please use English letters" in every language. */
+export const ENGLISH_LETTERS_ONLY = 'english_letters_only';
+
+/**
+ * A person's name in English letters (BN-12): every stored name, profile, recipient and billing,
+ * is what couriers, invoices and staff searches read, so it is never in Bengali script.
+ */
+export const EnglishName = z
+	.string()
+	.transform(cleanText)
+	.pipe(
+		z
+			.string()
+			.min(1)
+			.max(120)
+			.regex(/^[A-Za-z][A-Za-z .'-]*$/, ENGLISH_LETTERS_ONLY),
+	);
+
+/** A delivery detail in English letters and digits (BN-12), Bengali digits converted first. */
+export const EnglishDeliveryText = z
+	.string()
+	.transform((value) => toLatinDigits(cleanText(value)))
+	.pipe(z.string().regex(/^[A-Za-z0-9 .,'’\-/#&()]*$/, ENGLISH_LETTERS_ONLY));
+
+/** Digits only after conversion: PIN codes and phone numbers. */
+export const LatinDigits = z.string().transform((value) => toLatinDigits(cleanText(value)));
+
 /** Domain identifier (string ids such as `cat_pure_silk`, `prod_5557`). */
 export const Id = z.string().min(1);
 export type Id = z.infer<typeof Id>;

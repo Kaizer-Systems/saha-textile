@@ -50,6 +50,9 @@
 									<label for="name">{{ 'full_name' | transloco }}</label>
 									@if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
 									<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
+									} @else if (form.controls['name'].touched &&
+									form.controls['name'].errors?.['englishLetters']) {
+									<div class="invalid-feedback">{{ 'english_letters_only' | transloco }}</div>
 									}
 								</div>
 							</div>

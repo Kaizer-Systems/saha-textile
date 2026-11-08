@@ -15,6 +15,7 @@ import { injectCountriesQuery } from '@data-access/queries/country.queries';
 import { injectStatesQuery } from '@data-access/queries/state.queries';
 import * as data from '@shared/data/country-code';
 import { resolveAddressLocation, type CountryRecord, type StateRecord } from '@shared/util/address-location';
+import { englishLetters, toLatinDigits } from '@shared/validators/english-letters';
 
 import { Button } from '../../button/button';
 
@@ -52,14 +53,23 @@ export class AddressModal {
 		this.isBrowser = isPlatformBrowser(this.platformId);
 		this.form = this.formBuilder.group({
 			title: new FormControl('', [Validators.required]),
-			street: new FormControl('', [Validators.required]),
+			street: new FormControl('', [Validators.required, englishLetters('delivery')]),
 			state_id: new FormControl('', [Validators.required]),
 			country_id: new FormControl('', [Validators.required]),
-			city: new FormControl('', [Validators.required]),
+			city: new FormControl('', [Validators.required, englishLetters('delivery')]),
 			pincode: new FormControl('', [Validators.required]),
 			country_code: new FormControl('91', [Validators.required]),
 			phone: new FormControl('', [Validators.required, Validators.pattern(/^[0-9]*$/)]),
 		});
+		// A PIN code or phone typed on a Bengali keyboard arrives in Bengali digits (BN-3).
+		for (const name of ['pincode', 'phone']) {
+			const control = this.form.controls[name];
+			control?.valueChanges.subscribe((value: unknown) => {
+				if (typeof value !== 'string') return;
+				const latin = toLatinDigits(value);
+				if (latin !== value) control.setValue(latin, { emitEvent: false });
+			});
+		}
 	}
 
 	/**

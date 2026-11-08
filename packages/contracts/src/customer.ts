@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Id, IsoDateTime, LocaleCode } from './common';
+import { EnglishDeliveryText, EnglishName, Id, IsoDateTime, LatinDigits, LocaleCode, cleanText } from './common';
 
 /**
  * Customer account lifecycle status (auth plan §7.1).
@@ -56,6 +56,24 @@ export const Address = z.object({
 	isDefault: z.boolean().default(false),
 });
 export type Address = z.infer<typeof Address>;
+
+/**
+ * The address fields as a request may write them (BN-12): the recipient's name and every delivery
+ * detail in English letters, Bengali digits converted. Stored rows keep the looser `Address`, so
+ * an older row never fails to load.
+ */
+export const AddressInput = Address.omit({ id: true }).extend({
+	label: z.string().transform(cleanText).pipe(z.string().min(1).max(80)).optional(),
+	fullName: EnglishName,
+	line1: EnglishDeliveryText.pipe(z.string().min(1)),
+	line2: EnglishDeliveryText.optional(),
+	city: EnglishDeliveryText.pipe(z.string().min(1)),
+	state: EnglishDeliveryText.optional(),
+	postalCode: LatinDigits.pipe(z.string().min(1)),
+	country: z.string().min(2),
+	phone: LatinDigits.optional(),
+});
+export type AddressInput = z.infer<typeof AddressInput>;
 
 /**
  * Consent snapshot kept on the customer (latest effective consent). Granular

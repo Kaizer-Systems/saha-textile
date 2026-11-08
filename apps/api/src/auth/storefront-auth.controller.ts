@@ -54,6 +54,7 @@ import { CartService } from '../cart/cart.service';
 import { cookieNames, sessionCookieOptions } from '../common/cookies';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { requestedLocale } from '../catalog/catalog-locale';
+import { englishNameOrNothing } from './english-name';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { TRANSACTION_MANAGER } from '../infra/tokens';
 import { API_TAGS } from '../openapi-tags';
@@ -652,7 +653,9 @@ export class StorefrontAuthController {
 				// Prefill only. Google's address is locked because Google asserts it; Meta's is a
 				// suggestion that still earns its own OTP, because Meta asserts nothing we can check.
 				email: identity.email ?? undefined,
-				displayName: identity.displayName ?? undefined,
+				// Every stored name is in English letters (BN-12). A Google or Facebook name in
+				// another script is not kept; the customer gives their name in English letters.
+				displayName: englishNameOrNothing(identity.displayName),
 				marketingOptIn: false,
 				guestCartId,
 				emailPreVerified: identity.emailVerified,

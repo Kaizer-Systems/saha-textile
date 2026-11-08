@@ -2,15 +2,15 @@ import { isPlatformBrowser } from '@angular/common';
 import { afterNextRender, Component, computed, inject, PLATFORM_ID, signal } from '@angular/core';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
-import { combineLatest, take } from 'rxjs';
 import { CarouselModule } from 'ngx-owl-carousel-o';
+import { combineLatest, take } from 'rxjs';
 
-import { IProduct } from '@data-access/interfaces/product.interface';
-import { ProductService } from '@data-access/services/product.service';
 import { readRecentViews } from '@core/catalog/recent-views';
 import { LocaleSeo } from '@core/i18n/locale-seo';
+import { IProduct } from '@data-access/interfaces/product.interface';
 import { bannerSrc, injectBannersQuery, StorefrontBanners } from '@data-access/queries/banner.queries';
 import { injectHomeRailsQuery } from '@data-access/queries/product.queries';
+import { ProductService } from '@data-access/services/product.service';
 import { Blog } from '@features/themes/widgets/blog/blog';
 import { HomeBanner } from '@features/themes/widgets/home-banner/home-banner';
 import { Newsletter } from '@features/themes/widgets/newsletter/newsletter';

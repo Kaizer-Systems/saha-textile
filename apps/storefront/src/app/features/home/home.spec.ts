@@ -1,10 +1,9 @@
 import { PLATFORM_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
+import { TranslocoService } from '@jsverse/transloco';
 import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-
-import { TranslocoService } from '@jsverse/transloco';
 
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { ProductService } from '@data-access/services/product.service';

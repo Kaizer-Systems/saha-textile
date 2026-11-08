@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 import { OtpCode } from './auth';
-import { IsoDateTime } from './common';
-import { Address } from './customer';
+import { EnglishName, IsoDateTime } from './common';
+import { AddressInput } from './customer';
 
 /**
  * Storefront self-service account contracts.
@@ -23,11 +23,11 @@ import { Address } from './customer';
  */
 
 /** `POST /storefront/account/addresses` — the server assigns `id`. */
-export const CreateOwnAddressRequest = Address.omit({ id: true });
+export const CreateOwnAddressRequest = AddressInput;
 export type CreateOwnAddressRequest = z.infer<typeof CreateOwnAddressRequest>;
 
 /** `PATCH /storefront/account/addresses/:addressId` — every field optional. */
-export const UpdateOwnAddressRequest = Address.omit({ id: true }).partial();
+export const UpdateOwnAddressRequest = AddressInput.partial();
 export type UpdateOwnAddressRequest = z.infer<typeof UpdateOwnAddressRequest>;
 
 /**
@@ -43,7 +43,7 @@ export type UpdateOwnAddressRequest = z.infer<typeof UpdateOwnAddressRequest>;
  * first. They get the dedicated flow below instead.
  */
 export const UpdateOwnProfileRequest = z.object({
-	displayName: z.string().min(1).max(120),
+	displayName: EnglishName,
 });
 export type UpdateOwnProfileRequest = z.infer<typeof UpdateOwnProfileRequest>;
 

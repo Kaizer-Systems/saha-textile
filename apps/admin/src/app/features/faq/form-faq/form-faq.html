@@ -60,7 +60,7 @@
 	</app-form-fields>
 	@if (form.value.scope === 'category' || form.value.scope === 'mixed') {
 	<app-form-fields
-		[label]="'category_ids'"
+		[label]="'categories'"
 		[for]="'categoryIds'"
 	>
 		<app-advanced-dropdown
@@ -75,7 +75,7 @@
 	</app-form-fields>
 	} @if (form.value.scope === 'product' || form.value.scope === 'mixed') {
 	<app-form-fields
-		[label]="'product_ids'"
+		[label]="'products'"
 		[for]="'productIds'"
 	>
 		<select2

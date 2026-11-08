@@ -495,9 +495,19 @@ describe('FAQ list', () => {
 	it('fills the table', () => {
 		const { page } = setup();
 		expect(page.tableConfig().total).toBe(0);
-		data.set({ data: [{ id: 1 }], total: 1 });
+		data.set({
+			data: [
+				{ id: 1, status: true },
+				{ id: 2, status: false },
+			],
+			total: 2,
+		});
 		TestBed.tick();
-		expect(page.tableConfig().total).toBe(1);
+		expect(page.tableConfig().total).toBe(2);
+		expect(page.tableConfig().data?.map((row) => (row as unknown as { status: string }).status)).toEqual([
+			'1',
+			'0',
+		]);
 		page.onTableChange({ page: 1 });
 	});
 
@@ -505,12 +515,14 @@ describe('FAQ list', () => {
 		const { page, router, service } = setup();
 		page.onActionClicked({ actionToPerform: 'edit', data: { id: 1 } } as never);
 		expect(router.navigateByUrl).toHaveBeenCalledWith('/faq/edit/1');
-		page.onActionClicked({ actionToPerform: 'status', data: { id: 1, status: true } } as never);
+		page.onActionClicked({ actionToPerform: 'status', data: { id: 1, status: 0 } } as never);
 		expect(service.save).toHaveBeenCalledWith({ id: 1, status: false });
+		page.onActionClicked({ actionToPerform: 'status', data: { id: 1, status: 1 } } as never);
+		expect(service.save).toHaveBeenLastCalledWith({ id: 1, status: true });
 		page.onActionClicked({ actionToPerform: 'delete', data: { faqId: 'f1' } } as never);
 		expect(service.remove).toHaveBeenCalledWith('f1');
 		page.onActionClicked({ actionToPerform: 'other', data: {} } as never);
-		expect(refetch).toHaveBeenCalledTimes(2);
+		expect(refetch).toHaveBeenCalledTimes(3);
 	});
 
 	it('deletes the chosen rows together', () => {

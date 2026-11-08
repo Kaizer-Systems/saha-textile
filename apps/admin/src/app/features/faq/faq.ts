@@ -57,7 +57,10 @@ export class Faq {
 			const faq = this.faqsQuery.data();
 			this.tableConfig.update((config) => ({
 				...config,
-				data: faq ? faq.data : [],
+				// The shared table draws a switch on only for the text '1'.
+				data: faq
+					? faq.data.map((row) => ({ ...row, status: (row.status ? '1' : '0') as unknown as boolean }))
+					: [],
 				total: faq ? faq.total : 0,
 			}));
 		});
@@ -78,8 +81,11 @@ export class Faq {
 		void this.router.navigateByUrl(`/faq/edit/${data.id}`);
 	}
 
+	/** The table hands back the switch's new value (1 on, 0 off) in `status`. */
 	status(data: IFaq) {
-		this.faqService.save({ ...data, status: !data.status }).subscribe(() => void this.faqsQuery.refetch());
+		this.faqService
+			.save({ ...data, status: Number(data.status) === 1 })
+			.subscribe(() => void this.faqsQuery.refetch());
 	}
 
 	delete(data: IFaq) {

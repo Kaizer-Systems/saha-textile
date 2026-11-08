@@ -63,7 +63,7 @@ GitHub's docs name only a classic token outside Actions, so this is proved on th
 - API and worker set `DOTENV_CONFIG_PATH=/run/secrets/api.env`. No code change is needed: every entry point imports `dotenv/config`. Tested on 2026-11-07 in the real API image as its non-root user with dotenv 18.0.9.
 - MongoDB uses `MONGO_INITDB_ROOT_PASSWORD_FILE`. Redis reads its password from its file at start. Meilisearch uses a mounted config file. The API's search key is not a stored secret: each deploy reads the Default Admin API Key from the search server, using the master key.
 - A secrets service can replace GitHub later. The deploy job would fetch the values and write the same files, so nothing changes on the droplet.
-- The master copy lives in the owner's **Bitwarden** vault. The backup private key has a second copy in NordPass, because backups are unreadable without it. Both need two-factor sign-in.
+- The master copy lives in the owner's **NordPass** vault (secure notes; Premium allows file attachments). The backup private key has a second copy in the owner's free Bitwarden account, because backups are unreadable without it. Both need two-factor sign-in.
 - Rotation: new value, GitHub, redeploy, check, revoke the old one. `CSRF_SECRET` rotates only after a leak: it signs everyone out and strands guest carts.
 
 **The repository is public, so any signed-in GitHub user can read Actions logs.** Deploy output prints pass or fail only. It never prints the droplet's IP, container logs or a credential. First-admin creation runs by hand over SSH.
@@ -86,7 +86,7 @@ One script creates staging and production, with `doctl` and a first-boot file. I
 - **Firewall:** the DigitalOcean Cloud Firewall allows inbound 443 from Cloudflare's ranges only. Docker's published ports bypass UFW, so UFW is a second layer, not the gate.
 - **SSH:** `cloudflared` runs as a service and dials out. People sign in through Cloudflare Access. The deploy job uses an Access service token (`--service-token-id`, `--service-token-secret`) with a Service Auth policy.
 - **fail2ban:** not installed. There is no open SSH port, and behind Cloudflare it would ban Cloudflare's own IPs.
-- **Break-glass:** the Recovery Console, which works with no network. It needs the admin user's password, kept in Bitwarden. The browser Droplet Console needs the SSH port open, so it is not the fallback.
+- **Break-glass:** the Recovery Console, which works with no network. It needs the admin user's password, kept in NordPass. The browser Droplet Console needs the SSH port open, so it is not the fallback.
 - **Other settings:** 4 GiB swap, UTC clock, Docker `local` log driver, Docker live-restore, DigitalOcean metrics agent, memory settings for Redis and MongoDB.
 - **Patches and reboots:** security patches install automatically. The owner decides when to reboot. An email goes out when a reboot is pending. If it waits 7 days, the server reboots itself at 4 am IST.
 
@@ -111,7 +111,7 @@ MongoDB's docs prefer X.509 for production, but a keyfile only protects traffic 
 
 ## 7. First run and every deploy
 
-**Once per environment, by hand over SSH:** run `node dist/create-first-admin.js --email <address>` in the API container, and save the credential in Bitwarden.
+**Once per environment, by hand over SSH:** run `node dist/create-first-admin.js --email <address>` in the API container, and save the credential in NordPass.
 
 **Every deploy, automatic (`docker/production/bin/deploy.sh`):** check the release and its secrets, back up (production), pull by digest, start data services, start the replica set and keep the app user's password in step, read the search key, run `node dist/first-run-setup.js`, start the apps, run `node dist/rebuild-search-index.js`, check that every dependency is up and that `/config.json` parses on storefront and admin, then record the release. All of it is safe to repeat.
 

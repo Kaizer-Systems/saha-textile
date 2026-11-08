@@ -989,8 +989,8 @@ Closed: `DEC-SECRETS-DELIVERY`. The full design is in `production-deployment-pla
 - **Merging to `main` starts the deploy, then it waits for the owner's approval in GitHub.**
 - **Every release passes the staging droplet,** with a logged emergency switch for a broken shop. CI and approval still apply.
 - **Staging create and destroy scripts run from the owner's Mac for now.** They move to a GitHub pipeline once secrets are stored more securely, so they stop depending on one device.
-- **Secrets are GitHub Environment secrets written to mounted read-only files,** with the option to move to a secrets service later. The master copy is in Bitwarden, with a second copy of the backup key in NordPass.
-- **The Recovery Console is the break-glass route,** with the admin user's password in Bitwarden.
+- **Secrets are GitHub Environment secrets written to mounted read-only files,** with the option to move to a secrets service later. The master copy is in NordPass, the owner's primary password manager, with a second copy of the backup key in Bitwarden (corrected the same day; NordPass replaces Bitwarden as the main copy).
+- **The Recovery Console is the break-glass route,** with the admin user's password in NordPass.
 - **Reboots are the owner's call.** Security patches install automatically, an email says when a reboot is pending, and after 7 days the server reboots itself at 4 am IST. A super admin screen will show patch status and trigger the reboot with a PIN, with manual fallbacks.
 - **Data stays on the droplet's own disk.** No separate block volume.
 - **The catalogue will be large.** The 23 products and 40 SKUs figure described the old WordPress test site. Size against measured data.

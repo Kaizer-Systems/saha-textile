@@ -3,6 +3,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateOrderRequest, UpdateOrderStatusRequest } from '@saha-textile/contracts';
 import type { FastifyRequest } from 'fastify';
 
+import { requestedLocale } from '../catalog/catalog-locale';
 import { Principal, assertOwnership } from '../auth/ownership';
 import { type AuthenticatedPrincipal, Audience, RequirePermissions } from '../auth/session.guard';
 import { cookieNames } from '../common/cookies';
@@ -38,6 +39,7 @@ export class OrdersController {
 			...body,
 			principal,
 			guestToken: cookies[names.guest] ?? null,
+			locale: requestedLocale(request.query, this.config.locales),
 		});
 	}
 

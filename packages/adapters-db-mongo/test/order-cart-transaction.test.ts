@@ -57,6 +57,7 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 					orderNumber: `SAHA-TEXTILE-TX-${orderId.slice(-6)}`,
 					userId: 'user_tx',
 					currency: 'INR',
+					locale: 'en',
 					lines: [
 						{
 							productId: 'prod_1',
@@ -122,6 +123,7 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 						orderNumber: `SAHA-TEXTILE-TX-${orderId.slice(-6)}`,
 						userId: 'user_tx',
 						currency: 'INR',
+						locale: 'en',
 						lines: [line],
 						subtotalINR: 100,
 						subtotalPaid: 100,
@@ -161,6 +163,7 @@ describe.skipIf(!hasMongoEnv())('order + cart transaction (integration, rs0)', (
 						orderNumber: `SAHA-TEXTILE-TX-${orderId.slice(-6)}`,
 						userId: 'user_tx',
 						currency: 'INR',
+						locale: 'en',
 						lines: [
 							{
 								productId: 'prod_1',

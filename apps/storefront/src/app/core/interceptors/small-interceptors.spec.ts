@@ -64,4 +64,12 @@ describe('CatalogLocaleInterceptor', () => {
 		expect(run(new HttpRequest('GET', 'https://api.test/account')).params.has('locale')).toBe(false);
 		expect(run(new HttpRequest('POST', 'https://api.test/catalog/x', {})).params.has('locale')).toBe(false);
 	});
+
+	it('names the language when an account is created or an order placed, so both record it', () => {
+		environment.apiUrl = 'https://api.test';
+		const finalise = new HttpRequest('POST', 'https://api.test/auth/storefront/signup/finalise', {});
+		expect(run(finalise).params.get('locale')).toBe('bn');
+		expect(run(new HttpRequest('POST', 'https://api.test/orders', {})).params.get('locale')).toBe('bn');
+		expect(run(new HttpRequest('GET', 'https://api.test/orders')).params.has('locale')).toBe(false);
+	});
 });

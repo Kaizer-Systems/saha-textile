@@ -53,6 +53,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { CartService } from '../cart/cart.service';
 import { cookieNames, sessionCookieOptions } from '../common/cookies';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { requestedLocale } from '../catalog/catalog-locale';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { TRANSACTION_MANAGER } from '../infra/tokens';
 import { API_TAGS } from '../openapi-tags';
@@ -452,6 +453,8 @@ export class StorefrontAuthController {
 					savedSizes: [],
 					measurementProfiles: [],
 					guestCartId: consumed.guestCartId,
+					// The language of the page they signed up on (BN-13).
+					preferredLocale: requestedLocale(request.query, this.config.locales),
 				});
 
 				/**

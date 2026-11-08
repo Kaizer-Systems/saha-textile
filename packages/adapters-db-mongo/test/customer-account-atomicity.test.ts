@@ -55,6 +55,7 @@ describe.skipIf(!hasMongoEnv())('customer account atomicity (integration, rs0)',
 			savedSizes: [],
 			measurementProfiles: [],
 			guestCartId: null,
+			preferredLocale: 'en',
 		}) as Customer;
 
 	/** Everything signup writes, in the order it writes it. */

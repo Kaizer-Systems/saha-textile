@@ -44,6 +44,7 @@ export interface CustomerDoc {
 	savedSizes: unknown[];
 	measurementProfiles: unknown[];
 	guestCartId: string | null;
+	preferredLocale?: string;
 	consent?: Record<string, unknown>;
 	createdAt?: Date;
 	updatedAt?: Date;
@@ -68,6 +69,7 @@ const CustomerSchema = new Schema<CustomerDoc>(
 		savedSizes: { type: [Schema.Types.Mixed], default: [] },
 		measurementProfiles: { type: [Schema.Types.Mixed], default: [] },
 		guestCartId: { type: String, default: null },
+		preferredLocale: { type: String, default: 'en' },
 		consent: { type: Schema.Types.Mixed },
 	},
 	{ collection: COLLECTION_NAMES.Customer, timestamps: true },

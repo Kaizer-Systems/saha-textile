@@ -23,6 +23,15 @@ export function localized(value: Readonly<Record<string, string | undefined>>): 
 	return value[catalogLocale()] || value[DEFAULT_LOCALE] || '';
 }
 
+/**
+ * The page language a request names in `?locale=`, when this shop serves it; otherwise English.
+ * Stored on a new customer and on an order (BN-13), so a made-up code never lands in a record.
+ */
+export function requestedLocale(query: unknown, active: readonly string[]): string {
+	const asked = (query as Record<string, unknown> | undefined)?.['locale'];
+	return typeof asked === 'string' && active.includes(asked) ? asked : DEFAULT_LOCALE;
+}
+
 /** Reads `?locale=` once, so services resolve authored content without passing it around. */
 @Injectable()
 export class CatalogLocaleInterceptor implements NestInterceptor {

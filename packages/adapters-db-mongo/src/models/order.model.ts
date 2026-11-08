@@ -6,6 +6,7 @@ export interface OrderDoc {
 	orderNumber: string;
 	userId: string | null;
 	currency: string;
+	locale?: string;
 	lines: unknown[];
 	subtotalINR: number;
 	subtotalPaid: number;
@@ -26,6 +27,7 @@ const OrderSchema = new Schema<OrderDoc>(
 		orderNumber: { type: String, required: true },
 		userId: { type: String, default: null },
 		currency: { type: String, required: true },
+		locale: { type: String, default: 'en' },
 		lines: { type: [Schema.Types.Mixed], default: [] },
 		subtotalINR: { type: Number, required: true },
 		subtotalPaid: { type: Number, required: true },

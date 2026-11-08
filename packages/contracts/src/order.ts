@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { I18nString, Id, IsoDateTime, PriceINR } from './common';
+import { I18nString, Id, IsoDateTime, LocaleCode, PriceINR } from './common';
 
 export const OrderStatus = z.enum(['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']);
 export type OrderStatus = z.infer<typeof OrderStatus>;
@@ -67,6 +67,8 @@ export const Order = z.object({
 	userId: Id.nullable().default(null),
 	/** Paid currency (INR canonical; non-INR resolved at checkout). */
 	currency: z.string().length(3),
+	/** The language of the page the order was placed from (BN-13); its emails and order page use it. */
+	locale: LocaleCode.optional(),
 	lines: z.array(OrderLine).min(1),
 	subtotalINR: PriceINR,
 	subtotalPaid: z.number().nonnegative(),

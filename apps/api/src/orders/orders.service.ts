@@ -38,6 +38,8 @@ export interface CreateOrderInput {
 	couponCode?: string;
 	principal: AuthenticatedPrincipal;
 	guestToken?: string | null;
+	/** The page language the order was placed from (BN-13). */
+	locale?: string;
 }
 
 @Injectable()
@@ -107,6 +109,7 @@ export class OrdersService {
 			orderNumber: this.generateOrderNumber(),
 			userId: input.principal.userId,
 			currency: currencyCode,
+			locale: input.locale ?? 'en',
 			lines,
 			subtotalINR,
 			subtotalPaid: roundMoney(convertFromINR(subtotalINR, rateFromINR)),

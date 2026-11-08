@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Id, IsoDateTime } from './common';
+import { Id, IsoDateTime, LocaleCode } from './common';
 
 /**
  * Customer account lifecycle status (auth plan §7.1).
@@ -139,6 +139,11 @@ export const Customer = z.object({
 	/** Reserved; empty until a measurement-profile surface writes them. */
 	measurementProfiles: z.array(CustomerMeasurementProfile).default([]),
 	guestCartId: Id.nullable().default(null),
+	/**
+	 * The language this customer reads the shop in (BN-13): taken from the page they signed up on.
+	 * Emails, the order page and later WhatsApp messages use it.
+	 */
+	preferredLocale: LocaleCode.optional(),
 	consent: ConsentRecord.optional(),
 	createdAt: IsoDateTime.optional(),
 	updatedAt: IsoDateTime.optional(),

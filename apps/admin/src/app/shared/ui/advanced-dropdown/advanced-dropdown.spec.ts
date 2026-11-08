@@ -37,6 +37,22 @@ describe('AdvancedDropdown selection', () => {
 		expect(render({ selectedOption: null }).dropdown.selectedIds).toEqual([]);
 	});
 
+	it('shows catalogue categories, whose ids are words, as selected', () => {
+		TestBed.resetTestingModule();
+		TestBed.overrideComponent(AdvancedDropdown, {
+			set: { imports: [], template: '<div #dropdownContainer><div class="dropdown-open"></div></div>' },
+		});
+		const fixture = TestBed.createComponent(AdvancedDropdown);
+		fixture.componentRef.setInput('options', [
+			{ id: 'cat_1', name: 'Sarees', subcategories: [{ id: 'cat_2', name: 'Red & White', subcategories: [] }] },
+		]);
+		fixture.componentRef.setInput('subArrayKey', 'subcategories');
+		fixture.componentRef.setInput('selectedOption', ['cat_2']);
+		fixture.detectChanges();
+		fixture.componentInstance.ngOnChanges();
+		expect(fixture.componentInstance.selectedPills.map((pill) => pill.name)).toEqual(['Red & White']);
+	});
+
 	it('finds the selected options at any depth', () => {
 		expect(render({ selectedOption: ['2', 3] }).dropdown.selectedIds).toEqual([2, 3]);
 	});

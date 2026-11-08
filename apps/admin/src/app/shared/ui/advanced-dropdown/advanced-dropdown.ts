@@ -61,19 +61,18 @@ export class AdvancedDropdown {
 		}
 	}
 
+	/** Ids are compared as text: the catalogue's ids are words such as `cat_2051`, not numbers. */
 	getSelectedData(value: any) {
 		this.options().forEach((item) => {
 			this.recursiveSelected(
 				item,
-				value.map(function (x: any) {
-					return parseInt(x);
-				}),
+				value.map((x: any) => String(x)),
 			);
 		});
 	}
 
 	recursiveSelected(item: any, value: any) {
-		if (item.id && value.includes(item.id)) {
+		if (item.id && value.includes(String(item.id))) {
 			this.onSelect(item);
 		}
 		if (item[this.subArrayKey()]?.length) {

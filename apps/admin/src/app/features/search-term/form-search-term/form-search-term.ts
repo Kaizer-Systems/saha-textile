@@ -130,7 +130,10 @@ export class FormSearchTerm {
 	}
 
 	selectCategories(ids: string[]) {
-		if (Array.isArray(ids)) this.selectedCategories.set(ids.map(String));
+		if (!Array.isArray(ids)) return;
+		const next = ids.map(String);
+		// The picker repeats its selection when it redraws; the same list must not redraw it again.
+		if (next.join() !== this.selectedCategories().join()) this.selectedCategories.set(next);
 	}
 
 	searchProducts(event: Select2SearchEvent) {

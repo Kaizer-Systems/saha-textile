@@ -53,7 +53,10 @@ export class StorefrontSetting {
 	}
 
 	selectShowFirst(ids: string[]) {
-		if (Array.isArray(ids)) this.showFirst.set(ids.map(String));
+		if (!Array.isArray(ids)) return;
+		const next = ids.map(String);
+		// The picker repeats its selection when it redraws; the same list must not redraw it again.
+		if (next.join() !== this.showFirst().join()) this.showFirst.set(next);
 	}
 
 	submit() {

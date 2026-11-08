@@ -34,7 +34,8 @@ export class Blog {
 	private readonly params = signal<Params>({});
 	readonly blogsQuery = injectBlogsQuery(() => this.params());
 
-	public tableConfig: ITableConfig = {
+	/** A signal, so the table redraws when an answer arrives after it was first drawn. */
+	readonly tableConfig = signal<ITableConfig<IBlog>>({
 		columns: [
 			{ title: 'No.', dataField: 'no', type: 'no' },
 			{
@@ -58,15 +59,18 @@ export class Blog {
 				permission: 'blog.destroy',
 			},
 		],
-		data: [] as IBlog[],
+		data: [],
 		total: 0,
-	};
+	});
 
 	constructor() {
 		effect(() => {
 			const blog = this.blogsQuery.data();
-			this.tableConfig.data = blog ? blog.data : [];
-			this.tableConfig.total = blog ? blog.total : 0;
+			this.tableConfig.update((config) => ({
+				...config,
+				data: blog ? blog.data : [],
+				total: blog ? blog.total : 0,
+			}));
 		});
 	}
 

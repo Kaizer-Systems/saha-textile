@@ -343,10 +343,10 @@ describe('Blog list', () => {
 
 	it('fills the table from the query and opens a post', () => {
 		const { page, router } = blogSetup();
-		expect(page.tableConfig).toMatchObject({ data: [], total: 0 });
+		expect(page.tableConfig()).toMatchObject({ data: [], total: 0 });
 		data.set({ data: [{ id: 'blg_1' }], total: 1 });
 		TestBed.tick();
-		expect(page.tableConfig).toMatchObject({ data: [{ id: 'blg_1' }], total: 1 });
+		expect(page.tableConfig()).toMatchObject({ data: [{ id: 'blg_1' }], total: 1 });
 		page.onTableChange({ page: 2 });
 		page.onActionClicked({ actionToPerform: 'edit', data: { id: 'blg_1' } } as never);
 		expect(router.navigateByUrl).toHaveBeenCalledWith('/blog/edit/blg_1');

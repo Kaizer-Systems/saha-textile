@@ -33,6 +33,31 @@ map $from_inside $client_ip {
 	1 $remote_addr;
 }
 
+# Which "back in a moment" page to show: the address decides for the storefront (`/fr/` is
+# French), and the browser's language decides where the address cannot.
+map $http_accept_language $fallback_language {
+	default en;
+	~*^fr   fr;
+}
+map $uri $storefront_fallback_language {
+	default          $fallback_language;
+	~^/fr(/|$)       fr;
+	~^/en(/|$)       en;
+}
+
+# The pages refresh every 15 seconds and must never be cached; their stylesheet and pictures may be.
+map $uri $fallback_expires {
+	default    1h;
+	~\.html$  -1;
+}
+
+# Only a 503 says when to try again; an empty value sends no header. Set per server rather than
+# per location, because an add_header in a location would drop the server's security headers.
+map $status $retry_after {
+	default "";
+	503     15;
+}
+
 log_format edge '$client_ip "$request" $status $body_bytes_sent $request_time "$host"';
 access_log /var/log/nginx/access.log edge;
 
@@ -48,6 +73,7 @@ server {
 	if ($origin_refused) { return 403; }
 
 	add_header Strict-Transport-Security "max-age=31536000" always;
+	add_header Retry-After $retry_after always;
 	add_header X-Content-Type-Options nosniff always;
 	add_header Referrer-Policy strict-origin-when-cross-origin always;
 	add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
@@ -59,6 +85,13 @@ server {
 		alias /etc/nginx/public/storefront.config.json;
 		default_type application/json;
 		expires -1;
+	}
+
+	# Shown only when no storefront copy answers: a reboot or a crash, never a deploy.
+	error_page 502 503 504 =503 /__fallback/$storefront_fallback_language.html;
+	location /__fallback/ {
+		alias /etc/nginx/fallback/storefront/;
+		expires $fallback_expires;
 	}
 
 	location / {
@@ -76,11 +109,18 @@ server {
 	if ($origin_refused) { return 403; }
 
 	add_header Strict-Transport-Security "max-age=31536000" always;
+	add_header Retry-After $retry_after always;
 	add_header X-Content-Type-Options nosniff always;
 	add_header Referrer-Policy strict-origin-when-cross-origin always;
 	add_header X-Frame-Options DENY always;
 	add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
 	add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://${CDN_HOST}; media-src 'self' https://${CDN_HOST}; connect-src 'self' https://${API_HOST} https://${SPACES_HOST}; base-uri 'self'; object-src 'none'; frame-ancestors 'none'" always;
+
+	error_page 502 503 504 =503 /__fallback/$fallback_language.html;
+	location /__fallback/ {
+		alias /etc/nginx/fallback/admin/;
+		expires $fallback_expires;
+	}
 
 	location / {
 		include /etc/nginx/snippets/proxy.conf;
@@ -102,6 +142,28 @@ server {
 		include /etc/nginx/snippets/proxy.conf;
 		set $upstream http://api:4000;
 		proxy_pass $upstream;
+	}
+
+	add_header Retry-After $retry_after always;
+
+	# A customer returning from CCAvenue while the API cannot answer sees the storefront's payment
+	# page, never a technical error. Everything else gets a short JSON 503 the apps understand.
+	error_page 502 503 504 =503 @api_unavailable;
+	location @api_unavailable {
+		default_type application/json;
+		return 503 '{"error":"temporarily_unavailable"}';
+	}
+
+	location = ${PAYMENT_RETURN_PATH} {
+		error_page 502 503 504 =503 /__fallback/payment-$fallback_language.html;
+		include /etc/nginx/snippets/proxy.conf;
+		set $upstream http://api:4000;
+		proxy_pass $upstream;
+	}
+
+	location /__fallback/ {
+		alias /etc/nginx/fallback/storefront/;
+		expires $fallback_expires;
 	}
 
 	location /auth/ {

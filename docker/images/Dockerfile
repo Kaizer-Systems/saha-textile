@@ -34,6 +34,8 @@ RUN --mount=type=cache,id=saha-textile-pnpm,target=/pnpm/store \
 		--filter "@saha-textile/admin..."
 ARG APPS="@saha-textile/api @saha-textile/storefront @saha-textile/admin"
 RUN for app in $APPS; do set -- "$@" --filter "$app"; done; pnpm turbo run build "$@"
+# The pages Nginx shows while an app cannot answer, styled by each app's own build.
+RUN node scripts/build-fallback-pages.mjs /out/fallback
 # A pruned, production-only copy of the API with its workspace packages.
 RUN --mount=type=cache,id=saha-textile-pnpm,target=/pnpm/store \
 	pnpm --filter @saha-textile/api deploy --legacy --prod /out/api
@@ -69,4 +71,5 @@ EXPOSE 8080
 # ---- ops (backups and deploy checks) ------------------------------------------
 FROM ${OPS_BASE_IMAGE} AS ops
 RUN apk add --no-cache age aws-cli curl jq
+COPY --from=build /out/fallback /fallback
 USER nobody

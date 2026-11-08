@@ -1107,5 +1107,8 @@
 	"total_customers": "Total Customers",
 	"in_stock": "In Stock",
 	"low_stock": "Low Stock",
-	"no_dashboard_access": "You do not have access to any home page widgets yet. Ask an administrator to grant them."
+	"no_dashboard_access": "You do not have access to any home page widgets yet. Ask an administrator to grant them.",
+	"admin_restarting_title": "Admin is restarting",
+	"admin_restarting_text": "This page will refresh by itself in a few seconds.",
+	"try_again": "Try again"
 }

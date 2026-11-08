@@ -51,6 +51,13 @@ check_payment_host() {
 	host="${host%%/*}"
 	[[ "$host" == "$(release_value "$RELEASE" CCAVENUE_HOST)" ]] ||
 		die 'CCAVENUE_HOST in release.env must be the host of CCAVENUE_BASE_URL in secrets/api.env.'
+	# The payment return gets its own page while the API is down, so Nginx must know its path.
+	local return_url expected
+	return_url="$(sed -n 's/^CCAVENUE_RETURN_URL=//p' "$SECRETS/api.env" | tail -n 1)"
+	expected="$(release_value "$RELEASE" PAYMENT_RETURN_PATH)"
+	expected="${expected:-/payments/ccavenue/return}"
+	[[ "/${return_url#https://*/}" == "$expected" ]] ||
+		die 'PAYMENT_RETURN_PATH in release.env must be the path of CCAVENUE_RETURN_URL in secrets/api.env.'
 }
 
 render_public_config() {
@@ -136,7 +143,45 @@ start_apps() {
 	swap_apps "$RELEASE"
 	say 'Rebuilding the search index'
 	exec_one "$RELEASE" api node dist/rebuild-search-index.js >/dev/null
+	install_fallback_pages
 	check_running
+}
+
+# The "back in a moment" pages come from the ops image. The shop name and logo come from the Brand
+# Kit, so the pages never call the API while it is down: a logo changed in admin appears here from
+# the next deploy. Files are replaced inside the folder Nginx already has open.
+install_fallback_pages() {
+	say 'Installing the back-in-a-moment pages'
+	local folder="$SAHA_TEXTILE_ROOT/edge/fallback" site
+	site="$(release_value "$RELEASE" SITE_URL)"
+	mkdir -p "$folder"
+	compose_for "$RELEASE" --profile ops run --rm --no-deps -T --user 0 -v "$folder:/out" \
+		-e API_URL="$(release_value "$RELEASE" API_URL)" -e SITE_URL="$site" ops sh -s <<'SCRIPT' >/dev/null
+set -eu
+find /out -mindepth 1 -delete
+cp -R /fallback/. /out/
+brand="$(curl -fsS --cacert /certs/origin-ca.pem --max-time 20 "$API_URL/storefront/brand" || echo '{}')"
+name="$(printf '%s' "$brand" | jq -r '.shopName // empty' | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g')"
+logo_url="$(printf '%s' "$brand" | jq -r '.logo.url // empty')"
+logo=''
+if [ -n "$logo_url" ]; then
+	extension="${logo_url##*.}"
+	if curl -fsS --max-time 20 "$logo_url" -o "/out/storefront/logo.$extension"; then
+		logo="<img src=\"/__fallback/logo.$extension\" class=\"img-fluid mb-4\" width=\"260\" alt=\"$name\">"
+	fi
+fi
+# sed treats & and the | delimiter in a replacement as special, so both are escaped first.
+for_sed() { printf '%s' "$1" | sed 's/[&|\\]/\\&/g'; }
+name_sed="$(for_sed "$name")"
+site_sed="$(for_sed "$SITE_URL")"
+logo_sed="$(for_sed "$logo")"
+# Without a name the title keeps its own words, not a trailing separator.
+[ -n "$name" ] || sed -i 's| · __SHOP_NAME__||g' /out/storefront/*.html /out/admin/*.html
+for page in /out/storefront/*.html /out/admin/*.html; do
+	sed -i "s|__SHOP_NAME__|$name_sed|g; s|__SITE_URL__|$site_sed|g; s|<!--logo-->|$logo_sed|" "$page"
+done
+chmod -R a+rX /out
+SCRIPT
 }
 
 restore_previous() {

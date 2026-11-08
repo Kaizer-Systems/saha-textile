@@ -754,5 +754,10 @@
 	"install_mac_step_3": "Click <b>Add</b>. The shop now opens from your Dock.",
 	"install_other_step_1": "Open your browser's menu.",
 	"install_other_step_2": "Choose <b>Install app</b> or <b>Add to Home Screen</b>.",
-	"install_other_step_3": "If you don't see either, open this shop in Chrome, Edge or Safari."
+	"install_other_step_3": "If you don't see either, open this shop in Chrome, Edge or Safari.",
+	"back_in_a_moment_text": "The shop is restarting. This page will refresh by itself in a few seconds.",
+	"payment_confirming_title": "We're confirming your payment",
+	"payment_confirming_text": "Please don't pay again. Your order page will show the result within a few minutes.",
+	"view_my_orders": "View my orders",
+	"back_in_a_moment_title": "We'll be back soon"
 }

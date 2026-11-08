@@ -13,6 +13,8 @@ source_of_truth:
     - docker/production/bin/restore.sh
     - docker/production/required-secrets.txt
     - scripts/production-proof.sh
+    - scripts/build-fallback-pages.mjs
+    - docker/production/nginx/edge.conf.template
     - docs/engineering-live-context/production-deployment-plan.mdx
 ---
 
@@ -55,8 +57,9 @@ Each release keeps its own secrets and public config, so a rollback returns to t
 8. Run `node dist/first-run-setup.js`: it adds the administrator role, currencies and notification templates when missing, and leaves existing rows alone.
 9. Swap the apps side by side.
 10. Run `node dist/rebuild-search-index.js`, which builds a second index and swaps it in.
-11. Check that every dependency is up and that both `config.json` files parse and name the right API.
-12. Mark the release as current.
+11. Install the back-in-a-moment pages, with the shop's name and logo.
+12. Check that every dependency is up and that both `config.json` files parse and name the right API.
+13. Mark the release as current.
 
 ### Side-by-side swap
 
@@ -96,6 +99,19 @@ The proof sends requests continuously during a deploy, a failed deploy and a rol
 A new container that never becomes healthy is removed and the old one keeps serving. If a later step fails, the previous release is swapped back. The workflow run shows the failure, and the logs stay on the droplet.
 
 An API started with unsafe settings exits with code 1 and a list of the problems, naming variables and never values.
+
+## Back-in-a-moment pages
+
+A reboot or a crash can still stop an app for a moment. Nginx then answers with that app's own page as a 503 with `Retry-After: 15`, in English or French, and the page refreshes itself every 15 seconds.
+
+| Host                          | Shows                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------- |
+| Storefront                    | The coming-soon box with the logo; language from `/fr/` or `/en/`, else the browser's |
+| Admin                         | The admin error section; language from the browser                                    |
+| API                           | `{"error":"temporarily_unavailable"}`                                                 |
+| API, at `PAYMENT_RETURN_PATH` | "We're confirming your payment", a link to the order list, and no refresh             |
+
+`scripts/build-fallback-pages.mjs` builds the pages during the image build from each app's own stylesheet and translations. The deploy copies them to `edge/fallback/` and fills in the shop's name, logo and site address from `GET /storefront/brand`. The payment page never refreshes, so a browser never posts a payment return twice.
 
 ## First administrator
 

@@ -754,5 +754,10 @@
 	"install_mac_step_3": "Cliquez sur <b>Ajouter</b>. La boutique s’ouvre maintenant depuis votre Dock.",
 	"install_other_step_1": "Ouvrez le menu de votre navigateur.",
 	"install_other_step_2": "Choisissez <b>Installer l’application</b> ou <b>Ajouter à l’écran d’accueil</b>.",
-	"install_other_step_3": "Si vous ne voyez aucune de ces options, ouvrez cette boutique dans Chrome, Edge ou Safari."
+	"install_other_step_3": "Si vous ne voyez aucune de ces options, ouvrez cette boutique dans Chrome, Edge ou Safari.",
+	"back_in_a_moment_text": "La boutique redémarre. Cette page se rechargera d'elle-même dans quelques secondes.",
+	"payment_confirming_title": "Nous confirmons votre paiement",
+	"payment_confirming_text": "Merci de ne pas payer une seconde fois. La page de votre commande affichera le résultat d'ici quelques minutes.",
+	"view_my_orders": "Voir mes commandes",
+	"back_in_a_moment_title": "Nous revenons bientôt"
 }

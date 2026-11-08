@@ -1107,5 +1107,8 @@
 	"total_customers": "Total des clients",
 	"in_stock": "En stock",
 	"low_stock": "Stock faible",
-	"no_dashboard_access": "Vous n'avez encore accès à aucun widget de la page d'accueil. Demandez à un administrateur de vous les attribuer."
+	"no_dashboard_access": "Vous n'avez encore accès à aucun widget de la page d'accueil. Demandez à un administrateur de vous les attribuer.",
+	"admin_restarting_title": "L'administration redémarre",
+	"admin_restarting_text": "Cette page se rechargera d'elle-même dans quelques secondes.",
+	"try_again": "Réessayer"
 }

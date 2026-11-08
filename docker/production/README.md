@@ -61,3 +61,21 @@ over SSH, never from a workflow:
 docker exec -it "$(docker compose --project-name saha-textile ps --quiet api | head -n 1)" \
 	node dist/create-first-admin.js --email <address>
 ```
+
+## Back-in-a-moment pages
+
+When no copy of an app answers, Nginx shows that app's own static page as a 503 with
+`Retry-After: 15`. The pages are built into the `ops` image by
+`scripts/build-fallback-pages.mjs`, and each deploy copies them to
+`/opt/saha-textile/edge/fallback/`, filling in the shop name, logo and site address from
+`GET /storefront/brand`.
+
+| Host                          | Shows                                                                      |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| Storefront                    | English or French, from `/fr/` or `/en/`, otherwise the browser's language |
+| Admin                         | English or French, from the browser's language                             |
+| API                           | `{"error":"temporarily_unavailable"}`                                      |
+| API, at `PAYMENT_RETURN_PATH` | The storefront's payment page, with no refresh                             |
+
+`PAYMENT_RETURN_PATH` defaults to `/payments/ccavenue/return`. When CCAvenue is configured, a
+deploy refuses a `CCAVENUE_RETURN_URL` with a different path.

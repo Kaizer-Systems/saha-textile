@@ -97,11 +97,11 @@ swap_in() {
 # Only a change of hostnames or ports, which live in the container's environment, recreates it.
 sync_edge() {
 	local release="$1" edge="$SAHA_TEXTILE_ROOT/edge" fingerprint
-	mkdir -p "$edge/templates" "$edge/snippets" "$edge/public"
+	mkdir -p "$edge/templates" "$edge/snippets" "$edge/public" "$edge/fallback"
 	cp "$release/nginx/edge.conf.template" "$edge/templates/default.conf.template"
 	cp "$release/nginx/proxy.conf" "$release/nginx/tls.conf" "$edge/snippets/"
 	cp "$release/public/storefront.config.json" "$edge/public/storefront.config.json"
-	fingerprint="$(grep -E '^(EDGE_|STOREFRONT_HOST|ADMIN_HOST|API_HOST|CDN_HOST|SPACES_HOST|CCAVENUE_HOST|PRIVATE_)' "$release/release.env" | sort | cksum)"
+	fingerprint="$(grep -E '^(EDGE_|STOREFRONT_HOST|ADMIN_HOST|API_HOST|CDN_HOST|SPACES_HOST|CCAVENUE_HOST|PAYMENT_RETURN_PATH|PRIVATE_)' "$release/release.env" | sort | cksum)"
 	if [[ -n "$(compose_for "$release" ps --quiet edge)" && "$(cat "$edge/env.fingerprint" 2>/dev/null)" == "$fingerprint" ]]; then
 		compose_for "$release" exec -T edge sh -c \
 			'/docker-entrypoint.d/20-envsubst-on-templates.sh >/dev/null && nginx -t -q && nginx -s reload 2>/dev/null'

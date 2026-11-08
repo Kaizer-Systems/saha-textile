@@ -9,7 +9,7 @@ search_keywords: 'deployment plan github actions ghcr digest droplet cloudflare 
 
 # Production Deployment Plan — Saha Textile
 
-**Status:** Agreed with the owner on 2026-11-08. Nothing here is built yet. Decisions are also in `owner-decisions-log.mdx`, which wins on conflict.
+**Status:** Agreed with the owner on 2026-11-08. The repo groundwork is built and proved locally with `pnpm production:proof`; no server, DNS or cloud account is set up yet. Decisions are also in `owner-decisions-log.mdx`, which wins on conflict.
 
 **Current status authority:** `project-progress.mdx`
 
@@ -148,13 +148,14 @@ Every change must work while the old and new versions run together for that half
 
 ### Back in a moment
 
-A reboot or a crash can still stop the shop briefly. For those moments, each app gets its own "back in a moment" page, in its own look.
+A reboot or a crash can still stop the shop briefly. For those moments, each app has its own "back in a moment" page, in its own look. Built on 2026-11-08 (Option A of the brief, with the full Saha Textile logo).
 
-- Each app produces a self-contained static page at build time: inline styles, no scripts, English and French. Nginx holds the copy, because the app is the thing that is down.
-- It answers 503 with `Retry-After`, refreshes itself and keeps the address. API calls get a short JSON 503.
-- The CCAvenue return path on the API host shows the storefront's page, worded for a payment being confirmed. The return address stays on the API host.
-- The logo comes from the CDN, with the shop name as a fallback.
-- It needs a `DEC-UI-REUSE` brief first, reusing each app's error page.
+- `scripts/build-fallback-pages.mjs` runs inside the image build, after the apps are built. It writes static pages, English and French, that link the app's own built stylesheet and reuse its existing markup: the storefront's coming-soon box and the admin's error section with its `401.svg` picture. No scripts. The texts are translation keys in each app's `en.json` and `fr.json`.
+- The pages live in the `ops` image. Each deploy copies them to `edge/fallback/`, which Nginx reads, because the app is the thing that is down. The deploy fills in the shop name, logo and site address from `GET /storefront/brand`; without a logo the page shows the title alone.
+- Nginx answers 502, 503 and 504 from an app with its page as a 503 with `Retry-After: 15`, keeping the address and the security headers. The storefront picks the language from `/fr/` or `/en/` in the address, and from the browser's language otherwise; admin uses the browser's language. The pages refresh every 15 seconds and are never cached.
+- API calls get `{"error":"temporarily_unavailable"}` as a 503.
+- The CCAvenue return path on the API host (`PAYMENT_RETURN_PATH`, default `/payments/ccavenue/return`) shows the storefront's payment page instead: "We're confirming your payment", with a link to the order list and no refresh, so the browser never posts the payment again. A deploy refuses a `CCAVENUE_RETURN_URL` whose path differs from `PAYMENT_RETURN_PATH`.
+- `pnpm production:proof` stops each app in turn and checks each page, both languages, the header and the payment page.
 - CCAvenue sends no webhook, and nothing received says it repeats a payment return. A return posted while the API is down is lost, and the checkout's status-enquiry sweep settles that attempt instead. See [CCAvenue § During a restart](/payments/ccavenue#during-a-restart).
 
 ### Kubernetes and more servers

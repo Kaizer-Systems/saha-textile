@@ -249,7 +249,38 @@ in_release "$FIRST" logs --no-color >"$PROOF/stack.log" 2>&1
 grep -q 'hardening checks passed' "$PROOF/stack.log" && pass 'the API passed its startup checks' || fail 'no hardening line in the logs'
 SECRET_VALUE="$(sed -n 's/^CSRF_SECRET=//p' "$FIRST/secrets/api.env")"
 grep -qF "$SECRET_VALUE" "$PROOF/stack.log" && fail 'a secret reached the logs' || pass 'no secret in the logs'
-docker inspect "$(in_release "$FIRST" ps -q api)" | grep -qF "$SECRET_VALUE" && fail 'a secret shows in docker inspect' || pass 'no secret in docker inspect'
+# Every API copy is inspected; a failed inspect fails the check instead of passing it.
+# Container ids hold no spaces, so a plain split is safe (macOS bash 3.2 has no mapfile).
+# shellcheck disable=SC2207
+API_IDS=($(in_release "$FIRST" ps -q api))
+if ((${#API_IDS[@]} == 0)) || ! docker inspect "${API_IDS[@]}" >"$PROOF/inspect.json"; then
+	fail 'could not inspect the API containers'
+elif grep -qF "$SECRET_VALUE" "$PROOF/inspect.json"; then
+	fail 'a secret shows in docker inspect'
+else
+	pass "no secret in docker inspect (${#API_IDS[@]} copies)"
+fi
+
+echo 'Back in a moment'
+page() { curl -sk --resolve "$1:$EDGE_PORT:127.0.0.1" --cert "$PROOF/client/client.pem" --key "$PROOF/client/client.key" -w '\n%{http_code}' "${@:3}" "https://$1:$EDGE_PORT$2"; }
+shows() { local reply; reply="$(page "$2" "$3" "${@:5}")"; [[ "$(tail -n 1 <<<"$reply")" == 503 ]] && grep -qF "$4" <<<"$reply" && pass "$1" || fail "$1: $(tail -n 1 <<<"$reply")"; }
+in_release "$FIRST" stop storefront >/dev/null 2>&1
+shows 'the shop shows its English page when it cannot answer' "$SITE_HOST" /en/ "back soon"
+shows 'and its French page under /fr/' "$SITE_HOST" /fr/ "Nous revenons"
+HEADERS="$(page "$SITE_HOST" /en/ -o /dev/null -D -)"
+grep -qi '^retry-after: 15' <<<"$HEADERS" && grep -qi '^strict-transport-security:' <<<"$HEADERS" &&
+	grep -qi '^content-security-policy:' <<<"$HEADERS" &&
+	pass 'it says when to try again and keeps its security headers' || fail 'Retry-After or a security header is missing'
+in_release "$FIRST" up --detach --no-deps --wait --wait-timeout 120 storefront >/dev/null 2>&1
+in_release "$FIRST" stop admin >/dev/null 2>&1
+shows 'admin shows its own page' "$ADMIN_HOST" / "Admin is restarting"
+in_release "$FIRST" up --detach --no-deps --wait --wait-timeout 120 admin >/dev/null 2>&1
+in_release "$FIRST" stop api >/dev/null 2>&1
+shows 'the API answers a short JSON 503' "$API_HOST" /health/live 'temporarily_unavailable'
+shows 'a payment return shows the payment page' "$API_HOST" /payments/ccavenue/return "confirming your payment" -X POST -d encResp=x
+shows 'in French for a French browser' "$API_HOST" /payments/ccavenue/return "Nous confirmons" -X POST -d encResp=x -H 'Accept-Language: fr-FR,fr;q=0.9'
+in_release "$FIRST" up --detach --no-deps --wait --wait-timeout 120 api >/dev/null 2>&1
+expect 'everything answers again' "$(with_pull_cert "$SITE_HOST" /en/)" 200
 
 echo 'Two copies of each web service'
 expect 'the API runs two copies' "$(in_release "$FIRST" ps --quiet api | wc -l | tr -d ' ')" 2

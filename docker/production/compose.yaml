@@ -162,6 +162,7 @@ services:
       CDN_HOST: ${CDN_HOST}
       SPACES_HOST: ${SPACES_HOST}
       CCAVENUE_HOST: ${CCAVENUE_HOST}
+      PAYMENT_RETURN_PATH: ${PAYMENT_RETURN_PATH:-/payments/ccavenue/return}
       PRIVATE_SUBNET: ${PRIVATE_SUBNET:-172.30.0.0/24}
       PRIVATE_GATEWAY: ${PRIVATE_GATEWAY:-172.30.0.1}
     ports:
@@ -172,6 +173,7 @@ services:
       - ${SAHA_TEXTILE_ROOT}/edge/templates:/etc/nginx/templates:ro
       - ${SAHA_TEXTILE_ROOT}/edge/snippets:/etc/nginx/snippets:ro
       - ${SAHA_TEXTILE_ROOT}/edge/public:/etc/nginx/public:ro
+      - ${SAHA_TEXTILE_ROOT}/edge/fallback:/etc/nginx/fallback:ro
       - ${SAHA_TEXTILE_ROOT}/certs/origin.pem:/etc/nginx/certs/origin.pem:ro
       - ${SAHA_TEXTILE_ROOT}/certs/origin.key:/etc/nginx/certs/origin.key:ro
       - ${SAHA_TEXTILE_ROOT}/certs/cloudflare-client-ca.pem:/etc/nginx/certs/cloudflare-client-ca.pem:ro

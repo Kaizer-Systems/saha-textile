@@ -73,6 +73,8 @@ export class SearchSuggest {
 	readonly submitted = output<string>();
 	/** Escape with the box already closed. */
 	readonly escaped = output<void>();
+	/** A product or category was opened from the box. */
+	readonly navigated = output<void>();
 
 	private readonly productService = inject(ProductService);
 	private readonly consent = inject(ConsentStore);
@@ -259,6 +261,7 @@ export class SearchSuggest {
 				return;
 			case 'category':
 				this.close();
+				this.navigated.emit();
 				void this.router.navigateByUrl(`/collections/${option.category.canonical_path ?? ''}`);
 				return;
 			case 'product':
@@ -307,6 +310,7 @@ export class SearchSuggest {
 		}
 		this.close();
 		this.field().blur();
+		this.navigated.emit();
 		void this.router.navigate(['/product', product.slug]);
 	}
 

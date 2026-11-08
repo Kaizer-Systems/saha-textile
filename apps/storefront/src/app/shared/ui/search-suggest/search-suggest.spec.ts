@@ -57,6 +57,7 @@ class Host {
 	control = new FormControl<string | null>('');
 	submitted: string[] = [];
 	escaped = 0;
+	navigated = 0;
 }
 
 interface Options {
@@ -188,7 +189,7 @@ describe('search suggestion box', () => {
 	});
 
 	it('moves through rows with the arrow keys and opens a product with Enter', async () => {
-		const { type, key, field, service, router, rows } = render();
+		const { type, key, field, service, router, rows, host } = render();
 		type('jamd');
 		await vi.waitFor(() => expect(rows()).toHaveLength(3));
 		key('ArrowDown');
@@ -202,6 +203,7 @@ describe('search suggestion box', () => {
 		key('Enter');
 		expect(service.searchClick).toHaveBeenCalledWith('jamd', 1);
 		expect(router.navigate).toHaveBeenCalledWith(['/product', 'ruby-red-jamdani-saree']);
+		expect(host.navigated).toBe(1);
 		expect(JSON.parse(localStorage.getItem('st_search') ?? '{}')).toEqual({
 			terms: ['jamd'],
 			products: ['ruby-red-jamdani-saree'],

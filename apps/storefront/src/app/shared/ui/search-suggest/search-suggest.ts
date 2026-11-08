@@ -210,6 +210,8 @@ export class SearchSuggest {
 				}),
 				this.renderer.listen(field, 'keydown', (event: KeyboardEvent) => this.onKeydown(event)),
 				this.renderer.listen(this.page, 'pointerdown', (event: PointerEvent) => this.onOutside(event)),
+				// A phone keyboard opening or closing changes the room below the field.
+				this.renderer.listen('window', 'resize', () => this.open() && this.fitToScreen()),
 			];
 			// The header bar focuses its field as it opens, which can be before these listeners exist.
 			if (this.page.activeElement === field) queueMicrotask(() => this.show());

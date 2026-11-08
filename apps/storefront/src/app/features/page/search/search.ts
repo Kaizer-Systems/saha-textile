@@ -98,7 +98,12 @@ export class Search {
 	constructor() {
 		this.route.queryParams
 			.pipe(
-				map((params) => ({ term: String(params['search'] ?? '').trim(), page: positivePage(params['page']) })),
+				map((params) => ({
+					term: String(params['search'] ?? '').trim(),
+					page: positivePage(params['page']),
+					// Back and Forward return to a search already counted.
+					counted: this.router.currentNavigation?.()?.trigger !== 'popstate',
+				})),
 				tap(({ term, page }) => {
 					this.search.setValue(term, { emitEvent: false });
 					this.term.set(term);
@@ -107,15 +112,21 @@ export class Search {
 					this.unavailable.set(false);
 				}),
 				// switchMap drops an older answer that lands after a newer search.
-				switchMap(({ term, page }) =>
+				switchMap(({ term, page, counted }) =>
 					// In the browser only: on the server every shopper would share one rate-limit address.
 					term && this.browser
-						? this.productService.search(term, { page, pageSize: SEARCH_PAGE_SIZE, source: 'page' }).pipe(
-								catchError(() => {
-									this.unavailable.set(true);
-									return of<SearchPage>({ items: [], total: 0 });
-								}),
-							)
+						? this.productService
+								.search(term, {
+									page,
+									pageSize: SEARCH_PAGE_SIZE,
+									source: counted ? 'page' : 'typeahead',
+								})
+								.pipe(
+									catchError(() => {
+										this.unavailable.set(true);
+										return of<SearchPage>({ items: [], total: 0 });
+									}),
+								)
 						: EMPTY,
 				),
 				takeUntilDestroyed(),

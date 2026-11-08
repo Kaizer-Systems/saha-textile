@@ -181,6 +181,13 @@ describe('Search page', () => {
 		expect(view.search.value).toBe('silk');
 	});
 
+	it('does not count a search again when Back or Forward returns to it', () => {
+		const { service, params, router } = render();
+		Object.assign(router, { currentNavigation: () => ({ trigger: 'popstate' }) });
+		params.next({ search: 'silk' });
+		expect(service.search).toHaveBeenLastCalledWith('silk', { page: 1, pageSize: 24, source: 'typeahead' });
+	});
+
 	it('treats a broken page number as page 1', () => {
 		const { service } = render({ search: 'silk', page: 'two' });
 		expect(service.search).toHaveBeenCalledWith('silk', expect.objectContaining({ page: 1 }));

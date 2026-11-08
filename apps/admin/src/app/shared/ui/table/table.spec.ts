@@ -246,6 +246,23 @@ describe('Table selection', () => {
 		expect(table.selected).toEqual(['blg_1']);
 	});
 
+	it('shows the bulk buttons the operator may use, only while a row on the page is ticked', () => {
+		const bulkActions = [
+			{ label: 'go_live', actionToPerform: 'bulk_go_live', icon: 'i', permission: 'x.edit' },
+			{ label: 'other', actionToPerform: 'bulk_other', icon: 'i', permission: 'x.publish' },
+			{ label: 'open', actionToPerform: 'bulk_open', icon: 'i' },
+		];
+		const { table } = render(['x.edit'], config({ bulkActions }));
+		expect(table.visibleBulkActions).toEqual([]);
+		table.selected = [1];
+		expect(table.visibleBulkActions.map((action) => action.actionToPerform)).toEqual(['bulk_go_live', 'bulk_open']);
+		table.selected = [99];
+		expect(table.visibleBulkActions).toEqual([]);
+		const plain = render(['x.edit']);
+		plain.table.selected = [1];
+		expect(plain.table.visibleBulkActions).toEqual([]);
+	});
+
 	it('enables delete and duplicate for selected rows with the right', () => {
 		const { table } = render();
 		expect(table.deleteButtonStatus).toBe(false);

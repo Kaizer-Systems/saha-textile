@@ -1144,5 +1144,8 @@
 	"blog_gap_image_alt": "Cover alt text",
 	"blog_gap_category": "Choose at least one live category",
 	"blog_gap_blog_category": "A chosen category is not live",
-	"blog_gap_blog_tag": "A chosen tag is not live"
+	"blog_gap_blog_tag": "A chosen tag is not live",
+	"take_off_shop": "Take off shop",
+	"blog_bulk_live": "Posts live: {{count}}",
+	"blog_bulk_taken_down": "Posts taken off the shop: {{count}}"
 }

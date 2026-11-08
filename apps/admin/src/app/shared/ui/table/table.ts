@@ -255,6 +255,15 @@ export class Table {
 		return status;
 	}
 
+	/** The table's bulk buttons the operator may use, shown while a ticked row is on this page. */
+	get visibleBulkActions() {
+		const ticked = this.tableConfig?.data?.some((row) => this.selected.includes(row.id));
+		if (!ticked) return [];
+		return (this.tableConfig?.bulkActions ?? []).filter(
+			(action) => !action.permission || this.permissions?.includes(action.permission),
+		);
+	}
+
 	get duplicateButtonStatus() {
 		let status = false;
 		this.tableConfig?.data?.filter((data: any) => {

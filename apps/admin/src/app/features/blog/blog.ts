@@ -1,10 +1,11 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal, viewChild } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
+import { type Observable, catchError, concatMap, from, map, of, toArray } from 'rxjs';
 
-import { BLOG_GO_LIVE_WORDS, goLiveToast } from '@core/catalog/go-live-report';
+import { BLOG_GO_LIVE_WORDS, goLiveLabels, goLiveToast } from '@core/catalog/go-live-report';
 import { IBlog } from '@data-access/interfaces/blog.interface';
 import { Params } from '@data-access/interfaces/core.interface';
 import { ITableClickedAction, ITableConfig } from '@data-access/interfaces/table.interface';
@@ -16,7 +17,6 @@ import { HasPermissionDirective } from '@shared/directives/has-permission.direct
 import { Table } from '@shared/ui/table/table';
 
 import type { GoLiveResult } from '@saha-textile/contracts';
-import type { Observable } from 'rxjs';
 
 @Component({
 	selector: 'app-blog',
@@ -33,6 +33,7 @@ export class Blog {
 
 	private readonly params = signal<Params>({});
 	readonly blogsQuery = injectBlogsQuery(() => this.params());
+	private readonly table = viewChild(Table);
 
 	/** A signal, so the table redraws when an answer arrives after it was first drawn. */
 	readonly tableConfig = signal<ITableConfig<IBlog>>({
@@ -57,6 +58,15 @@ export class Blog {
 				actionToPerform: 'delete',
 				icon: 'ri-delete-bin-line',
 				permission: 'blog.destroy',
+			},
+		],
+		bulkActions: [
+			{ label: 'go_live', actionToPerform: 'bulk_go_live', icon: 'ri-rocket-line', permission: 'blog.edit' },
+			{
+				label: 'take_off_shop',
+				actionToPerform: 'bulk_take_down',
+				icon: 'ri-eye-off-line',
+				permission: 'blog.edit',
 			},
 		],
 		data: [],
@@ -84,6 +94,8 @@ export class Blog {
 		else if (action.actionToPerform == 'status') this.status(action.data);
 		else if (action.actionToPerform == 'delete') this.delete(action.data);
 		else if (action.actionToPerform == 'deleteAll') this.deleteAll(action.data);
+		else if (action.actionToPerform == 'bulk_go_live') this.bulkGoLive(action.data);
+		else if (action.actionToPerform == 'bulk_take_down') this.bulkTakeDown(action.data);
 	}
 
 	edit(data: IBlog) {
@@ -120,6 +132,73 @@ export class Blog {
 
 	deleteAll(ids: string[]) {
 		for (const id of ids ?? []) this.blogs.deletePost(String(id)).subscribe({ next: () => this.refresh() });
+	}
+
+	/**
+	 * Go Live for every ticked post, one after another, through the same check as the form. Live posts
+	 * are left as they are. One note counts the posts now live; each post that cannot go live gets
+	 * its own note naming what it lacks.
+	 */
+	bulkGoLive(ids: (string | number)[]) {
+		const rows = this.ticked(ids);
+		from(rows)
+			.pipe(
+				concatMap((row) =>
+					row.status === '1'
+						? of({ row, result: { live: true, gaps: [] } as GoLiveResult })
+						: this.blogs.goLive(row.id).pipe(
+								map((result) => ({ row, result })),
+								catchError(() => of({ row, result: null })),
+							),
+				),
+				toArray(),
+			)
+			.subscribe((outcomes) => {
+				const translate = (key: string) => this.transloco.translate(key);
+				const live = outcomes.filter((outcome) => outcome.result?.live).length;
+				if (live) this.notifier.showSuccess(this.transloco.translate('blog_bulk_live', { count: live }));
+				for (const { row, result } of outcomes) {
+					if (result?.live) continue;
+					const reason = result
+						? goLiveLabels(result.gaps, translate, BLOG_GO_LIVE_WORDS).join(', ')
+						: translate('blog_rejected');
+					this.notifier.showError(`${row.title}: ${reason}`);
+				}
+				this.finishBulk();
+			});
+	}
+
+	/** Takes every ticked live post off the shop; drafts are left as they are. */
+	bulkTakeDown(ids: (string | number)[]) {
+		const live = this.ticked(ids).filter((row) => row.status === '1');
+		from(live)
+			.pipe(
+				concatMap((row) =>
+					this.blogs.setStatus(row.id, 'draft').pipe(
+						map(() => true),
+						catchError(() => of(false)),
+					),
+				),
+				toArray(),
+			)
+			.subscribe((done) => {
+				const count = done.filter(Boolean).length;
+				if (count) this.notifier.showSuccess(this.transloco.translate('blog_bulk_taken_down', { count }));
+				if (count < done.length) this.notifier.showError(this.transloco.translate('blog_rejected'));
+				this.finishBulk();
+			});
+	}
+
+	/** The ticked rows on this page, in table order. */
+	private ticked(ids: (string | number)[]): IBlog[] {
+		const wanted = new Set((ids ?? []).map(String));
+		return (this.tableConfig().data ?? []).filter((row) => wanted.has(String(row.id)));
+	}
+
+	private finishBulk() {
+		const table = this.table();
+		if (table) table.selected = [];
+		this.refresh();
 	}
 
 	private report(call: Observable<GoLiveResult>) {

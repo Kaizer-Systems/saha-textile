@@ -1144,5 +1144,8 @@
 	"blog_gap_image_alt": "প্রচ্ছদের ছবির বিবরণ (alt)",
 	"blog_gap_category": "অন্তত একটি লাইভ ক্যাটাগরি বেছে নিন",
 	"blog_gap_blog_category": "বেছে নেওয়া একটি ক্যাটাগরি লাইভ নয়",
-	"blog_gap_blog_tag": "বেছে নেওয়া একটি ট্যাগ লাইভ নয়"
+	"blog_gap_blog_tag": "বেছে নেওয়া একটি ট্যাগ লাইভ নয়",
+	"take_off_shop": "দোকান থেকে সরান",
+	"blog_bulk_live": "লাইভ পোস্ট: {{count}}",
+	"blog_bulk_taken_down": "দোকান থেকে সরানো পোস্ট: {{count}}"
 }

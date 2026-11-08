@@ -368,6 +368,55 @@ describe('Blog list', () => {
 		expect(toasts.showSuccess).toHaveBeenCalledWith('blog_deleted');
 	});
 
+	it('puts every ticked post live, skips live ones and names what stops the rest', () => {
+		const { page, blogs, toasts } = blogSetup();
+		data.set({
+			data: [
+				{ id: 'a', title: 'Ready', status: '0' },
+				{ id: 'b', title: 'Already live', status: '1' },
+				{ id: 'c', title: 'Missing Bengali', status: '0' },
+				{ id: 'd', title: 'Broken', status: '0' },
+				{ id: 'e', title: 'Not ticked', status: '0' },
+			],
+			total: 5,
+		});
+		TestBed.tick();
+		blogs.goLive.mockImplementation(((id: string) =>
+			id === 'a'
+				? of({ live: true, gaps: [] })
+				: id === 'c'
+					? of({ live: false, gaps: [{ field: 'content', locale: 'bn' }] })
+					: throwError(() => new Error('no'))) as never);
+		page.onActionClicked({ actionToPerform: 'bulk_go_live', data: ['a', 'b', 'c', 'd'] } as never);
+		expect(blogs.goLive.mock.calls.map(([id]) => id)).toEqual(['a', 'c', 'd']);
+		expect(toasts.showSuccess).toHaveBeenCalledWith('blog_bulk_live');
+		expect(toasts.showError).toHaveBeenCalledWith('Missing Bengali: বাংলা: blog_gap_content');
+		expect(toasts.showError).toHaveBeenCalledWith('Broken: blog_rejected');
+		expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['blogs'] });
+	});
+
+	it('takes every ticked live post off the shop and leaves drafts alone', () => {
+		const { page, blogs, toasts } = blogSetup();
+		data.set({
+			data: [
+				{ id: 'a', title: 'Live', status: '1' },
+				{ id: 'b', title: 'Draft', status: '0' },
+				{ id: 'c', title: 'Live too', status: '1' },
+			],
+			total: 3,
+		});
+		TestBed.tick();
+		blogs.setStatus.mockImplementation(((id: string) =>
+			id === 'c' ? throwError(() => new Error('no')) : of({ live: false, gaps: [] })) as never);
+		page.onActionClicked({ actionToPerform: 'bulk_take_down', data: ['a', 'b', 'c'] } as never);
+		expect(blogs.setStatus.mock.calls).toEqual([
+			['a', 'draft'],
+			['c', 'draft'],
+		]);
+		expect(toasts.showSuccess).toHaveBeenCalledWith('blog_bulk_taken_down');
+		expect(toasts.showError).toHaveBeenCalledWith('blog_rejected');
+	});
+
 	it('says when a delete is refused', () => {
 		const { page, blogs, toasts } = blogSetup();
 		blogs.deletePost.mockReturnValueOnce(throwError(() => new Error('no')) as never);

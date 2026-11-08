@@ -11,7 +11,17 @@
 			}
 		</select>
 		<label>{{ 'items_per_page' | transloco }}</label>
-		@if (deleteButtonStatus) {
+		@for (bulk of visibleBulkActions; track bulk.actionToPerform) {
+		<a
+			href="javascript:void(0)"
+			class="align-items-center btn btn-outline btn-sm d-flex"
+			(click)="ConfirmationModal().openModal(bulk.actionToPerform, selected.slice());
+                     $event.preventDefault(); $event.stopPropagation()"
+		>
+			<i [class]="bulk.icon"></i>
+			{{ bulk.label | transloco }}
+		</a>
+		} @if (deleteButtonStatus) {
 		<a
 			href="javascript:void(0)"
 			class="align-items-center btn btn-outline btn-sm d-flex"

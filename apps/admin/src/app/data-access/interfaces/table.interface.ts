@@ -4,6 +4,17 @@ export interface ITableConfig<T extends IBaseRow = IBaseRow> {
 	data?: T[];
 	total?: number;
 	permission?: string | string[];
+	/** Extra buttons beside Delete while rows are ticked; each asks through the confirmation modal. */
+	bulkActions?: ITableBulkAction[];
+}
+
+/** A button that acts on every ticked row. It is emitted with the ticked ids as `data`. */
+export interface ITableBulkAction {
+	/** A translation key. */
+	label: string;
+	actionToPerform: string;
+	icon: string;
+	permission?: string;
 }
 export interface IBaseRow {
 	id: number | string;

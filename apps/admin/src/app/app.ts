@@ -47,6 +47,9 @@ export class App {
 		const document = inject<Document>(DOCUMENT);
 
 		this.translate.setActiveLang('en');
+		// The page states its language, so the Bengali type rules (`:lang(bn)`) and screen
+		// readers follow the switcher.
+		this.translate.langChanges$.subscribe((lang) => (page.documentElement.lang = lang));
 		this.settingStore.loadSetting().subscribe();
 
 		effect(() => {

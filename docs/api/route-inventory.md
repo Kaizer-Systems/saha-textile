@@ -236,6 +236,14 @@ A restore returns the customer to the previous status. It does not re-attach pro
 | `POST`   | `/admin/catalog/faq`                            | `faq.edit`                  | Save an FAQ entry                                                 |
 | `GET`    | `/admin/catalog/questions`                      | `question_and_answer.index` | List shopper questions                                            |
 | `POST`   | `/admin/catalog/questions/:id/answer`           | `question_and_answer.edit`  | Answer a question and email the shopper                           |
+| `GET`    | `/admin/search-terms`                           | `search_term.index`         | List search words, any status                                     |
+| `GET`    | `/admin/search-terms/:id`                       | `search_term.index`         | One search word with its tagged products                          |
+| `POST`   | `/admin/search-terms`                           | `search_term.create`        | Add a search word                                                 |
+| `POST`   | `/admin/search-terms/:id`                       | `search_term.edit`          | Save a search word; Live needs every language and a tag           |
+| `POST`   | `/admin/search-terms/status`                    | `search_term.edit`          | Bulk Go Live or Take off shop                                     |
+| `DELETE` | `/admin/search-terms/:id`                       | `search_term.destroy`       | Delete a search word                                              |
+| `GET`    | `/admin/storefront-settings/search`             | `theme_option.index`        | Which categories show first in search                             |
+| `PUT`    | `/admin/storefront-settings/search`             | `theme_option.edit`         | Save Search; the shop re-indexes in the background                |
 
 Admin catalogue reads answer `no-store`.
 

@@ -1,7 +1,7 @@
 ---
 title: Storefront Search
 wide: true
-description: How the menu-bar search, the Search page and the suggestion box work, and what search records.
+description: How the menu-bar search, the Search page and the suggestion box work, how the admin's search words and Storefront settings shape results, and what search records.
 status: implemented
 audience: [beginner, frontend, backend]
 last_verified: '2026-11-08'
@@ -14,6 +14,11 @@ source_of_truth:
     - apps/api/src/catalog/search-insights.service.ts
     - packages/core-domain/src/catalog/search-analytics.ts
     - packages/adapters-db-mongo/src/repositories/search-analytics.repository.ts
+    - packages/core-domain/src/catalog/search-terms.ts
+    - apps/api/src/catalog/search-terms.service.ts
+    - apps/api/src/search/meilisearch-search.ts
+    - apps/admin/src/app/features/search-term
+    - apps/admin/src/app/features/storefront-setting
 ---
 
 # Storefront search
@@ -43,6 +48,25 @@ The host keeps its own field and markup and passes the input element to `app-sea
 
 The address decides what the page shows: `?search=` holds the words and `?page=` the page (24 results each). Enter, the Search button, See all results, a recent search and a shared link all land on the same results, and Back returns to them. With no words the page lists the catalogue a page at a time. The results line reads "Results for "…": n", and no results shows the shared empty state.
 
+## How results are ranked
+
+The index ranks by these rules, in order: every typed word found, fewest typos, the Storefront settings "show first" order, where the words were found (title, then search words, then facts, then description), how close together they are, and exact matches. "Show first" rides on the text search's own sort, so category listings, which search with no words and their own sort, keep their order.
+
+## Search words (admin)
+
+Staff manage search words under Products › Search words. A search word has a name in every shop language, other spellings per language, and one shared set of tagged categories and products (a category also covers the categories under it).
+
+- Every live search word's names and spellings, in all languages, are synonyms of each other in the index, so "pujo" also finds a title that says "puja".
+- They are also written onto every product the word tags, in the `searchTerms` field, so a search for any of them, or a near-miss typo, finds those products even when no title says the word ("puja" finds Laal Paar and Red & White sarees).
+- Go Live needs the name in every language and at least one category or product; the list has bulk Go Live and Take off shop.
+- A save re-indexes only the products the word tags or used to tag, in the background, and replaces the synonyms at once. A category change refreshes the vocabulary too. Every save is in the audit log.
+- Permissions: `search_term.index`, `.create`, `.edit`, `.destroy`. Run `seed:system-roles` after deploying so the Administrator role holds them.
+- A spelling makes two words mean the same thing everywhere. Keep a distinct style out of a broader word's spellings: "dhakai" as a spelling of Jamdani made every Jamdani match a Dhakai search equally.
+
+## Storefront settings (admin)
+
+Store front › Storefront settings holds small shop-wide settings, one group per side tab. The Search group sets the categories that show first when the words fit two products equally well (`storefront.search` site setting). With Sarees chosen, "banarasi" lists Banarasi sarees before Banarasi suits, while "banarasi suit" still lists suits first. Saving re-indexes the whole shop in place, in the background.
+
 ## What search records
 
 Search keeps totals only. Nothing about the shopper is stored: no account, address, cookie or device.
@@ -64,11 +88,12 @@ Rate limits: `catalog_search` (120 a minute per address) covers search and trend
 
 ## Tests
 
-- Unit: `search-suggest.spec.ts`, `search-history.spec.ts`, the Search page specs, `catalog-search.test.ts` (API) and `search-analytics.test.ts` (core-domain).
-- Database: `search-analytics.persistence.test.ts` runs against the replica set with `RUN_DB_IT=1` and a test database.
+- Unit: `search-suggest.spec.ts`, `search-history.spec.ts`, the Search page specs, `catalog-search.test.ts` and `search-terms.test.ts` (API), `search-analytics.test.ts` and `search-terms.test.ts` (core-domain), and the admin `search-term.spec.ts`.
+- Database: `search-analytics.persistence.test.ts` and `search-term.persistence.test.ts` run against the replica set with `RUN_DB_IT=1` and a test database.
 - Browser: `e2e/search.spec.ts` covers the header bar, the Search page, keys, counting and the Bengali page on desktop and phone.
 
 ## Limitations
 
-- Multi-word searches match all words, so "tant saree" finds fewer products than "tant". Relevance tuning and a search dictionary are separate work.
+- A word the catalogue never uses finds nothing until staff add it as a search word.
+- Fabric and colour words that live only in a product's facts rank below title matches, so "black georgette" can list black sarees in another fabric first.
 - A click on a stale row while a newer answer is loading counts that product against the newer words.

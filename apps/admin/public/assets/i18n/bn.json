@@ -1199,7 +1199,7 @@
 	"spellings": "অন্য বানান",
 	"finds": "যা খুঁজে দেয়",
 	"updated_at": "আপডেট",
-	"search_word_finds": "{{categories}}টি বিভাগ · {{products}}টি পণ্য",
+	"search_word_finds": "বিভাগ: {{categories}} · পণ্য: {{products}}",
 	"search_word_deleted": "খোঁজার শব্দটি মুছে ফেলা হয়েছে।",
 	"search_word_rejected": "খোঁজার শব্দটি সেভ হয়নি। আবার চেষ্টা করুন।",
 	"search_word_bulk_live": "লাইভ খোঁজার শব্দ: {{count}}",

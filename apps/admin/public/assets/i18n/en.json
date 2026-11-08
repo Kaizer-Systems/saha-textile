@@ -1199,7 +1199,7 @@
 	"spellings": "Spellings",
 	"finds": "Finds",
 	"updated_at": "Updated",
-	"search_word_finds": "{{categories}} categories · {{products}} products",
+	"search_word_finds": "Categories: {{categories}} · Products: {{products}}",
 	"search_word_deleted": "The search word is deleted.",
 	"search_word_rejected": "The search word was not saved. Please try again.",
 	"search_word_bulk_live": "Search words live: {{count}}",

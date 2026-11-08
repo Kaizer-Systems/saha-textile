@@ -173,3 +173,66 @@ describe('trending', () => {
 		expect(analytics.listProductClicks).toHaveBeenCalledTimes(3);
 	});
 });
+
+describe('trending beside a product', () => {
+	const clicks = (ids: string[]) =>
+		ids.map((productId, index) => ({ productId, date: '2026-11-08', clicks: 10 - index }));
+
+	/** Products in `cat_saree` unless named in `elsewhere`; the page's own product is `self`. */
+	const build = (elsewhere: string[] = []) => {
+		const all = ['self', 'a', 'b', 'c', 'd', 'e', 'best', 'new', 'x'];
+		const cards = all.map((id) => card(id, id !== 'e'));
+		const parts = setup({ cards });
+		// The real read keeps the order of the ids it was given.
+		parts.cardsForIds.mockImplementation(async (ids: readonly string[]) =>
+			ids.flatMap((id) => cards.filter((row) => row.id === id)),
+		);
+		const row = (id: string) => ({ id, categoryIds: elsewhere.includes(id) ? ['cat_other'] : ['cat_saree'] });
+		const products = parts.products as unknown as Record<string, ReturnType<typeof vi.fn>>;
+		products['findById'] = vi.fn(async (id: string) => (id === 'missing' ? null : row(id)));
+		products['findBySlug'] = vi.fn(async (slug: string) => (slug === 'gone' ? null : row('self')));
+		products['list'] = vi.fn(async (filter: { insight?: string }) => ({
+			items: (filter.insight ? ['self', 'best', 'a'] : ['new', 'self']).map(row),
+			total: 3,
+			page: 1,
+			pageSize: 13,
+		}));
+		return { ...parts, productsMock: products };
+	};
+
+	it('ranks same-category clicks first, then bestsellers and newest, never itself', async () => {
+		const { insights, analytics, productsMock } = build(['x']);
+		analytics.listProductClicks.mockResolvedValue(clicks(['self', 'x', 'a', 'b', 'c', 'd', 'e', 'missing']));
+		const result = await insights.trendingFor('red', 6, now);
+		expect(result.kind).toBe('trending');
+		expect(result.items.map((row) => row.id)).toEqual(['a', 'b', 'c', 'd', 'best', 'new']);
+		expect(productsMock['list']).toHaveBeenCalledWith(
+			expect.objectContaining({ audience: 'public', categoryIds: ['cat_saree'], insight: 'bestseller' }),
+		);
+	});
+
+	it('fills from the category as Popular when few clicks match, and is empty for an unknown product', async () => {
+		const { insights } = build();
+		const result = await insights.trendingFor('red', 6, now);
+		expect(result).toEqual({ kind: 'popular', items: [card('best'), card('a'), card('new')] });
+		expect(await insights.trendingFor('gone', 6, now)).toEqual({ kind: 'popular', items: [] });
+	});
+
+	it('caches each product and language for five minutes, trimmed to the asked length', async () => {
+		const { insights, analytics } = build();
+		expect((await insights.trendingFor('red', 1, now)).items).toHaveLength(1);
+		expect((await insights.trendingFor('red', 6, new Date(now.getTime() + 60_000))).items).toHaveLength(3);
+		expect(analytics.listProductClicks).toHaveBeenCalledTimes(1);
+		await withCatalogLocale('bn', () => insights.trendingFor('red', 6, now));
+		await insights.trendingFor('red', 6, new Date(now.getTime() + 6 * 60_000));
+		expect(analytics.listProductClicks).toHaveBeenCalledTimes(3);
+	});
+
+	it('keeps the cache bounded', async () => {
+		const { insights } = build();
+		for (let index = 0; index < 501; index += 1) await insights.trendingFor(`p${index}`, 1, now);
+		const cache = (insights as unknown as { productCache: Map<string, unknown> }).productCache;
+		expect(cache.size).toBe(500);
+		expect(cache.has('en:p0')).toBe(false);
+	});
+});

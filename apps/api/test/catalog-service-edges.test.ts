@@ -820,7 +820,10 @@ describe('catalogue controllers', () => {
 			gallery: vi.fn(async () => 'gallery'),
 			page: vi.fn(async () => 'page'),
 		};
-		const controller = new ProductsController(catalog as never, publicCatalog as never);
+		const insights = { trendingFor: vi.fn(async () => ({ kind: 'popular', items: [] })) };
+		const controller = new ProductsController(catalog as never, publicCatalog as never, insights as never);
+		expect(await controller.trending('red', { limit: 4 })).toEqual({ kind: 'popular', items: [] });
+		expect(insights.trendingFor).toHaveBeenCalledWith('red', 4);
 		await controller.list('2', '10', 'c', 't', 's');
 		expect(catalog.listProducts).toHaveBeenLastCalledWith({
 			audience: 'public',

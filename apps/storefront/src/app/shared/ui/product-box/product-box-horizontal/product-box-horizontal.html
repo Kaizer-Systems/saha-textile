@@ -54,6 +54,7 @@
 					role="button"
 					[attr.aria-label]="'quick_view' | transloco"
 					[ngbTooltip]="'quick_view' | transloco"
+					triggers="hover"
 					(click)="productDetailModal.openModal()"
 				>
 					<i
@@ -69,6 +70,7 @@
 					[attr.aria-pressed]="compared()"
 					[attr.aria-label]="(compared() ? 'remove_from_compare' : 'add_to_compare') | transloco"
 					[ngbTooltip]="(compared() ? 'remove_from_compare' : 'add_to_compare') | transloco"
+					triggers="hover"
 					(click)="toggleCompare()"
 				>
 					<i
@@ -86,6 +88,7 @@
 					[attr.aria-pressed]="saved()"
 					[attr.aria-label]="(saved() ? 'remove_from_wishlist' : 'add_to_wishlist') | transloco"
 					[ngbTooltip]="(saved() ? 'remove_from_wishlist' : 'add_to_wishlist') | transloco"
+					triggers="hover"
 					(click)="toggleWishlist()"
 				>
 					<i

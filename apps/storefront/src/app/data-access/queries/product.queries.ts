@@ -103,3 +103,16 @@ export function injectRelatedProductsData() {
 		staleTime: Infinity,
 	}));
 }
+
+/**
+ * The product page's Trending list. Public catalogue data under the `catalog` root, so it is
+ * read on the server and its links are in the page source.
+ */
+export function injectProductTrendingQuery(slug: () => string | undefined) {
+	const productService = inject(ProductService);
+	return injectQuery(() => ({
+		queryKey: ['catalog', 'trending', slug()],
+		queryFn: () => firstValueFrom(productService.trendingFor(slug() ?? '')),
+		enabled: !!slug(),
+	}));
+}

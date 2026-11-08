@@ -16,7 +16,14 @@ import { TrendingProducts } from './product-detail/widgets/trending-products/tre
 import { Wishlist } from './wishlist/wishlist';
 
 const related = signal<unknown>(undefined);
-vi.mock('@data-access/queries/product.queries', () => ({ injectRelatedProductsData: () => ({ data: related }) }));
+const trendingSlugs: unknown[] = [];
+vi.mock('@data-access/queries/product.queries', () => ({
+	injectRelatedProductsData: () => ({ data: related }),
+	injectProductTrendingQuery: (slug: () => unknown) => {
+		trendingSlugs.push(slug);
+		return { data: related };
+	},
+}));
 
 const translate = { provide: TranslocoService, useValue: { selectTranslate: () => of('Title') } };
 
@@ -38,6 +45,42 @@ describe('Compare page', () => {
 		expect(store.loadPage).toHaveBeenCalledOnce();
 		await Promise.resolve();
 		expect(page.ready()).toBe(true);
+	});
+
+	it('lines up the same fact rows in every column', () => {
+		const items = signal([
+			{
+				semantic_attributes: [
+					{ code: 'fabric', label: 'Fabric', value: 'Silk' },
+					{ code: 'color', label: 'Colour', value: 'Red' },
+				],
+			},
+			{
+				semantic_attributes: [
+					{ code: 'fabric', label: 'Fabric', value: 'Cotton' },
+					{ code: 'work', label: 'Work', value: 'Zari' },
+				],
+			},
+			{},
+		]);
+		TestBed.resetTestingModule();
+		TestBed.configureTestingModule({
+			providers: [
+				translate,
+				{ provide: CompareStore, useValue: { items, loadPage: vi.fn(async () => {}) } },
+				{ provide: PLATFORM_ID, useValue: 'server' },
+			],
+		});
+		TestBed.overrideComponent(Compare, { set: { imports: [], template: '' } });
+		const page = TestBed.createComponent(Compare).componentInstance;
+		expect(page.factRows()).toEqual([
+			{ code: 'fabric', label: 'Fabric' },
+			{ code: 'color', label: 'Colour' },
+			{ code: 'work', label: 'Work' },
+		]);
+		expect(page.factOf(items()[1] as never, 'color')).toBe('-');
+		expect(page.factOf(items()[1] as never, 'work')).toBe('Zari');
+		expect(page.factOf(items()[2] as never, 'work')).toBe('-');
 	});
 
 	it('waits on the server', () => {
@@ -98,15 +141,15 @@ describe('ProductAction', () => {
 });
 
 describe('TrendingProducts', () => {
-	it('keeps the trending cards only', () => {
+	it('lists the trending cards for its product', () => {
 		TestBed.resetTestingModule();
 		TestBed.overrideComponent(TrendingProducts, { set: { imports: [], template: '' } });
 		const fixture = TestBed.createComponent(TrendingProducts);
+		fixture.componentRef.setInput('product', { slug: 'red-saree' });
 		fixture.detectChanges();
-		TestBed.tick();
-		expect(fixture.componentInstance.relatedProducts).toEqual([]);
-		related.set([{ id: 1, is_trending: true }, { id: 2 }]);
-		TestBed.tick();
-		expect(fixture.componentInstance.relatedProducts).toEqual([{ id: 1, is_trending: true }]);
+		expect(fixture.componentInstance.products()).toEqual([]);
+		expect((trendingSlugs.at(-1) as () => unknown)()).toBe('red-saree');
+		related.set([{ id: 1 }, { id: 2 }]);
+		expect(fixture.componentInstance.products()).toEqual([{ id: 1 }, { id: 2 }]);
 	});
 });

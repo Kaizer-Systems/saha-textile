@@ -46,6 +46,7 @@ import {
 	injectProductBySlugQuery,
 	injectProductRelationsQuery,
 	injectRecentPurchasesQuery,
+	injectProductTrendingQuery,
 	injectRelatedProductsData,
 } from './product.queries';
 import { injectQuestionAnswersQuery } from './questions-answers.queries';
@@ -97,7 +98,7 @@ beforeEach(() => {
 			{ provide: PointService, useValue: service('getUserTransaction') },
 			{
 				provide: ProductService,
-				useValue: service('getCatalog', 'getProductPage', 'recentPurchases', 'getRelations'),
+				useValue: service('getCatalog', 'getProductPage', 'recentPurchases', 'getRelations', 'trendingFor'),
 			},
 			{ provide: QuestionsAnswersService, useValue: service('getQuestionAnswers') },
 			{ provide: RefundService, useValue: service('getRefunds') },
@@ -265,6 +266,14 @@ describe('catalogue queries', () => {
 		await query.queryFn();
 		expect(query.enabled).toBe(true);
 		expect(options(() => injectProductRelationsQuery(() => undefined)).enabled).toBe(false);
+	});
+
+	it('reads trending for one product once it has a slug', async () => {
+		const query = options(() => injectProductTrendingQuery(() => 'red-saree'));
+		expect(query.queryKey).toEqual(['catalog', 'trending', 'red-saree']);
+		await query.queryFn();
+		expect(query.enabled).toBe(true);
+		expect(options(() => injectProductTrendingQuery(() => undefined)).enabled).toBe(false);
 	});
 
 	it('only ever reads the shared related slot', async () => {

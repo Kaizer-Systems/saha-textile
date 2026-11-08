@@ -73,6 +73,7 @@
 			[attr.aria-pressed]="saved()"
 			[attr.aria-label]="(saved() ? 'remove_from_wishlist' : 'add_to_wishlist') | transloco"
 			[ngbTooltip]="(saved() ? 'remove_from_wishlist' : 'add_to_wishlist') | transloco"
+			triggers="hover"
 			(click)="toggleWishlist()"
 		>
 			<i
@@ -89,6 +90,7 @@
 			[attr.aria-pressed]="compared()"
 			[attr.aria-label]="(compared() ? 'remove_from_compare' : 'add_to_compare') | transloco"
 			[ngbTooltip]="(compared() ? 'remove_from_compare' : 'add_to_compare') | transloco"
+			triggers="hover"
 			(click)="toggleCompare()"
 		>
 			<i

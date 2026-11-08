@@ -114,6 +114,15 @@ export class ProductService {
 			.pipe(map((body) => ({ kind: body.kind, items: body.items.map(cardToProduct) })));
 	}
 
+	/** Trending in this product's categories, topped up with their bestsellers (never the product itself). */
+	trendingFor(slug: string, limit = 4): Observable<IProduct[]> {
+		return this.http
+			.get<{ items: ApiCard[] }>(`${environment.apiUrl}/catalog/products/${encodeURIComponent(slug)}/trending`, {
+				params: { limit },
+			})
+			.pipe(map((body) => body.items.map(cardToProduct)));
+	}
+
 	cardsFor(slugs: string[]): Observable<IProduct[]> {
 		return this.http
 			.get<ApiCard[]>(`${environment.apiUrl}/catalog/cards`, {

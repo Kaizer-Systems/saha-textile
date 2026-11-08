@@ -8,7 +8,6 @@ import { SiteConfigStore } from '@core/state/site-config.store';
 import { IProduct } from '@data-access/interfaces/product.interface';
 import { ISiteConfig } from '@data-access/interfaces/site-config.interface';
 
-import { ProductBanner } from '../widgets/product-banner/product-banner';
 import { StoreInformation } from '../widgets/store-information/store-information';
 import { TrendingProducts } from '../widgets/trending-products/trending-products';
 
@@ -16,7 +15,7 @@ import { TrendingProducts } from '../widgets/trending-products/trending-products
 	selector: 'app-product-details-sidebar',
 	templateUrl: './sidebar.html',
 	styleUrls: ['./sidebar.scss'],
-	imports: [StoreInformation, TrendingProducts, ProductBanner, AsyncPipe],
+	imports: [StoreInformation, TrendingProducts, AsyncPipe],
 })
 export class ProductSidebar {
 	siteConfig$: Observable<ISiteConfig> = toObservable(inject(SiteConfigStore).siteConfig) as Observable<ISiteConfig>;

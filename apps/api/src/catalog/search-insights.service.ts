@@ -18,6 +18,8 @@ const TRENDING_TTL_MS = 5 * 60 * 1000;
 /** Enough candidates that sold-out or hidden products can drop out and still fill the list. */
 const CANDIDATES = 24;
 const MAX_ITEMS = 12;
+/** Product pages each keep their own list; past this many the oldest entries make room. */
+const PRODUCT_CACHE_LIMIT = 500;
 
 /**
  * Search counts and Trending. Recording never fails a shopper's request: a lost count is
@@ -27,6 +29,7 @@ const MAX_ITEMS = 12;
 export class SearchInsightsService {
 	private readonly logger = new Logger(SearchInsightsService.name);
 	private readonly cache = new Map<string, { at: number; value: CatalogSearchTrending }>();
+	private readonly productCache = new Map<string, { at: number; value: CatalogSearchTrending }>();
 
 	constructor(
 		@Inject(SEARCH_ANALYTICS_REPOSITORY) private readonly analytics: SearchAnalyticsRepository,
@@ -64,6 +67,49 @@ export class SearchInsightsService {
 		const hit = this.cache.get(locale);
 		const full = hit && now.getTime() - hit.at < TRENDING_TTL_MS ? hit.value : await this.rank(locale, now);
 		return { kind: full.kind, items: full.items.slice(0, limit) };
+	}
+
+	/**
+	 * "Trending" beside one product: products opened from search lately that share one of its
+	 * categories, then that category's bestsellers, then its newest pieces, so every product page
+	 * has a full list. Never the product itself, and only products on sale.
+	 */
+	async trendingFor(slug: string, limit: number, now = new Date()): Promise<CatalogSearchTrending> {
+		const key = `${catalogLocale()}:${slug}`;
+		const hit = this.productCache.get(key);
+		if (hit && now.getTime() - hit.at < TRENDING_TTL_MS)
+			return { ...hit.value, items: hit.value.items.slice(0, limit) };
+		const product = await this.products.findBySlug(slug, 'public');
+		if (!product) return { kind: 'popular', items: [] };
+		const categories = new Set(product.categoryIds);
+		const ranked = rankTrending(await this.analytics.listProductClicks(trendingRange(now)), now)
+			.map((row) => row.productId)
+			.filter((id) => id !== product.id)
+			.slice(0, CANDIDATES);
+		const clicked = (await Promise.all(ranked.map((id) => this.products.findById(id, 'public'))))
+			.filter((row) => row !== null && row.categoryIds.some((id) => categories.has(id)))
+			.map((row) => row!.id);
+		const ids = [...clicked];
+		const kind: CatalogSearchTrending['kind'] = clicked.length >= TRENDING_MIN_PRODUCTS ? 'trending' : 'popular';
+		for (const insight of ['bestseller', undefined] as const) {
+			if (ids.length >= MAX_ITEMS) break;
+			const page = await this.products.list({
+				audience: 'public',
+				page: 1,
+				pageSize: MAX_ITEMS + 1,
+				categoryIds: [...categories],
+				...(insight ? { insight } : {}),
+			});
+			for (const row of page.items) if (row.id !== product.id && !ids.includes(row.id)) ids.push(row.id);
+		}
+		const items = (await this.catalog.cardsForIds(ids.slice(0, MAX_ITEMS * 2))).filter(buyable).slice(0, MAX_ITEMS);
+		const value: CatalogSearchTrending = { kind, items };
+		if (this.productCache.size >= PRODUCT_CACHE_LIMIT) {
+			const oldest = this.productCache.keys().next().value;
+			if (oldest !== undefined) this.productCache.delete(oldest);
+		}
+		this.productCache.set(key, { at: now.getTime(), value });
+		return { kind, items: items.slice(0, limit) };
 	}
 
 	private async rank(locale: string, now: Date): Promise<CatalogSearchTrending> {

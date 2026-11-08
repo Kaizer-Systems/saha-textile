@@ -2,7 +2,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Component, TemplateRef, PLATFORM_ID, inject, viewChild } from '@angular/core';
 import { FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
 
-import { TranslocoModule } from '@jsverse/transloco';
+import { ToastrService } from '@damjantonkli/ngx-toastr';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
 import { IProduct } from '@data-access/interfaces/product.interface';
@@ -24,6 +25,8 @@ export class QuestionModal {
 	private platformId = inject<Object>(PLATFORM_ID);
 	private questionsApi = inject(QuestionsAnswersService);
 	private authStore = inject(AuthStore);
+	private toastr = inject(ToastrService);
+	private transloco = inject(TranslocoService);
 
 	readonly QuestionModal = viewChild<TemplateRef<string>>('questionModal');
 
@@ -81,6 +84,11 @@ export class QuestionModal {
 				askerEmail,
 				isAnonymous: this.stayAnonymous.value === true,
 			})
-			.subscribe(() => this.modalService.dismissAll());
+			.subscribe(() => {
+				this.modalService.dismissAll();
+				this.question.reset('');
+				// The theme toast; the question shows on the page once the shop answers it.
+				this.toastr.success(this.transloco.translate('question_sent'));
+			});
 	}
 }

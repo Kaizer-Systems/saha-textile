@@ -802,5 +802,6 @@
 	"cookie_item_lists": "Hold your wishlist (before you sign in) and your compare list",
 	"cookie_kept_browser": "Until you close the browser",
 	"asked_by": "Asked by {{name}}",
-	"answered_on": "Answered {{date}}"
+	"answered_on": "Answered {{date}}",
+	"question_sent": "Thanks for your question. We will email you when it is answered."
 }

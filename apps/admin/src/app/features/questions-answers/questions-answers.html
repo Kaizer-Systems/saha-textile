@@ -1,12 +1,27 @@
 <app-page-wrapper
 	[gridClass]="'col-sm-12'"
-	[title]="'Q&A'"
+	[title]="'questions_answers'"
 >
+	<div
+		class="d-flex flex-wrap gap-2"
+		button
+	>
+		<select2
+			class="custom-select min-w-cls"
+			[data]="statusOptions()"
+			[value]="status()"
+			[placeholder]="'filter_by' | transloco"
+			(update)="onStatusChange($event)"
+		/>
+	</div>
 	<app-table
 		[tableConfig]="tableConfig()"
-		[hasCheckbox]="true"
+		[hasCheckbox]="false"
 		(tableChanged)="onTableChange($event)"
 		(action)="onActionClicked($event)"
 	/>
 </app-page-wrapper>
-<app-answers-modal #answersModal />
+<app-answers-modal
+	#answersModal
+	(answered)="onAnswered()"
+/>

@@ -11,9 +11,11 @@ import {
 } from '../src/catalog/content.controller';
 import { ContentService } from '../src/catalog/content.service';
 
-const product = { id: 'prd_1', slug: 'red-saree' };
+const product = { id: 'prd_1', slug: 'red-saree', title: { en: 'Red saree', bn: 'লাল শাড়ি' } };
 
-const build = (overrides: { withAll?: boolean; found?: unknown; repeat?: unknown; saved?: unknown } = {}) => {
+const build = (
+	overrides: { withAll?: boolean; found?: unknown; repeat?: unknown; saved?: unknown; before?: unknown } = {},
+) => {
 	const products = {
 		findBySlug: vi.fn(async () => (overrides.found === undefined ? product : overrides.found)),
 		findById: vi.fn(async () => (overrides.found === undefined ? product : overrides.found)),
@@ -48,8 +50,21 @@ const build = (overrides: { withAll?: boolean; found?: unknown; repeat?: unknown
 		})),
 		findPendingDuplicate: vi.fn(async () => overrides.repeat ?? null),
 		create: vi.fn(async (row: unknown) => row),
-		list: vi.fn(async () => ({ items: ['q'], total: 1, page: 1, pageSize: 200 })),
+		list: vi.fn(async () => ({
+			items: [
+				{ id: 'q1', productId: 'prd_1' },
+				{ id: 'q2', productId: 'prd_gone' },
+			],
+			total: 2,
+			page: 1,
+			pageSize: 30,
+		})),
 		answer: vi.fn(async () => saved),
+		findById: vi.fn(async (id: string) =>
+			id === 'missing' ? null : (overrides.before ?? { id, productId: 'prd_1', status: 'pending' }),
+		),
+		updateStatus: vi.fn(async () => {}),
+		deleteById: vi.fn(async () => {}),
 	};
 	const notifications = { send: vi.fn(async () => ({ status: 'sent' })) };
 	const audit = { append: vi.fn(async () => {}) };
@@ -139,9 +154,45 @@ describe('product questions', () => {
 		expect(repeat.questions.create).not.toHaveBeenCalled();
 	});
 
-	it('lists for the admin, with or without a store', async () => {
-		expect((await build().service.adminQuestions()).items).toEqual(['q']);
-		expect(await build({ withAll: false }).service.adminQuestions()).toMatchObject({ items: [], total: 0 });
+	it('lists for the admin with each product name, or nothing without a store', async () => {
+		const { service, products, questions } = build();
+		products.findById.mockImplementation(async (id: string) => (id === 'prd_1' ? product : null));
+		const page = await service.adminQuestions({ status: 'pending', search: ' saree ', page: 1, pageSize: 30 });
+		expect(questions.list).toHaveBeenCalledWith({ status: 'pending', search: ' saree ', page: 1, pageSize: 30 });
+		expect(page.items).toEqual([
+			{ question: { id: 'q1', productId: 'prd_1' }, productName: 'Red saree', productSlug: 'red-saree' },
+			{ question: { id: 'q2', productId: 'prd_gone' }, productName: null, productSlug: null },
+		]);
+		await service.adminQuestions({ search: '', page: 2, pageSize: 10 });
+		expect(questions.list).toHaveBeenLastCalledWith({
+			status: undefined,
+			search: undefined,
+			page: 2,
+			pageSize: 10,
+		});
+		expect(await build({ withAll: false }).service.adminQuestions({ page: 3, pageSize: 5 })).toEqual({
+			items: [],
+			total: 0,
+			page: 3,
+			pageSize: 5,
+		});
+	});
+
+	it('rejects and deletes a question, recording who did it', async () => {
+		const { service, questions, audit } = build();
+		expect(await service.reject('q1', 'a')).toEqual({ id: 'q1', status: 'rejected' });
+		expect(questions.updateStatus).toHaveBeenCalledWith('q1', 'rejected');
+		await service.removeQuestion('q1', null);
+		expect(questions.deleteById).toHaveBeenCalledWith('q1');
+		expect(audit.append).toHaveBeenCalledTimes(2);
+		await expect(service.reject('missing', 'a')).rejects.toThrow('Question not found');
+		await expect(build({ withAll: false }).service.removeQuestion('q1', 'a')).rejects.toThrow('Question not found');
+	});
+
+	it('does not email again when an answer is corrected', async () => {
+		const { service, notifications } = build({ before: { id: 'q1', status: 'answered' } });
+		expect((await service.answer('q1', 'Better answer', 'a')).emailStatus).toBe('not_sent');
+		expect(notifications.send).not.toHaveBeenCalled();
 	});
 
 	it('refuses an answer it cannot record', async () => {
@@ -181,7 +232,10 @@ describe('product questions', () => {
 	});
 
 	it('still answers when no notifier is wired in', async () => {
-		const questions = { answer: vi.fn(async () => ({ id: 'q1', productId: 'p', status: 'answered' })) };
+		const questions = {
+			answer: vi.fn(async () => ({ id: 'q1', productId: 'p', status: 'answered' })),
+			findById: vi.fn(async () => null),
+		};
 		const service = new ContentService({} as never, null, questions as never);
 		expect((await service.answer('q1', 'Yes', 'a')).emailStatus).toBe('not_sent');
 	});
@@ -197,6 +251,8 @@ describe('content controllers', () => {
 		ask: vi.fn(async () => 'asked'),
 		adminQuestions: vi.fn(async () => 'admin-questions'),
 		answer: vi.fn(async () => 'answered'),
+		reject: vi.fn(async () => 'rejected'),
+		removeQuestion: vi.fn(async () => undefined),
 	});
 	const signedIn = { userId: 'u1' } as never;
 	const limits = () => ({ enforce: vi.fn(async () => {}) });
@@ -252,7 +308,13 @@ describe('content controllers', () => {
 	it('answers as the signed-in admin', async () => {
 		const content = service();
 		const controller = new AdminQuestionsController(content as never);
-		expect(await controller.list()).toBe('admin-questions');
+		const query = { page: 1, pageSize: 30 };
+		expect(await controller.list(query)).toBe('admin-questions');
+		expect(content.adminQuestions).toHaveBeenCalledWith(query);
+		expect(await controller.reject('q1', signedIn)).toBe('rejected');
+		expect(content.reject).toHaveBeenCalledWith('q1', 'u1');
+		await controller.remove('q1', undefined);
+		expect(content.removeQuestion).toHaveBeenCalledWith('q1', null);
 		await controller.answer('q1', { answer: 'Yes' } as never, signedIn);
 		await controller.answer('q1', { answer: 'Yes' } as never, undefined);
 		expect(content.answer).toHaveBeenNthCalledWith(1, 'q1', 'Yes', 'u1');

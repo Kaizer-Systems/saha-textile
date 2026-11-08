@@ -306,14 +306,20 @@ describe('QuestionsAnswersService', () => {
 	it('maps the rows, filling what is missing', async () => {
 		http.get.mockReturnValue(
 			of([
-				{ id: 'q1', question: 'Silk?', askerName: 'Asha', answer: 'Yes' },
-				{ id: 'q2', question: 'Cotton?', askerName: null, answer: null },
+				{ id: 'q1', question: 'Silk?', askerName: 'Asha', answer: 'Yes', answeredAt: '2026-11-08T10:00:00Z' },
+				{ id: 'q2', question: 'Cotton?', askerName: null, answer: null, answeredAt: null },
 			]),
 		);
 		const page = await firstValueFrom(service().getQuestionAnswers({ slug: 'red' }));
 		expect(page.total).toBe(2);
-		expect(page.data[0]).toMatchObject({ id: 1, answer: 'Yes', store: { store_name: 'Asha' } });
-		expect(page.data[1]).toMatchObject({ id: 2, answer: '', store: { store_name: '' } });
+		expect(page.data[0]).toEqual({
+			id: 'q1',
+			question: 'Silk?',
+			answer: 'Yes',
+			askerName: 'Asha',
+			answeredAt: '2026-11-08T10:00:00Z',
+		});
+		expect(page.data[1]).toMatchObject({ id: 'q2', answer: '', askerName: null });
 	});
 
 	it('posts a question with credentials', () => {

@@ -800,5 +800,7 @@
 	"compare_full": "You can compare up to {{count}} products. Remove one to add this.",
 	"view_product": "View product",
 	"cookie_item_lists": "Hold your wishlist (before you sign in) and your compare list",
-	"cookie_kept_browser": "Until you close the browser"
+	"cookie_kept_browser": "Until you close the browser",
+	"asked_by": "Asked by {{name}}",
+	"answered_on": "Answered {{date}}"
 }

@@ -161,6 +161,8 @@ export interface FaqRepository {
 export interface QuestionFilter extends PageQuery {
 	productId?: string;
 	status?: ProductQuestion['status'];
+	/** Words to find in the question, the asker's name or email (admin only). */
+	search?: string;
 }
 
 /**
@@ -186,6 +188,7 @@ export interface ProductQuestionRepository {
 		answeredAt: string;
 	}): Promise<ProductQuestion | null>;
 	updateStatus(questionId: string, status: ProductQuestion['status']): Promise<void>;
+	deleteById(questionId: string): Promise<void>;
 }
 
 export interface ReviewFilter extends PageQuery {

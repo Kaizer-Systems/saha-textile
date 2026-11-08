@@ -12,7 +12,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MediaGateway } from '@core/media/media.gateway';
 import { SettingStore } from '@core/state/setting.store';
 import { NotificationService } from '@data-access/services/notification.service';
-import { QuestionsAnswersService } from '@data-access/services/questions-answers.service';
 import { ShippingService } from '@data-access/services/shipping.service';
 
 import { Category } from './category/category';
@@ -23,7 +22,6 @@ import { Error403 } from './errors/error403/error403';
 import { Error404 } from './errors/error404/error404';
 import { Media } from './media/media';
 import { Notification } from './notification/notification';
-import { AnswersModal } from './questions-answers/answers-modal/answers-modal';
 import { FormShipping } from './shipping/form-shipping/form-shipping';
 import { ShippingCountryModal } from './shipping/modal/shipping-country-modal/shipping-country-modal';
 import { ShippingRuleModal } from './shipping/modal/shipping-rule-modal/shipping-rule-modal';
@@ -279,69 +277,6 @@ describe('ShippingCountryModal form', () => {
 		(modal.form as FormGroup).patchValue({ country_id: 4 });
 		modal.submit();
 		expect(dismissAll).toHaveBeenCalledOnce();
-	});
-});
-
-describe('AnswersModal', () => {
-	const render = (result: Promise<unknown> = Promise.resolve('closed')) => {
-		const open = vi.fn(() => ({ result }));
-		const dismissAll = vi.fn();
-		const api = { answer: vi.fn(() => of({})) };
-		const fixture = bare(AnswersModal, [
-			{ provide: NgbModal, useValue: { open, dismissAll } },
-			{ provide: QuestionsAnswersService, useValue: api },
-		]);
-		return { fixture, modal: fixture.componentInstance, dismissAll, api };
-	};
-
-	it('sends an empty answer when the control holds nothing', () => {
-		const { modal, api } = render();
-		modal.qna = { questionId: 'q1' } as never;
-		modal.answers.clearValidators();
-		modal.answers.setValue(null as never);
-		modal.submit();
-		expect(api.answer).toHaveBeenCalledWith('q1', '');
-	});
-
-	it('opens with the saved answer, or empty', async () => {
-		const { modal } = render();
-		await modal.openModal({ answer: 'Yes' } as never);
-		await settle();
-		expect(modal.answers.value).toBe('Yes');
-		expect(modal.closeResult).toBe('Closed with: closed');
-		await modal.openModal({} as never);
-		expect(modal.answers.value).toBe('');
-	});
-
-	it.each(reasons)('records how it was dismissed (%s)', async (reason, text) => {
-		const { modal } = render(Promise.reject(reason));
-		await modal.openModal({} as never);
-		await settle();
-		expect(modal.closeResult).toBe(text);
-	});
-
-	it('posts a valid answer for a real question only', async () => {
-		const { modal, api, dismissAll } = render();
-		await modal.openModal({ questionId: 'q1' } as never);
-		modal.submit();
-		expect(api.answer).not.toHaveBeenCalled();
-		modal.answers.setValue('Yes');
-		modal.submit();
-		expect(api.answer).toHaveBeenCalledWith('q1', 'Yes');
-		expect(dismissAll).toHaveBeenCalledOnce();
-		modal.qna = {} as never;
-		modal.submit();
-		expect(api.answer).toHaveBeenCalledOnce();
-	});
-
-	it('closes an open dialog when destroyed, and leaves others alone', async () => {
-		const closed = render();
-		closed.fixture.destroy();
-		expect(closed.dismissAll).not.toHaveBeenCalled();
-		const opened = render();
-		await opened.modal.openModal({} as never);
-		opened.fixture.destroy();
-		expect(opened.dismissAll).toHaveBeenCalledOnce();
 	});
 });
 

@@ -3,7 +3,7 @@
 	let-modal
 >
 	<div class="modal-header">
-		<h3 class="fw-semibold mb-1">{{ 'Answers' | transloco }}</h3>
+		<h3 class="fw-semibold mb-1">{{ 'answer' | transloco }}</h3>
 		<app-button
 			[class]="'btn btn-close'"
 			[spinner]="false"
@@ -18,15 +18,27 @@
 			<table class="all-package theme-table no-footer table">
 				<tbody>
 					<tr>
-						<td class="fw-semibold text-start">{{ 'Question' | transloco }}</td>
-						<td class="text-start">{{ qna?.question }}</td>
+						<td class="fw-semibold text-start">{{ 'product_name' | transloco }}</td>
+						<td class="text-start">{{ qna?.productName }}</td>
 					</tr>
 					<tr>
-						<td class="fw-semibold text-start">{{ 'Answers' | transloco }}</td>
+						<td class="fw-semibold text-start">{{ 'question' | transloco }}</td>
+						<td class="text-start">{{ qna?.question?.question }}</td>
+					</tr>
+					<tr>
+						<td class="fw-semibold text-start">{{ 'asked_by' | transloco }}</td>
+						<td class="text-start">{{ qna?.question?.askerName }} · {{ qna?.question?.askerEmail }}</td>
+					</tr>
+					<tr>
+						<td class="fw-semibold text-start">
+							<label for="question_answer">{{ 'answer' | transloco }}</label>
+						</td>
 						<td class="text-start">
 							<textarea
+								id="question_answer"
 								class="form-control"
-								placeholder="Enter Answers"
+								rows="4"
+								[placeholder]="'enter_answer' | transloco"
 								[formControl]="answers"
 							></textarea>
 						</td>
@@ -39,8 +51,10 @@
 				<app-button
 					[class]="'btn-md fw-bold btn btn-secondary'"
 					[id]="'close_answers_modal_btn'"
+					[type]="'button'"
+					(click)="modal.dismiss('Close')"
 				>
-					{{ 'Close' | transloco }}
+					{{ 'close' | transloco }}
 				</app-button>
 				<app-button
 					[class]="'btn-theme btn-md fw-bold btn'"

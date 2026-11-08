@@ -41,21 +41,12 @@ describe('QuestionModal.openModal', () => {
 		expect(open).toHaveBeenCalledOnce();
 		expect(modal.askerName.value).toBe('asha');
 		expect(modal.askerEmail.value).toBe('asha@b.co');
-		expect(modal.type).toBe('crate');
 	});
 
 	it('leaves the fields empty for a guest', async () => {
 		const { modal } = render();
 		await modal.openModal(product);
 		expect(modal.askerName.value).toBe('');
-	});
-
-	it('loads an existing question for editing', async () => {
-		const { modal } = render();
-		await modal.openModal(product, { id: 4, question: 'Is it silk?' } as never);
-		expect(modal.type).toBe('edit');
-		expect(modal.id).toBe(4);
-		expect(modal.question.value).toBe('Is it silk?');
 	});
 
 	it.each([

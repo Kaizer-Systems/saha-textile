@@ -1220,5 +1220,18 @@
 	"show_first_help": "When the words fit two products equally well, products in these categories come first. Example: \"banarasi\" shows Banarasi sarees before Banarasi suits; \"banarasi suit\" still shows suits first.",
 	"storefront_settings_saved": "Saved. The shop's search order updates in a few seconds.",
 	"storefront_settings_rejected": "The settings were not saved. Please try again.",
-	"search_words_page": "Search words"
+	"search_words_page": "Search words",
+	"question": "Question",
+	"answer": "Answer",
+	"asked_by": "Asked by",
+	"close": "Close",
+	"reject": "Reject",
+	"enter_answer": "Write the answer the customer will see",
+	"question_rejected": "Question rejected. It will not be shown.",
+	"question_deleted": "Question deleted.",
+	"question_answered": "Answer published. The customer has been emailed.",
+	"answer_updated": "Answer updated.",
+	"question_status_pending": "Waiting for an answer",
+	"question_status_answered": "Answered",
+	"question_status_rejected": "Rejected"
 }

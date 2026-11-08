@@ -448,6 +448,14 @@ describe.skipIf(!hasMongoEnv())('governance, content and media repositories (int
 			expect((await repo.findById(`${P}q1`))?.status).toBe('rejected');
 		});
 
+		it('finds questions by any words in the question, name or email, and deletes one', async () => {
+			const found = await repo.list({ productId: `${P}qprod`, search: 'QUESTION   q1' } as never);
+			expect(found.items.map((row) => row.id)).toEqual([`${P}q1`]);
+			expect((await repo.list({ productId: `${P}qprod`, search: 'a@example.test (' } as never)).total).toBe(0);
+			await repo.deleteById(`${P}q1`);
+			expect(await repo.findById(`${P}q1`)).toBeNull();
+		});
+
 		it('lists every question when no filter is given', async () => {
 			expect(Array.isArray((await repo.list({ pageSize: 1 } as never)).items)).toBe(true);
 		});

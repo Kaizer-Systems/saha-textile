@@ -154,6 +154,14 @@ export class MongoProductQuestionRepository implements ProductQuestionRepository
 		const query: Record<string, unknown> = {};
 		if (filter.productId) query.productId = filter.productId;
 		if (filter.status) query.status = filter.status;
+		// Every word must appear somewhere: in the question, the asker's name or their email.
+		const words = (filter.search ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
+		if (words.length) {
+			query.$and = words.map((word) => {
+				const pattern = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+				return { $or: [{ question: pattern }, { askerName: pattern }, { askerEmail: pattern }] };
+			});
+		}
 
 		const page = filter.page && filter.page > 0 ? filter.page : 1;
 		const pageSize = filter.pageSize && filter.pageSize > 0 ? filter.pageSize : 20;
@@ -224,6 +232,10 @@ export class MongoProductQuestionRepository implements ProductQuestionRepository
 
 	async updateStatus(questionId: string, status: ProductQuestion['status']): Promise<void> {
 		await ProductQuestionModel.updateOne({ _id: questionId }, { $set: { status } }).exec();
+	}
+
+	async deleteById(questionId: string): Promise<void> {
+		await ProductQuestionModel.deleteOne({ _id: questionId }).exec();
 	}
 }
 

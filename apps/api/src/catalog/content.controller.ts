@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Body, Controller, Delete, Get, Header, Param, Post, Query, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AnswerWrite, FaqEntry, FaqWrite, QuestionWrite } from '@saha-textile/contracts';
+import { AdminQuestionListQuery, AnswerWrite, FaqEntry, FaqWrite, QuestionWrite } from '@saha-textile/contracts';
 import type { FastifyRequest } from 'fastify';
 
 import { Principal } from '../auth/ownership';
@@ -102,8 +102,22 @@ export class AdminQuestionsController {
 	@Get()
 	@Header('Cache-Control', 'no-store')
 	@RequirePermissions('question_and_answer.index')
-	list() {
-		return this.content.adminQuestions();
+	list(@Query(new ZodValidationPipe(AdminQuestionListQuery)) query: AdminQuestionListQuery) {
+		return this.content.adminQuestions(query);
+	}
+
+	@Post(':id/reject')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('question_and_answer.edit')
+	reject(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined) {
+		return this.content.reject(id, principal?.userId ?? null);
+	}
+
+	@Delete(':id')
+	@Header('Cache-Control', 'no-store')
+	@RequirePermissions('question_and_answer.destroy')
+	remove(@Param('id') id: string, @Principal() principal: AuthenticatedPrincipal | undefined) {
+		return this.content.removeQuestion(id, principal?.userId ?? null);
 	}
 
 	@Post(':id/answer')

@@ -6,7 +6,6 @@ import { TranslocoModule } from '@jsverse/transloco';
 import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
 import { IProduct } from '@data-access/interfaces/product.interface';
-import { IQuestionAnswers } from '@data-access/interfaces/questions-answers.interface';
 import { QuestionsAnswersService } from '@data-access/services/questions-answers.service';
 import { AuthStore } from '@core/state/auth.store';
 import { CurrencySymbolPipe } from '@shared/pipes/currency-symbol.pipe';
@@ -36,16 +35,8 @@ export class QuestionModal {
 	public askerName = new FormControl('');
 	public askerEmail = new FormControl('');
 	public stayAnonymous = new FormControl(false);
-	public type = 'crate';
-	public id: number;
-
-	async openModal(product: IProduct, qna?: IQuestionAnswers) {
+	async openModal(product: IProduct) {
 		if (isPlatformBrowser(this.platformId)) {
-			if (qna) {
-				this.type = 'edit';
-				this.id = qna.id;
-				this.question.patchValue(qna.question);
-			}
 			this.product = product;
 			this.askerName.patchValue(this.authStore.email() ? this.authStore.email().split('@')[0] : '');
 			this.askerEmail.patchValue(this.authStore.email());

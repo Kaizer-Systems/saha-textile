@@ -1,7 +1,15 @@
 import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
+
+import { localized } from './catalog-locale';
 import { randomUUID } from 'node:crypto';
 
-import { ProductQuestion, toPublicQuestion, type FaqEntry } from '@saha-textile/contracts';
+import {
+	ProductQuestion,
+	toPublicQuestion,
+	type AdminQuestionListQuery,
+	type AdminQuestionListResponse,
+	type FaqEntry,
+} from '@saha-textile/contracts';
 import type {
 	AuditLogRepository,
 	FaqRepository,
@@ -99,14 +107,62 @@ export class ContentService {
 		return { id: question.id, status: 'pending' as const };
 	}
 
-	async adminQuestions() {
-		const page = await this.questions?.list({ page: 1, pageSize: 200 });
-		return page ?? { items: [], total: 0, page: 1, pageSize: 200 };
+	/** The moderation list: one status tab, optional words, newest first, with each product's name. */
+	async adminQuestions(query: AdminQuestionListQuery): Promise<AdminQuestionListResponse> {
+		const page = await this.questions?.list({
+			status: query.status,
+			search: query.search || undefined,
+			page: query.page,
+			pageSize: query.pageSize,
+		});
+		if (!page) return { items: [], total: 0, page: query.page, pageSize: query.pageSize };
+		const ids = [...new Set(page.items.map((item) => item.productId))];
+		const products = new Map(
+			(await Promise.all(ids.map((id) => this.products.findById(id, 'admin')))).flatMap((product) =>
+				product ? [[product.id, product] as const] : [],
+			),
+		);
+		return {
+			items: page.items.map((question) => {
+				const product = products.get(question.productId);
+				return {
+					question,
+					productName: product ? localized(product.title) : null,
+					productSlug: product?.slug ?? null,
+				};
+			}),
+			total: page.total,
+			page: page.page,
+			pageSize: page.pageSize,
+		};
+	}
+
+	/** Hides a question for good; it stays on record for the admin. */
+	async reject(questionId: string, actorUserId: string | null): Promise<{ id: string; status: 'rejected' }> {
+		const { repo, question } = await this.requireQuestion(questionId);
+		await repo.updateStatus(question.id, 'rejected');
+		await this.record(actorUserId, 'catalog.question.reject', question.id, { productId: question.productId });
+		return { id: question.id, status: 'rejected' };
+	}
+
+	async removeQuestion(questionId: string, actorUserId: string | null): Promise<void> {
+		const { repo, question } = await this.requireQuestion(questionId);
+		await repo.deleteById(question.id);
+		await this.record(actorUserId, 'catalog.question.remove', question.id, { productId: question.productId });
+	}
+
+	private async requireQuestion(questionId: string) {
+		const repo = this.questions;
+		const question = repo ? await repo.findById(questionId) : null;
+		if (!repo || !question) throw new NotFoundException('Question not found');
+		return { repo, question };
 	}
 
 	async answer(questionId: string, answer: string, actorUserId: string | null) {
 		if (!this.questions) throw new NotFoundException('Questions are unavailable');
 		if (!actorUserId) throw new NotFoundException('Sign in to answer');
+		// Only the first answer emails the asker; correcting an answer later stays quiet.
+		const firstAnswer = (await this.questions.findById(questionId))?.status !== 'answered';
 		const saved = await this.questions.answer({
 			questionId,
 			answer,
@@ -116,7 +172,7 @@ export class ContentService {
 		if (!saved) throw new NotFoundException('Question not found');
 		await this.record(actorUserId, 'catalog.question.answer', saved.id, { productId: saved.productId });
 		let emailStatus: 'sent' | 'not_sent' = 'not_sent';
-		if (this.notifications) {
+		if (this.notifications && firstAnswer) {
 			try {
 				await this.notifications.send({
 					channel: 'email',

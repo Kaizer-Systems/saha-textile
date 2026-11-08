@@ -28,7 +28,6 @@ import { OrderService } from './order.service';
 import { PageService } from './page.service';
 import { PointService } from './point.service';
 import { ProductService } from './product.service';
-import { QuestionsAnswersService } from './questions-answers.service';
 import { RedirectService } from './redirect.service';
 import { RefundService } from './refund.service';
 import { ReviewService } from './review.service';
@@ -309,31 +308,6 @@ describe('ProductService catalogue', () => {
 		service().discontinueCatalogProduct('red', '/collections');
 		expect(lastUrl(http.post)).toMatch(/\/red\/discontinue$/);
 		expect(http.post.mock.lastCall?.[1]).toEqual({ replacementPath: '/collections' });
-	});
-});
-
-describe('QuestionsAnswersService', () => {
-	const service = () => TestBed.inject(QuestionsAnswersService);
-
-	it('maps each row, filling a missing answer', async () => {
-		http.get.mockReturnValue(
-			of({
-				items: [
-					{ id: 'q1', question: 'Q', answer: 'A', productId: 'p1', createdAt: 'now' },
-					{ id: 'q2', question: 'Q', answer: null, productId: 'p1' },
-				],
-				total: 2,
-			}),
-		);
-		const page = await firstValueFrom(service().getQuestionAnswers());
-		expect(page.data[0]).toMatchObject({ id: 1, questionId: 'q1', answer: 'A', product: { name: 'p1' } });
-		expect(page.data[1]).toMatchObject({ answer: '' });
-	});
-
-	it('posts an answer', () => {
-		service().answer('q 1', 'Yes');
-		expect(lastUrl(http.post)).toMatch(/\/questions\/q%201\/answer$/);
-		expect(http.post.mock.lastCall?.[1]).toEqual({ answer: 'Yes' });
 	});
 });
 

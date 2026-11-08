@@ -341,3 +341,28 @@ export type MyProductReview = z.infer<typeof MyProductReview>;
 
 export const MyProductReviewQuery = z.object({ productId: Id });
 export type MyProductReviewQuery = z.infer<typeof MyProductReviewQuery>;
+
+/** `GET /admin/catalog/questions` query: the status tab, words to find, and the page. */
+export const AdminQuestionListQuery = z.object({
+	status: QuestionStatus.optional(),
+	search: z.string().trim().max(200).optional(),
+	page: z.coerce.number().int().positive().default(1),
+	pageSize: z.coerce.number().int().positive().max(100).default(30),
+});
+export type AdminQuestionListQuery = z.infer<typeof AdminQuestionListQuery>;
+
+/** A question for the moderator, with the product it is about. The asker's email is admin-only. */
+export const AdminQuestionRow = z.object({
+	question: ProductQuestion,
+	productName: z.string().nullable(),
+	productSlug: z.string().nullable(),
+});
+export type AdminQuestionRow = z.infer<typeof AdminQuestionRow>;
+
+export const AdminQuestionListResponse = z.object({
+	items: z.array(AdminQuestionRow),
+	total: z.number().int().nonnegative(),
+	page: z.number().int().positive(),
+	pageSize: z.number().int().positive(),
+});
+export type AdminQuestionListResponse = z.infer<typeof AdminQuestionListResponse>;

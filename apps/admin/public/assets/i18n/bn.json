@@ -1220,5 +1220,18 @@
 	"show_first_help": "শব্দ দুটি পণ্যের সঙ্গে সমানভাবে মিললে এই বিভাগগুলির পণ্য আগে আসবে। যেমন: \"banarasi\" খুঁজলে বেনারসি স্যুটের আগে বেনারসি শাড়ি দেখাবে; \"banarasi suit\" খুঁজলে স্যুটই আগে আসবে।",
 	"storefront_settings_saved": "সেভ হয়েছে। কয়েক সেকেন্ডের মধ্যে দোকানের সার্চের ক্রম বদলে যাবে।",
 	"storefront_settings_rejected": "সেটিংস সেভ হয়নি। আবার চেষ্টা করুন।",
-	"search_words_page": "খোঁজার শব্দ"
+	"search_words_page": "খোঁজার শব্দ",
+	"question": "প্রশ্ন",
+	"answer": "উত্তর",
+	"asked_by": "প্রশ্ন করেছেন",
+	"close": "বন্ধ করুন",
+	"reject": "বাতিল করুন",
+	"enter_answer": "গ্রাহক যে উত্তর দেখবেন সেটি লিখুন",
+	"question_rejected": "প্রশ্নটি বাতিল হয়েছে। এটি দেখানো হবে না।",
+	"question_deleted": "প্রশ্নটি মুছে ফেলা হয়েছে।",
+	"question_answered": "উত্তর প্রকাশিত হয়েছে। গ্রাহককে ইমেল পাঠানো হয়েছে।",
+	"answer_updated": "উত্তর বদলানো হয়েছে।",
+	"question_status_pending": "উত্তরের অপেক্ষায়",
+	"question_status_answered": "উত্তর দেওয়া হয়েছে",
+	"question_status_rejected": "বাতিল"
 }

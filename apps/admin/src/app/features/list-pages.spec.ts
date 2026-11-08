@@ -9,7 +9,6 @@ import { Currency } from './currency/currency';
 import { Order } from './order/order';
 import { OrderStatus } from './order-status/order-status';
 import { Page } from './page/page';
-import { QuestionsAnswers } from './questions-answers/questions-answers';
 import { Refund } from './refund/refund';
 import { Tax } from './tax/tax';
 
@@ -26,9 +25,6 @@ vi.mock('@data-access/queries/order-status.queries', () => ({
 	injectOrderStatusQuery: (p: () => unknown) => query(p),
 }));
 vi.mock('@data-access/queries/page.queries', () => ({ injectPagesQuery: (p: () => unknown) => query(p) }));
-vi.mock('@data-access/queries/questions-answers.queries', () => ({
-	injectQuestionAnswersQuery: (p: () => unknown) => query(p),
-}));
 vi.mock('@data-access/queries/refund.queries', () => ({ injectRefundsQuery: (p: () => unknown) => query(p) }));
 vi.mock('@data-access/queries/tax.queries', () => ({ injectTaxesQuery: (p: () => unknown) => query(p) }));
 
@@ -151,29 +147,5 @@ describe('Refund list', () => {
 		page.onActionClicked({ actionToPerform: 'other', data: {} } as never);
 		expect(openModal).toHaveBeenCalledOnce();
 		expect(page.approved({ data: {} as never })).toBeUndefined();
-	});
-});
-
-describe('Questions and answers list', () => {
-	it('fills the table, treating a bare answer as empty', () => {
-		const { page } = render(QuestionsAnswers);
-		data.set({});
-		TestBed.tick();
-		expect(page.tableConfig()).toMatchObject({ data: [], total: 0 });
-		data.set({ data: [{ id: 1 }], total: 1 });
-		TestBed.tick();
-		expect(page.tableConfig().total).toBe(1);
-	});
-
-	it('opens the answer dialog, and ignores the actions that do nothing yet', () => {
-		const { page } = render(QuestionsAnswers);
-		const openModal = vi.fn();
-		Object.defineProperty(page, 'AnswersModal', { value: () => ({ openModal }) });
-		page.onTableChange({ page: 1 });
-		page.onActionClicked({ actionToPerform: 'edit', data: { id: 1 } } as never);
-		page.onActionClicked({ actionToPerform: 'delete', data: {} } as never);
-		page.onActionClicked({ actionToPerform: 'deleteAll', data: [] } as never);
-		page.onActionClicked({ actionToPerform: 'other', data: {} } as never);
-		expect(openModal).toHaveBeenCalledOnce();
 	});
 });

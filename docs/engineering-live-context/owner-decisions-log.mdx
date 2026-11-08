@@ -1060,6 +1060,18 @@ The owner approved the Bengali plan (revision 3) as recommended. This replaces t
 - **Gmail mailboxes in the admin:** the super admin connects each sahatextile.com mailbox once by signing in to it on Google's page (Internal OAuth app, per-mailbox tokens, no domain-wide delegation), then gives admin users Read or Read-and-send per mailbox; they never sign in to Google. Aliases (Gmail send-as) can be used by anyone who may send from the mailbox. Email is read live from Gmail and never copied into our database. Both build steps at once; testing with real mailboxes is an open item for staging. Adds `mailbox.manage` and `mailbox.use` when built.
 - **Briefs:** Contact Us and Stores, Admin Stores Screen, Admin Gmail Mailboxes and Saha Textile Store Details, 8 November 2026 (artifacts).
 
+## Owner decision round (2026-11-08) — product page
+
+- **Brief approved:** Product Page Overhaul Brief, 8 November 2026 (artifact), covering rich descriptions, reviews, product Q&A, product and category FAQ, SEO, compare, wishlist and icon labels.
+- **Reviews:** the Reviews tab always shows something: the rating summary and approved reviews, or "No reviews yet" with "Be the first to review this product". Its button signs a guest in, tells a customer without a delivered order to wait, opens the form for a buyer, and reads "Edit your review" once they have reviewed. One review per customer and product. **An edited review goes back to moderation.** The public name is the first name and the initial of the last name, with "Verified buyer".
+- **Ratings come only from approved reviews.** Every product's stored rating was reset to what its approved reviews say (zero on 8 November 2026); the showcase builder's invented ratings are gone at the source. Approving or editing a review updates the product's own star summary too.
+- **Wishlist:** the heart toggles everywhere it appears, with "Added to your wishlist" / "Removed from your wishlist" and a filled red heart. **A guest's list lives in the `st_wishlist` session cookie** (ids only, at most 50, ends when the browser closes) **and counts as a necessary cookie**, because the shopper creates it. A signed-in customer's list is stored with the account (`wishlistItems`, at most 200), removed only by them, and the guest list merges in on sign-in. This replaces "Wishlist … account-bound" for guests.
+- **Compare:** up to four products for the browser session, guest or signed in, in the `st_compare` session cookie (necessary), never stored on the server. The compare page reads each product from the live catalogue.
+- **Product FAQ** shows the product's own questions and its categories' questions (parents included) when switched on for the product.
+- **Right column of the product page:** the demo placeholder banner is removed; Trending lists products opened from search lately in the same categories, topped up with their bestsellers.
+- **Descriptions:** all 1,000 local products get hand-written English and Bengali descriptions entered through the admin edit form, with a "Save and next" button added to make it faster. A craft region is named only when the product name says it.
+- **SEO:** every fix in the brief's ranked list is to be built.
+
 ## Open decisions
 
 All unresolved owner choices are listed in `pending-decisions.mdx`. No open question should be added to this file.

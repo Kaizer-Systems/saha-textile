@@ -40,6 +40,7 @@ const sidebars: SidebarsConfig = {
 				'business-flows/checkout',
 				'business-flows/payment-and-order-lifecycle',
 				'business-flows/returns-refunds-and-notifications',
+				'business-flows/blog',
 				'business-flows/identity-account-and-admin-resume',
 				'business-flows/failure-recovery-and-debugging',
 			],

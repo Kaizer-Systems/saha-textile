@@ -34,7 +34,7 @@
 		<app-form-fields
 			[label]="'url_slug' | transloco"
 			[for]="'slug'"
-			[required]="true"
+			[required]="!isBlog()"
 		>
 			<input
 				class="form-control"

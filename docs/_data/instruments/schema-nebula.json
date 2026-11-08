@@ -1004,7 +1004,7 @@
 			"owningChunks": ["I"],
 			"blockingDecisions": [],
 			"purpose": "Blog posts in every shop language: title, summary, sanitised article, cover and share picture, categories, tags, byline, publish date, search text, and draft or live status gated on every language.",
-			"source": "owner log § blog (2026-11-08)",
+			"source": "decisions § blog (2026-11-08)",
 			"currentModel": "packages/adapters-db-mongo/src/models/blog.model.ts",
 			"references": ["mediaAssets", "blogCategories", "blogTags", "seoRedirects"]
 		},
@@ -1017,7 +1017,7 @@
 			"owningChunks": ["I"],
 			"blockingDecisions": [],
 			"purpose": "Blog categories with a name and description per language, live only when every language is named.",
-			"source": "owner log § blog (2026-11-08)",
+			"source": "decisions § blog (2026-11-08)",
 			"currentModel": "packages/adapters-db-mongo/src/models/blog.model.ts",
 			"references": []
 		},
@@ -1030,7 +1030,7 @@
 			"owningChunks": ["I"],
 			"blockingDecisions": [],
 			"purpose": "Blog tags with a name per language, live only when every language is named.",
-			"source": "owner log § blog (2026-11-08)",
+			"source": "decisions § blog (2026-11-08)",
 			"currentModel": "packages/adapters-db-mongo/src/models/blog.model.ts",
 			"references": []
 		}

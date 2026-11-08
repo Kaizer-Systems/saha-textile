@@ -153,6 +153,8 @@ describe('StoreLocationsAdminService', () => {
 			{ field: 'hours', locale: null },
 		]);
 		expect(h.stores.get(result.id)?.active).toBe(false);
+		const noPhone = await h.admin.create(body({ phone: '' }), null);
+		expect(noPhone.gaps).toEqual([{ field: 'phone', locale: null }]);
 		const quiet = await h.admin.create(body({ hours: closed, active: false }), null);
 		expect(quiet).toEqual({ id: quiet.id, active: false, gaps: [] });
 	});
@@ -269,6 +271,8 @@ describe('StoreLocationsPublicService', () => {
 		);
 		const [card] = await h.publicService.list('bn');
 		expect(card).toMatchObject({ name: 'Only English', landmark: 'Near the station', photos: [] });
+		h.stores.forEach((store, key) => h.stores.set(key, { ...store, phone: null }));
+		expect((await h.publicService.list('bn'))[0]).toMatchObject({ phone: null, phoneDisplay: null });
 		h.stores.forEach((store, key) => h.stores.set(key, { ...store, name: {} }));
 		expect((await h.publicService.list('bn'))[0]?.name).toBe('');
 	});

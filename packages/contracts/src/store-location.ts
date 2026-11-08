@@ -141,7 +141,8 @@ export const StoreLocation = z.object({
 	mapUrl: GoogleMapsUrl,
 	/** Optional; used only in the page's structured data, never shown. */
 	geo: StoreGeo.nullable().default(null),
-	phone: E164Phone,
+	/** Optional to save; needed before the store can go active. */
+	phone: E164Phone.nullable().default(null),
 	hours: StoreHours,
 	/** In carousel order; the first is the cover. */
 	photoAssetIds: z.array(Id).max(MAX_STORE_PHOTOS).default([]),
@@ -166,7 +167,12 @@ export const StoreLocationWrite = z.object({
 		.pipe(z.string().regex(/^\d{6}$/, 'A PIN code has six digits')),
 	mapUrl: GoogleMapsUrl,
 	geo: StoreGeo.nullable().default(null),
-	phone: z.string().transform(normalisePhone).pipe(E164Phone),
+	/** Empty means not known yet; the store then stays off the shop. */
+	phone: z
+		.string()
+		.nullish()
+		.transform((value) => (value?.trim() ? normalisePhone(value) : null))
+		.pipe(E164Phone.nullable()),
 	hours: StoreHours,
 	photoAssetIds: z.array(Id).max(MAX_STORE_PHOTOS).default([]),
 	active: z.boolean().default(false),
@@ -222,8 +228,8 @@ export const PublicStoreLocation = z.object({
 	landmark: z.string().nullable(),
 	pinCode: z.string(),
 	mapUrl: z.string(),
-	phone: z.string(),
-	phoneDisplay: z.string(),
+	phone: z.string().nullable(),
+	phoneDisplay: z.string().nullable(),
 	/** Grouped for reading: "Mon–Sat 10:00–20:30, Sun closed". */
 	hoursSummary: z.string(),
 	/** The raw week, for the page's structured data. */

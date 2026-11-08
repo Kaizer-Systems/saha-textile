@@ -22,7 +22,7 @@ const toStore = (doc: StoreLocationDoc): StoreLocation => ({
 	pinCode: doc.pinCode,
 	mapUrl: doc.mapUrl,
 	geo: doc.geo && typeof doc.geo.lat === 'number' ? { lat: doc.geo.lat, lng: doc.geo.lng } : null,
-	phone: doc.phone,
+	phone: doc.phone ?? null,
 	hours: toHours(doc.hours),
 	photoAssetIds: doc.photoAssetIds ?? [],
 	displayOrder: doc.displayOrder ?? 0,

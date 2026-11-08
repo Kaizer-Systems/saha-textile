@@ -12,7 +12,7 @@ export interface StoreLocationDoc {
 	pinCode: string;
 	mapUrl: string;
 	geo: { lat: number; lng: number } | null;
-	phone: string;
+	phone: string | null;
 	hours: { day: string; open: boolean; opens: string | null; closes: string | null }[];
 	photoAssetIds: string[];
 	displayOrder: number;
@@ -40,7 +40,7 @@ const StoreLocationSchema = new Schema<StoreLocationDoc>(
 		pinCode: { type: String, required: true },
 		mapUrl: { type: String, required: true },
 		geo: { type: Schema.Types.Mixed, default: null },
-		phone: { type: String, required: true },
+		phone: { type: String, default: null },
 		hours: { type: [DayHoursSchema], default: [] },
 		photoAssetIds: { type: [String], default: [] },
 		displayOrder: { type: Number, default: 0 },

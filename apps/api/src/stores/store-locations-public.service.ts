@@ -47,7 +47,7 @@ export class StoreLocationsPublicService {
 			pinCode: store.pinCode,
 			mapUrl: store.mapUrl,
 			phone: store.phone,
-			phoneDisplay: displayPhone(store.phone),
+			phoneDisplay: store.phone ? displayPhone(store.phone) : null,
 			hoursSummary: summariseStoreHours(store.hours, locale),
 			hours: store.hours,
 			geo: store.geo,

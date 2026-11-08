@@ -10,6 +10,7 @@ const store = (overrides: Partial<StoreLocation> = {}) => ({
 	name: { en: 'Saha Textile, Barasat', bn: 'সাহা টেক্সটাইল, বারাসাত' },
 	address: { en: 'KB Basu Rd', bn: 'কে বি বসু রোড' },
 	landmark: {},
+	phone: '+913325521595' as string | null,
 	hours: open,
 	...overrides,
 });
@@ -25,6 +26,7 @@ describe('storeLocationGaps', () => {
 				name: { en: 'A' },
 				address: { en: 'B', bn: ' ' },
 				landmark: { en: 'Near the station' },
+				phone: null,
 				hours: closedWeek(),
 			}),
 			['en', 'bn'],
@@ -33,6 +35,7 @@ describe('storeLocationGaps', () => {
 			{ field: 'name', locale: 'bn' },
 			{ field: 'address', locale: 'bn' },
 			{ field: 'landmark', locale: 'bn' },
+			{ field: 'phone', locale: null },
 			{ field: 'hours', locale: null },
 		]);
 	});

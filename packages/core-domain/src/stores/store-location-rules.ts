@@ -7,11 +7,11 @@ const required = (field: string, values: Readonly<Record<string, string>> | unde
 
 /**
  * Everything that stops a store going active (stores brief, 2026-11-08): a name and an address in
- * every language, a landmark in every language once English has one, and at least one open day.
- * A store with no known hours stays off the shop until they are entered.
+ * every language, a landmark in every language once English has one, a phone number and at least
+ * one open day. A store with no known phone or hours stays off the shop until they are entered.
  */
 export function storeLocationGaps(
-	store: Pick<StoreLocation, 'name' | 'address' | 'landmark' | 'hours'>,
+	store: Pick<StoreLocation, 'name' | 'address' | 'landmark' | 'phone' | 'hours'>,
 	locales: readonly string[],
 ): GoLiveGap[] {
 	const gaps: GoLiveGap[] = [
@@ -19,6 +19,7 @@ export function storeLocationGaps(
 		...required('address', store.address, locales),
 	];
 	if (filled(store.landmark['en'])) gaps.push(...required('landmark', store.landmark, locales));
+	if (!store.phone) gaps.push({ field: 'phone', locale: null });
 	if (!store.hours.some((day) => day.open)) gaps.push({ field: 'hours', locale: null });
 	return gaps;
 }

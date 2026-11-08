@@ -76,13 +76,13 @@ describe.runIf(hasMongoEnv())('store location persistence (rs0)', () => {
 			_id: `${prefix}bare`,
 			pinCode: '700124',
 			mapUrl: 'https://maps.google.com/?cid=1',
-			phone: '+913325521595',
 		} as never);
 		const row = await stores.findById(`${prefix}bare`);
 		expect(row).toMatchObject({
 			name: {},
 			address: {},
 			landmark: {},
+			phone: null,
 			photoAssetIds: [],
 			displayOrder: 0,
 			active: false,

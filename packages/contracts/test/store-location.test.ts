@@ -130,6 +130,12 @@ describe('StoreLocationWrite', () => {
 		expect(parsed).toMatchObject({ landmark: {}, geo: null, photoAssetIds: [], active: false });
 	});
 
+	it('keeps an unknown phone as empty', () => {
+		expect(StoreLocationWrite.parse({ ...base, phone: ' ' }).phone).toBeNull();
+		expect(StoreLocationWrite.parse({ ...base, phone: undefined }).phone).toBeNull();
+		expect(StoreLocationWrite.parse({ ...base, phone: null }).phone).toBeNull();
+	});
+
 	it('refuses a bad PIN code, phone or map link', () => {
 		expect(StoreLocationWrite.safeParse({ ...base, pinCode: '7001' }).success).toBe(false);
 		expect(StoreLocationWrite.safeParse({ ...base, phone: '12' }).success).toBe(false);

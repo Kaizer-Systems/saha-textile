@@ -105,6 +105,8 @@ export class MeilisearchSearch implements SearchPort, MeilisearchClient {
 	}
 
 	async search(query: SearchQuery): Promise<Paginated<Product>> {
+		// The request sorts by `rankFirst`, which the index refuses until its settings allow it.
+		await this.ensureSettings();
 		const page = query.page && query.page > 0 ? query.page : 1;
 		const pageSize = query.pageSize && query.pageSize > 0 ? query.pageSize : 24;
 		const body = await this.send<{ hits?: Array<{ id?: string }>; estimatedTotalHits?: number }>(

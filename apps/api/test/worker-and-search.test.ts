@@ -322,13 +322,20 @@ describe('MeilisearchSearch', () => {
 		expect(fetcher.mock.calls[0]?.[1]).not.toHaveProperty('body');
 	});
 
-	it('returns live products in the order found', async () => {
-		fetcher.mockImplementation(async () =>
-			reply(200, {
-				hits: [{ id: 'b' }, {}, { id: 'a' }, { id: 'gone' }, { id: 'draft' }],
-				estimatedTotalHits: 9,
-			}),
+	/** Settings and tasks succeed; the search itself answers `body`. */
+	const answer = (body: unknown) =>
+		fetcher.mockImplementation(async (url: string) =>
+			url.includes('/search')
+				? reply(200, body)
+				: reply(200, url.includes('/tasks/') ? { status: 'succeeded' } : { taskUid: 7 }),
 		);
+	const searchBody = () =>
+		JSON.parse(
+			fetcher.mock.calls.find((call) => String(call[0]).endsWith('/search'))?.[1].body as string,
+		) as Record<string, unknown>;
+
+	it('returns live products in the order found, "show first" sorting before the attribute rank', async () => {
+		answer({ hits: [{ id: 'b' }, {}, { id: 'a' }, { id: 'gone' }, { id: 'draft' }], estimatedTotalHits: 9 });
 		const result = await search(async () => [product('a'), product('b'), product('draft', 'draft')]).search({
 			q: 'silk',
 			categoryId: 'c"1',
@@ -337,18 +344,58 @@ describe('MeilisearchSearch', () => {
 		} as never);
 		expect(result).toMatchObject({ total: 9, page: 2, pageSize: 5 });
 		expect(result.items.map((row) => row.id)).toEqual(['b', 'a']);
-		const body = JSON.parse(fetcher.mock.calls[0]?.[1].body as string) as Record<string, unknown>;
-		expect(body).toMatchObject({ q: 'silk', offset: 5, limit: 5, filter: 'categoryIds = "c\\"1"' });
+		expect(searchBody()).toMatchObject({
+			q: 'silk',
+			offset: 5,
+			limit: 5,
+			filter: 'categoryIds = "c\\"1"',
+			sort: ['rankFirst:asc'],
+		});
+		const settings = JSON.parse(fetcher.mock.calls[0]?.[1].body as string) as Record<string, unknown>;
+		expect(settings).toMatchObject({
+			searchableAttributes: ['words', 'searchTerms', 'facts', 'description'],
+			rankingRules: ['words', 'typo', 'sort', 'attribute', 'proximity', 'exactness'],
+		});
+		expect(settings['sortableAttributes']).toContain('rankFirst');
+		expect(settings).not.toHaveProperty('synonyms');
 	});
 
 	it('uses defaults for a bare query and an empty reply', async () => {
-		fetcher.mockImplementation(async () => reply(200, {}));
+		answer({});
 		const result = await search().search({ q: 'x', page: 0, pageSize: 0 } as never);
 		expect(result).toMatchObject({ total: 0, page: 1, pageSize: 24, items: [] });
-		const body = JSON.parse(fetcher.mock.calls[0]?.[1].body as string) as Record<string, unknown>;
-		expect(body).not.toHaveProperty('filter');
-		fetcher.mockImplementation(async () => reply(200, { hits: [{ id: 'a' }] }));
+		expect(searchBody()).not.toHaveProperty('filter');
+		fetcher.mockReset();
+		answer({ hits: [{ id: 'a' }] });
 		expect((await search().search({ q: 'x' } as never)).total).toBe(1);
+	});
+
+	it('writes many documents in batches and replaces the synonyms, keeping them for a rebuild', async () => {
+		answer({});
+		const index = search();
+		const full = (id: string) =>
+			Product.parse({ id, type: 'simple', sku: id, title: { en: id }, slug: id, basePriceINR: 100 });
+		await index.indexProducts([]);
+		expect(fetcher).not.toHaveBeenCalled();
+		await index.indexProducts(
+			Array.from({ length: 501 }, (_, n) => ({
+				product: full(`p${n}`),
+				variants: [],
+				searchTerms: ['puja', 'পুজো'],
+				showFirst: n === 0,
+			})),
+		);
+		const writes = fetcher.mock.calls.filter((call) => String(call[0]).endsWith('/documents'));
+		expect(writes).toHaveLength(2);
+		const first = (JSON.parse(writes[0]?.[1].body as string) as Array<Record<string, unknown>>)[0];
+		expect(first).toMatchObject({ searchTerms: 'puja পুজো', rankFirst: 0 });
+		await index.updateSynonyms({ puja: ['pujo'] });
+		const put = fetcher.mock.calls.find((call) => String(call[0]).endsWith('/settings/synonyms'));
+		expect(put?.[1]).toMatchObject({ method: 'PUT', body: JSON.stringify({ puja: ['pujo'] }) });
+		fetcher.mockClear();
+		await index.replaceIndex([]);
+		const applied = JSON.parse(fetcher.mock.calls[0]?.[1].body as string) as Record<string, unknown>;
+		expect(applied['synonyms']).toEqual({ puja: ['pujo'] });
 	});
 
 	it('says search is down rather than falling through', async () => {

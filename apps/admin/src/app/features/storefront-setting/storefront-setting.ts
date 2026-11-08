@@ -43,20 +43,21 @@ export class StorefrontSetting {
 	private readonly settingsQuery = injectStorefrontSearchSettingsQuery();
 	private readonly categoriesQuery = injectCategoriesQuery(() => ({ type: 'product', status: 1 }));
 	readonly categories = computed(() => this.categoriesQuery.data()?.data ?? []);
+	/** The saved categories, handed to the picker once; picks after that stay inside it. */
+	readonly saved = signal<string[]>([]);
 	readonly showFirst = signal<string[]>([]);
 
 	constructor() {
 		effect(() => {
 			const settings = this.settingsQuery.data();
-			if (settings) this.showFirst.set([...settings.showFirstCategoryIds]);
+			if (!settings) return;
+			this.saved.set([...settings.showFirstCategoryIds]);
+			this.showFirst.set([...settings.showFirstCategoryIds]);
 		});
 	}
 
 	selectShowFirst(ids: string[]) {
-		if (!Array.isArray(ids)) return;
-		const next = ids.map(String);
-		// The picker repeats its selection when it redraws; the same list must not redraw it again.
-		if (next.join() !== this.showFirst().join()) this.showFirst.set(next);
+		if (Array.isArray(ids)) this.showFirst.set(ids.map(String));
 	}
 
 	submit() {

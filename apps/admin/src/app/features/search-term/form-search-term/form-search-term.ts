@@ -66,6 +66,8 @@ export class FormSearchTerm {
 	readonly termQuery = injectSearchTermQuery(() => this.id());
 	private readonly categoriesQuery = injectCategoriesQuery(() => ({ type: 'product', status: 1 }));
 	readonly categories = computed(() => this.categoriesQuery.data()?.data ?? []);
+	/** The saved categories, handed to the picker once; picks after that stay inside it. */
+	readonly savedCategories = signal<string[]>([]);
 	readonly selectedCategories = signal<string[]>([]);
 
 	private readonly productSearch = signal('');
@@ -106,6 +108,7 @@ export class FormSearchTerm {
 					Object.entries(term.spellings).map(([locale, words]) => [locale, words.join(', ')]),
 				),
 			});
+			this.savedCategories.set([...term.categoryIds]);
 			this.selectedCategories.set([...term.categoryIds]);
 			this.tagged.set(
 				products.map((row) => ({
@@ -130,10 +133,7 @@ export class FormSearchTerm {
 	}
 
 	selectCategories(ids: string[]) {
-		if (!Array.isArray(ids)) return;
-		const next = ids.map(String);
-		// The picker repeats its selection when it redraws; the same list must not redraw it again.
-		if (next.join() !== this.selectedCategories().join()) this.selectedCategories.set(next);
+		if (Array.isArray(ids)) this.selectedCategories.set(ids.map(String));
 	}
 
 	searchProducts(event: Select2SearchEvent) {

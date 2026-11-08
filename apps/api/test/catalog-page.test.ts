@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 
 import { CatalogPublicService } from '../src/catalog/catalog-public.service';
+import { withCatalogLocale } from '../src/catalog/catalog-locale';
 
 type Variant = z.output<typeof ProductVariant>;
 
@@ -224,11 +225,17 @@ describe('category listing read', () => {
 		const placements = {
 			findByPath: async (slugs: string[]) =>
 				slugs.join('/') === 'sarees'
-					? { categoryId: 'cat_sarees', pathLabel: 'Sarees', pathSlugs: ['sarees'] }
+					? {
+							categoryId: 'cat_sarees',
+							pathLabel: 'Sarees',
+							pathSlugs: ['sarees'],
+							pathCategoryIds: ['cat_sarees'],
+						}
 					: null,
 		};
 		const categories = {
 			findBySlug: async (slug: string) => (slug === 'pure-silk' ? { id: 'cat_silk' } : null),
+			findById: async (id: string) => (id === 'cat_sarees' ? { name: { en: 'Sarees', bn: 'শাড়ি' } } : null),
 		};
 		const service = new CatalogPublicService(
 			products as never,
@@ -265,6 +272,17 @@ describe('category listing read', () => {
 		expect(page).toMatchObject({ path: 'sarees', title: 'Sarees' });
 		expect(page.breadcrumb).toEqual([{ name: 'Sarees', path: '/collections/sarees' }]);
 		expect(queries[0]?.categoryId).toBe('cat_sarees');
+	});
+
+	it('names the trail in the page language', async () => {
+		const { service } = listingService();
+
+		const page = await withCatalogLocale('bn', () =>
+			service.placement(CatalogPlacementQuery.parse({ path: 'sarees' })),
+		);
+
+		expect(page).toMatchObject({ title: 'শাড়ি' });
+		expect(page.breadcrumb).toEqual([{ name: 'শাড়ি', path: '/collections/sarees' }]);
 	});
 
 	it('still answers an unknown path as not found', async () => {

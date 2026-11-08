@@ -394,7 +394,14 @@ export class CatalogPublicService {
 			pageSize,
 			locale: catalogLocale(),
 		});
-		const names = placement?.pathLabel.split(' / ') ?? [];
+		// Each step of the trail in the request language; the stored path label is English.
+		const labels = placement?.pathLabel.split(' / ') ?? [];
+		const named = await Promise.all(
+			(placement?.pathCategoryIds ?? []).map(async (id) => (await this.categories?.findById(id))?.name),
+		);
+		const names = (placement?.pathSlugs ?? []).map(
+			(slug, index) => localized(named[index] ?? {}) || (labels[index] ?? slug),
+		);
 		return CatalogPlacementPage.parse({
 			path: placement?.pathSlugs.join('/') ?? '',
 			title: names.at(-1) ?? placement?.pathLabel ?? 'All products',

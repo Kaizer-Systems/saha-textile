@@ -61,6 +61,8 @@
 									class="blog-button"
 								>
 									{{ 'read_more' | transloco }}
+									<!-- The post title, for screen readers and search engines: "Read More" alone names no page. -->
+									<span class="visually-hidden">: {{ blog.title }}</span>
 									<i class="ri-arrow-right-fill"></i>
 								</a>
 								}

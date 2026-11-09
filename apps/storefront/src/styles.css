@@ -8,7 +8,7 @@
  */
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import '@damjantonkli/ngx-toastr/toastr';
-@import 'swiper/css';
+/* swiper-bundle.css already holds swiper/css (the core), so the core is not imported twice. */
 @import 'swiper/swiper-bundle.css';
 @import './scss/app.gen.css';
 @import './scss/theme-color.css';

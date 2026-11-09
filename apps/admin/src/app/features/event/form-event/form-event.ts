@@ -84,6 +84,14 @@ function categoryAddresses(rows: readonly ICategory[] = [], parents: { slug: str
 	});
 }
 
+/**
+ * The category dropdown re-emits its selection every time it is given one, so a picker change
+ * that names the categories already chosen is ignored; storing it again would loop.
+ */
+function sameIds(next: readonly unknown[], current: readonly string[]): boolean {
+	return next.length === current.length && next.every((id) => current.includes(String(id)));
+}
+
 /** Every category in the tree, flat, so a picked id can show its name. */
 function flatten(rows: readonly ICategory[] = []): ICategory[] {
 	return rows.flatMap((row) => [row, ...flatten((row as { subcategories?: ICategory[] }).subcategories ?? [])]);
@@ -372,7 +380,8 @@ export class FormEvent {
 	}
 
 	pickLaunchCategories(ids: string[]) {
-		if (Array.isArray(ids)) this.launchCategoryIds.set(ids.map(String));
+		if (!Array.isArray(ids) || sameIds(ids, this.launchCategoryIds())) return;
+		this.launchCategoryIds.set(ids.map(String));
 	}
 
 	pickLaunchProducts(event: Select2UpdateEvent) {
@@ -393,7 +402,7 @@ export class FormEvent {
 
 	/** Adding categories adds a row each at 10% off; removing one from the picker drops its row. */
 	pickSaleCategories(ids: string[]) {
-		if (!Array.isArray(ids)) return;
+		if (!Array.isArray(ids) || sameIds(ids, this.saleCategoryIds())) return;
 		const wanted = ids.map(String);
 		const kept = this.saleCategories().filter((line) => wanted.includes(line.categoryId));
 		const added = wanted

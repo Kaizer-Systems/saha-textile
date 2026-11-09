@@ -2,8 +2,9 @@ import { HttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 
 import { firstValueFrom, of, throwError } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { loadRuntimeConfig, runtimeConfig } from '@core/config/runtime-config';
 import { BACKGROUND_REQUEST } from '@core/interceptors/background-request';
 
 import { AccountAddressService } from './account-address.service';
@@ -209,10 +210,13 @@ describe('CategoryService', () => {
 });
 
 describe('CartService', () => {
-	it('reads and changes the shopper cart, sending cookies and no toast', () => {
+	// The first cart read waits for the runtime config, as it does when the app starts.
+	beforeAll(() => loadRuntimeConfig());
+
+	it('reads and changes the shopper cart, sending cookies and no toast', async () => {
 		const service = TestBed.inject(CartService);
 		for (const method of ['get', 'post', 'patch', 'delete'] as const) http[method].mockReturnValue(of({}));
-		service.current();
+		await firstValueFrom(service.current());
 		service.add({ productId: 'p', quantity: 1, variationId: null, addons: [] });
 		service.update('a b', { quantity: 2 });
 		service.remove('a b');
@@ -429,5 +433,18 @@ describe('WishlistService', () => {
 		expect(http.get).toHaveBeenLastCalledWith(expect.stringMatching(/\/catalog\/cards$/), {
 			params: { id: ['p1'] },
 		});
+	});
+
+	it('reads the API address from the runtime config when it reads, not when it is made', async () => {
+		const service = TestBed.inject(CartService);
+		http.get.mockReturnValue(of({}));
+		const before = runtimeConfig.apiUrl;
+		runtimeConfig.apiUrl = 'https://api.example.test';
+		try {
+			await firstValueFrom(service.current());
+			expect(http.get.mock.lastCall?.[0]).toBe('https://api.example.test/cart/current');
+		} finally {
+			runtimeConfig.apiUrl = before;
+		}
 	});
 });

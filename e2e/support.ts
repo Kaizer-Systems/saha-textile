@@ -1,20 +1,27 @@
 import { expect, test as base, type Page } from '@playwright/test';
 
+import { COOKIE_POLICY_VERSION } from '../apps/storefront/src/app/core/consent/cookie-catalogue';
+
 /** The API a shop page talks to. Tests stub or block it by this pattern. */
 export const API = /localhost:4000/;
 
-export const ADMIN = 'https://localhost:4300';
+/** The admin. `E2E_ADMIN_URL` points the admin tests at another copy, such as a worktree's. */
+export const ADMIN = process.env['E2E_ADMIN_URL'] ?? 'https://localhost:4300';
 
 /** The signed-in test administrator, written by `admin.setup.ts`. */
 export const ADMIN_STATE = 'node_modules/.cache/playwright/admin-state.json';
 
-/** A visitor who has already answered, so the cookie box stays out of flows it has no part in. */
+/**
+ * A visitor who has already answered, so the cookie box stays out of flows it has no part in. The
+ * version is the shop's own, so raising it (a new tool in a category) does not silently switch
+ * Functional off for every test, as YouTube joining the list did on 2026-11-10.
+ */
 const ACCEPTED_COOKIES = {
 	name: 'st_consent',
 	value: encodeURIComponent(
 		JSON.stringify({
 			id: '3f0e8f6e-7f1b-4c55-9a55-1d9f6e1a0001',
-			version: '2026-11-07',
+			version: COOKIE_POLICY_VERSION,
 			savedAt: '2026-11-07T00:00:00.000Z',
 			categories: { functional: true, analytics: false, targeting: false, marketing: false, promotional: false },
 		}),

@@ -4,7 +4,7 @@ wide: true
 description: Authenticated checkout calculation, quote, promotion, tax, FX, shipping, and correction flow.
 status: scaffolded
 audience: [beginner, frontend, backend, operator]
-last_verified: '2026-11-08'
+last_verified: '2026-11-10'
 source_of_truth:
     - apps/storefront/src/app/features/shop/checkout
     - apps/api/src/cart
@@ -73,6 +73,8 @@ Product pricing starts in INR:
 effectiveSellingINR = activeSalePriceINR ?? priceINR;
 displayNet = roundCurrency(effectiveSellingINR * rateFromINR, currency);
 ```
+
+`activeSalePriceINR` is the price a running sale event sets for the SKU. Sale events are laid over catalogue reads only while they run; a SKU has no sale window of its own.
 
 INR uses a rate of `1`. If a rate refresh fails, keep the latest good rate and mark it stale. Never overwrite it with an invalid value.
 

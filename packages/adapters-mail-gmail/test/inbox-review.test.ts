@@ -5,6 +5,7 @@ import {
 	buildOutgoing,
 	cleanEmailHtml,
 	displayName,
+	htmlToText,
 	markMisleadingLinks,
 	referencesFor,
 	splitTextQuote,
@@ -419,5 +420,42 @@ describe('Gmail load (T1)', () => {
 		expect(message?.html).toContain('src="data:image/png;base64,AQ=="');
 		expect(message?.attachments.map((file) => file.filename)).toEqual(['p2.png', 'big.png', 'kept.png']);
 		expect(calls.filter((call) => call.url.includes('/attachments/'))).toHaveLength(2);
+	});
+});
+
+describe('plain text for HTML-only mail (audit fix)', () => {
+	it('turns cleaned HTML into readable text', () => {
+		expect(htmlToText('<p>Dear Priya,</p><p>It is ready&nbsp;on the 18th &amp; we&#39;ll call.<br>Riya</p>')).toBe(
+			"Dear Priya,\n\nIt is ready on the 18th & we'll call.\nRiya",
+		);
+		expect(htmlToText('<div>a</div>\n\n\n<div>b &#2453; &unknown;</div>')).toBe('a\n\nb ক &unknown;');
+	});
+
+	it('gives a message with only an HTML part a text form, quote included', () => {
+		const message = toInboxMessage({
+			id: 'm1',
+			threadId: 't1',
+			labelIds: [],
+			snippet: '',
+			internalDate: '0',
+			payload: {
+				mimeType: 'text/html',
+				body: {
+					data: b64(
+						'<p>Thanks!</p><div class="gmail_quote">On Mon, A wrote:<blockquote>Old</blockquote></div>',
+					),
+				},
+			},
+		});
+		expect(message.text).toBe('Thanks!\n\nOn Mon, A wrote:\nOld');
+		const empty = toInboxMessage({
+			id: 'm2',
+			threadId: 't1',
+			labelIds: [],
+			snippet: '',
+			internalDate: '0',
+			payload: {},
+		});
+		expect(empty.text).toBe('');
 	});
 });

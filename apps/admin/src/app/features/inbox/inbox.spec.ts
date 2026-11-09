@@ -255,8 +255,12 @@ describe('Inbox mailboxes', () => {
 		expect(page.noAccess()).toBe('director');
 		expect(router.navigate).toHaveBeenLastCalledWith(['/inbox', 'care', 'inbox'], { replaceUrl: true });
 
-		page.chooseMailbox({ value: 'mbx-orders' } as never);
+		go({ mailbox: 'care', folder: 'inbox' });
+		expect(page.noAccess()).toBe('director');
+		go({ mailbox: 'care', folder: 'sent' });
 		expect(page.noAccess()).toBeNull();
+
+		page.chooseMailbox({ value: 'mbx-orders' } as never);
 		expect(router.navigate).toHaveBeenLastCalledWith(['/inbox', 'orders', 'inbox']);
 		router.navigate.mockClear();
 		page.chooseMailbox({ value: 'mbx-gone' } as never);
@@ -431,8 +435,15 @@ describe('Inbox conversation', () => {
 		threadQuery.result.set({ data: { ...conversation('m1', 'm2', 'm3'), unread: true } });
 		flush();
 		expect(gateway.modify).toHaveBeenCalledTimes(1);
+		// Marked unread on purpose, then opened again: read again, as in Gmail.
+		await page.act('mark_unread');
+		threadQuery.result.set({ data: { ...conversation('m1', 'm2', 'm3', 'm4'), unread: true } });
+		flush();
+		await vi.waitFor(() => expect(gateway.modify).toHaveBeenLastCalledWith('mbx-care', 't1', 'mark_read'));
 
-		const [first, , last] = (page.thread()?.messages ?? []) as ReturnType<typeof message>[];
+		const all = (page.thread()?.messages ?? []) as ReturnType<typeof message>[];
+		const [first] = all;
+		const last = all.at(-1);
 		expect(page.isFolded(first as never)).toBe(true);
 		expect(page.isFolded(last as never)).toBe(false);
 		page.unfold(first as never);

@@ -351,6 +351,7 @@ export class Inbox {
 	private lastOpened: string | null = null;
 	private readonly markedRead = new Set<string>();
 	private runnableUrl = '';
+	private noAccessShownAt = '';
 	private readonly observers: ResizeObserver[] = [];
 	readonly runnableName = signal('');
 
@@ -365,18 +366,27 @@ export class Inbox {
 			const key = mailboxKey(mailbox.address);
 			const inUrl = this.keyInUrl();
 			if (inUrl === key) return;
-			untracked(() => this.noAccess.set(inUrl));
 			const last = untracked(() => this.remembered());
 			const start = this.keyInUrl() === null && last?.mailbox ? last : null;
 			const target = start && this.mailboxes().some((entry) => mailboxKey(entry.address) === start.mailbox);
-			void this.router.navigate(
-				[
-					'/inbox',
-					target ? start.mailbox : key,
-					target && FOLDER_IDS.has(start.folder) ? start.folder : 'inbox',
-				],
-				{ replaceUrl: true },
-			);
+			const goTo = target ? start.mailbox : key;
+			const folder = target && FOLDER_IDS.has(start.folder) ? start.folder : 'inbox';
+			// The note shows on the page the person lands on, and clears once they move on.
+			untracked(() => {
+				this.noAccess.set(inUrl);
+				this.noAccessShownAt = `${goTo}|${folder}||`;
+			});
+			void this.router.navigate(['/inbox', goTo, folder], { replaceUrl: true });
+		});
+
+		// The "no access" note belongs to the page it was shown on.
+		effect(() => {
+			const key = this.keyInUrl();
+			const here = `${key}|${this.folder()}|${this.openId() ?? ''}|${this.q()}`;
+			const settled = this.mailboxes().some((entry) => mailboxKey(entry.address) === key);
+			untracked(() => {
+				if (settled && this.noAccess() && here !== this.noAccessShownAt) this.noAccess.set(null);
+			});
 		});
 
 		// A 404 for the list means this person's access was removed while it was open: the
@@ -472,7 +482,6 @@ export class Inbox {
 	chooseMailbox(event: Select2UpdateEvent) {
 		const chosen = this.mailboxes().find((entry) => entry.mailboxId === event.value);
 		if (!chosen || chosen.mailboxId === this.mailbox()?.mailboxId) return;
-		this.noAccess.set(null);
 		void this.router.navigate(['/inbox', mailboxKey(chosen.address), 'inbox']);
 	}
 
@@ -554,6 +563,8 @@ export class Inbox {
 		const threadId = this.openId();
 		if (!mailboxId || !threadId) return;
 		await firstValueFrom(this.gateway.modify(mailboxId, threadId, action));
+		// Marked unread on purpose: opening it again marks it read, as Gmail does.
+		if (action === 'mark_unread') this.markedRead.delete(threadId);
 		const done = this.transloco.translate(DONE[action]);
 		this.notifier.showSuccess(done);
 		this.announcement.set(done);

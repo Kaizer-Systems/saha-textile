@@ -1,7 +1,7 @@
 import type { InboxAttachment, InboxMessage, InboxThread, InboxThreadSummary } from '@saha-textile/contracts';
 import { z } from 'zod';
 
-import { cleanEmailHtml, splitTextQuote, textAsHtml } from './clean-html.js';
+import { cleanEmailHtml, htmlToText, splitTextQuote, textAsHtml } from './clean-html.js';
 
 /** The parts of Gmail's message resource this adapter reads. */
 export interface GmailPart {
@@ -131,7 +131,8 @@ export function toInboxMessage(message: GmailMessage, inline: ReadonlyMap<string
 		html: cleaned.html,
 		quoteHtml: cleaned.quoteHtml,
 		unread: message.labelIds.includes('UNREAD'),
-		text,
+		// Mail sent as HTML only still gets a text form, for folded lines, forwards and quotes.
+		text: text || (html ? htmlToText(cleaned.html + cleaned.quoteHtml) : ''),
 		hasRemoteImages: cleaned.hasRemoteImages,
 		attachments,
 		messageId,

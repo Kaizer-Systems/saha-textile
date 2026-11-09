@@ -63,7 +63,7 @@ test.describe('the menu-bar search', () => {
 		const categories = await box(page).locator('[id$="-c0"], [id$="-c1"], [id$="-c2"]').count();
 		for (let step = 0; step < categories; step += 1) await field.press('ArrowDown');
 		const name = await productRows(page).first().locator('h5').innerText();
-		const click = page.waitForRequest((request) => /\/catalog\/search\/clicks$/.test(request.url()));
+		const click = page.waitForRequest((request) => /\/catalog\/search\/clicks(\?|$)/.test(request.url()));
 		await field.press('Enter');
 		expect((await click).postDataJSON()).toMatchObject({ q: 'jamdani' });
 		await expect(page).toHaveURL(/\/en\/product\//);
@@ -125,7 +125,7 @@ test.describe('the Search page', () => {
 	test('opens results from a shared link and counts a result click', async ({ page }) => {
 		await searchPage(page, 'en', '?search=jamdani');
 		await expect(page.locator('.search-section p.text-content')).toContainText('Results for “jamdani”');
-		const click = page.waitForRequest((request) => /\/catalog\/search\/clicks$/.test(request.url()));
+		const click = page.waitForRequest((request) => /\/catalog\/search\/clicks(\?|$)/.test(request.url()));
 		await page.locator('.search-product .product-image a').first().click();
 		expect((await click).postDataJSON()).toMatchObject({ q: 'jamdani' });
 		await expect(page).toHaveURL(/\/en\/product\//);

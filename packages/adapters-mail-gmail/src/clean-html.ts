@@ -232,6 +232,33 @@ export function splitTextQuote(text: string): { main: string; quote: string } {
 	return { main, quote: lines.slice(at).join('\n').trim() };
 }
 
+const ENTITIES: Readonly<Record<string, string>> = {
+	amp: '&',
+	lt: '<',
+	gt: '>',
+	quot: '"',
+	apos: "'",
+	nbsp: ' ',
+	'#39': "'",
+};
+
+/**
+ * Plain text from cleaned email HTML, for messages sent without a text part: line breaks where
+ * blocks end, tags gone, the common entities decoded. Used for folded lines, forwards and the
+ * plain-text quote in a reply.
+ */
+export function htmlToText(html: string): string {
+	return html
+		.replace(/<br\s*\/?>/gi, '\n')
+		.replace(/<\/?(p|div|li|tr|h[1-6]|blockquote|pre)\b[^>]*>/gi, '\n')
+		.replace(/<[^>]*>/g, '')
+		.replace(/&(#39|[a-z]+);/gi, (whole, name: string) => ENTITIES[name.toLowerCase()] ?? whole)
+		.replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+		.replace(/[ \t]+\n/g, '\n')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
+}
+
 /** A plain-text body as HTML, for mail that has no HTML part: every character shown as typed. */
 export function textAsHtml(text: string): string {
 	return text

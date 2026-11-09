@@ -196,7 +196,8 @@ export const AdminProductDetail = z.object({
 	slug: z.string(),
 	sku: z.string(),
 	title: z.string(),
-	type: z.enum(['simple', 'variable']),
+	/** Bundles open in the same form (its Bundle tab), so the detail must carry them too. */
+	type: ProductType,
 	status: ProductStatus,
 	/** True once the product has ever been live: its SKUs are then frozen. */
 	published: z.boolean(),

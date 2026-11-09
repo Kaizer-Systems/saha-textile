@@ -1,20 +1,25 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, computed, effect, inject } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { TranslocoModule } from '@jsverse/transloco';
-import { NgbCarousel, NgbSlide } from '@ng-bootstrap/ng-bootstrap';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
+import { NgbCarousel, NgbModal, NgbSlide } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 
+import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { type ResolvedImage, roleSrcset } from '@core/media/resolved-image';
 import { SiteConfigStore } from '@core/state/site-config.store';
 import { IContact, ISiteConfig } from '@data-access/interfaces/site-config.interface';
 import { injectBrandQuery } from '@data-access/queries/brand.queries';
 import { injectStoreLocationsQuery } from '@data-access/queries/store-location.queries';
+import { ContactMessageService } from '@data-access/services/contact-message.service';
+import { NotificationService } from '@data-access/services/notification.service';
 import { Breadcrumb } from '@shared/ui/breadcrumb/breadcrumb';
 import { Button } from '@shared/ui/button/button';
+import { ContactSentModal } from '@shared/ui/modal/contact-sent-modal/contact-sent-modal';
 import { translatedBreadcrumb } from '@shared/util/breadcrumb-i18n';
 
 import type { PublicStoreLocation, StoreDayHours } from '@data-access/interfaces/store-location.interface';
@@ -42,6 +47,15 @@ const DAY_NAMES: Readonly<Record<StoreDayHours['day'], string>> = {
 export class ContactUs {
 	private formBuilder = inject(FormBuilder);
 	private seo = inject(LocaleSeo);
+	private contactMessages = inject(ContactMessageService);
+	private notifications = inject(NotificationService);
+	private modals = inject(NgbModal);
+	private transloco = inject(TranslocoService);
+	private readonly locale = inject(ACTIVE_LOCALE);
+	/** When the form appeared: a message sent within three seconds is a bot's. */
+	private readonly openedAt = Date.now();
+	/** True while a message is on its way, so a double click sends it once. */
+	readonly sending = signal(false);
 	private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
 	private readonly storesQuery = injectStoreLocationsQuery();
@@ -65,12 +79,15 @@ export class ContactUs {
 	public contactData: IContact;
 
 	constructor() {
+		// The same limits the API checks (`ContactMessageRequest`). The phone is optional.
 		this.form = this.formBuilder.group({
-			name: new FormControl('', [Validators.required]),
-			email: new FormControl('', [Validators.required, Validators.email]),
-			phone: new FormControl('', [Validators.required]),
-			subject: new FormControl('', [Validators.required]),
-			message: new FormControl('', [Validators.required]),
+			name: new FormControl('', [Validators.required, Validators.minLength(2), Validators.maxLength(80)]),
+			email: new FormControl('', [Validators.required, Validators.email, Validators.maxLength(254)]),
+			phone: new FormControl('', [Validators.maxLength(20)]),
+			subject: new FormControl('', [Validators.required, Validators.minLength(3), Validators.maxLength(120)]),
+			message: new FormControl('', [Validators.required, Validators.minLength(10), Validators.maxLength(2000)]),
+			// Hidden from people (stores brief): anything typed here marks a bot.
+			website: new FormControl(''),
 		});
 
 		this.siteConfig$.subscribe((data) => (this.contactData = data?.contact_us));
@@ -134,12 +151,41 @@ export class ContactUs {
 		};
 	}
 
+	/** Sends the message; the shop's team gets it in their Gmail mailbox and replies by email. */
 	submit() {
 		this.form.markAllAsTouched();
-		if (this.form.valid) {
-			// The form is wired to the team's Gmail mailbox in the mailboxes chunk; until then it
-			// only clears.
-			this.form.reset();
-		}
+		if (this.form.invalid || this.sending()) return;
+		const value = this.form.getRawValue() as Record<string, string | null>;
+		this.sending.set(true);
+		this.contactMessages
+			.send({
+				name: value['name'] ?? '',
+				email: value['email'] ?? '',
+				phone: String(value['phone'] ?? ''),
+				subject: value['subject'] ?? '',
+				message: value['message'] ?? '',
+				locale: this.locale === 'bn' ? 'bn' : 'en',
+				website: value['website'] ?? '',
+				elapsedMs: Date.now() - this.openedAt,
+			})
+			.subscribe({
+				next: () => {
+					this.sending.set(false);
+					this.form.reset();
+					this.modals.open(ContactSentModal, {
+						ariaLabelledBy: 'contact_sent_title',
+						centered: true,
+						windowClass: 'theme-modal',
+					});
+				},
+				error: (error: unknown) => {
+					this.sending.set(false);
+					const key =
+						error instanceof HttpErrorResponse && error.status === 429
+							? 'contact_too_many'
+							: 'contact_not_sent';
+					this.notifications.showError(this.transloco.translate(key));
+				},
+			});
 	}
 }

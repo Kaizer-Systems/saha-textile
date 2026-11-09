@@ -92,6 +92,9 @@
 									<i class="ri-user-3-fill"></i>
 									@if (form.controls['name'].touched && form.controls['name'].errors?.['required']) {
 									<div class="invalid-feedback">{{ 'name_is_required' | transloco }}</div>
+									} @else if (form.controls['name'].touched &&
+									form.controls['name'].errors?.['minlength']) {
+									<div class="invalid-feedback">{{ 'contact_name_too_short' | transloco }}</div>
 									}
 								</div>
 							</div>
@@ -128,21 +131,19 @@
 									for="phonenumner"
 									class="form-label"
 								>
-									{{ 'phone_number' | transloco }}
+									{{ 'phone_number_optional' | transloco }}
 								</label>
 								<div class="custom-input">
 									<input
-										type="number"
+										type="tel"
+										inputmode="tel"
+										autocomplete="tel"
 										class="form-control"
 										id="phonenumner"
 										placeholder="{{ 'enter_your_phone_number' | transloco }}"
 										formControlName="phone"
 									/>
 									<i class="ri-smartphone-line"></i>
-									@if (form.controls['phone'].touched && form.controls['phone'].errors?.['required'])
-									{
-									<div class="invalid-feedback">{{ 'phone_number_is_required' | transloco }}</div>
-									}
 								</div>
 							</div>
 						</div>
@@ -166,6 +167,9 @@
 									@if (form.controls['subject'].touched &&
 									form.controls['subject'].errors?.['required']) {
 									<div class="invalid-feedback">{{ 'subject_is_required' | transloco }}</div>
+									} @else if (form.controls['subject'].touched &&
+									form.controls['subject'].errors?.['minlength']) {
+									<div class="invalid-feedback">{{ 'contact_subject_too_short' | transloco }}</div>
 									}
 								</div>
 							</div>
@@ -190,15 +194,33 @@
 									@if (form.controls['message'].touched &&
 									form.controls['message'].errors?.['required']) {
 									<div class="invalid-feedback">{{ 'message_is_required' | transloco }}</div>
+									} @else if (form.controls['message'].touched &&
+									form.controls['message'].errors?.['minlength']) {
+									<div class="invalid-feedback">{{ 'contact_message_too_short' | transloco }}</div>
 									}
 								</div>
 							</div>
+						</div>
+						<!-- Hidden from people and from screen readers; only a bot fills it (stores brief). -->
+						<div
+							class="visually-hidden"
+							aria-hidden="true"
+						>
+							<label for="contact_website">Website</label>
+							<input
+								id="contact_website"
+								type="text"
+								tabindex="-1"
+								autocomplete="off"
+								formControlName="website"
+							/>
 						</div>
 					</div>
 					<app-button
 						[class]="'btn btn-animation btn-md fw-bold ms-auto'"
 						[type]="'button'"
 						[id]="'send_message'"
+						[disabled]="sending()"
 						[spinner]="true"
 						(click)="submit()"
 					>

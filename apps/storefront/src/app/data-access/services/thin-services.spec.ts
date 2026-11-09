@@ -29,6 +29,7 @@ import { ReviewService } from './review.service';
 import { SettingService } from './setting.service';
 import { SiteConfigService } from './site-config.service';
 import { StateService } from './state.service';
+import { ContactMessageService } from './contact-message.service';
 import { StoreLocationService } from './store-location.service';
 import { StoreService } from './store.service';
 import { TagService } from './tag.service';
@@ -70,6 +71,14 @@ const plainReads: [string, () => unknown, string][] = [
 	['states', () => TestBed.inject(StateService).getStates(), '/state.json'],
 	['a static page', () => TestBed.inject(PageService).getPage('about'), '/pages/about.json'],
 ];
+
+describe('contact message service', () => {
+	it('sends a Contact Us message to the API', async () => {
+		http.post.mockReturnValue(of({ accepted: true }));
+		await firstValueFrom(TestBed.inject(ContactMessageService).send({ name: 'R' } as never));
+		expect(String(http.post.mock.lastCall?.[0])).toContain('/storefront/contact-messages');
+	});
+});
 
 describe('store location service', () => {
 	it('reads the active stores from the catalogue', async () => {

@@ -3,12 +3,17 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoService } from '@jsverse/transloco';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ConsentStore } from '@core/consent/consent.store';
+import { ACTIVE_LOCALE } from '@core/i18n/active-locale';
 import { LocaleSeo } from '@core/i18n/locale-seo';
 import { SiteConfigStore } from '@core/state/site-config.store';
+import { ContactMessageService, type ContactMessageRequest } from '@data-access/services/contact-message.service';
+import { NotificationService } from '@data-access/services/notification.service';
 import { ProductService } from '@data-access/services/product.service';
 
 import { ContactUs } from './contact-us/contact-us';
@@ -66,8 +71,14 @@ describe('ContactUs', () => {
 		motion.reduce = false;
 		window.matchMedia = vi.fn(() => ({ matches: motion.reduce })) as never;
 	});
-	const render = () => {
+	const render = (locale = 'en') => {
 		const siteConfig = signal<unknown>(null);
+		const contact = {
+			answer: new Subject<{ accepted: boolean }>(),
+			send: vi.fn((_body: ContactMessageRequest) => contact.answer),
+		};
+		const modals = { open: vi.fn() };
+		const notifications = { showError: vi.fn() };
 		const seo = {
 			applyJsonLd: vi.fn(),
 			removeJsonLd: vi.fn(),
@@ -84,12 +95,16 @@ describe('ContactUs', () => {
 				{ provide: Router, useValue: { url: '/contact-us' } },
 				{ provide: SiteConfigStore, useValue: { siteConfig } },
 				{ provide: LocaleSeo, useValue: seo },
+				{ provide: ContactMessageService, useValue: contact },
+				{ provide: NgbModal, useValue: modals },
+				{ provide: NotificationService, useValue: notifications },
+				{ provide: ACTIVE_LOCALE, useValue: locale },
 			],
 		});
 		TestBed.overrideComponent(ContactUs, { set: { imports: [], template: '' } });
 		const form = TestBed.createComponent(ContactUs).componentInstance;
 		TestBed.tick();
-		return { form, siteConfig, seo };
+		return { form, siteConfig, seo, contact, modals, notifications };
 	};
 
 	it('names and describes itself, with its Home › Contact Us trail', () => {
@@ -183,14 +198,49 @@ describe('ContactUs', () => {
 		expect(form.contactData).toEqual({ title: 'Hi' });
 	});
 
-	it('clears only a complete message', () => {
-		const { form } = render();
+	it('sends nothing until the form is complete, then sends once and thanks the customer', () => {
+		const { form, contact, modals } = render();
 		form.form.patchValue({ name: 'A' });
 		form.submit();
-		expect(form.form.value.name).toBe('A');
-		form.form.patchValue({ email: 'a@b.co', phone: '1', subject: 's', message: 'm' });
+		expect(contact.send).not.toHaveBeenCalled();
+		form.form.patchValue({
+			name: 'Rina',
+			email: 'rina@x.test',
+			subject: 'Blouse',
+			message: 'Do you stitch blouses?',
+		});
 		form.submit();
+		form.submit();
+		expect(contact.send).toHaveBeenCalledTimes(1);
+		expect(contact.send.mock.calls[0]?.[0]).toMatchObject({ name: 'Rina', phone: '', locale: 'en', website: '' });
+		expect(contact.send.mock.calls[0]?.[0].elapsedMs).toBeGreaterThanOrEqual(0);
+		contact.answer.next({ accepted: true });
+		contact.answer.complete();
+		expect(form.sending()).toBe(false);
 		expect(form.form.value.name).toBeNull();
+		expect(modals.open).toHaveBeenCalledTimes(1);
+	});
+
+	it('tells the customer when they sent too many, or when sending failed', () => {
+		const { form, contact, notifications } = render('bn');
+		const fill = () =>
+			form.form.patchValue({
+				name: 'Rina',
+				email: 'rina@x.test',
+				subject: 'Blouse',
+				message: 'Do you stitch blouses?',
+			});
+		fill();
+		form.submit();
+		expect(contact.send.mock.calls[0]?.[0].locale).toBe('bn');
+		contact.answer.error(new HttpErrorResponse({ status: 429 }));
+		expect(notifications.showError).toHaveBeenLastCalledWith('t:contact_too_many');
+		expect(form.form.value.name).toBe('Rina');
+		contact.answer = new Subject();
+		form.submit();
+		contact.answer.error(new Error('offline'));
+		expect(notifications.showError).toHaveBeenLastCalledWith('t:contact_not_sent');
+		expect(form.sending()).toBe(false);
 	});
 });
 

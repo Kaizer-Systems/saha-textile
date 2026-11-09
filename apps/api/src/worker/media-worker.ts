@@ -28,6 +28,7 @@ import {
 	deliverStockAlerts,
 	processMediaAsset,
 	reconcileSeededRoles,
+	checkProductVideos,
 	refreshYouTubeFeed,
 	runMediaGarbageCollection,
 	runWeeklyInsight,
@@ -116,6 +117,15 @@ export const composeMediaWorker = async (config: AppConfig) => {
 				}
 			}
 			return { queued };
+		},
+		'product-videos-check': async () => {
+			if (!youtube) {
+				logger.warn('Product video check skipped: YOUTUBE_API_KEY is not set');
+				return { skipped: 'not_configured' };
+			}
+			const result = await checkProductVideos({ products: new MongoProductRepository(), youtube, now });
+			logger.log(`Product videos: ${result.checked} checked, ${result.gone} gone, ${result.back} back`);
+			return result;
 		},
 		'weekly-insight': async () => {
 			const result = await runWeeklyInsight({

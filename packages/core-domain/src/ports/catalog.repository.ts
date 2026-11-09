@@ -43,6 +43,8 @@ export interface ProductRepository {
 	listPublicSlugs(): Promise<string[]>;
 	/** Live products per category, with the first product's lead photo. */
 	categorySummaries(): Promise<CategorySummary[]>;
+	/** Every product with at least one YouTube video, whatever its status, for the weekly check. */
+	listWithVideos(): Promise<Product[]>;
 	/** Replaces the weekly badges: every other product loses them. */
 	setInsightBadges(input: { bestseller: readonly string[]; trending: readonly string[] }): Promise<void>;
 }

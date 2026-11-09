@@ -6,4 +6,5 @@ export * from './process-asset';
 export * from './resolve-image';
 export * from './garbage-collection';
 export * from './review-photos';
+export * from './product-video-check';
 export * from './youtube-feed';

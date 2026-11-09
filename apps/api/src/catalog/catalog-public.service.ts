@@ -225,7 +225,8 @@ export class CatalogPublicService {
 			unknownVariant: read.unknownVariant,
 			gallery: gallery.map((frame) => frame.image),
 			shareImageUrl,
-			videos: product.videos,
+			// A video YouTube no longer plays (weekly check) is left off the page.
+			videos: product.videos.filter((video) => !video.unavailableSince),
 			optionGroups: groups.map((group) => ({
 				code: group.attributeCode,
 				label: localized(group.label),

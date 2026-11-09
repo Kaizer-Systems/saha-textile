@@ -1115,6 +1115,8 @@
 	"product_videos_help": "লম্বা ভিডিও আর Shorts মিলিয়ে সর্বোচ্চ {{max}}টি ভিডিও। প্রথমটি পণ্যের পেজে প্রথমে দেখায়।",
 	"product_video_already_added": "এই ভিডিওটি আগেই পণ্যে যোগ করা আছে।",
 	"product_video_check_failed": "ভিডিওটি যাচাই করা গেল না। আবার চেষ্টা করুন।",
+	"product_video_unavailable": "YouTube-এ আর নেই",
+	"product_video_unavailable_help": "YouTube এই ভিডিওটি আর চালায় না (প্রাইভেট করা হয়েছে বা মুছে ফেলা হয়েছে), তাই দোকানে এটি দেখানো হয় না। এটি সরিয়ে দিন, বা অন্য একটি যোগ করুন।",
 	"accept_your_invitation": "আপনার আমন্ত্রণ গ্রহণ করুন",
 	"set_how_you_will_sign_in": "অ্যাডমিনে কীভাবে লগ ইন করবেন, ঠিক করুন",
 	"your_name_optional": "আপনার নাম (ইচ্ছামতো)",

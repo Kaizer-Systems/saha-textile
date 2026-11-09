@@ -17,6 +17,7 @@ export type ScheduledMediaJob =
 	| { type: 'youtube-refresh' }
 	| { type: 'reprocess-stale' }
 	| { type: 'weekly-insight' }
+	| { type: 'product-videos-check' }
 	| { type: 'stock-alerts' };
 export type MediaQueueJob = MediaJob | ScheduledMediaJob;
 
@@ -126,6 +127,12 @@ export class BullMqMediaJobQueue implements MediaJobQueuePort {
 			'stock-alerts',
 			{ every: 15 * 60_000 },
 			{ name: 'stock-alerts', data: { type: 'stock-alerts' } },
+		);
+		// Product videos made private or deleted on YouTube since they were added (Mondays 04:30 IST).
+		await this.queue.upsertJobScheduler(
+			'product-videos-check',
+			{ pattern: '30 4 * * 1', tz },
+			{ name: 'product-videos-check', data: { type: 'product-videos-check' } },
 		);
 		await this.queue.upsertJobScheduler(
 			'weekly-insight',

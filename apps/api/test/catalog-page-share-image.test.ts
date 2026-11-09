@@ -82,9 +82,11 @@ describe('product page link-preview card', () => {
 	it('sends the product videos in admin order, and none when it has none', async () => {
 		expect((await service(false).page('red-banarasi-saree')).videos).toEqual([]);
 		const short = { videoId: 'YfNsUapqTqE', title: 'S', thumbnailUrl: 'u', kind: 'short', durationSeconds: 48 };
-		product.videos = [short as never];
+		const gone = { ...short, videoId: 'QRP0xuczTUo', unavailableSince: '2026-11-16T23:00:00.000Z' };
+		product.videos = [short as never, gone as never];
 		const page = await service(false).page('red-banarasi-saree');
 		product.videos = [];
+		// A video the weekly check found gone is left off the page.
 		expect(page.videos).toEqual([short]);
 	});
 

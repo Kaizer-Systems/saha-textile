@@ -215,6 +215,11 @@ export const ProductVideo = z.object({
 	durationSeconds: z.number().int().nonnegative(),
 	/** When it went up on YouTube; search engines need it for video results. Older rows lack it. */
 	publishedAt: IsoDateTime.optional(),
+	/**
+	 * Set by the weekly check when YouTube no longer plays it (made private, deleted, embedding
+	 * off): the shop hides it and admin shows it as gone. Cleared if it comes back.
+	 */
+	unavailableSince: IsoDateTime.nullable().optional(),
 });
 export type ProductVideo = z.infer<typeof ProductVideo>;
 

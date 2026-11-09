@@ -1115,6 +1115,8 @@
 	"product_videos_help": "Up to {{max}} videos, long videos and Shorts together. The first one shows first on the product page.",
 	"product_video_already_added": "This video is already on the product.",
 	"product_video_check_failed": "The video could not be checked. Try again.",
+	"product_video_unavailable": "No longer on YouTube",
+	"product_video_unavailable_help": "YouTube no longer plays this video (made private or deleted), so the shop hides it. Remove it, or add another.",
 	"accept_your_invitation": "Accept your invitation",
 	"set_how_you_will_sign_in": "Set how you will sign in to the admin",
 	"your_name_optional": "Your name (optional)",

@@ -100,6 +100,13 @@ export class MongoProductRepository implements ProductRepository {
 		return toProduct(doc as ProductDoc);
 	}
 
+	async listWithVideos(): Promise<Product[]> {
+		const docs = await ProductModel.find({ 'videos.0': { $exists: true } })
+			.lean<ProductDoc[]>()
+			.exec();
+		return docs.map(toProduct);
+	}
+
 	async deleteById(id: string): Promise<void> {
 		await ProductModel.deleteOne({ _id: id }).exec();
 	}

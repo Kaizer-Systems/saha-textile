@@ -1,5 +1,15 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { Component, DestroyRef, PLATFORM_ID, TemplateRef, effect, inject, signal, viewChild } from '@angular/core';
+import {
+	Component,
+	DestroyRef,
+	PLATFORM_ID,
+	TemplateRef,
+	afterNextRender,
+	effect,
+	inject,
+	signal,
+	viewChild,
+} from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
@@ -82,7 +92,8 @@ export class EventModal {
 	private previewing = false;
 
 	constructor() {
-		if (isPlatformBrowser(this.platformId)) this.startPreview();
+		// After the first render, so the popup's template exists whenever the answer comes back.
+		afterNextRender(() => this.startPreview());
 		// Arms once a published event could show; the newsletter popup stands aside meanwhile.
 		effect(() => {
 			const candidate = this.candidate();
@@ -101,6 +112,7 @@ export class EventModal {
 		const token = new URLSearchParams(this.document.defaultView?.location.search ?? '').get(PREVIEW_PARAM);
 		if (!token) return;
 		this.previewing = true;
+		this.disarm?.();
 		this.events.popupWaiting.set(true);
 		this.events.preview(token, (event) => {
 			if (event) this.show(event);

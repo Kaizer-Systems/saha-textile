@@ -20,6 +20,7 @@
 			<a
 				class="nav-link dropdown-toggle"
 				[routerLink]="isMobileView() ? null : menu.path"
+				[attr.role]="isMobileView() || !menu.path ? 'button' : null"
 				(click)="toggle(menu)"
 			>
 				{{ menu.i18nTitle === false ? menu.title : (menu.title | transloco: menu.titleParams) }} @if

@@ -2,7 +2,11 @@
 	@if (filter()!['layout'] !== 'collection_offcanvas_filter' && filter()!['layout'] !== 'collection_no_sidebar') {
 	<div class="filter-button-group mt-0">
 		<div class="filter-button d-inline-block d-lg-none">
-			<a (click)="openFilter(true)">
+			<a
+				href="javascript:void(0)"
+				role="button"
+				(click)="openFilter(true)"
+			>
 				<i class="ri-filter-2-fill"></i>
 				{{ 'filter_menu' | transloco }}
 			</a>

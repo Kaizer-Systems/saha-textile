@@ -78,6 +78,10 @@ export const StorefrontBrand = z.object({
 });
 export type StorefrontBrand = z.infer<typeof StorefrontBrand>;
 
+/** Where Contact Us messages go: one connected mailbox, or nowhere (messages wait). */
+export const ContactMailboxSettings = z.object({ mailboxId: z.string().min(1).nullable() });
+export type ContactMailboxSettings = z.infer<typeof ContactMailboxSettings>;
+
 /** Every setting key and its schema. */
 export const SITE_SETTING_SCHEMAS = {
 	brand: BrandSettings,
@@ -85,6 +89,7 @@ export const SITE_SETTING_SCHEMAS = {
 	youtube: YouTubeSettings,
 	'youtube.feed': YouTubeFeedCache,
 	'storefront.search': StorefrontSearchSettings,
+	'mailboxes.contact': ContactMailboxSettings,
 } as const;
 export type SiteSettingKey = keyof typeof SITE_SETTING_SCHEMAS;
 export type SiteSettingValue<K extends SiteSettingKey> = z.infer<(typeof SITE_SETTING_SCHEMAS)[K]>;

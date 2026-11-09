@@ -53,6 +53,7 @@ export * from './pending-signup.model';
 export * from './pending-contact-change.model';
 export * from './blog.model';
 export * from './store-location.model';
+export * from './mailbox.model';
 export * from './search-analytics.model';
 export * from './wishlist-item.model';
 export * from './search-dictionary.model';

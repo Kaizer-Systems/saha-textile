@@ -106,6 +106,10 @@ export const COLLECTION_NAMES = {
 	ShopEvent: 'shopEvents',
 	/** The shop's physical stores, shown as cards on Contact Us. */
 	StoreLocation: 'storeLocations',
+	/** Gmail mailboxes connected in the admin, who may open them, and Contact Us messages. */
+	Mailbox: 'mailboxes',
+	MailboxAccess: 'mailboxAccess',
+	ContactMessage: 'contactMessages',
 	/** Typed site settings: home hero layout, YouTube rail settings and cache. */
 	SiteSetting: 'siteSettings',
 	SeoRedirect: 'seoRedirects',

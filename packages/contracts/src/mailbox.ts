@@ -37,8 +37,8 @@ export const Mailbox = z.object({
 	/** Last time the API reached the mailbox at Gmail. */
 	lastSyncAt: IsoDateTime.nullable().default(null),
 	sendAs: z.array(MailboxSendAs).default([]),
-	createdAt: IsoDateTime.optional(),
-	updatedAt: IsoDateTime.optional(),
+	createdAt: IsoDateTime.nullish(),
+	updatedAt: IsoDateTime.nullish(),
 });
 export type Mailbox = z.infer<typeof Mailbox>;
 
@@ -240,13 +240,13 @@ export const ContactMessage = z.object({
 	id: Id,
 	name: z.string(),
 	email: z.string(),
-	phone: z.string().nullable(),
+	phone: z.string().nullable().default(null),
 	subject: z.string(),
 	message: z.string(),
 	locale: z.enum(['en', 'bn']),
 	status: ContactMessageStatus,
 	/** The connection address, hashed; never stored raw. */
-	ipHash: z.string().nullable(),
+	ipHash: z.string().nullable().default(null),
 	/** Hash of email and message, to skip a repeat within a day. */
 	contentHash: z.string(),
 	mailboxId: Id.nullable().default(null),

@@ -116,18 +116,12 @@ export interface MailboxTokenStore {
 	remove(mailboxId: string): Promise<void>;
 }
 
-/** Contact Us messages (`contactMessages`), kept 12 months. */
+/** Contact Us messages (`contactMessages`), deleted by the database 12 months after arrival. */
 export interface ContactMessageRepository {
 	save(message: ContactMessage): Promise<ContactMessage>;
 	findById(id: string): Promise<ContactMessage | null>;
 	/** A message with the same content hash since `since`, to skip a repeat. */
 	findRecentByHash(contentHash: string, since: string): Promise<ContactMessage | null>;
+	/** Queued or failed messages due another delivery attempt, oldest first. */
 	listPending(limit: number): Promise<ContactMessage[]>;
-	deleteOlderThan(before: string): Promise<number>;
-}
-
-/** The site setting that says where Contact Us messages go. */
-export interface ContactMailboxSetting {
-	get(): Promise<string | null>;
-	set(mailboxId: string | null): Promise<void>;
 }

@@ -31,8 +31,8 @@
 		"stockAlerts": "packages/contracts/src/stock-alert.ts"
 	},
 	"inventory": {
-		"nodeCount": 76,
-		"existingModelCount": 52,
+		"nodeCount": 79,
+		"existingModelCount": 55,
 		"targetOnlyCount": 24,
 		"countPolicy": "One node represents one distinct target MongoDB collection. Visual clusters never collapse several physical collections into one node.",
 		"statusPolicy": "A star is solid when an adapter model exists for that physical collection. authRateLimits, pendingSignups and pendingContactChanges are short-lived runtime collections outside the map."
@@ -1075,6 +1075,45 @@
 			"source": "decisions § product page (2026-11-08)",
 			"currentModel": "packages/adapters-db-mongo/src/models/wishlist-item.model.ts",
 			"references": ["customers", "products"]
+		},
+		{
+			"id": "mailboxes",
+			"label": "mailboxes",
+			"cluster": "governance-messaging",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"purpose": "Gmail mailboxes the super admin connected: address, status, who connected it and when, its verified send-as addresses with signatures, and its refresh token encrypted with AES-256-GCM. No email content is stored; mail is read live from Gmail.",
+			"source": "decisions § stores, Contact Us and Gmail mailboxes (2026-11-08)",
+			"currentModel": "packages/adapters-db-mongo/src/models/mailbox.model.ts",
+			"references": ["adminUsers"]
+		},
+		{
+			"id": "mailboxAccess",
+			"label": "mailboxAccess",
+			"cluster": "governance-messaging",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"purpose": "Which admin users may open which mailbox, and whether they may also send. No row means no access; every inbox call checks it.",
+			"source": "decisions § stores, Contact Us and Gmail mailboxes (2026-11-08)",
+			"currentModel": "packages/adapters-db-mongo/src/models/mailbox.model.ts",
+			"references": ["mailboxes", "adminUsers"]
+		},
+		{
+			"id": "contactMessages",
+			"label": "contactMessages",
+			"cluster": "governance-messaging",
+			"currentState": "existing",
+			"targetAction": "refactor",
+			"owningChunks": ["I"],
+			"blockingDecisions": [],
+			"purpose": "Contact Us messages, kept so none is lost while Gmail is unreachable: the sender's details, the message, delivery status and attempts, a hash for the repeat check and a hashed connection address. The database deletes each one twelve months after it arrived.",
+			"source": "decisions § stores, Contact Us and Gmail mailboxes (2026-11-08)",
+			"currentModel": "packages/adapters-db-mongo/src/models/mailbox.model.ts",
+			"references": ["mailboxes"]
 		}
 	]
 }

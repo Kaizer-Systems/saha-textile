@@ -828,7 +828,7 @@
 	"event_launches_at": "লঞ্চ {{at}}",
 	"event_starts_at": "শুরু {{at}}",
 	"event_ends_at": "শেষ {{at}}",
-	"event_unit_day": "দি",
+	"event_unit_day": "দিন",
 	"event_unit_hour": "ঘ",
 	"event_unit_minute": "মি",
 	"event_unit_second": "সে",

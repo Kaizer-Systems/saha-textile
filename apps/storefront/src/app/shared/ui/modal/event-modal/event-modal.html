@@ -5,7 +5,8 @@
 	boxes (`deal-timer product-deal-timer`). The button is a link, so `text-white` keeps its label
 	white over the theme's link colour. The one new piece is the phone band: the newsletter
 	hides its picture on phones, but here the picture is the point, so phones see its top part
-	in a 16:9 band (Bootstrap `ratio` and `object-fit-cover`).
+	in a 16:9 band (Bootstrap `ratio` and `object-fit-cover`). On desktop the picture covers its
+	column whatever its shape (`h-100 w-100 object-fit-cover`), so a wide one leaves no white.
 -->
 <ng-template
 	#eventModal
@@ -31,7 +32,7 @@
 				sizes="400px"
 				[attr.width]="art.width"
 				[attr.height]="art.height"
-				class="img-fluid"
+				class="img-fluid object-fit-cover h-100 w-100"
 				[alt]="art.alt"
 				decoding="async"
 			/>

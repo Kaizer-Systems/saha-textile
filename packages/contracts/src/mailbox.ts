@@ -112,6 +112,12 @@ export const InboxThreadSummary = z.object({
 	date: IsoDateTime,
 	unread: z.boolean(),
 	messageCount: z.number().int().positive(),
+	/** Who wrote in the conversation, by display name, oldest first, each once. */
+	participants: z.array(z.string()).default([]),
+	/** The conversation started from the website's Contact Us form. */
+	fromContactForm: z.boolean().default(false),
+	/** The admin user who sent the newest reply from the admin, when one did. */
+	lastReplyBy: z.string().nullable().default(null),
 });
 export type InboxThreadSummary = z.infer<typeof InboxThreadSummary>;
 
@@ -139,12 +145,24 @@ export const InboxMessage = z.object({
 	date: IsoDateTime,
 	/** Cleaned on the server; the admin still shows it in a sandboxed frame. */
 	html: z.string(),
+	/** The quoted earlier messages at the end, split off so the admin can fold them. */
+	quoteHtml: z.string().default(''),
+	unread: z.boolean().default(false),
 	text: z.string(),
 	/** True when the cleaned HTML points at pictures, which stay hidden until asked for. */
 	hasRemoteImages: z.boolean(),
 	attachments: z.array(InboxAttachment),
 	/** Message-ID header, for threading a reply. */
 	messageId: z.string(),
+	/** References header: the chain a reply must carry on. */
+	references: z.string().default(''),
+	/** Set when the website's Contact Us form placed this message in the mailbox. */
+	contactForm: z
+		.object({ replyTo: z.string(), locale: z.enum(['en', 'bn']).nullable() })
+		.nullable()
+		.default(null),
+	/** The admin user who sent this message from the admin, when one did. */
+	sentBy: z.string().nullable().default(null),
 });
 export type InboxMessage = z.infer<typeof InboxMessage>;
 
@@ -171,6 +189,10 @@ export const InboxSendRequest = z.object({
 	threadId: z.string().max(100).optional(),
 	/** The Message-ID being answered, for the In-Reply-To and References headers. */
 	inReplyTo: z.string().max(1_000).optional(),
+	/** Gmail id of the message to quote below the reply; the API reads it from Gmail itself. */
+	quoteMessageId: z.string().max(100).optional(),
+	/** The message whose attachments a forward carries; the API copies them from Gmail itself. */
+	forwardAttachmentsFrom: z.object({ threadId: z.string().max(100), messageId: z.string().max(100) }).optional(),
 	attachments: z
 		.array(
 			z.object({
@@ -186,9 +208,12 @@ export const InboxSendRequest = z.object({
 export type InboxSendRequest = z.infer<typeof InboxSendRequest>;
 
 export const InboxModifyRequest = z.object({
-	action: z.enum(['mark_read', 'mark_unread', 'archive', 'move_to_inbox', 'trash', 'untrash']),
+	action: z.enum(['mark_read', 'mark_unread', 'archive', 'move_to_inbox', 'trash', 'untrash', 'spam', 'not_spam']),
 });
 export type InboxModifyRequest = z.infer<typeof InboxModifyRequest>;
+
+/** Largest total a forward may carry, the original attachments included (Gmail's own limit). */
+export const MAX_FORWARD_BYTES = 25 * 1024 * 1024;
 
 /** The Inbox menu's numbers: unread conversations per mailbox the admin user may open. */
 export const InboxMailboxSummary = z.object({

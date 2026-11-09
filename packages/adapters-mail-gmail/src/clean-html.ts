@@ -35,34 +35,111 @@ const allowedStyles = {
 	},
 };
 
-/** Cleans one message body and says whether it points at pictures on other servers. */
-export function cleanEmailHtml(html: string): { html: string; hasRemoteImages: boolean } {
+const allowedTags = [
+	...sanitizeHtml.defaults.allowedTags,
+	'img',
+	'font',
+	'center',
+	'span',
+	'u',
+	's',
+	'del',
+	'ins',
+	'small',
+	'big',
+	'sup',
+	'sub',
+];
+
+const allowedAttributes: sanitizeHtml.IOptions['allowedAttributes'] = {
+	a: ['href', 'title', 'target', 'rel'],
+	img: ['src', 'data-remote-src', 'alt', 'title', 'width', 'height'],
+	td: ['colspan', 'rowspan', 'align', 'valign', 'width'],
+	th: ['colspan', 'rowspan', 'align', 'valign', 'width'],
+	table: ['width', 'align', 'cellpadding', 'cellspacing', 'border'],
+	font: ['color', 'size', 'face'],
+	div: ['data-quote'],
+	blockquote: ['data-quote'],
+	'*': ['style', 'dir', 'lang'],
+};
+
+/** The second pass over already-cleaned halves: it only closes tags the split left open. */
+const balance = (html: string): string =>
+	sanitizeHtml(html, {
+		allowedTags,
+		allowedAttributes,
+		allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+		allowedSchemesByTag: { img: ['data', 'http', 'https'] },
+		allowedStyles,
+	}).trim();
+
+/**
+ * Where mail programs put the earlier messages: Gmail's `gmail_quote`, Outlook's reply header,
+ * Yahoo's and Thunderbird's quote blocks, and Apple Mail's `<blockquote type="cite">`.
+ */
+const isQuoteStart = (tagName: string, attribs: Record<string, string>): boolean => {
+	const classes = ` ${attribs['class'] ?? ''} `;
+	const id = attribs['id'] ?? '';
+	if (tagName === 'blockquote') return attribs['type'] === 'cite' || classes.includes(' gmail_quote ');
+	return (
+		/ (gmail_quote|gmail_quote_container|yahoo_quoted|moz-cite-prefix) /.test(classes) ||
+		id === 'divRplyFwdMsg' ||
+		id === 'appendonsend'
+	);
+};
+
+/** An "On 9 Nov, Priya wrote:" line left just above the quote: it belongs with the quote. */
+const ATTRIBUTION = /(<(div|p)\b[^>]*>(?:(?!<\/?(?:div|p)\b)[\s\S]){0,400}?wrote:\s*(?:<br\s*\/?>)?\s*<\/\2>\s*)$/i;
+
+/** A link whose words name one web address and whose target is another: a phishing trick. */
+const LINK = /<a ([^>]*?)href="([^"]*)"([^>]*)>([^<]{1,300})<\/a>/g;
+const LOOKS_LIKE_ADDRESS = /^\s*(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}(\/\S*)?\s*$/i;
+
+const host = (value: string): string | null => {
+	try {
+		const url = new URL(/^https?:\/\//i.test(value.trim()) ? value.trim() : `https://${value.trim()}`);
+		return url.hostname.toLowerCase().replace(/^www\./, '');
+	} catch {
+		return null;
+	}
+};
+
+const unescape = (text: string): string =>
+	text
+		.replace(/&lt;/g, '<')
+		.replace(/&gt;/g, '>')
+		.replace(/&quot;/g, '"')
+		.replace(/&#x27;/g, "'")
+		.replace(/&amp;/g, '&');
+
+/** Marks each link whose words show a different address than it opens, with the real one. */
+export function markMisleadingLinks(html: string): string {
+	return html.replace(LINK, (whole, _before: string, href: string, _after: string, words: string) => {
+		const shown = unescape(words);
+		if (!LOOKS_LIKE_ADDRESS.test(shown)) return whole;
+		const target = host(unescape(href));
+		const named = host(shown);
+		if (!target || !named || target === named || target.endsWith(`.${named}`)) return whole;
+		return `${whole}<span style="color:#b42318;font-weight:bold"> ⚠ ${target}</span>`;
+	});
+}
+
+export interface CleanedEmail {
+	html: string;
+	/** The quoted earlier messages, split off the end so the admin can fold them. */
+	quoteHtml: string;
+	hasRemoteImages: boolean;
+}
+
+/**
+ * Cleans one message body, splits off the quoted history and says whether it points at pictures
+ * on other servers. `inline` maps a `cid:` picture of the same mail to its `data:` address.
+ */
+export function cleanEmailHtml(html: string, inline: ReadonlyMap<string, string> = new Map()): CleanedEmail {
 	let hasRemoteImages = false;
 	const clean = sanitizeHtml(html, {
-		allowedTags: [
-			...sanitizeHtml.defaults.allowedTags,
-			'img',
-			'font',
-			'center',
-			'span',
-			'u',
-			's',
-			'del',
-			'ins',
-			'small',
-			'big',
-			'sup',
-			'sub',
-		],
-		allowedAttributes: {
-			a: ['href', 'title', 'target', 'rel'],
-			img: ['src', 'data-remote-src', 'alt', 'title', 'width', 'height'],
-			td: ['colspan', 'rowspan', 'align', 'valign', 'width'],
-			th: ['colspan', 'rowspan', 'align', 'valign', 'width'],
-			table: ['width', 'align', 'cellpadding', 'cellspacing', 'border'],
-			font: ['color', 'size', 'face'],
-			'*': ['style', 'dir', 'lang'],
-		},
+		allowedTags,
+		allowedAttributes,
 		allowedSchemes: ['http', 'https', 'mailto', 'tel'],
 		allowedSchemesByTag: { img: ['data', 'http', 'https'] },
 		allowedStyles,
@@ -71,6 +148,21 @@ export function cleanEmailHtml(html: string): { html: string; hasRemoteImages: b
 				tagName,
 				attribs: { ...attribs, target: '_blank', rel: 'noopener noreferrer nofollow' },
 			}),
+			// Only this cleaner writes `data-quote`; one the sender wrote is dropped.
+			div: (tagName, original) => {
+				const { 'data-quote': _sender, ...attribs } = original;
+				return {
+					tagName,
+					attribs: isQuoteStart(tagName, original) ? { ...attribs, 'data-quote': '1' } : attribs,
+				};
+			},
+			blockquote: (tagName, original) => {
+				const { 'data-quote': _sender, ...attribs } = original;
+				return {
+					tagName,
+					attribs: isQuoteStart(tagName, original) ? { ...attribs, 'data-quote': '1' } : attribs,
+				};
+			},
 			img: (tagName, original) => {
 				// Only this cleaner writes `data-remote-src`; one the sender wrote is dropped.
 				const { 'data-remote-src': _sender, ...attribs } = original;
@@ -80,7 +172,10 @@ export function cleanEmailHtml(html: string): { html: string; hasRemoteImages: b
 					const { src: _remote, ...rest } = attribs;
 					return { tagName, attribs: { ...rest, 'data-remote-src': src } };
 				}
-				// A `cid:` picture is an attachment of the same mail; it is listed there instead.
+				// A `cid:` picture is part of the same mail: shown in place when it came with it.
+				const cid = /^cid:(.+)$/i.exec(src)?.[1];
+				const data = cid ? inline.get(cid.trim().replace(/^<|>$/g, '')) : undefined;
+				if (data) return { tagName, attribs: { ...attribs, src: data } };
 				if (!/^data:image\//i.test(src)) {
 					const { src: _unusable, ...rest } = attribs;
 					return { tagName, attribs: rest };
@@ -89,7 +184,52 @@ export function cleanEmailHtml(html: string): { html: string; hasRemoteImages: b
 			},
 		},
 	});
-	return { html: clean, hasRemoteImages };
+	const marked = markMisleadingLinks(clean);
+	const split = marked.search(/<(div|blockquote) data-quote="1"/);
+	if (split <= 0) return { html: marked.replace(/ data-quote="1"/g, ''), quoteHtml: '', hasRemoteImages };
+	let main = marked.slice(0, split);
+	let quote = marked.slice(split);
+	const attribution = ATTRIBUTION.exec(main);
+	if (attribution) {
+		main = main.slice(0, attribution.index);
+		quote = attribution[1] + quote;
+	}
+	const mainHtml = balance(main);
+	// A message that is all quote (a forward with nothing added) keeps it in view.
+	if (!mainHtml.replace(/<[^>]*>|&nbsp;|\s/g, '')) {
+		return { html: marked.replace(/ data-quote="1"/g, ''), quoteHtml: '', hasRemoteImages };
+	}
+	return {
+		html: mainHtml.replace(/ data-quote="1"/g, ''),
+		quoteHtml: balance(quote).replace(/ data-quote="1"/g, ''),
+		hasRemoteImages,
+	};
+}
+
+/**
+ * A plain-text message split at its quoted history: an "On … wrote:" line with "> " lines after
+ * it, Outlook's "-----Original Message-----", or "> " lines that run to the end.
+ */
+export function splitTextQuote(text: string): { main: string; quote: string } {
+	const lines = text.split(/\r?\n/);
+	const nextFilled = (from: number) => lines.slice(from).find((line) => line.trim() !== '') ?? '';
+	let at = lines.findIndex(
+		(line, index) =>
+			(/^\s*On\b.{4,300}wrote:\s*$/i.test(line) &&
+				nextFilled(index + 1)
+					.trimStart()
+					.startsWith('>')) ||
+			/^\s*-{2,}\s*Original Message\s*-{2,}\s*$/i.test(line),
+	);
+	if (at < 0) {
+		const tail = lines.findIndex((_, index) =>
+			lines.slice(index).every((line) => line.trim() === '' || line.trimStart().startsWith('>')),
+		);
+		if (tail >= 0 && lines.slice(tail).some((line) => line.trimStart().startsWith('>'))) at = tail;
+	}
+	const main = (at < 0 ? lines : lines.slice(0, at)).join('\n').trimEnd();
+	if (at <= 0 || !main.trim()) return { main: text, quote: '' };
+	return { main, quote: lines.slice(at).join('\n').trim() };
 }
 
 /** A plain-text body as HTML, for mail that has no HTML part: every character shown as typed. */

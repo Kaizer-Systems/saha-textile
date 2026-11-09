@@ -165,6 +165,13 @@
 			text-transform: capitalize !important;
 		}
 
+		// Email addresses and sentences keep their own case (the Inbox's To, Cc and message box),
+		// as the select2 `keep-case` modifier does for dropdowns.
+		&.keep-case::-webkit-input-placeholder,
+		&.keep-case::placeholder {
+			text-transform: none !important;
+		}
+
 		&.is-invalid {
 			border: 1px solid #dc3545 !important;
 			border-color: #dc3545 !important;

@@ -58,6 +58,36 @@ const angle = (messageId: string): string => {
 	return clean.startsWith('<') ? clean : `<${clean}>`;
 };
 
+/** How many earlier Message-IDs a reply's References keeps: the first one and the newest ones. */
+const MAX_REFERENCES = 20;
+
+/**
+ * The reply's References header: the answered message's own chain, then its Message-ID, each
+ * once. A very long chain keeps its first id and its newest ones, as RFC 5322 suggests.
+ */
+export const referencesFor = (references: string | undefined, inReplyTo: string): string => {
+	const ids = [...(references ?? '').matchAll(/<[^<>\s]+>/g)].map((match) => match[0]);
+	const all = [...new Set([...ids, angle(inReplyTo)])];
+	const kept = all.length > MAX_REFERENCES ? [all[0] ?? '', ...all.slice(-(MAX_REFERENCES - 1))] : all;
+	return kept.map(headerSafe).join(' ');
+};
+
+/** The answered message as plain text, each line behind "> ". */
+const quoteText = (attribution: string, text: string): string =>
+	`${attribution}\n${text
+		.split(/\r?\n/)
+		.map((line) => `> ${line}`)
+		.join('\n')}`;
+
+/**
+ * The answered message as Gmail writes a quote. Its pictures go back to their own addresses: the
+ * admin held them back only so that opening a message would not tell the sender.
+ */
+const quoteHtml = (attribution: string, html: string): string =>
+	`<div class="gmail_quote"><div dir="ltr" class="gmail_attr">${escapeHtml(attribution)}<br></div>` +
+	'<blockquote class="gmail_quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">' +
+	`${html.replace(/ data-remote-src="/g, ' src="')}</blockquote></div>`;
+
 const part = (contentType: string, body: string, extra: string[] = []): string =>
 	[`Content-Type: ${contentType}`, 'Content-Transfer-Encoding: base64', ...extra, '', body].join(CRLF);
 
@@ -71,6 +101,11 @@ const filenameParam = (filename: string): string => {
 export function buildOutgoing(mail: OutgoingMail, now: Date = new Date()): string {
 	const mixed = `mixed_${randomUUID()}`;
 	const alternative = `alt_${randomUUID()}`;
+	const quote = mail.quote;
+	const text = quote ? `${mail.text}\n\n${quoteText(quote.attribution, quote.text)}` : mail.text;
+	const html = quote
+		? `${textToHtml(mail.text, mail.signatureHtml)}<br>${quoteHtml(quote.attribution, quote.html)}`
+		: textToHtml(mail.text, mail.signatureHtml);
 	const headers = [
 		`From: ${mailbox(mail.fromName ?? '', mail.from)}`,
 		`To: ${mail.to.map(headerSafe).join(', ')}`,
@@ -78,7 +113,9 @@ export function buildOutgoing(mail: OutgoingMail, now: Date = new Date()): strin
 		`Subject: ${encodeWord(mail.subject)}`,
 		`Date: ${now.toUTCString()}`,
 		'MIME-Version: 1.0',
-		...(mail.inReplyTo ? [`In-Reply-To: ${angle(mail.inReplyTo)}`, `References: ${angle(mail.inReplyTo)}`] : []),
+		...(mail.inReplyTo
+			? [`In-Reply-To: ${angle(mail.inReplyTo)}`, `References: ${referencesFor(mail.references, mail.inReplyTo)}`]
+			: []),
 		`Content-Type: multipart/mixed; boundary="${mixed}"`,
 	];
 	const body = [
@@ -86,9 +123,9 @@ export function buildOutgoing(mail: OutgoingMail, now: Date = new Date()): strin
 		`Content-Type: multipart/alternative; boundary="${alternative}"`,
 		'',
 		`--${alternative}`,
-		part('text/plain; charset=UTF-8', base64Lines(mail.text)),
+		part('text/plain; charset=UTF-8', base64Lines(text)),
 		`--${alternative}`,
-		part('text/html; charset=UTF-8', base64Lines(textToHtml(mail.text, mail.signatureHtml))),
+		part('text/html; charset=UTF-8', base64Lines(html)),
 		`--${alternative}--`,
 		...mail.attachments.flatMap((file) => [
 			`--${mixed}`,

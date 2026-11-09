@@ -1,7 +1,7 @@
 import type { InboxAttachment, InboxMessage, InboxThread, InboxThreadSummary } from '@saha-textile/contracts';
 import { z } from 'zod';
 
-import { cleanEmailHtml, textAsHtml } from './clean-html.js';
+import { cleanEmailHtml, splitTextQuote, textAsHtml } from './clean-html.js';
 
 /** The parts of Gmail's message resource this adapter reads. */
 export interface GmailPart {
@@ -54,14 +54,50 @@ function* walk(part: GmailPart): Generator<GmailPart> {
 
 const iso = (internalDate: string): string => new Date(Number(internalDate)).toISOString();
 
+/** A part's Content-ID without its angle brackets, or '' when it has none. */
+export const contentId = (part: GmailPart): string => header(part, 'Content-ID').trim().replace(/^<|>$/g, '');
+
+/** Pictures sent inside the mail (`cid:`) small enough to show in place, under 1 MB each. */
+export const INLINE_PICTURE_BYTES = 1024 * 1024;
+
+/** The parts of a message that are pictures shown in its body, by Content-ID. */
+export function inlinePictureParts(message: GmailMessage): { cid: string; attachmentId: string; mimeType: string }[] {
+	const found: { cid: string; attachmentId: string; mimeType: string }[] = [];
+	for (const part of walk(message.payload)) {
+		const cid = contentId(part);
+		const attachmentId = part.body?.attachmentId;
+		const mimeType = part.mimeType ?? '';
+		if (!cid || !attachmentId || !/^image\//i.test(mimeType)) continue;
+		if ((part.body?.size ?? 0) > INLINE_PICTURE_BYTES) continue;
+		if (/^\s*attachment/i.test(header(part, 'Content-Disposition'))) continue;
+		found.push({ cid, attachmentId, mimeType });
+	}
+	return found;
+}
+
+/** The Contact Us form's messages carry this Message-ID (see `buildImport`). */
+const CONTACT_ID = /^<?contact-[^@\s]+@saha-textile\.local>?$/i;
+const LANGUAGES: Readonly<Record<string, 'en' | 'bn'>> = { english: 'en', bengali: 'bn' };
+
+/** A display name from `"Priya" <priya@x.test>`, or the address when there is none. */
+export const displayName = (from: string): string => {
+	const name = from
+		.replace(/<[^>]*>/, '')
+		.replace(/"/g, '')
+		.trim();
+	return name || from.replace(/[<>]/g, '').trim();
+};
+
 /** One message, with its HTML cleaned and its attachments listed (their bytes stay at Gmail). */
-export function toInboxMessage(message: GmailMessage): InboxMessage {
+export function toInboxMessage(message: GmailMessage, inline: ReadonlyMap<string, string> = new Map()): InboxMessage {
 	let html = '';
 	let text = '';
 	const attachments: InboxAttachment[] = [];
 	for (const part of walk(message.payload)) {
 		const attachmentId = part.body?.attachmentId;
 		if (part.filename && attachmentId) {
+			// A picture shown in place is part of the message, not a file to download.
+			if (inline.has(contentId(part))) continue;
 			attachments.push({
 				id: attachmentId,
 				filename: part.filename,
@@ -71,20 +107,37 @@ export function toInboxMessage(message: GmailMessage): InboxMessage {
 		} else if (part.mimeType === 'text/html' && !html) html = decode(part.body?.data);
 		else if (part.mimeType === 'text/plain' && !text) text = decode(part.body?.data);
 	}
-	const cleaned = html ? cleanEmailHtml(html) : { html: textAsHtml(text), hasRemoteImages: false };
+	let cleaned: { html: string; quoteHtml: string; hasRemoteImages: boolean };
+	if (html) cleaned = cleanEmailHtml(html, inline);
+	else {
+		const split = splitTextQuote(text);
+		cleaned = {
+			html: textAsHtml(split.main),
+			quoteHtml: split.quote ? textAsHtml(split.quote) : '',
+			hasRemoteImages: false,
+		};
+	}
+	const messageId = header(message.payload, 'Message-ID');
+	const replyTo = header(message.payload, 'Reply-To');
+	const language = /^Reply in:\s*(\w+)\s*$/im.exec(text)?.[1]?.toLowerCase() ?? '';
 	return {
 		id: message.id,
 		from: header(message.payload, 'From'),
 		to: header(message.payload, 'To'),
 		cc: header(message.payload, 'Cc'),
-		replyTo: header(message.payload, 'Reply-To'),
+		replyTo,
 		subject: header(message.payload, 'Subject'),
 		date: iso(message.internalDate),
 		html: cleaned.html,
+		quoteHtml: cleaned.quoteHtml,
+		unread: message.labelIds.includes('UNREAD'),
 		text,
 		hasRemoteImages: cleaned.hasRemoteImages,
 		attachments,
-		messageId: header(message.payload, 'Message-ID'),
+		messageId,
+		references: header(message.payload, 'References'),
+		contactForm: CONTACT_ID.test(messageId.trim()) ? { replyTo, locale: LANGUAGES[language] ?? null } : null,
+		sentBy: null,
 	};
 }
 
@@ -93,6 +146,9 @@ export function toThreadSummary(thread: GmailThread): InboxThreadSummary {
 	const messages = thread.messages;
 	const last = messages.at(-1);
 	const first = messages[0];
+	const participants = [
+		...new Set(messages.map((message) => displayName(header(message.payload, 'From'))).filter(Boolean)),
+	];
 	return {
 		id: thread.id,
 		from: last ? header(last.payload, 'From') : '',
@@ -102,12 +158,15 @@ export function toThreadSummary(thread: GmailThread): InboxThreadSummary {
 		date: iso(last?.internalDate ?? '0'),
 		unread: messages.some((message) => message.labelIds.includes('UNREAD')),
 		messageCount: Math.max(messages.length, 1),
+		participants,
+		fromContactForm: first ? CONTACT_ID.test(header(first.payload, 'Message-ID').trim()) : false,
+		lastReplyBy: null,
 	};
 }
 
 /** A whole conversation, oldest message first. */
-export function toInboxThread(thread: GmailThread): InboxThread {
-	const messages = thread.messages.map(toInboxMessage);
+export function toInboxThread(thread: GmailThread, inline: ReadonlyMap<string, string> = new Map()): InboxThread {
+	const messages = thread.messages.map((message) => toInboxMessage(message, inline));
 	return {
 		id: thread.id,
 		subject: messages[0]?.subject ?? '',

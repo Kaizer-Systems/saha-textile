@@ -1,4 +1,11 @@
-import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
+import {
+	HttpContextToken,
+	HttpErrorResponse,
+	HttpEvent,
+	HttpHandler,
+	HttpInterceptor,
+	HttpRequest,
+} from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { Observable, catchError, throwError } from 'rxjs';
@@ -6,6 +13,12 @@ import { Observable, catchError, throwError } from 'rxjs';
 import { ErrorService } from '@data-access/services/error.service';
 import { LoggingService } from '@data-access/services/logging.service';
 import { NotificationService } from '@data-access/services/notification.service';
+
+/**
+ * Set on a request whose failure the page explains itself, in place (the Inbox's reads: a retry
+ * would otherwise stack one notice per attempt). The error still reaches the caller.
+ */
+export const QUIET_ERRORS = new HttpContextToken<boolean>(() => false);
 
 @Injectable()
 export class GlobalErrorHandlerInterceptor implements HttpInterceptor {
@@ -28,7 +41,7 @@ export class GlobalErrorHandlerInterceptor implements HttpInterceptor {
 				//
 				// An unrecoverable 401 is not silent: the auth interceptor clears the session
 				// and the app returns the user to login.
-				if (error.status === 401) return throwError(() => error);
+				if (error.status === 401 || request.context.get(QUIET_ERRORS)) return throwError(() => error);
 
 				// Handle HTTP errors here
 				console.error('HTTP Error:', error.error);

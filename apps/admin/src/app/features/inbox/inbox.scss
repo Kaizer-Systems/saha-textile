@@ -1,10 +1,17 @@
-// The reading pane is the Inbox's one custom part (approved brief, Gmail mailboxes 3 of 3).
+// The reading pane is the Inbox's one custom part (approved brief, Gmail mailboxes revision 2).
 // Everything else on this page is the theme's own classes.
 
 // The theme capitalises notification rows; senders, subjects and addresses keep their own case.
 .inbox-list li {
 	text-transform: none;
 	cursor: pointer;
+
+	// Unread rows keep the theme's tint and left edge; the open row is white with a green outline,
+	// so the two never look alike (review U2).
+	&.inbox-open {
+		background-color: #fff;
+		box-shadow: inset 0 0 0 1px var(--theme-color);
+	}
 }
 
 // Each message body sits in a locked-down frame, grown to its content so the conversation scrolls
@@ -12,6 +19,41 @@
 .inbox-frame {
 	display: block;
 	width: 100%;
-	min-height: 80px;
+	min-height: 40px;
 	border: 0;
+}
+
+// Subject and actions stay in view while a long conversation scrolls (review U5). `top` clears the
+// admin's fixed header: 90 px on a wide screen, 64 px below the theme's 992 px breakpoint.
+.inbox-bar {
+	position: sticky;
+	top: 90px;
+	z-index: 3;
+	background-color: #fff;
+
+	@media (max-width: 991.98px) {
+		top: 64px;
+	}
+
+	// The More button is an icon (⋮) that already says "menu"; without Bootstrap's caret the
+	// actions fit one row.
+	.dropdown-toggle::after {
+		display: none;
+	}
+}
+
+// The answered message, unfolded in the compose box: line breaks as written, never taller than a
+// short screen.
+.inbox-quote {
+	white-space: pre-wrap;
+	max-height: 240px;
+	overflow: auto;
+}
+
+// The admin's dark theme paints cards #1c2128 ($dark-card-background).
+:host-context(body.dark-only) {
+	.inbox-list li.inbox-open,
+	.inbox-bar {
+		background-color: #1c2128;
+	}
 }

@@ -2,9 +2,27 @@ import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 
 import { ConflictException, HttpException, Inject, Injectable, Optional } from '@nestjs/common';
 import type { AuditLog, Mailbox } from '@saha-textile/contracts';
-import { type AuditLogRepository, type MailboxRepository, MailboxAccessRevoked } from '@saha-textile/core-domain';
+import {
+	type AdminUserRepository,
+	type AuditLogRepository,
+	type MailboxRepository,
+	MailboxAccessRevoked,
+} from '@saha-textile/core-domain';
 
-import { AUDIT_LOG_REPOSITORY, MAILBOX_REPOSITORY } from '../infra/tokens';
+import { ADMIN_USER_REPOSITORY, AUDIT_LOG_REPOSITORY, MAILBOX_REPOSITORY } from '../infra/tokens';
+
+/** The audit action written for every message sent from the admin. */
+export const MESSAGE_SENT = 'mailbox.message_sent';
+/** Newest sends read back per lookup; older ones simply show no name. */
+const SENT_LOOKUP = 200;
+
+/** One message sent from the admin: Gmail's ids and who sent it. */
+export interface SentFromAdmin {
+	gmailMessageId: string;
+	threadId: string;
+	sentBy: string;
+	sentAt: string;
+}
 
 /** How long the Google sign-in may take before its `state` stops being accepted. */
 export const STATE_TTL_MS = 10 * 60 * 1000;
@@ -59,7 +77,46 @@ export class MailboxBookkeeping {
 	constructor(
 		@Inject(MAILBOX_REPOSITORY) private readonly mailboxes: MailboxRepository,
 		@Optional() @Inject(AUDIT_LOG_REPOSITORY) private readonly audit: AuditLogRepository | null = null,
+		@Optional() @Inject(ADMIN_USER_REPOSITORY) private readonly adminUsers: AdminUserRepository | null = null,
 	) {}
+
+	/**
+	 * Messages sent from the admin through this mailbox since `since`, newest first, each with
+	 * the sender's name. Gmail records only that the mailbox sent a message; the audit trail
+	 * records which admin user did (review E8).
+	 */
+	async sentFromAdmin(mailboxId: string, since: string): Promise<SentFromAdmin[]> {
+		if (!this.audit) return [];
+		const page = await this.audit.list({
+			action: MESSAGE_SENT,
+			entityType: 'mailbox',
+			entityId: mailboxId,
+			from: since,
+			page: 1,
+			pageSize: SENT_LOOKUP,
+		});
+		const names = new Map<string, Promise<string>>();
+		const nameOf = (id: string) => {
+			const known = names.get(id);
+			if (known) return known;
+			const found = (this.adminUsers?.findById(id) ?? Promise.resolve(null)).then(
+				(user) => user?.displayName || user?.username || user?.email?.split('@')[0] || '',
+				() => '',
+			);
+			names.set(id, found);
+			return found;
+		};
+		const rows = await Promise.all(
+			page.items.map(async (entry): Promise<SentFromAdmin | null> => {
+				const { gmailMessageId, threadId } = entry.metadata as { gmailMessageId?: unknown; threadId?: unknown };
+				if (typeof gmailMessageId !== 'string' || typeof threadId !== 'string' || !entry.actorUserId)
+					return null;
+				const sentBy = await nameOf(entry.actorUserId);
+				return sentBy ? { gmailMessageId, threadId, sentBy, sentAt: entry.createdAt } : null;
+			}),
+		);
+		return rows.filter((row): row is SentFromAdmin => row !== null);
+	}
 
 	/**
 	 * Runs a Gmail call. A withdrawn grant marks the mailbox as needing reconnection and answers

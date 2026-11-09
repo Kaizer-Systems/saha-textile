@@ -22,6 +22,8 @@ describe('mailbox rules', () => {
 		expect(labelChange('mark_unread')).toEqual({ add: ['UNREAD'], remove: [] });
 		expect(labelChange('archive')).toEqual({ add: [], remove: ['INBOX'] });
 		expect(labelChange('move_to_inbox')).toEqual({ add: ['INBOX'], remove: [] });
+		expect(labelChange('spam')).toEqual({ add: ['SPAM'], remove: ['INBOX'] });
+		expect(labelChange('not_spam')).toEqual({ add: ['INBOX'], remove: ['SPAM'] });
 		expect(replySubject(' Blouse ')).toBe('Re: Blouse');
 		expect(replySubject('RE: Blouse')).toBe('RE: Blouse');
 	});

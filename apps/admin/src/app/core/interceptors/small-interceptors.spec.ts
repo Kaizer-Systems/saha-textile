@@ -1,4 +1,4 @@
-import { HttpErrorResponse, HttpRequest, HttpResponse } from '@angular/common/http';
+import { HttpContext, HttpErrorResponse, HttpRequest, HttpResponse } from '@angular/common/http';
 import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
@@ -10,14 +10,14 @@ import { ErrorService } from '@data-access/services/error.service';
 import { LoggingService } from '@data-access/services/logging.service';
 import { NotificationService } from '@data-access/services/notification.service';
 
-import { GlobalErrorHandlerInterceptor } from './global-error-handler.interceptor';
+import { GlobalErrorHandlerInterceptor, QUIET_ERRORS } from './global-error-handler.interceptor';
 import { LoaderInterceptor } from './loader.interceptor';
 
 const request = new HttpRequest('GET', '/x');
 const handler = (result: unknown) => ({ handle: () => result }) as never;
 
 describe('GlobalErrorHandlerInterceptor', () => {
-	const run = (error: HttpErrorResponse) => {
+	const run = (error: HttpErrorResponse, sent = request) => {
 		const notifier = { showError: vi.fn() };
 		const logger = { logError: vi.fn() };
 		vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -30,16 +30,21 @@ describe('GlobalErrorHandlerInterceptor', () => {
 				{ provide: NotificationService, useValue: notifier },
 			],
 		});
-		const stream = TestBed.inject(GlobalErrorHandlerInterceptor).intercept(
-			request,
-			handler(throwError(() => error)),
-		);
+		const stream = TestBed.inject(GlobalErrorHandlerInterceptor).intercept(sent, handler(throwError(() => error)));
 		return { stream, notifier, logger };
 	};
 
 	it('leaves a 401 to the auth interceptor', async () => {
 		const { stream, notifier } = run(new HttpErrorResponse({ status: 401 }));
 		await expect(firstValueFrom(stream)).rejects.toMatchObject({ status: 401 });
+		expect(notifier.showError).not.toHaveBeenCalled();
+		vi.restoreAllMocks();
+	});
+
+	it('leaves a request that explains its own failure in the page alone (the Inbox reads)', async () => {
+		const quiet = new HttpRequest('GET', '/x', { context: new HttpContext().set(QUIET_ERRORS, true) });
+		const { stream, notifier } = run(new HttpErrorResponse({ status: 502 }), quiet);
+		await expect(firstValueFrom(stream)).rejects.toMatchObject({ status: 502 });
 		expect(notifier.showError).not.toHaveBeenCalled();
 		vi.restoreAllMocks();
 	});

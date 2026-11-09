@@ -8,6 +8,16 @@
 		}
 	}
 
+	// Wide enough for a whole email address and its arrow (the Inbox's mailbox switcher, review U1).
+	// From 768 px; a phone keeps `min-w-cls` so Compose stays beside it.
+	&.min-w-lg-cls {
+		@media (min-width: 768px) {
+			.select2-selection {
+				min-width: 320px;
+			}
+		}
+	}
+
 	// Email addresses keep their own case (Settings › Mailboxes, the Inbox's From and mailbox lists).
 	&.keep-case {
 		.select2-container .select2-selection .select2-selection__rendered,

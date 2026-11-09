@@ -32,6 +32,10 @@ export interface OutgoingMail {
 	signatureHtml: string;
 	threadId?: string;
 	inReplyTo?: string;
+	/** The answered message's References header; the reply carries the whole chain on. */
+	references?: string;
+	/** The answered message, quoted below the reply as mail programs do. */
+	quote?: { attribution: string; html: string; text: string };
 	attachments: readonly { filename: string; mimeType: string; data: Uint8Array }[];
 }
 

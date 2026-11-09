@@ -29,7 +29,7 @@ export function onDomain(address: string, domain: string): boolean {
 }
 
 /** Label changes for each inbox action. */
-export function labelChange(action: 'mark_read' | 'mark_unread' | 'archive' | 'move_to_inbox'): {
+export function labelChange(action: 'mark_read' | 'mark_unread' | 'archive' | 'move_to_inbox' | 'spam' | 'not_spam'): {
 	add: string[];
 	remove: string[];
 } {
@@ -42,6 +42,11 @@ export function labelChange(action: 'mark_read' | 'mark_unread' | 'archive' | 'm
 			return { add: [], remove: ['INBOX'] };
 		case 'move_to_inbox':
 			return { add: ['INBOX'], remove: [] };
+		// Gmail's own spam label, so its filter learns from the team.
+		case 'spam':
+			return { add: ['SPAM'], remove: ['INBOX'] };
+		case 'not_spam':
+			return { add: ['INBOX'], remove: ['SPAM'] };
 	}
 }
 

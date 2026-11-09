@@ -4,10 +4,24 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	MAX_ATTACHMENT_BYTES,
 	type Draft,
+	addressProblems,
 	addresses,
+	answeredMessage,
 	draftFor,
+	draftKey,
 	draftProblem,
+	firstWords,
+	forgetDraft,
 	frameDocument,
+	gmailLink,
+	isFolded,
+	isRunnable,
+	keepDraft,
+	keptDraft,
+	listDateFormat,
+	mailboxKey,
+	minutesSince,
+	newDraft,
 	primaryAddress,
 	readAsBase64,
 	sendRequest,
@@ -34,6 +48,11 @@ const message = (fields: Partial<InboxMessage>): InboxMessage => ({
 	hasRemoteImages: false,
 	attachments: [],
 	messageId: '<a@example.com>',
+	quoteHtml: '',
+	unread: false,
+	references: '',
+	contactForm: null,
+	sentBy: null,
 	...fields,
 });
 const thread = (...messages: InboxMessage[]): InboxThread => ({ id: 't1', subject: 'Order', messages, unread: false });
@@ -124,7 +143,7 @@ describe('draftFor', () => {
 });
 
 describe('draftProblem', () => {
-	const draft: Draft = { mode: 'new', from: 'care@shop.test', to: 'a@example.com', cc: '', subject: 'Hi', body: '' };
+	const draft: Draft = { ...newDraft('care@shop.test'), to: 'a@example.com', subject: 'Hi' };
 	const file = (size: number) => new File([new Uint8Array(size)], 'f.bin');
 
 	it('asks for an address and a subject, and keeps to the attachment limits', () => {
@@ -149,8 +168,8 @@ describe('sendRequest', () => {
 	it('splits the addresses, trims the subject and reads the files as base64', async () => {
 		const body = await sendRequest(
 			{
+				...newDraft('care@shop.test'),
 				mode: 'reply',
-				from: 'care@shop.test',
 				to: 'Rahul <rahul@example.com>',
 				cc: 'ria@example.com',
 				subject: ' Re: Order ',
@@ -208,5 +227,177 @@ describe('the message frame', () => {
 		expect(doc).toContain("default-src 'none'");
 		expect(doc).toContain('<base target="_blank">');
 		expect(doc).toContain('<body><p>Hi</p></body>');
+	});
+});
+
+describe('review revision 2 helpers', () => {
+	it('starts an empty message, and quotes or forwards from a conversation (E3, E5, E9)', () => {
+		expect(newDraft('care@shop.test')).toEqual({
+			mode: 'new',
+			from: 'care@shop.test',
+			to: '',
+			cc: '',
+			subject: '',
+			body: '',
+			includeQuote: false,
+			includeAttachments: false,
+			knownIds: [],
+		});
+		const files = [{ id: 'a1', filename: 'bill.pdf', mimeType: 'application/pdf', size: 2 }];
+		const withFiles = thread(message({ id: 'm1', attachments: files }), message({ id: 'm2' }));
+		const reply = draftFor('reply', withFiles, sendAs, 'care@shop.test');
+		expect(reply).toMatchObject({ quoteMessageId: 'm2', includeQuote: true, knownIds: ['m1', 'm2'] });
+		const forward = draftFor(
+			'forward',
+			thread(message({ id: 'm1', attachments: files })),
+			sendAs,
+			'care@shop.test',
+		);
+		expect(forward).toMatchObject({
+			forwardFrom: { threadId: 't1', messageId: 'm1', count: 1 },
+			includeAttachments: true,
+			includeQuote: false,
+		});
+		expect(draftFor('forward', thread(message({})), sendAs, 'care@shop.test').forwardFrom).toBeUndefined();
+	});
+
+	it('finds the message a reply answers, or none in an empty conversation', () => {
+		expect(answeredMessage(thread(message({ id: 'm1' })), sendAs, 'care@shop.test')?.id).toBe('m1');
+		expect(answeredMessage(thread(), sendAs, 'care@shop.test')).toBeNull();
+	});
+
+	it('names the To and Cc entries that are not addresses (T9)', () => {
+		expect(addressProblems('a@x.test, Rahul <r@x.test>; bad, c@x, ')).toEqual(['bad', 'c@x']);
+		expect(addressProblems('')).toEqual([]);
+		expect(draftProblem({ ...newDraft('c@x.test'), to: 'a@x.test, nope', subject: 'S' }, [])).toBe(
+			'inbox_check_addresses',
+		);
+		expect(draftProblem({ ...newDraft('c@x.test'), to: 'a@x.test', cc: 'nope', subject: 'S' }, [])).toBe(
+			'inbox_check_addresses',
+		);
+	});
+
+	it('marks files that can run programs (T10)', () => {
+		expect(isRunnable('verify.EXE')).toBe(true);
+		expect(isRunnable('setup.apk ')).toBe(true);
+		expect(isRunnable('bill.pdf')).toBe(false);
+	});
+
+	it('writes list dates as time today, day this year, and day and year before (U7)', () => {
+		const now = new Date('2026-11-10T12:00:00');
+		expect(listDateFormat('2026-11-10T08:00:00', now)).toBe('HH:mm');
+		expect(listDateFormat('2026-03-01T08:00:00', now)).toBe('d MMM');
+		expect(listDateFormat('2025-03-01T08:00:00', now)).toBe('d MMM y');
+		expect(listDateFormat(new Date().toISOString())).toBe('HH:mm');
+		expect(minutesSince('2026-11-10T11:57:30', now)).toBe(2);
+		expect(minutesSince('2026-11-10T13:00:00', now)).toBe(0);
+		expect(minutesSince(new Date().toISOString())).toBe(0);
+	});
+
+	it('folds read messages except the newest, unless opened (E2)', () => {
+		const all = [message({ id: 'a' }), message({ id: 'b', unread: true }), message({ id: 'c' })];
+		const [a, b, c] = all as [InboxMessage, InboxMessage, InboxMessage];
+		expect(isFolded(a, all, new Set(), false)).toBe(true);
+		expect(isFolded(b, all, new Set(), false)).toBe(false);
+		expect(isFolded(c, all, new Set(), false)).toBe(false);
+		expect(isFolded(a, all, new Set(['a']), false)).toBe(false);
+		expect(isFolded(a, all, new Set(), true)).toBe(false);
+	});
+
+	it('shortens a folded line, links to Gmail, and names a mailbox by its address', () => {
+		expect(firstWords('  Hello\n there  ')).toBe('Hello there');
+		expect(firstWords('abcdefghij', 6)).toBe('abcde…');
+		expect(gmailLink('care@shop.test', 't 1')).toBe(
+			'https://mail.google.com/mail/?authuser=care%40shop.test#all/t%201',
+		);
+		expect(mailboxKey('wecare@shop.test')).toBe('wecare');
+		expect(mailboxKey('')).toBe('');
+	});
+
+	it('keeps an unsent draft in this tab per conversation, and forgets it (T6)', () => {
+		const memory = new Map<string, string>();
+		const storage = {
+			getItem: (key: string) => memory.get(key) ?? null,
+			setItem: (key: string, value: string) => void memory.set(key, value),
+			removeItem: (key: string) => void memory.delete(key),
+		} as unknown as Storage;
+		const key = draftKey('mbx', 't1', 'reply');
+		expect(key).toBe('inbox.draft.mbx:t1:reply');
+		expect(draftKey('mbx', null, 'new')).toBe('inbox.draft.mbx:new:new');
+		const draft = { ...newDraft('care@shop.test'), mode: 'reply' as const, body: 'Kept' };
+		keepDraft(key, draft, storage);
+		expect(keptDraft(key, 'reply', storage)).toEqual(draft);
+		expect(keptDraft(key, 'forward', storage)).toBeNull();
+		memory.set('bad', '{');
+		expect(keptDraft('bad', 'reply', storage)).toBeNull();
+		memory.set('odd', '"text"');
+		expect(keptDraft('odd', 'reply', storage)).toBeNull();
+		memory.set('partial', JSON.stringify({ mode: 'reply', body: 'x', from: 'a@x.test' }));
+		expect(keptDraft('partial', 'reply', storage)).toMatchObject({ body: 'x', knownIds: [] });
+		forgetDraft(key, storage);
+		expect(keptDraft(key, 'reply', storage)).toBeNull();
+
+		const broken = {
+			getItem: () => {
+				throw new Error('blocked');
+			},
+			setItem: () => {
+				throw new Error('full');
+			},
+			removeItem: () => {
+				throw new Error('blocked');
+			},
+		} as unknown as Storage;
+		expect(() => keepDraft(key, draft, broken)).not.toThrow();
+		expect(keptDraft(key, 'reply', broken)).toBeNull();
+		expect(() => forgetDraft(key, broken)).not.toThrow();
+		expect(keptDraft(key, 'reply', null)).toBeNull();
+
+		keepDraft('inbox.draft.session', draft);
+		expect(keptDraft('inbox.draft.session', 'reply')).toEqual(draft);
+		forgetDraft('inbox.draft.session');
+		expect(keptDraft('inbox.draft.session', 'reply')).toBeNull();
+	});
+
+	it('works without session storage at all', () => {
+		const original = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
+		Object.defineProperty(globalThis, 'sessionStorage', {
+			configurable: true,
+			get: () => {
+				throw new Error('denied');
+			},
+		});
+		try {
+			expect(keptDraft('k', 'new')).toBeNull();
+		} finally {
+			if (original) Object.defineProperty(globalThis, 'sessionStorage', original);
+		}
+	});
+
+	it("asks the API to quote the answered message and copy a forward's attachments", async () => {
+		const reply = {
+			...newDraft('care@shop.test'),
+			mode: 'reply' as const,
+			to: 'a@x.test',
+			subject: 'Re',
+			quoteMessageId: 'm1',
+			includeQuote: true,
+		};
+		expect(await sendRequest(reply, [])).toMatchObject({ quoteMessageId: 'm1' });
+		expect(await sendRequest({ ...reply, includeQuote: false }, [])).not.toHaveProperty('quoteMessageId');
+		const forward = {
+			...newDraft('care@shop.test'),
+			mode: 'forward' as const,
+			to: 'a@x.test',
+			subject: 'Fwd',
+			forwardFrom: { threadId: 't1', messageId: 'm1', count: 2 },
+			includeAttachments: true,
+		};
+		expect(await sendRequest(forward, [])).toMatchObject({
+			forwardAttachmentsFrom: { threadId: 't1', messageId: 'm1' },
+		});
+		expect(await sendRequest({ ...forward, includeAttachments: false }, [])).not.toHaveProperty(
+			'forwardAttachmentsFrom',
+		);
 	});
 });

@@ -43,7 +43,13 @@ const world = () => {
 	const tokenMap = new Map<string, string>();
 	const settingMap = new Map<string, unknown>();
 	const contacts = new Map<string, ContactMessage>();
-	const audit: Array<{ action: string; entityId: string | null }> = [];
+	const audit: Array<{
+		action: string;
+		entityId: string | null;
+		actorUserId?: string | null;
+		metadata?: Record<string, unknown>;
+		createdAt?: string;
+	}> = [];
 	return {
 		boxes,
 		rows,
@@ -79,7 +85,10 @@ const world = () => {
 			get: async (key: string) => (settingMap.get(key) ?? null) as never,
 			set: async (key: string, value: unknown) => void settingMap.set(key, value),
 		},
-		adminUsers: { findById: async (id: string) => (id.startsWith('u') ? ({ id } as never) : null) },
+		adminUsers: {
+			findById: async (id: string) =>
+				id.startsWith('u') ? ({ id, displayName: id === 'u_riya' ? 'Riya' : undefined } as never) : null,
+		},
 		contactRepo: {
 			save: async (message: ContactMessage) => {
 				contacts.set(message.id, message);
@@ -94,7 +103,19 @@ const world = () => {
 					.filter((message) => message.status === 'queued' || message.status === 'failed')
 					.slice(0, limit),
 		},
-		auditLog: { append: async (entry: { action: string; entityId: string | null }) => void audit.push(entry) },
+		auditLog: {
+			append: async (entry: { action: string; entityId: string | null }) => void audit.push(entry),
+			list: async (query: { action?: string; entityId?: string; from?: string }) => ({
+				items: audit
+					.filter(
+						(entry) =>
+							entry.action === query.action &&
+							entry.entityId === query.entityId &&
+							(entry.createdAt ?? '') >= (query.from ?? ''),
+					)
+					.reverse(),
+			}),
+		},
 	};
 };
 
@@ -118,7 +139,7 @@ const gmailStub = (overrides: Partial<Record<keyof MailboxPort, unknown>> = {}) 
 	}) as unknown as MailboxPort & Record<string, ReturnType<typeof vi.fn>>;
 
 const books = (w: ReturnType<typeof world>, withAudit = true) =>
-	new MailboxBookkeeping(w.mailboxes as never, withAudit ? (w.auditLog as never) : null);
+	new MailboxBookkeeping(w.mailboxes as never, withAudit ? (w.auditLog as never) : null, w.adminUsers as never);
 
 describe('MailboxSignInState', () => {
 	const state = new MailboxSignInState(KEY);
@@ -419,6 +440,254 @@ describe('InboxService', () => {
 		await inbox.modify('sender', 'care', 't1', { action: 'trash' });
 		await inbox.modify('sender', 'care', 't1', { action: 'untrash' });
 		expect(gmail.trashThread.mock.calls.map((call) => call[2])).toEqual([false, true]);
+	});
+});
+
+describe('InboxService after the review (brief revision 2)', () => {
+	let w: ReturnType<typeof world>;
+	let gmail: ReturnType<typeof gmailStub>;
+	let inbox: InboxService;
+
+	const message = (id: string, overrides: Record<string, unknown> = {}) => ({
+		id,
+		from: '"Priya Banerjee" <priya@x.test>',
+		to: 'care@shop.test',
+		cc: '',
+		replyTo: '',
+		subject: 'Blouse',
+		date: '2026-11-09T17:15:00.000Z',
+		html: `<p>${id}</p>`,
+		quoteHtml: '<blockquote>older</blockquote>',
+		unread: false,
+		text: `text ${id}`,
+		hasRemoteImages: false,
+		attachments: [],
+		messageId: `<${id}@x>`,
+		references: '<root@x>',
+		contactForm: null,
+		sentBy: null,
+		...overrides,
+	});
+
+	beforeEach(async () => {
+		w = world();
+		gmail = gmailStub();
+		inbox = new InboxService(gmail, w.mailboxes as never, w.access as never, w.tokens as never, books(w));
+		await w.mailboxes.save(mailbox('care'));
+		await w.tokens.put('care', 'r1');
+		await w.access.replaceForMailbox('care', [
+			{ mailboxId: 'care', adminUserId: 'u_riya', canSend: true },
+			{ mailboxId: 'care', adminUserId: 'reader', canSend: false },
+		]);
+	});
+
+	it('writes "last checked" at most every five minutes (T2)', async () => {
+		const recent = new Date(Date.now() - 60_000).toISOString();
+		await w.mailboxes.save(mailbox('care', { lastSyncAt: recent }));
+		await inbox.summary('reader');
+		expect(w.boxes.get('care')?.lastSyncAt).toBe(recent);
+		await w.mailboxes.save(mailbox('care', { lastSyncAt: '2026-01-01T00:00:00.000Z' }));
+		await inbox.summary('reader');
+		expect(w.boxes.get('care')?.lastSyncAt).not.toBe('2026-01-01T00:00:00.000Z');
+	});
+
+	it('names the admin user who sent a message, in the conversation and on its list line (E8)', async () => {
+		w.audit.push(
+			{
+				action: 'mailbox.message_sent',
+				entityId: 'care',
+				actorUserId: 'u_riya',
+				metadata: { gmailMessageId: 'm2', threadId: 't1' },
+				createdAt: '2026-11-09T18:00:00.000Z',
+			},
+			{
+				action: 'mailbox.message_sent',
+				entityId: 'care',
+				actorUserId: 'u_nameless',
+				metadata: { gmailMessageId: 'm9', threadId: 't9' },
+				createdAt: '2026-11-09T18:00:00.000Z',
+			},
+			{
+				action: 'mailbox.message_sent',
+				entityId: 'care',
+				actorUserId: null,
+				metadata: {},
+				createdAt: '2026-11-09T18:00:00.000Z',
+			},
+		);
+		gmail.getThread.mockResolvedValueOnce({
+			id: 't1',
+			subject: 'Blouse',
+			unread: false,
+			messages: [message('m1'), message('m2', { date: '2026-11-09T18:00:01.000Z' })],
+		});
+		const thread = await inbox.thread('reader', 'care', 't1');
+		expect(thread.messages.map((entry) => entry.sentBy)).toEqual([null, 'Riya']);
+
+		gmail.listThreads.mockResolvedValueOnce({
+			threads: [
+				{ id: 't1', date: '2026-11-09T18:00:01.000Z', lastReplyBy: null },
+				{ id: 't9', date: '2026-11-09T18:00:01.000Z', lastReplyBy: null },
+			],
+			nextPageToken: null,
+		});
+		const page = await inbox.threads('reader', 'care', { folder: 'inbox' });
+		expect(page.threads.map((entry) => entry.lastReplyBy)).toEqual(['Riya', null]);
+
+		gmail.getThread.mockResolvedValueOnce({ id: 't0', subject: '', unread: false, messages: [] });
+		expect((await inbox.thread('reader', 'care', 't0')).messages).toEqual([]);
+		const quiet = new InboxService(
+			gmail,
+			w.mailboxes as never,
+			w.access as never,
+			w.tokens as never,
+			books(w, false),
+		);
+		gmail.listThreads.mockResolvedValueOnce({
+			threads: [{ id: 't1', date: '2026-11-09T18:00:01.000Z' }],
+			nextPageToken: null,
+		});
+		expect((await quiet.threads('reader', 'care', { folder: 'inbox' })).threads[0]?.lastReplyBy).toBeNull();
+	});
+
+	it("reads a sender's name from their username or email when they have no display name", async () => {
+		const users = {
+			findById: async (id: string) =>
+				({ u1: { username: 'arup' }, u2: { email: 'mitali@shop.test' }, u3: {} })[id] ??
+				Promise.reject(new Error('down')),
+		};
+		const named = new MailboxBookkeeping(w.mailboxes as never, w.auditLog as never, users as never);
+		const sent = (actorUserId: string, gmailMessageId: string) => ({
+			action: 'mailbox.message_sent',
+			entityId: 'care',
+			actorUserId,
+			metadata: { gmailMessageId, threadId: 't1' },
+			createdAt: '2026-11-09T18:00:00.000Z',
+		});
+		w.audit.push(sent('u1', 'a'), sent('u2', 'b'), sent('u3', 'c'), sent('u4', 'd'), sent('u1', 'e'));
+		expect((await named.sentFromAdmin('care', '2026-11-01T00:00:00.000Z')).map((row) => row.sentBy)).toEqual([
+			'arup',
+			'mitali',
+			'arup',
+		]);
+		const nobody = new MailboxBookkeeping(w.mailboxes as never, w.auditLog as never);
+		expect(await nobody.sentFromAdmin('care', '2026-11-01T00:00:00.000Z')).toEqual([]);
+	});
+
+	it('quotes the answered message from Gmail and carries its References on (E3, E4)', async () => {
+		gmail.getThread.mockResolvedValueOnce({
+			id: 't1',
+			subject: 'Blouse',
+			unread: false,
+			messages: [message('m1')],
+		});
+		await inbox.send('u_riya', 'care', {
+			from: 'care@shop.test',
+			to: ['priya@x.test'],
+			cc: [],
+			subject: 'Re: Blouse',
+			body: 'Yes',
+			threadId: 't1',
+			inReplyTo: '<m1@x>',
+			quoteMessageId: 'm1',
+			attachments: [],
+		});
+		expect(gmail.send.mock.calls[0]?.[1]).toMatchObject({
+			references: '<root@x>',
+			quote: {
+				attribution: 'On 9 Nov 2026, 22:45, Priya Banerjee wrote:',
+				html: '<p>m1</p><blockquote>older</blockquote>',
+				text: 'text m1',
+			},
+		});
+		expect(w.audit.at(-1)).toMatchObject({ metadata: { gmailMessageId: 'm1', threadId: 't1' } });
+		gmail.getThread.mockResolvedValueOnce(null);
+		await expect(
+			inbox.send('u_riya', 'care', {
+				from: 'care@shop.test',
+				to: ['priya@x.test'],
+				cc: [],
+				subject: 'Re: Blouse',
+				body: 'Yes',
+				threadId: 'gone',
+				attachments: [],
+			}),
+		).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('copies the original attachments into a forward, within 25 MB (E5)', async () => {
+		const withFiles = {
+			id: 't1',
+			subject: 'Bill',
+			unread: false,
+			messages: [
+				message('m1', {
+					attachments: [{ id: 'a1', filename: 'bill.pdf', mimeType: 'application/pdf', size: 2 }],
+				}),
+			],
+		};
+		const forward = {
+			from: 'care@shop.test',
+			to: ['accounts@shop.test'],
+			cc: [],
+			subject: 'Fwd: Bill',
+			body: 'See below',
+			forwardAttachmentsFrom: { threadId: 't1', messageId: 'm1' },
+			attachments: [],
+		};
+		gmail.getThread.mockResolvedValueOnce(withFiles);
+		await inbox.send('u_riya', 'care', forward);
+		const mail = gmail.send.mock.calls.at(-1)?.[1];
+		expect(mail.attachments.map((file: { filename: string }) => file.filename)).toEqual(['bill.pdf']);
+		expect(mail.threadId).toBeUndefined();
+
+		gmail.getThread.mockResolvedValueOnce(withFiles);
+		gmail.getAttachment.mockResolvedValueOnce({ data: new Uint8Array(26 * 1024 * 1024) });
+		await expect(inbox.send('u_riya', 'care', forward)).rejects.toMatchObject({ status: 413 });
+		gmail.getThread.mockResolvedValueOnce(withFiles);
+		gmail.getAttachment.mockResolvedValueOnce(null);
+		await expect(inbox.send('u_riya', 'care', forward)).rejects.toMatchObject({ status: 404 });
+		gmail.getThread.mockResolvedValueOnce(null);
+		await expect(inbox.send('u_riya', 'care', forward)).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('stops offering an alias Gmail no longer lets the mailbox send as', async () => {
+		const request = {
+			from: 'orders@shop.test',
+			to: ['a@x.test'],
+			cc: [],
+			subject: 'Hi',
+			body: 'x',
+			attachments: [],
+		};
+		gmail.send.mockRejectedValueOnce(Object.assign(new Error('Gmail POST failed'), { status: 400 }));
+		await expect(inbox.send('u_riya', 'care', request)).rejects.toMatchObject({ status: 400 });
+		expect(w.boxes.get('care')?.sendAs.map((entry) => entry.address)).toEqual(['care@shop.test']);
+
+		await w.mailboxes.save(mailbox('care'));
+		gmail.send.mockRejectedValueOnce(Object.assign(new Error('down'), { status: 500 }));
+		gmail.listSendAs.mockResolvedValueOnce(mailbox('care').sendAs);
+		await expect(inbox.send('u_riya', 'care', request)).rejects.toMatchObject({ status: 502 });
+		gmail.send.mockRejectedValueOnce(Object.assign(new Error('down'), { status: 500 }));
+		gmail.listSendAs.mockRejectedValueOnce(new Error('down'));
+		await expect(inbox.send('u_riya', 'care', request)).rejects.toMatchObject({ status: 502 });
+		gmail.send.mockRejectedValueOnce(Object.assign(new Error('busy'), { status: 429 }));
+		await expect(inbox.send('u_riya', 'care', request)).rejects.toMatchObject({ status: 429 });
+		expect(w.boxes.get('care')?.sendAs).toHaveLength(2);
+	});
+
+	it("reports spam and takes it back with Gmail's own label, for senders only (E12)", async () => {
+		await inbox.modify('u_riya', 'care', 't1', { action: 'spam' });
+		expect(gmail.modifyThread).toHaveBeenLastCalledWith(expect.anything(), 't1', {
+			add: ['SPAM'],
+			remove: ['INBOX'],
+		});
+		await inbox.modify('u_riya', 'care', 't1', { action: 'not_spam' });
+		expect(gmail.modifyThread).toHaveBeenLastCalledWith(expect.anything(), 't1', {
+			add: ['INBOX'],
+			remove: ['SPAM'],
+		});
+		await expect(inbox.modify('reader', 'care', 't1', { action: 'spam' })).rejects.toMatchObject({ status: 403 });
 	});
 });
 

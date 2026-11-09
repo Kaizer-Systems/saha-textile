@@ -1,10 +1,11 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 
 import { injectQuery } from '@tanstack/angular-query-experimental';
 import { firstValueFrom, Observable } from 'rxjs';
 
 import { runtimeConfig } from '@core/config/runtime-config';
+import { QUIET_ERRORS } from '@core/interceptors/global-error-handler.interceptor';
 
 import type {
 	AdminMailboxRow,
@@ -29,6 +30,8 @@ export const MAILBOXES_KEY = ['mailboxes'] as const;
 export const INBOX_KEY = ['inbox'] as const;
 /** How often the Inbox asks for unread counts: new mail shows within a minute, with no Gmail push. */
 export const INBOX_REFRESH_MS = 60_000;
+/** Inbox reads explain their own failures in the page, with Try again (review T3). */
+const quiet = () => new HttpContext().set(QUIET_ERRORS, true);
 
 /** Gmail mailboxes: Settings › Mailboxes (super admin) and the Inbox (everyone given access). */
 @Injectable({ providedIn: 'root' })
@@ -67,18 +70,23 @@ export class MailboxGateway {
 	}
 
 	summary(): Observable<InboxMailboxSummary[]> {
-		return this.http.get<InboxMailboxSummary[]>(this.inbox());
+		return this.http.get<InboxMailboxSummary[]>(this.inbox(), { context: quiet() });
 	}
 
 	threads(mailboxId: string, folder: InboxFolder, q?: string, pageToken?: string): Observable<InboxThreadPage> {
 		let params = new HttpParams().set('folder', folder);
 		if (q) params = params.set('q', q);
 		if (pageToken) params = params.set('pageToken', pageToken);
-		return this.http.get<InboxThreadPage>(this.inbox(`/${this.id(mailboxId)}/threads`), { params });
+		return this.http.get<InboxThreadPage>(this.inbox(`/${this.id(mailboxId)}/threads`), {
+			params,
+			context: quiet(),
+		});
 	}
 
 	thread(mailboxId: string, threadId: string): Observable<InboxThread> {
-		return this.http.get<InboxThread>(this.inbox(`/${this.id(mailboxId)}/threads/${this.id(threadId)}`));
+		return this.http.get<InboxThread>(this.inbox(`/${this.id(mailboxId)}/threads/${this.id(threadId)}`), {
+			context: quiet(),
+		});
 	}
 
 	/** An attachment's download address; the API always answers it as a download. */
@@ -88,8 +96,11 @@ export class MailboxGateway {
 		);
 	}
 
+	/** Quiet: the compose box says why a send failed, and keeps the text. */
 	send(mailboxId: string, body: InboxSendRequest): Observable<{ id: string; threadId: string }> {
-		return this.http.post<{ id: string; threadId: string }>(this.inbox(`/${this.id(mailboxId)}/send`), body);
+		return this.http.post<{ id: string; threadId: string }>(this.inbox(`/${this.id(mailboxId)}/send`), body, {
+			context: quiet(),
+		});
 	}
 
 	modify(mailboxId: string, threadId: string, action: InboxModifyRequest['action']): Observable<{ ok: boolean }> {
@@ -115,6 +126,7 @@ export function injectInboxSummaryQuery(enabled: () => boolean = () => true) {
 		queryKey: INBOX_KEY,
 		queryFn: () => firstValueFrom(gateway.summary()),
 		refetchInterval: INBOX_REFRESH_MS,
+		retry: 1,
 		enabled: enabled(),
 	}));
 }

@@ -380,6 +380,7 @@ describe('GmailMailbox reading', () => {
 	it('lists a folder a page at a time, with each line from its metadata', async () => {
 		const { gmail, calls } = make([
 			[/token/, token],
+			[/\/profile/, () => json({ emailAddress: 'care@shop.test', historyId: '7' })],
 			[/\/threads\?/, () => json({ threads: [{ id: 't1' }, { id: 't2' }], nextPageToken: 'next' })],
 			[/\/threads\/t\d\?format=metadata/, (call) => metadata(call.url.includes('/t1?') ? 't1' : 't2')],
 		]);
@@ -400,6 +401,7 @@ describe('GmailMailbox reading', () => {
 	it('reads All Mail without a label, and Spam and Trash including themselves', async () => {
 		const { gmail, calls } = make([
 			[/token/, token],
+			[/\/profile/, () => json({ emailAddress: 'care@shop.test' })],
 			[/\/threads\?/, () => json({})],
 		]);
 		expect(await gmail.listThreads(credentials, 'all', undefined, undefined)).toEqual({

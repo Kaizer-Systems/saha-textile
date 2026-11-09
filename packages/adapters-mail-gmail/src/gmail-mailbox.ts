@@ -1,4 +1,10 @@
-import type { InboxFolder, InboxThread, InboxThreadPage, MailboxSendAs } from '@saha-textile/contracts';
+import type {
+	InboxFolder,
+	InboxThread,
+	InboxThreadPage,
+	InboxThreadSummary,
+	MailboxSendAs,
+} from '@saha-textile/contracts';
 import {
 	FOLDER_LABELS,
 	MailboxAccessRevoked,
@@ -11,7 +17,7 @@ import {
 } from '@saha-textile/core-domain';
 import { z } from 'zod';
 
-import { GmailThread, toInboxThread, toThreadSummary } from './gmail-message.js';
+import { GmailThread, inlinePictureParts, toInboxThread, toThreadSummary } from './gmail-message.js';
 import { buildImport, buildOutgoing, toRaw } from './mime.js';
 
 const AUTH = 'https://accounts.google.com/o/oauth2/v2/auth';
@@ -27,15 +33,24 @@ const SCOPE = 'https://www.googleapis.com/auth/gmail.modify';
 const PAGE_SIZE = 20;
 /** Refresh an access token this long before Google says it expires. */
 const EARLY_MS = 60_000;
+/** Gmail reads in flight at once, across all mailboxes; more queue. */
+const MAX_PARALLEL = 8;
+/** Waits before retrying a call Gmail refused as too fast. */
+const RETRY_WAITS_MS = [500, 1500];
+/** Remembered list pages and conversation lines, oldest forgotten first. */
+const MAX_PAGES = 200;
+const MAX_SUMMARIES = 5_000;
+/** Pictures fetched to show inside one conversation; more stay as attachments. */
+const MAX_INLINE_PICTURES = 10;
 
 const TokenResponse = z.object({
 	access_token: z.string(),
 	expires_in: z.number(),
 	refresh_token: z.string().optional(),
 });
-const Profile = z.object({ emailAddress: z.string() });
+const Profile = z.object({ emailAddress: z.string(), historyId: z.string().optional() });
 const ThreadList = z.object({
-	threads: z.array(z.object({ id: z.string() })).default([]),
+	threads: z.array(z.object({ id: z.string(), historyId: z.string().optional() })).default([]),
 	nextPageToken: z.string().optional(),
 });
 const Attachment = z.object({ data: z.string() });
@@ -64,6 +79,47 @@ export interface GmailMailboxConfig {
 	domain: string;
 	fetch?: typeof fetch;
 	now?: () => number;
+	/** Waits between retries; tests pass one that does not wait. */
+	sleep?: (ms: number) => Promise<void>;
+}
+
+/** A map that forgets its oldest entry past `max`, so memory stays bounded. */
+class Recent<V> {
+	private readonly entries = new Map<string, V>();
+	constructor(private readonly max: number) {}
+
+	get(key: string): V | undefined {
+		const value = this.entries.get(key);
+		if (value !== undefined) {
+			this.entries.delete(key);
+			this.entries.set(key, value);
+		}
+		return value;
+	}
+
+	set(key: string, value: V): void {
+		this.entries.delete(key);
+		this.entries.set(key, value);
+		if (this.entries.size > this.max) this.entries.delete(this.entries.keys().next().value as string);
+	}
+}
+
+/** At most `max` jobs at once; the rest wait their turn. */
+class Limiter {
+	private running = 0;
+	private readonly queue: (() => void)[] = [];
+	constructor(private readonly max: number) {}
+
+	async run<T>(job: () => Promise<T>): Promise<T> {
+		if (this.running >= this.max) await new Promise<void>((resolve) => this.queue.push(resolve));
+		this.running++;
+		try {
+			return await job();
+		} finally {
+			this.running--;
+			this.queue.shift()?.();
+		}
+	}
 }
 
 /** A Gmail call failed for a reason other than a withdrawn grant. Carries the status only. */
@@ -85,11 +141,21 @@ export class GmailApiError extends Error {
 export class GmailMailbox implements MailboxPort {
 	private readonly fetchImpl: typeof fetch;
 	private readonly now: () => number;
+	private readonly sleep: (ms: number) => Promise<void>;
 	private readonly tokens = new Map<string, { token: string; expiresAt: number }>();
+	private readonly limiter = new Limiter(MAX_PARALLEL);
+	/**
+	 * The last answer for each mailbox, folder, search and page, with the mailbox's history id at
+	 * the time. Gmail moves that id on every change, so an unchanged id means an unchanged page.
+	 */
+	private readonly pages = new Recent<{ historyId: string; page: InboxThreadPage }>(MAX_PAGES);
+	/** Each conversation's list line, with the conversation's own history id. */
+	private readonly summaries = new Recent<{ historyId: string; summary: InboxThreadSummary }>(MAX_SUMMARIES);
 
 	constructor(private readonly config: GmailMailboxConfig) {
 		this.fetchImpl = config.fetch ?? fetch;
 		this.now = config.now ?? Date.now;
+		this.sleep = config.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
 	}
 
 	signInUrl(state: string): string {
@@ -137,12 +203,22 @@ export class GmailMailbox implements MailboxPort {
 		await this.revokeToken(credentials.refreshToken);
 	}
 
+	/**
+	 * One page of a folder. Gmail is first asked only whether anything changed (1 quota unit); an
+	 * unchanged mailbox answers from memory. Otherwise the list comes back with each
+	 * conversation's history id, and only conversations that changed are read again.
+	 */
 	async listThreads(
 		credentials: MailboxCredentials,
 		folder: InboxFolder,
 		query: string | undefined,
 		pageToken: string | undefined,
 	): Promise<InboxThreadPage> {
+		const key = [credentials.address, folder, query ?? '', pageToken ?? ''].join('\u0000');
+		const profile = Profile.parse(await this.authorised(credentials, 'GET', '/profile'));
+		const cached = this.pages.get(key);
+		if (cached && profile.historyId && cached.historyId === profile.historyId) return cached.page;
+
 		const label = FOLDER_LABELS[folder];
 		const params = new URLSearchParams({ maxResults: String(PAGE_SIZE) });
 		if (label) params.set('labelIds', label);
@@ -151,10 +227,13 @@ export class GmailMailbox implements MailboxPort {
 		if (folder === 'spam' || folder === 'trash') params.set('includeSpamTrash', 'true');
 		const list = ThreadList.parse(await this.authorised(credentials, 'GET', `/threads?${params.toString()}`));
 		const metadata = new URLSearchParams({ format: 'metadata' });
-		for (const name of ['From', 'To', 'Subject', 'Date']) metadata.append('metadataHeaders', name);
+		for (const name of ['From', 'To', 'Subject', 'Date', 'Message-ID']) metadata.append('metadataHeaders', name);
 		const threads = await Promise.all(
-			list.threads.map(async ({ id }) =>
-				toThreadSummary(
+			list.threads.map(async ({ id, historyId }) => {
+				const lineKey = `${credentials.address}\u0000${id}`;
+				const known = this.summaries.get(lineKey);
+				if (known && historyId && known.historyId === historyId) return known.summary;
+				const summary = toThreadSummary(
 					GmailThread.parse(
 						await this.authorised(
 							credentials,
@@ -162,17 +241,41 @@ export class GmailMailbox implements MailboxPort {
 							`/threads/${encodeURIComponent(id)}?${metadata.toString()}`,
 						),
 					),
-				),
-			),
+				);
+				if (historyId) this.summaries.set(lineKey, { historyId, summary });
+				return summary;
+			}),
 		);
-		return { threads, nextPageToken: list.nextPageToken ?? null };
+		const page = { threads, nextPageToken: list.nextPageToken ?? null };
+		if (profile.historyId) this.pages.set(key, { historyId: profile.historyId, page });
+		return page;
 	}
 
+	/** A whole conversation, with pictures sent inside its mails (under 1 MB) shown in place. */
 	async getThread(credentials: MailboxCredentials, threadId: string): Promise<InboxThread | null> {
 		const body = await this.authorised(credentials, 'GET', `/threads/${encodeURIComponent(threadId)}?format=full`, {
 			missing: true,
 		});
-		return body === null ? null : toInboxThread(GmailThread.parse(body));
+		if (body === null) return null;
+		const thread = GmailThread.parse(body);
+		const wanted = thread.messages
+			.flatMap((message) => inlinePictureParts(message).map((picture) => ({ ...picture, messageId: message.id })))
+			.slice(0, MAX_INLINE_PICTURES);
+		const inline = new Map<string, string>();
+		await Promise.all(
+			wanted.map(async (picture) => {
+				// A picture that cannot be read stays an attachment; the message still opens.
+				const file = await this.getAttachment(credentials, picture.messageId, picture.attachmentId).catch(
+					() => null,
+				);
+				if (file)
+					inline.set(
+						picture.cid,
+						`data:${picture.mimeType};base64,${Buffer.from(file.data).toString('base64')}`,
+					);
+			}),
+		);
+		return toInboxThread(thread, inline);
 	}
 
 	async getAttachment(
@@ -282,20 +385,32 @@ export class GmailMailbox implements MailboxPort {
 		return second;
 	}
 
+	/**
+	 * One Gmail call, at most eight at a time. "Too many requests" (429, or 403 with a rate-limit
+	 * reason) waits and tries again twice before giving up.
+	 */
 	private async call(
 		accessToken: string,
 		method: 'GET' | 'POST',
 		path: string,
 		options: { json?: unknown; missing?: boolean } = {},
 	): Promise<unknown> {
-		const response = await this.fetchImpl(`${API}${path}`, {
-			method,
-			headers: {
-				Authorization: `Bearer ${accessToken}`,
-				...(options.json === undefined ? {} : { 'Content-Type': 'application/json' }),
-			},
-			...(options.json === undefined ? {} : { body: JSON.stringify(options.json) }),
-		});
+		let response: Response;
+		for (let attempt = 0; ; attempt++) {
+			response = await this.limiter.run(() =>
+				this.fetchImpl(`${API}${path}`, {
+					method,
+					headers: {
+						Authorization: `Bearer ${accessToken}`,
+						...(options.json === undefined ? {} : { 'Content-Type': 'application/json' }),
+					},
+					...(options.json === undefined ? {} : { body: JSON.stringify(options.json) }),
+				}),
+			);
+			const wait = RETRY_WAITS_MS[attempt];
+			if (wait === undefined || !(await tooFast(response))) break;
+			await this.sleep(wait);
+		}
 		if (response.status === 401) return UNAUTHORISED;
 		if (response.status === 404 && options.missing) return null;
 		if (!response.ok) throw new GmailApiError(`Gmail ${method} failed`, response.status);
@@ -324,3 +439,11 @@ export class GmailMailbox implements MailboxPort {
 }
 
 const UNAUTHORISED = Symbol('unauthorised');
+
+/** Gmail's "slow down": 429, or 403 whose reason is a rate limit (not a refused permission). */
+async function tooFast(response: Response): Promise<boolean> {
+	if (response.status === 429) return true;
+	if (response.status !== 403) return false;
+	const body = await response.clone().text();
+	return /rateLimitExceeded|userRateLimitExceeded/.test(body);
+}

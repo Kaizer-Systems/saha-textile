@@ -2,7 +2,8 @@
 	Event popup (owner brief, approved 2026-11-09), built from the newsletter popup's own markup:
 	the theme modal (`modal-box`, `modal-image`, `modal-content`), the brand logo, the dark pill
 	button and the login page's tick. The email field is replaced by the product page timer's four
-	boxes (`deal-timer product-deal-timer`). The one new piece is the phone band: the newsletter
+	boxes (`deal-timer product-deal-timer`). The button is a link, so `text-white` keeps its label
+	white over the theme's link colour. The one new piece is the phone band: the newsletter
 	hides its picture on phones, but here the picture is the point, so phones see its top part
 	in a 16:9 band (Bootstrap `ratio` and `object-fit-cover`).
 -->
@@ -47,7 +48,11 @@
 			/>
 		</div>
 		}
-		<div class="modal-content content-padding">
+		<!-- No picture: the text takes the 400px the theme keeps for it (Bootstrap w-100). -->
+		<div
+			class="modal-content content-padding"
+			[class.w-100]="!image()"
+		>
 			<div>
 				@if (brand.data()?.logo; as logo) {
 				<img
@@ -107,7 +112,7 @@
 				<h4 class="mb-3">{{ 'event_now_live' | transloco }}</h4>
 				}
 				<a
-					class="btn btn-dark bg-dark rounded-pill mt-3 border-0"
+					class="btn btn-dark bg-dark rounded-pill mt-3 border-0 text-white"
 					id="event_modal_link"
 					[routerLink]="event.linkHref ?? '/'"
 					(click)="modal.close('link')"

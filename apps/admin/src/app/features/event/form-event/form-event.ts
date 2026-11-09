@@ -6,7 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { NgbModal, NgbNavModule } from '@ng-bootstrap/ng-bootstrap';
-import { MAX_POPUP_PICTURES, type PopupImageSide } from '@saha-textile/contracts';
+import type { PopupImageSide } from '@saha-textile/contracts';
 import type {
 	SaleCategoryLine,
 	SaleException,
@@ -56,6 +56,12 @@ const LANGUAGE_FIELDS = ['title', 'message'];
 
 /** A new rule starts at 10% off: a value that can never be refused. */
 const NEW_RULE = (): SaleRule => ({ kind: 'percent', value: 10, skuPrices: {} });
+
+/**
+ * The most popup pictures an event takes: contracts' `MAX_POPUP_PICTURES`, kept here because the
+ * admin imports only types from contracts. The API refuses a longer list anyway.
+ */
+const MAX_POPUP_PICTURES = 5;
 
 /** What "Link to" can point at: a category, a product, a shop page, or a typed shop address. */
 type LinkKind = 'category' | 'product' | 'page' | 'path';

@@ -18,7 +18,12 @@
 			font-size: 14px;
 			line-height: 1;
 
+			// A fixed box: before the icon font arrives the fallback glyph is narrower, and the
+			// wider pills used to wrap onto a new row and shift the buy box (CLS 0.034).
 			i {
+				flex: none;
+				width: 1em;
+				text-align: center;
 				color: var(--theme-color);
 				font-size: 16px;
 			}

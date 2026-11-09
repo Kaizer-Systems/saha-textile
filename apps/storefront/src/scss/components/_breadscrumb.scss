@@ -103,7 +103,8 @@
 						text-overflow: ellipsis;
 
 						// The chevron floats, so it lines up by matching the row's line height.
-						&::before {
+						// `:not(:first-child)` outranks the theme's own chevron rule further down.
+						&:not(:first-child)::before {
 							line-height: 20px;
 						}
 					}

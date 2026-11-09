@@ -46,6 +46,39 @@
 			</app-button>
 		</div>
 		} @if (!close()) {
+		<!--
+			Phone view (below 768 px, where the bottom menu bar shows): touch cannot reach the hover bar,
+			so the heart and compare sit on the photo's corner in the theme's own corner button. Outside
+			the link, so a tap never opens the product.
+		-->
+		<div class="product-header-top d-md-none">
+			<button
+				type="button"
+				class="btn wishlist-button"
+				[attr.aria-pressed]="saved()"
+				[attr.aria-label]="(saved() ? 'remove_from_wishlist' : 'add_to_wishlist') | transloco"
+				(click)="toggleWishlist()"
+			>
+				<i
+					[class.ri-heart-line]="!saved()"
+					[class.ri-heart-fill]="saved()"
+					aria-hidden="true"
+				></i>
+			</button>
+			<button
+				type="button"
+				class="btn wishlist-button"
+				[attr.aria-pressed]="compared()"
+				[attr.aria-label]="(compared() ? 'remove_from_compare' : 'add_to_compare') | transloco"
+				(click)="toggleCompare()"
+			>
+				<i
+					class="ri-refresh-line"
+					[class.theme-color]="compared()"
+					aria-hidden="true"
+				></i>
+			</button>
+		</div>
 		<!-- Theme hover icons. Buttons, not links: they act, they do not go anywhere. -->
 		<ul class="product-option">
 			<li>
@@ -94,7 +127,6 @@
 					<i
 						[class.ri-heart-line]="!saved()"
 						[class.ri-heart-fill]="saved()"
-						[class.text-danger]="saved()"
 						aria-hidden="true"
 					></i>
 				</a>

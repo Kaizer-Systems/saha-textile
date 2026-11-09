@@ -5414,6 +5414,12 @@
 	z-index: 0;
 }
 
+// A saved product's heart is red wherever it shows: the card's hover bar and corner button, and
+// the product page's wishlist button.
+.ri-heart-fill {
+	color: $wishlist-color;
+}
+
 .product-header-top {
 	.wishlist-button {
 		width: 26px;

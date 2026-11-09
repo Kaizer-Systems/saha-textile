@@ -8,6 +8,9 @@ $title-color: #222222;
 $content-color: #4a5568;
 $light-gray: #f8f8f8;
 $danger-color: #ff4f4f;
+// The saved-to-wishlist heart, on cards and the product page: a true red (Material Red 600), the
+// colour shoppers read as "saved". Not $danger-color, which is lighter and pinker.
+$wishlist-color: #e53935;
 $rating-color: #ffb321;
 $border-color: #ececec;
 $light-semi-gray: #efefef;

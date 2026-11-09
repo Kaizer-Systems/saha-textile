@@ -10,3 +10,17 @@
 	-webkit-line-clamp: 2;
 	line-clamp: 2;
 }
+
+// Phone view: the theme's corner button sits exactly in the corner, so the second one (compare)
+// goes one button height plus a gap below the heart.
+:host .product-header-top .wishlist-button + .wishlist-button {
+	top: 32px;
+}
+
+// The theme hides the hover bar below 480 px; between 480 and 767 px it still appears on hover,
+// which touch cannot reach and which would put a second heart beside the corner buttons.
+@media (max-width: 767.98px) {
+	:host .product-box .product-image .product-option {
+		display: none;
+	}
+}

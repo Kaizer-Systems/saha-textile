@@ -402,9 +402,11 @@ export class FormEvent {
 		this.saleCategories.set([...kept, ...added]);
 	}
 
-	saleCategoryIds(): string[] {
-		return this.saleCategories().map((line) => line.categoryId);
-	}
+	/**
+	 * Kept as computed values: the category dropdown re-runs its selection whenever it is handed
+	 * a new array, so a method returning a fresh one each check looped change detection (NG0103).
+	 */
+	readonly saleCategoryIds = computed(() => this.saleCategories().map((line) => line.categoryId));
 
 	pickSaleProducts(event: Select2UpdateEvent) {
 		const wanted = Array.isArray(event.value) ? event.value.map(String) : [];
@@ -415,9 +417,7 @@ export class FormEvent {
 		this.saleProducts.set([...kept, ...added]);
 	}
 
-	saleProductIds(): string[] {
-		return this.saleProducts().map((line) => line.productId);
-	}
+	readonly saleProductIds = computed(() => this.saleProducts().map((line) => line.productId));
 
 	// ── Rules ─────────────────────────────────────────────────────────────────
 
